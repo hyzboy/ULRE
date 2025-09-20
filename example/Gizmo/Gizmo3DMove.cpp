@@ -29,6 +29,7 @@
 #include<hgl/component/MeshComponent.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/graph/Ray.h>
+#include<hgl/log/Log.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -45,6 +46,10 @@ namespace
     */
     class GizmoMoveNode:public SceneNode,io::MouseEvent
     {
+        OBJECT_LOGGER
+
+    private:
+
         struct GizmoMoveAxis
         {
             MaterialInstance *mi;       //材质实例
@@ -79,14 +84,19 @@ namespace
 
         using SceneNode::SceneNode;
 
+        ~GizmoMoveNode() override
+        {
+            LogVerbose("~GizmoMoveNode");
+        }
+
         io::EventDispatcher *GetEventDispatcher() override
         {
             return this; // GizmoMoveNode 处理鼠标事件
         }
 
-        SceneNode *CreateNode()const override
+        SceneNode *CreateNode(Scene *scene)const override
         {
-            return(new GizmoMoveNode);
+            return scene->CreateNode<GizmoMoveNode>();
         }
 
         void CloneComponents(SceneNode *node) const override
@@ -248,14 +258,14 @@ namespace
 
         io::EventProcResult OnMoveAtControl(const Vector2i &mouse_coord)
         {
-            CameraControl *cc=GetCameraControl();
+            RenderContext *rc = GetRenderContext();
 
-            if(!cc)
+            if(!rc)
                 return io::EventProcResult::Continue;
 
-            cc->SetMouseRay(&MouseRay,mouse_coord);
+            MouseRay.SetFromViewportPoint(mouse_coord,rc->GetCameraInfo(),rc->GetViewportSize());
 
-            const CameraInfo *ci=cc->GetCameraInfo();
+            const CameraInfo *ci=rc->GetCameraInfo();
 
             const Vector3f axis_vector=GetAxisVector(AXIS(PickAXIS)); //取得轴向量
 
@@ -286,14 +296,14 @@ namespace
                 return OnMoveAtControl(mouse_coord); //已经选中一个轴了
             }
 
-            CameraControl *cc=GetCameraControl();
+            RenderContext *rc = GetRenderContext();
 
-            if(!cc)
+            if(!rc)
                 return io::EventProcResult::Continue;
 
-            cc->SetMouseRay(&MouseRay,mouse_coord);
+            MouseRay.SetFromViewportPoint(mouse_coord,rc->GetCameraInfo(),rc->GetViewportSize());
 
-            const CameraInfo *ci=cc->GetCameraInfo();
+            const CameraInfo *ci = rc->GetCameraInfo();
             const Matrix4f l2w=GetLocalToWorldMatrix();
             const Vector3f center=TransformPosition(l2w,Vector3f(0,0,0));
             Vector3f axis_vector;
@@ -363,9 +373,9 @@ namespace
     static GizmoMoveNode *sn_gizmo_move=nullptr;
 }//namespace
 
-SceneNode *GetGizmoMoveNode()
+SceneNode *GetGizmoMoveNode(Scene *scene)
 {
-    return sn_gizmo_move;
+    return sn_gizmo_move->Clone(scene);;
 }
 
 void ClearGizmoMoveNode()

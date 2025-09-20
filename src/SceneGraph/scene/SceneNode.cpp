@@ -2,10 +2,40 @@
 #include<hgl/component/SceneComponent.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/graph/Scene.h>
+#include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/log/Log.h>
+
+DEFINE_LOGGER_MODULE(SceneNode)
 
 namespace hgl::graph
 {
+    RenderContext *SceneNode::GetRenderContext()const
+    {
+        if(!main_scene)
+            return(nullptr);
+
+        io::EventDispatcher *ep=main_scene->GetEventDispatcher()->GetParent();
+
+        if(!ep)
+        {
+            //有可能的，没有加入任保何SceneRenderer的场景
+            MLogWarning(SceneNode,"SceneNode::GetRenderContext(): Scene has no parent EventDispatcher!");
+            return(nullptr);
+        }
+
+        SceneEventDispatcher *sep=dynamic_cast<SceneEventDispatcher *>(ep);
+
+        if(!sep)
+        {
+            //这明显不对好不好
+            MLogFatal(SceneNode,"SceneNode::GetRenderContext(): Scene's parent EventDispatcher is not a SceneEventDispatcher!");
+            return(nullptr);
+        }
+
+        return sep->GetRenderContext();
+    }
+
     RenderFramework *SceneNode::GetRenderFramework()const
     {
         return main_scene?main_scene->GetRenderFramework():nullptr;
@@ -127,6 +157,66 @@ namespace hgl::graph
         }
     }
 
+    SceneNode *SceneNode::CreateNode(Scene *scene)const
+    {
+        if(scene)
+        {
+            return scene->CreateNode<SceneNode>();
+        }
+        else if(this&&this->GetScene())
+        {
+            return this->GetScene()->CreateNode<SceneNode>();
+        }
+
+        return(nullptr);
+    }
+
+    SceneNode *SceneNode::Clone(Scene *scene) const                                                               ///<复制一个场景节点
+    {
+        if(!this && !scene)
+            return nullptr;
+
+        if(!scene)
+        {
+            scene=this->GetScene();
+
+            if(!scene)
+            {
+                MLogError(SceneNode,"SceneNode::Clone(): No scene specified and this node has no scene!");
+                return(nullptr);
+            }
+        }
+
+        SceneNode *node = this->CreateNode(scene);
+
+        if(!node)
+        {
+            MLogError(SceneNode,"SceneNode::Clone(): CreateNode() failed!");
+
+            return(nullptr);
+        }
+
+        node->SetTransformState(GetTransformState());  //复制本地矩阵
+
+        CloneChildren(node);    //复制子节点
+        CloneComponents(node);    //复制组件
+
+        return node;
+    }
+
+    void SceneNode::Reset()
+    {
+        SetParent(nullptr); //清除父节点
+
+        local_bounding_box.Clear();
+        world_bounding_box.Clear();
+
+        child_nodes.Clear();
+        component_set.Clear();
+
+        NodeTransform::Reset();
+    }
+
     void SceneNode::OnChangeScene(Scene *new_scene)
     {
         if(main_scene==new_scene)
@@ -138,12 +228,12 @@ namespace hgl::graph
         {
             if(main_scene)
             {
-                main_scene->GetEventDispatcher().RemoveChildDispatcher(self_ep);    //从旧的场景中移除事件分发器
+                main_scene->GetEventDispatcher()->RemoveChildDispatcher(self_ep);    //从旧的场景中移除事件分发器
             }
 
             if(new_scene)
             {
-                new_scene->GetEventDispatcher().AddChildDispatcher(self_ep);        //添加到新的场景中
+                new_scene->GetEventDispatcher()->AddChildDispatcher(self_ep);        //添加到新的场景中
             }
         }
 

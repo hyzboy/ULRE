@@ -14,6 +14,8 @@ namespace hgl::io
 
 namespace hgl::graph
 {
+    class RenderContext; //前向声明渲染上下文
+
     class Scene;        //场景主类
     //每个SceneNode都要记录Scene来区分自己属于那个场景
     //这个场景可能是一个确实是一个场景，也有可能只是一个StaticMesh
@@ -85,7 +87,7 @@ namespace hgl::graph
 
     public:
 
-        virtual SceneNode * CreateNode()const{return(new SceneNode(GetScene()));}                                   ///<创建一个同类的节点对象
+        virtual SceneNode * CreateNode(Scene *scene=nullptr)const;                                                  ///<创建一个同类的节点对象
 
         virtual void        CloneChildren(SceneNode *node) const                                                    ///<复制子节点到指定节点
         {
@@ -99,35 +101,11 @@ namespace hgl::graph
                 node->AttachComponent(c->Clone());
         }
 
-        virtual SceneNode * Clone() const                                                                           ///<复制一个场景节点
-        {
-            if(!this)
-                return nullptr;
+        virtual SceneNode * Clone(Scene *scene=nullptr) const;                                                      ///<复制一个场景节点
 
-            SceneNode *node=CreateNode();
+                void        Reset() override;
 
-            node->SetTransformState(GetTransformState());  //复制本地矩阵
-
-            CloneChildren(node);    //复制子节点
-            CloneComponents(node);    //复制组件
-
-            return node;
-        }
-
-        void Reset() override
-        {
-            SetParent(nullptr); //清除父节点
-
-            local_bounding_box.Clear();
-            world_bounding_box.Clear();
-
-            child_nodes.Clear();
-            component_set.Clear();
-
-            NodeTransform::Reset();
-        }
-
-        const bool HasChildren()const{return !child_nodes.IsEmpty();}
+        const   bool        HasChildren()const{return !child_nodes.IsEmpty();}
 
         virtual void        SetParent(SceneNode *sn)
         {
@@ -153,6 +131,8 @@ namespace hgl::graph
         }
 
     public: //事件相关
+
+        RenderContext *GetRenderContext()const;                                                                     ///<取得渲染上下文(如果返回nullptr,则表示该节点现在不在任何SceneRenderer下)
 
         virtual io::EventDispatcher *GetEventDispatcher(){return nullptr;}                                          ///<取得事件分发器(如果返回nullptr,则表示该节点不支持事件分发)
 

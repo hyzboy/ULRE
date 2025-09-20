@@ -59,8 +59,8 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
-    SAFE_CLEAR(default_scene_renderer)
     SAFE_CLEAR(default_scene)
+    SAFE_CLEAR(default_scene_renderer);
     SAFE_CLEAR(module_manager)
 
     --RENDER_FRAMEWORK_COUNT;
@@ -179,16 +179,6 @@ void RenderFramework::OnChangeDefaultScene(Scene *s)
     if(default_scene==s)
         return;
 
-    if(default_scene)
-    {
-        this->RemoveChildDispatcher(&(default_scene->GetEventDispatcher()));
-    }
-
-    if(s)
-    {
-        this->AddChildDispatcher(&(s->GetEventDispatcher()));
-    }
-
     default_scene=s;
 }
 
@@ -199,6 +189,9 @@ void RenderFramework::CreateDefaultSceneRenderer()
     if(!default_scene_renderer)
     {
         default_scene_renderer=new SceneRenderer(this,rt);
+
+        this->AddChildDispatcher(default_scene_renderer);
+
         default_scene_renderer->SetScene(default_scene);
     }
     else
