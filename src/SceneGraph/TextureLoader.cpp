@@ -1,5 +1,6 @@
 #include<hgl/graph/TextureLoader.h>
 #include<hgl/io/FileInputStream.h>
+#include<hgl/utf.h>
 
 namespace hgl
 {
@@ -20,23 +21,61 @@ namespace hgl
                 PF_BC7UN
             };
 
+            constexpr char CompressFormatNameList[][9]=
+            {
+                "BC1RGB",
+                "BC1RGBA",
+                "BC2",
+                "BC3",
+                "BC4",
+                "BC5",
+                "BC6H",
+                "BC6H_SF",
+                "BC7"
+            };
+
             constexpr uint32 CompressFormatBits[]={4,4,8,8,4,8,8,8,8};
 
             constexpr uint32 CompressFormatCount=sizeof(CompressFormatList)/sizeof(VkFormat);
+
+            const int GetCompressFormat(const char *name)
+            {
+                const size_t len =hgl::strlen(name);
+
+                if(len == 0 || len > 7)   //目前没有名字超过7个字符的压缩格式
+                    return -1;
+
+                for(uint i=0;i<CompressFormatCount;i++)
+                {
+                    if(!memcmp(name,CompressFormatNameList[i],len))
+                        return i;
+                }
+
+                return -1;
+            }
         }
 
         const uint TexPixelFormat::pixel_bits()const
         {
-            return channels ?bits[0]+bits[1]+bits[2]+bits[3]
-                :CompressFormatBits[compress_format];
+            if(channels)
+                return bits[0]+bits[1]+bits[2]+bits[3];
+
+            int cf = GetCompressFormat(compress_format);
+
+            if(cf>0&&cf<CompressFormatCount)
+                return CompressFormatBits[cf];
+            
+            return 0;
         }
 
-        const uint32 ComputeMipmapBytes(uint32 length,uint32 bytes)
+        const uint32 ComputeMipmapBytes1D(uint32 length,uint32 bytes,uint mip_level)
         {
             uint32 total=0;
 
-            while(length>=1)
+            while(length>=1&&mip_level>0)
             {
+                --mip_level;
+
                 if(bytes<8)
                     total+=8;
                 else
@@ -50,12 +89,14 @@ namespace hgl
             return total;
         }
 
-        const uint32 ComputeMipmapBytes(uint32 width,uint32 height,uint32 bytes)
+        const uint32 ComputeMipmapBytes2D(uint32 width,uint32 height,uint32 bytes,uint mip_level)
         {
             uint32 total=0;
 
-            while(width>=1&&height>=1)
+            while(width>=1&&height>=1&&mip_level>0)
             {
+                --mip_level;
+
                 if(bytes<8)
                     total+=8;
                 else
@@ -70,12 +111,14 @@ namespace hgl
             return total;
         }
 
-        const uint32 ComputeMipmapBytes(uint32 width,uint32 height,uint32 depth,uint32 bytes)
+        const uint32 ComputeMipmapBytes3D(uint32 width,uint32 height,uint32 depth,uint32 bytes,uint mip_level)
         {
             uint32 total=0;
 
-            while(width>=1&&height>=1&&depth>=1)
+            while(width>=1&&height>=1&&depth>=1&&mip_level>0)
             {
+                --mip_level;
+
                 if(bytes<8)
                     total+=8;
                 else
@@ -181,21 +224,33 @@ namespace hgl
             constexpr uint TEXTURE_FILE_HEADER_LENGTH=sizeof(TEXTURE_FILE_HEADER)-1;
 
             if(memcmp(&file_header.id_str,TEXTURE_FILE_HEADER,TEXTURE_FILE_HEADER_LENGTH))
+            {
+                LogError(OS_TEXT("not a texture file."));
                 return(false);
+            }
 
             if(file_header.version!=0)
+            {
+                LogError(OS_TEXT("unknown texture file version: ") + OSString::numberOf(file_header.version));
                 return(false);
+            }
 
 //            if(file_header.type!=type)
 //                return(false);
 
             if(file_header.pixel_format.channels==0)
             {
-                if(file_header.pixel_format.compress_format<0
-                 ||file_header.pixel_format.compress_format>=CompressFormatCount)
-                    return(false);
+                int cf = GetCompressFormat(file_header.pixel_format.compress_format);
 
-                format=CompressFormatList[file_header.pixel_format.compress_format];
+                if(cf >= 0 && cf < CompressFormatCount)
+                    format=CompressFormatList[cf];
+                else
+                {
+                    const OSString fmt_name = to_oschar((u8char *)file_header.pixel_format.compress_format,9);
+
+                    LogError(OS_TEXT("unknown texture compress format: ") + fmt_name);
+                    return(false);
+                }
             }
             else
             {
@@ -210,12 +265,18 @@ namespace hgl
             const uint32 file_left_bytes=is->Available();
 
             if(file_left_bytes<total_bytes)
+            {
+                LogError(OS_TEXT("texture file data size error."));
                 return(false);
+            }
 
             void *ptr=OnBegin(total_bytes,format);
 
             if(!ptr)
+            {
+                LogError(OS_TEXT("texture OnBegin() failed."));
                 return(false);
+            }
 
             if(is->Read(ptr,total_bytes)!=total_bytes)
                 OnError();
@@ -231,11 +292,18 @@ namespace hgl
 
             if(!fis)
             {
-                GLogError(OS_TEXT("[ERROR] open texture file<")+filename+OS_TEXT("> failed."));
+                LogError(OS_TEXT("open texture file<")+filename+OS_TEXT("> failed."));
                 return(false);
             }
 
-            return this->Load(&fis);
+            if(!this->Load(&fis))
+            {
+                LogError(OS_TEXT("load texture file<") + filename + OS_TEXT("> failed."));
+                return(false);
+            }
+
+            LogVerbose(OS_TEXT("load texture file<") + filename + OS_TEXT("> successed!"));
+            return(true);
         }
     }//namespace graph
 }//namespace hgl
