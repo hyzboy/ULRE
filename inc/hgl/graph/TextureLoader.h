@@ -5,6 +5,7 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/BitmapData.h>
+#include<hgl/log/log.h>
 namespace hgl
 {
     namespace graph
@@ -25,7 +26,7 @@ namespace hgl
 
                 struct
                 {
-                    uint16 compress_format;
+                    char compress_format[9];
                 };
             };
 
@@ -63,12 +64,14 @@ namespace hgl
         constexpr uint TextureFileHeaderLength=sizeof(TextureFileHeader);           //GPUBuffer内需要64位8字节对齐，如果此值不对齐，请想办法填0
         #pragma pack(pop)
 
-        const uint32 ComputeMipmapBytes(uint32 length,uint32 bytes);
-        const uint32 ComputeMipmapBytes(uint32 width,uint32 height,uint32 bytes);
-        const uint32 ComputeMipmapBytes(uint32 width,uint32 height,uint32 depth,uint32 bytes);
+        const uint32 ComputeMipmapBytes1D(uint32 length,uint32 bytes,uint mip_level);
+        const uint32 ComputeMipmapBytes2D(uint32 width,uint32 height,uint32 bytes,uint mip_level);
+        const uint32 ComputeMipmapBytes3D(uint32 width,uint32 height,uint32 depth,uint32 bytes,uint mip_level);
 
         class TextureLoader
         {
+            OBJECT_LOGGER
+
         protected:
 
             TextureFileHeader file_header;
@@ -123,8 +126,9 @@ namespace hgl
                 if(file_header.mipmaps<=1)
                     return mipmap_zero_total_bytes;
                 else
-                    return ComputeMipmapBytes(  file_header.length,
-                        mipmap_zero_total_bytes);
+                    return ComputeMipmapBytes1D(file_header.length,
+                                                mipmap_zero_total_bytes,
+                                                file_header.mipmaps);
             }
 
         public:
@@ -146,9 +150,10 @@ namespace hgl
                 if(file_header.mipmaps<=1)
                     return mipmap_zero_total_bytes;
                 else
-                    return ComputeMipmapBytes(  file_header.width,
-                        file_header.height,
-                        mipmap_zero_total_bytes);
+                    return ComputeMipmapBytes2D(file_header.width,
+                                                file_header.height,
+                                                mipmap_zero_total_bytes,
+                                                file_header.mipmaps);
             }
 
         public:
@@ -170,10 +175,11 @@ namespace hgl
                 if(file_header.mipmaps<=1)
                     return mipmap_zero_total_bytes;
                 else
-                    return ComputeMipmapBytes(  file_header.width,
-                        file_header.height,
-                        file_header.depth,
-                        mipmap_zero_total_bytes);
+                    return ComputeMipmapBytes3D(file_header.width,
+                                                file_header.height,
+                                                file_header.depth,
+                                                mipmap_zero_total_bytes,
+                                                file_header.mipmaps);
             }
 
         public:
@@ -195,9 +201,10 @@ namespace hgl
                 if(file_header.mipmaps<=1)
                     return mipmap_zero_total_bytes*6;
                 else
-                    return ComputeMipmapBytes(  file_header.width,
-                        file_header.height,
-                        mipmap_zero_total_bytes)*6;
+                    return ComputeMipmapBytes2D(file_header.width,
+                                                file_header.height,
+                                                mipmap_zero_total_bytes,
+                                                file_header.mipmaps)*6;
             }
 
         public:
@@ -219,8 +226,9 @@ namespace hgl
                 if(file_header.mipmaps<=1)
                     return mipmap_zero_total_bytes*file_header.layers;
                 else
-                    return ComputeMipmapBytes(  file_header.length,
-                        mipmap_zero_total_bytes)*file_header.layers;
+                    return ComputeMipmapBytes1D(file_header.length,
+                                                mipmap_zero_total_bytes,
+                                                file_header.mipmaps)*file_header.layers;
             }
 
         public:
@@ -242,9 +250,10 @@ namespace hgl
                 if(file_header.mipmaps<=1)
                     return mipmap_zero_total_bytes*file_header.layers;
                 else
-                    return ComputeMipmapBytes(  file_header.width,
-                        file_header.height,
-                        mipmap_zero_total_bytes)*file_header.layers;
+                    return ComputeMipmapBytes2D(file_header.width,
+                                                file_header.height,
+                                                mipmap_zero_total_bytes,
+                                                file_header.mipmaps)*file_header.layers;
             }
 
         public:
@@ -266,9 +275,10 @@ namespace hgl
                 if(file_header.mipmaps<=1)
                     return mipmap_zero_total_bytes*6*file_header.layers;
                 else
-                    return ComputeMipmapBytes(  file_header.width,
-                        file_header.height,
-                        mipmap_zero_total_bytes)*6*file_header.layers;
+                    return ComputeMipmapBytes2D(file_header.width,
+                                                file_header.height,
+                                                mipmap_zero_total_bytes,
+                                                file_header.mipmaps)*6*file_header.layers;
             }
 
         public:

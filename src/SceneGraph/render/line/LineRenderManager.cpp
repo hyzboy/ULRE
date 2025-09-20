@@ -341,7 +341,7 @@ namespace hgl::graph
 
         if(total_line_count==0)
         {
-            LogVerbose(OS_TEXT("CN: Draw跳过 没有线段 EN: draw skipped no lines"));
+//            LogVerbose(OS_TEXT("CN: Draw跳过 没有线段 EN: draw skipped no lines"));
             return(true);
         }
 
