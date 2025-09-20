@@ -62,32 +62,4 @@ namespace hgl::graph
     public:
 
     };//class RenderContext
-
-    // Free (non-member) versions of camera utility helpers so callers don't need RenderContext
-    inline bool SetMouseRay(Ray *ray, const Vector2i &mouse_coord, const CameraInfo *ci, const ViewportInfo *viewport_info)
-    {
-        if(!ray || !ci || !viewport_info) return false;
-        ray->Set(mouse_coord, ci, viewport_info);
-        return true;
-    }
-
-    inline Vector3f LocalToViewSpace(const Matrix4f &l2w, const Vector3f &local_pos, const CameraInfo *ci, const ViewportInfo *viewport_info)
-    {
-        if(!viewport_info || !ci) return {};
-        const Vector4f clip_pos = ci->LocalToViewSpace(l2w, local_pos);
-        if(clip_pos.w == 0.0f) return {};
-        return {clip_pos.x/clip_pos.w, clip_pos.y/clip_pos.w, clip_pos.z/clip_pos.w};
-    }
-
-    inline Vector2i WorldPositionToScreen(const Vector3f &wp, const CameraInfo *ci, const ViewportInfo *viewport_info)   ///< 世界坐标→屏幕坐标
-    {
-        if(!viewport_info || !ci) return {};
-        return ProjectToScreen(wp, ci->view, ci->projection, viewport_info->GetViewportWidth(), viewport_info->GetViewportHeight());
-    }
-
-    inline Vector3f ScreenPositionToWorld(const Vector2i &sp, const CameraInfo *ci, const ViewportInfo *viewport_info)   ///< 屏幕坐标→世界坐标
-    {
-        if(!viewport_info || !ci) return {};
-        return UnProjectToWorld(sp, ci->view, ci->projection, viewport_info->GetViewportWidth(), viewport_info->GetViewportHeight());
-    }
 }//namesapce hgl::graph
