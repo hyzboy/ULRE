@@ -34,6 +34,7 @@ namespace hgl::graph
     public:
 
         const   ViewportInfo *      GetViewportInfo     ()const { return viewport_info; }
+        const   Vector2u &          GetViewportSize     ()const { return viewport_info->GetViewport(); }
         const   VkExtent2D &        GetExtent           ()const { return render_target->GetExtent(); }
 
                 Camera *            GetCamera           ()      { return &camera; }
@@ -47,9 +48,7 @@ namespace hgl::graph
                 LineRenderManager * GetLineRenderManager()const { return line_render_mgr; }
 
     public:
-        // =============================================================
-        // 生命周期 Lifecycle
-        // =============================================================
+
         RenderContext(RenderFramework *rf,IRenderTarget *rt);
         ~RenderContext();
 
@@ -62,8 +61,5 @@ namespace hgl::graph
         void Tick(double delta);
 
         void BindDescriptor(RenderCmdBuffer *cmd);   ///< 绑定描述符：摄像机 + 场景
-
-    public:
-
     };//class RenderContext
 }//namesapce hgl::graph
