@@ -21,8 +21,8 @@ constexpr const ShaderBufferSource SBS_ViewportInfo=
     R"(
     mat4 ortho_matrix;
 
-    vec2 canvas_resolution;
-    vec2 viewport_resolution;
+    uvec2 canvas_resolution;
+    uvec2 viewport_resolution;
     vec2 inv_viewport_resolution;
 )"
 };
