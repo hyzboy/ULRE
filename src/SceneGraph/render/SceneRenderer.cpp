@@ -25,9 +25,6 @@ namespace hgl::graph
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
     {
-        if(render_target==rt)
-            return(true);
-
         render_target=rt;
 
         if(render_context)
