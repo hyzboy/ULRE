@@ -6,18 +6,25 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -O2
 # CXXFLAGS += -DHAVE_FBX_SDK -I$(FBX_SDK_ROOT)/include
 # LDFLAGS += -L$(FBX_SDK_ROOT)/lib -lfbxsdk
 
-TARGET = FBXLoaderDemo
-SOURCE = FBXLoaderDemo.cpp
+TARGETS = FBXLoaderDemo FBXIntegrationDemo
+SOURCES = FBXLoaderDemo.cpp FBXIntegrationDemo.cpp
 
-all: $(TARGET)
+all: $(TARGETS)
 
-$(TARGET): $(SOURCE)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SOURCE) $(LDFLAGS)
+FBXLoaderDemo: FBXLoaderDemo.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
+
+FBXIntegrationDemo: FBXIntegrationDemo.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGETS)
 
-test: $(TARGET)
-	./$(TARGET) sample_model.fbx
+test: $(TARGETS)
+	@echo "Running FBX Loader Demo:"
+	./FBXLoaderDemo sample_model.fbx
+	@echo ""
+	@echo "Running FBX Integration Demo:"
+	./FBXIntegrationDemo
 
 .PHONY: all clean test
