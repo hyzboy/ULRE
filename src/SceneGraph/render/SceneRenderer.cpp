@@ -25,6 +25,8 @@ namespace hgl::graph
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
     {
+        //不要做render_target==rt测试，因为真的有机率旧的删掉后，再new出来新的地址一样
+
         render_target=rt;
 
         if(render_context)
