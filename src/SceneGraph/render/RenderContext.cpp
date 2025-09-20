@@ -40,6 +40,15 @@ namespace hgl::graph
         viewport_info = nullptr;
     }
 
+    void RenderContext::UpdateCamera()
+    {
+        if(camera_control)
+            camera_control->Refresh();
+
+        if(ubo_camera_info)
+            ubo_camera_info->Update();
+    }
+
     void RenderContext::SetRenderTarget(IRenderTarget *rt)
     {
         if(render_target == rt)
@@ -49,7 +58,10 @@ namespace hgl::graph
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
         if(camera_control && viewport_info)
+        {
             camera_control->SetViewport(viewport_info);
+            UpdateCamera();
+        }
 
         if(render_target)
         {
@@ -76,16 +88,14 @@ namespace hgl::graph
                 camera_control->SetViewport(viewport_info);
 
             camera_control->SetCamera(&camera, ubo_camera_info ? ubo_camera_info->data() : nullptr);
+
+            UpdateCamera();
         }
     }
 
     void RenderContext::Tick(double)
     {
-        if(camera_control && ubo_camera_info)
-        {
-            camera_control->Refresh();
-            ubo_camera_info->Update();
-        }
+        UpdateCamera();
     }
 
     void RenderContext::BindDescriptor(RenderCmdBuffer *cmd)
