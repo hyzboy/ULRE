@@ -27,6 +27,10 @@ namespace hgl::graph
                 UBOCameraInfo *     ubo_camera_info     = nullptr;  ///< 摄像机信息UBO
                 DescriptorBinding * camera_desc_binding = nullptr;  ///< 摄像机描述符绑定(DescriptorSetType::Camera)
 
+    protected:
+
+        void UpdateCamera();
+
     public:
 
         const   ViewportInfo *      GetViewportInfo     ()const { return viewport_info; }
