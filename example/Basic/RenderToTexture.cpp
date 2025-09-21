@@ -9,6 +9,7 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/math/Math.h>
 #include<hgl/color/Color.h>
+#include<hgl/graph/camera/ViewModelCameraControl.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -33,6 +34,7 @@ private:
     IRenderTarget *          offscreen_rt        = nullptr;
     SceneRenderer *          offscreen_renderer  = nullptr;
     Scene *                  offscreen_scene     = nullptr;   // separate offscreen scene
+    CameraControl *          offscreen_camera    = nullptr;   // dedicated offscreen camera control
 
     // Offscreen draw: a sphere
     Material *               off_mtl             = nullptr;
@@ -84,8 +86,20 @@ private:
 
         // Bind the independent offscreen scene (do not reuse default scene)
         offscreen_renderer->SetScene(offscreen_scene);
-        if (GetCameraControl())
-            offscreen_renderer->SetCameraControl(GetCameraControl());
+
+        // Create and set a dedicated camera control for the offscreen renderer
+        // Use a simple view-model (orbit) camera aimed at the origin
+        offscreen_camera = new ViewModelCameraControl();
+        if (offscreen_camera)
+        {
+            offscreen_renderer->SetCameraControl(offscreen_camera);
+            offscreen_camera->SetTarget(Vector3f(0,0,0));
+            // Optional: tweak initial view a bit for a nicer angle
+            // Rotate by some pixels to change yaw/pitch
+            static_cast<ViewModelCameraControl*>(offscreen_camera)->Rotate(Vector2f(150.0f, -80.0f));
+            // Slight zoom-in
+            static_cast<ViewModelCameraControl*>(offscreen_camera)->Zoom(+5.0f);
+        }
 
         // Clear to a recognizable color
         offscreen_renderer->SetClearColor(Color4f(0.1f, 0.2f, 0.6f, 1.0f));
@@ -219,6 +233,8 @@ public:
         offscreen_renderer = nullptr;
         delete offscreen_scene;
         offscreen_scene = nullptr;
+        delete offscreen_camera;
+        offscreen_camera = nullptr;
         offscreen_rt = nullptr; // owned by manager
     }
 
@@ -244,6 +260,8 @@ public:
         // First render once into offscreen texture (could be extended to every frame)
         if (offscreen_renderer && !captured_offscreen)
         {
+            offscreen_renderer->Tick(delta_time);
+
             LogInfo("Rendering offscreen RT...\n");
 
             offscreen_renderer->RenderFrame();

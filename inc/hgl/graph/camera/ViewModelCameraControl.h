@@ -17,11 +17,11 @@ namespace hgl::graph
     class ViewModelCameraControl: public CameraControl
     {
         // spherical coordinates (radians)
-        float yaw;   // azimuth
-        float pitch; // elevation
-        float distance; // distance from target to camera
+        float yaw;           // azimuth
+        float pitch;         // elevation
+        float distance;      // distance from target to camera
 
-        Vector3f target; // fixed model center
+        Vector3f target;     // fixed model center
 
         // local basis
         Vector3f forward;
@@ -29,12 +29,28 @@ namespace hgl::graph
         Vector3f up;
 
         // input configuration
-        Vector2f input_invert_sign; // x/y inversion for mouse
-        float rotation_sensitivity_deg_per_pixel; // degrees per pixel
-        float zoom_sensitivity; // scale applied to wheel delta
+        Vector2f input_invert_sign;                 // x/y inversion for mouse
+        float rotation_sensitivity_deg_per_pixel;   // degrees per pixel
+        float zoom_sensitivity;                     // scale applied to wheel delta
 
         float min_distance;
         float max_distance;
+
+        bool  dirty_basis = true;
+
+        static inline void RecalcBasis(float yaw,float pitch,Vector3f &forward,Vector3f &right,Vector3f &up,const Camera *cam)
+        {
+            const float cp = cosf(pitch);
+            forward.x = cp * cosf(yaw);
+            forward.y = cp * sinf(yaw);
+            forward.z = sinf(pitch);
+
+            Vector3f world_up(0,0,1);
+            if(cam) world_up = cam->world_up;
+
+            right = normalize(cross(forward,world_up));
+            up    = normalize(cross(right,forward));
+        }
 
     public:
         struct Settings
@@ -47,7 +63,28 @@ namespace hgl::graph
             float max_distance;
         };
 
-        ViewModelCameraControl(ViewportInfo *v, Camera *c, UBOCameraInfo *ci);
+        // Updated to follow CameraControl lifecycle: construct empty and rely on SetViewport/SetCamera
+        ViewModelCameraControl()
+        {
+            yaw = 0.0f;
+            pitch = 0.0f;
+            distance = 5.0f;
+            target = Vector3f(0,0,0);
+
+            input_invert_sign = Vector2f(-1, 1);            // drag to orbit typical feel
+            rotation_sensitivity_deg_per_pixel = 0.2f;
+            zoom_sensitivity = 0.1f;
+
+            min_distance = 0.1f;
+            max_distance = 1000.0f;
+
+            forward = Vector3f(1,0,0);
+            right   = Vector3f(0,1,0);
+            up      = Vector3f(0,0,1);
+
+            dirty_basis = true;
+        }
+
         virtual ~ViewModelCameraControl() = default;
 
         const CameraControlIDName GetControlName() const override
@@ -60,7 +97,6 @@ namespace hgl::graph
         void SetTarget(const Vector3f &t) override
         {
             target = t;
-            // recompute camera position from spherical coords
             UpdateCameraVector();
         }
 
@@ -111,11 +147,31 @@ namespace hgl::graph
             SetMinMaxDistance(s.min_distance, s.max_distance);
         }
 
-        // recompute camera->pos and basis vectors from yaw/pitch/distance
-        void UpdateCameraVector();
+        // mark basis dirty; will be recomputed in Refresh()
+        void UpdateCameraVector()
+        {
+            dirty_basis = true;
+        }
 
-        // refresh camera_info (view matrix) — similar to other controls
-        void Refresh() override;
+        // refresh camera_info (view matrix) — aligns with CameraControl::Refresh()
+        void Refresh() override
+        {
+            Camera *cam = GetCamera();
+            CameraInfo *ci = GetCameraInfo();
+            const ViewportInfo *vi = GetViewportInfo();
+            if(!cam || !ci || !vi)
+                return;
+
+            if(dirty_basis)
+            {
+                RecalcBasis(yaw,pitch,forward,right,up,cam);
+                cam->pos = target - forward * distance;
+                dirty_basis = false;
+            }
+
+            ci->view = LookAtMatrix(cam->pos, target, cam->world_up);
+            RefreshCameraInfo(ci, vi, cam);
+        }
 
     public:
         // allow programmatic rotation
@@ -141,7 +197,7 @@ namespace hgl::graph
 
         void Zoom(float wheel_delta)
         {
-            // wheel_delta is integer steps (positive -> away by convention in some systems). We treat positive as zoom out.
+            // wheel_delta is integer steps (positive -> away). Treat positive as zoom out.
             distance *= std::pow(1.0f + zoom_sensitivity, -wheel_delta);
             distance = std::clamp(distance, min_distance, max_distance);
             UpdateCameraVector();
