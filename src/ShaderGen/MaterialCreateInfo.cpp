@@ -116,27 +116,27 @@ bool MaterialCreateInfo::AddSampler(const ShaderStage flag_bit,const DescriptorS
     if(!sc)
         return(false);
 
-    SamplerDescriptor *sampler=mdi.GetSampler(name);
+    ImageSamplerDescriptor *image_sampler=mdi.GetImageSampler(name);
 
     AnsiString st_name=GetSamplerTypeName(st);
 
-    if(sampler)
+    if(image_sampler)
     {
-        if(sampler->type!=st_name)
+        if(image_sampler->type!=st_name)
             return(false);
 
-        sampler->stage_flag|=(uint32_t)flag_bit;
+        image_sampler->stage_flag|=(uint32_t)flag_bit;
 
-        return sc->AddSampler(set_type,sampler);
+        return sc->AddImageSampler(set_type,image_sampler);
     }
     else
     {
-        sampler=new SamplerDescriptor();
+        image_sampler=new ImageSamplerDescriptor();
 
-        sampler->type=st_name;
-        hgl::strcpy(sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
+        image_sampler->type=st_name;
+        hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
-        return sc->AddSampler(set_type,mdi.AddSampler((uint32_t)flag_bit,set_type,sampler));
+        return sc->AddImageSampler(set_type,mdi.AddImageSampler((uint32_t)flag_bit,set_type,image_sampler));
     }
 }
 
