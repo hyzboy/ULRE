@@ -41,7 +41,7 @@ public:
 
     const int GetUBO            (const DescriptorSetType &set_type,const AnsiString &name,bool dynamic)const{return GetBinding(set_type,dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,name);}
     const int GetSSBO           (const DescriptorSetType &set_type,const AnsiString &name,bool dynamic)const{return GetBinding(set_type,dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,name);}
-    const int GetImageSampler   (const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
+    const int GetTextureSampler (const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
     const int GetInputAttachment(const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,name);}
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}

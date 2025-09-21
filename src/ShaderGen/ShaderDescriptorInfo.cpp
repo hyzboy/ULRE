@@ -24,12 +24,12 @@ bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ub
     return true;
 }
 
-bool ShaderDescriptorInfo::AddImageSampler(DescriptorSetType type,const ImageSamplerDescriptor *sampler)
+bool ShaderDescriptorInfo::AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sampler)
 {
     if(!sampler)
         return(false);
 
-    image_sampler_list.Add(sampler);
+    texture_sampler_list.Add(sampler);
     return true;
 }
 

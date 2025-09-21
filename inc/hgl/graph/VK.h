@@ -115,7 +115,7 @@ enum class DescriptorType:uint32
     //  layout(set = 0, binding = 0) uniform texture2D myImage;
     //
     //  vec4 color = texelFetch(myImage, ivec2(x, y), lod);
-    Image               =VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+    Texture             =VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 
     //对应glsl中的sampler类型
     // 如
@@ -132,7 +132,7 @@ enum class DescriptorType:uint32
     //  layout(set = 0, binding = 2) uniform sampler2D mySampler2D;
     //
     //  vec4 color=texture(mySampler2D,texCoord);
-    ImageSampler        =VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+    TextureSampler      =VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 
     // 对应Image2D/3D/Cube类型，可读可写。
     // 如

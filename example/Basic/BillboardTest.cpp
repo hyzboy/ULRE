@@ -99,7 +99,7 @@ private:
 
         sampler=CreateSampler();
 
-        if(!mi_billboard->GetMaterial()->BindImageSampler(  DescriptorSetType::PerMaterial,     ///<描述符合集
+        if(!mi_billboard->GetMaterial()->BindTextureSampler(DescriptorSetType::PerMaterial,     ///<描述符合集
                                                             mtl::SamplerName::BaseColor,        ///<采样器名称
                                                             texture,                            ///<纹理
                                                             sampler))                           ///<采样器
