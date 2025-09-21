@@ -55,15 +55,16 @@ namespace hgl
             return(true);
         }
 
-        bool RenderCollector::Expand(SceneNode *sn)
+        uint RenderCollector::Expand(SceneNode *sn)
         {
-            if(!device|!sn)return(false);
+            if(!device||!sn) return 0;
 
+            renderable_count = 0;        // reset per build
             mrl_map.Begin(camera_info);
             ExpandNode(sn);
             mrl_map.End();
 
-            return(true);
+            return renderable_count;
         }
 
         bool RenderCollector::Render(RenderCmdBuffer *cb) 
