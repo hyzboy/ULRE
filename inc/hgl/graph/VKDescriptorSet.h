@@ -51,6 +51,7 @@ public:
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,bool dynamic=false);
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
+    bool BindTexture(const int binding,Texture *);
     bool BindTextureSampler(const int binding,Texture *,Sampler *);
     bool BindInputAttachment(const int binding,ImageView *);
     void Update();

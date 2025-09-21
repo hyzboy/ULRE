@@ -77,7 +77,7 @@ void main()
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            mci->AddSampler(ShaderStage::Fragment,DescriptorSetType::PerMaterial,SamplerType::Sampler2D,mtl::SamplerName::Text);
+            mci->AddTextureSampler(ShaderStage::Fragment,DescriptorSetType::PerMaterial,SamplerType::Sampler2D,mtl::SamplerName::Text);
 
             fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 

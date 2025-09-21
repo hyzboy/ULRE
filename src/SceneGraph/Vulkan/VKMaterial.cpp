@@ -92,6 +92,16 @@ bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,Dev
     return mp->BindSSBO(name,ubo,dynamic);
 }
 
+bool Material::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
+{
+    MaterialParameters *mp = GetMP(type);
+
+    if(!mp)
+        return(false);
+
+    return mp->BindTexture(name,tex);
+}
+
 bool Material::BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);

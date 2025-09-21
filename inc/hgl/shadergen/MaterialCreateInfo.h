@@ -94,7 +94,7 @@ namespace hgl::graph
 
             bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
-            bool AddSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
+            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
             bool CreateShader();
         };//class MaterialCreateInfo

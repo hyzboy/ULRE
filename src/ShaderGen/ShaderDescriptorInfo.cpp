@@ -24,6 +24,15 @@ bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ub
     return true;
 }
 
+bool ShaderDescriptorInfo::AddTexture(DescriptorSetType type,const TextureDescriptor *sd)
+{
+    if(!sd)
+        return(false);
+
+    texture_list.Add(sd);
+    return true;
+}
+
 bool ShaderDescriptorInfo::AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sampler)
 {
     if(!sampler)

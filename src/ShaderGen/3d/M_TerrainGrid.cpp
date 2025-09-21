@@ -81,8 +81,8 @@ void main()
             vsc->AddAssign();
 
             // Per-material samplers used in VS
-            mci->AddSampler(ShaderStage::Vertex, DescriptorSetType::PerMaterial, SamplerType::Sampler2D, "TextureHeight");
-            mci->AddSampler(ShaderStage::Vertex, DescriptorSetType::PerMaterial, SamplerType::Sampler2D, "TextureNormal");
+            mci->AddTextureSampler(ShaderStage::Vertex, DescriptorSetType::PerMaterial, SamplerType::Sampler2D, "TextureHeight");
+            mci->AddTextureSampler(ShaderStage::Vertex, DescriptorSetType::PerMaterial, SamplerType::Sampler2D, "TextureNormal");
 
             // Outputs to FS
             vsc->AddOutput(SVT_VEC4, "Position");

@@ -112,6 +112,12 @@ bool ShaderCreateInfo::AddUBO(DescriptorSetType type,const UBODescriptor *sd)
     return GetSDI()->AddUBO(type,sd);
 }
 
+
+bool ShaderCreateInfo::AddTexture(DescriptorSetType type,const TextureDescriptor *sd)
+{
+    return GetSDI()->AddTexture(type,sd);
+}
+
 bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd)
 {
     return GetSDI()->AddTextureSampler(type,sd);
