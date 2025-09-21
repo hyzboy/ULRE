@@ -112,9 +112,9 @@ bool ShaderCreateInfo::AddUBO(DescriptorSetType type,const UBODescriptor *sd)
     return GetSDI()->AddUBO(type,sd);
 }
 
-bool ShaderCreateInfo::AddSampler(DescriptorSetType type,const SamplerDescriptor *sd)
+bool ShaderCreateInfo::AddImageSampler(DescriptorSetType type,const ImageSamplerDescriptor *sd)
 {
-    return GetSDI()->AddSampler(type,sd);
+    return GetSDI()->AddImageSampler(type,sd);
 }
 
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
@@ -280,15 +280,15 @@ bool ShaderCreateInfo::ProcConstantID()
 
 bool ShaderCreateInfo::ProcSampler()
 {
-    auto sampler_list=GetSDI()->GetSamplerList();
+    auto image_sampler_list=GetSDI()->GetImageSamplerList();
 
-    const int count=sampler_list.GetCount();
+    const int count=image_sampler_list.GetCount();
 
     if(count<=0)return(true);
 
     final_shader+="\n";
 
-    auto sampler=sampler_list.GetData();
+    auto sampler=image_sampler_list.GetData();
 
     for(int i=0;i<count;i++)
     {

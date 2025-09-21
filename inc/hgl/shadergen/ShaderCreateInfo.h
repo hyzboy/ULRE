@@ -17,7 +17,7 @@ class MaterialDescriptorInfo;
 class ShaderDescriptorInfo;
 
 struct UBODescriptor;
-struct SamplerDescriptor;
+struct ImageSamplerDescriptor;
 
 class ShaderCreateInfo
 {
@@ -91,7 +91,7 @@ public:
 
     void AddStruct(const AnsiString &);
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
-    bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);
+    bool AddImageSampler(DescriptorSetType type,const ImageSamplerDescriptor *sd);
 
     void AddUserData(const char *str){user_data_list.Add(str);}
     void AddFunction(const char *str){function_list.Add(str);}

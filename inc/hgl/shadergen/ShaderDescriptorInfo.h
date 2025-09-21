@@ -11,7 +11,7 @@
 namespace hgl{namespace graph
 {
 using UBODescriptorList=ArrayList<const UBODescriptor *>;
-using SamplerDescriptorList=ArrayList<const SamplerDescriptor *>;
+using ImageSamplerDescriptorList=ArrayList<const ImageSamplerDescriptor *>;
 using ConstValueDescriptorList=ObjectList<ConstValueDescriptor>;
 using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 
@@ -28,7 +28,7 @@ protected:
 
     //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdi中的用于产生set/binding号，这里的用于产生shader
     UBODescriptorList                   ubo_list;
-    SamplerDescriptorList               sampler_list;
+    ImageSamplerDescriptorList          image_sampler_list;
     
     ConstValueDescriptorList            const_value_list;
     
@@ -48,7 +48,7 @@ public:
     const AnsiStringList &              GetStructList()const{return struct_list;}
 
     const UBODescriptorList &           GetUBOList()const{return ubo_list;}
-    const SamplerDescriptorList &       GetSamplerList()const{return sampler_list;}
+    const ImageSamplerDescriptorList &  GetImageSamplerList()const{return image_sampler_list;}
 
     const ConstValueDescriptorList &    GetConstList()const{return const_value_list;}
 
@@ -56,7 +56,7 @@ public:
 
     void AddStruct(const AnsiString &);
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
-    bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);
+    bool AddImageSampler(DescriptorSetType type,const ImageSamplerDescriptor *sd);
 
     bool AddConstValue(ConstValueDescriptor *sd);
     

@@ -40,7 +40,7 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
     return((UBODescriptor *)obj);
 }
 
-const SamplerDescriptor *MaterialDescriptorInfo::AddSampler(uint32_t ssb,DescriptorSetType set_type,SamplerDescriptor *sd)
+const ImageSamplerDescriptor *MaterialDescriptorInfo::AddImageSampler(uint32_t ssb,DescriptorSetType set_type,ImageSamplerDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -49,8 +49,8 @@ const SamplerDescriptor *MaterialDescriptorInfo::AddSampler(uint32_t ssb,Descrip
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    sampler_map.Add(obj->name,(SamplerDescriptor *)obj);
-    return((SamplerDescriptor *)obj);
+    image_sampler_map.Add(obj->name,(ImageSamplerDescriptor *)obj);
+    return((ImageSamplerDescriptor *)obj);
 }
 
 UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
@@ -63,11 +63,11 @@ UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
     return(nullptr);
 }
 
-SamplerDescriptor *MaterialDescriptorInfo::GetSampler(const AnsiString &name)
+ImageSamplerDescriptor *MaterialDescriptorInfo::GetImageSampler(const AnsiString &name)
 {
-    SamplerDescriptor *sd;
+    ImageSamplerDescriptor *sd;
 
-    if(sampler_map.Get(name,sd))
+    if(image_sampler_map.Get(name,sd))
         return(sd);
 
     return(nullptr);
