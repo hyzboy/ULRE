@@ -62,7 +62,19 @@ DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexPattleColor3D,const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          const Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(TerrainGrid,      const Material3DCreateConfig);
+
+struct TerrainGridCreateConfig:public Material3DCreateConfig
+{
+public:
+
+    TerrainGridCreateConfig()
+        :Material3DCreateConfig(PrimitiveType::Triangles,
+                                WithCamera::With,WithLocalToWorld::With,WithSky::With)
+    {
+    }
+};
+
+DEFINE_MATERIAL_FACTORY_CLASS(TerrainGrid,      const TerrainGridCreateConfig);
 
 struct SkyMinimalCreateConfig:public Material3DCreateConfig
 {

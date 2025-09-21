@@ -102,7 +102,7 @@ void main()
     };
 }
 
-MaterialCreateInfo *CreateTerrainGrid(const VulkanDevAttr *dev_attr, const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateTerrainGrid(const VulkanDevAttr *dev_attr, const TerrainGridCreateConfig *cfg)
 {
     MaterialTerrainGrid m(cfg);
     return m.Create(dev_attr);
