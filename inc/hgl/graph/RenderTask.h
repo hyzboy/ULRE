@@ -35,7 +35,7 @@ namespace hgl::graph
         bool SetRenderTarget(IRenderTarget *);
         void SetCameraInfo(const CameraInfo *);
 
-        bool RebuildRenderList(SceneNode *);
+        uint RebuildRenderList(SceneNode *);            ///< 返回可渲染对象数量
 
         bool IsEmpty()const;                        ///<是否是空的，不可渲染或是没啥可渲染的
 

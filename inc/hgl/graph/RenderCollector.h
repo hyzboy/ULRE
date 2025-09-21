@@ -36,7 +36,7 @@ namespace hgl::graph
         virtual ~RenderCollector()=default;
             
         virtual void SetCameraInfo(const CameraInfo *ci){camera_info=ci;}       ///<设置相机信息
-        virtual bool Expand(SceneNode *);                                       ///<展开场景树到渲染列表
+        virtual uint Expand(SceneNode *);                                       ///<展开场景树到渲染列表，返回可渲染对象数量
 
                 bool IsEmpty()const{return !renderable_count;}                  ///<是否是空的
 

@@ -78,7 +78,13 @@ namespace hgl::graph
             return(false);
 
         root->UpdateWorldTransform();
-        render_task->RebuildRenderList(root);
+        const uint renderable = render_task->RebuildRenderList(root);
+        if(renderable == 0)
+        {
+            // nothing to draw this frame
+            render_state_dirty = false;
+            return true;    // treat as successful no-op
+        }
 
         bool result = false;
 

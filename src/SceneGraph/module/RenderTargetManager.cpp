@@ -58,7 +58,7 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
         rtd->color_textures             =hgl_new_copy<Texture2D *>(color_texture_list,color_count);
         rtd->depth_texture              =depth_texture;
 
-        color_texture_list.DiscardObject();
+        color_texture_list.Discard();
 
         return(new RenderTarget(GetRenderFramework(),rtd));
     }
