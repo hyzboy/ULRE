@@ -25,8 +25,7 @@ namespace hgl::graph
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
     {
-        if(render_target==rt)
-            return(true);
+        //不要做render_target==rt测试，因为真的有机率旧的删掉后，再new出来新的地址一样
 
         render_target=rt;
 
@@ -40,7 +39,17 @@ namespace hgl::graph
     void SceneRenderer::SetScene(Scene *sw)
     {
         if(!render_context)return;
+
+        Scene *old_scene = render_context->GetScene();
+
+        if(old_scene)
+        {
+            RemoveChildDispatcher(old_scene->GetEventDispatcher());
+        }
+
         render_context->SetScene(sw);
+
+        AddChildDispatcher(sw->GetEventDispatcher());
     }
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
