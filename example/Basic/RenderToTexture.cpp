@@ -111,7 +111,7 @@ private:
                                               mtl::WithLocalToWorld::With,
                                               mtl::WithSky::Without);
 
-            mtl::MaterialCreateInfo *mci = mtl::CreatePureColor3D(GetDevAttr(), &cfg3d);
+            mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(GetDevAttr(), &cfg3d);
             if (!mci) return false;
 
             off_mtl = CreateMaterial("OffscreenPureColor3D", mci);
@@ -140,50 +140,6 @@ private:
             off_sphere_comp = CreateComponent<MeshComponent>(&cci, mesh);
             if (!off_sphere_comp) return false;
         }
-
-        return true;
-    }
-
-    bool CreateBlitQuad()
-    {
-        // Build a 2D textured rect that samples the offscreen color texture
-        mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
-                                        CoordinateSystem2D::ZeroToOne,
-                                        mtl::WithLocalToWorld::Without);
-
-        blit_material = LoadMaterial("Std2D/RectTexture2D", &cfg);
-        if (!blit_material) return false;
-
-        blit_pipeline = CreatePipeline(blit_material, InlinePipeline::Solid2D);
-        if (!blit_pipeline) return false;
-
-        // Use the offscreen color as a texture
-        Texture2D *color_tex = offscreen_rt ? offscreen_rt->GetColorTexture(0) : nullptr;
-        if (!color_tex) return false;
-
-        Sampler *sampler = CreateSampler();
-        if (!sampler) return false;
-
-        if (!blit_material->BindTextureSampler(DescriptorSetType::PerMaterial,
-                                               mtl::SamplerName::BaseColor,
-                                               color_tex,
-                                               sampler))
-            return false;
-
-        blit_mi = CreateMaterialInstance(blit_material);
-        if (!blit_mi) return false;
-
-        // Create one-vertex rectangle (expanded by GS) with UVs
-        Mesh *mesh = CreateMesh("RTT_Blit", 1, blit_mi, blit_pipeline,
-                                {
-                                    { VAN::Position, VF_V4F, kQuadPos },
-                                    { VAN::TexCoord, VF_V4F, kQuadUV }
-                                });
-        if (!mesh) return false;
-
-        CreateComponentInfo cci(GetSceneRoot());
-        blit_component = CreateComponent<MeshComponent>(&cci, mesh);
-        if (!blit_component) return false;
 
         return true;
     }
@@ -244,11 +200,7 @@ public:
         if (!CreateOffscreenRT(512, 512))
             return false;
 
-        // 2) Create screen-space blit that samples the offscreen color
-        if (!CreateBlitQuad())
-            return false;
-
-        // 3) Create a rotating cube in the default scene
+        // 2) Create a rotating cube in the default scene
         if (!CreateRotatingCube())
             return false;
 
