@@ -81,6 +81,7 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_BasicLit.cpp
                             3d/M_VertexPattleColor3D.cpp
                             3d/M_TerrainGrid.cpp
+                            3d/M_TextureBlinnPhong.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
