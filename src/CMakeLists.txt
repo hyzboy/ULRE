@@ -1,6 +1,6 @@
 ﻿add_subdirectory(ShaderGen)
 add_subdirectory(SceneGraph)
 add_subdirectory(Work)
-#add_subdirectory(Tools)
+add_subdirectory(Tools)
 #add_subdirectory(GUI)
 #add_subdirectory(JoltPhysics/Build)
