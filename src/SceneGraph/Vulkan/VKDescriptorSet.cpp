@@ -51,6 +51,13 @@ namespace
     {
     public:
 
+        DescriptorImageInfo(Texture *tex)
+        {
+            sampler = VK_NULL_HANDLE;
+            imageView = tex->GetVulkanImageView();
+            imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+
         DescriptorImageInfo(Texture *tex,Sampler *sam)
         {
             sampler=*sam;
@@ -142,6 +149,24 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     
     wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,desc_type));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
+    return(true);
+}
+
+bool DescriptorSet::BindTexture(const int binding,Texture *tex)
+{
+    if(binding<0||!tex)
+        return(false);
+
+    if(binded_sets.Contains(binding))return(false);
+
+    DescriptorImageInfo *image_info=new DescriptorImageInfo(tex);
+
+    image_list.Add(image_info);
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info));
 
     binded_sets.Add(binding);
     is_dirty=true;

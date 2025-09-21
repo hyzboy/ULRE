@@ -1,5 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_MANAGER_INCLUDE
-#define HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_MANAGER_INCLUDE
+#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKShaderDescriptorSet.h>
@@ -41,13 +40,12 @@ public:
 
     const int GetUBO            (const DescriptorSetType &set_type,const AnsiString &name,bool dynamic)const{return GetBinding(set_type,dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,name);}
     const int GetSSBO           (const DescriptorSetType &set_type,const AnsiString &name,bool dynamic)const{return GetBinding(set_type,dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,name);}
+    const int GetTexture        (const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,name);}
     const int GetTextureSampler (const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
     const int GetInputAttachment(const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,name);}
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 
     const bool hasSet(const DescriptorSetType &type)const{return dsl_ci[size_t(type)].bindingCount>0;}
-//!sd_list_by_set_type[size_t(type)].IsEmpty();}
 };//class MaterialDescriptorManager
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_MANAGER_INCLUDE

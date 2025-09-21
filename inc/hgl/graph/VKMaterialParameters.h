@@ -46,11 +46,13 @@ public:
 
     bool BindUBO(const int &index,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const int &index,DeviceBuffer *ubo,bool dynamic=false);
+    bool BindTexture(const int &index,Texture *tex);
     bool BindTextureSampler(const int &index,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const int &index,ImageView *);
 
     bool BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
+    bool BindTexture(const AnsiString &name,Texture *tex);
     bool BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const AnsiString &name,ImageView *);
     

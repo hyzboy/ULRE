@@ -65,7 +65,7 @@ namespace
             sc->AddOutput(sd->output);
 
             for(auto &s:sd->sampler)
-                mci->AddSampler(ss,DescriptorSetType::PerMaterial,s.type,s.name);
+                mci->AddTextureSampler(ss,DescriptorSetType::PerMaterial,s.type,s.name);
 
             sc->SetMain(sd->code,sd->code_length); // 这里会产生复制这个string，但我不希望产生这个。未来想办法改进
 

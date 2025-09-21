@@ -70,6 +70,33 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool
     return(true);
 }
 
+bool MaterialParameters::BindTexture(const int &index,Texture *tex)
+{
+    if(index < 0 || !tex)
+        return(false);
+
+    if(!descriptor_set->BindTexture(index,tex))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindTexture(const AnsiString &name,Texture *tex)
+{
+    if(name.IsEmpty() || !tex)
+        return(false);
+
+    const int index = desc_manager->GetTexture(set_type,name);
+
+    if(index < 0)
+        return(false);
+
+    if(!descriptor_set->BindTexture(index,tex))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sampler *sampler)
 {
     if(index<0||!tex||!sampler)
