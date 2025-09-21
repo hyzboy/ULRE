@@ -42,15 +42,11 @@ private:
     Pipeline *               off_pipeline        = nullptr;
     MeshComponent *          off_sphere_comp     = nullptr;
 
-    // Onscreen pieces (draw offscreen color as a textured rect) + a rotating cube in default scene
-    Material *               blit_material       = nullptr;
-    MaterialInstance *       blit_mi             = nullptr;
-    Pipeline *               blit_pipeline       = nullptr;
-    MeshComponent *          blit_component      = nullptr;
-
+    // Onscreen pieces
     Material *               cube_mtl            = nullptr;
     MaterialInstance *       cube_mi             = nullptr;
     Pipeline *               cube_pipeline       = nullptr;
+    Sampler *                cube_sampler        = nullptr;
     MeshComponent *          cube_comp           = nullptr;
 
     float                    cube_theta          = 0.0f;
@@ -58,6 +54,16 @@ private:
     bool                     captured_offscreen  = false;  // render offscreen once, then sample
 
 private:
+    void SetupMainCamera()
+    {
+        CameraControl *cc = GetCameraControl();
+        if(cc)
+        {
+            cc->SetPosition(Vector3f(3,3,3));
+            cc->SetTarget(Vector3f(0,0,0));
+        }
+    }
+
     bool CreateOffscreenRT(uint32_t w, uint32_t h)
     {
         auto rf = GetRenderFramework();
@@ -88,16 +94,12 @@ private:
         offscreen_renderer->SetScene(offscreen_scene);
 
         // Create and set a dedicated camera control for the offscreen renderer
-        // Use a simple view-model (orbit) camera aimed at the origin
         offscreen_camera = new ViewModelCameraControl();
         if (offscreen_camera)
         {
             offscreen_renderer->SetCameraControl(offscreen_camera);
             offscreen_camera->SetTarget(Vector3f(0,0,0));
-            // Optional: tweak initial view a bit for a nicer angle
-            // Rotate by some pixels to change yaw/pitch
             static_cast<ViewModelCameraControl*>(offscreen_camera)->Rotate(Vector2f(150.0f, -80.0f));
-            // Slight zoom-in
             static_cast<ViewModelCameraControl*>(offscreen_camera)->Zoom(+5.0f);
         }
 
@@ -150,25 +152,35 @@ private:
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
                                           mtl::WithCamera::With,
                                           mtl::WithLocalToWorld::With,
-                                          mtl::WithSky::Without);
+                                          mtl::WithSky::With);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreatePureColor3D(GetDevAttr(), &cfg3d);
+        mtl::MaterialCreateInfo *mci = mtl::CreateTextureBlinnPhong(GetDevAttr(), &cfg3d);
         if (!mci) return false;
 
-        cube_mtl = CreateMaterial("OnscreenPureColor3D", mci);
+        cube_mtl = CreateMaterial("OnscreenCube", mci);
         if (!cube_mtl) return false;
+
+        cube_sampler=CreateSampler();
+
+        cube_mtl->BindTextureSampler(   DescriptorSetType::PerMaterial,
+                                        mtl::SamplerName::BaseColor,
+                                        offscreen_rt->GetColorTexture(0),
+                                        cube_sampler);
 
         cube_pipeline = CreatePipeline(cube_mtl, InlinePipeline::Solid3D);
         if (!cube_pipeline) return false;
 
-        Color4f cube_color = GetColor4f(COLOR::BananaYellow, 1.0f);
-        cube_mi = CreateMaterialInstance(cube_mtl, (VIL*)nullptr, &cube_color);
+        cube_mi = CreateMaterialInstance(cube_mtl);
         if (!cube_mi) return false;
 
         auto pc = GetPrimitiveCreater(cube_mtl);
         if (!pc) return false;
 
-        inline_geometry::CubeCreateInfo cci_cube{}; // defaults OK (with texcoord/normal enabled internally)
+        inline_geometry::CubeCreateInfo cci_cube{}; // defaults OK
+
+        cci_cube.tex_coord=true;
+        cci_cube.normal=true;
+
         Primitive *prim = inline_geometry::CreateCube(pc.get(), &cci_cube);
         if (!prim) return false;
 
@@ -185,12 +197,9 @@ public:
 
     ~RenderToTextureApp() override
     {
-        delete offscreen_renderer;
-        offscreen_renderer = nullptr;
-        delete offscreen_scene;
-        offscreen_scene = nullptr;
-        delete offscreen_camera;
-        offscreen_camera = nullptr;
+        SAFE_CLEAR(offscreen_renderer);
+        SAFE_CLEAR(offscreen_scene);
+        SAFE_CLEAR(offscreen_camera);
         offscreen_rt = nullptr; // owned by manager
     }
 
@@ -203,6 +212,9 @@ public:
         // 2) Create a rotating cube in the default scene
         if (!CreateRotatingCube())
             return false;
+
+        // 3) Setup main scene camera to ensure cube is visible
+        SetupMainCamera();
 
         return true;
     }
@@ -242,7 +254,7 @@ public:
             cube_comp->SetLocalMatrix(rot);
         }
 
-        // Then present the blit quad to the swapchain (default path)
+        // Present default scene
         WorkObject::Render(delta_time);
     }
 };
