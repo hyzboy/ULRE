@@ -118,7 +118,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorS
 
     TextureDescriptor *texture = mdi.GetTexture(name);
 
-    AnsiString st_name = GetTextureTypeName(tt);
+    const AnsiString st_name = GetTextureTypeName(tt);        //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     if(texture)
     {
@@ -154,7 +154,7 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Desc
 
     TextureSamplerDescriptor *image_sampler=mdi.GetTextureSampler(name);
 
-    AnsiString st_name=GetSamplerTypeName(st);
+    const AnsiString st_name=GetSamplerTypeName(st);      //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     if(image_sampler)
     {
@@ -198,9 +198,9 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     mi_max_count=hgl_min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
 
-    mdi.AddStruct(MaterialInstanceStruct,mi_codes);
+    mdi.AddStruct(MaterialInstanceStruct,mi_codes); //外部指定的 struct MaterialInstance代码
 
-    mdi.AddStruct(SBS_MaterialInstance);
+    mdi.AddStruct(SBS_MaterialInstance);            //MaterialInstance mi[MI_MAX_COUNT];
 
     mi_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
 
