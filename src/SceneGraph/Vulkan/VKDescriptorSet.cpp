@@ -148,7 +148,7 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
     return(true);
 }
 
-bool DescriptorSet::BindImageSampler(const int binding,Texture *tex,Sampler *sampler)
+bool DescriptorSet::BindTextureSampler(const int binding,Texture *tex,Sampler *sampler)
 {
     if(binding<0||!tex||!sampler)
         return(false);

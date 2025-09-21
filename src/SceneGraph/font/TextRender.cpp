@@ -109,7 +109,7 @@ namespace hgl::graph
         pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        if(!mtl_fs->BindImageSampler(   DescriptorSetType::PerMaterial,
+        if(!mtl_fs->BindTextureSampler( DescriptorSetType::PerMaterial,
                                         mtl::SamplerName::Text,
                                         tile_font->GetTexture(),
                                         sampler))

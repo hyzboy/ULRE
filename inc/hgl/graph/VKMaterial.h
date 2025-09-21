@@ -93,7 +93,7 @@ public:
 
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
-    bool BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
+    bool BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
 
     bool BindUBO(const ShaderBufferDesc *sbd,DeviceBuffer *ubo,bool dynamic=false)
     {
