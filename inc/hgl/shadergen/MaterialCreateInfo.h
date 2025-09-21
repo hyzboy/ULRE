@@ -8,6 +8,7 @@
 #include<hgl/graph/RenderTargetOutputConfig.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/graph/VKTextureType.h>
 #include<hgl/graph/VKSamplerType.h>
 
 namespace hgl::graph
@@ -94,6 +95,7 @@ namespace hgl::graph
 
             bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
+            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name);
             bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
             bool CreateShader();
