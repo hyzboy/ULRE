@@ -104,6 +104,42 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
+bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name)
+{
+    if(!shader_map.ContainsKey(flag_bit))
+        return(false);
+
+    RANGE_CHECK_RETURN_FALSE(tt);
+
+    ShaderCreateInfo *sc = shader_map[flag_bit];
+
+    if(!sc)
+        return(false);
+
+    TextureDescriptor *texture = mdi.GetTexture(name);
+
+    AnsiString st_name = GetTextureTypeName(tt);
+
+    if(texture)
+    {
+        if(texture->type != st_name)
+            return(false);
+
+        texture->stage_flag |= (uint32_t)flag_bit;
+
+        return sc->AddTexture(set_type,texture);
+    }
+    else
+    {
+        texture = new TextureDescriptor();
+
+        texture->type = st_name;
+        hgl::strcpy(texture->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
+
+        return sc->AddTexture(set_type,mdi.AddTexture((uint32_t)flag_bit,set_type,texture));
+    }
+}
+
 bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
