@@ -167,24 +167,12 @@ public:
     }
 
     // 由组件创建并提交 DrawNode
-    uint SubmitDrawNodes(hgl::graph::MaterialRenderMap &mrm, hgl::graph::VulkanDevice *device) override
+    uint SubmitDrawNodes(hgl::graph::MaterialRenderMap &mrm) override
     {
         if(!CanRender()) return 0;
 
-        auto *mi = GetMaterialInstance();
-        auto *pl = GetPipeline();
-        if(!mi||!pl) return 0;
-
-        hgl::graph::PipelineMaterialIndex rpi(mi->GetMaterial(), pl);
-        hgl::graph::PipelineMaterialBatch *batch=nullptr;
-        if(!mrm.Get(rpi, batch))
-        {
-            batch = new hgl::graph::PipelineMaterialBatch(device, true, rpi);
-            mrm.Add(rpi, batch);
-        }
-
-        // 由mrl内部负责创造 MeshComponentDrawNode
-        batch->Add(this);
+        // 组件创建自身的 DrawNode，然后交给 mrm 统一分派
+        mrm.AddDrawNode(new hgl::graph::MeshComponentDrawNode(this));
         return 1;
     }
 };//class MeshComponent

@@ -85,7 +85,7 @@ public:
     }
 
     // 由组件创建并提交 DrawNode（每个 submesh 一个节点）
-    uint SubmitDrawNodes(hgl::graph::MaterialRenderMap &mrm, hgl::graph::VulkanDevice *device) override
+    uint SubmitDrawNodes(hgl::graph::MaterialRenderMap &mrm) override
     {
         auto *sm = GetStaticMesh();
         if(!sm) return 0;
@@ -97,16 +97,7 @@ public:
             auto *pl = m->GetPipeline();
             if(!mi||!pl) continue;
 
-            hgl::graph::PipelineMaterialIndex rpi(mi->GetMaterial(), pl);
-            hgl::graph::PipelineMaterialBatch *batch=nullptr;
-            if(!mrm.Get(rpi, batch))
-            {
-                batch = new hgl::graph::PipelineMaterialBatch(device, true, rpi);
-                mrm.Add(rpi, batch);
-            }
-
-            // 由外部构造 OwnerMeshDrawNode 不再发生；统一由组件生成并提交
-            batch->Add(new hgl::graph::OwnerMeshDrawNode(this, m));
+            mrm.AddDrawNode(new hgl::graph::OwnerMeshDrawNode(this, m));
             ++submitted;
         }
         return submitted;

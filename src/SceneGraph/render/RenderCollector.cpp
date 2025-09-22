@@ -19,6 +19,8 @@ namespace hgl
             renderable_count=0;
 
             camera_info=nullptr;
+
+            mrl_map.SetDevice(device);
         }
 
         bool RenderCollector::ExpandNode(SceneNode *sn)
@@ -31,7 +33,7 @@ namespace hgl
                 if(!rc) continue;
                 if(!rc->CanRender()) continue;
 
-                renderable_count += rc->SubmitDrawNodes(mrl_map, device);
+                renderable_count += rc->SubmitDrawNodes(mrl_map);
             }
 
             for(SceneNode *sub:sn->GetChildNode())
