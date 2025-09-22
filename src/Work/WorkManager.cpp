@@ -33,9 +33,23 @@ namespace hgl
 
     void WorkManager::Render(WorkObject *wo)
     {
-        double delta_time=cur_time-last_render_time;
+        double delta_time;
+        bool can_render=wo->IsRenderDirty();
 
-        if(delta_time>=frame_time||wo->IsRenderDirty())
+        if(IsNearlyZero(last_render_time))
+        {
+            delta_time=0;
+            can_render=true;
+        }
+        else
+        {
+            delta_time=cur_time-last_render_time;
+
+            if(!can_render)
+                can_render=delta_time>=frame_time;
+        }
+
+        if(can_render)
         {
             last_render_time=cur_time;
             wo->Render(delta_time);

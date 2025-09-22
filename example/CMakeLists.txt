@@ -5,7 +5,7 @@ add_subdirectory(GUI)
 add_subdirectory(Geometry)
 add_subdirectory(Environment)
 
-add_subdirectory(Landscape)
+#add_subdirectory(Landscape)
 
 macro(CreateProject name)
     add_executable(${name} ${ARGN})

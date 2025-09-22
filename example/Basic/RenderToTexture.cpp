@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/component/MeshComponent.h>
@@ -250,7 +250,7 @@ public:
         if (cube_comp)
         {
             cube_theta += float(delta_time) * 0.8f; // rad/s
-            Matrix4f rot = AxisYRotate(cube_theta) * AxisXRotate(cube_theta * 0.5f);
+            Matrix4f rot = AxisZRotate(cube_theta) * AxisXRotate(cube_theta * 0.5f);
             cube_comp->SetLocalMatrix(rot);
         }
 
