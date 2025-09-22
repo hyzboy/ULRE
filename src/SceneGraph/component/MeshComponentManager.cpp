@@ -30,7 +30,7 @@ Component *MeshComponentManager::CreateComponent(ComponentDataPtr cdp)
     return(new MeshComponent(cdp,this));
 }
 
-Component *MeshComponentManager::CreateComponent(Mesh *m)
+Component *MeshComponentManager::CreateComponent(SubMesh *m)
 {
     ComponentDataPtr cdp=new MeshComponentData(m);
 

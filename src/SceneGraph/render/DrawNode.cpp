@@ -26,8 +26,8 @@ const int DrawNode::compare(const DrawNode &other)const
 
     //RectScope2i screen_tile;
 
-    hgl::graph::Mesh *ri_one=other.mesh_component->GetMesh();
-    hgl::graph::Mesh *ri_two=mesh_component->GetMesh();
+    hgl::graph::SubMesh *ri_one=other.mesh_component->GetMesh();
+    hgl::graph::SubMesh *ri_two=mesh_component->GetMesh();
 
     auto *prim_one=ri_one->GetPrimitive();
     auto *prim_two=ri_two->GetPrimitive();
@@ -82,7 +82,7 @@ const int DrawNode::compare(const DrawNode &other)const
         return -1;
 }
 
-Mesh *DrawNode::GetMesh()const
+SubMesh *DrawNode::GetMesh()const
 {
     return mesh_component?mesh_component->GetMesh():nullptr;
 }

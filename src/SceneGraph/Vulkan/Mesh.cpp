@@ -76,7 +76,7 @@ void MeshRenderData::Set(const Primitive *prim)
     first_index     = prim->GetFirstIndex();
 }
 
-Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_data_buffer)
+SubMesh::SubMesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_data_buffer)
 {
     primitive=r;
     pipeline=p;
@@ -86,7 +86,7 @@ Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_da
     render_data.Set(primitive);
 }
 
-bool Mesh::UpdatePrimitive()
+bool SubMesh::UpdatePrimitive()
 {
     render_data.Set(primitive);
 
@@ -100,8 +100,8 @@ bool Mesh::UpdatePrimitive()
     return data_buffer->Update(primitive,mat_inst->GetVIL());
 }
 
-Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
-//用Direct这个前缀是为了区别于MeshManager/WorkObject/RenderFramework的::CreateMesh()
+SubMesh *DirectCreateSubMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
+//用Direct这个前缀是为了区别于MeshManager/WorkObject/RenderFramework的::CreateSubMesh()
 {
     if(!prim||!mi||!p)return(nullptr);
 
@@ -115,7 +115,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     if(prim->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        GLogError("[FATAL ERROR] input buffer count of Mesh lesser than Material, Material name: "+mtl_name);
+        GLogError("[FATAL ERROR] input buffer count of SubMesh lesser than Material, Material name: "+mtl_name);
 
         return(nullptr);
     }
@@ -142,7 +142,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         if(vab->GetFormat()!=vif->format)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" format can't match Mesh, Material(")+mtl_name+
+                        AnsiString("\" format can't match SubMesh, Material(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
@@ -152,7 +152,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         if(vab->GetStride()!=vif->stride)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" stride can't match Mesh, Material(")+mtl_name+
+                        AnsiString("\" stride can't match SubMesh, Material(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
                         AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
                         ")");
@@ -164,7 +164,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         ++vif;
     }
 
-    return(new Mesh(prim,mi,p,mesh_data_buffer));
+    return(new SubMesh(prim,mi,p,mesh_data_buffer));
 }
 
 bool MeshDataBuffer::Update(const Primitive *prim,const VIL *vil)
@@ -188,8 +188,8 @@ bool MeshDataBuffer::Update(const Primitive *prim,const VIL *vil)
     return(true);
 }
 
-// Mesh draw control APIs
-bool Mesh::SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count)
+// SubMesh draw control APIs
+bool SubMesh::SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count)
 {
     // only clamp, do not change offsets
     if(draw_vertex_count>render_data.data_vertex_count)
@@ -204,7 +204,7 @@ bool Mesh::SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count)
     return true;
 }
 
-bool Mesh::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count)
+bool SubMesh::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count)
 {
     // set offsets
     render_data.vertex_offset = vertex_offset;

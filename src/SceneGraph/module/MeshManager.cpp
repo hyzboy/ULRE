@@ -1,4 +1,4 @@
-#include<hgl/graph/module/MeshManager.h>
+﻿#include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKDevice.h>
 
@@ -8,12 +8,12 @@ GRAPH_MODULE_CONSTRUCT(MeshManager)
 {
 }
 
-Mesh *MeshManager::CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p)
+SubMesh *MeshManager::CreateSubMesh(Primitive *r, MaterialInstance *mi, Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
 
-    Mesh *ri=VK_NAMESPACE::DirectCreateMesh(r,mi,p);
+    SubMesh *ri=VK_NAMESPACE::DirectCreateSubMesh(r,mi,p);
 
     if(ri)
         Add(ri);
@@ -21,7 +21,7 @@ Mesh *MeshManager::CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p)
     return ri;
 }
 
-Mesh *MeshManager::CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p)
+SubMesh *MeshManager::CreateSubMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p)
 {
     if(!p||!mi||!pc)
         return(nullptr);
@@ -31,7 +31,7 @@ Mesh *MeshManager::CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeli
     if(!prim)
         return(nullptr);
 
-    Mesh *ri=VK_NAMESPACE::DirectCreateMesh(prim,mi,p);
+    SubMesh *ri=VK_NAMESPACE::DirectCreateSubMesh(prim,mi,p);
 
     if(ri)
     {

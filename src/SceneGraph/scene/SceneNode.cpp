@@ -41,7 +41,7 @@ namespace hgl::graph
         return main_scene?main_scene->GetRenderFramework():nullptr;
     }
 
-    //void SceneNode::SetRenderable(Mesh *ri)
+    //void SceneNode::SetRenderable(SubMesh *ri)
     //{
     //    render_obj=ri;
     //

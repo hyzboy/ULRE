@@ -1,4 +1,4 @@
-// RevolutionPolygonTest.cpp
+﻿// RevolutionPolygonTest.cpp
 // 通过旋转2D线条生成3D几何体的示例
 
 #include<hgl/WorkManager.h>
@@ -121,19 +121,19 @@ private:
 
         if(prim_vase) {
             cci.mat = TranslateMatrix(-3, 0, 0);
-            Mesh *mesh = CreateMesh(prim_vase, material_instance, pipeline);
+            SubMesh *mesh = CreateSubMesh(prim_vase, material_instance, pipeline);
             auto comp = CreateComponent<MeshComponent>(&cci, mesh);
         }
 
         if(prim_partial_shell) {
             cci.mat = TranslateMatrix(3, 0, 0);
-            Mesh *mesh = CreateMesh(prim_partial_shell, material_instance, pipeline);
+            SubMesh *mesh = CreateSubMesh(prim_partial_shell, material_instance, pipeline);
             auto comp = CreateComponent<MeshComponent>(&cci, mesh);
         }
 
         if(prim_cone) {
             cci.mat = TranslateMatrix(0, 3, 0);
-            Mesh *mesh = CreateMesh(prim_cone, material_instance, pipeline);
+            SubMesh *mesh = CreateSubMesh(prim_cone, material_instance, pipeline);
             auto comp = CreateComponent<MeshComponent>(&cci, mesh);
         }
 

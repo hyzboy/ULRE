@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/component/MeshComponent.h>
@@ -49,7 +49,7 @@ private:
     bool InitScene()
     {
         {
-            Mesh *ri=CreateMesh(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
+            SubMesh *ri=CreateSubMesh(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
 
             CreateComponentInfo cci(GetSceneRoot());
 

@@ -45,7 +45,7 @@ namespace
     {
         Primitive *prim;
 
-        Mesh *mesh;
+        SubMesh *mesh;
         MeshComponentData *mcd;
         ComponentDataPtr cdp;
 
@@ -55,7 +55,7 @@ namespace
         {
             prim=p;
 
-            mesh=render_framework->CreateMesh(prim,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
+            mesh=render_framework->CreateSubMesh(prim,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
             mcd=new MeshComponentData(mesh);
             cdp=mcd;
         }

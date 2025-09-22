@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/PrimitiveCreater.h>
@@ -21,7 +21,7 @@ private:
 
     VertexDataManager *mesh_vdm = nullptr;
 
-    std::vector<Mesh*> wall_meshes;
+    std::vector<SubMesh*> wall_meshes;
     std::vector<MeshComponent*> wall_components;
 
 public:
@@ -91,7 +91,7 @@ public:
             Primitive *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
+                SubMesh *mesh = CreateSubMesh(prim, material_instance, pipeline);
                 if(mesh) wall_meshes.push_back(mesh);
             }
         }
@@ -121,7 +121,7 @@ public:
             Primitive *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
+                SubMesh *mesh = CreateSubMesh(prim, material_instance, pipeline);
                 if(mesh) wall_meshes.push_back(mesh);
             }
         }
@@ -150,7 +150,7 @@ public:
             Primitive *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
+                SubMesh *mesh = CreateSubMesh(prim, material_instance, pipeline);
                 if(mesh) wall_meshes.push_back(mesh);
             }
         }
@@ -180,7 +180,7 @@ public:
             Primitive *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
+                SubMesh *mesh = CreateSubMesh(prim, material_instance, pipeline);
                 if(mesh) wall_meshes.push_back(mesh);
             }
         }

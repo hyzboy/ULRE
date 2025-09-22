@@ -71,7 +71,7 @@ private:
 
     bool InitVBO()
     {
-        Mesh *render_obj=CreateMesh("TextureRect",1,material_instance,pipeline,
+        SubMesh *render_obj=CreateSubMesh("TextureRect",1,material_instance,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}

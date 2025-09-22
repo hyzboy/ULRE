@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        class Mesh;
+        class SubMesh;
         class MaterialInstance;
         class MeshComponent;
 
@@ -33,7 +33,7 @@ namespace hgl
 
         public:
 
-            Mesh *GetMesh()const;
+            SubMesh *GetMesh()const;
             MaterialInstance *GetMaterialInstance()const;
         };
 

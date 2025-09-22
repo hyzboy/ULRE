@@ -71,7 +71,7 @@ private:
 
     public:
 
-        void Set(Mesh *);
+        void Set(SubMesh *);
     };
 
     IndirectDrawBuffer *icb_draw;
