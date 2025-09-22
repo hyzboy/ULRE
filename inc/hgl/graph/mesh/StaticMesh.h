@@ -8,12 +8,12 @@
 VK_NAMESPACE_BEGIN
 
 /**
-* Mesh
+* StaticMesh
 * 负责管理一组 Primitive 与其对应的 SubMesh，同时集中跟踪使用到的 MaterialInstance 与 Pipeline（多实例）。
 * 另外，Mesh 内部维护一个 MeshNode 树结构与一个 MeshNode 集合，并在构造时创建一个根节点。
 * 注意：Mesh 拥有其内部创建的 SubMesh 的生命周期；Primitive/MaterialInstance/Pipeline 仅持有引用不管理生命周期。
 */
-class Mesh
+class StaticMesh
 {
     // SubMesh / 资源集合
     ObjectList<SubMesh>           submeshes;          ///< SubMesh 列表（拥有对象）
@@ -28,8 +28,9 @@ class Mesh
     AABB                local_bounding_box;           ///< 所有 SubMesh 合并的本地包围盒
 
 public:
-    Mesh();
-    virtual ~Mesh();
+
+    StaticMesh();
+    virtual ~StaticMesh();
 
 public: // MeshNode 管理
     MeshNode *                  GetRootNode     () const { return root_node; }
@@ -55,7 +56,7 @@ public: // SubMesh 管理
     // 添加一个已有的 SubMesh（Mesh 将接管其生命周期）
     bool                        AddSubMesh          (SubMesh *sm);
 
-    // 从 Mesh 中移除并销毁一个 SubMesh
+    // 从 StaticMesh 中移除并销毁一个 SubMesh
     void                        RemoveSubMesh       (SubMesh *sm);
 
     // 清空并销毁所有 SubMesh
