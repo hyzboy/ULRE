@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/MeshDataBuffer.h>
+#include<hgl/graph/mesh/MeshDataBuffer.h>
 
 VK_NAMESPACE_BEGIN
 class VABList

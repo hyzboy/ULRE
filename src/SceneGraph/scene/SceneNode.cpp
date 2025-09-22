@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/component/SceneComponent.h>
-#include<hgl/graph/Mesh.h>
+#include<hgl/graph/mesh/SubMesh.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/RenderFramework.h>

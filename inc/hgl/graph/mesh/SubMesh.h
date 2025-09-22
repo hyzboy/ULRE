@@ -7,8 +7,8 @@
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttrib.h>
-#include<hgl/graph/MeshDataBuffer.h>
-#include<hgl/graph/MeshRenderData.h>
+#include<hgl/graph/mesh/MeshDataBuffer.h>
+#include<hgl/graph/mesh/MeshRenderData.h>
 
 VK_NAMESPACE_BEGIN
 /**

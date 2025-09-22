@@ -30,7 +30,17 @@ SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitive.h
                         ${SG_INCLUDE_PATH}/PrimitiveCreater.h
                         PrimitiveCreater.cpp)
 
-SOURCE_GROUP("Primitive" FILES ${SG_PRIMITIVE_SOURCE})
+SOURCE_GROUP("Mesh\\Primitive" FILES ${SG_PRIMITIVE_SOURCE})
+
+SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/mesh/MeshDataBuffer.h
+                    ${SG_INCLUDE_PATH}/mesh/MeshRenderData.h
+                    ${SG_INCLUDE_PATH}/mesh/SubMesh.h
+                    ${SG_INCLUDE_PATH}/mesh/MeshNode.h
+                    mesh/SubMesh.cpp
+                    mesh/MeshNode.cpp)
+
+SOURCE_GROUP("Mesh\\Mesh" FILES ${VK_MESH_SOURCE})
+
 
 SET(TILE_SOURCE ${SG_INCLUDE_PATH}/TileData.h
                 TileData.cpp
@@ -371,13 +381,6 @@ SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
 
 SOURCE_GROUP("Vulkan\\Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
-SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/MeshDataBuffer.h
-                    ${SG_INCLUDE_PATH}/MeshRenderData.h
-                    ${SG_INCLUDE_PATH}/Mesh.h
-                    Vulkan/Mesh.cpp)
-
-SOURCE_GROUP("Vulkan\\Mesh" FILES ${VK_MESH_SOURCE})
-
 set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
 SET(COLLISION_COMPONENT_INCLUDE_PATH    ${COMPONENT_INCLUDE_PATH}/collision)
 
@@ -415,7 +418,7 @@ IF(WIN32)
     OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
 
     IF(FORCE_DISCETE_GPU)
-        SET(RENDER_DEVICE_SOURCE ForceDiscreteGPU.c)
+        SET(VULKAN_RENDER_DEVICE_SOURCE ForceDiscreteGPU.c)
     ENDIF()
 
     SET(VULKAN_SURFACE_SOURCE   Vulkan/Platform/WinVulkan.cpp)
@@ -473,7 +476,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_MATERIAL_FILES}
                             #${VK_RENDER_CONTEXT_SOURCE}
                             ${VK_CMD_BUFFER_SOURCE}
                             ${VK_MESH_SOURCE}
-                            ${VK_RENDER_DEVICE_SOURCE})
+                            ${VULKAN_RENDER_DEVICE_SOURCE})
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${SG_PRIMITIVE_SOURCE}
