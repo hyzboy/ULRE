@@ -16,6 +16,9 @@ namespace hgl::graph
         render_context=new RenderContext(rf,rt);
         render_task=new RenderTask("DefaultRenderTask",rt);
         clear_color.Set(0,0,0,1);
+
+        // Ensure there is always a camera control managed by this renderer
+        UseDefaultCameraControl();
     }
 
     SceneRenderer::~SceneRenderer()

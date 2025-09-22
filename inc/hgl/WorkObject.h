@@ -56,9 +56,6 @@ namespace hgl
         graph::Scene *          scene           =nullptr;           //场景
         graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
 
-        virtual void OnChangeCameraControl(graph::CameraControl *){}
-        virtual void CreateCameraControl(){}
-
     public:
 
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
@@ -185,10 +182,8 @@ namespace hgl
         }
 
     #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}
-
         WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePipeline,graph::Pipeline *)
         WO_FUNC_FROM_RENDER_FRAMEWORK(GetPrimitiveCreater,SharedPtr<graph::PrimitiveCreater>)
-
     #undef WO_FUNC_FROM_RENDER_FRAMEWORK
 
         graph::Primitive *CreatePrimitive(const AnsiString &name,
