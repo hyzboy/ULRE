@@ -36,8 +36,10 @@ SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/mesh/MeshDataBuffer.h
                     ${SG_INCLUDE_PATH}/mesh/MeshRenderData.h
                     ${SG_INCLUDE_PATH}/mesh/SubMesh.h
                     ${SG_INCLUDE_PATH}/mesh/MeshNode.h
+                    ${SG_INCLUDE_PATH}/mesh/Mesh.h
                     mesh/SubMesh.cpp
-                    mesh/MeshNode.cpp)
+                    mesh/MeshNode.cpp
+                    mesh/Mesh.cpp)
 
 SOURCE_GROUP("Mesh\\Mesh" FILES ${VK_MESH_SOURCE})
 
