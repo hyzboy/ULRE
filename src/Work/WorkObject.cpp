@@ -7,9 +7,6 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/TextRender.h>
-#include<hgl/graph/camera/CameraControl.h>
-#include<hgl/graph/camera/FirstPersonCameraControl.h>
-#include<hgl/graph/camera/ViewModelCameraControl.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -21,61 +18,10 @@ namespace hgl
             scene_renderer=rf->GetDefaultSceneRenderer();
 
         OnSceneRendererChange(rf,scene_renderer);
-        CreateCameraControl();
     }
 
     WorkObject::~WorkObject()
     {
-        if(camera_control)
-        {
-            GetRenderFramework()->RemoveChildDispatcher(camera_control);
-            delete camera_control;
-        }
-    }
-
-    void WorkObject::OnChangeCameraControl(graph::CameraControl *new_cc)
-    {
-        if(camera_control)
-        {
-            GetRenderFramework()->RemoveChildDispatcher(camera_control);
-
-            delete camera_control;
-
-            if(scene_renderer)
-                scene_renderer->SetCameraControl(nullptr);
-        }
-
-        camera_control=new_cc;
-
-        if(camera_control)
-        {        
-            GetRenderFramework()->AddChildDispatcher(camera_control);
-
-            if(scene_renderer)
-                scene_renderer->SetCameraControl(camera_control);
-        }
-    }
-
-    void WorkObject::CreateCameraControl()
-    {
-        {
-            auto fpcc = new graph::FirstPersonCameraControl();
-
-            auto ckc = new graph::CameraKeyboardControl(fpcc);
-            auto cmc = new graph::CameraMouseControl(fpcc);
-
-            fpcc->AddChildDispatcher(ckc);
-            fpcc->AddChildDispatcher(cmc);
-
-            OnChangeCameraControl(fpcc);
-        }
-
-        //{
-        //    auto vmcc = new graph::ViewModelCameraControl(GetViewportInfo(), GetCamera(), GetCameraInfo());
-        //    auto cmc = new graph::CameraMouseControl(vmcc);
-        //    vmcc->AddChildDispatcher(cmc);
-        //    OnChangeCameraControl(vmcc);
-        //}
     }
 
     void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r)
@@ -94,9 +40,6 @@ namespace hgl
 
         scene=rf->GetDefaultScene();
         scene_renderer=rf->GetDefaultSceneRenderer();
-
-        if(camera_control)
-            scene_renderer->SetCameraControl(camera_control);
     }
 
     void WorkObject::Tick(double delta)

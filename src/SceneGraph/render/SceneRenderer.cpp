@@ -6,6 +6,7 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/graph/camera/FirstPersonCameraControl.h>
 
 namespace hgl::graph
 {
@@ -19,6 +20,18 @@ namespace hgl::graph
 
     SceneRenderer::~SceneRenderer()
     {
+        // detach camera control from dispatcher chain
+        if(render_context && render_context->GetCameraControl())
+            RemoveChildDispatcher(render_context->GetCameraControl());
+
+        // release owned camera if any
+        if(own_camera && owned_camera_control)
+        {
+            delete owned_camera_control;
+            owned_camera_control=nullptr;
+            own_camera=false;
+        }
+
         SAFE_CLEAR(render_task);
         SAFE_CLEAR(render_context);
     }
@@ -54,9 +67,49 @@ namespace hgl::graph
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
     {
+        SetCameraControl(cc,false);
+    }
+
+    void SceneRenderer::SetCameraControl(CameraControl *cc, bool take_owner)
+    {
         if(!render_context)return;
+
+        // remove previous camera control from dispatcher chain
+        if(render_context->GetCameraControl())
+            RemoveChildDispatcher(render_context->GetCameraControl());
+
+        // clear previous owned cc if switching and we own it
+        if(own_camera && owned_camera_control && owned_camera_control!=cc)
+        {
+            delete owned_camera_control;
+            owned_camera_control=nullptr;
+            own_camera=false;
+        }
+
         render_context->SetCameraControl(cc);
         render_task->SetCameraInfo(GetCameraInfo());
+
+        if(cc)
+            AddChildDispatcher(cc);
+
+        if(take_owner)
+        {
+            owned_camera_control=cc;
+            own_camera=true;
+        }
+    }
+
+    void SceneRenderer::UseDefaultCameraControl()
+    {
+        auto *fpcc = new FirstPersonCameraControl();
+
+        // attach keyboard/mouse helpers to the camera control so it can receive input
+        auto *ckc = new CameraKeyboardControl(fpcc);
+        auto *cmc = new CameraMouseControl(fpcc);
+        fpcc->AddChildDispatcher(ckc);
+        fpcc->AddChildDispatcher(cmc);
+
+        SetCameraControl(fpcc,true); // take ownership
     }
 
     void SceneRenderer::Tick(double delta)

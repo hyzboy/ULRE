@@ -53,13 +53,11 @@ namespace hgl
 
         //以下数据均取自RenderFramework
 
-        graph::CameraControl *  camera_control = nullptr;           //相机控制器
-
         graph::Scene *          scene           =nullptr;           //场景
         graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
 
-        virtual void OnChangeCameraControl(graph::CameraControl *);
-        virtual void CreateCameraControl();
+        virtual void OnChangeCameraControl(graph::CameraControl *){}
+        virtual void CreateCameraControl(){}
 
     public:
 
@@ -77,8 +75,8 @@ namespace hgl
 
         const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer->GetViewportInfo();}
         graph::Camera *             GetCamera           ()      {return scene_renderer->GetCamera();}
-        const graph::CameraInfo *   GetCameraInfo       ()const {return camera_control->GetCameraInfo();}
-        graph::CameraControl *      GetCameraControl    ()      {return camera_control;}
+        const graph::CameraInfo *   GetCameraInfo       ()const {return scene_renderer->GetCameraInfo();}
+        graph::CameraControl *      GetCameraControl    ()      {return scene_renderer->GetCameraControl();}
 
         const Vector2i &            GetMouseCoord       ()const {return render_framework->GetMouseCoord();}
 
@@ -230,13 +228,4 @@ namespace hgl
             return render_framework?render_framework->CreateComponent<C>(cci,args...):nullptr; //创建组件
         }
     };//class WorkObject
-
-    /**
-    * 但我们认为游戏开发者不应该关注如何控制渲染，而应该关注如何处理游戏逻辑.
-    * 所以我们在WorkObject的基础上再提供RenderWorkObject派生类，用于直接封装好的渲染场景树控制。
-    * 
-    * 开发者仅需要将要渲染的物件放置于场景树即可。
-
-    * 但开发者也可以直接使用WorkObject，自行管理这些事。
-    * */
 }//namespcae hgl
