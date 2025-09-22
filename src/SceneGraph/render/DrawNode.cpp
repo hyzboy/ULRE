@@ -64,6 +64,11 @@ MaterialInstance *MeshComponentDrawNode::GetMaterialInstance() const
     return comp?comp->GetMaterialInstance():nullptr;
 }
 
+NodeTransform *MeshComponentDrawNode::GetTransform() const
+{
+    return comp; // 直接使用组件自身的变换
+}
+
 // OwnerMeshDrawNode
 OwnerMeshDrawNode::OwnerMeshDrawNode(NodeTransform *o,Mesh *m):owner(o),mesh(m){}
 
@@ -80,6 +85,11 @@ Mesh *OwnerMeshDrawNode::GetMesh() const
 MaterialInstance *OwnerMeshDrawNode::GetMaterialInstance() const
 {
     return mesh?mesh->GetMaterialInstance():nullptr;
+}
+
+NodeTransform *OwnerMeshDrawNode::GetTransform() const
+{
+    return owner; // 直接使用传入的变换
 }
 VK_NAMESPACE_END
 

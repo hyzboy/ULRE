@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
+#include<hgl/type/ArrayList.h>
 #include<hgl/type/SortedSet.h>
 
 namespace hgl
@@ -10,7 +11,7 @@ namespace hgl
         class Mesh;
         class MaterialInstance;
         class MeshComponent;
-        class NodeTransform;
+        class NodeTransform;   // forward
 
         // 抽象渲染节点：由各组件派生，提供统一的Owner/Mesh/MI访问
         class DrawNode:public Comparator<DrawNode>
@@ -29,6 +30,7 @@ namespace hgl
             virtual NodeTransform *     GetOwner()              const =0;    ///<变换拥有者（组件/节点）
             virtual Mesh *              GetMesh()               const =0;    ///<要渲染的Mesh
             virtual MaterialInstance *  GetMaterialInstance()   const =0;    ///<使用的材质实例
+            virtual NodeTransform *     GetTransform()          const =0;    ///<返回用于渲染的最终变换
 
             //排序比较，定义在DrawNode.cpp
             const int compare(const DrawNode &)const override;
@@ -43,6 +45,7 @@ namespace hgl
             NodeTransform *     GetOwner()            const override;
             Mesh *              GetMesh()             const override;
             MaterialInstance *  GetMaterialInstance() const override;
+            NodeTransform *     GetTransform()        const override;
         };
 
         // 通用型：Owner+Mesh 组合（MI 从 Mesh 取得）
@@ -55,10 +58,11 @@ namespace hgl
             NodeTransform *     GetOwner()            const override;
             Mesh *              GetMesh()             const override;
             MaterialInstance *  GetMaterialInstance() const override;
+            NodeTransform *     GetTransform()        const override;
         };
 
         using DrawNodeList=ArrayList<DrawNode *>;
-        using DrawNodePointerList=ArrayList<DrawNode *>;
+        using DrawNodePointerList=ArrayList<DrawNode *>; // 指针版本的列表，兼容旧代码
 
         using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph
