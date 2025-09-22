@@ -55,27 +55,6 @@ PipelineMaterialBatch::~PipelineMaterialBatch()
     Clear();
 }
 
-void PipelineMaterialBatch::Add(MeshComponent *mesh_component)
-{
-    if(!mesh_component)
-        return;
-
-    auto *node=new MeshComponentDrawNode(mesh_component);
-
-    node->index              =draw_nodes.GetCount();
-    node->transform_version  =mesh_component->GetTransformVersion();
-    node->transform_index    =0;
-
-    node->world_position     =mesh_component->GetWorldPosition();
-
-    if(camera_info)
-        node->to_camera_distance=length(camera_info->pos,node->world_position);
-    else
-        node->to_camera_distance=0;
-
-    draw_nodes.Add(node);
-}
-
 void PipelineMaterialBatch::Add(DrawNode *node)
 {
     if(!node) return;
