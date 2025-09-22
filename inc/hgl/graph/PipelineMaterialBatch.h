@@ -109,7 +109,6 @@ public:
     PipelineMaterialBatch(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi);
     ~PipelineMaterialBatch();
 
-    void Add(MeshComponent *);
     void Add(DrawNode *node);          // generic path for custom nodes
 
     void SetCameraInfo(const CameraInfo *ci){camera_info=ci;}
