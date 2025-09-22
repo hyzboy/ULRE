@@ -2,6 +2,7 @@
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/mesh/Mesh.h>
 #include<hgl/component/MeshComponent.h>
+#include<hgl/graph/SceneNode.h>
 
 VK_NAMESPACE_BEGIN
 /**
@@ -49,7 +50,12 @@ const int DrawNode::compare(const DrawNode &other)const
 // MeshComponentDrawNode
 MeshComponentDrawNode::MeshComponentDrawNode(MeshComponent *c):comp(c){}
 
-NodeTransform *MeshComponentDrawNode::GetOwner() const
+SceneNode *MeshComponentDrawNode::GetSceneNode() const
+{
+    return comp?comp->GetOwnerNode():nullptr;
+}
+
+Component *MeshComponentDrawNode::GetComponent() const
 {
     return comp;
 }
@@ -70,11 +76,17 @@ NodeTransform *MeshComponentDrawNode::GetTransform() const
 }
 
 // OwnerMeshDrawNode
-OwnerMeshDrawNode::OwnerMeshDrawNode(NodeTransform *o,Mesh *m):owner(o),mesh(m){}
+OwnerMeshDrawNode::OwnerMeshDrawNode(SceneNode *sn, Component *c, NodeTransform *t, Mesh *m)
+    :scene_node(sn),component(c),transform(t),mesh(m){}
 
-NodeTransform *OwnerMeshDrawNode::GetOwner() const
+SceneNode *OwnerMeshDrawNode::GetSceneNode() const
 {
-    return owner;
+    return scene_node;
+}
+
+Component *OwnerMeshDrawNode::GetComponent() const
+{
+    return component;
 }
 
 Mesh *OwnerMeshDrawNode::GetMesh() const
@@ -89,7 +101,7 @@ MaterialInstance *OwnerMeshDrawNode::GetMaterialInstance() const
 
 NodeTransform *OwnerMeshDrawNode::GetTransform() const
 {
-    return owner; // 直接使用传入的变换
+    return transform;
 }
 VK_NAMESPACE_END
 
