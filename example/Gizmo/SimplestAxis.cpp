@@ -55,7 +55,7 @@ private:
 
     bool InitScene()
     {
-        Mesh *ri=CreateMesh(prim_axis,material_instance,pipeline);
+        SubMesh *ri=CreateSubMesh(prim_axis,material_instance,pipeline);
 
         CreateComponentInfo cci(GetSceneRoot());
 

@@ -111,7 +111,7 @@ public:
         Primitive *prim = inline_geometry::CreateSphere(pc.get(), 64);
         if (!prim) return false;
 
-        Mesh *mesh = owner->CreateMesh(prim, mi, pipeline);
+        SubMesh *mesh = owner->CreateSubMesh(prim, mi, pipeline);
         if (!mesh) { delete prim; return false; }
 
         CreateComponentInfo cci(renderer->GetSceneRoot());
@@ -207,7 +207,7 @@ private:
         Primitive *prim = inline_geometry::CreateCube(pc.get(), &cci_cube);
         if (!prim) return false;
 
-        Mesh *mesh = CreateMesh(prim, cube_mi, cube_pipeline);
+        SubMesh *mesh = CreateSubMesh(prim, cube_mi, cube_pipeline);
         if (!mesh) { delete prim; return false; }
 
         CreateComponentInfo cci(GetSceneRoot(), Identity4f);

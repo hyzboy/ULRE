@@ -40,7 +40,7 @@ private:
 
     MaterialInstance *  mi_billboard        =nullptr;
     Pipeline *          pipeline_billboard  =nullptr;
-    Mesh *              ro_billboard        =nullptr;
+    SubMesh *              ro_billboard        =nullptr;
     
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
@@ -138,7 +138,7 @@ private:
             if(!pc->WriteVAB(VAN::Position,VF_V3F,position_data))
                 return(false);
 
-            ro_billboard=CreateMesh(pc,mi_billboard,pipeline_billboard);
+            ro_billboard=CreateSubMesh(pc,mi_billboard,pipeline_billboard);
 
             if(!ro_billboard)
                 return(false);
@@ -151,7 +151,7 @@ private:
     {
         CreateComponentInfo cci(GetSceneRoot());
 
-        CreateComponent<MeshComponent>(&cci,CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
+        CreateComponent<MeshComponent>(&cci,CreateSubMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
         CreateComponent<MeshComponent>(&cci,ro_billboard);
 
         CameraControl *camera_control=GetCameraControl();

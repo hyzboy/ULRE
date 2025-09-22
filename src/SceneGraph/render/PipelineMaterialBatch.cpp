@@ -162,7 +162,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_compo
     }
 }
 
-void PipelineMaterialBatch::DrawBatch::Set(Mesh *mesh)
+void PipelineMaterialBatch::DrawBatch::Set(SubMesh *mesh)
 {
     mesh_data_buffer=mesh->GetDataBuffer();
     mesh_render_data=mesh->GetRenderData();
@@ -219,7 +219,7 @@ void PipelineMaterialBatch::BuildBatches()
     draw_batches.Reserve(count);
 
     DrawBatch * batch   =draw_batches.GetData();
-    Mesh *      mesh    =node->mesh_component->GetMesh();
+    SubMesh *      mesh    =node->mesh_component->GetMesh();
 
     draw_batches_count=1;
 
@@ -291,7 +291,7 @@ bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
     //const VIL *vil=last_vil;
 
     //if(vil->GetCount(VertexInputGroup::Basic)!=prb->vab_count)
-    //    return(false);                                                  //这里基本不太可能，因为CreateMesh时就会检查值是否一样
+    //    return(false);                                                  //这里基本不太可能，因为CreateSubMesh时就会检查值是否一样
 
     vab_list->Restart();
 

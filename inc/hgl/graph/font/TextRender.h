@@ -95,7 +95,7 @@ namespace hgl::graph
 
         TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16StringView&str);                           ///<创建一个文本几何体，并进行简单排版
 
-        Mesh *CreateMesh(TextPrimitive *text_primitive);                                                                ///<创建一个网格对象用于渲染指定的文本几何体
+        SubMesh *CreateSubMesh(TextPrimitive *text_primitive);                                                                ///<创建一个网格对象用于渲染指定的文本几何体
 
         void Release(TextPrimitive *);                                                                                  ///<释放一个文本几何体
     };//class TextRender

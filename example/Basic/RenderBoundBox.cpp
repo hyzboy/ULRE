@@ -50,7 +50,7 @@ private:
     struct RenderMesh
     {
         Primitive *prim;
-        Mesh *mesh;
+        SubMesh *mesh;
         MeshComponentData *data;
         ComponentDataPtr cdp;
 
@@ -143,7 +143,7 @@ private:
         if(!prim)
             return(nullptr);
 
-        Mesh *mesh=CreateMesh(prim,md->mi[color],md->pipeline);
+        SubMesh *mesh=CreateSubMesh(prim,md->mi[color],md->pipeline);
 
         if(!mesh)
             return nullptr;

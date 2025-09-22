@@ -184,10 +184,10 @@ namespace hgl::graph
         return(result);
     }
 
-    Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
+    SubMesh *TextRender::CreateSubMesh(TextPrimitive *text_primitive)
     {
         if(mesh_manager)
-            return mesh_manager->CreateMesh(text_primitive,mi_fs,pipeline);
+            return mesh_manager->CreateSubMesh(text_primitive,mi_fs,pipeline);
 
         return(nullptr);
     }

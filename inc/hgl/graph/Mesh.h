@@ -13,9 +13,8 @@
 VK_NAMESPACE_BEGIN
 /**
 * 网格体(网格渲染中的最小渲染单位，只能是一个材质实例)
-* 多材质的网格体使用StaticMesh，它内含多个Mesh
 */
-class Mesh
+class SubMesh
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
@@ -26,13 +25,13 @@ class Mesh
 
 private:
 
-    friend Mesh *DirectCreateMesh(Primitive *,MaterialInstance *,Pipeline *);
+    friend SubMesh *DirectCreateSubMesh(Primitive *,MaterialInstance *,Pipeline *);
 
-    Mesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *);
+    SubMesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *);
 
 public:
 
-    virtual ~Mesh()
+    virtual ~SubMesh()
     {
         //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
@@ -83,7 +82,7 @@ public:
             // 取得缓冲区实际数据数量
             uint32_t            GetDataVertexCount()const{return render_data.data_vertex_count;}
             uint32_t            GetDataIndexCount()const{return render_data.data_index_count;}
-};//class Mesh
+};//class SubMesh
 
-Mesh *DirectCreateMesh(Primitive *,MaterialInstance *,Pipeline *);
+SubMesh *DirectCreateSubMesh(Primitive *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END

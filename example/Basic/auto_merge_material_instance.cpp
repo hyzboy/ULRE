@@ -31,7 +31,7 @@ class TestApp:public WorkObject
     struct
     {
         MaterialInstance *  mi;
-        Mesh *              mesh;
+        SubMesh *              mesh;
     }render_obj[DRAW_OBJECT_COUNT]{};
 
     Pipeline *          pipeline            =nullptr;
@@ -86,7 +86,7 @@ private:
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
-            render_obj[i].mesh=CreateMesh(prim,render_obj[i].mi,pipeline);
+            render_obj[i].mesh=CreateSubMesh(prim,render_obj[i].mi,pipeline);
 
             if(!render_obj[i].mesh)
                 return(false);

@@ -247,7 +247,7 @@ using VIL=VertexInputLayout;
 
 class PrimitiveData;
 class Primitive;
-class Mesh;
+class SubMesh;
 
 class VertexDataManager;
 using VDM=VertexDataManager;

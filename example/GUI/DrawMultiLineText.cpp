@@ -21,7 +21,7 @@ private:
     TextRender *        text_render         =nullptr;
 
     TextPrimitive *     text_primitive      =nullptr;
-    Mesh *              render_obj          =nullptr;
+    SubMesh *              render_obj          =nullptr;
 
 public:
 
@@ -67,7 +67,7 @@ private:
         if(!text_primitive||!text_primitive->IsValid())
             return(false);
 
-        render_obj=text_render->CreateMesh(text_primitive);
+        render_obj=text_render->CreateSubMesh(text_primitive);
 
         if(!render_obj)
             return(false);

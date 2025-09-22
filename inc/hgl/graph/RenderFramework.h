@@ -223,22 +223,22 @@ public:
     graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type=IndexType::U16);
     graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize number,const IndexType type=IndexType::U16){return CreateVDM(vil,number,number,type);}
 
-public: // Primitive, Mesh
+public: // Primitive, SubMesh
 
     graph::Primitive *CreatePrimitive(const AnsiString &name,
                                       const uint32_t vertices_count,
                                       const graph::VIL *vil,
                                       const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
-    graph::Mesh *CreateMesh(const AnsiString &name,
+    graph::SubMesh *CreateSubMesh(const AnsiString &name,
                             const uint32_t vertices_count,
                             graph::MaterialInstance *mi,
                             graph::Pipeline *pipeline,
                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
 
-    Mesh *CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(r,mi,p);}    
-    Mesh *CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(pc,mi,p);}    
+    SubMesh *CreateSubMesh(Primitive *r, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateSubMesh(r,mi,p);}    
+    SubMesh *CreateSubMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateSubMesh(pc,mi,p);}    
 
 public: // ComponentManager
 

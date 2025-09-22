@@ -264,7 +264,7 @@ public: //dynamic state
 
 public:
 
-    void Render(Mesh *ri)
+    void Render(SubMesh *ri)
     {
         if(!ri)return;
         
