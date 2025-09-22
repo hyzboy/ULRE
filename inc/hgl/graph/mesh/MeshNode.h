@@ -13,9 +13,10 @@ namespace hgl::graph
     using MeshNodeID = int64;
 
     class MeshNode;
-    using MeshNodeList = ObjectList<MeshNode>;
-    using MeshNodeSet = SortedSet<MeshNode *>;
-    using SubMeshSet = SortedSet<Mesh *>;
+
+    using MeshNodeList  = ObjectList<MeshNode>;
+    using MeshNodePtrSet= SortedSet<MeshNode *>;
+    using MeshPtrSet    = SortedSet<Mesh *>;
 
     HGL_DEFINE_U16_IDNAME(MeshNodeName)
 
@@ -26,18 +27,17 @@ namespace hgl::graph
     */
     class MeshNode:public NodeTransform
     {
-        MeshNode *      parent_node=nullptr;          ///< 父节点
+        MeshNode *      parent_node=nullptr;                ///< 父节点
 
-        MeshNodeID      node_id=-1;                   ///< 节点ID
-        MeshNodeName    node_name;                    ///< 节点名称
+        MeshNodeID      node_id=-1;                         ///< 节点ID
+        MeshNodeName    node_name;                          ///< 节点名称
 
     protected:
 
-        AABB local_bounding_box;                      ///< 本地坐标包围盒
-        OBB  world_bounding_box;                      ///< 世界坐标包围盒
+        AABB            local_aabb;                         ///< 本地坐标包围盒
 
-        MeshNodeSet child_nodes;                            ///< 子节点（非拥有型，避免重复释放）
-        SubMeshSet  submesh_set;                            ///< Mesh 集合（仅持有引用，不管理生命周期）
+        MeshNodePtrSet  child_nodes;                        ///< 子节点（非拥有型，避免重复释放）
+        MeshPtrSet      submesh_set;                        ///< Mesh 集合（仅持有引用，不管理生命周期）
 
     public:
 
@@ -52,7 +52,7 @@ namespace hgl::graph
         const   MeshNodeID &    GetNodeID   ()const { return node_id; }
         const   MeshNodeName &  GetNodeName ()const { return node_name; }
 
-        const   MeshNodeSet &   GetChildNode()const { return child_nodes; }
+        const   MeshNodePtrSet &GetChildNode()const { return child_nodes; }
 
         // 关系
                 void            SetParent   (MeshNode *pn)  { parent_node=pn; }
@@ -89,7 +89,7 @@ namespace hgl::graph
         virtual void        UpdateWorldTransform() override;            ///< 刷新世界变换
         virtual void        RefreshBoundingBox();                       ///< 刷新包围盒，合并自身 Mesh 与子节点
 
-        virtual const AABB &GetLocalBoundingBox()const { return local_bounding_box; }
+        virtual const AABB &GetLocalBoundingBox()const { return local_aabb; }
 
     public: // Mesh 相关
 
@@ -105,6 +105,6 @@ namespace hgl::graph
             if (!sm)return; submesh_set.Delete(sm);
         }
                       bool          Contains            (Mesh *sm){return submesh_set.Contains(sm);}     ///< 是否包含指定 Mesh
-                const SubMeshSet &  GetSubMeshes        ()const{return submesh_set;}
+                const MeshPtrSet &  GetSubMeshes        ()const{return submesh_set;}
     };//class MeshNode
 }//namespace hgl::graph

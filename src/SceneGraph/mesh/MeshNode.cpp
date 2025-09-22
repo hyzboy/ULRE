@@ -54,9 +54,9 @@ namespace hgl::graph
         }
 
         if(has_box)
-            local_bounding_box=local;
+            local_aabb=local;
         else
-            local_bounding_box.Clear();
+            local_aabb.Clear();
     }
 
     MeshNode::~MeshNode()
@@ -82,8 +82,7 @@ namespace hgl::graph
     {
         SetParent(nullptr);
 
-        local_bounding_box.Clear();
-        world_bounding_box.Clear();
+        local_aabb.Clear();
 
         child_nodes.Clear();
         submesh_set.Clear();
