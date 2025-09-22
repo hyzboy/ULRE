@@ -14,6 +14,7 @@ namespace hgl::graph
 
     class MeshNode;
     using MeshNodeList = ObjectList<MeshNode>;
+    using MeshNodeSet = SortedSet<MeshNode *>;
     using SubMeshSet = SortedSet<SubMesh *>;
 
     HGL_DEFINE_U16_IDNAME(MeshNodeName)
@@ -21,6 +22,7 @@ namespace hgl::graph
     /**
     * Mesh 节点
     * 与 SceneNode 结构类似，但不绑定 Scene、不包含 Component，仅用于模型内部的节点层级与 SubMesh 引用管理。
+    * 注意：所有 MeshNode 的生命周期由 Mesh 统一管理。因此子节点集合为非拥有型容器，避免重复释放。
     */
     class MeshNode:public NodeTransform
     {
@@ -34,8 +36,8 @@ namespace hgl::graph
         AABB local_bounding_box;                      ///< 本地坐标包围盒
         OBB  world_bounding_box;                      ///< 世界坐标包围盒
 
-        MeshNodeList  child_nodes;                      ///< 子节点
-        SubMeshSet    submesh_set;                      ///< SubMesh 集合（仅持有引用，不管理生命周期）
+        MeshNodeSet child_nodes;                            ///< 子节点（非拥有型，避免重复释放）
+        SubMeshSet  submesh_set;                            ///< SubMesh 集合（仅持有引用，不管理生命周期）
 
     public:
 
@@ -50,7 +52,7 @@ namespace hgl::graph
         const   MeshNodeID &    GetNodeID   ()const { return node_id; }
         const   MeshNodeName &  GetNodeName ()const { return node_name; }
 
-        const   MeshNodeList &  GetChildNode()const { return child_nodes; }
+        const   MeshNodeSet &   GetChildNode()const { return child_nodes; }
 
         // 关系
                 void            SetParent   (MeshNode *pn)  { parent_node=pn; }
