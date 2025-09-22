@@ -1,21 +1,21 @@
-#include <hgl/graph/mesh/Mesh.h>
+#include <hgl/graph/mesh/StaticMesh.h>
 
 VK_NAMESPACE_BEGIN
 
-Mesh::Mesh()
+StaticMesh::StaticMesh()
 {
     // 创建一个根节点，Mesh 持有
     root_node = nodes.Create();
 }
 
-Mesh::~Mesh()
+StaticMesh::~StaticMesh()
 {
     ClearSubMeshes();
     ClearNodes();
 }
 
 // MeshNode 管理
-void Mesh::RemoveNode(MeshNode *node)
+void StaticMesh::RemoveNode(MeshNode *node)
 {
     if(!node) return;
 
@@ -30,7 +30,7 @@ void Mesh::RemoveNode(MeshNode *node)
     nodes.DeleteByValueOwn(node);
 }
 
-void Mesh::ClearNodes()
+void StaticMesh::ClearNodes()
 {
     nodes.Clear();
     // 重建一个空根节点
@@ -38,7 +38,7 @@ void Mesh::ClearNodes()
 }
 
 // SubMesh 管理
-SubMesh *Mesh::CreateSubMesh(Primitive *prim, MaterialInstance *mi, Pipeline *p)
+SubMesh *StaticMesh::CreateSubMesh(Primitive *prim, MaterialInstance *mi, Pipeline *p)
 {
     if(!prim || !mi || !p)
         return nullptr;
@@ -59,7 +59,7 @@ SubMesh *Mesh::CreateSubMesh(Primitive *prim, MaterialInstance *mi, Pipeline *p)
     return sm;
 }
 
-bool Mesh::AddSubMesh(SubMesh *sm)
+bool StaticMesh::AddSubMesh(SubMesh *sm)
 {
     if(!sm) return false;
     if(submeshes.Contains(sm)) return true;
@@ -75,7 +75,7 @@ bool Mesh::AddSubMesh(SubMesh *sm)
     return true;
 }
 
-void Mesh::RemoveSubMesh(SubMesh *sm)
+void StaticMesh::RemoveSubMesh(SubMesh *sm)
 {
     if(!sm) return;
 
@@ -88,7 +88,7 @@ void Mesh::RemoveSubMesh(SubMesh *sm)
     RefreshBoundingBox();
 }
 
-void Mesh::ClearSubMeshes()
+void StaticMesh::ClearSubMeshes()
 {
     submeshes.Clear();   // ObjectList::Clear 会负责 delete 其中的 SubMesh*
 
@@ -100,25 +100,25 @@ void Mesh::ClearSubMeshes()
     local_bounding_box.Clear();
 }
 
-bool Mesh::AttachPrimitive(Primitive *prim)
+bool StaticMesh::AttachPrimitive(Primitive *prim)
 {
     if(!prim) return false;
     return primitives.Add(prim) >= 0;
 }
 
-void Mesh::DetachPrimitive(Primitive *prim)
+void StaticMesh::DetachPrimitive(Primitive *prim)
 {
     if(!prim) return;
     primitives.Delete(prim);
 }
 
-void Mesh::UpdateAllSubMeshes()
+void StaticMesh::UpdateAllSubMeshes()
 {
     for(SubMesh *sm: submeshes)
         if(sm) sm->UpdatePrimitive();
 }
 
-void Mesh::RefreshBoundingBox()
+void StaticMesh::RefreshBoundingBox()
 {
     bool has_box = false;
     AABB box;
@@ -133,7 +133,7 @@ void Mesh::RefreshBoundingBox()
     if(has_box) local_bounding_box = box; else local_bounding_box.Clear();
 }
 
-void Mesh::RebuildResourceSets()
+void StaticMesh::RebuildResourceSets()
 {
     primitives.Clear();
     mat_inst_set.Clear();

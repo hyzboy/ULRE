@@ -20,9 +20,9 @@ namespace hgl::graph
     HGL_DEFINE_U16_IDNAME(MeshNodeName)
 
     /**
-    * Mesh 节点
+    * StaticMesh 节点
     * 与 SceneNode 结构类似，但不绑定 Scene、不包含 Component，仅用于模型内部的节点层级与 SubMesh 引用管理。
-    * 注意：所有 MeshNode 的生命周期由 Mesh 统一管理。因此子节点集合为非拥有型容器，避免重复释放。
+    * 注意：所有 MeshNode 的生命周期由 StaticMesh 统一管理。因此子节点集合为非拥有型容器，避免重复释放。
     */
     class MeshNode:public NodeTransform
     {
