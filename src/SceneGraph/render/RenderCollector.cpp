@@ -9,90 +9,87 @@
 #include<hgl/component/MeshComponent.h>
 #include<hgl/component/StaticMeshComponent.h>
 
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
+    RenderCollector::RenderCollector(VulkanDevice *dev)
     {
-        RenderCollector::RenderCollector(VulkanDevice *dev)
+        device          =dev;
+        renderable_count=0;
+
+        camera_info=nullptr;
+
+        render_batch_map.SetDevice(device);
+    }
+
+    bool RenderCollector::ExpandNode(SceneNode *sn)
+    {
+        if(!sn)return(false);
+
+        for(auto component:sn->GetComponents())
         {
-            device          =dev;
-            renderable_count=0;
+            auto *rc = dynamic_cast<COMPONENT_NAMESPACE::RenderComponent *>(component);
+            if(!rc) continue;
+            if(!rc->CanRender()) continue;
 
-            camera_info=nullptr;
-
-            mrl_map.SetDevice(device);
+            renderable_count += rc->SubmitDrawNodes(render_batch_map);
         }
 
-        bool RenderCollector::ExpandNode(SceneNode *sn)
-        {
-            if(!sn)return(false);
+        for(SceneNode *sub:sn->GetChildNode())
+            ExpandNode(sub);
 
-            for(auto component:sn->GetComponents())
-            {
-                auto *rc = dynamic_cast<COMPONENT_NAMESPACE::RenderComponent *>(component);
-                if(!rc) continue;
-                if(!rc->CanRender()) continue;
+        return(true);
+    }
 
-                renderable_count += rc->SubmitDrawNodes(mrl_map);
-            }
+    uint RenderCollector::Expand(SceneNode *sn)
+    {
+        if(!device||!sn) return 0;
 
-            for(SceneNode *sub:sn->GetChildNode())
-                ExpandNode(sub);
+        renderable_count = 0;        // reset per build
+        render_batch_map.Begin(camera_info);
+        ExpandNode(sn);
+        render_batch_map.End();
 
+        return renderable_count;
+    }
+
+    bool RenderCollector::Render(RenderCmdBuffer *cb) 
+    {
+        if(!cb)
+            return(false);
+
+        if(renderable_count<=0)
             return(true);
-        }
 
-        uint RenderCollector::Expand(SceneNode *sn)
-        {
-            if(!device||!sn) return 0;
+        render_batch_map.Render(cb);
 
-            renderable_count = 0;        // reset per build
-            mrl_map.Begin(camera_info);
-            ExpandNode(sn);
-            mrl_map.End();
+        return(true);
+    }
 
-            return renderable_count;
-        }
-
-        bool RenderCollector::Render(RenderCmdBuffer *cb) 
-        {
-            if(!cb)
-                return(false);
-
-            if(renderable_count<=0)
-                return(true);
-
-            mrl_map.Render(cb);
-
-            return(true);
-        }
-
-        void RenderCollector::Clear()
-        {
-            mrl_map.Clear();
-        }
+    void RenderCollector::Clear()
+    {
+        render_batch_map.Clear();
+    }
         
-        void RenderCollector::UpdateTransformData()
-        {
-            if(renderable_count<=0)
-                return;
+    void RenderCollector::UpdateTransformData()
+    {
+        if(renderable_count<=0)
+            return;
 
-            mrl_map.UpdateTransformData();
-        }
+        render_batch_map.UpdateTransformData();
+    }
 
-        void RenderCollector::UpdateMaterialInstanceData(MeshComponent *smc)
-        {
-            if(!smc)return;
+    void RenderCollector::UpdateMaterialInstanceData(MeshComponent *smc)
+    {
+        if(!smc)return;
 
-            if(!smc->CanRender())return;
+        if(!smc->CanRender())return;
 
-            PipelineMaterialIndex rli(smc->GetMaterial(),smc->GetPipeline());
-            PipelineMaterialBatch *mrl;
+        PipelineMaterialIndex rli(smc->GetMaterial(),smc->GetPipeline());
+        PipelineMaterialBatch *mrl;
 
-            if(!mrl_map.Get(rli,mrl))        //找到对应的
-                return;
+        if(!render_batch_map.Get(rli,mrl))        //找到对应的
+            return;
 
-            mrl->UpdateMaterialInstanceData(smc);
-        }
-    }//namespace graph
-}//namespace hgl
+        mrl->UpdateMaterialInstanceData(smc);
+    }
+}//namespace hgl::graph

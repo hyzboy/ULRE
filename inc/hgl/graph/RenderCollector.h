@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/MaterialRenderMap.h>
+#include<hgl/graph/RenderBatchMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKMaterial.h>
 namespace hgl::graph
@@ -20,7 +20,7 @@ namespace hgl::graph
         const CameraInfo *  camera_info;                    ///<相机信息
 
         uint                renderable_count;               ///<可渲染对象数量
-        MaterialRenderMap   mrl_map;                        ///<按材质分类的渲染列表
+        RenderBatchMap      render_batch_map;               ///<按材质分类的渲染列表
 
     protected:
 

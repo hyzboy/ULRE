@@ -2,7 +2,7 @@
 
 #include<hgl/component/RenderComponent.h>
 #include<hgl/graph/mesh/Mesh.h>
-#include<hgl/graph/MaterialRenderMap.h>
+#include<hgl/graph/RenderBatchMap.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
@@ -167,7 +167,7 @@ public:
     }
 
     // 由组件创建并提交 DrawNode
-    uint SubmitDrawNodes(hgl::graph::MaterialRenderMap &mrm) override
+    uint SubmitDrawNodes(hgl::graph::RenderBatchMap &mrm) override
     {
         if(!CanRender()) return 0;
 

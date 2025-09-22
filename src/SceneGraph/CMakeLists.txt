@@ -170,7 +170,7 @@ SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/Scene.h
 SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/DrawNode.h
                         ${SG_INCLUDE_PATH}/RenderCollector.h
                         ${SG_INCLUDE_PATH}/PipelineMaterialBatch.h
-                        ${SG_INCLUDE_PATH}/MaterialRenderMap.h
+                        ${SG_INCLUDE_PATH}/RenderBatchMap.h
 #                        ${SG_INCLUDE_PATH}/ShadowPolicy.h
                         ${SG_INCLUDE_PATH}/RenderTask.h
                         ${SG_INCLUDE_PATH}/RenderContext.h
