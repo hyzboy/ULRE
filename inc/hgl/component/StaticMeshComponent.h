@@ -3,6 +3,8 @@
 #include<hgl/component/RenderComponent.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/RenderBatchMap.h>
+#include<hgl/graph/mesh/MeshNode.h>
+#include<hgl/graph/DrawNode.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
@@ -84,21 +86,25 @@ public:
         return mcd->mesh->GetSubMeshCount()>0;
     }
 
-    // 由组件创建并提交 DrawNode（每个 submesh 一个节点）
+    // 由组件创建并提交 DrawNode（按 MeshNode * Mesh 组合提交），以便同步 MeshNode 的变换
     uint SubmitDrawNodes(hgl::graph::RenderBatchMap &mrm) override
     {
         auto *sm = GetStaticMesh();
         if(!sm) return 0;
         uint submitted = 0;
 
-        for(hgl::graph::Mesh *m : sm->GetSubMeshes())
+        for(hgl::graph::MeshNode *mn : sm->GetNodes())
         {
-            auto *mi = m->GetMaterialInstance();
-            auto *pl = m->GetPipeline();
-            if(!mi||!pl) continue;
+            for(hgl::graph::Mesh *m : mn->GetSubMeshes())
+            {
+                auto *mi = m->GetMaterialInstance();
+                auto *pl = m->GetPipeline();
+                if(!mi||!pl) continue;
 
-            mrm.AddDrawNode(new hgl::graph::OwnerMeshDrawNode(this, m));
-            ++submitted;
+                // 使用 OwnerMeshDrawNode：SceneNode=this->GetOwnerNode(), Component=this, Transform=组件自身（或未来合成后的）
+                mrm.AddDrawNode(new hgl::graph::OwnerMeshDrawNode(this->GetOwnerNode(), this, this, m));
+                ++submitted;
+            }
         }
         return submitted;
     }

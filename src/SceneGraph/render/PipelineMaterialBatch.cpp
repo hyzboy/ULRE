@@ -61,7 +61,7 @@ void PipelineMaterialBatch::Add(DrawNode *node)
 
     node->index=draw_nodes.GetCount();
 
-    NodeTransform *tf = node->GetOwner();
+    NodeTransform *tf = node->GetTransform();
     if (camera_info && tf)
     {
         node->world_position     =tf->GetWorldPosition();
@@ -156,7 +156,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_compo
     for(int i=0;i<node_count;i++)
     {
         auto *mc=dynamic_cast<MeshComponentDrawNode *>(*node);
-        if(mc && mc->GetOwner()==mesh_component)
+        if(mc && mc->GetComponent()==mesh_component)
         {
             assign_buffer->UpdateMaterialInstanceData(*node);
             return;

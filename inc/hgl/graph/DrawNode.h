@@ -12,8 +12,10 @@ namespace hgl
         class MaterialInstance;
         class MeshComponent;
         class NodeTransform;   // forward
+        class SceneNode;       // forward
+        class Component;       // forward
 
-        // 抽象渲染节点：由各组件派生，提供统一的Owner/Mesh/MI访问
+        // 抽象渲染节点：由各组件派生，提供统一的SceneNode/Component/Mesh访问，并提供渲染用的变换
         class DrawNode:public Comparator<DrawNode>
         {
         public:
@@ -27,10 +29,11 @@ namespace hgl
 
             virtual ~DrawNode()=default;
 
-            virtual NodeTransform *     GetOwner()              const =0;    ///<变换拥有者（组件/节点）
-            virtual Mesh *              GetMesh()               const =0;    ///<要渲染的Mesh
-            virtual MaterialInstance *  GetMaterialInstance()   const =0;    ///<使用的材质实例
-            virtual NodeTransform *     GetTransform()          const =0;    ///<返回用于渲染的最终变换
+            virtual SceneNode *        GetSceneNode()          const =0;    ///<所属场景节点（可为空）
+            virtual Component *        GetComponent()          const =0;    ///<所属组件（可为空）
+            virtual Mesh *             GetMesh()               const =0;    ///<要渲染的Mesh
+            virtual MaterialInstance * GetMaterialInstance()   const =0;    ///<使用的材质实例
+            virtual NodeTransform *    GetTransform()          const =0;    ///<返回用于渲染的最终变换
 
             //排序比较，定义在DrawNode.cpp
             const int compare(const DrawNode &)const override;
@@ -42,23 +45,27 @@ namespace hgl
             MeshComponent *comp;
         public:
             explicit MeshComponentDrawNode(MeshComponent *c);
-            NodeTransform *     GetOwner()            const override;
-            Mesh *              GetMesh()             const override;
-            MaterialInstance *  GetMaterialInstance() const override;
-            NodeTransform *     GetTransform()        const override;
+            SceneNode *         GetSceneNode()          const override;
+            Component *         GetComponent()          const override;
+            Mesh *              GetMesh()               const override;
+            MaterialInstance *  GetMaterialInstance()   const override;
+            NodeTransform *     GetTransform()          const override;
         };
 
-        // 通用型：Owner+Mesh 组合（MI 从 Mesh 取得）
+        // 通用型：Owner(组件或节点)+Mesh 组合（MI 从 Mesh 取得）
         class OwnerMeshDrawNode final:public DrawNode
         {
-            NodeTransform *owner;
-            Mesh *mesh;
+            SceneNode *     scene_node;     // 可为空
+            Component *     component;      // 可为空
+            NodeTransform * transform;      // 变换提供者（scene_node 或 component 或其它）
+            Mesh *          mesh;
         public:
-            OwnerMeshDrawNode(NodeTransform *o,Mesh *m);
-            NodeTransform *     GetOwner()            const override;
-            Mesh *              GetMesh()             const override;
-            MaterialInstance *  GetMaterialInstance() const override;
-            NodeTransform *     GetTransform()        const override;
+            OwnerMeshDrawNode(SceneNode *sn, Component *c, NodeTransform *t, Mesh *m);
+            SceneNode *         GetSceneNode()          const override;
+            Component *         GetComponent()          const override;
+            Mesh *              GetMesh()               const override;
+            MaterialInstance *  GetMaterialInstance()   const override;
+            NodeTransform *     GetTransform()          const override;
         };
 
         using DrawNodeList=ArrayList<DrawNode *>;
