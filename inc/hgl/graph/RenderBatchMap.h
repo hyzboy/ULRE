@@ -10,14 +10,15 @@ class Pipeline;                // fwd
 class DrawNode;                // fwd
 class NodeTransform;           // fwd
 
-class MaterialRenderMap:public ObjectMap<PipelineMaterialIndex,PipelineMaterialBatch>
+class RenderBatchMap:public ObjectMap<PipelineMaterialIndex,PipelineMaterialBatch>
 {
     VulkanDevice *device = nullptr;                // 设备在构造/初始化时传入，供后续创建 batch 使用
     const CameraInfo *current_camera_info = nullptr;    // 记录 Begin 传入的相机信息，便于之后新建的 batch 同步设置
+
 public:
 
-    MaterialRenderMap(VulkanDevice *dev=nullptr):device(dev){}
-    virtual ~MaterialRenderMap()=default;
+    RenderBatchMap(VulkanDevice *dev=nullptr):device(dev){}
+    virtual ~RenderBatchMap()=default;
 
     void SetDevice(VulkanDevice *dev){ device=dev; }
 
@@ -81,5 +82,5 @@ public:
         if(!pl) { delete node; return; }
         GetOrCreate(mi->GetMaterial(), pl)->Add(node);
     }
-};//class MaterialRenderMap
+};//class RenderBatchMap
 VK_NAMESPACE_END

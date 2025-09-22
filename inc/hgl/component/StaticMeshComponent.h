@@ -2,7 +2,7 @@
 
 #include<hgl/component/RenderComponent.h>
 #include<hgl/graph/mesh/StaticMesh.h>
-#include<hgl/graph/MaterialRenderMap.h>
+#include<hgl/graph/RenderBatchMap.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
@@ -85,7 +85,7 @@ public:
     }
 
     // 由组件创建并提交 DrawNode（每个 submesh 一个节点）
-    uint SubmitDrawNodes(hgl::graph::MaterialRenderMap &mrm) override
+    uint SubmitDrawNodes(hgl::graph::RenderBatchMap &mrm) override
     {
         auto *sm = GetStaticMesh();
         if(!sm) return 0;
