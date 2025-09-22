@@ -391,10 +391,12 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
                         ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
                         ${COMPONENT_INCLUDE_PATH}/MeshComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/StaticMeshComponent.h
                         component/Component.cpp
                         component/ComponentManager.cpp
                         component/SceneComponent.cpp
                         component/MeshComponentManager.cpp
+                        component/StaticMeshComponentManager.cpp
 )
 
 SET(COLLISION_COMPONENT_FILES   ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponent.h
