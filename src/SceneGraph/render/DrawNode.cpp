@@ -1,36 +1,18 @@
 #include<hgl/graph/DrawNode.h>
 #include<hgl/graph/VertexDataManager.h>
+#include<hgl/graph/mesh/Mesh.h>
 #include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
 /**
-* 
-* 理论上讲，我们需要按以下顺序排序
-*
-*   for(material)
-*       for(pipeline)
-*           for(material_instance)
-*               for(texture)
-*                   for(screen_tile)  
-*                       for(vab)
-* 
-* 
-*  关于Indirect Command Buffer
-
-建立一个大的IndirectCommandBuffer，用于存放所有的渲染指令，包括那些不能使用Indirect渲染的。
-这样就可以保证所有的渲染操作就算要切VBO，也不需要切换INDIRECT缓冲区，定位指令也很方便。
+* 见排序说明
 */
 const int DrawNode::compare(const DrawNode &other)const
 {
     hgl::int64 off;
 
-    //RectScope2i screen_tile;
-
-    hgl::graph::Mesh *ri_one=other.mesh_component->GetMesh();
-    hgl::graph::Mesh *ri_two=mesh_component->GetMesh();
-
-    auto *prim_one=ri_one->GetPrimitive();
-    auto *prim_two=ri_two->GetPrimitive();
+    auto *prim_one=other.GetMesh()->GetPrimitive();
+    auto *prim_two=this->GetMesh()->GetPrimitive();
 
     //比较VDM
     if(prim_one->GetVDM())      //有VDM
@@ -41,18 +23,10 @@ const int DrawNode::compare(const DrawNode &other)const
         if(off)
             return off;
 
-        //比较纹理
-        {
-        }
-
-        //比较屏幕空间所占tile
-        {
-        }
-
         //比较模型
         {
-            off=prim_one
-               -prim_two;
+            off=(hgl::int64)prim_one
+               -(hgl::int64)prim_two;
 
             if(off)
             {
@@ -63,18 +37,8 @@ const int DrawNode::compare(const DrawNode &other)const
         }
     }
 
-    //比较纹理
-    {
-    }
-
-    //比较屏幕空间所占tile
-    {
-    }
-
-    //比较距离。。。。。。。。。。。。。。。。。。。。。还不知道这个是正了还是反了，等测出来确认后修改下面的返回值和这里的注释
-
-    float foff=other.to_camera_distance
-                    -to_camera_distance;
+    //比较距离（备注：正负方向等实际测试后再调整）
+    float foff=other.to_camera_distance-to_camera_distance;
 
     if(foff>0)
         return 1;
@@ -82,17 +46,40 @@ const int DrawNode::compare(const DrawNode &other)const
         return -1;
 }
 
-Mesh *DrawNode::GetMesh()const
+// MeshComponentDrawNode
+MeshComponentDrawNode::MeshComponentDrawNode(MeshComponent *c):comp(c){}
+
+NodeTransform *MeshComponentDrawNode::GetOwner() const
 {
-    return mesh_component?mesh_component->GetMesh():nullptr;
+    return comp;
 }
 
-MaterialInstance *DrawNode::GetMaterialInstance()const
+Mesh *MeshComponentDrawNode::GetMesh() const
 {
-    if(!mesh_component)return(nullptr);
-    if(!mesh_component->GetMesh())return(nullptr);
+    return comp?comp->GetMesh():nullptr;
+}
 
-    return mesh_component->GetMaterialInstance();
+MaterialInstance *MeshComponentDrawNode::GetMaterialInstance() const
+{
+    return comp?comp->GetMaterialInstance():nullptr;
+}
+
+// OwnerMeshDrawNode
+OwnerMeshDrawNode::OwnerMeshDrawNode(NodeTransform *o,Mesh *m):owner(o),mesh(m){}
+
+NodeTransform *OwnerMeshDrawNode::GetOwner() const
+{
+    return owner;
+}
+
+Mesh *OwnerMeshDrawNode::GetMesh() const
+{
+    return mesh;
+}
+
+MaterialInstance *OwnerMeshDrawNode::GetMaterialInstance() const
+{
+    return mesh?mesh->GetMaterialInstance():nullptr;
 }
 VK_NAMESPACE_END
 

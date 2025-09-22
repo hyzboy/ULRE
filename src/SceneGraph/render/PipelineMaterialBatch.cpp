@@ -51,6 +51,8 @@ PipelineMaterialBatch::~PipelineMaterialBatch()
 
     SAFE_CLEAR(vab_list);
     SAFE_CLEAR(assign_buffer);
+
+    Clear();
 }
 
 void PipelineMaterialBatch::Add(MeshComponent *mesh_component)
@@ -58,21 +60,41 @@ void PipelineMaterialBatch::Add(MeshComponent *mesh_component)
     if(!mesh_component)
         return;
 
-    DrawNode node;
+    auto *node=new MeshComponentDrawNode(mesh_component);
 
-    node.index            =draw_nodes.GetCount();
+    node->index              =draw_nodes.GetCount();
+    node->transform_version  =mesh_component->GetTransformVersion();
+    node->transform_index    =0;
 
-    node.mesh_component   =mesh_component;
-
-    node.transform_version=mesh_component->GetTransformVersion();
-    node.transform_index  =0;
-
-    node.world_position   =mesh_component->GetWorldPosition();
+    node->world_position     =mesh_component->GetWorldPosition();
 
     if(camera_info)
-        node.to_camera_distance=length(camera_info->pos,node.world_position);
+        node->to_camera_distance=length(camera_info->pos,node->world_position);
     else
-        node.to_camera_distance=0;
+        node->to_camera_distance=0;
+
+    draw_nodes.Add(node);
+}
+
+void PipelineMaterialBatch::Add(DrawNode *node)
+{
+    if(!node) return;
+
+    node->index=draw_nodes.GetCount();
+
+    if(camera_info && node->GetOwner())
+    {
+        node->world_position     =node->GetOwner()->GetWorldPosition();
+        node->to_camera_distance =length(camera_info->pos,node->world_position);
+    }
+    else
+    {
+        node->world_position     =Vector3f(0,0,0);
+        node->to_camera_distance =0;
+    }
+
+    node->transform_version=node->GetOwner()?node->GetOwner()->GetTransformVersion():0;
+    node->transform_index=0;
 
     draw_nodes.Add(node);
 }
@@ -106,24 +128,25 @@ void PipelineMaterialBatch::UpdateTransformData()
     int first=-1,last=-1;
     int update_count=0;
     uint32 transform_version=0;
-    DrawNode *node=draw_nodes.GetData();
+    DrawNode **node=draw_nodes.GetData();
 
     for(int i=0;i<node_count;i++)
     {
-        transform_version=node->mesh_component->GetTransformVersion();
+        auto *owner=(*node)->GetOwner();
+        transform_version=owner?owner->GetTransformVersion():0;
 
-        if(node->transform_version!=transform_version)       //版本不对，需要更新
+        if((*node)->transform_version!=transform_version)       //版本不对，需要更新
         {
             if(first==-1)
             {
-                first=node->transform_index;
+                first=(*node)->transform_index;
             }
             
-            last=node->transform_index;
+            last=(*node)->transform_index;
 
-            node->transform_version=transform_version;
+            (*node)->transform_version=transform_version;
 
-            transform_dirty_nodes.Add(node);
+            transform_dirty_nodes.Add(*node);
 
             ++update_count;
         }
@@ -148,13 +171,14 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_compo
     const int node_count=draw_nodes.GetCount();
 
     if(node_count<=0)return;
-    DrawNode *node=draw_nodes.GetData();
+    DrawNode **node=draw_nodes.GetData();
 
     for(int i=0;i<node_count;i++)
     {
-        if(node->mesh_component==mesh_component)
+        auto *mc=dynamic_cast<MeshComponentDrawNode *>(*node);
+        if(mc && mc->GetOwner()==mesh_component)
         {
-            assign_buffer->UpdateMaterialInstanceData(node);
+            assign_buffer->UpdateMaterialInstanceData(*node);
             return;
         }
 
@@ -208,7 +232,7 @@ void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,DrawBat
 void PipelineMaterialBatch::BuildBatches()
 {
     const uint count=draw_nodes.GetCount();
-    DrawNode *node=draw_nodes.GetData();
+    DrawNode **node=draw_nodes.GetData();
 
     ReallocICB();
 
@@ -219,7 +243,7 @@ void PipelineMaterialBatch::BuildBatches()
     draw_batches.Reserve(count);
 
     DrawBatch * batch   =draw_batches.GetData();
-    Mesh *      mesh    =node->mesh_component->GetMesh();
+    Mesh *      mesh    =(*node)->GetMesh();
 
     draw_batches_count=1;
 
@@ -235,7 +259,7 @@ void PipelineMaterialBatch::BuildBatches()
 
     for(uint i=1;i<count;i++)
     {
-        mesh=node->mesh_component->GetMesh();
+        mesh=(*node)->GetMesh();
 
         if(*last_data_buffer==*mesh->GetDataBuffer())
             if(*last_render_data==*mesh->GetRenderData())
@@ -284,69 +308,16 @@ void PipelineMaterialBatch::BuildBatches()
 
 bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 {
-//    const uint              ri_index        =batch->first_instance;
-
-    //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
-
-    //const VIL *vil=last_vil;
-
-    //if(vil->GetCount(VertexInputGroup::Basic)!=prb->vab_count)
-    //    return(false);                                                  //这里基本不太可能，因为CreateMesh时就会检查值是否一样
-
     vab_list->Restart();
 
-    //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
-    {
-        if(!vab_list->Add(batch->mesh_data_buffer))
-        {
-            //这个情况很严重哦！
-            return(false);
-        }
-    }
+    if(!vab_list->Add(batch->mesh_data_buffer))
+        return(false);
 
     if (assign_buffer) //L2W/MI分发组
     {
-        if(!vab_list->Add(assign_buffer->GetVAB(),0))//ASSIGN_VAB_STRIDE_BYTES*ri_index);
-        {
-            //一般出现这个情况是因为材质中没有配置需要L2W/或是MIData
+        if(!vab_list->Add(assign_buffer->GetVAB(),0))
             return(false);
-        }
     }
-
-    //if(!vab_list.IsFull()) //Joint组，暂未支持
-    //{
-    //    const uint joint_id_binding_count=vil->GetCount(VertexInputGroup::JointID);
-
-    //    if(joint_id_binding_count>0)                                        //有矩阵信息
-    //    {
-    //        count+=joint_id_binding_count;
-
-    //        if(count<vab_count) //JointWeight组
-    //        {
-    //            const uint joing_weight_binding_count=vil->GetCount(VertexInputGroup::JointWeight);
-
-    //            if(joing_weight_binding_count!=1)
-    //            {
-    //                ++count;
-    //            }
-    //            else //JointWieght不为1是个bug，除非未来支持8权重
-    //            {
-    //                return(false);
-    //            }
-    //        }
-    //        else //有JointID没有JointWeight? 这是个BUG
-    //        {
-    //            return(false);
-    //        }
-    //    }
-    //}
-
-    //if(count!=vab_count)
-    //{
-    //    //还有没支持的绑定组？？？？
-
-    //    return(false);
-    //}
 
     cmd_buf->BindVAB(vab_list);
 
@@ -376,7 +347,6 @@ bool PipelineMaterialBatch::Draw(DrawBatch *batch)
 
         if(!BindVAB(batch))
         {
-            //这个问题很严重哦
             return(false);
         }
 

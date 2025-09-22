@@ -23,7 +23,6 @@ VK_NAMESPACE_BEGIN
 // 所以 UBO Range为16k时，实例数据不能超过64字节。UBO Range为64k时，实例数据不能超过256字节。
 
 
-struct DrawNode;
 class MaterialInstance;
 
 /*
@@ -82,13 +81,6 @@ public:
 
     InstanceAssignmentBuffer(VulkanDevice *dev,Material *);
     ~InstanceAssignmentBuffer(){Clear();}
-
-    //下一代，将MaterialInstanceSets使用提前化，这样不用每一次绘制都重新写入MI DATA，可以提升效率。
-    //虽然这样就不自动化了，但我们要的就是不自动化。
-    //必须在外部全部准备好MaterialInstanceSets，然后一次性写入。
-    //渲染时找不到就直接用0号材质实例
-
-    //同样的LocalToWorld矩阵也可以提前化处理，这样对于静态物体，就只需要写入一次LocalToWorld矩阵了。
 
     void WriteNode(const DrawNodeList &);
 
