@@ -8,12 +8,12 @@ GRAPH_MODULE_CONSTRUCT(MeshManager)
 {
 }
 
-SubMesh *MeshManager::CreateSubMesh(Primitive *r, MaterialInstance *mi, Pipeline *p)
+Mesh *MeshManager::CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
 
-    SubMesh *ri=VK_NAMESPACE::DirectCreateSubMesh(r,mi,p);
+    Mesh *ri=VK_NAMESPACE::DirectCreateMesh(r,mi,p);
 
     if(ri)
         Add(ri);
@@ -21,7 +21,7 @@ SubMesh *MeshManager::CreateSubMesh(Primitive *r, MaterialInstance *mi, Pipeline
     return ri;
 }
 
-SubMesh *MeshManager::CreateSubMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p)
+Mesh *MeshManager::CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p)
 {
     if(!p||!mi||!pc)
         return(nullptr);
@@ -31,7 +31,7 @@ SubMesh *MeshManager::CreateSubMesh(PrimitiveCreater *pc, MaterialInstance *mi, 
     if(!prim)
         return(nullptr);
 
-    SubMesh *ri=VK_NAMESPACE::DirectCreateSubMesh(prim,mi,p);
+    Mesh *ri=VK_NAMESPACE::DirectCreateMesh(prim,mi,p);
 
     if(ri)
     {

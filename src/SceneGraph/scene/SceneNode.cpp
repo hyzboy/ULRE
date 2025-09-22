@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/component/SceneComponent.h>
-#include<hgl/graph/mesh/SubMesh.h>
+#include<hgl/graph/mesh/Mesh.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/RenderFramework.h>
@@ -41,7 +41,7 @@ namespace hgl::graph
         return main_scene?main_scene->GetRenderFramework():nullptr;
     }
 
-    //void SceneNode::SetRenderable(SubMesh *ri)
+    //void SceneNode::SetRenderable(Mesh *ri)
     //{
     //    render_obj=ri;
     //

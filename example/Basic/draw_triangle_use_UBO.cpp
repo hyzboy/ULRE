@@ -37,7 +37,7 @@ class TestApp:public WorkObject
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    SubMesh *              mesh_triangle       =nullptr;
+    Mesh *              mesh_triangle       =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -80,7 +80,7 @@ private:
             position_data[i][1]=position_data_float[i][1]*ext.height;
         }
 
-        mesh_triangle=CreateSubMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        mesh_triangle=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,POSITION_DATA_FORMAT,position_data},
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}

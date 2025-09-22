@@ -90,13 +90,13 @@ private:
         return(true);
     }
     
-    SubMesh *Add(SceneNode *parent_node,Primitive *r,MaterialInstance *mi,Pipeline *p)
+    Mesh *Add(SceneNode *parent_node,Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
-        SubMesh *ri=CreateSubMesh(r,mi,p);
+        Mesh *ri=CreateMesh(r,mi,p);
 
         if(!ri)
         {
-            LogError(OS_TEXT("Create SubMesh failed."));
+            LogError(OS_TEXT("Create Mesh failed."));
             return(nullptr);
         }
 

@@ -6,7 +6,7 @@
 #include<hgl/graph/NodeTransform.h>
 #include<hgl/graph/AABB.h>
 #include<hgl/graph/OBB.h>
-#include<hgl/graph/mesh/SubMesh.h>
+#include<hgl/graph/mesh/Mesh.h>
 
 namespace hgl::graph
 {
@@ -15,13 +15,13 @@ namespace hgl::graph
     class MeshNode;
     using MeshNodeList = ObjectList<MeshNode>;
     using MeshNodeSet = SortedSet<MeshNode *>;
-    using SubMeshSet = SortedSet<SubMesh *>;
+    using SubMeshSet = SortedSet<Mesh *>;
 
     HGL_DEFINE_U16_IDNAME(MeshNodeName)
 
     /**
     * StaticMesh 节点
-    * 与 SceneNode 结构类似，但不绑定 Scene、不包含 Component，仅用于模型内部的节点层级与 SubMesh 引用管理。
+    * 与 SceneNode 结构类似，但不绑定 Scene、不包含 Component，仅用于模型内部的节点层级与 Mesh 引用管理。
     * 注意：所有 MeshNode 的生命周期由 StaticMesh 统一管理。因此子节点集合为非拥有型容器，避免重复释放。
     */
     class MeshNode:public NodeTransform
@@ -37,7 +37,7 @@ namespace hgl::graph
         OBB  world_bounding_box;                      ///< 世界坐标包围盒
 
         MeshNodeSet child_nodes;                            ///< 子节点（非拥有型，避免重复释放）
-        SubMeshSet  submesh_set;                            ///< SubMesh 集合（仅持有引用，不管理生命周期）
+        SubMeshSet  submesh_set;                            ///< Mesh 集合（仅持有引用，不管理生命周期）
 
     public:
 
@@ -78,7 +78,7 @@ namespace hgl::graph
         }
         virtual void        CloneSubMeshes(MeshNode *node) const
         {
-            for(SubMesh *sm:submesh_set)
+            for(Mesh *sm:submesh_set)
                 node->AttachSubMesh(sm);
         }
         virtual MeshNode *  Clone() const;
@@ -87,24 +87,24 @@ namespace hgl::graph
     public: // 坐标/包围盒
 
         virtual void        UpdateWorldTransform() override;            ///< 刷新世界变换
-        virtual void        RefreshBoundingBox();                       ///< 刷新包围盒，合并自身 SubMesh 与子节点
+        virtual void        RefreshBoundingBox();                       ///< 刷新包围盒，合并自身 Mesh 与子节点
 
         virtual const AABB &GetLocalBoundingBox()const { return local_bounding_box; }
 
-    public: // SubMesh 相关
+    public: // Mesh 相关
 
                       bool          SubMeshIsEmpty      ()const{return submesh_set.IsEmpty();}
         virtual const int64         GetSubMeshCount     ()const{return submesh_set.GetCount();}
-        virtual       bool          AttachSubMesh       (SubMesh *sm)
+        virtual       bool          AttachSubMesh       (Mesh *sm)
         {
             if(!sm)return(false);
             return submesh_set.Add(sm)>=0;
         }
-        virtual         void        DetachSubMesh       (SubMesh *sm)
+        virtual         void        DetachSubMesh       (Mesh *sm)
         {
             if (!sm)return; submesh_set.Delete(sm);
         }
-                      bool          Contains            (SubMesh *sm){return submesh_set.Contains(sm);}     ///< 是否包含指定 SubMesh
+                      bool          Contains            (Mesh *sm){return submesh_set.Contains(sm);}     ///< 是否包含指定 Mesh
                 const SubMeshSet &  GetSubMeshes        ()const{return submesh_set;}
     };//class MeshNode
 }//namespace hgl::graph

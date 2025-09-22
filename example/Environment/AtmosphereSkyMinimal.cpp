@@ -49,7 +49,7 @@ private:
     bool InitScene()
     {
         {
-            SubMesh *ri=CreateSubMesh(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
+            Mesh *ri=CreateMesh(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
 
             CreateComponentInfo cci(GetSceneRoot());
 
