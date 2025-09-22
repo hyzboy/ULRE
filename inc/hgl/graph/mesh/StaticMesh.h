@@ -16,16 +16,16 @@ VK_NAMESPACE_BEGIN
 class StaticMesh
 {
     // Mesh / 资源集合
-    ObjectList<Mesh>           submeshes;          ///< Mesh 列表（拥有对象）
-    SortedSet<Primitive *>        primitives;         ///< 关联的 Primitive 集合（仅持引用）
-    SortedSet<MaterialInstance *> mat_inst_set;       ///< 使用到的材质实例集合（仅持引用）
-    SortedSet<Pipeline *>         pipeline_set;       ///< 使用到的管线集合（仅持引用）
+    ObjectList<Mesh>                submeshes;          ///< Mesh 列表（拥有对象）
+    SortedSet<Primitive *>          primitives;         ///< 关联的 Primitive 集合（仅持引用）
+    SortedSet<MaterialInstance *>   mat_inst_set;       ///< 使用到的材质实例集合（仅持引用）
+    SortedSet<Pipeline *>           pipeline_set;       ///< 使用到的管线集合（仅持引用）
 
     // MeshNode 集合与根节点
-    MeshNodeList                  nodes;              ///< MeshNode 集合（拥有对象）
-    MeshNode *                    root_node = nullptr;///< 根节点（由 nodes 持有）
+    MeshNodeList                    nodes;              ///< MeshNode 集合（拥有对象）
+    MeshNode *                      root_node = nullptr;///< 根节点（由 nodes 持有）
 
-    AABB                local_bounding_box;           ///< 所有 Mesh 合并的本地包围盒
+    AABB                            bounding_box;       ///< 所有 Mesh 合并的本地包围盒
 
 public:
 
@@ -48,7 +48,7 @@ public: // MeshNode 管理
 
 public: // Mesh 管理
     const int                   GetSubMeshCount     ()                      const{ return submeshes.GetCount(); }
-    const ObjectList<Mesh> & GetSubMeshes        ()                      const{ return submeshes; }
+    const ObjectList<Mesh> &    GetSubMeshes        ()                      const{ return submeshes; }
 
     // 创建并添加一个 Mesh（为该 Mesh 指定 Primitive / MaterialInstance / Pipeline）
     Mesh *                   CreateMesh       (Primitive *prim, MaterialInstance *mi, Pipeline *p);
@@ -76,7 +76,7 @@ public: // 数据更新
 
 public: // 包围盒
     void                        RefreshBoundingBox  ();
-    const AABB &                GetLocalBoundingBox () const { return local_bounding_box; }
+    const AABB &                GetBoundingBox      () const { return bounding_box; }
 
 private:
     void                        RebuildResourceSets ();

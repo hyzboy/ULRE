@@ -97,7 +97,7 @@ void StaticMesh::ClearSubMeshes()
     mat_inst_set.Clear();
     pipeline_set.Clear();
 
-    local_bounding_box.Clear();
+    bounding_box.Clear();
 }
 
 bool StaticMesh::AttachPrimitive(Primitive *prim)
@@ -130,7 +130,7 @@ void StaticMesh::RefreshBoundingBox()
         else { box.Enclose(sm->GetBoundingBox()); }
     }
 
-    if(has_box) local_bounding_box = box; else local_bounding_box.Clear();
+    if(has_box) bounding_box = box; else bounding_box.Clear();
 }
 
 void StaticMesh::RebuildResourceSets()
