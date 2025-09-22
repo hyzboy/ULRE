@@ -61,9 +61,10 @@ void PipelineMaterialBatch::Add(DrawNode *node)
 
     node->index=draw_nodes.GetCount();
 
-    if(camera_info && node->GetOwner())
+    NodeTransform *tf = node->GetOwner();
+    if (camera_info && tf)
     {
-        node->world_position     =node->GetOwner()->GetWorldPosition();
+        node->world_position     =tf->GetWorldPosition();
         node->to_camera_distance =length(camera_info->pos,node->world_position);
     }
     else
@@ -72,7 +73,7 @@ void PipelineMaterialBatch::Add(DrawNode *node)
         node->to_camera_distance =0;
     }
 
-    node->transform_version=node->GetOwner()?node->GetOwner()->GetTransformVersion():0;
+    node->transform_version=tf?tf->GetTransformVersion():0;
     node->transform_index=0;
 
     draw_nodes.Add(node);
@@ -111,8 +112,8 @@ void PipelineMaterialBatch::UpdateTransformData()
 
     for(int i=0;i<node_count;i++)
     {
-        auto *owner=(*node)->GetOwner();
-        transform_version=owner?owner->GetTransformVersion():0;
+        auto *tf=(*node)->GetTransform();
+        transform_version=tf?tf->GetTransformVersion():0;
 
         if((*node)->transform_version!=transform_version)       //版本不对，需要更新
         {

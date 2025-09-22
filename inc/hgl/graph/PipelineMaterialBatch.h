@@ -2,6 +2,7 @@
 #include<hgl/graph/DrawNode.h>
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
+#include<hgl/type/ArrayList.h>
 
 VK_NAMESPACE_BEGIN
 class InstanceAssignmentBuffer;
@@ -57,7 +58,7 @@ class PipelineMaterialBatch
 
     DrawNodeList draw_nodes;                 // now pointer list
 
-    DrawNodePointerList transform_dirty_nodes;
+    DrawNodePointerList transform_dirty_nodes;   // alias is in DrawNode.h
 
 private:
 

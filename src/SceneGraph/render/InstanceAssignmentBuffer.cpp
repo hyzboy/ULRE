@@ -76,8 +76,8 @@ void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
 
     for(int i=0;i<draw_nodes.GetCount();i++)
     {
-        auto *owner=(*rn)->GetOwner();
-        *l2wp=owner?owner->GetLocalToWorldMatrix():Identity4f;
+        auto *tf=(*rn)->GetTransform();
+        *l2wp=tf?tf->GetLocalToWorldMatrix():Identity4f;
         ++l2wp;
         ++rn;
     }
@@ -85,7 +85,7 @@ void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
     transform_buffer->Unmap();
 }
 
-void InstanceAssignmentBuffer::UpdateTransformData(const DrawNodePointerList &rnp_list,const int first,const int last)
+void InstanceAssignmentBuffer::UpdateTransformData(const DrawNodeList &rnp_list,const int first,const int last)
 {
     if(!transform_buffer)
         return;
@@ -101,8 +101,8 @@ void InstanceAssignmentBuffer::UpdateTransformData(const DrawNodePointerList &rn
 
     for(uint i=0;i<count;i++)
     {
-        auto *owner=(*rn)->GetOwner();
-        l2wp[(*rn)->transform_index-first]=owner?owner->GetLocalToWorldMatrix():Identity4f;
+        auto *tf=(*rn)->GetTransform();
+        l2wp[(*rn)->transform_index-first]=tf?tf->GetLocalToWorldMatrix():Identity4f;
 
         ++rn;
     }
