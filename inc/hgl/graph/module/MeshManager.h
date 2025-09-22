@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/graph/Mesh.h>
+#include<hgl/graph/mesh/SubMesh.h>
 #include<hgl/type/ObjectManage.h>
 
 VK_NAMESPACE_BEGIN

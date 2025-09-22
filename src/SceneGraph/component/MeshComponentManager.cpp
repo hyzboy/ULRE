@@ -1,6 +1,6 @@
 #include<hgl/component/MeshComponent.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/Mesh.h>
+#include<hgl/graph/mesh/SubMesh.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
