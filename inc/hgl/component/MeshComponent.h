@@ -2,6 +2,7 @@
 
 #include<hgl/component/RenderComponent.h>
 #include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/MaterialRenderMap.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
@@ -163,6 +164,28 @@ public:
             return false;
 
         return true;
+    }
+
+    // 由组件创建并提交 DrawNode
+    uint SubmitDrawNodes(hgl::graph::MaterialRenderMap &mrm, hgl::graph::VulkanDevice *device) override
+    {
+        if(!CanRender()) return 0;
+
+        auto *mi = GetMaterialInstance();
+        auto *pl = GetPipeline();
+        if(!mi||!pl) return 0;
+
+        hgl::graph::PipelineMaterialIndex rpi(mi->GetMaterial(), pl);
+        hgl::graph::PipelineMaterialBatch *batch=nullptr;
+        if(!mrm.Get(rpi, batch))
+        {
+            batch = new hgl::graph::PipelineMaterialBatch(device, true, rpi);
+            mrm.Add(rpi, batch);
+        }
+
+        // 由mrl内部负责创造 MeshComponentDrawNode
+        batch->Add(this);
+        return 1;
     }
 };//class MeshComponent
 

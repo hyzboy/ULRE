@@ -7,7 +7,7 @@
 #include<hgl/graph/mesh/Mesh.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/math/Transform.h>
 
 VK_NAMESPACE_BEGIN
 InstanceAssignmentBuffer::InstanceAssignmentBuffer(VulkanDevice *dev,Material *mtl)
@@ -71,12 +71,13 @@ void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
     #endif//_DEBUG
     }
 
-    DrawNode *rn=draw_nodes.GetData();
+    DrawNode **rn=draw_nodes.GetData();
     Matrix4f *l2wp=(Matrix4f *)(transform_buffer->DeviceBuffer::Map());
 
     for(int i=0;i<draw_nodes.GetCount();i++)
     {
-        *l2wp=rn->mesh_component->GetLocalToWorldMatrix();
+        auto *owner=(*rn)->GetOwner();
+        *l2wp=owner?owner->GetLocalToWorldMatrix():Identity4f;
         ++l2wp;
         ++rn;
     }
@@ -100,7 +101,8 @@ void InstanceAssignmentBuffer::UpdateTransformData(const DrawNodePointerList &rn
 
     for(uint i=0;i<count;i++)
     {
-        l2wp[(*rn)->transform_index-first]=(*rn)->mesh_component->GetLocalToWorldMatrix();
+        auto *owner=(*rn)->GetOwner();
+        l2wp[(*rn)->transform_index-first]=owner?owner->GetLocalToWorldMatrix():Identity4f;
 
         ++rn;
     }
@@ -115,7 +117,7 @@ void InstanceAssignmentBuffer::UpdateMaterialInstanceData(const DrawNode *rn)
 
     AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map(sizeof(AssignData)*rn->index,sizeof(AssignData)));
 
-    adp->material_instance=mi_set.Find(rn->mesh_component->GetMaterialInstance());
+    adp->material_instance=mi_set.Find(rn->GetMaterialInstance());
 
     assign_vab->Unmap();
 }
@@ -154,8 +156,8 @@ void InstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &draw_nod
 
     mi_set.Reserve(draw_nodes.GetCount());
 
-    for(DrawNode &rn:draw_nodes)
-        mi_set.Add(rn.mesh_component->GetMaterialInstance());
+    for(DrawNode *rn:draw_nodes)
+        mi_set.Add(rn->GetMaterialInstance());
 
     if(mi_set.GetCount()>material->GetMIMaxCount())
     {
@@ -214,16 +216,16 @@ void InstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
     
     //生成材质实例ID列表
     {
-        DrawNode *rn=draw_nodes.GetData();
+        DrawNode **rn=draw_nodes.GetData();
 
         AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map());
 
         for(uint i=0;i<draw_nodes.GetCount();i++)
         {
-            rn->transform_index=i;
+            (*rn)->transform_index=i;
 
             adp->transform=i;
-            adp->material_instance=mi_set.Find(rn->mesh_component->GetMaterialInstance());
+            adp->material_instance=mi_set.Find((*rn)->GetMaterialInstance());
             ++adp;
 
             ++rn;

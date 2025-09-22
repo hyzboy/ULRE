@@ -5,7 +5,9 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/component/MeshComponent.h>
+#include<hgl/component/StaticMeshComponent.h>
 
 namespace hgl
 {
@@ -25,28 +27,11 @@ namespace hgl
 
             for(auto component:sn->GetComponents())
             {
-                if(component->GetTypeHash()!=MeshComponent::StaticTypeHash())     //暂时只支持MeshComponent
-                    continue;
+                auto *rc = dynamic_cast<COMPONENT_NAMESPACE::RenderComponent *>(component);
+                if(!rc) continue;
+                if(!rc->CanRender()) continue;
 
-                MeshComponent *smc=(MeshComponent *)component;
-
-                if(!smc||!smc->CanRender())
-                    continue;
-
-                PipelineMaterialIndex rpi(smc->GetMaterial(),smc->GetPipeline());
-                
-                PipelineMaterialBatch *mrl;
-
-                if(!mrl_map.Get(rpi,mrl))
-                {
-                    mrl=new PipelineMaterialBatch(device,true,rpi);
-
-                    mrl_map.Add(rpi,mrl);
-                }
-
-                mrl->Add(smc);
-
-                ++renderable_count;
+                renderable_count += rc->SubmitDrawNodes(mrl_map, device);
             }
 
             for(SceneNode *sub:sn->GetChildNode())

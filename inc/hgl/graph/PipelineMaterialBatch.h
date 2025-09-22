@@ -7,6 +7,8 @@ VK_NAMESPACE_BEGIN
 class InstanceAssignmentBuffer;
 class SceneNode;
 struct CameraInfo;
+class RenderComponent;
+class MeshComponent;
 
 struct PipelineMaterialIndex:public Comparator<PipelineMaterialIndex>
 {
@@ -53,7 +55,7 @@ class PipelineMaterialBatch
 
     const CameraInfo *camera_info;
 
-    DrawNodeList draw_nodes;
+    DrawNodeList draw_nodes;                 // now pointer list
 
     DrawNodePointerList transform_dirty_nodes;
 
@@ -108,10 +110,14 @@ public:
     ~PipelineMaterialBatch();
 
     void Add(MeshComponent *);
+    void Add(DrawNode *node);          // generic path for custom nodes
 
     void SetCameraInfo(const CameraInfo *ci){camera_info=ci;}
 
-    void Clear(){draw_nodes.Clear();}
+    void Clear(){
+        for(auto *n:draw_nodes) delete n;
+        draw_nodes.Clear();
+    }
 
     void Finalize();
 
