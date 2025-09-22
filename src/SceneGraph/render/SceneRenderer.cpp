@@ -24,16 +24,11 @@ namespace hgl::graph
     SceneRenderer::~SceneRenderer()
     {
         // detach camera control from dispatcher chain
-        if(render_context && render_context->GetCameraControl())
-            RemoveChildDispatcher(render_context->GetCameraControl());
+        if(camera_control_owned)
+            RemoveChildDispatcher(camera_control_owned);
 
-        // release owned camera if any
-        if(own_camera && owned_camera_control)
-        {
-            delete owned_camera_control;
-            owned_camera_control=nullptr;
-            own_camera=false;
-        }
+        // release owned camera
+        SAFE_CLEAR(camera_control_owned);
 
         SAFE_CLEAR(render_task);
         SAFE_CLEAR(render_context);
@@ -70,35 +65,22 @@ namespace hgl::graph
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
     {
-        SetCameraControl(cc,false);
-    }
-
-    void SceneRenderer::SetCameraControl(CameraControl *cc, bool take_owner)
-    {
-        if(!render_context)return;
-
         // remove previous camera control from dispatcher chain
-        if(render_context->GetCameraControl())
-            RemoveChildDispatcher(render_context->GetCameraControl());
+        if(camera_control_owned)
+            RemoveChildDispatcher(camera_control_owned);
 
-        // clear previous owned cc if switching and we own it
-        if(own_camera && owned_camera_control && owned_camera_control!=cc)
+        // release previous camera control
+        SAFE_CLEAR(camera_control_owned);
+
+        camera_control_owned = cc;
+
+        if(render_context)
+            render_context->SetCameraControl(camera_control_owned);
+
+        if(camera_control_owned)
         {
-            delete owned_camera_control;
-            owned_camera_control=nullptr;
-            own_camera=false;
-        }
-
-        render_context->SetCameraControl(cc);
-        render_task->SetCameraInfo(GetCameraInfo());
-
-        if(cc)
-            AddChildDispatcher(cc);
-
-        if(take_owner)
-        {
-            owned_camera_control=cc;
-            own_camera=true;
+            render_task->SetCameraInfo(GetCameraInfo());
+            AddChildDispatcher(camera_control_owned);
         }
     }
 
@@ -112,7 +94,7 @@ namespace hgl::graph
         fpcc->AddChildDispatcher(ckc);
         fpcc->AddChildDispatcher(cmc);
 
-        SetCameraControl(fpcc,true); // take ownership
+        SetCameraControl(fpcc); // renderer owns it by default now
     }
 
     void SceneRenderer::Tick(double delta)

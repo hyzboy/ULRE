@@ -41,9 +41,8 @@ namespace hgl::graph
 
         RenderTask *    render_task = nullptr;     ///< 当前渲染任务
 
-        // ownership of camera control
-        CameraControl * owned_camera_control = nullptr;
-        bool            own_camera = false;
+        // CameraControl 始终由 SceneRenderer 负责创建/管理/释放
+        CameraControl * camera_control_owned = nullptr;
 
     protected:
 
@@ -59,7 +58,7 @@ namespace hgl::graph
                 Scene *             GetScene            ()const {return render_context?render_context->GetScene():nullptr;}
                 Camera *            GetCamera           ()const {return render_context?render_context->GetCamera():nullptr;}
         const   CameraInfo *        GetCameraInfo       ()const {return render_context?render_context->GetCameraInfo():nullptr;}
-                CameraControl *     GetCameraControl    ()const {return render_context?render_context->GetCameraControl():nullptr;}
+                CameraControl *     GetCameraControl    ()const {return camera_control_owned;}
                 LineRenderManager * GetLineRenderManager()const {return render_context?render_context->GetLineRenderManager():nullptr;}
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 
@@ -86,9 +85,8 @@ namespace hgl::graph
 
         bool SetRenderTarget(IRenderTarget *);
         void SetScene(Scene *);
-        void SetCameraControl(CameraControl *);
-        void SetCameraControl(CameraControl *, bool take_owner);
-        void UseDefaultCameraControl();
+        void SetCameraControl(CameraControl *);     ///< 设定新的相机控制器（SceneRenderer接管并负责释放）
+        void UseDefaultCameraControl();             ///< 使用默认第一人称相机控制器
 
         void SetClearColor(const Color4f &c){clear_color=c;}
 
