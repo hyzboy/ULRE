@@ -120,7 +120,7 @@ private:
             if (!off_mtl) return false;
 
             // Pipeline must be created against the offscreen render pass
-            off_pipeline = offscreen_renderer->GetRenderPass()->CreatePipeline(off_mtl, InlinePipeline::Solid3D);
+            off_pipeline = offscreen_renderer->CreatePipeline(off_mtl, InlinePipeline::Solid3D);
             if (!off_pipeline) return false;
 
             // Create MI with a color
@@ -138,7 +138,7 @@ private:
             Mesh *mesh = CreateMesh(prim, off_mi, off_pipeline);
             if (!mesh) { delete prim; return false; }
 
-            CreateComponentInfo cci(offscreen_scene->GetRootNode());
+            CreateComponentInfo cci(offscreen_renderer->GetSceneRoot());
             off_sphere_comp = CreateComponent<MeshComponent>(&cci, mesh);
             if (!off_sphere_comp) return false;
         }
@@ -224,24 +224,11 @@ public:
         // First render once into offscreen texture (could be extended to every frame)
         if (offscreen_renderer && !captured_offscreen)
         {
-            offscreen_renderer->Tick(delta_time);
-
             LogInfo("Rendering offscreen RT...\n");
 
-            offscreen_renderer->RenderFrame();
+            offscreen_renderer->RenderSubmitAndWait();
 
-            LogInfo("Offscreen RT rendered.\n");
-
-            offscreen_renderer->Submit();
-
-            LogInfo("Offscreen RT submitted.\n");
-
-            if (offscreen_rt)
-            {
-                offscreen_rt->WaitQueue();
-
-                LogInfo("Offscreen RT queue idle.\n");
-            }
+            LogInfo("Offscreen RT done.\n");
 
             captured_offscreen = true;
         }
