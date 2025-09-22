@@ -249,7 +249,8 @@ public:
         // Animate cube
         if (cube_comp)
         {
-            cube_theta += float(delta_time) * 0.8f; // rad/s
+            cube_theta += float(delta_time) * 0.8f;
+            cube_theta = fmodf(cube_theta, 2.0f*HGL_PI);
             Matrix4f rot = AxisZRotate(cube_theta) * AxisXRotate(cube_theta * 0.5f);
             cube_comp->SetLocalMatrix(rot);
         }
