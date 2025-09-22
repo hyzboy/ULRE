@@ -29,7 +29,7 @@ class LineWidthBatch
     uint32      count       =0;     // 当前线段数量
 
     Primitive * primitive   =nullptr;
-    SubMesh *      mesh        =nullptr;
+    Mesh *      mesh        =nullptr;
     VABMap3f *  vab_position=nullptr;
     VABMap1u8 * vab_color   =nullptr;
 

@@ -128,7 +128,7 @@ namespace hgl
         FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO16)
         FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO32)
 
-    public: // Primitive, SubMesh, Sampler 相关
+    public: // Primitive, Mesh, Sampler 相关
 
         void Add(graph::Primitive *prim)
         {
@@ -139,7 +139,7 @@ namespace hgl
             render_framework->GetPrimitiveManager()->Add(prim);
         }
 
-        graph::SubMesh *CreateSubMesh(graph::Primitive *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        graph::Mesh *CreateMesh(graph::Primitive *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
             if(!prim||!pipeline)
                 return nullptr;
@@ -152,10 +152,10 @@ namespace hgl
             if(!mm)
                 return nullptr;
                 
-            return mm->CreateSubMesh(prim,mi,pipeline);
+            return mm->CreateMesh(prim,mi,pipeline);
         }
 
-        graph::SubMesh *CreateSubMesh(graph::PrimitiveCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        graph::Mesh *CreateMesh(graph::PrimitiveCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
             if(!pc||!pipeline)
                 return nullptr;
@@ -168,7 +168,7 @@ namespace hgl
             if(!mm)
                 return nullptr;
 
-            return mm->CreateSubMesh(pc,mi,pipeline);
+            return mm->CreateMesh(pc,mi,pipeline);
         }
 
         graph::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr)
@@ -194,13 +194,13 @@ namespace hgl
             return render_framework?render_framework->CreatePrimitive(name,vertices_count,vil,vad_list):nullptr;
         }
 
-        graph::SubMesh *CreateSubMesh(const AnsiString &name,
+        graph::Mesh *CreateMesh(const AnsiString &name,
                                 const uint32_t vertices_count,
                                 graph::MaterialInstance *mi,
                                 graph::Pipeline *pipeline,
                                 const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
         {
-            return render_framework?render_framework->CreateSubMesh(name,vertices_count,mi,pipeline,vad_list):nullptr;
+            return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr;
         }
 
         graph::TextRender *CreateTextRender(graph::FontSource *fs,const int limit=1024)

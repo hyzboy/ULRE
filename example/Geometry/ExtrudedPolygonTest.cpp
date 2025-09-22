@@ -111,7 +111,7 @@ private:
 
             cci.mat=TranslateMatrix(-3,0,0);
 
-            SubMesh *mesh_rect = CreateSubMesh(prim_rect_cube, material_instance, pipeline);
+            Mesh *mesh_rect = CreateMesh(prim_rect_cube, material_instance, pipeline);
             auto comp_rect = CreateComponent<MeshComponent>(&cci, mesh_rect);
         }
 
@@ -120,7 +120,7 @@ private:
 
             cci.mat=TranslateMatrix(3,0,0);
 
-            SubMesh *mesh_cylinder = CreateSubMesh(prim_circle_cylinder, material_instance, pipeline);
+            Mesh *mesh_cylinder = CreateMesh(prim_circle_cylinder, material_instance, pipeline);
             auto comp_cylinder = CreateComponent<MeshComponent>(&cci, mesh_cylinder);
         }
 
@@ -129,7 +129,7 @@ private:
 
             cci.mat=TranslateMatrix(0,3,0);
 
-            SubMesh *mesh_triangle = CreateSubMesh(prim_triangle, material_instance, pipeline);
+            Mesh *mesh_triangle = CreateMesh(prim_triangle, material_instance, pipeline);
             auto comp_triangle = CreateComponent<MeshComponent>(&cci, mesh_triangle);
         }
 
@@ -138,7 +138,7 @@ private:
 
             cci.mat=TranslateMatrix(0,-3,0);
 
-            SubMesh *mesh_pentagon = CreateSubMesh(prim_pentagon, material_instance, pipeline);
+            Mesh *mesh_pentagon = CreateMesh(prim_pentagon, material_instance, pipeline);
             auto comp_pentagon = CreateComponent<MeshComponent>(&cci, mesh_pentagon);
         }
 

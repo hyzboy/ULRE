@@ -266,7 +266,7 @@ graph::Primitive *RenderFramework::CreatePrimitive( const AnsiString &name,
     return prim;
 }
 
-graph::SubMesh *RenderFramework::CreateSubMesh(   const AnsiString &name,
+graph::Mesh *RenderFramework::CreateMesh(   const AnsiString &name,
                                             const uint32_t vertices_count,
                                             graph::MaterialInstance *mi,
                                             graph::Pipeline *pipeline,
@@ -278,6 +278,6 @@ graph::SubMesh *RenderFramework::CreateSubMesh(   const AnsiString &name,
         return(nullptr);
 
     // Prefer MeshManager to create and own meshes
-    return mesh_manager->CreateSubMesh(prim,mi,pipeline);
+    return mesh_manager->CreateMesh(prim,mi,pipeline);
 }
 VK_NAMESPACE_END

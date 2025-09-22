@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/component/RenderComponent.h>
-#include<hgl/graph/mesh/SubMesh.h>
+#include<hgl/graph/mesh/Mesh.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
@@ -14,7 +14,7 @@ struct MeshComponentData:public ComponentData
 
     //uint unique_id;
 
-    SubMesh *mesh;
+    Mesh *mesh;
 
 public:
 
@@ -26,12 +26,12 @@ public:
 //        LogInfo(AnsiString("MeshComponentData():")+AnsiString::numberOf(unique_id));
     }
 
-    MeshComponentData(SubMesh *m)
+    MeshComponentData(Mesh *m)
     {
         mesh=m;
 
 //        unique_id=++unique_id_count;
-//        LogInfo(AnsiString("MeshComponentData(SubMesh *):")+AnsiString::numberOf(unique_id));
+//        LogInfo(AnsiString("MeshComponentData(Mesh *):")+AnsiString::numberOf(unique_id));
     }
 
     virtual ~MeshComponentData();
@@ -51,7 +51,7 @@ public:
 
     Component *CreateComponent(ComponentDataPtr cdp) override;
 
-    Component *CreateComponent(SubMesh *);
+    Component *CreateComponent(Mesh *);
 };//class MeshComponentManager
 
 class MeshComponent:public RenderComponent
@@ -86,7 +86,7 @@ public:
             MeshComponentData *GetData()      {return dynamic_cast<      MeshComponentData *>(sm_data.get());}
     const   MeshComponentData *GetData()const {return dynamic_cast<const MeshComponentData *>(sm_data.const_get());}
 
-    SubMesh *GetMesh()const
+    Mesh *GetMesh()const
     {
         if(!sm_data.valid())
             return(nullptr);
@@ -101,7 +101,7 @@ public:
 
     const bool GetLocalAABB(AABB &box) const override
     {
-        SubMesh *mesh=GetMesh();
+        Mesh *mesh=GetMesh();
 
         if (!mesh)
             return false;
@@ -114,7 +114,7 @@ public:
 
     Pipeline *GetPipeline() const
     {
-        SubMesh *mesh=GetMesh();
+        Mesh *mesh=GetMesh();
 
         if (!mesh)
             return nullptr;
@@ -131,7 +131,7 @@ public:
         if (override_material)
             return override_material;
 
-        SubMesh *mesh=GetMesh();
+        Mesh *mesh=GetMesh();
 
         if (!mesh)
             return nullptr;
@@ -144,7 +144,7 @@ public:
         if (override_material)
             return override_material->GetMaterial();
 
-        SubMesh *mesh=GetMesh();
+        Mesh *mesh=GetMesh();
 
         if (!mesh)
             return nullptr;

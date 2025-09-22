@@ -37,13 +37,13 @@ void StaticMesh::ClearNodes()
     root_node = nodes.Create();
 }
 
-// SubMesh 管理
-SubMesh *StaticMesh::CreateSubMesh(Primitive *prim, MaterialInstance *mi, Pipeline *p)
+// Mesh 管理
+Mesh *StaticMesh::CreateMesh(Primitive *prim, MaterialInstance *mi, Pipeline *p)
 {
     if(!prim || !mi || !p)
         return nullptr;
 
-    SubMesh *sm = DirectCreateSubMesh(prim, mi, p);
+    Mesh *sm = DirectCreateMesh(prim, mi, p);
     if(!sm)
         return nullptr;
 
@@ -59,7 +59,7 @@ SubMesh *StaticMesh::CreateSubMesh(Primitive *prim, MaterialInstance *mi, Pipeli
     return sm;
 }
 
-bool StaticMesh::AddSubMesh(SubMesh *sm)
+bool StaticMesh::AddSubMesh(Mesh *sm)
 {
     if(!sm) return false;
     if(submeshes.Contains(sm)) return true;
@@ -75,11 +75,11 @@ bool StaticMesh::AddSubMesh(SubMesh *sm)
     return true;
 }
 
-void StaticMesh::RemoveSubMesh(SubMesh *sm)
+void StaticMesh::RemoveSubMesh(Mesh *sm)
 {
     if(!sm) return;
 
-    // 先从列表删除并释放该 SubMesh
+    // 先从列表删除并释放该 Mesh
     submeshes.DeleteByValueOwn(sm);
 
     // 资源集合可能需要重建（避免误删共享资源复杂性）
@@ -90,7 +90,7 @@ void StaticMesh::RemoveSubMesh(SubMesh *sm)
 
 void StaticMesh::ClearSubMeshes()
 {
-    submeshes.Clear();   // ObjectList::Clear 会负责 delete 其中的 SubMesh*
+    submeshes.Clear();   // ObjectList::Clear 会负责 delete 其中的 Mesh*
 
     // 清空集合
     primitives.Clear();
@@ -114,7 +114,7 @@ void StaticMesh::DetachPrimitive(Primitive *prim)
 
 void StaticMesh::UpdateAllSubMeshes()
 {
-    for(SubMesh *sm: submeshes)
+    for(Mesh *sm: submeshes)
         if(sm) sm->UpdatePrimitive();
 }
 
@@ -123,7 +123,7 @@ void StaticMesh::RefreshBoundingBox()
     bool has_box = false;
     AABB box;
 
-    for(SubMesh *sm: submeshes)
+    for(Mesh *sm: submeshes)
     {
         if(!sm) continue;
         if(!has_box) { box = sm->GetBoundingBox(); has_box = true; }
@@ -139,7 +139,7 @@ void StaticMesh::RebuildResourceSets()
     mat_inst_set.Clear();
     pipeline_set.Clear();
 
-    for(SubMesh *sm : submeshes)
+    for(Mesh *sm : submeshes)
     {
         if(!sm) continue;
         if (auto prim = sm->GetPrimitive())          primitives.Add(prim);

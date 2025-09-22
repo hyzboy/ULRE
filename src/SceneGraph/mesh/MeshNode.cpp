@@ -21,7 +21,7 @@ namespace hgl::graph
         bool has_box=false;
 
         // 合并自身 submesh 盒子
-        for(SubMesh *sm:submesh_set)
+        for(Mesh *sm:submesh_set)
         {
             if(!sm)continue;
 

@@ -78,7 +78,7 @@ private:
 
     void Add(SceneNode *parent_node,MaterialInstance *mi,const Matrix4f &mat)
     {
-        SubMesh *ri=CreateSubMesh(prim_plane_grid,mi,pipeline);
+        Mesh *ri=CreateMesh(prim_plane_grid,mi,pipeline);
 
         if(!ri)
             return;

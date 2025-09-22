@@ -4,7 +4,7 @@
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
-#include<hgl/graph/mesh/SubMesh.h>
+#include<hgl/graph/mesh/Mesh.h>
 #include<hgl/color/Color4f.h>
 VK_NAMESPACE_BEGIN
 class VulkanCmdBuffer
@@ -264,7 +264,7 @@ public: //dynamic state
 
 public:
 
-    void Render(SubMesh *ri)
+    void Render(Mesh *ri)
     {
         if(!ri)return;
         

@@ -36,6 +36,6 @@ constexpr const float GIZMO_CYLINDER_OFFSET     =GIZMO_CYLINDER_HALF_LENGTH+GIZM
 
 constexpr const float GIZMO_TWO_AXIS_OFFSET     =5.0F;                                                                  ///<二轴调节点偏移量(方片或圆)
 
-SubMesh *GetGizmoMesh(const GizmoShape &gs,const GizmoColor &);
+Mesh *GetGizmoMesh(const GizmoShape &gs,const GizmoColor &);
 
 VK_NAMESPACE_END

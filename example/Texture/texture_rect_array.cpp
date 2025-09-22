@@ -114,11 +114,11 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        //CreateSubMesh传入MaterialInstance本质要的是VIL和Material
+        //CreateMesh传入MaterialInstance本质要的是VIL和Material
         //当前Mesh也是需要mi才能渲染。
         //这里因为所有render_obj的VIL/Material都是一样的，所以可以直接使用render_obj[0].mi
 
-        SubMesh *mesh_rect=CreateSubMesh( "TextureRect",1,render_obj[0].mi,pipeline,
+        Mesh *mesh_rect=CreateMesh( "TextureRect",1,render_obj[0].mi,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}

@@ -1,6 +1,6 @@
 #include<hgl/component/MeshComponent.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/mesh/SubMesh.h>
+#include<hgl/graph/mesh/Mesh.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
@@ -30,7 +30,7 @@ Component *MeshComponentManager::CreateComponent(ComponentDataPtr cdp)
     return(new MeshComponent(cdp,this));
 }
 
-Component *MeshComponentManager::CreateComponent(SubMesh *m)
+Component *MeshComponentManager::CreateComponent(Mesh *m)
 {
     ComponentDataPtr cdp=new MeshComponentData(m);
 

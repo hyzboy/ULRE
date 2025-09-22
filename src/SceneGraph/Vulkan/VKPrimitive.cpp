@@ -12,7 +12,7 @@
 
 VK_NAMESPACE_BEGIN
 
-//bool SubMesh::Set(const int stage_input_binding,VIL *vil,VkDeviceSize offset)
+//bool Mesh::Set(const int stage_input_binding,VIL *vil,VkDeviceSize offset)
 //{
 //    if(stage_input_binding<0||stage_input_binding>=buf_count||!vil)return(false);
 //

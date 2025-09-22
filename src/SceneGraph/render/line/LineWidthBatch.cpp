@@ -50,7 +50,7 @@ bool LineWidthBatch::RebuildMesh()
     if(!primitive)
         return(false);
 
-    mesh=DirectCreateSubMesh(primitive,mtl_inst,pipeline);
+    mesh=DirectCreateMesh(primitive,mtl_inst,pipeline);
 
     vab_position=new VABMap3f(primitive->GetVABMap(VAN::Position));
     vab_color=new VABMap1u8(primitive->GetVABMap(VAN::Color));
