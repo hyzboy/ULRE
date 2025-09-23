@@ -101,7 +101,7 @@ public:
                 auto *pl = m->GetPipeline();
                 if(!mi||!pl) continue;
 
-                mrm.AddDrawNode(new hgl::graph::StaticMeshDrawNode(this->GetOwnerNode(), this, this, mn, m));
+                mrm.AddDrawNode(new hgl::graph::StaticMeshDrawNode(this, mn, m));
                 ++submitted;
             }
         }
