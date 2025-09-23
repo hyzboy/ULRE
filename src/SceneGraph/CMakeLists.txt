@@ -23,11 +23,6 @@ SET(SG_VDM_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("VertexDataManager" FILES ${SG_VDM_SOURCE})
 
-
-SET(GLTF_SOURCE ${SG_INCLUDE_PATH}/gltf/Material.h)
-
-SOURCE_GROUP("Mesh\\GLTF" FILES ${GLTF_SOURCE})
-
 SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitive.h
                         Vulkan/VKPrimitive.cpp
                         Vulkan/VKPrimitiveData.cpp
@@ -165,7 +160,6 @@ SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/Scene.h
                     ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
                     ${SG_INCLUDE_PATH}/SceneNode.h
                     ${SG_INCLUDE_PATH}/TransformState.h
-                    ${SG_INCLUDE_PATH}/NodeTransform.h
                     Scene/SceneNode.cpp
                     Scene/NodeTransform.cpp
                     Scene/TransformState.cpp
@@ -485,7 +479,8 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_MATERIAL_FILES}
                             #${VK_RENDER_CONTEXT_SOURCE}
                             ${VK_CMD_BUFFER_SOURCE}
                             ${VK_MESH_SOURCE}
-                            ${VULKAN_RENDER_DEVICE_SOURCE})
+                            ${VULKAN_RENDER_DEVICE_SOURCE}
+                            ${GLTF_SOURCE})
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${SG_PRIMITIVE_SOURCE}
@@ -513,8 +508,3 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${VULKAN_RENDER_SOURCE}
                                         ${VULKAN_SURFACE_SOURCE})
 
-# Link FreeType on non-Windows platforms
-IF(NOT WIN32)
-    target_include_directories(ULRE.SceneGraph PRIVATE ${FREETYPE_INCLUDE_DIRS})
-    target_link_libraries(ULRE.SceneGraph ${FREETYPE_LIBRARIES})
-ENDIF()

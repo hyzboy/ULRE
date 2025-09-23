@@ -5,6 +5,8 @@ add_subdirectory(GUI)
 add_subdirectory(Geometry)
 add_subdirectory(Environment)
 
+add_subdirectory(GLTF)
+
 #add_subdirectory(Landscape)
 
 macro(CreateProject name)

@@ -6,8 +6,6 @@
 #include <hgl/graph/mesh/Mesh.h>
 #include <hgl/graph/mesh/MeshNode.h>
 
-#include <hgl/graph/gltf/Material.h>
-
 VK_NAMESPACE_BEGIN
 
 using PrimitivePtrSet       =SortedSet<Primitive *>;
@@ -33,10 +31,6 @@ class StaticMesh
     MeshNode *          root_node = nullptr;///< 根节点（由 nodes 持有）
 
     AABB                bounding_box;       ///< 所有 Mesh 合并的本地包围盒
-
-    // glTF-compatible materials list
-public:
-    ArrayList<gltf::Material> materials;    ///< glTF: materials[]
 
 public:
 
