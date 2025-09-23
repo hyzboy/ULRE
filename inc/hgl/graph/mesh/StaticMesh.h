@@ -2,6 +2,7 @@
 
 #include <hgl/type/ObjectList.h>
 #include <hgl/type/SortedSet.h>
+#include <hgl/type/ArrayList.h>
 #include <hgl/graph/mesh/Mesh.h>
 #include <hgl/graph/mesh/MeshNode.h>
 
@@ -10,6 +11,60 @@ VK_NAMESPACE_BEGIN
 using PrimitivePtrSet       =SortedSet<Primitive *>;
 using MaterialInstanceSet   =SortedSet<MaterialInstance *>;
 using PipelinePtrSet        =SortedSet<Pipeline *>;
+
+// glTF-compatible material schema (field names match glTF 2.0)
+namespace gltf
+{
+    struct TextureInfo
+    {
+        int index = -1;         // textures[index]
+        int texCoord = 0;       // set index, default 0
+    };
+
+    struct NormalTextureInfo: public TextureInfo
+    {
+        float scale = 1.0f;     // normal scale
+    };
+
+    struct OcclusionTextureInfo: public TextureInfo
+    {
+        float strength = 1.0f;  // occlusion strength
+    };
+
+    struct PBRMetallicRoughness
+    {
+        float baseColorFactor[4] = {1,1,1,1};
+        TextureInfo baseColorTexture;          // optional
+
+        float metallicFactor = 1.0f;
+        float roughnessFactor = 1.0f;
+        TextureInfo metallicRoughnessTexture;  // optional
+    };
+
+    enum class AlphaMode
+    {
+        OPAQUE,
+        MASK,
+        BLEND
+    };
+
+    struct Material
+    {
+        // Core
+        PBRMetallicRoughness pbrMetallicRoughness;  // optional
+        NormalTextureInfo    normalTexture;         // optional
+        OcclusionTextureInfo occlusionTexture;      // optional
+        TextureInfo          emissiveTexture;       // optional
+
+        float emissiveFactor[3] = {0,0,0};
+
+        AlphaMode    alphaMode   = AlphaMode::OPAQUE; // glTF uses string; map to enum
+        float        alphaCutoff = 0.5f;              // used when alphaMode == MASK
+        bool         doubleSided = false;
+
+        AnsiString   name;                            // optional
+    };
+}// namespace gltf
 
 /**
 * StaticMesh
@@ -30,6 +85,10 @@ class StaticMesh
     MeshNode *          root_node = nullptr;///< 根节点（由 nodes 持有）
 
     AABB                bounding_box;       ///< 所有 Mesh 合并的本地包围盒
+
+    // glTF-compatible materials list
+public:
+    ArrayList<gltf::Material> materials;    ///< glTF: materials[]
 
 public:
 

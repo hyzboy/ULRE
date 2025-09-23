@@ -39,9 +39,13 @@ namespace hgl::graph
         MeshNodePtrSet  child_nodes;                        ///< 子节点（非拥有型，避免重复释放）
         MeshPtrSet      submesh_set;                        ///< Mesh 集合（仅持有引用，不管理生命周期）
 
+        // glTF: Material index for this node (optional, for query/import)
+        int             material = -1;                      ///< glTF materials[] index; -1 = unset
+
     public:
 
-        MeshNode():NodeTransform(){}
+        MeshNode():NodeTransform{}
+        {}
         MeshNode(const NodeTransform &so):NodeTransform(so){}
         MeshNode(const Matrix4f &mat):NodeTransform(mat){}
         virtual ~MeshNode();
@@ -106,5 +110,9 @@ namespace hgl::graph
         }
                       bool          Contains            (Mesh *sm){return submesh_set.Contains(sm);}     ///< 是否包含指定 Mesh
                 const MeshPtrSet &  GetSubMeshes        ()const{return submesh_set;}
+
+    public: // glTF material index (query/import)
+                void        SetMaterial      (int idx) { material = idx; }
+        const   int         GetMaterial      ()const { return material; }
     };//class MeshNode
 }//namespace hgl::graph
