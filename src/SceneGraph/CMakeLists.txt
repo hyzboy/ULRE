@@ -23,6 +23,11 @@ SET(SG_VDM_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("VertexDataManager" FILES ${SG_VDM_SOURCE})
 
+
+SET(GLTF_SOURCE ${SG_INCLUDE_PATH}/gltf/Material.h)
+
+SOURCE_GROUP("Mesh\\GLTF" FILES ${GLTF_SOURCE})
+
 SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitive.h
                         Vulkan/VKPrimitive.cpp
                         Vulkan/VKPrimitiveData.cpp
@@ -486,6 +491,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${SG_PRIMITIVE_SOURCE}
                                         ${GEOMETRY_FILES}
                                         ${LIGHT_FILES}
+
+                                        ${GLTF_SOURCE}
 
                                         ${CM_CAMERA_SOURCE}
 
