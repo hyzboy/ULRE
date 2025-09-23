@@ -47,61 +47,83 @@ const int DrawNode::compare(const DrawNode &other)const
         return -1;
 }
 
-// MeshComponentDrawNode
-MeshComponentDrawNode::MeshComponentDrawNode(MeshComponent *c):comp(c){}
+// MeshDrawNode
+MeshDrawNode::MeshDrawNode(MeshComponent *c):comp(c){}
 
-SceneNode *MeshComponentDrawNode::GetSceneNode() const
+SceneNode *MeshDrawNode::GetSceneNode() const
 {
     return comp?comp->GetOwnerNode():nullptr;
 }
 
-Component *MeshComponentDrawNode::GetComponent() const
+Component *MeshDrawNode::GetComponent() const
 {
     return comp;
 }
 
-Mesh *MeshComponentDrawNode::GetMesh() const
+Mesh *MeshDrawNode::GetMesh() const
 {
     return comp?comp->GetMesh():nullptr;
 }
 
-MaterialInstance *MeshComponentDrawNode::GetMaterialInstance() const
+MaterialInstance *MeshDrawNode::GetMaterialInstance() const
 {
     return comp?comp->GetMaterialInstance():nullptr;
 }
 
-NodeTransform *MeshComponentDrawNode::GetTransform() const
+NodeTransform *MeshDrawNode::GetTransform() const
 {
     return comp; // 直接使用组件自身的变换
 }
 
-// OwnerMeshDrawNode
-OwnerMeshDrawNode::OwnerMeshDrawNode(SceneNode *sn, Component *c, NodeTransform *t, Mesh *m)
-    :scene_node(sn),component(c),transform(t),mesh(m){}
+// StaticMeshDrawNode（StaticMesh 用，叠加 MeshNode 变换）
+StaticMeshDrawNode::StaticMeshDrawNode(SceneNode *sn, Component *c, NodeTransform *owner_tf, NodeTransform *meshnode_tf, Mesh *m)
+    :scene_node(sn),component(c),owner_transform(owner_tf),meshnode_transform(meshnode_tf),mesh(m){}
 
-SceneNode *OwnerMeshDrawNode::GetSceneNode() const
+SceneNode *StaticMeshDrawNode::GetSceneNode() const
 {
     return scene_node;
 }
 
-Component *OwnerMeshDrawNode::GetComponent() const
+Component *StaticMeshDrawNode::GetComponent() const
 {
     return component;
 }
 
-Mesh *OwnerMeshDrawNode::GetMesh() const
+Mesh *StaticMeshDrawNode::GetMesh() const
 {
     return mesh;
 }
 
-MaterialInstance *OwnerMeshDrawNode::GetMaterialInstance() const
+MaterialInstance *StaticMeshDrawNode::GetMaterialInstance() const
 {
     return mesh?mesh->GetMaterialInstance():nullptr;
 }
 
-NodeTransform *OwnerMeshDrawNode::GetTransform() const
+void StaticMeshDrawNode::EnsureCombined() const
 {
-    return transform;
+    const uint32 ov = owner_transform ? owner_transform->GetTransformVersion() : 0;
+    const uint32 mv = meshnode_transform ? meshnode_transform->GetTransformVersion() : 0;
+
+    if(ov!=owner_ver_cache || mv!=meshnode_ver_cache)
+    {
+        const Matrix4f owner_l2w    = owner_transform    ? owner_transform->GetLocalToWorldMatrix()    : Identity4f;
+        const Matrix4f meshnode_l2w = meshnode_transform ? meshnode_transform->GetLocalToWorldMatrix() : Identity4f;
+
+        const Matrix4f combined = owner_l2w * meshnode_l2w;
+
+        combined_tf.SetParentMatrix(Identity4f);
+        combined_tf.SetLocalMatrix(combined);
+        combined_tf.UpdateWorldTransform();
+
+        owner_ver_cache    = ov;
+        meshnode_ver_cache = mv;
+    }
+}
+
+NodeTransform *StaticMeshDrawNode::GetTransform() const
+{
+    EnsureCombined();
+    return const_cast<NodeTransform*>(&combined_tf);
 }
 VK_NAMESPACE_END
 

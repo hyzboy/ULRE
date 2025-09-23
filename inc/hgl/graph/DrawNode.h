@@ -3,6 +3,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/type/ArrayList.h>
 #include<hgl/type/SortedSet.h>
+#include<hgl/graph/NodeTransform.h>   // need full type for combined transform
 
 namespace hgl
 {
@@ -11,7 +12,6 @@ namespace hgl
         class Mesh;
         class MaterialInstance;
         class MeshComponent;
-        class NodeTransform;   // forward
         class SceneNode;       // forward
         class Component;       // forward
 
@@ -40,11 +40,11 @@ namespace hgl
         };
 
         // 便捷型：MeshComponent 专用节点（MI 从组件实时取得，支持override）
-        class MeshComponentDrawNode final:public DrawNode
+        class MeshDrawNode final:public DrawNode
         {
             MeshComponent *comp;
         public:
-            explicit MeshComponentDrawNode(MeshComponent *c);
+            explicit MeshDrawNode(MeshComponent *c);
             SceneNode *         GetSceneNode()          const override;
             Component *         GetComponent()          const override;
             Mesh *              GetMesh()               const override;
@@ -52,15 +52,22 @@ namespace hgl
             NodeTransform *     GetTransform()          const override;
         };
 
-        // 通用型：Owner(组件或节点)+Mesh 组合（MI 从 Mesh 取得）
-        class OwnerMeshDrawNode final:public DrawNode
+        // StaticMesh 专用：Owner(组件或节点)+MeshNode 变换叠加 + Mesh（MI 从 Mesh 取得）
+        class StaticMeshDrawNode final:public DrawNode
         {
-            SceneNode *     scene_node;     // 可为空
-            Component *     component;      // 可为空
-            NodeTransform * transform;      // 变换提供者（scene_node 或 component 或其它）
+            SceneNode *     scene_node;         // 可为空
+            Component *     component;          // 可为空
+            NodeTransform * owner_transform;    // 组件/节点 变换
+            NodeTransform * meshnode_transform; // MeshNode 变换
             Mesh *          mesh;
+
+            // 组合缓存
+            mutable uint32          owner_ver_cache=0;
+            mutable uint32          meshnode_ver_cache=0;
+            mutable NodeTransform   combined_tf;    // 组合后的变换
+            void EnsureCombined() const;
         public:
-            OwnerMeshDrawNode(SceneNode *sn, Component *c, NodeTransform *t, Mesh *m);
+            StaticMeshDrawNode(SceneNode *sn, Component *c, NodeTransform *owner_tf, NodeTransform *meshnode_tf, Mesh *m);
             SceneNode *         GetSceneNode()          const override;
             Component *         GetComponent()          const override;
             Mesh *              GetMesh()               const override;

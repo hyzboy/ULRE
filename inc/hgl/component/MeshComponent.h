@@ -177,7 +177,7 @@ public:
             return 0;
 
         // 组件创建自身的 DrawNode，然后交给 mrm 统一分派
-        mrm.AddDrawNode(new hgl::graph::MeshComponentDrawNode(this));
+        mrm.AddDrawNode(new hgl::graph::MeshDrawNode(this));
         return 1;
     }
 };//class MeshComponent

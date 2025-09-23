@@ -155,7 +155,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_compo
 
     for(int i=0;i<node_count;i++)
     {
-        auto *mc=dynamic_cast<MeshComponentDrawNode *>(*node);
+        auto *mc=dynamic_cast<MeshDrawNode *>(*node);
         if(mc && mc->GetComponent()==mesh_component)
         {
             assign_buffer->UpdateMaterialInstanceData(*node);
