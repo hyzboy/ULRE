@@ -1,14 +1,30 @@
 #pragma once
 
 #include<hgl/type/String.h>
+#include<limits>
 
 // glTF-compatible material schema (field names match glTF 2.0)
 namespace gltf
 {
+    // KHR_texture_transform payload
+    struct KHR_texture_transform
+    {
+        float offset[2] = {0.0f, 0.0f};  // translation
+        float rotation  = 0.0f;          // radians, counterclockwise
+        float scale[2]  = {1.0f, 1.0f};  // scaling
+        int   texCoord  = -1;            // override set, -1 = use TextureInfo.texCoord
+    };
+
     struct TextureInfo
     {
         int index = -1;         // textures[index]
         int texCoord = 0;       // set index, default 0
+
+        // Extension usage flags
+        bool has_KHR_texture_transform = false;
+
+        // Extension payloads
+        KHR_texture_transform KHR_texTransform; // valid iff has_KHR_texture_transform
     };
 
     struct NormalTextureInfo: public TextureInfo
