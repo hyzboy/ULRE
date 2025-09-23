@@ -86,7 +86,7 @@ public:
         return mcd->mesh->GetSubMeshCount()>0;
     }
 
-    // 由组件创建并提交 DrawNode（按 MeshNode * Mesh 组合提交），以便同步 MeshNode 的变换
+    // 由组件创建并提交 DrawNode（按 MeshNode * Mesh 组合提交），叠加 MeshNode 变换
     uint SubmitDrawNodes(hgl::graph::RenderBatchMap &mrm) override
     {
         auto *sm = GetStaticMesh();
@@ -101,8 +101,7 @@ public:
                 auto *pl = m->GetPipeline();
                 if(!mi||!pl) continue;
 
-                // 使用 OwnerMeshDrawNode：SceneNode=this->GetOwnerNode(), Component=this, Transform=组件自身（或未来合成后的）
-                mrm.AddDrawNode(new hgl::graph::OwnerMeshDrawNode(this->GetOwnerNode(), this, this, m));
+                mrm.AddDrawNode(new hgl::graph::StaticMeshDrawNode(this->GetOwnerNode(), this, this, mn, m));
                 ++submitted;
             }
         }
