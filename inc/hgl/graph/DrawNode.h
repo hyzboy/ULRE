@@ -10,8 +10,10 @@ namespace hgl
     namespace graph
     {
         class Mesh;
+        class MeshNode;            // forward
         class MaterialInstance;
         class MeshComponent;
+        class StaticMeshComponent; // forward
         class SceneNode;       // forward
         class Component;       // forward
 
@@ -52,30 +54,33 @@ namespace hgl
             NodeTransform *     GetTransform()          const override;
         };
 
-        // StaticMesh 专用：Owner(组件或节点)+MeshNode 变换叠加 + Mesh（MI 从 Mesh 取得）
+        // StaticMesh 专用：Component(NodeTransform) 变换叠加 MeshNode 变换 + Mesh（MI 从 Mesh 取得）
         class StaticMeshDrawNode final:public DrawNode
         {
-            SceneNode *     scene_node;         // 可为空
-            Component *     component;          // 可为空
-            NodeTransform * owner_transform;    // 组件/节点 变换
-            NodeTransform * meshnode_transform; // MeshNode 变换
-            Mesh *          mesh;
+            StaticMeshComponent *    component;              // StaticMesh 组件
+            MeshNode *              mesh_node;              // MeshNode 对象（保存以便需要时访问更多数据）
+            NodeTransform *         meshnode_transform;     // MeshNode 变换（=mesh_node）
+            Mesh *                  mesh;
 
             // 组合缓存
-            mutable uint32          owner_ver_cache=0;
+            mutable uint32          scenenode_ver_cache=0;  // 实际缓存的是 component 的版本
             mutable uint32          meshnode_ver_cache=0;
-            mutable NodeTransform   combined_tf;    // 组合后的变换
+            mutable NodeTransform   combined_tf;            // 组合后的变换
             void EnsureCombined() const;
         public:
-            StaticMeshDrawNode(SceneNode *sn, Component *c, NodeTransform *owner_tf, NodeTransform *meshnode_tf, Mesh *m);
+            StaticMeshDrawNode(StaticMeshComponent *c, MeshNode *meshnode, Mesh *m);
             SceneNode *         GetSceneNode()          const override;
             Component *         GetComponent()          const override;
             Mesh *              GetMesh()               const override;
             MaterialInstance *  GetMaterialInstance()   const override;
             NodeTransform *     GetTransform()          const override;
+
+            // 可选访问器
+            MeshNode *          GetMeshNode()           const { return mesh_node; }
         };
 
         using DrawNodeList=ArrayList<DrawNode *>;
+
         using DrawNodePointerList=ArrayList<DrawNode *>; // 指针版本的列表，兼容旧代码
 
         using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
