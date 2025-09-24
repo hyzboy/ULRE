@@ -25,3 +25,7 @@
 [submodule "CM2D"]
 	path = CM2D
 	url = http://git.hyzgame.com:3000/hyzboy/CM2D
+
+[submodule "GLTFConvert"]
+	path = src/Tools/GLTFConvert
+	url = http://git.hyzgame.com:3000/hyzboy/GLTFConvert.git
