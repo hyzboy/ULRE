@@ -9,8 +9,8 @@ VK_NAMESPACE_BEGIN
 using MeshID = int;
 
 // Forward declarations to avoid header ordering issues
-class PrimitiveCreater;
-class Primitive;
+class GeometryCreater;
+class Geometry;
 class MaterialInstance;
 class Pipeline;
 
@@ -33,8 +33,8 @@ public: // Add/Get/Release
 
 public: // Create
 
-    Mesh *CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p);
-    Mesh *CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p);
+    Mesh *CreateMesh(Geometry *r, MaterialInstance *mi, Pipeline *p);
+    Mesh *CreateMesh(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p);
 };
 
 VK_NAMESPACE_END

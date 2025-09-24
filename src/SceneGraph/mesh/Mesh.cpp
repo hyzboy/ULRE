@@ -6,7 +6,7 @@
 #include<hgl/graph/VKIndexBuffer.h>
 
 VK_NAMESPACE_BEGIN
-MeshDataBuffer::MeshDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
+GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
 {
     vab_count=c;
 
@@ -17,13 +17,13 @@ MeshDataBuffer::MeshDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManage
     vdm=_vdm;
 }
 
-MeshDataBuffer::~MeshDataBuffer()
+GeometryDataBuffer::~GeometryDataBuffer()
 {
     delete[] vab_offset;
     delete[] vab_list;
 }
 
-const int MeshDataBuffer::compare(const MeshDataBuffer &mesh_data_buffer)const
+const int GeometryDataBuffer::compare(const GeometryDataBuffer &mesh_data_buffer)const
 {
     ptrdiff_t off;
 
@@ -51,7 +51,7 @@ const int MeshDataBuffer::compare(const MeshDataBuffer &mesh_data_buffer)const
     return off;
 }
 
-void MeshRenderData::Set(const Primitive *prim)
+void GeometryDrawRange::Set(const Geometry *prim)
 {
     if(!prim)
     {
@@ -64,7 +64,7 @@ void MeshRenderData::Set(const Primitive *prim)
         return;
     }
 
-    // data counts come from primitive (buffer capacity)
+    // data counts come from geometry (buffer capacity)
     data_vertex_count = (uint32_t)prim->GetVertexCount();
     data_index_count  = prim->GetIndexCount();
 
@@ -76,19 +76,19 @@ void MeshRenderData::Set(const Primitive *prim)
     first_index     = prim->GetFirstIndex();
 }
 
-Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_data_buffer)
+Mesh::Mesh(Geometry *r,MaterialInstance *mi,Pipeline *p,GeometryDataBuffer *mesh_data_buffer)
 {
-    primitive=r;
+    geometry=r;
     pipeline=p;
     mat_inst=mi;
 
     data_buffer=mesh_data_buffer;
-    render_data.Set(primitive);
+    render_data.Set(geometry);
 }
 
-bool Mesh::UpdatePrimitive()
+bool Mesh::UpdateGeometry()
 {
-    render_data.Set(primitive);
+    render_data.Set(geometry);
 
     // Clamp draw counts if previously set larger than new data counts
     if(render_data.vertex_count>render_data.data_vertex_count)
@@ -97,10 +97,10 @@ bool Mesh::UpdatePrimitive()
     if(render_data.index_count>render_data.data_index_count)
         render_data.index_count = render_data.data_index_count;
 
-    return data_buffer->Update(primitive,mat_inst->GetVIL());
+    return data_buffer->Update(geometry,mat_inst->GetVIL());
 }
 
-Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
+Mesh *DirectCreateMesh(Geometry *prim,MaterialInstance *mi,Pipeline *p)
 //用Direct这个前缀是为了区别于MeshManager/WorkObject/RenderFramework的::CreateMesh()
 {
     if(!prim||!mi||!p)return(nullptr);
@@ -120,7 +120,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    MeshDataBuffer *mesh_data_buffer=new MeshDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
+    GeometryDataBuffer *mesh_data_buffer=new GeometryDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
 
@@ -128,7 +128,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     for(uint i=0;i<input_count;i++)
     {
-        //注: VIF来自于材质，但VAB来自于Primitive。
+        //注: VIF来自于材质，但VAB来自于Geometry。
         //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
 
         vab=prim->GetVAB(vif->name);
@@ -167,7 +167,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     return(new Mesh(prim,mi,p,mesh_data_buffer));
 }
 
-bool MeshDataBuffer::Update(const Primitive *prim,const VIL *vil)
+bool GeometryDataBuffer::Update(const Geometry *prim,const VIL *vil)
 {
     if(!prim||!vil)
         return(false);

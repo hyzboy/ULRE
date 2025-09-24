@@ -69,8 +69,8 @@ private:
                 uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count;
 
-        const   MeshDataBuffer *        mesh_data_buffer;
-        const   MeshRenderData *        mesh_render_data;
+        const   GeometryDataBuffer *        mesh_data_buffer;
+        const   GeometryDrawRange *        mesh_render_data;
 
     public:
 
@@ -93,9 +93,9 @@ protected:
 
             VABList *               vab_list;
 
-    const   MeshDataBuffer *        last_data_buffer;
+    const   GeometryDataBuffer *        last_data_buffer;
     const   VDM *                   last_vdm;
-    const   MeshRenderData *        last_render_data;
+    const   GeometryDrawRange *        last_render_data;
 
             int                     first_indirect_draw_index;
             uint                    indirect_draw_count;

@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateCapsule(PrimitiveCreater *pc,const CapsuleCreateInfo *cci)
+    Geometry *CreateCapsule(GeometryCreater *pc,const CapsuleCreateInfo *cci)
     {
         if(!pc||!cci)return nullptr;
 
@@ -345,7 +345,7 @@ namespace hgl::graph::inline_geometry
             }
         }
 
-        Primitive *p = pc->Create();
+        Geometry *p = pc->Create();
 
         // bounding box
         AABB aabb;

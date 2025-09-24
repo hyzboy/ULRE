@@ -8,22 +8,22 @@
 
 VK_NAMESPACE_BEGIN
 
-// forward declare PrimitiveData to avoid including heavy headers
-class PrimitiveData;
+// forward declare GeometryData to avoid including heavy headers
+class GeometryData;
 
 /**
- * 原始图元数据访问接口<br>
- * Primitive的存为是为了屏蔽PrimitiveData的初始化之类的访问接口，以便于更好的管理和使用
+ * 几何体数据访问接口<br>
+ * Geometry的存为是为了屏蔽GeometryData的初始化之类的访问接口，以便于更好的管理和使用
  */
-class Primitive
+class Geometry
 {
     OBJECT_LOGGER
 
 protected:
 
-    AnsiString      prim_name;
+    AnsiString      geometry_name;
 
-    PrimitiveData * prim_data;
+    GeometryData *  geometry_data;
 
 protected:
 
@@ -31,8 +31,8 @@ protected:
     
 public:
 
-    Primitive(const AnsiString &pn,PrimitiveData *pd);
-    virtual ~Primitive();
+    Geometry(const AnsiString &pn,GeometryData *pd);
+    virtual ~Geometry();
 
     void SetBoundingBox(const AABB &bb) { bounding_box=bb; } ///<设置包围盒
     void SetBoundingBox(const Vector3f &box_min,const Vector3f &box_max)
@@ -42,9 +42,9 @@ public:
 
 public:
 
-    const   AnsiString &    GetName         ()const{ return prim_name; }
+    const   AnsiString &    GetName         ()const{ return geometry_name; }
 
-    const   bool            IsValid         ()const{ return prim_data!=nullptr; }///<是否有效
+    const   bool            IsValid         ()const{ return geometry_data!=nullptr; }///<是否有效
 
     virtual
     const   VkDeviceSize    GetVertexCount  ()const;
@@ -70,5 +70,5 @@ public:
     VertexDataManager *     GetVDM          ()const;                        ///<取得顶点数据管理器
 
     const   AABB &          GetBoundingBox  ()const{return bounding_box;}
-};//class Primitive
+};//class Geometry
 VK_NAMESPACE_END

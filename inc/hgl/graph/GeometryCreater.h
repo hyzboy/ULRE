@@ -9,7 +9,7 @@ VK_NAMESPACE_BEGIN
 /**
  * 可绘制原始图形创建器
  */
-class PrimitiveCreater
+class GeometryCreater
 {
 protected:
 
@@ -20,8 +20,8 @@ protected:
 
 protected:
 
-    AnsiString      prim_name;
-    PrimitiveData * prim_data;
+    AnsiString      geometry_name;
+    GeometryData *  geometry_data;
 
     uint32_t        vertices_number;  ///<顶点数量
 
@@ -36,9 +36,9 @@ protected:
 
 public:
 
-    PrimitiveCreater(VulkanDevice *,const VIL *);
-    PrimitiveCreater(VertexDataManager *);
-    virtual ~PrimitiveCreater();
+    GeometryCreater(VulkanDevice *,const VIL *);
+    GeometryCreater(VertexDataManager *);
+    virtual ~GeometryCreater();
 
             /**
             * 初始化一个原始图形创建
@@ -76,10 +76,10 @@ public: //索引缓冲区
 
 public: //创建可渲染对象
 
-            Primitive *     Create();                                                                                       ///<创建一个可渲染对象，并清除创建器数据
-};//class PrimitiveCreater
+            Geometry *     Create();                                                                                       ///<创建一个可渲染对象，并清除创建器数据
+};//class GeometryCreater
 
-Primitive *CreatePrimitive(         VulkanDevice *  device,
+Geometry *CreateGeometry(         VulkanDevice *  device,
                             const   VIL *           vil,
                             const   AnsiString &    name,
                             const   uint32_t        vertex_count,

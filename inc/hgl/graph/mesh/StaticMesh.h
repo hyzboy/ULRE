@@ -8,21 +8,21 @@
 
 VK_NAMESPACE_BEGIN
 
-using PrimitivePtrSet       =SortedSet<Primitive *>;
+using GeometryPtrSet        =SortedSet<Geometry *>;
 using MaterialInstanceSet   =SortedSet<MaterialInstance *>;
 using PipelinePtrSet        =SortedSet<Pipeline *>;
 
 /**
 * StaticMesh
-* 负责管理一组 Primitive 与其对应的 Mesh，同时集中跟踪使用到的 MaterialInstance 与 Pipeline（多实例）。
+* 负责管理一组 Geometry 与其对应的 Mesh，同时集中跟踪使用到的 MaterialInstance 与 Pipeline（多实例）。
 * 另外，Mesh 内部维护一个 MeshNode 树结构与一个 MeshNode 集合，并在构造时创建一个根节点。
-* 注意：Mesh 拥有其内部创建的 Mesh 的生命周期；Primitive/MaterialInstance/Pipeline 仅持有引用不管理生命周期。
+* 注意：Mesh 拥有其内部创建的 Mesh 的生命周期；Geometry/MaterialInstance/Pipeline 仅持有引用不管理生命周期。
 */
 class StaticMesh
 {
     // Mesh / 资源集合
     ObjectList<Mesh>    submeshes;          ///< Mesh 列表（拥有对象）
-    PrimitivePtrSet     primitives;         ///< 关联的 Primitive 集合（仅持引用）
+    GeometryPtrSet      geometry_set;       ///< 关联的 Geometry 集合（仅持引用）
     MaterialInstanceSet mat_inst_set;       ///< 使用到的材质实例集合（仅持引用）
     PipelinePtrSet      pipeline_set;       ///< 使用到的管线集合（仅持引用）
 
@@ -57,8 +57,8 @@ public: // Mesh 管理
     const int                   GetSubMeshCount     ()                      const{ return submeshes.GetCount(); }
     const ObjectList<Mesh> &    GetSubMeshes        ()                      const{ return submeshes; }
 
-    // 创建并添加一个 Mesh（为该 Mesh 指定 Primitive / MaterialInstance / Pipeline）
-    Mesh *                      CreateMesh          (Primitive *prim, MaterialInstance *mi, Pipeline *p);
+    // 创建并添加一个 Mesh（为该 Mesh 指定 Geometry / MaterialInstance / Pipeline）
+    Mesh *                      CreateMesh          (Geometry *prim, MaterialInstance *mi, Pipeline *p);
 
     // 添加一个已有的 Mesh（Mesh 将接管其生命周期）
     bool                        AddSubMesh          (Mesh *sm);
@@ -69,18 +69,18 @@ public: // Mesh 管理
     // 清空并销毁所有 Mesh
     void                        ClearSubMeshes      ();
 
-public: // Primitive / MaterialInstance / Pipeline（仅保存引用，便于统计/查询）
+public: // Geometry / MaterialInstance / Pipeline（仅保存引用，便于统计/查询）
 
-    bool                        AttachPrimitive     (Primitive *prim);
-    void                        DetachPrimitive     (Primitive *prim);
-    const PrimitivePtrSet &     GetPrimitives       () const { return primitives; }
+    bool                        AttachGeometry      (Geometry *prim);
+    void                        DetachGeometry      (Geometry *prim);
+    const GeometryPtrSet &      GetGeometries       () const { return geometry_set; }
 
     const MaterialInstanceSet & GetMaterialInstances() const { return mat_inst_set; }
     const PipelinePtrSet &      GetPipelines        () const { return pipeline_set; }
 
 public: // 数据更新
 
-    // 当 Primitive/VIL 数据发生变化时，更新所有 Mesh 的渲染数据
+    // 当 Geometry/VIL 数据发生变化时，更新所有 Mesh 的渲染数据
     void                        UpdateAllSubMeshes  ();
 
 public: // 包围盒

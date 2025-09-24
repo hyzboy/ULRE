@@ -9,7 +9,7 @@
 
 namespace hgl::graph
 {
-    class PrimitiveCreater;
+    class GeometryCreater;
 
     namespace inline_geometry
     {
@@ -21,12 +21,12 @@ namespace hgl::graph
             RectScope2f scope;
         };//struct RectangleCreateInfo
 
-        Primitive *CreateRectangle(PrimitiveCreater *pc,const RectangleCreateInfo *rci);
+        Geometry *CreateRectangle(GeometryCreater *pc,const RectangleCreateInfo *rci);
 
         /**
             * 创建延迟渲染用全屏平面
             */
-        Primitive *CreateGBufferCompositionRectangle(PrimitiveCreater *pc);
+        Geometry *CreateGBufferCompositionRectangle(GeometryCreater *pc);
 
         /**
             * 圆角矩形创建信息(扇形/线圈)
@@ -37,7 +37,7 @@ namespace hgl::graph
             uint32_t round_per;     ///<圆角精度
         };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
 
-        Primitive *CreateRoundRectangle(PrimitiveCreater *pc,const RoundRectangleCreateInfo *rci);
+        Geometry *CreateRoundRectangle(GeometryCreater *pc,const RoundRectangleCreateInfo *rci);
 
         /**
             * 圆形创建信息
@@ -57,17 +57,17 @@ namespace hgl::graph
         /**
             * 创建一个2D圆形(扇形/线圈)
             */
-        Primitive *CreateCircle2D(PrimitiveCreater *pc,const CircleCreateInfo *cci);
+        Geometry *CreateCircle2D(GeometryCreater *pc,const CircleCreateInfo *cci);
             
         /**
             * 创建一个3D圆形(扇形/圆形，XY，Z永远为0)
             */
-        Primitive *CreateCircle3D(PrimitiveCreater *pc,const CircleCreateInfo *cci);
+        Geometry *CreateCircle3D(GeometryCreater *pc,const CircleCreateInfo *cci);
 
         /**
             * 创建一个使用三角形绘制的3D圆形(扇形/圆形，XY，Z永远为0)
             */
-        Primitive *CreateCircle3DByIndexTriangles(PrimitiveCreater *pc,const CircleCreateInfo *cci);
+        Geometry *CreateCircle3DByIndexTriangles(GeometryCreater *pc,const CircleCreateInfo *cci);
 
         /**
             * 平面网格创建信息<br>
@@ -86,14 +86,14 @@ namespace hgl::graph
         /**
             * 创建一个平面网格(线条)
             */
-        Primitive *CreatePlaneGrid2D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci);            //创建一个平面网格(线条)
+        Geometry *CreatePlaneGrid2D(GeometryCreater *pc,const PlaneGridCreateInfo *pgci);            //创建一个平面网格(线条)
 
-        Primitive *CreatePlaneGrid3D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci);
+        Geometry *CreatePlaneGrid3D(GeometryCreater *pc,const PlaneGridCreateInfo *pgci);
 
         /**
             * 创建一个平面正方形(三角形)
             */
-        Primitive *CreatePlaneSqaure(PrimitiveCreater *pc);
+        Geometry *CreatePlaneSqaure(GeometryCreater *pc);
 
         struct CubeCreateInfo
         {
@@ -129,7 +129,7 @@ namespace hgl::graph
         /**
             * 创建一个立方体(三角形)
             */
-        Primitive *CreateCube(PrimitiveCreater *pc,const CubeCreateInfo *cci);
+        Geometry *CreateCube(GeometryCreater *pc,const CubeCreateInfo *cci);
 
         struct BoundingBoxCreateInfo
         {
@@ -160,17 +160,17 @@ namespace hgl::graph
         /**
             *  创建一个绑定盒(线条)
             */
-        Primitive *CreateBoundingBox(PrimitiveCreater *pc,const BoundingBoxCreateInfo *cci);
+        Geometry *CreateBoundingBox(GeometryCreater *pc,const BoundingBoxCreateInfo *cci);
 
         /**
             * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
             */
-        Primitive *CreateSphere(PrimitiveCreater *,const uint numberSlices);
+        Geometry *CreateSphere(GeometryCreater *,const uint numberSlices);
 
         /**
             * 创建一个穹顶(三角形)
             */
-        Primitive *CreateDome(PrimitiveCreater *pc, const uint numberSlices);
+        Geometry *CreateDome(GeometryCreater *pc, const uint numberSlices);
 
         struct TorusCreateInfo
         {
@@ -186,7 +186,7 @@ namespace hgl::graph
         /**
             * 创建一个圆环(三角形)
             */
-        Primitive *CreateTorus(PrimitiveCreater *pc,const TorusCreateInfo *tci);
+        Geometry *CreateTorus(GeometryCreater *pc,const TorusCreateInfo *tci);
 
         struct CylinderCreateInfo
         {
@@ -198,7 +198,7 @@ namespace hgl::graph
         /**
             * 创建一个圆柱(三角形)
             */
-        Primitive *CreateCylinder(PrimitiveCreater *,const CylinderCreateInfo *cci);
+        Geometry *CreateCylinder(GeometryCreater *,const CylinderCreateInfo *cci);
 
         // 新增：空心圆柱（管）创建信息
         struct HollowCylinderCreateInfo
@@ -216,7 +216,7 @@ namespace hgl::graph
         /**
             * 创建一个空心圆柱（管）(三角形)
             */
-        Primitive *CreateHollowCylinder(PrimitiveCreater *pc,const HollowCylinderCreateInfo *hcci);
+        Geometry *CreateHollowCylinder(GeometryCreater *pc,const HollowCylinderCreateInfo *hcci);
 
         struct ConeCreateInfo
         {
@@ -229,7 +229,7 @@ namespace hgl::graph
         /**
             * 创建一个圆锥(三角形)
             */
-        Primitive *CreateCone(PrimitiveCreater *,const ConeCreateInfo *cci);
+        Geometry *CreateCone(GeometryCreater *,const ConeCreateInfo *cci);
 
         struct AxisCreateInfo
         {
@@ -250,9 +250,9 @@ namespace hgl::graph
         /**
             * 创建一个坐标线(线条)
             */
-        Primitive *CreateAxis(PrimitiveCreater *pc,const AxisCreateInfo *aci);
+        Geometry *CreateAxis(GeometryCreater *pc,const AxisCreateInfo *aci);
 
-        Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col);
+        Geometry *CreateSqaureArray(GeometryCreater *pc,const uint row,const uint col);
 
         // 新增：HexSphere（基于二十面体细分的测地球体，输出三角网格）
         struct HexSphereCreateInfo
@@ -262,7 +262,7 @@ namespace hgl::graph
             Vector2f uv_scale  = {1.0f,1.0f};
         };
 
-        Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
+        Geometry *CreateHexSphere(GeometryCreater *pc,const HexSphereCreateInfo *hsci);
 
         // 新增：胶囊体创建信息
         struct CapsuleCreateInfo
@@ -284,7 +284,7 @@ namespace hgl::graph
         /**
          * 创建一个胶囊体(三角形)
          */
-        Primitive *CreateCapsule(PrimitiveCreater *pc,const CapsuleCreateInfo *cci);
+        Geometry *CreateCapsule(GeometryCreater *pc,const CapsuleCreateInfo *cci);
          
         // 新增：Tapered 胶囊体创建信息（上/下半球半径可不相同，中间为圆台）
         struct TaperedCapsuleCreateInfo
@@ -308,7 +308,7 @@ namespace hgl::graph
         /**
          * 创建一个可锥缩的胶囊体(三角形)
          */
-        Primitive *CreateTaperedCapsule(PrimitiveCreater *pc,const TaperedCapsuleCreateInfo *tcci);
+        Geometry *CreateTaperedCapsule(GeometryCreater *pc,const TaperedCapsuleCreateInfo *tcci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph

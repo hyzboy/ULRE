@@ -26,9 +26,9 @@
 *
 *   SceneComponent是场景组件基类，只要是放在场景中的都从它派生，
 * 
-*   PrimitiveComponent是图元组件的基类，所有图元组件都从这里派生。
+*   GeometryComponent是图元组件的基类，所有图元组件都从这里派生。
 *   它再度派生出的任何Component都必须是一个有3D空间的几何图元。
-*   引擎中的空间、物理、等都由PrimitiveComponent提供数据进行计算。
+*   引擎中的空间、物理、等都由GeometryComponent提供数据进行计算。
 
 *   RenderComponent是可渲染组件的基类，所有可渲染组件都从这里派生。
 *

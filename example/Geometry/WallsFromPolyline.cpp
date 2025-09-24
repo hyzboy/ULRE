@@ -1,7 +1,7 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>
@@ -58,7 +58,7 @@ public:
         mesh_vdm = CreateVDM(vil, HGL_SIZE_1MB);
         if(!mesh_vdm) return false;
 
-        PrimitiveCreater *pc = new PrimitiveCreater(mesh_vdm);
+        GeometryCreater *pc = new GeometryCreater(mesh_vdm);
 
         using namespace inline_geometry;
 
@@ -88,7 +88,7 @@ public:
             wci.uv_tile_v = 1.5f;
             wci.uv_u_repeat_per_unit = 0.8f;
 
-            Primitive *prim = CreateWallsFromLines2D(pc, &wci);
+            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
                 Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
@@ -118,7 +118,7 @@ public:
             wci.uv_tile_v = 1.0f;
             wci.uv_u_repeat_per_unit = 1.5f;
 
-            Primitive *prim = CreateWallsFromLines2D(pc, &wci);
+            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
                 Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
@@ -147,7 +147,7 @@ public:
             wci.uv_tile_v = 2.0f;
             wci.uv_u_repeat_per_unit = 0.6f;
 
-            Primitive *prim = CreateWallsFromLines2D(pc, &wci);
+            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
                 Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
@@ -177,7 +177,7 @@ public:
             wci.uv_tile_v = 1.0f;
             wci.uv_u_repeat_per_unit = 1.2f;
 
-            Primitive *prim = CreateWallsFromLines2D(pc, &wci);
+            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
             if(prim)
             {
                 Mesh *mesh = CreateMesh(prim, material_instance, pipeline);

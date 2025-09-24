@@ -38,7 +38,7 @@ void StaticMesh::ClearNodes()
 }
 
 // Mesh 管理
-Mesh *StaticMesh::CreateMesh(Primitive *prim, MaterialInstance *mi, Pipeline *p)
+Mesh *StaticMesh::CreateMesh(Geometry *prim, MaterialInstance *mi, Pipeline *p)
 {
     if(!prim || !mi || !p)
         return nullptr;
@@ -50,7 +50,7 @@ Mesh *StaticMesh::CreateMesh(Primitive *prim, MaterialInstance *mi, Pipeline *p)
     submeshes.Add(sm);
 
     // 跟踪资源
-    primitives.Add(prim);
+    geometry_set.Add(prim);
     mat_inst_set.Add(mi);
     pipeline_set.Add(p);
 
@@ -67,7 +67,7 @@ bool StaticMesh::AddSubMesh(Mesh *sm)
     submeshes.Add(sm);
 
     // 跟踪资源
-    primitives.Add(sm->GetPrimitive());
+    geometry_set.Add(sm->GetGeometry());
     if (auto mi = sm->GetMaterialInstance()) mat_inst_set.Add(mi);
     if (auto pl = sm->GetPipeline())         pipeline_set.Add(pl);
 
@@ -93,29 +93,29 @@ void StaticMesh::ClearSubMeshes()
     submeshes.Clear();   // ObjectList::Clear 会负责 delete 其中的 Mesh*
 
     // 清空集合
-    primitives.Clear();
+    geometry_set.Clear();
     mat_inst_set.Clear();
     pipeline_set.Clear();
 
     bounding_box.Clear();
 }
 
-bool StaticMesh::AttachPrimitive(Primitive *prim)
+bool StaticMesh::AttachGeometry(Geometry *prim)
 {
     if(!prim) return false;
-    return primitives.Add(prim) >= 0;
+    return geometry_set.Add(prim) >= 0;
 }
 
-void StaticMesh::DetachPrimitive(Primitive *prim)
+void StaticMesh::DetachGeometry(Geometry *prim)
 {
     if(!prim) return;
-    primitives.Delete(prim);
+    geometry_set.Delete(prim);
 }
 
 void StaticMesh::UpdateAllSubMeshes()
 {
     for(Mesh *sm: submeshes)
-        if(sm) sm->UpdatePrimitive();
+        if(sm) sm->UpdateGeometry();
 }
 
 void StaticMesh::RefreshBoundingBox()
@@ -135,14 +135,14 @@ void StaticMesh::RefreshBoundingBox()
 
 void StaticMesh::RebuildResourceSets()
 {
-    primitives.Clear();
+    geometry_set.Clear();
     mat_inst_set.Clear();
     pipeline_set.Clear();
 
     for(Mesh *sm : submeshes)
     {
         if(!sm) continue;
-        if (auto prim = sm->GetPrimitive())          primitives.Add(prim);
+        if (auto prim = sm->GetGeometry())          geometry_set.Add(prim);
         if (auto mi   = sm->GetMaterialInstance())   mat_inst_set.Add(mi);
         if (auto p    = sm->GetPipeline())           pipeline_set.Add(p);
     }

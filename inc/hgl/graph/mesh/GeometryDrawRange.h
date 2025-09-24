@@ -4,10 +4,10 @@
 
 VK_NAMESPACE_BEGIN
 /**
-* 原始图元渲染数据<Br>
-* 提供在渲染时的数据
+* 网格绘制范围数据
+* 用于描述渲染时可绘制的顶点/索引范围，以及缓冲区中数据容量
 */
-struct MeshRenderData:public ComparatorData<MeshRenderData>
+struct GeometryDrawRange:public ComparatorData<GeometryDrawRange>
 {
     //因为要VAB是流式访问，所以我们这个结构会被用做排序依据
     //也因此，把vertex_offset放在最前面
@@ -25,6 +25,6 @@ struct MeshRenderData:public ComparatorData<MeshRenderData>
 
 public:
 
-    void Set(const Primitive *);
+    void Set(const Geometry *);
 };
 VK_NAMESPACE_END

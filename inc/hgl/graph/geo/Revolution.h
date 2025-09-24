@@ -5,7 +5,7 @@
 
 namespace hgl::graph
 {
-    class PrimitiveCreater;
+    class GeometryCreater;
 
     namespace inline_geometry
     {
@@ -59,6 +59,6 @@ namespace hgl::graph
          * 矩形轮廓 + 360度旋转 = 圆柱体
          * "]"形轮廓 + 360度旋转 = 空心圆柱
          */
-        Primitive *CreateRevolution(PrimitiveCreater *pc, const RevolutionCreateInfo *rci);
+        Geometry *CreateRevolution(GeometryCreater *pc, const RevolutionCreateInfo *rci);
     }//namespace inline_geometry
 }//namespace hgl::graph

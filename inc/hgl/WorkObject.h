@@ -9,7 +9,7 @@
 //#include<iostream>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/Mesh.h>
-#include <hgl/graph/PrimitiveCreater.h>
+#include <hgl/graph/GeometryCreater.h>
 
 namespace hgl
 {
@@ -20,8 +20,8 @@ namespace hgl
         class Texture2D;
         class Texture2DArray;
         class TextureCube;
-        class Primitive;
-        class PrimitiveCreater;
+        class Geometry;
+        class GeometryCreater;
         class Sampler;
         class Texture;
 
@@ -128,18 +128,18 @@ namespace hgl
         FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO16)
         FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO32)
 
-    public: // Primitive, Mesh, Sampler 相关
+    public: // Geometry, Mesh, Sampler 相关
 
-        void Add(graph::Primitive *prim)
+        void Add(graph::Geometry *prim)
         {
             if(!prim)return;
 
             if(!render_framework)return;
 
-            render_framework->GetPrimitiveManager()->Add(prim);
+            render_framework->GetGeometryManager()->Add(prim);
         }
 
-        graph::Mesh *CreateMesh(graph::Primitive *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        graph::Mesh *CreateMesh(graph::Geometry *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
             if(!prim||!pipeline)
                 return nullptr;
@@ -155,7 +155,7 @@ namespace hgl
             return mm->CreateMesh(prim,mi,pipeline);
         }
 
-        graph::Mesh *CreateMesh(graph::PrimitiveCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        graph::Mesh *CreateMesh(graph::GeometryCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
             if(!pc||!pipeline)
                 return nullptr;
@@ -183,15 +183,15 @@ namespace hgl
 
     #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}
         WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePipeline,graph::Pipeline *)
-        WO_FUNC_FROM_RENDER_FRAMEWORK(GetPrimitiveCreater,SharedPtr<graph::PrimitiveCreater>)
+        WO_FUNC_FROM_RENDER_FRAMEWORK(GetGeometryCreater,SharedPtr<graph::GeometryCreater>)
     #undef WO_FUNC_FROM_RENDER_FRAMEWORK
 
-        graph::Primitive *CreatePrimitive(const AnsiString &name,
+        graph::Geometry *CreateGeometry(const AnsiString &name,
                                             const uint32_t vertices_count,
                                             const graph::VIL *vil,
                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
         {
-            return render_framework?render_framework->CreatePrimitive(name,vertices_count,vil,vad_list):nullptr;
+            return render_framework?render_framework->CreateGeometry(name,vertices_count,vil,vad_list):nullptr;
         }
 
         graph::Mesh *CreateMesh(const AnsiString &name,

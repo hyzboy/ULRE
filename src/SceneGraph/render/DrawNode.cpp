@@ -14,8 +14,8 @@ const int DrawNode::compare(const DrawNode &other)const
 {
     hgl::int64 off;
 
-    auto *prim_one=other.GetMesh()->GetPrimitive();
-    auto *prim_two=this->GetMesh()->GetPrimitive();
+    auto *prim_one=other.GetMesh()->GetGeometry();
+    auto *prim_two=this->GetMesh()->GetGeometry();
 
     //比较VDM
     if(prim_one->GetVDM())      //有VDM

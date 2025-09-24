@@ -18,9 +18,9 @@ private:
     Material *          material            = nullptr;
     Pipeline *          pipeline            = nullptr;
 
-    Primitive *         prim_vase           = nullptr;
-    Primitive *         prim_partial_shell  = nullptr;
-    Primitive *         prim_cone           = nullptr;
+    Geometry *         prim_vase           = nullptr;
+    Geometry *         prim_partial_shell  = nullptr;
+    Geometry *         prim_cone           = nullptr;
     MaterialInstance *  material_instance   = nullptr;
 
 private:
@@ -47,8 +47,8 @@ private:
     {
         using namespace inline_geometry;
 
-        // 取得 PrimitiveCreater
-        auto pc = GetPrimitiveCreater(material_instance);
+        // 取得 GeometryCreater
+        auto pc = GetGeometryCreater(material_instance);
         if(!pc) return false;
 
         // 示例1: 花瓶型 (完整旋转 360)

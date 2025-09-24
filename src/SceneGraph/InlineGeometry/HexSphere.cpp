@@ -3,7 +3,7 @@
 
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include <unordered_map>
 #include <algorithm>
 #include <vector>
@@ -11,7 +11,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci)
+    Geometry *CreateHexSphere(GeometryCreater *pc,const HexSphereCreateInfo *hsci)
     {
         if(!pc||!hsci) return nullptr;
 
@@ -148,7 +148,7 @@ namespace hgl::graph::inline_geometry
             else return nullptr;
         }
 
-        Primitive *p = pc->Create();
+        Geometry *p = pc->Create();
         if(p)
             p->SetBoundingBox(Vector3f(-R,-R,-R), Vector3f(R,R,R));
         return p;

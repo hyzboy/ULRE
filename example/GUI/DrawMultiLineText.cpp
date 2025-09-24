@@ -2,7 +2,7 @@
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/WorkManager.h>
 #include<hgl/component/MeshComponent.h>
-#include<hgl/graph/font/TextPrimitive.h>
+#include<hgl/graph/font/TextGeometry.h>
 #include<random>
 
 using namespace hgl;
@@ -20,7 +20,7 @@ private:
 
     TextRender *        text_render         =nullptr;
 
-    TextPrimitive *     text_primitive      =nullptr;
+    TextGeometry *     text_primitive      =nullptr;
     Mesh *              render_obj          =nullptr;
 
 public:

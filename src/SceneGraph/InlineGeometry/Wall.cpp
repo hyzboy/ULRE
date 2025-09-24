@@ -1,7 +1,7 @@
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 
 #include <vector>
 #include <algorithm>
@@ -43,7 +43,7 @@ namespace hgl::graph::inline_geometry
         return Vector3f(v.x/len, v.y/len, v.z/len);
     }
 
-    Primitive *CreateWallsFromLines2D(PrimitiveCreater *pc, const WallCreateInfo *wci)
+    Geometry *CreateWallsFromLines2D(GeometryCreater *pc, const WallCreateInfo *wci)
     {
         if(!pc || !wci) return nullptr;
 
@@ -495,7 +495,7 @@ namespace hgl::graph::inline_geometry
         else if(itype==IndexType::U8){ IBTypeMap<uint8> im(ib_map); uint8 *ip=im; for(size_t i=0;i<finalIndices.size();++i) *ip++ = (uint8)finalIndices[i]; }
         else return nullptr;
 
-        Primitive *p = pc->Create();
+        Geometry *p = pc->Create();
         if(p)
         {
             float minX = finalVerts[0].x, maxX = finalVerts[0].x, minY = finalVerts[0].y, maxY = finalVerts[0].y, minZ = finalVerts[0].z, maxZ = finalVerts[0].z;

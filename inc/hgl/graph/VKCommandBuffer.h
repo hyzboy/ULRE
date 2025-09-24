@@ -221,7 +221,7 @@ public:
     * 直接绑定Mesh的VBO/IBO。
     * 有点像是BindVAB+BindIBO,适用于完全使用Mesh数据.
     */
-    bool BindDataBuffer(const MeshDataBuffer *);
+    bool BindDataBuffer(const GeometryDataBuffer *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}
@@ -258,7 +258,7 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const MeshDataBuffer *,const MeshRenderData *,const uint32_t instance_count=1,const uint32_t first_instance=0);
+                                void Draw               (const GeometryDataBuffer *,const GeometryDrawRange *,const uint32_t instance_count=1,const uint32_t first_instance=0);
 
 public: //dynamic state
 

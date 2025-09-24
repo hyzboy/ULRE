@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/mesh/MeshDataBuffer.h>
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
 
 VK_NAMESPACE_BEGIN
 class VABList
@@ -24,7 +24,7 @@ public:
         write_count=0;
     }
 
-    VABList(const MeshDataBuffer *mdb):VABList(mdb->vab_count)
+    VABList(const GeometryDataBuffer *mdb):VABList(mdb->vab_count)
     {
         Add(mdb);
     }
@@ -81,7 +81,7 @@ public:
         return(true);
     }
 
-    bool Add(const MeshDataBuffer *mdb)
+    bool Add(const GeometryDataBuffer *mdb)
     {
         return Add(mdb->vab_list,mdb->vab_offset,mdb->vab_count);
     }

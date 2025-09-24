@@ -23,17 +23,17 @@ SET(SG_VDM_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("VertexDataManager" FILES ${SG_VDM_SOURCE})
 
-SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitive.h
-                        Vulkan/VKPrimitive.cpp
-                        Vulkan/VKPrimitiveData.cpp
-                        Vulkan/VKPrimitiveData.h
-                        ${SG_INCLUDE_PATH}/PrimitiveCreater.h
-                        PrimitiveCreater.cpp)
+SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKGeometry.h
+                        Vulkan/VKGeometry.cpp
+                        Vulkan/VKGeometryData.cpp
+                        Vulkan/VKGeometryData.h
+                        ${SG_INCLUDE_PATH}/GeometryCreater.h
+                        GeometryCreater.cpp)
 
-SOURCE_GROUP("Mesh\\Primitive" FILES ${SG_PRIMITIVE_SOURCE})
+SOURCE_GROUP("Mesh\\Geometry" FILES ${SG_PRIMITIVE_SOURCE})
 
-SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/mesh/MeshDataBuffer.h
-                    ${SG_INCLUDE_PATH}/mesh/MeshRenderData.h
+SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
+                    ${SG_INCLUDE_PATH}/mesh/GeometryDrawRange.h
                     ${SG_INCLUDE_PATH}/mesh/Mesh.h
                     ${SG_INCLUDE_PATH}/mesh/MeshNode.h
                     ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
@@ -115,7 +115,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/MaterialManager.h
                         ${SGM_HEADER_PATH}/BufferManager.h
                         ${SGM_HEADER_PATH}/RenderTargetManager.h
-                        ${SGM_HEADER_PATH}/PrimitiveManager.h
+                        ${SGM_HEADER_PATH}/GeometryManager.h
                         ${SGM_HEADER_PATH}/MeshManager.h
 
                         ${SGM_HEADER_PATH}/RenderModule.h
@@ -129,7 +129,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_SOURCE_PATH}/MaterialManager.cpp
                         ${SGM_SOURCE_PATH}/BufferManager.cpp
                         ${SGM_SOURCE_PATH}/RenderTargetManager.cpp
-                        ${SGM_SOURCE_PATH}/PrimitiveManager.cpp
+                        ${SGM_SOURCE_PATH}/GeometryManager.cpp
                         ${SGM_SOURCE_PATH}/MeshManager.cpp
 
                         ${SGM_SOURCE_PATH}/SwapChainModule.cpp
@@ -205,10 +205,10 @@ SET(FONT_LAYOUT_SOURCE  ${SG_INCLUDE_PATH}/font/TextLayout.h
                         font/TextLayoutEngine.h
                         font/TextLayout.cpp)
 
-SET(TEXT_RENDERABLE_SOURCE  ${SG_INCLUDE_PATH}/font/TextPrimitive.h
+SET(TEXT_RENDERABLE_SOURCE  ${SG_INCLUDE_PATH}/font/TextGeometry.h
                             ${SG_INCLUDE_PATH}/font/TextRender.h
                             font/TextRender.cpp
-                            font/TextPrimitive.cpp)
+                            font/TextGeometry.cpp)
 
 SOURCE_GROUP("Font"             FILES ${FONT_MANAGE_SOURCE})
 SOURCE_GROUP("Font\\Source"     FILES ${FONT_SOURCE})
@@ -387,7 +387,7 @@ SET(COLLISION_COMPONENT_INCLUDE_PATH    ${COMPONENT_INCLUDE_PATH}/collision)
 
 SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/SceneComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/GeometryComponent.h
                         ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
                         ${COMPONENT_INCLUDE_PATH}/MeshComponent.h
                         ${COMPONENT_INCLUDE_PATH}/StaticMeshComponent.h
@@ -400,14 +400,14 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
 
 SET(COLLISION_COMPONENT_FILES   ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponent.h
                                 ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponentManager.h
-                                ${COLLISION_COMPONENT_INCLUDE_PATH}/PrimitiveCollisionComponent.h
+                                ${COLLISION_COMPONENT_INCLUDE_PATH}/GeometryCollisionComponent.h
                                 ${COLLISION_COMPONENT_INCLUDE_PATH}/SphereCollisionComponent.h
                                 ${COLLISION_COMPONENT_INCLUDE_PATH}/BoxCollisionComponent.h
                                 ${COLLISION_COMPONENT_INCLUDE_PATH}/CapsuleCollisionComponent.h
                                 ${COLLISION_COMPONENT_INCLUDE_PATH}/PlaneCollisionComponent.h
 #                                component/collision/CollisionComponent.cpp
 #                                component/collision/CollisionComponentManager.cpp
-#                                component/collision/PrimitiveCollisionComponent.cpp
+#                                component/collision/GeometryCollisionComponent.cpp
 #                                component/collision/SphereCollisionComponent.cpp
 #                                component/collision/BoxCollisionComponent.cpp
 #                                component/collision/CapsuleCollisionComponent.cpp

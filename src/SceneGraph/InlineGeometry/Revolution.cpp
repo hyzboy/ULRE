@@ -1,6 +1,6 @@
 #include<hgl/graph/geo/Revolution.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -21,7 +21,7 @@ namespace hgl::graph::inline_geometry
     /**
      * 创建一个由2D轮廓旋转生成的3D几何体
      */
-    Primitive *CreateRevolution(PrimitiveCreater *pc, const RevolutionCreateInfo *rci)
+    Geometry *CreateRevolution(GeometryCreater *pc, const RevolutionCreateInfo *rci)
     {
         if(!pc || !rci || !rci->profile_points || rci->profile_count < 2 || rci->revolution_slices < 3)
             return nullptr;
@@ -443,7 +443,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
         }
 
-        Primitive *p = pc->Create();
+        Geometry *p = pc->Create();
 
         // 计算包围盒
         if(p) {

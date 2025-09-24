@@ -2,7 +2,7 @@
 
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include <vector>
 #include <algorithm>
 #include <cmath>
@@ -137,7 +137,7 @@ namespace hgl::graph::inline_geometry
         }
     }
 
-    Primitive *CreateExtrudedPolygon(PrimitiveCreater *pc, const ExtrudedPolygonCreateInfo *epci)
+    Geometry *CreateExtrudedPolygon(GeometryCreater *pc, const ExtrudedPolygonCreateInfo *epci)
     {
         if (!pc || !epci || !epci->vertices || epci->vertexCount < 3)
             return nullptr;
@@ -339,7 +339,7 @@ namespace hgl::graph::inline_geometry
                 return nullptr;
         }
 
-        Primitive *p = pc->Create();
+        Geometry *p = pc->Create();
 
         if (p) {
             // 计算包围盒
@@ -374,7 +374,7 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
-    Primitive *CreateExtrudedRectangle(PrimitiveCreater *pc, float width, float height, float depth, const Vector3f &extrudeAxis)
+    Geometry *CreateExtrudedRectangle(GeometryCreater *pc, float width, float height, float depth, const Vector3f &extrudeAxis)
     {
         // 创建矩形顶点（中心在原点）
         Vector2f rectVertices[4] = {
@@ -396,7 +396,7 @@ namespace hgl::graph::inline_geometry
         return CreateExtrudedPolygon(pc, &epci);
     }
 
-    Primitive *CreateExtrudedCircle(PrimitiveCreater *pc, float radius, float height, uint segments, const Vector3f &extrudeAxis)
+    Geometry *CreateExtrudedCircle(GeometryCreater *pc, float radius, float height, uint segments, const Vector3f &extrudeAxis)
     {
         if (segments < 3) segments = 3;
 

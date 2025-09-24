@@ -1,6 +1,6 @@
 #include <hgl/graph/geo/line/LineWidthBatch.h>
 #include <hgl/graph/VKDevice.h>
-#include <hgl/graph/PrimitiveCreater.h>
+#include <hgl/graph/GeometryCreater.h>
 #include <hgl/graph/module/MeshManager.h>
 #include <hgl/graph/VKMaterial.h>
 
@@ -36,7 +36,7 @@ void LineWidthBatch::Clear()
     SAFE_CLEAR(vab_position)
     SAFE_CLEAR(vab_color)
     SAFE_CLEAR(mesh);
-    SAFE_CLEAR(primitive);
+    SAFE_CLEAR(geometry);
 }
 
 bool LineWidthBatch::RebuildMesh()
@@ -45,15 +45,15 @@ bool LineWidthBatch::RebuildMesh()
 
     AnsiString name = "Line3D(Width:" + AnsiString::numberOf(line_width) + ")";
 
-    primitive = CreatePrimitive(device,mtl_inst->GetVIL(),name,max_count * 2);
+    geometry = CreateGeometry(device,mtl_inst->GetVIL(),name,max_count * 2);
 
-    if(!primitive)
+    if(!geometry)
         return(false);
 
-    mesh=DirectCreateMesh(primitive,mtl_inst,pipeline);
+    mesh=DirectCreateMesh(geometry,mtl_inst,pipeline);
 
-    vab_position=new VABMap3f(primitive->GetVABMap(VAN::Position));
-    vab_color=new VABMap1u8(primitive->GetVABMap(VAN::Color));
+    vab_position=new VABMap3f(geometry->GetVABMap(VAN::Position));
+    vab_color=new VABMap1u8(geometry->GetVABMap(VAN::Color));
 
     position=vab_position->Map();
     color=vab_color->Map();

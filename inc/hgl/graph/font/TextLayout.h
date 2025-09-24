@@ -6,7 +6,7 @@
 namespace hgl::graph
 {
     class TileFont;
-    class TextPrimitive;
+    class TextGeometry;
 
     namespace layout
     {

@@ -1,6 +1,6 @@
 ﻿#include"TextLayoutEngine.h"
 #include<hgl/graph/font/TileFont.h>
-#include<hgl/graph/font/TextPrimitive.h>
+#include<hgl/graph/font/TextGeometry.h>
 #include<hgl/type/Extent.h>
 
 namespace hgl::graph::layout
@@ -20,7 +20,7 @@ namespace hgl::graph::layout
         }
     }
 
-    bool TextLayout::Begin(TextPrimitive *tr,int Estimate)
+    bool TextLayout::Begin(TextGeometry *tr,int Estimate)
     {
         if(!tr||Estimate<=0)
             return(false);

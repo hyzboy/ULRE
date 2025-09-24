@@ -4,13 +4,13 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include <algorithm>
 #include <cmath>
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateHollowCylinder(PrimitiveCreater *pc,const HollowCylinderCreateInfo *hcci)
+    Geometry *CreateHollowCylinder(GeometryCreater *pc,const HollowCylinderCreateInfo *hcci)
     {
         if(!pc||!hcci) return nullptr;
 
@@ -187,7 +187,7 @@ namespace hgl::graph::inline_geometry
         }
         else return nullptr;
 
-        Primitive *p = pc->Create();
+        Geometry *p = pc->Create();
         if(p)
         {
             AABB aabb;

@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateSphere(PrimitiveCreater *pc,const uint numberSlices)
+    Geometry *CreateSphere(GeometryCreater *pc,const uint numberSlices)
     {
         uint numberParallels = (numberSlices+1) / 2;
         uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
@@ -81,7 +81,7 @@ namespace hgl::graph::inline_geometry
                 return(nullptr);
         }
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         {
             AABB aabb;
@@ -92,7 +92,7 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
-    Primitive *CreateDome(PrimitiveCreater *pc,const uint numberSlices)
+    Geometry *CreateDome(GeometryCreater *pc,const uint numberSlices)
     {
         if(!pc)return(nullptr);
 
@@ -181,7 +181,7 @@ namespace hgl::graph::inline_geometry
                 return(nullptr);
         }
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         {
             AABB box;
@@ -194,7 +194,7 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
-    Primitive *CreateTorus(PrimitiveCreater *pc,const TorusCreateInfo *tci)
+    Geometry *CreateTorus(GeometryCreater *pc,const TorusCreateInfo *tci)
     {
         if(!pc)return(nullptr);
 
@@ -300,7 +300,7 @@ namespace hgl::graph::inline_geometry
                 return(nullptr);
         }
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         {
             AABB aabb;

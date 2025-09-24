@@ -6,7 +6,7 @@
 #include<hgl/graph/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include<hgl/math/Math.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/camera/ViewModelCameraControl.h>
@@ -105,10 +105,10 @@ public:
         mi = owner->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
         if (!mi) return false;
 
-        auto pc = owner->GetPrimitiveCreater(mtl);
+        auto pc = owner->GetGeometryCreater(mtl);
         if (!pc) return false;
 
-        Primitive *prim = inline_geometry::CreateSphere(pc.get(), 64);
+        Geometry *prim = inline_geometry::CreateSphere(pc.get(), 64);
         if (!prim) return false;
 
         Mesh *mesh = owner->CreateMesh(prim, mi, pipeline);
@@ -196,7 +196,7 @@ private:
         cube_mi = CreateMaterialInstance(cube_mtl);
         if (!cube_mi) return false;
 
-        auto pc = GetPrimitiveCreater(cube_mtl);
+        auto pc = GetGeometryCreater(cube_mtl);
         if (!pc) return false;
 
         inline_geometry::CubeCreateInfo cci_cube{}; // defaults OK
@@ -204,7 +204,7 @@ private:
         cci_cube.tex_coord=true;
         cci_cube.normal=true;
 
-        Primitive *prim = inline_geometry::CreateCube(pc.get(), &cci_cube);
+        Geometry *prim = inline_geometry::CreateCube(pc.get(), &cci_cube);
         if (!prim) return false;
 
         Mesh *mesh = CreateMesh(prim, cube_mi, cube_pipeline);

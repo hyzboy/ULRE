@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/font/TextRender.h>
-#include<hgl/graph/font/TextPrimitive.h>
+#include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/VKDevice.h>
@@ -76,7 +76,7 @@ namespace hgl::graph
 
     TextRender::~TextRender()
     {
-        for(TextPrimitive *tr:tr_sets)
+        for(TextGeometry *tr:tr_sets)
             delete tr;
 
         tr_sets.Clear();
@@ -128,9 +128,9 @@ namespace hgl::graph
         return(true);
     }
 
-    TextPrimitive *TextRender::Begin(const TextPrimitiveType &tpt,int limit)
+    TextGeometry *TextRender::Begin(const TextGeometryType &tpt,int limit)
     {   
-        TextPrimitive *tr=new TextPrimitive(device,mi_fs->GetVIL(),limit);
+        TextGeometry *tr=new TextGeometry(device,mi_fs->GetVIL(),limit);
 
         tr_sets.Add(tr);
 
@@ -153,9 +153,9 @@ namespace hgl::graph
         tl_engine->End();
     }
 
-    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16StringView&str)
+    TextGeometry *TextRender::CreateGeometry(const TextGeometryType &tpt,const U16StringView&str)
     {
-        TextPrimitive *tr=Begin(tpt,str.Length());
+        TextGeometry *tr=Begin(tpt,str.Length());
 
         if(!tr)
             return(nullptr);
@@ -169,7 +169,7 @@ namespace hgl::graph
         return tr;
     }
 
-    bool TextRender::SimpleLayout(TextPrimitive *tr,const U16StringView&str)
+    bool TextRender::SimpleLayout(TextGeometry *tr,const U16StringView&str)
     {
         if(!tr)
             return(false);
@@ -184,7 +184,7 @@ namespace hgl::graph
         return(result);
     }
 
-    Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
+    Mesh *TextRender::CreateMesh(TextGeometry *text_primitive)
     {
         if(mesh_manager)
             return mesh_manager->CreateMesh(text_primitive,mi_fs,pipeline);
@@ -192,7 +192,7 @@ namespace hgl::graph
         return(nullptr);
     }
 
-    void TextRender::Release(TextPrimitive *tr)
+    void TextRender::Release(TextGeometry *tr)
     {
         if(!tr)return;
 

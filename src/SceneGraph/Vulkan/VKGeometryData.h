@@ -18,7 +18,7 @@ VK_NAMESPACE_BEGIN
         就是为了必避动态分配内存，以及可以直接memcpy处理，所以此处这样定义。
 */
 
-class PrimitiveData
+class GeometryData
 {
 protected:
 
@@ -41,8 +41,8 @@ protected:
 
 public:
 
-    PrimitiveData(const VIL *_vil,const uint32_t vc);
-    virtual ~PrimitiveData();
+    GeometryData(const VIL *_vil,const uint32_t vc);
+    virtual ~GeometryData();
 
 public:
     
@@ -70,8 +70,8 @@ public:
 
             void            UnmapAll();
 
-};//class PrimitiveData
+};//class GeometryData
 
-PrimitiveData *CreatePrimitiveData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc);
-PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const uint32_t vc);
+GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc);
+GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc);
 VK_NAMESPACE_END

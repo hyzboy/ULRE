@@ -8,13 +8,13 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/SceneRenderer.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/component/CreateComponentInfo.h>
 
@@ -65,7 +65,7 @@ protected:
     MaterialManager *       material_manager    =nullptr;
     BufferManager *         buffer_manager      =nullptr;
     SamplerManager *        sampler_manager     =nullptr;
-    PrimitiveManager *      primitive_manager   =nullptr;
+    GeometryManager *       geometry_manager    =nullptr;
     MeshManager *           mesh_manager        =nullptr;
 
     SwapchainModule *       sc_module           =nullptr;
@@ -109,7 +109,7 @@ public:
     MaterialManager *       GetMaterialManager      (){return material_manager;}
     BufferManager *         GetBufferManager        (){return buffer_manager;}
     SamplerManager *        GetSamplerManager       (){return sampler_manager;}
-    PrimitiveManager *      GetPrimitiveManager     (){return primitive_manager;}
+    GeometryManager *       GetGeometryManager      (){return geometry_manager;}
     MeshManager *           GetMeshManager          (){return mesh_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
@@ -204,28 +204,28 @@ public:
 
 public:
 
-    SharedPtr<graph::PrimitiveCreater> GetPrimitiveCreater(graph::Material *mtl)
+    SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::Material *mtl)
     {
         if(!mtl)
             return(nullptr);
 
-        return(new graph::PrimitiveCreater(GetDevice(),mtl->GetDefaultVIL()));
+        return(new graph::GeometryCreater(GetDevice(),mtl->GetDefaultVIL()));
     }
 
-    SharedPtr<graph::PrimitiveCreater> GetPrimitiveCreater(graph::MaterialInstance *mi)
+    SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::MaterialInstance *mi)
     {
         if(!mi)
             return(nullptr);
 
-        return(new graph::PrimitiveCreater(GetDevice(),mi->GetVIL()));
+        return(new graph::GeometryCreater(GetDevice(),mi->GetVIL()));
     }
 
     graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type=IndexType::U16);
     graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize number,const IndexType type=IndexType::U16){return CreateVDM(vil,number,number,type);}
 
-public: // Primitive, Mesh
+public: // Geometry, Mesh
 
-    graph::Primitive *CreatePrimitive(const AnsiString &name,
+    graph::Geometry *CreateGeometry(const AnsiString &name,
                                       const uint32_t vertices_count,
                                       const graph::VIL *vil,
                                       const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
@@ -237,8 +237,8 @@ public: // Primitive, Mesh
                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
 
-    Mesh *CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(r,mi,p);}    
-    Mesh *CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(pc,mi,p);}    
+    Mesh *CreateMesh(Geometry *r, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(r,mi,p);}    
+    Mesh *CreateMesh(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(pc,mi,p);}    
 
 public: // ComponentManager
 

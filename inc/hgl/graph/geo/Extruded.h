@@ -9,7 +9,7 @@
 
 namespace hgl::graph
 {
-    class PrimitiveCreater;
+    class GeometryCreater;
 
     namespace inline_geometry
     {
@@ -39,16 +39,16 @@ namespace hgl::graph
         /**
          * 创建一个由2D多边形挤压生成的3D多边形(三角形)
          */
-        Primitive *CreateExtrudedPolygon(PrimitiveCreater *pc, const ExtrudedPolygonCreateInfo *epci);
+        Geometry *CreateExtrudedPolygon(GeometryCreater *pc, const ExtrudedPolygonCreateInfo *epci);
 
         /**
          * 创建一个由矩形挤压生成的立方体(三角形)，等价于CreateCube但使用挤压算法
          */
-        Primitive *CreateExtrudedRectangle(PrimitiveCreater *pc, float width, float height, float depth, const Vector3f &extrudeAxis = Vector3f(0, 0, 1));
+        Geometry *CreateExtrudedRectangle(GeometryCreater *pc, float width, float height, float depth, const Vector3f &extrudeAxis = Vector3f(0, 0, 1));
 
         /**
          * 创建一个由圆形挤压生成的圆柱体(三角形)，等价于CreateCylinder但使用挤压算法
          */
-        Primitive *CreateExtrudedCircle(PrimitiveCreater *pc, float radius, float height, uint segments = 16, const Vector3f &extrudeAxis = Vector3f(0, 0, 1));
+        Geometry *CreateExtrudedCircle(GeometryCreater *pc, float radius, float height, uint segments = 16, const Vector3f &extrudeAxis = Vector3f(0, 0, 1));
     }//namespace inline_geometry
 }//namespace hgl::graph

@@ -22,7 +22,7 @@ private:
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Primitive *         prim_axis           =nullptr;
+    Geometry *         prim_axis           =nullptr;
     MaterialInstance *  material_instance   =nullptr;
 
 private:
@@ -44,7 +44,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto pc=GetPrimitiveCreater(material_instance);
+        auto pc=GetGeometryCreater(material_instance);
 
         inline_geometry::AxisCreateInfo aci;
 

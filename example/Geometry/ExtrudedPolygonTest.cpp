@@ -18,10 +18,10 @@ private:
     Material *          material            = nullptr;
     Pipeline *          pipeline            = nullptr;
 
-    Primitive *         prim_rect_cube      = nullptr;
-    Primitive *         prim_circle_cylinder = nullptr;
-    Primitive *         prim_triangle       = nullptr;
-    Primitive *         prim_pentagon       = nullptr;
+    Geometry *         prim_rect_cube      = nullptr;
+    Geometry *         prim_circle_cylinder = nullptr;
+    Geometry *         prim_triangle       = nullptr;
+    Geometry *         prim_pentagon       = nullptr;
     MaterialInstance *  material_instance   = nullptr;
 
 private:
@@ -50,7 +50,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto pc = GetPrimitiveCreater(material_instance);
+        auto pc = GetGeometryCreater(material_instance);
 
         // 测试1: 矩形挤压成立方体
         prim_rect_cube = CreateExtrudedRectangle(pc, 2.0f, 1.5f, 1.0f, Vector3f(0, 0, 1));

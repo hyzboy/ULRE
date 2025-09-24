@@ -36,7 +36,7 @@ private:
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          pipeline_plane_grid =nullptr;
-    Primitive *         prim_plane_grid     =nullptr;
+    Geometry *         prim_plane_grid     =nullptr;
 
     MaterialInstance *  mi_billboard        =nullptr;
     Pipeline *          pipeline_billboard  =nullptr;
@@ -117,7 +117,7 @@ private:
         using namespace inline_geometry;
 
         {
-            auto pc=GetPrimitiveCreater(mi_plane_grid);
+            auto pc=GetGeometryCreater(mi_plane_grid);
 
             struct PlaneGridCreateInfo pgci;
 
@@ -131,7 +131,7 @@ private:
         }
 
         {
-            auto pc=GetPrimitiveCreater(mi_billboard);
+            auto pc=GetGeometryCreater(mi_billboard);
 
             pc->Init("Billboard",1);
 

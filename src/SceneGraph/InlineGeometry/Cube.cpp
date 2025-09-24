@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateCube(PrimitiveCreater *pc,const CubeCreateInfo *cci)
+    Geometry *CreateCube(GeometryCreater *pc,const CubeCreateInfo *cci)
     {
         constexpr float positions[]={   -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,
                                         -0.5f, +0.5f, -0.5f,    -0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f,
@@ -84,7 +84,7 @@ namespace hgl::graph::inline_geometry
 
         pc->WriteIBO(indices);
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         p->SetBoundingBox(Vector3f(-0.5f,-0.5f,-0.5f),Vector3f(0.5f,0.5f,0.5f));
 
