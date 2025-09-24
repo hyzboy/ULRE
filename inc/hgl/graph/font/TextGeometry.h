@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/VKPrimitive.h>
+#include<hgl/graph/VKGeometry.h>
 #include<hgl/type/SortedSet.h>
 #include<hgl/graph/font/FontSource.h>
 
@@ -14,7 +14,7 @@ namespace hgl::graph
     /**
     * 文本图元
     */
-    class TextPrimitive:public Primitive
+    class TextGeometry:public Geometry
     {
         VulkanDevice *  device;
         const VIL *     vil;
@@ -36,11 +36,11 @@ namespace hgl::graph
         void SetCharsSets(const U32CharSet &sl){chars_sets=sl;}
         void ClearCharsSets(){chars_sets.Clear();}
 
-        ~TextPrimitive() override {/*单纯用于避免被用户delete*/}
+        ~TextGeometry() override {/*单纯用于避免被用户delete*/}
 
     public:
 
-        TextPrimitive(VulkanDevice *dev,const VIL *_vil,const uint32_t mc);
+        TextGeometry(VulkanDevice *dev,const VIL *_vil,const uint32_t mc);
 
         void SetCharCount   (const uint);
 
@@ -53,5 +53,5 @@ namespace hgl::graph
 
         VAB *GetPositionVAB()const { return vab_position; }
         VAB *GetTexCoordVAB()const { return vab_tex_coord; }
-    };//class TextPrimitive:public Primitive
+    };//class TextGeometry:public Geometry
 }//namespace hgl::graph

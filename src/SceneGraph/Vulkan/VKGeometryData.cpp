@@ -1,4 +1,4 @@
-﻿#include"VKPrimitiveData.h"
+﻿#include"VKGeometryData.h"
 #include<hgl/graph/VKVertexInputLayout.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
@@ -7,7 +7,7 @@
 
 VK_NAMESPACE_BEGIN
 
-PrimitiveData::PrimitiveData(const VIL *_vil,const uint32_t vc)
+GeometryData::GeometryData(const VIL *_vil,const uint32_t vc)
 {
     vil=_vil;
 
@@ -20,25 +20,25 @@ PrimitiveData::PrimitiveData(const VIL *_vil,const uint32_t vc)
     ibo=nullptr;
 }
 
-PrimitiveData::~PrimitiveData()
+GeometryData::~GeometryData()
 {
     delete[] vab_map_list;
     delete[] vab_list;       //注意：这里并不释放VAB，在派生类中释放
 }
 
-const uint32_t PrimitiveData::GetVABCount()const
+const uint32_t GeometryData::GetVABCount()const
 {
     return vil->GetVertexAttribCount();
 }
 
-const int PrimitiveData::GetVABIndex(const AnsiString &name) const
+const int GeometryData::GetVABIndex(const AnsiString &name) const
 {
     if(name.IsEmpty())return(-1);
 
     return vil->GetIndex(name);
 }
 
-bool PrimitiveData::CreateAllVAB(const uint32_t vc)
+bool GeometryData::CreateAllVAB(const uint32_t vc)
 {
     if(vc<=0)
         return(false);
@@ -62,14 +62,14 @@ bool PrimitiveData::CreateAllVAB(const uint32_t vc)
     return(true);
 }
 
-VAB *PrimitiveData::GetVAB(const int index)const
+VAB *GeometryData::GetVAB(const int index)const
 {
     if(index<0||index>=vil->GetVertexAttribCount())return(nullptr);
 
     return vab_list[index];
 }
 
-VAB *PrimitiveData::GetVAB(const AnsiString &name)const
+VAB *GeometryData::GetVAB(const AnsiString &name)const
 {
     if(name.IsEmpty())return(nullptr);
 
@@ -81,7 +81,7 @@ VAB *PrimitiveData::GetVAB(const AnsiString &name)const
     return vab_list[index];
 }
 
-VAB *PrimitiveData::InitVAB(const int vab_index,const void *data)
+VAB *GeometryData::InitVAB(const int vab_index,const void *data)
 {
     if(!vil)return(nullptr);
 
@@ -107,7 +107,7 @@ VAB *PrimitiveData::InitVAB(const int vab_index,const void *data)
     return vab_list[vab_index];
 }
 
-VABMap *PrimitiveData::GetVABMap(const int vab_index)
+VABMap *GeometryData::GetVABMap(const int vab_index)
 {
     if(vab_index<0||vab_index>=vil->GetVertexAttribCount())return nullptr;
 
@@ -124,7 +124,7 @@ VABMap *PrimitiveData::GetVABMap(const int vab_index)
     return vab_map;
 }
 
-IndexBuffer *PrimitiveData::InitIBO(const int ic,IndexType it)
+IndexBuffer *GeometryData::InitIBO(const int ic,IndexType it)
 {
     if(ibo)delete ibo;
 
@@ -140,7 +140,7 @@ IndexBuffer *PrimitiveData::InitIBO(const int ic,IndexType it)
     return(ibo);
 }
 
-void PrimitiveData::UnmapAll()
+void GeometryData::UnmapAll()
 {
     for(uint32_t i=0;i<vil->GetVertexAttribCount();i++)
         vab_map_list[i].Unmap();
@@ -153,7 +153,7 @@ namespace
     /**
     * 直接使用VulkanDevice创建VAB/IBO,并在释构时释放
     */
-    class PrimitiveDataPrivateBuffer:public PrimitiveData
+    class GeometryDataPrivateBuffer:public GeometryData
     {
         VulkanDevice *device;
 
@@ -166,12 +166,12 @@ namespace
 
     public:
 
-        PrimitiveDataPrivateBuffer(VulkanDevice *dev,const VIL *_vil,const uint32_t vc):PrimitiveData(_vil,vc)
+        GeometryDataPrivateBuffer(VulkanDevice *dev,const VIL *_vil,const uint32_t vc):GeometryData(_vil,vc)
         {
             device=dev;
         }
 
-        ~PrimitiveDataPrivateBuffer() override
+        ~GeometryDataPrivateBuffer() override
         {
             VAB **vab=vab_list;
 
@@ -200,12 +200,12 @@ namespace
 
             return device->CreateVAB(format,vertex_count,data);
         }
-    };//class PrimitiveDataPrivateBuffer:public PrimitiveData
+    };//class GeometryDataPrivateBuffer:public GeometryData
 
     /**
     * 使用VertexDataBuffer分配VAB/IBO，在本类析构时归还数据
     */
-    class PrimitiveDataVDM:public PrimitiveData
+    class GeometryDataVDM:public GeometryData
     {
         VertexDataManager *vdm;
 
@@ -220,7 +220,7 @@ namespace
 
     public:
 
-        PrimitiveDataVDM(VertexDataManager *_vdm,const uint32_t vc):PrimitiveData(_vdm->GetVIL(),vc)
+        GeometryDataVDM(VertexDataManager *_vdm,const uint32_t vc):GeometryData(_vdm->GetVIL(),vc)
         {
             vdm=_vdm;
 
@@ -228,7 +228,7 @@ namespace
             vab_node=vdm->AcquireVAB(vc);
         }
 
-        ~PrimitiveDataVDM() override
+        ~GeometryDataVDM() override
         {
             if(ib_node)
                 vdm->ReleaseIB(ib_node);
@@ -264,23 +264,23 @@ namespace
 
             return vab;
         }
-    };//class PrimitiveDataVDM:public PrimitiveData
+    };//class GeometryDataVDM:public GeometryData
 }//namespace
 
-PrimitiveData *CreatePrimitiveData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc)
+GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc)
 {
     if(!dev)return(nullptr);
     if(!_vil)return(nullptr);
     if(vc<=0)return(nullptr);
 
-    return(new PrimitiveDataPrivateBuffer(dev,_vil,vc));
+    return(new GeometryDataPrivateBuffer(dev,_vil,vc));
 }
 
-PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const uint32_t vc)
+GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc)
 {
     if(!vdm)return(nullptr);
     if(vc<=0)return(nullptr);
 
-    return(new PrimitiveDataVDM(vdm,vc));
+    return(new GeometryDataVDM(vdm,vc));
 }
 VK_NAMESPACE_END

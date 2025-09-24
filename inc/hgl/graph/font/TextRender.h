@@ -10,7 +10,7 @@ namespace hgl::graph
     class FontDataSource;
     class FontSource;
     class TileFont;
-    class TextPrimitive;
+    class TextGeometry;
     class RenderFramework;
     class MaterialManager;
     class MeshManager;
@@ -20,7 +20,7 @@ namespace hgl::graph
         class TextLayout;
     }//namespace layout
 
-    enum class TextPrimitiveType:uint8
+    enum class TextGeometryType:uint8
     {
         /**
         * 固定风格，所有的字符使用同一种风格绘制
@@ -60,11 +60,11 @@ namespace hgl::graph
 
     private:
 
-        SortedSet<TextPrimitive *> tr_sets;                 ///<所有的文字绘制几何体
+        SortedSet<TextGeometry *> tr_sets;                 ///<所有的文字绘制几何体
 
     private:
 
-        bool SimpleLayout(TextPrimitive *tr,const U16StringView &str);              ///<简单文本排版
+        bool SimpleLayout(TextGeometry *tr,const U16StringView &str);              ///<简单文本排版
 
     private:
 
@@ -82,7 +82,7 @@ namespace hgl::graph
 
     public:
 
-        TextPrimitive *Begin(const TextPrimitiveType &tpt=TextPrimitiveType::FixedStyle,int limit=2048);                ///<创建一个文本绘制几何体
+        TextGeometry *Begin(const TextGeometryType &tpt=TextGeometryType::FixedStyle,int limit=2048);                 ///<创建一个文本绘制几何体
 
         void SetFixedStyle(const layout::CharStyle &);                                                                  ///<设定固定风格模式所用风格
         void SetParagraphStyle(const layout::ParagraphStyle *);                                                         ///<设定段落风格
@@ -93,10 +93,10 @@ namespace hgl::graph
 
     public:
 
-        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16StringView&str);                           ///<创建一个文本几何体，并进行简单排版
+        TextGeometry *CreateGeometry(const TextGeometryType &tpt,const U16StringView&str);                            ///<创建一个文本几何体，并进行简单排版
 
-        Mesh *CreateMesh(TextPrimitive *text_primitive);                                                                ///<创建一个网格对象用于渲染指定的文本几何体
+        Mesh *CreateMesh(TextGeometry *text_primitive);                                                                 ///<创建一个网格对象用于渲染指定的文本几何体
 
-        void Release(TextPrimitive *);                                                                                  ///<释放一个文本几何体
+        void Release(TextGeometry *);                                                                                   ///<释放一个文本几何体
     };//class TextRender
 }//namespace hgl::graph

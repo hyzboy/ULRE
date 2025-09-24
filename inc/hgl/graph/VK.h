@@ -40,7 +40,7 @@ class DescriptorBinding;
 class GraphModule;
 class BufferManager;
 class RenderPassManager;
-class PrimitiveManager;
+class GeometryManager;
 class MaterialManager;
 class MeshManager;
 class RenderTargetManager;
@@ -83,8 +83,8 @@ class DeviceBuffer;
 struct DeviceBufferData;
 template<typename T> class DeviceBufferMap;
 
-struct MeshDataBuffer;
-struct MeshRenderData;
+struct GeometryDataBuffer;
+struct GeometryDrawRange;
 
 class VertexAttribBuffer;
 using VAB=VertexAttribBuffer;
@@ -245,8 +245,8 @@ using VIF=VertexInputFormat;
 class VertexInputLayout;
 using VIL=VertexInputLayout;
 
-class PrimitiveData;
-class Primitive;
+class GeometryData;
+class Geometry;
 class Mesh;
 
 class VertexDataManager;

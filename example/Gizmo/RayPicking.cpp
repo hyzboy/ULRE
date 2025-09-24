@@ -37,12 +37,12 @@ private:
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          pipeline_plane_grid =nullptr;
-    Primitive *         prim_plane_grid     =nullptr;
+    Geometry *         prim_plane_grid     =nullptr;
 
     Material *          mtl_line            =nullptr;
     MaterialInstance *  mi_line             =nullptr;
     Pipeline *          pipeline_line       =nullptr;
-    Primitive *         prim_line           =nullptr;
+    Geometry *         prim_line           =nullptr;
     VABMap *            prim_line_vab_map   =nullptr;
 
     Ray                 ray;
@@ -90,7 +90,7 @@ private:
         return(true);
     }
     
-    Mesh *Add(SceneNode *parent_node,Primitive *r,MaterialInstance *mi,Pipeline *p)
+    Mesh *Add(SceneNode *parent_node,Geometry *r,MaterialInstance *mi,Pipeline *p)
     {
         Mesh *ri=CreateMesh(r,mi,p);
 
@@ -112,7 +112,7 @@ private:
         using namespace inline_geometry;
         
         {
-            auto pc=GetPrimitiveCreater(mi_plane_grid);
+            auto pc=GetGeometryCreater(mi_plane_grid);
 
             struct PlaneGridCreateInfo pgci;
 
@@ -126,7 +126,7 @@ private:
         }
 
         {
-            prim_line=CreatePrimitive("RayLine",2,mi_line->GetVIL(),
+            prim_line=CreateGeometry("RayLine",2,mi_line->GetVIL(),
                                     {
                                         {VAN::Position, VF_V3F,position_data},
                                         {VAN::Luminance,VF_V1UN8,lumiance_data}

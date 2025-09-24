@@ -34,7 +34,7 @@ namespace hgl::graph::layout
 
     protected:
 
-        TextPrimitive *text_primitive=nullptr;
+        TextGeometry *text_primitive=nullptr;
 
         DataArray<int16> vertex;
         DataArray<float> tex_coord;
@@ -71,7 +71,7 @@ namespace hgl::graph::layout
 
     public: //多次排版
 
-        bool Begin(TextPrimitive *,int Estimate=1024);                  ///<开始排版
+        bool Begin(TextGeometry *,int Estimate=1024);                  ///<开始排版
 
         bool AddString(const U16StringView&,const TextDrawStyle &);     ///<添加一个要排版的字符串
 

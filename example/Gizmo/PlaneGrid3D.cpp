@@ -21,7 +21,7 @@ private:
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Primitive *         prim_plane_grid     =nullptr;
+    Geometry *         prim_plane_grid     =nullptr;
     MaterialInstance *  material_instance[3]{};
 
 private:
@@ -69,7 +69,7 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto pc=GetPrimitiveCreater(material_instance[0]);
+        auto pc=GetGeometryCreater(material_instance[0]);
 
         prim_plane_grid=CreatePlaneGrid2D(pc,&pgci);
 

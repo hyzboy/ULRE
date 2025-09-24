@@ -1,14 +1,14 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKPrimitive.h>
+#include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttrib.h>
-#include<hgl/graph/mesh/MeshDataBuffer.h>
-#include<hgl/graph/mesh/MeshRenderData.h>
+#include<hgl/graph/mesh/GeometryDataBuffer.h>
+#include<hgl/graph/mesh/GeometryDrawRange.h>
 
 VK_NAMESPACE_BEGIN
 /**
@@ -18,16 +18,16 @@ class Mesh
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
-    Primitive *         primitive;
+    Geometry *          geometry;
 
-    MeshDataBuffer *    data_buffer;
-    MeshRenderData      render_data;
+    GeometryDataBuffer *    data_buffer;
+    GeometryDrawRange      render_data;
 
 private:
 
-    friend Mesh *DirectCreateMesh(Primitive *,MaterialInstance *,Pipeline *);
+    friend Mesh *DirectCreateMesh(Geometry *,MaterialInstance *,Pipeline *);
 
-    Mesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *);
+    Mesh(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
 
 public:
 
@@ -44,20 +44,20 @@ public:
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
-            Primitive *         GetPrimitive        (){return primitive;}
-    const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
+            Geometry *          GetGeometry         (){return geometry;}
+    const   AABB &              GetBoundingBox      ()const{return geometry->GetBoundingBox();}
 
-    const   MeshDataBuffer *    GetDataBuffer       ()const{return data_buffer;}
-    const   MeshRenderData *    GetRenderData       ()const{return &render_data;}
+    const   GeometryDataBuffer *    GetDataBuffer       ()const{return data_buffer;}
+    const   GeometryDrawRange *    GetRenderData       ()const{return &render_data;}
 
-            VAB *               GetVAB              (const int index)const{return primitive->GetVAB(index);}
-            VAB *               GetVAB              (const AnsiString &name)const{return primitive->GetVAB(name);}
-            VABMap *            GetVABMap           (const int vab_index){return primitive->GetVABMap(vab_index);}
-            VABMap *            GetVABMap           (const AnsiString &name) { return primitive->GetVABMap(name); }
-            IndexBuffer *       GetIBO              (){return primitive->GetIBO();}
-            IBMap *             GetIBMap            (){return primitive->GetIBMap();}
+            VAB *               GetVAB              (const int index)const{return geometry->GetVAB(index);}
+            VAB *               GetVAB              (const AnsiString &name)const{return geometry->GetVAB(name);}
+            VABMap *            GetVABMap           (const int vab_index){return geometry->GetVABMap(vab_index);}
+            VABMap *            GetVABMap           (const AnsiString &name) { return geometry->GetVABMap(name); }
+            IndexBuffer *       GetIBO              (){return geometry->GetIBO();}
+            IBMap *             GetIBMap            (){return geometry->GetIBMap();}
 
-    virtual bool                UpdatePrimitive     ();     ///<更新Primitive,一般用于primitive改变数据后需要通知Mesh的情况
+    virtual bool                UpdateGeometry      ();     ///<更新Geometry,一般用于Geometry改变数据后需要通知Mesh的情况
 
 public:
 
@@ -84,5 +84,5 @@ public:
             uint32_t            GetDataIndexCount()const{return render_data.data_index_count;}
 };//class Mesh
 
-Mesh *DirectCreateMesh(Primitive *,MaterialInstance *,Pipeline *);
+Mesh *DirectCreateMesh(Geometry *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END

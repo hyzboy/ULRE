@@ -6,7 +6,7 @@
 VK_NAMESPACE_BEGIN
 
 class SceneNode;
-class PrimitiveCreater;
+class GeometryCreater;
 class MeshComponent;
 
 constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=

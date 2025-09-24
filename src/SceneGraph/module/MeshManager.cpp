@@ -8,7 +8,7 @@ GRAPH_MODULE_CONSTRUCT(MeshManager)
 {
 }
 
-Mesh *MeshManager::CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p)
+Mesh *MeshManager::CreateMesh(Geometry *r, MaterialInstance *mi, Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
@@ -21,12 +21,12 @@ Mesh *MeshManager::CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p)
     return ri;
 }
 
-Mesh *MeshManager::CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p)
+Mesh *MeshManager::CreateMesh(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p)
 {
     if(!p||!mi||!pc)
         return(nullptr);
 
-    Primitive *prim=pc->Create();
+    Geometry *prim=pc->Create();
 
     if(!prim)
         return(nullptr);
@@ -35,7 +35,7 @@ Mesh *MeshManager::CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeli
 
     if(ri)
     {
-        // Add primitive ownership remains responsibility of caller in many places; keep behavior similar to previous
+        // Add geometry ownership remains responsibility of caller in many places; keep behavior similar to previous
         Add(ri);
         return ri;
     }

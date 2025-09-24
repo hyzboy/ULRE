@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateTaperedCapsule(PrimitiveCreater *pc,const TaperedCapsuleCreateInfo *tcci)
+    Geometry *CreateTaperedCapsule(GeometryCreater *pc,const TaperedCapsuleCreateInfo *tcci)
     {
         if(!pc||!tcci)return nullptr;
 
@@ -352,7 +352,7 @@ namespace hgl::graph::inline_geometry
             }
         }
 
-        Primitive *p = pc->Create();
+        Geometry *p = pc->Create();
 
         // bounding box: extents depend on larger of radii
         float maxr = std::max(bottomR, topR);

@@ -7,7 +7,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
-#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/RenderModule.h>
@@ -145,8 +145,8 @@ bool RenderFramework::Init(uint w,uint h)
     if(!sampler_manager)
         return(false);
 
-    primitive_manager=module_manager->GetOrCreate<PrimitiveManager>();
-    if(!primitive_manager)
+    geometry_manager=module_manager->GetOrCreate<GeometryManager>();
+    if(!geometry_manager)
         return(false);
 
     mesh_manager=module_manager->GetOrCreate<MeshManager>();
@@ -240,12 +240,12 @@ graph::VertexDataManager *RenderFramework::CreateVDM(const graph::VIL *vil,const
     return vdm;
 }
 
-graph::Primitive *RenderFramework::CreatePrimitive( const AnsiString &name,
+graph::Geometry *RenderFramework::CreateGeometry( const AnsiString &name,
                                                     const uint32_t vertices_count,
                                                     const graph::VIL *vil,
                                                     const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
 {
-    auto *pc=new graph::PrimitiveCreater(GetDevice(),vil);
+    auto *pc=new graph::GeometryCreater(GetDevice(),vil);
 
     pc->Init(name,vertices_count);
 
@@ -261,7 +261,7 @@ graph::Primitive *RenderFramework::CreatePrimitive( const AnsiString &name,
     auto *prim=pc->Create();
 
     if(prim)
-        primitive_manager->Add(prim);
+        geometry_manager->Add(prim);
 
     return prim;
 }
@@ -272,7 +272,7 @@ graph::Mesh *RenderFramework::CreateMesh(   const AnsiString &name,
                                             graph::Pipeline *pipeline,
                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
 {
-    auto *prim=this->CreatePrimitive(name,vertices_count,mi->GetVIL(),vad_list);
+    auto *prim=this->CreateGeometry(name,vertices_count,mi->GetVIL(),vad_list);
 
     if(!prim)
         return(nullptr);

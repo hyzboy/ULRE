@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateCircle2D(PrimitiveCreater *pc,const CircleCreateInfo *cci)
+    Geometry *CreateCircle2D(GeometryCreater *pc,const CircleCreateInfo *cci)
     {
         if(!pc)return(nullptr);
 
@@ -53,7 +53,7 @@ namespace hgl::graph::inline_geometry
         return pc->Create();
     }
 
-    Primitive *CreateCircle3D(PrimitiveCreater *pc,const CircleCreateInfo *cci)
+    Geometry *CreateCircle3D(GeometryCreater *pc,const CircleCreateInfo *cci)
     {
         if(!pc)return(nullptr);
 
@@ -124,7 +124,7 @@ namespace hgl::graph::inline_geometry
         return pc->Create();
     }
 
-    Primitive *CreateCircle3DByIndexTriangles(PrimitiveCreater *pc,const CircleCreateInfo *cci)
+    Geometry *CreateCircle3DByIndexTriangles(GeometryCreater *pc,const CircleCreateInfo *cci)
     {
         if(!pc)return(nullptr);
 

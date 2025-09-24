@@ -1,8 +1,8 @@
 ﻿#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
-#include<hgl/graph/VKPrimitive.h>
+#include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/VertexDataManager.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/color/Color.h>
@@ -35,7 +35,7 @@ namespace
         Pipeline *          pipeline;
         VertexDataManager * vdm;
 
-        PrimitiveCreater *  prim_creater;
+        GeometryCreater *  prim_creater;
     };
 
     static GizmoResource    gizmo_line{};
@@ -43,7 +43,7 @@ namespace
 
     struct GizmoMesh
     {
-        Primitive *prim;
+        Geometry *prim;
 
         Mesh *mesh;
         MeshComponentData *mcd;
@@ -51,7 +51,7 @@ namespace
 
     public:
 
-        void Create(Primitive *p)
+        void Create(Geometry *p)
         {
             prim=p;
 
@@ -68,7 +68,7 @@ namespace
     
     GizmoMesh         gizmo_mesh[size_t(GizmoShape::RANGE_SIZE)]{};
 
-    void InitGizmoMesh(const GizmoShape &gs,Primitive *prim)
+    void InitGizmoMesh(const GizmoShape &gs,Geometry *prim)
     {
         if(!prim)
             return;
@@ -202,7 +202,7 @@ namespace
         }
 
         {
-            gizmo_triangle.prim_creater=new PrimitiveCreater(gizmo_triangle.vdm);
+            gizmo_triangle.prim_creater=new GeometryCreater(gizmo_triangle.vdm);
 
             if(!gizmo_triangle.prim_creater)
                 return(false);

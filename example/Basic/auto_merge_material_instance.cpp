@@ -74,7 +74,7 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        Primitive *prim=CreatePrimitive("Triangle",VERTEX_COUNT,material->GetDefaultVIL(),
+        Geometry *prim=CreateGeometry("Triangle",VERTEX_COUNT,material->GetDefaultVIL(),
                                         {{VAN::Position,   VF_V2F, position_data}});
 
         if(!prim)

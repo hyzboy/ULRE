@@ -1,7 +1,7 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
@@ -49,7 +49,7 @@ private:
 
     struct RenderMesh
     {
-        Primitive *prim;
+        Geometry *prim;
         Mesh *mesh;
         MeshComponentData *data;
         ComponentDataPtr cdp;
@@ -138,7 +138,7 @@ private:
         return true;
     }
 
-    RenderMesh *CreateRenderMesh(Primitive *prim,MaterialData *md,const int color)
+    RenderMesh *CreateRenderMesh(Geometry *prim,MaterialData *md,const int color)
     {
         if(!prim)
             return(nullptr);
@@ -162,7 +162,7 @@ private:
     {
         using namespace inline_geometry;
 
-        PrimitiveCreater *prim_creater=new PrimitiveCreater(mesh_vdm);
+        GeometryCreater *prim_creater=new GeometryCreater(mesh_vdm);
 
         if(!prim_creater)
             return(false);
@@ -249,7 +249,7 @@ private:
     {
         using namespace inline_geometry;
 
-        auto pc=GetPrimitiveCreater(wire.material);
+        auto pc=GetGeometryCreater(wire.material);
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 

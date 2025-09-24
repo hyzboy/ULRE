@@ -6,7 +6,7 @@
 
 namespace hgl::graph
 {
-    class PrimitiveCreater;
+    class GeometryCreater;
 
     namespace inline_geometry
     {
@@ -69,12 +69,12 @@ namespace hgl::graph
          *
          * 注意：Line2D 不再保存坐标，使用索引引用 vertices 中的坐标。
          */
-        Primitive *CreateWallsFromLines2D(PrimitiveCreater *pc, const WallCreateInfo *wci);
+        Geometry *CreateWallsFromLines2D(GeometryCreater *pc, const WallCreateInfo *wci);
 
         /**
          * 便利函数：创建单条水平墙体
          */
-        inline Primitive *CreateHorizontalWall(PrimitiveCreater *pc, float startX, float startY,
+        inline Geometry *CreateHorizontalWall(GeometryCreater *pc, float startX, float startY,
                                              float length, float thickness = 0.2f, float height = 3.0f)
         {
             // 方便性函数仍使用旧逻辑，构建顶点和索引并调用主接口
@@ -96,7 +96,7 @@ namespace hgl::graph
         /**
          * 便利函数：创建单条垂直墙体
          */
-        inline Primitive *CreateVerticalWall(PrimitiveCreater *pc, float startX, float startY,
+        inline Geometry *CreateVerticalWall(GeometryCreater *pc, float startX, float startY,
                                            float length, float thickness = 0.2f, float height = 3.0f)
         {
             static Vector2f verts[2];

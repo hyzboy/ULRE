@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateRectangle(PrimitiveCreater *pc,const RectangleCreateInfo *rci)
+    Geometry *CreateRectangle(GeometryCreater *pc,const RectangleCreateInfo *rci)
     {
         if(!pc)return(nullptr);
 
@@ -19,7 +19,7 @@ namespace hgl::graph::inline_geometry
         return pc->Create();
     }
 
-    Primitive *CreateGBufferCompositionRectangle(PrimitiveCreater *pc)
+    Geometry *CreateGBufferCompositionRectangle(GeometryCreater *pc)
     {
         RectangleCreateInfo rci;
 

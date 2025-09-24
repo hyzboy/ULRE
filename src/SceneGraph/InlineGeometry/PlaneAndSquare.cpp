@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreatePlaneGrid2D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci)
+    Geometry *CreatePlaneGrid2D(GeometryCreater *pc,const PlaneGridCreateInfo *pgci)
     {
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
@@ -54,7 +54,7 @@ namespace hgl::graph::inline_geometry
         return pc->Create();
     }
 
-    Primitive *CreatePlaneGrid3D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci)
+    Geometry *CreatePlaneGrid3D(GeometryCreater *pc,const PlaneGridCreateInfo *pgci)
     {
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
@@ -106,7 +106,7 @@ namespace hgl::graph::inline_geometry
         return pc->Create();
     }
 
-    Primitive *CreatePlaneSqaure(PrimitiveCreater *pc)
+    Geometry *CreatePlaneSqaure(GeometryCreater *pc)
     {
         const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                 float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
@@ -145,7 +145,7 @@ namespace hgl::graph::inline_geometry
 
         pc->WriteIBO(indices);
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         {
             AABB aabb;

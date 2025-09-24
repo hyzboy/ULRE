@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateCone(PrimitiveCreater *pc,const ConeCreateInfo *cci)
+    Geometry *CreateCone(GeometryCreater *pc,const ConeCreateInfo *cci)
     {
         uint i, j;
 
@@ -131,7 +131,7 @@ namespace hgl::graph::inline_geometry
                 return(nullptr);
         }
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         p->SetBoundingBox(Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
                             Vector3f( cci->radius, cci->radius, cci->halfExtend));

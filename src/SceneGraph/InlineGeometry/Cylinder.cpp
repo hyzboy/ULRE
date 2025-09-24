@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateCylinder(PrimitiveCreater *pc,const CylinderCreateInfo *cci)
+    Geometry *CreateCylinder(GeometryCreater *pc,const CylinderCreateInfo *cci)
     {
         uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
@@ -184,7 +184,7 @@ namespace hgl::graph::inline_geometry
                 return(nullptr);
         }
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         p->SetBoundingBox(  Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
                             Vector3f( cci->radius, cci->radius, cci->halfExtend));

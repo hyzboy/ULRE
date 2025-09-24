@@ -3,7 +3,7 @@
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/TextRender.h>

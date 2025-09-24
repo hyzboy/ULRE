@@ -2,7 +2,7 @@
 
 namespace hgl::graph::inline_geometry
 {
-    Primitive *CreateAxis(PrimitiveCreater *pc,const AxisCreateInfo *aci)
+    Geometry *CreateAxis(GeometryCreater *pc,const AxisCreateInfo *aci)
     {
         if(!pc||!aci)return(nullptr);
 
@@ -26,14 +26,14 @@ namespace hgl::graph::inline_geometry
         vertex->Write(0,0,0);color->Write(aci->color[2]);
         vertex->Write(0,0,s);color->Write(aci->color[2]);
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         p->SetBoundingBox(Vector3f(0,0,0),Vector3f(s,s,s));
 
         return p;
     }
 
-    Primitive *CreateBoundingBox(PrimitiveCreater *pc,const BoundingBoxCreateInfo *cci)
+    Geometry *CreateBoundingBox(GeometryCreater *pc,const BoundingBoxCreateInfo *cci)
     {
         const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
                                 -0.5, 0.5, 0.5,     0.5, 0.5,0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5};
@@ -70,7 +70,7 @@ namespace hgl::graph::inline_geometry
 
         pc->WriteIBO<uint16>(indices);
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
 
         p->SetBoundingBox(  Vector3f(-0.5,-0.5,-0.5),
                             Vector3f( 0.5, 0.5, 0.5));
@@ -78,7 +78,7 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
-    Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col)
+    Geometry *CreateSqaureArray(GeometryCreater *pc,const uint row,const uint col)
     {
         if(!pc)return(nullptr);
         if(row==0||col==0)return(nullptr);
@@ -122,7 +122,7 @@ namespace hgl::graph::inline_geometry
                 }
         }
 
-        Primitive *p=pc->Create();
+        Geometry *p=pc->Create();
         {
             AABB aabb;
             aabb.SetMinMax(Vector3f(0,0,0),Vector3f(col,row,0));
