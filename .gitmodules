@@ -29,3 +29,6 @@
 [submodule "GLTFConvert"]
 	path = src/Tools/GLTFConvert
 	url = http://git.hyzgame.com:3000/hyzboy/GLTFConvert.git
+[submodule "src/Tools/HeightmapCompress"]
+	path = src/Tools/HeightmapCompress
+	url = http://git.hyzgame.com:3000/hyzboy/HeightmapCompress.git
