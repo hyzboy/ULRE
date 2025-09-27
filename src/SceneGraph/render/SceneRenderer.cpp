@@ -117,7 +117,10 @@ namespace hgl::graph
 
         root->UpdateWorldTransform();
         const uint renderable = render_task->RebuildRenderList(root);
-        if(renderable == 0)
+
+        LineRenderManager *lrm=GetLineRenderManager();
+
+        if(renderable == 0 && (lrm&&lrm->GetLineCount()==0))
         {
             // nothing to draw this frame
             render_state_dirty = false;
@@ -135,8 +138,8 @@ namespace hgl::graph
 
         result=render_task->Render(cmd);
 
-        if(GetLineRenderManager())
-            GetLineRenderManager()->Draw(cmd);
+        if(lrm)
+            lrm->Draw(cmd);
 
         cmd->EndRenderPass();
         render_target->EndRender();
