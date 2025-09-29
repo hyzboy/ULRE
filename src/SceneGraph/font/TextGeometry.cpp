@@ -36,7 +36,7 @@ namespace hgl::graph
 
         geometry_data=CreateGeometryData(device,vil,max_count);
 
-        geometry_data->CreateAllVAB(max_count);
+        geometry_data->CreateAllVAB();
 
         vab_position    =geometry_data->GetVAB(VAN::Position);
         vab_tex_coord   =geometry_data->GetVAB(VAN::TexCoord);
