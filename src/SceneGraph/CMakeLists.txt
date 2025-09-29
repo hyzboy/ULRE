@@ -64,7 +64,6 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/geo/InlineGeometry.h
                     InlineGeometry/Cylinder.cpp
                     InlineGeometry/CylinderConeTorusIndices.cpp
                     InlineGeometry/ExtrudedPolygon.cpp
-                    InlineGeometry/Heart.cpp
                     InlineGeometry/HexSphere.cpp
                     InlineGeometry/HollowCylinder.cpp
                     InlineGeometry/InlineGeometryCommon.h
