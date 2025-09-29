@@ -32,3 +32,6 @@
 [submodule "src/Tools/HeightmapCompress"]
 	path = src/Tools/HeightmapCompress
 	url = http://git.hyzgame.com:3000/hyzboy/HeightmapCompress.git
+[submodule "src/Tools/MiniPack"]
+	path = src/Tools/MiniPack
+	url = http://git.hyzgame.com:3000/hyzboy/MiniPack.git
