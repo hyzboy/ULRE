@@ -38,11 +38,8 @@ const int GeometryData::GetVABIndex(const AnsiString &name) const
     return vil->GetIndex(name);
 }
 
-bool GeometryData::CreateAllVAB(const uint32_t vc)
+bool GeometryData::CreateAllVAB()
 {
-    if(vc<=0)
-        return(false);
-
     const uint32_t count=vil->GetVertexAttribCount();
 
     const VertexInputFormat *vif;

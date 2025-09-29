@@ -252,7 +252,7 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
         return nullptr;
 
     // 创建所有 VAB（内容为空）
-    if(!pd->CreateAllVAB(vertex_count))
+    if(!pd->CreateAllVAB())
     {
         delete pd;
         return nullptr;

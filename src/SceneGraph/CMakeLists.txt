@@ -64,6 +64,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/geo/InlineGeometry.h
                     InlineGeometry/Cylinder.cpp
                     InlineGeometry/CylinderConeTorusIndices.cpp
                     InlineGeometry/ExtrudedPolygon.cpp
+                    InlineGeometry/Heart.cpp
                     InlineGeometry/HexSphere.cpp
                     InlineGeometry/HollowCylinder.cpp
                     InlineGeometry/InlineGeometryCommon.h
@@ -278,11 +279,11 @@ SET(VK_TEXTURE_LOADER_SOURCE    ${SG_INCLUDE_PATH}/VKTextureCreateInfo.h
                                 Vulkan/Texture/VKTextureCubeLoader.cpp)
 
 SET(VK_DEVICE_CREATER_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
-                            ${SG_INCLUDE_PATH}/VKDeviceAttribute.h
-                            ${SG_INCLUDE_PATH}/VKDeviceCreater.h
-                            Vulkan/VKDeviceAttribute.cpp
-                            Vulkan/VKDeviceCreater.cpp
-                            Vulkan/VKDevice.cpp)
+                                ${SG_INCLUDE_PATH}/VKDeviceAttribute.h
+                                ${SG_INCLUDE_PATH}/VKDeviceCreater.h
+                                Vulkan/VKDeviceAttribute.cpp
+                                Vulkan/VKDeviceCreater.cpp
+                                Vulkan/VKDevice.cpp)
 
 SET(VK_DEVICE_SOURCE    Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceBuffer.cpp
@@ -394,6 +395,7 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         component/Component.cpp
                         component/ComponentManager.cpp
                         component/SceneComponent.cpp
+                        component/GeometryComponent.cpp
                         component/MeshComponentManager.cpp
                         component/StaticMeshComponentManager.cpp
 )
