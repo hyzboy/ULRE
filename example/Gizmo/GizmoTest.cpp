@@ -65,7 +65,7 @@ private:
         if(!InitGizmoResource(GetRenderFramework()))
             return(false);
 
-        sm_move     =GetGizmoMoveNode(GetScene());
+        sm_move     =GetGizmoMoveNode(GetWorld());
         //sm_rotate   =GetGizmoRotateStaticMesh();
         //sm_scale    =GetGizmoScaleStaticMesh();
 
@@ -77,8 +77,8 @@ private:
         SceneNode *root=GetSceneRoot();
 
         root->AddChild(sm_move);
-        //root.Add(Clone(sm_rotate->GetScene()));
-        //root.CreateSubNode(sm_scale->GetScene());
+        //root.Add(Clone(sm_rotate->GetWorld()));
+        //root.CreateSubNode(sm_scale->GetWorld());
     }
 
 public:

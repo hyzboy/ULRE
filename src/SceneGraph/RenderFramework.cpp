@@ -12,7 +12,7 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/RenderModule.h>
 #include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/Scene.h>
+#include<hgl/graph/World.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/mtl/UBOCommon.h>
@@ -59,7 +59,7 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
-    SAFE_CLEAR(default_scene)
+    SAFE_CLEAR(default_world)
     SAFE_CLEAR(default_scene_renderer);
     SAFE_CLEAR(module_manager)
 
@@ -167,19 +167,19 @@ bool RenderFramework::Init(uint w,uint h)
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
 
-    OnChangeDefaultScene(new Scene(this));
+    OnChangeDefaultWorld(new World(this));
 
     CreateDefaultSceneRenderer();
 
     return(true);
 }
 
-void RenderFramework::OnChangeDefaultScene(Scene *s)
+void RenderFramework::OnChangeDefaultWorld(World *s)
 {
-    if(default_scene==s)
+    if(default_world==s)
         return;
 
-    default_scene=s;
+    default_world=s;
 }
 
 void RenderFramework::CreateDefaultSceneRenderer()
@@ -192,7 +192,7 @@ void RenderFramework::CreateDefaultSceneRenderer()
 
         this->AddChildDispatcher(default_scene_renderer);
 
-        default_scene_renderer->SetScene(default_scene);
+        default_scene_renderer->SetWorld(default_world);
     }
     else
     {

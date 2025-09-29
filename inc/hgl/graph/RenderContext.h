@@ -19,7 +19,7 @@ namespace hgl::graph
                 RenderFramework *   rf                  = nullptr;
                 IRenderTarget *     render_target       = nullptr;  ///< 当前渲染目标
         const   ViewportInfo *      viewport_info       = nullptr;  ///< 缓存视口
-                Scene *             scene               = nullptr;  ///< 场景指针(不负责释放)
+                World *             world               = nullptr;  ///< 世界指针(不负责释放)
                 CameraControl *     camera_control      = nullptr;  ///< 摄像机控制(策略指针,不负责释放)
                 LineRenderManager * line_render_mgr     = nullptr;  ///< 线段渲染管理器
 
@@ -44,7 +44,7 @@ namespace hgl::graph
         const   CameraInfo *        GetCameraInfo       ()const { return ubo_camera_info ? ubo_camera_info->data() : nullptr; }
                 CameraControl *     GetCameraControl    ()const { return camera_control; }
 
-                Scene *             GetScene            ()const { return scene; }
+                World *             GetWorld            ()const { return world; }
                 LineRenderManager * GetLineRenderManager()const { return line_render_mgr; }
 
     public:
@@ -53,7 +53,7 @@ namespace hgl::graph
         ~RenderContext();
 
         void SetRenderTarget(IRenderTarget *rt);
-        void SetScene(Scene *s){ scene = s; }
+        void SetWorld(World *s){ world = s; }
         void SetCameraControl(CameraControl *cc);
 
     public:

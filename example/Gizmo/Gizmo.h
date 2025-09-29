@@ -5,7 +5,7 @@
 
 VK_NAMESPACE_BEGIN
 
-class Scene;
+class World;
 
 enum class GizmoColor:uint
 {
@@ -40,7 +40,7 @@ void FreeGizmoResource();
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);
 ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape);
 
-SceneNode *GetGizmoMoveNode(Scene *);
+SceneNode *GetGizmoMoveNode(World *);
 //SceneNode *GetGizmoScaleMesh();
 //SceneNode *GetGizmoRotateMesh();
 

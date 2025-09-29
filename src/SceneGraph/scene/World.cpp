@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/Scene.h>
+﻿#include<hgl/graph/World.h>
 #include<hgl/type/Map.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
@@ -11,46 +11,46 @@ namespace hgl::graph
 
     namespace
     {
-        Map<U8String,Scene *> scene_world_map;///<场景列表
+        Map<U8String,World *> registered_world_map;  ///<世界列表
     }//namespace
 
-    bool RegisterScene(Scene *sw)
+    bool RegisterWorld(World *sw)
     {
         if(!sw)return(false);
 
-        const U8String &scene_name=sw->GetSceneName();
+        const U8String &world_name=sw->GetWorldName();
 
-        if(scene_world_map.Find(scene_name))
+        if(registered_world_map.Find(world_name))
             return false;///<已经注册过了
 
-        scene_world_map.Add(scene_name,sw);
+        registered_world_map.Add(world_name,sw);
         return true;
     }
 
-    Scene *GetScene(const U8String &scene_name)
+    World *GetWorld(const U8String &world_name)
     {
-        if(scene_name.IsEmpty())
+        if(world_name.IsEmpty())
             return(nullptr);
 
-        return GetObjectFromMap(scene_world_map,scene_name);
+        return GetObjectFromMap(registered_world_map,world_name);
     }
 
-    bool UnregisterScene(const U8String &scene_name)
+    bool UnregisterWorld(const U8String &world_name)
     {
-        if(scene_name.IsEmpty())
+        if(world_name.IsEmpty())
             return(false);
 
-        return scene_world_map.DeleteByKey(scene_name);
+        return registered_world_map.DeleteByKey(world_name);
     }
 }//namespace hgl::graph
 
 namespace hgl::graph
 {
-    Scene::Scene(RenderFramework *rf)
+    World::World(RenderFramework *rf)
     {
         render_framework=rf;
 
-        scene_desc_binding=new DescriptorBinding(DescriptorSetType::Scene);
+        scene_desc_binding=new DescriptorBinding(DescriptorSetType::World);
 
         {
             ubo_sky_info=rf->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo);
@@ -61,7 +61,7 @@ namespace hgl::graph
         root_node=new SceneNode(this);
     }
 
-    Scene::~Scene()
+    World::~World()
     {
         SAFE_CLEAR(root_node);
         SAFE_CLEAR(scene_desc_binding);

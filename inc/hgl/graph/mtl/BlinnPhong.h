@@ -14,7 +14,7 @@ namespace blinnphong
 
     constexpr const ShaderBufferSource SBS_SunLight=
     {
-        DescriptorSetType::Scene,
+        DescriptorSetType::World,
 
         "sun",
 

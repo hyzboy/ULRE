@@ -12,7 +12,7 @@
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/camera/CameraControl.h>
-#include<hgl/graph/Scene.h>
+#include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/io/event/MouseEvent.h>
@@ -38,7 +38,7 @@ class BufferManager;
 
 class RenderModule;
 
-class Scene;
+class World;
 class SceneRenderer;
 class LineRenderManager; // forward
 
@@ -77,10 +77,10 @@ protected:
 
 protected:  //RenderContext,未来合并成一个RenderContext结构
 
-    Scene *                 default_scene           =nullptr;
+    World *                 default_world           =nullptr;
     SceneRenderer *         default_scene_renderer  =nullptr;
 
-    void OnChangeDefaultScene(Scene *);
+    void OnChangeDefaultWorld(World *);
 
     void CreateDefaultSceneRenderer();
 
@@ -117,7 +117,7 @@ public:
 
 public:
 
-    Scene *                 GetDefaultScene         (){return default_scene;}
+    World *                 GetDefaultWorld         (){return default_world;}
     SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
 
     RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}

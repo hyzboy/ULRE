@@ -1,5 +1,5 @@
 #include<hgl/graph/RenderContext.h>
-#include<hgl/graph/Scene.h>
+#include<hgl/graph/World.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
@@ -35,7 +35,7 @@ namespace hgl::graph
         SAFE_CLEAR(ubo_camera_info);
 
         camera_control = nullptr; // not owner
-        scene = nullptr;
+        world = nullptr;
         render_target = nullptr;
         viewport_info = nullptr;
     }
@@ -100,7 +100,7 @@ namespace hgl::graph
         if(camera_desc_binding)
             cmd->SetDescriptorBinding(camera_desc_binding);
 
-        if(scene)
-            cmd->SetDescriptorBinding(scene->GetDescriptorBinding());
+        if(world)
+            cmd->SetDescriptorBinding(world->GetDescriptorBinding());
     }
 }//namespace hgl::graph

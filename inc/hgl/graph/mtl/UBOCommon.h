@@ -115,7 +115,7 @@ constexpr const ShaderBufferSource SBS_JointInfo=
 */
 constexpr const ShaderBufferSource SBS_SkyInfo=
 {
-    DescriptorSetType::Scene,
+    DescriptorSetType::World,
 
     "sky",
     "SkyInfo",

@@ -62,7 +62,7 @@ public:
 
         using namespace inline_geometry;
 
-        // Build several different polylines to create a more complex wall scene
+        // Build several different polylines to create a more complex wall world
 
         // 1) long zig-zag
         {

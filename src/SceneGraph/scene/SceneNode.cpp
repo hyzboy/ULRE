@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/component/SceneComponent.h>
 #include<hgl/graph/mesh/Mesh.h>
-#include<hgl/graph/Scene.h>
+#include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/log/Log.h>
@@ -20,7 +20,7 @@ namespace hgl::graph
         if(!ep)
         {
             //有可能的，没有加入任保何SceneRenderer的场景
-            MLogWarning(SceneNode,"SceneNode::GetRenderContext(): Scene has no parent EventDispatcher!");
+            MLogWarning(SceneNode,"SceneNode::GetRenderContext(): World has no parent EventDispatcher!");
             return(nullptr);
         }
 
@@ -29,7 +29,7 @@ namespace hgl::graph
         if(!sep)
         {
             //这明显不对好不好
-            MLogFatal(SceneNode,"SceneNode::GetRenderContext(): Scene's parent EventDispatcher is not a SceneEventDispatcher!");
+            MLogFatal(SceneNode,"SceneNode::GetRenderContext(): World's parent EventDispatcher is not a SceneEventDispatcher!");
             return(nullptr);
         }
 
@@ -157,32 +157,32 @@ namespace hgl::graph
         }
     }
 
-    SceneNode *SceneNode::CreateNode(Scene *scene)const
+    SceneNode *SceneNode::CreateNode(World *scene)const
     {
         if(scene)
         {
             return scene->CreateNode<SceneNode>();
         }
-        else if(this&&this->GetScene())
+        else if(this&&this->GetWorld())
         {
-            return this->GetScene()->CreateNode<SceneNode>();
+            return this->GetWorld()->CreateNode<SceneNode>();
         }
 
         return(nullptr);
     }
 
-    SceneNode *SceneNode::Clone(Scene *scene) const                                                               ///<复制一个场景节点
+    SceneNode *SceneNode::Clone(World *scene) const                                                               ///<复制一个场景节点
     {
         if(!this && !scene)
             return nullptr;
 
         if(!scene)
         {
-            scene=this->GetScene();
+            scene=this->GetWorld();
 
             if(!scene)
             {
-                MLogError(SceneNode,"SceneNode::Clone(): No scene specified and this node has no scene!");
+                MLogError(SceneNode,"SceneNode::Clone(): No world specified and this node has no world!");
                 return(nullptr);
             }
         }
@@ -217,7 +217,7 @@ namespace hgl::graph
         NodeTransform::Reset();
     }
 
-    void SceneNode::OnChangeScene(Scene *new_scene)
+    void SceneNode::OnChangeScene(World *new_scene)
     {
         if(main_scene==new_scene)
             return;
