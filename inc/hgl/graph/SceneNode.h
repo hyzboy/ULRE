@@ -16,7 +16,7 @@ namespace hgl::graph
 {
     class RenderContext; //前向声明渲染上下文
 
-    class Scene;        //场景主类
+    class World;        //场景主类
     //每个SceneNode都要记录Scene来区分自己属于那个场景
     //这个场景可能是一个确实是一个场景，也有可能只是一个StaticMesh
 
@@ -35,16 +35,16 @@ namespace hgl::graph
     */
     class SceneNode:public NodeTransform                                                                            ///场景节点类
     {
-        friend class Scene;
+        friend class World;
 
-        Scene *main_scene=nullptr;                                                                                  ///<主场景
+        World *main_scene=nullptr;                                                                                  ///<主场景
 
         SceneNode *parent_node=nullptr;                                                                             ///<上级节点
 
         SceneNodeID node_id=-1;                                                                                     ///<节点ID
         SceneNodeName node_name;                                                                                    ///<节点名称
 
-        void OnChangeScene(Scene *);
+        void OnChangeScene(World *);
 
     protected:
 
@@ -63,7 +63,7 @@ namespace hgl::graph
 
     public:
 
-        Scene *             GetScene()const{ return main_scene; }                                                   ///<取得主场景
+        World *             GetWorld()const{ return main_scene; }                                                   ///<取得主场景
         RenderFramework *   GetRenderFramework()const;                                                              ///<取得渲染框架
 
         const SceneNodeID &     GetNodeID   ()const { return node_id; }                                             ///<取得节点ID
@@ -77,9 +77,9 @@ namespace hgl::graph
         SceneNode(const SceneNode *)=delete;
 
         SceneNode():NodeTransform(){}
-        SceneNode(Scene *s):NodeTransform(),main_scene(s){}                                                           ///<从Scene构造
-        SceneNode(Scene *s,const NodeTransform &so):NodeTransform(so),main_scene(s){}                                 ///<从NodeTransform复制构造
-        SceneNode(Scene *s,const Matrix4f &mat):NodeTransform(mat),main_scene(s){}                                    ///<从Matrix4f复制构造
+        SceneNode(World *s):NodeTransform(),main_scene(s){}                                                           ///<从Scene构造
+        SceneNode(World *s,const NodeTransform &so):NodeTransform(so),main_scene(s){}                                 ///<从NodeTransform复制构造
+        SceneNode(World *s,const Matrix4f &mat):NodeTransform(mat),main_scene(s){}                                    ///<从Matrix4f复制构造
 
     public:
 
@@ -87,7 +87,7 @@ namespace hgl::graph
 
     public:
 
-        virtual SceneNode * CreateNode(Scene *scene=nullptr)const;                                                  ///<创建一个同类的节点对象
+        virtual SceneNode * CreateNode(World *scene=nullptr)const;                                                  ///<创建一个同类的节点对象
 
         virtual void        CloneChildren(SceneNode *node) const                                                    ///<复制子节点到指定节点
         {
@@ -101,7 +101,7 @@ namespace hgl::graph
                 node->AttachComponent(c->Clone());
         }
 
-        virtual SceneNode * Clone(Scene *scene=nullptr) const;                                                      ///<复制一个场景节点
+        virtual SceneNode * Clone(World *scene=nullptr) const;                                                      ///<复制一个场景节点
 
                 void        Reset() override;
 
@@ -114,7 +114,7 @@ namespace hgl::graph
 
             parent_node=sn;
 
-            OnChangeScene(sn?sn->GetScene():nullptr);
+            OnChangeScene(sn?sn->GetWorld():nullptr);
         }
 
                 SceneNode * GetParent()      noexcept{return parent_node;}

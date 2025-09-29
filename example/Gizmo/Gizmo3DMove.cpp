@@ -25,7 +25,7 @@
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/Scene.h>
+#include<hgl/graph/World.h>
 #include<hgl/component/MeshComponent.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/graph/Ray.h>
@@ -94,7 +94,7 @@ namespace
             return this; // GizmoMoveNode 处理鼠标事件
         }
 
-        SceneNode *CreateNode(Scene *scene)const override
+        SceneNode *CreateNode(World *scene)const override
         {
             return scene->CreateNode<GizmoMoveNode>();
         }
@@ -373,7 +373,7 @@ namespace
     static GizmoMoveNode *sn_gizmo_move=nullptr;
 }//namespace
 
-SceneNode *GetGizmoMoveNode(Scene *scene)
+SceneNode *GetGizmoMoveNode(World *scene)
 {
     return sn_gizmo_move->Clone(scene);;
 }

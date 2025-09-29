@@ -259,7 +259,7 @@ class IndirectDispatchBuffer;
 class MeshComponent;
 
 class SceneNode;
-class Scene;
+class World;
 class RenderCollector;
 
 struct CameraInfo;

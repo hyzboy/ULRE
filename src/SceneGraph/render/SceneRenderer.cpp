@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/SceneRenderer.h>
-#include<hgl/graph/Scene.h>
+#include<hgl/graph/World.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/camera/Camera.h>
@@ -47,18 +47,18 @@ namespace hgl::graph
         return(true);
     }
 
-    void SceneRenderer::SetScene(Scene *sw)
+    void SceneRenderer::SetWorld(World *sw)
     {
         if(!render_context)return;
 
-        Scene *old_scene = render_context->GetScene();
+        World *old_scene = render_context->GetWorld();
 
         if(old_scene)
         {
             RemoveChildDispatcher(old_scene->GetEventDispatcher());
         }
 
-        render_context->SetScene(sw);
+        render_context->SetWorld(sw);
 
         AddChildDispatcher(sw->GetEventDispatcher());
     }
@@ -102,16 +102,16 @@ namespace hgl::graph
         if(render_context)
             render_context->Tick(delta);
 
-        if(GetScene())
-            GetScene()->Tick(delta);
+        if(GetWorld())
+            GetWorld()->Tick(delta);
     }
     
     bool SceneRenderer::RenderFrame()
     {
-        if(!GetScene())
+        if(!GetWorld())
             return(false);
 
-        SceneNode *root = GetScene()->GetRootNode();
+        SceneNode *root = GetWorld()->GetRootNode();
         if(!root)
             return(false);
 

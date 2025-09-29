@@ -168,7 +168,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
             {
                 //文件有，材质没有
 
-                MLogWarning(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attribute_name[i]) + OS_TEXT("' not found in VIL, file ") + filename);
+                MLogNotice(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attribute_name[i]) + OS_TEXT("' not found in VIL, file ") + filename);
 
                 fis->Skip(attribute_size);
                 continue;

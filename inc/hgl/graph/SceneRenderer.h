@@ -3,13 +3,13 @@
 #include<hgl/graph/RenderTask.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKBuffer.h>
-#include<hgl/graph/Scene.h>
+#include<hgl/graph/World.h>
 #include<hgl/type/Map.h>
 #include<hgl/graph/RenderContext.h>
 
 namespace hgl::graph
 {
-    class Scene;
+    class World;
     class RenderContext;    // forward
     class RenderCmdBuffer;  // forward
     class Pipeline;         // fwd for CreatePipeline
@@ -55,7 +55,7 @@ namespace hgl::graph
         const   ViewportInfo *      GetViewportInfo     ()const {return render_context?render_context->GetViewportInfo():nullptr;}
         const   VkExtent2D &        GetExtent           ()const {return render_context->GetExtent();}
 
-                Scene *             GetScene            ()const {return render_context?render_context->GetScene():nullptr;}
+                World *             GetWorld            ()const {return render_context?render_context->GetWorld():nullptr;}
                 Camera *            GetCamera           ()const {return render_context?render_context->GetCamera():nullptr;}
         const   CameraInfo *        GetCameraInfo       ()const {return render_context?render_context->GetCameraInfo():nullptr;}
                 CameraControl *     GetCameraControl    ()const {return camera_control_owned;}
@@ -63,7 +63,7 @@ namespace hgl::graph
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 
                 // 便捷方法：取得场景根节点
-                SceneNode *         GetSceneRoot        ()const {auto s=GetScene(); return s?s->GetRootNode():nullptr;}
+                SceneNode *         GetSceneRoot        ()const {auto s=GetWorld(); return s?s->GetRootNode():nullptr;}
                 // 便捷方法：基于当前RenderPass创建内置管线
                 Pipeline *          CreatePipeline      (Material *mtl,const InlinePipeline &ip)
                 { return GetRenderPass()?GetRenderPass()->CreatePipeline(mtl,ip):nullptr; }
@@ -84,7 +84,7 @@ namespace hgl::graph
         virtual ~SceneRenderer();
 
         bool SetRenderTarget(IRenderTarget *);
-        void SetScene(Scene *);
+        void SetWorld(World *);
         void SetCameraControl(CameraControl *);     ///< 设定新的相机控制器（SceneRenderer接管并负责释放）
         void UseDefaultCameraControl();             ///< 使用默认第一人称相机控制器
 

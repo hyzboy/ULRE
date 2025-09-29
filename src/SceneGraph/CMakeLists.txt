@@ -156,14 +156,14 @@ SET(ENV_SKY_FILES   ${SG_INCLUDE_PATH}/env/Sky.h
 
 SOURCE_GROUP("Scene Graph\\Environment\\Sky" FILES ${ENV_SKY_FILES})
 
-SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/Scene.h
+SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/World.h
                     ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
                     ${SG_INCLUDE_PATH}/SceneNode.h
                     ${SG_INCLUDE_PATH}/TransformState.h
                     Scene/SceneNode.cpp
                     Scene/NodeTransform.cpp
                     Scene/TransformState.cpp
-                    Scene/Scene.cpp
+                    Scene/World.cpp
 )
 
 SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/DrawNode.h

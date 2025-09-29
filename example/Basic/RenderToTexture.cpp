@@ -32,7 +32,7 @@ class OffscreenScene
 {
 public:
     IRenderTarget *   rt          = nullptr;
-    Scene *           scene       = nullptr;
+    World *           scene       = nullptr;
     SceneRenderer *   renderer    = nullptr;
 
     // content
@@ -67,10 +67,10 @@ public:
         rt = rf->GetRenderTargetManager()->CreateRT(&fbi);
         if (!rt) return false;
 
-        scene = new Scene(rf);
+        scene = new World(rf);
         renderer = new SceneRenderer(rf, rt);
         if(!renderer) return false;
-        renderer->SetScene(scene);
+        renderer->SetWorld(scene);
 
         // setup camera for offscreen
         auto *vmcc = new ViewModelCameraControl();
@@ -170,7 +170,7 @@ private:
 
     bool CreateRotatingCube()
     {
-        // Onscreen default scene: create a rotating cube with a solid color
+        // Onscreen default world: create a rotating cube with a solid color
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
                                           mtl::WithCamera::With,
                                           mtl::WithLocalToWorld::With,
@@ -225,15 +225,15 @@ public:
 
     bool Init() override
     {
-        // 1) Create an offscreen RT to render once (with its own scene)
+        // 1) Create an offscreen RT to render once (with its own world)
         if (!CreateOffscreenRT(512, 512))
             return false;
 
-        // 2) Create a rotating cube in the default scene
+        // 2) Create a rotating cube in the default world
         if (!CreateRotatingCube())
             return false;
 
-        // 3) Setup main scene camera to ensure cube is visible
+        // 3) Setup main world camera to ensure cube is visible
         SetupMainCamera();
 
         return true;
@@ -262,7 +262,7 @@ public:
             cube_comp->SetLocalMatrix(rot);
         }
 
-        // Present default scene
+        // Present default world
         WorkObject::Render(delta_time);
     }
 };
