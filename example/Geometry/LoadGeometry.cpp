@@ -90,6 +90,232 @@ namespace
         pb.To(&bounds);
         return true;
     }
+
+    // Read AttributeMeta block and expose parsed views
+    bool ReadAttributeMeta(hgl::io::minipack::MiniPackReader *mpr,
+                           const GeometryHeader &header,
+                           const OSString &filename,
+                           std::vector<uint8_t> &attrmeta,
+                           const uint8_t *&attribute_format,
+                           const uint8_t *&attribute_name_length,
+                           const char *&names_ptr)
+    {
+        const int32 attrmeta_index = mpr->FindFile(AnsiStringView("AttributeMeta"));
+        if(attrmeta_index < 0)
+        {
+            MLogError(LoadGeometry,OS_TEXT("AttributeMeta not found in file ") + filename);
+            return false;
+        }
+
+        const uint32 attrmeta_size = mpr->GetFileLength(attrmeta_index);
+        if(attrmeta_size < header.attributeCount*2)
+        {
+            MLogError(LoadGeometry,OS_TEXT("AttributeMeta too small in file ") + filename);
+            return false;
+        }
+
+        attrmeta.resize(attrmeta_size);
+        if(mpr->ReadFile(attrmeta_index, attrmeta.data(), 0, attrmeta_size) != attrmeta_size)
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot read AttributeMeta from file ") + filename);
+            return false;
+        }
+
+        const uint8_t *meta = attrmeta.data();
+        const uint8_t *meta_end = meta + attrmeta.size();
+
+        // formats
+        if(static_cast<size_t>(meta_end - meta) < header.attributeCount)
+        {
+            MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing formats in file ") + filename);
+            return false;
+        }
+        attribute_format = meta;
+        meta += header.attributeCount;
+
+        // name lengths
+        if(static_cast<size_t>(meta_end - meta) < header.attributeCount)
+        {
+            MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing name lengths in file ") + filename);
+            return false;
+        }
+        attribute_name_length = meta;
+        meta += header.attributeCount;
+
+        // names block
+        uint total_name_length = 0;
+        sum(&total_name_length, attribute_name_length, header.attributeCount);
+        total_name_length += header.attributeCount; // trailing zeros
+
+        if(static_cast<size_t>(meta_end - meta) < total_name_length)
+        {
+            MLogError(LoadGeometry,OS_TEXT("AttributeMeta names section too small in file ") + filename);
+            return false;
+        }
+        names_ptr = reinterpret_cast<const char *>(meta);
+        return true;
+    }
+
+    // Read attributes/VBOs using AttributeMeta views
+    bool ReadAttributesVBO(hgl::io::minipack::MiniPackReader *mpr,
+                           GeometryData *geo_data,
+                           const VIL *vil,
+                           const GeometryHeader &header,
+                           const uint8_t *attribute_format,
+                           const uint8_t *attribute_name_length,
+                           const char *names_ptr,
+                           const OSString &filename)
+    {
+        for(size_t i = 0;i < header.attributeCount;++i)
+        {
+            const uint8_t name_len = attribute_name_length[i];
+            const char *attr_name = (const char *)names_ptr;
+            names_ptr += name_len + 1; // skip 0
+
+            const int vab_index = geo_data->GetVABIndex(AnsiString((char *)attr_name));
+
+            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(static_cast<VkFormat>(attribute_format[i]));
+
+            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(attr_name,name_len));
+
+            if(vab_index<0)
+            {
+                MLogNotice(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attr_name) + OS_TEXT("' not found in VIL, file ") + filename);
+                continue; // skip reading this attribute data
+            }
+
+            if(attr_entry_index < 0)
+            {
+                MLogError(LoadGeometry,OS_TEXT("Attribute entry '") + ToOSString(attr_name) + OS_TEXT("' not found in minipack, file ") + filename);
+                return false;
+            }
+
+            const VIF *vif = vil->GetConfig(vab_index);
+
+            if(vif->format != static_cast<VkFormat>(attribute_format[i]))
+            {
+                MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
+                return false;
+            }
+
+            VAB *vab = geo_data->GetVAB(vab_index);
+
+            if(!vab)
+            {
+                MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
+                return false;
+            }
+
+            void *vab_ptr=vab->Map(0,header.vertexCount);
+
+            if(!vab_ptr)
+            {
+                MLogError(LoadGeometry,OS_TEXT("Cannot map VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
+                return false;
+            }
+
+            if(mpr->ReadFile(attr_entry_index, vab_ptr, 0, static_cast<uint32>(attribute_size)) != attribute_size)
+            {
+                MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for attribute '") + ToOSString(attr_name) + OS_TEXT("' from file ") + filename);
+                vab->Unmap();
+                return false;
+            }
+
+            vab->Unmap();
+        }
+
+        return true;
+    }
+
+    // Read indices into IBO
+    bool ReadIndicesData(hgl::io::minipack::MiniPackReader *mpr,
+                         GeometryData *geo_data,
+                         const GeometryHeader &header,
+                         const OSString &filename)
+    {
+        IndexType index_type;
+        if(header.indexStride==1)index_type=IndexType::U8;else
+        if(header.indexStride==2)index_type=IndexType::U16;else
+        if(header.indexStride==4)index_type=IndexType::U32;else
+        {
+            MLogError(LoadGeometry,OS_TEXT("Unsupported index stride ")+OSString::numberOf(header.indexStride)+OS_TEXT(" in file ") + filename);
+            return false;
+        }
+
+        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,index_type);
+        if(!ibo)
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot create IBO for file ") + filename);
+            return false;
+        }
+
+        void *ibo_ptr=ibo->Map(0,header.indexCount);
+        if(!ibo_ptr)
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot map IBO for file ") + filename);
+            return false;
+        }
+
+        const size_t index_size = static_cast<size_t>(header.indexCount) * header.indexStride;
+
+        const int32 indices_index = mpr->FindFile(AnsiStringView("indices"));
+        if(indices_index < 0)
+        {
+            MLogError(LoadGeometry,OS_TEXT("indices entry not found in file ") + filename);
+            return false;
+        }
+
+        if(mpr->GetFileLength(indices_index) != index_size)
+        {
+            MLogError(LoadGeometry,OS_TEXT("Index data size mismatch in file ") + filename);
+            return false;
+        }
+
+        if(mpr->ReadFile(indices_index, ibo_ptr, 0, static_cast<uint32>(index_size)) != index_size)
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot read index data from file ") + filename);
+            return false;
+        }
+
+        ibo->Unmap();
+        return true;
+    }
+
+    // Orchestrate reading attributes and indices into GeometryData
+    bool ReadGeometryData(hgl::io::minipack::MiniPackReader *mpr,
+                          GeometryData *geo_data,
+                          const VIL *vil,
+                          const GeometryHeader &header,
+                          const OSString &filename)
+    {
+        if(!geo_data)
+        {
+            MLogError(LoadGeometry,OS_TEXT("GeometryData is null for file ") + filename);
+            return false;
+        }
+
+        if(header.attributeCount>0)
+        {
+            std::vector<uint8_t> attrmeta;
+            const uint8_t *attribute_format = nullptr;
+            const uint8_t *attribute_name_length = nullptr;
+            const char *names_ptr = nullptr;
+
+            if(!ReadAttributeMeta(mpr, header, filename, attrmeta, attribute_format, attribute_name_length, names_ptr))
+                return false;
+
+            if(!ReadAttributesVBO(mpr, geo_data, vil, header, attribute_format, attribute_name_length, names_ptr, filename))
+                return false;
+        }
+
+        if(header.indexCount>0)
+        {
+            if(!ReadIndicesData(mpr, geo_data, header, filename))
+                return false;
+        }
+
+        return true;
+    }
 }
 
 Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename)
@@ -138,210 +364,12 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return(nullptr);
     }
 
-    // 4) Read AttributeMeta if any
-    if(header.attributeCount>0)
+    // 4) Read attributes and indices into GeometryData
+    if(!ReadGeometryData(mpr, geo_data, vil, header, filename))
     {
-        const int32 attrmeta_index = mpr->FindFile(AnsiStringView("AttributeMeta"));
-        if(attrmeta_index < 0)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta not found in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        const uint32 attrmeta_size = mpr->GetFileLength(attrmeta_index);
-        if(attrmeta_size < header.attributeCount*2)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta too small in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        std::vector<uint8_t> attrmeta(attrmeta_size);
-        if(mpr->ReadFile(attrmeta_index, attrmeta.data(), 0, attrmeta_size) != attrmeta_size)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot read AttributeMeta from file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        // parse in-place: [formats N][name_lengths N][names with trailing zeros]
-        const uint8_t *meta = attrmeta.data();
-        const uint8_t *meta_end = meta + attrmeta.size();
-
-        // formats
-        if(static_cast<size_t>(meta_end - meta) < header.attributeCount)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing formats in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-        const uint8_t *attribute_format = meta;
-        meta += header.attributeCount;
-
-        // name lengths
-        if(static_cast<size_t>(meta_end - meta) < header.attributeCount)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta missing name lengths in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-        const uint8_t *attribute_name_length = meta;
-        meta += header.attributeCount;
-
-        // names block
-        uint total_name_length = 0;
-        sum(&total_name_length, attribute_name_length, header.attributeCount);
-        total_name_length += header.attributeCount; // trailing zeros
-
-        if(static_cast<size_t>(meta_end - meta) < total_name_length)
-        {
-            MLogError(LoadGeometry,OS_TEXT("AttributeMeta names section too small in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-        const char *names_ptr = reinterpret_cast<const char *>(meta);
-
-        // Read attribute data entries from minipack
-        const char prefix[] = { 'a','t','t','r','_'};
-        for(size_t i = 0;i < header.attributeCount;++i)
-        {
-            // name
-            const uint8_t name_len = attribute_name_length[i];
-            const char *attr_name = (const char *)names_ptr;
-            names_ptr += name_len + 1; // skip 0
-
-            const int vab_index = geo_data->GetVABIndex(AnsiString((char *)attr_name));
-
-            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(static_cast<VkFormat>(attribute_format[i]));
-
-            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(attr_name,name_len));
-
-            if(vab_index<0)
-            {
-                // 文件有，材质没有
-                MLogNotice(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attr_name) + OS_TEXT("' not found in VIL, file ") + filename);
-                // skip reading this attribute data
-                continue;
-            }
-
-            if(attr_entry_index < 0)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Attribute entry '") + ToOSString(attr_name) + OS_TEXT("' not found in minipack, file ") + filename);
-                delete geo_data;
-                delete mpr;
-                return(nullptr);
-            }
-
-            const VIF *vif = vil->GetConfig(vab_index);
-
-            if(vif->format != static_cast<VkFormat>(attribute_format[i]))
-            {
-                MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
-                delete geo_data;
-                delete mpr;
-                return(nullptr);
-            }
-
-            VAB *vab = geo_data->GetVAB(vab_index);
-
-            if(!vab)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
-                delete geo_data;
-                delete mpr;
-                return(nullptr);
-            }
-
-            void *vab_ptr=vab->Map(0,header.vertexCount);
-
-            if(!vab_ptr)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Cannot map VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
-                delete geo_data;
-                delete mpr;
-                return(nullptr);
-            }
-
-            if(mpr->ReadFile(attr_entry_index, vab_ptr, 0, static_cast<uint32>(attribute_size)) != attribute_size)
-            {
-                MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for attribute '") + ToOSString(attr_name) + OS_TEXT("' from file ") + filename);
-                vab->Unmap();
-                delete geo_data;
-                delete mpr;
-                return(nullptr);
-            }
-
-            vab->Unmap();
-        }
-    }//if(header.attributeCount>0)
-
-    // 5) Indices
-    if(header.indexCount>0)
-    {
-        IndexType index_type;
-        if(header.indexStride==1)index_type=IndexType::U8;else
-        if(header.indexStride==2)index_type=IndexType::U16;else
-        if(header.indexStride==4)index_type=IndexType::U32;else
-        {
-            MLogError(LoadGeometry,OS_TEXT("Unsupported index stride ")+OSString::numberOf(header.indexStride)+OS_TEXT(" in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,index_type);
-        if(!ibo)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot create IBO for file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        void *ibo_ptr=ibo->Map(0,header.indexCount);
-        if(!ibo_ptr)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot map IBO for file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        const size_t index_size = static_cast<size_t>(header.indexCount) * header.indexStride;
-
-        const int32 indices_index = mpr->FindFile(AnsiStringView("indices"));
-        if(indices_index < 0)
-        {
-            MLogError(LoadGeometry,OS_TEXT("indices entry not found in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        if(mpr->GetFileLength(indices_index) != index_size)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Index data size mismatch in file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        if(mpr->ReadFile(indices_index, ibo_ptr, 0, static_cast<uint32>(index_size)) != index_size)
-        {
-            MLogError(LoadGeometry,OS_TEXT("Cannot read index data from file ") + filename);
-            delete geo_data;
-            delete mpr;
-            return(nullptr);
-        }
-
-        ibo->Unmap();
+        delete geo_data;
+        delete mpr;
+        return nullptr;
     }
 
     const U8String geo_name=ToU8String(filename);
