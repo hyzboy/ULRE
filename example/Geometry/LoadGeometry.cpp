@@ -63,6 +63,33 @@ namespace
 
         return true;
     }
+
+    // Read and convert Bounds from MiniPack
+    bool ReadBounds(hgl::io::minipack::MiniPackReader *mpr, Bounds &bounds, const OSString &filename)
+    {
+        const int32 bounds_index = mpr->FindFile(AnsiStringView("Bounds"));
+        if(bounds_index < 0)
+        {
+            MLogError(LoadGeometry,OS_TEXT("Bounds not found in file ") + filename);
+            return false;
+        }
+
+        if(mpr->GetFileLength(bounds_index) != sizeof(PackedBounds))
+        {
+            MLogError(LoadGeometry,OS_TEXT("Bounds size mismatch in file ") + filename);
+            return false;
+        }
+
+        PackedBounds pb{};
+        if(mpr->ReadFile(bounds_index, &pb, 0, sizeof(PackedBounds)) != sizeof(PackedBounds))
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot read Bounds from file ") + filename);
+            return false;
+        }
+
+        pb.To(&bounds);
+        return true;
+    }
 }
 
 Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename)
@@ -86,32 +113,12 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
     }
 
     // 2) Read Bounds
-    const int32 bounds_index = mpr->FindFile(AnsiStringView("Bounds"));
-    if(bounds_index < 0)
-    {
-        MLogError(LoadGeometry,OS_TEXT("Bounds not found in file ") + filename);
-        delete mpr;
-        return(nullptr);
-    }
-
-    if(mpr->GetFileLength(bounds_index) != sizeof(PackedBounds))
-    {
-        MLogError(LoadGeometry,OS_TEXT("Bounds size mismatch in file ") + filename);
-        delete mpr;
-        return(nullptr);
-    }
-
-    PackedBounds pb{};
-    if(mpr->ReadFile(bounds_index, &pb, 0, sizeof(PackedBounds)) != sizeof(PackedBounds))
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot read Bounds from file ") + filename);
-        delete mpr;
-        return(nullptr);
-    }
-
     Bounds bounds;
-
-    pb.To(&bounds);
+    if(!ReadBounds(mpr, bounds, filename))
+    {
+        delete mpr;
+        return nullptr;
+    }
 
     // 3) Create GeometryData and VABs
     GeometryData *geo_data=CreateGeometryData(device,vil,header.vertexCount);
