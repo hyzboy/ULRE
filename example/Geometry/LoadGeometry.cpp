@@ -166,54 +166,95 @@ namespace
                            const char *names_ptr,
                            const OSString &filename)
     {
-        for(size_t i = 0;i < header.attributeCount;++i)
+        if(!vil)
         {
-            const uint8_t name_len = attribute_name_length[i];
-            const char *attr_name = (const char *)names_ptr;
-            names_ptr += name_len + 1; // skip 0
+            MLogError(LoadGeometry,OS_TEXT("VIL is null for file ") + filename);
+            return false;
+        }
 
-            const int vab_index = geo_data->GetVABIndex(AnsiString((char *)attr_name));
+        const uint32_t vil_attr_count = vil->GetVertexAttribCount();
+        if(header.attributeCount < vil_attr_count)
+        {
+            MLogNotice(LoadGeometry,OS_TEXT("File has fewer attributes(") + OSString::numberOf(header.attributeCount) + OS_TEXT(") than VIL(") + OSString::numberOf(vil_attr_count) + OS_TEXT(") in ") + filename);
+        }
 
-            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(static_cast<VkFormat>(attribute_format[i]));
-
-            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(attr_name,name_len));
-
-            if(vab_index<0)
+        // helper to find meta index by name
+        auto find_meta_index_by_name = [&](const char *target_name, uint8_t &out_len)->int
+        {
+            const char *p = names_ptr;
+            for(uint32_t i = 0; i < header.attributeCount; ++i)
             {
-                MLogNotice(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attr_name) + OS_TEXT("' not found in VIL, file ") + filename);
-                continue; // skip reading this attribute data
+                const uint8_t len = attribute_name_length[i];
+                // compare lengths first
+                if(static_cast<size_t>(len) == hgl::strlen(target_name))
+                {
+                    if(::hgl::stricmp(p, target_name, len) == 0)
+                    {
+                        out_len = len;
+                        return static_cast<int>(i);
+                    }
+                }
+                p += len + 1; // skip 0
+            }
+            return -1;
+        };
+
+        for(uint32_t vab_index = 0; vab_index < vil_attr_count; ++vab_index)
+        {
+            const VIF *vif = vil->GetConfig(vab_index);
+            if(!vif || !vif->name)
+            {
+                MLogError(LoadGeometry,OS_TEXT("Invalid VIF at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
+                return false;
             }
 
+            if(vif->group==VertexInputGroup::Assign)
+                continue;
+
+            const char *attr_name = vif->name;
+
+            // find this attribute in meta by name
+            uint8_t meta_name_len = 0;
+            int meta_index = find_meta_index_by_name(attr_name, meta_name_len);
+            if(meta_index < 0)
+            {
+                // attribute expected by VIL but not present in file meta
+                MLogNotice(LoadGeometry,OS_TEXT("Attribute name '") + ToOSString(attr_name) + OS_TEXT("' not found in AttributeMeta, file ") + filename);
+                // try to read by name anyway; if missing, we'll error below
+            }
+            else
+            {
+                // verify format match if meta has it
+                if(vif->format != static_cast<VkFormat>(attribute_format[meta_index]))
+                {
+                    MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
+                    return false;
+                }
+            }
+
+            // locate entry in minipack by this VIL-provided name
+            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(attr_name));
             if(attr_entry_index < 0)
             {
                 MLogError(LoadGeometry,OS_TEXT("Attribute entry '") + ToOSString(attr_name) + OS_TEXT("' not found in minipack, file ") + filename);
                 return false;
             }
 
-            const VIF *vif = vil->GetConfig(vab_index);
-
-            if(vif->format != static_cast<VkFormat>(attribute_format[i]))
-            {
-                MLogError(LoadGeometry,OS_TEXT("Attribute format mismatch for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
-                return false;
-            }
-
             VAB *vab = geo_data->GetVAB(vab_index);
-
             if(!vab)
             {
                 MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
                 return false;
             }
 
-            void *vab_ptr=vab->Map(0,header.vertexCount);
-
+            void *vab_ptr = vab->Map(0, header.vertexCount);
             if(!vab_ptr)
             {
                 MLogError(LoadGeometry,OS_TEXT("Cannot map VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);
                 return false;
             }
 
+            const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(vif->format);
             if(mpr->ReadFile(attr_entry_index, vab_ptr, 0, static_cast<uint32>(attribute_size)) != attribute_size)
             {
                 MLogError(LoadGeometry,OS_TEXT("Cannot read attribute data for attribute '") + ToOSString(attr_name) + OS_TEXT("' from file ") + filename);
