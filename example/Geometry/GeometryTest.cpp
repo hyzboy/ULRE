@@ -137,7 +137,7 @@ private:
 
         for(int i=0;i< COLOR_COUNT;i++)
         {
-            OSString fn = OSString(OS_TEXT("res/model/Chess/")) + OSString::numberOf(i) + OS_TEXT(".geometry");
+            OSString fn = OSString(OS_TEXT("res/model/Chess/ABeautifulGame.")) + OSString::numberOf(i) + OS_TEXT(".geometry");
 
             Geometry *geo = LoadGeometry(GetDevice(),solid.vil,fn);
 
