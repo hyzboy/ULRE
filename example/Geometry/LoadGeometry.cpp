@@ -16,7 +16,7 @@ VK_NAMESPACE_BEGIN
 namespace
 {
 #pragma pack(push,1)
-    struct GeometryFileHeader
+    struct GeometryHeader
     {
         uint16_t version;        // 1
         uint8_t  primitiveType;  // PrimitiveType as uint8_t
@@ -26,6 +26,43 @@ namespace
         uint8_t  attributeCount; // Number of attributes
     };
 #pragma pack(pop)
+
+    // Read and validate GeometryHeader from MiniPack
+    bool ReadGeometryHeader(hgl::io::minipack::MiniPackReader *mpr, GeometryHeader &header, const OSString &filename)
+    {
+        const int32 header_index = mpr->FindFile(AnsiStringView("GeometryHeader"));
+        if(header_index < 0)
+        {
+            MLogError(LoadGeometry,OS_TEXT("GeometryHeader not found in file ") + filename);
+            return false;
+        }
+
+        if(mpr->GetFileLength(header_index) != sizeof(GeometryHeader))
+        {
+            MLogError(LoadGeometry,OS_TEXT("GeometryHeader size mismatch in file ") + filename);
+            return false;
+        }
+
+        if(mpr->ReadFile(header_index, &header, 0, sizeof(header)) != sizeof(header))
+        {
+            MLogError(LoadGeometry,OS_TEXT("Cannot read GeometryHeader from file ") + filename);
+            return false;
+        }
+
+        if(header.version!=1)
+        {
+            MLogError(LoadGeometry,OS_TEXT("Unsupported version in file ") + filename);
+            return false;
+        }
+
+        if(header.primitiveType>static_cast<uint8_t>(PrimitiveType::Patchs))
+        {
+            MLogError(LoadGeometry,OS_TEXT("Unsupported primitive type ")+OSString::numberOf(header.primitiveType)+OS_TEXT(" in file ") + filename);
+            return false;
+        }
+
+        return true;
+    }
 }
 
 Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename)
@@ -41,41 +78,11 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
     }
 
     // 1) Read GeometryHeader
-    const int32 header_index = mpr->FindFile(AnsiStringView("GeometryHeader"));
-    if(header_index < 0)
+    GeometryHeader header{};
+    if(!ReadGeometryHeader(mpr, header, filename))
     {
-        MLogError(LoadGeometry,OS_TEXT("GeometryHeader not found in file ") + filename);
         delete mpr;
-        return(nullptr);
-    }
-
-    if(mpr->GetFileLength(header_index) != sizeof(GeometryFileHeader))
-    {
-        MLogError(LoadGeometry,OS_TEXT("GeometryHeader size mismatch in file ") + filename);
-        delete mpr;
-        return(nullptr);
-    }
-
-    GeometryFileHeader header{};
-    if(mpr->ReadFile(header_index, &header, 0, sizeof(header)) != sizeof(header))
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot read GeometryHeader from file ") + filename);
-        delete mpr;
-        return(nullptr);
-    }
-
-    if(header.version!=1)
-    {
-        MLogError(LoadGeometry,OS_TEXT("Unsupported version in file ") + filename);
-        delete mpr;
-        return(nullptr);
-    }
-
-    if(header.primitiveType>static_cast<uint8_t>(PrimitiveType::Patchs))
-    {
-        MLogError(LoadGeometry,OS_TEXT("Unsupported primitive type ")+OSString::numberOf(header.primitiveType)+OS_TEXT(" in file ") + filename);
-        delete mpr;
-        return(nullptr);
+        return nullptr;
     }
 
     // 2) Read Bounds
