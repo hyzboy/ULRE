@@ -40,18 +40,8 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return(nullptr);
     }
 
-    auto MakeU8FromAscii = [](const char *s)->hgl::U8String
-    {
-        if(!s) return hgl::U8String();
-        const int len = hgl::strlen(s);
-        hgl::U8String r;
-        hgl::u8char *dst = reinterpret_cast<hgl::u8char *>(r.Resize(len));
-        for(int i=0;i<len;++i) dst[i] = static_cast<hgl::u8char>(s[i]);
-        return r;
-    };
-
     // 1) Read GeometryHeader
-    const int32 header_index = mpr->FindFile(MakeU8FromAscii("GeometryHeader"));
+    const int32 header_index = mpr->FindFile(AnsiStringView("GeometryHeader"));
     if(header_index < 0)
     {
         MLogError(LoadGeometry,OS_TEXT("GeometryHeader not found in file ") + filename);
@@ -89,7 +79,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
     }
 
     // 2) Read Bounds
-    const int32 bounds_index = mpr->FindFile(MakeU8FromAscii("Bounds"));
+    const int32 bounds_index = mpr->FindFile(AnsiStringView("Bounds"));
     if(bounds_index < 0)
     {
         MLogError(LoadGeometry,OS_TEXT("Bounds not found in file ") + filename);
@@ -137,7 +127,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
     // 4) Read AttributeMeta if any
     if(header.attributeCount>0)
     {
-        const int32 attrmeta_index = mpr->FindFile(MakeU8FromAscii("AttributeMeta"));
+        const int32 attrmeta_index = mpr->FindFile(AnsiStringView("AttributeMeta"));
         if(attrmeta_index < 0)
         {
             MLogError(LoadGeometry,OS_TEXT("AttributeMeta not found in file ") + filename);
@@ -210,14 +200,14 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         {
             // name
             const uint8_t name_len = attribute_name_length[i];
-            const char8_t *attr_name = (const char8_t *)names_ptr;
+            const char *attr_name = (const char *)names_ptr;
             names_ptr += name_len + 1; // skip 0
 
             const int vab_index = geo_data->GetVABIndex(AnsiString((char *)attr_name));
 
             const size_t attribute_size = size_t(header.vertexCount) * GetStrideByFormat(static_cast<VkFormat>(attribute_format[i]));
 
-            const int32 attr_entry_index = mpr->FindFile(hgl::U8StringView(attr_name,name_len));
+            const int32 attr_entry_index = mpr->FindFile(AnsiStringView(attr_name,name_len));
 
             if(vab_index<0)
             {
@@ -312,7 +302,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
 
         const size_t index_size = static_cast<size_t>(header.indexCount) * header.indexStride;
 
-        const int32 indices_index = mpr->FindFile(MakeU8FromAscii("indices"));
+        const int32 indices_index = mpr->FindFile(AnsiStringView("indices"));
         if(indices_index < 0)
         {
             MLogError(LoadGeometry,OS_TEXT("indices entry not found in file ") + filename);
