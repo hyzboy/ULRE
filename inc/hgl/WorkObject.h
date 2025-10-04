@@ -5,7 +5,7 @@
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/World.h>
-#include<hgl/Time.h>
+#include<hgl/time/Time.h>
 //#include<iostream>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/Mesh.h>

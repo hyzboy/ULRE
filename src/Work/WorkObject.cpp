@@ -7,7 +7,7 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/TextRender.h>
-#include<hgl/Time.h>
+#include<hgl/time/Time.h>
 //#include<iostream>
 
 namespace hgl
