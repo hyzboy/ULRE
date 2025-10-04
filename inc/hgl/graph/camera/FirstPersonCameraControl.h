@@ -8,7 +8,7 @@
 #include<hgl/graph/camera/CameraControl.h>
 #include<hgl/io/event/KeyboardEvent.h>
 #include<hgl/io/event/MouseEvent.h>
-#include<hgl/Time.h>
+#include<hgl/time/Time.h>
 #include <cmath>
 
 namespace hgl::graph

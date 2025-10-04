@@ -18,7 +18,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/log/Logger.h>
-#include<hgl/Time.h>
+#include<hgl/time/Time.h>
 
 VK_NAMESPACE_BEGIN
 
