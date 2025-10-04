@@ -22,4 +22,4 @@ CreateProject(03_WallsFromPolyline              WallsFromPolyline.cpp)
 CreateProject(04_LineRenderTest                 LineRenderTest.cpp)
 
 
-CreateProject(05_LoadGeometry                   LoadGeometry.cpp GeometryTest.cpp)
+CreateProject(05_LoadGeometry                   LoadGeometry.cpp LoadScene.cpp GeometryTest.cpp)
