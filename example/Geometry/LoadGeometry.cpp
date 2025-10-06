@@ -5,7 +5,7 @@
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKVertexInputLayout.h>
 #include<hgl/filesystem/Filename.h>
-#include<hgl/graph/Bounds.h>
+#include<hgl/graph/BoundingVolumes.h>
 #include"VKGeometryData.h"
 #include<hgl/io/MiniPack.h>
 #include<hgl/io/MemoryInputStream.h>
@@ -64,26 +64,26 @@ namespace
         return true;
     }
 
-    // Read and convert Bounds from MiniPack
-    bool ReadBounds(hgl::io::minipack::MiniPackReader *mpr, Bounds &bounds, const OSString &filename)
+    // Read and convert BoundingVolumes from MiniPack
+    bool ReadBounds(hgl::io::minipack::MiniPackReader *mpr, BoundingVolumes &bounds, const OSString &filename)
     {
-        const int32 bounds_index = mpr->FindFile(AnsiStringView("Bounds"));
+        const int32 bounds_index = mpr->FindFile(AnsiStringView("BoundingVolumes"));
         if(bounds_index < 0)
         {
-            MLogError(LoadGeometry,OS_TEXT("Bounds not found in file ") + filename);
+            MLogError(LoadGeometry,OS_TEXT("BoundingVolumes not found in file ") + filename);
             return false;
         }
 
-        if(mpr->GetFileLength(bounds_index) != sizeof(PackedBounds))
+        if(mpr->GetFileLength(bounds_index) != sizeof(BoundingVolumesData))
         {
-            MLogError(LoadGeometry,OS_TEXT("Bounds size mismatch in file ") + filename);
+            MLogError(LoadGeometry,OS_TEXT("BoundingVolumes size mismatch in file ") + filename);
             return false;
         }
 
-        PackedBounds pb{};
-        if(mpr->ReadFile(bounds_index, &pb, 0, sizeof(PackedBounds)) != sizeof(PackedBounds))
+        BoundingVolumesData pb{};
+        if(mpr->ReadFile(bounds_index, &pb, 0, sizeof(BoundingVolumesData)) != sizeof(BoundingVolumesData))
         {
-            MLogError(LoadGeometry,OS_TEXT("Cannot read Bounds from file ") + filename);
+            MLogError(LoadGeometry,OS_TEXT("Cannot read BoundingVolumes from file ") + filename);
             return false;
         }
 
@@ -379,8 +379,8 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return nullptr;
     }
 
-    // 2) Read Bounds
-    Bounds bounds;
+    // 2) Read BoundingVolumes
+    BoundingVolumes bounds;
     if(!ReadBounds(mpr, bounds, filename))
     {
         delete mpr;
