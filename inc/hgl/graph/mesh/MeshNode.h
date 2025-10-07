@@ -45,7 +45,6 @@ namespace hgl::graph
     public:
 
         MeshNode():NodeTransform{}
-        {}
         MeshNode(const NodeTransform &so):NodeTransform(so){}
         MeshNode(const Matrix4f &mat):NodeTransform(mat){}
         virtual ~MeshNode();
