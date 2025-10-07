@@ -20,8 +20,8 @@ class Mesh
     MaterialInstance *  mat_inst;
     Geometry *          geometry;
 
-    GeometryDataBuffer *    data_buffer;
-    GeometryDrawRange      render_data;
+    GeometryDataBuffer *data_buffer;
+    GeometryDrawRange   render_data;
 
 private:
 
@@ -47,8 +47,8 @@ public:
             Geometry *          GetGeometry         (){return geometry;}
     const   AABB &              GetBoundingBox      ()const{return geometry->GetBoundingBox();}
 
-    const   GeometryDataBuffer *    GetDataBuffer       ()const{return data_buffer;}
-    const   GeometryDrawRange *    GetRenderData       ()const{return &render_data;}
+    const   GeometryDataBuffer *GetDataBuffer       ()const{return data_buffer;}
+    const   GeometryDrawRange * GetRenderData       ()const{return &render_data;}
 
             VAB *               GetVAB              (const int index)const{return geometry->GetVAB(index);}
             VAB *               GetVAB              (const AnsiString &name)const{return geometry->GetVAB(name);}
