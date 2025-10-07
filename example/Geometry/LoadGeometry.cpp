@@ -4,11 +4,9 @@
 #include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKVertexInputLayout.h>
-#include<hgl/filesystem/Filename.h>
 #include<hgl/graph/BoundingVolumes.h>
 #include"VKGeometryData.h"
 #include<hgl/io/MiniPack.h>
-#include<hgl/io/MemoryInputStream.h>
 
 DEFINE_LOGGER_MODULE(LoadGeometry)
 
@@ -65,7 +63,7 @@ namespace
     }
 
     // Read and convert BoundingVolumes from MiniPack
-    bool ReadBounds(hgl::io::minipack::MiniPackReader *mpr, BoundingVolumes &bounds, const OSString &filename)
+    bool ReadBoundingVolumes(hgl::io::minipack::MiniPackReader *mpr, BoundingVolumes &bounds, const OSString &filename)
     {
         const int32 bounds_index = mpr->FindFile(AnsiStringView("BoundingVolumes"));
         if(bounds_index < 0)
@@ -380,8 +378,8 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
     }
 
     // 2) Read BoundingVolumes
-    BoundingVolumes bounds;
-    if(!ReadBounds(mpr, bounds, filename))
+    BoundingVolumes bounding_volumes;
+    if(!ReadBoundingVolumes(mpr, bounding_volumes, filename))
     {
         delete mpr;
         return nullptr;
@@ -425,7 +423,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return(nullptr);
     }
 
-    geometry->SetBoundingBox(bounds.aabb);
+    geometry->SetBoundingBox(bounding_volumes.aabb);
 
     delete mpr;
 
