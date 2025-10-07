@@ -147,13 +147,11 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        {
-            AABB aabb;
+        BoundingVolumes bv;
 
-            aabb.SetMinMax(Vector3f(-0.5f,-0.5f,0.0f),Vector3f(0.5f,0.5f,0.0f));
+        bv.SetFromAABB(Vector3f(-0.5f,-0.5f,0.0f),Vector3f(0.5f,0.5f,0.0f));
 
-            p->SetBoundingBox(aabb);
-        }
+        p->SetBoundingVolumes(bv);
 
         return p;
     }

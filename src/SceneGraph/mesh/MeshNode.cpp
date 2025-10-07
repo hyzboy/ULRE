@@ -15,7 +15,7 @@ namespace hgl::graph
         }
     }
 
-    void MeshNode::RefreshBoundingBox()
+    void MeshNode::RefreshBoundingVolumes()
     {
         AABB local;
         bool has_box=false;
@@ -27,12 +27,12 @@ namespace hgl::graph
 
             if(!has_box)
             {
-                local=sm->GetBoundingBox();
+                local=sm->GetBoundingVolumes().aabb;
                 has_box=true;
             }
             else
             {
-                local.Enclose(sm->GetBoundingBox());
+                local.Merge(sm->GetBoundingVolumes().aabb);
             }
         }
 
@@ -40,23 +40,23 @@ namespace hgl::graph
         for(MeshNode *sn:child_nodes)
         {
             if(!sn)continue;
-            sn->RefreshBoundingBox();
+            sn->RefreshBoundingVolumes();
 
             if(!has_box)
             {
-                local=sn->GetLocalBoundingBox();
+                local=sn->GetLocalBoundingVolumes().aabb;
                 has_box=true;
             }
             else
             {
-                local.Enclose(sn->GetLocalBoundingBox());
+                local.Merge(sn->GetLocalBoundingVolumes().aabb);
             }
         }
 
         if(has_box)
-            local_aabb=local;
+            local_bounding_volumes.SetFromAABB(local);
         else
-            local_aabb.Clear();
+            local_bounding_volumes.Clear();
     }
 
     MeshNode::~MeshNode()
@@ -82,7 +82,7 @@ namespace hgl::graph
     {
         SetParent(nullptr);
 
-        local_aabb.Clear();
+        local_bounding_volumes.Clear();
 
         child_nodes.Clear();
         submesh_set.Clear();

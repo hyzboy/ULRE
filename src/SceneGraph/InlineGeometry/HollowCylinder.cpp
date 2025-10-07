@@ -190,9 +190,9 @@ namespace hgl::graph::inline_geometry
         Geometry *p = pc->Create();
         if(p)
         {
-            AABB aabb;
-            aabb.SetMinMax(Vector3f(-r1,-r1,-he), Vector3f(r1,r1,he));
-            p->SetBoundingBox(aabb);
+            BoundingVolumes bv;
+            bv.SetFromAABB(Vector3f(-r1,-r1,-he), Vector3f(r1,r1,he));
+            p->SetBoundingVolumes(bv);
         }
         return p;
     }

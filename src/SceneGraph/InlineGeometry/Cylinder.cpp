@@ -186,8 +186,12 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        p->SetBoundingBox(  Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
-                            Vector3f( cci->radius, cci->radius, cci->halfExtend));
+        BoundingVolumes bv;
+
+        bv.SetFromAABB(Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
+                       Vector3f( cci->radius, cci->radius, cci->halfExtend));
+
+        p->SetBoundingVolumes(bv);
 
         return p;
     }

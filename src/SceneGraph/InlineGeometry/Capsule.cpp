@@ -347,10 +347,11 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p = pc->Create();
 
-        // bounding box
-        AABB aabb;
-        aabb.SetMinMax(Vector3f(-radius,-radius,-halfH-radius), Vector3f(radius,radius,halfH+radius));
-        p->SetBoundingBox(aabb);
+        BoundingVolumes bv;
+
+        bv.SetFromAABB(Vector3f(-radius,-radius,-halfH-radius), Vector3f(radius,radius,halfH+radius));
+
+        p->SetBoundingVolumes(bv);
 
         return p;
     }

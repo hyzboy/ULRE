@@ -107,7 +107,7 @@ public:
         if (!mesh)
             return false;
 
-        box=mesh->GetBoundingBox();
+        box=mesh->GetBoundingVolumes().aabb;
         return true;
     }
 

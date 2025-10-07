@@ -2,7 +2,7 @@
 
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
-#include<hgl/graph/AABB.h>
+#include<hgl/graph/BoundingVolumes.h>
 #include<hgl/graph/VK.h>
 #include<hgl/log/Log.h>
 
@@ -27,18 +27,16 @@ protected:
 
 protected:
 
-    AABB bounding_box;
+    BoundingVolumes bounding_volumes;    ///<包围体
     
 public:
 
     Geometry(const AnsiString &pn,GeometryData *pd);
     virtual ~Geometry();
 
-    void SetBoundingBox(const AABB &bb) { bounding_box=bb; } ///<设置包围盒
-    void SetBoundingBox(const Vector3f &box_min,const Vector3f &box_max)
-    {
-        bounding_box.SetMinMax(box_min,box_max);
-    }
+          void             SetBoundingVolumes(const BoundingVolumes &bv){bounding_volumes=bv;}
+
+    const BoundingVolumes &GetBoundingVolumes()const{return bounding_volumes;}
 
 public:
 
@@ -68,7 +66,5 @@ public:
             IBMap *         GetIBMap        ();                             ///<取得索引缓冲区映射器
 
     VertexDataManager *     GetVDM          ()const;                        ///<取得顶点数据管理器
-
-    const   AABB &          GetBoundingBox  ()const{return bounding_box;}
 };//class Geometry
 VK_NAMESPACE_END

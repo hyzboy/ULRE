@@ -75,7 +75,8 @@ public:
     {
         auto *sm=GetStaticMesh();
         if(!sm) return false;
-        box=sm->GetBoundingBox();
+
+        box=sm->GetBoundingVolumes().aabb;
         return true;
     }
 
