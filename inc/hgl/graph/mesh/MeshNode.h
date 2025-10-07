@@ -4,8 +4,7 @@
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/graph/NodeTransform.h>
-#include<hgl/graph/AABB.h>
-#include<hgl/graph/OBB.h>
+#include<hgl/graph/BoundingVolumes.h>
 #include<hgl/graph/mesh/Mesh.h>
 
 namespace hgl::graph
@@ -34,7 +33,7 @@ namespace hgl::graph
 
     protected:
 
-        AABB            local_aabb;                         ///< 本地坐标包围盒
+        BoundingVolumes local_bounding_volumes;             ///< 本地包围体
 
         MeshNodePtrSet  child_nodes;                        ///< 子节点（非拥有型，避免重复释放）
         MeshPtrSet      submesh_set;                        ///< Mesh 集合（仅持有引用，不管理生命周期）
@@ -44,7 +43,7 @@ namespace hgl::graph
 
     public:
 
-        MeshNode():NodeTransform{}
+        MeshNode():NodeTransform(){}
         MeshNode(const NodeTransform &so):NodeTransform(so){}
         MeshNode(const Matrix4f &mat):NodeTransform(mat){}
         virtual ~MeshNode();
@@ -89,10 +88,10 @@ namespace hgl::graph
 
     public: // 坐标/包围盒
 
-        virtual void        UpdateWorldTransform() override;            ///< 刷新世界变换
-        virtual void        RefreshBoundingBox();                       ///< 刷新包围盒，合并自身 Mesh 与子节点
+        virtual         void                UpdateWorldTransform() override;                ///< 刷新世界变换
+        virtual         void                RefreshBoundingVolumes();                       ///< 刷新包围盒，合并自身 Mesh 与子节点
 
-        virtual const AABB &GetLocalBoundingBox()const { return local_aabb; }
+        virtual const   BoundingVolumes &   GetLocalBoundingVolumes()const { return local_bounding_volumes; }
 
     public: // Mesh 相关
 

@@ -1,65 +1,26 @@
 #include<hgl/component/GeometryComponent.h>
+#include<hgl/graph/BoundingVolumes.h>
 
 COMPONENT_NAMESPACE_BEGIN
 const bool GeometryComponent::GetWorldAABB(AABB &box)
 {
-    AABB aabb;
+    AABB local_aabb;
 
-    if(!GetLocalAABB(aabb))
+    if(!GetLocalAABB(local_aabb))
         return false;
 
-    const Matrix4f &l2w = GetLocalToWorldMatrix();
-
-    // Compute world AABB by transforming the local AABB via the L2W matrix.
-    // Efficient method: transform center and compute world half-extents using absolute of rotation part.
-
-    // Local center and half-length
-    const Vector3f localCenter = aabb.GetCenter();
-    const Vector3f localHalf = aabb.GetLength() * 0.5f;
-
-    // Transform center (apply full 4x4 transform)
-    Vector4f c4(localCenter,1.0f);
-    Vector4f wc4 = l2w * c4;
-    Vector3f worldCenter = Vector3f(wc4.x,wc4.y,wc4.z);
-
-    // Extract upper-left 3x3 matrix (rotation + scale)
-    Matrix3f m3;
-    m3[0] = Vector3f(l2w[0].x,l2w[0].y,l2w[0].z);
-    m3[1] = Vector3f(l2w[1].x,l2w[1].y,l2w[1].z);
-    m3[2] = Vector3f(l2w[2].x,l2w[2].y,l2w[2].z);
-
-    // Compute world half extents as absolute(m3) * localHalf
-    Matrix3f absm3;
-    for(int r = 0;r < 3;++r)
-    {
-        for(int c = 0;c < 3;++c)
-        {
-            absm3[r][c] = std::abs(m3[r][c]);
-        }
-    }
-
-    Vector3f worldHalf;
-    worldHalf.x = absm3[0][0] * localHalf.x + absm3[0][1] * localHalf.y + absm3[0][2] * localHalf.z;
-    worldHalf.y = absm3[1][0] * localHalf.x + absm3[1][1] * localHalf.y + absm3[1][2] * localHalf.z;
-    worldHalf.z = absm3[2][0] * localHalf.x + absm3[2][1] * localHalf.y + absm3[2][2] * localHalf.z;
-
-    // Build min/max
-    Vector3f minp = worldCenter - worldHalf;
-    Vector3f maxp = worldCenter + worldHalf;
-
-    box.SetMinMax(minp,maxp);
+    box = local_aabb.Transformed(GetLocalToWorldMatrix());
     return true;
 }
 
 const bool GeometryComponent::GetWorldOBB(OBB &box)
 {
-    AABB aabb;
+    AABB local_aabb;
 
-    if(!GetLocalAABB(aabb))
+    if(!GetLocalAABB(local_aabb))
         return false;
 
-    box.Set(GetLocalToWorldMatrix(),aabb);
-
+    box = ToOBB(local_aabb, GetLocalToWorldMatrix());
     return true;
 }
 

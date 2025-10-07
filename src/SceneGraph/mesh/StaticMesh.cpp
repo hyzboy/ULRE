@@ -55,7 +55,7 @@ Mesh *StaticMesh::CreateMesh(Geometry *prim, MaterialInstance *mi, Pipeline *p)
     pipeline_set.Add(p);
 
     // 累积包围盒
-    RefreshBoundingBox();
+    RefreshBoundingVolumes();
     return sm;
 }
 
@@ -71,7 +71,7 @@ bool StaticMesh::AddSubMesh(Mesh *sm)
     if (auto mi = sm->GetMaterialInstance()) mat_inst_set.Add(mi);
     if (auto pl = sm->GetPipeline())         pipeline_set.Add(pl);
 
-    RefreshBoundingBox();
+    RefreshBoundingVolumes();
     return true;
 }
 
@@ -85,7 +85,7 @@ void StaticMesh::RemoveSubMesh(Mesh *sm)
     // 资源集合可能需要重建（避免误删共享资源复杂性）
     RebuildResourceSets();
 
-    RefreshBoundingBox();
+    RefreshBoundingVolumes();
 }
 
 void StaticMesh::ClearSubMeshes()
@@ -97,7 +97,7 @@ void StaticMesh::ClearSubMeshes()
     mat_inst_set.Clear();
     pipeline_set.Clear();
 
-    bounding_box.Clear();
+    bounding_volumes.Clear();
 }
 
 bool StaticMesh::AttachGeometry(Geometry *prim)
@@ -118,19 +118,32 @@ void StaticMesh::UpdateAllSubMeshes()
         if(sm) sm->UpdateGeometry();
 }
 
-void StaticMesh::RefreshBoundingBox()
+void StaticMesh::RefreshBoundingVolumes()
 {
     bool has_box = false;
     AABB box;
 
     for(Mesh *sm: submeshes)
     {
-        if(!sm) continue;
-        if(!has_box) { box = sm->GetBoundingBox(); has_box = true; }
-        else { box.Enclose(sm->GetBoundingBox()); }
+        if(!sm)
+            continue;
+
+        if(!has_box)
+        {
+            box = sm->GetBoundingVolumes().aabb;
+
+            has_box = true;
+        }
+        else
+        {
+            box.Merge(sm->GetBoundingVolumes().aabb);
+        }
     }
 
-    if(has_box) bounding_box = box; else bounding_box.Clear();
+    if(has_box)
+        bounding_volumes.SetFromAABB(box);
+    else
+        bounding_volumes.Clear();
 }
 
 void StaticMesh::RebuildResourceSets()
@@ -143,8 +156,8 @@ void StaticMesh::RebuildResourceSets()
     {
         if(!sm) continue;
         if (auto prim = sm->GetGeometry())          geometry_set.Add(prim);
-        if (auto mi   = sm->GetMaterialInstance())   mat_inst_set.Add(mi);
-        if (auto p    = sm->GetPipeline())           pipeline_set.Add(p);
+        if (auto mi   = sm->GetMaterialInstance())  mat_inst_set.Add(mi);
+        if (auto p    = sm->GetPipeline())          pipeline_set.Add(p);
     }
 }
 

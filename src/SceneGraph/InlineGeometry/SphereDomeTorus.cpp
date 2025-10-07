@@ -83,11 +83,11 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        {
-            AABB aabb;
-            aabb.SetMinMax(Vector3f(-1.0f,-1.0f,-1.0f),Vector3f(1.0f,1.0f,1.0f));
-            p->SetBoundingBox(aabb);
-        }
+        BoundingVolumes bv;
+
+        bv.SetFromAABB(Vector3f(-1.0f,-1.0f,-1.0f),Vector3f(1.0f,1.0f,1.0f));
+
+        p->SetBoundingVolumes(bv);
 
         return p;
     }
@@ -183,13 +183,11 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        {
-            AABB box;
+        BoundingVolumes bv;
 
-            box.SetMinMax(Vector3f(-1.0f,-1.0f,-1.0f),Vector3f(1.0f,1.0f,1.0f));        //这个不对，待查
+        bv.SetFromAABB(Vector3f(-1.0f,-1.0f,-1.0f),Vector3f(1.0f,1.0f,1.0f));        //这个不对，待查
 
-            p->SetBoundingBox(box);
-        }
+        p->SetBoundingVolumes(bv);
 
         return p;
     }
@@ -303,15 +301,15 @@ namespace hgl::graph::inline_geometry
         Geometry *p=pc->Create();
 
         {
-            AABB aabb;
+            BoundingVolumes bv;
 
             float maxExtent = centerRadius + torusRadius;
             float minExtent = centerRadius - torusRadius;
 
-            aabb.SetMinMax(Vector3f(-torusRadius, -maxExtent, -maxExtent),
+            bv.SetFromAABB(Vector3f(-torusRadius, -maxExtent, -maxExtent),
                            Vector3f( torusRadius,  maxExtent,  maxExtent));
 
-            p->SetBoundingBox(aabb);
+            p->SetBoundingVolumes(bv);
         }
 
         return p;

@@ -30,7 +30,7 @@ class StaticMesh
     MeshNodeList        nodes;                                                                                      ///< MeshNode 集合(拥有对象)
     MeshNode *          root_node = nullptr;                                                                        ///< 根节点(由 nodes 持有)
 
-    AABB                bounding_box;                                                                               ///< 所有 Mesh 合并的本地包围盒
+    BoundingVolumes     bounding_volumes;                                                                           ///< 所有 Mesh 合并的本地包围体
 
 public:
 
@@ -77,8 +77,8 @@ public: // 数据更新
 
 public: // 包围盒
 
-    void                        RefreshBoundingBox  ();
-    const AABB &                GetBoundingBox      () const { return bounding_box; }
+    void                        RefreshBoundingVolumes  ();
+    const BoundingVolumes &     GetBoundingVolumes      () const { return bounding_volumes; }
 
 private:
 

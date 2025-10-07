@@ -464,7 +464,11 @@ namespace hgl::graph::inline_geometry
                                rci->revolution_center.y + max_radius,
                                rci->revolution_center.z + max_height);
 
-            p->SetBoundingBox(min_bound, max_bound);
+            BoundingVolumes bv;
+
+            bv.SetFromAABB(min_bound,max_bound);
+
+            p->SetBoundingVolumes(bv);
         }
 
         return p;

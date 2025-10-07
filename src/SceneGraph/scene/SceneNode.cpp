@@ -91,22 +91,22 @@ namespace hgl::graph
     /**
     * 刷新绑定盒
     */
-    void SceneNode::RefreshBoundingBox()
+    void SceneNode::RefreshBoundingVolumes()
     {
         int count=child_nodes.GetCount();
         SceneNode **sub=child_nodes.GetData();
 
         AABB local,world;
 
-        (*sub)->RefreshBoundingBox();
+        (*sub)->RefreshBoundingVolumes();
         local=(*sub)->GetLocalBoundingBox();
 
         ++sub;
         for(int i=1;i<count;i++)
         {
-            (*sub)->RefreshBoundingBox();
+            (*sub)->RefreshBoundingVolumes();
 
-            local.Enclose((*sub)->GetLocalBoundingBox());
+            local.Merge((*sub)->GetLocalBoundingBox());
 
             ++sub;
         }

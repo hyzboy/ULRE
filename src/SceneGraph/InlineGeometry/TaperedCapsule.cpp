@@ -354,11 +354,12 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p = pc->Create();
 
-        // bounding box: extents depend on larger of radii
+        BoundingVolumes bv;
+
         float maxr = std::max(bottomR, topR);
-        AABB aabb;
-        aabb.SetMinMax(Vector3f(-maxr,-maxr,-halfH-maxr), Vector3f(maxr,maxr,halfH+maxr));
-        p->SetBoundingBox(aabb);
+        bv.SetFromAABB(Vector3f(-maxr,-maxr,-halfH-maxr), Vector3f(maxr,maxr,halfH+maxr));
+
+        p->SetBoundingVolumes(bv);
 
         return p;
     }
