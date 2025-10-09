@@ -21,6 +21,7 @@ namespace hgl
         class DrawNode:public Comparator<DrawNode>
         {
         public:
+
             uint            index=0;                        ///<在PipelineMaterialBatch中的索引
 
             uint32          transform_version=0;

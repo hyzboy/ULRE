@@ -14,9 +14,7 @@ using PrimitiveList         =ObjectList<Primitive>;
 
 /**
 * StaticMesh
-* 负责管理一组 Geometry 与其对应的 Mesh，同时集中跟踪使用到的 MaterialInstance 与 Pipeline（多实例）。
-* 另外，Mesh 内部维护一个 MeshNode 树结构与一个 MeshNode 集合，并在构造时创建一个根节点。
-* 注意：Mesh 拥有其内部创建的 Primitive 的生命周期；Geometry/MaterialInstance/Pipeline 仅持有引用不管理生命周期。
+* 多个Primitive的集合体
 */
 class StaticMesh
 {
@@ -34,19 +32,6 @@ public:
     StaticMesh();
     virtual ~StaticMesh();
 
-public: // Primitive 管理
-
-    const int                   GetPrimitiveCount   ()const{ return primitive_list.GetCount(); }
-    const PrimitiveList &       GetPrimitiveList    ()const{ return primitive_list; }
-
-    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialInstance *mi, Pipeline *p);            ///< 创建并添加一个 Primitive(为该 Primitive 指定 Geometry / MaterialInstance / Pipeline)
-
-    bool                        AddSubMesh          (Primitive *sm);                                                    ///< 添加一个已有的 Primitive(Mesh 将接管其生命周期)
-
-    void                        RemoveSubMesh       (Primitive *sm);                                                    ///< 从 StaticMesh 中移除并销毁一个 Mesh
-
-    void                        ClearSubMeshes      ();                                                                 ///< 清空并销毁所有 Mesh
-
 public: // Geometry / MaterialInstance / Pipeline(仅保存引用,便于统计/查询)
 
     bool                        AttachGeometry      (Geometry *geometry);
@@ -56,9 +41,20 @@ public: // Geometry / MaterialInstance / Pipeline(仅保存引用,便于统计/�
     const MaterialInstanceSet & GetMaterialInstances() const { return mat_inst_set; }
     const PipelinePtrSet &      GetPipelines        () const { return pipeline_set; }
 
-public: // 数据更新
+public: // Primitive 管理
 
-    void                        UpdateAllSubMeshes  ();                                                             ///< 当 Geometry/VIL 数据发生变化时,更新所有 Mesh 的渲染数据
+    const int                   GetPrimitiveCount   ()const{ return primitive_list.GetCount(); }
+    const PrimitiveList &       GetPrimitiveList    ()const{ return primitive_list; }
+
+    Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialInstance *mi, Pipeline *p);            ///< 创建并添加一个 Primitive(为该 Primitive 指定 Geometry / MaterialInstance / Pipeline)
+
+    bool                        AddPrimitive        (Primitive *sm);                                                    ///< 添加一个已有的 Primitive(StaticMesh 将接管其生命周期)
+
+    void                        RemovePrimitive     (Primitive *sm);                                                    ///< 从 StaticMesh 中移除并销毁一个 Primitive
+
+    void                        ClearPrimitives     ();                                                                 ///< 清空并销毁所有 Primitive
+
+    void                        UpdatePrimitives  ();                                                                   ///< 当 Geometry/VIL 数据发生变化时,更新所有 Primitive 的渲染数据
 
 public: // 包围盒
 
@@ -68,6 +64,5 @@ public: // 包围盒
 private:
 
     void                        RebuildResourceSets ();
-};
-
+};//class StaticMesh
 VK_NAMESPACE_END
