@@ -1,9 +1,7 @@
 #include<hgl/graph/DrawNode.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/graph/mesh/MeshNode.h>
 #include<hgl/component/PrimitiveComponent.h>
-#include<hgl/component/StaticMeshComponent.h>
 #include<hgl/graph/SceneNode.h>
 
 VK_NAMESPACE_BEGIN
@@ -50,87 +48,38 @@ const int DrawNode::compare(const DrawNode &other)const
 }
 
 // DrawNodePrimitive
-DrawNodePrimitive::DrawNodePrimitive(PrimitiveComponent *c):comp(c){}
+DrawNodePrimitive::DrawNodePrimitive(PrimitiveComponent *pc)
+{
+    if(pc)
+    {
+        comp=pc;
+        primitive=pc->GetPrimitive();
+    }
+    else
+    {
+        comp=nullptr;
+        primitive=nullptr;
+    }
+}
 
 SceneNode *DrawNodePrimitive::GetSceneNode() const
 {
     return comp?comp->GetOwnerNode():nullptr;
 }
 
-Component *DrawNodePrimitive::GetComponent() const
+PrimitiveComponent *DrawNodePrimitive::GetPrimitiveComponent() const
 {
     return comp;
 }
 
-Primitive *DrawNodePrimitive::GetPrimitive() const
-{
-    return comp?comp->GetPrimitive():nullptr;
-}
-
 MaterialInstance *DrawNodePrimitive::GetMaterialInstance() const
 {
-    return comp?comp->GetMaterialInstance():nullptr;
+    return primitive?primitive->GetMaterialInstance():nullptr;
 }
 
 NodeTransform *DrawNodePrimitive::GetTransform() const
 {
     return comp; // 直接使用组件自身的变换
-}
-
-// StaticMeshDrawNode（StaticMesh 用，叠加 MeshNode 变换）
-DrawNodeStaticMesh::DrawNodeStaticMesh(StaticMeshComponent *c, MeshNode *meshnode, Primitive *m)
-    :component(c)
-    ,mesh_node(meshnode)
-    ,meshnode_transform(meshnode)
-    ,primitive(m){}
-
-SceneNode *DrawNodeStaticMesh::GetSceneNode() const
-{
-    return component?component->GetOwnerNode():nullptr;
-}
-
-Component *DrawNodeStaticMesh::GetComponent() const
-{
-    return component;
-}
-
-Primitive *DrawNodeStaticMesh::GetPrimitive() const
-{
-    return primitive;
-}
-
-MaterialInstance *DrawNodeStaticMesh::GetMaterialInstance() const
-{
-    return primitive?primitive->GetMaterialInstance():nullptr;
-}
-
-void DrawNodeStaticMesh::EnsureCombined() const
-{
-    NodeTransform *scenenode_transform = component ? static_cast<NodeTransform *>(const_cast<StaticMeshComponent *>(component)) : nullptr;
-
-    const uint32 ov = scenenode_transform ? scenenode_transform->GetTransformVersion() : 0;
-    const uint32 mv = meshnode_transform ? meshnode_transform->GetTransformVersion() : 0;
-
-    if(ov!=scenenode_ver_cache || mv!=meshnode_ver_cache)
-    {
-        const Matrix4f owner_l2w    = scenenode_transform ? scenenode_transform->GetLocalToWorldMatrix()    : Identity4f;
-        const Matrix4f meshnode_l2w = meshnode_transform  ? meshnode_transform->GetLocalToWorldMatrix() : Identity4f;
-
-        const Matrix4f combined = owner_l2w * meshnode_l2w;
-
-        combined_tf.SetParentMatrix(Identity4f);
-        combined_tf.SetLocalMatrix(combined);
-        combined_tf.UpdateWorldTransform();
-
-        scenenode_ver_cache = ov;
-        meshnode_ver_cache = mv;
-    }
-}
-
-NodeTransform *DrawNodeStaticMesh::GetTransform() const
-{
-    EnsureCombined();
-    return const_cast<NodeTransform*>(&combined_tf);
 }
 VK_NAMESPACE_END
 

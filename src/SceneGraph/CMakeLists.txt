@@ -35,10 +35,8 @@ SOURCE_GROUP("Mesh\\Geometry" FILES ${SG_PRIMITIVE_SOURCE})
 SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                     ${SG_INCLUDE_PATH}/mesh/GeometryDrawRange.h
                     ${SG_INCLUDE_PATH}/mesh/Primitive.h
-                    ${SG_INCLUDE_PATH}/mesh/MeshNode.h
                     ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
                     mesh/Primitive.cpp
-                    mesh/MeshNode.cpp
                     mesh/StaticMesh.cpp)
 
 SOURCE_GROUP("Mesh\\Mesh" FILES ${VK_MESH_SOURCE})
@@ -390,13 +388,11 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/GeometryComponent.h
                         ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
                         ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/StaticMeshComponent.h
                         component/Component.cpp
                         component/ComponentManager.cpp
                         component/SceneComponent.cpp
                         component/GeometryComponent.cpp
                         component/PrimitiveComponentManager.cpp
-                        component/StaticMeshComponentManager.cpp
 )
 
 SET(COLLISION_COMPONENT_FILES   ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponent.h

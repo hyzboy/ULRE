@@ -141,9 +141,9 @@ void PipelineMaterialBatch::UpdateTransformData()
     }
 }
 
-void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *mesh_component)
+void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_component)
 {
-    if(!mesh_component)return;
+    if(!prim_component)return;
 
     if(!assign_buffer)
         return;
@@ -156,7 +156,8 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *mesh_
     for(int i=0;i<node_count;i++)
     {
         auto *mc=dynamic_cast<DrawNodePrimitive *>(*node);
-        if(mc && mc->GetComponent()==mesh_component)
+
+        if(mc && mc->GetPrimitiveComponent()==prim_component)
         {
             assign_buffer->UpdateMaterialInstanceData(*node);
             return;

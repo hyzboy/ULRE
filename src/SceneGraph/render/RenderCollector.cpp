@@ -7,7 +7,6 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/component/PrimitiveComponent.h>
-#include<hgl/component/StaticMeshComponent.h>
 
 namespace hgl::graph
 {

@@ -171,7 +171,7 @@ public:
     {
         if(!CanRender()) return 0;
 
-                const PrimitiveComponentData *mcd=GetData();
+        const PrimitiveComponentData *mcd=GetData();
 
         if (!mcd || !mcd->primitive)
             return 0;
