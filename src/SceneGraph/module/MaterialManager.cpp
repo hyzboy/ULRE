@@ -249,7 +249,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const size_t mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
 {
     if(!mtl)return(nullptr);
 
@@ -266,7 +266,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const size_t mi_bytes)
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
 {
     if(!mtl)return(nullptr);
 
@@ -293,7 +293,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
     return CreateMaterialInstance(mtl,vil_cfg);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *mci, const VILConfig *vil_cfg,const void *data,const size_t data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *mci, const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     Material *mtl=this->CreateMaterial(mtl_name,mci);
 
@@ -303,7 +303,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const size_t data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
 
@@ -313,7 +313,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
     return CreateMaterialInstance(mtl_name,mci,vil_cfg,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const size_t data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
 

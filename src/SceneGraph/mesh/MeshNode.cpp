@@ -21,7 +21,7 @@ namespace hgl::graph
         bool has_box=false;
 
         // 合并自身 submesh 盒子
-        for(Mesh *sm:submesh_set)
+        for(Primitive *sm:primitive_set)
         {
             if(!sm)continue;
 
@@ -62,7 +62,7 @@ namespace hgl::graph
     MeshNode::~MeshNode()
     {
         SetParent(nullptr);
-        submesh_set.Clear();
+        primitive_set.Clear();
     }
 
     MeshNode *MeshNode::Clone() const
@@ -85,7 +85,7 @@ namespace hgl::graph
         local_bounding_volumes.Clear();
 
         child_nodes.Clear();
-        submesh_set.Clear();
+        primitive_set.Clear();
 
         NodeTransform::Reset();
     }

@@ -34,10 +34,10 @@ SOURCE_GROUP("Mesh\\Geometry" FILES ${SG_PRIMITIVE_SOURCE})
 
 SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                     ${SG_INCLUDE_PATH}/mesh/GeometryDrawRange.h
-                    ${SG_INCLUDE_PATH}/mesh/Mesh.h
+                    ${SG_INCLUDE_PATH}/mesh/Primitive.h
                     ${SG_INCLUDE_PATH}/mesh/MeshNode.h
                     ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
-                    mesh/Mesh.cpp
+                    mesh/Primitive.cpp
                     mesh/MeshNode.cpp
                     mesh/StaticMesh.cpp)
 
@@ -55,7 +55,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/geo/InlineGeometry.h
                     ${SG_INCLUDE_PATH}/geo/Extruded.h
                     ${SG_INCLUDE_PATH}/geo/Wall.h
                     ${SG_INCLUDE_PATH}/geo/Revolution.h
-                    #${SG_INCLUDE_PATH}/Mesh.h
+                    #${SG_INCLUDE_PATH}/Primitive.h
                     #${SG_INCLUDE_PATH}/Spline.h
                     InlineGeometry/AxisBoundingBoxSquareArray.cpp
                     InlineGeometry/Circle.cpp
@@ -116,7 +116,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/BufferManager.h
                         ${SGM_HEADER_PATH}/RenderTargetManager.h
                         ${SGM_HEADER_PATH}/GeometryManager.h
-                        ${SGM_HEADER_PATH}/MeshManager.h
+                        ${SGM_HEADER_PATH}/PrimitiveManager.h
 
                         ${SGM_HEADER_PATH}/RenderModule.h
                         ${SGM_HEADER_PATH}/SwapchainModule.h
@@ -130,7 +130,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_SOURCE_PATH}/BufferManager.cpp
                         ${SGM_SOURCE_PATH}/RenderTargetManager.cpp
                         ${SGM_SOURCE_PATH}/GeometryManager.cpp
-                        ${SGM_SOURCE_PATH}/MeshManager.cpp
+                        ${SGM_SOURCE_PATH}/PrimitiveManager.cpp
 
                         ${SGM_SOURCE_PATH}/SwapChainModule.cpp
 )
@@ -389,13 +389,13 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/SceneComponent.h
                         ${COMPONENT_INCLUDE_PATH}/GeometryComponent.h
                         ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/MeshComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
                         ${COMPONENT_INCLUDE_PATH}/StaticMeshComponent.h
                         component/Component.cpp
                         component/ComponentManager.cpp
                         component/SceneComponent.cpp
                         component/GeometryComponent.cpp
-                        component/MeshComponentManager.cpp
+                        component/PrimitiveComponentManager.cpp
                         component/StaticMeshComponentManager.cpp
 )
 

@@ -9,13 +9,10 @@
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/MeshManager.h>
-#include<hgl/graph/RenderCollector.h>
-#include<hgl/graph/camera/CameraControl.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/GeometryCreater.h>
-#include<hgl/io/event/MouseEvent.h>
 #include<hgl/component/CreateComponentInfo.h>
 
 VK_NAMESPACE_BEGIN
@@ -66,7 +63,7 @@ protected:
     BufferManager *         buffer_manager      =nullptr;
     SamplerManager *        sampler_manager     =nullptr;
     GeometryManager *       geometry_manager    =nullptr;
-    MeshManager *           mesh_manager        =nullptr;
+    PrimitiveManager *      primitive_manager   =nullptr;
 
     SwapchainModule *       sc_module           =nullptr;
 
@@ -110,7 +107,7 @@ public:
     BufferManager *         GetBufferManager        (){return buffer_manager;}
     SamplerManager *        GetSamplerManager       (){return sampler_manager;}
     GeometryManager *       GetGeometryManager      (){return geometry_manager;}
-    MeshManager *           GetMeshManager          (){return mesh_manager;}
+    PrimitiveManager *      GetPrimitiveManager     (){return primitive_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
     SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}
@@ -223,22 +220,22 @@ public:
     graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type=IndexType::U16);
     graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize number,const IndexType type=IndexType::U16){return CreateVDM(vil,number,number,type);}
 
-public: // Geometry, Mesh
+public: // Geometry, Primitive
 
     graph::Geometry *CreateGeometry(const AnsiString &name,
                                       const uint32_t vertices_count,
                                       const graph::VIL *vil,
                                       const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
-    graph::Mesh *CreateMesh(const AnsiString &name,
+    graph::Primitive *CreatePrimitive(const AnsiString &name,
                             const uint32_t vertices_count,
                             graph::MaterialInstance *mi,
                             graph::Pipeline *pipeline,
                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
 
-    Mesh *CreateMesh(Geometry *r, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(r,mi,p);}    
-    Mesh *CreateMesh(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(pc,mi,p);}    
+    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(r,mi,p);}    
+    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(pc,mi,p);}    
 
 public: // ComponentManager
 

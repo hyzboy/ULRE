@@ -37,7 +37,7 @@ namespace hgl::graph
     {
         friend class World;
 
-        World *main_scene=nullptr;                                                                                  ///<主场景
+        World *main_world=nullptr;                                                                                  ///<主场景
 
         SceneNode *parent_node=nullptr;                                                                             ///<上级节点
 
@@ -63,7 +63,7 @@ namespace hgl::graph
 
     public:
 
-        World *             GetWorld()const{ return main_scene; }                                                   ///<取得主场景
+        World *             GetWorld()const{ return main_world; }                                                   ///<取得主场景
         RenderFramework *   GetRenderFramework()const;                                                              ///<取得渲染框架
 
         const SceneNodeID &     GetNodeID   ()const { return node_id; }                                             ///<取得节点ID
@@ -77,9 +77,9 @@ namespace hgl::graph
         SceneNode(const SceneNode *)=delete;
 
         SceneNode():NodeTransform(){}
-        SceneNode(World *s):NodeTransform(),main_scene(s){}                                                           ///<从Scene构造
-        SceneNode(World *s,const NodeTransform &so):NodeTransform(so),main_scene(s){}                                 ///<从NodeTransform复制构造
-        SceneNode(World *s,const Matrix4f &mat):NodeTransform(mat),main_scene(s){}                                    ///<从Matrix4f复制构造
+        SceneNode(World *s):NodeTransform(),main_world(s){}                                                           ///<从Scene构造
+        SceneNode(World *s,const NodeTransform &so):NodeTransform(so),main_world(s){}                                 ///<从NodeTransform复制构造
+        SceneNode(World *s,const Matrix4f &mat):NodeTransform(mat),main_world(s){}                                    ///<从Matrix4f复制构造
 
     public:
 
@@ -87,7 +87,7 @@ namespace hgl::graph
 
     public:
 
-        virtual SceneNode * CreateNode(World *scene=nullptr)const;                                                  ///<创建一个同类的节点对象
+        virtual SceneNode * CreateNode(World *world=nullptr)const;                                                  ///<创建一个同类的节点对象
 
         virtual void        CloneChildren(SceneNode *node) const                                                    ///<复制子节点到指定节点
         {
@@ -101,7 +101,7 @@ namespace hgl::graph
                 node->AttachComponent(c->Clone());
         }
 
-        virtual SceneNode * Clone(World *scene=nullptr) const;                                                      ///<复制一个场景节点
+        virtual SceneNode * Clone(World *world=nullptr) const;                                                      ///<复制一个场景节点
 
                 void        Reset() override;
 

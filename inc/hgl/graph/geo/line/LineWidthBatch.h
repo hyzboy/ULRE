@@ -28,8 +28,8 @@ class LineWidthBatch
     uint32      max_count   =0;     // 当前缓冲区可容纳的最大线段数量
     uint32      count       =0;     // 当前线段数量
 
-    Geometry * geometry   =nullptr;
-    Mesh *      mesh        =nullptr;
+    Geometry *  geometry    =nullptr;
+    Primitive * primitive   =nullptr;
     VABMap3f *  vab_position=nullptr;
     VABMap1u8 * vab_color   =nullptr;
 

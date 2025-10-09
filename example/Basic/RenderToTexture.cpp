@@ -1,7 +1,7 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -32,20 +32,20 @@ class OffscreenScene
 {
 public:
     IRenderTarget *   rt          = nullptr;
-    World *           scene       = nullptr;
+    World *           world       = nullptr;
     SceneRenderer *   renderer    = nullptr;
 
     // content
     Material *        mtl         = nullptr;
     MaterialInstance* mi          = nullptr;
     Pipeline *        pipeline    = nullptr;
-    MeshComponent *   sphere_comp = nullptr;
+    PrimitiveComponent *   sphere_comp = nullptr;
 
 public:
     ~OffscreenScene()
     {
         SAFE_CLEAR(renderer);
-        SAFE_CLEAR(scene);
+        SAFE_CLEAR(world);
         rt = nullptr; // managed by manager
     }
 
@@ -67,10 +67,10 @@ public:
         rt = rf->GetRenderTargetManager()->CreateRT(&fbi);
         if (!rt) return false;
 
-        scene = new World(rf);
+        world = new World(rf);
         renderer = new SceneRenderer(rf, rt);
         if(!renderer) return false;
-        renderer->SetWorld(scene);
+        renderer->SetWorld(world);
 
         // setup camera for offscreen
         auto *vmcc = new ViewModelCameraControl();
@@ -108,14 +108,14 @@ public:
         auto pc = owner->GetGeometryCreater(mtl);
         if (!pc) return false;
 
-        Geometry *prim = inline_geometry::CreateSphere(pc.get(), 64);
-        if (!prim) return false;
+        Geometry *geometry = inline_geometry::CreateSphere(pc.get(), 64);
+        if (!geometry) return false;
 
-        Mesh *mesh = owner->CreateMesh(prim, mi, pipeline);
-        if (!mesh) { delete prim; return false; }
+        Primitive *primitive = owner->CreatePrimitive(geometry, mi, pipeline);
+        if (!primitive) { delete geometry; return false; }
 
-        CreateComponentInfo cci(renderer->GetSceneRoot());
-        sphere_comp = owner->CreateComponent<MeshComponent>(&cci, mesh);
+        CreateComponentInfo cci(renderer->GetWorldRootNode());
+        sphere_comp = owner->CreateComponent<PrimitiveComponent>(&cci, primitive);
         return sphere_comp != nullptr;
     }
 
@@ -137,7 +137,7 @@ private:
     MaterialInstance *       cube_mi             = nullptr;
     Pipeline *               cube_pipeline       = nullptr;
     Sampler *                cube_sampler        = nullptr;
-    MeshComponent *          cube_comp           = nullptr;
+    PrimitiveComponent *          cube_comp           = nullptr;
 
     float                    cube_theta          = 0.0f;
 
@@ -204,14 +204,14 @@ private:
         cci_cube.tex_coord=true;
         cci_cube.normal=true;
 
-        Geometry *prim = inline_geometry::CreateCube(pc.get(), &cci_cube);
-        if (!prim) return false;
+        Geometry *geometry = inline_geometry::CreateCube(pc.get(), &cci_cube);
+        if (!geometry) return false;
 
-        Mesh *mesh = CreateMesh(prim, cube_mi, cube_pipeline);
-        if (!mesh) { delete prim; return false; }
+        Primitive *primitive = CreatePrimitive(geometry, cube_mi, cube_pipeline);
+        if (!primitive) { delete geometry; return false; }
 
-        CreateComponentInfo cci(GetSceneRoot(), Identity4f);
-        cube_comp = CreateComponent<MeshComponent>(&cci, mesh);
+        CreateComponentInfo cci(GetWorldRootNode(), Identity4f);
+        cube_comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         return cube_comp != nullptr;
     }
 

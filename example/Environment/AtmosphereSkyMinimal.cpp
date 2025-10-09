@@ -1,7 +1,7 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
 using namespace hgl;
@@ -49,11 +49,11 @@ private:
     bool InitScene()
     {
         {
-            Mesh *ri=CreateMesh(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
+            Primitive *ri=CreatePrimitive(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
 
-            CreateComponentInfo cci(GetSceneRoot());
+            CreateComponentInfo cci(GetWorldRootNode());
 
-            CreateComponent<MeshComponent>(&cci,ri);
+            CreateComponent<PrimitiveComponent>(&cci,ri);
         }
 
         CameraControl *camera_control=GetCameraControl();

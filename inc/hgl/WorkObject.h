@@ -8,7 +8,7 @@
 #include<hgl/time/Time.h>
 //#include<iostream>
 #include <hgl/graph/module/SamplerManager.h>
-#include <hgl/graph/Mesh.h>
+#include <hgl/graph/mesh/Primitive.h>
 #include <hgl/graph/GeometryCreater.h>
 
 namespace hgl
@@ -53,7 +53,7 @@ namespace hgl
 
         //以下数据均取自RenderFramework
 
-        graph::World *          scene           =nullptr;           //场景
+        graph::World *          world           =nullptr;           //场景
         graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
 
     public:
@@ -66,8 +66,8 @@ namespace hgl
 
         const VkExtent2D &          GetExtent           (){return scene_renderer->GetExtent();}
 
-        graph::World *              GetWorld            (){return scene;}
-        graph::SceneNode *          GetSceneRoot        (){return scene->GetRootNode();}
+        graph::World *              GetWorld            (){return world;}
+        graph::SceneNode *          GetWorldRootNode    (){return world->GetRootNode();}
         graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
 
         const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer->GetViewportInfo();}
@@ -128,34 +128,34 @@ namespace hgl
         FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO16)
         FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO32)
 
-    public: // Geometry, Mesh, Sampler 相关
+    public: // Geometry, Primitive, Sampler 相关
 
-        void Add(graph::Geometry *prim)
+        void Add(graph::Geometry *geometry)
         {
-            if(!prim)return;
+            if(!geometry)return;
 
             if(!render_framework)return;
 
-            render_framework->GetGeometryManager()->Add(prim);
+            render_framework->GetGeometryManager()->Add(geometry);
         }
 
-        graph::Mesh *CreateMesh(graph::Geometry *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        graph::Primitive *CreatePrimitive(graph::Geometry *geometry,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
-            if(!prim||!pipeline)
+            if(!geometry||!pipeline)
                 return nullptr;
 
             if(!render_framework)
                 return nullptr;
             
-            graph::MeshManager *mm = render_framework->GetMeshManager();
+            graph::PrimitiveManager *mm = render_framework->GetPrimitiveManager();
 
             if(!mm)
                 return nullptr;
                 
-            return mm->CreateMesh(prim,mi,pipeline);
+            return mm->CreatePrimitive(geometry,mi,pipeline);
         }
 
-        graph::Mesh *CreateMesh(graph::GeometryCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        graph::Primitive *CreatePrimitive(graph::GeometryCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
             if(!pc||!pipeline)
                 return nullptr;
@@ -163,12 +163,12 @@ namespace hgl
             if(!render_framework)
                 return nullptr;
 
-            graph::MeshManager *mm = render_framework->GetMeshManager();
+            graph::PrimitiveManager *mm = render_framework->GetPrimitiveManager();
 
             if(!mm)
                 return nullptr;
 
-            return mm->CreateMesh(pc,mi,pipeline);
+            return mm->CreatePrimitive(pc,mi,pipeline);
         }
 
         graph::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr)
@@ -194,13 +194,13 @@ namespace hgl
             return render_framework?render_framework->CreateGeometry(name,vertices_count,vil,vad_list):nullptr;
         }
 
-        graph::Mesh *CreateMesh(const AnsiString &name,
+        graph::Primitive *CreatePrimitive(const AnsiString &name,
                                 const uint32_t vertices_count,
                                 graph::MaterialInstance *mi,
                                 graph::Pipeline *pipeline,
                                 const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
         {
-            return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr;
+            return render_framework?render_framework->CreatePrimitive(name,vertices_count,mi,pipeline,vad_list):nullptr;
         }
 
         graph::TextRender *CreateTextRender(graph::FontSource *fs,const int limit=1024)

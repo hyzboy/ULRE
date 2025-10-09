@@ -26,7 +26,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/World.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/graph/Ray.h>
 #include<hgl/log/Log.h>
@@ -53,16 +53,16 @@ namespace
         struct GizmoMoveAxis
         {
             MaterialInstance *mi;       //材质实例
-            MeshComponent *cylinder;    //圆柱
-            MeshComponent *cone;        //圆锥
+            PrimitiveComponent *cylinder;    //圆柱
+            PrimitiveComponent *cone;        //圆锥
 
         #ifdef GIZMO_MOVE_SQUARE
-            MeshComponent *square;      //双轴调节正方形
+            PrimitiveComponent *square;      //双轴调节正方形
         #endif//GIZMO_MOVE_SQUARE
         };
 
         MaterialInstance *pick_mi;
-        MeshComponent *sphere=nullptr;
+        PrimitiveComponent *sphere=nullptr;
         GizmoMoveAxis axis[3]{};  //X,Y,Z 三个轴
 
     protected:
@@ -94,9 +94,9 @@ namespace
             return this; // GizmoMoveNode 处理鼠标事件
         }
 
-        SceneNode *CreateNode(World *scene)const override
+        SceneNode *CreateNode(World *world)const override
         {
-            return scene->CreateNode<GizmoMoveNode>();
+            return world->CreateNode<GizmoMoveNode>();
         }
 
         void CloneComponents(SceneNode *node) const override
@@ -108,7 +108,7 @@ namespace
 
             gmn->pick_mi=pick_mi;
 
-        #define DUPLICATION_COMPONENT(c)    gmn->c=(MeshComponent *)(c->Clone()); \
+        #define DUPLICATION_COMPONENT(c)    gmn->c=(PrimitiveComponent *)(c->Clone()); \
                                             gmn->AttachComponent(gmn->c);
 
             DUPLICATION_COMPONENT(sphere);
@@ -148,7 +148,7 @@ namespace
 
             pick_mi=GetGizmoMI3D(GizmoColor::Yellow); //获取拾取材质实例
 
-            sphere=render_framework->CreateComponent<MeshComponent>(&cci,SpherePtr);        //中心球
+            sphere=render_framework->CreateComponent<PrimitiveComponent>(&cci,SpherePtr);        //中心球
             sphere->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::White));                     //白色
 
             {
@@ -187,13 +187,13 @@ namespace
                     tm.SetRotation(cfg->RotationAxis,cfg->RotationAngle);
                     tm.SetTranslation(axis_vector*GIZMO_CYLINDER_OFFSET);
                     cci.mat=tm;
-                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //X 向右圆柱
+                    gma->cylinder=render_framework->CreateComponent<PrimitiveComponent>(&cci,CylinderPtr);       //X 向右圆柱
                     gma->cylinder->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(one_scale);
                     tm.SetTranslation(axis_vector*GIZMO_CONE_OFFSET);
                     cci.mat=tm;
-                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
+                    gma->cone=render_framework->CreateComponent<PrimitiveComponent>(&cci,ConePtr);           //Z 向上圆锥
                     gma->cone->SetOverrideMaterial(gma->mi);
 
                 #ifdef GIZMO_MOVE_SQUARE
@@ -202,7 +202,7 @@ namespace
                     tm.SetScale(square_scale);
                     tm.SetTranslation(inv_axis_vector*GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
-                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
+                    gma->square=render_framework->CreateComponent<PrimitiveComponent>(&cci,SquarePtr);
                     gma->square->SetOverrideMaterial(gma->mi);
                 #endif//GIZMO_MOVE_SQUARE
 
@@ -373,9 +373,9 @@ namespace
     static GizmoMoveNode *sn_gizmo_move=nullptr;
 }//namespace
 
-SceneNode *GetGizmoMoveNode(World *scene)
+SceneNode *GetGizmoMoveNode(World *world)
 {
-    return sn_gizmo_move->Clone(scene);;
+    return sn_gizmo_move->Clone(world);;
 }
 
 void ClearGizmoMoveNode()

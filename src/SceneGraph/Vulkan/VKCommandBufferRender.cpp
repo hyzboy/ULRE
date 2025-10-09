@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKIndexBuffer.h>
@@ -149,22 +149,22 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
                          VkIndexType(ibo->GetType()));
 }
 
-bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *mesh_data_buffer)
+bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
 {
-    if(!mesh_data_buffer)
+    if(!geom_data_buffer)
         return(false);
 
-    if(mesh_data_buffer->vab_count<=0)
+    if(geom_data_buffer->vab_count<=0)
         return(false);
 
     vkCmdBindVertexBuffers(cmd_buf,
                            0,               //first binding
-                           mesh_data_buffer->vab_count,
-                           mesh_data_buffer->vab_list,
-                           mesh_data_buffer->vab_offset);        //vab byte offsets
+                           geom_data_buffer->vab_count,
+                           geom_data_buffer->vab_list,
+                           geom_data_buffer->vab_offset);        //vab byte offsets
 
-    if(mesh_data_buffer->ibo)
-        BindIBO(mesh_data_buffer->ibo);
+    if(geom_data_buffer->ibo)
+        BindIBO(geom_data_buffer->ibo);
 
     return(true);
 }
@@ -193,23 +193,23 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const GeometryDataBuffer *mesh_data_buffer,const GeometryDrawRange *mesh_render_data,const uint32_t instance_count,const uint32_t first_instance)
+void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
 {
-    if(!mesh_data_buffer||!mesh_render_data)
+    if(!geom_data_buffer||!geom_draw_range)
         return;
 
-    if (mesh_data_buffer->ibo)
+    if (geom_data_buffer->ibo)
         vkCmdDrawIndexed(   cmd_buf,
-                            mesh_render_data->index_count,
+                            geom_draw_range->index_count,
                             instance_count,
-                            mesh_render_data->first_index,
-                            mesh_render_data->vertex_offset, //这里的vertexOffset是针对所有VAB的
+                            geom_draw_range->first_index,
+                            geom_draw_range->vertex_offset, //这里的vertexOffset是针对所有VAB的
                             first_instance);    //这里的first_instance针对的是instance Rate更新的VAB的起始实例数，不是指instance批量渲染
     else
         vkCmdDraw(          cmd_buf,
-                            mesh_render_data->vertex_count,
+                            geom_draw_range->vertex_count,
                             instance_count,
-                            mesh_render_data->vertex_offset,
+                            geom_draw_range->vertex_offset,
                             first_instance);
 }
 

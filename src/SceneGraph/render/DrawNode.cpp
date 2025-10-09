@@ -1,8 +1,8 @@
 #include<hgl/graph/DrawNode.h>
 #include<hgl/graph/VertexDataManager.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/mesh/MeshNode.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<hgl/component/StaticMeshComponent.h>
 #include<hgl/graph/SceneNode.h>
 
@@ -14,8 +14,8 @@ const int DrawNode::compare(const DrawNode &other)const
 {
     hgl::int64 off;
 
-    auto *prim_one=other.GetMesh()->GetGeometry();
-    auto *prim_two=this->GetMesh()->GetGeometry();
+    auto *prim_one=other.GetPrimitive()->GetGeometry();
+    auto *prim_two=this->GetPrimitive()->GetGeometry();
 
     //比较VDM
     if(prim_one->GetVDM())      //有VDM
@@ -49,62 +49,62 @@ const int DrawNode::compare(const DrawNode &other)const
         return -1;
 }
 
-// MeshDrawNode
-MeshDrawNode::MeshDrawNode(MeshComponent *c):comp(c){}
+// DrawNodePrimitive
+DrawNodePrimitive::DrawNodePrimitive(PrimitiveComponent *c):comp(c){}
 
-SceneNode *MeshDrawNode::GetSceneNode() const
+SceneNode *DrawNodePrimitive::GetSceneNode() const
 {
     return comp?comp->GetOwnerNode():nullptr;
 }
 
-Component *MeshDrawNode::GetComponent() const
+Component *DrawNodePrimitive::GetComponent() const
 {
     return comp;
 }
 
-Mesh *MeshDrawNode::GetMesh() const
+Primitive *DrawNodePrimitive::GetPrimitive() const
 {
-    return comp?comp->GetMesh():nullptr;
+    return comp?comp->GetPrimitive():nullptr;
 }
 
-MaterialInstance *MeshDrawNode::GetMaterialInstance() const
+MaterialInstance *DrawNodePrimitive::GetMaterialInstance() const
 {
     return comp?comp->GetMaterialInstance():nullptr;
 }
 
-NodeTransform *MeshDrawNode::GetTransform() const
+NodeTransform *DrawNodePrimitive::GetTransform() const
 {
     return comp; // 直接使用组件自身的变换
 }
 
 // StaticMeshDrawNode（StaticMesh 用，叠加 MeshNode 变换）
-StaticMeshDrawNode::StaticMeshDrawNode(StaticMeshComponent *c, MeshNode *meshnode, Mesh *m)
+DrawNodeStaticMesh::DrawNodeStaticMesh(StaticMeshComponent *c, MeshNode *meshnode, Primitive *m)
     :component(c)
     ,mesh_node(meshnode)
     ,meshnode_transform(meshnode)
-    ,mesh(m){}
+    ,primitive(m){}
 
-SceneNode *StaticMeshDrawNode::GetSceneNode() const
+SceneNode *DrawNodeStaticMesh::GetSceneNode() const
 {
     return component?component->GetOwnerNode():nullptr;
 }
 
-Component *StaticMeshDrawNode::GetComponent() const
+Component *DrawNodeStaticMesh::GetComponent() const
 {
     return component;
 }
 
-Mesh *StaticMeshDrawNode::GetMesh() const
+Primitive *DrawNodeStaticMesh::GetPrimitive() const
 {
-    return mesh;
+    return primitive;
 }
 
-MaterialInstance *StaticMeshDrawNode::GetMaterialInstance() const
+MaterialInstance *DrawNodeStaticMesh::GetMaterialInstance() const
 {
-    return mesh?mesh->GetMaterialInstance():nullptr;
+    return primitive?primitive->GetMaterialInstance():nullptr;
 }
 
-void StaticMeshDrawNode::EnsureCombined() const
+void DrawNodeStaticMesh::EnsureCombined() const
 {
     NodeTransform *scenenode_transform = component ? static_cast<NodeTransform *>(const_cast<StaticMeshComponent *>(component)) : nullptr;
 
@@ -127,7 +127,7 @@ void StaticMeshDrawNode::EnsureCombined() const
     }
 }
 
-NodeTransform *StaticMeshDrawNode::GetTransform() const
+NodeTransform *DrawNodeStaticMesh::GetTransform() const
 {
     EnsureCombined();
     return const_cast<NodeTransform*>(&combined_tf);

@@ -74,7 +74,7 @@ private:
 
     void InitGizmoSceneTree()
     {
-        SceneNode *root=GetSceneRoot();
+        SceneNode *root=GetWorldRootNode();
 
         root->AddChild(sm_move);
         //root.Add(Clone(sm_rotate->GetWorld()));

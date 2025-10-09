@@ -10,7 +10,7 @@
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -55,11 +55,11 @@ private:
 
     bool InitScene()
     {
-        Mesh *ri=CreateMesh(prim_axis,material_instance,pipeline);
+        Primitive *ri=CreatePrimitive(prim_axis,material_instance,pipeline);
 
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
-        CreateComponent<MeshComponent>(&cci,ri);
+        CreateComponent<PrimitiveComponent>(&cci,ri);
 
         CameraControl *camera_control=GetCameraControl();
 

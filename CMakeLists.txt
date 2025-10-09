@@ -1,5 +1,5 @@
-﻿cmake_minimum_required(VERSION 3.15)
-cmake_policy(VERSION 3.15)
+﻿cmake_minimum_required(VERSION 3.28)
+cmake_policy(VERSION 3.28)
 
 PROJECT(ULRE)
 

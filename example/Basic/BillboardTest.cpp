@@ -1,18 +1,11 @@
 ﻿// Billboard
 
 #include<hgl/WorkManager.h>
-#include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/RenderCollector.h>
-#include<hgl/graph/camera/Camera.h>
-#include<hgl/graph/Ray.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/camera/FirstPersonCameraControl.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -36,11 +29,11 @@ private:
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          pipeline_plane_grid =nullptr;
-    Geometry *         prim_plane_grid     =nullptr;
+    Geometry *          geom_plane_grid     =nullptr;
 
     MaterialInstance *  mi_billboard        =nullptr;
     Pipeline *          pipeline_billboard  =nullptr;
-    Mesh *              ro_billboard        =nullptr;
+    Primitive *         prim_billboard      =nullptr;
     
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
@@ -127,7 +120,7 @@ private:
             pgci.lum=128;
             pgci.sub_lum=192;
 
-            prim_plane_grid=CreatePlaneGrid2D(pc,&pgci);
+            geom_plane_grid=CreatePlaneGrid2D(pc,&pgci);
         }
 
         {
@@ -138,9 +131,9 @@ private:
             if(!pc->WriteVAB(VAN::Position,VF_V3F,position_data))
                 return(false);
 
-            ro_billboard=CreateMesh(pc,mi_billboard,pipeline_billboard);
+            prim_billboard=CreatePrimitive(pc,mi_billboard,pipeline_billboard);
 
-            if(!ro_billboard)
+            if(!prim_billboard)
                 return(false);
         }
 
@@ -149,10 +142,10 @@ private:
 
     bool InitScene()
     {
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
-        CreateComponent<MeshComponent>(&cci,CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
-        CreateComponent<MeshComponent>(&cci,ro_billboard);
+        CreateComponent<PrimitiveComponent>(&cci,CreatePrimitive(geom_plane_grid,mi_plane_grid,pipeline_plane_grid));
+        CreateComponent<PrimitiveComponent>(&cci,prim_billboard);
 
         CameraControl *camera_control=GetCameraControl();
 
@@ -168,7 +161,7 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(prim_plane_grid);
+        SAFE_CLEAR(geom_plane_grid);
     }
 
     bool Init() override

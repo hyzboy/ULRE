@@ -5,7 +5,7 @@
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -49,20 +49,20 @@ private:
 
     struct RenderMesh
     {
-        Geometry *prim;
-        Mesh *mesh;
-        MeshComponentData *data;
+        Geometry *geometry;
+        Primitive *primitive;
+        PrimitiveComponentData *data;
         ComponentDataPtr cdp;
 
-        MeshComponent *component;
+        PrimitiveComponent *component;
 
     public:
 
         ~RenderMesh()
         {
             cdp.unref();
-            delete mesh;
-            delete prim;
+            delete primitive;
+            delete geometry;
         }
     };
 
@@ -138,21 +138,21 @@ private:
         return true;
     }
 
-    RenderMesh *CreateRenderMesh(Geometry *prim,MaterialData *md,const int color)
+    RenderMesh *CreateRenderMesh(Geometry *geometry,MaterialData *md,const int color)
     {
-        if(!prim)
+        if(!geometry)
             return(nullptr);
 
-        Mesh *mesh=CreateMesh(prim,md->mi[color],md->pipeline);
+        Primitive *primitive=CreatePrimitive(geometry,md->mi[color],md->pipeline);
 
-        if(!mesh)
+        if(!primitive)
             return nullptr;
 
         RenderMesh *rm=new RenderMesh;
 
-        rm->prim=prim;
-        rm->mesh=mesh;
-        rm->data=new MeshComponentData(mesh);
+        rm->geometry=geometry;
+        rm->primitive=primitive;
+        rm->data=new PrimitiveComponentData(primitive);
         rm->cdp =rm->data;
 
         return rm;
@@ -260,12 +260,12 @@ private:
 
     bool InitScene()
     {
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
         {
             cci.mat=AxisZRotate(45.0f);
 
-            rm_floor->component=CreateComponent<MeshComponent>(&cci,rm_floor->cdp);
+            rm_floor->component=CreateComponent<PrimitiveComponent>(&cci,rm_floor->cdp);
         }
 
         int i=0;
@@ -277,7 +277,7 @@ private:
             //螺旋排列
             cci.mat=AxisZRotate(deg2rad(360.0f*i/rm_count))*TranslateMatrix(3,0,0);
 
-            rm->component=CreateComponent<MeshComponent>(&cci,rm->cdp);
+            rm->component=CreateComponent<PrimitiveComponent>(&cci,rm->cdp);
             rm->component->SetOverrideMaterial(solid.mi[i%COLOR_COUNT]);
 
             ++i;
@@ -288,7 +288,7 @@ private:
 
     bool InitBoundingBoxScene()
     {
-        SceneNode *root=GetSceneRoot();
+        SceneNode *root=GetWorldRootNode();
 
         CreateComponentInfo cci(root);
 
@@ -296,10 +296,10 @@ private:
 
         for(Component *c:root->GetComponents())
         {
-            if(c->GetTypeHash()!=MeshComponent::StaticTypeHash())
+            if(c->GetTypeHash()!=PrimitiveComponent::StaticTypeHash())
                 continue;
 
-            MeshComponent *component=(MeshComponent *)c;
+            PrimitiveComponent *component=(PrimitiveComponent *)c;
 
             Matrix4f mat;
 
@@ -313,7 +313,7 @@ private:
         {
             cci.mat=mat;
 
-            if(!CreateComponent<MeshComponent>(&cci,rm_box->cdp))
+            if(!CreateComponent<PrimitiveComponent>(&cci,rm_box->cdp))
                 return(false);
         }
 

@@ -5,7 +5,7 @@
 #include<hgl/type/IDName.h>
 #include<hgl/graph/NodeTransform.h>
 #include<hgl/graph/BoundingVolumes.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 
 namespace hgl::graph
 {
@@ -13,9 +13,9 @@ namespace hgl::graph
 
     class MeshNode;
 
-    using MeshNodeList  = ObjectList<MeshNode>;
-    using MeshNodePtrSet= SortedSet<MeshNode *>;
-    using MeshPtrSet    = SortedSet<Mesh *>;
+    using MeshNodeList      = ObjectList<MeshNode>;
+    using MeshNodePtrSet    = SortedSet<MeshNode *>;
+    using PrimitivePtrSet   = SortedSet<Primitive *>;
 
     HGL_DEFINE_U16_IDNAME(MeshNodeName)
 
@@ -36,7 +36,7 @@ namespace hgl::graph
         BoundingVolumes local_bounding_volumes;             ///< 本地包围体
 
         MeshNodePtrSet  child_nodes;                        ///< 子节点（非拥有型，避免重复释放）
-        MeshPtrSet      submesh_set;                        ///< Mesh 集合（仅持有引用，不管理生命周期）
+        PrimitivePtrSet primitive_set;                      ///< Primitive 集合（仅持有引用，不管理生命周期）
 
         // glTF: Material index for this node (optional, for query/import)
         int             material = -1;                      ///< glTF materials[] index; -1 = unset
@@ -80,7 +80,7 @@ namespace hgl::graph
         }
         virtual void        CloneSubMeshes(MeshNode *node) const
         {
-            for(Mesh *sm:submesh_set)
+            for(Primitive *sm:primitive_set)
                 node->AttachSubMesh(sm);
         }
         virtual MeshNode *  Clone() const;
@@ -88,29 +88,22 @@ namespace hgl::graph
 
     public: // 坐标/包围盒
 
-        virtual         void                UpdateWorldTransform() override;                ///< 刷新世界变换
-        virtual         void                RefreshBoundingVolumes();                       ///< 刷新包围盒，合并自身 Mesh 与子节点
+        virtual         void                UpdateWorldTransform    () override;                                                            ///< 刷新世界变换
+        virtual         void                RefreshBoundingVolumes  ();                                                                     ///< 刷新包围盒，合并自身 Mesh 与子节点
 
-        virtual const   BoundingVolumes &   GetLocalBoundingVolumes()const { return local_bounding_volumes; }
+        virtual const   BoundingVolumes &   GetLocalBoundingVolumes ()const         {return local_bounding_volumes;}
 
-    public: // Mesh 相关
+    public: // Primitive 相关
 
-                      bool          SubMeshIsEmpty      ()const{return submesh_set.IsEmpty();}
-        virtual const int64         GetSubMeshCount     ()const{return submesh_set.GetCount();}
-        virtual       bool          AttachSubMesh       (Mesh *sm)
-        {
-            if(!sm)return(false);
-            return submesh_set.Add(sm)>=0;
-        }
-        virtual         void        DetachSubMesh       (Mesh *sm)
-        {
-            if (!sm)return; submesh_set.Delete(sm);
-        }
-                      bool          Contains            (Mesh *sm){return submesh_set.Contains(sm);}     ///< 是否包含指定 Mesh
-                const MeshPtrSet &  GetSubMeshes        ()const{return submesh_set;}
+                        bool                SubMeshIsEmpty          ()const         {return primitive_set.IsEmpty();}
+        virtual const   int64               GetPrimitiveCount       ()const         {return primitive_set.GetCount();}
+        virtual         bool                AttachSubMesh           (Primitive *sm) {if(!sm)return(false);return primitive_set.Add(sm)>=0;}
+        virtual         void                DetachSubMesh           (Primitive *sm) {if(!sm)return;primitive_set.Delete(sm);}
+                        bool                Contains                (Primitive *sm) {return primitive_set.Contains(sm);}                    ///< 是否包含指定 Mesh
+                const   PrimitivePtrSet &   GetPrimitiveSet         ()const         {return primitive_set;}
 
     public: // glTF material index (query/import)
-                void        SetMaterial      (int idx) { material = idx; }
-        const   int         GetMaterial      ()const { return material; }
+                        void                SetMaterial             (int idx)       {material=idx;}
+                const   int                 GetMaterial             ()const         {return material;}
     };//class MeshNode
 }//namespace hgl::graph

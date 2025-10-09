@@ -1,9 +1,9 @@
 #pragma once
 #include<hgl/graph/PipelineMaterialBatch.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 
 VK_NAMESPACE_BEGIN
-class Mesh;                    // fwd
+class Primitive;                    // fwd
 class Material;                // fwd
 class MaterialInstance;        // fwd
 class Pipeline;                // fwd
@@ -75,10 +75,10 @@ public:
     void AddDrawNode(DrawNode *node)
     {
         if(!node) return;
-        auto *mesh = node->GetMesh();
+        auto *primitive = node->GetPrimitive();
         auto *mi   = node->GetMaterialInstance();
-        if(!mesh || !mi) { delete node; return; }
-        auto *pl = mesh->GetPipeline();
+        if(!primitive || !mi) { delete node; return; }
+        auto *pl = primitive->GetPipeline();
         if(!pl) { delete node; return; }
         GetOrCreate(mi->GetMaterial(), pl)->Add(node);
     }

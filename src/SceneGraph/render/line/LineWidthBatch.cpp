@@ -1,7 +1,7 @@
 #include <hgl/graph/geo/line/LineWidthBatch.h>
 #include <hgl/graph/VKDevice.h>
 #include <hgl/graph/GeometryCreater.h>
-#include <hgl/graph/module/MeshManager.h>
+#include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/VKMaterial.h>
 
 using namespace hgl;
@@ -35,7 +35,7 @@ void LineWidthBatch::Clear()
 {
     SAFE_CLEAR(vab_position)
     SAFE_CLEAR(vab_color)
-    SAFE_CLEAR(mesh);
+    SAFE_CLEAR(primitive);
     SAFE_CLEAR(geometry);
 }
 
@@ -50,7 +50,7 @@ bool LineWidthBatch::RebuildMesh()
     if(!geometry)
         return(false);
 
-    mesh=DirectCreateMesh(geometry,mtl_inst,pipeline);
+    primitive=DirectCreatePrimitive(geometry,mtl_inst,pipeline);
 
     vab_position=new VABMap3f(geometry->GetVABMap(VAN::Position));
     vab_color=new VABMap1u8(geometry->GetVABMap(VAN::Color));
@@ -137,8 +137,8 @@ void LineWidthBatch::Expand(uint c)
                 return;
             }
 
-            if(mesh)
-                mesh->SetDrawCounts(old_count*2);
+            if(primitive)
+                primitive->SetDrawCounts(old_count*2);
 
             // Move access pointers to the end of existing data so subsequent writes append
             // old_count lines => old_count*2 vertices
@@ -175,7 +175,7 @@ void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8 color
     color->Write(color_index);
     color->Write(color_index);
 
-    mesh->SetDrawCounts(count*2);
+    primitive->SetDrawCounts(count*2);
 }
 
 void LineWidthBatch::AddLine(const DataArray<LineSegmentDescriptor> &lsi_list)
@@ -194,22 +194,22 @@ void LineWidthBatch::AddLine(const DataArray<LineSegmentDescriptor> &lsi_list)
         color->Write(lsi.color);
     }
 
-    mesh->SetDrawCounts(count*2);
+    primitive->SetDrawCounts(count*2);
 }
 
 void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
 {
-    if(!mesh)
+    if(!primitive)
         return;
 
-    cmd->BindDataBuffer(mesh->GetDataBuffer());
+    cmd->BindDataBuffer(primitive->GetDataBuffer());
 
-    cmd->Draw(mesh->GetDataBuffer(),mesh->GetRenderData());
+    cmd->Draw(primitive->GetDataBuffer(),primitive->GetRenderData());
 }
 
 void LineWidthBatch::UpdatePipeline(Pipeline *p)
 {
     pipeline = p;
-    if(mesh)
-        mesh->UpdatePipeline(p);
+    if(primitive)
+        primitive->UpdatePipeline(p);
 }

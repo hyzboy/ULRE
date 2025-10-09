@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/PipelineMaterialBatch.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKVertexInput.h>
@@ -8,7 +8,7 @@
 #include"InstanceAssignmentBuffer.h"
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 VK_NAMESPACE_BEGIN
 PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi)
@@ -38,7 +38,7 @@ PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d,bool l2w,const Pipe
 
     last_data_buffer=nullptr;
     last_vdm=nullptr;
-    last_render_data=nullptr;
+    last_draw_range=nullptr;
 
     first_indirect_draw_index=-1;
     indirect_draw_count=0;
@@ -141,7 +141,7 @@ void PipelineMaterialBatch::UpdateTransformData()
     }
 }
 
-void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_component)
+void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *mesh_component)
 {
     if(!mesh_component)return;
 
@@ -155,7 +155,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_compo
 
     for(int i=0;i<node_count;i++)
     {
-        auto *mc=dynamic_cast<MeshDrawNode *>(*node);
+        auto *mc=dynamic_cast<DrawNodePrimitive *>(*node);
         if(mc && mc->GetComponent()==mesh_component)
         {
             assign_buffer->UpdateMaterialInstanceData(*node);
@@ -166,10 +166,10 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_compo
     }
 }
 
-void PipelineMaterialBatch::DrawBatch::Set(Mesh *mesh)
+void PipelineMaterialBatch::DrawBatch::Set(Primitive *primitive)
 {
-    mesh_data_buffer=mesh->GetDataBuffer();
-    mesh_render_data=mesh->GetRenderData();
+    geom_data_buffer=primitive->GetDataBuffer();
+    geom_draw_range=primitive->GetRenderData();
 }
 
 void PipelineMaterialBatch::ReallocICB()
@@ -194,25 +194,25 @@ void PipelineMaterialBatch::ReallocICB()
 
 void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,DrawBatch *batch)
 {
-    dicp->vertexCount   =batch->mesh_render_data->vertex_count;
+    dicp->vertexCount   =batch->geom_draw_range->vertex_count;
     dicp->instanceCount =batch->instance_count;
-    dicp->firstVertex   =batch->mesh_render_data->vertex_offset;
+    dicp->firstVertex   =batch->geom_draw_range->vertex_offset;
     dicp->firstInstance =batch->first_instance;
 }
 
 void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,DrawBatch *batch)
 {
-    diicp->indexCount   =batch->mesh_render_data->index_count;
+    diicp->indexCount   =batch->geom_draw_range->index_count;
     diicp->instanceCount=batch->instance_count;
-    diicp->firstIndex   =batch->mesh_render_data->first_index;
-    diicp->vertexOffset =batch->mesh_render_data->vertex_offset;
+    diicp->firstIndex   =batch->geom_draw_range->first_index;
+    diicp->vertexOffset =batch->geom_draw_range->vertex_offset;
     diicp->firstInstance=batch->first_instance;
 }
 
 void PipelineMaterialBatch::BuildBatches()
 {
     const uint count=draw_nodes.GetCount();
-    DrawNode **node=draw_nodes.GetData();
+    DrawNode **node =draw_nodes.GetData();
 
     ReallocICB();
 
@@ -222,36 +222,36 @@ void PipelineMaterialBatch::BuildBatches()
     draw_batches.Clear();
     draw_batches.Reserve(count);
 
-    DrawBatch * batch   =draw_batches.GetData();
-    Mesh *      mesh    =(*node)->GetMesh();
+    DrawBatch * batch       =draw_batches.GetData();
+    Primitive * primitive   =(*node)->GetPrimitive();
 
     draw_batches_count=1;
 
     batch->first_instance=0;
     batch->instance_count=1;
-    batch->Set(mesh);
+    batch->Set(primitive);
 
-    last_data_buffer=batch->mesh_data_buffer;
-    last_vdm        =batch->mesh_data_buffer->vdm;
-    last_render_data=batch->mesh_render_data;
+    last_data_buffer=batch->geom_data_buffer;
+    last_vdm        =batch->geom_data_buffer->vdm;
+    last_draw_range =batch->geom_draw_range;
 
     ++node;
 
     for(uint i=1;i<count;i++)
     {
-        mesh=(*node)->GetMesh();
+        primitive=(*node)->GetPrimitive();
 
-        if(*last_data_buffer==*mesh->GetDataBuffer())
-            if(*last_render_data==*mesh->GetRenderData())
+        if(*last_data_buffer==*primitive->GetDataBuffer())
+            if(*last_draw_range==*primitive->GetRenderData())
             {
                 ++batch->instance_count;
                 ++node;
                 continue;
             }
 
-        if(batch->mesh_data_buffer->vdm)
+        if(batch->geom_data_buffer->vdm)
         {
-            if(batch->mesh_data_buffer->ibo)
+            if(batch->geom_data_buffer->ibo)
                 WriteICB(diicp,batch);
             else
                 WriteICB(dicp,batch);
@@ -265,18 +265,18 @@ void PipelineMaterialBatch::BuildBatches()
 
         batch->first_instance=i;
         batch->instance_count=1;
-        batch->Set(mesh);
+        batch->Set(primitive);
 
-        last_data_buffer=batch->mesh_data_buffer;
-        last_vdm        =batch->mesh_data_buffer->vdm;
-        last_render_data=batch->mesh_render_data;
+        last_data_buffer=batch->geom_data_buffer;
+        last_vdm        =batch->geom_data_buffer->vdm;
+        last_draw_range =batch->geom_draw_range;
 
         ++node;
     }
 
-    if(batch->mesh_data_buffer->vdm)
+    if(batch->geom_data_buffer->vdm)
     {
-        if(batch->mesh_data_buffer->ibo)
+        if(batch->geom_data_buffer->ibo)
             WriteICB(diicp,batch);
         else
             WriteICB(dicp,batch);
@@ -290,7 +290,7 @@ bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 {
     vab_list->Restart();
 
-    if(!vab_list->Add(batch->mesh_data_buffer))
+    if(!vab_list->Add(batch->geom_data_buffer))
         return(false);
 
     if (assign_buffer) //L2W/MI分发组
@@ -317,24 +317,24 @@ void PipelineMaterialBatch::ProcIndirectRender()
 
 bool PipelineMaterialBatch::Draw(DrawBatch *batch)
 {
-    if(!last_data_buffer||*(batch->mesh_data_buffer)!=*last_data_buffer)        //换buf了
+    if(!last_data_buffer||*(batch->geom_data_buffer)!=*last_data_buffer)        //换buf了
     {
         if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
             ProcIndirectRender();
 
-        last_data_buffer=batch->mesh_data_buffer;
-        last_render_data=nullptr;
+        last_data_buffer=batch->geom_data_buffer;
+        last_draw_range=nullptr;
 
         if(!BindVAB(batch))
         {
             return(false);
         }
 
-        if(batch->mesh_data_buffer->ibo)
-            cmd_buf->BindIBO(batch->mesh_data_buffer->ibo);
+        if(batch->geom_data_buffer->ibo)
+            cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
     }
 
-    if(batch->mesh_data_buffer->vdm)
+    if(batch->geom_data_buffer->vdm)
     {
         if(indirect_draw_count==0)
             first_indirect_draw_index=batch->first_instance;
@@ -343,7 +343,7 @@ bool PipelineMaterialBatch::Draw(DrawBatch *batch)
     }
     else
     {
-        cmd_buf->Draw(batch->mesh_data_buffer,batch->mesh_render_data,batch->instance_count,batch->first_instance);
+        cmd_buf->Draw(batch->geom_data_buffer,batch->geom_draw_range,batch->instance_count,batch->first_instance);
     }
 
     return(true);
@@ -364,7 +364,7 @@ void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 
     last_data_buffer=nullptr;
     last_vdm        =nullptr;
-    last_render_data=nullptr;
+    last_draw_range =nullptr;
 
     if(assign_buffer)
         assign_buffer->Bind(pm_index.material);

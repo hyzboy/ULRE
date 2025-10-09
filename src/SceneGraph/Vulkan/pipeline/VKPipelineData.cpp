@@ -293,7 +293,7 @@ namespace
     struct ComplexPrimitiveTopologyToOrigin
     {
         VkPrimitiveTopology vk_prim;
-        PrimitiveType prim;
+        PrimitiveType geometry;
     };
 
     constexpr const ComplexPrimitiveTopologyToOrigin ComplexPrimitiveTopologyToOriginList[]=
@@ -311,7 +311,7 @@ namespace
             return VkPrimitiveTopology(p);
 
         for(const ComplexPrimitiveTopologyToOrigin &cptol:ComplexPrimitiveTopologyToOriginList)
-            if(cptol.prim==p)
+            if(cptol.geometry==p)
                 return cptol.vk_prim;
 
         return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
@@ -320,15 +320,15 @@ namespace
 
 bool PipelineData::SetPrim(const PrimitiveType topology,bool prim_restart)
 {
-    VkPrimitiveTopology prim=GetVkPrimitive(topology);
+    VkPrimitiveTopology geometry=GetVkPrimitive(topology);
 
-    if(prim==VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
+    if(geometry==VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
         return(false);
 
     input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     input_assembly.pNext = nullptr;
     input_assembly.flags = 0;
-    input_assembly.topology = prim;
+    input_assembly.topology = geometry;
     input_assembly.primitiveRestartEnable = prim_restart;
 
     pipeline_info.pInputAssemblyState = &input_assembly;

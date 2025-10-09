@@ -7,7 +7,7 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/module/MeshManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/color/Color.h>
 #include"TextLayoutEngine.h"
 
@@ -37,7 +37,7 @@ namespace hgl::graph
     {
         device=rf->GetDevice();
 
-        mesh_manager=rf->GetMeshManager();
+        primitive_manager=rf->GetPrimitiveManager();
         mtl_manager=rf->GetMaterialManager();
         tl_engine=new layout::TextLayout(tf);
             
@@ -76,10 +76,10 @@ namespace hgl::graph
 
     TextRender::~TextRender()
     {
-        for(TextGeometry *tr:tr_sets)
+        for(TextGeometry *tr:text_geometry_set)
             delete tr;
 
-        tr_sets.Clear();
+        text_geometry_set.Clear();
            
         SAFE_CLEAR(tl_engine);
         SAFE_CLEAR(tile_font);
@@ -132,7 +132,7 @@ namespace hgl::graph
     {   
         TextGeometry *tr=new TextGeometry(device,mi_fs->GetVIL(),limit);
 
-        tr_sets.Add(tr);
+        text_geometry_set.Add(tr);
 
         tl_engine->Begin(tr,limit);
 
@@ -153,7 +153,7 @@ namespace hgl::graph
         tl_engine->End();
     }
 
-    TextGeometry *TextRender::CreateGeometry(const TextGeometryType &tpt,const U16StringView&str)
+    TextGeometry *TextRender::CreateGeometry(const TextGeometryType &tpt,const U16StringView &str)
     {
         TextGeometry *tr=Begin(tpt,str.Length());
 
@@ -184,10 +184,10 @@ namespace hgl::graph
         return(result);
     }
 
-    Mesh *TextRender::CreateMesh(TextGeometry *text_primitive)
+    Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
     {
-        if(mesh_manager)
-            return mesh_manager->CreateMesh(text_primitive,mi_fs,pipeline);
+        if(primitive_manager)
+            return primitive_manager->CreatePrimitive(text_geometry,mi_fs,pipeline);
 
         return(nullptr);
     }
@@ -196,7 +196,7 @@ namespace hgl::graph
     {
         if(!tr)return;
 
-        if(!tr_sets.Delete(tr))return;
+        if(!text_geometry_set.Delete(tr))return;
 
         tile_font->Unregistry(tr->GetCharsSets());
 

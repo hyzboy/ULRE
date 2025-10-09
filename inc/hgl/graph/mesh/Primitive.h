@@ -12,26 +12,26 @@
 
 VK_NAMESPACE_BEGIN
 /**
-* 网格体(网格渲染中的最小渲染单位，只能是一个材质实例)
+* 图元(渲染中的最小渲染单位，一个几何体配一个材质)
 */
-class Mesh
+class Primitive
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
     Geometry *          geometry;
 
     GeometryDataBuffer *data_buffer;
-    GeometryDrawRange   render_data;
+    GeometryDrawRange   draw_range;
 
 private:
 
-    friend Mesh *DirectCreateMesh(Geometry *,MaterialInstance *,Pipeline *);
+    friend Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
 
-    Mesh(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
+    Primitive(Geometry *,MaterialInstance *,Pipeline *,GeometryDataBuffer *);
 
 public:
 
-    virtual ~Mesh()
+    virtual ~Primitive()
     {
         //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
@@ -48,7 +48,7 @@ public:
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
 
     const   GeometryDataBuffer *GetDataBuffer       ()const{return data_buffer;}
-    const   GeometryDrawRange * GetRenderData       ()const{return &render_data;}
+    const   GeometryDrawRange * GetRenderData       ()const{return &draw_range;}
 
             VAB *               GetVAB              (const int index)const{return geometry->GetVAB(index);}
             VAB *               GetVAB              (const AnsiString &name)const{return geometry->GetVAB(name);}
@@ -80,9 +80,9 @@ public:
             bool                SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count=0);
 
             // 取得缓冲区实际数据数量
-            uint32_t            GetDataVertexCount()const{return render_data.data_vertex_count;}
-            uint32_t            GetDataIndexCount()const{return render_data.data_index_count;}
-};//class Mesh
+            uint32_t            GetDataVertexCount()const{return draw_range.data_vertex_count;}
+            uint32_t            GetDataIndexCount()const{return draw_range.data_index_count;}
+};//class Primitive
 
-Mesh *DirectCreateMesh(Geometry *,MaterialInstance *,Pipeline *);
+Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END

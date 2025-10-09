@@ -9,7 +9,7 @@
 #include <hgl/graph/VKMaterial.h>
 #include <hgl/graph/VKVertexInputConfig.h>
 #include <hgl/graph/module/GeometryManager.h>
-#include <hgl/graph/module/MeshManager.h>
+#include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/RenderFramework.h>
 #include <hgl/graph/mtl/UBOCommon.h>

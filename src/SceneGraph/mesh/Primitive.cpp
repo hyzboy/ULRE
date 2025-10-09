@@ -1,6 +1,5 @@
-﻿#include<hgl/graph/mesh/Mesh.h>
+﻿#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
@@ -23,37 +22,37 @@ GeometryDataBuffer::~GeometryDataBuffer()
     delete[] vab_list;
 }
 
-const int GeometryDataBuffer::compare(const GeometryDataBuffer &mesh_data_buffer)const
+const int GeometryDataBuffer::compare(const GeometryDataBuffer &gdb)const
 {
     ptrdiff_t off;
 
-    if(vdm&&mesh_data_buffer.vdm)
+    if(vdm&&gdb.vdm)
     {
-        off=(ptrdiff_t)vdm-(ptrdiff_t)mesh_data_buffer.vdm;
+        off=(ptrdiff_t)vdm-(ptrdiff_t)gdb.vdm;
         if(off)
             return off;
     }
 
-    off=vab_count-mesh_data_buffer.vab_count;
+    off=vab_count-gdb.vab_count;
     if(off)
         return off;
 
-    off=hgl_cmp(vab_list,mesh_data_buffer.vab_list,vab_count);
+    off=hgl_cmp(vab_list,gdb.vab_list,vab_count);
     if(off)
         return off;
 
-    off=hgl_cmp(vab_offset,mesh_data_buffer.vab_offset,vab_count);
+    off=hgl_cmp(vab_offset,gdb.vab_offset,vab_count);
     if(off)
         return off;
 
-    off=ibo-mesh_data_buffer.ibo;
+    off=ibo-gdb.ibo;
 
     return off;
 }
 
-void GeometryDrawRange::Set(const Geometry *prim)
+void GeometryDrawRange::Set(const Geometry *geometry)
 {
-    if(!prim)
+    if(!geometry)
     {
         data_vertex_count = 0;
         data_index_count = 0;
@@ -65,45 +64,45 @@ void GeometryDrawRange::Set(const Geometry *prim)
     }
 
     // data counts come from geometry (buffer capacity)
-    data_vertex_count = (uint32_t)prim->GetVertexCount();
-    data_index_count  = prim->GetIndexCount();
+    data_vertex_count = (uint32_t)geometry->GetVertexCount();
+    data_index_count  = geometry->GetIndexCount();
 
     // initialize draw counts to data counts by default
     vertex_count    = data_vertex_count;
     index_count     = data_index_count;
 
-    vertex_offset   = prim->GetVertexOffset();
-    first_index     = prim->GetFirstIndex();
+    vertex_offset   = geometry->GetVertexOffset();
+    first_index     = geometry->GetFirstIndex();
 }
 
-Mesh::Mesh(Geometry *r,MaterialInstance *mi,Pipeline *p,GeometryDataBuffer *mesh_data_buffer)
+Primitive::Primitive(Geometry *r,MaterialInstance *mi,Pipeline *p,GeometryDataBuffer *gdb)
 {
     geometry=r;
     pipeline=p;
     mat_inst=mi;
 
-    data_buffer=mesh_data_buffer;
-    render_data.Set(geometry);
+    data_buffer=gdb;
+    draw_range.Set(geometry);
 }
 
-bool Mesh::UpdateGeometry()
+bool Primitive::UpdateGeometry()
 {
-    render_data.Set(geometry);
+    draw_range.Set(geometry);
 
     // Clamp draw counts if previously set larger than new data counts
-    if(render_data.vertex_count>render_data.data_vertex_count)
-        render_data.vertex_count = render_data.data_vertex_count;
+    if(draw_range.vertex_count>draw_range.data_vertex_count)
+        draw_range.vertex_count = draw_range.data_vertex_count;
 
-    if(render_data.index_count>render_data.data_index_count)
-        render_data.index_count = render_data.data_index_count;
+    if(draw_range.index_count>draw_range.data_index_count)
+        draw_range.index_count = draw_range.data_index_count;
 
     return data_buffer->Update(geometry,mat_inst->GetVIL());
 }
 
-Mesh *DirectCreateMesh(Geometry *prim,MaterialInstance *mi,Pipeline *p)
+Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p)
 //用Direct这个前缀是为了区别于MeshManager/WorkObject/RenderFramework的::CreateMesh()
 {
-    if(!prim||!mi||!p)return(nullptr);
+    if(!geom||!mi||!p)return(nullptr);
 
     const VIL *vil=mi->GetVIL();
 
@@ -113,14 +112,14 @@ Mesh *DirectCreateMesh(Geometry *prim,MaterialInstance *mi,Pipeline *p)
     const uint32_t input_count=vil->GetVertexAttribCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
     const AnsiString &mtl_name=mi->GetMaterial()->GetName();
 
-    if(prim->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
+    if(geom->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        GLogError("[FATAL ERROR] input buffer count of Mesh lesser than Material, Material name: "+mtl_name);
+        GLogError("[FATAL ERROR] input buffer count of Primitive lesser than Material, Material name: "+mtl_name);
 
         return(nullptr);
     }
 
-    GeometryDataBuffer *mesh_data_buffer=new GeometryDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
+    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(input_count,geom->GetIBO(),geom->GetVDM());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
 
@@ -131,7 +130,7 @@ Mesh *DirectCreateMesh(Geometry *prim,MaterialInstance *mi,Pipeline *p)
         //注: VIF来自于材质，但VAB来自于Geometry。
         //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
 
-        vab=prim->GetVAB(vif->name);
+        vab=geom->GetVAB(vif->name);
 
         if(!vab)
         {
@@ -142,7 +141,7 @@ Mesh *DirectCreateMesh(Geometry *prim,MaterialInstance *mi,Pipeline *p)
         if(vab->GetFormat()!=vif->format)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" format can't match Mesh, Material(")+mtl_name+
+                        AnsiString("\" format can't match Primitive, Material(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
@@ -152,34 +151,34 @@ Mesh *DirectCreateMesh(Geometry *prim,MaterialInstance *mi,Pipeline *p)
         if(vab->GetStride()!=vif->stride)
         {
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" stride can't match Mesh, Material(")+mtl_name+
+                        AnsiString("\" stride can't match Primitive, Material(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
                         AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
                         ")");
             return(nullptr);
         }
 
-        mesh_data_buffer->vab_list[i]=vab->GetBuffer();
-        mesh_data_buffer->vab_offset[i]=0;
+        geom_data_buffer->vab_list[i]=vab->GetBuffer();
+        geom_data_buffer->vab_offset[i]=0;
         ++vif;
     }
 
-    return(new Mesh(prim,mi,p,mesh_data_buffer));
+    return(new Primitive(geom,mi,p,geom_data_buffer));
 }
 
-bool GeometryDataBuffer::Update(const Geometry *prim,const VIL *vil)
+bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
 {
-    if(!prim||!vil)
+    if(!geom||!vil)
         return(false);
 
-    ibo=prim->GetIBO();
-    vdm=prim->GetVDM();
+    ibo=geom->GetIBO();
+    vdm=geom->GetVDM();
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
 
     for(uint i=0;i<vab_count;i++)
     {
-        vab_list[i]=prim->GetVkBuffer(vif->name);
+        vab_list[i]=geom->GetVkBuffer(vif->name);
         vab_offset[i]=0;
 
         ++vif;
@@ -188,37 +187,37 @@ bool GeometryDataBuffer::Update(const Geometry *prim,const VIL *vil)
     return(true);
 }
 
-// Mesh draw control APIs
-bool Mesh::SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count)
+// Primitive draw control APIs
+bool Primitive::SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count)
 {
     // only clamp, do not change offsets
-    if(draw_vertex_count>render_data.data_vertex_count)
-        draw_vertex_count = render_data.data_vertex_count;
+    if(draw_vertex_count>draw_range.data_vertex_count)
+        draw_vertex_count = draw_range.data_vertex_count;
 
-    if(draw_index_count>render_data.data_index_count)
-        draw_index_count = render_data.data_index_count;
+    if(draw_index_count>draw_range.data_index_count)
+        draw_index_count = draw_range.data_index_count;
 
-    render_data.vertex_count = draw_vertex_count;
-    render_data.index_count  = draw_index_count;
+    draw_range.vertex_count = draw_vertex_count;
+    draw_range.index_count  = draw_index_count;
 
     return true;
 }
 
-bool Mesh::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count)
+bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count)
 {
     // set offsets
-    render_data.vertex_offset = vertex_offset;
-    render_data.first_index   = first_index;
+    draw_range.vertex_offset = vertex_offset;
+    draw_range.first_index   = first_index;
 
     // clamp counts to data counts
-    if(draw_vertex_count>render_data.data_vertex_count)
-        draw_vertex_count = render_data.data_vertex_count;
+    if(draw_vertex_count>draw_range.data_vertex_count)
+        draw_vertex_count = draw_range.data_vertex_count;
 
-    if(draw_index_count>render_data.data_index_count)
-        draw_index_count = render_data.data_index_count;
+    if(draw_index_count>draw_range.data_index_count)
+        draw_index_count = draw_range.data_index_count;
 
-    render_data.vertex_count = draw_vertex_count;
-    render_data.index_count  = draw_index_count;
+    draw_range.vertex_count = draw_vertex_count;
+    draw_range.index_count  = draw_index_count;
 
     return true;
 }

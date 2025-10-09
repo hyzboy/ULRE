@@ -5,7 +5,7 @@
 #include<hgl/graph/geo/Revolution.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<cmath>
 
 using namespace hgl;
@@ -117,24 +117,24 @@ private:
 
     bool InitScene()
     {
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
         if(prim_vase) {
             cci.mat = TranslateMatrix(-3, 0, 0);
-            Mesh *mesh = CreateMesh(prim_vase, material_instance, pipeline);
-            auto comp = CreateComponent<MeshComponent>(&cci, mesh);
+            Primitive *primitive = CreatePrimitive(prim_vase, material_instance, pipeline);
+            auto comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         }
 
         if(prim_partial_shell) {
             cci.mat = TranslateMatrix(3, 0, 0);
-            Mesh *mesh = CreateMesh(prim_partial_shell, material_instance, pipeline);
-            auto comp = CreateComponent<MeshComponent>(&cci, mesh);
+            Primitive *primitive = CreatePrimitive(prim_partial_shell, material_instance, pipeline);
+            auto comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         }
 
         if(prim_cone) {
             cci.mat = TranslateMatrix(0, 3, 0);
-            Mesh *mesh = CreateMesh(prim_cone, material_instance, pipeline);
-            auto comp = CreateComponent<MeshComponent>(&cci, mesh);
+            Primitive *primitive = CreatePrimitive(prim_cone, material_instance, pipeline);
+            auto comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         }
 
         CameraControl *camera_control = GetCameraControl();

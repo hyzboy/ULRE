@@ -37,20 +37,20 @@ void StaticMesh::ClearNodes()
     root_node = nodes.Create();
 }
 
-// Mesh 管理
-Mesh *StaticMesh::CreateMesh(Geometry *prim, MaterialInstance *mi, Pipeline *p)
+// Primitive 管理
+Primitive *StaticMesh::CreatePrimitive(Geometry *geometry, MaterialInstance *mi, Pipeline *p)
 {
-    if(!prim || !mi || !p)
+    if(!geometry || !mi || !p)
         return nullptr;
 
-    Mesh *sm = DirectCreateMesh(prim, mi, p);
+    Primitive *sm = DirectCreatePrimitive(geometry, mi, p);
     if(!sm)
         return nullptr;
 
-    submeshes.Add(sm);
+    primitive_list.Add(sm);
 
     // 跟踪资源
-    geometry_set.Add(prim);
+    geometry_set.Add(geometry);
     mat_inst_set.Add(mi);
     pipeline_set.Add(p);
 
@@ -59,12 +59,12 @@ Mesh *StaticMesh::CreateMesh(Geometry *prim, MaterialInstance *mi, Pipeline *p)
     return sm;
 }
 
-bool StaticMesh::AddSubMesh(Mesh *sm)
+bool StaticMesh::AddSubMesh(Primitive *sm)
 {
     if(!sm) return false;
-    if(submeshes.Contains(sm)) return true;
+    if(primitive_list.Contains(sm)) return true;
 
-    submeshes.Add(sm);
+    primitive_list.Add(sm);
 
     // 跟踪资源
     geometry_set.Add(sm->GetGeometry());
@@ -75,12 +75,12 @@ bool StaticMesh::AddSubMesh(Mesh *sm)
     return true;
 }
 
-void StaticMesh::RemoveSubMesh(Mesh *sm)
+void StaticMesh::RemoveSubMesh(Primitive *sm)
 {
     if(!sm) return;
 
     // 先从列表删除并释放该 Mesh
-    submeshes.DeleteByValueOwn(sm);
+    primitive_list.DeleteByValueOwn(sm);
 
     // 资源集合可能需要重建（避免误删共享资源复杂性）
     RebuildResourceSets();
@@ -90,7 +90,7 @@ void StaticMesh::RemoveSubMesh(Mesh *sm)
 
 void StaticMesh::ClearSubMeshes()
 {
-    submeshes.Clear();   // ObjectList::Clear 会负责 delete 其中的 Mesh*
+    primitive_list.Clear();   // ObjectList::Clear 会负责 delete 其中的 Mesh*
 
     // 清空集合
     geometry_set.Clear();
@@ -100,21 +100,21 @@ void StaticMesh::ClearSubMeshes()
     bounding_volumes.Clear();
 }
 
-bool StaticMesh::AttachGeometry(Geometry *prim)
+bool StaticMesh::AttachGeometry(Geometry *geometry)
 {
-    if(!prim) return false;
-    return geometry_set.Add(prim) >= 0;
+    if(!geometry) return false;
+    return geometry_set.Add(geometry) >= 0;
 }
 
-void StaticMesh::DetachGeometry(Geometry *prim)
+void StaticMesh::DetachGeometry(Geometry *geometry)
 {
-    if(!prim) return;
-    geometry_set.Delete(prim);
+    if(!geometry) return;
+    geometry_set.Delete(geometry);
 }
 
 void StaticMesh::UpdateAllSubMeshes()
 {
-    for(Mesh *sm: submeshes)
+    for(Primitive *sm: primitive_list)
         if(sm) sm->UpdateGeometry();
 }
 
@@ -123,7 +123,7 @@ void StaticMesh::RefreshBoundingVolumes()
     bool has_box = false;
     AABB box;
 
-    for(Mesh *sm: submeshes)
+    for(Primitive *sm: primitive_list)
     {
         if(!sm)
             continue;
@@ -152,10 +152,10 @@ void StaticMesh::RebuildResourceSets()
     mat_inst_set.Clear();
     pipeline_set.Clear();
 
-    for(Mesh *sm : submeshes)
+    for(Primitive *sm : primitive_list)
     {
         if(!sm) continue;
-        if (auto prim = sm->GetGeometry())          geometry_set.Add(prim);
+        if (auto geometry = sm->GetGeometry())          geometry_set.Add(geometry);
         if (auto mi   = sm->GetMaterialInstance())  mat_inst_set.Add(mi);
         if (auto p    = sm->GetPipeline())          pipeline_set.Add(p);
     }
