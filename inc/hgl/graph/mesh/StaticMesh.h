@@ -4,7 +4,6 @@
 #include <hgl/type/SortedSet.h>
 #include <hgl/type/ArrayList.h>
 #include <hgl/graph/mesh/Primitive.h>
-#include <hgl/graph/mesh/MeshNode.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -22,33 +21,18 @@ using PrimitiveList         =ObjectList<Primitive>;
 class StaticMesh
 {
     // Primitive / 资源集合
-    PrimitiveList           primitive_list;                                                                             ///< Primitive 列表(拥有对象)
     GeometryPtrSet          geometry_set;                                                                               ///< 关联的 Geometry 集合(仅持引用)
     MaterialInstanceSet     mat_inst_set;                                                                               ///< 使用到的材质实例集合(仅持引用)
     PipelinePtrSet          pipeline_set;                                                                               ///< 使用到的管线集合(仅持引用)
 
-    // MeshNode 集合与根节点
-    MeshNodeList        nodes;                                                                                      ///< MeshNode 集合(拥有对象)
-    MeshNode *          root_node = nullptr;                                                                        ///< 根节点(由 nodes 持有)
+    PrimitiveList           primitive_list;                                                                             ///< Primitive列表
 
-    BoundingVolumes     bounding_volumes;                                                                           ///< 所有 Primitive 合并的本地包围体
+    BoundingVolumes         bounding_volumes;                                                                           ///< 所有 Primitive 合并的本地包围体
 
 public:
 
     StaticMesh();
     virtual ~StaticMesh();
-
-public: // MeshNode 管理
-
-    MeshNode *                  GetRootNode         () const { return root_node; }
-    const MeshNodeList &        GetNodes            () const { return nodes; }
-    MeshNodeList &              GetNodes            ()       { return nodes; }
-
-    bool                        AddNode             (MeshNode *node) { return node ? nodes.Add(node) >= 0 : false; }   ///< 将一个节点加入集合(Primitive 接管其生命周期);若未设置父子关系,可自行将其挂到根节点下
-
-    void                        RemoveNode          (MeshNode *node);                                               ///< 从集合移除并销毁该节点(若为根节点会一并清空并重建新的空根节点)
-
-    void                        ClearNodes          ();                                                             ///< 清空所有节点并重建一个空根节点
 
 public: // Primitive 管理
 
@@ -57,11 +41,11 @@ public: // Primitive 管理
 
     Primitive *                 CreatePrimitive     (Geometry *geometry, MaterialInstance *mi, Pipeline *p);            ///< 创建并添加一个 Primitive(为该 Primitive 指定 Geometry / MaterialInstance / Pipeline)
 
-    bool                        AddSubMesh          (Primitive *sm);                                                     ///< 添加一个已有的 Primitive(Mesh 将接管其生命周期)
+    bool                        AddSubMesh          (Primitive *sm);                                                    ///< 添加一个已有的 Primitive(Mesh 将接管其生命周期)
 
-    void                        RemoveSubMesh       (Primitive *sm);                                                     ///< 从 StaticMesh 中移除并销毁一个 Mesh
+    void                        RemoveSubMesh       (Primitive *sm);                                                    ///< 从 StaticMesh 中移除并销毁一个 Mesh
 
-    void                        ClearSubMeshes      ();                                                             ///< 清空并销毁所有 Mesh
+    void                        ClearSubMeshes      ();                                                                 ///< 清空并销毁所有 Mesh
 
 public: // Geometry / MaterialInstance / Pipeline(仅保存引用,便于统计/查询)
 

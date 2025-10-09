@@ -4,37 +4,11 @@ VK_NAMESPACE_BEGIN
 
 StaticMesh::StaticMesh()
 {
-    // 创建一个根节点，Mesh 持有
-    root_node = nodes.Create();
 }
 
 StaticMesh::~StaticMesh()
 {
-    ClearSubMeshes();
-    ClearNodes();
-}
 
-// MeshNode 管理
-void StaticMesh::RemoveNode(MeshNode *node)
-{
-    if(!node) return;
-
-    if(node == root_node)
-    {
-        // 清空所有并重建根
-        ClearNodes();
-        return;
-    }
-
-    // nodes 为 ObjectList 拥有：删除并销毁
-    nodes.DeleteByValueOwn(node);
-}
-
-void StaticMesh::ClearNodes()
-{
-    nodes.Clear();
-    // 重建一个空根节点
-    root_node = nodes.Create();
 }
 
 // Primitive 管理
