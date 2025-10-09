@@ -9,7 +9,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
@@ -43,20 +43,20 @@ namespace
 
     struct GizmoMesh
     {
-        Geometry *prim;
+        Geometry *geometry;
 
-        Mesh *mesh;
-        MeshComponentData *mcd;
+        Primitive *primitive;
+        PrimitiveComponentData *mcd;
         ComponentDataPtr cdp;
 
     public:
 
         void Create(Geometry *p)
         {
-            prim=p;
+            geometry=p;
 
-            mesh=render_framework->CreateMesh(prim,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
-            mcd=new MeshComponentData(mesh);
+            primitive=render_framework->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
+            mcd=new PrimitiveComponentData(primitive);
             cdp=mcd;
         }
 
@@ -68,12 +68,12 @@ namespace
     
     GizmoMesh         gizmo_mesh[size_t(GizmoShape::RANGE_SIZE)]{};
 
-    void InitGizmoMesh(const GizmoShape &gs,Geometry *prim)
+    void InitGizmoMesh(const GizmoShape &gs,Geometry *geometry)
     {
-        if(!prim)
+        if(!geometry)
             return;
 
-        gizmo_mesh[size_t(gs)].Create(prim);
+        gizmo_mesh[size_t(gs)].Create(geometry);
     }
 
     bool InitMI(GizmoResource *gr)
@@ -274,7 +274,7 @@ namespace
 
             ENUM_CLASS_FOR(GizmoShape,int,i)
             {
-                if(!gizmo_mesh[i].prim)
+                if(!gizmo_mesh[i].geometry)
                     return(false);
             }
         }

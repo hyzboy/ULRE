@@ -4,16 +4,17 @@
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
-#include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
-#include<hgl/graph/module/MeshManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/VertexDataManager.h>
+#include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/log/Logger.h>
+#include<hgl/io/event/MouseEvent.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -144,8 +145,8 @@ bool RenderFramework::Init(uint w,uint h)
     if(!geometry_manager)
         return(false);
 
-    mesh_manager=module_manager->GetOrCreate<MeshManager>();
-    if(!mesh_manager)
+    primitive_manager=module_manager->GetOrCreate<PrimitiveManager>();
+    if(!primitive_manager)
         return(false);
 
     material_manager=module_manager->GetOrCreate<MaterialManager>();
@@ -253,26 +254,26 @@ graph::Geometry *RenderFramework::CreateGeometry( const AnsiString &name,
         }
     }
 
-    auto *prim=pc->Create();
+    auto *geometry=pc->Create();
 
-    if(prim)
-        geometry_manager->Add(prim);
+    if(geometry)
+        geometry_manager->Add(geometry);
 
-    return prim;
+    return geometry;
 }
 
-graph::Mesh *RenderFramework::CreateMesh(   const AnsiString &name,
+graph::Primitive *RenderFramework::CreatePrimitive(   const AnsiString &name,
                                             const uint32_t vertices_count,
                                             graph::MaterialInstance *mi,
                                             graph::Pipeline *pipeline,
                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
 {
-    auto *prim=this->CreateGeometry(name,vertices_count,mi->GetVIL(),vad_list);
+    auto *geometry=this->CreateGeometry(name,vertices_count,mi->GetVIL(),vad_list);
 
-    if(!prim)
+    if(!geometry)
         return(nullptr);
 
-    // Prefer MeshManager to create and own meshes
-    return mesh_manager->CreateMesh(prim,mi,pipeline);
+    // Prefer PrimitiveManager to create and own meshes
+    return primitive_manager->CreatePrimitive(geometry,mi,pipeline);
 }
 VK_NAMESPACE_END

@@ -4,7 +4,7 @@
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
 VK_NAMESPACE_BEGIN
 class VulkanCmdBuffer
@@ -69,7 +69,7 @@ class RenderCmdBuffer:public VulkanCmdBuffer
     * 该数据在渲染前分别会有各自的模块设置进来
     * 比如
     *    DescriptSetType::RenderTarget  即该由RenderTarget模块设置
-    *    DescriptSetType::World         的自然由Scene模块设置
+    *    DescriptSetType::World         World的自然由World模块设置
     */
     DescriptorBindingPtrArray desc_binding{};
 
@@ -264,7 +264,7 @@ public: //dynamic state
 
 public:
 
-    void Render(Mesh *ri)
+    void Render(Primitive *ri)
     {
         if(!ri)return;
         

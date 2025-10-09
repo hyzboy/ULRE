@@ -5,7 +5,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/Filename.h>
 
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -47,7 +47,7 @@ private:
     struct
     {
         MaterialInstance *  mi;
-        MeshComponent *     component;
+        PrimitiveComponent *     component;
     }render_obj[TexCount]{};
 
 private:
@@ -118,7 +118,7 @@ private:
         //当前Mesh也是需要mi才能渲染。
         //这里因为所有render_obj的VIL/Material都是一样的，所以可以直接使用render_obj[0].mi
 
-        Mesh *mesh_rect=CreateMesh( "TextureRect",1,render_obj[0].mi,pipeline,
+        Primitive *mesh_rect=CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}
@@ -127,7 +127,7 @@ private:
         if(!mesh_rect)
             return(false);
 
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
         Vector3f offset(1.0f/float(TexCount),0,0);
 
@@ -137,7 +137,7 @@ private:
 
             cci.mat=TranslateMatrix(offset);
 
-            render_obj[i].component=CreateComponent<MeshComponent>(&cci,mesh_rect);
+            render_obj[i].component=CreateComponent<PrimitiveComponent>(&cci,mesh_rect);
 
             if(!render_obj[i].component)
                 return(false);

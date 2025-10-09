@@ -4,9 +4,9 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/mesh/StaticMesh.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<hgl/component/StaticMeshComponent.h>
 
 namespace hgl::graph
@@ -78,7 +78,7 @@ namespace hgl::graph
         render_batch_map.UpdateTransformData();
     }
 
-    void RenderCollector::UpdateMaterialInstanceData(MeshComponent *smc)
+    void RenderCollector::UpdateMaterialInstanceData(PrimitiveComponent *smc)
     {
         if(!smc)return;
 

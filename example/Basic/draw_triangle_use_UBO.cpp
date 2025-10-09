@@ -4,7 +4,7 @@
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -37,7 +37,7 @@ class TestApp:public WorkObject
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *              mesh_triangle       =nullptr;
+    Primitive *         prim_triangle       =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -80,18 +80,18 @@ private:
             position_data[i][1]=position_data_float[i][1]*ext.height;
         }
 
-        mesh_triangle=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        prim_triangle=CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,POSITION_DATA_FORMAT,position_data},
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
                                     });
 
-        if(!mesh_triangle)
+        if(!prim_triangle)
             return(false);
 
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
-        return CreateComponent<MeshComponent>(&cci,mesh_triangle); //创建一个静态网格组件
+        return CreateComponent<PrimitiveComponent>(&cci,prim_triangle); //创建一个静态网格组件
     }
 
 public:

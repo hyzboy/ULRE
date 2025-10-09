@@ -13,11 +13,11 @@ class StaticMeshComponentManager;
 
 struct StaticMeshComponentData:public ComponentData
 {
-    hgl::graph::StaticMesh *mesh=nullptr;
+    hgl::graph::StaticMesh *primitive=nullptr;
 
     StaticMeshComponentData()=default;
-    explicit StaticMeshComponentData(hgl::graph::StaticMesh *m){mesh=m;}
-    virtual ~StaticMeshComponentData(){mesh=nullptr;}
+    explicit StaticMeshComponentData(hgl::graph::StaticMesh *m){primitive=m;}
+    virtual ~StaticMeshComponentData(){primitive=nullptr;}
 
     COMPONENT_DATA_CLASS_BODY(StaticMesh)
 };
@@ -38,7 +38,7 @@ public:
 
 class StaticMeshComponent:public RenderComponent
 {
-    WeakPtr<ComponentData> sm_data;
+    WeakPtr<ComponentData> primitive_data;
 
 public:
 
@@ -48,7 +48,7 @@ public:
 
     StaticMeshComponent(ComponentDataPtr cdp,StaticMeshComponentManager *cm):RenderComponent(cdp,cm)
     {
-        sm_data=cdp;
+        primitive_data=cdp;
     }
 
     virtual ~StaticMeshComponent()=default;
@@ -60,15 +60,15 @@ public:
         return smc;
     }
 
-            StaticMeshComponentData *GetData()      {return dynamic_cast<      StaticMeshComponentData *>(sm_data.get());}
-    const   StaticMeshComponentData *GetData()const {return dynamic_cast<const StaticMeshComponentData *>(sm_data.const_get());}
+            StaticMeshComponentData *GetData()      {return dynamic_cast<      StaticMeshComponentData *>(primitive_data.get());}
+    const   StaticMeshComponentData *GetData()const {return dynamic_cast<const StaticMeshComponentData *>(primitive_data.const_get());}
 
     hgl::graph::StaticMesh *GetStaticMesh() const
     {
-        if(!sm_data.valid())
+        if(!primitive_data.valid())
             return nullptr;
         const StaticMeshComponentData *mcd=GetData();
-        return mcd?mcd->mesh:nullptr;
+        return mcd?mcd->primitive:nullptr;
     }
 
     const bool GetLocalAABB(AABB &box) const override
@@ -83,11 +83,11 @@ public:
     const bool CanRender() const override
     {
         const StaticMeshComponentData *mcd=GetData();
-        if(!mcd||!mcd->mesh) return false;
-        return mcd->mesh->GetSubMeshCount()>0;
+        if(!mcd||!mcd->primitive) return false;
+        return mcd->primitive->GetPrimitiveCount()>0;
     }
 
-    // 由组件创建并提交 DrawNode（按 MeshNode * Mesh 组合提交），叠加 MeshNode 变换
+    // 由组件创建并提交 DrawNode（按 MeshNode * Primitive 组合提交），叠加 MeshNode 变换
     uint SubmitDrawNodes(hgl::graph::RenderBatchMap &mrm) override
     {
         auto *sm = GetStaticMesh();
@@ -96,13 +96,13 @@ public:
 
         for(hgl::graph::MeshNode *mn : sm->GetNodes())
         {
-            for(hgl::graph::Mesh *m : mn->GetSubMeshes())
+            for(hgl::graph::Primitive *m : mn->GetPrimitiveSet())
             {
                 auto *mi = m->GetMaterialInstance();
                 auto *pl = m->GetPipeline();
                 if(!mi||!pl) continue;
 
-                mrm.AddDrawNode(new hgl::graph::StaticMeshDrawNode(this, mn, m));
+                mrm.AddDrawNode(new hgl::graph::DrawNodeStaticMesh(this, mn, m));
                 ++submitted;
             }
         }

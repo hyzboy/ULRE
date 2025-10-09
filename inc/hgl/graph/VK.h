@@ -42,7 +42,7 @@ class BufferManager;
 class RenderPassManager;
 class GeometryManager;
 class MaterialManager;
-class MeshManager;
+class PrimitiveManager;
 class RenderTargetManager;
 class TextureManager;
 
@@ -247,7 +247,7 @@ using VIL=VertexInputLayout;
 
 class GeometryData;
 class Geometry;
-class Mesh;
+class Primitive;
 
 class VertexDataManager;
 using VDM=VertexDataManager;
@@ -256,7 +256,7 @@ class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 
-class MeshComponent;
+class PrimitiveComponent;
 
 class SceneNode;
 class World;

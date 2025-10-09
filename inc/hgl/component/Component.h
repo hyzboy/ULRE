@@ -20,7 +20,7 @@
 *   需要注意的是：同AMD FidelityFX一样，大部分ComponentManager与Scene基本无关。
 *   因为同样的数据可能出现在多个World之中。
 *   仅有那些与Scene密切相关的Component它对应的Manager才会出现在Scene中，比如CameraManager/LightManager。
-*   而如MeshComponent之类的纯资源型就会是独立存在的。
+*   而如PrimitiveComponent之类的纯资源型就会是独立存在的。
 *
 *   Component是组件的基类，所有组件都从这里派生。
 *
@@ -32,7 +32,7 @@
 
 *   RenderComponent是可渲染组件的基类，所有可渲染组件都从这里派生。
 *
-*   MeshComponent是静态网格组件，它是一个具体的RenderComponent实现。
+*   PrimitiveComponent是静态网格组件，它是一个具体的RenderComponent实现。
 */
 
 #define COMPONENT_NAMESPACE         hgl::graph

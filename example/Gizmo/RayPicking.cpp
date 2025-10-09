@@ -10,7 +10,7 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -37,7 +37,7 @@ private:
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          pipeline_plane_grid =nullptr;
-    Geometry *         prim_plane_grid     =nullptr;
+    Geometry *         geom_plane_grid     =nullptr;
 
     Material *          mtl_line            =nullptr;
     MaterialInstance *  mi_line             =nullptr;
@@ -90,19 +90,19 @@ private:
         return(true);
     }
     
-    Mesh *Add(SceneNode *parent_node,Geometry *r,MaterialInstance *mi,Pipeline *p)
+    Primitive *Add(SceneNode *parent_node,Geometry *r,MaterialInstance *mi,Pipeline *p)
     {
-        Mesh *ri=CreateMesh(r,mi,p);
+        Primitive *ri=CreatePrimitive(r,mi,p);
 
         if(!ri)
         {
-            LogError(OS_TEXT("Create Mesh failed."));
+            LogError(OS_TEXT("Create Primitive failed."));
             return(nullptr);
         }
 
         CreateComponentInfo cci(parent_node);
 
-        CreateComponent<MeshComponent>(&cci,ri);
+        CreateComponent<PrimitiveComponent>(&cci,ri);
 
         return ri;
     }
@@ -122,7 +122,7 @@ private:
             pgci.lum=128;
             pgci.sub_lum=196;
 
-            prim_plane_grid=CreatePlaneGrid2D(pc,&pgci);
+            geom_plane_grid=CreatePlaneGrid2D(pc,&pgci);
         }
 
         {
@@ -140,9 +140,9 @@ private:
 
     bool InitScene()
     {
-        SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
+        SceneNode *scene_root=GetWorldRootNode();       //取得缺省场景根节点
 
-        Add(scene_root,prim_plane_grid,mi_plane_grid,pipeline_plane_grid);
+        Add(scene_root,geom_plane_grid,mi_plane_grid,pipeline_plane_grid);
         Add(scene_root,prim_line,mi_line,pipeline_line);
 
         CameraControl *camera_control=GetCameraControl();
@@ -162,7 +162,7 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(prim_plane_grid);
+        SAFE_CLEAR(geom_plane_grid);
     }
 
     bool Init() override

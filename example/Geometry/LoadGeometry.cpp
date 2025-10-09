@@ -379,6 +379,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
 
     // 2) Read BoundingVolumes
     BoundingVolumes bounding_volumes;
+
     if(!ReadBoundingVolumes(mpr, bounding_volumes, filename))
     {
         delete mpr;
@@ -423,7 +424,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return(nullptr);
     }
 
-    geometry->SetBoundingBox(bounding_volumes.aabb);
+    geometry->SetBoundingVolumes(bounding_volumes);
 
     delete mpr;
 

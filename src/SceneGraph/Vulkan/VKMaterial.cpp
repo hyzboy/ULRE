@@ -13,7 +13,7 @@ void ReleaseVertexInput(VertexInput *vi);
 Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 {
     name=n;
-    prim=mci->GetPrimitiveType();
+    geometry=mci->GetPrimitiveType();
 
     vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;

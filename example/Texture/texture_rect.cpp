@@ -4,7 +4,7 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -71,7 +71,7 @@ private:
 
     bool InitVBO()
     {
-        Mesh *render_obj=CreateMesh("TextureRect",1,material_instance,pipeline,
+        Primitive *render_obj=CreatePrimitive("TextureRect",1,material_instance,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}
@@ -80,9 +80,9 @@ private:
         if(!render_obj)
             return(false);
 
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
-        return CreateComponent<MeshComponent>(&cci,render_obj); //创建一个静态网格组件
+        return CreateComponent<PrimitiveComponent>(&cci,render_obj); //创建一个静态网格组件
     }
 
 public:

@@ -30,7 +30,7 @@ class Material
 {
     AnsiString name;
 
-    PrimitiveType prim;                       ///<图元类型
+    PrimitiveType geometry;                       ///<图元类型
 
     VertexInput *vertex_input;
 
@@ -63,7 +63,7 @@ public:
 
     const   AnsiString &                        GetName                 ()const{return name;}
 
-    const   PrimitiveType &                     GetPrimitiveType        ()const{return prim;}
+    const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
 
     const   VertexInput *                       GetVertexInput          ()const{return vertex_input;}
 

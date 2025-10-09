@@ -4,7 +4,7 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/DrawNode.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/math/Transform.h>

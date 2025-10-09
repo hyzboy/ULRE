@@ -13,7 +13,7 @@ namespace hgl::graph
     class TextGeometry;
     class RenderFramework;
     class MaterialManager;
-    class MeshManager;
+    class PrimitiveManager;
 
     namespace layout
     {
@@ -38,7 +38,7 @@ namespace hgl::graph
     {
         VulkanDevice *      device;
 
-        MeshManager *       mesh_manager;
+        PrimitiveManager *  primitive_manager;
         MaterialManager *   mtl_manager;
 
         Sampler *           sampler;
@@ -60,7 +60,7 @@ namespace hgl::graph
 
     private:
 
-        SortedSet<TextGeometry *> tr_sets;                 ///<所有的文字绘制几何体
+        SortedSet<TextGeometry *> text_geometry_set;        ///<所有的文字绘制几何体
 
     private:
 
@@ -82,7 +82,7 @@ namespace hgl::graph
 
     public:
 
-        TextGeometry *Begin(const TextGeometryType &tpt=TextGeometryType::FixedStyle,int limit=2048);                 ///<创建一个文本绘制几何体
+        TextGeometry *Begin(const TextGeometryType &tpt=TextGeometryType::FixedStyle,int limit=2048);                   ///<创建一个文本绘制几何体
 
         void SetFixedStyle(const layout::CharStyle &);                                                                  ///<设定固定风格模式所用风格
         void SetParagraphStyle(const layout::ParagraphStyle *);                                                         ///<设定段落风格
@@ -93,9 +93,9 @@ namespace hgl::graph
 
     public:
 
-        TextGeometry *CreateGeometry(const TextGeometryType &tpt,const U16StringView&str);                            ///<创建一个文本几何体，并进行简单排版
+        TextGeometry *CreateGeometry(const TextGeometryType &tpt,const U16StringView&str);                              ///<创建一个文本几何体，并进行简单排版
 
-        Mesh *CreateMesh(TextGeometry *text_primitive);                                                                 ///<创建一个网格对象用于渲染指定的文本几何体
+        Primitive *CreatePrimitive(TextGeometry *text_geometry);                                                        ///<创建一个网格对象用于渲染指定的文本几何体
 
         void Release(TextGeometry *);                                                                                   ///<释放一个文本几何体
     };//class TextRender

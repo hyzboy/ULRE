@@ -5,7 +5,7 @@
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -33,7 +33,7 @@ class TestApp:public WorkObject
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *              render_obj          =nullptr;
+    Primitive *              render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -64,7 +64,7 @@ private:
 
     bool InitVBO()
     {
-        render_obj=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        render_obj=CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,   VF_V2F,     position_data},
                                         {VAN::Color,      VF_V4UN8,   color_data   }
@@ -75,14 +75,14 @@ private:
 
         double rad;
 
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
         
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
         {
             rad=deg2rad((360.0f/double(TRIANGLE_NUMBER))*i);       //这里一定要加<double>或<float>，否则结果用int保存会出现问题
             cci.mat=AxisRotate(rad,Vector3f(0,0,1));
 
-            CreateComponent<MeshComponent>(&cci,render_obj);
+            CreateComponent<PrimitiveComponent>(&cci,render_obj);
         }
 
         return(true);

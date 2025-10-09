@@ -9,7 +9,7 @@
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -21,7 +21,7 @@ private:
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Geometry *         prim_plane_grid     =nullptr;
+    Geometry *         geom_plane_grid     =nullptr;
     MaterialInstance *  material_instance[3]{};
 
 private:
@@ -71,26 +71,26 @@ private:
 
         auto pc=GetGeometryCreater(material_instance[0]);
 
-        prim_plane_grid=CreatePlaneGrid2D(pc,&pgci);
+        geom_plane_grid=CreatePlaneGrid2D(pc,&pgci);
 
-        return prim_plane_grid;
+        return geom_plane_grid;
     }
 
     void Add(SceneNode *parent_node,MaterialInstance *mi,const Matrix4f &mat)
     {
-        Mesh *ri=CreateMesh(prim_plane_grid,mi,pipeline);
+        Primitive *ri=CreatePrimitive(geom_plane_grid,mi,pipeline);
 
         if(!ri)
             return;
 
         CreateComponentInfo cci(parent_node,mat);
 
-        CreateComponent<MeshComponent>(&cci,ri);
+        CreateComponent<PrimitiveComponent>(&cci,ri);
     }
 
     bool InitScene()
     {
-        SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
+        SceneNode *scene_root=GetWorldRootNode();       //取得缺省场景根节点
 
         Add(scene_root,material_instance[0],Identity4f);
         Add(scene_root,material_instance[1],AxisRotate(HGL_RAD_90,0,1,0));
@@ -112,7 +112,7 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(prim_plane_grid);
+        SAFE_CLEAR(geom_plane_grid);
     }
 
     bool Init() override

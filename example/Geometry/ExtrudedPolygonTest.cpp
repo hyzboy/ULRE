@@ -5,7 +5,7 @@
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<cmath>
 
 using namespace hgl;
@@ -104,15 +104,15 @@ private:
 
     bool InitScene()
     {
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
         // 创建矩形立方体网格 (位置: 原点)
         if (prim_rect_cube) {
 
             cci.mat=TranslateMatrix(-3,0,0);
 
-            Mesh *mesh_rect = CreateMesh(prim_rect_cube, material_instance, pipeline);
-            auto comp_rect = CreateComponent<MeshComponent>(&cci, mesh_rect);
+            Primitive *mesh_rect = CreatePrimitive(prim_rect_cube, material_instance, pipeline);
+            auto comp_rect = CreateComponent<PrimitiveComponent>(&cci, mesh_rect);
         }
 
         // 创建圆柱体网格 (位置: 右侧)
@@ -120,8 +120,8 @@ private:
 
             cci.mat=TranslateMatrix(3,0,0);
 
-            Mesh *mesh_cylinder = CreateMesh(prim_circle_cylinder, material_instance, pipeline);
-            auto comp_cylinder = CreateComponent<MeshComponent>(&cci, mesh_cylinder);
+            Primitive *mesh_cylinder = CreatePrimitive(prim_circle_cylinder, material_instance, pipeline);
+            auto comp_cylinder = CreateComponent<PrimitiveComponent>(&cci, mesh_cylinder);
         }
 
         // 创建三角形柱网格 (位置: 前方)
@@ -129,8 +129,8 @@ private:
 
             cci.mat=TranslateMatrix(0,3,0);
 
-            Mesh *mesh_triangle = CreateMesh(prim_triangle, material_instance, pipeline);
-            auto comp_triangle = CreateComponent<MeshComponent>(&cci, mesh_triangle);
+            Primitive *prim_triangle = CreatePrimitive(prim_triangle, material_instance, pipeline);
+            auto comp_triangle = CreateComponent<PrimitiveComponent>(&cci, prim_triangle);
         }
 
         // 创建五边形柱网格 (位置: 后方)
@@ -138,8 +138,8 @@ private:
 
             cci.mat=TranslateMatrix(0,-3,0);
 
-            Mesh *mesh_pentagon = CreateMesh(prim_pentagon, material_instance, pipeline);
-            auto comp_pentagon = CreateComponent<MeshComponent>(&cci, mesh_pentagon);
+            Primitive *mesh_pentagon = CreatePrimitive(prim_pentagon, material_instance, pipeline);
+            auto comp_pentagon = CreateComponent<PrimitiveComponent>(&cci, mesh_pentagon);
         }
 
         CameraControl *camera_control = GetCameraControl();

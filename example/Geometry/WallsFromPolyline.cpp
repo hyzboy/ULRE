@@ -4,7 +4,7 @@
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -21,8 +21,8 @@ private:
 
     VertexDataManager *mesh_vdm = nullptr;
 
-    std::vector<Mesh*> wall_meshes;
-    std::vector<MeshComponent*> wall_components;
+    std::vector<Primitive*> wall_meshes;
+    std::vector<PrimitiveComponent*> wall_components;
 
 public:
     using WorkObject::WorkObject;
@@ -88,11 +88,11 @@ public:
             wci.uv_tile_v = 1.5f;
             wci.uv_u_repeat_per_unit = 0.8f;
 
-            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
-            if(prim)
+            Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
+            if(geometry)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
-                if(mesh) wall_meshes.push_back(mesh);
+                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                if(primitive) wall_meshes.push_back(primitive);
             }
         }
 
@@ -118,11 +118,11 @@ public:
             wci.uv_tile_v = 1.0f;
             wci.uv_u_repeat_per_unit = 1.5f;
 
-            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
-            if(prim)
+            Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
+            if(geometry)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
-                if(mesh) wall_meshes.push_back(mesh);
+                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                if(primitive) wall_meshes.push_back(primitive);
             }
         }
 
@@ -147,11 +147,11 @@ public:
             wci.uv_tile_v = 2.0f;
             wci.uv_u_repeat_per_unit = 0.6f;
 
-            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
-            if(prim)
+            Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
+            if(geometry)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
-                if(mesh) wall_meshes.push_back(mesh);
+                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                if(primitive) wall_meshes.push_back(primitive);
             }
         }
 
@@ -177,21 +177,21 @@ public:
             wci.uv_tile_v = 1.0f;
             wci.uv_u_repeat_per_unit = 1.2f;
 
-            Geometry *prim = CreateWallsFromLines2D(pc, &wci);
-            if(prim)
+            Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
+            if(geometry)
             {
-                Mesh *mesh = CreateMesh(prim, material_instance, pipeline);
-                if(mesh) wall_meshes.push_back(mesh);
+                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                if(primitive) wall_meshes.push_back(primitive);
             }
         }
 
-        // Create components for each mesh
-        CreateComponentInfo cci(GetSceneRoot());
-        for(auto mesh: wall_meshes)
+        // Create components for each primitive
+        CreateComponentInfo cci(GetWorldRootNode());
+        for(auto primitive: wall_meshes)
         {
-            MeshComponentData *mcd = new MeshComponentData(mesh);
+            PrimitiveComponentData *mcd = new PrimitiveComponentData(primitive);
             ComponentDataPtr cdp = mcd;
-            MeshComponent *mc = CreateComponent<MeshComponent>(&cci, cdp);
+            PrimitiveComponent *mc = CreateComponent<PrimitiveComponent>(&cci, cdp);
             if(mc) wall_components.push_back(mc);
         }
 

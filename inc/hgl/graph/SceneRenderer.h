@@ -14,7 +14,7 @@ namespace hgl::graph
     class RenderCmdBuffer;  // forward
     class Pipeline;         // fwd for CreatePipeline
     class Material;         // fwd for CreatePipeline
-    class SceneNode;        // fwd for GetSceneRoot
+    class SceneNode;        // fwd for GetWorldRootNode
     enum class InlinePipeline; // fwd for CreatePipeline
 
     using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
@@ -63,7 +63,7 @@ namespace hgl::graph
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 
                 // 便捷方法：取得场景根节点
-                SceneNode *         GetSceneRoot        ()const {auto s=GetWorld(); return s?s->GetRootNode():nullptr;}
+                SceneNode *         GetWorldRootNode        ()const {auto s=GetWorld(); return s?s->GetRootNode():nullptr;}
                 // 便捷方法：基于当前RenderPass创建内置管线
                 Pipeline *          CreatePipeline      (Material *mtl,const InlinePipeline &ip)
                 { return GetRenderPass()?GetRenderPass()->CreatePipeline(mtl,ip):nullptr; }

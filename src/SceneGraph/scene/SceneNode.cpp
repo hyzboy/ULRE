@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/component/SceneComponent.h>
-#include<hgl/graph/mesh/Mesh.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/RenderFramework.h>
@@ -12,10 +12,10 @@ namespace hgl::graph
 {
     RenderContext *SceneNode::GetRenderContext()const
     {
-        if(!main_scene)
+        if(!main_world)
             return(nullptr);
 
-        io::EventDispatcher *ep=main_scene->GetEventDispatcher()->GetParent();
+        io::EventDispatcher *ep=main_world->GetEventDispatcher()->GetParent();
 
         if(!ep)
         {
@@ -38,10 +38,10 @@ namespace hgl::graph
 
     RenderFramework *SceneNode::GetRenderFramework()const
     {
-        return main_scene?main_scene->GetRenderFramework():nullptr;
+        return main_world?main_world->GetRenderFramework():nullptr;
     }
 
-    //void SceneNode::SetRenderable(Mesh *ri)
+    //void SceneNode::SetRenderable(Primitive *ri)
     //{
     //    render_obj=ri;
     //
@@ -157,11 +157,11 @@ namespace hgl::graph
         }
     }
 
-    SceneNode *SceneNode::CreateNode(World *scene)const
+    SceneNode *SceneNode::CreateNode(World *world)const
     {
-        if(scene)
+        if(world)
         {
-            return scene->CreateNode<SceneNode>();
+            return world->CreateNode<SceneNode>();
         }
         else if(this&&this->GetWorld())
         {
@@ -171,23 +171,23 @@ namespace hgl::graph
         return(nullptr);
     }
 
-    SceneNode *SceneNode::Clone(World *scene) const                                                               ///<复制一个场景节点
+    SceneNode *SceneNode::Clone(World *world) const                                                               ///<复制一个场景节点
     {
-        if(!this && !scene)
+        if(!this && !world)
             return nullptr;
 
-        if(!scene)
+        if(!world)
         {
-            scene=this->GetWorld();
+            world=this->GetWorld();
 
-            if(!scene)
+            if(!world)
             {
                 MLogError(SceneNode,"SceneNode::Clone(): No world specified and this node has no world!");
                 return(nullptr);
             }
         }
 
-        SceneNode *node = this->CreateNode(scene);
+        SceneNode *node = this->CreateNode(world);
 
         if(!node)
         {
@@ -219,16 +219,16 @@ namespace hgl::graph
 
     void SceneNode::OnChangeScene(World *new_scene)
     {
-        if(main_scene==new_scene)
+        if(main_world==new_scene)
             return;
 
         auto self_ep=GetEventDispatcher();
 
         if(self_ep)
         {
-            if(main_scene)
+            if(main_world)
             {
-                main_scene->GetEventDispatcher()->RemoveChildDispatcher(self_ep);    //从旧的场景中移除事件分发器
+                main_world->GetEventDispatcher()->RemoveChildDispatcher(self_ep);    //从旧的场景中移除事件分发器
             }
 
             if(new_scene)
@@ -237,6 +237,6 @@ namespace hgl::graph
             }
         }
 
-        main_scene=new_scene;
+        main_world=new_scene;
     }
 }//namespace hgl::graph

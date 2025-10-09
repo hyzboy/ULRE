@@ -1,133 +1,43 @@
-#include<hgl/io/FileInputStream.h>
+#include "SceneData.h"
+
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>
-#include<hgl/graph/VKGeometry.h>
-#include<hgl/graph/VKPrimitiveType.h>
-#include<hgl/graph/VKVertexInputLayout.h>
-#include<hgl/filesystem/Filename.h>
-#include<hgl/graph/Bounds.h>
+#include<hgl/graph/BoundingVolumes.h>
 #include<hgl/io/MiniPack.h>
-#include<hgl/io/MemoryInputStream.h>
 
 #include <vector>
-#include <string>
 #include <string_view>
 #include <cstdint>
-#include <iostream>
-#include <cstring>
 
 DEFINE_LOGGER_MODULE(LoadScene)
 
 VK_NAMESPACE_BEGIN
 namespace
 {
-#pragma pack(push,1)
-    struct SceneHeader
-    {
-        uint32_t version;
-        uint32_t rootCount;
-        uint32_t matrixCount;
-        uint32_t trsCount;
-        uint32_t subMeshCount;
-        uint32_t nodeCount;
-    };
-#pragma pack(pop)
+    using namespace scene_file;
 
-    struct SceneTRS
+    HeaderData *ReadSceneHeader(hgl::io::minipack::MiniPackMemory *mpm)
     {
-        float translation[3];
-        float rotation[4];
-        float scale[3];
-    };
+        HeaderData *header=mpm->MapData<HeaderData>(AnsiStringView("Header"));
 
-    struct SceneMatrixPair
-    {
-        float local[16];
-        float world[16];
-    };
-
-    struct SceneNode
-    {
-        std::string_view name; // points into mapped data
-        uint32_t matrixIndexPlusOne = 0;
-        uint32_t trsIndexPlusOne = 0;
-        const uint32_t *childrenPtr = nullptr; // pointer into mapped data
-        uint32_t childrenCount = 0;
-        const uint32_t *subMeshesPtr = nullptr; // pointer into mapped data
-        uint32_t subMeshesCount = 0;
-    };
-
-    struct SceneData
-    {
-        SceneData() = default;
-        ~SceneData()
+        if(!header)
         {
-            if(mpm)
-                delete mpm; // keep mapped memory alive until SceneData destroyed
+            MLogError(LoadScene,OS_TEXT("Header not found in scene file"));
+            return nullptr;
         }
 
-        uint32_t version = 0;
-        std::string_view sceneName; // points into mapped data
-
-        // roots
-        const uint32_t *rootsPtr = nullptr;
-        uint32_t rootsCount = 0;
-
-        // matrices
-        const SceneMatrixPair *matricesPtr = nullptr;
-        uint32_t matricesCount = 0;
-
-        // trs
-        const SceneTRS *trsPtr = nullptr;
-        uint32_t trsCount = 0;
-
-        // submeshes block (raw data, length-prefixed strings)
-        const uint8_t *subMeshesPtr = nullptr;
-        uint32_t subMeshesSize = 0;
-        uint32_t subMeshCount = 0;
-
-        // nodes
-        std::vector<SceneNode> nodes;
-
-        hgl::io::minipack::MiniPackMemory *mpm = nullptr; // owned
-    };
-
-    bool ReadSceneHeader(hgl::io::minipack::MiniPackMemory *mpm, SceneHeader &header, const OSString &filename)
-    {
-        const int32 header_index = mpm->FindFile(AnsiStringView("SceneHeader"));
-        if(header_index < 0)
+        if(header->version != 1)
         {
-            MLogError(LoadScene,OS_TEXT("SceneHeader not found in file ") + filename);
-            return false;
+            MLogError(LoadScene,OS_TEXT("Unsupported scene version in file "));
+            return nullptr;
         }
 
-        if(mpm->GetFileLength(header_index) != sizeof(SceneHeader))
-        {
-            MLogError(LoadScene,OS_TEXT("SceneHeader size mismatch in file ") + filename);
-            return false;
-        }
-
-        const void *mapped = mpm->Map(header_index);
-        if(!mapped)
-        {
-            MLogError(LoadScene,OS_TEXT("Cannot map SceneHeader from file ") + filename);
-            return false;
-        }
-
-        header = *reinterpret_cast<const SceneHeader *>(mapped);
-
-        if(header.version != 1)
-        {
-            MLogError(LoadScene,OS_TEXT("Unsupported scene version in file ") + filename);
-            return false;
-        }
-
-        return true;
+        return header;
     }
 
     bool MapSceneName(hgl::io::minipack::MiniPackMemory *mpm, SceneData *scene, const OSString &filename)
     {
-        const int32 name_index = mpm->FindFile(AnsiStringView("SceneName"));
+        const int32 name_index = mpm->FindFile(AnsiStringView("Name"));
         if(name_index < 0)
         {
             scene->sceneName = std::string_view();
@@ -211,7 +121,7 @@ namespace
         }
 
         const uint32_t size = mpm->GetFileLength(mats_index);
-        const uint32_t entrySize = static_cast<uint32_t>(sizeof(SceneMatrixPair));
+        const uint32_t entrySize = static_cast<uint32_t>(sizeof(MatrixPairData));
         if(size != expectedCount * entrySize)
         {
             MLogError(LoadScene,OS_TEXT("Matrices size mismatch in file ") + filename);
@@ -225,7 +135,7 @@ namespace
             return false;
         }
 
-        scene->matricesPtr = reinterpret_cast<const SceneMatrixPair *>(mapped);
+        scene->matricesPtr = reinterpret_cast<const MatrixPairData *>(mapped);
         scene->matricesCount = expectedCount;
 
         return true;
@@ -242,7 +152,7 @@ namespace
         }
 
         const uint32_t size = mpm->GetFileLength(trs_index);
-        const uint32_t entrySize = static_cast<uint32_t>(sizeof(SceneTRS));
+        const uint32_t entrySize = static_cast<uint32_t>(sizeof(TRSData));
         if(size != expectedCount * entrySize)
         {
             MLogError(LoadScene,OS_TEXT("TRS size mismatch in file ") + filename);
@@ -256,7 +166,7 @@ namespace
             return false;
         }
 
-        scene->trsPtr = reinterpret_cast<const SceneTRS *>(mapped);
+        scene->trsPtr = reinterpret_cast<const TRSData *>(mapped);
         scene->trsCount = expectedCount;
 
         return true;
@@ -320,7 +230,7 @@ namespace
             const uint32_t name_len = *reinterpret_cast<const uint32_t *>(mapped + offset);
             offset += 4;
 
-            SceneNode node{};
+            NodeData node{};
             if(name_len>0)
             {
                 if(offset + name_len > size)
@@ -403,15 +313,16 @@ SceneData *LoadScene(const OSString &filename)
         return nullptr;
     }
 
-    SceneHeader sh{};
-    if(!ReadSceneHeader(mpm, sh, filename))
+    HeaderData *sh=ReadSceneHeader(mpm);
+
+    if(!sh)
     {
         delete mpm;
         return nullptr;
     }
 
     SceneData *scene = new SceneData();
-    scene->version = sh.version;
+    scene->version = sh->version;
     scene->mpm = mpm; // keep mapped memory alive
 
     if(!MapSceneName(mpm, scene, filename))
@@ -426,25 +337,25 @@ SceneData *LoadScene(const OSString &filename)
         return nullptr;
     }
 
-    if(!MapMatrices(mpm, scene, sh.matrixCount, filename))
+    if(!MapMatrices(mpm, scene, sh->matrixCount, filename))
     {
         delete scene;
         return nullptr;
     }
 
-    if(!MapTRS(mpm, scene, sh.trsCount, filename))
+    if(!MapTRS(mpm, scene, sh->trsCount, filename))
     {
         delete scene;
         return nullptr;
     }
 
-    if(!MapSubMeshes(mpm, scene, sh.subMeshCount, filename))
+    if(!MapSubMeshes(mpm, scene, sh->subMeshCount, filename))
     {
         delete scene;
         return nullptr;
     }
 
-    if(!MapNodes(mpm, scene, sh.nodeCount, filename))
+    if(!MapNodes(mpm, scene, sh->nodeCount, filename))
     {
         delete scene;
         return nullptr;

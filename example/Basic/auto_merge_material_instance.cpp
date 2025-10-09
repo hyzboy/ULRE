@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -31,7 +31,7 @@ class TestApp:public WorkObject
     struct
     {
         MaterialInstance *  mi;
-        Mesh *              mesh;
+        Primitive *              primitive;
     }render_obj[DRAW_OBJECT_COUNT]{};
 
     Pipeline *          pipeline            =nullptr;
@@ -74,26 +74,26 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        Geometry *prim=CreateGeometry("Triangle",VERTEX_COUNT,material->GetDefaultVIL(),
+        Geometry *geometry=CreateGeometry("Triangle",VERTEX_COUNT,material->GetDefaultVIL(),
                                         {{VAN::Position,   VF_V2F, position_data}});
 
-        if(!prim)
+        if(!geometry)
             return(false);
 
-        Add(prim);
+        Add(geometry);
 
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
-            render_obj[i].mesh=CreateMesh(prim,render_obj[i].mi,pipeline);
+            render_obj[i].primitive=CreatePrimitive(geometry,render_obj[i].mi,pipeline);
 
-            if(!render_obj[i].mesh)
+            if(!render_obj[i].primitive)
                 return(false);
 
             cci.mat=AxisRotate(deg2rad(TRI_ROTATE_ANGLE*i),AxisVector::Z);
 
-            CreateComponent<MeshComponent>(&cci,render_obj[i].mesh);
+            CreateComponent<PrimitiveComponent>(&cci,render_obj[i].primitive);
         }
 
         return(true);

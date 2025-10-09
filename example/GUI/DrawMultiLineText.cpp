@@ -1,7 +1,7 @@
 ﻿#include<hgl/type/StringViewList.h>
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/WorkManager.h>
-#include<hgl/component/MeshComponent.h>
+#include<hgl/component/PrimitiveComponent.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<random>
 
@@ -21,7 +21,7 @@ private:
     TextRender *        text_render         =nullptr;
 
     TextGeometry *     text_primitive      =nullptr;
-    Mesh *              render_obj          =nullptr;
+    Primitive *              render_obj          =nullptr;
 
 public:
 
@@ -67,14 +67,14 @@ private:
         if(!text_primitive||!text_primitive->IsValid())
             return(false);
 
-        render_obj=text_render->CreateMesh(text_primitive);
+        render_obj=text_render->CreatePrimitive(text_primitive);
 
         if(!render_obj)
             return(false);
 
-        CreateComponentInfo cci(GetSceneRoot());
+        CreateComponentInfo cci(GetWorldRootNode());
 
-        return CreateComponent<MeshComponent>(&cci,render_obj); //创建一个静态网格组件
+        return CreateComponent<PrimitiveComponent>(&cci,render_obj); //创建一个静态网格组件
     }
 
 public:

@@ -9,7 +9,7 @@ class InstanceAssignmentBuffer;
 class SceneNode;
 struct CameraInfo;
 class RenderComponent;
-class MeshComponent;
+class PrimitiveComponent;
 
 struct PipelineMaterialIndex:public Comparator<PipelineMaterialIndex>
 {
@@ -69,12 +69,12 @@ private:
                 uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count;
 
-        const   GeometryDataBuffer *        mesh_data_buffer;
-        const   GeometryDrawRange *        mesh_render_data;
+        const   GeometryDataBuffer *    geom_data_buffer;
+        const   GeometryDrawRange *     geom_draw_range;
 
     public:
 
-        void Set(Mesh *);
+        void Set(Primitive *);
     };
 
     IndirectDrawBuffer *icb_draw;
@@ -93,9 +93,9 @@ protected:
 
             VABList *               vab_list;
 
-    const   GeometryDataBuffer *        last_data_buffer;
+    const   GeometryDataBuffer *    last_data_buffer;
     const   VDM *                   last_vdm;
-    const   GeometryDrawRange *        last_render_data;
+    const   GeometryDrawRange *     last_draw_range;
 
             int                     first_indirect_draw_index;
             uint                    indirect_draw_count;
@@ -124,6 +124,6 @@ public:
     void Render(RenderCmdBuffer *);
 
     void UpdateTransformData();          //刷新所有对象的LocalToWorld矩阵
-    void UpdateMaterialInstanceData(MeshComponent *);
+    void UpdateMaterialInstanceData(PrimitiveComponent *);
 };//class PipelineMaterialBatch
 VK_NAMESPACE_END
