@@ -22,6 +22,7 @@ namespace
         uint8_t  indexStride;    // 0 if no indices, otherwise 1,2,4
         uint32_t indexCount;     // Number of indices (0 if no indices)
         uint8_t  attributeCount; // Number of attributes
+        uint8_t  texCoordCount;  // Number of TEXCOORD sets (attributes with names starting with "TEXCOORD")
     };
 #pragma pack(pop)
 
