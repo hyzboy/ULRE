@@ -25,7 +25,7 @@ namespace hgl::graph
 
     protected:
 
-        DescriptorBinding * scene_desc_binding  =nullptr;   ///<世界通用描述符绑定器(仅包含与世界相关的公用UBO，如天空等)
+        DescriptorBinding * world_desc_binding  =nullptr;   ///<世界通用描述符绑定器(仅包含与世界相关的公用UBO，如天空等)
 
         UBOSkyInfo *        ubo_sky_info        =nullptr;   ///<天空信息UBO
 
@@ -41,7 +41,7 @@ namespace hgl::graph
 
         RenderFramework *   GetRenderFramework()const{return render_framework;}
 
-        DescriptorBinding * GetDescriptorBinding()const{return scene_desc_binding;}                 ///<获取世界描述符绑定器
+        DescriptorBinding * GetDescriptorBinding()const{return world_desc_binding;}                 ///<获取世界描述符绑定器
 
     public:
 

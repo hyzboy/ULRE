@@ -50,12 +50,12 @@ namespace hgl::graph
     {
         render_framework=rf;
 
-        scene_desc_binding=new DescriptorBinding(DescriptorSetType::World);
+        world_desc_binding=new DescriptorBinding(DescriptorSetType::World);
 
         {
             ubo_sky_info=rf->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo);
             ubo_sky_info->data()->SetTime(10,0,0);  //早上10点
-            scene_desc_binding->AddUBO(ubo_sky_info);
+            world_desc_binding->AddUBO(ubo_sky_info);
         }
 
         root_node=new SceneNode(this);
@@ -64,6 +64,6 @@ namespace hgl::graph
     World::~World()
     {
         SAFE_CLEAR(root_node);
-        SAFE_CLEAR(scene_desc_binding);
+        SAFE_CLEAR(world_desc_binding);
     }
 }//namespace hgl::graph
