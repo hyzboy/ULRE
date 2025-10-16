@@ -456,6 +456,13 @@ ENDIF(UNIX)
 
 SOURCE_GROUP("Vulkan\\Surface" FILES ${VULKAN_SURFACE_SOURCE})
 
+SET(ACTOR_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/actor)
+
+SET(ACTOR_HEADER_FILES  ${ACTOR_INCLUDE_PATH}/Actor.h)
+SET(ACTOR_SOURCE_FILES  actor/Actor.cpp)
+
+SOURCE_GROUP("Actor" FILES ${ACTOR_HEADER_FILES} ${ACTOR_SOURCE_FILES})
+
 SET(VULKAN_RENDER_SOURCE    ${VK_RR_MATERIAL_FILES}
                             ${VK_INST_SOURCE}
                             ${VK_DEBUG_SOURCE}
@@ -503,5 +510,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${TEXT_SOURCE}
 
                                         ${VULKAN_RENDER_SOURCE}
-                                        ${VULKAN_SURFACE_SOURCE})
+                                        ${VULKAN_SURFACE_SOURCE}
 
+                                        ${ACTOR_HEADER_FILES} ${ACTOR_SOURCE_FILES}
+)
