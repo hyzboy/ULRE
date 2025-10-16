@@ -74,7 +74,8 @@ PrimitiveComponent *DrawNodePrimitive::GetPrimitiveComponent() const
 
 MaterialInstance *DrawNodePrimitive::GetMaterialInstance() const
 {
-    return primitive?primitive->GetMaterialInstance():nullptr;
+    //PrimitiveComponent中含有OverrideMaterial的逻辑，所以不要直接从primitive中取MaterialInstance
+    return comp?comp->GetMaterialInstance():nullptr;
 }
 
 NodeTransform *DrawNodePrimitive::GetTransform() const
