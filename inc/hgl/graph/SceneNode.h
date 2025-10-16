@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/type/ObjectList.h>
+#include<hgl/type/SortedSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/graph/NodeTransform.h>
 #include<hgl/graph/AABB.h>
@@ -24,7 +24,7 @@ namespace hgl::graph
 
     using SceneNodeID   =int64;
 
-    using SceneNodeList =ObjectList<SceneNode>;
+    using SceneNodeList =SortedSet<SceneNode *>;
 
     HGL_DEFINE_U16_IDNAME(SceneNodeName)
 
@@ -139,10 +139,10 @@ namespace hgl::graph
     public: //坐标相关方法
 
         virtual         void        UpdateWorldTransform() override;                                                ///<刷新世界变换
-        virtual         void        RefreshBoundingVolumes  ();                                                         ///<刷新绑定盒
+        virtual         void        RefreshBoundingVolumes  ();                                                     ///<刷新绑定盒
 
         virtual const   AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                         ///<取得本地坐标绑定盒
-//            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
+//            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                     ///<取得世界坐标绑定盒
 
     public: //组件相关方法
 
