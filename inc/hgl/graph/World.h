@@ -19,9 +19,11 @@ namespace hgl::graph
     {
         RenderFramework *render_framework=nullptr;      ///<渲染框架
 
-        U8String world_name;                            ///<世界名称
+        IDString world_name;                            ///<世界名称
 
         SceneNode *root_node;                           ///<世界根节点
+
+        SortedSet<SceneNode *> all_nodes;               ///<世界内所有节点
 
     protected:
 
@@ -35,7 +37,7 @@ namespace hgl::graph
 
     public:
 
-        const   U8String &  GetWorldName()const{return world_name;}                                 ///<获取世界名称
+        const   IDString &  GetWorldName()const{return world_name;}                                 ///<获取世界名称
 
                 SceneNode * GetRootNode (){return root_node;}                                       ///<获取世界根节点
 
@@ -61,6 +63,8 @@ namespace hgl::graph
             if(!root_node)
                 root_node=sn;
 
+            all_nodes.Add(sn);
+
             sn->OnChangeScene(this);
             return sn;
         }
@@ -69,7 +73,7 @@ namespace hgl::graph
     };//class World
 
     bool RegisterWorld(World *sw);                      ///<注册世界
-    bool UnregisterWorld(const U8String &world_name);   ///<注销世界
+    bool UnregisterWorld(const IDString &world_name);   ///<注销世界
 
     inline bool UnregisterWorld(World *sw)              ///<注销世界
     {
@@ -78,5 +82,5 @@ namespace hgl::graph
         return UnregisterWorld(sw->GetWorldName());
     }
 
-    World *GetWorld(const U8String &world_name);        ///<获取指定名称的世界
+    World *GetWorld(const IDString &world_name);        ///<获取指定名称的世界
 }//namespace hgl::graph

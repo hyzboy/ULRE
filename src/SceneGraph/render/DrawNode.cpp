@@ -83,4 +83,3 @@ NodeTransform *DrawNodePrimitive::GetTransform() const
     return comp; // 直接使用组件自身的变换
 }
 VK_NAMESPACE_END
-
