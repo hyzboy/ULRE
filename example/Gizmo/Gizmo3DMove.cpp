@@ -31,6 +31,8 @@
 #include<hgl/graph/Ray.h>
 #include<hgl/log/Log.h>
 
+USING_COMPONENT_NAMESPACE
+
 VK_NAMESPACE_BEGIN
 
 namespace

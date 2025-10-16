@@ -5,6 +5,11 @@
 #include<hgl/graph/RenderBatchMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKMaterial.h>
+
+COMPONENT_NAMESPACE_BEGIN
+class PrimitiveComponent;
+COMPONENT_NAMESPACE_END
+
 namespace hgl::graph
 {
     /**
@@ -43,7 +48,7 @@ namespace hgl::graph
         virtual bool Render(RenderCmdBuffer *);                                 ///<渲染所有对象
 
         virtual void UpdateTransformData();                                     ///<更新所有对象的变换数据
-        virtual void UpdateMaterialInstanceData(PrimitiveComponent *);               ///<有对象互换了材质实例
+        virtual void UpdateMaterialInstanceData(PrimitiveComponent *);          ///<有对象互换了材质实例
 
         virtual void Clear();                                                   ///<彻底清理
     };//class RenderCollector

@@ -26,7 +26,7 @@ namespace hgl::graph
 
         for(auto component:sn->GetComponents())
         {
-            auto *rc = dynamic_cast<COMPONENT_NAMESPACE::RenderComponent *>(component);
+            auto *rc = dynamic_cast<RenderComponent *>(component);
             if(!rc) continue;
             if(!rc->CanRender()) continue;
 

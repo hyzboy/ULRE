@@ -7,6 +7,8 @@
 #include<hgl/graph/OBB.h>
 #include<hgl/component/Component.h>
 
+USING_COMPONENT_NAMESPACE
+
 namespace hgl::io
 {
     class EventDispatcher; // 前向声明事件分发器
@@ -168,10 +170,10 @@ namespace hgl::graph
             comp->OnDetach(this);            //调用组件的OnDetach方法
         }
 
-                        bool        Contains            (Component *comp){return component_set.Contains(comp);}     ///<是否包含指定组件
+                        bool        Contains            (       Component *comp){return component_set.Contains(comp);}     ///<是否包含指定组件
 
-                        bool        HasComponent        (const ComponentManager *);                                 ///<是否有指定组件管理器的组件
-        virtual         int         GetComponents       (ComponentList &comp_list,const ComponentManager *);        ///<取得所有组件
+                        bool        HasComponent        (const  ComponentManager *);                                 ///<是否有指定组件管理器的组件
+        virtual         int         GetComponents       (       ComponentList &comp_list,const  ComponentManager *); ///<取得所有组件
 
                 const ComponentSet &GetComponents       ()const{return component_set;}
     };//class SceneNode
