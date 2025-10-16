@@ -38,7 +38,7 @@ bool InitGizmoResource(RenderFramework *);
 void FreeGizmoResource();
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);
-ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape);
+COMPONENT_NAMESPACE::ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape);
 
 SceneNode *GetGizmoMoveNode(World *);
 //SceneNode *GetGizmoScaleMesh();

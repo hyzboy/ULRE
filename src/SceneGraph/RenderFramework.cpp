@@ -16,13 +16,15 @@
 #include<hgl/log/Logger.h>
 #include<hgl/io/event/MouseEvent.h>
 
+COMPONENT_NAMESPACE_BEGIN
+void InitializeComponentManager();
+void UninitializeComponentManager();
+COMPONENT_NAMESPACE_END
+
 VK_NAMESPACE_BEGIN
 
 bool InitShaderCompiler();
 void CloseShaderCompiler();
-
-void InitializeComponentManager();
-void UninitializeComponentManager();
 
 namespace mtl
 {

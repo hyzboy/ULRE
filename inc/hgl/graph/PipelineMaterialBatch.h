@@ -3,13 +3,17 @@
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
 #include<hgl/type/ArrayList.h>
+#include<hgl/component/Component.h>
+
+COMPONENT_NAMESPACE_BEGIN
+class RenderComponent;
+class PrimitiveComponent;
+COMPONENT_NAMESPACE_END
 
 VK_NAMESPACE_BEGIN
 class InstanceAssignmentBuffer;
 class SceneNode;
 struct CameraInfo;
-class RenderComponent;
-class PrimitiveComponent;
 
 struct PipelineMaterialIndex:public Comparator<PipelineMaterialIndex>
 {

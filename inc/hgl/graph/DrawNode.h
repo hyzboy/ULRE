@@ -4,18 +4,25 @@
 #include<hgl/type/ArrayList.h>
 #include<hgl/type/SortedSet.h>
 #include<hgl/graph/NodeTransform.h>   // need full type for combined transform
+#include<hgl/component/Component.h>
 
 namespace hgl
 {
+    namespace component
+    {
+        class Component;
+        class PrimitiveComponent;
+        class StaticMeshComponent; // forward
+    }//namespace component
+
+    using namespace component;
+
     namespace graph
     {
         class Primitive;
         class MeshNode;            // forward
         class MaterialInstance;
-        class PrimitiveComponent;
-        class StaticMeshComponent; // forward
         class SceneNode;       // forward
-        class PrimitiveComponent;       // forward
 
         // 抽象渲染节点：由各组件派生，提供统一的SceneNode/Component/Mesh访问，并提供渲染用的变换
         class DrawNode:public Comparator<DrawNode>

@@ -256,8 +256,6 @@ class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 
-class PrimitiveComponent;
-
 class SceneNode;
 class World;
 class RenderCollector;

@@ -35,14 +35,22 @@
 *   PrimitiveComponent是静态网格组件，它是一个具体的RenderComponent实现。
 */
 
-#define COMPONENT_NAMESPACE         hgl::graph
+#define COMPONENT_NAMESPACE         hgl::component
 #define COMPONENT_NAMESPACE_BEGIN   namespace COMPONENT_NAMESPACE {
 #define COMPONENT_NAMESPACE_END     }
 
+#define USING_COMPONENT_NAMESPACE   using namespace COMPONENT_NAMESPACE;
+
+namespace hgl::graph
+{
+    class SceneNode;
+}//namespace hgl::graph
+
 COMPONENT_NAMESPACE_BEGIN
 
+using namespace hgl::graph;
+
 class ComponentManager;
-class SceneNode;
 
 struct ComponentData
 {
