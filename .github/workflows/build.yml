@@ -1,0 +1,94 @@
+# ULRE Build Workflow
+name: Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+# Limit permissions of the GITHUB_TOKEN to minimum required
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libvulkan-dev \
+          libglm-dev \
+          libjsoncpp-dev \
+          libexpat1-dev \
+          libwayland-dev \
+          libxcb1-dev
+
+    - name: Configure CMake
+      run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+    - name: Build
+      run: cmake --build build --parallel
+
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        # Use a recent stable vcpkg commit - update periodically for security updates
+        vcpkgGitCommitId: 'c82f74667287d3dc386bce81e44964370c91a289'  # 2024.09.30
+
+    - name: Install Dependencies
+      run: |
+        vcpkg install glm:x64-windows jsoncpp:x64-windows expat:x64-windows
+
+    - name: Configure CMake
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+  code-quality:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install clang-format
+      run: sudo apt-get install -y clang-format
+
+    - name: Check code formatting
+      run: |
+        # Check for code formatting issues - fail if any are found
+        if ! find src inc -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror 2>&1; then
+          echo "::error::Code formatting issues found. Please run 'clang-format -i' on the affected files."
+          exit 1
+        fi
+        echo "Code formatting check passed."
