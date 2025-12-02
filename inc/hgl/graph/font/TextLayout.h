@@ -2,6 +2,7 @@
 
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/color/Color4ub.h>
+#include<hgl/math/Vector.h>
 
 namespace hgl::graph
 {

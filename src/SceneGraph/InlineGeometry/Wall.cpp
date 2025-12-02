@@ -438,8 +438,8 @@ namespace hgl::graph::inline_geometry
                 else
                 {
                     // right is outer: generate right arc, keep left as single center
-                    float a1_right = a1_left + (float)M_PI;
-                    float a2_right = a2_left + (float)M_PI;
+                    float a1_right = a1_left + (float)HGL_PI;
+                    float a2_right = a2_left + (float)HGL_PI;
                     float da_right = a2_right - a1_right;
                     
                     while(da_right <= -HGL_PI) da_right += 2 * HGL_PI;

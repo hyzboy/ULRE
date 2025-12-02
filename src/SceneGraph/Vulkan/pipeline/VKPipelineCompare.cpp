@@ -1,6 +1,6 @@
 #include<vulkan/vulkan.h>
 #include<hgl/TypeFunc.h>
-#include<hgl/math/MathConst.h>
+#include<hgl/math/FloatPrecision.h>
 
 namespace hgl::graph
 {

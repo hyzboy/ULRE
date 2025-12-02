@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/graph/camera/CameraControl.h>
-#include<hgl/math/Matrix.h>
+#include<hgl/math/Projection.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
