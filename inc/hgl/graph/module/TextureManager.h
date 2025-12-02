@@ -4,7 +4,6 @@
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/RectScope.h>
-#include<hgl/type/object/ObjectBaseInfo.h>
 #include<hgl/graph/ImageRegion.h>
 #include<hgl/graph/VKTexture.h>
 

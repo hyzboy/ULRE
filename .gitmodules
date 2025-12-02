@@ -4,6 +4,9 @@
 [submodule "CMCore"]
 	path = CMCore
 	url = http://git.hyzgame.com:3000/hyzboy/CMCore
+[submodule "CMMath"]
+	path = CMMath
+	url = http://git.hyzgame.com:3000/hyzboy/CMMath
 [submodule "CMPlatform"]
 	path = CMPlatform
 	url = http://git.hyzgame.com:3000/hyzboy/CMPlatform
