@@ -39,7 +39,10 @@ src/ShaderGen/          # Shader生成
 src/GUI/                # GUI实现
 ```
 
-这些代码虽然在ULRE中，但实际上与CMSceneGraph有功能重叠。
+这些代码虽然在ULRE中，但实际上与CMSceneGraph有功能重叠：
+- ULRE中有SceneNode/NodeTransform，CMSceneGraph也应有类似场景节点定义
+- ULRE中Camera系统与CMSceneGraph可能都有相机相关代码
+- 几何体创建(InlineGeometry)和几何计算(AABB/Ray等)分散在两处
 
 ---
 
@@ -236,7 +239,7 @@ Console/Terminal
 
 ### 从 ULRE/src/SceneGraph/Vulkan 独立到 CMVulkan
 ```
-VK*.cpp/h (约50+文件)
+VK*.cpp/h (共78个文件)
 Platform/* (各平台Vulkan初始化)
 Debug/* (调试工具)
 pipeline/* (管线相关)
@@ -297,5 +300,5 @@ IntersectionTests
 
 ---
 
-*文档生成时间: 2024年*
+*文档生成时间: 2025年12月*
 *基于对 ULRE 工程代码结构的分析*
