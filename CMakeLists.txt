@@ -19,7 +19,9 @@ include(math)
 include(vulkan)
 include(use_cm_module)
 
-SET(ULRE    CMCore
+SET(ULRE    CMCoreType
+            CMMath
+            CMCore
             CMPlatform
             CMAssetsManage
             CMSceneGraph
