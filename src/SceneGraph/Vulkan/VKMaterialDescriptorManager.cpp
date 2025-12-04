@@ -1,6 +1,6 @@
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKDescriptorSetType.h>
-#include<hgl/TypeFunc.h>
+#include<hgl/type/EnumUtil.h>
 
 VK_NAMESPACE_BEGIN
 void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDescriptor *sd)

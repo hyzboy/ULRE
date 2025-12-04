@@ -1,5 +1,5 @@
 #include<vulkan/vulkan.h>
-#include<hgl/TypeFunc.h>
+#include<hgl/type/MemoryUtil.h>
 #include<hgl/math/FloatPrecision.h>
 
 namespace hgl::graph
