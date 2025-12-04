@@ -129,8 +129,8 @@ private:
 
             cci.mat=TranslateMatrix(0,3,0);
 
-            Primitive *prim_triangle = CreatePrimitive(prim_triangle, material_instance, pipeline);
-            auto comp_triangle = CreateComponent<PrimitiveComponent>(&cci, prim_triangle);
+            Primitive *mesh_triangle = CreatePrimitive(prim_triangle, material_instance, pipeline);
+            auto comp_triangle = CreateComponent<PrimitiveComponent>(&cci, mesh_triangle);
         }
 
         // 创建五边形柱网格 (位置: 后方)
