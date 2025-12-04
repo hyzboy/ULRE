@@ -23,5 +23,3 @@ CreateProject(04_LineRenderTest                 LineRenderTest.cpp)
 
 
 CreateProject(05_LoadGeometry                   LoadGeometry.cpp GeometryTest.cpp)
-
-CreateProject(06_SceneBoundTest                 SceneBoundTest.cpp SceneData.h LoadScene.cpp)
