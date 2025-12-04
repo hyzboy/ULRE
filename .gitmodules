@@ -1,6 +1,9 @@
 [submodule "CMCMakeModule"]
 	path = CMCMakeModule
 	url = http://git.hyzgame.com:3000/hyzboy/CMCMakeModule
+[submodule "CMCoreType"]
+	path = CMCoreType
+	url = http://git.hyzgame.com:3000/hyzboy/CMCoreType
 [submodule "CMCore"]
 	path = CMCore
 	url = http://git.hyzgame.com:3000/hyzboy/CMCore

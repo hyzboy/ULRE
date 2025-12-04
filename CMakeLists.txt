@@ -34,6 +34,7 @@ SET(ULRE    CMCore
             ${Vulkan_LIBRARIES}
 )
 
+use_cm_module(CoreType)
 use_cm_module(Core)
 use_cm_module(Util)
 use_cm_module(2D)
