@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/GeometryCreater.h>
@@ -240,8 +240,8 @@ private:
 
         RenderMesh *rm=*render_mesh.At(0);
 
-        AABB aabb;
-        rm->component->GetWorldAABB(aabb);
+        math::AABB aabb;
+        rm->component->GetWorldAABB(math::AABB);
 
         camera_control->SetPosition(aabb.GetMax()*Vector3f(2,2,2));
         camera_control->SetTarget(Vector3f(0,0,0));

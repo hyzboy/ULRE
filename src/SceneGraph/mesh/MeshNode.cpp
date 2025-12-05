@@ -17,7 +17,7 @@ namespace hgl::graph
 
     void MeshNode::RefreshBoundingVolumes()
     {
-        AABB local;
+        math::AABB local;
         bool has_box=false;
 
         // 合并自身 submesh 盒子

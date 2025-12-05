@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/math/Math.h>
 #include<hgl/math/Vector.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/type/String.h>

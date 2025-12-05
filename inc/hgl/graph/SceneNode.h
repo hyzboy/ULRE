@@ -3,8 +3,8 @@
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/graph/NodeTransform.h>
-#include<hgl/graph/AABB.h>
-#include<hgl/graph/OBB.h>
+#include<hgl/math/geometry/AABB.h>
+#include<hgl/math/geometry/OBB.h>
 #include<hgl/component/Component.h>
 
 USING_COMPONENT_NAMESPACE
@@ -50,8 +50,8 @@ namespace hgl::graph
 
     protected:
 
-        AABB local_bounding_box;                                                                                    ///<本地坐标绑定盒
-        OBB world_bounding_box;                                                                                     ///<世界坐标绑定盒
+        math::AABB local_bounding_box;                                                                              ///<本地坐标绑定盒
+        math::OBB world_bounding_box;                                                                               ///<世界坐标绑定盒
 
     protected:
 
@@ -143,8 +143,8 @@ namespace hgl::graph
         virtual         void        UpdateWorldTransform() override;                                                ///<刷新世界变换
         virtual         void        RefreshBoundingVolumes  ();                                                     ///<刷新绑定盒
 
-        virtual const   AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                         ///<取得本地坐标绑定盒
-//            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                     ///<取得世界坐标绑定盒
+        virtual const   math::AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                   ///<取得本地坐标绑定盒
+//            virtual const   math::AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}               ///<取得世界坐标绑定盒
 
     public: //组件相关方法
 

@@ -1,4 +1,4 @@
-// sphere、cylinear、cone、tours code from McNopper,website: https://github.com/McNopper/GLUS
+﻿// sphere、cylinear、cone、tours code from McNopper,website: https://github.com/McNopper/GLUS
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -150,7 +150,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p = pc->Create();
 
-        BoundingVolumes bv;
+        math::BoundingVolumes bv;
 
         bv.SetFromAABB(Vector3f(-R,-R,-R), Vector3f(R,R,R));
 

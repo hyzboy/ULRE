@@ -1,11 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/Size2.h>
 #include<hgl/color/Color4f.h>
-#include<hgl/graph/AABB.h>
+#include<hgl/math/geometry/AABB.h>
 
 namespace hgl::graph
 {

@@ -1,4 +1,4 @@
-#include "InlineGeometryCommon.h"
+﻿#include "InlineGeometryCommon.h"
 
 namespace hgl::graph::inline_geometry
 {
@@ -147,7 +147,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        BoundingVolumes bv;
+        math::BoundingVolumes bv;
 
         bv.SetFromAABB(Vector3f(-0.5f,-0.5f,0.0f),Vector3f(0.5f,0.5f,0.0f));
 

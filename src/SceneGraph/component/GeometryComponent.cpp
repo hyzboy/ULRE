@@ -1,10 +1,10 @@
-#include<hgl/component/GeometryComponent.h>
-#include<hgl/graph/BoundingVolumes.h>
+﻿#include<hgl/component/GeometryComponent.h>
+#include<hgl/math/geometry/BoundingVolumes.h>
 
 COMPONENT_NAMESPACE_BEGIN
-const bool GeometryComponent::GetWorldAABB(AABB &box)
+const bool GeometryComponent::GetWorldAABB(math::AABB &box)
 {
-    AABB local_aabb;
+    math::AABB local_aabb;
 
     if(!GetLocalAABB(local_aabb))
         return false;
@@ -13,9 +13,9 @@ const bool GeometryComponent::GetWorldAABB(AABB &box)
     return true;
 }
 
-const bool GeometryComponent::GetWorldOBB(OBB &box)
+const bool GeometryComponent::GetWorldOBB(math::OBB &box)
 {
-    AABB local_aabb;
+    math::AABB local_aabb;
 
     if(!GetLocalAABB(local_aabb))
         return false;
@@ -26,13 +26,13 @@ const bool GeometryComponent::GetWorldOBB(OBB &box)
 
 const bool GeometryComponent::GetWorldOBBMatrix(Matrix4f &obb_matrix,const float cube_size)
 {
-    AABB aabb;
+    math::AABB aabb;
 
     if(!GetLocalAABB(aabb))
         return false;
 
     //这两行也是对的
-    //OBB obb(GetLocalToWorldMatrix(),aabb);
+    //math::OBB obb(GetLocalToWorldMatrix(),aabb);
     //obb_matrix=obb.GetMatrix(cube_size);
 
     // 1. 计算最终的缩放向量
