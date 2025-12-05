@@ -1,6 +1,7 @@
 ﻿#include<hgl/io/FileInputStream.h>
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>
+#include<hgl/math/Sum.h>
 #include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKVertexInputLayout.h>
@@ -143,7 +144,7 @@ namespace
 
         // names block
         uint total_name_length = 0;
-        sum(&total_name_length, attribute_name_length, header.attributeCount);
+        math::sum(&total_name_length, attribute_name_length, header.attributeCount);
         total_name_length += header.attributeCount; // trailing zeros
 
         if(static_cast<size_t>(meta_end - meta) < total_name_length)

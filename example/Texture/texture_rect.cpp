@@ -2,8 +2,6 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/math/Math.h>
-
 #include<hgl/component/PrimitiveComponent.h>
 
 using namespace hgl;

@@ -1,7 +1,6 @@
 ﻿// 该范例主要演示使用RenderCollector系统绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 
 #include<hgl/WorkManager.h>
-#include<hgl/math/Math.h>
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>

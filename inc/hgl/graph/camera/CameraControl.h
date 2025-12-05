@@ -5,10 +5,13 @@
 #include<hgl/type/IDName.h>
 #include<hgl/io/event/WindowEvent.h>
 
+namespace hgl::math
+{  
+    struct Ray;
+}
+
 namespace hgl::graph
 {
-    struct Ray;
-
     HGL_DEFINE_IDNAME(CameraControlIDName,   char)
 
     class CameraControl:public io::WindowEvent
