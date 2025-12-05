@@ -1,10 +1,10 @@
-#include<hgl/io/FileInputStream.h>
+﻿#include<hgl/io/FileInputStream.h>
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKVertexInputLayout.h>
-#include<hgl/graph/BoundingVolumes.h>
+#include<hgl/math/geometry/BoundingVolumes.h>
 #include"VKGeometryData.h"
 #include<hgl/io/MiniPack.h>
 
@@ -64,7 +64,7 @@ namespace
     }
 
     // Read and convert BoundingVolumes from MiniPack
-    bool ReadBoundingVolumes(hgl::io::minipack::MiniPackReader *mpr, BoundingVolumes &bounds, const OSString &filename)
+    bool ReadBoundingVolumes(hgl::io::minipack::MiniPackReader *mpr, ::hgl::math::BoundingVolumes &bounds, const OSString &filename)
     {
         const int32 bounds_index = mpr->FindFile(AnsiStringView("BoundingVolumes"));
         if(bounds_index < 0)
@@ -73,14 +73,14 @@ namespace
             return false;
         }
 
-        if(mpr->GetFileLength(bounds_index) != sizeof(BoundingVolumesData))
+        if(mpr->GetFileLength(bounds_index) != sizeof(::hgl::math::BoundingVolumesData))
         {
             MLogError(LoadGeometry,OS_TEXT("BoundingVolumes size mismatch in file ") + filename);
             return false;
         }
 
-        BoundingVolumesData pb{};
-        if(mpr->ReadFile(bounds_index, &pb, 0, sizeof(BoundingVolumesData)) != sizeof(BoundingVolumesData))
+        math::BoundingVolumesData pb{};
+        if(mpr->ReadFile(bounds_index, &pb, 0, sizeof(math::BoundingVolumesData)) != sizeof(math::BoundingVolumesData))
         {
             MLogError(LoadGeometry,OS_TEXT("Cannot read BoundingVolumes from file ") + filename);
             return false;
@@ -379,7 +379,7 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
     }
 
     // 2) Read BoundingVolumes
-    BoundingVolumes bounding_volumes;
+    math::BoundingVolumes bounding_volumes;
 
     if(!ReadBoundingVolumes(mpr, bounding_volumes, filename))
     {

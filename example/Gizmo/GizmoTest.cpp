@@ -1,6 +1,6 @@
 ﻿#include<hgl/WorkManager.h>
 #include"Gizmo.h"
-#include<hgl/graph/Ray.h>
+#include<hgl/math/geometry/Ray.h>
 
 using namespace hgl;
 using namespace hgl::graph;

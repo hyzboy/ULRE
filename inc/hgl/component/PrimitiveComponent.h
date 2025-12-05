@@ -100,7 +100,7 @@ public:
         return mcd->primitive;
     }
 
-    const bool GetLocalAABB(AABB &box) const override
+    const bool GetLocalAABB(math::AABB &box) const override
     {
         Primitive *primitive=GetPrimitive();
 

@@ -6,7 +6,7 @@
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>
 #include<hgl/graph/VKFormat.h>
-#include<hgl/graph/AABB.h>
+#include<hgl/math/geometry/AABB.h>
 #include<cstring>
 
 namespace hgl::graph
@@ -260,7 +260,7 @@ namespace hgl::graph
             return(true);
         }
 
-        AABB GetAABB()const
+        math::AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -274,7 +274,7 @@ namespace hgl::graph
             max_point.z=0;
             max_point.w=0;
 
-            return AABB(min_point,max_point);
+            return math::AABB(min_point,max_point);
         }
 
         bool Write(const T v1)
@@ -361,7 +361,7 @@ namespace hgl::graph
             return(true);
         }
 
-        AABB GetAABB()const
+        math::AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -372,7 +372,7 @@ namespace hgl::graph
             max_point.z=0;
             max_point.w=0;
 
-            return AABB(min_point,max_point);
+            return math::AABB(min_point,max_point);
         }
 
         bool Write(const T v1,const T v2)
@@ -685,7 +685,7 @@ namespace hgl::graph
             return(true);
         }
 
-        AABB GetAABB()const
+        math::AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -694,7 +694,7 @@ namespace hgl::graph
             min_point.w=0;
             max_point.w=0;
 
-            return AABB(min_point,max_point);
+            return math::AABB(min_point,max_point);
         }
 
         bool Write(const T v1,const T v2,const T v3)
@@ -963,7 +963,7 @@ namespace hgl::graph
             return(true);
         }
 
-        AABB GetAABB()const
+        math::AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -972,7 +972,7 @@ namespace hgl::graph
             min_point.w=0;
             max_point.w=0;
 
-            return AABB(min_point,max_point);
+            return math::AABB(min_point,max_point);
         }
 
         bool Write(const T v1,const T v2,const T v3,const T v4)

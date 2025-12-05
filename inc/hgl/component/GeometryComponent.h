@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/component/SceneComponent.h>
-#include<hgl/graph/AABB.h>
-#include<hgl/graph/OBB.h>
+#include<hgl/math/geometry/AABB.h>
+#include<hgl/math/geometry/OBB.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
@@ -18,10 +18,10 @@ public:
 
     virtual ~GeometryComponent()=default;
 
-    virtual const bool GetLocalAABB(AABB &box) const=0;
+    virtual const bool GetLocalAABB(math::AABB &box) const=0;
 
-    const bool GetWorldAABB(AABB &box);
-    const bool GetWorldOBB(OBB &box);
+    const bool GetWorldAABB(math::AABB &box);
+    const bool GetWorldOBB(math::OBB &box);
     const bool GetWorldOBBMatrix(Matrix4f &obb_matrix,const float cube_size=1.0f);
 };//class GeometryComponent
 

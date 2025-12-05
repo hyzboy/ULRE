@@ -1,7 +1,6 @@
 ﻿// 该范例主要演示使用一个材质下的不同材质实例传递颜色参数绘制三角形，并依赖RenderCollector中的自动合并功能，让同一材质下所有不同材质实例的对象一次渲染完成。
 
 #include<hgl/WorkManager.h>
-#include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>

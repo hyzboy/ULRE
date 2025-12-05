@@ -5,7 +5,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/camera/Camera.h>
-#include<hgl/graph/Ray.h>
+#include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VertexDataManager.h>

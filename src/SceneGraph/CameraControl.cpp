@@ -1,8 +1,8 @@
-#include<hgl/graph/camera/CameraControl.h>
+﻿#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/graph/Ray.h>
+#include<hgl/math/geometry/Ray.h>
 
 namespace hgl::graph
 {

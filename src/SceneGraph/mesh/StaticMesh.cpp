@@ -1,4 +1,4 @@
-#include <hgl/graph/mesh/StaticMesh.h>
+﻿#include <hgl/graph/mesh/StaticMesh.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -94,7 +94,7 @@ void StaticMesh::UpdatePrimitives()
 void StaticMesh::RefreshBoundingVolumes()
 {
     bool has_box = false;
-    AABB box;
+    math::AABB box;
 
     for(Primitive *sm: primitive_list)
     {
@@ -114,7 +114,7 @@ void StaticMesh::RefreshBoundingVolumes()
     }
 
     if(has_box)
-        bounding_volumes.SetFromAABB(box);
+        this->bounding_volumes.SetFromAABB(box);
     else
         bounding_volumes.Clear();
 }

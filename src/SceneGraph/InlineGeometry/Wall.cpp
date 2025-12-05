@@ -1,4 +1,4 @@
-#include<hgl/graph/geo/Wall.h>
+﻿#include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
@@ -892,7 +892,7 @@ namespace hgl::graph::inline_geometry
                 maxZ = std::max(maxZ, fv.z);
             }
 
-            BoundingVolumes bv;
+            math::BoundingVolumes bv;
 
             bv.SetFromAABB(Vector3f(minX, minY, minZ), Vector3f(maxX, maxY, maxZ));
 

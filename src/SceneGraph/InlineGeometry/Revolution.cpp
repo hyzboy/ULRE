@@ -1,4 +1,4 @@
-#include<hgl/graph/geo/Revolution.h>
+﻿#include<hgl/graph/geo/Revolution.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
 #include <algorithm>
@@ -464,7 +464,7 @@ namespace hgl::graph::inline_geometry
                                rci->revolution_center.y + max_radius,
                                rci->revolution_center.z + max_height);
 
-            BoundingVolumes bv;
+            math::BoundingVolumes bv;
 
             bv.SetFromAABB(min_bound,max_bound);
 

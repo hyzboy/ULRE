@@ -1,8 +1,9 @@
-﻿#ifndef HGL_GRAPH_VULKAN_SUBMIT_QUEUE_INCLUDE
-#define HGL_GRAPH_VULKAN_SUBMIT_QUEUE_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKFence.h>
+#include<hgl/time/TimeConst.h>
+
 VK_NAMESPACE_BEGIN
 class DeviceQueue
 {
@@ -45,4 +46,3 @@ public:
     bool Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem);
 };//class DeviceQueue
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_SUBMIT_QUEUE_INCLUDE

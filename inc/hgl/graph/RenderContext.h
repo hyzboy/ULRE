@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/camera/Camera.h>
@@ -6,7 +6,7 @@
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/graph/Ray.h>
+#include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph

@@ -7,7 +7,6 @@
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/GeometryCreater.h>
-#include<hgl/math/Math.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/camera/ViewModelCameraControl.h>
 

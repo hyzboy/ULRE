@@ -25,7 +25,7 @@ class StaticMesh
 
     PrimitiveList           primitive_list;                                                                             ///< Primitive列表
 
-    BoundingVolumes         bounding_volumes;                                                                           ///< 所有 Primitive 合并的本地包围体
+    math::BoundingVolumes   bounding_volumes;                                                                           ///< 所有 Primitive 合并的本地包围体
 
 public:
 
@@ -59,7 +59,7 @@ public: // Primitive 管理
 public: // 包围盒
 
     void                        RefreshBoundingVolumes  ();
-    const BoundingVolumes &     GetBoundingVolumes      () const { return bounding_volumes; }
+    const math::BoundingVolumes &     GetBoundingVolumes      () const { return bounding_volumes; }
 
 private:
 

@@ -96,7 +96,7 @@ namespace hgl::graph
         int count=child_nodes.GetCount();
         SceneNode **sub=child_nodes.GetData();
 
-        AABB local,world;
+        math::AABB local,world;
 
         (*sub)->RefreshBoundingVolumes();
         local=(*sub)->GetLocalBoundingBox();

@@ -368,7 +368,7 @@ namespace hgl::graph::inline_geometry
                 maxBounds.z = std::max(maxBounds.z, topVertex.z);
             }
 
-            BoundingVolumes bv;
+            math::BoundingVolumes bv;
 
             bv.SetFromAABB(minBounds,maxBounds);
 

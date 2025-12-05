@@ -2,7 +2,7 @@
 
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
-#include<hgl/graph/BoundingVolumes.h>
+#include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/VK.h>
 #include<hgl/log/Log.h>
 
@@ -27,16 +27,16 @@ protected:
 
 protected:
 
-    BoundingVolumes bounding_volumes;    ///<包围体
+    math::BoundingVolumes bounding_volumes;    ///<包围体
     
 public:
 
     Geometry(const AnsiString &pn,GeometryData *pd);
     virtual ~Geometry();
 
-          void             SetBoundingVolumes(const BoundingVolumes &bv){bounding_volumes=bv;}
+          void             SetBoundingVolumes(const math::BoundingVolumes &bv){bounding_volumes=bv;}
 
-    const BoundingVolumes &GetBoundingVolumes()const{return bounding_volumes;}
+    const math::BoundingVolumes &GetBoundingVolumes()const{return bounding_volumes;}
 
 public:
 
