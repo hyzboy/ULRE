@@ -23,7 +23,6 @@
 
 #include"GizmoResource.h"
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/World.h>
 #include<hgl/component/PrimitiveComponent.h>
@@ -69,7 +68,7 @@ namespace
 
     protected:
 
-        Ray     MouseRay;
+        math::Ray     MouseRay;
 
         int     CurAXIS=-1;             //当前鼠标选中轴
         float   CurDist=0;              //当前距离

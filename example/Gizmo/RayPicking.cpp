@@ -37,15 +37,15 @@ private:
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          pipeline_plane_grid =nullptr;
-    Geometry *         geom_plane_grid     =nullptr;
+    Geometry *          geom_plane_grid     =nullptr;
 
     Material *          mtl_line            =nullptr;
     MaterialInstance *  mi_line             =nullptr;
     Pipeline *          pipeline_line       =nullptr;
-    Geometry *         prim_line           =nullptr;
+    Geometry *          prim_line           =nullptr;
     VABMap *            prim_line_vab_map   =nullptr;
 
-    Ray                 ray;
+    math::Ray           ray;
 
 private:
 
