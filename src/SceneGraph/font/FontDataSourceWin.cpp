@@ -1,5 +1,5 @@
 ﻿#include"FontDataSourceWin.h"
-#include<hgl/color/Gamma.h>
+#include<hgl/color/sRGBConvert.h>
 
 namespace hgl::graph
 {
