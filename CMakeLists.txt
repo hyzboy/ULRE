@@ -22,7 +22,6 @@ include(use_cm_module)
 SET(ULRE    CMCoreType
             CMMath
             CMCore
-            CMPlatform
             CMAssetsManage
             CMSceneGraph
             CMUtil
@@ -42,7 +41,6 @@ use_cm_module(Core)
 use_cm_module(Util)
 use_cm_module(2D)
 use_cm_module(GUI)
-use_cm_module(Platform)
 use_cm_module(AssetsManage)
 use_cm_module(SceneGraph)
 
