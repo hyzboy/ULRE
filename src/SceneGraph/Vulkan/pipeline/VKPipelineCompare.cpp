@@ -26,10 +26,10 @@ namespace hgl::graph
         if(a->vertexAttributeDescriptionCount!=b->vertexAttributeDescriptionCount)
             return(false);
 
-        if(hgl_cmp(a->pVertexBindingDescriptions,b->pVertexBindingDescriptions,a->vertexBindingDescriptionCount))
+        if(mem_compare(a->pVertexBindingDescriptions,b->pVertexBindingDescriptions,a->vertexBindingDescriptionCount))
             return(false);
 
-        if(hgl_cmp(a->pVertexAttributeDescriptions,b->pVertexAttributeDescriptions,a->vertexAttributeDescriptionCount))
+        if(mem_compare(a->pVertexAttributeDescriptions,b->pVertexAttributeDescriptions,a->vertexAttributeDescriptionCount))
             return(false);
 
         return(true);
@@ -71,10 +71,10 @@ namespace hgl::graph
         if(a->scissorCount!=b->scissorCount)
             return(false);
 
-        if(hgl_cmp(a->pViewports,b->pViewports,a->viewportCount))
+        if(mem_compare(a->pViewports,b->pViewports,a->viewportCount))
             return(false);
 
-        if(hgl_cmp(a->pScissors,b->pScissors,a->scissorCount))
+        if(mem_compare(a->pScissors,b->pScissors,a->scissorCount))
             return(false);
 
         return(true);
@@ -126,7 +126,7 @@ namespace hgl::graph
         if(a->pSampleMask!=b->pSampleMask)
             return(false);
 
-//        if(hgl_cmp(a->pSampleMask,b->pSampleMask,))     //未支持sample mask，所以暂无法比较
+//        if(mem_compare(a->pSampleMask,b->pSampleMask,))     //未支持sample mask，所以暂无法比较
 //            return(false);
 
         if(a->alphaToCoverageEnable!=b->alphaToCoverageEnable)
@@ -154,9 +154,9 @@ namespace hgl::graph
         if(a->stencilTestEnable!=b->stencilTestEnable)
             return(false);
 
-        if(hgl_cmp(a->front,b->front))
+        if(mem_compare(a->front,b->front))
             return(false);
-        if(hgl_cmp(a->back,b->back))
+        if(mem_compare(a->back,b->back))
             return(false);
 
         if(!math::IsNearlyEqual(a->minDepthBounds,b->minDepthBounds))
@@ -177,7 +177,7 @@ namespace hgl::graph
             return(false);
         if(a->attachmentCount!=b->attachmentCount)
             return(false);
-        if(hgl_cmp(a->pAttachments,b->pAttachments,a->attachmentCount))
+        if(mem_compare(a->pAttachments,b->pAttachments,a->attachmentCount))
             return(false);
 
         if(!math::IsNearlyEqualArray(a->blendConstants,b->blendConstants,4))
@@ -193,7 +193,7 @@ namespace hgl::graph
 
         if(a->dynamicStateCount!=b->dynamicStateCount)
             return(false);
-        if(hgl_cmp(a->pDynamicStates,b->pDynamicStates,a->dynamicStateCount))
+        if(mem_compare(a->pDynamicStates,b->pDynamicStates,a->dynamicStateCount))
             return(false);
 
         return(true);

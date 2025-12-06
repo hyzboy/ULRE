@@ -44,14 +44,14 @@ namespace hgl::graph
             */
         struct CircleCreateInfo
         {
-            Vector2f center;            ///<圆心坐标
-            Vector2f radius;            ///<半径
+            math::Vector2f center;            ///<圆心坐标
+            math::Vector2f radius;            ///<半径
             uint field_count=8;         ///<分段数量
 
             bool has_center;            ///<是否有圆心点
 
-            Vector4f center_color;      ///<圆心颜色
-            Vector4f border_color;      ///<边缘颜色
+            math::Vector4f center_color;      ///<圆心颜色
+            math::Vector4f border_color;      ///<边缘颜色
         };//struct CircleCreateInfo
 
         /**
@@ -112,7 +112,7 @@ namespace hgl::graph
             };
 
             ColorType color_type;
-            Vector4f color[24];
+            math::Vector4f color[24];
 
         public:
 
@@ -145,7 +145,7 @@ namespace hgl::graph
             };
 
             ColorType color_type;
-            Vector4f color[8];
+            math::Vector4f color[8];
 
         public:
 
@@ -180,7 +180,7 @@ namespace hgl::graph
             uint    numberSlices,
                     numberStacks;
 
-            Vector2f uv_scale={1.0,1.0};
+            math::Vector2f uv_scale={1.0,1.0};
         };//struct TorusCreateInfo
 
         /**
@@ -259,7 +259,7 @@ namespace hgl::graph
         {
             uint  subdivisions = 0;   // 细分次数，0=基础二十面体
             float radius       = 1.0f;
-            Vector2f uv_scale  = {1.0f,1.0f};
+            math::Vector2f uv_scale  = {1.0f,1.0f};
         };
 
         Geometry *CreateHexSphere(GeometryCreater *pc,const HexSphereCreateInfo *hsci);

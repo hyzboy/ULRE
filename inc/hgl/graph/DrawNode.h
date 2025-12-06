@@ -34,7 +34,7 @@ namespace hgl
             uint32          transform_version=0;
             uint32          transform_index=0;
 
-            Vector3f        world_position{};
+            math::Vector3f  world_position{};               ///<世界坐标位置
             float           to_camera_distance=0;
 
             virtual ~DrawNode()=default;

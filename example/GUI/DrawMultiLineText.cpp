@@ -49,7 +49,7 @@ private:
 
         text_primitive=text_render->Begin();
 
-        Vector2i start_pos(0,0);
+        math::Vector2i start_pos(0,0);
         std::default_random_engine dre;
         std::uniform_int_distribution<int> rand_x(0,WINDOW_WIDTH -FONT_SIZE);
         std::uniform_int_distribution<int> rand_y(0,WINDOW_HEIGHT-FONT_SIZE);

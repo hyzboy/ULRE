@@ -141,7 +141,7 @@ public:
         color_blend->blendConstants[3] = a;
     }
 
-    void SetBlendConstans(float *blend_constans)        {hgl_cpy(color_blend->blendConstants,blend_constans,4);}
+    void SetBlendConstans(float *blend_constans)        {mem_copy(color_blend->blendConstants,blend_constans,4);}
 
     void SetColorAttachments(const uint32_t);
 

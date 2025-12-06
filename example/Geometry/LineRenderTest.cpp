@@ -56,8 +56,8 @@ public:
             {
                 float angle = (2.0f * 3.14159265358979323846f) * (float(i) / float(spokes));
 
-                Vector3f from(std::cos(angle) * inner_radius, std::sin(angle) * inner_radius, z);
-                Vector3f to  (std::cos(angle) * radius,       std::sin(angle) * radius,       z);
+                math::Vector3f from(std::cos(angle) * inner_radius, std::sin(angle) * inner_radius, z);
+                math::Vector3f to  (std::cos(angle) * radius,       std::sin(angle) * radius,       z);
 
                 line_mgr->AddLine(from, to, color_index, w);
             }
@@ -67,8 +67,8 @@ public:
         CameraControl *cc = GetCameraControl();
         if(cc)
         {
-            cc->SetPosition(Vector3f(8,8,8));
-            cc->SetTarget(Vector3f(0,0,0));
+            cc->SetPosition(math::Vector3f(8,8,8));
+            cc->SetTarget(math::Vector3f(0,0,0));
         }
 
         return true;

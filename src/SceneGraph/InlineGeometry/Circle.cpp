@@ -91,7 +91,7 @@ namespace hgl::graph::inline_geometry
                 color->Write(cci->center_color);
 
             if(normal.IsValid())
-                normal->Write(AxisVector::Z);
+                normal->Write(math::AxisVector::Z);
         }
 
         for(uint i = 0;i < edge;i++)
@@ -107,7 +107,7 @@ namespace hgl::graph::inline_geometry
                 color->Write(cci->border_color);
 
             if(normal.IsValid())
-                normal->Write(AxisVector::Z);
+                normal->Write(math::AxisVector::Z);
         }
 
         if(has_index)
@@ -157,7 +157,7 @@ namespace hgl::graph::inline_geometry
                 color->Write(cci->border_color);
 
             if(normal.IsValid())
-                normal->Write(AxisVector::Z);
+                normal->Write(math::AxisVector::Z);
         }
 
         {

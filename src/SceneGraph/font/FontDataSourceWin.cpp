@@ -105,8 +105,8 @@ namespace hgl::graph
         if(ch>0xFFFF)
             return(false);
 
-        hgl_zero(gm);
-        hgl_zero(mat);
+        mem_zero(gm);
+        mem_zero(mat);
 
         mat.eM11.value = 1;
         mat.eM22.value = 1;

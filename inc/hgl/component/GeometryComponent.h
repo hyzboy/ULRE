@@ -22,7 +22,7 @@ public:
 
     const bool GetWorldAABB(math::AABB &box);
     const bool GetWorldOBB(math::OBB &box);
-    const bool GetWorldOBBMatrix(Matrix4f &obb_matrix,const float cube_size=1.0f);
+    const bool GetWorldOBBMatrix(math::Matrix4f &obb_matrix,const float cube_size=1.0f);
 };//class GeometryComponent
 
 COMPONENT_NAMESPACE_END

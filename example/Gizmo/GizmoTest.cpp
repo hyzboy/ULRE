@@ -5,7 +5,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-const Vector3f GizmoPosition(0,0,0);
+const math::Vector3f GizmoPosition(0,0,0);
 
 
 ///**
@@ -43,7 +43,7 @@ const Vector3f GizmoPosition(0,0,0);
 //        {
 //            const float screen_height=viewport_info->GetViewportHeight();
 //
-//            const Vector4f pos=camera_info->Project(GetWorldPosition());
+//            const math::Vector4f pos=camera_info->Project(GetWorldPosition());
 //
 //            LocalTransform.SetScale(pos.w*fixed_scale/screen_height);
 //        }
@@ -92,8 +92,8 @@ public:
 
         CameraControl *camera_control=GetCameraControl();
 
-        camera_control->SetPosition(Vector3f(32,32,32));
-        camera_control->SetTarget(Vector3f(0,0,0));
+        camera_control->SetPosition(math::Vector3f(32,32,32));
+        camera_control->SetTarget(math::Vector3f(0,0,0));
 
         return(true);
     }
@@ -114,7 +114,7 @@ public:
 
     //    const float screen_height=vi->GetViewportHeight();
 
-    //    const Vector4f pos=ci->Project(GizmoPosition);
+    //    const math::Vector4f pos=ci->Project(GizmoPosition);
 
     //    //{
     //    //    Transform tm;

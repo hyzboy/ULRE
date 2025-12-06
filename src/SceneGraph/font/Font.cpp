@@ -5,7 +5,7 @@ namespace hgl::graph
 {
     Font::Font():Comparator<Font>()
     {
-        hgl_zero(name);
+        mem_zero(name);
         width=height=0;
         bold=italic=anti=false;
     }

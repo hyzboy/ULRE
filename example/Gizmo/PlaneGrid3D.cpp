@@ -76,7 +76,7 @@ private:
         return geom_plane_grid;
     }
 
-    void Add(SceneNode *parent_node,MaterialInstance *mi,const Matrix4f &mat)
+    void Add(SceneNode *parent_node,MaterialInstance *mi,const math::Matrix4f &mat)
     {
         Primitive *ri=CreatePrimitive(geom_plane_grid,mi,pipeline);
 
@@ -92,14 +92,14 @@ private:
     {
         SceneNode *scene_root=GetWorldRootNode();       //取得缺省场景根节点
 
-        Add(scene_root,material_instance[0],Identity4f);
-        Add(scene_root,material_instance[1],AxisRotate(HGL_RAD_90,0,1,0));
-        Add(scene_root,material_instance[2],AxisRotate(HGL_RAD_90,1,0,0));
+        Add(scene_root,material_instance[0],math::Identity4f);
+        Add(scene_root,material_instance[1],math::AxisRotate(HGL_RAD_90,0,1,0));
+        Add(scene_root,material_instance[2],math::AxisRotate(HGL_RAD_90,1,0,0));
 
         CameraControl *camera_control=GetCameraControl();
 
-        camera_control->SetPosition(Vector3f(32,32,32));
-        camera_control->SetTarget(Vector3f(0,0,0));
+        camera_control->SetPosition(math::Vector3f(32,32,32));
+        camera_control->SetTarget(math::Vector3f(0,0,0));
 
 //        camera_control->SetReserveDirection(true,true);        //反转x,y
 

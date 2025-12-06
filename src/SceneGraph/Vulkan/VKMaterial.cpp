@@ -20,7 +20,7 @@ Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
     desc_manager=nullptr;
     pipeline_layout_data=nullptr;
 
-    hgl_zero(mp_array);
+    mem_zero(mp_array);
 
     mi_data_bytes=0;
     mi_data_manager=nullptr;

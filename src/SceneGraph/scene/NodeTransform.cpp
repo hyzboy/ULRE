@@ -10,7 +10,7 @@ namespace hgl
             transform_state.UpdateNewestData();
         }
 
-        NodeTransform::NodeTransform(const Matrix4f &mat):NodeTransform()
+        NodeTransform::NodeTransform(const math::Matrix4f &mat):NodeTransform()
         {
             transform_state.SetLocalMatrix(mat);
             

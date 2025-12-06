@@ -149,8 +149,8 @@ private:
 
         if(camera_control)
         {
-            camera_control->SetPosition(Vector3f(32,32,32));
-            camera_control->SetTarget(Vector3f(0,0,0));
+            camera_control->SetPosition(math::Vector3f(32,32,32));
+            camera_control->SetTarget(math::Vector3f(0,0,0));
         }
 
         return(true);
@@ -183,7 +183,7 @@ public:
     {
         WorkObject::Tick(delta);
 
-        const Vector2i mouse_position=GetMouseCoord();
+        const math::Vector2i mouse_position=GetMouseCoord();
 
         CameraControl *camera_control=GetCameraControl();
 
@@ -192,7 +192,7 @@ public:
 
         ray.SetFromViewportPoint(mouse_position,ci,vi->GetViewport());                       //设置射线查询的屏幕坐标点
 
-        const Vector3f pos=ray.ClosestPoint(Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
+        const math::Vector3f pos=ray.ClosestPoint(math::Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
         prim_line_vab_map->Write(&pos,          //更新VAB上这个点的位置
                                  1);            //这里的1代表的数据数量,不是字节数

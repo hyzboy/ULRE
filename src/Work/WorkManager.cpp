@@ -36,7 +36,7 @@ namespace hgl
         double delta_time;
         bool can_render=wo->IsRenderDirty();
 
-        if(IsNearlyZero(last_render_time))
+        if(math::IsNearlyZero(last_render_time))
         {
             delta_time=0;
             can_render=true;

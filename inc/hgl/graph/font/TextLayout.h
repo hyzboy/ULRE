@@ -81,7 +81,7 @@ namespace hgl::graph
         };//struct ParagraphStyle
         
         using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
-        using TEXT_COORD_VEC=Vector2i;
+        using TEXT_COORD_VEC=math::Vector2i;
 
         struct TextDrawStyle:public ComparatorData<TextDrawStyle>
         {

@@ -18,7 +18,7 @@ InstanceAssignmentBuffer::InstanceAssignmentBuffer(VulkanDevice *dev,Material *m
 
     material_instance_data_bytes=mtl->GetMIDataBytes();
 
-    MaxTransformCount=dev->GetUBORange()/sizeof(Matrix4f);
+    MaxTransformCount=dev->GetUBORange()/sizeof(math::Matrix4f);
 
     transform_buffer_max_count=0;
     transform_buffer=nullptr;
@@ -58,7 +58,7 @@ void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
 
     if(!transform_buffer)
     {
-        transform_buffer=device->CreateUBO(sizeof(Matrix4f)*transform_buffer_max_count);
+        transform_buffer=device->CreateUBO(sizeof(math::Matrix4f)*transform_buffer_max_count);
         
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
@@ -72,12 +72,12 @@ void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
     }
 
     DrawNode **rn=draw_nodes.GetData();
-    Matrix4f *l2wp=(Matrix4f *)(transform_buffer->DeviceBuffer::Map());
+    math::Matrix4f *l2wp=(math::Matrix4f *)(transform_buffer->DeviceBuffer::Map());
 
     for(int i=0;i<draw_nodes.GetCount();i++)
     {
         auto *tf=(*rn)->GetTransform();
-        *l2wp=tf?tf->GetLocalToWorldMatrix():Identity4f;
+        *l2wp=tf?tf->GetLocalToWorldMatrix():math::Identity4f;
         ++l2wp;
         ++rn;
     }
@@ -96,13 +96,13 @@ void InstanceAssignmentBuffer::UpdateTransformData(const DrawNodeList &rnp_list,
     const uint count=rnp_list.GetCount();
 
     DrawNode **rn=rnp_list.GetData();
-    Matrix4f *l2wp=(Matrix4f *)(transform_buffer->DeviceBuffer::Map(  sizeof(Matrix4f)*first,
-                                                                sizeof(Matrix4f)*(last-first+1)));
+    math::Matrix4f *l2wp=(math::Matrix4f *)(transform_buffer->DeviceBuffer::Map(  sizeof(math::Matrix4f)*first,
+                                                                sizeof(math::Matrix4f)*(last-first+1)));
 
     for(uint i=0;i<count;i++)
     {
         auto *tf=(*rn)->GetTransform();
-        l2wp[(*rn)->transform_index-first]=tf?tf->GetLocalToWorldMatrix():Identity4f;
+        l2wp[(*rn)->transform_index-first]=tf?tf->GetLocalToWorldMatrix():math::Identity4f;
 
         ++rn;
     }

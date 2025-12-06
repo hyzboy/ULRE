@@ -379,7 +379,7 @@ public:
             items=array_realloc(items,count);
         }
                 
-        hgl_cpy(items[count-1],sv);
+        mem_copy(items[count-1],sv);
         return(true);
     }
 
@@ -402,7 +402,7 @@ public:
         if(!Init(src->count))
             return(false);
 
-        hgl_cpy(items,src->items,src->count);
+        mem_copy(items,src->items,src->count);
         return(true);
     }
             

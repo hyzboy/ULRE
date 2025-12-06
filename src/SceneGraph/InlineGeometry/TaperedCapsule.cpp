@@ -357,7 +357,9 @@ namespace hgl::graph::inline_geometry
         math::BoundingVolumes bv;
 
         float maxr = std::max(bottomR, topR);
-        bv.SetFromAABB(Vector3f(-maxr,-maxr,-halfH-maxr), Vector3f(maxr,maxr,halfH+maxr));
+
+        bv.SetFromAABB(math::Vector3f(-maxr,-maxr,-halfH-maxr),
+                       math::Vector3f(maxr,maxr,halfH+maxr));
 
         p->SetBoundingVolumes(bv);
 

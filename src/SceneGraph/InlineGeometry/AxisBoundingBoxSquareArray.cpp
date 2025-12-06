@@ -30,7 +30,7 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(0,0,0),Vector3f(s,s,s));
+        bv.SetFromAABB(math::Vector3f(0,0,0),math::Vector3f(s,s,s));
 
         p->SetBoundingVolumes(bv);
 
@@ -78,7 +78,7 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(-0.5,-0.5,-0.5),Vector3f(0.5,0.5,0.5));
+        bv.SetFromAABB(math::Vector3f(-0.5,-0.5,-0.5),math::Vector3f(0.5,0.5,0.5));
 
         p->SetBoundingVolumes(bv);
 
@@ -133,7 +133,7 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(0,0,0),Vector3f(col,row,0));
+        bv.SetFromAABB(math::Vector3f(0,0,0),math::Vector3f(col,row,0));
 
         p->SetBoundingVolumes(bv);
 

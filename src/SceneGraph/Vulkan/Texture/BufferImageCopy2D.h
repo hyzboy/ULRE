@@ -8,7 +8,7 @@ public:
 
     BufferImageCopy()
     {
-        hgl_zero(*this);
+        mem_zero(*this);
         imageSubresource.layerCount=1;
     }
 

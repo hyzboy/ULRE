@@ -19,9 +19,9 @@ namespace hgl::graph
     {
         void SetDrawStyle(TextDrawStyle &tda,const ParagraphStyle *t,const float origin_char_height)
         {
-            hgl_cpy(tda.para_style,*t);
+            mem_copy(tda.para_style,*t);
 
-            hgl_zero(tda.start_position);
+            mem_zero(tda.start_position);
 
             tda.char_height     =std::ceil(origin_char_height);
             tda.space_size      =std::ceil(origin_char_height*tda.space_size);
@@ -55,7 +55,7 @@ namespace hgl::graph
 
     void TextRender::SetFixedStyle(const layout::CharStyle &cs)
     {
-        if(!hgl_cmp(fixed_style,cs))
+        if(!mem_compare(fixed_style,cs))
             return;
 
         fixed_style=cs;
@@ -67,10 +67,10 @@ namespace hgl::graph
         if(!ps)
             return;
 
-        if(hgl_cmp(para_style,*ps))
+        if(mem_compare(para_style,*ps))
             return;
 
-        hgl_cpy(para_style,*ps);
+        mem_copy(para_style,*ps);
         SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
     }
 

@@ -79,7 +79,7 @@ private:
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
         {
             rad=deg2rad((360.0f/double(TRIANGLE_NUMBER))*i);       //这里一定要加<double>或<float>，否则结果用int保存会出现问题
-            cci.mat=AxisRotate(rad,Vector3f(0,0,1));
+            cci.mat=math::AxisRotate(rad,math::Vector3f(0,0,1));
 
             CreateComponent<PrimitiveComponent>(&cci,render_obj);
         }

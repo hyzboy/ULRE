@@ -302,7 +302,7 @@ namespace hgl::graph
                 return(false);
             }
 
-            hgl_set(this->access,v,count);
+            mem_fill(this->access,v,count);
             this->access+=count;
             return(true);
         }
@@ -445,7 +445,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count<<1)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(const Vector2f &,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(const math::Vector2f &,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -753,7 +753,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count*3)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const math::Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -777,7 +777,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count*3)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const math::Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -1071,7 +1071,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count<<2)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const math::Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -1096,7 +1096,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count<<2)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const math::Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 

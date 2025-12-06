@@ -65,11 +65,11 @@ void PipelineMaterialBatch::Add(DrawNode *node)
     if (camera_info && tf)
     {
         node->world_position     =tf->GetWorldPosition();
-        node->to_camera_distance =length(camera_info->pos,node->world_position);
+        node->to_camera_distance =math::length(camera_info->pos,node->world_position);
     }
     else
     {
-        node->world_position     =Vector3f(0,0,0);
+        node->world_position     =math::Vector3f(0,0,0);
         node->to_camera_distance =0;
     }
 

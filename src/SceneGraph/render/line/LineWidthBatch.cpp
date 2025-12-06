@@ -162,7 +162,7 @@ void LineWidthBatch::Expand(uint c)
     }
 }
 
-void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8 color_index)
+void LineWidthBatch::AddLine(const math::Vector3f &from,const math::Vector3f &to,uint8 color_index)
 {
     Expand(1);
 
