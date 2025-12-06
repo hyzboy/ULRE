@@ -6,7 +6,8 @@
 VK_NAMESPACE_BEGIN
 PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager)
 {
-    PipelineLayoutData *pld=hgl_zero_new<PipelineLayoutData>();
+    PipelineLayoutData *pld=new PipelineLayoutData();  // 使用 new 而不是 hgl_zero_new（因为有析构函数）
+    memset(pld, 0, sizeof(PipelineLayoutData));  // 手动清零需要的部分
 
     if(desc_manager)
     {

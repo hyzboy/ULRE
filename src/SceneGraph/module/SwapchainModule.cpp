@@ -97,7 +97,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
     if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),sc_images)!=VK_SUCCESS)
         return(false);
     
-    swapchain->sc_image=hgl_zero_new<SwapchainImage>(swapchain->image_count);
+    swapchain->sc_image=new SwapchainImage[swapchain->image_count]();  // 使用 new[] 而不是 hgl_zero_new（因为有析构函数）
 
     AnsiString num_string;
     VulkanDevice *device=GetDevice();
