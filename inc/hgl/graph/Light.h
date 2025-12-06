@@ -55,7 +55,7 @@ namespace hgl
          */
         struct SunLight :public Light
         {
-            Vector3f    direction;
+            math::Vector3f    direction;
         };
 
         /**
@@ -63,7 +63,7 @@ namespace hgl
          */
         struct DirectionLight:public Light
         {
-            Vector3f    direction;              ///<方向
+            math::Vector3f    direction;              ///<方向
 
             float       nDotVP;                 ///<normal . light direction
             float       nDotHV;                 ///<normal . half vector
@@ -74,9 +74,9 @@ namespace hgl
          */
         struct PointLight:public Light
         {
-            Vector3f    position;               ///<光源位置
+            math::Vector3f    position;               ///<光源位置
 
-            Vector3f    attenuation;            ///<constant,linear,quadratic
+            math::Vector3f    attenuation;            ///<constant,linear,quadratic
         };//struct PointLight
 
         /**
@@ -84,9 +84,9 @@ namespace hgl
          */
         struct SpotLight:public Light
         {
-            Vector3f    position;               ///<位置
-            Vector3f    direction;              ///<方向
-            Vector3f    attenuation;            ///<constant,linear,quadratic
+            math::Vector3f    position;               ///<位置
+            math::Vector3f    direction;              ///<方向
+            math::Vector3f    attenuation;            ///<constant,linear,quadratic
 
             float       coscutoff;
             float       exponent;
@@ -97,9 +97,9 @@ namespace hgl
          */
         struct InfiniteSpotLight:public Light
         {
-            Vector3f    position;
-            Vector3f    direction;
-            Vector3f    exponent;
+            math::Vector3f    position;
+            math::Vector3f    direction;
+            math::Vector3f    exponent;
         };//struct InfiniteSpotLight
     }//namespace graph
 }//namespace hgl

@@ -83,7 +83,7 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
 
 protected:  //EventDispatcher
 
-    Vector2i mouse_coord;
+    math::Vector2i mouse_coord;
 
     virtual io::EventProcResult OnEvent(const io::EventHeader &header,const uint64 data) override;
 
@@ -123,7 +123,7 @@ public:
 
 public:
 
-    const Vector2i &GetMouseCoord()const{ return mouse_coord; }
+    const math::Vector2i &GetMouseCoord()const{ return mouse_coord; }
 
 public:
 

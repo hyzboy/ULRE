@@ -66,14 +66,14 @@ public:
 
         // 1) long zig-zag
         {
-            std::vector<Vector2f> verts;
-            verts.push_back(Vector2f(-6.0f, -1.0f));
-            verts.push_back(Vector2f(-4.5f,  1.2f));
-            verts.push_back(Vector2f(-3.0f, -0.4f));
-            verts.push_back(Vector2f(-1.5f,  1.6f));
-            verts.push_back(Vector2f( 0.0f, -0.2f));
-            verts.push_back(Vector2f( 1.5f,  1.8f));
-            verts.push_back(Vector2f( 3.0f, -0.6f));
+            std::vector<math::Vector2f> verts;
+            verts.push_back(math::Vector2f(-6.0f, -1.0f));
+            verts.push_back(math::Vector2f(-4.5f,  1.2f));
+            verts.push_back(math::Vector2f(-3.0f, -0.4f));
+            verts.push_back(math::Vector2f(-1.5f,  1.6f));
+            verts.push_back(math::Vector2f( 0.0f, -0.2f));
+            verts.push_back(math::Vector2f( 1.5f,  1.8f));
+            verts.push_back(math::Vector2f( 3.0f, -0.6f));
 
             uint idx[] = {0,1, 1,2, 2,3, 3,4, 4,5, 5,6};
 
@@ -98,11 +98,11 @@ public:
 
         // 2) small rectangle loop (closed)
         {
-            std::vector<Vector2f> verts;
-            verts.push_back(Vector2f(-2.5f, -3.0f));
-            verts.push_back(Vector2f(-2.5f, -1.0f));
-            verts.push_back(Vector2f(-0.5f, -1.0f));
-            verts.push_back(Vector2f(-0.5f, -3.0f));
+            std::vector<math::Vector2f> verts;
+            verts.push_back(math::Vector2f(-2.5f, -3.0f));
+            verts.push_back(math::Vector2f(-2.5f, -1.0f));
+            verts.push_back(math::Vector2f(-0.5f, -1.0f));
+            verts.push_back(math::Vector2f(-0.5f, -3.0f));
 
             // indices pairs; make it closed by adding last first pair
             uint idx[] = {0,1, 1,2, 2,3, 3,0};
@@ -128,11 +128,11 @@ public:
 
         // 3) U-shaped wall
         {
-            std::vector<Vector2f> verts;
-            verts.push_back(Vector2f(1.0f, -2.5f));
-            verts.push_back(Vector2f(1.0f, -0.5f));
-            verts.push_back(Vector2f(3.0f, -0.5f));
-            verts.push_back(Vector2f(3.0f, -2.5f));
+            std::vector<math::Vector2f> verts;
+            verts.push_back(math::Vector2f(1.0f, -2.5f));
+            verts.push_back(math::Vector2f(1.0f, -0.5f));
+            verts.push_back(math::Vector2f(3.0f, -0.5f));
+            verts.push_back(math::Vector2f(3.0f, -2.5f));
 
             uint idx[] = {0,1, 1,2, 2,3}; // open U-shape
 
@@ -157,12 +157,12 @@ public:
 
         // 4) irregular polyline cluster
         {
-            std::vector<Vector2f> verts;
-            verts.push_back(Vector2f(4.5f, 0.5f));
-            verts.push_back(Vector2f(5.2f, 1.8f));
-            verts.push_back(Vector2f(6.0f, 0.9f));
-            verts.push_back(Vector2f(6.8f, 2.2f));
-            verts.push_back(Vector2f(7.5f, 0.3f));
+            std::vector<math::Vector2f> verts;
+            verts.push_back(math::Vector2f(4.5f, 0.5f));
+            verts.push_back(math::Vector2f(5.2f, 1.8f));
+            verts.push_back(math::Vector2f(6.0f, 0.9f));
+            verts.push_back(math::Vector2f(6.8f, 2.2f));
+            verts.push_back(math::Vector2f(7.5f, 0.3f));
 
             uint idx[] = {0,1, 1,2, 2,3, 3,4};
 
@@ -198,8 +198,8 @@ public:
         delete pc;
 
         CameraControl *cc = GetCameraControl();
-        cc->SetPosition(Vector3f(10,8,10));
-        cc->SetTarget(Vector3f(0,0,0));
+        cc->SetPosition(math::Vector3f(10,8,10));
+        cc->SetTarget(math::Vector3f(0,0,0));
 
         return true;
     }

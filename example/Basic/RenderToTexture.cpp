@@ -74,8 +74,8 @@ public:
         // setup camera for offscreen
         auto *vmcc = new ViewModelCameraControl();
         renderer->SetCameraControl(vmcc);
-        vmcc->SetTarget(Vector3f(0,0,0));
-        static_cast<ViewModelCameraControl*>(vmcc)->Rotate(Vector2f(150.0f, -80.0f));
+        vmcc->SetTarget(math::Vector3f(0,0,0));
+        static_cast<ViewModelCameraControl*>(vmcc)->Rotate(math::Vector2f(150.0f, -80.0f));
         static_cast<ViewModelCameraControl*>(vmcc)->Zoom(+5.0f);
 
         renderer->SetClearColor(Color4f(0.1f, 0.2f, 0.6f, 1.0f));
@@ -136,7 +136,7 @@ private:
     MaterialInstance *       cube_mi             = nullptr;
     Pipeline *               cube_pipeline       = nullptr;
     Sampler *                cube_sampler        = nullptr;
-    PrimitiveComponent *          cube_comp           = nullptr;
+    PrimitiveComponent *     cube_comp           = nullptr;
 
     float                    cube_theta          = 0.0f;
 
@@ -148,8 +148,8 @@ private:
         CameraControl *cc = GetCameraControl();
         if(cc)
         {
-            cc->SetPosition(Vector3f(3,3,3));
-            cc->SetTarget(Vector3f(0,0,0));
+            cc->SetPosition(math::Vector3f(3,3,3));
+            cc->SetTarget(math::Vector3f(0,0,0));
         }
     }
 
@@ -209,7 +209,7 @@ private:
         Primitive *primitive = CreatePrimitive(geometry, cube_mi, cube_pipeline);
         if (!primitive) { delete geometry; return false; }
 
-        CreateComponentInfo cci(GetWorldRootNode(), Identity4f);
+        CreateComponentInfo cci(GetWorldRootNode(), math::Identity4f);
         cube_comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         return cube_comp != nullptr;
     }
@@ -257,7 +257,7 @@ public:
         {
             cube_theta += float(delta_time) * 0.8f;
             cube_theta = fmodf(cube_theta, 2.0f*HGL_PI);
-            Matrix4f rot = AxisZRotate(cube_theta) * AxisXRotate(cube_theta * 0.5f);
+            math::Matrix4f rot = math::AxisZRotate(cube_theta) * math::AxisXRotate(cube_theta * 0.5f);
             cube_comp->SetLocalMatrix(rot);
         }
 

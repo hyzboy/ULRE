@@ -86,7 +86,7 @@ public:
 
     bool End() override
     {
-        hgl_zero(desc_binding);
+        mem_zero(desc_binding);
 
         return VulkanCmdBuffer::End();
     }
@@ -99,7 +99,7 @@ public:
     {
         if(index>=cv_count)return;
 
-        hgl_cpy(clear_values[index].color.float32,cc.rgba,4);
+        mem_copy(clear_values[index].color.float32,cc.rgba,4);
     }
 
     void SetClearDepthStencil(uint32_t index,float d=1.0f,float s=0)

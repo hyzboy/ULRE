@@ -13,17 +13,17 @@ namespace hgl::graph
         float Yfov;                 ///<水平FOV
         float znear,zfar;           ///<Z轴上离摄像机的距离(注：因znear会参与计算，为避免除0操作，请不要使用0或过于接近0的值)
 
-        Vector3f pos;               ///<摄像机坐标
+        math::Vector3f pos;               ///<摄像机坐标
 
-        Vector3f world_up;          ///<向上量(默认0,0,1)
+        math::Vector3f world_up;          ///<向上量(默认0,0,1)
             
-        Vector3f view_line;         ///<视线 normalize(eye-target)
+        math::Vector3f view_line;         ///<视线 normalize(eye-target)
 
     public:
 
         Camera()
         {
-            hgl_zero(*this);
+            mem_zero(*this);
 
             Yfov        =45;
             znear       =0.1f;

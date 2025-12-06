@@ -5,7 +5,7 @@ ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
 {
     stage_flag=flag_bit;
    
-    hgl_zero(push_constant);
+    mem_zero(push_constant);
 }
 
 void ShaderDescriptorInfo::AddStruct(const AnsiString &name)

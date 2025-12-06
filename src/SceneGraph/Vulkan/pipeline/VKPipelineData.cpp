@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/pipeline/VKPipelineData.h>
 #include<hgl/graph/VKVertexInputLayout.h>
 #include<hgl/graph/VKDeviceAttribute.h>
+#include<hgl/type/MemoryUtil.h>
 
 VK_NAMESPACE_BEGIN
 void SetDefault(VkPipelineColorBlendAttachmentState *cba)
@@ -19,7 +20,7 @@ PipelineData::PipelineData(const PipelineData *pd)
 {
     file_data=nullptr;
 
-    hgl_zero(pipeline_info);
+    mem_zero(pipeline_info);
 
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
@@ -50,8 +51,8 @@ PipelineData::PipelineData(const PipelineData *pd)
 
     InitColorBlend(pd->color_blend->attachmentCount,pd->color_blend_attachments);
 
-    hgl_cpy(dynamic_state_enables,pd->dynamic_state_enables);
-    hgl_cpy(dynamic_state,pd->dynamic_state);
+    mem_copy(dynamic_state_enables,pd->dynamic_state_enables);
+    mem_copy(dynamic_state,pd->dynamic_state);
 
     dynamic_state.pDynamicStates=dynamic_state_enables;
     pipeline_info.pDynamicState =&dynamic_state;
@@ -69,20 +70,20 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
 {
     file_data=nullptr;
 
-    hgl_zero(pipeline_info);
-    //hgl_zero(vis_create_info);
-    //hgl_zero(input_assembly);
-    //hgl_zero(tessellation);
-    //hgl_zero(viewport);
-    //hgl_zero(scissor);
-    //hgl_zero(viewport_state);
-    //hgl_zero(rasterization);    
-    //hgl_zero(sample_mask);
-    //hgl_zero(multi_sample);
-    //hgl_zero(depth_stencil);    
-    //hgl_zero(color_blend);
-    //hgl_zero(dynamic_state_enables);
-    //hgl_zero(dynamic_state);
+    mem_zero(pipeline_info);
+    //mem_zero(vis_create_info);
+    //mem_zero(input_assembly);
+    //mem_zero(tessellation);
+    //mem_zero(viewport);
+    //mem_zero(scissor);
+    //mem_zero(viewport_state);
+    //mem_zero(rasterization);    
+    //mem_zero(sample_mask);
+    //mem_zero(multi_sample);
+    //mem_zero(depth_stencil);    
+    //mem_zero(color_blend);
+    //mem_zero(dynamic_state_enables);
+    //mem_zero(dynamic_state);
 
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
@@ -172,12 +173,12 @@ void PipelineData::InitColorBlend(const uint32_t color_attachment_count,const Vk
     color_blend_attachments=hgl_align_malloc<VkPipelineColorBlendAttachmentState>(color_attachment_count);
 
     if(pcbas)
-        hgl_cpy(color_blend_attachments,pcbas,color_attachment_count);
+        mem_copy(color_blend_attachments,pcbas,color_attachment_count);
     else
     {
         SetDefault(color_blend_attachments);
 
-        hgl_set(color_blend_attachments+1,color_blend_attachments,color_attachment_count-1);
+        mem_fill_pattern(color_blend_attachments+1,color_blend_attachments,color_attachment_count-1);
     }
 
     color_blend=new VkPipelineColorBlendStateCreateInfo;
@@ -230,7 +231,7 @@ PipelineData::PipelineData()
 {
     file_data=nullptr;
 
-    hgl_zero(pipeline_info);
+    mem_zero(pipeline_info);
     pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
@@ -360,7 +361,7 @@ void PipelineData::InitViewportState()
 
 void PipelineData::InitDynamicState()
 {
-    hgl_zero(dynamic_state_enables);
+    mem_zero(dynamic_state_enables);
 
     dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamic_state.pNext = nullptr;

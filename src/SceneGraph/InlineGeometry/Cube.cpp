@@ -88,7 +88,7 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(-0.5f,-0.5f,-0.5f),Vector3f(0.5f,0.5f,0.5f));
+        bv.SetFromAABB(math::Vector3f(-0.5f,-0.5f,-0.5f),math::Vector3f(0.5f,0.5f,0.5f));
 
         p->SetBoundingVolumes(bv);
 

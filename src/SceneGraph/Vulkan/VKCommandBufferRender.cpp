@@ -13,8 +13,8 @@ RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):V
     cv_count=0;
     clear_values=nullptr;
 
-    hgl_zero(render_area);
-    hgl_zero(viewport);
+    mem_zero(render_area);
+    mem_zero(viewport);
 
     pipeline_layout=VK_NULL_HANDLE;
 }

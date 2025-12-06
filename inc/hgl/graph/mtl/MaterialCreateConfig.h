@@ -41,7 +41,7 @@ public:
     {
         material_instance=false;
 
-        hgl_zero(rt_output);
+        mem_zero(rt_output);
 
         shader_stage_flag_bit=(uint32_t)ShaderStage::VertexFragment;
 
@@ -57,7 +57,7 @@ public:
         off=material_instance-cfg.material_instance;
         if(off)return(off);
 
-        off=hgl_cmp(rt_output,cfg.rt_output);
+        off=mem_compare(rt_output,cfg.rt_output);
         if(off)return(off);
 
         off=(int)prim-(int)cfg.prim;

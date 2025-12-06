@@ -375,7 +375,7 @@ VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
     perfer_depth_formats=spf_depth;
 
     if(req)
-        hgl_cpy(require,*req);
+        mem_copy(require,*req);
 }
 
 bool VulkanDeviceCreater::ChoosePhysicalDevice()

@@ -127,7 +127,7 @@ public:
     {
         VkFormatProperties fp;
 
-        hgl_zero(fp);
+        mem_zero(fp);
 
         vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);
 

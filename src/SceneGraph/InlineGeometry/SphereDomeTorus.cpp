@@ -85,7 +85,7 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(-1.0f,-1.0f,-1.0f),Vector3f(1.0f,1.0f,1.0f));
+        bv.SetFromAABB(math::Vector3f(-1.0f,-1.0f,-1.0f),math::Vector3f(1.0f,1.0f,1.0f));
 
         p->SetBoundingVolumes(bv);
 
@@ -185,7 +185,7 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(-1.0f,-1.0f,-1.0f),Vector3f(1.0f,1.0f,1.0f));        //这个不对，待查
+        bv.SetFromAABB(math::Vector3f(-1.0f,-1.0f,-1.0f),math::Vector3f(1.0f,1.0f,1.0f));        //这个不对，待查
 
         p->SetBoundingVolumes(bv);
 
@@ -306,8 +306,8 @@ namespace hgl::graph::inline_geometry
             float maxExtent = centerRadius + torusRadius;
             float minExtent = centerRadius - torusRadius;
 
-            bv.SetFromAABB(Vector3f(-torusRadius, -maxExtent, -maxExtent),
-                           Vector3f( torusRadius,  maxExtent,  maxExtent));
+            bv.SetFromAABB(math::Vector3f(-torusRadius, -maxExtent, -maxExtent),
+                           math::Vector3f( torusRadius,  maxExtent,  maxExtent));
 
             p->SetBoundingVolumes(bv);
         }

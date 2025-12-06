@@ -37,11 +37,11 @@ const int GeometryDataBuffer::compare(const GeometryDataBuffer &gdb)const
     if(off)
         return off;
 
-    off=hgl_cmp(vab_list,gdb.vab_list,vab_count);
+    off=mem_compare(vab_list,gdb.vab_list,vab_count);
     if(off)
         return off;
 
-    off=hgl_cmp(vab_offset,gdb.vab_offset,vab_count);
+    off=mem_compare(vab_offset,gdb.vab_offset,vab_count);
     if(off)
         return off;
 

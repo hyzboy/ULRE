@@ -103,7 +103,7 @@ public:
 
     VulkanHardwareRequirement()
     {
-        hgl_zero(*this);
+        mem_zero(*this);
 
         descriptor_pool=1024;
 

@@ -17,7 +17,7 @@ namespace hgl::graph::inline_geometry
 
         // 生成基础二十面体
         struct Tri { uint a,b,c; };
-        std::vector<Vector3f> verts;
+        std::vector<math::Vector3f> verts;
         std::vector<Tri> tris;
 
         auto add = [&](float x,float y,float z){ verts.emplace_back(x,y,z); };
@@ -46,7 +46,7 @@ namespace hgl::graph::inline_geometry
             EdgeKey key{std::min(a,b),std::max(a,b)};
             auto it = midpoint.find(key);
             if(it!=midpoint.end()) return it->second;
-            Vector3f m = verts[a]+verts[b]; m = glm::normalize(m);
+            math::Vector3f m = verts[a]+verts[b]; m = glm::normalize(m);
             uint id = (uint)verts.size(); verts.push_back(m); midpoint.emplace(key,id); return id;
             };
 
@@ -97,13 +97,13 @@ namespace hgl::graph::inline_geometry
 
             if(np)
             {
-                Vector3f n = glm::normalize(v);
+                math::Vector3f n = glm::normalize(v);
                 *np++ = n.x; *np++ = n.y; *np++ = n.z;
             }
 
             if(uvp)
             {
-                Vector3f n = glm::normalize(v);
+                math::Vector3f n = glm::normalize(v);
                 // 球面 UV，经度[-pi,pi] -> u in [0,1]，纬度[-pi/2,pi/2] -> v in [0,1]
                 float u = (atan2f(n.y, n.x) / (2.0f*HGL_PI)) + 0.5f;
                 float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/HGL_PI) + 0.5f;
@@ -113,10 +113,10 @@ namespace hgl::graph::inline_geometry
 
             if(tp)
             {
-                Vector3f n = glm::normalize(v);
+                math::Vector3f n = glm::normalize(v);
                 // 经向切线：沿 +theta（绕Z）方向近似：(-y, x, 0) 并去掉与 n 的投影
-                Vector3f tdir(-n.y, n.x, 0.0f);
-                if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // 极点备选
+                math::Vector3f tdir(-n.y, n.x, 0.0f);
+                if(glm::length(tdir)<1e-6f) tdir = math::Vector3f(1,0,0); // 极点备选
                 tdir = (tdir - n * dot(n, tdir));
                 tdir = glm::normalize(tdir);
                 *tp++ = tdir.x; *tp++ = tdir.y; *tp++ = tdir.z;
@@ -152,7 +152,7 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(-R,-R,-R), Vector3f(R,R,R));
+        bv.SetFromAABB(math::Vector3f(-R,-R,-R), math::Vector3f(R,R,R));
 
         p->SetBoundingVolumes(bv);
 

@@ -149,7 +149,7 @@ namespace hgl::graph
          * \param width CN: 线宽(1..MAX_LINE_WIDTH), 若超范围返回 false EN: Line width (1..MAX_LINE_WIDTH), fails if out of range
          * \return CN: 成功返回 true EN: True on success
          */
-        bool AddLine(const Vector3f& from, const Vector3f& to, const uint8 color_index, uint8 width = 1);
+        bool AddLine(const math::Vector3f& from, const math::Vector3f& to, const uint8 color_index, uint8 width = 1);
 
         /**
          * CN: 批量添加多条线段 (共享相同的线宽)。

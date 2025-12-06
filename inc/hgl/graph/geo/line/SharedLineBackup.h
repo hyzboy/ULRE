@@ -8,7 +8,7 @@ namespace hgl::graph
     // Shared temporary backup buffers for LineWidthBatch
     struct SharedLineBackup
     {
-        DataArray<Vector3f> positions;
+        DataArray<math::Vector3f> positions;
         DataArray<uint8>  colors;
 
         size_t max_reserved = 0;

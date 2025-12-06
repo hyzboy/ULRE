@@ -457,10 +457,10 @@ namespace hgl::graph::inline_geometry
                 max_height = std::max(max_height, rci->profile_points[i].y);
             }
 
-            Vector3f min_bound(rci->revolution_center.x - max_radius,
+            math::Vector3f min_bound(rci->revolution_center.x - max_radius,
                                rci->revolution_center.y - max_radius,
                                rci->revolution_center.z + min_height);
-            Vector3f max_bound(rci->revolution_center.x + max_radius,
+            math::Vector3f max_bound(rci->revolution_center.x + max_radius,
                                rci->revolution_center.y + max_radius,
                                rci->revolution_center.z + max_height);
 

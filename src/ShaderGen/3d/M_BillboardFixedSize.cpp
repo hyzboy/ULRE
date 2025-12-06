@@ -6,7 +6,7 @@ STD_MTL_NAMESPACE_BEGIN
 namespace
 {
     constexpr const char mi_codes[]="uvec2 BillboardSize;";         //材质实例代码
-    constexpr const uint32_t mi_bytes=sizeof(Vector2u);             //材质实例数据大小
+    constexpr const uint32_t mi_bytes=sizeof(math::Vector2u);             //材质实例数据大小
 
     constexpr const char vs_main[]=R"(
 void main()

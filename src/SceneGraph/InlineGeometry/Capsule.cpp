@@ -349,7 +349,8 @@ namespace hgl::graph::inline_geometry
 
         math::BoundingVolumes bv;
 
-        bv.SetFromAABB(Vector3f(-radius,-radius,-halfH-radius), Vector3f(radius,radius,halfH+radius));
+        bv.SetFromAABB(math::Vector3f(-radius,-radius,-halfH-radius),
+                       math::Vector3f(radius,radius,halfH+radius));
 
         p->SetBoundingVolumes(bv);
 

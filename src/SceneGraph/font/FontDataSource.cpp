@@ -81,7 +81,7 @@ namespace hgl::graph
             if(!GetCharMetrics(char_draw_style->metrics,ch))
             {
                 char_draw_style->visible=false;
-                hgl_zero(char_draw_style->metrics);
+                mem_zero(char_draw_style->metrics);
             }
             else
             {

@@ -32,7 +32,7 @@ public:
 
     TextureCreateInfo()
     {
-        hgl_zero(*this);        
+        mem_zero(*this);        
     }
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img):TextureCreateInfo()
@@ -303,7 +303,7 @@ public:
 
     TextureData()
     {
-        hgl_zero(*this);
+        mem_zero(*this);
     }
 
     TextureData(const TextureCreateInfo *tci)

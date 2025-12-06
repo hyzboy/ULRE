@@ -263,7 +263,7 @@ private:
         CreateComponentInfo cci(GetWorldRootNode());
 
         {
-            cci.mat=AxisZRotate(45.0f);
+            cci.mat=math::AxisZRotate(45.0f);
 
             rm_floor->component=CreateComponent<PrimitiveComponent>(&cci,rm_floor->cdp);
         }
@@ -275,7 +275,7 @@ private:
         {
             if(!rm)continue;
             //螺旋排列
-            cci.mat=AxisZRotate(deg2rad(360.0f*i/rm_count))*TranslateMatrix(3,0,0);
+            cci.mat=math::AxisZRotate(deg2rad(360.0f*i/rm_count))*math::TranslateMatrix(3,0,0);
 
             rm->component=CreateComponent<PrimitiveComponent>(&cci,rm->cdp);
             rm->component->SetOverrideMaterial(solid.mi[i%COLOR_COUNT]);
@@ -292,7 +292,7 @@ private:
 
         CreateComponentInfo cci(root);
 
-        ArrayList<Matrix4f> box_matrices;
+        ArrayList<math::Matrix4f> box_matrices;
 
         for(Component *c:root->GetComponents())
         {
@@ -301,7 +301,7 @@ private:
 
             PrimitiveComponent *component=(PrimitiveComponent *)c;
 
-            Matrix4f mat;
+            math::Matrix4f mat;
 
             if(component->GetWorldOBBMatrix(mat))
                 box_matrices.Add(mat);
@@ -309,7 +309,7 @@ private:
 
         //不可以直接在上面的循环中创建新的Component，因为循环本身就要读取Component列表
 
-        for(const Matrix4f &mat:box_matrices)
+        for(const math::Matrix4f &mat:box_matrices)
         {
             cci.mat=mat;
 
@@ -324,8 +324,8 @@ private:
     {
         CameraControl *camera_control=GetCameraControl();
 
-        camera_control->SetPosition(Vector3f(8,8,8));
-        camera_control->SetTarget(Vector3f(0,0,0));
+        camera_control->SetPosition(math::Vector3f(8,8,8));
+        camera_control->SetTarget(math::Vector3f(0,0,0));
     }
 
 public:

@@ -75,7 +75,7 @@ namespace hgl
         const graph::CameraInfo *   GetCameraInfo       ()const {return scene_renderer->GetCameraInfo();}
         graph::CameraControl *      GetCameraControl    ()      {return scene_renderer->GetCameraControl();}
 
-        const Vector2i &            GetMouseCoord       ()const {return render_framework->GetMouseCoord();}
+        const math::Vector2i &            GetMouseCoord       ()const {return render_framework->GetMouseCoord();}
 
     public:
 

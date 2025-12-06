@@ -271,7 +271,7 @@ namespace hgl::graph
      * CN: 添加单条线段; 宽度非法返回false并记录日志。
      * EN: Add single line; invalid width returns false and logs.
      */
-    bool LineRenderManager::AddLine(const Vector3f& from, const Vector3f& to, const uint8_t color_index, uint8 width)
+    bool LineRenderManager::AddLine(const math::Vector3f& from, const math::Vector3f& to, const uint8_t color_index, uint8 width)
     {
         if (width == 0 || width > MAX_LINE_WIDTH)
         {

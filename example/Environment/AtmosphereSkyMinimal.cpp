@@ -58,8 +58,8 @@ private:
 
         CameraControl *camera_control=GetCameraControl();
 
-        camera_control->SetPosition(Vector3f(0,0,0));
-        camera_control->SetTarget(Vector3f(10,10,10));
+        camera_control->SetPosition(math::Vector3f(0,0,0));
+        camera_control->SetTarget(math::Vector3f(10,10,10));
 
         //        camera_control->SetReserveDirection(true,true);        //反转x,y
 

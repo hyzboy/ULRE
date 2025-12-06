@@ -53,13 +53,13 @@ private:
         auto pc = GetGeometryCreater(material_instance);
 
         // 测试1: 矩形挤压成立方体
-        prim_rect_cube = CreateExtrudedRectangle(pc, 2.0f, 1.5f, 1.0f, Vector3f(0, 0, 1));
+        prim_rect_cube = CreateExtrudedRectangle(pc, 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));
 
         // 测试2: 圆形挤压成圆柱体
-        prim_circle_cylinder = CreateExtrudedCircle(pc, 0.8f, 1.5f, 16, Vector3f(0, 0, 1));
+        prim_circle_cylinder = CreateExtrudedCircle(pc, 0.8f, 1.5f, 16, math::Vector3f(0, 0, 1));
 
         // 测试3: 三角形挤压
-        Vector2f triangleVertices[3] =
+        math::Vector2f triangleVertices[3] =
         {
             {-0.8f, -0.5f},  // 左下
             { 0.8f, -0.5f},  // 右下
@@ -70,7 +70,7 @@ private:
         triangleEpci.vertices = triangleVertices;
         triangleEpci.vertexCount = 3;
         triangleEpci.extrudeDistance = 1.2f;
-        triangleEpci.extrudeAxis = Vector3f(0, 0, 1);
+        triangleEpci.extrudeAxis = math::Vector3f(0, 0, 1);
         triangleEpci.generateCaps = true;
         triangleEpci.generateSides = true;
         triangleEpci.clockwiseFront = true;
@@ -78,7 +78,7 @@ private:
         prim_triangle = CreateExtrudedPolygon(pc, &triangleEpci);
 
         // 测试4: 五边形挤压
-        Vector2f pentagonVertices[5];
+        math::Vector2f pentagonVertices[5];
         float angleStep = 2.0f * HGL_PI / 5.0f;
 
         for (int i = 0; i < 5; i++)
@@ -92,7 +92,7 @@ private:
         pentagonEpci.vertices = pentagonVertices;
         pentagonEpci.vertexCount = 5;
         pentagonEpci.extrudeDistance = 1.0f;
-        pentagonEpci.extrudeAxis = Vector3f(1, 0, 0);  // X轴方向挤压
+        pentagonEpci.extrudeAxis = math::Vector3f(1, 0, 0);  // X轴方向挤压
         pentagonEpci.generateCaps = true;
         pentagonEpci.generateSides = true;
         pentagonEpci.clockwiseFront = true;
@@ -109,7 +109,7 @@ private:
         // 创建矩形立方体网格 (位置: 原点)
         if (prim_rect_cube) {
 
-            cci.mat=TranslateMatrix(-3,0,0);
+            cci.mat=math::TranslateMatrix(-3,0,0);
 
             Primitive *mesh_rect = CreatePrimitive(prim_rect_cube, material_instance, pipeline);
             auto comp_rect = CreateComponent<PrimitiveComponent>(&cci, mesh_rect);
@@ -118,7 +118,7 @@ private:
         // 创建圆柱体网格 (位置: 右侧)
         if (prim_circle_cylinder) {
 
-            cci.mat=TranslateMatrix(3,0,0);
+            cci.mat=math::TranslateMatrix(3,0,0);
 
             Primitive *mesh_cylinder = CreatePrimitive(prim_circle_cylinder, material_instance, pipeline);
             auto comp_cylinder = CreateComponent<PrimitiveComponent>(&cci, mesh_cylinder);
@@ -127,7 +127,7 @@ private:
         // 创建三角形柱网格 (位置: 前方)
         if (prim_triangle) {
 
-            cci.mat=TranslateMatrix(0,3,0);
+            cci.mat=math::TranslateMatrix(0,3,0);
 
             Primitive *mesh_triangle = CreatePrimitive(prim_triangle, material_instance, pipeline);
             auto comp_triangle = CreateComponent<PrimitiveComponent>(&cci, mesh_triangle);
@@ -136,15 +136,15 @@ private:
         // 创建五边形柱网格 (位置: 后方)
         if (prim_pentagon) {
 
-            cci.mat=TranslateMatrix(0,-3,0);
+            cci.mat=math::TranslateMatrix(0,-3,0);
 
             Primitive *mesh_pentagon = CreatePrimitive(prim_pentagon, material_instance, pipeline);
             auto comp_pentagon = CreateComponent<PrimitiveComponent>(&cci, mesh_pentagon);
         }
 
         CameraControl *camera_control = GetCameraControl();
-        camera_control->SetPosition(Vector3f(8, 8, 8));
-        camera_control->SetTarget(Vector3f(0, 0, 0));
+        camera_control->SetPosition(math::Vector3f(8, 8, 8));
+        camera_control->SetTarget(math::Vector3f(0, 0, 0));
 
         return true;
     }

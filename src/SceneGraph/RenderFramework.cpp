@@ -39,7 +39,7 @@ namespace
     {
         CreateInstanceLayerInfo cili;
 
-        hgl_zero(cili);
+        mem_zero(cili);
 
         cili.lunarg.standard_validation = true;
         cili.khronos.validation = true;

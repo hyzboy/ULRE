@@ -124,7 +124,7 @@ namespace
 
         void Clear()
         {
-            hgl_zero(ubo_data);
+            mem_zero(ubo_data);
         }
 
         bool OnLine(char *text,const int len) override

@@ -10,21 +10,23 @@
 
 namespace hgl::graph::inline_geometry
 {
-    static bool LineLineIntersect(const Vector2f &p, const Vector2f &r, const Vector2f &q, const Vector2f &s, float &t, float &u)
+    using namespace math;
+
+    static bool LineLineIntersect(const math::Vector2f &p, const math::Vector2f &r, const math::Vector2f &q, const math::Vector2f &s, float &t, float &u)
     {
         float rxs = r.x * s.y - r.y * s.x;
         
         if(fabs(rxs) < 1e-8f) 
             return false;
             
-        Vector2f qp = Vector2f(q.x - p.x, q.y - p.y);
+        math::Vector2f qp = Vector2f(q.x - p.x, q.y - p.y);
         t = (qp.x * s.y - qp.y * s.x) / rxs;
         u = (qp.x * r.y - qp.y * r.x) / rxs;
         
         return true;
     }
 
-    static Vector2f Normalize2(const Vector2f &v)
+    static Vector2f Normalize2(const math::Vector2f &v)
     {
         float len = sqrt(v.x * v.x + v.y * v.y);
         
@@ -34,17 +36,17 @@ namespace hgl::graph::inline_geometry
         return Vector2f(v.x / len, v.y / len);
     }
 
-    static Vector3f TriNormal(const Vector3f &A, const Vector3f &B, const Vector3f &C)
+    static Vector3f TriNormal(const math::Vector3f &A, const math::Vector3f &B, const math::Vector3f &C)
     {
-        Vector3f AB(B.x - A.x, B.y - A.y, B.z - A.z);
-        Vector3f AC(C.x - A.x, C.y - A.y, C.z - A.z);
+        math::Vector3f AB(B.x - A.x, B.y - A.y, B.z - A.z);
+        math::Vector3f AC(C.x - A.x, C.y - A.y, C.z - A.z);
         
         return Vector3f(AB.y * AC.z - AB.z * AC.y,
                         AB.z * AC.x - AB.x * AC.z,
                         AB.x * AC.y - AB.y * AC.x);
     }
 
-    static Vector3f Normalize3(const Vector3f &v)
+    static Vector3f Normalize3(const math::Vector3f &v)
     {
         float len = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
         
@@ -59,7 +61,7 @@ namespace hgl::graph::inline_geometry
         if(!pc || !wci) 
             return nullptr;
 
-        const Vector2f *verts = wci->vertices;
+        const math::Vector2f *verts = wci->vertices;
         uint vcount = wci->vertexCount;
 
         std::vector<uint> segA, segB;
@@ -185,11 +187,11 @@ namespace hgl::graph::inline_geometry
         // build per-segment data
         struct Seg
         {
-            Vector2f p0, p1;
-            Vector2f dir;
-            Vector2f nrm;
+            math::Vector2f p0, p1;
+            math::Vector2f dir;
+            math::Vector2f nrm;
             float len;
-            Vector2f left0, right0, left1, right1;
+            math::Vector2f left0, right0, left1, right1;
         };
         
         std::vector<Seg> segs;
@@ -206,7 +208,7 @@ namespace hgl::graph::inline_geometry
                 s.p0 = verts[seq[i]];
                 s.p1 = verts[seq[ni]];
                 
-                Vector2f d(s.p1.x - s.p0.x, s.p1.y - s.p0.y);
+                math::Vector2f d(s.p1.x - s.p0.x, s.p1.y - s.p0.y);
                 float L = sqrt(d.x * d.x + d.y * d.y);
                 
                 if(L <= 1e-8f)
@@ -239,7 +241,7 @@ namespace hgl::graph::inline_geometry
                 s.p0 = verts[seq[i]];
                 s.p1 = verts[seq[i + 1]];
                 
-                Vector2f d(s.p1.x - s.p0.x, s.p1.y - s.p0.y);
+                math::Vector2f d(s.p1.x - s.p0.x, s.p1.y - s.p0.y);
                 float L = sqrt(d.x * d.x + d.y * d.y);
                 
                 if(L <= 1e-8f)
@@ -309,7 +311,7 @@ namespace hgl::graph::inline_geometry
 
             // left side join
             bool left_ok = false;
-            Vector2f left_pt;
+            math::Vector2f left_pt;
             
             {
                 float t, u;
@@ -331,7 +333,7 @@ namespace hgl::graph::inline_geometry
 
             // right side join
             bool right_ok = false;
-            Vector2f right_pt;
+            math::Vector2f right_pt;
             
             {
                 float t, u;
@@ -375,7 +377,7 @@ namespace hgl::graph::inline_geometry
                     vjoin[vi].leftPts.push_back(sNext.left0);
                     
                     // right只保留一个顶点（中点）
-                    Vector2f right_mid = Vector2f((sPrev.right1.x + sNext.right0.x) * 0.5f,
+                    math::Vector2f right_mid = Vector2f((sPrev.right1.x + sNext.right0.x) * 0.5f,
                                                   (sPrev.right1.y + sNext.right0.y) * 0.5f);
                     vjoin[vi].rightPts.push_back(right_mid);
                 }
@@ -387,7 +389,7 @@ namespace hgl::graph::inline_geometry
                     vjoin[vi].rightPts.push_back(sNext.right0);
                     
                     // left只保留一个顶点（中点）
-                    Vector2f left_mid = Vector2f((sPrev.left1.x + sNext.left0.x) * 0.5f,
+                    math::Vector2f left_mid = Vector2f((sPrev.left1.x + sNext.left0.x) * 0.5f,
                                                  (sPrev.left1.y + sNext.left0.y) * 0.5f);
                     vjoin[vi].leftPts.push_back(left_mid);
                 }
@@ -421,7 +423,7 @@ namespace hgl::graph::inline_geometry
                     }
 
                     // single inner point: average of adjacent right offsets to avoid gaps
-                    Vector2f right_single = Vector2f((sPrev.right1.x + sNext.right0.x) * 0.5f,
+                    math::Vector2f right_single = Vector2f((sPrev.right1.x + sNext.right0.x) * 0.5f,
                                                      (sPrev.right1.y + sNext.right0.y) * 0.5f);
                     vjoin[vi].rightPts.push_back(right_single);
 
@@ -454,7 +456,7 @@ namespace hgl::graph::inline_geometry
                                                               verts[seq[vi]].y + sin(ang) * halfT));
                     }
 
-                    Vector2f left_single = Vector2f((sPrev.left1.x + sNext.left0.x) * 0.5f,
+                    math::Vector2f left_single = Vector2f((sPrev.left1.x + sNext.left0.x) * 0.5f,
                                                     (sPrev.left1.y + sNext.left0.y) * 0.5f);
                     vjoin[vi].leftPts.push_back(left_single);
 
@@ -557,8 +559,8 @@ namespace hgl::graph::inline_geometry
 
         for(size_t i = 0; i < m; i++)
         {
-            Vector2f L = left_poly[i];
-            Vector2f R = right_poly[i];
+            math::Vector2f L = left_poly[i];
+            math::Vector2f R = right_poly[i];
             
             // Side vertices (used for vertical faces) - separate from cap verts
             finalVerts.push_back(Vector3f(L.x, L.y, -halfH));   // 0 side bottom left
@@ -576,7 +578,7 @@ namespace hgl::graph::inline_geometry
             
             for(size_t vi = 0; vi < nverts; ++vi)
             {
-                Vector2f op = verts[seq[vi]];
+                math::Vector2f op = verts[seq[vi]];
                 float dx = L.x - op.x, dy = L.y - op.y;
                 float d = dx * dx + dy * dy;
                 
@@ -749,8 +751,8 @@ namespace hgl::graph::inline_geometry
         {
             uint32_t ia = finalIndices[ti + 0], ib = finalIndices[ti + 1], ic = finalIndices[ti + 2];
             
-            Vector3f A = finalVerts[ia], B = finalVerts[ib], C = finalVerts[ic];
-            Vector3f N = TriNormal(A, B, C);
+            math::Vector3f A = finalVerts[ia], B = finalVerts[ib], C = finalVerts[ic];
+            math::Vector3f N = TriNormal(A, B, C);
             
             if(N.z < 0.0f)
             {
@@ -766,7 +768,7 @@ namespace hgl::graph::inline_geometry
         {
             uint32_t ia = finalIndices[ti + 0], ib = finalIndices[ti + 1], ic = finalIndices[ti + 2];
             
-            Vector3f N = TriNormal(finalVerts[ia], finalVerts[ib], finalVerts[ic]);
+            math::Vector3f N = TriNormal(finalVerts[ia], finalVerts[ib], finalVerts[ic]);
             
             vertNormals[ia].x += N.x;
             vertNormals[ia].y += N.y;

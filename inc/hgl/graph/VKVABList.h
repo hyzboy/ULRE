@@ -70,12 +70,12 @@ public:
         if(write_count+count>vab_count)
             return(false); //列表已满
 
-        hgl_cpy(vab_list  +write_count,buf,   count);
+        mem_copy(vab_list  +write_count,buf,   count);
 
         if(offset)
-        hgl_cpy(vab_offset+write_count,offset,count);
+        mem_copy(vab_offset+write_count,offset,count);
         else
-        hgl_set<VkDeviceSize>(vab_offset+write_count,VkDeviceSize(0),count);
+        mem_fill<VkDeviceSize>(vab_offset+write_count,VkDeviceSize(0),count);
 
         write_count+=count;
         return(true);

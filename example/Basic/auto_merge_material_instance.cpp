@@ -90,7 +90,7 @@ private:
             if(!render_obj[i].primitive)
                 return(false);
 
-            cci.mat=AxisRotate(deg2rad(TRI_ROTATE_ANGLE*i),AxisVector::Z);
+            cci.mat=math::AxisRotate(deg2rad(TRI_ROTATE_ANGLE*i),math::AxisVector::Z);
 
             CreateComponent<PrimitiveComponent>(&cci,render_obj[i].primitive);
         }

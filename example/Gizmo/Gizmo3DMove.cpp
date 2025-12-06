@@ -38,9 +38,9 @@ namespace
 {
 //    #define GIZMO_MOVE_SQUARE 
 
-    const Vector3f one_scale(1.0f);
-    const Vector3f square_scale(2.0f);
-    const Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
+    const math::Vector3f one_scale(1.0f);
+    const math::Vector3f square_scale(2.0f);
+    const math::Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
 
     /**
     * 移动 Gizmo 节点
@@ -76,10 +76,10 @@ namespace
         int         PickAXIS=-1;        //拾取轴
 
         float       PickDist=0;         //拾取辆距离轴心的距离
-        Matrix4f    PickL2W;            //拾取时的变换矩阵
-        Vector3f    PickCenter;         //拾取时的中心位置
+        math::Matrix4f    PickL2W;            //拾取时的变换矩阵
+        math::Vector3f    PickCenter;         //拾取时的中心位置
 
-        TransformTranslate3f *CurTranslate=nullptr;
+        math::TransformTranslate3f *CurTranslate=nullptr;
 
     public:
 
@@ -156,24 +156,24 @@ namespace
                 struct
                 {
                     //圆柱模型是向上的，所以要旋转
-                    Vector3f    RotationAxis;
+                    math::Vector3f    RotationAxis;
                     float       RotationAngle;
 
                     GizmoColor  Color;
                 }
                 GizmoAxisDrawConfig[3]=
                 {
-                    {AxisVector::Y, 90,GizmoColor::Red},
-                    {AxisVector::X,-90,GizmoColor::Green},
-                    {Vector3f(0,0,0),0,GizmoColor::Blue}
+                    {math::AxisVector::Y, 90,GizmoColor::Red},
+                    {math::AxisVector::X,-90,GizmoColor::Green},
+                    {math::Vector3f(0,0,0),0,GizmoColor::Blue}
                 };
 
-                Transform tm;
+                math::Transform tm;
                 GizmoMoveAxis *gma=axis;
-                Vector3f axis_vector;
+                math::Vector3f axis_vector;
 
             #ifdef GIZMO_MOVE_SQUARE
-                Vector3f inv_axis_vector;
+                math::Vector3f inv_axis_vector;
             #endif//GIZMO_MOVE_SQUARE
 
                 const auto *cfg=GizmoAxisDrawConfig;
@@ -182,7 +182,7 @@ namespace
                 {
                     gma->mi=GetGizmoMI3D(cfg->Color);
 
-                    axis_vector=GetAxisVector(AXIS(i)); //取得轴向量
+                    axis_vector=math::GetAxisVector(math::AXIS(i)); //取得轴向量
 
                     tm.SetScale(cylinder_scale);
                     tm.SetRotation(cfg->RotationAxis,cfg->RotationAngle);
@@ -215,7 +215,7 @@ namespace
             return(true);
         }
 
-        io::EventProcResult OnPressed(const Vector2i &mp,io::MouseButton mb) override
+        io::EventProcResult OnPressed(const math::Vector2i &mp,io::MouseButton mb) override
         {
             GizmoMoveNode::OnMove(mp);
 
@@ -226,11 +226,11 @@ namespace
 
                 if(CurTranslate)
                 {
-                    CurTranslate->SetOffset(Vector3f(0,0,0));
+                    CurTranslate->SetOffset(math::Vector3f(0,0,0));
                 }
                 else
                 {
-                    CurTranslate=GetTransform().AddTranslate(Vector3f(0,0,0));
+                    CurTranslate=GetTransform().AddTranslate(math::Vector3f(0,0,0));
                 }
 
                 return io::EventProcResult::Break; // 处理完鼠标按下事件，停止进一步处理
@@ -239,11 +239,11 @@ namespace
             return io::EventProcResult::Continue;
         }
 
-        io::EventProcResult OnReleased(const Vector2i &,io::MouseButton mb) override
+        io::EventProcResult OnReleased(const math::Vector2i &,io::MouseButton mb) override
         {
             if(CurTranslate)
             {
-                const Matrix4f new_l2w=GetLocalToWorldMatrix();
+                const math::Matrix4f new_l2w=GetLocalToWorldMatrix();
 
                 ClearTransforms(); //清除所有变换
 
@@ -257,7 +257,7 @@ namespace
             return io::EventProcResult::Continue;
         }
 
-        io::EventProcResult OnMoveAtControl(const Vector2i &mouse_coord)
+        io::EventProcResult OnMoveAtControl(const math::Vector2i &mouse_coord)
         {
             RenderContext *rc = GetRenderContext();
 
@@ -268,15 +268,15 @@ namespace
 
             const CameraInfo *ci=rc->GetCameraInfo();
 
-            const Vector3f axis_vector=GetAxisVector(AXIS(PickAXIS)); //取得轴向量
+            const math::Vector3f axis_vector=math::GetAxisVector(math::AXIS(PickAXIS)); //取得轴向量
 
-            Vector3f p1= axis_vector*std::fabs(ci->zfar-ci->znear);
-            Vector3f p2=-p1;
+            math::Vector3f p1= axis_vector*std::fabs(ci->zfar-ci->znear);
+            math::Vector3f p2=-p1;
 
-            p1=TransformPosition(PickL2W,p1);
-            p2=TransformPosition(PickL2W,p2);
+            p1=math::TransformPosition(PickL2W,p1);
+            p2=math::TransformPosition(PickL2W,p2);
 
-            Vector3f p_ray,p_ls;
+            math::Vector3f p_ray,p_ls;
 
             MouseRay.ClosestPoint(
                 p_ray,          // 射线上的点
@@ -290,7 +290,7 @@ namespace
             return io::EventProcResult::Continue;
         }
 
-        io::EventProcResult OnMove(const Vector2i &mouse_coord) override
+        io::EventProcResult OnMove(const math::Vector2i &mouse_coord) override
         {
             if(CurTranslate)
             {
@@ -305,25 +305,25 @@ namespace
             MouseRay.SetFromViewportPoint(mouse_coord,rc->GetCameraInfo(),rc->GetViewportSize());
 
             const CameraInfo *ci = rc->GetCameraInfo();
-            const Matrix4f l2w=GetLocalToWorldMatrix();
-            const Vector3f center=TransformPosition(l2w,Vector3f(0,0,0));
-            Vector3f axis_vector;
-            Vector3f axis_endpoint;
-            Vector3f p_ray,p_ls;
+            const math::Matrix4f l2w=GetLocalToWorldMatrix();
+            const math::Vector3f center=math::TransformPosition(l2w,math::Vector3f(0,0,0));
+            math::Vector3f axis_vector;
+            math::Vector3f axis_endpoint;
+            math::Vector3f p_ray,p_ls;
             float dist;
             float to_center_dist;
             MaterialInstance *mi;
 
-            const float axis_sphere_radius  =glm::length(AxisVector::X*(GIZMO_CENTER_SPHERE_RADIUS/2.0f));
-            const float axis_length         =glm::length(AxisVector::X*GIZMO_ARROW_LENGTH);
+            const float axis_sphere_radius  =glm::length(math::AxisVector::X*(GIZMO_CENTER_SPHERE_RADIUS/2.0f));
+            const float axis_length         =glm::length(math::AxisVector::X*GIZMO_ARROW_LENGTH);
 
             CurAXIS=-1;
 
             for(int i=0;i<3;i++)
             {
-                axis_vector=GetAxisVector(AXIS(i)); //取得轴向量
+                axis_vector=math::GetAxisVector(math::AXIS(i)); //取得轴向量
 
-                axis_endpoint=TransformPosition(l2w,axis_vector*axis_length);
+                axis_endpoint=math::TransformPosition(l2w,axis_vector*axis_length);
 
                 //求射线与线段的最近点
                 MouseRay.ClosestPoint(  p_ray,          //射线上的点

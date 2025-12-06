@@ -128,13 +128,13 @@ private:
 
         CreateComponentInfo cci(GetWorldRootNode());
 
-        Vector3f offset(1.0f/float(TexCount),0,0);
+        math::Vector3f offset(1.0f/float(TexCount),0,0);
 
         for(uint32_t i=0;i<TexCount;i++)
         {
             offset.x=position_data[2]*float(i);
 
-            cci.mat=TranslateMatrix(offset);
+            cci.mat=math::TranslateMatrix(offset);
 
             render_obj[i].component=CreateComponent<PrimitiveComponent>(&cci,mesh_rect);
 

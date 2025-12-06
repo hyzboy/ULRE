@@ -230,7 +230,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
-    l2w_max_count=hgl_min<uint32_t>(ubo_range/sizeof(Matrix4f),HGL_U16_MAX);
+    l2w_max_count=hgl_min<uint32_t>(ubo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
     mdi.AddStruct(SBS_LocalToWorld);
 

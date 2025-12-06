@@ -10,7 +10,7 @@ namespace hgl{namespace graph{
 
 ShaderCreateInfo::ShaderCreateInfo()
 {
-    hgl_zero(shader_stage);
+    mem_zero(shader_stage);
     mdi=nullptr;
 
     spv_data=nullptr;

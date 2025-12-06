@@ -32,7 +32,7 @@ namespace
         for(int i=0;i<shader_count;i++)
         {
             sm=(*itp)->value;
-            hgl_cpy(p,sm->GetCreateInfo(),1);
+            mem_copy(p,sm->GetCreateInfo(),1);
 
             ++p;
             ++itp;

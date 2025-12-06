@@ -68,7 +68,7 @@ namespace hgl::graph
 //            if (transform_state.IsNewestVersion())       //自己不变，不代表下面不变
             //return;
 
-        const Matrix4f &l2w=transform_state.GetLocalToWorldMatrix();
+        const math::Matrix4f &l2w=transform_state.GetLocalToWorldMatrix();
 
         for(SceneNode *sub:child_nodes)
         {

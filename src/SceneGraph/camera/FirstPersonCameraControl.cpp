@@ -4,8 +4,8 @@ namespace hgl::graph
 {
     FirstPersonCameraControl::FirstPersonCameraControl()
     {
-        target=Vector3f(0.0f);
-        up=Vector3f(0,0,1);
+        target=math::Vector3f(0.0f);
+        up=math::Vector3f(0,0,1);
         distance_to_target=0.0f;
 
         // initialize orientation (radians)
@@ -22,18 +22,18 @@ namespace hgl::graph
         UpdateCameraVector();
     }
 
-    void FirstPersonCameraControl::SetTarget(const Vector3f &t)
+    void FirstPersonCameraControl::SetTarget(const math::Vector3f &t)
     {
         if(!camera) return;
 
         // Compute direction to target and initial forward
-        Vector3f dir = t - camera->pos;
+        math::Vector3f dir = t - camera->pos;
         float len = length(dir);
 
         if(len <= 1e-6f)
         {
             // target coincides with camera position
-            forward = Vector3f(1,0,0);
+            forward = math::Vector3f(1,0,0);
             distance_to_target = 0.0f;
         }
         else
@@ -62,7 +62,7 @@ namespace hgl::graph
 
         target=camera->pos+forward*distance_to_target;
 
-        camera_info->view       =LookAtMatrix(camera->pos,target,camera->world_up);
+        camera_info->view       =math::LookAtMatrix(camera->pos,target,camera->world_up);
 
         RefreshCameraInfo(camera_info,vi,camera);
     }
@@ -82,7 +82,7 @@ namespace hgl::graph
         up      =normalize(cross(right,forward));
     }
 
-    void FirstPersonCameraControl::Rotate(const Vector2f &axis)
+    void FirstPersonCameraControl::Rotate(const math::Vector2f &axis)
     {
         constexpr float top_limit      =deg2rad( 89.0f);
         constexpr float bottom_limit   =deg2rad(-89.0f);
@@ -132,7 +132,7 @@ namespace hgl::graph
     }
 
     // CameraMouseControl implementations
-    io::EventProcResult CameraMouseControl::OnPressed(const Vector2i &mouse_coord,io::MouseButton)
+    io::EventProcResult CameraMouseControl::OnPressed(const math::Vector2i &mouse_coord,io::MouseButton)
     {
         mouse_last_pos=mouse_coord;
 
@@ -141,7 +141,7 @@ namespace hgl::graph
         return(io::EventProcResult::Break);
     }
 
-    io::EventProcResult CameraMouseControl::OnWheel(const Vector2i &mouse_coord)
+    io::EventProcResult CameraMouseControl::OnWheel(const math::Vector2i &mouse_coord)
     {
         if(mouse_coord.y==0) return(io::EventProcResult::Continue);
         if(camera) camera->Forward(float(mouse_coord.y)/100.0f);
@@ -149,15 +149,15 @@ namespace hgl::graph
         return(io::EventProcResult::Break);
     }
 
-    io::EventProcResult CameraMouseControl::OnMove(const Vector2i &mouse_coord)
+    io::EventProcResult CameraMouseControl::OnMove(const math::Vector2i &mouse_coord)
     {
         mouse_pos=mouse_coord;
 
         bool left =HasPressed(io::MouseButton::Left);
         bool right=HasPressed(io::MouseButton::Right);
 
-        Vector2f pos=mouse_coord;
-        Vector2f gap=pos-mouse_last_pos;
+        math::Vector2f pos=mouse_coord;
+        math::Vector2f gap=pos-mouse_last_pos;
 
         if(left)
         {
@@ -170,7 +170,7 @@ namespace hgl::graph
         {
             gap/=10.0f;
 
-            if(camera) camera->Move(Vector3f(gap.x,0,gap.y));
+            if(camera) camera->Move(math::Vector3f(gap.x,0,gap.y));
         }
 
         last_time=cur_time;

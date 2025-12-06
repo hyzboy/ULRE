@@ -52,7 +52,7 @@ private:
         if(!pc) return false;
 
         // 示例1: 花瓶型 (完整旋转 360)
-        Vector2f vaseProfile[] = {
+        math::Vector2f vaseProfile[] = {
             {0.0f, -1.0f},
             {0.2f, -0.8f},
             {0.5f, -0.3f},
@@ -63,18 +63,18 @@ private:
 
         RevolutionCreateInfo vaseRci;
         vaseRci.profile_points = vaseProfile;
-        vaseRci.profile_count = sizeof(vaseProfile)/sizeof(Vector2f);
+        vaseRci.profile_count = sizeof(vaseProfile)/sizeof(math::Vector2f);
         vaseRci.revolution_slices = 36;
         vaseRci.start_angle = 0.0f;
         vaseRci.sweep_angle = 360.0f;
-        vaseRci.revolution_center = Vector3f(0,0,0);
+        vaseRci.revolution_center = math::Vector3f(0,0,0);
         vaseRci.close_profile = false;
-        vaseRci.uv_scale = Vector2f(1.0f,1.0f);
+        vaseRci.uv_scale = math::Vector2f(1.0f,1.0f);
 
         prim_vase = CreateRevolution(pc, &vaseRci);
 
         // 示例2: 半旋转的薄壳（展示端面）
-        Vector2f shellProfile[] = {
+        math::Vector2f shellProfile[] = {
             {0.0f, 0.0f},
             {0.8f, 0.0f},
             {0.8f, 1.0f},
@@ -83,18 +83,18 @@ private:
 
         RevolutionCreateInfo shellRci;
         shellRci.profile_points = shellProfile;
-        shellRci.profile_count = sizeof(shellProfile)/sizeof(Vector2f);
+        shellRci.profile_count = sizeof(shellProfile)/sizeof(math::Vector2f);
         shellRci.revolution_slices = 24;
         shellRci.start_angle = -90.0f;
         shellRci.sweep_angle = 180.0f; // 半旋转
-        shellRci.revolution_center = Vector3f(0,0,0);
+        shellRci.revolution_center = math::Vector3f(0,0,0);
         shellRci.close_profile = true; // 闭合轮廓
-        shellRci.uv_scale = Vector2f(1.0f,1.0f);
+        shellRci.uv_scale = math::Vector2f(1.0f,1.0f);
 
         prim_partial_shell = CreateRevolution(pc, &shellRci);
 
         // 示例3: 简单圆锥（使用两点轮廓）
-        Vector2f coneProfile[] = {
+        math::Vector2f coneProfile[] = {
             {0.0f, 0.0f},
             {0.6f, 1.5f}
         };
@@ -105,9 +105,9 @@ private:
         coneRci.revolution_slices = 32;
         coneRci.start_angle = 0.0f;
         coneRci.sweep_angle = 360.0f;
-        coneRci.revolution_center = Vector3f(0,0,0);
+        coneRci.revolution_center = math::Vector3f(0,0,0);
         coneRci.close_profile = true;
-        coneRci.uv_scale = Vector2f(1.0f,1.0f);
+        coneRci.uv_scale = math::Vector2f(1.0f,1.0f);
         coneRci.normal_smooth_angle = 35.0f; // 锥顶需要拆分法线
 
         prim_cone = CreateRevolution(pc, &coneRci);
@@ -120,26 +120,26 @@ private:
         CreateComponentInfo cci(GetWorldRootNode());
 
         if(prim_vase) {
-            cci.mat = TranslateMatrix(-3, 0, 0);
+            cci.mat = math::TranslateMatrix(-3, 0, 0);
             Primitive *primitive = CreatePrimitive(prim_vase, material_instance, pipeline);
             auto comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         }
 
         if(prim_partial_shell) {
-            cci.mat = TranslateMatrix(3, 0, 0);
+            cci.mat = math::TranslateMatrix(3, 0, 0);
             Primitive *primitive = CreatePrimitive(prim_partial_shell, material_instance, pipeline);
             auto comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         }
 
         if(prim_cone) {
-            cci.mat = TranslateMatrix(0, 3, 0);
+            cci.mat = math::TranslateMatrix(0, 3, 0);
             Primitive *primitive = CreatePrimitive(prim_cone, material_instance, pipeline);
             auto comp = CreateComponent<PrimitiveComponent>(&cci, primitive);
         }
 
         CameraControl *camera_control = GetCameraControl();
-        camera_control->SetPosition(Vector3f(8,8,8));
-        camera_control->SetTarget(Vector3f(0,0,0));
+        camera_control->SetPosition(math::Vector3f(8,8,8));
+        camera_control->SetTarget(math::Vector3f(0,0,0));
 
         return true;
     }
