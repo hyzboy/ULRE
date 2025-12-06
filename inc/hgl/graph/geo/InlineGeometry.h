@@ -241,9 +241,9 @@ namespace hgl::graph
             AxisCreateInfo()
             {
                 size=1.0f;
-                color[0].Set(1,0,0,1);
-                color[1].Set(0,1,0,1);
-                color[2].Set(0,0,1,1);
+                color[0].set(1,0,0,1);
+                color[1].set(0,1,0,1);
+                color[2].set(0,0,1,1);
             }
         };//struct AxisCreateInfo
 
