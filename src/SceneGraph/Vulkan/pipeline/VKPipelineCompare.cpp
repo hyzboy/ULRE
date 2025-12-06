@@ -98,13 +98,13 @@ namespace hgl::graph
         if(a->depthBiasEnable!=b->depthBiasEnable)
             return(false);
 
-        if(!IsNearlyEqual(a->depthBiasConstantFactor,b->depthBiasConstantFactor))
+        if(!math::IsNearlyEqual(a->depthBiasConstantFactor,b->depthBiasConstantFactor))
             return(false);
-        if(!IsNearlyEqual(a->depthBiasClamp,b->depthBiasClamp))
+        if(!math::IsNearlyEqual(a->depthBiasClamp,b->depthBiasClamp))
             return(false);
-        if(!IsNearlyEqual(a->depthBiasSlopeFactor,b->depthBiasSlopeFactor))
+        if(!math::IsNearlyEqual(a->depthBiasSlopeFactor,b->depthBiasSlopeFactor))
             return(false);
-        if(!IsNearlyEqual(a->lineWidth,b->lineWidth))
+        if(!math::IsNearlyEqual(a->lineWidth,b->lineWidth))
             return(false);
 
         return(true);
@@ -120,7 +120,7 @@ namespace hgl::graph
         if(a->sampleShadingEnable!=b->sampleShadingEnable)
             return(false);
 
-        if(!IsNearlyEqual(a->minSampleShading,b->minSampleShading))
+        if(!math::IsNearlyEqual(a->minSampleShading,b->minSampleShading))
             return(false);
 
         if(a->pSampleMask!=b->pSampleMask)
@@ -159,9 +159,9 @@ namespace hgl::graph
         if(hgl_cmp(a->back,b->back))
             return(false);
 
-        if(!IsNearlyEqual(a->minDepthBounds,b->minDepthBounds))
+        if(!math::IsNearlyEqual(a->minDepthBounds,b->minDepthBounds))
             return(false);
-        if(!IsNearlyEqual(a->maxDepthBounds,b->maxDepthBounds))
+        if(!math::IsNearlyEqual(a->maxDepthBounds,b->maxDepthBounds))
             return(false);
 
         return(true);
@@ -180,7 +180,7 @@ namespace hgl::graph
         if(hgl_cmp(a->pAttachments,b->pAttachments,a->attachmentCount))
             return(false);
 
-        if(!IsNearlyEqualArray(a->blendConstants,b->blendConstants,4))
+        if(!math::IsNearlyEqualArray(a->blendConstants,b->blendConstants,4))
             return(false);
 
         return(true);
