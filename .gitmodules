@@ -10,9 +10,6 @@
 [submodule "CMMath"]
 	path = CMMath
 	url = http://git.hyzgame.com:3000/hyzboy/CMMath
-[submodule "CMPlatform"]
-	path = CMPlatform
-	url = http://git.hyzgame.com:3000/hyzboy/CMPlatform
 [submodule "CMAssetsManage"]
 	path = CMAssetsManage
 	url = http://git.hyzgame.com:3000/hyzboy/CMAssetsManage.git
