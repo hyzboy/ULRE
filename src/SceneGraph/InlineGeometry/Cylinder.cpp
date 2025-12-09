@@ -16,7 +16,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Cylinder",numberVertices,numberIndices))
             return(nullptr);
 
-        float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
+        float angleStep = (2.0f * math::pi) / ((float) cci->numberSlices);
 
         if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
             return nullptr;

@@ -408,7 +408,7 @@ namespace hgl::graph::inline_geometry
 
         // 创建圆形顶点（顺时针顺序，从+X轴开始）
         std::vector<Vector2f> circleVertices(segments);
-        float angleStep = 2.0f * HGL_PI / segments;
+        float angleStep = 2.0f * math::pi / segments;
 
         for (uint i = 0; i < segments; i++) {
             // 注意：使用负角度来确保顺时针顺序

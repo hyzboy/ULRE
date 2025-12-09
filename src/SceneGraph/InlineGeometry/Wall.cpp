@@ -401,8 +401,8 @@ namespace hgl::graph::inline_geometry
                 float a2_left = atan2(sNext.nrm.y, sNext.nrm.x);
                 float da_left = a2_left - a1_left;
                 
-                while(da_left <= -HGL_PI) da_left += 2 * HGL_PI;
-                while(da_left > HGL_PI) da_left -= 2 * HGL_PI;
+                while(da_left <= -math::pi) da_left += 2 * math::pi;
+                while(da_left > math::pi) da_left -= 2 * math::pi;
 
                 int segs = std::max<int>(3, (int)wci->roundSegments);
 
@@ -440,12 +440,12 @@ namespace hgl::graph::inline_geometry
                 else
                 {
                     // right is outer: generate right arc, keep left as single center
-                    float a1_right = a1_left + (float)HGL_PI;
-                    float a2_right = a2_left + (float)HGL_PI;
+                    float a1_right = a1_left + (float)math::pi;
+                    float a2_right = a2_left + (float)math::pi;
                     float da_right = a2_right - a1_right;
                     
-                    while(da_right <= -HGL_PI) da_right += 2 * HGL_PI;
-                    while(da_right > HGL_PI) da_right -= 2 * HGL_PI;
+                    while(da_right <= -math::pi) da_right += 2 * math::pi;
+                    while(da_right > math::pi) da_right -= 2 * math::pi;
 
                     for(int s = 0; s <= segs; s++)
                     {

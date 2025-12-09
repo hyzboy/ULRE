@@ -107,8 +107,8 @@ namespace hgl::graph::inline_geometry
             {
                 Vector3f n = glm::normalize(v);
                 // 球面 UV，经度[-pi,pi] -> u in [0,1]，纬度[-pi/2,pi/2] -> v in [0,1]
-                float u = (atan2f(n.y, n.x) / (2.0f*HGL_PI)) + 0.5f;
-                float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/HGL_PI) + 0.5f;
+                float u = (atan2f(n.y, n.x) / (2.0f*math::pi)) + 0.5f;
+                float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/math::pi) + 0.5f;
                 *uvp++ = u * hsci->uv_scale.x;
                 *uvp++ = vtex * hsci->uv_scale.y;
             }
