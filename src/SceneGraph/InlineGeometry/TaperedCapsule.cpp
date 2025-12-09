@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateTaperedCapsule(GeometryCreater *pc,const TaperedCapsuleCreateInfo *tcci)
     {
         if(!pc||!tcci)return nullptr;
@@ -354,12 +356,12 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p = pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         float maxr = std::max(bottomR, topR);
 
         bv.SetFromAABB(math::Vector3f(-maxr,-maxr,-halfH-maxr),
-                       math::Vector3f(maxr,maxr,halfH+maxr));
+                       Vector3f(maxr,maxr,halfH+maxr));
 
         p->SetBoundingVolumes(bv);
 

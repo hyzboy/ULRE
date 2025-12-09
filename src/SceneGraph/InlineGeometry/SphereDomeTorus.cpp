@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateSphere(GeometryCreater *pc,const uint numberSlices)
     {
         uint numberParallels = (numberSlices+1) / 2;
@@ -83,7 +85,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-1.0f,-1.0f,-1.0f),math::Vector3f(1.0f,1.0f,1.0f));
 
@@ -183,7 +185,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-1.0f,-1.0f,-1.0f),math::Vector3f(1.0f,1.0f,1.0f));        //这个不对，待查
 
@@ -301,13 +303,13 @@ namespace hgl::graph::inline_geometry
         Geometry *p=pc->Create();
 
         {
-            math::BoundingVolumes bv;
+            BoundingVolumes bv;
 
             float maxExtent = centerRadius + torusRadius;
             float minExtent = centerRadius - torusRadius;
 
             bv.SetFromAABB(math::Vector3f(-torusRadius, -maxExtent, -maxExtent),
-                           math::Vector3f( torusRadius,  maxExtent,  maxExtent));
+                           Vector3f( torusRadius,  maxExtent,  maxExtent));
 
             p->SetBoundingVolumes(bv);
         }

@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateCylinder(GeometryCreater *pc,const CylinderCreateInfo *cci)
     {
         uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
@@ -186,10 +188,10 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
-                       math::Vector3f( cci->radius, cci->radius, cci->halfExtend));
+                       Vector3f( cci->radius, cci->radius, cci->halfExtend));
 
         p->SetBoundingVolumes(bv);
 

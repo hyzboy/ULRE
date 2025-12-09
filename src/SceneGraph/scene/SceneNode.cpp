@@ -68,7 +68,7 @@ namespace hgl::graph
 //            if (transform_state.IsNewestVersion())       //自己不变，不代表下面不变
             //return;
 
-        const math::Matrix4f &l2w=transform_state.GetLocalToWorldMatrix();
+        const Matrix4f &l2w=transform_state.GetLocalToWorldMatrix();
 
         for(SceneNode *sub:child_nodes)
         {
@@ -96,7 +96,7 @@ namespace hgl::graph
         int count=child_nodes.GetCount();
         SceneNode **sub=child_nodes.GetData();
 
-        math::AABB local,world;
+        AABB local,world;
 
         (*sub)->RefreshBoundingVolumes();
         local=(*sub)->GetLocalBoundingBox();

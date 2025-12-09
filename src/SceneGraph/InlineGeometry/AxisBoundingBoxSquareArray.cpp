@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateAxis(GeometryCreater *pc,const AxisCreateInfo *aci)
     {
         if(!pc||!aci)return(nullptr);
@@ -28,7 +30,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(0,0,0),math::Vector3f(s,s,s));
 
@@ -76,7 +78,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-0.5,-0.5,-0.5),math::Vector3f(0.5,0.5,0.5));
 
@@ -131,7 +133,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(0,0,0),math::Vector3f(col,row,0));
 

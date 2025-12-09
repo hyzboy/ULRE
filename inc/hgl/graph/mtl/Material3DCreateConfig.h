@@ -93,7 +93,7 @@ struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
     bool        fixed_size;             ///<固定大小(指像素尺寸)
 
-    math::Vector2u    pixel_size;             ///<像素尺寸
+    Vector2u    pixel_size;             ///<像素尺寸
 
     VkFrontFace front_face=VK_FRONT_FACE_CLOCKWISE; ///<正面朝向
 

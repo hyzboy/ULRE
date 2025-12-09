@@ -10,6 +10,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateHollowCylinder(GeometryCreater *pc,const HollowCylinderCreateInfo *hcci)
     {
         if(!pc||!hcci) return nullptr;
@@ -190,8 +192,8 @@ namespace hgl::graph::inline_geometry
         Geometry *p = pc->Create();
         if(p)
         {
-            math::BoundingVolumes bv;
-            bv.SetFromAABB(math::Vector3f(-r1,-r1,-he), math::Vector3f(r1,r1,he));
+            BoundingVolumes bv;
+            bv.SetFromAABB(math::Vector3f(-r1,-r1,-he), Vector3f(r1,r1,he));
             p->SetBoundingVolumes(bv);
         }
         return p;

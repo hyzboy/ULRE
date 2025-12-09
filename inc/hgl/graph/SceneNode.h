@@ -50,8 +50,8 @@ namespace hgl::graph
 
     protected:
 
-        math::AABB local_bounding_box;                                                                              ///<本地坐标绑定盒
-        math::OBB world_bounding_box;                                                                               ///<世界坐标绑定盒
+        AABB local_bounding_box;                                                                              ///<本地坐标绑定盒
+        OBB world_bounding_box;                                                                               ///<世界坐标绑定盒
 
     protected:
 
@@ -81,7 +81,7 @@ namespace hgl::graph
         SceneNode():NodeTransform(){}
         SceneNode(World *s):NodeTransform(),main_world(s){}                                                           ///<从Scene构造
         SceneNode(World *s,const NodeTransform &so):NodeTransform(so),main_world(s){}                                 ///<从NodeTransform复制构造
-        SceneNode(World *s,const math::Matrix4f &mat):NodeTransform(mat),main_world(s){}                                    ///<从Matrix4f复制构造
+        SceneNode(World *s,const Matrix4f &mat):NodeTransform(mat),main_world(s){}                                    ///<从Matrix4f复制构造
 
     public:
 
@@ -143,8 +143,8 @@ namespace hgl::graph
         virtual         void        UpdateWorldTransform() override;                                                ///<刷新世界变换
         virtual         void        RefreshBoundingVolumes  ();                                                     ///<刷新绑定盒
 
-        virtual const   math::AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                   ///<取得本地坐标绑定盒
-//            virtual const   math::AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}               ///<取得世界坐标绑定盒
+        virtual const   AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                   ///<取得本地坐标绑定盒
+//            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}               ///<取得世界坐标绑定盒
 
     public: //组件相关方法
 

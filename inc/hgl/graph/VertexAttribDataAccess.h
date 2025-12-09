@@ -260,7 +260,7 @@ namespace hgl::graph
             return(true);
         }
 
-        math::AABB GetAABB()const
+        AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -274,7 +274,7 @@ namespace hgl::graph
             max_point.z=0;
             max_point.w=0;
 
-            return math::AABB(min_point,max_point);
+            return AABB(min_point,max_point);
         }
 
         bool Write(const T v1)
@@ -361,7 +361,7 @@ namespace hgl::graph
             return(true);
         }
 
-        math::AABB GetAABB()const
+        AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -372,7 +372,7 @@ namespace hgl::graph
             max_point.z=0;
             max_point.w=0;
 
-            return math::AABB(min_point,max_point);
+            return AABB(min_point,max_point);
         }
 
         bool Write(const T v1,const T v2)
@@ -445,7 +445,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count<<1)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(const math::Vector2f &,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(const Vector2f &,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -685,7 +685,7 @@ namespace hgl::graph
             return(true);
         }
 
-        math::AABB GetAABB()const
+        AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -694,7 +694,7 @@ namespace hgl::graph
             min_point.w=0;
             max_point.w=0;
 
-            return math::AABB(min_point,max_point);
+            return AABB(min_point,max_point);
         }
 
         bool Write(const T v1,const T v2,const T v3)
@@ -753,7 +753,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count*3)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const math::Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -777,7 +777,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count*3)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const math::Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -963,7 +963,7 @@ namespace hgl::graph
             return(true);
         }
 
-        math::AABB GetAABB()const
+        AABB GetAABB()const
         {
             glm::vec4 min_point,max_point;
 
@@ -972,7 +972,7 @@ namespace hgl::graph
             min_point.w=0;
             max_point.w=0;
 
-            return math::AABB(min_point,max_point);
+            return AABB(min_point,max_point);
         }
 
         bool Write(const T v1,const T v2,const T v3,const T v4)
@@ -1071,7 +1071,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count<<2)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const math::Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 
@@ -1096,7 +1096,7 @@ namespace hgl::graph
         {
             if(!this->access||this->access+(count<<2)>this->data_end)
             {
-                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const math::Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                 return(false);
             }
 

@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateCircle2D(GeometryCreater *pc,const CircleCreateInfo *cci)
     {
         if(!pc)return(nullptr);

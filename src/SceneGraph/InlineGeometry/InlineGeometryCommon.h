@@ -9,6 +9,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     // Shared constants used by multiple geometry creators
     constexpr uint GLUS_VERTICES_FACTOR =4;
     constexpr uint GLUS_VERTICES_DIVISOR=4;

@@ -11,8 +11,8 @@ using namespace hgl::graph;
 
 struct LineSegmentDescriptor
 {
-    math::Vector3f from;
-    math::Vector3f to;
+    Vector3f from;
+    Vector3f to;
 
     uint8 color;
 };
@@ -49,7 +49,7 @@ public:
     bool RebuildMesh();
     void Expand(uint);
 
-    void AddLine(const math::Vector3f &from,const math::Vector3f &to,uint8 color_index);
+    void AddLine(const Vector3f &from,const Vector3f &to,uint8 color_index);
     void AddLine(const DataArray<LineSegmentDescriptor> &);
 
     void Draw(RenderCmdBuffer *);

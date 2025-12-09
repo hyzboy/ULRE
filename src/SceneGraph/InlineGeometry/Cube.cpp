@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateCube(GeometryCreater *pc,const CubeCreateInfo *cci)
     {
         constexpr float positions[]={   -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,
@@ -86,7 +88,7 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-0.5f,-0.5f,-0.5f),math::Vector3f(0.5f,0.5f,0.5f));
 

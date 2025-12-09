@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateRectangle(GeometryCreater *pc,const RectangleCreateInfo *rci)
     {
         if(!pc)return(nullptr);

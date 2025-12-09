@@ -4,7 +4,7 @@
 COMPONENT_NAMESPACE_BEGIN
 const bool GeometryComponent::GetWorldAABB(math::AABB &box)
 {
-    math::AABB local_aabb;
+    AABB local_aabb;
 
     if(!GetLocalAABB(local_aabb))
         return false;
@@ -15,7 +15,7 @@ const bool GeometryComponent::GetWorldAABB(math::AABB &box)
 
 const bool GeometryComponent::GetWorldOBB(math::OBB &box)
 {
-    math::AABB local_aabb;
+    AABB local_aabb;
 
     if(!GetLocalAABB(local_aabb))
         return false;
@@ -26,7 +26,7 @@ const bool GeometryComponent::GetWorldOBB(math::OBB &box)
 
 const bool GeometryComponent::GetWorldOBBMatrix(math::Matrix4f &obb_matrix,const float cube_size)
 {
-    math::AABB aabb;
+    AABB aabb;
 
     if(!GetLocalAABB(aabb))
         return false;
@@ -36,15 +36,15 @@ const bool GeometryComponent::GetWorldOBBMatrix(math::Matrix4f &obb_matrix,const
     //obb_matrix=obb.GetMatrix(cube_size);
 
     // 1. 计算最终的缩放向量
-    const math::Vector3f scale_vector = aabb.GetLength() * cube_size;
+    const Vector3f scale_vector = aabb.GetLength() * cube_size;
 
     // 2. 直接构建局部空间的变换矩阵 (Translate * Scale)
-    math::Matrix4f local_aabb_matrix;
+    Matrix4f local_aabb_matrix;
 
-    local_aabb_matrix[0] = math::Vector4f(scale_vector.x,0.0f,0.0f,0.0f);
-    local_aabb_matrix[1] = math::Vector4f(0.0f,scale_vector.y,0.0f,0.0f);
-    local_aabb_matrix[2] = math::Vector4f(0.0f,0.0f,scale_vector.z,0.0f);
-    local_aabb_matrix[3] = math::Vector4f(aabb.GetCenter(),1.0f);
+    local_aabb_matrix[0] = Vector4f(scale_vector.x,0.0f,0.0f,0.0f);
+    local_aabb_matrix[1] = Vector4f(0.0f,scale_vector.y,0.0f,0.0f);
+    local_aabb_matrix[2] = Vector4f(0.0f,0.0f,scale_vector.z,0.0f);
+    local_aabb_matrix[3] = Vector4f(aabb.GetCenter(),1.0f);
 
     // 3. 将局部 AABB 矩阵与组件的 LocalToWorld 矩阵相乘，得到最终的世界 OBB 矩阵
     obb_matrix = GetLocalToWorldMatrix() * local_aabb_matrix;

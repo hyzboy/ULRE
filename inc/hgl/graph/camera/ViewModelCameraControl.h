@@ -21,15 +21,15 @@ namespace hgl::graph
         float pitch;         // elevation
         float distance;      // distance from target to camera
 
-        math::Vector3f target;     // fixed model center
+        Vector3f target;     // fixed model center
 
         // local basis
-        math::Vector3f forward;
-        math::Vector3f right;
-        math::Vector3f up;
+        Vector3f forward;
+        Vector3f right;
+        Vector3f up;
 
         // input configuration
-        math::Vector2f input_invert_sign;                 // x/y inversion for mouse
+        Vector2f input_invert_sign;                 // x/y inversion for mouse
         float rotation_sensitivity_deg_per_pixel;   // degrees per pixel
         float zoom_sensitivity;                     // scale applied to wheel delta
 
@@ -45,7 +45,7 @@ namespace hgl::graph
             forward.y = cp * sinf(yaw);
             forward.z = sinf(pitch);
 
-            math::Vector3f world_up(0,0,1);
+            Vector3f world_up(0,0,1);
             if(cam) world_up = cam->world_up;
 
             right = normalize(cross(forward,world_up));
@@ -69,18 +69,18 @@ namespace hgl::graph
             yaw = 0.0f;
             pitch = 0.0f;
             distance = 5.0f;
-            target = math::Vector3f(0,0,0);
+            target = Vector3f(0,0,0);
 
-            input_invert_sign = math::Vector2f(-1, 1);            // drag to orbit typical feel
+            input_invert_sign = Vector2f(-1, 1);            // drag to orbit typical feel
             rotation_sensitivity_deg_per_pixel = 0.2f;
             zoom_sensitivity = 0.1f;
 
             min_distance = 0.1f;
             max_distance = 1000.0f;
 
-            forward = math::Vector3f(1,0,0);
-            right   = math::Vector3f(0,1,0);
-            up      = math::Vector3f(0,0,1);
+            forward = Vector3f(1,0,0);
+            right   = Vector3f(0,1,0);
+            up      = Vector3f(0,0,1);
 
             dirty_basis = true;
         }
@@ -94,7 +94,7 @@ namespace hgl::graph
         }
 
         // Target is fixed: set initial target and distance
-        void SetTarget(const math::Vector3f &t) override
+        void SetTarget(const Vector3f &t) override
         {
             target = t;
             UpdateCameraVector();
@@ -169,13 +169,13 @@ namespace hgl::graph
                 dirty_basis = false;
             }
 
-            ci->view = math::LookAtMatrix(cam->pos, target, cam->world_up);
+            ci->view = LookAtMatrix(cam->pos, target, cam->world_up);
             RefreshCameraInfo(ci, vi, cam);
         }
 
     public:
         // allow programmatic rotation
-        void Rotate(const math::Vector2f &delta_pixels)
+        void Rotate(const Vector2f &delta_pixels)
         {
             const float sens_rad = deg2rad(rotation_sensitivity_deg_per_pixel);
             yaw   -= delta_pixels.x * input_invert_sign.x * sens_rad;
@@ -209,25 +209,25 @@ namespace hgl::graph
     class ViewModelMouseControl: public io::MouseEvent
     {
         ViewModelCameraControl *camera;
-        math::Vector2f mouse_last;
+        Vector2f mouse_last;
         bool dragging;
 
     public:
         ViewModelMouseControl(ViewModelCameraControl *vc):camera(vc),dragging(false){}
 
-        io::EventProcResult OnPressed(const math::Vector2i &mouse_coord, io::MouseButton mb) override
+        io::EventProcResult OnPressed(const Vector2i &mouse_coord, io::MouseButton mb) override
         {
-            mouse_last = math::Vector2f(mouse_coord);
+            mouse_last = Vector2f(mouse_coord);
             dragging = true;
             return io::EventProcResult::Break;
         }
 
-        io::EventProcResult OnMove(const math::Vector2i &mouse_coord) override
+        io::EventProcResult OnMove(const Vector2i &mouse_coord) override
         {
             if(!dragging) return io::EventProcResult::Continue;
 
-            math::Vector2f pos(mouse_coord);
-            math::Vector2f delta = pos - mouse_last;
+            Vector2f pos(mouse_coord);
+            Vector2f delta = pos - mouse_last;
             mouse_last = pos;
 
             if(camera)
@@ -239,14 +239,14 @@ namespace hgl::graph
             return io::EventProcResult::Break;
         }
 
-        io::EventProcResult OnWheel(const math::Vector2i &mouse_coord) override
+        io::EventProcResult OnWheel(const Vector2i &mouse_coord) override
         {
             // y is wheel delta
             if(camera && mouse_coord.y!=0) camera->Zoom(float(mouse_coord.y));
             return io::EventProcResult::Break;
         }
 
-        io::EventProcResult OnReleased(const math::Vector2i &mouse_coord, io::MouseButton) override
+        io::EventProcResult OnReleased(const Vector2i &mouse_coord, io::MouseButton) override
         {
             dragging = false;
             return io::EventProcResult::Break;

@@ -72,7 +72,7 @@ void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
     }
 
     DrawNode **rn=draw_nodes.GetData();
-    math::Matrix4f *l2wp=(math::Matrix4f *)(transform_buffer->DeviceBuffer::Map());
+    Matrix4f *l2wp=(math::Matrix4f *)(transform_buffer->DeviceBuffer::Map());
 
     for(int i=0;i<draw_nodes.GetCount();i++)
     {
@@ -96,7 +96,7 @@ void InstanceAssignmentBuffer::UpdateTransformData(const DrawNodeList &rnp_list,
     const uint count=rnp_list.GetCount();
 
     DrawNode **rn=rnp_list.GetData();
-    math::Matrix4f *l2wp=(math::Matrix4f *)(transform_buffer->DeviceBuffer::Map(  sizeof(math::Matrix4f)*first,
+    Matrix4f *l2wp=(math::Matrix4f *)(transform_buffer->DeviceBuffer::Map(  sizeof(math::Matrix4f)*first,
                                                                 sizeof(math::Matrix4f)*(last-first+1)));
 
     for(uint i=0;i<count;i++)

@@ -45,7 +45,7 @@ public:
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
-    const   math::BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
+    const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
 
     const   GeometryDataBuffer *GetDataBuffer       ()const{return data_buffer;}
     const   GeometryDrawRange * GetRenderData       ()const{return &draw_range;}

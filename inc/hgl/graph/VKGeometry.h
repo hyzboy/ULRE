@@ -27,16 +27,16 @@ protected:
 
 protected:
 
-    math::BoundingVolumes bounding_volumes;    ///<包围体
+    BoundingVolumes bounding_volumes;    ///<包围体
     
 public:
 
     Geometry(const AnsiString &pn,GeometryData *pd);
     virtual ~Geometry();
 
-          void             SetBoundingVolumes(const math::BoundingVolumes &bv){bounding_volumes=bv;}
+          void             SetBoundingVolumes(const BoundingVolumes &bv){bounding_volumes=bv;}
 
-    const math::BoundingVolumes &GetBoundingVolumes()const{return bounding_volumes;}
+    const BoundingVolumes &GetBoundingVolumes()const{return bounding_volumes;}
 
 public:
 

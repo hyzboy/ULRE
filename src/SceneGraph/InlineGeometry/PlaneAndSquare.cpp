@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreatePlaneGrid2D(GeometryCreater *pc,const PlaneGridCreateInfo *pgci)
     {
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
@@ -20,14 +22,14 @@ namespace hgl::graph::inline_geometry
 
         for(uint row=0;row<=pgci->grid_size.Height();row++)
         {
-            vertex->WriteLine(  math::Vector2f(left ,top+row),
-                                math::Vector2f(right,top+row));
+            vertex->WriteLine(  Vector2f(left ,top+row),
+                                Vector2f(right,top+row));
         }
 
         for(uint col=0;col<=pgci->grid_size.Width();col++)
         {
-            vertex->WriteLine(  math::Vector2f(left+col,top   ),
-                                math::Vector2f(left+col,bottom));
+            vertex->WriteLine(  Vector2f(left+col,top   ),
+                                Vector2f(left+col,bottom));
         }
 
         VABMap1uf8 lum(pc->GetVABMap(VAN::Luminance));
@@ -72,14 +74,14 @@ namespace hgl::graph::inline_geometry
 
         for(uint row=0;row<=pgci->grid_size.Height();row++)
         {
-            vertex->WriteLine(  math::Vector3f(left ,top+row,0),
-                                math::Vector3f(right,top+row,0));
+            vertex->WriteLine(  Vector3f(left ,top+row,0),
+                                Vector3f(right,top+row,0));
         }
 
         for(uint col=0;col<=pgci->grid_size.Width();col++)
         {
-            vertex->WriteLine(  math::Vector3f(left+col,top   ,0),
-                                math::Vector3f(left+col,bottom,0));
+            vertex->WriteLine(  Vector3f(left+col,top   ,0),
+                                Vector3f(left+col,bottom,0));
         }
 
         VABMap1uf8 lum(pc->GetVABMap(VAN::Luminance));
@@ -110,8 +112,8 @@ namespace hgl::graph::inline_geometry
     {
         const   float           xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                 float           xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
-        const   math::Vector3f  xy_normal(0.0f,0.0f,1.0f);
-        const   math::Vector3f  xy_tangent(1.0f,0.0f,0.0f);
+        const   Vector3f  xy_normal(0.0f,0.0f,1.0f);
+        const   Vector3f  xy_tangent(1.0f,0.0f,0.0f);
         const   uint16          indices[]={0,1,2,0,2,3};
 
         if(!pc)return(nullptr);
@@ -147,10 +149,10 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-0.5f,-0.5f,0.0f),
-                       math::Vector3f(0.5f,0.5f,0.0f));
+                       Vector3f(0.5f,0.5f,0.0f));
 
         p->SetBoundingVolumes(bv);
 

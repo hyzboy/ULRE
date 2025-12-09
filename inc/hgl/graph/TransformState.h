@@ -26,18 +26,18 @@ namespace hgl::math
         Matrix4f local_matrix;
         bool local_is_identity;
 
-        math::Vector3f local_normal;
+        Vector3f local_normal;
 
-        math::TransformManager transform_manager;
+        TransformManager transform_manager;
         Matrix4f transform_matrix;
 
     protected:
 
-        math::Vector3f PrevWorldPosition;         //变换前世界坐标
-        math::Vector3f WorldPosition;             //变换后世界坐标
+        Vector3f PrevWorldPosition;         //变换前世界坐标
+        Vector3f WorldPosition;             //变换后世界坐标
 
-        math::Vector3f PrevWorldNormal;           //变换前世界法线
-        math::Vector3f WorldNormal;               //变换后世界法线
+        Vector3f PrevWorldNormal;           //变换前世界法线
+        Vector3f WorldNormal;               //变换后世界法线
 
     protected:
 
@@ -50,33 +50,33 @@ namespace hgl::math
 
         void Reset();
 
-        const math::Matrix4f &GetLocalMatrix()const{return local_matrix;}                                                 ///<取得本地矩阵
-        const math::Vector3f &GetLocalNormal()const{return local_normal;}                                                 ///<取得本地法线
+        const Matrix4f &GetLocalMatrix()const{return local_matrix;}                                                 ///<取得本地矩阵
+        const Vector3f &GetLocalNormal()const{return local_normal;}                                                 ///<取得本地法线
 
-        const math::Matrix4f &GetLocalToWorldMatrix(){return GetNewestVersionData();}                                     ///<取得本地到世界矩阵
-        const math::Matrix4f &GetWorldToLocalMatrix(){UpdateNewestData();return inverse_local_to_world_matrix;}           ///<取得世界到本地矩阵
-        const math::Matrix4f &GetNormalMatrix()                                                                           ///<取得世界到本地矩阵的转置矩阵
+        const Matrix4f &GetLocalToWorldMatrix(){return GetNewestVersionData();}                                     ///<取得本地到世界矩阵
+        const Matrix4f &GetWorldToLocalMatrix(){UpdateNewestData();return inverse_local_to_world_matrix;}           ///<取得世界到本地矩阵
+        const Matrix4f &GetNormalMatrix()                                                                           ///<取得世界到本地矩阵的转置矩阵
         {
             UpdateNewestData();
             return inverse_transpose_local_to_world_matrix;
         }
 
-        math::TransformManager &GetTransform(){return transform_manager;}                                                 ///<取得变换管理器
+        TransformManager &GetTransform(){return transform_manager;}                                                 ///<取得变换管理器
 
-        const math::Vector3f &GetWorldPosition()const{return WorldPosition;}                                              ///<取得世界坐标
-        const math::Vector3f &GetWorldNormal()const { return WorldNormal; }                                               ///<取得世界法线
+        const Vector3f &GetWorldPosition()const{return WorldPosition;}                                              ///<取得世界坐标
+        const Vector3f &GetWorldNormal()const { return WorldNormal; }                                               ///<取得世界法线
 
     public:
 
         TransformState():VersionData(Identity4f){Reset();}
         TransformState(TransformState &so);
-        TransformState(const math::Matrix4f &mat):VersionData(Identity4f)
+        TransformState(const Matrix4f &mat):VersionData(Identity4f)
         {
             SetLocalMatrix(mat);
             UpdateVersion();
         }
 
-        void SetLocalNormal(const math::Vector3f &normal)
+        void SetLocalNormal(const Vector3f &normal)
         {
             //if(IsNearlyEqual(local_normal,normal))
             if(!mem_compare(local_normal,normal))
@@ -86,7 +86,7 @@ namespace hgl::math
             UpdateVersion();
         }
 
-        void SetLocalMatrix(const math::Matrix4f &mat)
+        void SetLocalMatrix(const Matrix4f &mat)
         {
             //if (IsNearlyEqual(local_matrix,mat))
             if(!mem_compare(local_matrix,mat))
@@ -98,7 +98,7 @@ namespace hgl::math
             UpdateVersion();
         }
 
-        void SetParentMatrix(const math::Matrix4f &pm)
+        void SetParentMatrix(const Matrix4f &pm)
         {
             //if (IsNearlyEqual(parent_matrix,pm))
             if(!mem_compare(parent_matrix,pm))
