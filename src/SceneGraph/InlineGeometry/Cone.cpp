@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateCone(GeometryCreater *pc,const ConeCreateInfo *cci)
     {
         uint i, j;
@@ -133,10 +135,10 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p=pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
-                       math::Vector3f( cci->radius, cci->radius, cci->halfExtend));
+                       Vector3f( cci->radius, cci->radius, cci->halfExtend));
 
         p->SetBoundingVolumes(bv);
 

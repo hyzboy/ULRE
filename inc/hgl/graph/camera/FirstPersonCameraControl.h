@@ -27,19 +27,19 @@ namespace hgl::graph
 
         // CN: 相机局部基向量
         // EN: Local camera basis vectors
-        math::Vector3f forward;   ///< CN: 前向（归一化） EN: forward direction (normalized)
-        math::Vector3f right;     ///< CN: 右向（归一化） EN: right direction (normalized)
-        math::Vector3f up;        ///< CN: 上向（归一化） EN: up direction (normalized)
+        Vector3f forward;   ///< CN: 前向（归一化） EN: forward direction (normalized)
+        Vector3f right;     ///< CN: 右向（归一化） EN: right direction (normalized)
+        Vector3f up;        ///< CN: 上向（归一化） EN: up direction (normalized)
 
         // CN: 摄像机位置到目标点的距离（标量）
         // EN: Distance from camera position to look target along the forward vector
         float distance_to_target;          ///< CN: 沿前向的距离 EN: distance from camera to target along forward vector
 
-        math::Vector3f target;            ///< CN: 世界空间中的目标点 EN: target point in world space
+        Vector3f target;            ///< CN: 世界空间中的目标点 EN: target point in world space
 
         // CN: 输入轴反转标志（+1 或 -1）
         // EN: Axis inversion signs: +1 or -1 per axis to invert mouse axes
-        math::Vector2f input_invert_sign;       ///< CN: x/y 反转符号（1 或 -1） EN: x/y inversion sign for input (1 or -1)
+        Vector2f input_invert_sign;       ///< CN: x/y 反转符号（1 或 -1） EN: x/y inversion sign for input (1 or -1)
 
         // CN: 旋转灵敏度（以每像素度为单位）
         // EN: Rotation sensitivity expressed in degrees per pixel of mouse movement
@@ -117,7 +117,7 @@ namespace hgl::graph
             SetInvertAxis(s.invert_x, s.invert_y);
         }
 
-        void SetTarget(const math::Vector3f &t) override;
+        void SetTarget(const Vector3f &t) override;
 
         void Refresh() override;
 
@@ -153,9 +153,9 @@ namespace hgl::graph
 
         // CN: 根据输入增量旋转（axis.x / axis.y 单位为像素）。应用灵敏度（度/像素）。
         // EN: Rotate by input delta (axis.x, axis.y are in pixels). Applies sensitivity (degrees/pixel).
-        void Rotate(const math::Vector2f &axis);
+        void Rotate(const Vector2f &axis);
 
-        void Move(const math::Vector3f &delta)
+        void Move(const Vector3f &delta)
         {
             if(!camera) return;
             camera->pos+=delta;
@@ -186,16 +186,16 @@ namespace hgl::graph
         double cur_time;
         double last_time;
 
-        math::Vector2f mouse_pos;
-        math::Vector2f mouse_last_pos;
+        Vector2f mouse_pos;
+        Vector2f mouse_last_pos;
 
     protected:
 
-        io::EventProcResult OnPressed(const math::Vector2i &mouse_coord,io::MouseButton) override;
+        io::EventProcResult OnPressed(const Vector2i &mouse_coord,io::MouseButton) override;
     
-        io::EventProcResult OnWheel(const math::Vector2i &mouse_coord) override;
+        io::EventProcResult OnWheel(const Vector2i &mouse_coord) override;
 
-        io::EventProcResult OnMove(const math::Vector2i &mouse_coord) override;
+        io::EventProcResult OnMove(const Vector2i &mouse_coord) override;
 
     public:
 
@@ -206,7 +206,7 @@ namespace hgl::graph
             last_time=0;
         }
 
-        const math::Vector2f &GetMouseCoord()const{return mouse_pos;}
+        const Vector2f &GetMouseCoord()const{return mouse_pos;}
 
         bool Update() override
         {

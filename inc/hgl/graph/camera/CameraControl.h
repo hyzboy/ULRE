@@ -42,13 +42,13 @@ namespace hgl::graph
             camera_info=ci;
         }
 
-        void SetPosition(const math::Vector3f &p)
+        void SetPosition(const Vector3f &p)
         {
             if(camera)
                 camera->pos=p;
         }
 
-        virtual void SetTarget(const math::Vector3f &t)=0;
+        virtual void SetTarget(const Vector3f &t)=0;
 
         void ZoomFOV(int adjust);
 

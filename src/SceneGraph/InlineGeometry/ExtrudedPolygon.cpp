@@ -32,7 +32,7 @@ namespace hgl::graph::inline_geometry
             up = Vector3f(0, 1, 0);
         } else {
             // 任意轴向：构建正交坐标系
-            math::Vector3f ref = (fabs(axis.x) < 0.9f) ? Vector3f(1, 0, 0) : Vector3f(0, 1, 0);
+            Vector3f ref = (fabs(axis.x) < 0.9f) ? Vector3f(1, 0, 0) : Vector3f(0, 1, 0);
             right = glm::normalize(glm::cross(ref, axis));
             up = glm::cross(axis, right);
         }
@@ -45,11 +45,11 @@ namespace hgl::graph::inline_geometry
                                     uint vertexCount,
                                     bool generateSides,
                                     bool generateCaps,
-                                    const math::Vector3f &right,
-                                    const math::Vector3f &up,
-                                    const math::Vector3f &forward,
-                                    const math::Vector3f &extrudeOffset,
-                                    const math::Vector3f &polygonCenter)
+                                    const Vector3f &right,
+                                    const Vector3f &up,
+                                    const Vector3f &forward,
+                                    const Vector3f &extrudeOffset,
+                                    const Vector3f &polygonCenter)
     {
         uint indexOffset = 0;
 
@@ -64,25 +64,25 @@ namespace hgl::graph::inline_geometry
                 IndexT i2 = (IndexT)(indexOffset + next * 2);
                 IndexT i3 = (IndexT)(indexOffset + next * 2 + 1);
 
-                math::Vector3f p0 = right * epci->vertices[i].x + up * epci->vertices[i].y;
-                math::Vector3f p1 = p0 + extrudeOffset;
-                math::Vector3f p2 = right * epci->vertices[next].x + up * epci->vertices[next].y;
-                math::Vector3f p3 = p2 + extrudeOffset;
+                Vector3f p0 = right * epci->vertices[i].x + up * epci->vertices[i].y;
+                Vector3f p1 = p0 + extrudeOffset;
+                Vector3f p2 = right * epci->vertices[next].x + up * epci->vertices[next].y;
+                Vector3f p3 = p2 + extrudeOffset;
 
-                math::Vector3f edge = p2 - p0;
-                math::Vector3f sideNormal = glm::normalize(glm::cross(edge, forward));
-                math::Vector3f midPoint = p0 + edge * 0.5f;
-                math::Vector3f toCenter = midPoint - polygonCenter;
+                Vector3f edge = p2 - p0;
+                Vector3f sideNormal = glm::normalize(glm::cross(edge, forward));
+                Vector3f midPoint = p0 + edge * 0.5f;
+                Vector3f toCenter = midPoint - polygonCenter;
                 if (glm::dot(sideNormal, toCenter) < 0.0f) sideNormal = sideNormal * -1.0f;
 
-                math::Vector3f triA_n = glm::normalize(glm::cross(p1 - p0, p2 - p0));
+                Vector3f triA_n = glm::normalize(glm::cross(p1 - p0, p2 - p0));
                 if (glm::dot(triA_n, sideNormal) >= 0.0f) {
                     *ip++ = i0; *ip++ = i1; *ip++ = i2;
                 } else {
                     *ip++ = i0; *ip++ = i2; *ip++ = i1;
                 }
 
-                math::Vector3f triB_n = glm::normalize(glm::cross(p1 - p2, p3 - p2));
+                Vector3f triB_n = glm::normalize(glm::cross(p1 - p2, p3 - p2));
                 if (glm::dot(triB_n, sideNormal) >= 0.0f) {
                     *ip++ = i2; *ip++ = i1; *ip++ = i3;
                 } else {
@@ -97,11 +97,11 @@ namespace hgl::graph::inline_geometry
         {
             IndexT bottomStart = (IndexT)indexOffset;
 
-            math::Vector3f b0 = right * epci->vertices[0].x + up * epci->vertices[0].y;
-            math::Vector3f b1 = right * epci->vertices[1].x + up * epci->vertices[1].y;
-            math::Vector3f b2 = right * epci->vertices[2].x + up * epci->vertices[2].y;
-            math::Vector3f triNormal = glm::normalize(glm::cross(b1 - b0, b2 - b0));
-            math::Vector3f expectedBottomNormal = forward * -1.0f;
+            Vector3f b0 = right * epci->vertices[0].x + up * epci->vertices[0].y;
+            Vector3f b1 = right * epci->vertices[1].x + up * epci->vertices[1].y;
+            Vector3f b2 = right * epci->vertices[2].x + up * epci->vertices[2].y;
+            Vector3f triNormal = glm::normalize(glm::cross(b1 - b0, b2 - b0));
+            Vector3f expectedBottomNormal = forward * -1.0f;
             bool flipBottom = (glm::dot(triNormal, expectedBottomNormal) < 0.0f);
 
             for (uint i = 1; i < vertexCount - 1; i++) {
@@ -118,11 +118,11 @@ namespace hgl::graph::inline_geometry
 
             IndexT topStart = (IndexT)(indexOffset + vertexCount);
 
-            math::Vector3f t0 = (right * epci->vertices[0].x + up * epci->vertices[0].y) + extrudeOffset;
-            math::Vector3f t1 = (right * epci->vertices[1].x + up * epci->vertices[1].y) + extrudeOffset;
-            math::Vector3f t2 = (right * epci->vertices[2].x + up * epci->vertices[2].y) + extrudeOffset;
-            math::Vector3f triNormalTop = glm::normalize(glm::cross(t1 - t0, t2 - t0));
-            math::Vector3f expectedTopNormal = forward;
+            Vector3f t0 = (right * epci->vertices[0].x + up * epci->vertices[0].y) + extrudeOffset;
+            Vector3f t1 = (right * epci->vertices[1].x + up * epci->vertices[1].y) + extrudeOffset;
+            Vector3f t2 = (right * epci->vertices[2].x + up * epci->vertices[2].y) + extrudeOffset;
+            Vector3f triNormalTop = glm::normalize(glm::cross(t1 - t0, t2 - t0));
+            Vector3f expectedTopNormal = forward;
             bool flipTop = (glm::dot(triNormalTop, expectedTopNormal) < 0.0f);
 
             for (uint i = 1; i < vertexCount - 1; i++) {
@@ -174,17 +174,17 @@ namespace hgl::graph::inline_geometry
         float *np = normal_map;
 
         // 构建局部坐标系
-        math::Vector3f right, up;
+        Vector3f right, up;
         BuildLocalCoordinateSystem(epci->extrudeAxis, right, up);
-        math::Vector3f forward = glm::normalize(epci->extrudeAxis);
+        Vector3f forward = glm::normalize(epci->extrudeAxis);
 
         // 计算挤压的起始和结束位置
-        math::Vector3f extrudeOffset = forward * epci->extrudeDistance;
+        Vector3f extrudeOffset = forward * epci->extrudeDistance;
 
         // 计算多边形中心（用于判断侧面法线朝外）
-        math::Vector3f polygonCenter(0.0f, 0.0f, 0.0f);
+        Vector3f polygonCenter(0.0f, 0.0f, 0.0f);
         for (uint i = 0; i < vertexCount; ++i) {
-            const math::Vector2f &v2d = epci->vertices[i];
+            const Vector2f &v2d = epci->vertices[i];
             polygonCenter += right * v2d.x + up * v2d.y;
         }
         polygonCenter = polygonCenter * (1.0f / static_cast<float>(vertexCount));
@@ -193,8 +193,8 @@ namespace hgl::graph::inline_geometry
         double area2 = 0.0;
         for (uint i = 0; i < vertexCount; ++i) {
             uint j = (i + 1) % vertexCount;
-            const math::Vector2f &a = epci->vertices[i];
-            const math::Vector2f &b = epci->vertices[j];
+            const Vector2f &a = epci->vertices[i];
+            const Vector2f &b = epci->vertices[j];
             area2 += static_cast<double>(a.x) * static_cast<double>(b.y) - static_cast<double>(b.x) * static_cast<double>(a.y);
         }
         // area2 > 0 => CCW, area2 < 0 => CW
@@ -205,10 +205,10 @@ namespace hgl::graph::inline_geometry
         // 生成侧面顶点
         if (generateSides){
             for (uint i = 0; i < vertexCount; i++) {
-                const math::Vector2f& v2d = epci->vertices[i];
+                const Vector2f& v2d = epci->vertices[i];
 
                 // 将2D顶点转换为3D世界坐标
-                math::Vector3f v3d = right * v2d.x + up * v2d.y;
+                Vector3f v3d = right * v2d.x + up * v2d.y;
 
                 // 底面顶点
                 if (vp) {
@@ -218,7 +218,7 @@ namespace hgl::graph::inline_geometry
                 }
 
                 // 顶面顶点
-                math::Vector3f topVertex = v3d + extrudeOffset;
+                Vector3f topVertex = v3d + extrudeOffset;
                 if (vp) {
                     *vp++ = topVertex.x;
                     *vp++ = topVertex.y;
@@ -229,17 +229,17 @@ namespace hgl::graph::inline_geometry
                 if (np) {
                     // 计算边的方向与下一个顶点
                     uint nextIndex = (i + 1) % vertexCount;
-                    const math::Vector2f &next2d = epci->vertices[nextIndex];
-                    math::Vector3f nextV3d = right * next2d.x + up * next2d.y;
+                    const Vector2f &next2d = epci->vertices[nextIndex];
+                    Vector3f nextV3d = right * next2d.x + up * next2d.y;
 
-                    math::Vector3f edge3d = nextV3d - v3d;
+                    Vector3f edge3d = nextV3d - v3d;
 
                     // 侧面法线 = edge × extrudeAxis
-                    math::Vector3f sideNormal = glm::normalize(glm::cross(edge3d, forward));
+                    Vector3f sideNormal = glm::normalize(glm::cross(edge3d, forward));
 
                     // 确保法线指向外侧：通过与边中点到多边形中心的向量点乘判断
-                    math::Vector3f midPoint = v3d + edge3d * 0.5f;
-                    math::Vector3f toCenter = midPoint - polygonCenter;
+                    Vector3f midPoint = v3d + edge3d * 0.5f;
+                    Vector3f toCenter = midPoint - polygonCenter;
                     if (glm::dot(sideNormal, toCenter) < 0.0f) {
                         sideNormal = sideNormal * -1.0f;
                     }
@@ -263,8 +263,8 @@ namespace hgl::graph::inline_geometry
         if (generateCaps) {
             // 底面顶点
             for (uint i = 0; i < vertexCount; i++) {
-                const math::Vector2f& v2d = epci->vertices[i];
-                math::Vector3f v3d = right * v2d.x + up * v2d.y;
+                const Vector2f& v2d = epci->vertices[i];
+                Vector3f v3d = right * v2d.x + up * v2d.y;
 
                 if (vp) {
                     *vp++ = v3d.x;
@@ -274,7 +274,7 @@ namespace hgl::graph::inline_geometry
 
                 if (np) {
                     // 底面法线固定为 -forward（朝下）
-                    math::Vector3f bottomNormal = forward * -1.0f;
+                    Vector3f bottomNormal = forward * -1.0f;
                     *np++ = bottomNormal.x;
                     *np++ = bottomNormal.y;
                     *np++ = bottomNormal.z;
@@ -283,9 +283,9 @@ namespace hgl::graph::inline_geometry
 
             // 顶面顶点
             for (uint i = 0; i < vertexCount; i++) {
-                const math::Vector2f& v2d = epci->vertices[i];
-                math::Vector3f v3d = right * v2d.x + up * v2d.y;
-                math::Vector3f topVertex = v3d + extrudeOffset;
+                const Vector2f& v2d = epci->vertices[i];
+                Vector3f v3d = right * v2d.x + up * v2d.y;
+                Vector3f topVertex = v3d + extrudeOffset;
 
                 if (vp) {
                     *vp++ = topVertex.x;
@@ -295,7 +295,7 @@ namespace hgl::graph::inline_geometry
 
                 if (np) {
                     // 顶面法线固定为 forward（朝上）
-                    math::Vector3f topNormal = forward;
+                    Vector3f topNormal = forward;
                     *np++ = topNormal.x;
                     *np++ = topNormal.y;
                     *np++ = topNormal.z;
@@ -345,12 +345,12 @@ namespace hgl::graph::inline_geometry
 
         if (p) {
             // 计算包围盒
-            math::Vector3f minBounds(FLT_MAX, FLT_MAX, FLT_MAX);
-            math::Vector3f maxBounds(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+            Vector3f minBounds(FLT_MAX, FLT_MAX, FLT_MAX);
+            Vector3f maxBounds(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
             for (uint i = 0; i < vertexCount; i++) {
-                const math::Vector2f& v2d = epci->vertices[i];
-                math::Vector3f v3d = right * v2d.x + up * v2d.y;
+                const Vector2f& v2d = epci->vertices[i];
+                Vector3f v3d = right * v2d.x + up * v2d.y;
 
                 // 底面顶点
                 minBounds.x = std::min(minBounds.x, v3d.x);
@@ -361,7 +361,7 @@ namespace hgl::graph::inline_geometry
                 maxBounds.z = std::max(maxBounds.z, v3d.z);
 
                 // 顶面顶点
-                math::Vector3f topVertex = v3d + extrudeOffset;
+                Vector3f topVertex = v3d + extrudeOffset;
                 minBounds.x = std::min(minBounds.x, topVertex.x);
                 minBounds.y = std::min(minBounds.y, topVertex.y);
                 minBounds.z = std::min(minBounds.z, topVertex.z);
@@ -370,7 +370,7 @@ namespace hgl::graph::inline_geometry
                 maxBounds.z = std::max(maxBounds.z, topVertex.z);
             }
 
-            math::BoundingVolumes bv;
+            BoundingVolumes bv;
 
             bv.SetFromAABB(minBounds,maxBounds);
 
@@ -380,10 +380,10 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
-    Geometry *CreateExtrudedRectangle(GeometryCreater *pc, float width, float height, float depth, const math::Vector3f &extrudeAxis)
+    Geometry *CreateExtrudedRectangle(GeometryCreater *pc, float width, float height, float depth, const Vector3f &extrudeAxis)
     {
         // 创建矩形顶点（中心在原点）
-        math::Vector2f rectVertices[4] = {
+        Vector2f rectVertices[4] = {
             {-width * 0.5f, -height * 0.5f},  // 左下
             { width * 0.5f, -height * 0.5f},  // 右下
             { width * 0.5f,  height * 0.5f},  // 右上
@@ -402,7 +402,7 @@ namespace hgl::graph::inline_geometry
         return CreateExtrudedPolygon(pc, &epci);
     }
 
-    Geometry *CreateExtrudedCircle(GeometryCreater *pc, float radius, float height, uint segments, const math::Vector3f &extrudeAxis)
+    Geometry *CreateExtrudedCircle(GeometryCreater *pc, float radius, float height, uint segments, const Vector3f &extrudeAxis)
     {
         if (segments < 3) segments = 3;
 

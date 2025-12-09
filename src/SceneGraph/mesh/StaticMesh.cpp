@@ -94,7 +94,7 @@ void StaticMesh::UpdatePrimitives()
 void StaticMesh::RefreshBoundingVolumes()
 {
     bool has_box = false;
-    math::AABB box;
+    AABB box;
 
     for(Primitive *sm: primitive_list)
     {

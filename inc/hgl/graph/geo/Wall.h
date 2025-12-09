@@ -6,6 +6,8 @@
 
 namespace hgl::graph
 {
+    using namespace hgl::math;
+
     class GeometryCreater;
 
     namespace inline_geometry
@@ -23,7 +25,7 @@ namespace hgl::graph
         struct WallCreateInfo
         {
             // 顶点数组（2D坐标）
-            const math::Vector2f* vertices = nullptr;  // 顶点数据
+            const Vector2f* vertices = nullptr;  // 顶点数据
             uint vertexCount = 0;                // 顶点数量
 
             // 索引数组：按两两成对表示一条线段（推荐使用）
@@ -78,11 +80,11 @@ namespace hgl::graph
                                              float length, float thickness = 0.2f, float height = 3.0f)
         {
             // 方便性函数仍使用旧逻辑，构建顶点和索引并调用主接口
-            static math::Vector2f verts[2];
+            static Vector2f verts[2];
             static uint idx[2];
 
-            verts[0] = math::Vector2f(startX, startY);
-            verts[1] = math::Vector2f(startX + length, startY);
+            verts[0] = Vector2f(startX, startY);
+            verts[1] = Vector2f(startX + length, startY);
             idx[0] = 0; idx[1] = 1;
 
             WallCreateInfo wci;
@@ -99,11 +101,11 @@ namespace hgl::graph
         inline Geometry *CreateVerticalWall(GeometryCreater *pc, float startX, float startY,
                                            float length, float thickness = 0.2f, float height = 3.0f)
         {
-            static math::Vector2f verts[2];
+            static Vector2f verts[2];
             static uint idx[2];
 
-            verts[0] = math::Vector2f(startX, startY);
-            verts[1] = math::Vector2f(startX, startY + length);
+            verts[0] = Vector2f(startX, startY);
+            verts[1] = Vector2f(startX, startY + length);
             idx[0] = 0; idx[1] = 1;
 
             WallCreateInfo wci;

@@ -2,6 +2,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateCapsule(GeometryCreater *pc,const CapsuleCreateInfo *cci)
     {
         if(!pc||!cci)return nullptr;
@@ -347,10 +349,10 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p = pc->Create();
 
-        math::BoundingVolumes bv;
+        BoundingVolumes bv;
 
         bv.SetFromAABB(math::Vector3f(-radius,-radius,-halfH-radius),
-                       math::Vector3f(radius,radius,halfH+radius));
+                       Vector3f(radius,radius,halfH+radius));
 
         p->SetBoundingVolumes(bv);
 

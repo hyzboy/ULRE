@@ -34,7 +34,7 @@ namespace hgl::graph
     public:
 
         const   ViewportInfo *      GetViewportInfo     ()const { return viewport_info; }
-        const   math::Vector2u &    GetViewportSize     ()const { return viewport_info->GetViewport(); }
+        const   Vector2u &    GetViewportSize     ()const { return viewport_info->GetViewport(); }
         const   VkExtent2D &        GetExtent           ()const { return render_target->GetExtent(); }
 
                 Camera *            GetCamera           ()      { return &camera; }

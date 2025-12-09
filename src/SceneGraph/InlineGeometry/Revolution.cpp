@@ -7,6 +7,8 @@
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     static float AngleBetween(const float ax, const float ay, const float bx, const float by)
     {
         // compute angle between 2D vectors (ax,ay) and (bx,by)
@@ -457,14 +459,14 @@ namespace hgl::graph::inline_geometry
                 max_height = std::max(max_height, rci->profile_points[i].y);
             }
 
-            math::Vector3f min_bound(rci->revolution_center.x - max_radius,
+            Vector3f min_bound(rci->revolution_center.x - max_radius,
                                rci->revolution_center.y - max_radius,
                                rci->revolution_center.z + min_height);
-            math::Vector3f max_bound(rci->revolution_center.x + max_radius,
+            Vector3f max_bound(rci->revolution_center.x + max_radius,
                                rci->revolution_center.y + max_radius,
                                rci->revolution_center.z + max_height);
 
-            math::BoundingVolumes bv;
+            BoundingVolumes bv;
 
             bv.SetFromAABB(min_bound,max_bound);
 

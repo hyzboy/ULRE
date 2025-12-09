@@ -11,11 +11,11 @@ namespace hgl::graph
     {
     protected:
 
-        math::Vector3f direction;
-        math::Vector3f right;
-        math::Vector3f up;
+        Vector3f direction;
+        Vector3f right;
+        Vector3f up;
 
-        math::Vector3f target;            ///<目标点坐标
+        Vector3f target;            ///<目标点坐标
 
     public:
 
@@ -38,7 +38,7 @@ namespace hgl::graph
             if(ubo_camera_info) ubo_camera_info->Update();
         }
 
-        void SetTarget(const math::Vector3f &t) override
+        void SetTarget(const Vector3f &t) override
         {
             target=t;
         }
@@ -49,7 +49,7 @@ namespace hgl::graph
             * 向指定向量移动
             * @param move_dist 移动距离
             */
-        void Move(const math::Vector3f &move_dist)
+        void Move(const Vector3f &move_dist)
         {
             if(!camera) return;
             camera->pos+=move_dist;
@@ -61,11 +61,11 @@ namespace hgl::graph
             * @param ang 角度
             * @param axis 旋转轴
             */
-        void Rotate(double ang,const math::Vector3f &axis)
+        void Rotate(double ang,const Vector3f &axis)
         {
             if(!camera) return;
 
-            math::Vector3f a = axis;
+            Vector3f a = axis;
             normalize(a);
 
             // Use helper that returns a 3x3 rotation matrix (degrees)
@@ -79,11 +79,11 @@ namespace hgl::graph
             * @param ang 角度
             * @param axis 旋转轴
             */
-        void WrapRotate(double ang,const math::Vector3f &axis)
+        void WrapRotate(double ang,const Vector3f &axis)
         {
             if(!camera) return;
 
-            math::Vector3f a = axis;
+            Vector3f a = axis;
             normalize(a);
 
             Matrix3f rot = hgl::AxisRotate3Deg(static_cast<float>(ang), Vector3f(a.x,a.y,a.z));
