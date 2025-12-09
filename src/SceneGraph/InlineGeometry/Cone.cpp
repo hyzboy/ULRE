@@ -14,7 +14,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Cone",numberVertices,numberIndices))
             return(nullptr);
 
-        float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
+        float angleStep = (2.0f * math::pi) / ((float) cci->numberSlices);
 
         float h = 2.0f * cci->halfExtend;
         float r = cci->radius;

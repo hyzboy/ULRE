@@ -79,7 +79,7 @@ private:
 
         // 测试4: 五边形挤压
         math::Vector2f pentagonVertices[5];
-        float angleStep = 2.0f * HGL_PI / 5.0f;
+        float angleStep = 2.0f * math::pi / 5.0f;
 
         for (int i = 0; i < 5; i++)
         {

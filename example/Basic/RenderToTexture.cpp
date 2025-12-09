@@ -256,7 +256,7 @@ public:
         if (cube_comp)
         {
             cube_theta += float(delta_time) * 0.8f;
-            cube_theta = fmodf(cube_theta, 2.0f*HGL_PI);
+            cube_theta = fmodf(cube_theta, 2.0f*math::pi);
             math::Matrix4f rot = math::AxisZRotate(cube_theta) * math::AxisXRotate(cube_theta * 0.5f);
             cube_comp->SetLocalMatrix(rot);
         }

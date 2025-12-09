@@ -62,7 +62,7 @@ namespace hgl
 
             int cf = GetCompressFormat(compress_format);
 
-            if(cf>0&&cf<CompressFormatCount)
+            if(cf>=0&&cf<CompressFormatCount)
                 return CompressFormatBits[cf];
             
             return 0;

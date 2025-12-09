@@ -46,7 +46,7 @@ namespace hgl::graph::inline_geometry
 
         if(!vp) return nullptr;
 
-        const float angleStep = (2.0f * HGL_PI) / float(slices);
+        const float angleStep = (2.0f * math::pi) / float(slices);
 
         // Cylinder side: bottom ring at -halfH, top ring at +halfH
         for(uint ring=0; ring<2; ++ring)
@@ -88,7 +88,7 @@ namespace hgl::graph::inline_geometry
         // Top hemisphere (center at +halfH)
         for(uint s=0;s<=stacks;s++)
         {
-            float phi = (float)s / (float)stacks * (HGL_PI * 0.5f);
+            float phi = (float)s / (float)stacks * (math::pi * 0.5f);
             float cz = sin(phi); // from 0 to 1
             float r = cos(phi);  // ring radius
 
@@ -134,7 +134,7 @@ namespace hgl::graph::inline_geometry
         // Bottom hemisphere (center at -halfH)
         for(uint s=0;s<=stacks;s++)
         {
-            float phi = (float)s / (float)stacks * (HGL_PI * 0.5f);
+            float phi = (float)s / (float)stacks * (math::pi * 0.5f);
             float cz = -sin(phi); // from 0 to -1
             float r = cos(phi);
 

@@ -10,7 +10,7 @@ namespace hgl::graph::inline_geometry
         uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
         uint numberIndices = numberParallels * numberSlices * 6;
 
-        const double angleStep = double(2.0f * HGL_PI) / ((double) numberSlices);
+        const double angleStep = double(2.0f * math::pi) / ((double) numberSlices);
 
         // used later to help us calculating tangents vectors
         float helpVector[3] = { 1.0f, 0.0f, 0.0f };
@@ -102,7 +102,7 @@ namespace hgl::graph::inline_geometry
         uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
         uint numberIndices = numberParallels * numberSlices * 6;
 
-        float angleStep = (2.0f * HGL_PI) / ((float) numberSlices);
+        float angleStep = (2.0f * math::pi) / ((float) numberSlices);
 
         // used later to help us calculating tangents vectors
         float helpVector[3] = { 1.0f, 0.0f, 0.0f };
@@ -251,15 +251,15 @@ namespace hgl::graph::inline_geometry
         for (sideCount = 0; sideCount <= tci->numberSlices; ++sideCount, s += sIncr)
         {
             // precompute some values
-            cos2PIs = cos(2.0f * HGL_PI * s);
-            sin2PIs = sin(2.0f * HGL_PI * s);
+            cos2PIs = cos(2.0f * math::pi * s);
+            sin2PIs = sin(2.0f * math::pi * s);
 
             t = 0.0f;
             for (faceCount = 0; faceCount <= tci->numberStacks; ++faceCount, t += tIncr)
             {
                 // precompute some values
-                cos2PIt = cos(2.0f * HGL_PI * t);
-                sin2PIt = sin(2.0f * HGL_PI * t);
+                cos2PIt = cos(2.0f * math::pi * t);
+                sin2PIt = sin(2.0f * math::pi * t);
 
                 // generate vertex and stores it in the right position
                 *vp = torusRadius * sin2PIt; ++vp;
