@@ -181,10 +181,8 @@ namespace hgl
             return render_framework?render_framework->GetSamplerManager()->CreateSampler(tex):nullptr;
         }
 
-    #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}
-        WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePipeline,graph::Pipeline *)
-        WO_FUNC_FROM_RENDER_FRAMEWORK(GetGeometryCreater,SharedPtr<graph::GeometryCreater>)
-    #undef WO_FUNC_FROM_RENDER_FRAMEWORK
+        FUNC_FROM_RENDER_FRAMEWORK(graph::Pipeline *,CreatePipeline)
+        FUNC_FROM_RENDER_FRAMEWORK(SharedPtr<graph::GeometryCreater>,GetGeometryCreater)
 
         graph::Geometry *CreateGeometry(const AnsiString &name,
                                             const uint32_t vertices_count,
@@ -222,5 +220,7 @@ namespace hgl
         {
             return render_framework?render_framework->CreateComponent<C>(cci,args...):nullptr; //创建组件
         }
+
+    #undef FUNC_FROM_RENDER_FRAMEWORK
     };//class WorkObject
 }//namespcae hgl
