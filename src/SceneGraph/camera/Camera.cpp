@@ -7,7 +7,10 @@ namespace hgl::graph
 {
     void RefreshCameraInfo(CameraInfo *ci,const ViewportInfo *vi,const Camera *cam)
     {
-        ci->projection             =math::PerspectiveMatrix(cam->Yfov,vi->GetAspectRatio(),cam->znear,cam->zfar);
+        if(!ci || !vi || !cam) return;
+        if(cam->znear <= 0.0f || cam->zfar <= cam->znear) return;
+
+        ci->projection             =math::PerspectiveMatrix(cam->fovY,vi->GetAspectRatio(),cam->znear,cam->zfar);
 
         ci->inverse_projection     =inverse(ci->projection);
 
@@ -26,7 +29,7 @@ namespace hgl::graph
         }
 
         ci->pos                    =cam->pos;
-        ci->view_line              =cam->view_line;
+        ci->view_line              =cam->viewDirection;
         ci->world_up               =cam->world_up;
 
         // http://www.opengl-tutorial.org/intermediate-tutorials/billboards-particles/billboards/

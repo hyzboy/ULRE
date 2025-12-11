@@ -26,10 +26,10 @@ namespace hgl::graph
         {
             if(!camera || !camera_info || !vi) return;
 
-            camera->view_line  = camera->pos - target;
-            camera_info->view  = glm::lookAtRH(camera->pos, target, camera->world_up);
+            camera->viewDirection = normalize(camera->pos - target);
+            camera_info->view     = glm::lookAtRH(camera->pos, target, camera->world_up);
 
-            direction          = normalized(camera->view_line);
+            direction             = camera->viewDirection;
             right              = normalized(cross(camera->world_up, direction));
             up                 = normalized(cross(right,            direction));
 
@@ -75,11 +75,11 @@ namespace hgl::graph
         }
 
         /**
-            * 以目标为中心旋转
+            * 以目标为中心旋转(公转)
             * @param ang 角度
             * @param axis 旋转轴
             */
-        void WrapRotate(double ang,const Vector3f &axis)
+        void OrbitRotate(double ang,const Vector3f &axis)
         {
             if(!camera) return;
 

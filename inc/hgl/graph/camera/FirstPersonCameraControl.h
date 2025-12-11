@@ -31,12 +31,6 @@ namespace hgl::graph
         Vector3f right;     ///< CN: 右向（归一化） EN: right direction (normalized)
         Vector3f up;        ///< CN: 上向（归一化） EN: up direction (normalized)
 
-        // CN: 摄像机位置到目标点的距离（标量）
-        // EN: Distance from camera position to look target along the forward vector
-        float distance_to_target;          ///< CN: 沿前向的距离 EN: distance from camera to target along forward vector
-
-        Vector3f target;            ///< CN: 世界空间中的目标点 EN: target point in world space
-
         // CN: 输入轴反转标志（+1 或 -1）
         // EN: Axis inversion signs: +1 or -1 per axis to invert mouse axes
         Vector2f input_invert_sign;       ///< CN: x/y 反转符号（1 或 -1） EN: x/y inversion sign for input (1 or -1)

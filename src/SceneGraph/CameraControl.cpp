@@ -14,9 +14,9 @@ namespace hgl::graph
         constexpr float MinFOV = 10;
         constexpr float MaxFOV = 180;
 
-        camera->Yfov += float(adjust) / 10.0f;
+        camera->fovY += float(adjust) / 10.0f;
 
-        if(adjust < 0 && camera->Yfov < MinFOV)camera->Yfov = MinFOV;else
-        if(adjust > 0 && camera->Yfov > MaxFOV)camera->Yfov = MaxFOV;
+        if(adjust < 0 && camera->fovY < MinFOV)camera->fovY = MinFOV;else
+        if(adjust > 0 && camera->fovY > MaxFOV)camera->fovY = MaxFOV;
     }
 }//namespace hgl::graph
