@@ -59,23 +59,23 @@ namespace hgl
     public:
 
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
-        graph::VulkanDevice *       GetDevice           (){return render_framework->GetDevice();}
-        graph::VulkanDevAttr *      GetDevAttr          (){return render_framework->GetDevAttr();}
-        graph::TextureManager *     GetTextureManager   (){return render_framework->GetTextureManager();}
-        graph::BufferManager *      GetBufferManager    (){return render_framework->GetBufferManager();}
+        graph::VulkanDevice *       GetDevice           (){return render_framework ? render_framework->GetDevice() : nullptr;}
+        graph::VulkanDevAttr *      GetDevAttr          (){return render_framework ? render_framework->GetDevAttr() : nullptr;}
+        graph::TextureManager *     GetTextureManager   (){return render_framework ? render_framework->GetTextureManager() : nullptr;}
+        graph::BufferManager *      GetBufferManager    (){return render_framework ? render_framework->GetBufferManager() : nullptr;}
 
-        const VkExtent2D &          GetExtent           (){return scene_renderer->GetExtent();}
+        const VkExtent2D *          GetExtent           (){return scene_renderer ? &scene_renderer->GetExtent() : nullptr;}
 
         graph::World *              GetWorld            (){return world;}
-        graph::SceneNode *          GetWorldRootNode    (){return world->GetRootNode();}
+        graph::SceneNode *          GetWorldRootNode    (){return world ? world->GetRootNode() : nullptr;}
         graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
 
-        const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer->GetViewportInfo();}
-        graph::Camera *             GetCamera           ()      {return scene_renderer->GetCamera();}
-        const graph::CameraInfo *   GetCameraInfo       ()const {return scene_renderer->GetCameraInfo();}
-        graph::CameraControl *      GetCameraControl    ()      {return scene_renderer->GetCameraControl();}
+        const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer ? scene_renderer->GetViewportInfo() : nullptr;}
+        graph::Camera *             GetCamera           ()      {return scene_renderer ? scene_renderer->GetCamera() : nullptr;}
+        const graph::CameraInfo *   GetCameraInfo       ()const {return scene_renderer ? scene_renderer->GetCameraInfo() : nullptr;}
+        graph::CameraControl *      GetCameraControl    ()      {return scene_renderer ? scene_renderer->GetCameraControl() : nullptr;}
 
-        const math::Vector2i &            GetMouseCoord       ()const {return render_framework->GetMouseCoord();}
+        const math::Vector2i *      GetMouseCoord       ()const {return render_framework ? &render_framework->GetMouseCoord() : nullptr;}
 
     public:
 
