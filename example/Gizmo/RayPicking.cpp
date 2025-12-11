@@ -183,7 +183,11 @@ public:
     {
         WorkObject::Tick(delta);
 
-        const math::Vector2i mouse_position=GetMouseCoord();
+        const math::Vector2i *mouse_position_ptr=GetMouseCoord();
+        if(!mouse_position_ptr)
+            return;
+
+        const math::Vector2i &mouse_position=*mouse_position_ptr;
 
         CameraControl *camera_control=GetCameraControl();
 

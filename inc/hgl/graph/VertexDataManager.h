@@ -33,7 +33,7 @@ public:
     VertexDataManager(VulkanDevice *dev,const VIL *_vil);
     ~VertexDataManager();
 
-          VulkanDevice *   GetDevice       ()const{return device;}                                     ///<取得GPU设备
+          VulkanDevice *GetDevice       ()const{return device;}                                     ///<取得GPU设备
 
     const VIL *         GetVIL          ()const{return vil;}                                         ///<取得顶点输入格式列表
 
