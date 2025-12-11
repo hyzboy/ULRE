@@ -76,8 +76,8 @@ private:
 
         for(uint i=0;i<VERTEX_COUNT;i++)
         {
-            position_data[i][0]=position_data_float[i][0]*ext.width;
-            position_data[i][1]=position_data_float[i][1]*ext.height;
+            position_data[i][0]=position_data_float[i][0]*ext->width;
+            position_data[i][1]=position_data_float[i][1]*ext->height;
         }
 
         prim_triangle=CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
