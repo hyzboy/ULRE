@@ -6,9 +6,7 @@ namespace hgl::graph
 
     FirstPersonCameraControl::FirstPersonCameraControl()
     {
-        target=math::Vector3f(0.0f);
         up=math::Vector3f(0,0,1);
-        distance_to_target=0.0f;
 
         // initialize orientation (radians)
         pitch=0;
@@ -28,45 +26,43 @@ namespace hgl::graph
     {
         if(!camera) return;
 
-        // Compute direction to target and initial forward
+        // Compute direction to look at point
         Vector3f dir = t - camera->pos;
         float len = length(dir);
 
         if(len <= 1e-6f)
         {
-            // target coincides with camera position
+            // target coincides with camera position, keep current orientation
             forward = Vector3f(1,0,0);
-            distance_to_target = 0.0f;
         }
         else
         {
             forward = dir / len; // normalized direction
-             // compute Euler from forward
-             pitch   = asin(forward.z);
-             yaw     = atan2(forward.y, forward.x);
+            // compute Euler angles from forward vector
+            pitch = asinf(forward.z);
+            yaw   = atan2f(forward.y, forward.x);
 
-             // ensure forward vector matches yaw/pitch
-             UpdateCameraVector();
+            // update forward vector to match computed angles
+            UpdateCameraVector();
+        }
 
-             // scalar distance along forward
-             distance_to_target = dot(t - camera->pos, forward);
-         }
+        right = normalize(cross(forward, camera->world_up));
+        up    = normalize(cross(right, forward));
 
-        right   =normalize(cross(forward,camera->world_up));
-        up      =normalize(cross(right,forward));
-
-        camera->view_line=normalize(camera->pos-t);
+        camera->viewDirection = forward;
     }
 
     void FirstPersonCameraControl::Refresh()
     {
         if(!camera || !camera_info) return;
 
-        target=camera->pos+forward*distance_to_target;
+        // First-person camera: look in the forward direction
+        Vector3f lookAt = camera->pos + forward;
 
-        camera_info->view       =math::LookAtMatrix(camera->pos,target,camera->world_up);
+        camera->viewDirection = forward;
+        camera_info->view     = math::LookAtMatrix(camera->pos, lookAt, camera->world_up);
 
-        RefreshCameraInfo(camera_info,vi,camera);
+        RefreshCameraInfo(camera_info, vi, camera);
     }
 
     void FirstPersonCameraControl::UpdateCameraVector()
