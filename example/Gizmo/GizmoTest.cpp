@@ -11,7 +11,7 @@ const math::Vector3f GizmoPosition(0,0,0);
 ///**
 //* 一种永远转向正面的变换节点
 //*/
-//class TransformBillboard:public TransformBase
+//class TransformBillboard:public TransformAction
 //{
 //    CameraInfo *camera_info=nullptr;
 //    bool face_to_camera=false;

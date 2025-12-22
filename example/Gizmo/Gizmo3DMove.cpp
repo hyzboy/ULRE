@@ -79,7 +79,7 @@ namespace
         math::Matrix4f    PickL2W;            //拾取时的变换矩阵
         math::Vector3f    PickCenter;         //拾取时的中心位置
 
-        math::TransformTranslate3f *CurTranslate=nullptr;
+        math::TransActionTranslate *CurTranslate=nullptr;
 
     public:
 
