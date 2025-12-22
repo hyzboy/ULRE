@@ -16,7 +16,7 @@ namespace hgl::math
     *   <li>transform_manager 用于管理当前节点所有的变换情况，如果本节点不存在额外变换，数量为0。</li>
     * </ul>
     * 
-    * LocalToWorldMatrix=ParnetMatrix * LocalMatrix * TransformMatrix<br>
+    * LocalToWorldMatrix=ParnetMatrix * LocalMatrix * TransActionMatrix<br>
     */
     class TransformState :public VersionData<Matrix4f>
     {
@@ -28,7 +28,7 @@ namespace hgl::math
 
         Vector3f local_normal;
 
-        TransformManager transform_manager;
+        TransActionManager transform_manager;
         Matrix4f transform_matrix;
 
     protected:
@@ -61,7 +61,7 @@ namespace hgl::math
             return inverse_transpose_local_to_world_matrix;
         }
 
-        TransformManager &GetTransform(){return transform_manager;}                                                 ///<取得变换管理器
+        TransActionManager &GetTransform(){return transform_manager;}                                                 ///<取得变换管理器
 
         const Vector3f &GetWorldPosition()const{return WorldPosition;}                                              ///<取得世界坐标
         const Vector3f &GetWorldNormal()const { return WorldNormal; }                                               ///<取得世界法线
