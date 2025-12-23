@@ -63,12 +63,9 @@ namespace hgl::graph
     */
     void SceneNode::UpdateWorldTransform()
     {
-        NodeTransform::UpdateWorldTransform();
+        node_transform.UpdateWorldTransform();
 
-//            if (transform_state.IsNewestVersion())       //自己不变，不代表下面不变
-            //return;
-
-        const Matrix4f &l2w=transform_state.GetLocalToWorldMatrix();
+        const Matrix4f &l2w=node_transform.GetLocalToWorldMatrix();
 
         for(SceneNode *sub:child_nodes)
         {
@@ -214,7 +211,7 @@ namespace hgl::graph
         child_nodes.Clear();
         component_set.Clear();
 
-        NodeTransform::Reset();
+        node_transform.Reset();
     }
 
     void SceneNode::OnChangeScene(World *new_scene)
