@@ -35,7 +35,7 @@ namespace hgl::graph
     * 从场景坐标变换(NodeTransform)类继承，
     * 每个场景节点中可能包括一个可渲染数据实例，或是完全不包含(用于坐标变换的父节点，或是灯光/摄像机之类)。
     */
-    class SceneNode:public NodeTransform                                                                            ///场景节点类
+    class SceneNode                                                                           ///场景节点类
     {
         friend class World;
 
@@ -45,6 +45,8 @@ namespace hgl::graph
 
         SceneNodeID node_id=-1;                                                                                     ///<节点ID
         SceneNodeName node_name;                                                                                    ///<节点名称
+
+        NodeTransform node_transform;                                                                               ///<节点变换
 
         void OnChangeScene(World *);
 
@@ -78,10 +80,10 @@ namespace hgl::graph
         SceneNode(const SceneNode &)=delete;
         SceneNode(const SceneNode *)=delete;
 
-        SceneNode():NodeTransform(){}
-        SceneNode(World *s):NodeTransform(),main_world(s){}                                                           ///<从Scene构造
-        SceneNode(World *s,const NodeTransform &so):NodeTransform(so),main_world(s){}                                 ///<从NodeTransform复制构造
-        SceneNode(World *s,const Matrix4f &mat):NodeTransform(mat),main_world(s){}                                    ///<从Matrix4f复制构造
+        SceneNode()=default;
+        SceneNode(World *s):main_world(s){}                                                                           ///<从Scene构造
+        SceneNode(World *s,const NodeTransform &so):node_transform(so),main_world(s){}                                 ///<从NodeTransform复制构造
+        SceneNode(World *s,const Matrix4f &mat):node_transform(mat),main_world(s){}                                    ///<从Matrix4f复制构造
 
     public:
 
@@ -105,7 +107,7 @@ namespace hgl::graph
 
         virtual SceneNode * Clone(World *world=nullptr) const;                                                      ///<复制一个场景节点
 
-                void        Reset() override;
+                void        Reset();
 
         const   bool        HasChildren()const{return !child_nodes.IsEmpty();}
 
@@ -140,7 +142,24 @@ namespace hgl::graph
 
     public: //坐标相关方法
 
-        virtual         void        UpdateWorldTransform() override;                                                ///<刷新世界变换
+        void                SetTransformState (const TransformState &sm){node_transform.SetTransformState(sm);}     ///<设置场景矩阵
+        void                SetLocalNormal    (const Vector3f &nor){node_transform.SetLocalNormal(nor);}            ///<设置本地法线
+        void                SetLocalMatrix    (const Matrix4f &mat){node_transform.SetLocalMatrix(mat);}            ///<设置本地矩阵
+        void                SetParentMatrix   (const Matrix4f &mat){node_transform.SetParentMatrix(mat);}           ///<设置上级到世界空间变换矩阵
+
+        const TransformState &GetTransformState()const {return node_transform.GetTransformState();}                 ///<取得场景矩阵
+        const uint32          GetTransformVersion()const {return node_transform.GetTransformVersion();}             ///<取得变换矩阵版本号
+        const Vector3f &      GetWorldPosition()const {return node_transform.GetWorldPosition();}                  ///<取得世界坐标
+        const Matrix4f &      GetLocalMatrix  ()const {return node_transform.GetLocalMatrix();}                    ///<取得本地矩阵
+
+        TransActionManager &  GetTransform()      {return node_transform.GetTransform();}                          ///<取得变换管理器
+        void                  ClearTransforms()   {node_transform.ClearTransforms();}                              ///<清空变换列表
+
+        const Matrix4f &      GetLocalToWorldMatrix(){return node_transform.GetLocalToWorldMatrix();}              ///<取得本地到世界矩阵
+        const Matrix4f &      GetWorldToLocalMatrix(){return node_transform.GetWorldToLocalMatrix();}
+        const Matrix4f &      GetNormalMatrix(){return node_transform.GetNormalMatrix();}
+
+        virtual         void        UpdateWorldTransform();                                                        ///<刷新世界变换
         virtual         void        RefreshBoundingVolumes  ();                                                     ///<刷新绑定盒
 
         virtual const   AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                   ///<取得本地坐标绑定盒
