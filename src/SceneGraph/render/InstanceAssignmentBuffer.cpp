@@ -7,7 +7,6 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/math/Transform.h>
 
 VK_NAMESPACE_BEGIN
 InstanceAssignmentBuffer::InstanceAssignmentBuffer(VulkanDevice *dev,Material *mtl)
