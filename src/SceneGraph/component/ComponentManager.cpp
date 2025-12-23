@@ -37,7 +37,7 @@ bool RegisterComponentManager(ComponentManager *cm)
     if(!component_manager_map)
         return(false);
 
-    const size_t hash_code=cm->GetTypeHash();
+    const size_t hash_code=hgl::GetTypeHash(cm);
 
     if(component_manager_map->contains(hash_code))
         return(false);
