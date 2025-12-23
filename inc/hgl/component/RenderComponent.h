@@ -21,6 +21,10 @@ public:
 
     // 由组件创建并提交其 DrawNode 到渲染集合。返回提交的节点数量。
     virtual uint SubmitDrawNodes(hgl::graph::RenderBatchMap &mrm)=0;
+
+public:
+
+    virtual U8String GetComponentInfo() const override;
 };//class RenderComponent
 
 COMPONENT_NAMESPACE_END

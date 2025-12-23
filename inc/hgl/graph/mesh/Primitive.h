@@ -45,6 +45,7 @@ public:
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             Geometry *          GetGeometry         (){return geometry;}
+            AnsiString          GetGeometryName     (){return geometry->GetName();}
     const   BoundingVolumes &   GetBoundingVolumes  ()const{return geometry->GetBoundingVolumes();}
 
     const   GeometryDataBuffer *GetDataBuffer       ()const{return data_buffer;}

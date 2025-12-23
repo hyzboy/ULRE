@@ -180,6 +180,10 @@ public:
         mrm.AddDrawNode(new hgl::graph::DrawNodePrimitive(this));
         return 1;
     }
+
+public:
+
+    virtual U8String GetComponentInfo() const override;
 };//class PrimitiveComponent
 
 COMPONENT_NAMESPACE_END

@@ -51,4 +51,25 @@ const bool GeometryComponent::GetWorldOBBMatrix(math::Matrix4f &obb_matrix,const
 
     return(true);
 }
+
+U8String GeometryComponent::GetComponentInfo() const
+{
+    U8String info = U8_TEXT("GeometryComponent(unique_id: ") + U8String::numberOf(GetUniqueID());
+
+    math::AABB aabb;
+
+    if(GetLocalAABB(aabb))
+    {
+        info += U8_TEXT(", has_aabb: true");
+    }
+    else
+    {
+        info += U8_TEXT(", has_aabb: false");
+    }
+    
+    info += U8_TEXT(")");
+
+    return info;
+}
+
 COMPONENT_NAMESPACE_END

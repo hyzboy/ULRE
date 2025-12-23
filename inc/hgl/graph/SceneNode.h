@@ -176,5 +176,9 @@ namespace hgl::graph
         virtual         int         GetComponents       (       ComponentList &comp_list,const  ComponentManager *); ///<取得所有组件
 
                 const ComponentSet &GetComponents       ()const{return component_set;}
+
+    public: //树结构输出相关
+
+        virtual         U8String    GetSceneTreeText    (int depth = 0) const;
     };//class SceneNode
 }//namespace hgl::graph

@@ -68,6 +68,10 @@ private:
         sm_move     =GetGizmoMoveNode(GetWorld());
         //sm_rotate   =GetGizmoRotateStaticMesh();
         //sm_scale    =GetGizmoScaleStaticMesh();
+        
+        U8String info=sm_move->GetSceneTreeText(0);
+
+        GLogInfo(info.c_str());
 
         return(true);
     }
