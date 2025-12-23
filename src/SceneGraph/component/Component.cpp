@@ -45,7 +45,7 @@ bool Component::ChangeData(ComponentDataPtr cdp)
     if(Data==cdp)
         return(true); //数据没有变化
 
-    if(cdp->GetTypeHash()!=GetTypeHash())        //类型不对
+    if(hgl::GetTypeHash(cdp)!=hgl::GetTypeHash(Data))        //类型不对
     {
         LogError(OS_TEXT("Component::ChangeData: component data type mismatch."));
         return(false);
