@@ -134,6 +134,12 @@ public:
     virtual Component *Clone();
 
     //virtual void Update(const double delta_time)=0;
+    
+public: //信息描述相关
+
+    /// 获取 Component 的文本描述信息，用于日志或调试输出
+    /// @return 返回包含 Component 信息的字符串，默认包含类型和 unique_id
+    virtual U8String GetComponentInfo() const;
 
 public: //事件
 

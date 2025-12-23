@@ -60,4 +60,9 @@ Component *Component::Clone()
     return GetManager()->CreateComponent(Data);
 }
 
+U8String Component::GetComponentInfo() const
+{
+    return U8_TEXT("Component(unique_id: ") + U8String::numberOf(unique_id) + U8_TEXT(")");
+}
+
 COMPONENT_NAMESPACE_END

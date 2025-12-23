@@ -26,6 +26,10 @@ public:
         sc->SetLocalMatrix(GetLocalMatrix());
         return sc;
     }
+
+public:
+
+    virtual U8String GetComponentInfo() const override;
 };//class SceneComponent
 
 COMPONENT_NAMESPACE_END

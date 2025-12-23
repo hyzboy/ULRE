@@ -36,4 +36,28 @@ Component *PrimitiveComponentManager::CreateComponent(Primitive *m)
     return CreateComponent(cdp);
 }
 
+U8String RenderComponent::GetComponentInfo() const
+{
+    return U8_TEXT("RenderComponent(unique_id: ") + U8String::numberOf(GetUniqueID()) + U8_TEXT(")");
+}
+
+U8String PrimitiveComponent::GetComponentInfo() const
+{
+    U8String info = U8_TEXT("PrimitiveComponent(unique_id: ") + U8String::numberOf(GetUniqueID());
+    
+    Primitive *prim = GetPrimitive();
+    if(prim)
+    {
+        info += U8_TEXT(", primitive: ") + ToU8String(prim->GetGeometryName());
+    }
+    
+    if(override_material)
+    {
+        info += U8_TEXT(", override_material: ") + ToU8String(override_material->GetMaterial()->GetName());
+    }
+
+    info += U8_TEXT(")");
+    return info;
+}
+
 COMPONENT_NAMESPACE_END

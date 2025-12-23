@@ -239,4 +239,48 @@ namespace hgl::graph
 
         main_world=new_scene;
     }
+
+    U8String SceneNode::GetSceneTreeText(int depth) const
+    {
+        U8String result;
+
+        // 生成当前节点的缩进和前缀
+        U8String indent;
+        for(int i = 0; i < depth; i++)
+            indent += U8_TEXT("  ");
+        
+        // 生成树符号
+        U8String prefix = depth == 0 ? U8_TEXT("") : U8_TEXT("├─ ");
+        
+        // 添加当前节点信息
+        U8String node_info = indent + prefix + U8_TEXT("[Node] (ID: ") + U8String::numberOf(node_id) + U8_TEXT(")");
+        
+        result += node_info + U8_TEXT("\n");
+        
+        // 添加组件信息
+        for(const Component *comp : component_set)
+        {
+            U8String comp_indent = indent + U8_TEXT("  ");
+            U8String comp_info = comp_indent + U8_TEXT("├─ [Component] ");
+
+            comp_info += comp->GetComponentInfo();
+            result += comp_info + U8_TEXT("\n");
+        }
+        
+        // 递归添加子节点
+        int child_count = child_nodes.GetCount();
+        if(child_count > 0)
+        {
+            SceneNode **children = child_nodes.GetData();
+            for(int i = 0; i < child_count; i++)
+            {
+                if(children[i])
+                {
+                    result += children[i]->GetSceneTreeText(depth + 1);
+                }
+            }
+        }
+        
+        return result;
+    }
 }//namespace hgl::graph
