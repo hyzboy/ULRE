@@ -1,32 +1,28 @@
-#ifndef HGL_GRAPH_BITMAP2D_LOADER_INCLUDE
-#define HGL_GRAPH_BITMAP2D_LOADER_INCLUDE
+#pragma once
 
 #include<hgl/graph/TextureLoader.h>
-namespace hgl
+
+namespace hgl::graph
 {
-    namespace graph
+    /**
+    * 2D位图加载类
+    */
+    class Bitmap2DLoader:public Texture2DLoader
     {
-        /**
-        * 2D位图加载类
-        */
-        class Bitmap2DLoader:public Texture2DLoader
-        {
-        protected:
+    protected:
 
-            BitmapData *bmp=nullptr;
+        BitmapData *bmp=nullptr;
 
-        public:
+    public:
 
-            Bitmap2DLoader():Texture2DLoader(){}
-            ~Bitmap2DLoader();
+        Bitmap2DLoader():Texture2DLoader(){}
+        ~Bitmap2DLoader();
 
-            void *OnBegin(uint32 total_bytes,const VkFormat &) override;
-            bool OnEnd() override {return(false);}
+        void *OnBegin(uint32 total_bytes,const VkFormat &) override;
+        bool OnEnd() override {return(false);}
 
-            BitmapData *GetBitmap();
-        };//class Bitmap2DLoader
+        BitmapData *GetBitmap();
+    };//class Bitmap2DLoader
 
-        BitmapData *LoadBitmapFromFile(const OSString &filename);
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_BITMAP2D_LOADER_INCLUDE
+    BitmapData *LoadBitmapFromFile(const OSString &filename);
+}//namespace hgl::graph

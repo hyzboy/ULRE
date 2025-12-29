@@ -81,7 +81,7 @@ namespace hgl
 
             std::shared_ptr<World> world;
             const graph::CameraInfo* cameraInfo;  // Pointer to camera info from CMMath
-            Frustum frustum;  // Frustum from CMMath
+            math::Frustum frustum;  // Frustum from CMMath
             std::vector<RenderItem> renderItems;
             bool frustumCullingEnabled;
             bool distanceSortingEnabled;
