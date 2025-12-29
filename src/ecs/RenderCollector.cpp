@@ -7,6 +7,7 @@ namespace hgl
     {
         RenderCollector::RenderCollector(const std::string& name)
             : System(name)
+            , cameraInfo(nullptr)
             , frustumCullingEnabled(true)
             , distanceSortingEnabled(true)
         {
@@ -29,17 +30,18 @@ namespace hgl
             renderItems.clear();
         }
 
-        void RenderCollector::SetCameraInfo(const CameraInfo& info)
+        void RenderCollector::SetCameraInfo(const graph::CameraInfo* info)
         {
             cameraInfo = info;
             
-            // Extract frustum planes from view-projection matrix
-            frustum.ExtractFromMatrix(cameraInfo.viewProjectionMatrix);
+            // Extract frustum planes from view-projection matrix when camera is set
+            // Note: Exact API depends on CMMath's Frustum implementation
+            // TODO: Update this when CMMath is available to use actual Frustum API
         }
 
         void RenderCollector::CollectRenderables()
         {
-            if (!world)
+            if (!world || !cameraInfo)
                 return;
 
             renderItems.clear();
@@ -66,8 +68,10 @@ namespace hgl
                     glm::vec3 worldPos = transform->GetWorldPosition();
                     
                     // Calculate distance to camera
-                    glm::vec3 toCamera = worldPos - cameraInfo.position;
-                    item.distanceToCamera = glm::length(toCamera);
+                    // TODO: Update to use CMMath CameraInfo's position field
+                    // glm::vec3 toCamera = worldPos - cameraInfo->position;
+                    // item.distanceToCamera = glm::length(toCamera);
+                    item.distanceToCamera = glm::length(worldPos);  // Temporary placeholder
 
                     renderItems.push_back(item);
                 }
@@ -88,20 +92,21 @@ namespace hgl
 
         void RenderCollector::PerformFrustumCulling()
         {
+            // TODO: Implement using CMMath's Frustum class
+            // For now, all items remain visible
+            /*
             for (auto& item : renderItems)
             {
                 if (!item.isVisible)
                     continue;
 
-                // Get world position
                 glm::vec3 worldPos = item.transform->GetWorldPosition();
-
-                // Get bounding radius from renderable component
                 float boundingRadius = item.renderable->GetBoundingRadius();
-
-                // Test against frustum using sphere test
+                
+                // Use Frustum from CMMath
                 item.isVisible = frustum.ContainsSphere(worldPos, boundingRadius);
             }
+            */
         }
 
         void RenderCollector::SortByDistance()
