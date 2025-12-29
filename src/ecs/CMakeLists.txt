@@ -6,11 +6,14 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/System.h
                 ${ECS_INCLUDE_PATH}/World.h
                 ${ECS_INCLUDE_PATH}/TransformComponent.h
+                ${ECS_INCLUDE_PATH}/TransformDataStorage.h
+                ${ECS_INCLUDE_PATH}/RenderCollector.h
                 Object.cpp
                 Component.cpp
                 Entity.cpp
                 System.cpp
                 World.cpp
-                TransformComponent.cpp)
+                TransformComponent.cpp
+                RenderCollector.cpp)
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_SOURCE})
