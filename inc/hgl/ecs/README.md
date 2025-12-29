@@ -143,6 +143,16 @@ renderCollector->SetCameraInfo(&camera);
 auto renderable = player->AddComponent<RenderableComponent>();
 renderable->SetBoundingRadius(1.0f);
 
+// Add bounding box for spatial queries and GPU culling
+auto bbox = player->AddComponent<BoundingBoxComponent>();
+bbox->SetAABB(glm::vec3(-1.0f), glm::vec3(1.0f));
+
+// Access bounding box SOA storage for SSBO upload
+auto bboxStorage = BoundingBoxComponent::GetSharedStorage();
+const auto& minPoints = bboxStorage->GetAllMinPoints();
+const auto& maxPoints = bboxStorage->GetAllMaxPoints();
+// Upload to GPU: glBufferData(GL_SHADER_STORAGE_BUFFER, minPoints.size() * sizeof(glm::vec3), minPoints.data(), GL_STATIC_DRAW);
+
 // Collect visible entities (with frustum culling and distance sorting)
 renderCollector->CollectRenderables();
 const auto& renderItems = renderCollector->GetRenderItems();
@@ -203,6 +213,12 @@ Comprehensive tests are included in `src/ecs/`:
   - Frustum culling demonstration
   - Distance sorting
   - Visibility filtering
+- **test_boundingbox.cpp** - Bounding box system:
+  - BoundingBoxComponent with SOA storage
+  - AABB creation and queries
+  - Dirty flag management
+  - SSBO-ready data layout demonstration
+  - Direct array access for GPU uploads
 
 Build and run the test:
 ```bash
