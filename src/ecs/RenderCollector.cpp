@@ -2,14 +2,36 @@
 #include<hgl/ecs/World.h>
 #include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/RenderableComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
 
 namespace hgl::ecs
 {
+    // MaterialBatch implementation
+    void MaterialBatch::AddItem(RenderItem* item)
+    {
+        if (item)
+            items.push_back(item);
+    }
+
+    void MaterialBatch::Finalize()
+    {
+        // Sort items by geometry/distance for optimal rendering
+        std::sort(items.begin(), items.end(),
+            [](const RenderItem* a, const RenderItem* b) {
+                return a->Compare(*b) < 0;
+            });
+    }
+
+    // RenderCollector implementation
     RenderCollector::RenderCollector(const std::string& name)
         : System(name)
         , cameraInfo(nullptr)
         , frustumCullingEnabled(true)
         , distanceSortingEnabled(true)
+        , batchingEnabled(true)
+        , renderableCount(0)
     {
     }
 
@@ -27,7 +49,7 @@ namespace hgl::ecs
 
     void RenderCollector::Shutdown()
     {
-        renderItems.clear();
+        Clear();
     }
 
     void RenderCollector::SetCameraInfo(const graph::CameraInfo* info)
@@ -42,6 +64,12 @@ namespace hgl::ecs
             // This would extract the 6 frustum planes from the view-projection matrix
             // For now, we'll call it in PerformFrustumCulling if needed
         }
+
+        // Update camera info for all batches
+        for (auto& pair : materialBatches)
+        {
+            pair.second->SetCameraInfo(cameraInfo);
+        }
     }
 
     void RenderCollector::CollectRenderables()
@@ -50,6 +78,13 @@ namespace hgl::ecs
             return;
 
         renderItems.clear();
+        renderableCount = 0;
+
+        // Clear batches but keep allocated memory
+        for (auto& pair : materialBatches)
+        {
+            pair.second->Clear();
+        }
 
         // Get all entities from the world
         const auto& entities = world->GetEntities();
@@ -62,25 +97,36 @@ namespace hgl::ecs
 
             if (transform && renderable && renderable->IsVisible())
             {
-                RenderItem item;
-                item.entity = entity;
-                item.transform = transform;
-                item.renderable = renderable;
-                item.worldMatrix = transform->GetWorldMatrix();
-                item.isVisible = true;
-
-                // Calculate world position for distance calculation
-                glm::vec3 worldPos = transform->GetWorldPosition();
+                // Check if it's a PrimitiveComponent (for batching support)
+                auto primitiveComp = std::dynamic_pointer_cast<PrimitiveComponent>(renderable);
+                
+                if (primitiveComp && primitiveComp->CanRender())
+                {
+                    // Create PrimitiveRenderItem
+                    auto item = std::make_unique<PrimitiveRenderItem>(
+                        entity, transform, primitiveComp);
                     
-                // Calculate distance to camera
-                // CMMath's CameraInfo should have a position or eye field
-                // Using a reasonable default for now - actual field name depends on CMMath API
-                glm::vec3 cameraPos = glm::vec3(0.0f); // Default
-                // If CMMath provides: cameraPos = cameraInfo->eye; or cameraPos = cameraInfo->position;
-                glm::vec3 toCamera = worldPos - cameraPos;
-                item.distanceToCamera = glm::length(toCamera);
+                    // Calculate world position for distance calculation
+                    glm::vec3 worldPos = transform->GetWorldPosition();
+                    item->worldPosition = worldPos;
+                    
+                    // Calculate distance to camera
+                    // CMMath's CameraInfo should have a position or eye field
+                    // Using a reasonable default for now - actual field name depends on CMMath API
+                    glm::vec3 cameraPos = glm::vec3(0.0f); // Default
+                    // If CMMath provides: cameraPos = cameraInfo->eye; or cameraPos = cameraInfo->position;
+                    glm::vec3 toCamera = worldPos - cameraPos;
+                    item->distanceToCamera = glm::length(toCamera);
 
-                renderItems.push_back(item);
+                    renderItems.push_back(std::move(item));
+                    renderableCount++;
+                }
+                else if (renderable)
+                {
+                    // For other renderable types, we could create a generic RenderItem
+                    // but for now, only PrimitiveComponent is supported for batching
+                    // This could be extended in the future
+                }
             }
         }
 
@@ -90,10 +136,17 @@ namespace hgl::ecs
             PerformFrustumCulling();
         }
 
-        // Sort by distance if enabled
+        // Sort by distance if enabled (before batching)
         if (distanceSortingEnabled)
         {
             SortByDistance();
+        }
+
+        // Build material batches if enabled
+        if (batchingEnabled)
+        {
+            BuildMaterialBatches();
+            FinalizeBatches();
         }
     }
 
@@ -106,13 +159,18 @@ namespace hgl::ecs
         // Assuming: frustum.Set(*cameraInfo) or similar
         // This extracts the 6 frustum planes from the view-projection matrix
 
-        for (auto& item : renderItems)
+        for (auto& itemPtr : renderItems)
         {
-            if (!item.isVisible)
+            RenderItem* item = itemPtr.get();
+            if (!item->isVisible)
                 continue;
 
             // Try to get BoundingBoxComponent first for accurate AABB culling
-            auto bbox = item.entity->GetComponent<BoundingBoxComponent>();
+            auto entity = item->GetEntity();
+            if (!entity)
+                continue;
+
+            auto bbox = entity->GetComponent<BoundingBoxComponent>();
                 
             if (bbox)
             {
@@ -120,16 +178,18 @@ namespace hgl::ecs
                 AABB aabb = bbox->GetAABB();
                     
                 // Transform AABB to world space using entity's world matrix
+                glm::mat4 worldMat = item->GetWorldMatrix();
+                
                 // For accurate culling, we need to transform all 8 corners and rebuild AABB
                 glm::vec3 corners[8] = {
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f)),
-                    glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f))
+                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f))
                 };
                     
                 // Find transformed AABB bounds
@@ -149,21 +209,29 @@ namespace hgl::ecs
                 glm::vec3 center = (transformedMin + transformedMax) * 0.5f;
                 // TODO: Replace with actual frustum.CheckAABB(worldAABB) when CMMath is available
                 // Simple placeholder: check if not too far (z < -100)
-                item.isVisible = (center.z > -100.0f && center.z < 100.0f &&
+                item->isVisible = (center.z > -100.0f && center.z < 100.0f &&
                                     center.x > -100.0f && center.x < 100.0f &&
                                     center.y > -100.0f && center.y < 100.0f);
             }
             else
             {
                 // Fall back to sphere culling using RenderableComponent's bounding radius
-                glm::vec3 worldPos = item.transform->GetWorldPosition();
-                float boundingRadius = item.renderable->GetBoundingRadius();
+                auto renderable = item->GetRenderable();
+                if (!renderable)
+                    continue;
+
+                auto transform = item->GetTransform();
+                if (!transform)
+                    continue;
+
+                glm::vec3 worldPos = transform->GetWorldPosition();
+                float boundingRadius = renderable->GetBoundingRadius();
                     
                 // Use CMMath's Frustum to test sphere
                 // Assuming CMMath Frustum API: bool CheckSphere(const vec3&, float) or similar
                 // TODO: Replace with actual frustum.CheckSphere(worldPos, boundingRadius) when CMMath is available
                 // Simple placeholder: check if not too far
-                item.isVisible = (worldPos.z > -100.0f && worldPos.z < 100.0f &&
+                item->isVisible = (worldPos.z > -100.0f && worldPos.z < 100.0f &&
                                     worldPos.x > -100.0f && worldPos.x < 100.0f &&
                                     worldPos.y > -100.0f && worldPos.y < 100.0f);
             }
@@ -174,8 +242,96 @@ namespace hgl::ecs
     {
         // Sort render items by distance to camera (near to far)
         std::sort(renderItems.begin(), renderItems.end(),
-            [](const RenderItem& a, const RenderItem& b) {
-                return a.distanceToCamera < b.distanceToCamera;
+            [](const std::unique_ptr<RenderItem>& a, const std::unique_ptr<RenderItem>& b) {
+                return a->distanceToCamera < b->distanceToCamera;
             });
+    }
+
+    void RenderCollector::BuildMaterialBatches()
+    {
+        // Build material batches from visible render items
+        for (auto& itemPtr : renderItems)
+        {
+            RenderItem* item = itemPtr.get();
+            if (!item->isVisible)
+                continue;
+
+            // Get material and pipeline for batching
+            auto* material = item->GetMaterial();
+            auto* pipeline = item->GetPipeline();
+
+            if (!material || !pipeline)
+                continue;
+
+            // Create or get batch for this material/pipeline combination
+            MaterialPipelineKey key(material, pipeline);
+            auto it = materialBatches.find(key);
+            
+            if (it == materialBatches.end())
+            {
+                // Create new batch
+                auto batch = std::make_unique<MaterialBatch>(key);
+                batch->SetCameraInfo(cameraInfo);
+                batch->AddItem(item);
+                materialBatches[key] = std::move(batch);
+            }
+            else
+            {
+                // Add to existing batch
+                it->second->AddItem(item);
+            }
+        }
+    }
+
+    void RenderCollector::FinalizeBatches()
+    {
+        // Finalize all batches (sort items within each batch)
+        for (auto& pair : materialBatches)
+        {
+            pair.second->Finalize();
+        }
+    }
+
+    void RenderCollector::Clear()
+    {
+        renderItems.clear();
+        materialBatches.clear();
+        renderableCount = 0;
+    }
+
+    void RenderCollector::UpdateTransformData()
+    {
+        // Update transform data for all render items
+        for (auto& itemPtr : renderItems)
+        {
+            // For PrimitiveRenderItem, update world matrix
+            if (auto* primItem = dynamic_cast<PrimitiveRenderItem*>(itemPtr.get()))
+            {
+                primItem->UpdateWorldMatrix();
+            }
+        }
+    }
+
+    void RenderCollector::UpdateMaterialInstanceData(PrimitiveComponent* comp)
+    {
+        if (!comp || !comp->CanRender())
+            return;
+
+        // Find the batch for this component's material/pipeline
+        auto* material = comp->GetMaterial();
+        auto* pipeline = comp->GetPipeline();
+
+        if (!material || !pipeline)
+            return;
+
+        MaterialPipelineKey key(material, pipeline);
+        auto it = materialBatches.find(key);
+
+        if (it != materialBatches.end())
+        {
+            // Batch found - material instance data needs to be updated
+            // The actual update would be done during rendering
+            // This is a placeholder for future implementation
+        }
     }
 }//namespace hgl::ecs
