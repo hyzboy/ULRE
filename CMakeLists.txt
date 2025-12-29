@@ -28,6 +28,7 @@ SET(ULRE    CMCoreType
             CM2D
 #            CMGUI
             ULRE.Work
+            ULRE.ECS
             ULRE.ShaderGen
             ULRE.SceneGraph
             ${HGL_MATH_LIB}
