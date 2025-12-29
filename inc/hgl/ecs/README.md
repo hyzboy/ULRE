@@ -69,6 +69,21 @@ Structure of Arrays (SOA) storage for transform data:
   - Easier to parallelize operations
   - Lower memory overhead per transform
 
+### 8. RenderCollector (`RenderCollector.h/cpp`)
+System for collecting and processing renderable entities:
+- **Entity Collection**: Gathers entities with TransformComponent and RenderableComponent
+- **Frustum Culling**: Uses 6-plane frustum test to cull objects outside camera view
+- **Distance Sorting**: Sorts render items by distance to camera (near to far)
+- **CameraInfo Integration**: Takes camera matrix and position for culling and sorting
+- **Visibility Filtering**: Respects component visibility flags
+- **Features**:
+  - Frustum class with 6-plane culling
+  - CameraInfo struct for camera data
+  - RenderableComponent base class for renderable objects
+  - RenderItem struct with collected rendering data
+  - Enable/disable frustum culling and distance sorting
+  - Efficient batch collection every frame
+
 ## Usage Example
 
 ```cpp
@@ -110,6 +125,35 @@ storage->UpdateAllDirtyMatrices([](TransformDataStorage::HandleID id,
     // This is much faster than individual component updates
 });
 
+// Set up rendering with RenderCollector
+auto renderCollector = world->RegisterSystem<RenderCollector>();
+renderCollector->SetWorld(world);
+renderCollector->Initialize();
+
+// Configure camera
+CameraInfo camera;
+camera.position = glm::vec3(0.0f, 0.0f, 10.0f);
+camera.viewMatrix = glm::lookAt(camera.position, 
+                                glm::vec3(0.0f), 
+                                glm::vec3(0.0f, 1.0f, 0.0f));
+camera.projectionMatrix = glm::perspective(glm::radians(60.0f), 16.0f/9.0f, 0.1f, 100.0f);
+camera.UpdateViewProjection();
+renderCollector->SetCameraInfo(camera);
+
+// Add renderable component to entity
+auto renderable = player->AddComponent<RenderableComponent>();
+renderable->SetBoundingRadius(1.0f);
+
+// Collect visible entities (with frustum culling and distance sorting)
+renderCollector->CollectRenderables();
+const auto& renderItems = renderCollector->GetRenderItems();
+for (const auto& item : renderItems) {
+    if (item.isVisible) {
+        // Render the item
+        item.renderable->Render(item.worldMatrix);
+    }
+}
+
 // Game loop
 float deltaTime = 0.016f; // 16ms = 60 FPS
 world->Update(deltaTime);
@@ -146,13 +190,19 @@ The ECS module is integrated into the ULRE build system via CMake:
 
 ## Testing
 
-A comprehensive test is included in `src/ecs/test_ecs.cpp` demonstrating:
-- World and entity creation
-- Component management
-- System registration
-- Transform hierarchy
-- Parent-child relationships
-- SOA storage access and batch operations
+Comprehensive tests are included in `src/ecs/`:
+- **test_ecs.cpp** - Core ECS features:
+  - World and entity creation
+  - Component management
+  - System registration
+  - Transform hierarchy
+  - Parent-child relationships
+  - SOA storage access and batch operations
+- **test_render_collector.cpp** - Rendering system:
+  - RenderCollector with camera setup
+  - Frustum culling demonstration
+  - Distance sorting
+  - Visibility filtering
 
 Build and run the test:
 ```bash
