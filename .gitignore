@@ -5,6 +5,7 @@
 *.db
 *.ipch
 *.tlog
+*.o
 *.obj
 .vs
 /build
