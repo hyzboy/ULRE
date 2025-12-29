@@ -7,51 +7,72 @@ namespace hgl
     {
         TransformComponent::TransformComponent(const std::string& name)
             : Component(name)
-            , localPosition(0.0f, 0.0f, 0.0f)
-            , localRotation(1.0f, 0.0f, 0.0f, 0.0f)
-            , localScale(1.0f, 1.0f, 1.0f)
             , cachedWorldMatrix(1.0f)
             , matrixDirty(true)
             , mobility(TransformMobility::Movable)
         {
+            // Allocate storage in the shared SOA storage
+            storageHandle = GetSharedStorage()->Allocate();
         }
 
         TransformComponent::~TransformComponent()
         {
+            // Free storage in the shared SOA storage
+            if (storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                GetSharedStorage()->Deallocate(storageHandle);
+            }
+        }
+
+        glm::vec3 TransformComponent::GetLocalPosition() const
+        {
+            return GetSharedStorage()->GetPosition(storageHandle);
         }
 
         void TransformComponent::SetLocalPosition(const glm::vec3& pos)
         {
-            localPosition = pos;
+            GetSharedStorage()->SetPosition(storageHandle, pos);
             MarkDirty();
+        }
+
+        glm::quat TransformComponent::GetLocalRotation() const
+        {
+            return GetSharedStorage()->GetRotation(storageHandle);
         }
 
         void TransformComponent::SetLocalRotation(const glm::quat& rot)
         {
-            localRotation = rot;
+            GetSharedStorage()->SetRotation(storageHandle, rot);
             MarkDirty();
+        }
+
+        glm::vec3 TransformComponent::GetLocalScale() const
+        {
+            return GetSharedStorage()->GetScale(storageHandle);
         }
 
         void TransformComponent::SetLocalScale(const glm::vec3& scale)
         {
-            localScale = scale;
+            GetSharedStorage()->SetScale(storageHandle, scale);
             MarkDirty();
         }
 
         void TransformComponent::SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
         {
-            localPosition = pos;
-            localRotation = rot;
-            localScale = scale;
+            auto storage = GetSharedStorage();
+            storage->SetPosition(storageHandle, pos);
+            storage->SetRotation(storageHandle, rot);
+            storage->SetScale(storageHandle, scale);
             MarkDirty();
         }
 
         glm::mat4 TransformComponent::GetLocalMatrix() const
         {
+            auto storage = GetSharedStorage();
             glm::mat4 matrix(1.0f);
-            matrix = glm::translate(matrix, localPosition);
-            matrix = matrix * glm::mat4_cast(localRotation);
-            matrix = glm::scale(matrix, localScale);
+            matrix = glm::translate(matrix, storage->GetPosition(storageHandle));
+            matrix = matrix * glm::mat4_cast(storage->GetRotation(storageHandle));
+            matrix = glm::scale(matrix, storage->GetScale(storageHandle));
             return matrix;
         }
 
@@ -72,6 +93,7 @@ namespace hgl
 
         void TransformComponent::SetWorldPosition(const glm::vec3& pos)
         {
+            auto storage = GetSharedStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -81,36 +103,38 @@ namespace hgl
                     glm::mat4 parentWorld = parentTransform->GetWorldMatrix();
                     glm::mat4 parentInverse = glm::inverse(parentWorld);
                     glm::vec4 localPos = parentInverse * glm::vec4(pos, 1.0f);
-                    localPosition = glm::vec3(localPos);
+                    storage->SetPosition(storageHandle, glm::vec3(localPos));
                 }
                 else
                 {
-                    localPosition = pos;
+                    storage->SetPosition(storageHandle, pos);
                 }
             }
             else
             {
-                localPosition = pos;
+                storage->SetPosition(storageHandle, pos);
             }
             MarkDirty();
         }
 
         glm::quat TransformComponent::GetWorldRotation()
         {
+            auto storage = GetSharedStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
                 if (parentTransform)
                 {
-                    return parentTransform->GetWorldRotation() * localRotation;
+                    return parentTransform->GetWorldRotation() * storage->GetRotation(storageHandle);
                 }
             }
-            return localRotation;
+            return storage->GetRotation(storageHandle);
         }
 
         void TransformComponent::SetWorldRotation(const glm::quat& rot)
         {
+            auto storage = GetSharedStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -118,36 +142,38 @@ namespace hgl
                 if (parentTransform)
                 {
                     glm::quat parentRot = parentTransform->GetWorldRotation();
-                    localRotation = glm::inverse(parentRot) * rot;
+                    storage->SetRotation(storageHandle, glm::inverse(parentRot) * rot);
                 }
                 else
                 {
-                    localRotation = rot;
+                    storage->SetRotation(storageHandle, rot);
                 }
             }
             else
             {
-                localRotation = rot;
+                storage->SetRotation(storageHandle, rot);
             }
             MarkDirty();
         }
 
         glm::vec3 TransformComponent::GetWorldScale()
         {
+            auto storage = GetSharedStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
                 if (parentTransform)
                 {
-                    return parentTransform->GetWorldScale() * localScale;
+                    return parentTransform->GetWorldScale() * storage->GetScale(storageHandle);
                 }
             }
-            return localScale;
+            return storage->GetScale(storageHandle);
         }
 
         void TransformComponent::SetWorldScale(const glm::vec3& scale)
         {
+            auto storage = GetSharedStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -155,16 +181,16 @@ namespace hgl
                 if (parentTransform)
                 {
                     glm::vec3 parentScale = parentTransform->GetWorldScale();
-                    localScale = scale / parentScale;
+                    storage->SetScale(storageHandle, scale / parentScale);
                 }
                 else
                 {
-                    localScale = scale;
+                    storage->SetScale(storageHandle, scale);
                 }
             }
             else
             {
-                localScale = scale;
+                storage->SetScale(storageHandle, scale);
             }
             MarkDirty();
         }
@@ -219,6 +245,13 @@ namespace hgl
             {
                 childEntities.erase(it);
             }
+        }
+
+        void TransformComponent::SetMobility(TransformMobility mob)
+        {
+            mobility = mob;
+            // Update mobility in storage
+            GetSharedStorage()->SetMobility(storageHandle, mob == TransformMobility::Static ? 0 : 1);
         }
 
         void TransformComponent::OnUpdate(float deltaTime)

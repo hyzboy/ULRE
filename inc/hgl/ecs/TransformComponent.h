@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/Component.h>
 #include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformDataStorage.h>
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtc/matrix_transform.hpp>
@@ -23,25 +24,23 @@ namespace hgl
 
         /**
          * Transform component for spatial transformation
-         * Provides position, rotation, and scale transformations
-         * Supports parent-child hierarchy
+         * Uses SOA (Structure of Arrays) storage for better cache performance
+         * while maintaining OOP component interface
          */
         class TransformComponent : public Component
         {
         private:
 
-            // Local transform
-            glm::vec3 localPosition;
-            glm::quat localRotation;
-            glm::vec3 localScale;
-
-            // Cached world transform
-            glm::mat4 cachedWorldMatrix;
-            bool matrixDirty;
+            // SOA storage handle
+            TransformDataStorage::HandleID storageHandle = TransformDataStorage::INVALID_HANDLE;
 
             // Hierarchy
             std::weak_ptr<Entity> parentEntity;
             std::vector<std::shared_ptr<Entity>> childEntities;
+
+            // Cached world transform (for static objects)
+            glm::mat4 cachedWorldMatrix;
+            bool matrixDirty;
 
             // Optimization settings
             TransformMobility mobility;
@@ -53,14 +52,14 @@ namespace hgl
 
         public:
 
-            // Local transform accessors
-            glm::vec3 GetLocalPosition() const { return localPosition; }
+            // Local transform accessors (using SOA backend)
+            glm::vec3 GetLocalPosition() const;
             void SetLocalPosition(const glm::vec3& pos);
 
-            glm::quat GetLocalRotation() const { return localRotation; }
+            glm::quat GetLocalRotation() const;
             void SetLocalRotation(const glm::quat& rot);
 
-            glm::vec3 GetLocalScale() const { return localScale; }
+            glm::vec3 GetLocalScale() const;
             void SetLocalScale(const glm::vec3& scale);
 
             void SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale);
@@ -93,7 +92,7 @@ namespace hgl
         public:
 
             // Mobility settings for optimization
-            void SetMobility(TransformMobility mob) { mobility = mob; }
+            void SetMobility(TransformMobility mob);
             TransformMobility GetMobility() const { return mobility; }
             bool IsStatic() const { return mobility == TransformMobility::Static; }
             bool IsMovable() const { return mobility == TransformMobility::Movable; }
@@ -103,6 +102,18 @@ namespace hgl
             void OnUpdate(float deltaTime) override;
             void OnAttach() override;
             void OnDetach() override;
+
+        public:
+
+            // Get the SOA storage handle for batch operations
+            TransformDataStorage::HandleID GetStorageHandle() const { return storageHandle; }
+
+            // Static access to shared storage for batch operations
+            static std::shared_ptr<TransformDataStorage>& GetSharedStorage()
+            {
+                static auto storage = std::make_shared<TransformDataStorage>();
+                return storage;
+            }
 
         private:
 

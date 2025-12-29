@@ -1,10 +1,11 @@
 // Simple test for ECS architecture
-// This file demonstrates basic usage of the ECS system
+// This file demonstrates basic usage of the ECS system including SOA storage
 
 #include<hgl/ecs/World.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/TransformDataStorage.h>
 #include<iostream>
 
 using namespace hgl::ecs;
@@ -117,9 +118,31 @@ int main()
     transform->SetMobility(TransformMobility::Static);
     std::cout << "Transform mobility set to Static: " << (transform->IsStatic() ? "true" : "false") << std::endl;
 
+    // Test SOA storage access
+    std::cout << "\n=== SOA Storage Test ===" << std::endl;
+    auto storage = TransformComponent::GetSharedStorage();
+    std::cout << "SOA storage size: " << storage->GetSize() << " transforms" << std::endl;
+    
+    // Access storage handle
+    auto handle = transform->GetStorageHandle();
+    std::cout << "Transform storage handle: " << handle << std::endl;
+    
+    // Direct storage access
+    glm::vec3 storedPos = storage->GetPosition(handle);
+    std::cout << "Position from storage: (" << storedPos.x << ", " << storedPos.y << ", " << storedPos.z << ")" << std::endl;
+
+    // Test batch operations with SOA storage
+    std::cout << "\n=== Batch Operations Test ===" << std::endl;
+    int dirtyCount = 0;
+    storage->UpdateAllDirtyMatrices([&dirtyCount](TransformDataStorage::HandleID id, glm::vec3 pos, glm::quat rot, glm::vec3 scale) {
+        dirtyCount++;
+        std::cout << "Updated transform " << id << " at position (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << std::endl;
+    });
+    std::cout << "Total dirty transforms updated: " << dirtyCount << std::endl;
+
     // Shutdown
     world->Shutdown();
-    std::cout << "World shut down" << std::endl;
+    std::cout << "\nWorld shut down" << std::endl;
 
     std::cout << "\n=== Test Complete ===" << std::endl;
 
