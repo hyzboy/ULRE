@@ -115,17 +115,25 @@ int main()
     int visibleCount = 0;
     int culledCount = 0;
     
-    for (const auto& item : renderItems)
+    for (const auto& itemPtr : renderItems)
     {
-        std::cout << "\nEntity: " << item.entity->GetName() << std::endl;
-        std::cout << "  Position: (" 
-                  << item.transform->GetWorldPosition().x << ", "
-                  << item.transform->GetWorldPosition().y << ", "
-                  << item.transform->GetWorldPosition().z << ")" << std::endl;
-        std::cout << "  Distance to camera: " << item.distanceToCamera << std::endl;
-        std::cout << "  Visible: " << (item.isVisible ? "YES" : "NO (culled)") << std::endl;
+        if (!itemPtr) continue;
         
-        auto bbox = item.entity->GetComponent<BoundingBoxComponent>();
+        auto entity = itemPtr->GetEntity();
+        auto transform = itemPtr->GetTransform();
+        auto renderable = itemPtr->GetRenderable();
+        
+        if (!entity || !transform || !renderable) continue;
+        
+        std::cout << "\nEntity: " << entity->GetName() << std::endl;
+        std::cout << "  Position: (" 
+                  << transform->GetWorldPosition().x << ", "
+                  << transform->GetWorldPosition().y << ", "
+                  << transform->GetWorldPosition().z << ")" << std::endl;
+        std::cout << "  Distance to camera: " << itemPtr->distanceToCamera << std::endl;
+        std::cout << "  Visible: " << (itemPtr->isVisible ? "YES" : "NO (culled)") << std::endl;
+        
+        auto bbox = entity->GetComponent<BoundingBoxComponent>();
         if (bbox)
         {
             std::cout << "  Culling method: AABB" << std::endl;
@@ -133,10 +141,10 @@ int main()
         else
         {
             std::cout << "  Culling method: Sphere (radius: " 
-                      << item.renderable->GetBoundingRadius() << ")" << std::endl;
+                      << renderable->GetBoundingRadius() << ")" << std::endl;
         }
         
-        if (item.isVisible)
+        if (itemPtr->isVisible)
         {
             visibleCount++;
         }
@@ -157,9 +165,9 @@ int main()
     
     const auto& allItems = renderCollector->GetRenderItems();
     visibleCount = 0;
-    for (const auto& item : allItems)
+    for (const auto& itemPtr : allItems)
     {
-        if (item.isVisible)
+        if (itemPtr && itemPtr->isVisible)
             visibleCount++;
     }
     std::cout << "All entities visible (culling disabled): " << visibleCount << std::endl;
