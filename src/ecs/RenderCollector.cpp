@@ -3,27 +3,12 @@
 #include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/RenderableComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/PrimitiveRenderItem.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
 
 namespace hgl::ecs
 {
-    // MaterialBatch implementation
-    void MaterialBatch::AddItem(RenderItem* item)
-    {
-        if (item)
-            items.push_back(item);
-    }
-
-    void MaterialBatch::Finalize()
-    {
-        // Sort items by geometry/distance for optimal rendering
-        std::sort(items.begin(), items.end(),
-            [](const RenderItem* a, const RenderItem* b) {
-                return a->Compare(*b) < 0;
-            });
-    }
-
     // RenderCollector implementation
     RenderCollector::RenderCollector(const std::string& name)
         : System(name)

@@ -11,6 +11,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxDataStorage.h
                 ${ECS_INCLUDE_PATH}/RenderCollector.h
                 ${ECS_INCLUDE_PATH}/RenderItem.h
+                ${ECS_INCLUDE_PATH}/PrimitiveRenderItem.h
+                ${ECS_INCLUDE_PATH}/MaterialPipelineKey.h
+                ${ECS_INCLUDE_PATH}/MaterialBatch.h
                 ${ECS_INCLUDE_PATH}/RenderableComponent.h
                 ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
                 Object.cpp
@@ -22,6 +25,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 BoundingBoxComponent.cpp
                 PrimitiveComponent.cpp
                 RenderItem.cpp
+                PrimitiveRenderItem.cpp
+                MaterialBatch.cpp
                 RenderCollector.cpp)
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_SOURCE})

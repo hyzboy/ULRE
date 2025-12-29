@@ -3,6 +3,8 @@
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/RenderItem.h>
+#include<hgl/ecs/MaterialPipelineKey.h>
+#include<hgl/ecs/MaterialBatch.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/math/geometry/Frustum.h>
 #include<vector>
@@ -10,70 +12,11 @@
 #include<map>
 #include<algorithm>
 
-namespace hgl
-{
-    namespace graph
-    {
-        class Material;
-        class Pipeline;
-    }
-}
-
 namespace hgl::ecs
 {
     // Forward declarations
     class World;
     class PrimitiveComponent;
-
-    /**
-     * Material/Pipeline index for batching
-     * Similar to hgl::graph::PipelineMaterialIndex
-     */
-    struct MaterialPipelineKey
-    {
-        hgl::graph::Material* material;
-        hgl::graph::Pipeline* pipeline;
-
-        MaterialPipelineKey(hgl::graph::Material* m = nullptr, hgl::graph::Pipeline* p = nullptr)
-            : material(m), pipeline(p) {}
-
-        bool operator<(const MaterialPipelineKey& other) const
-        {
-            if (material < other.material) return true;
-            if (material > other.material) return false;
-            return pipeline < other.pipeline;
-        }
-
-        bool operator==(const MaterialPipelineKey& other) const
-        {
-            return material == other.material && pipeline == other.pipeline;
-        }
-    };
-
-    /**
-     * Material batch - holds render items with same material/pipeline
-     * Similar to hgl::graph::PipelineMaterialBatch
-     */
-    class MaterialBatch
-    {
-    private:
-        MaterialPipelineKey key;
-        std::vector<RenderItem*> items;
-        const graph::CameraInfo* cameraInfo;
-
-    public:
-        MaterialBatch(const MaterialPipelineKey& k) : key(k), cameraInfo(nullptr) {}
-        ~MaterialBatch() = default;
-
-        void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
-        void Clear() { items.clear(); }
-        void AddItem(RenderItem* item);
-        void Finalize();  // Sort and prepare for rendering
-        
-        const std::vector<RenderItem*>& GetItems() const { return items; }
-        const MaterialPipelineKey& GetKey() const { return key; }
-        size_t GetCount() const { return items.size(); }
-    };
 
     /**
         * RenderCollector System
