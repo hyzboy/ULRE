@@ -12,6 +12,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/RenderCollector.h
                 ${ECS_INCLUDE_PATH}/RenderItem.h
                 ${ECS_INCLUDE_PATH}/RenderableComponent.h
+                ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
                 Object.cpp
                 Component.cpp
                 Entity.cpp
@@ -19,6 +20,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 World.cpp
                 TransformComponent.cpp
                 BoundingBoxComponent.cpp
+                PrimitiveComponent.cpp
                 RenderCollector.cpp)
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_SOURCE})
