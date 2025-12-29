@@ -88,6 +88,20 @@ System for collecting and processing renderable entities:
 
 **Note**: Requires CMMath library to be linked for CameraInfo and Frustum types.
 
+### 9. PrimitiveComponent (`PrimitiveComponent.h/cpp`)
+Renderable component for static mesh rendering:
+- **Primitive Management**: Holds reference to `hgl::graph::Primitive` (geometry + material)
+- **Material Override**: Optional MaterialInstance override without modifying Primitive
+- **Rendering Support**: 
+  - `CanRender()` - Checks if component has valid data and is visible
+  - `Render(worldMatrix)` - Called by rendering systems
+  - `GetPipeline()` - Access to rendering pipeline
+- **Spatial Queries**: `GetLocalAABB()` for bounding box
+- **Automatic Bounding Radius**: Updates based on primitive's AABB for frustum culling
+- **Lifecycle Management**: OnAttach/OnUpdate/OnDetach hooks
+- **Integration**: Works with RenderCollector and World systems
+- **Simple Design**: Single class (no separate Data/Manager), derived from RenderableComponent
+
 ## Usage Example
 
 ```cpp
@@ -146,6 +160,22 @@ renderCollector->SetCameraInfo(&camera);
 // Add renderable component to entity
 auto renderable = player->AddComponent<RenderableComponent>();
 renderable->SetBoundingRadius(1.0f);
+
+// Or use PrimitiveComponent for mesh rendering
+auto primitive = player->AddComponent<PrimitiveComponent>();
+// Assuming you have a hgl::graph::Primitive* loaded from file or created
+hgl::graph::Primitive* mesh = LoadMeshFromFile("player.mesh");
+primitive->SetPrimitive(mesh);
+
+// Optional: Override material
+hgl::graph::MaterialInstance* customMaterial = CreateCustomMaterial();
+primitive->SetOverrideMaterial(customMaterial);
+
+// Check rendering capability
+if (primitive->CanRender()) {
+    auto material = primitive->GetMaterial();
+    auto pipeline = primitive->GetPipeline();
+}
 
 // Add bounding box for spatial queries and GPU culling
 auto bbox = player->AddComponent<BoundingBoxComponent>();
@@ -223,6 +253,10 @@ Comprehensive tests are included in `src/ecs/`:
   - Dirty flag management
   - SSBO-ready data layout demonstration
   - Direct array access for GPU uploads
+- **test_primitive_component.cpp** - PrimitiveComponent usage:
+  - Example demonstrating new PrimitiveComponent API
+  - Comparison with old Component/Data/Manager pattern
+  - Integration with World, Entity, and RenderCollector
 
 Build and run the test:
 ```bash
@@ -230,6 +264,67 @@ cd src/ecs
 g++ -std=c++17 -I../../inc -o test_ecs test_ecs.cpp *.cpp
 ./test_ecs
 ```
+
+## Comparison with Legacy Component System
+
+The new ECS architecture provides a simpler, more efficient alternative to the old Component/Data/Manager pattern:
+
+### Old System (`inc/hgl/component/`)
+
+**PrimitiveComponent hierarchy:**
+```
+Component → SceneComponent → GeometryComponent → RenderComponent → PrimitiveComponent
+```
+
+**Structure:**
+- `PrimitiveComponentData` - Holds Primitive pointer and data
+- `PrimitiveComponentManager` - Creates and manages components
+- `PrimitiveComponent` - The component class
+- Uses `SharedPtr<ComponentData>` and `WeakPtr`
+- Complex macros: `COMPONENT_DATA_CLASS_BODY`, `COMPONENT_MANAGER_CLASS_BODY`
+
+**Usage:**
+```cpp
+// Old pattern
+auto manager = PrimitiveComponentManager::GetDefaultManager();
+auto data = new PrimitiveComponentData(primitive);
+ComponentDataPtr cdp(data);
+auto component = manager->CreateComponent(cdp);
+sceneNode->AddComponent(component);
+```
+
+### New System (`inc/hgl/ecs/`)
+
+**PrimitiveComponent hierarchy:**
+```
+Component → RenderableComponent → PrimitiveComponent
+```
+
+**Structure:**
+- Single `PrimitiveComponent` class
+- Data stored directly in component
+- No separate Manager class needed
+- Uses standard `std::shared_ptr` and `std::weak_ptr`
+- Clean, simple inheritance
+
+**Usage:**
+```cpp
+// New pattern
+auto entity = world->CreateEntity<Entity>("Object");
+auto primitive = entity->AddComponent<PrimitiveComponent>();
+primitive->SetPrimitive(myPrimitive);
+```
+
+### Benefits of New Design
+
+1. **Simpler**: 60% less boilerplate code
+2. **Cleaner**: Standard C++ patterns, no custom macros
+3. **More Flexible**: Easy composition with other components
+4. **Better Performance**: SOA storage for cache-friendly data access
+5. **Easier Testing**: Self-contained components, no manager dependencies
+6. **Modern C++**: Uses C++17 features and standard library
+
+Both systems can coexist in the codebase during migration.
 
 ## Future Enhancements
 
