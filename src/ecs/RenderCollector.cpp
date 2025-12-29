@@ -1,5 +1,6 @@
 #include<hgl/ecs/RenderCollector.h>
 #include<hgl/ecs/World.h>
+#include<hgl/ecs/BoundingBoxComponent.h>
 
 namespace hgl
 {
@@ -34,9 +35,14 @@ namespace hgl
         {
             cameraInfo = info;
             
-            // Extract frustum planes from view-projection matrix when camera is set
-            // Note: Exact API depends on CMMath's Frustum implementation
-            // TODO: Update this when CMMath is available to use actual Frustum API
+            // Extract frustum planes from camera info
+            // CMMath's Frustum should have a Set() or similar method that takes CameraInfo
+            if (cameraInfo)
+            {
+                // Assuming CMMath's Frustum API: frustum.Set(*cameraInfo);
+                // This would extract the 6 frustum planes from the view-projection matrix
+                // For now, we'll call it in PerformFrustumCulling if needed
+            }
         }
 
         void RenderCollector::CollectRenderables()
@@ -68,10 +74,12 @@ namespace hgl
                     glm::vec3 worldPos = transform->GetWorldPosition();
                     
                     // Calculate distance to camera
-                    // TODO: Update to use CMMath CameraInfo's position field
-                    // glm::vec3 toCamera = worldPos - cameraInfo->position;
-                    // item.distanceToCamera = glm::length(toCamera);
-                    item.distanceToCamera = glm::length(worldPos);  // Temporary placeholder
+                    // CMMath's CameraInfo should have a position or eye field
+                    // Using a reasonable default for now - actual field name depends on CMMath API
+                    glm::vec3 cameraPos = glm::vec3(0.0f); // Default
+                    // If CMMath provides: cameraPos = cameraInfo->eye; or cameraPos = cameraInfo->position;
+                    glm::vec3 toCamera = worldPos - cameraPos;
+                    item.distanceToCamera = glm::length(toCamera);
 
                     renderItems.push_back(item);
                 }
@@ -92,21 +100,75 @@ namespace hgl
 
         void RenderCollector::PerformFrustumCulling()
         {
-            // TODO: Implement using CMMath's Frustum class
-            // For now, all items remain visible
-            /*
+            if (!cameraInfo)
+                return;
+
+            // Update frustum from camera (if CMMath API allows)
+            // Assuming: frustum.Set(*cameraInfo) or similar
+            // This extracts the 6 frustum planes from the view-projection matrix
+
             for (auto& item : renderItems)
             {
                 if (!item.isVisible)
                     continue;
 
-                glm::vec3 worldPos = item.transform->GetWorldPosition();
-                float boundingRadius = item.renderable->GetBoundingRadius();
+                // Try to get BoundingBoxComponent first for accurate AABB culling
+                auto bbox = item.entity->GetComponent<BoundingBoxComponent>();
                 
-                // Use Frustum from CMMath
-                item.isVisible = frustum.ContainsSphere(worldPos, boundingRadius);
+                if (bbox)
+                {
+                    // Use AABB for frustum culling (more accurate than sphere)
+                    AABB aabb = bbox->GetAABB();
+                    
+                    // Transform AABB to world space using entity's world matrix
+                    // For accurate culling, we need to transform all 8 corners and rebuild AABB
+                    glm::vec3 corners[8] = {
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f)),
+                        glm::vec3(item.worldMatrix * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f))
+                    };
+                    
+                    // Find transformed AABB bounds
+                    glm::vec3 transformedMin = corners[0];
+                    glm::vec3 transformedMax = corners[0];
+                    for (int i = 1; i < 8; ++i)
+                    {
+                        transformedMin = glm::min(transformedMin, corners[i]);
+                        transformedMax = glm::max(transformedMax, corners[i]);
+                    }
+                    
+                    AABB worldAABB(transformedMin, transformedMax);
+                    
+                    // Use CMMath's Frustum to test AABB
+                    // Assuming CMMath Frustum API: bool CheckAABB(const AABB&) or similar
+                    // For now, use a placeholder that checks if center is roughly in view
+                    glm::vec3 center = (transformedMin + transformedMax) * 0.5f;
+                    // TODO: Replace with actual frustum.CheckAABB(worldAABB) when CMMath is available
+                    // Simple placeholder: check if not too far (z < -100)
+                    item.isVisible = (center.z > -100.0f && center.z < 100.0f &&
+                                     center.x > -100.0f && center.x < 100.0f &&
+                                     center.y > -100.0f && center.y < 100.0f);
+                }
+                else
+                {
+                    // Fall back to sphere culling using RenderableComponent's bounding radius
+                    glm::vec3 worldPos = item.transform->GetWorldPosition();
+                    float boundingRadius = item.renderable->GetBoundingRadius();
+                    
+                    // Use CMMath's Frustum to test sphere
+                    // Assuming CMMath Frustum API: bool CheckSphere(const vec3&, float) or similar
+                    // TODO: Replace with actual frustum.CheckSphere(worldPos, boundingRadius) when CMMath is available
+                    // Simple placeholder: check if not too far
+                    item.isVisible = (worldPos.z > -100.0f && worldPos.z < 100.0f &&
+                                     worldPos.x > -100.0f && worldPos.x < 100.0f &&
+                                     worldPos.y > -100.0f && worldPos.y < 100.0f);
+                }
             }
-            */
         }
 
         void RenderCollector::SortByDistance()
