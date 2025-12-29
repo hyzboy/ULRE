@@ -51,8 +51,23 @@ Spatial transformation component with:
 - **Transform Mobility**: 
   - `Static` - Never moves, matrix cached permanently
   - `Movable` - Frequently updated, recalculated each frame
+- **SOA Storage**: Uses TransformDataStorage for cache-friendly data layout
+- **Batch Operations**: Efficient bulk updates through SOA storage
 - **Matrix Caching**: Optimization for static transforms
 - **Dirty Flag System**: Efficient recalculation only when needed
+
+### 7. TransformDataStorage (`TransformDataStorage.h`)
+Structure of Arrays (SOA) storage for transform data:
+- **Cache-Friendly Layout**: Separate arrays for positions, rotations, scales
+- **Handle-Based Access**: uint32_t handles for fast indexing
+- **Batch Operations**: `UpdateMovableDirtyMatrices()` and `UpdateAllDirtyMatrices()` for efficient bulk processing
+- **Mobility Optimization**: Separate tracking of static vs movable transforms
+- **Zero-Copy Access**: Direct access to internal arrays for systems
+- **Benefits**: 
+  - Better cache performance (sequential memory access)
+  - SIMD-friendly data layout
+  - Easier to parallelize operations
+  - Lower memory overhead per transform
 
 ## Usage Example
 
@@ -84,6 +99,17 @@ auto weapon = world->CreateEntity<Entity>("Weapon");
 auto weaponTransform = weapon->AddComponent<TransformComponent>();
 weaponTransform->SetParent(player); // Attach to player
 
+// Access SOA storage for batch operations
+auto storage = TransformComponent::GetSharedStorage();
+std::cout << "Total transforms: " << storage->GetSize() << std::endl;
+
+// Batch update all dirty transforms
+storage->UpdateAllDirtyMatrices([](TransformDataStorage::HandleID id, 
+                                   glm::vec3 pos, glm::quat rot, glm::vec3 scale) {
+    // Process transform data in cache-friendly order
+    // This is much faster than individual component updates
+});
+
 // Game loop
 float deltaTime = 0.016f; // 16ms = 60 FPS
 world->Update(deltaTime);
@@ -96,9 +122,10 @@ world->Shutdown();
 
 1. **Self-Contained**: Uses standard C++ types (std::string, std::shared_ptr) for portability
 2. **Type-Safe**: Template-based component management with compile-time type checking
-3. **Efficient**: Hash-based component lookups, matrix caching, dirty flags
-4. **Flexible**: Easy to extend with custom components and systems
-5. **Simple**: Clear and intuitive API following ULRE conventions
+3. **Efficient**: Hash-based component lookups, SOA storage, matrix caching, dirty flags
+4. **Cache-Friendly**: TransformDataStorage uses Structure of Arrays layout for better performance
+5. **Flexible**: Easy to extend with custom components and systems
+6. **Simple**: Clear and intuitive API following ULRE conventions
 
 ## Namespace
 
@@ -125,6 +152,7 @@ A comprehensive test is included in `src/ecs/test_ecs.cpp` demonstrating:
 - System registration
 - Transform hierarchy
 - Parent-child relationships
+- SOA storage access and batch operations
 
 Build and run the test:
 ```bash
@@ -137,7 +165,7 @@ g++ -std=c++17 -I../../inc -o test_ecs test_ecs.cpp *.cpp
 
 Potential improvements for the future:
 - Component pooling for better memory locality
-- SOA (Structure of Arrays) storage for cache optimization
+- Further SOA optimization for other component types
 - Entity archetype systems for faster queries
 - Multi-threading support for parallel system updates
 - Serialization support for save/load functionality
