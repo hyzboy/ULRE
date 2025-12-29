@@ -3,6 +3,7 @@
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/math/geometry/Frustum.h>
 #include<vector>

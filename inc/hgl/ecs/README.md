@@ -73,6 +73,9 @@ Structure of Arrays (SOA) storage for transform data:
 System for collecting and processing renderable entities:
 - **Entity Collection**: Gathers entities with TransformComponent and RenderableComponent
 - **Frustum Culling**: Uses Frustum from CMMath (`hgl/math/geometry/Frustum.h`) for view culling
+  - **AABB-based culling**: When entity has BoundingBoxComponent, uses accurate AABB test
+  - **Sphere-based culling**: Falls back to sphere test using RenderableComponent's bounding radius
+  - **Transform-aware**: Transforms AABB to world space before culling test
 - **Distance Sorting**: Sorts render items by distance to camera (near to far)
 - **CameraInfo Integration**: Uses CameraInfo from CMMath (`hgl/graph/CameraInfo.h`) for camera data
 - **Visibility Filtering**: Respects component visibility flags
@@ -81,6 +84,7 @@ System for collecting and processing renderable entities:
   - RenderItem struct with collected rendering data
   - Enable/disable frustum culling and distance sorting
   - Efficient batch collection every frame
+  - Prioritizes AABB culling when BoundingBoxComponent is available
 
 **Note**: Requires CMMath library to be linked for CameraInfo and Frustum types.
 
