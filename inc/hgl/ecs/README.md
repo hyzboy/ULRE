@@ -72,17 +72,17 @@ Structure of Arrays (SOA) storage for transform data:
 ### 8. RenderCollector (`RenderCollector.h/cpp`)
 System for collecting and processing renderable entities:
 - **Entity Collection**: Gathers entities with TransformComponent and RenderableComponent
-- **Frustum Culling**: Uses 6-plane frustum test to cull objects outside camera view
+- **Frustum Culling**: Uses Frustum from CMMath (`hgl/math/geometry/Frustum.h`) for view culling
 - **Distance Sorting**: Sorts render items by distance to camera (near to far)
-- **CameraInfo Integration**: Takes camera matrix and position for culling and sorting
+- **CameraInfo Integration**: Uses CameraInfo from CMMath (`hgl/graph/CameraInfo.h`) for camera data
 - **Visibility Filtering**: Respects component visibility flags
 - **Features**:
-  - Frustum class with 6-plane culling
-  - CameraInfo struct for camera data
   - RenderableComponent base class for renderable objects
   - RenderItem struct with collected rendering data
   - Enable/disable frustum culling and distance sorting
   - Efficient batch collection every frame
+
+**Note**: Requires CMMath library to be linked for CameraInfo and Frustum types.
 
 ## Usage Example
 
@@ -130,15 +130,14 @@ auto renderCollector = world->RegisterSystem<RenderCollector>();
 renderCollector->SetWorld(world);
 renderCollector->Initialize();
 
-// Configure camera
-CameraInfo camera;
-camera.position = glm::vec3(0.0f, 0.0f, 10.0f);
-camera.viewMatrix = glm::lookAt(camera.position, 
-                                glm::vec3(0.0f), 
-                                glm::vec3(0.0f, 1.0f, 0.0f));
-camera.projectionMatrix = glm::perspective(glm::radians(60.0f), 16.0f/9.0f, 0.1f, 100.0f);
-camera.UpdateViewProjection();
-renderCollector->SetCameraInfo(camera);
+// Configure camera (requires CMMath)
+// CameraInfo and Frustum come from CMMath library
+hgl::graph::CameraInfo camera;
+// Set up camera parameters using CMMath's CameraInfo interface
+// camera.position = ...
+// camera.viewMatrix = ...
+// camera.projectionMatrix = ...
+renderCollector->SetCameraInfo(&camera);
 
 // Add renderable component to entity
 auto renderable = player->AddComponent<RenderableComponent>();
@@ -179,6 +178,7 @@ All ECS classes are in the `hgl::ecs` namespace.
 
 - **C++17** or higher
 - **GLM** library (for TransformComponent math operations)
+- **CMMath** library (for CameraInfo and Frustum in RenderCollector)
 - Standard C++ library
 
 ## Building

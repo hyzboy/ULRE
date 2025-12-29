@@ -1,4 +1,6 @@
 // Test for RenderCollector with frustum culling and distance sorting
+// NOTE: This test requires CMMath to be properly linked for CameraInfo and Frustum
+// The test demonstrates the ECS RenderCollector API but may not compile without CMMath
 
 #include<hgl/ecs/World.h>
 #include<hgl/ecs/Entity.h>
@@ -8,6 +10,7 @@
 #include<iomanip>
 
 using namespace hgl::ecs;
+using namespace hgl::graph;  // For CameraInfo
 
 // Example renderable component
 class MeshRenderable : public RenderableComponent
