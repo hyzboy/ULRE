@@ -10,6 +10,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxComponent.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxDataStorage.h
                 ${ECS_INCLUDE_PATH}/RenderCollector.h
+                ${ECS_INCLUDE_PATH}/RenderItem.h
+                ${ECS_INCLUDE_PATH}/RenderableComponent.h
                 Object.cpp
                 Component.cpp
                 Entity.cpp
