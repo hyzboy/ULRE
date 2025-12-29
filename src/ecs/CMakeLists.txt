@@ -21,6 +21,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 TransformComponent.cpp
                 BoundingBoxComponent.cpp
                 PrimitiveComponent.cpp
+                RenderItem.cpp
                 RenderCollector.cpp)
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_SOURCE})
