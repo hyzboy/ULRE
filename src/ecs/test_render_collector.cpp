@@ -157,13 +157,18 @@ int main()
     std::cout << std::fixed << std::setprecision(2);
     for (size_t i = 0; i < renderItems.size(); ++i)
     {
-        const auto& item = renderItems[i];
-        if (item.isVisible)
+        const auto& itemPtr = renderItems[i];
+        if (itemPtr && itemPtr->isVisible)
         {
-            glm::vec3 pos = item.transform->GetWorldPosition();
-            std::cout << "  [" << i << "] " << item.entity->GetName()
-                      << " at (" << pos.x << ", " << pos.y << ", " << pos.z << ")"
-                      << " | Distance: " << item.distanceToCamera << std::endl;
+            auto entity = itemPtr->GetEntity();
+            auto transform = itemPtr->GetTransform();
+            if (entity && transform)
+            {
+                glm::vec3 pos = transform->GetWorldPosition();
+                std::cout << "  [" << i << "] " << entity->GetName()
+                          << " at (" << pos.x << ", " << pos.y << ", " << pos.z << ")"
+                          << " | Distance: " << itemPtr->distanceToCamera << std::endl;
+            }
         }
     }
 
@@ -177,12 +182,20 @@ int main()
 
     for (size_t i = 0; i < allItems.size(); ++i)
     {
-        const auto& item = allItems[i];
-        glm::vec3 pos = item.transform->GetWorldPosition();
-        std::cout << "  [" << i << "] " << item.entity->GetName()
-                  << " at (" << pos.x << ", " << pos.y << ", " << pos.z << ")"
-                  << " | Distance: " << item.distanceToCamera
-                  << " | Visible: " << (item.isVisible ? "true" : "false") << std::endl;
+        const auto& itemPtr = allItems[i];
+        if (itemPtr)
+        {
+            auto entity = itemPtr->GetEntity();
+            auto transform = itemPtr->GetTransform();
+            if (entity && transform)
+            {
+                glm::vec3 pos = transform->GetWorldPosition();
+                std::cout << "  [" << i << "] " << entity->GetName()
+                          << " at (" << pos.x << ", " << pos.y << ", " << pos.z << ")"
+                          << " | Distance: " << itemPtr->distanceToCamera
+                          << " | Visible: " << (itemPtr->isVisible ? "true" : "false") << std::endl;
+            }
+        }
     }
 
     // Shutdown
