@@ -3,11 +3,14 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/type/DataChain.h>
+#include<hgl/log/Logger.h>
 
 VK_NAMESPACE_BEGIN
 
 class VertexDataManager
 {
+    OBJECT_LOGGER
+
     VulkanDevice *device;
 
 protected:
