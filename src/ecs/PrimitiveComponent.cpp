@@ -1,4 +1,4 @@
-#include<hgl/ecs/PrimitiveComponent.h>
+﻿#include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
@@ -19,7 +19,7 @@ namespace hgl::ecs
             // Calculate bounding radius from AABB for frustum culling
             // Use the length (diagonal) of the AABB as the bounding radius
             auto extents = bv.aabb.GetLength();
-            float radius = extents.Length() * 0.5f; // Half diagonal
+            float radius = length(extents) * 0.5f; // Half diagonal
             
             SetBoundingRadius(radius);
         }

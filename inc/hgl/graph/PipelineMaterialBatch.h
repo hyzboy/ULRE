@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include<hgl/graph/DrawNode.h>
-#include<hgl/graph/VKVABList.h>
+#include<hgl/graph/PipelineMaterialRenderer.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
 #include<hgl/type/ArrayList.h>
 #include<hgl/component/Component.h>
@@ -49,85 +49,72 @@ public:
 };//struct PipelineMaterialIndex
 
 /**
-* 同一材质与管线的渲染列表
+* 同一材质与管线的渲染批次管理器
+* 
+* 职责：
+* - 收集和管理使用相同 Material 和 Pipeline 的渲染节点
+* - 排序和组织渲染节点
+* - 构建绘制批次（Draw Call Batching）
+* - 管理实例数据（LocalToWorld 矩阵、材质实例数据）
+* - 分配和管理间接绘制缓冲
 */
 class PipelineMaterialBatch
 {
-    VulkanDevice *device;
-    RenderCmdBuffer *cmd_buf;
-
-    PipelineMaterialIndex pm_index;
-
-    const CameraInfo *camera_info;
-
-    DrawNodeList draw_nodes;                 // now pointer list
-
-    DrawNodePointerList transform_dirty_nodes;   // alias is in DrawNode.h
-
 private:
+    // === 核心标识 ===
+    VulkanDevice *device;                       ///<Vulkan设备
+    PipelineMaterialIndex pm_index;             ///<Pipeline和Material索引
+    const CameraInfo *camera_info;              ///<相机信息（用于距离排序）
 
-    InstanceAssignmentBuffer *assign_buffer;
+    // === 渲染节点管理 ===
+    DrawNodeList draw_nodes;                    ///<所有渲染节点
+    DrawNodePointerList transform_dirty_nodes;  ///<变换已修改的节点列表
 
-    struct DrawBatch
-    {
-                uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
-                uint32_t                instance_count;
+    // === 实例数据管理 ===
+    InstanceAssignmentBuffer *assign_buffer;    ///<实例分配缓冲（LocalToWorld/MI数据）
 
-        const   GeometryDataBuffer *    geom_data_buffer;
-        const   GeometryDrawRange *     geom_draw_range;
+    // === 批次管理 ===
+    DrawBatchArray draw_batches;                ///<绘制批次数组
+    uint draw_batches_count;                    ///<有效批次数量
 
-    public:
+    // === 间接绘制缓冲 ===
+    IndirectDrawBuffer *icb_draw;               ///<间接绘制命令缓冲（无索引）
+    IndirectDrawIndexedBuffer *icb_draw_indexed;///<间接绘制命令缓冲（有索引）
 
-        void Set(Primitive *);
-    };
+    // === 渲染器 ===
+    PipelineMaterialRenderer *renderer;         ///<渲染器实例
 
-    IndirectDrawBuffer *icb_draw;
-    IndirectDrawIndexedBuffer *icb_draw_indexed;
-
-    void ReallocICB();
-    void WriteICB(VkDrawIndirectCommand *,DrawBatch *);
-    void WriteICB(VkDrawIndexedIndirectCommand *,DrawBatch *);
-
-    DataArray<DrawBatch> draw_batches;
-    uint draw_batches_count;
-
-    void BuildBatches();
-
-protected:
-
-            VABList *               vab_list;
-
-    const   GeometryDataBuffer *    last_data_buffer;
-    const   VDM *                   last_vdm;
-    const   GeometryDrawRange *     last_draw_range;
-
-            int                     first_indirect_draw_index;
-            uint                    indirect_draw_count;
-
-    bool BindVAB(const DrawBatch *);
-
-    void ProcIndirectRender();
-    bool Draw(DrawBatch *);
+    // === 批次构建辅助方法 ===
+    void ReallocICB();                          ///<重新分配间接绘制缓冲
+    void WriteICB(VkDrawIndirectCommand *, DrawBatch *);
+    void WriteICB(VkDrawIndexedIndirectCommand *, DrawBatch *);
+    void BuildBatches();                        ///<构建绘制批次
 
 public:
-
-    PipelineMaterialBatch(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi);
+    // === 生命周期管理 ===
+    PipelineMaterialBatch(VulkanDevice *d, bool l2w, const PipelineMaterialIndex &rpi);
     ~PipelineMaterialBatch();
 
-    void Add(DrawNode *node);          // generic path for custom nodes
-
-    void SetCameraInfo(const CameraInfo *ci){camera_info=ci;}
-
-    void Clear(){
-        for(auto *n:draw_nodes) delete n;
+    // === 节点管理接口 ===
+    void Add(DrawNode *node);                   ///<添加渲染节点
+    
+    void Clear()                                ///<清空所有节点
+    {
+        for (auto *n : draw_nodes) delete n;
         draw_nodes.Clear();
     }
 
-    void Finalize();
+    // === 配置接口 ===
+    void SetCameraInfo(const CameraInfo *ci) { camera_info = ci; }  ///<设置相机信息
 
-    void Render(RenderCmdBuffer *);
+    // === 构建和准备 ===
+    void Finalize();                            ///<完成节点添加，准备渲染
 
-    void UpdateTransformData();          //刷新所有对象的LocalToWorld矩阵
-    void UpdateMaterialInstanceData(PrimitiveComponent *);
+    // === 数据更新接口 ===
+    void UpdateTransformData();                 ///<刷新所有对象的LocalToWorld矩阵
+    void UpdateMaterialInstanceData(PrimitiveComponent *);  ///<更新材质实例数据
+
+    // === 渲染执行 ===
+    void Render(RenderCmdBuffer *);             ///<执行渲染
 };//class PipelineMaterialBatch
 VK_NAMESPACE_END
