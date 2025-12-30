@@ -38,3 +38,6 @@
 [submodule "src/Tools/MiniPack"]
 	path = src/Tools/MiniPack
 	url = http://git.hyzgame.com:3000/hyzboy/MiniPack.git
+[submodule "3rdpty/inja"]
+	path = 3rdpty/inja
+	url = https://github.com/pantor/inja.git
