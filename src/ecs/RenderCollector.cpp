@@ -5,6 +5,8 @@
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/PrimitiveRenderItem.h>
 #include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
 
 namespace hgl::ecs
@@ -13,6 +15,7 @@ namespace hgl::ecs
     RenderCollector::RenderCollector(const std::string& name)
         : System(name)
         , cameraInfo(nullptr)
+        , device(nullptr)
         , frustumCullingEnabled(true)
         , distanceSortingEnabled(true)
         , batchingEnabled(true)
@@ -254,8 +257,8 @@ namespace hgl::ecs
             
             if (it == materialBatches.end())
             {
-                // Create new batch
-                auto batch = std::make_unique<MaterialBatch>(key);
+                // Create new batch with device
+                auto batch = std::make_unique<MaterialBatch>(key, device);
                 batch->SetCameraInfo(cameraInfo);
                 batch->AddItem(item);
                 materialBatches[key] = std::move(batch);
@@ -317,6 +320,25 @@ namespace hgl::ecs
             // Batch found - material instance data needs to be updated
             // The actual update would be done during rendering
             // This is a placeholder for future implementation
+        }
+    }
+
+    void RenderCollector::Render(graph::RenderCmdBuffer* cmdBuffer)
+    {
+        if (!cmdBuffer)
+            return;
+
+        if (renderableCount == 0)
+            return;
+
+        // Render each material batch
+        for (auto& pair : materialBatches)
+        {
+            MaterialBatch* batch = pair.second.get();
+            if (batch && batch->GetCount() > 0)
+            {
+                batch->Render(cmdBuffer);
+            }
         }
     }
 }//namespace hgl::ecs

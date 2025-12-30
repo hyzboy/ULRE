@@ -12,6 +12,15 @@
 #include<map>
 #include<algorithm>
 
+namespace hgl
+{
+    namespace graph
+    {
+        class VulkanDevice;
+        class RenderCmdBuffer;
+    }
+}
+
 namespace hgl::ecs
 {
     // Forward declarations
@@ -32,6 +41,7 @@ namespace hgl::ecs
 
         std::shared_ptr<World> world;
         const graph::CameraInfo* cameraInfo;  // Pointer to camera info from CMMath
+        graph::VulkanDevice* device;
         math::Frustum frustum;  // Frustum from CMMath
         
         // Render items storage - now uses polymorphic RenderItem pointers
@@ -60,6 +70,9 @@ namespace hgl::ecs
 
         /// Set the world to collect from
         void SetWorld(std::shared_ptr<World> w) { world = w; }
+
+        /// Set Vulkan device
+        void SetDevice(graph::VulkanDevice* dev) { device = dev; }
 
         /// Set camera information
         void SetCameraInfo(const graph::CameraInfo* info);
@@ -102,6 +115,9 @@ namespace hgl::ecs
 
         /// Update material instance data for a specific component
         void UpdateMaterialInstanceData(PrimitiveComponent* comp);
+
+        /// Render all collected items
+        void Render(graph::RenderCmdBuffer* cmdBuffer);
 
     private:
 
