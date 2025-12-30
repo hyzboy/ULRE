@@ -14,37 +14,28 @@ namespace hgl::graph::inline_geometry
         const float radius = cci->radius;
         const float halfH = cci->halfHeight;
 
-        // We build two hemispheres (top and bottom) and a cylinder between them.
-        // Vertices: cylinder side (slices+1)*2, top hemisphere (stacks*(slices+1)), bottom hemisphere (stacks*(slices+1))
-        // We'll generate as a continuous vertex stream suitable for indexed triangles.
-
         // Estimate counts
-        const uint cylinder_side_vertices = (slices + 1) * 2; // bottom ring and top ring
-        const uint hemisphere_vertices = (stacks + 1) * (slices + 1); // include pole ring
+        const uint cylinder_side_vertices = (slices + 1) * 2;
+        const uint hemisphere_vertices = (stacks + 1) * (slices + 1);
         const uint numberVertices = cylinder_side_vertices + hemisphere_vertices * 2;
 
-        const uint cylinder_side_faces = slices * 2; // per stack (only one stack for cylinder)
+        const uint cylinder_side_faces = slices * 2;
         const uint cylinder_indices = cylinder_side_faces * 3;
-        const uint hemisphere_faces = stacks * slices * 2; // triangles per hemisphere
+        const uint hemisphere_faces = stacks * slices * 2;
         const uint numberIndices = (cylinder_indices + hemisphere_faces * 3 * 2);
 
-        if(numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+        // Validate parameters using new validator
+        if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
             return nullptr;
 
         if(!pc->Init("Capsule", numberVertices, numberIndices))
             return nullptr;
 
-        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
-        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
-        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
-        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
-
-        float *vp = vertex;
-        float *np = normal;
-        float *tp = tangent;
-        float *tcp = tex_coord;
-
-        if(!vp) return nullptr;
+        // Use new GeometryBuilder for vertex attribute management
+        GeometryBuilder builder(pc);
+        
+        if(!builder.IsValid())
+            return nullptr;
 
         const float angleStep = (2.0f * math::pi) / float(slices);
 
@@ -57,31 +48,12 @@ namespace hgl::graph::inline_geometry
             {
                 float a = angleStep * float(i);
                 float x = cos(a) * radius;
-                float y = -sin(a) * radius; // consistent with other shapes Y uses -sin
+                float y = -sin(a) * radius;
 
-                *vp = x; ++vp;
-                *vp = y; ++vp;
-                *vp = z; ++vp;
-
-                if(np)
-                {
-                    *np = x; ++np;
-                    *np = y; ++np;
-                    *np = 0.0f; ++np;
-                }
-
-                if(tp)
-                {
-                    *tp = -sin(a); ++tp;
-                    *tp = -cos(a); ++tp;
-                    *tp = 0.0f; ++tp;
-                }
-
-                if(tcp)
-                {
-                    *tcp = float(i)/float(slices); ++tcp;
-                    *tcp = (ring==0)?0.0f:1.0f; ++tcp;
-                }
+                builder.WriteFullVertex(x, y, z,
+                                       x, y, 0.0f,
+                                       -sin(a), -cos(a), 0.0f,
+                                       float(i)/float(slices), (ring==0)?0.0f:1.0f);
             }
         }
 
@@ -89,8 +61,8 @@ namespace hgl::graph::inline_geometry
         for(uint s=0;s<=stacks;s++)
         {
             float phi = (float)s / (float)stacks * (math::pi * 0.5f);
-            float cz = sin(phi); // from 0 to 1
-            float r = cos(phi);  // ring radius
+            float cz = sin(phi);
+            float r = cos(phi);
 
             for(uint i=0;i<=slices;i++)
             {
@@ -99,35 +71,16 @@ namespace hgl::graph::inline_geometry
                 float y = -r * sin(a) * radius;
                 float z = halfH + cz * radius;
 
-                *vp = x; ++vp;
-                *vp = y; ++vp;
-                *vp = z; ++vp;
-
-                if(np)
-                {
-                    float nx = x;
-                    float ny = y;
-                    float nz = cz * radius;
-                    float len = sqrt(nx*nx+ny*ny+nz*nz);
-                    if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
-                    *np = nx; ++np;
-                    *np = ny; ++np;
-                    *np = nz; ++np;
-                }
-
-                if(tp)
-                {
-                    glusQuaternionRotateRyf((float*)nullptr,0.0f); // noop to avoid unused warning in includes
-                    *tp = -sin(a); ++tp;
-                    *tp = -cos(a); ++tp;
-                    *tp = 0.0f; ++tp;
-                }
-
-                if(tcp)
-                {
-                    *tcp = float(i)/float(slices); ++tcp;
-                    *tcp = 1.0f - (float)s/float(stacks); ++tcp;
-                }
+                float nx = x;
+                float ny = y;
+                float nz = cz * radius;
+                float len = sqrt(nx*nx+ny*ny+nz*nz);
+                if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
+                
+                builder.WriteFullVertex(x, y, z,
+                                       nx, ny, nz,
+                                       -sin(a), -cos(a), 0.0f,
+                                       float(i)/float(slices), 1.0f - (float)s/float(stacks));
             }
         }
 
@@ -135,7 +88,7 @@ namespace hgl::graph::inline_geometry
         for(uint s=0;s<=stacks;s++)
         {
             float phi = (float)s / (float)stacks * (math::pi * 0.5f);
-            float cz = -sin(phi); // from 0 to -1
+            float cz = -sin(phi);
             float r = cos(phi);
 
             for(uint i=0;i<=slices;i++)
@@ -145,34 +98,16 @@ namespace hgl::graph::inline_geometry
                 float y = -r * sin(a) * radius;
                 float z = -halfH + cz * radius;
 
-                *vp = x; ++vp;
-                *vp = y; ++vp;
-                *vp = z; ++vp;
+                float nx = x;
+                float ny = y;
+                float nz = cz * radius;
+                float len = sqrt(nx*nx+ny*ny+nz*nz);
+                if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
 
-                if(np)
-                {
-                    float nx = x;
-                    float ny = y;
-                    float nz = cz * radius;
-                    float len = sqrt(nx*nx+ny*ny+nz*nz);
-                    if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
-                    *np = nx; ++np;
-                    *np = ny; ++np;
-                    *np = nz; ++np;
-                }
-
-                if(tp)
-                {
-                    *tp = -sin(a); ++tp;
-                    *tp = -cos(a); ++tp;
-                    *tp = 0.0f; ++tp;
-                }
-
-                if(tcp)
-                {
-                    *tcp = float(i)/float(slices); ++tcp;
-                    *tcp = (float)s/float(stacks); ++tcp;
-                }
+                builder.WriteFullVertex(x, y, z,
+                                       nx, ny, nz,
+                                       -sin(a), -cos(a), 0.0f,
+                                       float(i)/float(slices), (float)s/float(stacks));
             }
         }
 

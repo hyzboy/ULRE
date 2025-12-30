@@ -13,176 +13,89 @@ namespace hgl::graph::inline_geometry
 
         uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
+        // Validate parameters using new validator
+        if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
+            return nullptr;
+            
+        if(!GeometryValidator::ValidateRevolutionParams(cci->numberSlices))
+            return nullptr;
+
         if(!pc->Init("Cylinder",numberVertices,numberIndices))
             return(nullptr);
 
         float angleStep = (2.0f * math::pi) / ((float) cci->numberSlices);
 
-        if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
-            return nullptr;
-                
-        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
-        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
-        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
-        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
-
-        float *vp=vertex;
-        float *np=normal;
-        float *tp=tangent;
-        float *tcp=tex_coord;
-
-        if(!vp)
+        // Use new GeometryBuilder for vertex attribute management
+        GeometryBuilder builder(pc);
+        
+        if(!builder.IsValid())
             return(nullptr);
 
-        *vp =  0.0f;             ++vp;
-        *vp =  0.0f;             ++vp;
-        *vp = -cci->halfExtend;  ++vp;
+        // Bottom center vertex
+        builder.WriteFullVertex(0.0f, 0.0f, -cci->halfExtend,
+                               0.0f, 0.0f, -1.0f,
+                               0.0f, 1.0f, 0.0f,
+                               0.0f, 0.0f);
 
-        if(np)
-        {
-            *np = 0.0f; ++np;
-            *np = 0.0f; ++np;
-            *np =-1.0f; ++np;
-        }
-
-        if(tp)
-        {
-            *tp = 0.0f; ++tp;
-            *tp = 1.0f; ++tp;
-            *tp = 0.0f; ++tp;
-        }
-
-        if(tcp)
-        {
-            *tcp = 0.0f; ++tcp;
-            *tcp = 0.0f; ++tcp;
-        }
-
+        // Bottom ring vertices
         for(uint i = 0; i < cci->numberSlices + 1; i++)
         {
             float currentAngle = angleStep * (float)i;
+            float cosAngle = cos(currentAngle);
+            float sinAngle = sin(currentAngle);
 
-            *vp =  cos(currentAngle) * cci->radius; ++vp;
-            *vp = -sin(currentAngle) * cci->radius; ++vp;
-            *vp = -cci->halfExtend;                 ++vp;
-
-            if(np)
-            {
-                *np = 0.0f; ++np;
-                *np = 0.0f; ++np;
-                *np =-1.0f; ++np;
-            }
-
-            if(tp)
-            {
-                *tp = sin(currentAngle);    ++tp;
-                *tp = cos(currentAngle);    ++tp;
-                *tp = 0.0f;                 ++tp;
-            }
-
-            if(tcp)
-            {
-                *tcp = 0.0f; ++tcp;
-                *tcp = 0.0f; ++tcp;
-            }
+            builder.WriteFullVertex(cosAngle * cci->radius, -sinAngle * cci->radius, -cci->halfExtend,
+                                   0.0f, 0.0f, -1.0f,
+                                   sinAngle, cosAngle, 0.0f,
+                                   0.0f, 0.0f);
         }
 
-        *vp = 0.0f;             ++vp;
-        *vp = 0.0f;             ++vp;
-        *vp = cci->halfExtend;  ++vp;
+        // Top center vertex
+        builder.WriteFullVertex(0.0f, 0.0f, cci->halfExtend,
+                               0.0f, 0.0f, 1.0f,
+                               0.0f, -1.0f, 0.0f,
+                               1.0f, 1.0f);
 
-        if(np)
-        {
-            *np = 0.0f;    ++np;
-            *np = 0.0f;    ++np;
-            *np = 1.0f;    ++np;
-        }
-
-        if(tp)
-        {
-            *tp =  0.0f; ++tp;
-            *tp = -1.0f; ++tp;
-            *tp =  0.0f; ++tp;
-        }
-
-        if(tcp)
-        {
-            *tcp = 1.0f; ++tcp;
-            *tcp = 1.0f; ++tcp;
-        }
-
+        // Top ring vertices
         for(uint i = 0; i < cci->numberSlices + 1; i++)
         {
             float currentAngle = angleStep * (float)i;
+            float cosAngle = cos(currentAngle);
+            float sinAngle = sin(currentAngle);
 
-            *vp =  cos(currentAngle) * cci->radius; ++vp;
-            *vp = -sin(currentAngle) * cci->radius; ++vp;
-            *vp =  cci->halfExtend;                 ++vp;
-
-            if(np)
-            {
-                *np = 0.0f;    ++np;
-                *np = 0.0f;    ++np;
-                *np = 1.0f;    ++np;
-            }
-
-            if(tp)
-            {
-                *tp = -sin(currentAngle);   ++tp;
-                *tp = -cos(currentAngle);   ++tp;
-                *tp = 0.0f;                 ++tp;
-            }
-
-            if(tcp)
-            {
-                *tcp = 1.0f; ++tcp;
-                *tcp = 1.0f; ++tcp;
-            }
+            builder.WriteFullVertex(cosAngle * cci->radius, -sinAngle * cci->radius, cci->halfExtend,
+                                   0.0f, 0.0f, 1.0f,
+                                   -sinAngle, -cosAngle, 0.0f,
+                                   1.0f, 1.0f);
         }
 
+        // Side vertices (two rings for proper normals)
         for(uint i = 0; i < cci->numberSlices + 1; i++)
         {
             float currentAngle = angleStep * (float)i;
+            float cosAngle = cos(currentAngle);
+            float sinAngle = sin(currentAngle);
 
             float sign = -1.0f;
 
             for (uint j = 0; j < 2; j++)
             {
-                *vp =  cos(currentAngle) * cci->radius;     ++vp;
-                *vp = -sin(currentAngle) * cci->radius;     ++vp;
-                *vp =  cci->halfExtend * sign;              ++vp;
-
-                if(np)
-                {
-                    *np =  cos(currentAngle);   ++np;
-                    *np = -sin(currentAngle);   ++np;
-                    *np = 0.0f;                 ++np;
-                }
-
-                if(tp)
-                {
-                    *tp = -sin(currentAngle);   ++tp;
-                    *tp = -cos(currentAngle);   ++tp;
-                    *tp = 0.0f;                 ++tp;
-                }
-
-                if(tcp)
-                {
-                    *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
-                    *tcp = (sign + 1.0f) / 2.0f;                 ++tcp;
-                }
+                builder.WriteFullVertex(cosAngle * cci->radius, -sinAngle * cci->radius, cci->halfExtend * sign,
+                                       cosAngle, -sinAngle, 0.0f,
+                                       -sinAngle, -cosAngle, 0.0f,
+                                       (float)i / (float)cci->numberSlices, (sign + 1.0f) / 2.0f);
 
                 sign = 1.0f;
             }
         }
 
-        //索引
+        // Generate indices using new IndexGenerator
         {
             const IndexType index_type=pc->GetIndexType();
 
-            if(index_type==IndexType::U16)CreateCylinderIndices<uint16>(pc,cci->numberSlices);else
-            if(index_type==IndexType::U32)CreateCylinderIndices<uint32>(pc,cci->numberSlices);else
-            if(index_type==IndexType::U8 )CreateCylinderIndices<uint8 >(pc,cci->numberSlices);else
+            if(index_type==IndexType::U16)IndexGenerator::CreateCylinderIndices<uint16>(pc,cci->numberSlices);else
+            if(index_type==IndexType::U32)IndexGenerator::CreateCylinderIndices<uint32>(pc,cci->numberSlices);else
+            if(index_type==IndexType::U8 )IndexGenerator::CreateCylinderIndices<uint8 >(pc,cci->numberSlices);else
                 return(nullptr);
         }
 
