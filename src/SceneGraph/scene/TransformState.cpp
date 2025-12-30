@@ -51,8 +51,8 @@ namespace hgl::math
             WorldNormal=TransformNormal(local_to_world_matrix,local_normal);
         }
             
-        inverse_local_to_world_matrix          =inverse(local_to_world_matrix);
-        inverse_transpose_local_to_world_matrix=transpose(inverse_local_to_world_matrix);
+        inverse_local_to_world_matrix          =Inverse(local_to_world_matrix);
+        inverse_transpose_local_to_world_matrix=Transpose(inverse_local_to_world_matrix);
     }
 
     void TransformState::Update()

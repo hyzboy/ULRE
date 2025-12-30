@@ -78,7 +78,7 @@ private:
         ubo_color=db->CreateUBO(sizeof(color_material),&color_material);
         if(!ubo_color)return(false);
 
-        sun_direction=normalized(Vector3f(rand(),rand(),rand()));
+        sun_direction=Normalized(Vector3f(rand(),rand(),rand()));
 
         ubo_sun=db->CreateUBO(sizeof(sun_direction),&sun_direction);
         if(!ubo_sun)return(false);

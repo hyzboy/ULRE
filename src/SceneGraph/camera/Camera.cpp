@@ -12,12 +12,12 @@ namespace hgl::graph
 
         ci->projection             =math::PerspectiveMatrix(cam->fovY,vi->GetAspectRatio(),cam->znear,cam->zfar);
 
-        ci->inverse_projection     =inverse(ci->projection);
+        ci->inverse_projection     =Inverse(ci->projection);
 
-        ci->inverse_view           =inverse(ci->view);
+        ci->inverse_view           =Inverse(ci->view);
 
         ci->vp                     =ci->projection*ci->view;
-        ci->inverse_vp             =inverse(ci->vp);
+        ci->inverse_vp             =Inverse(ci->vp);
 
         GetFrustumPlanes(ci->frustum_planes,ci->vp);
 

@@ -28,7 +28,7 @@ namespace hgl::graph
 
         // Compute direction to look at point
         Vector3f dir = t - camera->pos;
-        float len = length(dir);
+        float len = Length(dir);
 
         if(len <= 1e-6f)
         {
@@ -46,8 +46,8 @@ namespace hgl::graph
             UpdateCameraVector();
         }
 
-        right = normalize(cross(forward, camera->world_up));
-        up    = normalize(cross(right, forward));
+        right = Normalize(Cross(forward, camera->world_up));
+        up    = Normalize(Cross(right, forward));
 
         camera->viewDirection = forward;
     }
@@ -76,8 +76,8 @@ namespace hgl::graph
         forward.y = cp * sinf(yaw);
         forward.z = sinf(pitch);
 
-        right   =normalize(cross(forward,camera->world_up));
-        up      =normalize(cross(right,forward));
+        right   =Normalize(Cross(forward,camera->world_up));
+        up      =Normalize(Cross(right,forward));
     }
 
     void FirstPersonCameraControl::Rotate(const Vector2f &axis)
