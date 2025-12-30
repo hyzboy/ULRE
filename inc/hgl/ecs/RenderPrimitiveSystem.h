@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/BoundingBoxComponent.h>
-#include<hgl/ecs/RenderItem.h>
+#include<hgl/ecs/PrimitiveRenderItem.h>
 #include<hgl/ecs/MaterialPipelineKey.h>
 #include<hgl/ecs/MaterialBatch.h>
 #include<hgl/graph/CameraInfo.h>
@@ -28,37 +28,47 @@ namespace hgl::ecs
     class PrimitiveComponent;
 
     /**
-        * RenderCollector System
-        * Collects entities with TransformComponent and RenderableComponent
-        * Performs frustum culling, batching by material/pipeline, and distance sorting
-        * 
-        * Redesigned to support PrimitiveComponent with batching similar to
-        * the old hgl::graph::RenderCollector system
-        */
-    class RenderCollector : public System
+     * RenderPrimitiveSystem
+     * 
+     * Specialized rendering system for PrimitiveComponent entities.
+     * Follows ECS design principle: one system per component type.
+     * 
+     * Features:
+     * - Collects entities with TransformComponent and PrimitiveComponent
+     * - Performs frustum culling using AABB or sphere
+     * - Batches primitives by material/pipeline for efficient rendering
+     * - Sorts by distance for optimal draw order
+     * 
+     * Future systems can handle other component types:
+     * - RenderParticleSystem for particle effects
+     * - RenderLineSystem for line/wire rendering
+     * - RenderTerrainSystem for terrain chunks
+     * etc.
+     */
+    class RenderPrimitiveSystem : public System
     {
     private:
 
         std::shared_ptr<World> world;
-        const graph::CameraInfo* cameraInfo;  // Pointer to camera info from CMMath
+        const graph::CameraInfo* cameraInfo;
         graph::VulkanDevice* device;
-        math::Frustum frustum;  // Frustum from CMMath
+        math::Frustum frustum;
         
-        // Render items storage - now uses polymorphic RenderItem pointers
-        std::vector<std::unique_ptr<RenderItem>> renderItems;
+        // Primitive-specific render items
+        std::vector<std::unique_ptr<PrimitiveRenderItem>> renderItems;
         
-        // Material batching support (similar to RenderBatchMap)
+        // Material batching for primitives
         std::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
         
         bool frustumCullingEnabled;
         bool distanceSortingEnabled;
         bool batchingEnabled;
-        uint32_t renderableCount;  // Count of renderable items
+        uint32_t renderableCount;
 
     public:
 
-        RenderCollector(const std::string& name = "RenderCollector");
-        ~RenderCollector() override = default;
+        RenderPrimitiveSystem(const std::string& name = "RenderPrimitiveSystem");
+        ~RenderPrimitiveSystem() override = default;
 
     public:
 
@@ -86,11 +96,14 @@ namespace hgl::ecs
         /// Enable/disable material batching
         void SetBatchingEnabled(bool enabled) { batchingEnabled = enabled; }
 
-        /// Collect all renderable entities (builds render items and batches)
-        void CollectRenderables();
+        /// Collect all primitive entities
+        void CollectPrimitives();
 
-        /// Get collected render items (raw list)
-        const std::vector<std::unique_ptr<RenderItem>>& GetRenderItems() const { return renderItems; }
+        /// Get collected primitive render items
+        const std::vector<std::unique_ptr<PrimitiveRenderItem>>& GetRenderItems() const 
+        { 
+            return renderItems; 
+        }
 
         /// Get material batches (for efficient rendering)
         const std::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>>& GetMaterialBatches() const 
@@ -107,7 +120,7 @@ namespace hgl::ecs
         /// Check if empty
         bool IsEmpty() const { return renderableCount == 0; }
 
-        /// Clear all collected data (similar to old RenderCollector::Clear)
+        /// Clear all collected data
         void Clear();
 
         /// Update transform data for all items
@@ -116,7 +129,8 @@ namespace hgl::ecs
         /// Update material instance data for a specific component
         void UpdateMaterialInstanceData(PrimitiveComponent* comp);
 
-        /// Render all collected items
+        /// Render all collected primitives
+        /// Similar to hgl::graph::PipelineMaterialBatch::Render
         void Render(graph::RenderCmdBuffer* cmdBuffer);
 
     private:
@@ -124,7 +138,7 @@ namespace hgl::ecs
         /// Perform frustum culling on render items
         void PerformFrustumCulling();
 
-        /// Sort render items by distance to camera (near to far)
+        /// Sort render items by distance to camera
         void SortByDistance();
 
         /// Build material batches from render items
