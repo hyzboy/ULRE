@@ -47,8 +47,8 @@ const int DrawNode::compare(const DrawNode &other)const
         return -1;
 }
 
-// DrawNodePrimitive
-DrawNodePrimitive::DrawNodePrimitive(PrimitiveComponent *pc)
+// DrawNode implementation
+DrawNode::DrawNode(PrimitiveComponent *pc)
 {
     if(pc)
     {
@@ -62,23 +62,18 @@ DrawNodePrimitive::DrawNodePrimitive(PrimitiveComponent *pc)
     }
 }
 
-SceneNode *DrawNodePrimitive::GetSceneNode() const
+SceneNode *DrawNode::GetSceneNode() const
 {
     return comp?comp->GetOwnerNode():nullptr;
 }
 
-PrimitiveComponent *DrawNodePrimitive::GetPrimitiveComponent() const
-{
-    return comp;
-}
-
-MaterialInstance *DrawNodePrimitive::GetMaterialInstance() const
+MaterialInstance *DrawNode::GetMaterialInstance() const
 {
     //PrimitiveComponent中含有OverrideMaterial的逻辑，所以不要直接从primitive中取MaterialInstance
     return comp?comp->GetMaterialInstance():nullptr;
 }
 
-NodeTransform *DrawNodePrimitive::GetTransform() const
+NodeTransform *DrawNode::GetTransform() const
 {
     return comp; // 直接使用组件自身的变换
 }
