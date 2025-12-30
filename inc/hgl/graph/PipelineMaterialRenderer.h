@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVABList.h>
+#include<hgl/graph/VertexDataManager.h>
 #include<hgl/type/ArrayList.h>
 
 VK_NAMESPACE_BEGIN
@@ -11,7 +12,6 @@ class RenderCmdBuffer;
 class InstanceAssignmentBuffer;
 class GeometryDataBuffer;
 class GeometryDrawRange;
-struct VDM;
 
 /**
  * 绘制批次：将使用相同几何数据的节点合并为一个批次
