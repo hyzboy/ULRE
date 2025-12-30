@@ -26,12 +26,12 @@ namespace hgl::graph
         {
             if(!camera || !camera_info || !vi) return;
 
-            camera->viewDirection = normalize(camera->pos - target);
+            camera->viewDirection = Normalize(camera->pos - target);
             camera_info->view     = glm::lookAtRH(camera->pos, target, camera->world_up);
 
             direction             = camera->viewDirection;
-            right              = normalized(cross(camera->world_up, direction));
-            up                 = normalized(cross(right,            direction));
+            right              = Normalized(Cross(camera->world_up, direction));
+            up                 = Normalized(Cross(right,            direction));
 
             RefreshCameraInfo(camera_info, vi, camera);
 
@@ -66,7 +66,7 @@ namespace hgl::graph
             if(!camera) return;
 
             Vector3f a = axis;
-            normalize(a);
+            Normalize(a);
 
             // Use helper that returns a 3x3 rotation matrix (degrees)
             Matrix3f rot = hgl::AxisRotate3Deg(static_cast<float>(ang), Vector3f(a.x,a.y,a.z));
@@ -84,7 +84,7 @@ namespace hgl::graph
             if(!camera) return;
 
             Vector3f a = axis;
-            normalize(a);
+            Normalize(a);
 
             Matrix3f rot = hgl::AxisRotate3Deg(static_cast<float>(ang), Vector3f(a.x,a.y,a.z));
 
@@ -93,7 +93,7 @@ namespace hgl::graph
 
     public: //距离
 
-        const float GetDistance()const{return camera?length(camera->pos-target):0.0f;}                      ///<获取视线长度(摄像机到目标点)
+        const float GetDistance()const{return camera?Length(camera->pos-target):0.0f;}                      ///<获取视线长度(摄像机到目标点)
 
         /**
             * 调整距离
