@@ -177,7 +177,7 @@ public:
             return 0;
 
         // 组件创建自身的 DrawNode，然后交给 mrm 统一分派
-        mrm.AddDrawNode(new hgl::graph::DrawNodePrimitive(this));
+        mrm.AddDrawNode(new hgl::graph::DrawNode(this));
         return 1;
     }
 

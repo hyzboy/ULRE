@@ -77,6 +77,7 @@ SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/DrawNode.h
                             ${SG_INCLUDE_PATH}/RenderCollector.h
                             ${SG_INCLUDE_PATH}/PipelineMaterialBatch.h
+                            ${SG_INCLUDE_PATH}/PipelineMaterialRenderer.h
                             ${SG_INCLUDE_PATH}/RenderBatchMap.h
                             ${SG_INCLUDE_PATH}/RenderTask.h
                             ${SG_INCLUDE_PATH}/RenderContext.h
@@ -87,6 +88,7 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/DrawNode.h
                             render/RenderTask.cpp
                             render/RenderCollector.cpp
                             render/PipelineMaterialBatch.cpp
+                            render/PipelineMaterialRenderer.cpp
                             render/InstanceAssignmentBuffer.h
                             render/InstanceAssignmentBuffer.cpp)
 

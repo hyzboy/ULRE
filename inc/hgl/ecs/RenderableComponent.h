@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/Component.h>
+#include<glm/glm.hpp>
 
 namespace hgl::ecs
 {
