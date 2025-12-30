@@ -12,27 +12,24 @@ namespace hgl::graph::inline_geometry
 
         const double angleStep = double(2.0f * math::pi) / ((double) numberSlices);
 
-        // used later to help us calculating tangents vectors
-        float helpVector[3] = { 1.0f, 0.0f, 0.0f };
-        float helpQuaternion[4];
-        float helpMatrix[16];
-        float tex_x;
+        // Validate parameters using new validator
+        if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
+            return nullptr;
 
         if(!pc->Init("Sphere",numberVertices,numberIndices))
             return(nullptr);
 
-        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
-        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
-        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
-        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
-
-        float *vp=vertex;
-        float *np=normal;
-        float *tp=tangent;
-        float *tcp=tex_coord;
-
-        if(!vp)
+        // Use new GeometryBuilder for vertex attribute management
+        GeometryBuilder builder(pc);
+        
+        if(!builder.IsValid())
             return(nullptr);
+
+        // For tangent calculation, we still need quaternion helpers
+        float helpVector[3] = { 1.0f, 0.0f, 0.0f };
+        float helpQuaternion[4];
+        float helpMatrix[16];
+        float tangentBuffer[3];
 
         for (uint i = 0; i < numberParallels + 1; i++)
         {
@@ -42,44 +39,37 @@ namespace hgl::graph::inline_geometry
                 float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
                 float z = cos(angleStep * (double) i);
 
-                *vp=x;++vp;
-                *vp=y;++vp;
-                *vp=z;++vp;
+                float tex_x = (float) j / (float) numberSlices;
+                float tex_y = 1.0f - (float) i / (float) numberParallels;
 
-                if(np)
+                // Calculate tangent using quaternion (for backward compatibility)
+                if(builder.HasTangents())
                 {
-                    *np=x;++np;
-                    *np=y;++np;
-                    *np=z;++np;
+                    GeometryMath::QuaternionRotateY(helpQuaternion, 360.0f * tex_x);
+                    GeometryMath::QuaternionToMatrix(helpMatrix, helpQuaternion);
+                    GeometryMath::MatrixMultiplyVector3(tangentBuffer, helpMatrix, helpVector);
+                    
+                    builder.WriteFullVertex(x, y, z,
+                                          x, y, z,  // normal same as position for sphere
+                                          tangentBuffer[0], tangentBuffer[1], tangentBuffer[2],
+                                          tex_x, tex_y);
                 }
-
-                if(tcp)
+                else
                 {
-                    tex_x=(float) j / (float) numberSlices;
-
-                    *tcp=tex_x;++tcp;
-                    *tcp=1.0f - (float) i / (float) numberParallels;++tcp;
-
-                    if(tp)
-                    {
-                        // use quaternion to get the tangent vector
-                        glusQuaternionRotateRyf(helpQuaternion, 360.0f * tex_x);
-                        glusQuaternionGetMatrix4x4f(helpMatrix, helpQuaternion);
-
-                        glusMatrix4x4MultiplyVector3f(tp, helpMatrix, helpVector);
-                        tp+=3;
-                    }
+                    builder.WriteVertex(x, y, z);
+                    builder.WriteNormal(x, y, z);
+                    builder.WriteTexCoord(tex_x, tex_y);
                 }
             }
         }
 
-        //索引
+        // Generate indices using new IndexGenerator
         {
             const IndexType index_type=pc->GetIndexType();
 
-            if(index_type==IndexType::U16)CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U32)CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
+            if(index_type==IndexType::U16)IndexGenerator::CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
+            if(index_type==IndexType::U32)IndexGenerator::CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
+            if(index_type==IndexType::U8 )IndexGenerator::CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
                 return(nullptr);
         }
 
