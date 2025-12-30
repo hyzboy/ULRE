@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/geo/Revolution.h>
+#include<hgl/graph/geo/GeometryMath.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
 #include <algorithm>
@@ -8,17 +9,7 @@
 namespace hgl::graph::inline_geometry
 {
     using namespace hgl::math;
-
-    static float AngleBetween(const float ax, const float ay, const float bx, const float by)
-    {
-        // compute angle between 2D vectors (ax,ay) and (bx,by)
-        float la = sqrt(ax*ax + ay*ay);
-        float lb = sqrt(bx*bx + by*by);
-        if(la < 1e-6f || lb < 1e-6f) return 0.0f;
-        float dot = (ax*bx + ay*by) / (la*lb);
-        dot = std::clamp(dot, -1.0f, 1.0f);
-        return acosf(dot) * 180.0f / 3.14159265358979323846f;
-    }
+    using namespace GeometryMath;
 
     /**
      * 创建一个由2D轮廓旋转生成的3D几何体
