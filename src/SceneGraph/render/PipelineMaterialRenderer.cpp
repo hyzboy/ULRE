@@ -4,6 +4,7 @@
 #include<hgl/graph/VKVertexInput.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKIndirectCommandBuffer.h>
 #include"InstanceAssignmentBuffer.h"
 
 VK_NAMESPACE_BEGIN
