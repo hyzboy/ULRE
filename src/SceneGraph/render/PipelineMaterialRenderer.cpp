@@ -55,6 +55,8 @@ void PipelineMaterialRenderer::ProcIndirectRender(IndirectDrawBuffer *icb_draw,
                                                    IndirectDrawIndexedBuffer *icb_draw_indexed)
 {
     // 提交累积的间接绘制命令
+    // Note: last_data_buffer is guaranteed to be valid when this is called
+    // because indirect_draw_count > 0 means we've processed at least one batch
     if (last_data_buffer->ibo)
         icb_draw_indexed->DrawIndexed(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
     else
@@ -140,7 +142,7 @@ void PipelineMaterialRenderer::Render(RenderCmdBuffer *rcb,
     // 绑定材质描述符集
     cmd_buf->BindDescriptorSets(material);
 
-    // 遍历绘制批次
+    // 遍历绘制批次 - batches is const, but Draw modifies internal state only
     DrawBatch *batch = const_cast<DrawBatch *>(batches.GetData());
     for (uint i = 0; i < batch_count; i++)
     {
