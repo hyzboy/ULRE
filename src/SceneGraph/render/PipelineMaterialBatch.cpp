@@ -224,9 +224,9 @@ void PipelineMaterialBatch::BuildBatches()
     batch->instance_count = 1;
     batch->Set(primitive);
 
-    // 缓存当前批次的几何信息（用于批次合并判断）
-    const GeometryDataBuffer *last_data_buffer = batch->geom_data_buffer;
-    const GeometryDrawRange *last_draw_range = batch->geom_draw_range;
+    // 用于批次合并判断的缓存变量
+    const GeometryDataBuffer *current_data_buffer = batch->geom_data_buffer;
+    const GeometryDrawRange *current_draw_range = batch->geom_draw_range;
 
     ++node_ptr;
 
@@ -236,8 +236,8 @@ void PipelineMaterialBatch::BuildBatches()
         primitive = (*node_ptr)->GetPrimitive();
 
         // 检查是否可以合并到当前批次
-        if (*last_data_buffer == *primitive->GetDataBuffer() &&
-            *last_draw_range == *primitive->GetRenderData())
+        if (*current_data_buffer == *primitive->GetDataBuffer() &&
+            *current_draw_range == *primitive->GetRenderData())
         {
             ++batch->instance_count;
             ++node_ptr;
@@ -262,8 +262,8 @@ void PipelineMaterialBatch::BuildBatches()
         batch->Set(primitive);
 
         // 更新缓存
-        last_data_buffer = batch->geom_data_buffer;
-        last_draw_range = batch->geom_draw_range;
+        current_data_buffer = batch->geom_data_buffer;
+        current_draw_range = batch->geom_draw_range;
 
         ++node_ptr;
     }
