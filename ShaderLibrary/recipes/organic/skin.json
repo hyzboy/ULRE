@@ -1,0 +1,30 @@
+﻿{
+  "name": "Skin",
+  "material_type": "Organic",
+  "rendering_path": "Forward",
+  "description": "Subsurface scattering skin material",
+  
+  "quality_levels": {
+    "high": {
+      "fragment_shader": {
+        "template": "forward.frag.tmpl",
+        "inputs": [
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec4", "name": "Position"},
+          {"type": "vec2", "name": "TexCoord"}
+        ],
+        "outputs": [
+          {"type": "vec4", "name": "FragColor"}
+        ],
+        "modules": {
+          "lighting": "half_lambert",
+          "specular": "blinn_phong",
+          "ambient": "ibl_simple",
+          "albedo": "texture_albedo"
+        },
+        "frag_color_body": "vec3 diffuse = GetDiffuseColor(); vec3 subsurface = diffuse * 0.3; return diffuse + subsurface + GetSpecularColor() * 0.4 + GetAmbientColor();",
+        "alpha_expression": "1.0"
+      }
+    }
+  }
+}

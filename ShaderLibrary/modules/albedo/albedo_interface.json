@@ -1,0 +1,34 @@
+﻿{
+  "modules": {
+    "texture_albedo": {
+      "file": "texture_albedo.glsl",
+      "provides": ["GetAlbedo"],
+      "requires": {
+        "functions": [],
+        "inputs": ["TexCoord"],
+        "descriptors": ["albedoMap"]
+      },
+      "dependencies": []
+    },
+    "vertex_color": {
+      "file": "vertex_color.glsl",
+      "provides": ["GetAlbedo"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Color"],
+        "descriptors": []
+      },
+      "dependencies": []
+    },
+    "constant_color": {
+      "file": "constant_color.glsl",
+      "provides": ["GetAlbedo"],
+      "requires": {
+        "functions": [],
+        "inputs": [],
+        "descriptors": ["materialInstance"]
+      },
+      "dependencies": []
+    }
+  }
+}

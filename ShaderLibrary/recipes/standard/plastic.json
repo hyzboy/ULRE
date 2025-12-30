@@ -1,0 +1,30 @@
+﻿{
+  "name": "Plastic",
+  "material_type": "Standard",
+  "rendering_path": "Forward",
+  "description": "Plastic material with strong specular highlights",
+  
+  "quality_levels": {
+    "high": {
+      "fragment_shader": {
+        "template": "forward.frag.tmpl",
+        "inputs": [
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec4", "name": "Position"},
+          {"type": "vec2", "name": "TexCoord"}
+        ],
+        "outputs": [
+          {"type": "vec4", "name": "FragColor"}
+        ],
+        "modules": {
+          "lighting": "blinn_phong",
+          "specular": "blinn_phong",
+          "ambient": "skylight",
+          "albedo": "texture_albedo"
+        },
+        "frag_color_body": "return GetDiffuseColor() + GetSpecularColor() * 0.8 + GetAmbientColor();",
+        "alpha_expression": "1.0"
+      }
+    }
+  }
+}
