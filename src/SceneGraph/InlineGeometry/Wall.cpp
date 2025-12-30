@@ -742,7 +742,7 @@ namespace hgl::graph::inline_geometry
         }
         
         for(size_t i = 0; i < vertNormals.size(); ++i)
-            vertNormals[i] = normalized(vertNormals[i]);
+            vertNormals[i] = Normalized(vertNormals[i]);
 
         // ensure cap (top) vertices have perfect upward normal
         for(size_t i = 0; i < m; i++)

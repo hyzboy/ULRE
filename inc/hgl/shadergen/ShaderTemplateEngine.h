@@ -4,8 +4,8 @@
 #include<inja/inja.hpp>
 #include<nlohmann/json.hpp>
 #include<hgl/type/Map.h>
-#include<hgl/type/List.h>
-#include<hgl/type/String.h>
+#include<hgl/type/ArrayList.h>
+#include<hgl/type/StringList.h>
 
 namespace hgl::graph
 {
