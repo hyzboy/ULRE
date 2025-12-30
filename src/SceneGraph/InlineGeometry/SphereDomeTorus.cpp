@@ -45,9 +45,9 @@ namespace hgl::graph::inline_geometry
                 // Calculate tangent using quaternion (for backward compatibility)
                 if(builder.HasTangents())
                 {
-                    GeometryMath::QuaternionRotateY(helpQuaternion, 360.0f * tex_x);
-                    GeometryMath::QuaternionToMatrix(helpMatrix, helpQuaternion);
-                    GeometryMath::MatrixMultiplyVector3(tangentBuffer, helpMatrix, helpVector);
+                    QuaternionRotateY(helpQuaternion, 360.0f * tex_x);
+                    QuaternionToMatrix(helpMatrix, helpQuaternion);
+                    MatrixMultiplyVector3(tangentBuffer, helpMatrix, helpVector);
                     
                     builder.WriteFullVertex(x, y, z,
                                           x, y, z,  // normal same as position for sphere

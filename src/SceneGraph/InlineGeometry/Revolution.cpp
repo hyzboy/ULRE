@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/geo/Revolution.h>
-#include<hgl/graph/geo/GeometryMath.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
+#include<hgl/math/geometry/GeometryUtils.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -9,7 +9,6 @@
 namespace hgl::graph::inline_geometry
 {
     using namespace hgl::math;
-    using namespace GeometryMath;
 
     /**
      * 创建一个由2D轮廓旋转生成的3D几何体
