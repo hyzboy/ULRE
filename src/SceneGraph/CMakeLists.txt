@@ -135,6 +135,15 @@ SET(GEOMETRY_VERTEX_DATA_FILES  ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("5.Geometry\\VertexData" FILES ${GEOMETRY_VERTEX_DATA_FILES})
 
+SET(GEOMETRY_UTILS_FILES    ${SG_INCLUDE_PATH}/geo/GeometryMath.h
+                            ${SG_INCLUDE_PATH}/geo/GeometryBuilder.h
+                            ${SG_INCLUDE_PATH}/geo/IndexGenerator.h
+                            InlineGeometry/GeometryMath.cpp
+                            InlineGeometry/GeometryBuilder.cpp
+                            InlineGeometry/GeometryValidator.h)
+
+SOURCE_GROUP("5.Geometry\\Utils" FILES ${GEOMETRY_UTILS_FILES})
+
 SET(GEOMETRY_PRIMITIVES_BASIC   InlineGeometry/InlineGeometryCommon.h
                                 ${SG_INCLUDE_PATH}/geo/InlineGeometry.h
                                 InlineGeometry/PlaneAndSquare.cpp
@@ -167,7 +176,8 @@ SOURCE_GROUP("5.Geometry\\Primitives\\Cylinder" FILES ${GEOMETRY_PRIMITIVES_CYLI
 SOURCE_GROUP("5.Geometry\\Primitives\\Capsule" FILES ${GEOMETRY_PRIMITIVES_CAPSULE})
 SOURCE_GROUP("5.Geometry\\Primitives\\Advanced" FILES ${GEOMETRY_PRIMITIVES_ADVANCED})
 
-SET(GEOMETRY_FILES  ${GEOMETRY_PRIMITIVES_BASIC}
+SET(GEOMETRY_FILES  ${GEOMETRY_UTILS_FILES}
+                    ${GEOMETRY_PRIMITIVES_BASIC}
                     ${GEOMETRY_PRIMITIVES_SPHERE}
                     ${GEOMETRY_PRIMITIVES_CYLINDER}
                     ${GEOMETRY_PRIMITIVES_CAPSULE}
