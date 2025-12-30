@@ -196,7 +196,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
-    mi_max_count=hgl_min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
+    mi_max_count=std::min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes); //外部指定的 struct MaterialInstance代码
 
@@ -230,7 +230,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
-    l2w_max_count=hgl_min<uint32_t>(ubo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
+    l2w_max_count=std::min<uint32_t>(ubo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
     mdi.AddStruct(SBS_LocalToWorld);
 
