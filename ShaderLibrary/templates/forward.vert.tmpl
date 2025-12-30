@@ -1,0 +1,36 @@
+﻿#version 450
+
+// ========== Vertex Inputs ==========
+{% for input in vertex_inputs %}
+layout(location={{ loop.index0 }}) in {{ input.type }} {{ input.name }};
+{% endfor %}
+
+// ========== Vertex Outputs ==========
+{% for output in vertex_outputs %}
+layout(location={{ loop.index0 }}) out {{ output.type }} {{ output.name }};
+{% endfor %}
+
+// ========== Descriptors ==========
+{% for ubo in ubos %}
+layout(set={{ ubo.set }}, binding={{ ubo.binding }}) uniform {{ ubo.struct_name }} {
+{{ ubo.members }}
+} {{ ubo.name }};
+{% endfor %}
+
+// ========== Main ==========
+void main()
+{
+    // Transform position
+    gl_Position = camera.proj * camera.view * vec4(Position, 1.0);
+    
+    // Pass through outputs
+    {% for output in vertex_outputs %}
+    {% if output.name == "Normal" %}
+    Output.Normal = Normal;
+    {% elif output.name == "Position" %}
+    Output.Position = vec4(Position, 1.0);
+    {% elif output.name == "TexCoord" %}
+    Output.TexCoord = TexCoord;
+    {% endif %}
+    {% endfor %}
+}

@@ -1,5 +1,9 @@
 ﻿set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
 
+# Add inja include path
+include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/single_include)
+include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/third_party/include)
+
 SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h
@@ -33,6 +37,12 @@ SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
                             GLSLCompiler.cpp)
 
 SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
+
+SET(SHADER_TEMPLATE_ENGINE_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderTemplateEngine.h)
+SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES ShaderTemplateEngine.cpp)
+
+SOURCE_GROUP("Shader Template Engine" FILES ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
+                                            ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES})
 
 set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
@@ -114,6 +124,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
                                         ${MATERIAL_CREATE_INFO_SOURCE_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
+                                        ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
+                                        ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${SHADER_LIBRARY_FILES}
