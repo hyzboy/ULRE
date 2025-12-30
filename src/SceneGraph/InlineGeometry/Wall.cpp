@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryMath.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
 
@@ -11,50 +12,7 @@
 namespace hgl::graph::inline_geometry
 {
     using namespace math;
-
-    static bool LineLineIntersect(const Vector2f &p, const Vector2f &r, const Vector2f &q, const Vector2f &s, float &t, float &u)
-    {
-        float rxs = r.x * s.y - r.y * s.x;
-        
-        if(fabs(rxs) < 1e-8f) 
-            return false;
-            
-        Vector2f qp = Vector2f(q.x - p.x, q.y - p.y);
-        t = (qp.x * s.y - qp.y * s.x) / rxs;
-        u = (qp.x * r.y - qp.y * r.x) / rxs;
-        
-        return true;
-    }
-
-    static Vector2f Normalize2(const Vector2f &v)
-    {
-        float len = sqrt(v.x * v.x + v.y * v.y);
-        
-        if(len <= 1e-8f) 
-            return Vector2f(0, 0);
-            
-        return Vector2f(v.x / len, v.y / len);
-    }
-
-    static Vector3f TriNormal(const Vector3f &A, const Vector3f &B, const Vector3f &C)
-    {
-        Vector3f AB(B.x - A.x, B.y - A.y, B.z - A.z);
-        Vector3f AC(C.x - A.x, C.y - A.y, C.z - A.z);
-        
-        return Vector3f(AB.y * AC.z - AB.z * AC.y,
-                        AB.z * AC.x - AB.x * AC.z,
-                        AB.x * AC.y - AB.y * AC.x);
-    }
-
-    static Vector3f Normalize3(const Vector3f &v)
-    {
-        float len = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-        
-        if(len <= 1e-8f) 
-            return Vector3f(0, 0, 0);
-            
-        return Vector3f(v.x / len, v.y / len, v.z / len);
-    }
+    using namespace GeometryMath;
 
     Geometry *CreateWallsFromLines2D(GeometryCreater *pc, const WallCreateInfo *wci)
     {
@@ -318,7 +276,7 @@ namespace hgl::graph::inline_geometry
                 
                 if(sPrev.len > 1e-8f && sNext.len > 1e-8f)
                 {
-                    if(LineLineIntersect(sPrev.left1, sPrev.dir, sNext.left0, sNext.dir, t, u))
+                    if(LineIntersect(sPrev.left1, sPrev.dir, sNext.left0, sNext.dir, t, u))
                     {
                         left_pt = Vector2f(sPrev.left1.x + sPrev.dir.x * t, sPrev.left1.y + sPrev.dir.y * t);
                         
@@ -340,7 +298,7 @@ namespace hgl::graph::inline_geometry
                 
                 if(sPrev.len > 1e-8f && sNext.len > 1e-8f)
                 {
-                    if(LineLineIntersect(sPrev.right1, sPrev.dir, sNext.right0, sNext.dir, t, u))
+                    if(LineIntersect(sPrev.right1, sPrev.dir, sNext.right0, sNext.dir, t, u))
                     {
                         right_pt = Vector2f(sPrev.right1.x + sPrev.dir.x * t, sPrev.right1.y + sPrev.dir.y * t);
                         
@@ -752,7 +710,7 @@ namespace hgl::graph::inline_geometry
             uint32_t ia = finalIndices[ti + 0], ib = finalIndices[ti + 1], ic = finalIndices[ti + 2];
             
             Vector3f A = finalVerts[ia], B = finalVerts[ib], C = finalVerts[ic];
-            Vector3f N = TriNormal(A, B, C);
+            Vector3f N = TriangleNormal(A, B, C);
             
             if(N.z < 0.0f)
             {
@@ -768,7 +726,7 @@ namespace hgl::graph::inline_geometry
         {
             uint32_t ia = finalIndices[ti + 0], ib = finalIndices[ti + 1], ic = finalIndices[ti + 2];
             
-            Vector3f N = TriNormal(finalVerts[ia], finalVerts[ib], finalVerts[ic]);
+            Vector3f N = TriangleNormal(finalVerts[ia], finalVerts[ib], finalVerts[ic]);
             
             vertNormals[ia].x += N.x;
             vertNormals[ia].y += N.y;
@@ -784,7 +742,7 @@ namespace hgl::graph::inline_geometry
         }
         
         for(size_t i = 0; i < vertNormals.size(); ++i)
-            vertNormals[i] = Normalize3(vertNormals[i]);
+            vertNormals[i] = Normalize(vertNormals[i]);
 
         // ensure cap (top) vertices have perfect upward normal
         for(size_t i = 0; i < m; i++)
