@@ -1,0 +1,44 @@
+﻿{
+  "modules": {
+    "skylight": {
+      "file": "skylight.glsl",
+      "provides": ["GetAmbientColor"],
+      "requires": {
+        "functions": [],
+        "inputs": [],
+        "descriptors": ["sky"]
+      },
+      "dependencies": ["GetAlbedo"]
+    },
+    "ibl_simple": {
+      "file": "ibl_simple.glsl",
+      "provides": ["GetAmbientColor"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal"],
+        "descriptors": ["envMap"]
+      },
+      "dependencies": ["GetAlbedo"]
+    },
+    "ibl": {
+      "file": "ibl.glsl",
+      "provides": ["GetAmbientColor"],
+      "requires": {
+        "functions": ["fresnelSchlickRoughness"],
+        "inputs": ["Normal", "Position"],
+        "descriptors": ["camera", "irradianceMap", "prefilterMap", "brdfLUT"]
+      },
+      "dependencies": ["GetAlbedo", "GetRoughness", "GetMetallic"]
+    },
+    "sh": {
+      "file": "sh.glsl",
+      "provides": ["GetAmbientColor"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal"],
+        "descriptors": ["shCoefficients"]
+      },
+      "dependencies": ["GetAlbedo"]
+    }
+  }
+}
