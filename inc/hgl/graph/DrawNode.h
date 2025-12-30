@@ -24,9 +24,13 @@ namespace hgl
         class MaterialInstance;
         class SceneNode;       // forward
 
-        // 抽象渲染节点：由各组件派生，提供统一的SceneNode/Component/Mesh访问，并提供渲染用的变换
+        // 渲染节点：封装PrimitiveComponent，提供统一的渲染接口
         class DrawNode:public Comparator<DrawNode>
         {
+        private:
+            PrimitiveComponent *comp;
+            Primitive *primitive;
+
         public:
 
             uint            index=0;                        ///<在PipelineMaterialBatch中的索引
@@ -37,32 +41,17 @@ namespace hgl
             Vector3f  world_position{};               ///<世界坐标位置
             float           to_camera_distance=0;
 
-            virtual ~DrawNode()=default;
+            explicit DrawNode(PrimitiveComponent *);
+            ~DrawNode()=default;
 
-            virtual SceneNode *         GetSceneNode()          const =0;    ///<所属场景节点（可为空）
-            virtual PrimitiveComponent *GetPrimitiveComponent() const =0;    ///<所属组件（可为空）
-            virtual Primitive *         GetPrimitive()          const =0;    ///<要渲染的Primitive
-            virtual MaterialInstance *  GetMaterialInstance()   const =0;    ///<使用的材质实例
-            virtual NodeTransform *     GetTransform()          const =0;    ///<返回用于渲染的最终变换
+            SceneNode *         GetSceneNode()          const;    ///<所属场景节点（可为空）
+            PrimitiveComponent *GetPrimitiveComponent() const { return comp; }    ///<所属组件（可为空）
+            Primitive *         GetPrimitive()          const { return primitive; }    ///<要渲染的Primitive
+            MaterialInstance *  GetMaterialInstance()   const;    ///<使用的材质实例
+            NodeTransform *     GetTransform()          const;    ///<返回用于渲染的最终变换
 
             //排序比较，定义在DrawNode.cpp
             const int compare(const DrawNode &)const override;
-        };
-
-        // 便捷型：PrimitiveComponent 专用节点（MI 从组件实时取得，支持override）
-        class DrawNodePrimitive:public DrawNode
-        {
-            PrimitiveComponent *comp;
-            Primitive *primitive;
-
-        public:
-
-            explicit DrawNodePrimitive(PrimitiveComponent *);
-            SceneNode *         GetSceneNode()          const override;
-            PrimitiveComponent *GetPrimitiveComponent() const override;
-            Primitive *         GetPrimitive()          const override{return primitive;}
-            MaterialInstance *  GetMaterialInstance()   const override;
-            NodeTransform *     GetTransform()          const override;
         };
 
         using DrawNodeList=ArrayList<DrawNode *>;

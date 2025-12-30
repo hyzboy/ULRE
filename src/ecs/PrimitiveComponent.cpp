@@ -1,4 +1,4 @@
-#include<hgl/ecs/PrimitiveComponent.h>
+﻿#include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>

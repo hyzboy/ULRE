@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/PipelineMaterialBatch.h>
+#include<hgl/graph/PipelineMaterialRenderer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -11,376 +12,288 @@
 #include<hgl/component/PrimitiveComponent.h>
 
 VK_NAMESPACE_BEGIN
-PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi)
+
+PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d, bool l2w, const PipelineMaterialIndex &rpi)
+    : device(d)
+    , pm_index(rpi)
+    , camera_info(nullptr)
+    , assign_buffer(nullptr)
+    , draw_batches_count(0)
+    , icb_draw(nullptr)
+    , icb_draw_indexed(nullptr)
+    , renderer(nullptr)
 {
-    device=d;
-    cmd_buf=nullptr;
-    pm_index=rpi;
-
-    camera_info=nullptr;
-
-    if(rpi.material->hasLocalToWorld()
-     ||rpi.material->hasMI())
+    // 如果材质需要 LocalToWorld 或材质实例数据，创建分配缓冲
+    if (rpi.material->hasLocalToWorld() || rpi.material->hasMI())
     {
-        assign_buffer=new InstanceAssignmentBuffer(device,pm_index.material);
-    }
-    else
-    {
-        assign_buffer=nullptr;
+        assign_buffer = new InstanceAssignmentBuffer(device, pm_index.material);
     }
 
-    icb_draw=nullptr;
-    icb_draw_indexed=nullptr;
-
-    draw_batches_count=0;
-
-    vab_list=new VABList(pm_index.material->GetVertexInput()->GetCount());
-
-    last_data_buffer=nullptr;
-    last_vdm=nullptr;
-    last_draw_range=nullptr;
-
-    first_indirect_draw_index=-1;
-    indirect_draw_count=0;
+    // 创建渲染器
+    renderer = new PipelineMaterialRenderer(pm_index.material, pm_index.pipeline);
 }
 
 PipelineMaterialBatch::~PipelineMaterialBatch()
 {
     SAFE_CLEAR(icb_draw_indexed)
     SAFE_CLEAR(icb_draw)
-
-    SAFE_CLEAR(vab_list);
     SAFE_CLEAR(assign_buffer);
+    SAFE_CLEAR(renderer);
 
     Clear();
 }
 
 void PipelineMaterialBatch::Add(DrawNode *node)
 {
-    if(!node) return;
+    if (!node) return;
 
-    node->index=draw_nodes.GetCount();
+    node->index = draw_nodes.GetCount();
 
+    // 初始化节点的空间数据
     NodeTransform *tf = node->GetTransform();
     if (camera_info && tf)
     {
-        node->world_position     =tf->GetWorldPosition();
-        node->to_camera_distance =math::length(camera_info->pos,node->world_position);
+        node->world_position = tf->GetWorldPosition();
+        node->to_camera_distance = math::length(camera_info->pos, node->world_position);
     }
     else
     {
-        node->world_position     =math::Vector3f(0,0,0);
-        node->to_camera_distance =0;
+        node->world_position = math::Vector3f(0, 0, 0);
+        node->to_camera_distance = 0;
     }
 
-    node->transform_version=tf?tf->GetTransformVersion():0;
-    node->transform_index=0;
+    node->transform_version = tf ? tf->GetTransformVersion() : 0;
+    node->transform_index = 0;
 
     draw_nodes.Add(node);
 }
 
 void PipelineMaterialBatch::Finalize()
 {
-    //排序
+    // 排序节点以优化渲染顺序
     Sort(draw_nodes.GetArray());
 
-    const uint node_count=draw_nodes.GetCount();
+    const uint node_count = draw_nodes.GetCount();
+    if (node_count <= 0) return;
 
-    if(node_count<=0)return;
-
+    // 构建绘制批次
     BuildBatches();
 
-    if(assign_buffer)
+    // 写入实例数据到缓冲
+    if (assign_buffer)
         assign_buffer->WriteNode(draw_nodes);
 }
 
 void PipelineMaterialBatch::UpdateTransformData()
 {
-    if(!assign_buffer)
-        return;
+    if (!assign_buffer) return;
 
     transform_dirty_nodes.Clear();
 
-    const int node_count=draw_nodes.GetCount();
+    const int node_count = draw_nodes.GetCount();
+    if (node_count <= 0) return;
 
-    if(node_count<=0)return;
+    // 收集需要更新的节点
+    int first_index = -1;
+    int last_index = -1;
 
-    int first=-1,last=-1;
-    int update_count=0;
-    uint32 transform_version=0;
-    DrawNode **node=draw_nodes.GetData();
-
-    for(int i=0;i<node_count;i++)
+    DrawNode **node_ptr = draw_nodes.GetData();
+    for (int i = 0; i < node_count; i++, node_ptr++)
     {
-        auto *tf=(*node)->GetTransform();
-        transform_version=tf?tf->GetTransformVersion():0;
+        DrawNode *node = *node_ptr;
+        NodeTransform *tf = node->GetTransform();
+        
+        // 获取当前变换版本号
+        const uint32 current_version = tf ? tf->GetTransformVersion() : 0;
 
-        if((*node)->transform_version!=transform_version)       //版本不对，需要更新
+        // 检查版本号是否变化
+        if (node->transform_version != current_version)
         {
-            if(first==-1)
+            // 更新版本号
+            node->transform_version = current_version;
+
+            // 更新范围索引
+            const int transform_idx = node->transform_index;
+            if (first_index == -1)
             {
-                first=(*node)->transform_index;
+                first_index = transform_idx;
             }
-            
-            last=(*node)->transform_index;
+            last_index = transform_idx;
 
-            (*node)->transform_version=transform_version;
-
-            transform_dirty_nodes.Add(*node);
-
-            ++update_count;
+            // 添加到脏列表
+            transform_dirty_nodes.Add(node);
         }
-
-        ++node;
     }
 
-    if(update_count>0)
+    // 批量更新变换数据
+    if (!transform_dirty_nodes.IsEmpty())
     {
-        assign_buffer->UpdateTransformData(transform_dirty_nodes,first,last);
+        assign_buffer->UpdateTransformData(transform_dirty_nodes, first_index, last_index);
         transform_dirty_nodes.Clear();
     }
 }
 
 void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_component)
 {
-    if(!prim_component)return;
-
-    if(!assign_buffer)
-        return;
+    // 提前返回，减少嵌套
+    if (!prim_component) return;
+    if (!assign_buffer) return;
     
-    const int node_count=draw_nodes.GetCount();
+    const int node_count = draw_nodes.GetCount();
+    if (node_count <= 0) return;
 
-    if(node_count<=0)return;
-    DrawNode **node=draw_nodes.GetData();
-
-    for(int i=0;i<node_count;i++)
+    DrawNode **node_ptr = draw_nodes.GetData();
+    for (int i = 0; i < node_count; i++, node_ptr++)
     {
-        auto *mc=dynamic_cast<DrawNodePrimitive *>(*node);
+        DrawNode *node = *node_ptr;
 
-        if(mc && mc->GetPrimitiveComponent()==prim_component)
+        if (node->GetPrimitiveComponent() == prim_component)
         {
-            assign_buffer->UpdateMaterialInstanceData(*node);
+            assign_buffer->UpdateMaterialInstanceData(node);
             return;
         }
-
-        ++node;
     }
-}
-
-void PipelineMaterialBatch::DrawBatch::Set(Primitive *primitive)
-{
-    geom_data_buffer=primitive->GetDataBuffer();
-    geom_draw_range=primitive->GetRenderData();
 }
 
 void PipelineMaterialBatch::ReallocICB()
 {
-    const uint32_t icb_new_count=power_to_2(draw_nodes.GetCount());
+    const uint32_t icb_new_count = power_to_2(draw_nodes.GetCount());
 
-    if(icb_draw)
+    // 如果现有缓冲足够大，直接返回
+    if (icb_draw && icb_new_count <= icb_draw->GetMaxCount())
     {
-        if(icb_new_count<=icb_draw->GetMaxCount())
-            return;
-
-        delete icb_draw;
-        icb_draw=nullptr;
-
-        delete icb_draw_indexed;
-        icb_draw_indexed=nullptr;
+        return;
     }
 
-    icb_draw=device->CreateIndirectDrawBuffer(icb_new_count);
-    icb_draw_indexed=device->CreateIndirectDrawIndexedBuffer(icb_new_count);
+    // 删除旧缓冲
+    SAFE_CLEAR(icb_draw);
+    SAFE_CLEAR(icb_draw_indexed);
+
+    // 创建新缓冲
+    icb_draw = device->CreateIndirectDrawBuffer(icb_new_count);
+    icb_draw_indexed = device->CreateIndirectDrawIndexedBuffer(icb_new_count);
 }
 
-void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,DrawBatch *batch)
+void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *draw_cmd, DrawBatch *batch)
 {
-    dicp->vertexCount   =batch->geom_draw_range->vertex_count;
-    dicp->instanceCount =batch->instance_count;
-    dicp->firstVertex   =batch->geom_draw_range->vertex_offset;
-    dicp->firstInstance =batch->first_instance;
+    draw_cmd->vertexCount = batch->geom_draw_range->vertex_count;
+    draw_cmd->instanceCount = batch->instance_count;
+    draw_cmd->firstVertex = batch->geom_draw_range->vertex_offset;
+    draw_cmd->firstInstance = batch->first_instance;
 }
 
-void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,DrawBatch *batch)
+void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *indexed_draw_cmd, DrawBatch *batch)
 {
-    diicp->indexCount   =batch->geom_draw_range->index_count;
-    diicp->instanceCount=batch->instance_count;
-    diicp->firstIndex   =batch->geom_draw_range->first_index;
-    diicp->vertexOffset =batch->geom_draw_range->vertex_offset;
-    diicp->firstInstance=batch->first_instance;
+    indexed_draw_cmd->indexCount = batch->geom_draw_range->index_count;
+    indexed_draw_cmd->instanceCount = batch->instance_count;
+    indexed_draw_cmd->firstIndex = batch->geom_draw_range->first_index;
+    indexed_draw_cmd->vertexOffset = batch->geom_draw_range->vertex_offset;
+    indexed_draw_cmd->firstInstance = batch->first_instance;
 }
 
 void PipelineMaterialBatch::BuildBatches()
 {
-    const uint count=draw_nodes.GetCount();
-    DrawNode **node =draw_nodes.GetData();
+    /**
+     * 批次构建算法：
+     * 1. 遍历已排序的渲染节点
+     * 2. 合并使用相同几何数据和绘制范围的节点到同一批次
+     * 3. 为每个批次生成间接绘制命令
+     * 4. 支持带索引和不带索引的绘制
+     */
+    
+    const uint count = draw_nodes.GetCount();
+    DrawNode **node_ptr = draw_nodes.GetData();
 
+    // 准备间接绘制缓冲
     ReallocICB();
 
-    VkDrawIndirectCommand *         dicp    =icb_draw->MapCmd();
-    VkDrawIndexedIndirectCommand *  diicp   =icb_draw_indexed->MapCmd();
+    VkDrawIndirectCommand *draw_cmd = icb_draw->MapCmd();
+    VkDrawIndexedIndirectCommand *indexed_draw_cmd = icb_draw_indexed->MapCmd();
 
+    // 准备批次数组
     draw_batches.Clear();
     draw_batches.Reserve(count);
 
-    DrawBatch * batch       =draw_batches.GetData();
-    Primitive * primitive   =(*node)->GetPrimitive();
+    // 初始化第一个批次
+    DrawBatch *batch = draw_batches.GetData();
+    Primitive *primitive = (*node_ptr)->GetPrimitive();
 
-    draw_batches_count=1;
+    draw_batches_count = 1;
 
-    batch->first_instance=0;
-    batch->instance_count=1;
+    batch->first_instance = 0;
+    batch->instance_count = 1;
     batch->Set(primitive);
 
-    last_data_buffer=batch->geom_data_buffer;
-    last_vdm        =batch->geom_data_buffer->vdm;
-    last_draw_range =batch->geom_draw_range;
+    // 用于批次合并判断的缓存变量
+    const GeometryDataBuffer *current_data_buffer = batch->geom_data_buffer;
+    const GeometryDrawRange *current_draw_range = batch->geom_draw_range;
 
-    ++node;
+    ++node_ptr;
 
-    for(uint i=1;i<count;i++)
+    // 处理剩余节点
+    for (uint i = 1; i < count; i++)
     {
-        primitive=(*node)->GetPrimitive();
+        primitive = (*node_ptr)->GetPrimitive();
 
-        if(*last_data_buffer==*primitive->GetDataBuffer())
-            if(*last_draw_range==*primitive->GetRenderData())
-            {
-                ++batch->instance_count;
-                ++node;
-                continue;
-            }
-
-        if(batch->geom_data_buffer->vdm)
+        // 检查是否可以合并到当前批次
+        if (*current_data_buffer == *primitive->GetDataBuffer() &&
+            *current_draw_range == *primitive->GetRenderData())
         {
-            if(batch->geom_data_buffer->ibo)
-                WriteICB(diicp,batch);
-            else
-                WriteICB(dicp,batch);
-
-            ++dicp;
-            ++diicp;
+            ++batch->instance_count;
+            ++node_ptr;
+            continue;
         }
 
+        // 完成当前批次的间接绘制命令
+        if (batch->geom_data_buffer->vdm)
+        {
+            if (batch->geom_data_buffer->ibo)
+                WriteICB(indexed_draw_cmd++, batch);
+            else
+                WriteICB(draw_cmd++, batch);
+        }
+
+        // 开始新批次
         ++draw_batches_count;
         ++batch;
 
-        batch->first_instance=i;
-        batch->instance_count=1;
+        batch->first_instance = i;
+        batch->instance_count = 1;
         batch->Set(primitive);
 
-        last_data_buffer=batch->geom_data_buffer;
-        last_vdm        =batch->geom_data_buffer->vdm;
-        last_draw_range =batch->geom_draw_range;
+        // 更新缓存
+        current_data_buffer = batch->geom_data_buffer;
+        current_draw_range = batch->geom_draw_range;
 
-        ++node;
+        ++node_ptr;
     }
 
-    if(batch->geom_data_buffer->vdm)
+    // 完成最后一个批次
+    if (batch->geom_data_buffer->vdm)
     {
-        if(batch->geom_data_buffer->ibo)
-            WriteICB(diicp,batch);
+        if (batch->geom_data_buffer->ibo)
+            WriteICB(indexed_draw_cmd, batch);
         else
-            WriteICB(dicp,batch);
+            WriteICB(draw_cmd, batch);
     }
 
     icb_draw->Unmap();
     icb_draw_indexed->Unmap();
 }
 
-bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
-{
-    vab_list->Restart();
-
-    if(!vab_list->Add(batch->geom_data_buffer))
-        return(false);
-
-    if (assign_buffer) //L2W/MI分发组
-    {
-        if(!vab_list->Add(assign_buffer->GetVAB(),0))
-            return(false);
-    }
-
-    cmd_buf->BindVAB(vab_list);
-
-    return(true);
-}
-
-void PipelineMaterialBatch::ProcIndirectRender()
-{    
-    if(last_data_buffer->ibo)
-        icb_draw_indexed->DrawIndexed(*cmd_buf,first_indirect_draw_index,indirect_draw_count);
-    else
-        icb_draw->Draw(*cmd_buf,first_indirect_draw_index,indirect_draw_count);
-
-    first_indirect_draw_index=-1;
-    indirect_draw_count=0;
-}
-
-bool PipelineMaterialBatch::Draw(DrawBatch *batch)
-{
-    if(!last_data_buffer||*(batch->geom_data_buffer)!=*last_data_buffer)        //换buf了
-    {
-        if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
-            ProcIndirectRender();
-
-        last_data_buffer=batch->geom_data_buffer;
-        last_draw_range=nullptr;
-
-        if(!BindVAB(batch))
-        {
-            return(false);
-        }
-
-        if(batch->geom_data_buffer->ibo)
-            cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
-    }
-
-    if(batch->geom_data_buffer->vdm)
-    {
-        if(indirect_draw_count==0)
-            first_indirect_draw_index=batch->first_instance;
-
-        ++indirect_draw_count;
-    }
-    else
-    {
-        cmd_buf->Draw(batch->geom_data_buffer,batch->geom_draw_range,batch->instance_count,batch->first_instance);
-    }
-
-    return(true);
-}
-
 void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 {
-    if(!rcb)return;
-    const uint count=draw_nodes.GetCount();
-
-    if(count<=0)return;
-
-    if(draw_batches_count<=0)return;
-
-    cmd_buf=rcb;
-
-    cmd_buf->BindPipeline(pm_index.pipeline);
-
-    last_data_buffer=nullptr;
-    last_vdm        =nullptr;
-    last_draw_range =nullptr;
-
-    if(assign_buffer)
-        assign_buffer->Bind(pm_index.material);
-
-    cmd_buf->BindDescriptorSets(pm_index.material);
-
-    DrawBatch *batch=draw_batches.GetData();
-
-    for(uint i=0;i<draw_batches_count;i++)
-    {
-        Draw(batch);
-        ++batch;
-    }
+    // 前置条件检查
+    if (!rcb) return;
     
-    if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
-        ProcIndirectRender();
+    const uint count = draw_nodes.GetCount();
+    if (count <= 0) return;
+
+    if (draw_batches_count <= 0) return;
+
+    // 委托给渲染器执行渲染
+    renderer->Render(rcb, draw_batches, draw_batches_count, 
+                    assign_buffer, icb_draw, icb_draw_indexed);
 }
+
 VK_NAMESPACE_END
