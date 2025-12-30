@@ -119,7 +119,7 @@ namespace hgl::graph::inline_geometry
                 // 经向切线：沿 +theta（绕Z）方向近似：(-y, x, 0) 并去掉与 n 的投影
                 Vector3f tdir(-n.y, n.x, 0.0f);
                 if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // 极点备选
-                tdir = (tdir - n * dot(n, tdir));
+                tdir = (tdir - n * Dot(n, tdir));
                 tdir = glm::normalize(tdir);
                 *tp++ = tdir.x; *tp++ = tdir.y; *tp++ = tdir.z;
             }
