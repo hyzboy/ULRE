@@ -135,10 +135,8 @@ SET(GEOMETRY_VERTEX_DATA_FILES  ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("5.Geometry\\VertexData" FILES ${GEOMETRY_VERTEX_DATA_FILES})
 
-SET(GEOMETRY_UTILS_FILES    ${SG_INCLUDE_PATH}/geo/GeometryMath.h
-                            ${SG_INCLUDE_PATH}/geo/GeometryBuilder.h
+SET(GEOMETRY_UTILS_FILES    ${SG_INCLUDE_PATH}/geo/GeometryBuilder.h
                             ${SG_INCLUDE_PATH}/geo/IndexGenerator.h
-                            InlineGeometry/GeometryMath.cpp
                             InlineGeometry/GeometryBuilder.cpp
                             InlineGeometry/GeometryValidator.h)
 

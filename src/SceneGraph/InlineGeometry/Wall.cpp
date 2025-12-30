@@ -1,8 +1,9 @@
 ﻿#include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/geo/GeometryMath.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
+#include<hgl/math/geometry/GeometryUtils.h>
+#include<hgl/math/VectorOperations.h>
 
 #include <vector>
 #include <algorithm>
@@ -12,7 +13,6 @@
 namespace hgl::graph::inline_geometry
 {
     using namespace math;
-    using namespace GeometryMath;
 
     Geometry *CreateWallsFromLines2D(GeometryCreater *pc, const WallCreateInfo *wci)
     {
@@ -742,7 +742,7 @@ namespace hgl::graph::inline_geometry
         }
         
         for(size_t i = 0; i < vertNormals.size(); ++i)
-            vertNormals[i] = Normalize(vertNormals[i]);
+            vertNormals[i] = normalized(vertNormals[i]);
 
         // ensure cap (top) vertices have perfect upward normal
         for(size_t i = 0; i < m; i++)
