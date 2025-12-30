@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/PipelineMaterialBatch.h>
+#include<hgl/graph/PipelineMaterialRenderer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -14,34 +15,30 @@ VK_NAMESPACE_BEGIN
 
 PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d, bool l2w, const PipelineMaterialIndex &rpi)
     : device(d)
-    , cmd_buf(nullptr)
     , pm_index(rpi)
     , camera_info(nullptr)
     , assign_buffer(nullptr)
     , draw_batches_count(0)
     , icb_draw(nullptr)
     , icb_draw_indexed(nullptr)
-    , vab_list(new VABList(pm_index.material->GetVertexInput()->GetCount()))
-    , last_data_buffer(nullptr)
-    , last_vdm(nullptr)
-    , last_draw_range(nullptr)
-    , first_indirect_draw_index(-1)
-    , indirect_draw_count(0)
+    , renderer(nullptr)
 {
     // 如果材质需要 LocalToWorld 或材质实例数据，创建分配缓冲
     if (rpi.material->hasLocalToWorld() || rpi.material->hasMI())
     {
         assign_buffer = new InstanceAssignmentBuffer(device, pm_index.material);
     }
+
+    // 创建渲染器
+    renderer = new PipelineMaterialRenderer(pm_index.material, pm_index.pipeline);
 }
 
 PipelineMaterialBatch::~PipelineMaterialBatch()
 {
     SAFE_CLEAR(icb_draw_indexed)
     SAFE_CLEAR(icb_draw)
-
-    SAFE_CLEAR(vab_list);
     SAFE_CLEAR(assign_buffer);
+    SAFE_CLEAR(renderer);
 
     Clear();
 }
@@ -158,12 +155,6 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_
     }
 }
 
-void PipelineMaterialBatch::DrawBatch::Set(Primitive *primitive)
-{
-    geom_data_buffer=primitive->GetDataBuffer();
-    geom_draw_range=primitive->GetRenderData();
-}
-
 void PipelineMaterialBatch::ReallocICB()
 {
     const uint32_t icb_new_count = power_to_2(draw_nodes.GetCount());
@@ -233,10 +224,9 @@ void PipelineMaterialBatch::BuildBatches()
     batch->instance_count = 1;
     batch->Set(primitive);
 
-    // 缓存当前批次的几何信息
-    last_data_buffer = batch->geom_data_buffer;
-    last_vdm = batch->geom_data_buffer->vdm;
-    last_draw_range = batch->geom_draw_range;
+    // 缓存当前批次的几何信息（用于批次合并判断）
+    const GeometryDataBuffer *last_data_buffer = batch->geom_data_buffer;
+    const GeometryDrawRange *last_draw_range = batch->geom_draw_range;
 
     ++node_ptr;
 
@@ -273,7 +263,6 @@ void PipelineMaterialBatch::BuildBatches()
 
         // 更新缓存
         last_data_buffer = batch->geom_data_buffer;
-        last_vdm = batch->geom_data_buffer->vdm;
         last_draw_range = batch->geom_draw_range;
 
         ++node_ptr;
@@ -292,82 +281,6 @@ void PipelineMaterialBatch::BuildBatches()
     icb_draw_indexed->Unmap();
 }
 
-bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
-{
-    vab_list->Restart();
-
-    if (!vab_list->Add(batch->geom_data_buffer))
-        return false;
-
-    // 如果有实例分配缓冲（LocalToWorld/MI数据），也需要绑定
-    if (assign_buffer)
-    {
-        if (!vab_list->Add(assign_buffer->GetVAB(), 0))
-            return false;
-    }
-
-    cmd_buf->BindVAB(vab_list);
-
-    return true;
-}
-
-void PipelineMaterialBatch::ProcIndirectRender()
-{
-    // 提交累积的间接绘制命令
-    if (last_data_buffer->ibo)
-        icb_draw_indexed->DrawIndexed(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
-    else
-        icb_draw->Draw(*cmd_buf, first_indirect_draw_index, indirect_draw_count);
-
-    // 重置间接绘制状态
-    first_indirect_draw_index = -1;
-    indirect_draw_count = 0;
-}
-
-bool PipelineMaterialBatch::Draw(DrawBatch *batch)
-{
-    // 检查是否需要切换几何数据缓冲
-    const bool need_buffer_switch = !last_data_buffer || 
-                                   *(batch->geom_data_buffer) != *last_data_buffer;
-
-    if (need_buffer_switch)
-    {
-        // 先提交之前累积的间接绘制
-        if (indirect_draw_count)
-            ProcIndirectRender();
-
-        // 更新缓冲状态
-        last_data_buffer = batch->geom_data_buffer;
-        last_draw_range = nullptr;
-
-        // 绑定新的顶点数组缓冲
-        if (!BindVAB(batch))
-            return false;
-
-        // 如果有索引缓冲，也需要绑定
-        if (batch->geom_data_buffer->ibo)
-            cmd_buf->BindIBO(batch->geom_data_buffer->ibo);
-    }
-
-    // 提交绘制命令
-    if (batch->geom_data_buffer->vdm)
-    {
-        // 间接绘制：累积命令
-        if (indirect_draw_count == 0)
-            first_indirect_draw_index = batch->first_instance;
-
-        ++indirect_draw_count;
-    }
-    else
-    {
-        // 直接绘制：立即提交
-        cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range, 
-                     batch->instance_count, batch->first_instance);
-    }
-
-    return true;
-}
-
 void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 {
     // 前置条件检查
@@ -378,33 +291,9 @@ void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 
     if (draw_batches_count <= 0) return;
 
-    cmd_buf = rcb;
-
-    // 绑定管线
-    cmd_buf->BindPipeline(pm_index.pipeline);
-
-    // 重置渲染状态缓存
-    last_data_buffer = nullptr;
-    last_vdm = nullptr;
-    last_draw_range = nullptr;
-
-    // 绑定实例分配缓冲（如果有）
-    if (assign_buffer)
-        assign_buffer->Bind(pm_index.material);
-
-    // 绑定材质描述符集
-    cmd_buf->BindDescriptorSets(pm_index.material);
-
-    // 遍历绘制批次
-    DrawBatch *batch = draw_batches.GetData();
-    for (uint i = 0; i < draw_batches_count; i++)
-    {
-        Draw(batch);
-        ++batch;
-    }
-    
-    // 提交剩余的间接绘制命令
-    if (indirect_draw_count)
-        ProcIndirectRender();
+    // 委托给渲染器执行渲染
+    renderer->Render(rcb, draw_batches, draw_batches_count, 
+                    assign_buffer, icb_draw, icb_draw_indexed);
 }
+
 VK_NAMESPACE_END

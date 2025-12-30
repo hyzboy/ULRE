@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include<hgl/graph/DrawNode.h>
-#include<hgl/graph/VKVABList.h>
+#include<hgl/graph/PipelineMaterialRenderer.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
 #include<hgl/type/ArrayList.h>
 #include<hgl/component/Component.h>
@@ -49,31 +49,17 @@ public:
 };//struct PipelineMaterialIndex
 
 /**
-* 同一材质与管线的渲染列表
+* 同一材质与管线的渲染批次管理器
 * 
 * 职责：
-* - 批量管理使用相同 Material 和 Pipeline 的渲染节点
-* - 组织和优化绘制调用（Draw Call Batching）
+* - 收集和管理使用相同 Material 和 Pipeline 的渲染节点
+* - 排序和组织渲染节点
+* - 构建绘制批次（Draw Call Batching）
 * - 管理实例数据（LocalToWorld 矩阵、材质实例数据）
-* - 支持直接绘制和间接绘制（Indirect Drawing）
+* - 分配和管理间接绘制缓冲
 */
 class PipelineMaterialBatch
 {
-public:
-    /**
-     * 绘制批次：将使用相同几何数据的节点合并为一个批次
-     */
-    struct DrawBatch
-    {
-                uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
-                uint32_t                instance_count;     ///<此批次包含的实例数量
-
-        const   GeometryDataBuffer *    geom_data_buffer;   ///<几何数据缓冲
-        const   GeometryDrawRange *     geom_draw_range;    ///<绘制范围（顶点/索引偏移和数量）
-
-        void Set(Primitive *);
-    };
-
 private:
     // === 核心标识 ===
     VulkanDevice *device;                       ///<Vulkan设备
@@ -88,34 +74,21 @@ private:
     InstanceAssignmentBuffer *assign_buffer;    ///<实例分配缓冲（LocalToWorld/MI数据）
 
     // === 批次管理 ===
-    DataArray<DrawBatch> draw_batches;          ///<绘制批次数组
+    DrawBatchArray draw_batches;                ///<绘制批次数组
     uint draw_batches_count;                    ///<有效批次数量
 
     // === 间接绘制缓冲 ===
     IndirectDrawBuffer *icb_draw;               ///<间接绘制命令缓冲（无索引）
     IndirectDrawIndexedBuffer *icb_draw_indexed;///<间接绘制命令缓冲（有索引）
 
-    // === 渲染状态缓存 ===
-    RenderCmdBuffer *cmd_buf;                   ///<当前渲染命令缓冲
-    VABList *vab_list;                          ///<顶点属性缓冲列表
-
-    const GeometryDataBuffer *last_data_buffer; ///<上次绑定的几何数据缓冲
-    const VDM *last_vdm;                        ///<上次使用的顶点数据管理器
-    const GeometryDrawRange *last_draw_range;   ///<上次使用的绘制范围
-
-    int first_indirect_draw_index;              ///<首个间接绘制索引
-    uint indirect_draw_count;                   ///<累积的间接绘制数量
+    // === 渲染器 ===
+    PipelineMaterialRenderer *renderer;         ///<渲染器实例
 
     // === 批次构建辅助方法 ===
     void ReallocICB();                          ///<重新分配间接绘制缓冲
     void WriteICB(VkDrawIndirectCommand *, DrawBatch *);
     void WriteICB(VkDrawIndexedIndirectCommand *, DrawBatch *);
     void BuildBatches();                        ///<构建绘制批次
-
-    // === 渲染辅助方法 ===
-    bool BindVAB(const DrawBatch *);            ///<绑定顶点属性缓冲
-    void ProcIndirectRender();                  ///<处理间接渲染
-    bool Draw(DrawBatch *);                     ///<绘制单个批次
 
 public:
     // === 生命周期管理 ===
