@@ -145,11 +145,11 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_
     DrawNode **node_ptr = draw_nodes.GetData();
     for (int i = 0; i < node_count; i++, node_ptr++)
     {
-        auto *mc = dynamic_cast<DrawNodePrimitive *>(*node_ptr);
+        DrawNode *node = *node_ptr;
 
-        if (mc && mc->GetPrimitiveComponent() == prim_component)
+        if (node->GetPrimitiveComponent() == prim_component)
         {
-            assign_buffer->UpdateMaterialInstanceData(*node_ptr);
+            assign_buffer->UpdateMaterialInstanceData(node);
             return;
         }
     }

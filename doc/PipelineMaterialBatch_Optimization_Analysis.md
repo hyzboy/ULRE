@@ -650,9 +650,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_
     // 使用范围 for 循环更清晰
     for (DrawNode *node : draw_nodes)
     {
-        auto *mc = dynamic_cast<DrawNodePrimitive *>(node);
-        
-        if (mc && mc->GetPrimitiveComponent() == prim_component)
+        if (node->GetPrimitiveComponent() == prim_component)
         {
             assign_buffer->UpdateMaterialInstanceData(node);
             return; // 找到后立即返回
@@ -661,10 +659,9 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_
 }
 ```
 
-#### 优化3：避免不必要的动态类型转换
+#### 优化3：简化类型层次结构
 ```cpp
-// 考虑在 DrawNode 中添加类型标记，避免 dynamic_cast
-// 或者使用虚函数来处理不同类型的节点
+// DrawNode 已简化为具体类，无需类型转换
 ```
 
 ### 2.5 代码组织和文档优化
