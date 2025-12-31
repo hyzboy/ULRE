@@ -48,8 +48,8 @@ namespace hgl::graph
             Vector3f world_up(0,0,1);
             if(cam) world_up = cam->world_up;
 
-            right = Normalize(Cross(forward,world_up));
-            up    = Normalize(Cross(right,forward));
+            right = Normalized(Cross(forward,world_up));
+            up    = Normalized(Cross(right,forward));
         }
 
     public:
