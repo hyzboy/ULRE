@@ -1,21 +1,21 @@
-#include<hgl/ecs/World.h>
+#include<hgl/ecs/Context.h>
 
 namespace hgl
 {
     namespace ecs
     {
-        World::World(const std::string& name)
+        ECSContext::ECSContext(const std::string& name)
             : Object(name)
             , active(false)
         {
         }
 
-        World::~World()
+        ECSContext::~ECSContext()
         {
             Shutdown();
         }
 
-        void World::Initialize()
+        void ECSContext::Initialize()
         {
             // Initialize all systems
             for (auto& pair : systems)
@@ -27,7 +27,7 @@ namespace hgl
             OnCreate();
         }
 
-        void World::Shutdown()
+        void ECSContext::Shutdown()
         {
             if (!active)
                 return;
@@ -50,7 +50,7 @@ namespace hgl
             OnDestroy();
         }
 
-        void World::Update(float deltaTime)
+        void ECSContext::Update(float deltaTime)
         {
             if (!active)
                 return;
