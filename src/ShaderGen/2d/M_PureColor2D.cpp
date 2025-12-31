@@ -62,8 +62,10 @@ void main()
     };//class MaterialPureColor2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureColor2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureColor2D(const VulkanDevAttr *dev_attr,Material2DCreateConfig *cfg)
 {
+    cfg->material_instance=true;
+
     MaterialPureColor2D mpc2d(cfg);
 
     return mpc2d.Create(dev_attr);

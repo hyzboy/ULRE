@@ -36,7 +36,8 @@ namespace hgl::graph
         int AddOutput(const SVType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
         void AddMaterialInstanceOutput() override;
 
-        void AddAssign();
+        void AddAssignTransform();
+        void AddAssignMaterialInstance();
 
         void AddJoint();
     };//class ShaderCreateInfoVertex:public ShaderCreateInfo

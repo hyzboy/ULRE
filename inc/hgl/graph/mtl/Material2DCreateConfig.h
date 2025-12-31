@@ -50,7 +50,7 @@ public:
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
 DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,        const Material2DCreateConfig)
-DEFINE_MATERIAL_FACTORY_CLASS(PureColor2D,          const Material2DCreateConfig)
+DEFINE_MATERIAL_FACTORY_CLASS(PureColor2D,          Material2DCreateConfig)
 //DEFINE_MATERIAL_FACTORY_CLASS(LerpLine2D,           const Material2DCreateConfig);
 
 DEFINE_MATERIAL_FACTORY_CLASS(PureTexture2D,        const Material2DCreateConfig);

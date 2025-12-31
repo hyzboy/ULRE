@@ -95,7 +95,7 @@ void ShaderCreateInfoVertex::AddJoint()
     AddInput(VAT_VEC4,  VAN::JointWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointWeight);
 }
 
-void ShaderCreateInfoVertex::AddAssign()
+void ShaderCreateInfoVertex::AddAssignTransform()
 {
     // 添加Transform索引输入
     AddInput(   Assign::TransformID::VAT_FMT,
@@ -103,13 +103,16 @@ void ShaderCreateInfoVertex::AddAssign()
                 VK_VERTEX_INPUT_RATE_INSTANCE,
                 VertexInputGroup::TransformID);
     
+    AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
+}
+
+void ShaderCreateInfoVertex::AddAssignMaterialInstance()
+{
     // 添加MaterialInstance索引输入
     AddInput(   Assign::MaterialInstanceID::VAT_FMT,
                 Assign::MaterialInstanceID::VIS_NAME,
                 VK_VERTEX_INPUT_RATE_INSTANCE,
                 VertexInputGroup::MaterialInstanceID);
-    
-    AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
 }
 
 bool ShaderCreateInfoVertex::ProcSubpassInput()

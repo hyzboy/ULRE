@@ -93,8 +93,10 @@ void main()
     };//class MaterialGizmo3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
 {
+    cfg->material_instance=true;
+
     MaterialGizmo3D mg3d(cfg);
 
     return mg3d.Create(dev_attr);

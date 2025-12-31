@@ -78,7 +78,7 @@ void main()
             mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics, SBS_CameraInfo);
 
             // Instance assign provides GetLocalToWorld
-            vsc->AddAssign();
+            vsc->AddAssignTransform();
 
             // Per-material samplers used in VS
             mci->AddTexture(ShaderStage::Vertex, DescriptorSetType::PerMaterial, TextureType::Texture2D, "TextureHeight");
