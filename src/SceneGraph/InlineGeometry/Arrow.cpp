@@ -327,17 +327,20 @@ namespace hgl::graph::inline_geometry
         if(index_type == IndexType::U16)
         {
             IBTypeMap<uint16> ib(pc->GetIBMap());
-            generate_indices(ib.data());
+            uint16 *ip = ib;
+            generate_indices(ip);
         }
         else if(index_type == IndexType::U32)
         {
             IBTypeMap<uint32> ib(pc->GetIBMap());
-            generate_indices(ib.data());
+            uint32 *ip = ib;
+            generate_indices(ip);
         }
         else if(index_type == IndexType::U8)
         {
             IBTypeMap<uint8> ib(pc->GetIBMap());
-            generate_indices(ib.data());
+            uint8 *ip = ib;
+            generate_indices(ip);
         }
         else
             return nullptr;
@@ -491,12 +494,24 @@ namespace hgl::graph::inline_geometry
 
                 Vector3f edge1 = v1 - v0;
                 Vector3f edge2 = v2 - v0;
-                Vector3f normal = edge1.Cross(edge2);
-                normal.normalize();
+                
+                // Calculate cross product manually
+                float normal_x = edge1.y * edge2.z - edge1.z * edge2.y;
+                float normal_y = edge1.z * edge2.x - edge1.x * edge2.z;
+                float normal_z = edge1.x * edge2.y - edge1.y * edge2.x;
+                
+                // Normalize
+                float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+                if(normal_len > 0.0001f)
+                {
+                    normal_x /= normal_len;
+                    normal_y /= normal_len;
+                    normal_z /= normal_len;
+                }
 
-                builder.WriteFullVertex(x0, y0, tail_depth, normal.x, normal.y, normal.z, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
-                builder.WriteFullVertex(x1, y1, tail_depth, normal.x, normal.y, normal.z, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f);
-                builder.WriteFullVertex(0.0f, 0.0f, 0.0f, normal.x, normal.y, normal.z, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f);
+                builder.WriteFullVertex(x0, y0, tail_depth, normal_x, normal_y, normal_z, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+                builder.WriteFullVertex(x1, y1, tail_depth, normal_x, normal_y, normal_z, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f);
+                builder.WriteFullVertex(0.0f, 0.0f, 0.0f, normal_x, normal_y, normal_z, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f);
             }
 
             vertex_base += 4 + 1 + 4 * 3;
@@ -572,12 +587,24 @@ namespace hgl::graph::inline_geometry
 
             Vector3f edge1 = v1 - v0;
             Vector3f edge2 = v2 - v0;
-            Vector3f normal = edge1.Cross(edge2);
-            normal.normalize();
+            
+            // Calculate cross product manually
+            float normal_x = edge1.y * edge2.z - edge1.z * edge2.y;
+            float normal_y = edge1.z * edge2.x - edge1.x * edge2.z;
+            float normal_z = edge1.x * edge2.y - edge1.y * edge2.x;
+            
+            // Normalize
+            float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+            if(normal_len > 0.0001f)
+            {
+                normal_x /= normal_len;
+                normal_y /= normal_len;
+                normal_z /= normal_len;
+            }
 
-            builder.WriteFullVertex(x0, y0, shaft_len, normal.x, normal.y, normal.z, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-            builder.WriteFullVertex(x1, y1, shaft_len, normal.x, normal.y, normal.z, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-            builder.WriteFullVertex(0.0f, 0.0f, shaft_len + head_len, normal.x, normal.y, normal.z, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f);
+            builder.WriteFullVertex(x0, y0, shaft_len, normal_x, normal_y, normal_z, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+            builder.WriteFullVertex(x1, y1, shaft_len, normal_x, normal_y, normal_z, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+            builder.WriteFullVertex(0.0f, 0.0f, shaft_len + head_len, normal_x, normal_y, normal_z, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f);
         }
 
         vertex_base += 4 * 3;
@@ -653,17 +680,20 @@ namespace hgl::graph::inline_geometry
         if(index_type == IndexType::U16)
         {
             IBTypeMap<uint16> ib(pc->GetIBMap());
-            generate_indices(ib.data());
+            uint16 *ip = ib;
+            generate_indices(ip);
         }
         else if(index_type == IndexType::U32)
         {
             IBTypeMap<uint32> ib(pc->GetIBMap());
-            generate_indices(ib.data());
+            uint32 *ip = ib;
+            generate_indices(ip);
         }
         else if(index_type == IndexType::U8)
         {
             IBTypeMap<uint8> ib(pc->GetIBMap());
-            generate_indices(ib.data());
+            uint8 *ip = ib;
+            generate_indices(ip);
         }
         else
             return nullptr;

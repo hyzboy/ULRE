@@ -28,7 +28,7 @@
 #include<hgl/component/PrimitiveComponent.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/math/geometry/Ray.h>
-#include<hgl/math/Transform.h>
+#include<hgl/math/transform/Transform.h>
 #include<hgl/log/Log.h>
 
 USING_COMPONENT_NAMESPACE

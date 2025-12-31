@@ -183,6 +183,7 @@ namespace hgl::graph::inline_geometry
                 float cap_nz = 0.0f;
 
                 float nx = -cos(bend_a);
+                float ny = 0.0f;
                 float nz = -sin(bend_a);
                 float bx = 0.0f;
                 float by = 1.0f;
@@ -233,6 +234,7 @@ namespace hgl::graph::inline_geometry
                 float cap_nz = cos(bend_a);
 
                 float nx = -cos(bend_a);
+                float ny = 0.0f;
                 float nz = -sin(bend_a);
                 float bx = 0.0f;
                 float by = 1.0f;

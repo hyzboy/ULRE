@@ -1,25 +1,36 @@
 #include"InlineGeometryCommon.h"
-#include<hgl/graph/GeometryCreater.h>
 
 namespace hgl::graph::inline_geometry
 {
+    using namespace hgl::math;
+
     Geometry *CreateMobiusStrip(GeometryCreater *pc, const MobiusStripCreateInfo *msci)
     {
         if(!pc||!msci)return(nullptr);
 
-        GeometryValidator validator("MobiusStrip");
-        if(!validator.CheckPositive("radius", msci->radius))return nullptr;
-        if(!validator.CheckPositive("width", msci->width))return nullptr;
-        if(!validator.CheckMinValue("twists", msci->twists, 1u))return nullptr;
-        if(!validator.CheckMinValue("length_segments", msci->length_segments, 3u))return nullptr;
-        if(!validator.CheckMinValue("width_segments", msci->width_segments, 1u))return nullptr;
+        // 基本参数验证
+        if(msci->radius <= 0.0f || msci->width <= 0.0f)
+            return nullptr;
+        
+        if(msci->twists < 1)
+            return nullptr;
+            
+        if(msci->length_segments < 3 || msci->width_segments < 1)
+            return nullptr;
 
         const uint nU = msci->length_segments;
         const uint nV = msci->width_segments;
         const uint total_vertices = (nU + 1) * (nV + 1);
         const uint total_indices = nU * nV * 6;
 
-        GeometryBuilder builder(pc, total_vertices, HGL_PRIM_TRIANGLES);
+        // 验证顶点和索引数量
+        if(!GeometryValidator::ValidateBasicParams(pc, total_vertices, total_indices))
+            return nullptr;
+
+        if(!pc->Init("MobiusStrip", total_vertices, total_indices))
+            return nullptr;
+
+        GeometryBuilder builder(pc);
         if(!builder.IsValid())return nullptr;
 
         const float R = msci->radius;
@@ -32,61 +43,74 @@ namespace hgl::graph::inline_geometry
             const float u = 2.0f * math::pi * float(i) / float(nU);
             const float twist_angle = twists * u * 0.5f;  // 扭转角度
             
-            const float cos_u = hgl_cos(u);
-            const float sin_u = hgl_sin(u);
-            const float cos_twist = hgl_cos(twist_angle);
-            const float sin_twist = hgl_sin(twist_angle);
+            const float cos_u = cos(u);
+            const float sin_u = sin(u);
+            const float cos_twist = cos(twist_angle);
+            const float sin_twist = sin(twist_angle);
             
             // 路径中心点
-            Vector3f center(R * cos_u, R * sin_u, 0);
+            float center_x = R * cos_u;
+            float center_y = R * sin_u;
+            float center_z = 0.0f;
             
             // 切向量
-            Vector3f tangent(-sin_u, cos_u, 0);
+            float tangent_x = -sin_u;
+            float tangent_y = cos_u;
+            float tangent_z = 0.0f;
             
             // 法向量（随扭转旋转）
-            Vector3f normal(0, 0, 1);
-            Vector3f rotated_normal;
-            rotated_normal.x = 0;
-            rotated_normal.y = -sin_twist;
-            rotated_normal.z = cos_twist;
+            float rotated_normal_x = 0.0f;
+            float rotated_normal_y = -sin_twist;
+            float rotated_normal_z = cos_twist;
             
             // 副法向量（宽度方向）
-            Vector3f binormal;
-            binormal.x = cos_twist * cos_u;
-            binormal.y = cos_twist * sin_u;
-            binormal.z = sin_twist;
+            float binormal_x = cos_twist * cos_u;
+            float binormal_y = cos_twist * sin_u;
+            float binormal_z = sin_twist;
             
             for(uint j = 0; j <= nV; ++j)
             {
                 const float v = 2.0f * w * (float(j) / float(nV) - 0.5f);
                 
                 // 计算位置
-                Vector3f pos = center + v * binormal;
+                float pos_x = center_x + v * binormal_x;
+                float pos_y = center_y + v * binormal_y;
+                float pos_z = center_z + v * binormal_z;
                 
-                builder.WritePosition(pos);
-                builder.WriteNormal(rotated_normal);
-                
+                const float tex_u = float(i) / float(nU);
+                const float tex_v = float(j) / float(nV);
+
                 if(builder.HasTangents())
-                    builder.WriteTangent(tangent);
-                
-                if(builder.HasTexCoords())
                 {
-                    const float tex_u = float(i) / float(nU);
-                    const float tex_v = float(j) / float(nV);
-                    builder.WriteTexCoord(Vector2f(tex_u, tex_v));
+                    builder.WriteFullVertex(pos_x, pos_y, pos_z,
+                                          rotated_normal_x, rotated_normal_y, rotated_normal_z,
+                                          tangent_x, tangent_y, tangent_z,
+                                          tex_u, tex_v);
+                }
+                else
+                {
+                    builder.WriteVertex(pos_x, pos_y, pos_z);
+                    builder.WriteNormal(rotated_normal_x, rotated_normal_y, rotated_normal_z);
+                    builder.WriteTexCoord(tex_u, tex_v);
                 }
             }
         }
 
-        // 生成索引
-        if(builder.Use8BitIndex())
-            IndexGenerator::CreateCylinderIndices<uint8>(builder.GetIndexBuffer<uint8>(), nU, nV);
-        else if(builder.Use16BitIndex())
-            IndexGenerator::CreateCylinderIndices<uint16>(builder.GetIndexBuffer<uint16>(), nU, nV);
-        else
-            IndexGenerator::CreateCylinderIndices<uint32>(builder.GetIndexBuffer<uint32>(), nU, nV);
+        // 生成索引 (使用Torus索引模式)
+        {
+            const IndexType index_type = pc->GetIndexType();
 
-        Geometry *p = builder.Finish();
+            if(index_type == IndexType::U16)
+                IndexGenerator::CreateTorusIndices<uint16>(pc, nU, nV);
+            else if(index_type == IndexType::U32)
+                IndexGenerator::CreateTorusIndices<uint32>(pc, nU, nV);
+            else if(index_type == IndexType::U8)
+                IndexGenerator::CreateTorusIndices<uint8>(pc, nU, nV);
+            else
+                return nullptr;
+        }
+
+        Geometry *p = pc->Create();
         if(!p)return nullptr;
 
         // 计算包围盒

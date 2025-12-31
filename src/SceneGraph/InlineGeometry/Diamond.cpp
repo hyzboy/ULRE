@@ -14,9 +14,9 @@ namespace hgl::graph::inline_geometry
 
         const float radius = dci->radius;
         const float height = dci->height;
-        const float top_ratio = clamp(dci->top_ratio, 0.01f, 0.99f);
-        const float table_ratio = clamp(dci->table_ratio, 0.0f, 1.0f);
-        const float pavilion_ratio = clamp(dci->pavilion_ratio, 0.0f, 1.0f);
+        const float top_ratio = std::min(std::max(dci->top_ratio, 0.01f), 0.99f);
+        const float table_ratio = std::min(std::max(dci->table_ratio, 0.0f), 1.0f);
+        const float pavilion_ratio = std::min(std::max(dci->pavilion_ratio, 0.0f), 1.0f);
         const uint facets = std::max<uint>(3, dci->facets);
 
         // Validate parameters
@@ -81,45 +81,79 @@ namespace hgl::graph::inline_geometry
             if(has_table)
             {
                 // Triangle from table center to table edge
-                Vector3f v0(0.0f, top_height, 0.0f);
-                Vector3f v1(table_radius * cos1, top_height, table_radius * sin1);
-                Vector3f v2(table_radius * cos2, top_height, table_radius * sin2);
+                float v0_x = 0.0f, v0_y = top_height, v0_z = 0.0f;
+                float v1_x = table_radius * cos1, v1_y = top_height, v1_z = table_radius * sin1;
+                float v2_x = table_radius * cos2, v2_y = top_height, v2_z = table_radius * sin2;
                 
-                Vector3f normal(0.0f, 1.0f, 0.0f); // Flat top
+                float normal_x = 0.0f, normal_y = 1.0f, normal_z = 0.0f; // Flat top
                 
-                builder.WriteFullVertex(v0, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.5f, 0.5f);
-                builder.WriteFullVertex(v1, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.5f + cos1*0.5f, 0.5f + sin1*0.5f);
-                builder.WriteFullVertex(v2, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.5f + cos2*0.5f, 0.5f + sin2*0.5f);
+                builder.WriteFullVertex(v0_x, v0_y, v0_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f, 0.5f);
+                builder.WriteFullVertex(v1_x, v1_y, v1_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f + cos1*0.5f, 0.5f + sin1*0.5f);
+                builder.WriteFullVertex(v2_x, v2_y, v2_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f + cos2*0.5f, 0.5f + sin2*0.5f);
 
                 // Triangle from table edge to girdle
-                Vector3f v3 = v1;
-                Vector3f v4 = v2;
-                Vector3f v5(radius * cos1, 0.0f, radius * sin1);
-                Vector3f v6(radius * cos2, 0.0f, radius * sin2);
+                float v3_x = v1_x, v3_y = v1_y, v3_z = v1_z;
+                float v4_x = v2_x, v4_y = v2_y, v4_z = v2_z;
+                float v5_x = radius * cos1, v5_y = 0.0f, v5_z = radius * sin1;
+                float v6_x = radius * cos2, v6_y = 0.0f, v6_z = radius * sin2;
                 
                 // Calculate facet normal
-                Vector3f edge1 = v5 - v3;
-                Vector3f edge2 = v6 - v3;
-                Vector3f facet_normal = normalize(cross(edge1, edge2));
+                float edge1_x = v5_x - v3_x;
+                float edge1_y = v5_y - v3_y;
+                float edge1_z = v5_z - v3_z;
                 
-                builder.WriteFullVertex(v3, facet_normal, Vector3f(1.0f, 0.0f, 0.0f), float(i)/float(facets), 1.0f);
-                builder.WriteFullVertex(v6, facet_normal, Vector3f(1.0f, 0.0f, 0.0f), float(i+1)/float(facets), 0.0f);
-                builder.WriteFullVertex(v5, facet_normal, Vector3f(1.0f, 0.0f, 0.0f), float(i)/float(facets), 0.0f);
+                float edge2_x = v6_x - v3_x;
+                float edge2_y = v6_y - v3_y;
+                float edge2_z = v6_z - v3_z;
+                
+                // Cross product
+                float facet_normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
+                float facet_normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
+                float facet_normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
+                
+                // Normalize
+                float facet_normal_len = sqrtf(facet_normal_x * facet_normal_x + facet_normal_y * facet_normal_y + facet_normal_z * facet_normal_z);
+                if(facet_normal_len > 0.0001f)
+                {
+                    facet_normal_x /= facet_normal_len;
+                    facet_normal_y /= facet_normal_len;
+                    facet_normal_z /= facet_normal_len;
+                }
+                
+                builder.WriteFullVertex(v3_x, v3_y, v3_z, facet_normal_x, facet_normal_y, facet_normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 1.0f);
+                builder.WriteFullVertex(v6_x, v6_y, v6_z, facet_normal_x, facet_normal_y, facet_normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.0f);
+                builder.WriteFullVertex(v5_x, v5_y, v5_z, facet_normal_x, facet_normal_y, facet_normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.0f);
             }
             else
             {
                 // Triangle from top point to girdle
-                Vector3f v0(0.0f, top_height, 0.0f);
-                Vector3f v1(radius * cos1, 0.0f, radius * sin1);
-                Vector3f v2(radius * cos2, 0.0f, radius * sin2);
+                float v0_x = 0.0f, v0_y = top_height, v0_z = 0.0f;
+                float v1_x = radius * cos1, v1_y = 0.0f, v1_z = radius * sin1;
+                float v2_x = radius * cos2, v2_y = 0.0f, v2_z = radius * sin2;
                 
-                Vector3f edge1 = v1 - v0;
-                Vector3f edge2 = v2 - v0;
-                Vector3f normal = normalize(cross(edge1, edge2));
+                float edge1_x = v1_x - v0_x;
+                float edge1_y = v1_y - v0_y;
+                float edge1_z = v1_z - v0_z;
                 
-                builder.WriteFullVertex(v0, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.5f, 1.0f);
-                builder.WriteFullVertex(v1, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i)/float(facets), 0.5f);
-                builder.WriteFullVertex(v2, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i+1)/float(facets), 0.5f);
+                float edge2_x = v2_x - v0_x;
+                float edge2_y = v2_y - v0_y;
+                float edge2_z = v2_z - v0_z;
+                
+                float normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
+                float normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
+                float normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
+                
+                float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+                if(normal_len > 0.0001f)
+                {
+                    normal_x /= normal_len;
+                    normal_y /= normal_len;
+                    normal_z /= normal_len;
+                }
+                
+                builder.WriteFullVertex(v0_x, v0_y, v0_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f, 1.0f);
+                builder.WriteFullVertex(v1_x, v1_y, v1_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.5f);
+                builder.WriteFullVertex(v2_x, v2_y, v2_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.5f);
             }
         }
 
@@ -137,53 +171,126 @@ namespace hgl::graph::inline_geometry
             if(has_pavilion_base)
             {
                 // Triangle from girdle to pavilion base
-                Vector3f v0(radius * cos1, 0.0f, radius * sin1);
-                Vector3f v1(radius * cos2, 0.0f, radius * sin2);
-                Vector3f v2(pavilion_bottom_radius * cos1, -bottom_height * 0.7f, pavilion_bottom_radius * sin1);
-                Vector3f v3(pavilion_bottom_radius * cos2, -bottom_height * 0.7f, pavilion_bottom_radius * sin2);
+                float v0_x = radius * cos1, v0_y = 0.0f, v0_z = radius * sin1;
+                float v1_x = radius * cos2, v1_y = 0.0f, v1_z = radius * sin2;
+                float v2_x = pavilion_bottom_radius * cos1, v2_y = -bottom_height * 0.7f, v2_z = pavilion_bottom_radius * sin1;
+                float v3_x = pavilion_bottom_radius * cos2, v3_y = -bottom_height * 0.7f, v3_z = pavilion_bottom_radius * sin2;
                 
-                Vector3f edge1 = v2 - v0;
-                Vector3f edge2 = v1 - v0;
-                Vector3f normal = normalize(cross(edge1, edge2));
+                float edge1_x = v2_x - v0_x;
+                float edge1_y = v2_y - v0_y;
+                float edge1_z = v2_z - v0_z;
                 
-                builder.WriteFullVertex(v0, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i)/float(facets), 0.5f);
-                builder.WriteFullVertex(v1, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i+1)/float(facets), 0.5f);
-                builder.WriteFullVertex(v2, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i)/float(facets), 0.0f);
+                float edge2_x = v1_x - v0_x;
+                float edge2_y = v1_y - v0_y;
+                float edge2_z = v1_z - v0_z;
+                
+                float normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
+                float normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
+                float normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
+                
+                float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+                if(normal_len > 0.0001f)
+                {
+                    normal_x /= normal_len;
+                    normal_y /= normal_len;
+                    normal_z /= normal_len;
+                }
+                
+                builder.WriteFullVertex(v0_x, v0_y, v0_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.5f);
+                builder.WriteFullVertex(v1_x, v1_y, v1_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.5f);
+                builder.WriteFullVertex(v2_x, v2_y, v2_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.0f);
 
                 // Triangle from pavilion base to culet
-                Vector3f v4(0.0f, -bottom_height, 0.0f);
+                float v4_x = 0.0f, v4_y = -bottom_height, v4_z = 0.0f;
                 
-                edge1 = v3 - v2;
-                edge2 = v4 - v2;
-                normal = normalize(cross(edge1, edge2));
+                edge1_x = v3_x - v2_x;
+                edge1_y = v3_y - v2_y;
+                edge1_z = v3_z - v2_z;
                 
-                builder.WriteFullVertex(v2, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i)/float(facets), 0.0f);
-                builder.WriteFullVertex(v3, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i+1)/float(facets), 0.0f);
-                builder.WriteFullVertex(v4, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.5f, 0.0f);
+                edge2_x = v4_x - v2_x;
+                edge2_y = v4_y - v2_y;
+                edge2_z = v4_z - v2_z;
+                
+                normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
+                normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
+                normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
+                
+                normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+                if(normal_len > 0.0001f)
+                {
+                    normal_x /= normal_len;
+                    normal_y /= normal_len;
+                    normal_z /= normal_len;
+                }
+                
+                builder.WriteFullVertex(v2_x, v2_y, v2_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.0f);
+                builder.WriteFullVertex(v3_x, v3_y, v3_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.0f);
+                builder.WriteFullVertex(v4_x, v4_y, v4_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f, 0.0f);
             }
             else
             {
                 // Triangle from girdle directly to culet point
-                Vector3f v0(radius * cos1, 0.0f, radius * sin1);
-                Vector3f v1(radius * cos2, 0.0f, radius * sin2);
-                Vector3f v2(0.0f, -bottom_height, 0.0f);
+                float v0_x = radius * cos1, v0_y = 0.0f, v0_z = radius * sin1;
+                float v1_x = radius * cos2, v1_y = 0.0f, v1_z = radius * sin2;
+                float v2_x = 0.0f, v2_y = -bottom_height, v2_z = 0.0f;
                 
-                Vector3f edge1 = v2 - v0;
-                Vector3f edge2 = v1 - v0;
-                Vector3f normal = normalize(cross(edge1, edge2));
+                float edge1_x = v2_x - v0_x;
+                float edge1_y = v2_y - v0_y;
+                float edge1_z = v2_z - v0_z;
                 
-                builder.WriteFullVertex(v0, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i)/float(facets), 0.5f);
-                builder.WriteFullVertex(v1, normal, Vector3f(1.0f, 0.0f, 0.0f), float(i+1)/float(facets), 0.5f);
-                builder.WriteFullVertex(v2, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.5f, 0.0f);
+                float edge2_x = v1_x - v0_x;
+                float edge2_y = v1_y - v0_y;
+                float edge2_z = v1_z - v0_z;
+                
+                float normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
+                float normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
+                float normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
+                
+                float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+                if(normal_len > 0.0001f)
+                {
+                    normal_x /= normal_len;
+                    normal_y /= normal_len;
+                    normal_z /= normal_len;
+                }
+                
+                builder.WriteFullVertex(v0_x, v0_y, v0_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i)/float(facets), 0.5f);
+                builder.WriteFullVertex(v1_x, v1_y, v1_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, float(i+1)/float(facets), 0.5f);
+                builder.WriteFullVertex(v2_x, v2_y, v2_z, normal_x, normal_y, normal_z, 1.0f, 0.0f, 0.0f, 0.5f, 0.0f);
             }
         }
 
-        // Generate indices (simple sequential)
-        if(!IndexGenerator::CreateSequentialIndices(pc, numberIndices))
-            return nullptr;
+        // Generate indices (simple sequential - 0, 1, 2, 3, 4, 5, ...)
+        {
+            const IndexType index_type = pc->GetIndexType();
+            
+            if(index_type == IndexType::U16)
+            {
+                IBTypeMap<uint16> ib(pc->GetIBMap());
+                uint16 *ip = ib;
+                for(uint i = 0; i < numberIndices; i++)
+                    *ip++ = (uint16)i;
+            }
+            else if(index_type == IndexType::U32)
+            {
+                IBTypeMap<uint32> ib(pc->GetIBMap());
+                uint32 *ip = ib;
+                for(uint i = 0; i < numberIndices; i++)
+                    *ip++ = i;
+            }
+            else if(index_type == IndexType::U8)
+            {
+                IBTypeMap<uint8> ib(pc->GetIBMap());
+                uint8 *ip = ib;
+                for(uint i = 0; i < numberIndices; i++)
+                    *ip++ = (uint8)i;
+            }
+            else
+                return nullptr;
+        }
 
         // Set bounding box
-        Geometry *p = pc->End();
+        Geometry *p = pc->Create();
         if(p)
         {
             BoundingVolumes bv;
