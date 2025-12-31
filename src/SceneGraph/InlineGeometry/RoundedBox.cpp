@@ -166,6 +166,7 @@ namespace hgl::graph::inline_geometry
 
         // Generate 6 face centers (simplified - just 4 corner vertices per face)
         // Face normals and positions
+        // Note: These faces connect rounded corners, so they should be smaller than full box size
         struct FaceInfo {
             Vector3f normal;
             Vector3f corners[4];
@@ -173,47 +174,47 @@ namespace hgl::graph::inline_geometry
 
         FaceInfo faces[6];
         
-        // -Z face
+        // -Z face (corners at rounded edge positions)
         faces[0].normal = Vector3f(0, 0, -1);
-        faces[0].corners[0] = Vector3f(-ix-r, -iy-r, -iz);
-        faces[0].corners[1] = Vector3f( ix+r, -iy-r, -iz);
-        faces[0].corners[2] = Vector3f( ix+r,  iy+r, -iz);
-        faces[0].corners[3] = Vector3f(-ix-r,  iy+r, -iz);
+        faces[0].corners[0] = Vector3f(-ix, -iy, -iz-r);
+        faces[0].corners[1] = Vector3f( ix, -iy, -iz-r);
+        faces[0].corners[2] = Vector3f( ix,  iy, -iz-r);
+        faces[0].corners[3] = Vector3f(-ix,  iy, -iz-r);
 
         // +Z face
         faces[1].normal = Vector3f(0, 0, 1);
-        faces[1].corners[0] = Vector3f(-ix-r, -iy-r, iz);
-        faces[1].corners[1] = Vector3f( ix+r, -iy-r, iz);
-        faces[1].corners[2] = Vector3f( ix+r,  iy+r, iz);
-        faces[1].corners[3] = Vector3f(-ix-r,  iy+r, iz);
+        faces[1].corners[0] = Vector3f(-ix, -iy, iz+r);
+        faces[1].corners[1] = Vector3f( ix, -iy, iz+r);
+        faces[1].corners[2] = Vector3f( ix,  iy, iz+r);
+        faces[1].corners[3] = Vector3f(-ix,  iy, iz+r);
 
         // -Y face
         faces[2].normal = Vector3f(0, -1, 0);
-        faces[2].corners[0] = Vector3f(-ix-r, -iy, -iz-r);
-        faces[2].corners[1] = Vector3f( ix+r, -iy, -iz-r);
-        faces[2].corners[2] = Vector3f( ix+r, -iy,  iz+r);
-        faces[2].corners[3] = Vector3f(-ix-r, -iy,  iz+r);
+        faces[2].corners[0] = Vector3f(-ix, -iy-r, -iz);
+        faces[2].corners[1] = Vector3f( ix, -iy-r, -iz);
+        faces[2].corners[2] = Vector3f( ix, -iy-r,  iz);
+        faces[2].corners[3] = Vector3f(-ix, -iy-r,  iz);
 
         // +Y face
         faces[3].normal = Vector3f(0, 1, 0);
-        faces[3].corners[0] = Vector3f(-ix-r, iy, -iz-r);
-        faces[3].corners[1] = Vector3f( ix+r, iy, -iz-r);
-        faces[3].corners[2] = Vector3f( ix+r, iy,  iz+r);
-        faces[3].corners[3] = Vector3f(-ix-r, iy,  iz+r);
+        faces[3].corners[0] = Vector3f(-ix, iy+r, -iz);
+        faces[3].corners[1] = Vector3f( ix, iy+r, -iz);
+        faces[3].corners[2] = Vector3f( ix, iy+r,  iz);
+        faces[3].corners[3] = Vector3f(-ix, iy+r,  iz);
 
         // -X face
         faces[4].normal = Vector3f(-1, 0, 0);
-        faces[4].corners[0] = Vector3f(-ix, -iy-r, -iz-r);
-        faces[4].corners[1] = Vector3f(-ix,  iy+r, -iz-r);
-        faces[4].corners[2] = Vector3f(-ix,  iy+r,  iz+r);
-        faces[4].corners[3] = Vector3f(-ix, -iy-r,  iz+r);
+        faces[4].corners[0] = Vector3f(-ix-r, -iy, -iz);
+        faces[4].corners[1] = Vector3f(-ix-r,  iy, -iz);
+        faces[4].corners[2] = Vector3f(-ix-r,  iy,  iz);
+        faces[4].corners[3] = Vector3f(-ix-r, -iy,  iz);
 
         // +X face
         faces[5].normal = Vector3f(1, 0, 0);
-        faces[5].corners[0] = Vector3f(ix, -iy-r, -iz-r);
-        faces[5].corners[1] = Vector3f(ix,  iy+r, -iz-r);
-        faces[5].corners[2] = Vector3f(ix,  iy+r,  iz+r);
-        faces[5].corners[3] = Vector3f(ix, -iy-r,  iz+r);
+        faces[5].corners[0] = Vector3f(ix+r, -iy, -iz);
+        faces[5].corners[1] = Vector3f(ix+r,  iy, -iz);
+        faces[5].corners[2] = Vector3f(ix+r,  iy,  iz);
+        faces[5].corners[3] = Vector3f(ix+r, -iy,  iz);
 
         for(uint f = 0; f < 6; f++)
         {
