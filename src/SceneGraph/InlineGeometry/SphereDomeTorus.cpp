@@ -153,10 +153,10 @@ namespace hgl::graph::inline_geometry
                     if(tp)
                     {
                         // use quaternion to get the tangent vector
-                        glusQuaternionRotateRyf(helpQuaternion, 360.0f * tex_x);
-                        glusQuaternionGetMatrix4x4f(helpMatrix, helpQuaternion);
+                        QuaternionRotateY(helpQuaternion, 360.0f * tex_x);
+                        QuaternionToMatrix(helpMatrix, helpQuaternion);
 
-                        glusMatrix4x4MultiplyVector3f(tp, helpMatrix, helpVector);
+                        MatrixMultiplyVector3(tp, helpMatrix, helpVector);
                         tp+=3;
                     }
                 }
@@ -167,9 +167,9 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type=pc->GetIndexType();
 
-            if(index_type==IndexType::U16)CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U32)CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
+            if(index_type==IndexType::U16)IndexGenerator::CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
+            if(index_type==IndexType::U32)IndexGenerator::CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
+            if(index_type==IndexType::U8 )IndexGenerator::CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
                 return(nullptr);
         }
 
@@ -271,10 +271,10 @@ namespace hgl::graph::inline_geometry
 
                 if(tp)
                 {
-                    glusQuaternionRotateRzf(helpQuaternion, 360.0f * s);
-                    glusQuaternionGetMatrix4x4f(helpMatrix, helpQuaternion);
+                    QuaternionRotateZ(helpQuaternion, 360.0f * s);
+                    QuaternionToMatrix(helpMatrix, helpQuaternion);
 
-                    glusMatrix4x4MultiplyVector3f(tp, helpMatrix, helpVector);
+                    MatrixMultiplyVector3(tp, helpMatrix, helpVector);
                     tp+=3;
                 }
             }
@@ -284,9 +284,9 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type=pc->GetIndexType();
 
-            if(index_type==IndexType::U16)CreateTorusIndices<uint16>(pc,tci->numberSlices,tci->numberStacks);else
-            if(index_type==IndexType::U32)CreateTorusIndices<uint32>(pc,tci->numberSlices,tci->numberStacks);else
-            if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(pc,tci->numberSlices,tci->numberStacks);else
+            if(index_type==IndexType::U16)IndexGenerator::CreateTorusIndices<uint16>(pc,tci->numberSlices,tci->numberStacks);else
+            if(index_type==IndexType::U32)IndexGenerator::CreateTorusIndices<uint32>(pc,tci->numberSlices,tci->numberStacks);else
+            if(index_type==IndexType::U8 )IndexGenerator::CreateTorusIndices<uint8 >(pc,tci->numberSlices,tci->numberStacks);else
                 return(nullptr);
         }
 
