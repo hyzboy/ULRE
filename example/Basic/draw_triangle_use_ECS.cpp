@@ -110,30 +110,41 @@ private:
 
     bool InitECS()
     {
-        // 创建ECS世界
+        // === 步骤1: 创建ECS世界 ===
+        // World是ECS架构的顶层容器，管理所有Entity和System
         ecs_world = std::make_shared<World>("TriangleWorld");
         
-        // 初始化世界
+        // 初始化世界 - 这会初始化所有注册的System
         ecs_world->Initialize();
 
-        // 创建三角形实体
+        // === 步骤2: 创建Entity ===
+        // Entity是游戏对象的容器，本身不包含数据，只是Component的集合
         triangle_entity = ecs_world->CreateEntity<Entity>("TriangleEntity");
 
-        // 添加Transform组件 - 管理空间变换
+        // === 步骤3: 添加TransformComponent ===
+        // TransformComponent管理空间变换（位置、旋转、缩放）
+        // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
         auto transform = triangle_entity->AddComponent<TransformComponent>();
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        transform->SetMobility(TransformMobility::Static); // 静态对象，性能优化
+        
+        // 设置为静态对象 - 系统会缓存世界矩阵，提高性能
+        transform->SetMobility(TransformMobility::Static);
 
-        // 添加ECS Primitive组件 - 管理渲染图元
+        // === 步骤4: 添加ECS PrimitiveComponent ===
+        // 新的ECS PrimitiveComponent用于管理渲染图元
+        // 注意：需要明确使用hgl::ecs命名空间，因为有两个PrimitiveComponent
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetPrimitive(prim_triangle);
         ecs_primitive->SetVisible(true);
 
-        // 注意：由于新的ECS PrimitiveComponent尚未完全集成到渲染管线，
+        // === 步骤5: 集成传统渲染系统 ===
+        // 由于新的ECS PrimitiveComponent尚未完全集成到渲染管线，
         // 我们同时使用传统的Component系统来实现实际渲染
         // 这展示了如何在过渡期同时使用两个系统
+        // 
+        // CreateComponent会将Primitive添加到场景图，由SceneRenderer自动渲染
         CreateComponentInfo cci(GetWorldRootNode());
         CreateComponent<component::PrimitiveComponent>(&cci, prim_triangle);
 
