@@ -80,7 +80,7 @@ namespace hgl::graph::inline_geometry
             Vector3f( ix,  iy, -iz),  // 2: ++-
             Vector3f(-ix,  iy, -iz),  // 3: -+-
             Vector3f(-ix, -iy,  iz),  // 4: --+
-            Vector3f( ix, -iy,  iz),  // 5: +--
+            Vector3f( ix, -iy,  iz),  // 5: +-+
             Vector3f( ix,  iy,  iz),  // 6: +++
             Vector3f(-ix,  iy,  iz),  // 7: -++
         };

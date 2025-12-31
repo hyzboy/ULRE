@@ -336,7 +336,6 @@ namespace hgl::graph
             float head_radius = 0.3f;     // 箭头半径
             float head_length = 0.5f;     // 箭头长度
             uint  numberSlices = 16;      // 圆周分段数
-            Vector3f direction = Vector3f(0, 0, 1);  // 箭头方向（默认Z轴）
         };
 
         /**
