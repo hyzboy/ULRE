@@ -167,7 +167,8 @@ SET(GEOMETRY_PRIMITIVES_EXTENDED InlineGeometry/Frustum.cpp
                                  InlineGeometry/PipeElbow.cpp
                                  InlineGeometry/Helix.cpp
                                  InlineGeometry/SolidGear.cpp
-                                 InlineGeometry/HollowGear.cpp)
+                                 InlineGeometry/HollowGear.cpp
+                                 InlineGeometry/Heart.cpp)
 
 SET(GEOMETRY_PRIMITIVES_ADVANCED ${SG_INCLUDE_PATH}/geo/Extruded.h
                                  ${SG_INCLUDE_PATH}/geo/Wall.h
