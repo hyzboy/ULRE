@@ -34,11 +34,11 @@ namespace hgl::graph::inline_geometry
         const uint total_segments = tooth_count * segs_per_tooth * 4;  // 4 segments per tooth (up, top, down, root)
 
         // Vertices:
-        // - Top face: center + ring of vertices
-        // - Bottom face: center + ring of vertices
-        // - Side: ring of vertices (top and bottom)
+        // - 2 face centers (top and bottom)
+        // - 2 cap rings: ring_verts each (top and bottom)
+        // - 2 side rings: ring_verts each (for proper side face normals)
         const uint ring_verts = total_segments + 1;
-        const uint numberVertices = 2 + ring_verts * 2 + ring_verts * 2;  // 2 centers + 2 cap rings + 2 side rings
+        const uint numberVertices = 2 + ring_verts * 4;  // 2 centers + 2 cap rings + 2 side rings
 
         // Indices:
         // - Top cap: tooth_count triangles
@@ -105,6 +105,8 @@ namespace hgl::graph::inline_geometry
         {
             float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
             float r = get_radius_at_angle(angle);
+            // Note: Y uses negative sine to match ULRE's coordinate system convention
+            // where the gear lies in the XY plane with Z as the height axis
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
 

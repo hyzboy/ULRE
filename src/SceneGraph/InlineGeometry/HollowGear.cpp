@@ -93,9 +93,12 @@ namespace hgl::graph::inline_geometry
         {
             float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
             float r = get_radius_at_angle(angle);
+            // Note: Y uses negative sine to match ULRE's coordinate system
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
 
+            // UV mapping: outer ring mapped to outer area of texture (0.75-1.0 range in U)
+            // This creates an annular texture region for the gear face
             builder.WriteFullVertex(x, y, half_thickness,
                                    0.0f, 0.0f, 1.0f,
                                    -sin(angle), -cos(angle), 0.0f,
@@ -109,6 +112,7 @@ namespace hgl::graph::inline_geometry
             float x = cos(angle) * inner_r;
             float y = -sin(angle) * inner_r;
 
+            // UV mapping: inner ring mapped to center area of texture (0.25-0.75 range in U)
             builder.WriteFullVertex(x, y, half_thickness,
                                    0.0f, 0.0f, 1.0f,
                                    -sin(angle), -cos(angle), 0.0f,
@@ -179,6 +183,8 @@ namespace hgl::graph::inline_geometry
             float y = -sin(angle) * inner_r;
 
             // Normal pointing inward (towards center)
+            // Note: Since vertex Y uses -sin, normal Y also uses -sin but inverted (positive)
+            // to point inward correctly
             float nx = -cos(angle);
             float ny = sin(angle);
             float nz = 0.0f;
