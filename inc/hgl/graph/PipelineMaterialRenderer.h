@@ -9,7 +9,8 @@ VK_NAMESPACE_BEGIN
 class Material;
 class Pipeline;
 class RenderCmdBuffer;
-class InstanceAssignmentBuffer;
+class TransformAssignmentBuffer;
+class MaterialInstanceAssignmentBuffer;
 class GeometryDataBuffer;
 class GeometryDrawRange;
 
@@ -56,9 +57,9 @@ private:
     uint indirect_draw_count;                   ///<累积的间接绘制数量
 
     // === 渲染辅助方法 ===
-    bool BindVAB(const DrawBatch *, InstanceAssignmentBuffer *);    ///<绑定顶点属性缓冲
+    bool BindVAB(const DrawBatch *, TransformAssignmentBuffer *, MaterialInstanceAssignmentBuffer *);    ///<绑定顶点属性缓冲
     void ProcIndirectRender(class IndirectDrawBuffer *, class IndirectDrawIndexedBuffer *);  ///<处理间接渲染
-    bool Draw(DrawBatch *, InstanceAssignmentBuffer *, class IndirectDrawBuffer *, class IndirectDrawIndexedBuffer *);  ///<绘制单个批次
+    bool Draw(DrawBatch *, TransformAssignmentBuffer *, MaterialInstanceAssignmentBuffer *, class IndirectDrawBuffer *, class IndirectDrawIndexedBuffer *);  ///<绘制单个批次
 
 public:
     PipelineMaterialRenderer(Material *m, Pipeline *p);
@@ -69,14 +70,16 @@ public:
      * @param rcb 渲染命令缓冲
      * @param batches 绘制批次数组
      * @param batch_count 批次数量
-     * @param assign_buffer 实例分配缓冲（可为空）
+     * @param transform_buffer Transform分配缓冲（可为空）
+     * @param mi_buffer 材质实例分配缓冲（可为空）
      * @param icb_draw 间接绘制缓冲（无索引）
      * @param icb_draw_indexed 间接绘制缓冲（有索引）
      */
     void Render(RenderCmdBuffer *rcb,
                 const DrawBatchArray &batches,
                 uint batch_count,
-                InstanceAssignmentBuffer *assign_buffer,
+                TransformAssignmentBuffer *transform_buffer,
+                MaterialInstanceAssignmentBuffer *mi_buffer,
                 class IndirectDrawBuffer *icb_draw,
                 class IndirectDrawIndexedBuffer *icb_draw_indexed);
 };//class PipelineMaterialRenderer

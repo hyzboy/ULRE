@@ -6,24 +6,15 @@ VK_NAMESPACE_BEGIN
 class MaterialInstance;
 
 /*
-* 渲染节点额外提供的数据
+* 渲染节点MaterialInstance数据管理
 */
-class InstanceAssignmentBuffer
+class MaterialInstanceAssignmentBuffer
 {
-    uint MaxTransformCount;
-
 private:
 
     VulkanDevice *device;
 
     Material *material;
-
-private:    //LocalToWorld矩阵数据
-
-    uint32 transform_buffer_max_count;        ///<LocalToWorld矩阵最大数量
-    DeviceBuffer *transform_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
-
-    void StatTransform(const DrawNodeList &);
 
 private:    //材质实例数据
     
@@ -38,9 +29,6 @@ private:    //分发数据
 
     uint32 node_count;                  ///<节点数量
 
-    VAB *transform_vab;                 ///<LocalToWorld矩阵ID分发数据VAB(R16UI格式)
-    VkBuffer transform_vab_buffer;      ///<LocalToWorld矩阵ID分发数据Buffer
-
     VAB *material_instance_vab;         ///<材质实例ID分发数据VAB(R16UI格式)
     VkBuffer material_instance_vab_buffer;  ///<材质实例ID分发数据Buffer
 
@@ -50,19 +38,17 @@ private:
 
 public:
 
-    const VkBuffer GetTransformVAB()const{return transform_vab_buffer;}
     const VkBuffer GetMaterialInstanceVAB()const{return material_instance_vab_buffer;}
 
-    void Bind(Material *)const;
+    void BindMaterialInstance(Material *)const;
 
 public:
 
-    InstanceAssignmentBuffer(VulkanDevice *dev,Material *);
-    ~InstanceAssignmentBuffer(){Clear();}
+    MaterialInstanceAssignmentBuffer(VulkanDevice *dev,Material *);
+    ~MaterialInstanceAssignmentBuffer(){Clear();}
 
     void WriteNode(const DrawNodeList &);
 
-    void UpdateTransformData(const DrawNodeList &,const int first,const int last);
     void UpdateMaterialInstanceData(const DrawNode *);
-};//struct InstanceAssignmentBuffer
+};//class MaterialInstanceAssignmentBuffer
 VK_NAMESPACE_END

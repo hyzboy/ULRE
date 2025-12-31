@@ -5,7 +5,8 @@
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
-#include"InstanceAssignmentBuffer.h"
+#include"TransformAssignmentBuffer.h"
+#include"MaterialInstanceAssignmentBuffer.h"
 
 VK_NAMESPACE_BEGIN
 
@@ -33,22 +34,24 @@ PipelineMaterialRenderer::~PipelineMaterialRenderer()
     SAFE_CLEAR(vab_list);
 }
 
-bool PipelineMaterialRenderer::BindVAB(const DrawBatch *batch, InstanceAssignmentBuffer *assign_buffer)
+bool PipelineMaterialRenderer::BindVAB(const DrawBatch *batch, TransformAssignmentBuffer *transform_buffer, MaterialInstanceAssignmentBuffer *mi_buffer)
 {
     vab_list->Restart();
 
     if (!vab_list->Add(batch->geom_data_buffer))
         return false;
 
-    // 如果有实例分配缓冲（LocalToWorld/MI数据），需要绑定两个独立的VAB
-    if (assign_buffer)
+    // 如果有Transform分配缓冲，绑定Transform索引VAB
+    if (transform_buffer)
     {
-        // 绑定Transform索引VAB
-        if (!vab_list->Add(assign_buffer->GetTransformVAB(), 0))
+        if (!vab_list->Add(transform_buffer->GetTransformVAB(), 0))
             return false;
+    }
 
-        // 绑定MaterialInstance索引VAB
-        if (!vab_list->Add(assign_buffer->GetMaterialInstanceVAB(), 0))
+    // 如果有MaterialInstance分配缓冲，绑定MaterialInstance索引VAB
+    if (mi_buffer)
+    {
+        if (!vab_list->Add(mi_buffer->GetMaterialInstanceVAB(), 0))
             return false;
     }
 
@@ -74,7 +77,8 @@ void PipelineMaterialRenderer::ProcIndirectRender(IndirectDrawBuffer *icb_draw,
 }
 
 bool PipelineMaterialRenderer::Draw(DrawBatch *batch,
-                                     InstanceAssignmentBuffer *assign_buffer,
+                                     TransformAssignmentBuffer *transform_buffer,
+                                     MaterialInstanceAssignmentBuffer *mi_buffer,
                                      IndirectDrawBuffer *icb_draw,
                                      IndirectDrawIndexedBuffer *icb_draw_indexed)
 {
@@ -93,7 +97,7 @@ bool PipelineMaterialRenderer::Draw(DrawBatch *batch,
         last_draw_range = nullptr;
 
         // 绑定新的顶点数组缓冲
-        if (!BindVAB(batch, assign_buffer))
+        if (!BindVAB(batch, transform_buffer, mi_buffer))
             return false;
 
         // 如果有索引缓冲，也需要绑定
@@ -123,7 +127,8 @@ bool PipelineMaterialRenderer::Draw(DrawBatch *batch,
 void PipelineMaterialRenderer::Render(RenderCmdBuffer *rcb,
                                        const DrawBatchArray &batches,
                                        uint batch_count,
-                                       InstanceAssignmentBuffer *assign_buffer,
+                                       TransformAssignmentBuffer *transform_buffer,
+                                       MaterialInstanceAssignmentBuffer *mi_buffer,
                                        IndirectDrawBuffer *icb_draw,
                                        IndirectDrawIndexedBuffer *icb_draw_indexed)
 {
@@ -141,9 +146,13 @@ void PipelineMaterialRenderer::Render(RenderCmdBuffer *rcb,
     last_vdm = nullptr;
     last_draw_range = nullptr;
 
-    // 绑定实例分配缓冲（如果有）
-    if (assign_buffer)
-        assign_buffer->Bind(material);
+    // 绑定Transform分配缓冲（如果有）
+    if (transform_buffer)
+        transform_buffer->BindTransform(material);
+    
+    // 绑定MaterialInstance分配缓冲（如果有）
+    if (mi_buffer)
+        mi_buffer->BindMaterialInstance(material);
 
     // 绑定材质描述符集
     cmd_buf->BindDescriptorSets(material);
@@ -152,7 +161,7 @@ void PipelineMaterialRenderer::Render(RenderCmdBuffer *rcb,
     DrawBatch *batch = const_cast<DrawBatch *>(batches.GetData());
     for (uint i = 0; i < batch_count; i++)
     {
-        Draw(batch, assign_buffer, icb_draw, icb_draw_indexed);
+        Draw(batch, transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
         ++batch;
     }
     
