@@ -102,6 +102,26 @@ Renderable component for static mesh rendering:
 - **Integration**: Works with RenderCollector and World systems
 - **Simple Design**: Single class (no separate Data/Manager), derived from RenderableComponent
 
+### 10. MaterialBatch (`MaterialBatch.h/cpp`)
+Material batching system for efficient rendering:
+- **Indirect Rendering Support**: Uses Vulkan indirect draw commands for optimal performance
+  - `IndirectDrawBuffer` - For non-indexed geometry
+  - `IndirectDrawIndexedBuffer` - For indexed geometry
+- **Draw Call Batching**: Merges render items with same geometry and material
+- **Batch Building**: Automatically constructs optimized draw batches
+  - Merges consecutive items with identical geometry data
+  - Generates indirect draw commands in GPU memory
+  - Supports both indexed and non-indexed rendering
+- **Renderer Integration**: Uses `PipelineMaterialRenderer` for actual rendering
+- **Transform Management**: Placeholder support for `TransformAssignmentBuffer` (LocalToWorld matrices)
+- **Material Instance Management**: Placeholder support for `MaterialInstanceAssignmentBuffer`
+- **Features**:
+  - Automatic buffer allocation (power-of-2 sizing)
+  - Reuses buffers when possible to reduce allocations
+  - Sorts items for optimal cache usage
+  - Handles both direct and indirect rendering paths
+- **Design Pattern**: Similar to SceneGraph's `PipelineMaterialBatch` for consistency
+
 ## Usage Example
 
 ```cpp
@@ -189,13 +209,32 @@ const auto& maxPoints = bboxStorage->GetAllMaxPoints();
 
 // Collect visible entities (with frustum culling and distance sorting)
 renderCollector->CollectRenderables();
+
+// Access material batches (optimized for indirect rendering)
+const auto& materialBatches = renderCollector->GetMaterialBatches();
+for (const auto& [key, batch] : materialBatches) {
+    // Each batch contains render items with the same material/pipeline
+    // Internally uses indirect draw commands for efficient GPU rendering
+    std::cout << "Batch has " << batch->GetCount() << " items\n";
+}
+
+// Or access raw render items
 const auto& renderItems = renderCollector->GetRenderItems();
 for (const auto& item : renderItems) {
-    if (item.isVisible) {
-        // Render the item
-        item.renderable->Render(item.worldMatrix);
+    if (item->isVisible) {
+        // Each item has been sorted and batched
+        // Render using batch system for best performance
     }
 }
+
+// Render all collected items (uses indirect rendering internally)
+hgl::graph::RenderCmdBuffer* cmdBuffer = GetCommandBuffer();
+renderCollector->Render(cmdBuffer);
+// This will:
+// 1. Bind pipeline and material for each batch
+// 2. Build indirect draw commands in GPU memory
+// 3. Submit batched indirect draws (vkCmdDrawIndirect/vkCmdDrawIndexedIndirect)
+// 4. Minimize state changes and draw call overhead
 
 // Game loop
 float deltaTime = 0.016f; // 16ms = 60 FPS
