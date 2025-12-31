@@ -5,18 +5,18 @@
 // 1. 创建ECS World和Entity
 // 2. 使用TransformComponent管理空间变换
 // 3. 使用PrimitiveComponent管理渲染图元
-// 4. ECS与传统渲染系统的集成
+// 4. 使用ECS RenderCollector进行实际渲染（不再依赖传统渲染系统）
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/component/PrimitiveComponent.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/RenderCollector.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -52,8 +52,9 @@ private:
     // ECS组件
     std::shared_ptr<ECSContext>  ecs_world      =nullptr;
     std::shared_ptr<Entity> triangle_entity     =nullptr;
+    RenderCollector* render_collector           =nullptr;
 
-    // 传统渲染资源
+    // 渲染资源
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         prim_triangle       =nullptr;
     Pipeline *          pipeline            =nullptr;
@@ -117,11 +118,35 @@ private:
         // 初始化世界 - 这会初始化所有注册的System
         ecs_world->Initialize();
 
-        // === 步骤2: 创建Entity ===
+        // === 步骤2: 注册并初始化RenderCollector系统 ===
+        // RenderCollector负责收集所有可渲染的Entity并进行批次渲染
+        render_collector = ecs_world->RegisterSystem<RenderCollector>();
+        render_collector->SetWorld(ecs_world);
+        render_collector->SetDevice(GetDevice());
+        render_collector->Initialize();
+
+        // 配置相机信息（使用正交投影的2D相机）
+        CameraInfo camera;
+        const auto ext = GetExtent();
+        camera.position = glm::vec3(0.0f, 0.0f, 10.0f);
+        camera.forward = glm::vec3(0.0f, 0.0f, -1.0f);
+        
+        // 创建正交投影矩阵以匹配屏幕空间
+        camera.viewMatrix = glm::mat4(1.0f);  // 单位矩阵（无变换）
+        camera.projectionMatrix = glm::ortho(
+            0.0f, static_cast<float>(ext->width),   // left, right
+            0.0f, static_cast<float>(ext->height),  // bottom, top
+            0.1f, 100.0f                            // near, far
+        );
+        camera.UpdateViewProjection();
+        
+        render_collector->SetCameraInfo(&camera);
+
+        // === 步骤3: 创建Entity ===
         // Entity是游戏对象的容器，本身不包含数据，只是Component的集合
         triangle_entity = ecs_world->CreateEntity<Entity>("TriangleEntity");
 
-        // === 步骤3: 添加TransformComponent ===
+        // === 步骤4: 添加TransformComponent ===
         // TransformComponent管理空间变换（位置、旋转、缩放）
         // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
         auto transform = triangle_entity->AddComponent<TransformComponent>();
@@ -132,21 +157,15 @@ private:
         // 设置为静态对象 - 系统会缓存世界矩阵，提高性能
         transform->SetMovable(false);
 
-        // === 步骤4: 添加ECS PrimitiveComponent ===
+        // === 步骤5: 添加ECS PrimitiveComponent ===
         // 新的ECS PrimitiveComponent用于管理渲染图元
         // 注意：需要明确使用hgl::ecs命名空间，因为有两个PrimitiveComponent
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetPrimitive(prim_triangle);
         ecs_primitive->SetVisible(true);
 
-        // === 步骤5: 集成传统渲染系统 ===
-        // 由于新的ECS PrimitiveComponent尚未完全集成到渲染管线，
-        // 我们同时使用传统的Component系统来实现实际渲染
-        // 这展示了如何在过渡期同时使用两个系统
-        // 
-        // CreateComponent会将Primitive添加到场景图，由SceneRenderer自动渲染
-        CreateComponentInfo cci(GetWorldRootNode());
-        CreateComponent<component::PrimitiveComponent>(&cci, prim_triangle);
+        // === 现在完全使用ECS渲染系统 ===
+        // 不再需要传统的Component系统，RenderCollector会自动收集并渲染ECS Entity
 
         return true;
     }
@@ -178,6 +197,22 @@ public:
         }
 
         WorkObject::Tick(delta_time);
+    }
+
+    void Draw(RenderCmdBuffer* cmd_buf) override
+    {
+        // === 使用ECS RenderCollector进行渲染 ===
+        if(render_collector)
+        {
+            // 收集所有可渲染的Entity
+            render_collector->CollectRenderables();
+            
+            // 渲染收集到的Entity（使用间接渲染和批次优化）
+            render_collector->Render(cmd_buf);
+        }
+
+        // 调用基类Draw以处理其他渲染任务
+        WorkObject::Draw(cmd_buf);
     }
 
     ~TestApp()
