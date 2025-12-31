@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/ecs/MaterialPipelineKey.h>
+#include<hgl/graph/PipelineMaterialRenderer.h>
 #include<vector>
 
 namespace hgl
@@ -10,6 +11,10 @@ namespace hgl
         class CameraInfo;
         class RenderCmdBuffer;
         class VulkanDevice;
+        class IndirectDrawBuffer;
+        class IndirectDrawIndexedBuffer;
+        class TransformAssignmentBuffer;
+        class MaterialInstanceAssignmentBuffer;
     }
 }
 
@@ -23,6 +28,7 @@ namespace hgl::ecs
      * Similar to hgl::graph::PipelineMaterialBatch
      * 
      * Manages rendering of all items with the same material/pipeline combination
+     * Supports both direct and indirect rendering
      */
     class MaterialBatch
     {
@@ -32,16 +38,37 @@ namespace hgl::ecs
         const graph::CameraInfo* cameraInfo;
         graph::VulkanDevice* device;
 
+        // === Indirect rendering support ===
+        graph::IndirectDrawBuffer* icb_draw;               ///<间接绘制命令缓冲（无索引）
+        graph::IndirectDrawIndexedBuffer* icb_draw_indexed;///<间接绘制命令缓冲（有索引）
+        
+        // === Instance data management ===
+        graph::TransformAssignmentBuffer* transform_buffer;          ///<Transform分配缓冲
+        graph::MaterialInstanceAssignmentBuffer* mi_buffer;          ///<材质实例分配缓冲
+        
+        // === Draw batches ===
+        graph::DrawBatchArray draw_batches;                ///<绘制批次数组
+        uint32_t draw_batches_count;                       ///<有效批次数量
+        
+        // === Renderer ===
+        graph::PipelineMaterialRenderer* renderer;         ///<渲染器实例
+
+        // === Batch building helper methods ===
+        void ReallocICB();                          ///<重新分配间接绘制缓冲
+        void WriteICB(VkDrawIndirectCommand*, graph::DrawBatch*);
+        void WriteICB(VkDrawIndexedIndirectCommand*, graph::DrawBatch*);
+        void BuildBatches();                        ///<构建绘制批次和间接命令
+
     public:
         MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev = nullptr);
-        ~MaterialBatch() = default;
+        ~MaterialBatch();
 
         void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
         void SetDevice(graph::VulkanDevice* dev) { device = dev; }
         
         void Clear() { items.clear(); }
         void AddItem(RenderItem* item);
-        void Finalize();  // Sort and prepare for rendering
+        void Finalize();  // Sort and prepare for rendering (builds indirect commands)
         
         /// Render all items in this batch
         void Render(graph::RenderCmdBuffer* cmdBuffer);
