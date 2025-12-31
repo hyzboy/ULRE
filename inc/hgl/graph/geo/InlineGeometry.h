@@ -720,6 +720,22 @@ namespace hgl::graph
          * 用途：装饰元素、飘带、奖章、礼品包装
          */
         Geometry *CreateRibbon(GeometryCreater *pc, const RibbonCreateInfo *rci);
+
+        struct PhoneShapedBoxCreateInfo
+        {
+            Vector3f size = Vector3f(1.0f, 1.0f, 0.1f);  // 盒子尺寸 (宽,高,厚)
+            float    xy_edge_radius = 0.1f;              // XY平面边缘圆角半径 (大圆角)
+            float    z_edge_radius = 0.01f;              // Z轴边缘圆角半径 (小圆角)
+            uint     xy_edge_segments = 8;               // XY平面圆角细分段数
+            uint     z_edge_segments = 2;                // Z轴圆角细分段数
+        };
+
+        /**
+         * 创建一个手机形状的盒子(三角形)
+         * 用途：手机造型、平板设备、类iPhone设计
+         * 特点：XY平面大圆角，Z轴方向小圆角，类似现代智能手机外形
+         */
+        Geometry *CreatePhoneShapedBox(GeometryCreater *pc, const PhoneShapedBoxCreateInfo *psci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph
