@@ -75,7 +75,8 @@ namespace hgl::graph::inline_geometry
             // Tangent (derivative of position)
             float dx = 1.0f;
             float dy = wave_amplitude * wave_frequency * 2.0f * math::pi * cos(t * wave_frequency * 2.0f * math::pi);
-            Vector3f tangent = normalize(Vector3f(dx, dy, 0.0f));
+            float t_len = sqrtf(dx * dx + dy * dy);
+            Vector3f tangent(dx / t_len, dy / t_len, 0.0f);
             
             // Twist angle
             float twist_angle = twist_turns * 2.0f * math::pi * t;
@@ -95,10 +96,25 @@ namespace hgl::graph::inline_geometry
                 initial_normal.z * cos_twist - initial_binormal.z * sin_twist
             );
             
-            Vector3f binormal = cross(tangent, normal);
-            normal = cross(binormal, tangent); // Reorthogonalize
+            // Cross product: binormal = tangent × normal
+            Vector3f binormal(
+                tangent.y * normal.z - tangent.z * normal.y,
+                tangent.z * normal.x - tangent.x * normal.z,
+                tangent.x * normal.y - tangent.y * normal.x
+            );
             
-            return {Vector3f(x, y, z), tangent, normalize(normal), normalize(binormal)};
+            // Normalize binormal
+            float b_len = sqrtf(binormal.x * binormal.x + binormal.y * binormal.y + binormal.z * binormal.z);
+            binormal.x /= b_len;
+            binormal.y /= b_len;
+            binormal.z /= b_len;
+            
+            // Reorthogonalize normal = binormal × tangent
+            normal.x = binormal.y * tangent.z - binormal.z * tangent.y;
+            normal.y = binormal.z * tangent.x - binormal.x * tangent.z;
+            normal.z = binormal.x * tangent.y - binormal.y * tangent.x;
+            
+            return {Vector3f(x, y, z), tangent, normal, binormal};
         };
 
         // Generate top surface vertices
@@ -108,12 +124,24 @@ namespace hgl::graph::inline_geometry
             auto [pos, tangent, normal, binormal] = calc_ribbon_frame(t);
             
             // Left edge of top surface
-            Vector3f v_left = pos - binormal * half_width + normal * half_thickness;
-            builder.WriteFullVertex(v_left, normal, tangent, 0.0f, t);
+            float v_left_x = pos.x - binormal.x * half_width + normal.x * half_thickness;
+            float v_left_y = pos.y - binormal.y * half_width + normal.y * half_thickness;
+            float v_left_z = pos.z - binormal.z * half_width + normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_left_x, v_left_y, v_left_z,
+                                   normal.x, normal.y, normal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   0.0f, t);
             
             // Right edge of top surface
-            Vector3f v_right = pos + binormal * half_width + normal * half_thickness;
-            builder.WriteFullVertex(v_right, normal, tangent, 1.0f, t);
+            float v_right_x = pos.x + binormal.x * half_width + normal.x * half_thickness;
+            float v_right_y = pos.y + binormal.y * half_width + normal.y * half_thickness;
+            float v_right_z = pos.z + binormal.z * half_width + normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_right_x, v_right_y, v_right_z,
+                                   normal.x, normal.y, normal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   1.0f, t);
         }
 
         // Generate bottom surface vertices
@@ -122,15 +150,25 @@ namespace hgl::graph::inline_geometry
             float t = float(i) / float(segments);
             auto [pos, tangent, normal, binormal] = calc_ribbon_frame(t);
             
-            Vector3f bottom_normal = -normal;
-            
             // Left edge of bottom surface
-            Vector3f v_left = pos - binormal * half_width - normal * half_thickness;
-            builder.WriteFullVertex(v_left, bottom_normal, tangent, 0.0f, t);
+            float v_left_x = pos.x - binormal.x * half_width - normal.x * half_thickness;
+            float v_left_y = pos.y - binormal.y * half_width - normal.y * half_thickness;
+            float v_left_z = pos.z - binormal.z * half_width - normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_left_x, v_left_y, v_left_z,
+                                   -normal.x, -normal.y, -normal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   0.0f, t);
             
             // Right edge of bottom surface
-            Vector3f v_right = pos + binormal * half_width - normal * half_thickness;
-            builder.WriteFullVertex(v_right, bottom_normal, tangent, 1.0f, t);
+            float v_right_x = pos.x + binormal.x * half_width - normal.x * half_thickness;
+            float v_right_y = pos.y + binormal.y * half_width - normal.y * half_thickness;
+            float v_right_z = pos.z + binormal.z * half_width - normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_right_x, v_right_y, v_right_z,
+                                   -normal.x, -normal.y, -normal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   1.0f, t);
         }
 
         // Generate left edge vertices
@@ -140,15 +178,25 @@ namespace hgl::graph::inline_geometry
             float t = float(i) / float(segments);
             auto [pos, tangent, normal, binormal] = calc_ribbon_frame(t);
             
-            Vector3f left_normal = -binormal;
-            
             // Top edge of left side
-            Vector3f v_top = pos - binormal * half_width + normal * half_thickness;
-            builder.WriteFullVertex(v_top, left_normal, tangent, t, 1.0f);
+            float v_top_x = pos.x - binormal.x * half_width + normal.x * half_thickness;
+            float v_top_y = pos.y - binormal.y * half_width + normal.y * half_thickness;
+            float v_top_z = pos.z - binormal.z * half_width + normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_top_x, v_top_y, v_top_z,
+                                   -binormal.x, -binormal.y, -binormal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   t, 1.0f);
             
             // Bottom edge of left side
-            Vector3f v_bottom = pos - binormal * half_width - normal * half_thickness;
-            builder.WriteFullVertex(v_bottom, left_normal, tangent, t, 0.0f);
+            float v_bottom_x = pos.x - binormal.x * half_width - normal.x * half_thickness;
+            float v_bottom_y = pos.y - binormal.y * half_width - normal.y * half_thickness;
+            float v_bottom_z = pos.z - binormal.z * half_width - normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_bottom_x, v_bottom_y, v_bottom_z,
+                                   -binormal.x, -binormal.y, -binormal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   t, 0.0f);
         }
 
         // Generate right edge vertices
@@ -158,124 +206,152 @@ namespace hgl::graph::inline_geometry
             float t = float(i) / float(segments);
             auto [pos, tangent, normal, binormal] = calc_ribbon_frame(t);
             
-            Vector3f right_normal = binormal;
-            
             // Top edge of right side
-            Vector3f v_top = pos + binormal * half_width + normal * half_thickness;
-            builder.WriteFullVertex(v_top, right_normal, tangent, t, 1.0f);
+            float v_top_x = pos.x + binormal.x * half_width + normal.x * half_thickness;
+            float v_top_y = pos.y + binormal.y * half_width + normal.y * half_thickness;
+            float v_top_z = pos.z + binormal.z * half_width + normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_top_x, v_top_y, v_top_z,
+                                   binormal.x, binormal.y, binormal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   t, 1.0f);
             
             // Bottom edge of right side
-            Vector3f v_bottom = pos + binormal * half_width - normal * half_thickness;
-            builder.WriteFullVertex(v_bottom, right_normal, tangent, t, 0.0f);
+            float v_bottom_x = pos.x + binormal.x * half_width - normal.x * half_thickness;
+            float v_bottom_y = pos.y + binormal.y * half_width - normal.y * half_thickness;
+            float v_bottom_z = pos.z + binormal.z * half_width - normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v_bottom_x, v_bottom_y, v_bottom_z,
+                                   binormal.x, binormal.y, binormal.z,
+                                   tangent.x, tangent.y, tangent.z,
+                                   t, 0.0f);
         }
 
         // Generate front cap vertices (t=0)
         uint cap_base = right_base + right_verts;
         {
             auto [pos, tangent, normal, binormal] = calc_ribbon_frame(0.0f);
-            Vector3f cap_normal = -tangent;
             
-            Vector3f v0 = pos - binormal * half_width + normal * half_thickness;
-            Vector3f v1 = pos + binormal * half_width + normal * half_thickness;
-            Vector3f v2 = pos + binormal * half_width - normal * half_thickness;
-            Vector3f v3 = pos - binormal * half_width - normal * half_thickness;
+            float v0_x = pos.x - binormal.x * half_width + normal.x * half_thickness;
+            float v0_y = pos.y - binormal.y * half_width + normal.y * half_thickness;
+            float v0_z = pos.z - binormal.z * half_width + normal.z * half_thickness;
             
-            builder.WriteFullVertex(v0, cap_normal, binormal, 0.0f, 1.0f);
-            builder.WriteFullVertex(v1, cap_normal, binormal, 1.0f, 1.0f);
-            builder.WriteFullVertex(v2, cap_normal, binormal, 1.0f, 0.0f);
-            builder.WriteFullVertex(v3, cap_normal, binormal, 0.0f, 0.0f);
+            float v1_x = pos.x + binormal.x * half_width + normal.x * half_thickness;
+            float v1_y = pos.y + binormal.y * half_width + normal.y * half_thickness;
+            float v1_z = pos.z + binormal.z * half_width + normal.z * half_thickness;
+            
+            float v2_x = pos.x + binormal.x * half_width - normal.x * half_thickness;
+            float v2_y = pos.y + binormal.y * half_width - normal.y * half_thickness;
+            float v2_z = pos.z + binormal.z * half_width - normal.z * half_thickness;
+            
+            float v3_x = pos.x - binormal.x * half_width - normal.x * half_thickness;
+            float v3_y = pos.y - binormal.y * half_width - normal.y * half_thickness;
+            float v3_z = pos.z - binormal.z * half_width - normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v0_x, v0_y, v0_z, -tangent.x, -tangent.y, -tangent.z, binormal.x, binormal.y, binormal.z, 0.0f, 1.0f);
+            builder.WriteFullVertex(v1_x, v1_y, v1_z, -tangent.x, -tangent.y, -tangent.z, binormal.x, binormal.y, binormal.z, 1.0f, 1.0f);
+            builder.WriteFullVertex(v2_x, v2_y, v2_z, -tangent.x, -tangent.y, -tangent.z, binormal.x, binormal.y, binormal.z, 1.0f, 0.0f);
+            builder.WriteFullVertex(v3_x, v3_y, v3_z, -tangent.x, -tangent.y, -tangent.z, binormal.x, binormal.y, binormal.z, 0.0f, 0.0f);
         }
 
         // Generate back cap vertices (t=1)
         {
             auto [pos, tangent, normal, binormal] = calc_ribbon_frame(1.0f);
-            Vector3f cap_normal = tangent;
             
-            Vector3f v0 = pos - binormal * half_width + normal * half_thickness;
-            Vector3f v1 = pos + binormal * half_width + normal * half_thickness;
-            Vector3f v2 = pos + binormal * half_width - normal * half_thickness;
-            Vector3f v3 = pos - binormal * half_width - normal * half_thickness;
+            float v0_x = pos.x - binormal.x * half_width + normal.x * half_thickness;
+            float v0_y = pos.y - binormal.y * half_width + normal.y * half_thickness;
+            float v0_z = pos.z - binormal.z * half_width + normal.z * half_thickness;
             
-            builder.WriteFullVertex(v0, cap_normal, binormal, 0.0f, 1.0f);
-            builder.WriteFullVertex(v1, cap_normal, binormal, 1.0f, 1.0f);
-            builder.WriteFullVertex(v2, cap_normal, binormal, 1.0f, 0.0f);
-            builder.WriteFullVertex(v3, cap_normal, binormal, 0.0f, 0.0f);
+            float v1_x = pos.x + binormal.x * half_width + normal.x * half_thickness;
+            float v1_y = pos.y + binormal.y * half_width + normal.y * half_thickness;
+            float v1_z = pos.z + binormal.z * half_width + normal.z * half_thickness;
+            
+            float v2_x = pos.x + binormal.x * half_width - normal.x * half_thickness;
+            float v2_y = pos.y + binormal.y * half_width - normal.y * half_thickness;
+            float v2_z = pos.z + binormal.z * half_width - normal.z * half_thickness;
+            
+            float v3_x = pos.x - binormal.x * half_width - normal.x * half_thickness;
+            float v3_y = pos.y - binormal.y * half_width - normal.y * half_thickness;
+            float v3_z = pos.z - binormal.z * half_width - normal.z * half_thickness;
+            
+            builder.WriteFullVertex(v0_x, v0_y, v0_z, tangent.x, tangent.y, tangent.z, binormal.x, binormal.y, binormal.z, 0.0f, 1.0f);
+            builder.WriteFullVertex(v1_x, v1_y, v1_z, tangent.x, tangent.y, tangent.z, binormal.x, binormal.y, binormal.z, 1.0f, 1.0f);
+            builder.WriteFullVertex(v2_x, v2_y, v2_z, tangent.x, tangent.y, tangent.z, binormal.x, binormal.y, binormal.z, 1.0f, 0.0f);
+            builder.WriteFullVertex(v3_x, v3_y, v3_z, tangent.x, tangent.y, tangent.z, binormal.x, binormal.y, binormal.z, 0.0f, 0.0f);
         }
 
         // Generate indices
-        uint idx = 0;
-        
-        // Top surface
-        for(uint i = 0; i < segments; i++)
+        const IndexType index_type = pc->GetIndexType();
+
+        auto generate_indices = [&](auto *ip) -> void
         {
-            uint base = i * 2;
-            builder.WriteIndex(idx++, base + 0);
-            builder.WriteIndex(idx++, base + 2);
-            builder.WriteIndex(idx++, base + 1);
+            using IndexT = typename std::remove_pointer<decltype(ip)>::type;
             
-            builder.WriteIndex(idx++, base + 1);
-            builder.WriteIndex(idx++, base + 2);
-            builder.WriteIndex(idx++, base + 3);
-        }
-        
-        // Bottom surface
-        uint bottom_base = top_verts;
-        for(uint i = 0; i < segments; i++)
+            // Top surface
+            for(uint i = 0; i < segments; i++)
+            {
+                IndexT base = i * 2;
+                *ip++ = base + 0; *ip++ = base + 2; *ip++ = base + 1;
+                *ip++ = base + 1; *ip++ = base + 2; *ip++ = base + 3;
+            }
+            
+            // Bottom surface
+            IndexT bottom_base = top_verts;
+            for(uint i = 0; i < segments; i++)
+            {
+                IndexT base = bottom_base + i * 2;
+                *ip++ = base + 0; *ip++ = base + 1; *ip++ = base + 2;
+                *ip++ = base + 1; *ip++ = base + 3; *ip++ = base + 2;
+            }
+            
+            // Left edge
+            for(uint i = 0; i < segments; i++)
+            {
+                IndexT base = left_base + i * 2;
+                *ip++ = base + 0; *ip++ = base + 1; *ip++ = base + 2;
+                *ip++ = base + 1; *ip++ = base + 3; *ip++ = base + 2;
+            }
+            
+            // Right edge
+            for(uint i = 0; i < segments; i++)
+            {
+                IndexT base = right_base + i * 2;
+                *ip++ = base + 0; *ip++ = base + 2; *ip++ = base + 1;
+                *ip++ = base + 1; *ip++ = base + 2; *ip++ = base + 3;
+            }
+            
+            // Front cap
+            *ip++ = cap_base + 0; *ip++ = cap_base + 1; *ip++ = cap_base + 2;
+            *ip++ = cap_base + 0; *ip++ = cap_base + 2; *ip++ = cap_base + 3;
+            
+            // Back cap
+            *ip++ = cap_base + 4; *ip++ = cap_base + 6; *ip++ = cap_base + 5;
+            *ip++ = cap_base + 4; *ip++ = cap_base + 7; *ip++ = cap_base + 6;
+        };
+
+        if(index_type == IndexType::U16)
         {
-            uint base = bottom_base + i * 2;
-            builder.WriteIndex(idx++, base + 0);
-            builder.WriteIndex(idx++, base + 1);
-            builder.WriteIndex(idx++, base + 2);
-            
-            builder.WriteIndex(idx++, base + 1);
-            builder.WriteIndex(idx++, base + 3);
-            builder.WriteIndex(idx++, base + 2);
+            IBTypeMap<uint16> ib(pc->GetIBMap());
+            uint16 *ip = ib;
+            generate_indices(ip);
         }
-        
-        // Left edge
-        for(uint i = 0; i < segments; i++)
+        else if(index_type == IndexType::U32)
         {
-            uint base = left_base + i * 2;
-            builder.WriteIndex(idx++, base + 0);
-            builder.WriteIndex(idx++, base + 1);
-            builder.WriteIndex(idx++, base + 2);
-            
-            builder.WriteIndex(idx++, base + 1);
-            builder.WriteIndex(idx++, base + 3);
-            builder.WriteIndex(idx++, base + 2);
+            IBTypeMap<uint32> ib(pc->GetIBMap());
+            uint32 *ip = ib;
+            generate_indices(ip);
         }
-        
-        // Right edge
-        for(uint i = 0; i < segments; i++)
+        else if(index_type == IndexType::U8)
         {
-            uint base = right_base + i * 2;
-            builder.WriteIndex(idx++, base + 0);
-            builder.WriteIndex(idx++, base + 2);
-            builder.WriteIndex(idx++, base + 1);
-            
-            builder.WriteIndex(idx++, base + 1);
-            builder.WriteIndex(idx++, base + 2);
-            builder.WriteIndex(idx++, base + 3);
+            IBTypeMap<uint8> ib(pc->GetIBMap());
+            uint8 *ip = ib;
+            generate_indices(ip);
         }
-        
-        // Front cap
-        builder.WriteIndex(idx++, cap_base + 0);
-        builder.WriteIndex(idx++, cap_base + 1);
-        builder.WriteIndex(idx++, cap_base + 2);
-        builder.WriteIndex(idx++, cap_base + 0);
-        builder.WriteIndex(idx++, cap_base + 2);
-        builder.WriteIndex(idx++, cap_base + 3);
-        
-        // Back cap
-        builder.WriteIndex(idx++, cap_base + 4);
-        builder.WriteIndex(idx++, cap_base + 6);
-        builder.WriteIndex(idx++, cap_base + 5);
-        builder.WriteIndex(idx++, cap_base + 4);
-        builder.WriteIndex(idx++, cap_base + 7);
-        builder.WriteIndex(idx++, cap_base + 6);
+        else
+            return nullptr;
 
         // Set bounding box (conservative estimate)
-        Geometry *p = pc->End();
+        Geometry *p = pc->Create();
         if(p)
         {
             float max_y = wave_amplitude + half_width;

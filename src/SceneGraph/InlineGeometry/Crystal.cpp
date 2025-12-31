@@ -14,10 +14,10 @@ namespace hgl::graph::inline_geometry
 
         const float base_radius = cci->base_radius;
         const float height = cci->height;
-        const float tip_sharpness = clamp(cci->tip_sharpness, 0.001f, 1.0f);
+        const float tip_sharpness = std::min(std::max(cci->tip_sharpness, 0.001f), 1.0f);
         const uint sides = std::max<uint>(3, cci->sides);
         const uint segments = std::max<uint>(1, cci->segments);
-        const float irregularity = clamp(cci->irregularity, 0.0f, 0.5f);
+        const float irregularity = std::min(std::max(cci->irregularity, 0.0f), 0.5f);
 
         // Validate parameters
         if(base_radius <= 0.0f || height <= 0.0f)
@@ -134,76 +134,123 @@ namespace hgl::graph::inline_geometry
                 float z = sin_a * r;
                 
                 // Calculate face normal (average of adjacent face normals)
-                Vector3f p0(x, y, z);
+                float p0_x = x, p0_y = y, p0_z = z;
                 
                 // Get neighbor points for normal calculation
                 float r_next = radius * (1.0f + (hash_float((i+1) * 137 + ring * 73) - 0.5f) * irregularity * 2.0f);
-                Vector3f p1(cos_next * r_next, y, sin_next * r_next);
+                float p1_x = cos_next * r_next;
+                float p1_y = y;
+                float p1_z = sin_next * r_next;
                 
                 float y_up = (ring < rings) ? height * float(ring + 1) / float(rings) : y;
                 float r_up = (ring < rings) ? (base_radius * (1.0f - t - 1.0f/rings) + tip_radius * (t + 1.0f/rings)) * radius_adjust : 0.0f;
-                Vector3f p2(cos_a * r_up, y_up, sin_a * r_up);
+                float p2_x = cos_a * r_up;
+                float p2_y = y_up;
+                float p2_z = sin_a * r_up;
                 
-                // Calculate outward normal
-                Vector3f edge1 = p1 - p0;
-                Vector3f edge2 = p2 - p0;
-                Vector3f normal = normalize(cross(edge1, edge2));
+                // Calculate outward normal (edge1 × edge2)
+                float edge1_x = p1_x - p0_x;
+                float edge1_y = p1_y - p0_y;
+                float edge1_z = p1_z - p0_z;
+                
+                float edge2_x = p2_x - p0_x;
+                float edge2_y = p2_y - p0_y;
+                float edge2_z = p2_z - p0_z;
+                
+                float normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
+                float normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
+                float normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
+                
+                // Normalize
+                float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+                if(normal_len > 0.0001f)
+                {
+                    normal_x /= normal_len;
+                    normal_y /= normal_len;
+                    normal_z /= normal_len;
+                }
                 
                 float u = float(i) / float(sides);
                 float v = 1.0f - t;
                 
                 builder.WriteFullVertex(x, y, z,
-                                       normal.x, normal.y, normal.z,
+                                       normal_x, normal_y, normal_z,
                                        1.0f, 0.0f, 0.0f,
                                        u, v);
             }
         }
 
         // Generate indices
-        uint idx = 0;
-        
-        // Base cap
-        for(uint i = 0; i < sides; i++)
         {
-            builder.WriteIndex(idx++, 0);                // center
-            builder.WriteIndex(idx++, 1 + i);           // current
-            builder.WriteIndex(idx++, 1 + (i + 1) % sides); // next
-        }
-        
-        // Side quads
-        uint side_base = base_cap_verts;
-        for(uint ring = 0; ring < rings - 1; ring++)
-        {
-            for(uint i = 0; i < sides; i++)
+            const IndexType index_type = pc->GetIndexType();
+            
+            auto generate_indices = [&](auto *ip)
             {
-                uint current = side_base + ring * sides + i;
-                uint next = side_base + ring * sides + (i + 1) % sides;
-                uint current_up = side_base + (ring + 1) * sides + i;
-                uint next_up = side_base + (ring + 1) * sides + (i + 1) % sides;
+                // Base cap
+                for(uint i = 0; i < sides; i++)
+                {
+                    *ip++ = 0;                      // center
+                    *ip++ = 1 + i;                  // current
+                    *ip++ = 1 + (i + 1) % sides;    // next
+                }
                 
-                // Quad as two triangles
-                builder.WriteIndex(idx++, current);
-                builder.WriteIndex(idx++, current_up);
-                builder.WriteIndex(idx++, next);
+                // Side quads
+                uint side_base = base_cap_verts;
+                for(uint ring = 0; ring < rings - 1; ring++)
+                {
+                    for(uint i = 0; i < sides; i++)
+                    {
+                        uint current = side_base + ring * sides + i;
+                        uint next = side_base + ring * sides + (i + 1) % sides;
+                        uint current_up = side_base + (ring + 1) * sides + i;
+                        uint next_up = side_base + (ring + 1) * sides + (i + 1) % sides;
+                        
+                        // Quad as two triangles
+                        *ip++ = current;
+                        *ip++ = current_up;
+                        *ip++ = next;
+                        
+                        *ip++ = next;
+                        *ip++ = current_up;
+                        *ip++ = next_up;
+                    }
+                }
                 
-                builder.WriteIndex(idx++, next);
-                builder.WriteIndex(idx++, current_up);
-                builder.WriteIndex(idx++, next_up);
+                // Tip triangles
+                uint last_ring_base = side_base + (rings - 1) * sides;
+                uint tip_ring_base = side_base + rings * sides;
+                for(uint i = 0; i < sides; i++)
+                {
+                    *ip++ = last_ring_base + i;
+                    *ip++ = tip_ring_base + i;
+                    *ip++ = last_ring_base + (i + 1) % sides;
+                }
+            };
+
+            if(index_type == IndexType::U16)
+            {
+                IBTypeMap<uint16> ib(pc->GetIBMap());
+                uint16 *ip = ib;
+                generate_indices(ip);
             }
-        }
-        
-        // Tip triangles
-        uint last_ring_base = side_base + (rings - 1) * sides;
-        uint tip_ring_base = side_base + rings * sides;
-        for(uint i = 0; i < sides; i++)
-        {
-            builder.WriteIndex(idx++, last_ring_base + i);
-            builder.WriteIndex(idx++, tip_ring_base + i);
-            builder.WriteIndex(idx++, last_ring_base + (i + 1) % sides);
+            else if(index_type == IndexType::U32)
+            {
+                IBTypeMap<uint32> ib(pc->GetIBMap());
+                uint32 *ip = ib;
+                generate_indices(ip);
+            }
+            else if(index_type == IndexType::U8)
+            {
+                IBTypeMap<uint8> ib(pc->GetIBMap());
+                uint8 *ip = ib;
+                generate_indices(ip);
+            }
+            else
+                return nullptr;
         }
 
-        // Set bounding box
-        Geometry *p = pc->End();
+        // Create geometry and set bounding box
+        Geometry *p = pc->Create();
         if(p)
         {
             float max_radius = base_radius * (1.0f + irregularity);

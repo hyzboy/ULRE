@@ -61,78 +61,137 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         // Helper to write a box face
-        auto write_quad_face = [&](const Vector3f &v0, const Vector3f &v1, 
-                                   const Vector3f &v2, const Vector3f &v3,
-                                   const Vector3f &normal)
+        auto write_quad_face = [&](float x0, float y0, float z0,
+                                   float x1, float y1, float z1,
+                                   float x2, float y2, float z2,
+                                   float x3, float y3, float z3,
+                                   float nx, float ny, float nz)
         {
-            // Calculate UVs based on position
-            builder.WriteFullVertex(v0, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.0f, 0.0f);
-            builder.WriteFullVertex(v1, normal, Vector3f(1.0f, 0.0f, 0.0f), 1.0f, 0.0f);
-            builder.WriteFullVertex(v2, normal, Vector3f(1.0f, 0.0f, 0.0f), 1.0f, 1.0f);
-            builder.WriteFullVertex(v3, normal, Vector3f(1.0f, 0.0f, 0.0f), 0.0f, 1.0f);
+            // Tangent is along the first edge
+            float tx = x1 - x0;
+            float ty = y1 - y0;
+            float tz = z1 - z0;
+            float tlen = sqrtf(tx*tx + ty*ty + tz*tz);
+            if(tlen > 0.0001f)
+            {
+                tx /= tlen;
+                ty /= tlen;
+                tz /= tlen;
+            }
+
+            if(builder.HasTangents())
+            {
+                builder.WriteFullVertex(x0, y0, z0, nx, ny, nz, tx, ty, tz, 0.0f, 0.0f);
+                builder.WriteFullVertex(x1, y1, z1, nx, ny, nz, tx, ty, tz, 1.0f, 0.0f);
+                builder.WriteFullVertex(x2, y2, z2, nx, ny, nz, tx, ty, tz, 1.0f, 1.0f);
+                builder.WriteFullVertex(x3, y3, z3, nx, ny, nz, tx, ty, tz, 0.0f, 1.0f);
+            }
+            else
+            {
+                builder.WriteVertex(x0, y0, z0);
+                builder.WriteNormal(nx, ny, nz);
+                builder.WriteTexCoord(0.0f, 0.0f);
+
+                builder.WriteVertex(x1, y1, z1);
+                builder.WriteNormal(nx, ny, nz);
+                builder.WriteTexCoord(1.0f, 0.0f);
+
+                builder.WriteVertex(x2, y2, z2);
+                builder.WriteNormal(nx, ny, nz);
+                builder.WriteTexCoord(1.0f, 1.0f);
+
+                builder.WriteVertex(x3, y3, z3);
+                builder.WriteNormal(nx, ny, nz);
+                builder.WriteTexCoord(0.0f, 1.0f);
+            }
         };
 
-        // Vertical beam vertices (centered on Y axis)
-        Vector3f v_corners[8] = {
-            Vector3f(-half_thickness, v_bottom, -half_depth), // 0: bottom-left-back
-            Vector3f(half_thickness, v_bottom, -half_depth),  // 1: bottom-right-back
-            Vector3f(half_thickness, v_bottom, half_depth),   // 2: bottom-right-front
-            Vector3f(-half_thickness, v_bottom, half_depth),  // 3: bottom-left-front
-            Vector3f(-half_thickness, v_top, -half_depth),    // 4: top-left-back
-            Vector3f(half_thickness, v_top, -half_depth),     // 5: top-right-back
-            Vector3f(half_thickness, v_top, half_depth),      // 6: top-right-front
-            Vector3f(-half_thickness, v_top, half_depth)      // 7: top-left-front
-        };
+        // Vertical beam corners
+        const float vx0 = -half_thickness, vx1 = half_thickness;
+        const float vy0 = v_bottom, vy1 = v_top;
+        const float vz0 = -half_depth, vz1 = half_depth;
 
         // Vertical beam faces
-        write_quad_face(v_corners[0], v_corners[1], v_corners[2], v_corners[3], Vector3f(0.0f, -1.0f, 0.0f)); // Bottom
-        write_quad_face(v_corners[4], v_corners[7], v_corners[6], v_corners[5], Vector3f(0.0f, 1.0f, 0.0f));  // Top
-        write_quad_face(v_corners[0], v_corners[3], v_corners[7], v_corners[4], Vector3f(-1.0f, 0.0f, 0.0f)); // Left
-        write_quad_face(v_corners[1], v_corners[5], v_corners[6], v_corners[2], Vector3f(1.0f, 0.0f, 0.0f));  // Right
-        write_quad_face(v_corners[0], v_corners[4], v_corners[5], v_corners[1], Vector3f(0.0f, 0.0f, -1.0f)); // Back
-        write_quad_face(v_corners[3], v_corners[2], v_corners[6], v_corners[7], Vector3f(0.0f, 0.0f, 1.0f));  // Front
+        // Bottom face (Y-)
+        write_quad_face(vx0, vy0, vz0,  vx1, vy0, vz0,  vx1, vy0, vz1,  vx0, vy0, vz1,  0.0f, -1.0f, 0.0f);
+        // Top face (Y+)
+        write_quad_face(vx0, vy1, vz1,  vx1, vy1, vz1,  vx1, vy1, vz0,  vx0, vy1, vz0,  0.0f, 1.0f, 0.0f);
+        // Left face (X-)
+        write_quad_face(vx0, vy0, vz1,  vx0, vy0, vz0,  vx0, vy1, vz0,  vx0, vy1, vz1,  -1.0f, 0.0f, 0.0f);
+        // Right face (X+)
+        write_quad_face(vx1, vy0, vz0,  vx1, vy0, vz1,  vx1, vy1, vz1,  vx1, vy1, vz0,  1.0f, 0.0f, 0.0f);
+        // Back face (Z-)
+        write_quad_face(vx1, vy0, vz0,  vx0, vy0, vz0,  vx0, vy1, vz0,  vx1, vy1, vz0,  0.0f, 0.0f, -1.0f);
+        // Front face (Z+)
+        write_quad_face(vx0, vy0, vz1,  vx1, vy0, vz1,  vx1, vy1, vz1,  vx0, vy1, vz1,  0.0f, 0.0f, 1.0f);
 
-        // Horizontal beam vertices (centered on h_center_y)
-        Vector3f h_corners[8] = {
-            Vector3f(-half_h_length, h_center_y - half_thickness, -half_depth), // 0: left-bottom-back
-            Vector3f(half_h_length, h_center_y - half_thickness, -half_depth),  // 1: right-bottom-back
-            Vector3f(half_h_length, h_center_y - half_thickness, half_depth),   // 2: right-bottom-front
-            Vector3f(-half_h_length, h_center_y - half_thickness, half_depth),  // 3: left-bottom-front
-            Vector3f(-half_h_length, h_center_y + half_thickness, -half_depth), // 4: left-top-back
-            Vector3f(half_h_length, h_center_y + half_thickness, -half_depth),  // 5: right-top-back
-            Vector3f(half_h_length, h_center_y + half_thickness, half_depth),   // 6: right-top-front
-            Vector3f(-half_h_length, h_center_y + half_thickness, half_depth)   // 7: left-top-front
-        };
+        // Horizontal beam corners
+        const float hx0 = -half_h_length, hx1 = half_h_length;
+        const float hy0 = h_center_y - half_thickness, hy1 = h_center_y + half_thickness;
+        const float hz0 = -half_depth, hz1 = half_depth;
 
         // Horizontal beam faces
-        write_quad_face(h_corners[0], h_corners[1], h_corners[2], h_corners[3], Vector3f(0.0f, -1.0f, 0.0f)); // Bottom
-        write_quad_face(h_corners[4], h_corners[7], h_corners[6], h_corners[5], Vector3f(0.0f, 1.0f, 0.0f));  // Top
-        write_quad_face(h_corners[0], h_corners[3], h_corners[7], h_corners[4], Vector3f(-1.0f, 0.0f, 0.0f)); // Left
-        write_quad_face(h_corners[1], h_corners[5], h_corners[6], h_corners[2], Vector3f(1.0f, 0.0f, 0.0f));  // Right
-        write_quad_face(h_corners[0], h_corners[4], h_corners[5], h_corners[1], Vector3f(0.0f, 0.0f, -1.0f)); // Back
-        write_quad_face(h_corners[3], h_corners[2], h_corners[6], h_corners[7], Vector3f(0.0f, 0.0f, 1.0f));  // Front
+        // Bottom face (Y-)
+        write_quad_face(hx0, hy0, hz0,  hx1, hy0, hz0,  hx1, hy0, hz1,  hx0, hy0, hz1,  0.0f, -1.0f, 0.0f);
+        // Top face (Y+)
+        write_quad_face(hx0, hy1, hz1,  hx1, hy1, hz1,  hx1, hy1, hz0,  hx0, hy1, hz0,  0.0f, 1.0f, 0.0f);
+        // Left face (X-)
+        write_quad_face(hx0, hy0, hz1,  hx0, hy0, hz0,  hx0, hy1, hz0,  hx0, hy1, hz1,  -1.0f, 0.0f, 0.0f);
+        // Right face (X+)
+        write_quad_face(hx1, hy0, hz0,  hx1, hy0, hz1,  hx1, hy1, hz1,  hx1, hy1, hz0,  1.0f, 0.0f, 0.0f);
+        // Back face (Z-)
+        write_quad_face(hx1, hy0, hz0,  hx0, hy0, hz0,  hx0, hy1, hz0,  hx1, hy1, hz0,  0.0f, 0.0f, -1.0f);
+        // Front face (Z+)
+        write_quad_face(hx0, hy0, hz1,  hx1, hy0, hz1,  hx1, hy1, hz1,  hx0, hy1, hz1,  0.0f, 0.0f, 1.0f);
 
         // Generate indices for quads (2 triangles per quad, 6 quads per box, 2 boxes)
-        uint idx = 0;
-        for(uint box = 0; box < 2; box++)
         {
-            uint base = box * 24;
-            for(uint face = 0; face < 6; face++)
+            const IndexType index_type = pc->GetIndexType();
+            
+            auto generate_indices = [&](auto *ip)
             {
-                uint face_base = base + face * 4;
-                // First triangle
-                builder.WriteIndex(idx++, face_base + 0);
-                builder.WriteIndex(idx++, face_base + 1);
-                builder.WriteIndex(idx++, face_base + 2);
-                // Second triangle
-                builder.WriteIndex(idx++, face_base + 0);
-                builder.WriteIndex(idx++, face_base + 2);
-                builder.WriteIndex(idx++, face_base + 3);
+                for(uint box = 0; box < 2; box++)
+                {
+                    uint base = box * 24;
+                    for(uint face = 0; face < 6; face++)
+                    {
+                        uint face_base = base + face * 4;
+                        // First triangle
+                        *ip++ = face_base + 0;
+                        *ip++ = face_base + 1;
+                        *ip++ = face_base + 2;
+                        // Second triangle
+                        *ip++ = face_base + 0;
+                        *ip++ = face_base + 2;
+                        *ip++ = face_base + 3;
+                    }
+                }
+            };
+
+            if(index_type == IndexType::U16)
+            {
+                IBTypeMap<uint16> ib(pc->GetIBMap());
+                uint16 *ip = ib;
+                generate_indices(ip);
             }
+            else if(index_type == IndexType::U32)
+            {
+                IBTypeMap<uint32> ib(pc->GetIBMap());
+                uint32 *ip = ib;
+                generate_indices(ip);
+            }
+            else if(index_type == IndexType::U8)
+            {
+                IBTypeMap<uint8> ib(pc->GetIBMap());
+                uint8 *ip = ib;
+                generate_indices(ip);
+            }
+            else
+                return nullptr;
         }
 
-        // Set bounding box
-        Geometry *p = pc->End();
+        // Create geometry and set bounding box
+        Geometry *p = pc->Create();
         if(p)
         {
             BoundingVolumes bv;

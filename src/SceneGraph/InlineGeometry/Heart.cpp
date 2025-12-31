@@ -241,18 +241,22 @@ namespace hgl::graph::inline_geometry
         Geometry *p = pc->Create();
 
         // Set bounding box
-        // Calculate actual bounds from the heart shape
-        // The parametric heart curve has specific mathematical bounds:
-        // X: approximately ±16 (scaled by size/16)
-        // Y: approximately -4 to 17 (scaled by size/16)
-        float max_x = size * (16.0f / 16.0f);      // ±1.0 * size
-        float max_y = size * (17.0f / 16.0f);      // ~1.06 * size
-        float min_y = size * (-4.0f / 16.0f);      // ~-0.25 * size
-        
-        bv.SetFromAABB(math::Vector3f(-max_x, min_y, -half_depth),
-                       Vector3f(max_x, max_y, half_depth));
+        if(p)
+        {
+            // Calculate actual bounds from the heart shape
+            // The parametric heart curve has specific mathematical bounds:
+            // X: approximately ±16 (scaled by size/16)
+            // Y: approximately -4 to 17 (scaled by size/16)
+            float max_x = size * (16.0f / 16.0f);      // ±1.0 * size
+            float max_y = size * (17.0f / 16.0f);      // ~1.06 * size
+            float min_y = size * (-4.0f / 16.0f);      // ~-0.25 * size
+            
+            BoundingVolumes bv;
+            bv.SetFromAABB(Vector3f(-max_x, min_y, -half_depth),
+                           Vector3f(max_x, max_y, half_depth));
 
-        p->SetBoundingVolumes(bv);
+            p->SetBoundingVolumes(bv);
+        }
 
         return p;
     }
