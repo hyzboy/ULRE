@@ -180,7 +180,11 @@ SET(GEOMETRY_PRIMITIVES_EXTENDED InlineGeometry/Frustum.cpp
                                  InlineGeometry/Arch.cpp
                                  InlineGeometry/Tube.cpp
                                  InlineGeometry/Bolt.cpp
-                                 InlineGeometry/Nut.cpp)
+                                 InlineGeometry/Nut.cpp
+                                 InlineGeometry/Diamond.cpp
+                                 InlineGeometry/Crystal.cpp
+                                 InlineGeometry/Cross.cpp
+                                 InlineGeometry/Ribbon.cpp)
 
 SET(GEOMETRY_PRIMITIVES_ADVANCED ${SG_INCLUDE_PATH}/geo/Extruded.h
                                  ${SG_INCLUDE_PATH}/geo/Wall.h
