@@ -429,6 +429,22 @@ namespace hgl::graph
          * 用途：机械可视化、工业场景、齿轮传动系统
          */
         Geometry *CreateHollowGear(GeometryCreater *pc, const HollowGearCreateInfo *hgci);
+
+        // 新增：心形几何体创建信息
+        struct HeartCreateInfo
+        {
+            float size = 1.0f;              // 心形整体大小
+            float depth = 0.3f;             // 心形厚度（Z方向）
+            uint  segments = 32;            // 心形轮廓分段数（越大越平滑）
+            uint  depth_segments = 2;       // 厚度方向的分段数
+            bool  smooth_shading = true;    // true=平滑着色, false=平面着色
+        };
+
+        /**
+         * 创建一个心形几何体(三角形)
+         * 用途：装饰元素、游戏道具、UI图标、情人节主题
+         */
+        Geometry *CreateHeart(GeometryCreater *pc, const HeartCreateInfo *hci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph
