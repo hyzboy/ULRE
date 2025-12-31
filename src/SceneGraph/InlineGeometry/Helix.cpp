@@ -38,7 +38,7 @@ namespace hgl::graph::inline_geometry
         {
             // Wireframe: just the center line
             numberVertices = total_segs + 1;
-            numberIndices = total_segs * 2;  // LINE_STRIP would use total_segs, but we use indexed lines
+            numberIndices = total_segs * 2;  // Each line segment uses 2 indices
         }
 
         if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
