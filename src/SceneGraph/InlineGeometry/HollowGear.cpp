@@ -97,12 +97,15 @@ namespace hgl::graph::inline_geometry
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
 
-            // UV mapping: outer ring mapped to outer area of texture (0.75-1.0 range in U)
-            // This creates an annular texture region for the gear face
+            // UV mapping: outer ring normalized to [0,1] then scaled to fit texture
+            // Simple radial mapping: center at (0.5, 0.5), radius scales to 0.5
+            float u = 0.5f + (x / outer_r) * 0.5f;
+            float v = 0.5f + (y / outer_r) * 0.5f;
+
             builder.WriteFullVertex(x, y, half_thickness,
                                    0.0f, 0.0f, 1.0f,
                                    -sin(angle), -cos(angle), 0.0f,
-                                   0.75f + x / (outer_r * 4.0f), 0.5f - y / (outer_r * 4.0f));
+                                   u, v);
         }
 
         // Top face - inner ring
@@ -112,11 +115,14 @@ namespace hgl::graph::inline_geometry
             float x = cos(angle) * inner_r;
             float y = -sin(angle) * inner_r;
 
-            // UV mapping: inner ring mapped to center area of texture (0.25-0.75 range in U)
+            // UV mapping: inner ring also uses radial mapping from center
+            float u = 0.5f + (x / outer_r) * 0.5f;
+            float v = 0.5f + (y / outer_r) * 0.5f;
+
             builder.WriteFullVertex(x, y, half_thickness,
                                    0.0f, 0.0f, 1.0f,
                                    -sin(angle), -cos(angle), 0.0f,
-                                   0.5f + x / (outer_r * 4.0f), 0.5f - y / (outer_r * 4.0f));
+                                   u, v);
         }
 
         // Bottom face - outer ring
@@ -127,10 +133,13 @@ namespace hgl::graph::inline_geometry
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
 
+            float u = 0.5f + (x / outer_r) * 0.5f;
+            float v = 0.5f + (y / outer_r) * 0.5f;
+
             builder.WriteFullVertex(x, y, -half_thickness,
                                    0.0f, 0.0f, -1.0f,
                                    sin(angle), cos(angle), 0.0f,
-                                   0.75f + x / (outer_r * 4.0f), 0.5f - y / (outer_r * 4.0f));
+                                   u, v);
         }
 
         // Bottom face - inner ring
@@ -140,10 +149,13 @@ namespace hgl::graph::inline_geometry
             float x = cos(angle) * inner_r;
             float y = -sin(angle) * inner_r;
 
+            float u = 0.5f + (x / outer_r) * 0.5f;
+            float v = 0.5f + (y / outer_r) * 0.5f;
+
             builder.WriteFullVertex(x, y, -half_thickness,
                                    0.0f, 0.0f, -1.0f,
                                    sin(angle), cos(angle), 0.0f,
-                                   0.5f + x / (outer_r * 4.0f), 0.5f - y / (outer_r * 4.0f));
+                                   u, v);
         }
 
         // Outer side vertices
@@ -183,8 +195,9 @@ namespace hgl::graph::inline_geometry
             float y = -sin(angle) * inner_r;
 
             // Normal pointing inward (towards center)
-            // Note: Since vertex Y uses -sin, normal Y also uses -sin but inverted (positive)
-            // to point inward correctly
+            // For inward normals: negate both X and Y components of outward normal
+            // Outward normal: (cos(angle), -sin(angle), 0)
+            // Inward normal: (-cos(angle), sin(angle), 0)
             float nx = -cos(angle);
             float ny = sin(angle);
             float nz = 0.0f;
