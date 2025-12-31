@@ -98,9 +98,9 @@ namespace hgl::graph::inline_geometry
 
                 if(tp)
                 {
-                    glusQuaternionRotateRzf(helpQuaternion, 360.0f * s);
-                    glusQuaternionGetMatrix4x4f(helpMatrix, helpQuaternion);
-                    glusMatrix4x4MultiplyVector3f(tp, helpMatrix, helpVector);
+                    QuaternionRotateZ(helpQuaternion, 360.0f * s);
+                    QuaternionToMatrix(helpMatrix, helpQuaternion);
+                    MatrixMultiplyVector3(tp, helpMatrix, helpVector);
                     tp+=3;
                 }
             }
@@ -108,9 +108,9 @@ namespace hgl::graph::inline_geometry
 
         // indices: reuse torus indices generator
         const IndexType index_type = pc->GetIndexType();
-        if(index_type==IndexType::U16) CreateTorusIndices<uint16>(pc, numberSlices, numberStacks); else
-        if(index_type==IndexType::U32) CreateTorusIndices<uint32>(pc, numberSlices, numberStacks); else
-        if(index_type==IndexType::U8 ) CreateTorusIndices<uint8 >(pc, numberSlices, numberStacks); else
+        if(index_type==IndexType::U16) IndexGenerator::CreateTorusIndices<uint16>(pc, numberSlices, numberStacks); else
+        if(index_type==IndexType::U32) IndexGenerator::CreateTorusIndices<uint32>(pc, numberSlices, numberStacks); else
+        if(index_type==IndexType::U8 ) IndexGenerator::CreateTorusIndices<uint8 >(pc, numberSlices, numberStacks); else
             return nullptr;
 
         Primitive *p = pc->Create();

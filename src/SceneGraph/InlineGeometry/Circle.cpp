@@ -116,9 +116,9 @@ namespace hgl::graph::inline_geometry
         {
             IBMap *ib_map = pc->GetIBMap();
 
-            if(pc->GetIndexType() == IndexType::U16)WriteIBO<uint16>((uint16 *)(ib_map->Map()),0,vertex_count);else
-                if(pc->GetIndexType() == IndexType::U32)WriteIBO<uint32>((uint32 *)(ib_map->Map()),0,vertex_count);else
-                    if(pc->GetIndexType() == IndexType::U8)WriteIBO<uint8 >((uint8 *)(ib_map->Map()),0,vertex_count);
+            if(pc->GetIndexType() == IndexType::U16)IndexGenerator::WriteSequentialIndices<uint16>((uint16 *)(ib_map->Map()),0,vertex_count);else
+                if(pc->GetIndexType() == IndexType::U32)IndexGenerator::WriteSequentialIndices<uint32>((uint32 *)(ib_map->Map()),0,vertex_count);else
+                    if(pc->GetIndexType() == IndexType::U8)IndexGenerator::WriteSequentialIndices<uint8 >((uint8 *)(ib_map->Map()),0,vertex_count);
 
             ib_map->Unmap();
         }
@@ -165,9 +165,9 @@ namespace hgl::graph::inline_geometry
         {
             IBMap *ib_map = pc->GetIBMap();
 
-            if(pc->GetIndexType() == IndexType::U16)WriteCircleIBO<uint16>((uint16 *)(ib_map->Map()),cci->field_count);else
-                if(pc->GetIndexType() == IndexType::U32)WriteCircleIBO<uint32>((uint32 *)(ib_map->Map()),cci->field_count);else
-                    if(pc->GetIndexType() == IndexType::U8)WriteCircleIBO<uint8 >((uint8 *)(ib_map->Map()),cci->field_count);
+            if(pc->GetIndexType() == IndexType::U16)IndexGenerator::WriteCircleIndices<uint16>((uint16 *)(ib_map->Map()),cci->field_count);else
+                if(pc->GetIndexType() == IndexType::U32)IndexGenerator::WriteCircleIndices<uint32>((uint32 *)(ib_map->Map()),cci->field_count);else
+                    if(pc->GetIndexType() == IndexType::U8)IndexGenerator::WriteCircleIndices<uint8 >((uint8 *)(ib_map->Map()),cci->field_count);
 
             ib_map->Unmap();
         }
