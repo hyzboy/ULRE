@@ -1,9 +1,7 @@
-﻿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
-#define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVertexInputLayout.h>
-#include<hgl/type/SortedSets.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -32,18 +30,17 @@ public:
 
     const VkShaderStageFlagBits             GetStage        ()const{return stage_create_info->stage;}
 
-    const bool                              IsVertex        ()const{return stage_create_info->stage==VK_SHADER_STAGE_VERTEX_BIT;}
-    const bool                              IsTessControl   ()const{return stage_create_info->stage==VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;}
-    const bool                              IsTessEval      ()const{return stage_create_info->stage==VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;}
-    const bool                              IsGeometry      ()const{return stage_create_info->stage==VK_SHADER_STAGE_GEOMETRY_BIT;}
-    const bool                              IsFragment      ()const{return stage_create_info->stage==VK_SHADER_STAGE_FRAGMENT_BIT;}
-    const bool                              IsCompute       ()const{return stage_create_info->stage==VK_SHADER_STAGE_COMPUTE_BIT;}
-    const bool                              IsTask          ()const{return stage_create_info->stage==VK_SHADER_STAGE_TASK_BIT_NV;}
-    const bool                              IsMesh          ()const{return stage_create_info->stage==VK_SHADER_STAGE_MESH_BIT_NV;}
+    const bool                              IsVertex        ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Vertex;}
+    const bool                              IsTessControl   ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::TessControl;}
+    const bool                              IsTessEval      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::TessEval;}
+    const bool                              IsGeometry      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Geometry;}
+    const bool                              IsFragment      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Fragment;}
+    const bool                              IsCompute       ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Compute;}
+    const bool                              IsTask          ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Task;}
+    const bool                              IsMesh          ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Mesh;}
 
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
 
     operator VkShaderModule                                 ()const{return stage_create_info->module;}
 };//class ShaderModule
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE

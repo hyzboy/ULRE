@@ -1,6 +1,5 @@
 ﻿#include"VKTextureLoader.h"
 #include<hgl/io/FileInputStream.h>
-#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 template<> void VkTextureLoader<TextureCube,TextureCubeLoader>::OnExtent(VkExtent3D &extent)
@@ -12,16 +11,19 @@ template<> void VkTextureLoader<TextureCube,TextureCubeLoader>::OnExtent(VkExten
 
 template<> TextureCube *VkTextureLoader<TextureCube,TextureCubeLoader>::OnCreateTexture(TextureCreateInfo *tci)
 {
-    return device->CreateTextureCube(tci);
+    return tex_manager->CreateTextureCube(tci);
 }
 
-TextureCube *CreateTextureCubeFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps)
+TextureCube *CreateTextureCubeFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps)
 {
-    VkTextureLoader<TextureCube,TextureCubeLoader> loader(device,auto_mipmaps);
+    if(!tm||filename.IsEmpty())
+        return(nullptr);
+
+    VkTextureLoader<TextureCube,TextureCubeLoader> loader(tm,auto_mipmaps);
 
     if(!loader.Load(filename))
         return(nullptr);
 
-    return loader.GetTexture();
+    return loader.CreateTexture(loader.GetFileHeader(),loader.GetTextureFormat(),loader.GetZeroMipmapBytes());
 }
 VK_NAMESPACE_END

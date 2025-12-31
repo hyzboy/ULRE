@@ -2,18 +2,20 @@
 #include<hgl/graph/VKDeviceAttribute.h>
 
 VK_NAMESPACE_BEGIN
-GPUCmdBuffer::GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb)
+VulkanCmdBuffer::VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb)
 {
     dev_attr=attr;
     cmd_buf=cb;
+
+    cmd_begin=false;
 }
 
-GPUCmdBuffer::~GPUCmdBuffer()
+VulkanCmdBuffer::~VulkanCmdBuffer()
 {
     vkFreeCommandBuffers(dev_attr->device,dev_attr->cmd_pool,1,&cmd_buf);
 }
 
-bool GPUCmdBuffer::Begin()
+bool VulkanCmdBuffer::Begin()
 {
     CommandBufferBeginInfo cmd_buf_info;
     
@@ -22,33 +24,25 @@ bool GPUCmdBuffer::Begin()
     if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)
         return(false);
 
+    cmd_begin=true;
     return(true);
 }
 
 #ifdef _DEBUG
-void GPUCmdBuffer::SetDebugName(const UTF8String &object_name)
+void VulkanCmdBuffer::SetDebugName(const AnsiString &object_name)
 {
-    if(dev_attr->debug_maker)
-        dev_attr->debug_maker->SetCommandBuffer(cmd_buf,"[debug_maker]"+object_name);
-    
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->SetCommandBuffer(cmd_buf,"[debug_utils]"+object_name);
+        dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name);
 }
 
-void GPUCmdBuffer::BeginRegion(const UTF8String &region_name,const Color4f &color)
+void VulkanCmdBuffer::BeginRegion(const AnsiString &region_name,const Color4f &color)
 {
-    if(dev_attr->debug_maker)
-        dev_attr->debug_maker->Begin(cmd_buf,"[debug_maker]"+region_name,color);
-
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->CmdBegin(cmd_buf,"[debug_utils]"+region_name,color);
+        dev_attr->debug_utils->CmdBegin(cmd_buf,region_name,color);
 }
 
-void GPUCmdBuffer::EndRegion()
+void VulkanCmdBuffer::EndRegion()
 {
-    if(dev_attr->debug_maker)
-        dev_attr->debug_maker->End(cmd_buf);
-
     if(dev_attr->debug_utils)
         dev_attr->debug_utils->CmdEnd(cmd_buf);
 }

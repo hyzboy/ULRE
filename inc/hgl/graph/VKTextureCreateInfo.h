@@ -20,19 +20,19 @@ struct TextureCreateInfo
     VkImageLayout       image_layout;
 
     VkImage             image;          //如果没有IMAGE，则创建。（交换链等会直接提供image，所以存在外部传入现像)
-    DeviceMemory *         memory;         //同时需分配内存并绑定
+    DeviceMemory *      memory;         //同时需分配内存并绑定
 
     ImageView *         image_view;     //如果没有imageview，则创建
 
     void *              pixels;         //如果没有buffer但有pixels，则根据pixels和以上条件创建buffer
     VkDeviceSize        total_bytes;
-    DeviceBuffer *         buffer;         //如果pixels也没有，则代表不会立即写入图像数据
+    DeviceBuffer *      buffer;         //如果pixels也没有，则代表不会立即写入图像数据
 
 public:
 
     TextureCreateInfo()
     {
-        hgl_zero(*this);        
+        mem_zero(*this);        
     }
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img):TextureCreateInfo()
@@ -292,7 +292,7 @@ struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 
 struct TextureData
 {
-    DeviceMemory *         memory;
+    DeviceMemory *      memory;
     VkImage             image;
     VkImageLayout       image_layout;
     ImageView *         image_view;
@@ -303,7 +303,7 @@ public:
 
     TextureData()
     {
-        hgl_zero(*this);
+        mem_zero(*this);
     }
 
     TextureData(const TextureCreateInfo *tci)

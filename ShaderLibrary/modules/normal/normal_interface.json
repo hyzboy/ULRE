@@ -1,0 +1,24 @@
+﻿{
+  "modules": {
+    "vertex_normal": {
+      "file": "vertex_normal.glsl",
+      "provides": ["GetNormal"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal"],
+        "descriptors": []
+      },
+      "dependencies": []
+    },
+    "normal_map": {
+      "file": "normal_map.glsl",
+      "provides": ["GetNormal"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal", "Tangent", "TexCoord"],
+        "descriptors": ["normalMap"]
+      },
+      "dependencies": []
+    }
+  }
+}

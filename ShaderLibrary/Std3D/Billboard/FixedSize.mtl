@@ -1,0 +1,82 @@
+#Material
+Name BillboardFixedSize
+Base Std3D/Billboard
+
+#VertexInput
+vec2 TexCoord
+
+#MaterialInstance
+Length 8
+Stage  Vertex
+
+Code
+{
+    uvec2 BillboardSize;
+}
+
+#Vertex
+Output
+{
+    vec2 BillboardSize
+}
+
+Code
+{
+    void main()
+    {
+        MaterialInstance mi=GetMI();
+
+        Output.BillboardSize=mi.BillboardSize/viewport.canvas_resolution;
+
+        gl_Position=GetPosition3D();
+        gl_Position/=gl_Position.w;
+    }
+}
+
+#Geometry
+Output
+{
+    vec2 TexCoord
+}
+
+Code
+{
+    void main()
+    {
+        const vec2 BillboardVertex[4]=vec2[]
+        (
+            vec2(-0.5,-0.5),
+            vec2(-0.5, 0.5),
+            vec2( 0.5,-0.5),
+            vec2( 0.5, 0.5)
+        );
+
+        for(int i=0;i<4;i++)
+        {
+            gl_Position=gl_in[0].gl_Position;
+            gl_Position.xy+=BillboardVertex[i]*Input[0].BillboardSize;
+
+            Output.TexCoord=BillboardVertex[i]+vec2(0.5);
+
+            EmitVertex();
+        }
+        EndPrimitive();
+    }
+}
+
+#Fragment
+
+sampler2D TextureBaseColor
+
+Output
+{
+    vec4 FragColor;
+}
+
+Code
+{
+    void main()
+    {
+        FragColor=texture(TextureBaseColor,Input.TexCoord);
+    }
+}

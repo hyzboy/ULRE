@@ -1,71 +1,56 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKMaterialParameters.h>
-#include<hgl/graph/VKShaderModule.h>
+#include<hgl/type/ActiveMemoryBlockManager.h>
 
 VK_NAMESPACE_BEGIN
-MaterialInstance *GPUDevice::CreateMI(Material *mtl,const VILConfig *vil_cfg)
+MaterialInstance *Material::CreateMI(const VIL *vil)
 {
-    if(!mtl)return(nullptr);
+    int mi_id=-1;
 
-    VIL *vil=mtl->CreateVIL(vil_cfg);
+    if(mi_data_manager)
+        mi_data_manager->GetOrCreate(&mi_id,1);
+    else 
+        mi_id=-1;
 
-    if(!vil)return(nullptr);
-
-    return(new MaterialInstance(mtl,vil));
+    return(new MaterialInstance(this,vil?vil:GetDefaultVIL(),mi_id));
 }
 
-MaterialInstance::MaterialInstance(Material *mtl,VIL *v)
+MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
+{
+    return CreateMI(CreateVIL(vil_cfg));
+}
+
+void Material::ReleaseMI(int mi_id)
+{
+    if(mi_id<0||!mi_data_manager)return;
+
+    mi_data_manager->Release(&mi_id,1);
+}
+
+void *Material::GetMIData(int id)
+{
+    if(!mi_data_manager)
+        return(nullptr);
+
+    return mi_data_manager->GetData(id);
+}
+ 
+void MaterialInstance::WriteMIData(const void *data,const uint32 size)
+{
+    if(!data||!size||size>material->GetMIDataBytes())return;
+
+    void *tp=GetMIData();
+
+    if(tp)
+        memcpy(tp,data,size);
+}
+
+MaterialInstance::MaterialInstance(Material *mtl,const VIL *v,const int id)
 {
     material=mtl;
 
     vil=v;
 
-    mp_per_mi=mtl->GetMP(DescriptorSetType::PerMaterial);
-
-    /*
-        由于PerMaterial的属性每个MaterialInstance不一样，
-        所以理论上需要在这里分配属于它自己的MP做绑定记录
-
-    */
-}
-
-bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
-{
-    MaterialParameters *mp=GetMP(type);
-        
-    if(!mp)
-        return(false);
-
-    if(!mp->BindUBO(name,ubo,dynamic))return(false);
-
-    mp->Update();
-    return(true);
-}
-
-bool MaterialInstance::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
-{
-    MaterialParameters *mp=GetMP(type);
-        
-    if(!mp)
-        return(false);
-
-    if(!mp->BindSSBO(name,ubo,dynamic))return(false);
-
-    mp->Update();
-    return(true);
-}
-
-bool MaterialInstance::BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
-{
-    MaterialParameters *mp=GetMP(type);
-        
-    if(!mp)
-        return(false);
-
-    if(!mp->BindImageSampler(name,tex,sampler))return(false);
-
-    mp->Update();
-    return(true);
+    mi_id=id;
 }
 VK_NAMESPACE_END

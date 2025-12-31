@@ -2,11 +2,23 @@
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<vulkan/vulkan.h>
+#include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/log/Logger.h>
 
 namespace hgl
 {
     namespace graph
     {
+        // ��ͬ��EShTargetLanguageVersion
+        constexpr const uint32_t SPV_VERSION_1_0 = (1 << 16);                     // SPIR-V 1.0
+        constexpr const uint32_t SPV_VERSION_1_1 = (1 << 16) | (1 << 8);          // SPIR-V 1.1
+        constexpr const uint32_t SPV_VERSION_1_2 = (1 << 16) | (2 << 8);          // SPIR-V 1.2
+        constexpr const uint32_t SPV_VERSION_1_3 = (1 << 16) | (3 << 8);          // SPIR-V 1.3
+        constexpr const uint32_t SPV_VERSION_1_4 = (1 << 16) | (4 << 8);          // SPIR-V 1.4
+        constexpr const uint32_t SPV_VERSION_1_5 = (1 << 16) | (5 << 8);          // SPIR-V 1.5
+        constexpr const uint32_t SPV_VERSION_1_6 = (1 << 16) | (6 << 8);          // SPIR-V 1.6
+
         enum class ShaderLanguageType
         {
             GLSL=0,
@@ -24,9 +36,26 @@ namespace hgl
             const char **       includes        = nullptr;
 
             const char *        preamble        = nullptr;
+
+                  uint32_t      vulkan_version  = VK_API_VERSION_1_0;
+                  uint32_t      spv_version     = SPV_VERSION_1_0;
         };
 
-        CompileInfo compile_info;
+        static CompileInfo compile_info;
+
+        void SetShaderCompilerVersion(const VulkanPhyDevice *pd)
+        {
+            const auto &pdp=pd->GetProperties();
+
+            compile_info.vulkan_version =pdp.apiVersion;
+
+            if(pdp.apiVersion>=VK_API_VERSION_1_3)compile_info.spv_version=SPV_VERSION_1_6;else
+            if(pdp.apiVersion>=VK_API_VERSION_1_2)compile_info.spv_version=SPV_VERSION_1_5;else
+            if(pd->CheckExtensionSupport(VK_KHR_SPIRV_1_4_EXTENSION_NAME))
+                                                  compile_info.spv_version=SPV_VERSION_1_4;else
+            if(pdp.apiVersion>=VK_API_VERSION_1_1)compile_info.spv_version=SPV_VERSION_1_3;else
+                                                  compile_info.spv_version=SPV_VERSION_1_0;
+        }
 
         struct SPVParseData;
 
@@ -39,8 +68,8 @@ namespace hgl
             bool        (*SetLimit)(void *,const int);
 
             uint32_t    (*GetType)(const char *ext_name);
-            SPVData *   (*Compile)(const uint32_t stage,const char *shader_source, const CompileInfo *compile_info);
-            SPVData *   (*CompileFromPath)(const uint32_t stage,const char *shader_filename, const CompileInfo *compile_info);
+            SPVData *   (*Compile)(const uint32_t stage,const char *shader_source, const CompileInfo *ci);
+            SPVData *   (*CompileFromPath)(const uint32_t stage,const char *shader_filename, const CompileInfo *ci);
 
             void        (*Free)(SPVData *);
 
@@ -48,7 +77,7 @@ namespace hgl
             void        (*FreeParseSPVData)(SPVParseData *);
         };
 
-        ExternalModule *gsi_module=nullptr;
+        static ExternalModule *gsi_module=nullptr;
 
         static GLSLCompilerInterface *gsi=nullptr;
 
@@ -66,7 +95,7 @@ namespace hgl
 
             if(!filesystem::GetCurrentPath(cur_path))
                 return(false);
-            glsl_compiler_fullname=filesystem::MergeFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
+            glsl_compiler_fullname=filesystem::JoinPathWithFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
 
             gsi_module=LoadExternalModule(glsl_compiler_fullname);
 
@@ -143,6 +172,8 @@ namespace hgl
 
             if(!result)
             {
+                GLogError("Compile shader failed, error info: "+AnsiString(spv->log));
+
                 FreeSPVData(spv);
                 return(nullptr);
             }

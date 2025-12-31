@@ -1,229 +1,248 @@
 ﻿#include<hgl/graph/font/TextRender.h>
-#include<hgl/graph/font/TextPrimitive.h>
+#include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/color/Color.h>
+#include"TextLayoutEngine.h"
 
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
+    using namespace layout;
+
+    namespace
     {
-        TextRender::TextRender(GPUDevice *dev,FontSource *fs)
+        void SetDrawStyle(TextDrawStyle &tda,const ParagraphStyle *t,const float origin_char_height)
         {
-            device=dev;
-            db=new RenderResource(device);
-            tl_engine=new TextLayout();
-            font_source=fs;
+            mem_copy(tda.para_style,*t);
+
+            mem_zero(tda.start_position);
+
+            tda.char_height     =std::ceil(origin_char_height);
+            tda.space_size      =std::ceil(origin_char_height*tda.space_size);
+            tda.full_space_size =std::ceil(origin_char_height*tda.full_space_size);
+            tda.tab_size        =std::ceil(origin_char_height*tda.tab_size);
+            tda.char_gap        =std::ceil(origin_char_height*tda.char_gap);
+            tda.line_gap        =std::ceil(origin_char_height*tda.line_gap);
+            tda.line_height     =std::ceil(origin_char_height+tda.line_gap);
+        }
+    }//namespace
+
+    TextRender::TextRender(RenderFramework *rf,TileFont *tf)
+    {
+        device=rf->GetDevice();
+
+        primitive_manager=rf->GetPrimitiveManager();
+        mtl_manager=rf->GetMaterialManager();
+        tl_engine=new layout::TextLayout(tf);
             
-            material            =nullptr;
-            material_instance   =nullptr;
-            sampler             =nullptr;
-            pipeline            =nullptr;
-            tile_font           =nullptr;    
-            ubo_color           =nullptr;
-        }
+        mtl_fs      =nullptr;
+        sampler     =nullptr;
+        pipeline    =nullptr;
+        tile_font   =tf;
 
-        TextRender::~TextRender()
-        {
-            for(TextPrimitive *tr:tr_sets)
-            {
-                tile_font->Unregistry(tr->GetCharsSets().GetList());
-                delete tr;
-            }
+        fixed_style.CharColor=GetColor4ub(COLOR::White);
 
-            tr_sets.Clear();
-            
-            SAFE_CLEAR(tl_engine);
-            SAFE_CLEAR(tile_font);
-            SAFE_CLEAR(db);
-        }
+        SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
 
-        bool TextRender::InitTileFont(int limit)
-        {
-            tile_font=device->CreateTileFont(font_source,limit);
-            return(true);
-        }
+        mi_fs=nullptr;
+    }
 
-        bool TextRender::InitTextLayoutEngine()
-        {
-            CharLayoutAttr cla;
-            TextLayoutAttribute tla;
+    void TextRender::SetFixedStyle(const layout::CharStyle &cs)
+    {
+        if(!mem_compare(fixed_style,cs))
+            return;
 
-            cla.CharColor=GetColor4f(COLOR::White,1.0);
-            cla.BackgroundColor.Zero();
+        fixed_style=cs;
+        mi_fs->WriteMIData(fixed_style);
+    }
 
-            tla.char_layout_attr=&cla;
-            tla.line_gap=0.1f;
+    void TextRender::SetParagraphStyle(const layout::ParagraphStyle *ps)
+    {
+        if(!ps)
+            return;
 
-            tl_engine->SetFont(tile_font->GetFontSource());
-            tl_engine->Set(&tla);
-            tl_engine->SetTextDirection(0);
-            tl_engine->SetAlign(TextAlign::Left);
-            tl_engine->SetMaxWidth(0);
-            tl_engine->SetMaxHeight(0);
+        if(mem_compare(para_style,*ps))
+            return;
 
-            return tl_engine->Init();
-        }
+        mem_copy(para_style,*ps);
+        SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
+    }
 
-        bool TextRender::InitUBO()
-        {
-            color.One();
-
-            ubo_color=db->CreateUBO(sizeof(Color4f),&color);
-
-            if(!ubo_color)
-                return(false);
-
-            return(true);
-        }
-
-        bool TextRender::InitMaterial(RenderPass *rp,DeviceBuffer *ubo_camera_info)
-        {
-            material=db->CreateMaterial(OS_TEXT("res/material/LumTextureRect2D"));
-
-            //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
-            {
-                VILConfig vil_config;
-
-                vil_config.Add("Position",VF_V4I16);
-
-                material_instance=db->CreateMaterialInstance(material,&vil_config);
-                if(!material_instance)return(false);
-            }
-
-            pipeline=rp->CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
-            if(!pipeline)return(false);
-
-            sampler=db->CreateSampler();
-        
-            {
-                MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
-        
-                if(!mp_global)
-                    return(false);
-
-                if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
-
-                mp_global->Update();
-            }
-
-            {
-                MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::PerMaterial);
-        
-                if(!mp)
-                    return(false);
-            
-                if(!mp->BindImageSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);
-                if(!mp->BindUBO("color_material",ubo_color))return(false);
-
-                mp->Update();
-            }
-
-            return(true);
-        }
-
-        bool TextRender::Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
-        {
-            if(!InitTileFont(limit))
-                return(false);
-
-            if(!InitTextLayoutEngine())
-                return(false);
-
-            if(!InitUBO())
-                return(false);
-
-            if(!InitMaterial(rp,ubo_camera_info))
-                return(false);
-
-            return(true);
-        }
-
-        TextPrimitive *TextRender::CreatePrimitive()
-        {   
-            TextPrimitive *tr=new TextPrimitive(device,material);
-
-            tr_sets.Add(tr);
-
-            return tr;
-        }
-
-        TextPrimitive *TextRender::CreatePrimitive(const UTF16String &str)
-        {
-            TextPrimitive *tr=CreatePrimitive();
-
-            if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
-                return(tr);
-
-            return tr;
-        }
-
-        bool TextRender::Layout(TextPrimitive *tr,const UTF16String &str)
-        {
-            if(!tr)
-                return(false);
-
-            if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
-                return(false);
-
-            return true;
-        }
-
-        Renderable *TextRender::CreateRenderable(TextPrimitive *text_primitive)
-        {
-            return db->CreateRenderable(text_primitive,material_instance,pipeline);
-        }
-
-        void TextRender::Release(TextPrimitive *tr)
-        {
-            if(!tr)return;
-
-            if(!tr_sets.Delete(tr))return;
-
-            tile_font->Unregistry(tr->GetCharsSets().GetList());
-
+    TextRender::~TextRender()
+    {
+        for(TextGeometry *tr:text_geometry_set)
             delete tr;
-        }
 
-        FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size)
+        text_geometry_set.Clear();
+           
+        SAFE_CLEAR(tl_engine);
+        SAFE_CLEAR(tile_font);
+        // render resource removed
+    }
+
+    bool TextRender::InitMaterial(RenderPass *rp)
+    {
+        mtl::Text2DMaterialCreateConfig mtl_cfg;
+
+        mtl::MaterialCreateInfo *mci=mtl::CreateText2D(device->GetDevAttr(),&mtl_cfg);
+
+        if (!mci)return(false);
+
+        mtl_fs=mtl_manager->CreateMaterial("Text2D",mci);
+
+        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
         {
-            Font eng_fnt(lf,0,size);
-            Font chs_fnt(cf,0,size);
+            VILConfig vil_config;
 
-            FontSource *eng_fs=AcquireFontSource(eng_fnt);
-            FontSource *chs_fs=AcquireFontSource(chs_fnt);
+            vil_config.Add("Position",VF_V4I16);
 
-            FontSourceMulti *font_source=new FontSourceMulti(eng_fs);
-
-            font_source->AddCJK(chs_fs);
-
-            return font_source;
+            mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style,sizeof(fixed_style));
+            if(!mi_fs)return(false);
         }
 
-        FontSource *AcquireFontSource(const os_char *name,const uint32_t size)
+        pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
+        if(!pipeline)return(false);
+
+        if(!mtl_fs->BindTextureSampler( DescriptorSetType::PerMaterial,
+                                        mtl::SamplerName::Text,
+                                        tile_font->GetTexture(),
+                                        sampler))
+            return(false);
+
+        return(true);
+    }
+
+    bool TextRender::Init(RenderPass *rp,Sampler *text_sampler)
+    {
+        sampler=text_sampler;
+
+        if(!InitMaterial(rp))
+            return(false);
+
+        return(true);
+    }
+
+    TextGeometry *TextRender::Begin(const TextGeometryType &tpt,int limit)
+    {   
+        TextGeometry *tr=new TextGeometry(device,mi_fs->GetVIL(),limit);
+
+        text_geometry_set.Add(tr);
+
+        tl_engine->Begin(tr,limit);
+
+        return tr;
+    }
+
+    bool TextRender::Layout(const layout::TEXT_COORD_VEC &start_pos,const U16StringView &str)
+    {
+        TextDrawStyle tds=text_draw_style;
+
+        tds.start_position=start_pos;
+
+        return tl_engine->AddString(str,tds);
+    }
+
+    void TextRender::End()
+    {
+        tl_engine->End();
+    }
+
+    TextGeometry *TextRender::CreateGeometry(const TextGeometryType &tpt,const U16StringView &str)
+    {
+        TextGeometry *tr=Begin(tpt,str.Length());
+
+        if(!tr)
+            return(nullptr);
+
+        if(!SimpleLayout(tr,str))
         {
-            Font fnt(name,0,size);
-
-            return AcquireFontSource(fnt);
+            delete tr;
+            return(nullptr);
         }
 
-        TextRender *CreateTextRender(GPUDevice *dev,FontSource *fs,RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
+        return tr;
+    }
+
+    bool TextRender::SimpleLayout(TextGeometry *tr,const U16StringView&str)
+    {
+        if(!tr)
+            return(false);
+
+        if(!tl_engine->Begin(tr,str.Length()))
+            return(false);
+
+        const bool result=tl_engine->AddString(str,text_draw_style);
+
+        tl_engine->End();
+
+        return(result);
+    }
+
+    Primitive *TextRender::CreatePrimitive(TextGeometry *text_geometry)
+    {
+        if(primitive_manager)
+            return primitive_manager->CreatePrimitive(text_geometry,mi_fs,pipeline);
+
+        return(nullptr);
+    }
+
+    void TextRender::Release(TextGeometry *tr)
+    {
+        if(!tr)return;
+
+        if(!text_geometry_set.Delete(tr))return;
+
+        tile_font->Unregistry(tr->GetCharsSets());
+
+        delete tr;
+    }
+
+    TextRender *RenderFramework::CreateTextRender(FontSource *font_source,const int limit)
+    {
+        if(!font_source)
+            return(nullptr);
+
+        TileFont *tile_font=CreateTileFont(font_source,limit);
+
+        RenderPass *rp=GetDefaultRenderPass();
+
+        if(!rp)
+            return(nullptr);
+
+        TextRender *text_render=new TextRender(this,tile_font);
+
+        if(!text_render)
         {
-            if(!dev||!rp||!ubo_camera_info)
-                return(nullptr);
-
-            TextRender *text_render=new TextRender(dev,fs);
-
-            if(!text_render->Init(rp,ubo_camera_info,limit))
-            {
-                delete text_render;
-                return(nullptr);
-            }
-
-            return text_render;
+            delete tile_font;
+            return(nullptr);
         }
-    }//namespace graph
-}//namespace hgl
 
+        if(!text_render->Init(rp,sampler_manager->CreateSampler()))
+        {
+            delete tile_font;
+            delete text_render;
+            return(nullptr);
+        }
+
+        return text_render;
+    }
+
+    TextRender *RenderFramework::CreateTextRender(const OSString &latin_font,const OSString &cjk_font,const int font_size,const int limit_count)
+    {
+        FontSource *fs=CreateCJKFontSource(latin_font,cjk_font,font_size);
+
+        TextRender *tr=CreateTextRender(fs,limit_count);
+
+        if(tr)
+            return tr;
+
+        delete fs;
+        return(nullptr);
+    }
+}//namespace hgl::graph

@@ -1,5 +1,7 @@
 ﻿#include<hgl/graph/font/TileFont.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/SwapchainModule.h>
 
 VK_NAMESPACE_BEGIN
 /**
@@ -7,7 +9,7 @@ VK_NAMESPACE_BEGIN
  * @param f 字体需求信息
  * @param limit_count 缓冲字符数量上限
  */
-TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
+TileFont *RenderFramework::CreateTileFont(FontSource *fs,int limit_count)
 {
     if(!fs)return(nullptr);
 
@@ -15,7 +17,13 @@ TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
 
     if(limit_count<=0)
     {
-        const VkExtent2D &ext=GetSwapchainSize();
+        VkExtent2D ext;
+
+        if(!sc_module->GetSwapchainSize(&ext))
+        {
+            ext.width=1024;
+            ext.height=1024;
+        }
 
         limit_count=(ext.width/height)*(ext.height/height);   //按全屏幕放满不一样的字符为上限
     }
@@ -23,7 +31,7 @@ TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
     if(!fs)
         return(nullptr);
 
-    TileData *td=CreateTileData(UPF_R8,height,height,limit_count);
+    TileData *td=tex_manager->CreateTileData(UPF_R8,height,height,limit_count);
 
     if(!td)
         return nullptr;

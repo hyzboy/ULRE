@@ -5,36 +5,52 @@
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKDeviceCreater.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKDebugMaker.h>
-#include<hgl/graph/VKUUID.h>
+#include<hgl/graph/VKSurface.h>
 
 #include<iostream>
 #include<iomanip>
 
 VK_NAMESPACE_BEGIN
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
-Swapchain *CreateSwapchain(const GPUDeviceAttribute *attr,const VkExtent2D &acquire_extent);
+
+void SetShaderCompilerVersion(const VulkanPhyDevice *);
 
 #ifdef _DEBUG
-DebugMaker *CreateDebugMaker(VkDevice);
 DebugUtils *CreateDebugUtils(VkDevice);
+
+void LogSurfaceFormat(const VkSurfaceFormatKHR &sf)
+{
+    const VulkanFormat *    vf=GetVulkanFormat(sf.format);
+    const VulkanColorSpace *cs=GetVulkanColorSpace(sf.colorSpace);
+
+    std::cout<<std::setw(10)<<vf->name<<", "<<cs->name<<std::endl;
+}
+
+void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
+{
+    std::cout<<"Current physics device support "<<surface_formats_list.GetCount()<<" surface format"<<std::endl;
+
+    for(auto &sf:surface_formats_list)
+        LogSurfaceFormat(sf);
+}
 #endif//_DEBUG
 
 namespace
 {
-    void SetDeviceExtension(CharPointerList *ext_list,const GPUPhysicalDevice *physical_device)
+    void SetDeviceExtension(CharPointerList *ext_list,const VulkanPhyDevice *physical_device,const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-        constexpr char *require_ext_list[]=
+        constexpr const char *require_ext_list[]=
         {
         #ifdef _DEBUG
             VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
         #endif//_DEBUG
-//            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
-//            VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
-//            VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
 //            VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
             VK_EXT_PRIMITIVE_TOPOLOGY_LIST_RESTART_EXTENSION_NAME,
 //            VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
@@ -42,78 +58,62 @@ namespace
 //            VK_EXT_HDR_METADATA_EXTENSION_NAME,
 //            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
 //            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME,
-//            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 
 //            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
+
+            VK_KHR_SPIRV_1_4_EXTENSION_NAME,
         };
 
         for(const char *ext_name:require_ext_list)
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
+
+        if(require.lineRasterization>=VulkanHardwareRequirement::SupportLevel::Want)
+            ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
+
+        if(require.texture_compression.PVRTC>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
+            ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
+
+        if(require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
+            ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
     }
 
-    void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf)
+    void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
     {
         #define FEATURE_COPY(name)  features->name=pdf.name;
+        #define REQURE_FEATURE_COPY(name) if(require.name>=VulkanHardwareRequirement::SupportLevel::Want)features->name=pdf.name;
+        #define REQURE_TEXTURE_FEATURE_COPY(name) if(require.texture_compression.name>=VulkanHardwareRequirement::SupportLevel::Want)features->textureCompression##name=pdf.textureCompression##name;
 
-        FEATURE_COPY(geometryShader);
         FEATURE_COPY(multiDrawIndirect);
         FEATURE_COPY(samplerAnisotropy);
 
-//        FEATURE_COPY(imageCubeArray);
-//        FEATURE_COPY(fullDrawIndexUint32);
-//        FEATURE_COPY(wideLines)
-//        FEATURE_COPY(largePoints)
+        REQURE_FEATURE_COPY(geometryShader);
 
+        REQURE_FEATURE_COPY(imageCubeArray);
+
+        REQURE_FEATURE_COPY(fullDrawIndexUint32);
+        REQURE_FEATURE_COPY(sampleRateShading);
+
+        REQURE_FEATURE_COPY(fillModeNonSolid);
+
+        REQURE_FEATURE_COPY(wideLines)
+        REQURE_FEATURE_COPY(largePoints)
+
+        REQURE_TEXTURE_FEATURE_COPY(BC);
+        REQURE_TEXTURE_FEATURE_COPY(ETC2);
+        REQURE_TEXTURE_FEATURE_COPY(ASTC_LDR);
+
+        #undef REQURE_TEXTURE_FEATURE_COPY
+        #undef REQURE_FEATURE_COPY
         #undef FEATURE_COPY
     }
 
-    VkDevice CreateDevice(VkInstance instance,const GPUPhysicalDevice *physical_device,uint32_t graphics_family)
+    void GetDeviceQueue(VulkanDevAttr *attr)
     {
-        float queue_priorities[1]={0.0};
+        vkGetDeviceQueue(attr->device,attr->surface->GetGraphicsFamilyIndex(),0,&attr->graphics_queue);
 
-        VkDeviceQueueCreateInfo queue_info;
-        queue_info.sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_info.pNext            =nullptr;
-        queue_info.queueFamilyIndex =graphics_family;
-        queue_info.queueCount       =1;
-        queue_info.pQueuePriorities =queue_priorities;
-        queue_info.flags            =0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
-
-        VkDeviceCreateInfo create_info;
-        CharPointerList ext_list;
-        VkPhysicalDeviceFeatures features={};
-
-        SetDeviceExtension(&ext_list,physical_device);
-        SetDeviceFeatures(&features,physical_device->GetFeatures10());
-
-        create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.pNext                   =nullptr;
-        create_info.flags                   =0;
-        create_info.queueCreateInfoCount    =1;
-        create_info.pQueueCreateInfos       =&queue_info;
-        create_info.enabledExtensionCount   =ext_list.GetCount();
-        create_info.ppEnabledExtensionNames =ext_list.GetData();
-        create_info.enabledLayerCount       =0;
-        create_info.ppEnabledLayerNames     =nullptr;
-        create_info.pEnabledFeatures        =&features;
-
-        VkDevice device;
-
-        if(vkCreateDevice(*physical_device,&create_info,nullptr,&device)==VK_SUCCESS)
-            return device;
-
-        return nullptr;
-    }
-
-    void GetDeviceQueue(GPUDeviceAttribute *attr)
-    {
-        vkGetDeviceQueue(attr->device,attr->graphics_family,0,&attr->graphics_queue);
-
-        if(attr->graphics_family==attr->present_family)
-            attr->present_queue=attr->graphics_queue;
-        else
-            vkGetDeviceQueue(attr->device,attr->present_family,0,&attr->present_queue);
+        attr->present_queue=attr->graphics_queue;
     }
 
     VkCommandPool CreateCommandPool(VkDevice device,uint32_t graphics_family)
@@ -175,336 +175,6 @@ namespace
 
         return desc_pool;
     }
-
-    void DebugOut(const VkPhysicalDeviceFeatures &features)
-    {
-        std::cout<<"Vulkan 1.0 features"<<std::endl;
-
-    #define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(robustBufferAccess)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(fullDrawIndexUint32)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(imageCubeArray)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(independentBlend)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(geometryShader)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(tessellationShader)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sampleRateShading)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(dualSrcBlend)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(logicOp)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(multiDrawIndirect)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(drawIndirectFirstInstance)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(depthClamp)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(depthBiasClamp)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(fillModeNonSolid)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(depthBounds)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(wideLines)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(largePoints)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(alphaToOne)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(multiViewport)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerAnisotropy)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionETC2)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionASTC_LDR)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionBC)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(occlusionQueryPrecise)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(pipelineStatisticsQuery)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(vertexPipelineStoresAndAtomics)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(fragmentStoresAndAtomics)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderTessellationAndGeometryPointSize)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderImageGatherExtended)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageExtendedFormats)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageMultisample)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageReadWithoutFormat)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageWriteWithoutFormat)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformBufferArrayDynamicIndexing)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSampledImageArrayDynamicIndexing)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageBufferArrayDynamicIndexing)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageArrayDynamicIndexing)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderClipDistance)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderCullDistance)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderFloat64)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInt64)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInt16)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderResourceResidency)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderResourceMinLod)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseBinding)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyBuffer)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyImage2D)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyImage3D)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency2Samples)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency4Samples)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency8Samples)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency16Samples)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyAliased)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(variableMultisampleRate)
-            OUTPUT_PHYSICAL_DEVICE_FEATURE(inheritedQueries)
-    #undef OUTPUT_PHYSICAL_DEVICE_FEATURE
-    }
-
-    void DebugOut(const VkPhysicalDeviceVulkan11Features &features)
-    {
-        std::cout<<"Vulkan 1.1 features"<<std::endl;
-
-#define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(storageBuffer16BitAccess)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(uniformAndStorageBuffer16BitAccess)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(storagePushConstant16)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(storageInputOutput16)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(multiview)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(multiviewGeometryShader)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(multiviewTessellationShader)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(variablePointersStorageBuffer)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(variablePointers)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(protectedMemory)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerYcbcrConversion)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderDrawParameters)
-#undef OUTPUT_PHYSICAL_DEVICE_FEATURE
-    }
-
-    void DebugOut(const VkPhysicalDeviceVulkan12Features &features)
-    {
-        std::cout<<"Vulkan 1.2 features"<<std::endl;
-
-#define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerMirrorClampToEdge)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(drawIndirectCount)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(storageBuffer8BitAccess)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(uniformAndStorageBuffer8BitAccess)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(storagePushConstant8)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderBufferInt64Atomics)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSharedInt64Atomics)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderFloat16)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInt8)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInputAttachmentArrayDynamicIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformTexelBufferArrayDynamicIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageTexelBufferArrayDynamicIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformBufferArrayNonUniformIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSampledImageArrayNonUniformIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageBufferArrayNonUniformIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageArrayNonUniformIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInputAttachmentArrayNonUniformIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformTexelBufferArrayNonUniformIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageTexelBufferArrayNonUniformIndexing)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingUniformBufferUpdateAfterBind)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingSampledImageUpdateAfterBind)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingStorageImageUpdateAfterBind)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingStorageBufferUpdateAfterBind)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingUniformTexelBufferUpdateAfterBind)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingStorageTexelBufferUpdateAfterBind)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingUpdateUnusedWhilePending)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingPartiallyBound)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingVariableDescriptorCount)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(runtimeDescriptorArray)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerFilterMinmax)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(scalarBlockLayout)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(imagelessFramebuffer)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(uniformBufferStandardLayout)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSubgroupExtendedTypes)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(separateDepthStencilLayouts)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(hostQueryReset)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(timelineSemaphore)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(bufferDeviceAddress)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(bufferDeviceAddressCaptureReplay)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(bufferDeviceAddressMultiDevice)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(vulkanMemoryModel)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(vulkanMemoryModelDeviceScope)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(vulkanMemoryModelAvailabilityVisibilityChains)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderOutputViewportIndex)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderOutputLayer)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(subgroupBroadcastDynamicId)
-#undef OUTPUT_PHYSICAL_DEVICE_FEATURE
-    }
-    
-    void DebugOut(const VkPhysicalDeviceVulkan13Features &features)
-    {
-        std::cout<<"Vulkan 1.3 features"<<std::endl;
-
-#define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(robustImageAccess)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(inlineUniformBlock)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingInlineUniformBlockUpdateAfterBind)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(pipelineCreationCacheControl)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(privateData)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderDemoteToHelperInvocation)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderTerminateInvocation)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(subgroupSizeControl)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(computeFullSubgroups)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(synchronization2)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionASTC_HDR)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderZeroInitializeWorkgroupMemory)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(dynamicRendering)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderIntegerDotProduct)
-        OUTPUT_PHYSICAL_DEVICE_FEATURE(maintenance4)
-#undef OUTPUT_PHYSICAL_DEVICE_FEATURE
-    }
-
-    void DebugOutVersion(uint32_t version)
-    {
-        std::cout<<VK_VERSION_MAJOR(version)<<"."<<VK_VERSION_MINOR(version)<<"."<<VK_VERSION_PATCH(version)<<std::endl;
-    }
-
-    void DebugOut(const VkPhysicalDeviceLimits &limits)
-    {
-    #define OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<limits.name<<std::endl;
-    #define OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<limits.name[0]<<", "<<limits.name[1]<<std::endl;
-    #define OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<limits.name[0]<<", "<<limits.name[1]<<", "<<limits.name[2]<<std::endl;
-    #define OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<(limits.name?"true":"false")<<std::endl;
-
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimension1D)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimension2D)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimension3D)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimensionCube)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageArrayLayers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTexelBufferElements)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxUniformBufferRange)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxStorageBufferRange)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPushConstantsSize)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxMemoryAllocationCount)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSamplerAllocationCount)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(bufferImageGranularity)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sparseAddressSpaceSize)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxBoundDescriptorSets)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorSamplers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorUniformBuffers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorStorageBuffers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorSampledImages)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorStorageImages)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorInputAttachments)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageResources)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetSamplers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetUniformBuffers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetUniformBuffersDynamic)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetStorageBuffers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetStorageBuffersDynamic)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetSampledImages)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetStorageImages)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetInputAttachments)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputAttributes)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputBindings)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputAttributeOffset)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputBindingStride)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexOutputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationGenerationLevel)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationPatchSize)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlPerVertexInputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlPerVertexOutputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlPerPatchOutputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlTotalOutputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationEvaluationInputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationEvaluationOutputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryShaderInvocations)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryInputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryOutputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryOutputVertices)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryTotalOutputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentInputComponents)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentOutputAttachments)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentDualSrcAttachments)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentCombinedOutputResources)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxComputeSharedMemorySize)
-        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3(maxComputeWorkGroupCount)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxComputeWorkGroupInvocations)
-        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3(maxComputeWorkGroupSize)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(subPixelPrecisionBits)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(subTexelPrecisionBits)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(mipmapPrecisionBits)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDrawIndexedIndexValue)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDrawIndirectCount)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSamplerLodBias)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSamplerAnisotropy)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxViewports)
-        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(maxViewportDimensions)
-        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(viewportBoundsRange)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(viewportSubPixelBits)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minMemoryMapAlignment)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minTexelBufferOffsetAlignment)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minUniformBufferOffsetAlignment)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minStorageBufferOffsetAlignment)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minTexelOffset)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTexelOffset)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minTexelGatherOffset)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTexelGatherOffset)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minInterpolationOffset)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxInterpolationOffset)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(subPixelInterpolationOffsetBits)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFramebufferWidth)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFramebufferHeight)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFramebufferLayers)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferColorSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferDepthSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferStencilSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferNoAttachmentsSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxColorAttachments)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageColorSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageIntegerSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageDepthSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageStencilSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(storageImageSampleCounts)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSampleMaskWords)
-        OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(timestampComputeAndGraphics)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(timestampPeriod)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxClipDistances)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxCullDistances)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxCombinedClipAndCullDistances)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(discreteQueuePriorities)
-        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(pointSizeRange)
-        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(lineWidthRange)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(pointSizeGranularity)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(lineWidthGranularity)
-        OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(strictLines)
-        OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(standardSampleLocations)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(optimalBufferCopyOffsetAlignment)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(optimalBufferCopyRowPitchAlignment)
-        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(nonCoherentAtomSize)
-
-#undef OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN
-#undef OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3
-#undef OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2
-#undef OUT_PHYSICAL_DEVICE_LIMIT_INTEGER
-    }
-
-    #ifndef VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE
-    #define VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE VK_PHYSICAL_DEVICE_TYPE_OTHER
-    #endif//VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE
-
-    #ifndef VK_PHYSICAL_DEVICE_TYPE_END_RANGE
-    #define VK_PHYSICAL_DEVICE_TYPE_END_RANGE   VK_PHYSICAL_DEVICE_TYPE_CPU
-    #endif//VK_PHYSICAL_DEVICE_TYPE_END_RANGE
-
-    #ifndef VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE
-    constexpr size_t VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE=VK_PHYSICAL_DEVICE_TYPE_END_RANGE-VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE+1;
-    #endif//VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE
-
-    void DebugOut(const VkPhysicalDeviceProperties &pdp)
-    {
-        constexpr char DeviceTypeString[VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE][16]=
-        {
-            "Other",
-            "Integrated GPU",
-            "Discrete GPU",
-            "Virtual GPU",
-            "CPU"
-        };
-
-        std::cout<<"       apiVersion: ";DebugOutVersion(pdp.apiVersion);
-        std::cout<<"    driverVersion: ";DebugOutVersion(pdp.driverVersion);
-        std::cout<<"         vendorID: 0x"<<HexToString<char>(pdp.vendorID).c_str()<<std::endl;
-        std::cout<<"         deviceID: 0x"<<HexToString<char>(pdp.deviceID).c_str()<<std::endl;
-        std::cout<<"       deviceType: "<<DeviceTypeString[pdp.deviceType]<<std::endl;
-        std::cout<<"       deviceName: "<<pdp.deviceName<<std::endl;
-
-        if(memcmp(pdp.pipelineCacheUUID,"rdoc",4)==0)
-        {
-            std::cout<<"pipelineCahceUUID: "<<(char *)pdp.pipelineCacheUUID<<std::endl;
-        }
-        else
-        {
-            AnsiString uuid=VkUUID2String<char>(pdp.pipelineCacheUUID);
-
-            std::cout<<"pipelineCahceUUID: "<<uuid.c_str()<<std::endl;
-        }
-
-        DebugOut(pdp.limits);
-    }
 }//namespace
 
 #ifndef VK_DRIVER_ID_BEGIN_RANGE
@@ -519,43 +189,147 @@ namespace
 constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEGIN_RANGE+1;
 #endif//VK_DRIVER_ID_RANGE_SIZE
 
-GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent)
+#ifdef _DEBUG
+void OutputPhysicalDeviceCaps(const VulkanPhyDevice *);
+#endif//_DEBUG
+
+VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 {
-    #ifdef _DEBUG
+    float queue_priorities[1]={0.0};
+
+    VkDeviceQueueCreateInfo queue_info;
+    queue_info.sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_info.pNext            =nullptr;
+    queue_info.queueFamilyIndex =graphics_family;
+    queue_info.queueCount       =1;
+    queue_info.pQueuePriorities =queue_priorities;
+    queue_info.flags            =0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
+
+    VkDeviceCreateInfo create_info;
+
+    create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    create_info.pNext                   =nullptr;
+    create_info.flags                   =0;
+    create_info.queueCreateInfoCount    =1;
+    create_info.pQueueCreateInfos       =&queue_info;
+    create_info.enabledExtensionCount   =ext_list.GetCount();
+    create_info.ppEnabledExtensionNames =ext_list.GetData();
+    create_info.enabledLayerCount       =0;
+    create_info.ppEnabledLayerNames     =nullptr;
+    create_info.pEnabledFeatures        =&features;
+
+    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
+
+    if(physical_device->SupportU8Index()
+     &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
-        DebugOut(physical_device->GetProperties());
-        DebugOut(physical_device->GetFeatures10());
-        DebugOut(physical_device->GetFeatures11());
-        DebugOut(physical_device->GetFeatures12());
-        DebugOut(physical_device->GetFeatures13());
+        create_info.pNext=&index_type_uint8_features;
+
+        index_type_uint8_features.sType         =VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
+        index_type_uint8_features.pNext         =nullptr;
+        index_type_uint8_features.indexTypeUint8=VK_TRUE;
     }
-    #endif//_DEBUG
 
-    GPUDeviceAttribute *device_attr=new GPUDeviceAttribute(inst,physical_device,surface);
+    VkDevice device;
 
-    AutoDelete<GPUDeviceAttribute> auto_delete(device_attr);
+    if(physical_device->CreateDevice(&create_info,&device)==VK_SUCCESS)
+        return device;
 
-    if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
+    return nullptr;
+}
+
+void VulkanDeviceCreater::ChooseSurfaceFormat()
+{
+    const VkSurfaceFormatList &surface_formats_list=surface->GetFormats();
+
+    if(surface_formats_list.IsEmpty())
+        return;
+
+#ifdef _DEBUG
+    LogSurfaceFormat(surface_formats_list);
+#endif//_DEBUG
+
+    bool sel=false;
+    {
+        int fmt_index=-1;
+        int cs_index=-1;
+        int fmt;
+        int cs;
+
+        for(auto sf:surface_formats_list)
+        {
+            fmt=perfer_color_formats->Find(sf.format);
+            cs=perfer_color_spaces->Find(sf.colorSpace);
+
+            if((fmt==fmt_index&&cs>cs_index)||fmt>fmt_index)
+            {
+                surface_format=sf;
+
+                fmt_index=fmt;
+                cs_index=cs;
+                sel=true;
+            }
+        }
+    }
+
+    if(!sel)
+    {
+        surface_format.format=PF_RGBA8s;
+        surface_format.colorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
+
+    LogSurfaceFormat(surface_format);
+}
+
+VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
+{
+    VulkanDevAttr *device_attr=new VulkanDevAttr(instance,physical_device,surface);
+
+    AutoDelete<VulkanDevAttr> auto_delete(device_attr);
+
+    const uint32_t graphics_family=device_attr->surface->GetGraphicsFamilyIndex();
+
+    if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    device_attr->device=CreateDevice(*inst,physical_device,device_attr->graphics_family);
+    SetDeviceExtension(&ext_list,physical_device,require);
+    SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
+
+    device_attr->device=CreateDevice(graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
 
-#ifdef _DEBUG
-    device_attr->debug_maker=CreateDebugMaker(device_attr->device);
-    device_attr->debug_utils=CreateDebugUtils(device_attr->device);
-#endif//_DEBUG
+    ChooseSurfaceFormat();
+
+    if(physical_device->SupportU8Index()
+     &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        device_attr->uint8_index_type=true;
+    }
+
+    if(physical_device->SupportU32Index()
+     &&require.fullDrawIndexUint32>=VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        device_attr->uint32_index_type=true;
+    }
+
+    if(physical_device->SupportWideLines()
+        || require.wideLines >= VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        device_attr->wide_lines = true;
+    }
+
+    device_attr->surface_format=surface_format;
 
     GetDeviceQueue(device_attr);
 
-    device_attr->cmd_pool=CreateCommandPool(device_attr->device,device_attr->graphics_family);
+    device_attr->cmd_pool=CreateCommandPool(device_attr->device,graphics_family);
 
     if(!device_attr->cmd_pool)
         return(nullptr);
         
-    device_attr->desc_pool=CreateDescriptorPool(device_attr->device,1024);
+    device_attr->desc_pool=CreateDescriptorPool(device_attr->device,require.descriptor_pool);
 
     if(!device_attr->desc_pool)
         return(nullptr);
@@ -567,36 +341,163 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
 
     auto_delete.Discard();  //discard autodelete
 
-    return(new GPUDevice(device_attr));
+    #ifdef _DEBUG
+        device_attr->debug_utils=CreateDebugUtils(device_attr->device);
+
+        if(device_attr->debug_utils)
+        {
+            device_attr->debug_utils->SetPhysicalDevice(physical_device->GetVulkanDevice(),"Physical Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_utils->SetDevice(device_attr->device,"Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_utils->SetSurfaceKHR(surface->GetSurface(),"Surface");
+            device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
+            device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");
+            device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main Pipeline Cache");
+        }
+    #endif//_DEBUG
+
+    return(new VulkanDevice(device_attr));
 }
 
-GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *pd)
+VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
+                                            Window *win,
+                                            const VulkanHardwareRequirement *req,
+                                            const PreferFormats *spf_color,
+                                            const PreferColorSpaces *spf_color_space,
+                                            const PreferFormats *spf_depth)
 {
-    if(!inst)
-        return(nullptr);
+    instance=vi;
+    window=win;
 
-    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
-    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
-    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
+    physical_device=nullptr;
 
-    if(!pd)
-        return(nullptr);
+    perfer_color_formats=spf_color;
+    perfer_color_spaces =spf_color_space;
+    perfer_depth_formats=spf_depth;
 
-    VkSurfaceKHR surface=CreateVulkanSurface(*inst,win);
+    if(req)
+        mem_copy(require,*req);
+}
 
-    if(!surface)
-        return(nullptr);
+bool VulkanDeviceCreater::ChoosePhysicalDevice()
+{
+    physical_device=nullptr;
+
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
         
-    VkExtent2D extent;
-    
-    extent.width=win->GetWidth();
-    extent.height=win->GetHeight();
+    return physical_device;
+}
 
-    GPUDevice *device=CreateRenderDevice(inst,pd,surface,extent);
+bool VulkanDeviceCreater::RequirementCheck()
+{
+    const VkPhysicalDeviceLimits &limits=physical_device->GetLimits();
+
+#define VHR_MINCHECK(name) if(require.name>0&&require.name>limits.name)return(false);
+
+    VHR_MINCHECK(maxImageDimension1D     )
+    VHR_MINCHECK(maxImageDimension2D     )
+    VHR_MINCHECK(maxImageDimension3D     )
+    VHR_MINCHECK(maxImageDimensionCube   )
+    VHR_MINCHECK(maxImageArrayLayers     )
+
+    VHR_MINCHECK(maxVertexInputAttributes)
+    VHR_MINCHECK(maxColorAttachments     )
+
+    VHR_MINCHECK(maxPushConstantsSize    )
+    VHR_MINCHECK(maxUniformBufferRange   )
+    VHR_MINCHECK(maxStorageBufferRange   )
+
+    VHR_MINCHECK(maxDrawIndirectCount    )
+
+#undef VHR_MINCHECK
+
+    const VkPhysicalDeviceFeatures &features10=physical_device->GetFeatures10();
+    const VkPhysicalDeviceVulkan13Features &features13=physical_device->GetFeatures13();
+
+#define VHRC(name,check) if(require.name>=VulkanHardwareRequirement::SupportLevel::Must&&(!check))return(false);
+
+    #define VHRC_F10(name) VHRC(name,features10.name)
+    #define VHRC_F13(name) VHRC(name,features13.name)
+    #define VHRC_PDE(name,pdename) VHRC(name,physical_device->CheckExtensionSupport(VK_##pdename##_EXTENSION_NAME))
+    #define VHRC_TC10(name) VHRC(texture_compression.name,features10.textureCompression##name)
+    #define VHRC_TC13(name) VHRC(texture_compression.name,features13.textureCompression##name)
+
+    VHRC_F10(geometryShader);
+    VHRC_F10(tessellationShader);
+
+    VHRC_F10(multiDrawIndirect);
+
+    VHRC_F10(sampleRateShading);
+
+    VHRC_F10(fillModeNonSolid);
+
+    VHRC_F10(wideLines);
+
+#ifndef __APPLE__
+    VHRC_PDE(lineRasterization,    EXT_LINE_RASTERIZATION);
+#endif//__APPLE__
+
+    VHRC_F10(largePoints);
+
+    VHRC_F10(imageCubeArray);
+
+    VHRC_PDE(fullDrawIndexUint8,      EXT_INDEX_TYPE_UINT8);
+    VHRC_F10(fullDrawIndexUint32);
+
+    VHRC_TC10(BC);
+    VHRC_TC10(ETC2);
+    VHRC_TC10(ASTC_LDR);
+    VHRC_TC13(ASTC_HDR);
+    VHRC_PDE(texture_compression.PVRTC,     IMG_FORMAT_PVRTC);
+
+    VHRC_F13(dynamicRendering);
+
+    VHRC_PDE(dynamicState[0],      EXT_EXTENDED_DYNAMIC_STATE);
+    VHRC_PDE(dynamicState[1],      EXT_EXTENDED_DYNAMIC_STATE_2);
+    VHRC_PDE(dynamicState[2],      EXT_EXTENDED_DYNAMIC_STATE_3);
+
+#undef VHRC_PDE
+#undef VHRC_F13
+#undef VHRC_F10
+#undef VHRC
+
+    return(true);
+}
+
+VulkanDevice *VulkanDeviceCreater::Create()
+{
+    if(!instance||!window)
+        return(nullptr);
+
+    if(!ChoosePhysicalDevice())
+        return(nullptr);
+
+    #ifdef _DEBUG
+        OutputPhysicalDeviceCaps(physical_device);
+    #endif//_DEBUG
+
+    SetShaderCompilerVersion(physical_device);
+
+    if(!RequirementCheck())
+        return(nullptr);
+
+    VkSurfaceKHR vk_surface=CreateVulkanSurface(instance->GetVulkanInstance(),window);
+
+    if(!vk_surface)
+        return(nullptr);
+
+    surface=new VulkanSurface(physical_device,vk_surface);
+
+    extent.width    =window->GetWidth();
+    extent.height   =window->GetHeight();
+
+    VulkanDevice *device=CreateRenderDevice();
 
     if(!device)
     {
-        vkDestroySurfaceKHR(*inst,surface,nullptr);
+        delete surface;
+        surface=nullptr;
         return(nullptr);
     }
 

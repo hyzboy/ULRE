@@ -5,9 +5,9 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    void debug_queue_family_properties_out(const char *front,const List<VkQueueFamilyProperties> &qfp_list)
+    void debug_queue_family_properties_out(const char *front,const ArrayList<VkQueueFamilyProperties> &qfp_list)
     {
-        constexpr char *queue_bit_name[]=
+        constexpr const char *queue_bit_name[]=
         {
             "Graphics",
             "Compute",
@@ -55,12 +55,17 @@ namespace
     }
 }
 
-GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
+VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 {
     instance=inst;
     physical_device=pd;
 
     {
+        mem_zero(features11);
+        mem_zero(features12);
+        mem_zero(features13);
+        mem_zero(features14);
+
         auto func=(PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceFeatures2KHR");
 
         if(func)
@@ -77,23 +82,27 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             features12.pNext=&features13;
 
             features13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features13.pNext=nullptr;
+            features13.pNext=&features14;
+
+            features14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+            features14.pNext=nullptr;
 
             func(physical_device,&features2);
 
-            hgl_cpy(features,features2.features);
+            mem_copy(features,features2.features);
         }
         else
         {
             vkGetPhysicalDeviceFeatures(physical_device,&features);
-
-            hgl_zero(features11);
-            hgl_zero(features12);
-            hgl_zero(features13);
         }
     }
 
     {
+        mem_zero(properties11);
+        mem_zero(properties12);
+        mem_zero(properties13);
+        mem_zero(properties14);
+
         auto func=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceProperties2KHR");
 
         if(func)
@@ -110,19 +119,18 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             properties12.pNext=&properties13;
 
             properties13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-            properties13.pNext=nullptr;
+            properties13.pNext=&properties14;
+
+            properties14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
+            properties14.pNext=nullptr;
 
             func(physical_device,&properties2);
 
-            hgl_cpy(properties,properties2.properties);
+            mem_copy(properties,properties2.properties);
         }
         else
         {
             vkGetPhysicalDeviceProperties(physical_device,&properties);
-
-            hgl_zero(properties11);
-            hgl_zero(properties12);
-            hgl_zero(properties13);
         }
     }
 
@@ -135,7 +143,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,nullptr);
 
-        layer_properties.SetCount(property_count);
+        layer_properties.Resize(property_count);
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
 
         debug_out(debug_front.c_str(),layer_properties);
@@ -146,7 +154,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
 
-        extension_properties.SetCount(exten_count);
+        extension_properties.Resize(exten_count);
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
 
         debug_out(debug_front.c_str(),extension_properties);
@@ -157,16 +165,21 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,nullptr);
 
-        queue_family_properties.SetCount(family_count);
+        queue_family_properties.Resize(family_count);
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,queue_family_properties.GetData());
 
         debug_queue_family_properties_out(debug_front.c_str(),queue_family_properties);
     }
 
+    if(features14.indexTypeUint8)
+        support_u8_index=true;
+    else
+        support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 }
 
-const bool GPUPhysicalDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
+const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
 {    
     for(const VkLayerProperties &lp:layer_properties)
     {
@@ -182,7 +195,7 @@ const bool GPUPhysicalDevice::GetLayerVersion(const AnsiString &name,uint32_t &s
     return(false);
 }
 
-const uint32_t GPUPhysicalDevice::GetExtensionVersion(const AnsiString &name)const
+const uint32_t VulkanPhyDevice::GetExtensionVersion(const AnsiString &name)const
 {
     for(const VkExtensionProperties &ep:extension_properties)
     {
@@ -193,7 +206,7 @@ const uint32_t GPUPhysicalDevice::GetExtensionVersion(const AnsiString &name)con
     return 0;
 }
 
-const bool GPUPhysicalDevice::CheckExtensionSupport(const AnsiString &name)const
+const bool VulkanPhyDevice::CheckExtensionSupport(const AnsiString &name)const
 {
     for(const VkExtensionProperties &ep:extension_properties)
     {
@@ -204,7 +217,7 @@ const bool GPUPhysicalDevice::CheckExtensionSupport(const AnsiString &name)const
     return(false);
 }
 
-const int GPUPhysicalDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties)const
+const int VulkanPhyDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties)const
 {
     // Search memtypes to find first index with those properties
     for(uint32_t i=0; i<memory_properties.memoryTypeCount; i++)
@@ -220,7 +233,7 @@ const int GPUPhysicalDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFla
     return -1;
 }
 
-VkFormat GPUPhysicalDevice::GetDepthFormat(bool lower_to_high)const
+VkFormat VulkanPhyDevice::GetDepthFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthFormats[] =
     {
@@ -248,7 +261,7 @@ VkFormat GPUPhysicalDevice::GetDepthFormat(bool lower_to_high)const
     return result;
 }
 
-VkFormat GPUPhysicalDevice::GetDepthStencilFormat(bool lower_to_high)const
+VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthStencilFormats[] =
     {

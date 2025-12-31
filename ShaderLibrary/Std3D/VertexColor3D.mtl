@@ -1,0 +1,38 @@
+#Material
+Name VertexColor3D
+Base Std3D
+
+#VertexInput
+vec4 Color
+
+#Vertex
+
+Output
+{
+    vec4 Color
+}
+
+Code
+{
+    void main()
+    {
+        Output.Color=Color;
+
+        gl_Position=GetPosition3D();
+    }
+}
+
+#Fragment
+
+Output
+{
+    vec4 FragColor;
+}
+
+Code
+{
+    void main()
+    {
+        FragColor=Input.Color;
+    }
+}

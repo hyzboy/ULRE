@@ -1,0 +1,283 @@
+﻿#include<hgl/graph/SceneNode.h>
+#include<hgl/component/SceneComponent.h>
+#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/World.h>
+#include<hgl/graph/SceneRenderer.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/log/Log.h>
+
+DEFINE_LOGGER_MODULE(SceneNode)
+
+namespace hgl::graph
+{
+    RenderContext *SceneNode::GetRenderContext()const
+    {
+        if(!main_world)
+            return(nullptr);
+
+        io::EventDispatcher *ep=main_world->GetEventDispatcher()->GetParent();
+
+        if(!ep)
+        {
+            //有可能的，没有加入任保何SceneRenderer的场景
+            MLogWarning(SceneNode,"SceneNode::GetRenderContext(): World has no parent EventDispatcher!");
+            return(nullptr);
+        }
+
+        SceneEventDispatcher *sep=dynamic_cast<SceneEventDispatcher *>(ep);
+
+        if(!sep)
+        {
+            //这明显不对好不好
+            MLogFatal(SceneNode,"SceneNode::GetRenderContext(): World's parent EventDispatcher is not a SceneEventDispatcher!");
+            return(nullptr);
+        }
+
+        return sep->GetRenderContext();
+    }
+
+    RenderFramework *SceneNode::GetRenderFramework()const
+    {
+        return main_world?main_world->GetRenderFramework():nullptr;
+    }
+
+    //void SceneNode::SetRenderable(Primitive *ri)
+    //{
+    //    render_obj=ri;
+    //
+    //    if(render_obj)
+    //    {
+    //        SetBoundingBox(render_obj->GetBoundingBox());
+    //    }
+    //    else
+    //    {
+    //        bounding_box.SetZero();
+    //
+    //        //WorldBoundingBox=
+    //            local_bounding_box=bounding_box;
+    //    }
+    //}
+
+    /**
+    * 刷新矩阵变换
+    */
+    void SceneNode::UpdateWorldTransform()
+    {
+        node_transform.UpdateWorldTransform();
+
+        const Matrix4f &l2w=node_transform.GetLocalToWorldMatrix();
+
+        for(SceneNode *sub:child_nodes)
+        {
+            sub->SetParentMatrix(l2w);
+            sub->UpdateWorldTransform();
+        }
+
+        for(Component *com:component_set)
+        {
+            SceneComponent *sc=dynamic_cast<SceneComponent *>(com);
+
+            if(!sc)
+                continue;
+
+            sc->SetParentMatrix(l2w);
+            sc->UpdateWorldTransform();
+        }
+    }
+
+    /**
+    * 刷新绑定盒
+    */
+    void SceneNode::RefreshBoundingVolumes()
+    {
+        int count=child_nodes.GetCount();
+        SceneNode **sub=child_nodes.GetData();
+
+        AABB local,world;
+
+        (*sub)->RefreshBoundingVolumes();
+        local=(*sub)->GetLocalBoundingBox();
+
+        ++sub;
+        for(int i=1;i<count;i++)
+        {
+            (*sub)->RefreshBoundingVolumes();
+
+            local.Merge((*sub)->GetLocalBoundingBox());
+
+            ++sub;
+        }
+
+        local_bounding_box=local;
+    }
+
+    int SceneNode::GetComponents(ComponentList &comp_list,const ComponentManager *mgr)
+    {
+        if(!mgr)return(-1);
+        if(ComponentIsEmpty())return(0);
+
+        int result=0;
+
+        for(Component *c:component_set)
+        {
+            if(c->GetManager()==mgr)
+            {
+                comp_list.Add(c);
+                ++result;
+            }
+        }
+
+        return result;
+    }
+
+    bool SceneNode::HasComponent(const ComponentManager *mgr)
+    {
+        if(!mgr)return(false);
+        if(ComponentIsEmpty())return(false);
+
+        for(Component *c:component_set)
+        {
+            if(c->GetManager()==mgr)
+                return(true);
+        }
+
+        return(false);
+    }
+
+    SceneNode::~SceneNode()
+    {
+        SetParent(nullptr);
+
+        for(Component *c:component_set)
+        {
+            c->OnDetach(this);
+        }
+    }
+
+    SceneNode *SceneNode::CreateNode(World *world)const
+    {
+        if(world)
+        {
+            return world->CreateNode<SceneNode>();
+        }
+        else if(this&&this->GetWorld())
+        {
+            return this->GetWorld()->CreateNode<SceneNode>();
+        }
+
+        return(nullptr);
+    }
+
+    SceneNode *SceneNode::Clone(World *world) const                                                               ///<复制一个场景节点
+    {
+        if(!this && !world)
+            return nullptr;
+
+        if(!world)
+        {
+            world=this->GetWorld();
+
+            if(!world)
+            {
+                MLogError(SceneNode,"SceneNode::Clone(): No world specified and this node has no world!");
+                return(nullptr);
+            }
+        }
+
+        SceneNode *node = this->CreateNode(world);
+
+        if(!node)
+        {
+            MLogError(SceneNode,"SceneNode::Clone(): CreateNode() failed!");
+
+            return(nullptr);
+        }
+
+        node->SetTransformState(GetTransformState());  //复制本地矩阵
+
+        CloneChildren(node);    //复制子节点
+        CloneComponents(node);    //复制组件
+
+        return node;
+    }
+
+    void SceneNode::Reset()
+    {
+        SetParent(nullptr); //清除父节点
+
+        local_bounding_box.Clear();
+        world_bounding_box.Clear();
+
+        child_nodes.Clear();
+        component_set.Clear();
+
+        node_transform.Reset();
+    }
+
+    void SceneNode::OnChangeScene(World *new_scene)
+    {
+        if(main_world==new_scene)
+            return;
+
+        auto self_ep=GetEventDispatcher();
+
+        if(self_ep)
+        {
+            if(main_world)
+            {
+                main_world->GetEventDispatcher()->RemoveChildDispatcher(self_ep);    //从旧的场景中移除事件分发器
+            }
+
+            if(new_scene)
+            {
+                new_scene->GetEventDispatcher()->AddChildDispatcher(self_ep);        //添加到新的场景中
+            }
+        }
+
+        main_world=new_scene;
+    }
+
+    U8String SceneNode::GetSceneTreeText(int depth) const
+    {
+        U8String result;
+
+        // 生成当前节点的缩进和前缀
+        U8String indent;
+        for(int i = 0; i < depth; i++)
+            indent += U8_TEXT("  ");
+        
+        // 生成树符号
+        U8String prefix = depth == 0 ? U8_TEXT("") : U8_TEXT("├─ ");
+        
+        // 添加当前节点信息
+        U8String node_info = indent + prefix + U8_TEXT("[Node] (ID: ") + U8String::numberOf(node_id) + U8_TEXT(")");
+        
+        result += node_info + U8_TEXT("\n");
+        
+        // 添加组件信息
+        for(const Component *comp : component_set)
+        {
+            U8String comp_indent = indent + U8_TEXT("  ");
+            U8String comp_info = comp_indent + U8_TEXT("├─ [Component] ");
+
+            comp_info += comp->GetComponentInfo();
+            result += comp_info + U8_TEXT("\n");
+        }
+        
+        // 递归添加子节点
+        int child_count = child_nodes.GetCount();
+        if(child_count > 0)
+        {
+            SceneNode **children = child_nodes.GetData();
+            for(int i = 0; i < child_count; i++)
+            {
+                if(children[i])
+                {
+                    result += children[i]->GetSceneTreeText(depth + 1);
+                }
+            }
+        }
+        
+        return result;
+    }
+}//namespace hgl::graph

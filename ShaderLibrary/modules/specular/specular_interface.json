@@ -1,0 +1,34 @@
+﻿{
+  "modules": {
+    "phong": {
+      "file": "phong.glsl",
+      "provides": ["GetSpecularColor"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal", "Position"],
+        "descriptors": ["sky", "camera"]
+      },
+      "dependencies": []
+    },
+    "blinn_phong": {
+      "file": "blinn_phong.glsl",
+      "provides": ["GetSpecularColor"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal", "Position"],
+        "descriptors": ["sky", "camera"]
+      },
+      "dependencies": []
+    },
+    "ggx": {
+      "file": "ggx.glsl",
+      "provides": ["GetSpecularColor"],
+      "requires": {
+        "functions": ["DistributionGGX", "GeometrySmith", "fresnelSchlick"],
+        "inputs": ["Normal", "Position"],
+        "descriptors": ["sky", "camera"]
+      },
+      "dependencies": ["GetRoughness", "GetMetallic", "GetAlbedo"]
+    }
+  }
+}

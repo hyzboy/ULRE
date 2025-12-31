@@ -1,79 +1,19 @@
 ﻿#include<hgl/graph/VKDevice.h>
-#include<hgl/type/Pair.h>
 #include<hgl/graph/VKSemaphore.h>
-#include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKImageView.h>
-#include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VKRenderPass.h>
-#include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/VKDescriptorSet.h>
-#include<hgl/graph/VKDeviceRenderPassManage.h>
 
 VK_NAMESPACE_BEGIN
-void LogSurfaceFormat(const List<VkSurfaceFormatKHR> &surface_format_list)
-{
-    const uint32_t format_count=surface_format_list.GetCount();
-    const VkSurfaceFormatKHR *sf=surface_format_list.GetData();
-
-    LOG_INFO(OS_TEXT("Current physics device support ")+OSString::numberOf(format_count)+OS_TEXT(" surface format"));
-
-    const VulkanFormat *vf;
-    const VulkanColorSpace *cs;
-
-    for(uint32_t i=0;i<format_count;i++)
-    {
-        vf=GetVulkanFormat(sf->format);
-        cs=GetVulkanColorSpace(sf->colorSpace);
-
-        LOG_INFO("  "+AnsiString::numberOf(i)+": "+AnsiString(vf->name)+", "+AnsiString(cs->name));
-
-        ++sf;
-    }
-}
-
-GPUDevice::GPUDevice(GPUDeviceAttribute *da)
+VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 {
     attr=da;
-
-    texture_queue=nullptr;
-    texture_cmd_buf=nullptr;
-
-    InitRenderPassManage();
-
-    swapchainRT=nullptr;
-    Resize(attr->surface_caps.currentExtent);
-
-    texture_cmd_buf=CreateTextureCommandBuffer();
-    texture_queue=CreateQueue();
-
-    LogSurfaceFormat(attr->surface_formats_list);
 }
 
-GPUDevice::~GPUDevice()
+VulkanDevice::~VulkanDevice()
 {
-    ClearRenderPassManage();
-
-    SAFE_CLEAR(swapchainRT);
-
-    SAFE_CLEAR(texture_queue);
-    SAFE_CLEAR(texture_cmd_buf);
-
     delete attr;
 }
 
-bool GPUDevice::Resize(const VkExtent2D &extent)
-{
-    SAFE_CLEAR(swapchainRT);
-
-    attr->RefreshSurfaceCaps();
-
-    swapchainRT=CreateSwapchainRenderTarget();
-
-    return(true);
-}
-
-VkCommandBuffer GPUDevice::CreateCommandBuffer()
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)
 {
     if(!attr->cmd_pool)
         return(VK_NULL_HANDLE);
@@ -91,21 +31,26 @@ VkCommandBuffer GPUDevice::CreateCommandBuffer()
     if(res!=VK_SUCCESS)
         return(VK_NULL_HANDLE);
 
+#ifdef _DEBUG
+    if(attr->debug_utils)
+        attr->debug_utils->SetCommandBuffer(cmd_buf,name);
+#endif//_DEBUG
+
     return cmd_buf;
 }
 
-RenderCmdBuffer *GPUDevice::CreateRenderCommandBuffer()
+RenderCmdBuffer *VulkanDevice::CreateRenderCommandBuffer(const AnsiString &name)
 {
-    VkCommandBuffer cb=CreateCommandBuffer();
+    VkCommandBuffer cb=CreateCommandBuffer(name);
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
     return(new RenderCmdBuffer(attr,cb));
 }
 
-TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer()
+TextureCmdBuffer *VulkanDevice::CreateTextureCommandBuffer(const AnsiString &name)
 {
-    VkCommandBuffer cb=CreateCommandBuffer();
+    VkCommandBuffer cb=CreateCommandBuffer(name);
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
@@ -116,7 +61,7 @@ TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer()
  * 创建栅栏
  * @param create_signaled 是否创建初始信号
  */
-Fence *GPUDevice::CreateFence(bool create_signaled)
+Fence *VulkanDevice::CreateFence(bool create_signaled)
 {
     FenceCreateInfo fenceInfo(create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0);
 
@@ -128,7 +73,7 @@ Fence *GPUDevice::CreateFence(bool create_signaled)
     return(new Fence(attr->device,fence));
 }
 
-Semaphore *GPUDevice::CreateGPUSemaphore()
+Semaphore *VulkanDevice::CreateGPUSemaphore()
 {
     SemaphoreCreateInfo SemaphoreCreateInfo;
 
@@ -140,7 +85,7 @@ Semaphore *GPUDevice::CreateGPUSemaphore()
     return(new Semaphore(attr->device,sem));
 }
 
-DeviceQueue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
+DeviceQueue *VulkanDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
 {
     if(fence_count<=0)return(nullptr);
 

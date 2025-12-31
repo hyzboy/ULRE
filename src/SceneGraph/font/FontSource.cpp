@@ -1,102 +1,143 @@
 ﻿#include<hgl/graph/font/FontSource.h>
 
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
+    FontSource::FontSource(FontDataSource *fs)
     {
-        void FontSource::RefAcquire(void *ptr)
+        default_source=fs;
+
+        if(fs)
         {
-            if(!ptr)return;
+            fs->RefAcquire(this);
 
-            ref_object.Add(ptr);
-
-            return;
+            max_char_height=fs->GetCharHeight();
         }
+        else
+            max_char_height=0;
+    }
 
-        void FontSource::RefRelease(void *ptr)
+    FontSource::~FontSource()
+    {
+        if(default_source)
+            default_source->RefRelease(this);
+
+        for(auto &fsp:source_map)
         {
-            if(!ptr)return;
-
-            ref_object.Delete(ptr);
+            if(fsp->value)
+                fsp->value->RefRelease(this);
         }
+    }
 
-        namespace
+    void FontSource::Add(UnicodeBlock ub,FontDataSource *fs)
+    {
+        if(ub<UnicodeBlock::BEGIN_RANGE
+            ||ub>UnicodeBlock::END_RANGE
+            ||!fs
+            ||fs==default_source)return;
+
+        get_max(max_char_height,fs->GetCharHeight());
+
+        source_map.ChangeOrAdd(ub,fs);
+    }
+
+    void FontSource::RefreshMaxCharHeight()
+    {
+        max_char_height=0;
+
+        const int count=source_map.GetCount();
+
+        auto **fsp=source_map.GetDataList();
+
+        for(int i=0;i<count;i++)
         {
-            constexpr u32char   BeginSymbols    []=U32_TEXT("!),❟.:;?]}¨·ˇˉ―‖’❜”„❞…∶、。〃々❯〉》」』】〕〗！＂＇），．：；？］｀｜｝～»›");  //行首禁用符号
-            constexpr u32char   EndSymbols      []=U32_TEXT("([{·❛‘“‟❝❮〈《「『【〔〖（．［｛«‹");                                       //行尾禁用符号
-            constexpr u32char   CurrencySymbols []=U32_TEXT("₳฿₿￠₡¢₢₵₫€￡£₤₣ƒ₲₭Ł₥₦₽₱＄$₮ℳ₶₩￦¥￥₴₸¤₰៛₪₯₠₧﷼㍐원৳₹₨৲௹");                //货币符号
-            constexpr u32char   VRotateSymbols  []=U32_TEXT("()[]{}〈〉《》「」『』【】〔〕〖〗（）［］｛｝―‖…∶｜～");                        //竖排必须旋转的符号
+            get_max(max_char_height,(*fsp)->value->GetCharHeight());
 
-            constexpr int       BeginSymbolsCount   =(sizeof(BeginSymbols)   /sizeof(u32char))-1;
-            constexpr int       EndSymbolsCount	    =(sizeof(EndSymbols)     /sizeof(u32char))-1;
-            constexpr int       CurrencySymbolsCount=(sizeof(CurrencySymbols)/sizeof(u32char))-1;
-            constexpr int       VRotateSymbolsCount =(sizeof(VRotateSymbols) /sizeof(u32char))-1;
+            ++fsp;
+        }
+    }
+        
+    void FontSource::Remove(UnicodeBlock ub)
+    {
+        FontSourcePointer fsp;
 
-            ObjectMap<u32char,CharAttributes> all_char_attrs;
-        }//namespace
-
-        const CLA *FontSource::GetCLA(const u32char &ch)
+        if(source_map.Get(ub,fsp))
         {
-            CLA *cla;
+            const bool refresh=(fsp->GetCharHeight()==max_char_height);
 
-            if(cla_cache.Get(ch,cla))
-                return cla;
+            fsp->RefRelease(this);
+            source_map.DeleteByKey(ub);
 
-            CharAttributes *attr;
+            if(refresh)
+                RefreshMaxCharHeight();
+        }
+    }
 
-            const int pos=all_char_attrs.GetValueAndSerial(ch,attr);
+    void FontSource::Remove(FontDataSource *fs)
+    {
+        if(!fs)return;
+        if(fs==default_source)return;
 
-            if(pos<0)
+        if(source_map.ContainsValue(fs))
+        {
+            const bool refresh=(fs->GetCharHeight()==max_char_height);
+
+            fs->RefRelease(this);
+            source_map.DeleteByValue(fs);
+
+            if(refresh)
+                RefreshMaxCharHeight();
+        }
+    }
+        
+    FontDataSource *FontSource::GetFontDataSource(const u32char &ch)
+    {
+        if(hgl::is_space(ch))return(nullptr);	//不能显示的数据或是空格
+
+        const auto count=source_map.GetCount();
+
+        if(count>0)
+        {
+            auto **fsp=source_map.GetDataList();
+
+            for(int i=0;i<count;i++)
             {
-                attr=new CharAttributes;
-                
-                attr->ch=ch;
+                if(IsInUnicodeBlock((*fsp)->key,ch))
+                    return (*fsp)->value;
 
-                attr->space=hgl::isspace(ch);
-
-                if(!attr->space)
-                {
-                    attr->begin_disable =hgl::strchr(BeginSymbols,      ch,BeginSymbolsCount    );
-                    attr->end_disable   =hgl::strchr(EndSymbols,        ch,EndSymbolsCount      );
-
-                    attr->is_currency   =hgl::strchr(CurrencySymbols,   ch,CurrencySymbolsCount );
-
-                    if(!attr->end_disable)       
-                    attr->end_disable   =attr->is_currency;     //货币符号同样行尾禁用
-
-                    attr->vrotate       =hgl::strchr(VRotateSymbols,    ch,VRotateSymbolsCount  );
-
-                    attr->is_cjk        =isCJK(ch);
-                    attr->is_emoji      =isEmoji(ch);
-
-                    attr->is_punctuation=isPunctuation(ch);
-                }
-
-                all_char_attrs.Add(ch,attr);
+                ++fsp;
             }
-
-            cla=new CLA;
-            cla->attr=attr;
-
-            if(!attr->space)
-            {                        
-                if(!GetCharMetrics(cla->metrics,ch))
-                {
-                    cla->visible=false;
-                    hgl_zero(cla->metrics);
-                }
-                else
-                {
-                    cla->visible=(cla->metrics.w>0&&cla->metrics.h>0);
-                }
-            }
-            else
-            {
-                cla->visible=false;
-            }
-
-            cla_cache.Add(ch,cla);
-            return cla;
         }
-    }//namespace graph
-}//namespace hgl
+
+        return default_source;
+    }
+
+    FontBitmap *FontSource::GetCharBitmap(const u32char &ch)
+    {
+        FontDataSource *s=GetFontDataSource(ch);
+
+        if(!s)
+            return(nullptr);
+
+        return s->GetCharBitmap(ch);
+    }
+        
+    const bool FontSource::GetCharMetrics(CharMetricsInfo &cmi,const u32char &ch)
+    {
+        FontDataSource *s=GetFontDataSource(ch);
+
+        if(!s)
+            return(0);
+
+        return s->GetCharMetrics(cmi,ch);
+    }
+
+    const	CLA *FontSource::GetCLA(const u32char &ch)
+    {
+        FontDataSource *s=GetFontDataSource(ch);
+
+        if(!s)
+            return(default_source->GetCLA(ch));
+
+        return s->GetCLA(ch);
+    }
+}//namespace hgl::graph

@@ -1,6 +1,6 @@
-﻿#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKPhysicalDevice.h>
+﻿#include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/TileData.h>
+#include<hgl/graph/module/TextureManager.h>
 
 namespace
 {
@@ -8,60 +8,45 @@ namespace
 
     void AnalyseSize(uint &fw,uint &fh,const uint w,const uint h,const uint count,const uint32_t max_texture_size)
     {
-        uint total,tw,th,t;
+        const uint mw=max_texture_size/w;
+        const uint mh=max_texture_size/h;
 
-        fw=fh=0;
-
-        tw=max_texture_size;
-        while(tw>=w)
+        if(mw*mh<=count)        //最大值都不够，那就算了
         {
-            th=max_texture_size;
-            while(th>=h)
+            fw=max_texture_size;
+            fh=max_texture_size;
+
+            return;
+        }
+
+        fw=fh=1;
+
+        while(count>(fw/w)*(fh/h))
+        {
+            if(fw>=max_texture_size)
             {
-                t=(tw/w)*(th/h);
-
-                if(!fw)
-                {
-                    fw=tw;
-                    fh=th;
-
-                    total=t;
-                }
-                else
-                {
-                    if(t==count)
-                    {
-                        //正好，就要这么大的
-
-                        fw=tw;
-                        fh=th;
-
-                        return;
-                    }
-                    else
-                    if(t>count)                //要比要求的最大值大
-                    {
-                        if(t<total)            //找到最接近最大值的
-                        {
-                            //比现在选中的更节省
-                            fw=tw;
-                            fh=th;
-
-                            total=t;
-                        }
-                    }
-                }
-
-                th>>=1;
+                fw=max_texture_size;
             }
 
-            tw>>=1;
+            if(fh>=max_texture_size)
+            {
+                fh=max_texture_size;
+            }
+
+            if(fw>fh)
+            {
+                fh<<=1;
+            }
+            else
+            {
+                fw<<=1;
+            }
         }
     }//void AnalyseSize
 }//namespace
 
 VK_NAMESPACE_BEGIN
-TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
+TileData *TextureManager::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
 {
     if(!CheckVulkanFormat(format))
         return(nullptr);
@@ -69,7 +54,7 @@ TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const
     if(width<=0||height<=0||count<=0)
         return(nullptr);
 
-    const uint32_t max_2d_texture=attr->physical_device->GetMaxImage2D();
+    const uint32_t max_2d_texture=GetPhyDevice()->GetMaxImage2D();
 
     uint tex_width,tex_height;
 

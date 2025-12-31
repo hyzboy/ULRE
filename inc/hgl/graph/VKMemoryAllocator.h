@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 class VKMemoryAllocator:public AbstractMemoryAllocator
 {
-    GPUDevice *device;
+    VulkanDevice *device;
 
     uint32_t buffer_usage_flag_bits;
 
@@ -29,12 +29,14 @@ public:
 
 public:
 
-    VKMemoryAllocator(GPUDevice *,const uint32_t flags,const VkDeviceSize r);
+    VKMemoryAllocator(VulkanDevice *,const uint32_t flags,const VkDeviceSize r);
     ~VKMemoryAllocator();
     
     void Free() override {/* DON'T RUN ANY OPERATION.*/}
 
     void Flush(const VkDeviceSize);
+
+    bool Write(const void *source,const uint64 offset,const uint64 size) override;
 };//class VKMemoryAllocator:public AbstractMemoryAllocator
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MEMORY_ALLOCATOR_INCLUDE

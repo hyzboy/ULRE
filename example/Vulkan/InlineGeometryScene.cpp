@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/RenderList.h>
 
@@ -109,7 +109,7 @@ private:
                 VK_SAMPLER_ADDRESS_MODE_REPEAT,
                 0.0f,
                 VK_TRUE,
-                device->GetPhysicalDevice()->GetMaxSamplerAnisotropy(),
+                device->GetPhyDevice()->GetMaxSamplerAnisotropy(),
                 false,
                 VK_COMPARE_OP_NEVER,
                 0.0f,

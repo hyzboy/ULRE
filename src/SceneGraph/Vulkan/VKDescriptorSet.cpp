@@ -51,6 +51,13 @@ namespace
     {
     public:
 
+        DescriptorImageInfo(Texture *tex)
+        {
+            sampler = VK_NULL_HANDLE;
+            imageView = tex->GetVulkanImageView();
+            imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+
         DescriptorImageInfo(Texture *tex,Sampler *sam)
         {
             sampler=*sam;
@@ -69,11 +76,11 @@ namespace
 
 void DescriptorSet::Clear()
 {
-    buffer_list.ClearData();
-    image_list.ClearData();
-    wds_list.ClearData();
-    binded_sets.ClearData();
-    is_dirty=true;
+    vab_list.Clear();
+    image_list.Clear();
+    wds_list.Clear();
+    binded_sets.Clear();
+    is_dirty=false;
 }
 
 bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,bool dynamic)
@@ -81,7 +88,7 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,bool dynam
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
@@ -97,11 +104,11 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDe
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
-    buffer_list.Add(buf_info);
+    vab_list.Add(buf_info);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     
@@ -117,7 +124,7 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,bool dyna
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
@@ -133,11 +140,11 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
-    buffer_list.Add(buf_info);
+    vab_list.Add(buf_info);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     
@@ -148,12 +155,30 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
     return(true);
 }
 
-bool DescriptorSet::BindImageSampler(const int binding,Texture *tex,Sampler *sampler)
+bool DescriptorSet::BindTexture(const int binding,Texture *tex)
+{
+    if(binding<0||!tex)
+        return(false);
+
+    if(binded_sets.Contains(binding))return(false);
+
+    DescriptorImageInfo *image_info=new DescriptorImageInfo(tex);
+
+    image_list.Add(image_info);
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
+    return(true);
+}
+
+bool DescriptorSet::BindTextureSampler(const int binding,Texture *tex,Sampler *sampler)
 {
     if(binding<0||!tex||!sampler)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,sampler);
 
@@ -171,7 +196,7 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
     if(binding<0||!iv)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorImageInfo *image_info=new DescriptorImageInfo(iv->GetImageView());
     
@@ -188,7 +213,9 @@ void DescriptorSet::Update()
 {
     if(!is_dirty)return;
 
-    vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
-    is_dirty=false;
+    if(wds_list.GetCount()>0)
+        vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
+
+    Clear();
 }
 VK_NAMESPACE_END

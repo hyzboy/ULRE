@@ -1,10 +1,13 @@
-﻿#ifndef HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
-#define HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKPipeline.h>
-#include<hgl/type/List.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
+#include<hgl/type/ObjectList.h>
+
 VK_NAMESPACE_BEGIN
+
+using VkFormatList=ArrayList<VkFormat>;
+
 /**
  * RenderPass功能封装<br>
  * RenderPass在创建时，需要指定输入的color imageview与depth imageview象素格式，
@@ -12,51 +15,58 @@ VK_NAMESPACE_BEGIN
  */
 class RenderPass
 {
-    VkDevice device;
+    VulkanDevice *  device;
     VkPipelineCache pipeline_cache;
-    VkRenderPass render_pass;
+    VkRenderPass    render_pass;
 
-    List<VkFormat> color_formats;
-    VkFormat depth_format;
+    VkFormatList    color_formats;
+    VkFormat        depth_format;
 
-    VkExtent2D granularity;
+    VkExtent2D      granularity;        //FBO尺寸对齐粒度
 
 protected:
 
     ObjectList<Pipeline> pipeline_list;
 
-    Pipeline *CreatePipeline(PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
+    Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 
 private:
 
-    friend class DeviceRenderPassManage;
+    friend class RenderPassManager;
 
-    RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df);
+    RenderPass(VulkanDevice *,VkRenderPass rp,const VkFormatList &cf,VkFormat df);
 
 public:
 
     virtual ~RenderPass();
 
-            VkRenderPass    GetVkRenderPass(){return render_pass;}
-            VkPipelineCache GetPipelineCache(){return pipeline_cache;}
+    operator const VkRenderPass()const{return render_pass;}
 
-    const uint              GetColorCount()const{return color_formats.GetCount();}
-    const List<VkFormat> &  GetColorFormat()const{return color_formats;}
-    const VkFormat          GetColorFormat(int index)const
+    const VkRenderPass      GetVkRenderPass ()const{return render_pass;}
+    const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
+
+    const uint              GetColorCount   ()const{return color_formats.GetCount();}
+    const VkFormatList &    GetColorFormat  ()const{return color_formats;}
+    const VkFormat          GetColorFormat  (int index)const
     {
         if(index<0||index>=color_formats.GetCount())return VK_FORMAT_UNDEFINED;
 
         return color_formats.GetData()[index];
     }
-    const VkFormat          GetDepthFormat()const{return depth_format;}
+    const VkFormat          GetDepthFormat  ()const{return depth_format;}
 
-    const VkExtent2D &      GetGranularity()const{return granularity;}
+    const VkExtent2D &      GetGranularity  ()const{return granularity;}
 
 public:
 
-    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,  const PipelineData *,    const Prim &prim,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const bool prim_restart=false);
+
+    Pipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const bool prim_restart=false);
+
+    Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
 };//class RenderPass
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE

@@ -1,0 +1,105 @@
+﻿// 画一个带纹理的矩形，2D模式专用
+
+#include<hgl/WorkManager.h>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/component/PrimitiveComponent.h>
+
+using namespace hgl;
+using namespace hgl::graph;
+
+constexpr float position_data[4]=
+{
+    0,     //left
+    0,     //top
+    1,     //right
+    1      //bottom
+};
+
+constexpr float tex_coord_data[4]=
+{
+    0,0,
+    1,1
+};
+
+class TestApp:public WorkObject
+{
+private:
+
+    Texture2D *         texture             =nullptr;
+    Sampler *           sampler             =nullptr;
+    Material *          material            =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    Pipeline *          pipeline            =nullptr;
+
+private:
+
+    bool InitMaterial()
+    {
+        mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
+                                        CoordinateSystem2D::ZeroToOne,
+                                        mtl::WithLocalToWorld::Without);
+
+        material=LoadMaterial("Std2D/RectTexture2D",&cfg);
+
+        if(!material)
+            return(false);
+
+//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
+
+        if(!pipeline)
+            return(false);
+
+        texture=LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+
+        if(!texture)return(false);
+
+        sampler=CreateSampler();
+
+        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
+                                        mtl::SamplerName::BaseColor,        ///<采样器名称
+                                        texture,                            ///<纹理
+                                        sampler))                           ///<采样器
+            return(false);
+
+        material_instance=CreateMaterialInstance(material);
+
+        return(true);
+    }
+
+    bool InitVBO()
+    {
+        Primitive *render_obj=CreatePrimitive("TextureRect",1,material_instance,pipeline,
+                                    {
+                                        {VAN::Position,VF_V4F,position_data},
+                                        {VAN::TexCoord,VF_V4F,tex_coord_data}
+                                    });
+
+        if(!render_obj)
+            return(false);
+
+        CreateComponentInfo cci(GetWorldRootNode());
+
+        return CreateComponent<PrimitiveComponent>(&cci,render_obj); //创建一个静态网格组件
+    }
+
+public:
+
+    using WorkObject::WorkObject;
+
+    bool Init() override
+    {
+        if(!InitMaterial())
+            return(false);
+
+        if(!InitVBO())
+            return(false);
+
+        return(true);
+    }
+};//class TestApp:public WorkObject
+
+int os_main(int,os_char **)
+{
+    return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),256,256);
+}

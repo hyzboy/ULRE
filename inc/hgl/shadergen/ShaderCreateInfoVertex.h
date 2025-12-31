@@ -1,20 +1,43 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
-#include<hgl/graph/VKShaderStage.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
-
-namespace hgl{namespace graph{
-class ShaderCreateInfoVertex:public ShaderCreateInfo
+namespace hgl::graph
 {
-    bool ProcInput(ShaderCreateInfo *) override;
+    class ShaderCreateInfoVertex:public ShaderCreateInfo
+    {
+        VertexShaderDescriptorInfo vsdi;
 
-public:
+        bool ProcSubpassInput();
+        bool ProcInput(ShaderCreateInfo *) override;
+            
+        bool IsEmptyOutput()const override{return vsdi.IsEmptyOutput();}
+        void GetOutputStrcutString(AnsiString &str) override;
 
-    ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m){}
-    ~ShaderCreateInfoVertex()=default;
+    public:
+            
+        VIAArray &GetInput(){return vsdi.GetInput();}
 
-    int AddInput(const graph::VAT &type,const AnsiString &name);
-    int AddInput(const AnsiString &type,const AnsiString &name);
-};
-}}//namespace hgl::graph
+        ShaderDescriptorInfo *GetSDI()override{return &vsdi;}
+
+    public:
+
+        ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(){ShaderCreateInfo::Init(&vsdi,m);}
+        ~ShaderCreateInfoVertex()override=default;
+            
+        int AddInput(VIAList &);
+        int AddInput(const graph::VAType &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
+
+        int hasInput(const char *);
+    
+        int AddOutput(SVList &);
+        int AddOutput(const SVType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
+        void AddMaterialInstanceOutput() override;
+
+        void AddAssign();
+
+        void AddJoint();
+    };//class ShaderCreateInfoVertex:public ShaderCreateInfo
+}//namespace hgl::graph

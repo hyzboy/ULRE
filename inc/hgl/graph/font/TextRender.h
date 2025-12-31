@@ -1,88 +1,102 @@
-﻿#ifndef HGL_GRAPH_TEXT_RENDER_INCLUDE
-#define HGL_GRAPH_TEXT_RENDER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/color/Color4f.h>
+#include<hgl/graph/font/TextLayout.h>
+#include<hgl/type/SortedSet.h>
+#include<hgl/type/String.h>
 
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
+    class FontDataSource;
+    class FontSource;
+    class TileFont;
+    class TextGeometry;
+    class RenderFramework;
+    class MaterialManager;
+    class PrimitiveManager;
+
+    namespace layout
     {
-        class FontSource;
-        class TileFont;
         class TextLayout;
-        class TextPrimitive;
+    }//namespace layout
 
-        class TextRender
-        {
-            GPUDevice *         device;
-            RenderResource *    db;
-
-            Material *          material;
-            MaterialInstance *  material_instance;
-
-            Sampler *           sampler;
-
-            Pipeline *          pipeline;
-
-            FontSource *        font_source;
-
-            TileFont *          tile_font;
-            TextLayout *        tl_engine;
-    
-            Color4f             color;
-            DeviceBuffer *         ubo_color;
-
-            SortedSets<TextPrimitive *> tr_sets;
-
-        private:
-
-            friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
-            TextRender(GPUDevice *dev,FontSource *);
-
-            bool InitTileFont(int limit);
-            bool InitTextLayoutEngine();
-            bool InitUBO();
-            bool InitMaterial(RenderPass *,DeviceBuffer *);
-
-        public:
-
-            ~TextRender();
-
-            bool Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit);
-
-        public:
-
-            TextPrimitive *CreatePrimitive();
-            TextPrimitive *CreatePrimitive(const UTF16String &str);
-
-            bool Layout(TextPrimitive *tr,const UTF16String &str);
-
-            Renderable *CreateRenderable(TextPrimitive *text_primitive);
-
-            void Release(TextPrimitive *);
-        };//class TextRender
+    enum class TextGeometryType:uint8
+    {
+        /**
+        * 固定风格，所有的字符使用同一种风格绘制
+        */
+        FixedStyle=0,
 
         /**
-         * 创建一个CJK字体源
-         * @param cf CJK字体名称
-         * @param lf 其它字体名称
-         * @param size 字体象素高度
-         */
-        FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size);
+        * 每个字符可以不同风格，最大不能超过256种。
+        * 在绘制前，会通过一个格式为R8UI的VertexAttribute传递每个字符的风格ID，所以最多不能超过256种风格。
+        */
+        StylePerChar,
+    };
 
-        /**
-         * 创建一个字体源
-         * @param name 字体名称
-         * @param size 字体象素高度
-         */
-        FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
+    class TextRender
+    {
+        VulkanDevice *      device;
 
-        /**
-         * 创建一个文本渲染器
-         * @param limit 节数限制(-1表示自动)
-         */
-        TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit);
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_TEXT_RENDER_INCLUDE
+        PrimitiveManager *  primitive_manager;
+        MaterialManager *   mtl_manager;
+
+        Sampler *           sampler;
+
+        Pipeline *          pipeline;
+
+        TileFont *          tile_font;
+        layout::TextLayout *tl_engine;
+
+        layout::ParagraphStyle para_style;                  ///<段落风格
+        layout::TextDrawStyle text_draw_style;              ///<文本绘制风格
+
+    private:    //fixed style 资源
+
+        layout::CharStyle   fixed_style;                    ///<固定字符风格
+
+        Material *          mtl_fs;                         ///<固定风格材质
+        MaterialInstance *  mi_fs;                          ///<固定风格材质实例
+
+    private:
+
+        SortedSet<TextGeometry *> text_geometry_set;        ///<所有的文字绘制几何体
+
+    private:
+
+        bool SimpleLayout(TextGeometry *tr,const U16StringView &str);              ///<简单文本排版
+
+    private:
+
+        friend class RenderFramework;
+
+        TextRender(RenderFramework *,TileFont *);
+
+        bool InitTextLayoutEngine();
+        bool InitMaterial(RenderPass *);
+        bool Init(RenderPass *,Sampler *);
+
+    public:
+
+        ~TextRender();
+
+    public:
+
+        TextGeometry *Begin(const TextGeometryType &tpt=TextGeometryType::FixedStyle,int limit=2048);                   ///<创建一个文本绘制几何体
+
+        void SetFixedStyle(const layout::CharStyle &);                                                                  ///<设定固定风格模式所用风格
+        void SetParagraphStyle(const layout::ParagraphStyle *);                                                         ///<设定段落风格
+
+        bool Layout(const layout::TEXT_COORD_VEC &start_pos,const U16StringView&);                                      ///<排版一段文本
+
+        void End();                                                                                                     ///<结束排版
+
+    public:
+
+        TextGeometry *CreateGeometry(const TextGeometryType &tpt,const U16StringView&str);                              ///<创建一个文本几何体，并进行简单排版
+
+        Primitive *CreatePrimitive(TextGeometry *text_geometry);                                                        ///<创建一个网格对象用于渲染指定的文本几何体
+
+        void Release(TextGeometry *);                                                                                   ///<释放一个文本几何体
+    };//class TextRender
+}//namespace hgl::graph

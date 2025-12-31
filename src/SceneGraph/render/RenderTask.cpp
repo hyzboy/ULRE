@@ -1,0 +1,89 @@
+#include<hgl/graph/RenderTask.h>
+#include<hgl/graph/RenderCollector.h>
+#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKRenderTarget.h>
+
+namespace hgl::graph
+{
+    RenderTask::RenderTask(const RenderTaskName &tn,IRenderTarget *rt,CameraInfo *ci)
+    {
+        task_name=tn;
+
+        camera_info=ci;
+        render_target=nullptr;
+        render_collector=nullptr;
+
+        SetRenderTarget(rt);
+    }
+
+    RenderTask::~RenderTask()
+    {
+        SAFE_CLEAR(render_collector)
+    }
+
+    bool RenderTask::SetRenderTarget(IRenderTarget *rt)
+    {
+        render_target=rt;
+
+        if(!rt)
+            return(false);
+
+        if(!render_collector)
+        {
+            render_collector=new RenderCollector(rt->GetDevice());
+
+            if(camera_info)
+                render_collector->SetCameraInfo(camera_info);
+        }
+
+        return(true);
+    }
+
+    void RenderTask::SetCameraInfo(const CameraInfo *ci)
+    {
+        if(camera_info==ci)return;
+
+        camera_info=ci;
+
+        render_collector->SetCameraInfo(ci);
+    }
+
+    uint RenderTask::RebuildRenderList(SceneNode *root)
+    {
+        if(!root || !render_collector)
+            return 0;
+
+        if(!render_collector->GetCameraInfo()&&camera_info)
+            render_collector->SetCameraInfo(camera_info);
+
+        // 记往不需要，也千万不要手动render_collector->Clear，因为那会释放内存。再次使用时重新分配
+        // render_collector->Expand会自己复位所有数据，且并不会释放内存
+        return render_collector->Expand(root);
+    }
+
+    bool RenderTask::IsEmpty()const
+    {
+        if(!render_collector)
+            return(true);
+
+        return render_collector->IsEmpty();
+    }
+
+    bool RenderTask::Render(RenderCmdBuffer *cmd)
+    {
+        if(!cmd)
+            return(false);
+
+        if(!render_target)
+            return(false);
+
+        if(!render_collector)
+            return(false);
+
+        if(render_collector->IsEmpty())
+            return(true);       //空的仅是不画不代表错误
+
+        render_collector->Render(cmd);
+        return(true);
+    }
+}//namespace hgl::graph

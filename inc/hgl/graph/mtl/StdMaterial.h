@@ -1,57 +1,71 @@
 ﻿#pragma once
 
-#define STD_MTL_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace mtl{
-#define STD_MTL_NAMESPACE_END   }}}
+#include<hgl/type/String.h>
 
-#define STD_MTL_NAMESPACE_USING using namespace hgl::graph::mtl;
+#define STD_MTL_NAMESPACE_BEGIN namespace hgl::graph::mtl{
+#define STD_MTL_NAMESPACE_END   }
 
-#include<hgl/graph/mtl/ShaderBuffer.h>
+#define STD_MTL_NAMESPACE hgl::graph::mtl
+#define STD_MTL_NAMESPACE_USING using namespace STD_MTL_NAMESPACE;
 
-STD_MTL_NAMESPACE_BEGIN
+#define STD_MTL_FUNC_NAMESPACE_BEGIN namespace hgl::graph::mtl::func{
+#define STD_MTL_FUNC_NAMESPACE_END   }
 
-enum class CoordinateSystem2D
+#define STD_MTL_FUNC_NAMESPACE hgl::graph::mtl::func
+#define STD_MTL_FUNC_NAMESPACE_USING using namespace STD_MTL_FUNC_NAMESPACE;
+
+namespace hgl::graph
 {
-    NDC,
-    ZeroToOne,          //左上角为0,0；右下角为1,1
-    Ortho               //左上角为0,0；右下角为(width-1),(height-1)
-};
+    class ShaderCreateInfoVertex;
+    class ShaderCreateInfoGeometry;
+    class ShaderCreateInfoFragment;
+    struct VulkanDevAttr;
 
-constexpr const ShaderBufferSource SBS_ViewportInfo=
-{
-    "ViewportInfo",
-    "viewport",
+    namespace mtl
+    {
+        enum class WithSky:uint8
+        {
+            Without=0,
+            With
+        };
 
-    R"(
-mat4 ortho_matrix;
+        enum class WithCamera:uint8
+        {
+            Without=0,
+            With
+        };
 
-vec2 canvas_resolution;
-vec2 viewport_resolution;
-vec2 inv_viewport_resolution;
-)"
-};
+        enum class WithLocalToWorld:uint8
+        {
+            Without=0,
+            With
+        };
 
-constexpr const ShaderBufferSource SBS_CameraInfo=
-{
-    "CameraInfo",
-    "camera",
+        class MaterialCreateInfo;
+        struct MaterialCreateConfig;
 
-    R"(
-mat4 projection;
-mat4 inverse_projection;
+        class StdMaterial
+        {
+        protected:
 
-mat4 view;
-mat4 inverse_view;
+            MaterialCreateInfo *mci;
 
-mat4 vp;
-mat4 inverse_vp;
+        protected:
 
-mat4 sky;
+            virtual bool BeginCustomShader(){return true;/*some work before create shader*/};
 
-vec3 pos;                   //eye
-vec3 view_line;             //pos-target
-vec3 world_up;
+            virtual bool CustomVertexShader(ShaderCreateInfoVertex *)=0;
+            virtual bool CustomGeometryShader(ShaderCreateInfoGeometry *){return false;}
+            virtual bool CustomFragmentShader(ShaderCreateInfoFragment *)=0;
 
-float znear,zfar;)"
-};
+            virtual bool EndCustomShader(){return true;/*some work after create shader*/};
 
-STD_MTL_NAMESPACE_END
+        public:
+
+            StdMaterial(const MaterialCreateConfig *);
+            virtual ~StdMaterial()=default;
+    
+            virtual MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr);
+        };//class StdMaterial
+    }//namespace mtl
+}//namespace hgl::graph

@@ -1,66 +1,37 @@
 ﻿#include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKSwapchain.h>
-#include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VKSemaphore.h>
-#include<hgl/graph/VKFramebuffer.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/VKBuffer.h>
+
+#include<hgl/graph/mtl/UBOCommon.h>     //未来UBO统合看能不能不引用
 
 VK_NAMESPACE_BEGIN
-RenderTarget::RenderTarget(DeviceQueue *q,Semaphore *s)
-{
-    queue=q;
-    render_pass=nullptr;
-    fbo=nullptr;
 
-    color_count=0;
-    color_textures=nullptr;
-    depth_texture=nullptr;
-    render_complete_semaphore=s;
+VulkanDevice *IRenderTarget::GetDevice  ()const{return render_framework->GetDevice();}
+VkDevice   IRenderTarget::GetVkDevice()const{return render_framework->GetDevice()->GetDevice();}
+
+IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext):desc_binding(DescriptorSetType::RenderTarget)
+{
+    render_framework=rf;
+
+    ubo_vp_info=GetDevice()->CreateUBO<UBOViewportInfo>(&mtl::SBS_ViewportInfo);
+
+    desc_binding.AddUBO(ubo_vp_info);
+
+    OnResize(ext);
 }
 
-RenderTarget::RenderTarget(DeviceQueue *q,Semaphore *s,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt)
+IRenderTarget::~IRenderTarget()
 {
-    queue=q;
-    render_pass=_rp;
-    fbo=_fb;
-    
-    depth_texture=dt;
-
-    color_count=cc;
-    if(color_count>0)
-    {
-        color_textures=new Texture2D *[color_count];
-        hgl_cpy(color_textures,ctl,color_count);
-
-        extent.width=color_textures[0]->GetWidth();
-        extent.height=color_textures[0]->GetHeight();
-    }
-    else
-    {
-        color_textures=nullptr;
-
-        if(depth_texture)
-        {
-            extent.width=depth_texture->GetWidth();
-            extent.height=depth_texture->GetHeight();
-        }
-    }
-
-    render_complete_semaphore=s;
+    SAFE_CLEAR(ubo_vp_info);
 }
 
-RenderTarget::~RenderTarget()
+void IRenderTarget::OnResize(const VkExtent2D &ext)
 {
-    SAFE_CLEAR(queue);
-    SAFE_CLEAR(depth_texture);
-    SAFE_CLEAR_OBJECT_ARRAY(color_textures,color_count);
-    
-    SAFE_CLEAR(render_complete_semaphore);
-    SAFE_CLEAR(fbo);
+    extent=ext;
+
+    ubo_vp_info->data()->Set(ext.width,ext.height);
+
+    ubo_vp_info->Update();
 }
 
-bool RenderTarget::Submit(RenderCmdBuffer *command_buffer,Semaphore *present_complete_semaphore)
-{
-    return queue->Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
-}
 VK_NAMESPACE_END

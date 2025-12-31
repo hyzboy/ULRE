@@ -21,13 +21,13 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
 const DescriptorSetType MaterialDescriptorInfo::GetSetType(const AnsiString &name)const
 {
     for(auto &sds:desc_set_array)
-        if(sds.descriptor_map.KeyExist(name))
+        if(sds.descriptor_map.ContainsKey(name))
             return(sds.set_type);
 
     return DescriptorSetType::Global;
 }
 
-const UBODescriptor *MaterialDescriptorInfo::AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd)
+const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -40,7 +40,20 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(VkShaderStageFlagBits ssb,De
     return((UBODescriptor *)obj);
 }
 
-const SamplerDescriptor *MaterialDescriptorInfo::AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd)
+const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
+{
+    RANGE_CHECK_RETURN_NULLPTR(set_type);
+    if(!sd)return(nullptr);
+
+    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
+
+    ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
+
+    texture_map.Add(obj->name,(TextureDescriptor *)obj);
+    return((TextureDescriptor *)obj);
+}
+
+const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -49,8 +62,8 @@ const SamplerDescriptor *MaterialDescriptorInfo::AddSampler(VkShaderStageFlagBit
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    sampler_map.Add(obj->name,(SamplerDescriptor *)obj);
-    return((SamplerDescriptor *)obj);
+    texture_sampler_map.Add(obj->name,(TextureSamplerDescriptor *)obj);
+    return((TextureSamplerDescriptor *)obj);
 }
 
 UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
@@ -63,11 +76,21 @@ UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
     return(nullptr);
 }
 
-SamplerDescriptor *MaterialDescriptorInfo::GetSampler(const AnsiString &name)
+TextureDescriptor *MaterialDescriptorInfo::GetTexture(const AnsiString &name)
 {
-    SamplerDescriptor *sd;
+    TextureDescriptor *sd;
 
-    if(sampler_map.Get(name,sd))
+    if(texture_map.Get(name,sd))
+        return(sd);
+
+    return(nullptr);
+}
+
+TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const AnsiString &name)
+{
+    TextureSamplerDescriptor *sd;
+
+    if(texture_sampler_map.Get(name,sd))
         return(sd);
 
     return(nullptr);
@@ -78,29 +101,27 @@ void MaterialDescriptorInfo::Resort()
     descriptor_count=0;
 
     //重新生成set/binding
+    int set=0;
+
+    for(auto &p:desc_set_array)
     {
-        int set=0;
+        if(p.count<=0)
+            continue;
+        
+        descriptor_count+=p.count;
 
-        for(auto &p:desc_set_array)
+        p.set=set;
+
+        auto *sdp=p.descriptor_map.GetDataList();
+        for(int i=0;i<p.descriptor_map.GetCount();i++)
         {
-            if(p.count>0)
-            {
-                descriptor_count+=p.count;
+            (*sdp)->value->set=set;
+            (*sdp)->value->binding=i;
 
-                p.set=set;
-
-                auto *sdp=p.descriptor_map.GetDataList();
-                for(int i=0;i<p.descriptor_map.GetCount();i++)
-                {
-                    (*sdp)->value->set=set;
-                    (*sdp)->value->binding=i;
-
-                    ++sdp;
-                }
-
-                ++set;
-            }
+            ++sdp;
         }
+
+        ++set;
     }
 }
 }}//namespace hgl::graph

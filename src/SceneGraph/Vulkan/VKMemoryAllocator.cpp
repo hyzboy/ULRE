@@ -4,7 +4,7 @@
 #include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-VKMemoryAllocator::VKMemoryAllocator(GPUDevice *d,const uint32_t flags,const VkDeviceSize r)
+VKMemoryAllocator::VKMemoryAllocator(VulkanDevice *d,const uint32_t flags,const VkDeviceSize r)
 {
     device=d;
     buffer_usage_flag_bits=flags;
@@ -44,5 +44,13 @@ bool VKMemoryAllocator::AllocMemory()
 void VKMemoryAllocator::Flush(const VkDeviceSize size)
 {
     gpu_buffer->Flush(size);
+}
+
+bool VKMemoryAllocator::Write(const void *source,const uint64 offset,const uint64 size)
+{
+    if(!source||size==0)
+        return(false);
+
+    return gpu_buffer->Write(source,offset,size);
 }
 VK_NAMESPACE_END

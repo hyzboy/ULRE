@@ -1,6 +1,6 @@
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKDescriptorSetType.h>
-#include<hgl/TypeFunc.h>
+#include<hgl/type/EnumUtil.h>
 
 VK_NAMESPACE_BEGIN
 void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDescriptor *sd)
@@ -12,7 +12,7 @@ void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDe
     dslb->pImmutableSamplers=nullptr;
 }
 
-MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,ShaderDescriptor *sd_list,const uint sd_count)
+MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,ShaderDescriptor *sd_list,const uint sd_count)
 {
     mtl_name=name;
 
@@ -66,7 +66,7 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,Shad
     }
 }
 
-MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,const ShaderDescriptorSetArray &sds_array)
+MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,const ShaderDescriptorSetArray &sds_array)
 {
     mtl_name=name;
 

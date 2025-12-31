@@ -1,8 +1,7 @@
-﻿#ifndef HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
-#define HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKUBODynamic.h>
+#include<hgl/graph/VKDynamicBufferAccess.h>
 namespace hgl
 {
     class Collection;
@@ -15,11 +14,12 @@ namespace hgl
         * GPU数据阵列缓冲区<br>
         * 它用于储存多份相同格式的数据，常用于多物件渲染，instance等
         */
-        class GPUArrayBuffer
+        class VulkanArrayBuffer
         {
         protected:
 
-            uint unit_size;
+            uint align_size;
+            uint range_size;
 
             VKMemoryAllocator *vk_ma;
 
@@ -32,43 +32,44 @@ namespace hgl
 
         private:
 
-            GPUArrayBuffer(VKMemoryAllocator *,const uint);
+            VulkanArrayBuffer(VKMemoryAllocator *,const uint,const uint);
 
-            friend class GPUDevice;
+            friend class VulkanDevice;
 
         public:
         
-            virtual ~GPUArrayBuffer();
+            virtual ~VulkanArrayBuffer();
 
-            const uint32_t  GetUnitSize()const{return unit_size;}
+            const uint32_t  GetAlignSize()const{return align_size;}     ///<数据对齐字节数
+            const uint32_t  GetRangeSize()const{return range_size;}     ///<单次渲染访问最大字节数
+
             DeviceBuffer *  GetBuffer();
 
-            uint32          Alloc(const uint32 max_count);            ///<预分配空间
+            uint32          Reserve(const uint32 max_count);              ///<预分配空间
             void            Clear();
 
             template<typename T>
-            bool            Start(UBODynamicAccess<T> *ubo_access,const uint32 start,const uint32 count)
+            bool            Start(DynamicBufferAccess<T> *dba,const uint32 start,const uint32 count)
             {
-                if(!ubo_access)return(false);
+                if(!dba)return(false);
 
                 void *ptr=Map(start,count);
 
                 if(!ptr)return(false);
 
-                ubo_access->Start((uchar *)ptr,unit_size,count);
+                dba->Start((uchar *)ptr,align_size,count);
                 return(true);
             }
 
             template<typename T>
-            void            End(UBODynamicAccess<T> *ubo_access)
+            void            End(DynamicBufferAccess<T> *dba)
             {
-                if(!ubo_access)return;
+                if(!dba)return;
 
-                Flush(ubo_access->GetCount());
+                Flush(dba->GetCount());
 
-                ubo_access->Restart();
+                dba->Restart();
             }
-        };//class GPUArrayBuffer
+        };//class VulkanArrayBuffer
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE

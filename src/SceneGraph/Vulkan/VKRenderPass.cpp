@@ -1,29 +1,29 @@
 ﻿#include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKInlinePipeline.h>
-#include<hgl/graph/VKPipelineData.h>
+#include<hgl/graph/pipeline/VKInlinePipeline.h>
+#include<hgl/graph/pipeline/VKPipelineData.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
 VK_NAMESPACE_BEGIN
-RenderPass::RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
+RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
 {
-    device=d;
-    pipeline_cache=pc;
+    device=dev;
+    pipeline_cache=dev->GetPipelineCache();
     render_pass=rp;
     color_formats=cf;
     depth_format=df;
 
-    vkGetRenderAreaGranularity(device,render_pass,&granularity);
+    vkGetRenderAreaGranularity(*device,render_pass,&granularity);
 }
 
 RenderPass::~RenderPass()
 {
     pipeline_list.Clear();
 
-    vkDestroyRenderPass(device,render_pass,nullptr);
+    vkDestroyRenderPass(*device,render_pass,nullptr);
 }
 
-Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
+Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
     //以后要做一个缓冲，以Material为基准创建一个pipeline，其它MaterialInstance的pipeline全部以它为基础，这样可以提升性能。
 
@@ -41,7 +41,7 @@ Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInf
         pd->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
     }
 
-    if (vkCreateGraphicsPipelines(  device,
+    if (vkCreateGraphicsPipelines(  *device,
         pipeline_cache,
         1,&pd->pipeline_info,
         nullptr,
@@ -53,36 +53,16 @@ Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInf
         return(nullptr);
     }
 
-    return(new Pipeline(device,graphicsPipeline,pd));
+    return(new Pipeline(name,*device,graphicsPipeline,vil,pd));
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
 {
-    if(!mi)return(nullptr);
-    
-    Material *mtl=mi->GetMaterial();
-    const PipelineData *cpd=GetPipelineData(ip);
-
     PipelineData *pd=new PipelineData(cpd);
 
-    pd->SetPrim(prim,prim_restart);
-
-    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),mi->GetVIL());
-
-    if(p)
-        pipeline_list.Add(p);
-
-    return p;
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
-{
-    Material *mtl=mi->GetMaterial();
-    PipelineData *pd=new PipelineData(cpd);
-
-    pd->SetPrim(prim,prim_restart);
+    pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
     
-    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),mi->GetVIL());
+    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
 
     if(p)
         pipeline_list.Add(p);
@@ -90,12 +70,41 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cp
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const bool prim_restart)
+{
+    if(!mtl)return(nullptr);
+
+    return CreatePipeline(mtl,vil,GetPipelineData(ip),prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const PipelineData *pd,const bool prim_restart)
+{
+    return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const InlinePipeline &ip,const bool prim_restart)
+{
+    return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
+{
+    if(!mi)return(nullptr);
+    
+    return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const bool prim_restart)
+{
+    return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const bool prim_restart)
 {
     const PipelineData *pd=GetPipelineData(pipeline_filename);
 
     if(!pd)return(nullptr);
 
-    return CreatePipeline(mi,pd,prim,prim_restart);
+    return CreatePipeline(mi,pd,prim_restart);
 }
 VK_NAMESPACE_END

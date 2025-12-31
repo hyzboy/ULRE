@@ -1,5 +1,6 @@
-#include<hgl/graph/VKQueue.h>
+﻿#include<hgl/graph/VKQueue.h>
 #include<hgl/graph/VKSemaphore.h>
+#include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
 namespace 
@@ -21,7 +22,7 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 
 DeviceQueue::~DeviceQueue()
 {
-    SAFE_CLEAR_OBJECT_ARRAY(fence_list,fence_count)
+    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(fence_list,fence_count)
 }
 
 bool DeviceQueue::WaitQueue()
@@ -66,6 +67,10 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
         submit_info.pWaitSemaphores     =nullptr;
     }
 
+    // wait 信号的意思是等待这个Image有效
+    // signal 则是这个queue已执行完成，和fence功能类似。
+    // 所以Wait信号一般是上一次的signal信号
+
     if(complete_sem)
     {
         cs=*complete_sem;
@@ -91,8 +96,13 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     return(result==VK_SUCCESS);
 }
 
-bool DeviceQueue::Submit(const VkCommandBuffer &cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
+bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
 {
-    return Submit(&cmd_buf,1,wait_sem,complete_sem);
+    if(cmd_buf->IsBegin())
+        cmd_buf->End();
+
+    VkCommandBuffer vk_cmd=*cmd_buf;
+
+    return Submit(&vk_cmd,1,wait_sem,complete_sem);
 }
 VK_NAMESPACE_END

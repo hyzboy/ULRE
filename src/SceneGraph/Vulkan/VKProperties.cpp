@@ -6,12 +6,12 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    static List<VkLayerProperties> layer_properties;
-    static List<VkExtensionProperties> extension_properties;
+    static ArrayList<VkLayerProperties> layer_properties;
+    static ArrayList<VkExtensionProperties> extension_properties;
 }//namespace
 
-const List<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
-const List<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
+const ArrayList<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
+const ArrayList<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
 
 void InitVulkanInstanceProperties()
 {
@@ -22,7 +22,7 @@ void InitVulkanInstanceProperties()
         uint32_t layer_count;
         vkEnumerateInstanceLayerProperties(&layer_count,nullptr);
 
-        layer_properties.SetCount(layer_count);
+        layer_properties.Resize(layer_count);
         vkEnumerateInstanceLayerProperties(&layer_count,layer_properties.GetData());
 
         debug_out("Instance",layer_properties);
@@ -32,7 +32,7 @@ void InitVulkanInstanceProperties()
         uint32_t prop_count;
         vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,nullptr);
 
-        extension_properties.SetCount(prop_count);
+        extension_properties.Resize(prop_count);
         vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,extension_properties.GetData());
 
         debug_out("Instance",extension_properties);
@@ -86,7 +86,13 @@ void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *lay
 
 #define VK_LAYER_KHRONOS_ADD(name)      VK_LAYER_CHECK(khronos,"KHRONOS",name)
 
+    VK_LAYER_KHRONOS_ADD(synchronization2)
     VK_LAYER_KHRONOS_ADD(validation)
+    VK_LAYER_KHRONOS_ADD(profiles)
+
+#define VK_LAYER_AMD_ADD(name)          VK_LAYER_CHECK(amd,"AMD",name)
+
+    VK_LAYER_AMD_ADD(switchable_graphics)
 
 #define VK_LAYER_NV_ADD(name)           VK_LAYER_CHECK(nv,"NV",name)
 

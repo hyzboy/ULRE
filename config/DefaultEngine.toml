@@ -1,0 +1,31 @@
+[display]
+# DisplayMode=Window
+
+[display.Swapchain]
+Width=1280
+Height=720
+ColoSpace=sRGB Nonlinear
+# Multiple formats are supported in order
+ColorFormat=
+{
+    A2BGR10UN,
+    A2RGB10UN,
+    RGBA8UN,
+    BGRA8UN,
+    ABGR8UN
+}
+
+DepthFormat=
+{
+    D32F,
+    D32F_S8U,
+    D24UN_S8U,
+    X8_D24UN
+}
+
+DepthStencilFormat=
+{
+    D32F_S8U,
+    D24UN_S8U,
+    D16UN_S8U
+}

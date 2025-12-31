@@ -10,7 +10,7 @@ class Semaphore
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     Semaphore(VkDevice d,VkSemaphore s)
     {
