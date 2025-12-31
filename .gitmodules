@@ -16,9 +16,7 @@
 [submodule "res"]
 	path = res
 	url = http://git.hyzgame.com:3000/hyzboy/RuntimeData.git
-[submodule "CMSceneGraph"]
-	path = CMSceneGraph
-	url = http://git.hyzgame.com:3000/hyzboy/CMSceneGraph.git
+
 [submodule "CMUtil"]
 	path = CMUtil
 	url = http://git.hyzgame.com:3000/hyzboy/CMUtil.git
