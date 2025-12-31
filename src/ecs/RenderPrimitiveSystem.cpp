@@ -150,14 +150,14 @@ namespace hgl::ecs
                 
                 // For accurate culling, transform all 8 corners and rebuild AABB
                 glm::vec3 corners[8] = {
-                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.min_point.z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.min_point.y, aabb.max_point.z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.min_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.max_point.x, aabb.max_point.y, aabb.max_point.z, 1.0f))
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMin().y, aabb.GetMin().z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMin().y, aabb.GetMin().z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMax().y, aabb.GetMin().z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMax().y, aabb.GetMin().z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMin().y, aabb.GetMax().z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMin().y, aabb.GetMax().z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMax().y, aabb.GetMax().z, 1.0f)),
+                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMax().y, aabb.GetMax().z, 1.0f))
                 };
                     
                 // Find transformed AABB bounds

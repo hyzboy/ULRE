@@ -11,6 +11,8 @@
 
 namespace hgl::graph
 {
+    using namespace hgl::math;
+
     /**
     * 顶点属性数据访问模板
     */

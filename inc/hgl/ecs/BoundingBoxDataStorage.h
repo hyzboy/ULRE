@@ -3,29 +3,14 @@
 #include<glm/glm.hpp>
 #include<vector>
 #include<cstdint>
-
-// Forward declare or use AABB from CMMath when available
-#ifndef HGL_MATH_AABB_DEFINED
-    namespace hgl
-    {
-        // Minimal AABB definition for standalone compilation
-        // When CMMath is linked, this should be replaced by actual AABB from hgl/math/geometry/AABB.h
-        struct AABB
-        {
-            glm::vec3 min_point;
-            glm::vec3 max_point;
-
-            AABB() : min_point(0.0f), max_point(0.0f) {}
-            AABB(const glm::vec3& min, const glm::vec3& max) : min_point(min), max_point(max) {}
-        };
-    }
-    #define HGL_MATH_AABB_DEFINED
-#endif
+#include<hgl/math/geometry/AABB.h>
 
 namespace hgl
 {
     namespace ecs
     {
+        using namespace hgl::math;
+
         /**
          * Structure of Arrays storage for bounding box data
          * Provides cache-friendly data layout for batch processing and SSBO uploads
@@ -118,12 +103,12 @@ namespace hgl
                 if (handle >= minPoints.size())
                     return;
                 
-                minPoints[handle] = aabb.min_point;
-                maxPoints[handle] = aabb.max_point;
+                minPoints[handle] = aabb.GetMin();
+                maxPoints[handle] = aabb.GetMax();
                 
                 // Calculate and cache center and extents
-                centers[handle] = (aabb.min_point + aabb.max_point) * 0.5f;
-                extents[handle] = (aabb.max_point - aabb.min_point) * 0.5f;
+                centers[handle] = (aabb.GetMin() + aabb.GetMax()) * 0.5f;
+                extents[handle] = (aabb.GetMax() - aabb.GetMin()) * 0.5f;
                 dirtyFlags[handle] = true;
             }
 
