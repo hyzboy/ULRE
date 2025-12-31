@@ -311,6 +311,90 @@ namespace hgl::graph
          * 创建一个可锥缩的胶囊体(三角形)
          */
         Geometry *CreateTaperedCapsule(GeometryCreater *pc,const TaperedCapsuleCreateInfo *tcci);
+        
+        // 新增：截锥体创建信息
+        struct FrustumCreateInfo
+        {
+            float bottom_radius = 1.0f;  // 底面半径
+            float top_radius = 0.5f;     // 顶面半径
+            float height = 2.0f;         // 高度
+            uint  numberSlices = 16;     // 圆周分段数
+            bool  generate_caps = true;  // 是否生成顶底面
+        };
+
+        /**
+         * 创建一个截锥体(三角形)
+         * 用途：视锥体可视化、灯光范围、杯子建模
+         */
+        Geometry *CreateFrustum(GeometryCreater *pc, const FrustumCreateInfo *fci);
+
+        // 新增：箭头创建信息
+        struct ArrowCreateInfo
+        {
+            float shaft_radius = 0.1f;    // 杆部半径
+            float shaft_length = 2.0f;    // 杆部长度
+            float head_radius = 0.3f;     // 箭头半径
+            float head_length = 0.5f;     // 箭头长度
+            uint  numberSlices = 16;      // 圆周分段数
+            Vector3f direction = Vector3f(0, 0, 1);  // 箭头方向（默认Z轴）
+        };
+
+        /**
+         * 创建一个箭头(三角形)
+         * 用途：调试可视化、方向指示、矢量显示
+         */
+        Geometry *CreateArrow(GeometryCreater *pc, const ArrowCreateInfo *aci);
+
+        // 新增：圆角立方体创建信息
+        struct RoundedBoxCreateInfo
+        {
+            Vector3f size = Vector3f(1.0f, 1.0f, 1.0f);  // 盒子尺寸
+            float    edge_radius = 0.1f;                 // 边缘圆角半径
+            uint     edge_segments = 4;                  // 圆角细分段数
+            uint     face_segments = 1;                  // 平面细分段数（可选）
+        };
+
+        /**
+         * 创建一个圆角立方体(三角形)
+         * 用途：现代UI元素、物理碰撞体、柔和建模
+         */
+        Geometry *CreateRoundedBox(GeometryCreater *pc, const RoundedBoxCreateInfo *rbci);
+
+        // 新增：管道弯头创建信息
+        struct PipeElbowCreateInfo
+        {
+            float inner_radius = 0.3f;     // 内半径
+            float outer_radius = 0.5f;     // 外半径
+            float bend_angle = 90.0f;      // 弯曲角度（度）
+            float bend_radius = 1.0f;      // 弯曲半径（中心线到弯曲中心的距离）
+            uint  pipe_segments = 16;      // 管道截面圆周分段数
+            uint  bend_segments = 16;      // 沿弯曲路径的分段数
+            bool  generate_caps = true;    // 是否生成端面
+        };
+
+        /**
+         * 创建一个管道弯头(三角形)
+         * 用途：管线系统、工业场景、建筑可视化
+         */
+        Geometry *CreatePipeElbow(GeometryCreater *pc, const PipeElbowCreateInfo *peci);
+
+        // 新增：螺旋体创建信息
+        struct HelixCreateInfo
+        {
+            float radius = 1.0f;           // 螺旋半径
+            float height = 4.0f;           // 总高度
+            float coil_radius = 0.1f;      // 管道/线圈半径
+            uint  turns = 4;               // 圈数
+            uint  segments_per_turn = 32;  // 每圈分段数
+            uint  coil_segments = 8;       // 管道截面分段数（圆形截面）
+            bool  solid = true;            // true=实心管道, false=线框
+        };
+
+        /**
+         * 创建一个螺旋体(三角形)
+         * 用途：弹簧、楼梯扶手、DNA双螺旋、装饰元素
+         */
+        Geometry *CreateHelix(GeometryCreater *pc, const HelixCreateInfo *hci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph
