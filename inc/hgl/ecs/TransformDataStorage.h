@@ -32,7 +32,7 @@ namespace hgl
             std::vector<glm::mat4> worldMatrices;    // 64 bytes each, consecutive
             std::vector<HandleID> parentHandles;     // 4 bytes each, consecutive
             std::vector<bool> matrixDirty;           // 1 byte each, consecutive
-            std::vector<uint8_t> mobility;           // 1 byte each, consecutive (0=Static, 1=Movable)
+            std::vector<uint8_t> mobility;           // 1 byte each, consecutive (0=static, 1=movable)
 
         public:
 
@@ -46,7 +46,7 @@ namespace hgl
                 worldMatrices.emplace_back(1.0f);
                 parentHandles.push_back(INVALID_HANDLE);
                 matrixDirty.push_back(true);
-                mobility.push_back(1);  // Default to Movable
+                mobility.push_back(1);  // Default to movable
                 return id;
             }
 
@@ -137,7 +137,7 @@ namespace hgl
                 matrixDirty[id] = dirty;
             }
 
-        public: // Mobility tracking (0 = Static, 1 = Movable)
+        public: // Mobility tracking (0 = static, 1 = movable)
 
             uint8_t GetMobility(HandleID id) const
             {
@@ -151,8 +151,8 @@ namespace hgl
 
         public: // Batch operations - these are much faster with SOA!
 
-            /// Update only movable dirty transforms - optimized for Static/Movable separation
-            /// Static objects are never updated after initialization
+            /// Update only movable dirty transforms - optimized for static/movable separation
+            /// Static objects (mobility == 0) are never updated after initialization
             void UpdateMovableDirtyMatrices(const std::function<void(HandleID, glm::vec3, glm::quat, glm::vec3)>& callback)
             {
                 // Only iterate through movable objects
@@ -173,7 +173,7 @@ namespace hgl
 
             /// Update all dirty transforms - cache friendly
             /// Process all positions, then rotations, then scales
-            /// NOTE: Prefer UpdateMovableDirtyMatrices() for better performance with Static/Movable separation
+            /// NOTE: Prefer UpdateMovableDirtyMatrices() for better performance with static/movable separation
             void UpdateAllDirtyMatrices(const std::function<void(HandleID, glm::vec3, glm::quat, glm::vec3)>& callback)
             {
                 // Iterate through all dirty flags
