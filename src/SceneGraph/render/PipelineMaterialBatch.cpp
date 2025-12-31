@@ -6,7 +6,8 @@
 #include<hgl/graph/VKVertexInput.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/util/sort/Sort.h>
-#include"InstanceAssignmentBuffer.h"
+#include"TransformAssignmentBuffer.h"
+#include"MaterialInstanceAssignmentBuffer.h"
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/component/PrimitiveComponent.h>
@@ -17,16 +18,23 @@ PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d, bool l2w, const Pi
     : device(d)
     , pm_index(rpi)
     , camera_info(nullptr)
-    , assign_buffer(nullptr)
+    , transform_buffer(nullptr)
+    , mi_buffer(nullptr)
     , draw_batches_count(0)
     , icb_draw(nullptr)
     , icb_draw_indexed(nullptr)
     , renderer(nullptr)
 {
-    // 如果材质需要 LocalToWorld 或材质实例数据，创建分配缓冲
-    if (rpi.material->hasLocalToWorld() || rpi.material->hasMI())
+    // 如果材质需要 LocalToWorld，创建Transform分配缓冲
+    if (rpi.material->hasLocalToWorld())
     {
-        assign_buffer = new InstanceAssignmentBuffer(device, pm_index.material);
+        transform_buffer = new TransformAssignmentBuffer(device);
+    }
+
+    // 如果材质需要材质实例数据，创建MI分配缓冲
+    if (rpi.material->hasMI())
+    {
+        mi_buffer = new MaterialInstanceAssignmentBuffer(device, pm_index.material);
     }
 
     // 创建渲染器
@@ -37,7 +45,8 @@ PipelineMaterialBatch::~PipelineMaterialBatch()
 {
     SAFE_CLEAR(icb_draw_indexed)
     SAFE_CLEAR(icb_draw)
-    SAFE_CLEAR(assign_buffer);
+    SAFE_CLEAR(transform_buffer);
+    SAFE_CLEAR(mi_buffer);
     SAFE_CLEAR(renderer);
 
     Clear();
@@ -80,13 +89,16 @@ void PipelineMaterialBatch::Finalize()
     BuildBatches();
 
     // 写入实例数据到缓冲
-    if (assign_buffer)
-        assign_buffer->WriteNode(draw_nodes);
+    if (transform_buffer)
+        transform_buffer->WriteNode(draw_nodes);
+    
+    if (mi_buffer)
+        mi_buffer->WriteNode(draw_nodes);
 }
 
 void PipelineMaterialBatch::UpdateTransformData()
 {
-    if (!assign_buffer) return;
+    if (!transform_buffer) return;
 
     transform_dirty_nodes.Clear();
 
@@ -128,7 +140,7 @@ void PipelineMaterialBatch::UpdateTransformData()
     // 批量更新变换数据
     if (!transform_dirty_nodes.IsEmpty())
     {
-        assign_buffer->UpdateTransformData(transform_dirty_nodes, first_index, last_index);
+        transform_buffer->UpdateTransformData(transform_dirty_nodes, first_index, last_index);
         transform_dirty_nodes.Clear();
     }
 }
@@ -137,7 +149,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_
 {
     // 提前返回，减少嵌套
     if (!prim_component) return;
-    if (!assign_buffer) return;
+    if (!mi_buffer) return;
     
     const int node_count = draw_nodes.GetCount();
     if (node_count <= 0) return;
@@ -149,7 +161,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_
 
         if (node->GetPrimitiveComponent() == prim_component)
         {
-            assign_buffer->UpdateMaterialInstanceData(node);
+            mi_buffer->UpdateMaterialInstanceData(node);
             return;
         }
     }
@@ -293,7 +305,7 @@ void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 
     // 委托给渲染器执行渲染
     renderer->Render(rcb, draw_batches, draw_batches_count, 
-                    assign_buffer, icb_draw, icb_draw_indexed);
+                    transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
 }
 
 VK_NAMESPACE_END

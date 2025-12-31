@@ -11,7 +11,8 @@ class PrimitiveComponent;
 COMPONENT_NAMESPACE_END
 
 VK_NAMESPACE_BEGIN
-class InstanceAssignmentBuffer;
+class TransformAssignmentBuffer;
+class MaterialInstanceAssignmentBuffer;
 class SceneNode;
 struct CameraInfo;
 
@@ -71,7 +72,8 @@ private:
     DrawNodePointerList transform_dirty_nodes;  ///<变换已修改的节点列表
 
     // === 实例数据管理 ===
-    InstanceAssignmentBuffer *assign_buffer;    ///<实例分配缓冲（LocalToWorld/MI数据）
+    TransformAssignmentBuffer *transform_buffer;          ///<Transform分配缓冲（LocalToWorld数据）
+    MaterialInstanceAssignmentBuffer *mi_buffer;          ///<材质实例分配缓冲（MI数据）
 
     // === 批次管理 ===
     DrawBatchArray draw_batches;                ///<绘制批次数组

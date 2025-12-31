@@ -135,8 +135,10 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/DrawNode.h
                             render/RenderCollector.cpp
                             render/PipelineMaterialBatch.cpp
                             render/PipelineMaterialRenderer.cpp
-                            render/InstanceAssignmentBuffer.h
-                            render/InstanceAssignmentBuffer.cpp)
+                            render/TransformAssignmentBuffer.h
+                            render/TransformAssignmentBuffer.cpp
+                            render/MaterialInstanceAssignmentBuffer.h
+                            render/MaterialInstanceAssignmentBuffer.cpp)
 
 SOURCE_GROUP("4.Rendering\\Core" FILES ${RENDERING_CORE_FILES})
 
