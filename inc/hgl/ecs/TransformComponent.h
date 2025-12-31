@@ -14,15 +14,6 @@ namespace hgl
     namespace ecs
     {
         /**
-         * Mobility type for transform optimization (similar to Unreal Engine)
-         */
-        enum class TransformMobility
-        {
-            Static,      // Never moves, transform matrix cached permanently
-            Movable      // Frequently moves, transform updated every frame
-        };
-
-        /**
          * Transform component for spatial transformation
          * Uses SOA (Structure of Arrays) storage for better cache performance
          * while maintaining OOP component interface
@@ -43,7 +34,7 @@ namespace hgl
             bool matrixDirty;
 
             // Optimization settings
-            TransformMobility mobility;
+            bool movable;  // true = movable, false = static
 
         public:
 
@@ -92,10 +83,9 @@ namespace hgl
         public:
 
             // Mobility settings for optimization
-            void SetMobility(TransformMobility mob);
-            TransformMobility GetMobility() const { return mobility; }
-            bool IsStatic() const { return mobility == TransformMobility::Static; }
-            bool IsMovable() const { return mobility == TransformMobility::Movable; }
+            void SetMovable(bool isMovable);
+            bool IsMovable() const { return movable; }
+            bool IsStatic() const { return !movable; }
 
         public:
 

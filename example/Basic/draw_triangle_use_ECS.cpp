@@ -130,7 +130,7 @@ private:
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
         
         // 设置为静态对象 - 系统会缓存世界矩阵，提高性能
-        transform->SetMobility(TransformMobility::Static);
+        transform->SetMovable(false);
 
         // === 步骤4: 添加ECS PrimitiveComponent ===
         // 新的ECS PrimitiveComponent用于管理渲染图元

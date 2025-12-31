@@ -9,7 +9,7 @@ namespace hgl
             : Component(name)
             , cachedWorldMatrix(1.0f)
             , matrixDirty(true)
-            , mobility(TransformMobility::Movable)
+            , movable(true)
         {
             // Allocate storage in the shared SOA storage
             storageHandle = GetSharedStorage()->Allocate();
@@ -78,7 +78,7 @@ namespace hgl
 
         glm::mat4 TransformComponent::GetWorldMatrix()
         {
-            if (matrixDirty || mobility == TransformMobility::Movable)
+            if (matrixDirty || movable)
             {
                 UpdateWorldMatrix();
             }
@@ -247,17 +247,17 @@ namespace hgl
             }
         }
 
-        void TransformComponent::SetMobility(TransformMobility mob)
+        void TransformComponent::SetMovable(bool isMovable)
         {
-            mobility = mob;
-            // Update mobility in storage
-            GetSharedStorage()->SetMobility(storageHandle, mob == TransformMobility::Static ? 0 : 1);
+            movable = isMovable;
+            // Update mobility in storage (0 = static, 1 = movable)
+            GetSharedStorage()->SetMobility(storageHandle, isMovable ? 1 : 0);
         }
 
         void TransformComponent::OnUpdate(float deltaTime)
         {
             // Update transform if needed
-            if (matrixDirty && mobility == TransformMobility::Static)
+            if (matrixDirty && !movable)
             {
                 UpdateWorldMatrix();
             }
