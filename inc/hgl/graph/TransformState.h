@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/math/TransformAction.h>
+#include<hgl/math/transform/TransformAction.h>
 #include<hgl/math/MatrixOperations.h>
 
 namespace hgl::math

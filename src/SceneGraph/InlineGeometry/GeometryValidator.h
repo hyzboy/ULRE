@@ -5,10 +5,10 @@
 namespace hgl::graph::inline_geometry
 {
     // Shared constants used by multiple geometry creators
-    constexpr uint GLUS_VERTICES_FACTOR =4;
-    constexpr uint GLUS_VERTICES_DIVISOR=4;
-    constexpr uint GLUS_MAX_VERTICES    =1048576;
-    constexpr uint GLUS_MAX_INDICES     =GLUS_MAX_VERTICES*GLUS_VERTICES_FACTOR;
+    inline constexpr uint GLUS_VERTICES_FACTOR =4;
+    inline constexpr uint GLUS_VERTICES_DIVISOR=4;
+    inline constexpr uint GLUS_MAX_VERTICES    =1048576;
+    inline constexpr uint GLUS_MAX_INDICES     =GLUS_MAX_VERTICES*GLUS_VERTICES_FACTOR;
 
     /**
      * 几何体参数验证器
