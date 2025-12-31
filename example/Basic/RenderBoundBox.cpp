@@ -296,7 +296,7 @@ private:
 
         for(Component *c:root->GetComponents())
         {
-            if(c->GetTypeHash()!=PrimitiveComponent::StaticTypeHash())
+            if(GetTypeHash(c)!=PrimitiveComponent::StaticTypeHash())        //这里有问题，GetTypeHash(c)无法正确获取TypeHash，判断会永远失效，未来要改ECS，所以先不管了
                 continue;
 
             PrimitiveComponent *component=(PrimitiveComponent *)c;

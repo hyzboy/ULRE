@@ -14,11 +14,8 @@ namespace hgl::graph::inline_geometry
 {
     using namespace hgl::math;
 
-    // Shared constants (moved to GeometryValidator.h, kept here for backward compatibility)
-    constexpr uint GLUS_VERTICES_FACTOR =4;
-    constexpr uint GLUS_VERTICES_DIVISOR=4;
-    constexpr uint GLUS_MAX_VERTICES    =1048576;
-    constexpr uint GLUS_MAX_INDICES     =GLUS_MAX_VERTICES*GLUS_VERTICES_FACTOR;
+    // Note: GLUS_* constants are now defined in GeometryValidator.h
+    // They are available through the include above
 
     // ========================================================================
     // Quaternion helper functions for geometry generation

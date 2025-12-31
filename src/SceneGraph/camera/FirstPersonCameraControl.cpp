@@ -46,8 +46,8 @@ namespace hgl::graph
             UpdateCameraVector();
         }
 
-        right = Normalize(Cross(forward, camera->world_up));
-        up    = Normalize(Cross(right, forward));
+        right = Normalized(Cross(forward, camera->world_up));
+        up    = Normalized(Cross(right, forward));
 
         camera->viewDirection = forward;
     }
@@ -76,8 +76,8 @@ namespace hgl::graph
         forward.y = cp * sinf(yaw);
         forward.z = sinf(pitch);
 
-        right   =Normalize(Cross(forward,camera->world_up));
-        up      =Normalize(Cross(right,forward));
+        right   =Normalized(Cross(forward,camera->world_up));
+        up      =Normalized(Cross(right,forward));
     }
 
     void FirstPersonCameraControl::Rotate(const Vector2f &axis)

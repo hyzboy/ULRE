@@ -1,7 +1,7 @@
 ﻿#include<hgl/shadergen/ShaderTemplateEngine.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/io/FileAccess.h>
-#include<hgl/log/Logger.h>
+#include<hgl/log/Log.h>
 #include<algorithm>
 #include<set>
 #include<queue>
@@ -21,7 +21,7 @@ namespace hgl::graph
         // 清理缓存的模块
         for(auto& pair : module_cache)
         {
-            delete pair.value;
+            delete pair->value;
         }
         module_cache.Clear();
     }
@@ -40,7 +40,7 @@ namespace hgl::graph
         {
             if(!LoadInterface(category))
             {
-                LOG_ERROR("Failed to load interface for category: " + category);
+                GLogError(U8_TEXT("Failed to load interface for category: ") + UTF8String(category.c_str()));
                 return nullptr;
             }
         }
@@ -49,7 +49,7 @@ namespace hgl::graph
         const json& interface = interface_cache[category];
         if(!interface.contains("modules") || !interface["modules"].contains(name.c_str()))
         {
-            LOG_ERROR("Module not found in interface: " + category + "/" + name);
+            GLogError(U8_TEXT("Module not found in interface: ") + UTF8String(category.c_str()) + U8_TEXT("/") + UTF8String(name.c_str()));
             return nullptr;
         }
         
@@ -66,7 +66,7 @@ namespace hgl::graph
         void* fp = filesystem::LoadFileToMemory(file_path);
         if(!fp)
         {
-            LOG_ERROR("Failed to load module file: " + file_path);
+            GLogError(U8_TEXT("Failed to load module file: ") + UTF8String(file_path.c_str()));
             delete module;
             return nullptr;
         }
@@ -136,7 +136,7 @@ namespace hgl::graph
         void* fp = filesystem::LoadFileToMemory(interface_file);
         if(!fp)
         {
-            LOG_ERROR("Failed to load interface file: " + interface_file);
+            GLogError(U8_TEXT("Failed to load interface file: ") + UTF8String(interface_file.c_str()));
             return false;
         }
         
@@ -152,7 +152,7 @@ namespace hgl::graph
         }
         catch(const json::exception& e)
         {
-            LOG_ERROR("Failed to parse interface JSON: " + interface_file + ", error: " + AnsiString(e.what()));
+            GLogError(U8_TEXT("Failed to parse interface JSON: ") + UTF8String(interface_file.c_str()) + U8_TEXT(", error: ") + UTF8String(e.what()));
             return false;
         }
     }
@@ -218,7 +218,7 @@ namespace hgl::graph
                 {
                     // 需要加载提供此函数的模块 - 这里简化处理，假设依赖直接是模块名
                     // 在实际实现中，可能需要更复杂的查找逻辑
-                    LOG_WARNING("Dependency function not found: " + dep_func);
+                    GLogWarning(U8_TEXT("Dependency function not found: ") + UTF8String(dep_func.c_str()));
                 }
             }
         }
@@ -288,7 +288,7 @@ namespace hgl::graph
         // 检查是否有循环依赖
         if(ordered_modules.GetCount() != all_modules.size())
         {
-            LOG_ERROR("Circular dependency detected");
+            GLogError(U8_TEXT("Circular dependency detected"));
             return false;
         }
         
@@ -327,10 +327,10 @@ namespace hgl::graph
         
         if(!ResolveDependencies(recipe, ordered_modules, missing_deps))
         {
-            LOG_ERROR("Failed to resolve dependencies");
+            GLogError(U8_TEXT("Failed to resolve dependencies"));
             for(int i = 0; i < missing_deps.GetCount(); ++i)
             {
-                LOG_ERROR("  Missing: " + missing_deps[i]);
+                GLogError(U8_TEXT("  Missing: ") + UTF8String(missing_deps[i].c_str()));
             }
             return AnsiString();
         }
@@ -344,7 +344,7 @@ namespace hgl::graph
         void* fp = filesystem::LoadFileToMemory(template_path);
         if(!fp)
         {
-            LOG_ERROR("Failed to load template file: " + template_path);
+            GLogError(U8_TEXT("Failed to load template file: ") + UTF8String(template_path.c_str()));
             return AnsiString();
         }
         
@@ -360,7 +360,7 @@ namespace hgl::graph
         }
         catch(const std::exception& e)
         {
-            LOG_ERROR("Template rendering failed: " + AnsiString(e.what()));
+            GLogError(U8_TEXT("Template rendering failed: ") + UTF8String(e.what()));
             return AnsiString();
         }
     }
@@ -373,7 +373,7 @@ namespace hgl::graph
         void* fp = filesystem::LoadFileToMemory(recipe_file);
         if(!fp)
         {
-            LOG_ERROR("Failed to load recipe file: " + recipe_file);
+            GLogError(U8_TEXT("Failed to load recipe file: ") + UTF8String(recipe_file.c_str()));
             return recipe;
         }
         
@@ -391,7 +391,7 @@ namespace hgl::graph
             if(!recipe_json.contains("quality_levels") || 
                !recipe_json["quality_levels"].contains(quality_level.c_str()))
             {
-                LOG_ERROR("Quality level not found: " + quality_level);
+                GLogError(U8_TEXT("Quality level not found: ") + UTF8String(quality_level.c_str()));
                 return recipe;
             }
             
@@ -422,7 +422,7 @@ namespace hgl::graph
         }
         catch(const json::exception& e)
         {
-            LOG_ERROR("Failed to parse recipe JSON: " + AnsiString(e.what()));
+            GLogError(U8_TEXT("Failed to parse recipe JSON: ") + UTF8String(e.what()));
         }
         
         return recipe;

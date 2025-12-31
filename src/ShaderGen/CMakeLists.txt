@@ -124,8 +124,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
                                         ${MATERIAL_CREATE_INFO_SOURCE_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
-                                        ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
-                                        ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
+#                                        ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
+#                                        ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${SHADER_LIBRARY_FILES}
