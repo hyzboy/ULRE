@@ -437,7 +437,6 @@ namespace hgl::graph
             float depth = 0.3f;             // 心形厚度（Z方向）
             uint  segments = 32;            // 心形轮廓分段数（越大越平滑）
             uint  depth_segments = 2;       // 厚度方向的分段数
-            bool  smooth_shading = true;    // true=平滑着色, false=平面着色
         };
 
         /**

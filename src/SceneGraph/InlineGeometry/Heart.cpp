@@ -135,13 +135,16 @@ namespace hgl::graph::inline_geometry
                 float t = (float(i % segments) / float(segments)) * 2.0f * math::pi;
                 auto [x, y] = heart_point(t);
 
-                // Calculate normal (perpendicular to the curve)
-                float t_next = (float((i + 1) % segments) / float(segments)) * 2.0f * math::pi;
+                // Calculate tangent (derivative of the curve at this point)
+                float dt = 0.01f;  // Small differential for numerical derivative
+                float t_prev = t - dt;
+                float t_next = t + dt;
+                auto [x_prev, y_prev] = heart_point(t_prev);
                 auto [x_next, y_next] = heart_point(t_next);
                 
-                // Tangent along the curve
-                float tx = x_next - x;
-                float ty = y_next - y;
+                // Tangent along the curve (derivative)
+                float tx = (x_next - x_prev) / (2.0f * dt);
+                float ty = (y_next - y_prev) / (2.0f * dt);
                 float t_len = sqrtf(tx * tx + ty * ty);
                 if(t_len > 0.0f) { tx /= t_len; ty /= t_len; }
 
@@ -237,10 +240,17 @@ namespace hgl::graph::inline_geometry
 
         Geometry *p = pc->Create();
 
-        // Set bounding box (approximate based on heart shape)
-        BoundingVolumes bv;
-        bv.SetFromAABB(math::Vector3f(-size, -size, -half_depth),
-                       Vector3f(size, size, half_depth));
+        // Set bounding box
+        // Calculate actual bounds from the heart shape
+        // The parametric heart curve has specific mathematical bounds:
+        // X: approximately ±16 (scaled by size/16)
+        // Y: approximately -4 to 17 (scaled by size/16)
+        float max_x = size * (16.0f / 16.0f);      // ±1.0 * size
+        float max_y = size * (17.0f / 16.0f);      // ~1.06 * size
+        float min_y = size * (-4.0f / 16.0f);      // ~-0.25 * size
+        
+        bv.SetFromAABB(math::Vector3f(-max_x, min_y, -half_depth),
+                       Vector3f(max_x, max_y, half_depth));
 
         p->SetBoundingVolumes(bv);
 
