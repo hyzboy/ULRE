@@ -1,60 +1,95 @@
-﻿#ifndef HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
-#define HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/VKVABList.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
 VK_NAMESPACE_BEGIN
-class GPUCmdBuffer
+class VulkanCmdBuffer
 {
 protected:
 
-    const GPUDeviceAttribute *dev_attr;
+    const VulkanDevAttr *dev_attr;
 
     VkCommandBuffer cmd_buf;
 
+    bool cmd_begin;
+
 public:
 
-    GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
-    virtual ~GPUCmdBuffer();
+    VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb);
+    virtual ~VulkanCmdBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
     operator const VkCommandBuffer()const{return cmd_buf;}
     operator const VkCommandBuffer *()const{return &cmd_buf;}
+
+    const bool IsBegin()const{return cmd_begin;}
     
-    bool Begin();
-    bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
+    virtual bool Begin();
+    virtual bool End()
+    {
+        if(!cmd_begin)
+            return(false);
+
+        cmd_begin=false;
+
+        return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);
+    }
 
 #ifdef _DEBUG
-    void SetDebugName(const UTF8String &);
-    void BeginRegion(const UTF8String &,const Color4f &);
+    void SetDebugName(const AnsiString &);
+    void BeginRegion(const AnsiString &,const Color4f &);
     void EndRegion();
 #else
-    void BeginRegion(const UTF8String &,const Color4f &){}
+    void BeginRegion(const AnsiString &,const Color4f &){}
     void EndRegion(){}
 #endif//_DEBUG
-};//class GPUCmdBuffer
+};//class VulkanCmdBuffer
 
-class RenderCmdBuffer:public GPUCmdBuffer
+class DescriptorBinding;
+
+using DescriptorBindingPtr=DescriptorBinding *;
+using DescriptorBindingPtrArray=DescriptorBindingPtr[size_t(DescriptorSetType::RANGE_SIZE)];
+
+class RenderCmdBuffer:public VulkanCmdBuffer
 {
     uint32_t cv_count;
     VkClearValue *clear_values;
     VkRect2D render_area;
     VkViewport viewport;
-
-    float default_line_width;
-    
-    Framebuffer *fbo;
+   
     RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
-    void SetFBO(Framebuffer *);
+    /*
+    * 绝大部分desc绑定会全部使用这些自动绑定器绑定
+    * 该数据在渲染前分别会有各自的模块设置进来
+    * 比如
+    *    DescriptSetType::RenderTarget  即该由RenderTarget模块设置
+    *    DescriptSetType::World         World的自然由World模块设置
+    */
+    DescriptorBindingPtrArray desc_binding{};
+
+private:
+
+    void SetClear();
 
 public:
 
-    RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
+    RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb);
     ~RenderCmdBuffer();
+
+    bool SetDescriptorBinding(DescriptorBinding *);
+
+    bool End() override
+    {
+        mem_zero(desc_binding);
+
+        return VulkanCmdBuffer::End();
+    }
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetRenderArea(const VkExtent2D &);
@@ -64,7 +99,7 @@ public:
     {
         if(index>=cv_count)return;
 
-        hgl_cpy(clear_values[index].color.float32,cc.rgba,4);
+        mem_copy(clear_values[index].color.float32,cc.rgba,4);
     }
 
     void SetClearDepthStencil(uint32_t index,float d=1.0f,float s=0)
@@ -77,9 +112,14 @@ public:
         cv->depthStencil.stencil=s;
     }
 
+    void SetLineWidth(float w)
+    {
+        vkCmdSetLineWidth(cmd_buf,w);
+    }
+
     //以上设定在Begin开始后即不可改变
 
-    bool BindFramebuffer(RenderPass *rp,Framebuffer *fb);
+    bool BindFramebuffer(Framebuffer *);
 
     bool BeginRenderPass();
     void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
@@ -140,7 +180,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(Renderable *ri);
+    bool BindDescriptorSets(Material *);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {
@@ -152,15 +192,39 @@ public:
         vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_stage_bit,offset,size,pValues);
     }
 
-    void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,       size,data);}
-    void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,offset,  size,data);}
+    void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,0,       size,data);}
+    void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)ShaderStage::Vertex,offset,  size,data);}
 
-    bool BindVBO(Renderable *);
+    void BindVAB(const uint32_t first,const uint32_t count,const VkBuffer *vab,const VkDeviceSize *offsets)
+    {
+        vkCmdBindVertexBuffers(cmd_buf,first,count,vab,offsets);
+    }
+
+    bool BindVAB(const VABList *vab_list)
+    {
+        if(!vab_list)return(false);
+
+        if(!vab_list->IsFull())return(false);
+
+        vkCmdBindVertexBuffers(cmd_buf,
+                               0,                       //first binding
+                               vab_list->vab_count,     //binding count
+                               vab_list->vab_list,      //buffers
+                               vab_list->vab_offset);   //buffer offsets
+
+        return(true);
+    }
+
+    void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
+
+    /**
+    * 直接绑定Mesh的VBO/IBO。
+    * 有点像是BindVAB+BindIBO,适用于完全使用Mesh数据.
+    */
+    bool BindDataBuffer(const GeometryDataBuffer *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}
-
-    void SetLineWidth       (float line_width)                                      {vkCmdSetLineWidth(cmd_buf,line_width);}
 
     void SetDepthBias       (float constant_factor,float clamp,float slope_factor)  {vkCmdSetDepthBias(cmd_buf,constant_factor,clamp,slope_factor);}
     void SetDepthBounds     (float min_db,float max_db)                             {vkCmdSetDepthBounds(cmd_buf,min_db,max_db);}
@@ -176,25 +240,49 @@ public: //draw
                                 void DrawIndexed        (const uint32_t index_count )                               {vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);}
                                 void Draw               (const uint32_t vertex_count,const uint32_t instance_count) {vkCmdDraw(cmd_buf,vertex_count,instance_count,0,0);}
                                 void DrawIndexed        (const uint32_t index_count ,const uint32_t instance_count) {vkCmdDrawIndexed(cmd_buf,index_count,instance_count,0,0,0);}
-    
-    template<typename ...ARGS>  void Draw               (ARGS...args)                   {vkCmdDraw(cmd_buf,args...);}
-    template<typename ...ARGS>  void DrawIndexed        (ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
+                                void DrawIndexed        (const uint32_t index_count ,const uint32_t instance_count,const uint32_t firstIndex,const int32_t vertexOffset,const uint32_t firstInstance) 
+                                {
+                                    vkCmdDrawIndexed(cmd_buf,
+                                                     index_count,
+                                                     instance_count,
+                                                     firstIndex,
+                                                     vertexOffset,
+                                                     firstInstance);
+                                }
+
+//    template<typename ...ARGS>  void Draw               (ARGS...args)                   {vkCmdDraw(cmd_buf,args...);}
+//    template<typename ...ARGS>  void DrawIndexed        (ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
 
                                 void DrawIndirect       (VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         ));
                                 void DrawIndexedIndirect(VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  ));
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-public: //dynamic state
-};//class RenderCmdBuffer:public GPUCmdBuffer
+                                void Draw               (const GeometryDataBuffer *,const GeometryDrawRange *,const uint32_t instance_count=1,const uint32_t first_instance=0);
 
-class TextureCmdBuffer:public GPUCmdBuffer
+public: //dynamic state
+
+public:
+
+    void Render(Primitive *ri)
+    {
+        if(!ri)return;
+        
+        BindPipeline(ri->GetPipeline());
+        BindDescriptorSets(ri->GetMaterial());
+        BindDataBuffer(ri->GetDataBuffer());
+
+        Draw(ri->GetDataBuffer(),ri->GetRenderData());
+    }
+};//class RenderCmdBuffer:public VulkanCmdBuffer
+
+class TextureCmdBuffer:public VulkanCmdBuffer
 {
     VkImageMemoryBarrier imageMemoryBarrier;
 
 public:
 
-    TextureCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
+    TextureCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
     {
         imageMemoryBarrier.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageMemoryBarrier.pNext=nullptr;
@@ -231,6 +319,5 @@ public:
                                 0, nullptr,
                                 1, &imageMemoryBarrier);
     }
-};//class TextureCmdBuffer:public GPUCmdBuffer
+};//class TextureCmdBuffer:public VulkanCmdBuffer
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE

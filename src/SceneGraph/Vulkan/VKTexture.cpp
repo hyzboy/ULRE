@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKImageView.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/graph/module/TextureManager.h>
 VK_NAMESPACE_BEGIN
 Texture::~Texture()
 {
@@ -14,7 +15,7 @@ Texture::~Texture()
         delete data->memory;
 
         if(data->image)
-            vkDestroyImage(device,data->image,nullptr);
+            vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
     }
 }
 VK_NAMESPACE_END

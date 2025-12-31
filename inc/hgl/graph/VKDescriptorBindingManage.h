@@ -1,99 +1,144 @@
-#ifndef HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
-#define HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
+﻿#pragma once
 
 #include<hgl/type/Map.h>
-#include<hgl/graph/VKDescriptorSetType.h>
-namespace hgl
+#include<hgl/type/String.h>
+#include<hgl/graph/VKBuffer.h>
+
+VK_NAMESPACE_BEGIN
+
+class DeviceBuffer;
+class Texture;
+class Material;
+class MaterialParameters;
+
+/**
+ * 描述符绑定器<Br>
+ * 一般用于注册通用数据，为材质进行自动绑定。
+ */
+class DescriptorBinding
 {
-    namespace graph
+    DescriptorSetType set_type;                     ///<描述符合集类型
+
+    Map<AnsiString,DeviceBuffer *> ubo_map;
+    Map<AnsiString,DeviceBuffer *> ssbo_map;
+    Map<AnsiString,Texture *> texture_map;
+
+public:
+
+    const DescriptorSetType GetType()const{return set_type;}
+
+public:
+
+    DescriptorBinding(const DescriptorSetType &dst)
     {
-        class DeviceBuffer;
-        class Texture;
-        class MaterialInstance;
+        set_type=dst;
+    }
 
-        class DescriptorBinding
-        {
-            DescriptorSetType set_type;
+    bool AddUBO(const AnsiString &name,DeviceBuffer *buf)
+    {
+        if(!buf)return(false);
+        if(name.IsEmpty())return(false);
 
-            Map<AnsiString,DeviceBuffer *> ubo_map;
-            Map<AnsiString,DeviceBuffer *> ssbo_map;
-            Map<AnsiString,Texture *> texture_map;
+        return ubo_map.Add(name,buf);
+    }
 
-        public:
+    template<typename T>
+    bool AddUBO(const AnsiString &name,DeviceBufferMap<T> *dbm)
+    {
+        if(name.IsEmpty()||!dbm)
+            return(false);
 
-            DescriptorBinding(const DescriptorSetType &dst)
-            {
-                set_type=dst;
-            }
+        return ubo_map.Add(name,dbm->GetDeviceBuffer());
+    }
 
-            bool AddUBO(const AnsiString &name,DeviceBuffer *buf)
-            {
-                if(!buf)return(false);
-                if(name.IsEmpty())return(false);
+    template<typename T>
+    bool AddUBO(const UBOInstance<T> *ubo_instance)
+    {
+        if(!ubo_instance)
+            return(false);
 
-                return ubo_map.Add(name,buf);
-            }
+        if(ubo_instance->set_type()!=set_type)
+            return(false);
 
-            DeviceBuffer *GetUBO(const AnsiString &name)
-            {
-                if(name.IsEmpty())return(nullptr);
+        if(ubo_instance->name().IsEmpty())
+            return(false);
 
-                return GetListObject(ubo_map,name);
-            }
+        ubo_instance->Update();
 
-            void RemoveUBO(DeviceBuffer *buf)
-            {
-                if(!buf)return;
+        return ubo_map.Add(ubo_instance->name(),ubo_instance->ubo());
+    }
 
-                ubo_map.DeleteByValue(buf);
-            }
+    DeviceBuffer *GetUBO(const AnsiString &name)
+    {
+        if(name.IsEmpty())return(nullptr);
 
-            bool AddSSBO(const AnsiString &name,DeviceBuffer *buf)
-            {
-                if(!buf)return(false);
-                if(name.IsEmpty())return(false);
+        return GetObjectFromMap(ubo_map,name);
+    }
 
-                return ssbo_map.Add(name,buf);
-            }
+    void RemoveUBO(DeviceBuffer *buf)
+    {
+        if(!buf)return;
 
-            DeviceBuffer *GetSSBO(const AnsiString &name)
-            {
-                if(name.IsEmpty())return(nullptr);
+        ubo_map.DeleteByValue(buf);
+    }
 
-                return GetListObject(ssbo_map,name);
-            }
+    bool AddSSBO(const AnsiString &name,DeviceBuffer *buf)
+    {
+        if(!buf)return(false);
+        if(name.IsEmpty())return(false);
 
-            void RemoveSSBO(DeviceBuffer *buf)
-            {
-                if(!buf)return;
+        return ssbo_map.Add(name,buf);
+    }
 
-                ssbo_map.DeleteByValue(buf);
-            }
+    template<typename T>
+    bool AddSSBO(const AnsiString &name,DeviceBufferMap<T> *dbm)
+    {
+        return AddSSBO(name,dbm->GetDeviceBuffer());
+    }
 
-            bool AddTexture(const AnsiString &name,Texture *tex)
-            {
-                if(!tex)return(false);
-                if(name.IsEmpty())return(false);
+    DeviceBuffer *GetSSBO(const AnsiString &name)
+    {
+        if(name.IsEmpty())return(nullptr);
 
-                return texture_map.Add(name,tex);
-            }
+        return GetObjectFromMap(ssbo_map,name);
+    }
 
-            Texture *GetTexture(const AnsiString &name)
-            {
-                if(name.IsEmpty())return(nullptr);
+    void RemoveSSBO(DeviceBuffer *buf)
+    {
+        if(!buf)return;
 
-                return GetListObject(texture_map,name);
-            }
+        ssbo_map.DeleteByValue(buf);
+    }
 
-            void RemoveTexture(Texture *tex)
-            {
-                if(!tex)return;
+    bool AddTexture(const AnsiString &name,Texture *tex)
+    {
+        if(!tex)return(false);
+        if(name.IsEmpty())return(false);
 
-                texture_map.DeleteByValue(tex);
-            }
+        return texture_map.Add(name,tex);
+    }
 
-            bool Bind(MaterialInstance *);
-        };//class DescriptorBinding
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
+    Texture *GetTexture(const AnsiString &name)
+    {
+        if(name.IsEmpty())return(nullptr);
+
+        return GetObjectFromMap(texture_map,name);
+    }
+
+    void RemoveTexture(Texture *tex)
+    {
+        if(!tex)return;
+
+        texture_map.DeleteByValue(tex);
+    }
+
+private:
+
+    void BindUBO(MaterialParameters *,const BindingMap &,bool dynamic);
+
+public:
+
+    bool Bind(Material *);
+};//class DescriptorBinding
+
+VK_NAMESPACE_END

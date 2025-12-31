@@ -1,10 +1,13 @@
-﻿include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
-
-SET(VULKAN_APP_FRAMEWORK ${CMAKE_CURRENT_SOURCE_DIR}/common/VulkanAppFramework.h)
-
-add_subdirectory(Vulkan)
-add_subdirectory(2dVector)
+﻿add_subdirectory(Basic)
+add_subdirectory(Texture)
+add_subdirectory(Gizmo)
 add_subdirectory(GUI)
+add_subdirectory(Geometry)
+add_subdirectory(Environment)
+
+add_subdirectory(GLTF)
+
+#add_subdirectory(Landscape)
 
 macro(CreateProject name)
     add_executable(${name} ${ARGN})
@@ -17,4 +20,3 @@ macro(CreateProject name)
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example")
 endmacro()
 
-CreateProject(MaterialCreaterTest MaterialCreaterTest.cpp)

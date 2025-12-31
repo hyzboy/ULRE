@@ -1,20 +1,25 @@
-#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKDevice.h>
 #include"BufferImageCopy2D.h"
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
-TextureCube *GPUDevice::CreateTextureCube(TextureData *tex_data)
+TextureCube *TextureManager::CreateTextureCube(TextureData *tex_data)
 {
     if(!tex_data)
         return(nullptr);
 
-    return(new TextureCube(attr->device,tex_data));
+    TextureCube *tex=new TextureCube(this,AcquireID(),tex_data);
+
+    Add(tex);
+
+    return tex;
 }
 
-TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
+TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
@@ -33,12 +38,12 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
             Clear(tci);
             return(nullptr);
         }
-
-        tci->memory=CreateMemory(tci->image);
+        
+        tci->memory=GetDevice()->CreateMemory(tci->image);
     }
 
     if(!tci->image_view)
-        tci->image_view=CreateImageViewCube(attr->device,tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
+        tci->image_view=CreateImageViewCube(GetVkDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
     TextureData *tex_data=new TextureData(tci);
 
@@ -51,24 +56,24 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
     }
 
     if((!tci->buffer)&&tci->pixels&&tci->total_bytes>0)
-        tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->total_bytes,tci->pixels);
+        tci->buffer=CreateTransferSourceBuffer(tci->total_bytes,tci->pixels);
 
     if(tci->buffer)
     {
         texture_cmd_buf->Begin();
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
-            if(tci->target_mipmaps<=1)      //±¾Éí²»º¬mipmaps£¬µ«Ò²²»Òªmipmaps
+            if(tci->target_mipmaps<=1)      //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½mipmapsï¿½ï¿½ï¿½ï¿½Ò²ï¿½ï¿½Òªmipmaps
             {
                 CommitTextureCube(tex,tci->buffer,tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
             }
-            else //±¾ÉíÓÐmipmapsÊý¾Ý
+            else //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½mipmapsï¿½ï¿½ï¿½ï¿½
             {
                 CommitTextureCubeMipmaps(tex,tci->buffer,tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
-            if(tci->origin_mipmaps<=1)          //±¾Éí²»º¬mipmapsÊý¾Ý,ÓÖÏëÒªmipmaps
+            if(tci->origin_mipmaps<=1)          //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½mipmapsï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½ï¿½ï¿½Òªmipmaps
             {
                 CommitTextureCube(tex,tci->buffer,tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_TRANSFER_BIT);
                 GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,6);
@@ -84,16 +89,16 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
     return tex;
 }
 
-bool GPUDevice::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||!mipmaps_zero_bytes)return(false);
     
     BufferImageCopy buffer_image_copy(tex);
 
-    return CommitTexture(tex,buf,&buffer_image_copy,1,6,destinationStage);
+    return CopyBufferToImageCube(tex,buf,&buffer_image_copy,destinationStage);
 }
 
-bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
       ||extent.width*extent.height<=0)
@@ -140,10 +145,10 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,cons
         if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CommitTexture(tex,buf,buffer_image_copy,miplevel,6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CopyBufferToImageCube(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ArrayList<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf||ir_list.GetCount()<=0)
 //        return(false);
@@ -183,7 +188,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,cons
 //    return result;
 //}
 //
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf
 //        ||left<0||left+width>tex->GetWidth()
@@ -200,7 +205,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,cons
 //    return result;
 //}
 //
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!data
 //        ||left<0||left+width>tex->GetWidth()

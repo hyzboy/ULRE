@@ -1,0 +1,10 @@
+{
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "E:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    },
+    "files.associations": {
+        "xstring": "cpp",
+        "vector": "cpp",
+        "cmath": "cpp"
+    }
+}

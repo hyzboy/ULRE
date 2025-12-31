@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VKShaderDescriptorSet.h>
+#include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/type/Map.h>
 
 namespace hgl{namespace graph{
@@ -15,7 +16,8 @@ class MaterialDescriptorInfo
 
     Map<AnsiString,AnsiString> struct_map;
     Map<AnsiString,UBODescriptor *> ubo_map;
-    Map<AnsiString,SamplerDescriptor *> sampler_map;
+    Map<AnsiString,TextureDescriptor *> texture_map;
+    Map<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
 
 public:
     
@@ -28,21 +30,28 @@ public:
         return(true);
     }
 
-    bool GetStruct(const AnsiString &name,AnsiString &code) const
+    bool AddStruct(const ShaderBufferSource &ss)
+    {
+        return(AddStruct(ss.struct_name,ss.codes));
+    }
+
+    bool GetStruct(const AnsiString &name,AnsiString &code)
     {
         return(struct_map.Get(name,code));
     }
 
     bool hasStruct(const AnsiString &name) const
     {
-        return(struct_map.KeyExist(name));
+        return(struct_map.ContainsKey(name));
     }
 
-    const UBODescriptor *AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd);
-    const SamplerDescriptor *AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd);
+    const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
+    const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
+    const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
     UBODescriptor *GetUBO(const AnsiString &name);
-    SamplerDescriptor *GetSampler(const AnsiString &name);
+    TextureDescriptor *GetTexture(const AnsiString &name);
+    TextureSamplerDescriptor *GetTextureSampler(const AnsiString &name);
 
     const DescriptorSetType GetSetType(const AnsiString &)const;
 

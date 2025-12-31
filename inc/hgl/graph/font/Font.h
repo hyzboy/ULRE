@@ -1,36 +1,50 @@
-﻿#ifndef HGL_GRAPH_FONT_INCLUDE
-#define HGL_GRAPH_FONT_INCLUDE
+﻿#pragma once
 
-#include<hgl/type/DataType.h>
+#include<hgl/type/SortedSet.h>
 
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
-    {
-        constexpr size_t MAX_FONT_NAME_LENGTH=128;
+    constexpr size_t MAX_FONT_NAME_LENGTH=128;
         
-        /**
-        * 字体信息
-        */
-        struct Font
+    /**
+    * 字体信息
+    */
+    struct Font:public Comparator<Font>
+    {
+        os_char name[MAX_FONT_NAME_LENGTH];	///<字体名称
+
+        int width;							///<宽度
+        int height;							///<高度
+
+        bool bold;							///<加粗
+        bool italic;						///<右斜
+
+        bool anti;							///<反矩齿
+
+    public:
+
+        Font();
+        Font(const os_char *,int,int,bool b=false,bool i=false,bool=true);
+        Font(const os_char *n,int s):Font(n,0,s,false,false,true){}
+
+        const int compare(const Font &other)const override
         {
-            os_char name[MAX_FONT_NAME_LENGTH];	///<字体名称
+            int off;
 
-            int width;							///<宽度
-            int height;							///<高度
+            off=width-other.width;
+            if(off)return off;
 
-            bool bold;							///<加粗
-            bool italic;						///<右斜
+            off=height-other.height;
+            if(off)return off;
 
-            bool anti;							///<反矩齿
+            if(bold     !=other.bold    )return bold    ?1:-1;
+            if(italic   !=other.italic  )return italic  ?1:-1;
+            if(anti     !=other.anti    )return anti    ?1:-1;
 
-        public:
+            off=hgl::strcmp(name,other.name);
+            return off;
+        }
+    };//struct Font
 
-            Font();
-            Font(const os_char *,int,int,bool b=false,bool i=false,bool=true);
-
-            CompOperatorMemcmp(const Font &);	///<比较操作符重载
-        };//struct Font
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_FONT_INCLUDE
+    using U32CharSet=SortedSet<u32char>;    ///<字符合集
+}//namespace hgl::graph

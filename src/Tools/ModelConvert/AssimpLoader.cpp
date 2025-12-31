@@ -2,14 +2,13 @@
 #include<assimp/postprocess.h>
 #include<assimp/cimport.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/type/List.h>
+#include<hgl/type/ArrayList.h>
 #include<hgl/io/MemoryOutputStream.h>
-#include<hgl/graph/TextureType.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-#define LOG_BR  LOG_INFO(OS_TEXT("------------------------------------------------------------"));
+#define LOG_BR  GLogInfo(OS_TEXT("------------------------------------------------------------"));
 
 #define aisgl_min(x,y) (x<y?x:y)
 #define aisgl_max(x,y) (y>x?y:x)
@@ -100,7 +99,7 @@ void AssimpLoader::SaveFile(const void *data,const uint &size,const OSString &ex
 
     if(filesystem::SaveMemoryToFile(filename,data,size)==size)
     {
-        LOG_INFO(OS_TEXT("SaveFile: ")+filename+OS_TEXT(" , size: ")+OSString(size));
+        GLogInfo(OS_TEXT("SaveFile: ")+filename+OS_TEXT(" , size: ")+OSString(size));
 
         total_file_bytes+=size;
     }
@@ -116,7 +115,7 @@ void AssimpLoader::SaveFile(void **data,const int64 *size,const int &count,const
 
     if(result>0)
     {
-        LOG_INFO(OS_TEXT("SaveFile: ")+filename+OS_TEXT(" , size: ")+OSString(result));
+        GLogInfo(OS_TEXT("SaveFile: ")+filename+OS_TEXT(" , size: ")+OSString(result));
 
         total_file_bytes+=result;
     }
@@ -124,7 +123,7 @@ void AssimpLoader::SaveFile(void **data,const int64 *size,const int &count,const
 
 void OutFloat3(const OSString &front,const Color4f &c)
 {
-    LOG_INFO(front+OS_TEXT(": ")+OSString(c.r)
+    GLogInfo(front+OS_TEXT(": ")+OSString(c.r)
                   +OS_TEXT("," )+OSString(c.g)
                   +OS_TEXT("," )+OSString(c.b));
 }
@@ -146,13 +145,13 @@ void OutMaterialTexture(const MaterialTextureData &mt,io::DataOutputStream *dos)
     dos->WriteUint8(mt.op);
     dos->WriteUint8(mt.wrap_mode,2);
 
-    LOG_INFO(OS_TEXT("\tTexture Type: ")+OSString((uint)mt.type));
-    LOG_INFO(OS_TEXT("\tTexture ID: ")+OSString(mt.tex_id));
+    GLogInfo(OS_TEXT("\tTexture Type: ")+OSString((uint)mt.type));
+    GLogInfo(OS_TEXT("\tTexture ID: ")+OSString(mt.tex_id));
 
-    LOG_INFO(OS_TEXT("\tuvindex: ")+OSString(mt.uvindex));
-    LOG_INFO(OS_TEXT("\tblend: ")+OSString(mt.blend));
-    LOG_INFO(OS_TEXT("\top: ")+OSString(mt.op));
-    LOG_INFO(OS_TEXT("\twrap_mode: ")+OSString(mt.wrap_mode[0])+OS_TEXT(",")+OSString(mt.wrap_mode[1]));
+    GLogInfo(OS_TEXT("\tuvindex: ")+OSString(mt.uvindex));
+    GLogInfo(OS_TEXT("\tblend: ")+OSString(mt.blend));
+    GLogInfo(OS_TEXT("\top: ")+OSString(mt.op));
+    GLogInfo(OS_TEXT("\twrap_mode: ")+OSString(mt.wrap_mode[0])+OS_TEXT(",")+OSString(mt.wrap_mode[1]));
 }
 
 void OutMaterial(const MaterialData *ms,const OSString &filename)
@@ -177,12 +176,12 @@ void OutMaterial(const MaterialData *ms,const OSString &filename)
     OutFloat3(OSString(OS_TEXT("ambient")),ms->ambient);
     OutFloat3(OSString(OS_TEXT("emission")),ms->emission);
 
-    LOG_INFO(OS_TEXT("shininess: ")+OSString(ms->shininess));
+    GLogInfo(OS_TEXT("shininess: ")+OSString(ms->shininess));
 
-    LOG_INFO(OS_TEXT("wireframe: ")+OSString(ms->wireframe?OS_TEXT("true"):OS_TEXT("false")));
-    LOG_INFO(OS_TEXT("two_sided: ")+OSString(ms->two_sided?OS_TEXT("true"):OS_TEXT("false")));
+    GLogInfo(OS_TEXT("wireframe: ")+OSString(ms->wireframe?OS_TEXT("true"):OS_TEXT("false")));
+    GLogInfo(OS_TEXT("two_sided: ")+OSString(ms->two_sided?OS_TEXT("true"):OS_TEXT("false")));
 
-    LOG_INFO(OS_TEXT("Material Texture Count ")+OSString(ms->tex_count));
+    GLogInfo(OS_TEXT("Material Texture Count ")+OSString(ms->tex_count));
 
     for(int i=0;i<ms->tex_count;i++)
         OutMaterialTexture(ms->tex_list[i],&dos);
@@ -254,7 +253,7 @@ void AssimpLoader::LoadMaterial()
     unsigned int max;   // changed: to unsigned
 
     LOG_BR;
-    LOG_INFO(OS_TEXT("Material Count ")+OSString(scene->mNumMaterials));
+    GLogInfo(OS_TEXT("Material Count ")+OSString(scene->mNumMaterials));
     LOG_BR;
 
     aiString filename;
@@ -300,11 +299,11 @@ void AssimpLoader::LoadMaterial()
                 ms->uv_use.Add(uvindex);
 
                 {
-                    char *fn=strrchr(filename.data,'\\');
+                    char *fn=hgl::strrchr(filename.data,hgl::strlen(filename.data),'\\');
                     char *ext;
 
                     if(!fn)
-                        fn=strrchr(filename.data,'/');
+                        fn=hgl::strrchr(filename.data,hgl::strlen(filename.data),'/');
                     else
                         ++fn;
 
@@ -313,7 +312,7 @@ void AssimpLoader::LoadMaterial()
                     else
                         fn=filename.data;
 
-                    ext=strrchr(fn,'.');
+                    ext=hgl::strrchr(fn,hgl::strlen(fn),'.');
 
                     if(ext)*ext=0;
 
@@ -370,13 +369,13 @@ void AssimpLoader::SaveTextures()
 {
     const int tex_count=tex_list.GetCount();
 
-    LOG_INFO(OS_TEXT("TOTAL Texture Count: ")+OSString(tex_count));
+    GLogInfo(OS_TEXT("TOTAL Texture Count: ")+OSString(tex_count));
 
     if(tex_count<=0)
         return;
 
     for(int i=0;i<tex_count;i++)
-        LOG_INFO(U8_TEXT("\t")+UTF8String(i)+U8_TEXT("\t")+tex_list[i]);
+        GLogInfo(U8_TEXT("\t")+UTF8String(i)+U8_TEXT("\t")+tex_list[i]);
 
     LOG_BR;
 
@@ -484,7 +483,7 @@ void AssimpLoader::LoadMesh()
     total_file_bytes=0;
 
     LOG_BR;
-    LOG_INFO(OS_TEXT("Mesh Count ")+OSString(scene->mNumMeshes));
+    GLogInfo(OS_TEXT("Mesh Count ")+OSString(scene->mNumMeshes));
 
     uint vertex_total=0;
     uint tri_total=0;
@@ -506,25 +505,25 @@ void AssimpLoader::LoadMesh()
 
         LOG_BR;
 
-        LOG_INFO(mesh_name+U8_TEXT(" PrimitiveTypes is ")+UTF8String(mesh->mPrimitiveTypes));
+        GLogInfo(mesh_name+U8_TEXT(" PrimitiveTypes is ")+UTF8String(mesh->mPrimitiveTypes));
 
-        LOG_INFO(mesh_name+U8_TEXT(" vertex color count is ")+UTF8String(mesh->GetNumColorChannels()));
-        LOG_INFO(mesh_name+U8_TEXT(" texcoord count is ")+UTF8String(mesh->GetNumUVChannels()));
+        GLogInfo(mesh_name+U8_TEXT(" vertex color count is ")+UTF8String(mesh->GetNumColorChannels()));
+        GLogInfo(mesh_name+U8_TEXT(" texcoord count is ")+UTF8String(mesh->GetNumUVChannels()));
 
         if(mesh->GetNumUVChannels()>0)
-            LOG_INFO(mesh_name+U8_TEXT(" Material Index is ")+UTF8String(mesh->mMaterialIndex));
+            GLogInfo(mesh_name+U8_TEXT(" Material Index is ")+UTF8String(mesh->mMaterialIndex));
 
-        if(mesh->HasPositions())LOG_INFO(mesh_name+U8_TEXT(" have Position, vertices count ")+UTF8String(mesh->mNumVertices));
-        if(mesh->HasFaces())LOG_INFO(mesh_name+U8_TEXT(" have Faces,faces count ")+UTF8String(mesh->mNumFaces));
-        if(mesh->HasNormals())LOG_INFO(mesh_name+U8_TEXT(" have Normals"));
-        if(mesh->HasTangentsAndBitangents())LOG_INFO(mesh_name+U8_TEXT(" have Tangent & Bitangents"));
-        if(mesh->HasBones())LOG_INFO(mesh_name+U8_TEXT(" have Bones, Bones Count ")+UTF8String(mesh->mNumBones));
+        if(mesh->HasPositions())GLogInfo(mesh_name+U8_TEXT(" have Position, vertices count ")+UTF8String(mesh->mNumVertices));
+        if(mesh->HasFaces())GLogInfo(mesh_name+U8_TEXT(" have Faces,faces count ")+UTF8String(mesh->mNumFaces));
+        if(mesh->HasNormals())GLogInfo(mesh_name+U8_TEXT(" have Normals"));
+        if(mesh->HasTangentsAndBitangents())GLogInfo(mesh_name+U8_TEXT(" have Tangent & Bitangents"));
+        if(mesh->HasBones())GLogInfo(mesh_name+U8_TEXT(" have Bones, Bones Count ")+UTF8String(mesh->mNumBones));
 
         vertex_total+=mesh->mNumVertices;
         tri_total+=mesh->mNumFaces;
         bone_total+=mesh->mNumBones;
 
-        LOG_INFO(mesh_name+U8_TEXT(" PN is ")+UTF8String(pn));
+        GLogInfo(mesh_name+U8_TEXT(" PN is ")+UTF8String(pn));
 
         if(pn!=3)
             continue;
@@ -533,7 +532,7 @@ void AssimpLoader::LoadMesh()
 
         const uint uv_channels=mtl->uv_use.GetCount();
 
-        LOG_INFO(mesh_name+U8_TEXT(" use UV Channels is ")+UTF8String(uv_channels));
+        GLogInfo(mesh_name+U8_TEXT(" use UV Channels is ")+UTF8String(uv_channels));
 
         io::FileOutputStream fos;
 
@@ -541,7 +540,7 @@ void AssimpLoader::LoadMesh()
 
         if(!fos.CreateTrunc(mesh_filename))
         {
-            LOG_INFO(OS_TEXT("Create Mesh file Failed,filename: ")+mesh_filename);
+            GLogInfo(OS_TEXT("Create Mesh file Failed,filename: ")+mesh_filename);
             continue;
         }
 
@@ -657,15 +656,15 @@ void AssimpLoader::LoadMesh()
     }
 
     LOG_BR;
-    LOG_INFO(OS_TEXT("TOTAL Vertices Count ")+OSString(vertex_total));
-    LOG_INFO(OS_TEXT("TOTAL Faces Count ")+OSString(tri_total));
-    LOG_INFO(OS_TEXT("TOTAL Bones Count ")+OSString(bone_total));
+    GLogInfo(OS_TEXT("TOTAL Vertices Count ")+OSString(vertex_total));
+    GLogInfo(OS_TEXT("TOTAL Faces Count ")+OSString(tri_total));
+    GLogInfo(OS_TEXT("TOTAL Bones Count ")+OSString(bone_total));
 
-    LOG_INFO(OS_TEXT("TOTAL File Size ")+OSString(total_file_bytes));
+    GLogInfo(OS_TEXT("TOTAL File Size ")+OSString(total_file_bytes));
     LOG_BR;
 }
 
-void AssimpLoader::LoadScene(const UTF8String &front,io::DataOutputStream *dos,const aiNode *nd)
+void AssimpLoader::LoadScene(const U8String &front,io::DataOutputStream *dos,const aiNode *nd)
 {
     aiVector3D bb_min,bb_max;
     float box[6];
@@ -681,9 +680,9 @@ void AssimpLoader::LoadScene(const UTF8String &front,io::DataOutputStream *dos,c
 
     dos->WriteUint32(nd->mNumMeshes);
 
-    LOG_INFO(front+U8_TEXT("Node[")+UTF8String(nd->mName.C_Str())+U8_TEXT("][Mesh:")+UTF8String(nd->mNumMeshes)+U8_TEXT("][SubNode:")+UTF8String(nd->mNumChildren)+U8_TEXT("]"))
+    GLogInfo(front+U8_TEXT("Node[")+UTF8String(nd->mName.C_Str())+U8_TEXT("][Mesh:")+UTF8String(nd->mNumMeshes)+U8_TEXT("][SubNode:")+UTF8String(nd->mNumChildren)+U8_TEXT("]"))
 
-    const UTF8String new_front=U8_TEXT("  ")+front;
+    const U8String new_front=U8_TEXT("  ")+front;
 
     if(nd->mNumMeshes>0)
     {
@@ -693,7 +692,7 @@ void AssimpLoader::LoadScene(const UTF8String &front,io::DataOutputStream *dos,c
         {
             const aiMesh *mesh=scene->mMeshes[nd->mMeshes[i]];
 
-            LOG_INFO(new_front+U8_TEXT("Mesh[")+UTF8String(i)+U8_TEXT("] ")+UTF8String(mesh->mName.C_Str()));
+            GLogInfo(new_front+U8_TEXT("Mesh[")+UTF8String(i)+U8_TEXT("] ")+UTF8String(mesh->mName.C_Str()));
         }
     }
 
@@ -714,9 +713,9 @@ bool AssimpLoader::LoadFile(const OSString &filename)
         return(false);
 
 #ifdef _WIN32
-    const UTF8String ext_name=ToUTF8String(filesystem::ClipFileExtName(filename));
+    const U8String ext_name=ToU8String(filesystem::GetExtension(filename));
 #else
-    const UTF8String ext_name=filesystem::ClipFileExtName(filename);
+    const U8String ext_name=filesystem::ClipFileExtName(filename);
 #endif//
 
     scene=aiImportFileFromMemory(filedata,filesize,aiProcessPreset_TargetRealtime_MaxQuality|aiProcess_FlipUVs,ext_name.c_str());
@@ -745,7 +744,7 @@ bool AssimpLoader::LoadFile(const OSString &filename)
 
     if(!fos.CreateTrunc(scene_filename))
     {
-        LOG_INFO(OS_TEXT("Create Scene file Failed,filename: ")+scene_filename);
+        GLogInfo(OS_TEXT("Create Scene file Failed,filename: ")+scene_filename);
         return(false);
     }
 

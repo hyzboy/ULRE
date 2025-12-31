@@ -1,7 +1,6 @@
 ﻿// 该范例主要用于测试gl_FragCoord值
 
 #include"VulkanAppFramework.h"
-#include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 
 using namespace hgl;

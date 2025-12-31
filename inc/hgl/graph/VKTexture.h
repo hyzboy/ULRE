@@ -4,25 +4,33 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKImageView.h>
-#include<hgl/graph/Bitmap.h>
+#include<hgl/graph/BitmapData.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKTextureCreateInfo.h>
 VK_NAMESPACE_BEGIN
 
 BitmapData *LoadBitmapFromFile(const OSString &filename);
 
+using TextureID=int;
+class TextureManager;
+
 class Texture
 {
 protected:
+    
+    TextureManager *manager;
+    TextureID texture_id;
 
-    VkDevice device;
     TextureData *data;
 
 public:
 
+    TextureManager *            GetManager          ()      {return manager;}
+    const TextureID             GetID               ()const noexcept {return texture_id;}
+
     TextureData *               GetData             ()      {return data;}
 
-    VkDeviceMemory              GetDeviceMemory     ()      {return data?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE;}
+    VkDeviceMemory              GetDeviceMemory     ()      {return data?(data->memory?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE):VK_NULL_HANDLE;}
     VkImage                     GetImage            ()      {return data?data->image:VK_NULL_HANDLE;}
     VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->GetImageView():VK_NULL_HANDLE;}
@@ -40,9 +48,10 @@ public:
 
 public:
 
-    Texture(VkDevice dev,TextureData *td)
+    Texture(TextureManager *tm,const TextureID &id,TextureData *td)
     {
-        device=dev;
+        manager=tm;
+        texture_id=id;
         data=td;
     }
 
@@ -63,8 +72,8 @@ class Texture2D:public Texture
 {
 public:
 
-    Texture2D(VkDevice dev,TextureData *td):Texture(dev,td){}
-    ~Texture2D()=default;
+    using Texture::Texture;
+    virtual ~Texture2D()=default;
 
     static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_2D;}
 
@@ -72,10 +81,19 @@ public:
     const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
 };//class Texture2D:public Texture
 
-//class Texture2DArray:public Texture
-//{
-//    uint32_t width,height,count;
-//};//class Texture2DArray:public Texture
+class Texture2DArray:public Texture
+{
+public:
+
+    using Texture::Texture;
+    virtual ~Texture2DArray()=default;
+
+    static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_2D_ARRAY;}
+
+    const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
+    const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
+    const uint32_t GetLayer ()const{return data?data->image_view->GetExtent().depth:0;}
+};//class Texture2DArray:public Texture
 
 //class Texture3D:public Texture
 //{
@@ -85,8 +103,8 @@ public:
 class TextureCube:public Texture
 {
 public:
-
-    TextureCube(VkDevice dev,TextureData *td):Texture(dev,td){}
+    
+    using Texture::Texture;
     ~TextureCube()=default;
 
     static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_CUBE;}

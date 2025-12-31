@@ -1,0 +1,37 @@
+﻿#version 450
+
+// ========== Fragment Inputs ==========
+{% for input in inputs %}
+layout(location={{ loop.index0 }}) in {{ input.type }} {{ input.name }};
+{% endfor %}
+
+// ========== Fragment Outputs ==========
+{% for output in outputs %}
+layout(location={{ loop.index0 }}) out {{ output.type }} {{ output.name }};
+{% endfor %}
+
+// ========== Descriptors ==========
+{% for ubo in ubos %}
+layout(set={{ ubo.set }}, binding={{ ubo.binding }}) uniform {{ ubo.struct_name }} {
+{{ ubo.members }}
+} {{ ubo.name }};
+{% endfor %}
+
+{% for sampler in samplers %}
+layout(set={{ sampler.set }}, binding={{ sampler.binding }}) uniform {{ sampler.type }} {{ sampler.name }};
+{% endfor %}
+
+// ========== Module Functions ==========
+{{ module_functions }}
+
+// ========== Fragment Color Composition ==========
+vec3 ComputeFragColor()
+{
+    {{ frag_color_body }}
+}
+
+// ========== Main ==========
+void main()
+{
+    FragColor = vec4(ComputeFragColor(), {{ alpha_expression }});
+}

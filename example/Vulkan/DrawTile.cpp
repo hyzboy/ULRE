@@ -8,7 +8,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKSampler.h>
-#include<hgl/math/Math.h>
+#include<hgl/type/RectScope.h>
 
 using namespace hgl;
 using namespace hgl::graph;

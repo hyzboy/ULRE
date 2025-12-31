@@ -1,8 +1,9 @@
-﻿#ifndef HGL_GRAPH_VULKAN_BUFFER_INCLUDE
-#define HGL_GRAPH_VULKAN_BUFFER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/graph/mtl/ShaderBufferSource.h>
+
 VK_NAMESPACE_BEGIN
 struct DeviceBufferData
 {
@@ -20,9 +21,10 @@ protected:
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
     friend class VertexAttribBuffer;
     friend class IndexBuffer;
+    template<typename T> friend class IndirectCommandBuffer;
 
     DeviceBuffer(VkDevice d,const DeviceBufferData &b)
     {
@@ -36,17 +38,89 @@ public:
 
             VkBuffer                    GetBuffer       ()const{return buf.buffer;}
             DeviceMemory *              GetMemory       ()const{return buf.memory;}
+            VkDeviceMemory              GetVkMemory     ()const{return buf.memory->operator VkDeviceMemory();}
     const   VkDescriptorBufferInfo *    GetBufferInfo   ()const{return &buf.info;}
 
             void *  Map     ()                                              {return buf.memory->Map();}
     virtual void *  Map     (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Map(start,size);}
             void    Unmap   ()                                              {return buf.memory->Unmap();}
-            void    Flush   (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Flush(start,size);}
-            void    Flush   (VkDeviceSize size)                             {return buf.memory->Flush(size);}
+    virtual void    Flush   (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Flush(start,size);}
+    virtual void    Flush   (VkDeviceSize size)                             {return buf.memory->Flush(size);}
 
-            bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
-            bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
+    virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
+    virtual bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
             bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
 };//class DeviceBuffer
+
+template<typename T> class DeviceBufferMap
+{
+protected:
+
+    DeviceBuffer *dev_buf;
+    T data_map;
+
+public:
+
+    static const VkDeviceSize GetSize()
+    {
+        return sizeof(T);
+    }
+
+public:
+
+    DeviceBufferMap(DeviceBuffer *buf)
+    {
+        dev_buf=buf;
+    }
+
+    virtual ~DeviceBufferMap()
+    {
+        delete dev_buf;
+    }
+
+    DeviceBuffer *GetDeviceBuffer(){return dev_buf;}
+
+    T *data(){return &data_map;}
+
+    bool Write(const void *data,const uint32_t offset,const uint32_t size)
+    {
+        if(!dev_buf)
+            return(false);
+
+        return dev_buf->Write(data,offset,size);
+    }
+
+    void Update()const
+    {
+        if(dev_buf)
+            dev_buf->Write(&data_map,sizeof(T));
+    }
+};//template<typename T> class DeviceBufferMap
+
+template<typename T> class UBOInstance:public DeviceBufferMap<T>
+{
+    DescriptorSetType desc_set_type;
+    AnsiString ubo_name;
+
+public:
+
+    const DescriptorSetType &   set_type()const{return desc_set_type;}
+    const AnsiString &          name    ()const{return ubo_name;}
+    DeviceBuffer *              ubo     ()const{return this->dev_buf;}
+
+public:
+
+    UBOInstance(DeviceBuffer *buf,const DescriptorSetType dst,const AnsiString &n):DeviceBufferMap<T>(buf)
+    {
+        desc_set_type=dst;
+        ubo_name=n;
+    }
+
+    UBOInstance(DeviceBuffer *buf,const ShaderBufferDesc *desc):DeviceBufferMap<T>(buf)
+    {
+        desc_set_type=desc->set_type;
+        ubo_name=desc->name;
+    }
+};//template<typename T> class UBOInstance:public DeviceBufferMap<T>
+
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_BUFFER_INCLUDE

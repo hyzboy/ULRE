@@ -5,27 +5,27 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-GPUDevice *CreateRenderDevice(VkInstance,const GPUPhysicalDevice *,Window *);
+VulkanDevice *CreateRenderDevice(VkInstance,const VulkanPhyDevice *,Window *);
 
 void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
 
-VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
+VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
 {
     ApplicationInfo app_info;
     InstanceCreateInfo inst_info(&app_info);
     CharPointerList ext_list;
     CharPointerList layer_list;
 
-    app_info.pApplicationName   = app_name.c_str();
+    app_info.pApplicationName   = (char *)(app_name.c_str());
     app_info.applicationVersion = 1;
     app_info.pEngineName        = "CMGameEngine/ULRE";
     app_info.engineVersion      = 1;
-    app_info.apiVersion         = VK_API_VERSION_1_3;
+    app_info.apiVersion         = VK_API_VERSION_1_4;
 
     ext_list.Add(VK_KHR_SURFACE_EXTENSION_NAME);
     ext_list.Add(HGL_VK_SURFACE_EXTENSION_NAME);            //此宏在VKSurfaceExtensionName.h中定义
 
-    constexpr char *require_ext_list[]=
+    constexpr const char *require_ext_list[]=
     {
 #ifdef _DEBUG
         VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
@@ -80,7 +80,7 @@ VulkanInstance::VulkanInstance(VkInstance i,VKDebugOut *out)
         vkEnumeratePhysicalDevices(inst, &gpu_count,pd_list);
 
         for(uint32_t i=0;i<gpu_count;i++)
-            physical_devices.Add(new GPUPhysicalDevice(inst,pd_list[i]));
+            physical_devices.Add(new VulkanPhyDevice(inst,pd_list[i]));
 
         delete[] pd_list;
     }
@@ -96,17 +96,12 @@ VulkanInstance::~VulkanInstance()
     vkDestroyInstance(inst,nullptr);
 }
 
-const GPUPhysicalDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
+const VulkanPhyDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
 {
-    for(GPUPhysicalDevice *pd:physical_devices)
+    for(VulkanPhyDevice *pd:physical_devices)
         if(pd->GetDeviceType()==type)
             return(pd);
 
     return(nullptr);
-}
-
-void VulkanInstance::DestroySurface(VkSurfaceKHR surface)
-{
-    vkDestroySurfaceKHR(inst,surface,nullptr);
 }
 VK_NAMESPACE_END

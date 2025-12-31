@@ -70,28 +70,55 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool
     return(true);
 }
 
-bool MaterialParameters::BindImageSampler(const int &index,Texture *tex,Sampler *sampler)
+bool MaterialParameters::BindTexture(const int &index,Texture *tex)
 {
-    if(index<0||!tex||!sampler)
+    if(index < 0 || !tex)
         return(false);
 
-    if(!descriptor_set->BindImageSampler(index,tex,sampler))
+    if(!descriptor_set->BindTexture(index,tex))
         return(false);
 
     return(true);
 }
 
-bool MaterialParameters::BindImageSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
+bool MaterialParameters::BindTexture(const AnsiString &name,Texture *tex)
+{
+    if(name.IsEmpty() || !tex)
+        return(false);
+
+    const int index = desc_manager->GetTexture(set_type,name);
+
+    if(index < 0)
+        return(false);
+
+    if(!descriptor_set->BindTexture(index,tex))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sampler *sampler)
+{
+    if(index<0||!tex||!sampler)
+        return(false);
+
+    if(!descriptor_set->BindTextureSampler(index,tex,sampler))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     if(name.IsEmpty()||!tex||!sampler)
         return(false);
 
-    const int index=desc_manager->GetImageSampler(set_type,name);
+    const int index=desc_manager->GetTextureSampler(set_type,name);
 
     if(index<0)
         return(false);
 
-    if(!descriptor_set->BindImageSampler(index,tex,sampler))
+    if(!descriptor_set->BindTextureSampler(index,tex,sampler))
         return(false);
 
     return(true);

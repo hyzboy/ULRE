@@ -37,7 +37,7 @@ namespace hgl
         bool ThemeForm::BeginRender()
         {
             if(!cmd_buf->Begin())return(false);
-            if(!cmd_buf->BindFramebuffer(render_target->GetRenderPass(),render_target->GetFramebuffer()))return(false);
+            if(!cmd_buf->BindRenderTarget(render_target->GetRenderPass(),render_target->GetFramebuffer()))return(false);
 
             cmd_buf->SetClearColor(0,0,0,0,1.0f);
 

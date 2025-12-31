@@ -8,7 +8,7 @@ bool ShaderModuleMap::Add(const ShaderModule *sm)
 
     const VkShaderStageFlagBits stage=sm->GetStage();
 
-    if(this->KeyExist(stage))return(false);
+    if(this->ContainsKey(stage))return(false);
 
     return this->Map::Add(stage,sm);
 }

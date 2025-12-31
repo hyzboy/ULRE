@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_DB_FIELD_TYPE_INCLUDE
 #define HGL_DB_FIELD_TYPE_INCLUDE
 
-#include<hgl/type/List.h>
+#include<hgl/type/ArrayList.h>
 #include<hgl/type/StringList.h>
 namespace hgl
 {

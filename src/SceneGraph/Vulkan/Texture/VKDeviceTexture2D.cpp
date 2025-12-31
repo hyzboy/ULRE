@@ -1,20 +1,37 @@
-﻿#include<hgl/graph/VKDevice.h>
+﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
-#include"BufferImageCopy2D.h"
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKDevice.h>
+#include"CopyBufferToImage.h"
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
-Texture2D *GPUDevice::CreateTexture2D(TextureData *tex_data)
+Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
 {
     if(!tex_data)
         return(nullptr);
+    
+    Texture2D *tex=new Texture2D(this,AcquireID(),tex_data);
 
-    return(new Texture2D(attr->device,tex_data));
+    Add(tex);
+
+    return tex;
 }
 
-Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
+void TextureManager::Clear(TextureCreateInfo *tci)
+{
+    if(!tci)return;
+
+    if(tci->image)DestroyImage(tci->image);
+    if(tci->image_view)delete tci->image_view;
+    if(tci->memory)delete tci->memory;
+
+    delete tci;
+}
+
+Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
@@ -38,15 +55,13 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
             return(nullptr);
         }
 
-        tci->memory=CreateMemory(tci->image);
+        tci->memory=GetDevice()->CreateMemory(tci->image);
     }
 
     if(!tci->image_view)
-        tci->image_view=CreateImageView2D(attr->device,tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
+        tci->image_view=CreateImageView2D(GetVkDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
-    TextureData *tex_data=new TextureData(tci);
-
-    Texture2D *tex=CreateTexture2D(tex_data);
+    Texture2D *tex=CreateTexture2D(new TextureData(tci));
 
     if(!tex)
     {
@@ -55,11 +70,12 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
     }
 
     if((!tci->buffer)&&tci->pixels&&tci->total_bytes>0)
-        tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->total_bytes,tci->pixels);
+        tci->buffer=CreateTransferSourceBuffer(tci->total_bytes,tci->pixels);
 
     if(tci->buffer)
     {
         texture_cmd_buf->Begin();
+
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
             if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
@@ -72,11 +88,12 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
             }
         }
         else
-            if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
-            {
-                CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
-                GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,1);
-            }
+        if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
+        {
+            CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
+            GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tci->target_mipmaps,1);
+        }
+
         texture_cmd_buf->End();
 
         SubmitTexture(*texture_cmd_buf);
@@ -88,16 +105,16 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
     return tex;
 }
 
-bool GPUDevice::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf)return(false);
 
     BufferImageCopy buffer_image_copy(tex);
 
-    return CommitTexture(tex,buf,&buffer_image_copy,1,1,destinationStage);
+    return CopyBufferToImage2D(tex,buf,&buffer_image_copy,destinationStage);
 }
 
-bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
       ||extent.width*extent.height<=0)
@@ -140,10 +157,10 @@ bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const Vk
         if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CommitTexture(tex,buf,buffer_image_copy,miplevel,1,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ArrayList<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||ir_list.GetCount()<=0)
         return(false);
@@ -177,41 +194,43 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Imag
     }
 
     texture_cmd_buf->Begin();
-    bool result=CommitTexture(tex,buf,buffer_image_copy,ir_count,1,destinationStage);
+    bool result=CopyBufferToImage2D(tex,buf,buffer_image_copy,ir_count,destinationStage);
     texture_cmd_buf->End();
     SubmitTexture(*texture_cmd_buf);
     return result;
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf
-        ||left<0||left+width>tex->GetWidth()
-        ||top<0||top+height>tex->GetHeight()
-        ||width<=0||height<=0)
+        ||scope.GetWidth()<=0
+        ||scope.GetHeight()<=0
+        ||scope.GetRight()>tex->GetWidth()
+        ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
-    BufferImageCopy buffer_image_copy(tex);
+    BufferImageCopy buffer_image_copy(tex,scope);
 
     texture_cmd_buf->Begin();
-    bool result=CommitTexture(tex,buf,&buffer_image_copy,1,1,destinationStage);
+    bool result=CopyBufferToImage2D(tex,buf,&buffer_image_copy,1,destinationStage);
     texture_cmd_buf->End();
     SubmitTexture(*texture_cmd_buf);
     return result;
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,const void *data,const VkDeviceSize size,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!data
-        ||left<0||left+width>tex->GetWidth()
-        ||top<0||top+height>tex->GetHeight()
-        ||width<=0||height<=0
-        ||size<=0)
+        ||size<=0
+        ||scope.GetWidth()<=0
+        ||scope.GetHeight()<=0
+        ||scope.GetRight()>tex->GetWidth()
+        ||scope.GetBottom()>tex->GetHeight())
         return(false);
+    
+    DeviceBuffer *buf=CreateTransferSourceBuffer(size,data);
 
-    DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
-
-    bool result=ChangeTexture2D(tex,buf,left,top,width,height,destinationStage);    
+    bool result=ChangeTexture2D(tex,buf,scope,destinationStage);
 
     delete buf;
     return(result);

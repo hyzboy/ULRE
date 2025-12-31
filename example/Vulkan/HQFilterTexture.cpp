@@ -4,7 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKSampler.h>
-#include<hgl/math/Math.h>
+#include<hgl/math/Transform.h>
 
 using namespace hgl;
 using namespace hgl::graph;

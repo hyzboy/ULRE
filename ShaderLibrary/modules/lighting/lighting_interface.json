@@ -1,0 +1,44 @@
+﻿{
+  "modules": {
+    "lambert": {
+      "file": "lambert.glsl",
+      "provides": ["GetDiffuseColor"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal"],
+        "descriptors": ["sky"]
+      },
+      "dependencies": ["GetAlbedo"]
+    },
+    "half_lambert": {
+      "file": "half_lambert.glsl",
+      "provides": ["GetDiffuseColor"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal"],
+        "descriptors": ["sky"]
+      },
+      "dependencies": ["GetAlbedo"]
+    },
+    "blinn_phong": {
+      "file": "blinn_phong.glsl",
+      "provides": ["GetDiffuseColor"],
+      "requires": {
+        "functions": [],
+        "inputs": ["Normal", "Position"],
+        "descriptors": ["sky", "camera"]
+      },
+      "dependencies": ["GetAlbedo"]
+    },
+    "pbr_standard": {
+      "file": "pbr_standard.glsl",
+      "provides": ["GetDiffuseColor"],
+      "requires": {
+        "functions": ["fresnelSchlick", "DistributionGGX"],
+        "inputs": ["Normal", "Position"],
+        "descriptors": ["sky", "camera"]
+      },
+      "dependencies": ["GetAlbedo", "GetRoughness", "GetMetallic"]
+    }
+  }
+}

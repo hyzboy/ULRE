@@ -1,0 +1,119 @@
+﻿{
+  "name": "Metal",
+  "material_type": "Standard",
+  "rendering_path": "Forward",
+  "description": "Standard metallic material with PBR lighting",
+  
+  "quality_levels": {
+    "high": {
+      "vertex_shader": {
+        "template": "forward.vert.tmpl",
+        "vertex_inputs": [
+          {"type": "vec3", "name": "Position"},
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec2", "name": "TexCoord"}
+        ],
+        "vertex_outputs": [
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec4", "name": "Position"},
+          {"type": "vec2", "name": "TexCoord"}
+        ]
+      },
+      "fragment_shader": {
+        "template": "forward.frag.tmpl",
+        "inputs": [
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec4", "name": "Position"},
+          {"type": "vec2", "name": "TexCoord"}
+        ],
+        "outputs": [
+          {"type": "vec4", "name": "FragColor"}
+        ],
+        "modules": {
+          "lighting": "blinn_phong",
+          "specular": "ggx",
+          "ambient": "ibl_simple",
+          "albedo": "texture_albedo"
+        },
+        "frag_color_body": "return GetDiffuseColor() + GetSpecularColor() + GetAmbientColor();",
+        "alpha_expression": "1.0"
+      },
+      "descriptors": {
+        "ubos": [
+          {
+            "set": 0,
+            "binding": 0,
+            "struct_name": "CameraUBO",
+            "name": "camera",
+            "members": "    vec3 pos;\n    mat4 view;\n    mat4 proj;"
+          },
+          {
+            "set": 0,
+            "binding": 1,
+            "struct_name": "SkyUBO",
+            "name": "sky",
+            "members": "    vec3 sun_direction;\n    vec3 sun_color;\n    float sun_intensity;\n    vec3 base_sky_color;"
+          }
+        ],
+        "samplers": [
+          {"set": 2, "binding": 0, "type": "sampler2D", "name": "albedoMap"},
+          {"set": 1, "binding": 0, "type": "samplerCube", "name": "envMap"}
+        ]
+      }
+    },
+    
+    "low": {
+      "vertex_shader": {
+        "template": "forward.vert.tmpl",
+        "vertex_inputs": [
+          {"type": "vec3", "name": "Position"},
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec2", "name": "TexCoord"}
+        ],
+        "vertex_outputs": [
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec2", "name": "TexCoord"}
+        ]
+      },
+      "fragment_shader": {
+        "template": "forward.frag.tmpl",
+        "inputs": [
+          {"type": "vec3", "name": "Normal"},
+          {"type": "vec2", "name": "TexCoord"}
+        ],
+        "outputs": [
+          {"type": "vec4", "name": "FragColor"}
+        ],
+        "modules": {
+          "lighting": "lambert",
+          "specular": "phong",
+          "ambient": "skylight",
+          "albedo": "texture_albedo"
+        },
+        "frag_color_body": "return GetDiffuseColor() + GetSpecularColor() * 0.3 + GetAmbientColor();",
+        "alpha_expression": "1.0"
+      },
+      "descriptors": {
+        "ubos": [
+          {
+            "set": 0,
+            "binding": 0,
+            "struct_name": "CameraUBO",
+            "name": "camera",
+            "members": "    vec3 pos;"
+          },
+          {
+            "set": 0,
+            "binding": 1,
+            "struct_name": "SkyUBO",
+            "name": "sky",
+            "members": "    vec3 sun_direction;\n    vec3 sun_color;\n    float sun_intensity;\n    vec3 base_sky_color;"
+          }
+        ],
+        "samplers": [
+          {"set": 2, "binding": 0, "type": "sampler2D", "name": "albedoMap"}
+        ]
+      }
+    }
+  }
+}

@@ -3,54 +3,46 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/SortedSets.h>
+#include<hgl/type/ObjectList.h>
+#include<hgl/type/SortedSet.h>
 VK_NAMESPACE_BEGIN
 class DeviceBuffer;
 
 class DescriptorSet
 {
     VkDevice device;
-    int binding_count;
+    int vab_count;
     VkDescriptorSet desc_set;
 
     VkPipelineLayout pipeline_layout;
 
-    ObjectList<VkDescriptorBufferInfo> buffer_list;
+    ObjectList<VkDescriptorBufferInfo> vab_list;
     ObjectList<VkDescriptorImageInfo> image_list;
-    List<VkWriteDescriptorSet> wds_list;
+    ArrayList<VkWriteDescriptorSet> wds_list;
 
-    SortedSets<uint32_t> binded_sets;
+    SortedSet<uint32_t> binded_sets;
 
     bool is_dirty;
 
-protected:  //动态UBO/SSBO记录
-
-    
-
-
-private:
-
-    friend class GPUDevice;
+public:
 
     DescriptorSet(VkDevice dev,const int bc,VkPipelineLayout pl,VkDescriptorSet ds)
     {
         device          =dev;
-        binding_count   =bc;
+        vab_count   =bc;
         desc_set        =ds;
         pipeline_layout =pl;
 
         is_dirty=true;
     }
 
-public:
-
     ~DescriptorSet()=default;
 
-    const uint32_t          GetCount            ()const{return binding_count;}
+    const uint32_t          GetCount            ()const{return vab_count;}
     const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
-    const bool              IsReady             ()const{return wds_list.GetCount()==binding_count;}
+    const bool              IsReady             ()const{return wds_list.GetCount()==vab_count;}
 
     void Clear();
 
@@ -59,7 +51,8 @@ public:
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,bool dynamic=false);
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
-    bool BindImageSampler(const int binding,Texture *,Sampler *);
+    bool BindTexture(const int binding,Texture *);
+    bool BindTextureSampler(const int binding,Texture *,Sampler *);
     bool BindInputAttachment(const int binding,ImageView *);
     void Update();
 };//class DescriptorSet

@@ -1,4 +1,6 @@
 ﻿#include<hgl/graph/VKDebugOut.h>
+#include<hgl/log/Log.h>
+
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -62,6 +64,7 @@ namespace
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
     {
         auto func=(PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,"vkCreateDebugUtilsMessengerEXT");
+
         if(func)
         {
             return func(instance,pCreateInfo,pAllocator,pDebugMessenger);
@@ -75,6 +78,7 @@ namespace
     void DestroyDebugUtilsMessengerEXT(VkInstance instance,VkDebugUtilsMessengerEXT debugMessenger,const VkAllocationCallbacks *pAllocator)
     {
         auto func=(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance,"vkDestroyDebugUtilsMessengerEXT");
+
         if(func)
         {
             func(instance,debugMessenger,pAllocator);
@@ -85,15 +89,13 @@ namespace
                                             VkDebugUtilsMessageTypeFlagsEXT messageType,
                                             const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData)
     {
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)   
-            std::cerr<<"[ERROR] ";           else
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) 
-            std::cerr<<"[WARNING] ";         else
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)    std::cerr<<"[INFO] ";            else
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) std::cerr<<"[VERBOSE] ";         else
-                                                                            std::cerr<<"[Validation layer] ";
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            GLogError   (pCallbackData->pMessage) else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) GLogWarning (pCallbackData->pMessage) else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)    GLogInfo    (pCallbackData->pMessage) else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) GLogVerbose (pCallbackData->pMessage) else
+                                                                            GLogNotice  (pCallbackData->pMessage)
 
-        std::cerr<<pCallbackData->pMessage<<std::endl;
 
         return VK_FALSE;
     }
@@ -147,15 +149,18 @@ namespace
     {
         const char *obj_type_name=GetVkDebugReportObjectTypename(objType);
 
-        if(msgFlags&VK_DEBUG_REPORT_ERROR_BIT_EXT)              
-            std::cerr<<"[ERROR:";               else
-        if(msgFlags&VK_DEBUG_REPORT_WARNING_BIT_EXT)            
-            std::cerr<<"[WARNING:";             else
-        if(msgFlags&VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)std::cerr<<"[PERFORMANCE WARNING:"; else
-        if(msgFlags&VK_DEBUG_REPORT_INFORMATION_BIT_EXT)        std::cerr<<"[INFO:";                else
-        if(msgFlags&VK_DEBUG_REPORT_DEBUG_BIT_EXT)              std::cerr<<"[DEBUG:";
+        AnsiString msg_string="[MsgCode:"+AnsiString::numberOf(msgCode)
+                            + "][" + AnsiString(obj_type_name) + ":" + AnsiString::numberOf(srcObject)
+                            + "][Location:" + AnsiString::numberOf(location)
+                            + "][" + AnsiString(pLayerPrefix)
+                            + "] " + AnsiString(pMsg);
 
-        std::cerr<<msgCode<<"]["<<obj_type_name<<":"<<std::hex<<srcObject<<"][Location:"<<location<<"]["<<pLayerPrefix<<"] "<<pMsg<<std::endl;
+        if(msgFlags&VK_DEBUG_REPORT_ERROR_BIT_EXT)
+            GLogError   (msg_string) else
+        if(msgFlags&VK_DEBUG_REPORT_WARNING_BIT_EXT)            GLogWarning (msg_string) else
+        if(msgFlags&VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)GLogNotice  (msg_string) else
+        if(msgFlags&VK_DEBUG_REPORT_INFORMATION_BIT_EXT)        GLogInfo    (msg_string) else
+        if(msgFlags&VK_DEBUG_REPORT_DEBUG_BIT_EXT)              GLogDebug   (msg_string)
 
         return VK_FALSE;
     }

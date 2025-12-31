@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"algorithm": "cpp",
+			"chrono": "cpp",
+			"complex": "cpp",
+			"functional": "cpp",
+			"optional": "cpp",
+			"system_error": "cpp",
+			"type_traits": "cpp",
+			"xlocmon": "cpp",
+			"xtr1common": "cpp",
+			"xutility": "cpp"
+		}
+	}
+}

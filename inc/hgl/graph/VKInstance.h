@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
 
 #include<hgl/type/String.h>
-#include<hgl/type/List.h>
+#include<hgl/type/ObjectList.h>
 #include<hgl/platform/Window.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKDebugOut.h>
@@ -23,8 +23,15 @@ VK_NAMESPACE_BEGIN
 
         struct
         {
+            VK_BOOL1BIT(synchronization2)
             VK_BOOL1BIT(validation)
+            VK_BOOL1BIT(profiles)
         }khronos;
+
+        struct
+        {
+            VK_BOOL1BIT(switchable_graphics)
+        }amd;
 
         struct
         {
@@ -55,7 +62,7 @@ VK_NAMESPACE_BEGIN
 
         VKDebugOut *debug_out;
 
-        ObjectList<GPUPhysicalDevice> physical_devices;
+        ObjectList<VulkanPhyDevice> physical_devices;
 
     private:
     
@@ -63,7 +70,7 @@ VK_NAMESPACE_BEGIN
 
     private:
 
-        friend VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
+        friend VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
 
         VulkanInstance(VkInstance,VKDebugOut *);
 
@@ -73,8 +80,9 @@ VK_NAMESPACE_BEGIN
 
                 operator VkInstance (){return inst;}
 
-        const   ObjectList<GPUPhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
-        const   GPUPhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
+        const   VkInstance                   GetVulkanInstance  ()const{return inst;}
+        const   ObjectList<VulkanPhyDevice> &GetDeviceList      ()const{return physical_devices;}
+        const   VulkanPhyDevice *            GetDevice          (VkPhysicalDeviceType)const;
         
         template<typename T>
         T *GetInstanceProc(const char *name)
@@ -83,23 +91,21 @@ VK_NAMESPACE_BEGIN
         }
 
         template<typename T>
-        T *GetDeviceProc(const char *name)
+        T *GetDeviceProc(VkDevice *dev,const char *name)
         {
             if(!GetDeviceProcAddr)return(nullptr);
 
-            return reinterpret_cast<T>(GetDeviceProcAddr(name));
+            return reinterpret_cast<T>(GetDeviceProcAddr(dev,name));
         }
-
-        void DestroySurface(VkSurfaceKHR);
     };//class VulkanInstance
     
             void                            InitVulkanInstanceProperties();
-    const   List<VkLayerProperties> &       GetInstanceLayerProperties();
-    const   List<VkExtensionProperties> &   GetInstanceExtensionProperties();
+    const   ArrayList<VkLayerProperties> &       GetInstanceLayerProperties();
+    const   ArrayList<VkExtensionProperties> &   GetInstanceExtensionProperties();
     const   bool                            CheckInstanceLayerSupport(const AnsiString &);
     const   bool                            GetInstanceLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl);
     const   bool                            CheckInstanceExtensionSupport(const AnsiString &);
 
-    VulkanInstance *CreateInstance(const AnsiString &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
+    VulkanInstance *CreateInstance(const U8String &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE

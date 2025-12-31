@@ -1,0 +1,79 @@
+#Material
+Name RectTexture2DArray
+Base Std2D
+Prim SolidRectangles,WireRectangles
+
+#MaterialInstance
+Length 16
+Stage  Fragment
+Code
+{
+    uvec4 id;
+}
+
+#VertexInput
+vec4 TexCoord
+
+#Vertex
+Output
+{
+    vec4 TexCoord
+}
+
+Code
+{
+    void main()
+    {
+        HandoverMI();
+        Output.TexCoord=TexCoord;
+
+        gl_Position=GetPosition2D();
+    }
+}
+
+#Geometry
+in points
+out triangle_strip,4
+
+Output
+{
+    vec2 TexCoord
+}
+
+Code
+{
+    void main()
+    {
+        vec2 vlt=gl_in[0].gl_Position.xy;
+        vec2 vrb=gl_in[0].gl_Position.zw;
+        vec2 tlt=Input[0].TexCoord.xy;
+        vec2 trb=Input[0].TexCoord.zw;
+
+        HandoverMI();gl_Position=vec4(vlt,           vec2(0,1));Output.TexCoord=tlt;                EmitVertex();
+        HandoverMI();gl_Position=vec4(vlt.x, vrb.y,  vec2(0,1));Output.TexCoord=vec2(tlt.x,trb.y);  EmitVertex();
+        HandoverMI();gl_Position=vec4(vrb.x, vlt.y,  vec2(0,1));Output.TexCoord=vec2(trb.x,tlt.y);  EmitVertex();
+        HandoverMI();gl_Position=vec4(vrb,           vec2(0,1));Output.TexCoord=trb;                EmitVertex();
+
+        EndPrimitive();
+    }
+}
+
+
+#Fragment
+
+sampler2DArray TextureBaseColor
+
+Output
+{
+    vec4 FragColor;
+}
+
+Code
+{
+    void main()
+    {
+        MaterialInstance mi=GetMI();
+
+        FragColor=texture(TextureBaseColor,vec3(Input.TexCoord,mi.id.x));
+    }
+}

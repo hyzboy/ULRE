@@ -3,6 +3,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/color/Color4f.h>
+#include<hgl/graph/VKTexture.h>
 
 VK_NAMESPACE_BEGIN
 struct DebugUtilsFunction
@@ -92,6 +93,13 @@ public:
 //    DU_FUNC(BufferCollectionFuchsia,        BUFFER_COLLECTION_FUCHSIA)
 
 #undef DU_FUNC
+
+    void SetTexture(Texture *tex,const AnsiString &info)
+    {   
+        SetImage(       tex->GetImage(),            info+"_Image"       );
+        SetImageView(   tex->GetVulkanImageView(),  info+"_ImageView"   );
+        SetDeviceMemory(tex->GetDeviceMemory(),     info+"_Memory"      );
+    }
     
     void QueueBegin  (VkQueue,const char *,const Color4f &color=Color4f(1,1,1,1));
     void QueueEnd    (VkQueue q){duf.QueueEnd(q);}

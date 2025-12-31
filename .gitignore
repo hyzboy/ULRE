@@ -5,6 +5,7 @@
 *.db
 *.ipch
 *.tlog
+*.o
 *.obj
 .vs
 /build
@@ -15,3 +16,4 @@
 *.ninja
 *.check_cache
 /out
+src/ecs/test_ecs

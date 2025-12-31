@@ -1,115 +1,82 @@
-﻿#ifndef HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE
-#define HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKQueue.h>
-#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
+#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKDescriptorBindingManage.h>
+//#include<iostream>
+
 VK_NAMESPACE_BEGIN
-/**
- * 渲染目标
- */
-class RenderTarget
+
+class RenderFramework;
+
+using UBOViewportInfo=UBOInstance<graph::ViewportInfo>;
+
+class IRenderTarget
 {
-protected:
+    RenderFramework *render_framework;
 
-    DeviceQueue *queue;
-
-    RenderPass *render_pass;
-    Framebuffer *fbo;
-    
     VkExtent2D extent;
+
+    UBOViewportInfo *ubo_vp_info;
+
+    DescriptorBinding desc_binding;
+
+public:
+
+    RenderFramework *   GetRenderFramework  ()const{return render_framework;}
+    VulkanDevice *      GetDevice           ()const;
+    VkDevice            GetVkDevice         ()const;
+    DescriptorBinding * GetDescriptorBinding(){return &desc_binding;}
+
+    const   VkExtent2D &GetExtent       ()const{return extent;}
+
+    virtual uint32_t    GetColorCount   ()=0;
+    virtual bool        hasDepth        ()=0;
+
+public:
+
+    void OnResize(const VkExtent2D &ext);
+
+public:
+
+    IRenderTarget(RenderFramework *,const VkExtent2D &);
+    virtual ~IRenderTarget();
     
-    Semaphore *render_complete_semaphore =nullptr;
+    virtual Framebuffer *       GetFramebuffer  ()=0;
+    virtual RenderPass *        GetRenderPass   ()=0;
 
-protected:
+    virtual Texture2D *         GetColorTexture (const int index=0)=0;
+    virtual Texture2D *         GetDepthTexture ()=0;
 
-    uint32_t color_count;
-    Texture2D **color_textures;
-    Texture2D *depth_texture;
+public: // Command Buffer
 
-protected:
+    virtual DeviceQueue *       GetQueue            ()=0;
+    virtual Semaphore *         GetRenderCompleteSemaphore()=0;
 
-    friend class GPUDevice;
+    virtual RenderCmdBuffer *   GetRenderCmdBuffer  ()=0;
 
-    RenderTarget(DeviceQueue *,Semaphore *);
-    RenderTarget(DeviceQueue *,Semaphore *,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture);
+    virtual bool                Submit              (Semaphore *wait_sem)=0;
 
-public:
+    virtual bool                Submit              (){return Submit(nullptr);}
 
-    virtual ~RenderTarget();
-    
-                    DeviceQueue *   GetQueue            ()      {return queue;}
-            const   VkExtent2D &    GetExtent           ()const {return extent;}
-    virtual         RenderPass *    GetRenderPass       ()      {return render_pass;}
-    virtual const   VkRenderPass    GetVkRenderPass     ()const {return render_pass->GetVkRenderPass();}
-    virtual const   uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
-    virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
+    virtual bool                WaitQueue           ()=0;
+    virtual bool                WaitFence           ()=0;
 
-    virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
-    virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
-
-public: // command buffer
-
-            Semaphore *     GetRenderCompleteSemaphore  (){return render_complete_semaphore;}
-    virtual bool            Submit                      (RenderCmdBuffer *,Semaphore *present_complete_semaphore=nullptr);
-
-            bool            WaitQueue(){return queue->WaitQueue();}
-            bool            WaitFence(){return queue->WaitFence();}
-};//class RenderTarget
-
-/**
- * 交换链专用渲染目标
- */
-class SwapchainRenderTarget:public RenderTarget
-{
-    VkDevice device;
-    Swapchain *swapchain;
-    PresentInfo present_info;
-
-    Semaphore *present_complete_semaphore=nullptr;
-
-    uint32_t current_frame;
+    virtual RenderCmdBuffer *   BeginRender         ()=0;
+    virtual void                EndRender           ()=0;
 
 public:
 
-    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
-    ~SwapchainRenderTarget();
+    virtual ViewportInfo *      GetViewportInfo     ()
+    {
+        return ubo_vp_info->data();
+    }
+};//class IRenderTarget
 
-                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->render_frame[current_frame];}
-                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->render_frame[index];}
-
-            const   uint32_t        GetColorCount   ()const override            {return 1;}
-            const   uint32_t        GetImageCount   ()const                     {return swapchain->color_count;}
-
-    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_color[index];}
-    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_depth;}
-
-public:
-
-            const   uint32_t        GetCurrentFrameIndices      ()const {return current_frame;}
-                    Semaphore *     GetPresentCompleteSemaphore ()      {return present_complete_semaphore;}
-
-public:
-
-    /**
-     * 请求下一帧画面的索引
-     * @param present_complete_semaphore 推送完成信号
-     */
-    int AcquireNextImage();
-
-    /**
-     * 推送后台画面到前台
-     * @param render_complete_semaphore 渲染完成信号
-     */
-    bool PresentBackbuffer(VkSemaphore *wait_semaphores,const uint32_t wait_semaphore_count);
-
-    bool PresentBackbuffer();
-
-    bool Submit(VkCommandBuffer);
-    bool Submit(VkCommandBuffer,Semaphore *);
-};//class SwapchainRenderTarget:public RenderTarget
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE

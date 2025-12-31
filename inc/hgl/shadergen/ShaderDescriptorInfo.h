@@ -1,15 +1,18 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
-#include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VK.h>
+#include<hgl/graph/VKVertexInputAttribute.h>
 #include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 
 namespace hgl{namespace graph
 {
-using UBODescriptorList=List<const UBODescriptor *>;
-using SamplerDescriptorList=List<const SamplerDescriptor *>;
+using UBODescriptorList=ArrayList<const UBODescriptor *>;
+using TextureDescriptorList = ArrayList<const TextureDescriptor *>;
+using TextureSamplerDescriptorList=ArrayList<const TextureSamplerDescriptor *>;
 using ConstValueDescriptorList=ObjectList<ConstValueDescriptor>;
 using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 
@@ -18,57 +21,94 @@ using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 */
 class ShaderDescriptorInfo
 {
-    VkShaderStageFlagBits stage_flag;
+protected:
 
-    ShaderStageIO stage_io;
+    ShaderStage                         stage_flag;
 
     AnsiStringList                      struct_list;        //用到的结构列表
 
     //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdi中的用于产生set/binding号，这里的用于产生shader
     UBODescriptorList                   ubo_list;
-    SamplerDescriptorList               sampler_list;
+    TextureDescriptorList               texture_list;
+    TextureSamplerDescriptorList        texture_sampler_list;
     
     ConstValueDescriptorList            const_value_list;
-    SubpassInputDescriptorList          subpass_input;
     
     ShaderPushConstant                  push_constant;
 
 public:
 
-    ShaderDescriptorInfo(VkShaderStageFlagBits);
-    ~ShaderDescriptorInfo()=default;
+    ShaderDescriptorInfo(ShaderStage);
+    virtual ~ShaderDescriptorInfo()=default;
 
-    const VkShaderStageFlagBits         GetStageFlag()const { return stage_flag; }
-    const AnsiString                    GetStageName()const { return AnsiString(GetShaderStageName(stage_flag)); }
+    const ShaderStage                   GetShaderStage()const { return stage_flag; }
+    const VkShaderStageFlagBits         GetVkShaderStage()const { return (VkShaderStageFlagBits)stage_flag; }
+    const AnsiString                    GetStageName()const { return AnsiString(GetShaderStageName((VkShaderStageFlagBits)stage_flag)); }
 
 public:
-
-    const ShaderStageIO &               GetShaderStageIO()const{return stage_io;}
 
     const AnsiStringList &              GetStructList()const{return struct_list;}
 
     const UBODescriptorList &           GetUBOList()const{return ubo_list;}
-    const SamplerDescriptorList &       GetSamplerList()const{return sampler_list;}
+    const TextureSamplerDescriptorList &GetTextureSamplerList()const{return texture_sampler_list;}
 
     const ConstValueDescriptorList &    GetConstList()const{return const_value_list;}
+
+public:
+
+    void AddStruct(const AnsiString &);
+    bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
+    bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
+    bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
+
+    bool AddConstValue(ConstValueDescriptor *sd);
+    
+    void SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size);
+};//class ShaderDescriptorInfo
+
+template<ShaderStage SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderDescriptorInfo
+{
+    IArray input;
+    OArray output;
+
+public:
+
+    CustomShaderDescriptorInfo():ShaderDescriptorInfo(SS){}
+    virtual ~CustomShaderDescriptorInfo()override=default;
+
+    bool AddInput(I &item){return input.Add(item);}
+    bool AddOutput(O &item){return output.Add(item);}
+
+    bool hasInput(const char *name)const{return input.Contains(name);}     ///<是否有指定输入
+
+public:
+
+    IArray &GetInput(){return input;}
+    OArray &GetOutput(){return output;}
+
+    const bool IsEmptyInput()const{return input.IsEmpty();}
+    const bool IsEmptyOutput()const{return output.IsEmpty();}
+};//class CustomShaderDescriptorInfo
+
+class VertexShaderDescriptorInfo:public CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable  >
+{
+    SubpassInputDescriptorList          subpass_input;
+
+public:
 
     const SubpassInputDescriptorList &  GetSubpassInputList()const{return subpass_input;}
 
 public:
 
-    bool AddInput(ShaderAttribute *);
-    bool AddOutput(ShaderAttribute *);
+    using CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable>::CustomShaderDescriptorInfo;
+    ~VertexShaderDescriptorInfo()override=default;
 
-    bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
-    bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);
+    bool AddSubpassInput(const AnsiString &name,uint8_t index);
+};//class VertexShaderDescriptorInfo
 
-    bool AddConstValue(ConstValueDescriptor *sd);    
-    bool AddSubpassInput(const AnsiString name,uint8_t index);
-    
-    void SetPushConstant(const AnsiString name,uint8_t offset,uint8_t size);
+using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessControl, SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using TessEvalShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessEval,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using GeometryShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Geometry,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Fragment,    SVArray,  ShaderVariable,   VIAArray,   VIA             >;
 
-#ifdef _DEBUG
-    void DebugOutput(int);
-#endif//_DEBUG
-};//class ShaderDescriptorInfo
 }}//namespace hgl::graph

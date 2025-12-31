@@ -16,7 +16,7 @@ class DeviceMemory
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p,const VkDeviceSize cas);
 

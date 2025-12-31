@@ -1,37 +1,58 @@
-#include<hgl/shadergen/ShaderCreateInfoFragment.h>
+﻿#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
 
-using namespace hgl::graph;
-
-void ShaderCreateInfoFragment::UseDefaultMain()
+int ShaderCreateInfoFragment::AddOutput(VIAList &via_list)
 {
-    main_codes="void main()\n{\n";
+    int count=0;
 
-    const auto &output_list=sdm->GetShaderStageIO().output;
-
-    const ShaderAttribute *o=output_list.items;
-
-    for(uint i=0;i<output_list.count;i++)
+    for(VIA &via:via_list)
     {
-        main_codes+="\t";
-        main_codes+=o->name;
-        main_codes+="=Get";
-        main_codes+=o->name;
-        main_codes+="();\n";
+        //都输出了，没这些值
+        //via.input_rate=VK_VERTEX_INPUT_RATE_VERTEX;
+        //via.group=VertexInputGroup::Basic;
 
-        ++o;
+        if(fsdi.AddOutput(via))
+            ++count;
     }
 
-    main_codes+="}";
+    return count;
+}
+
+int ShaderCreateInfoFragment::AddOutput(const VAType &type,const AnsiString &name,Interpolation inter)
+{
+    VertexInputAttribute via;
+
+    hgl::strcpy(via.name,sizeof(via.name),name.c_str());
+
+    via.basetype        =(uint8)type.basetype;
+    via.vec_size        =       type.vec_size;
+    via.interpolation   =       inter;
+
+    return fsdi.AddOutput(via);
+}
+
+int ShaderCreateInfoFragment::AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter)
+{
+    VAType vat;
+
+    if(name.IsEmpty())
+        return -1;
+
+    if(!ParseVertexAttribType(&vat,type))
+        return -2;
+
+    return AddOutput(vat,name,inter);
 }
 
 bool ShaderCreateInfoFragment::ProcOutput()
 {
-    const auto &output_list=sdm->GetShaderStageIO().output;
+    const auto &output_list=fsdi.GetOutput();
 
-    const ShaderAttribute *o=output_list.items;
+    const VertexInputAttribute *o=output_list.items;
+
+        final_shader+="\n";
 
     for(uint i=0;i<output_list.count;i++)
     {

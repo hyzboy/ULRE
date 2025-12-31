@@ -1,0 +1,38 @@
+#Material
+Name PureColor2D
+Base Std2D
+
+#MaterialInstance
+Length 16
+Stage  Fragment
+Code
+{
+    vec4 Color;
+}
+
+#Vertex
+Code
+{
+    void main()
+    {
+        HandoverMI();
+
+        gl_Position=GetPosition2D();
+    }
+}
+
+#Fragment
+Output
+{
+    vec4 FragColor
+}
+
+Code
+{
+    void main()
+    {
+        MaterialInstance mi=GetMI();
+
+        FragColor=mi.Color;
+    }
+}

@@ -1,47 +1,50 @@
-﻿#ifndef HGL_GRAPH_TEXT_LAYOUT_INCLUDE
-#define HGL_GRAPH_TEXT_LAYOUT_INCLUDE
+﻿#pragma once
 
-#include<hgl/type/StringList.h>
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/graph/PrimitiveCreater.h>
-#include<hgl/graph/TileData.h>
-#include<hgl/type/MemBlock.h>
-namespace hgl
+#include<hgl/color/Color4ub.h>
+#include<hgl/math/Vector.h>
+
+namespace hgl::graph
 {
-    namespace graph
+    class TileFont;
+    class TextGeometry;
+
+    namespace layout
     {
-        class TileFont;
-        class TextPrimitive;
-
         /**
-         * 字符属性，可精确到字也可精确到段落或是全文
-         */
-        struct CharLayoutAttr
+        * 字符风格
+        */
+        struct CharStyle
         {
-            bool    bold        =false; ///<加粗
-            bool    italic      =false; ///<右斜
+            Color4ub CharColor;          ///<字符颜色
+            //Color4ub BackgroundColor;    ///<背景颜色
 
-            Color4f CharColor;          ///<字符颜色
-            Color4f BackgroundColor;    ///<背景颜色
-        };//struct CharLayoutAttr
+            //float   weight      =1.0f;  ///<粗细
+            //float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
+
+            //float   underline   =0.0f; ///<下划线粗细
+            //float   strikeout   =0.0f; ///<删除线粗细
+        };//struct CharStyle
+
+        using CharDrawStyleID=uint8;
+
+        constexpr const size_t CharDrawStyleBytes=sizeof(CharStyle);
        
         /**
-         * 文本排列方向
-         */
-        union TextDirection
+        * 文本排列方向
+        */
+        enum class TextDirection : uint8
         {
-            uint8 text_direction;
+            LeftToRight,    //<横排从左到右
+            RightToLeft,    //<横排从右到左
+            Vertical,       //<竖排从上到下，从右到左
 
-            struct
-            {
-                uint vertical:1;            ///<是否竖排
-                uint right_to_left:1;       ///<是否从右往左
-            };
-        };//union TextDirection
+            //有竖排从下到上的吗？从左到右？
+        };//enum class TextDirection
 
         /**
-         * 文本对齐
-         */
+        * 文本对齐
+        */
         enum class TextAlign
         {
             Left=0,                     ///<左对齐
@@ -54,83 +57,47 @@ namespace hgl
         };//enum class TextAlign
 
         /**
-         * 文本排版属性
-         */
-        struct TextLayoutAttribute
+        * 段落风格
+        */
+        struct ParagraphStyle
         {
-            FontSource *    font_source             =nullptr;                                       ///<字符源
-            CharLayoutAttr *char_layout_attr        =nullptr;                                       ///<缺省字符排版属性
-
-            uint8           text_direction          =0;                                             ///<文本排列方向
+            TextDirection   text_direction          =TextDirection::LeftToRight;                    ///<文本排列方向
             TextAlign       align                   =TextAlign::Left;                               ///<段落对齐
             float           char_gap                =0.0f;                                          ///<字间距
             float           line_gap                =0.1f;                                          ///<行间距(相对于字符高度)
-            float           paragraph_gap           =1.0f;                                          ///<段间距(相对于字符高度)
 
             float           max_width               =0.0f;                                          ///<最大宽度(<=0代表无限制)
             float           max_height              =0.0f;                                          ///<最大高度(<=0代表无限制)
 
-            bool            border_symbols_disable  =true;                                          ///<边界符号禁用(如行首禁用逗号)
-//            bool            auto_symbols_convert    =true;                                          ///<自动符号转换(如tm/(r)/(c)等)
+            bool            disable_border_symbols  =true;                                          ///<禁用边界符号(如行首禁用逗号)
+    //      bool            disable_break_word      =true;                                          ///<禁用断字(如英文单词不允许断开)
+    //      bool            auto_symbols_convert    =true;                                          ///<自动符号转换(如tm/(r)/(c)等)
 
             float           space_size              =0.5f;                                          ///<半角空格尺寸(对应字符高度的系数)
             float           full_space_size         =1.0f;                                          ///<全角空格尺寸(对应字符高度的系数)
             float           tab_size                =4.0f;                                          ///<Tab符号尺寸(对应字符高度的系数)
 
             bool            compress_punctuation    =false;                                         ///<压缩标点符号
-        };//struct TextLayoutAttribute
-
-        using TLA=TextLayoutAttribute;
+        };//struct ParagraphStyle
         
         using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
+        using TEXT_COORD_VEC=math::Vector2i;
 
-        class TextLayout
+        struct TextDrawStyle:public ComparatorData<TextDrawStyle>
         {
-        protected:
+            ParagraphStyle para_style;
 
-            FontSource *font_source;
-            TextLayoutAttribute tla;
+            // CharDrawStyle与TextLayoutAttribute的区别在于：
 
-        protected:
+            // CharStyle    是针对单个字符的绘制风格，其所有的属性都将储存于UBO，在Shader中使用。
+            //                  所以每个CharDrawStyle其实都对应了一个TextRender的材质实例(MaterialInstance)。
+            //                  也因此CharDrawStyle的数量是有限制的，因为所有的材质实例属性加起来不能超过一个UBO大小。
+            //                  但其实这个值也还很大的，100来个还是可以支撑的。
 
-            TextDirection direction;
+            // ParagraphStyle 是针对整段文本的排版属性，其所有的值都在CPU阶段进行计算。所以其数量其实是无限制的。
 
-            bool endless;
-            float splite_line_max_limit;
+            TEXT_COORD_VEC start_position;   //起始位置
 
-            int draw_chars_count;                       ///<要绘制字符列表
-
-            SortedSets<u32char> chars_sets;             ///<不重复字符统计缓冲区
-            SortedSets<u32char> clear_chars_sets;       ///<待清除的字符合集
-            TileUVFloatMap chars_uv;                    ///<所有要绘制字符的uv
-
-            struct CharDrawAttr
-            {
-                const CLA *cla;
-                TileUVFloat uv;
-            };
-            
-            ObjectList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
-
-            template<typename T> bool preprocess(TextPrimitive *,TileFont *,const T *,const int);
-
-        protected:        
-
-            bool h_splite_to_lines(float view_limit);
-            bool v_splite_to_lines(float view_limit);
-            
-            int sl_h_l2r();
-            int sl_h_r2l();
-            int sl_v_r2l();
-            int sl_v_l2r();
-
-            template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &);                   ///<简易排版
-
-//            template<typename T> int SimpleLayout(TileFont *,const StringList<String<T>> &);                      ///<简易排版
-
-        protected:  
-
-            TEXT_COORD_TYPE x,y;
             TEXT_COORD_TYPE char_height;
             TEXT_COORD_TYPE space_size;
             TEXT_COORD_TYPE full_space_size;
@@ -138,41 +105,6 @@ namespace hgl
             TEXT_COORD_TYPE char_gap;
             TEXT_COORD_TYPE line_gap;
             TEXT_COORD_TYPE line_height;
-            TEXT_COORD_TYPE paragraph_gap;
-
-        protected:
-        
-            TextPrimitive *text_primitive;
-            MemBlock<int16> vertex;
-            MemBlock<float> tex_coord;
-
-        public:
-
-            TextLayout()
-            {
-                direction.text_direction=0;
-                draw_chars_count=0;
-
-                text_primitive =nullptr;
-            }
-
-            virtual ~TextLayout()=default;
-
-            void Set                (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla,1);}
-            void SetFont            (      FontSource * fs)     {if(fs)font_source=fs;}
-            void SetTextDirection   (const uint8 &      td)     {tla.text_direction=td;}
-            void SetAlign           (const TextAlign &  ta)     {tla.align=ta;}
-            void SetMaxWidth        (const float        mw)     {tla.max_width=mw;}
-            void SetMaxHeight       (const float        mh)     {tla.max_height=mh;}
-
-            virtual bool    Init        ();                                                         ///<初始化排版
-
-            int     SimpleLayout (TextPrimitive *,TileFont *,const UTF16String &);                 ///<简易排版
-            int     SimpleLayout (TextPrimitive *,TileFont *,const UTF32String &);                 ///<简易排版
-
-//            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
-//            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
-        };//class TextLayout
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_TEXT_LAYOUT_INCLUDE
+        };
+    }//namespace layout
+}//namespace hgl::graph

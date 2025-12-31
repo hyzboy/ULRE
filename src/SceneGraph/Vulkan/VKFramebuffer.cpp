@@ -7,7 +7,7 @@
 
 VK_NAMESPACE_BEGIN
 
-Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,const VkExtent2D &ext,VkRenderPass rp,uint32_t cc,bool depth)
+Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,const VkExtent2D &ext,RenderPass *rp,uint32_t cc,bool depth)
 {
     device=dev;
     frame_buffer=fb;
