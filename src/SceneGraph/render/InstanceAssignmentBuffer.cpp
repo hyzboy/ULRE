@@ -24,8 +24,10 @@ InstanceAssignmentBuffer::InstanceAssignmentBuffer(VulkanDevice *dev,Material *m
     material_instance_buffer=nullptr;
 
     node_count=0;
-    assign_vab=nullptr;
-    assign_buffer=nullptr;
+    transform_vab=nullptr;
+    transform_vab_buffer=nullptr;
+    material_instance_vab=nullptr;
+    material_instance_vab_buffer=nullptr;
 }
 
 void InstanceAssignmentBuffer::Bind(Material *mtl)const
@@ -40,7 +42,8 @@ void InstanceAssignmentBuffer::Clear()
 {
     SAFE_CLEAR(transform_buffer);
     SAFE_CLEAR(material_instance_buffer);
-    SAFE_CLEAR(assign_vab);
+    SAFE_CLEAR(transform_vab);
+    SAFE_CLEAR(material_instance_vab);
 }
 
 void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
@@ -114,11 +117,11 @@ void InstanceAssignmentBuffer::UpdateMaterialInstanceData(const DrawNode *rn)
     if(!rn)
         return;
 
-    AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map(sizeof(AssignData)*rn->index,sizeof(AssignData)));
+    uint16 *mip=(uint16 *)(material_instance_vab->DeviceBuffer::Map(sizeof(uint16)*rn->index,sizeof(uint16)));
 
-    adp->material_instance=mi_set.Find(rn->GetMaterialInstance());
+    *mip=mi_set.Find(rn->GetMaterialInstance());
 
-    assign_vab->Unmap();
+    material_instance_vab->Unmap();
 }
 
 void InstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &draw_nodes)
@@ -186,51 +189,81 @@ void InstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
     StatMaterialInstance(draw_nodes);
 
     {
-        if(!assign_vab)
+        if(!transform_vab)
         {
             node_count=power_to_2(draw_nodes.GetCount());
         }
         else if(node_count<draw_nodes.GetCount())
         {
             node_count=power_to_2(draw_nodes.GetCount());
-            SAFE_CLEAR(assign_vab);
+            SAFE_CLEAR(transform_vab);
+            SAFE_CLEAR(material_instance_vab);
         }
 
-        if(!assign_vab)
+        if(!transform_vab)
         {
-            assign_vab=device->CreateVAB(ASSIGN_VAB_FMT,node_count);
-            assign_buffer=assign_vab->GetBuffer();
+            transform_vab=device->CreateVAB(VK_FORMAT_R16_UINT,node_count);
+            transform_vab_buffer=transform_vab->GetBuffer();
         
         #ifdef _DEBUG
             DebugUtils *du=device->GetDebugUtils();
         
             if(du)
             {
-                du->SetBuffer(assign_vab->GetBuffer(),"VAB:Buffer:AssignData");
-                du->SetDeviceMemory(assign_vab->GetVkMemory(),"VAB:Memory:AssignData");
+                du->SetBuffer(transform_vab->GetBuffer(),"VAB:Buffer:TransformID");
+                du->SetDeviceMemory(transform_vab->GetVkMemory(),"VAB:Memory:TransformID");
+            }
+        #endif//_DEBUG
+        }
+
+        if(!material_instance_vab)
+        {
+            material_instance_vab=device->CreateVAB(VK_FORMAT_R16_UINT,node_count);
+            material_instance_vab_buffer=material_instance_vab->GetBuffer();
+        
+        #ifdef _DEBUG
+            DebugUtils *du=device->GetDebugUtils();
+        
+            if(du)
+            {
+                du->SetBuffer(material_instance_vab->GetBuffer(),"VAB:Buffer:MaterialInstanceID");
+                du->SetDeviceMemory(material_instance_vab->GetVkMemory(),"VAB:Memory:MaterialInstanceID");
             }
         #endif//_DEBUG
         }
     }
     
-    //生成材质实例ID列表
+    //生成transform索引列表
     {
         DrawNode **rn=draw_nodes.GetData();
 
-        AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map());
+        uint16 *transform_ptr=(uint16 *)(transform_vab->DeviceBuffer::Map());
 
         for(uint i=0;i<draw_nodes.GetCount();i++)
         {
             (*rn)->transform_index=i;
-
-            adp->transform=i;
-            adp->material_instance=mi_set.Find((*rn)->GetMaterialInstance());
-            ++adp;
-
+            *transform_ptr=i;
+            ++transform_ptr;
             ++rn;
         }
 
-        assign_vab->Unmap();
+        transform_vab->Unmap();
+    }
+
+    //生成材质实例ID列表
+    {
+        DrawNode **rn=draw_nodes.GetData();
+
+        uint16 *mi_ptr=(uint16 *)(material_instance_vab->DeviceBuffer::Map());
+
+        for(uint i=0;i<draw_nodes.GetCount();i++)
+        {
+            *mi_ptr=mi_set.Find((*rn)->GetMaterialInstance());
+            ++mi_ptr;
+            ++rn;
+        }
+
+        material_instance_vab->Unmap();
     }
 }
 VK_NAMESPACE_END

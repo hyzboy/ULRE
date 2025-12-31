@@ -10,12 +10,6 @@ class MaterialInstance;
 */
 class InstanceAssignmentBuffer
 {
-    struct AssignData
-    {
-        uint16 transform;
-        uint16 material_instance;
-    };
-
     uint MaxTransformCount;
 
 private:
@@ -44,8 +38,11 @@ private:    //分发数据
 
     uint32 node_count;                  ///<节点数量
 
-    VAB *assign_vab;                    ///<分发数据VAB(RG16UI格式，R存L2W ID，G存材质实例ID)
-    VkBuffer assign_buffer;             ///<分发数据Buffer
+    VAB *transform_vab;                 ///<LocalToWorld矩阵ID分发数据VAB(R16UI格式)
+    VkBuffer transform_vab_buffer;      ///<LocalToWorld矩阵ID分发数据Buffer
+
+    VAB *material_instance_vab;         ///<材质实例ID分发数据VAB(R16UI格式)
+    VkBuffer material_instance_vab_buffer;  ///<材质实例ID分发数据Buffer
 
 private:
 
@@ -53,7 +50,8 @@ private:
 
 public:
 
-    const VkBuffer GetVAB()const{return assign_buffer;}
+    const VkBuffer GetTransformVAB()const{return transform_vab_buffer;}
+    const VkBuffer GetMaterialInstanceVAB()const{return material_instance_vab_buffer;}
 
     void Bind(Material *)const;
 

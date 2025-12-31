@@ -40,10 +40,15 @@ bool PipelineMaterialRenderer::BindVAB(const DrawBatch *batch, InstanceAssignmen
     if (!vab_list->Add(batch->geom_data_buffer))
         return false;
 
-    // 如果有实例分配缓冲（LocalToWorld/MI数据），也需要绑定
+    // 如果有实例分配缓冲（LocalToWorld/MI数据），需要绑定两个独立的VAB
     if (assign_buffer)
     {
-        if (!vab_list->Add(assign_buffer->GetVAB(), 0))
+        // 绑定Transform索引VAB
+        if (!vab_list->Add(assign_buffer->GetTransformVAB(), 0))
+            return false;
+
+        // 绑定MaterialInstance索引VAB
+        if (!vab_list->Add(assign_buffer->GetMaterialInstanceVAB(), 0))
             return false;
     }
 
