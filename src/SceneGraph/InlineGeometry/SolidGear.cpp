@@ -41,8 +41,8 @@ namespace hgl::graph::inline_geometry
         const uint numberVertices = 2 + ring_verts * 4;  // 2 centers + 2 cap rings + 2 side rings
 
         // Indices:
-        // - Top cap: tooth_count triangles
-        // - Bottom cap: tooth_count triangles
+        // - Top cap: total_segments triangles (fan from center)
+        // - Bottom cap: total_segments triangles (fan from center)
         // - Side faces: total_segments quads = total_segments * 6 indices
         const uint numberIndices = total_segments * 3 + total_segments * 3 + total_segments * 6;
 
