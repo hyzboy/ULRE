@@ -57,11 +57,11 @@ public:
     const AnsiString ToHashString() override;
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
-DEFINE_MATERIAL_FACTORY_CLASS(PureColor3D,      const Material3DCreateConfig);
+DEFINE_MATERIAL_FACTORY_CLASS(PureColor3D,      Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexPattleColor3D,const Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          const Material3DCreateConfig);
+DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(TextureBlinnPhong,const Material3DCreateConfig);
 
 struct TerrainGridCreateConfig:public Material3DCreateConfig

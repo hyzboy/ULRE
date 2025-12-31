@@ -8,7 +8,7 @@ namespace
     constexpr const char vs_main[]=R"(
 void main()
 {
-    Output.l2w_id=Assign.x;
+    Output.l2w_id=TransformID;
     gl_Position=vec4(Position,1);
 })";
 

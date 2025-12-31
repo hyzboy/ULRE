@@ -6,6 +6,9 @@
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
+#ifdef _DEBUG
+#include<iostream>
+#endif
 VK_NAMESPACE_BEGIN
 class VulkanCmdBuffer
 {
@@ -204,13 +207,26 @@ public:
     {
         if(!vab_list)return(false);
 
-        if(!vab_list->IsFull())return(false);
+        if(!vab_list->IsFull())
+        {
+#ifdef _DEBUG
+            std::cout << "[RenderCmdBuffer::BindVAB] Binding " << vab_list->write_count 
+                      << " VABs (capacity: " << vab_list->vab_count << ")" << std::endl;
+            for(uint32_t i = 0; i < vab_list->write_count; i++)
+            {
+                std::cout << "[RenderCmdBuffer::BindVAB]   Binding " << i 
+                          << ": buffer=" << (void*)vab_list->vab_list[i]
+                          << ", offset=" << vab_list->vab_offset[i] << std::endl;
+            }
+#endif
+            return(false);
+        }
 
         vkCmdBindVertexBuffers(cmd_buf,
-                               0,                       //first binding
-                               vab_list->vab_count,     //binding count
-                               vab_list->vab_list,      //buffers
-                               vab_list->vab_offset);   //buffer offsets
+                               0,                           //first binding
+                               vab_list->write_count,       //binding count (use actual count, not capacity)
+                               vab_list->vab_list,          //buffers
+                               vab_list->vab_offset);       //buffer offsets
 
         return(true);
     }

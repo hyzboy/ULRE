@@ -104,6 +104,8 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const VulkanDevAttr *dev_attr,mtl
 
     cfg->local_to_world=true;
 
+    cfg->material_instance=true;
+
     MaterialBillboard2DFixedSize mtl_billbard_2d_fixed_size(cfg);
 
     return mtl_billbard_2d_fixed_size.Create(dev_attr);
