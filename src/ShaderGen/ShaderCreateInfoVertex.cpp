@@ -97,10 +97,17 @@ void ShaderCreateInfoVertex::AddJoint()
 
 void ShaderCreateInfoVertex::AddAssign()
 {
-    AddInput(   ASSIGN_VAT_FMT,
-                ASSIGN_VIS_NAME,
+    // 添加Transform索引输入
+    AddInput(   TRANSFORM_INDEX_VAT_FMT,
+                TRANSFORM_INDEX_VIS_NAME,
                 VK_VERTEX_INPUT_RATE_INSTANCE,
-                VertexInputGroup::Assign);
+                VertexInputGroup::TransformIndex);
+    
+    // 添加MaterialInstance索引输入
+    AddInput(   MATERIAL_INSTANCE_INDEX_VAT_FMT,
+                MATERIAL_INSTANCE_INDEX_VIS_NAME,
+                VK_VERTEX_INPUT_RATE_INSTANCE,
+                VertexInputGroup::MaterialInstanceIndex);
     
     AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
 }
