@@ -168,7 +168,13 @@ SET(GEOMETRY_PRIMITIVES_EXTENDED InlineGeometry/Frustum.cpp
                                  InlineGeometry/Helix.cpp
                                  InlineGeometry/SolidGear.cpp
                                  InlineGeometry/HollowGear.cpp
-                                 InlineGeometry/Heart.cpp)
+                                 InlineGeometry/Heart.cpp
+                                 InlineGeometry/Star.cpp
+                                 InlineGeometry/Polygon.cpp
+                                 InlineGeometry/Wedge.cpp
+                                 InlineGeometry/Teardrop.cpp
+                                 InlineGeometry/Egg.cpp
+                                 InlineGeometry/Crescent.cpp)
 
 SET(GEOMETRY_PRIMITIVES_ADVANCED ${SG_INCLUDE_PATH}/geo/Extruded.h
                                  ${SG_INCLUDE_PATH}/geo/Wall.h
