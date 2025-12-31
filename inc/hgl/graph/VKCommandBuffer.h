@@ -6,9 +6,6 @@
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
-#ifdef _DEBUG
-#include<iostream>
-#endif
 VK_NAMESPACE_BEGIN
 class VulkanCmdBuffer
 {
@@ -205,20 +202,13 @@ public:
 
     bool BindVAB(const VABList *vab_list)
     {
-        if(!vab_list)return(false);
+        if(!vab_list)
+        {
+            return(false);
+        }
 
         if(!vab_list->IsFull())
         {
-#ifdef _DEBUG
-            std::cout << "[RenderCmdBuffer::BindVAB] Binding " << vab_list->write_count 
-                      << " VABs (capacity: " << vab_list->vab_count << ")" << std::endl;
-            for(uint32_t i = 0; i < vab_list->write_count; i++)
-            {
-                std::cout << "[RenderCmdBuffer::BindVAB]   Binding " << i 
-                          << ": buffer=" << (void*)vab_list->vab_list[i]
-                          << ", offset=" << vab_list->vab_offset[i] << std::endl;
-            }
-#endif
             return(false);
         }
 
@@ -266,7 +256,7 @@ public: //draw
                                                      firstInstance);
                                 }
 
-//    template<typename ...ARGS>  void Draw               (ARGS...args)                   {vkCmdDraw(cmd_buf,args...);}
+//    template<typename ...ARGS>  void Draw               (ARS...args)                   {vkCmdDraw(cmd_buf,args...);}
 //    template<typename ...ARGS>  void DrawIndexed        (ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
 
                                 void DrawIndirect       (VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         ));

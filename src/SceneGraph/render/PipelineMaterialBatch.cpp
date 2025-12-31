@@ -11,7 +11,6 @@
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/component/PrimitiveComponent.h>
-#include<iostream>
 
 VK_NAMESPACE_BEGIN
 
@@ -26,31 +25,20 @@ PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d, bool l2w, const Pi
     , icb_draw_indexed(nullptr)
     , renderer(nullptr)
 {
-    std::cout << "[PipelineMaterialBatch] Constructor - Material: " << (void*)rpi.material 
-              << ", Pipeline: " << (void*)rpi.pipeline << std::endl;
-    std::cout << "[PipelineMaterialBatch] Material hasLocalToWorld: " << (rpi.material->hasLocalToWorld() ? "YES" : "NO") << std::endl;
-    std::cout << "[PipelineMaterialBatch] Material hasMI: " << (rpi.material->hasMI() ? "YES" : "NO") << std::endl;
-    
     // 如果材质需要 LocalToWorld，创建Transform分配缓冲
     if (rpi.material->hasLocalToWorld())
     {
-        std::cout << "[PipelineMaterialBatch] Creating TransformAssignmentBuffer..." << std::endl;
         transform_buffer = new TransformAssignmentBuffer(device);
-        std::cout << "[PipelineMaterialBatch] TransformAssignmentBuffer created: " << (void*)transform_buffer << std::endl;
     }
 
     // 如果材质需要材质实例数据，创建MI分配缓冲
     if (rpi.material->hasMI())
     {
-        std::cout << "[PipelineMaterialBatch] Creating MaterialInstanceAssignmentBuffer..." << std::endl;
         mi_buffer = new MaterialInstanceAssignmentBuffer(device, pm_index.material);
-        std::cout << "[PipelineMaterialBatch] MaterialInstanceAssignmentBuffer created: " << (void*)mi_buffer << std::endl;
     }
 
     // 创建渲染器
-    std::cout << "[PipelineMaterialBatch] Creating PipelineMaterialRenderer..." << std::endl;
     renderer = new PipelineMaterialRenderer(pm_index.material, pm_index.pipeline);
-    std::cout << "[PipelineMaterialBatch] PipelineMaterialRenderer created: " << (void*)renderer << std::endl;
 }
 
 PipelineMaterialBatch::~PipelineMaterialBatch()
@@ -91,48 +79,28 @@ void PipelineMaterialBatch::Add(DrawNode *node)
 
 void PipelineMaterialBatch::Finalize()
 {
-    std::cout << "[PipelineMaterialBatch::Finalize] === Starting finalization ===" << std::endl;
-    std::cout << "[PipelineMaterialBatch::Finalize] Node count: " << draw_nodes.GetCount() << std::endl;
-    
     // 排序节点以优化渲染顺序
     Sort(draw_nodes.GetArray());
 
     const uint node_count = draw_nodes.GetCount();
     if (node_count <= 0)
     {
-        std::cout << "[PipelineMaterialBatch::Finalize] No nodes to finalize" << std::endl;
         return;
     }
 
-    std::cout << "[PipelineMaterialBatch::Finalize] Building batches..." << std::endl;
     // 构建绘制批次
     BuildBatches();
-    std::cout << "[PipelineMaterialBatch::Finalize] Batches built, count: " << draw_batches_count << std::endl;
 
     // 写入实例数据到缓冲
     if (transform_buffer)
     {
-        std::cout << "[PipelineMaterialBatch::Finalize] Writing Transform data to buffer..." << std::endl;
         transform_buffer->WriteNode(draw_nodes);
-        std::cout << "[PipelineMaterialBatch::Finalize] Transform data written" << std::endl;
-    }
-    else
-    {
-        std::cout << "[PipelineMaterialBatch::Finalize] No Transform buffer to write" << std::endl;
     }
     
     if (mi_buffer)
     {
-        std::cout << "[PipelineMaterialBatch::Finalize] Writing MaterialInstance data to buffer..." << std::endl;
         mi_buffer->WriteNode(draw_nodes);
-        std::cout << "[PipelineMaterialBatch::Finalize] MaterialInstance data written" << std::endl;
     }
-    else
-    {
-        std::cout << "[PipelineMaterialBatch::Finalize] No MaterialInstance buffer to write" << std::endl;
-    }
-    
-    std::cout << "[PipelineMaterialBatch::Finalize] === Finalization complete ===" << std::endl;
 }
 
 void PipelineMaterialBatch::UpdateTransformData()
