@@ -159,14 +159,21 @@ namespace hgl::graph::inline_geometry
                 float py = radius * sin(t);
                 float pz = z_per_angle * t;
 
-                // Normal and tangent (arbitrary for line)
+                // Tangent to helix (derivative of position)
+                float dx_dt = -radius * sin(t);
+                float dy_dt = radius * cos(t);
+                float dz_dt = z_per_angle;
+
+                // Normalize tangent
+                float tang_len = sqrtf(dx_dt*dx_dt + dy_dt*dy_dt + dz_dt*dz_dt);
+                float tx = (tang_len > 0.0f) ? dx_dt / tang_len : 0.0f;
+                float ty = (tang_len > 0.0f) ? dy_dt / tang_len : 0.0f;
+                float tz = (tang_len > 0.0f) ? dz_dt / tang_len : 0.0f;
+
+                // Normal (pointing towards axis)
                 float nx = -cos(t);
                 float ny = -sin(t);
                 float nz = 0.0f;
-
-                float tx = -sin(t);
-                float ty = cos(t);
-                float tz = 0.0f;
 
                 float u = float(s) / float(total_segs);
 
