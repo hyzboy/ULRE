@@ -161,6 +161,12 @@ SET(GEOMETRY_PRIMITIVES_CYLINDER InlineGeometry/CylinderConeTorusIndices.cpp
 SET(GEOMETRY_PRIMITIVES_CAPSULE InlineGeometry/Capsule.cpp
                                 InlineGeometry/TaperedCapsule.cpp)
 
+SET(GEOMETRY_PRIMITIVES_EXTENDED InlineGeometry/Frustum.cpp
+                                 InlineGeometry/Arrow.cpp
+                                 InlineGeometry/RoundedBox.cpp
+                                 InlineGeometry/PipeElbow.cpp
+                                 InlineGeometry/Helix.cpp)
+
 SET(GEOMETRY_PRIMITIVES_ADVANCED ${SG_INCLUDE_PATH}/geo/Extruded.h
                                  ${SG_INCLUDE_PATH}/geo/Wall.h
                                  ${SG_INCLUDE_PATH}/geo/Revolution.h
@@ -172,6 +178,7 @@ SOURCE_GROUP("5.Geometry\\Primitives\\Basic" FILES ${GEOMETRY_PRIMITIVES_BASIC})
 SOURCE_GROUP("5.Geometry\\Primitives\\Sphere" FILES ${GEOMETRY_PRIMITIVES_SPHERE})
 SOURCE_GROUP("5.Geometry\\Primitives\\Cylinder" FILES ${GEOMETRY_PRIMITIVES_CYLINDER})
 SOURCE_GROUP("5.Geometry\\Primitives\\Capsule" FILES ${GEOMETRY_PRIMITIVES_CAPSULE})
+SOURCE_GROUP("5.Geometry\\Primitives\\Extended" FILES ${GEOMETRY_PRIMITIVES_EXTENDED})
 SOURCE_GROUP("5.Geometry\\Primitives\\Advanced" FILES ${GEOMETRY_PRIMITIVES_ADVANCED})
 
 SET(GEOMETRY_FILES  ${GEOMETRY_UTILS_FILES}
@@ -179,6 +186,7 @@ SET(GEOMETRY_FILES  ${GEOMETRY_UTILS_FILES}
                     ${GEOMETRY_PRIMITIVES_SPHERE}
                     ${GEOMETRY_PRIMITIVES_CYLINDER}
                     ${GEOMETRY_PRIMITIVES_CAPSULE}
+                    ${GEOMETRY_PRIMITIVES_EXTENDED}
                     ${GEOMETRY_PRIMITIVES_ADVANCED})
 
 # ============================================================================
