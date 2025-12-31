@@ -444,6 +444,99 @@ namespace hgl::graph
          * 用途：装饰元素、游戏道具、UI图标、情人节主题
          */
         Geometry *CreateHeart(GeometryCreater *pc, const HeartCreateInfo *hci);
+
+        // 新增：星形几何体创建信息
+        struct StarCreateInfo
+        {
+            float outer_radius = 1.0f;      // 外半径（尖端）
+            float inner_radius = 0.4f;      // 内半径（凹陷）
+            float depth = 0.2f;             // 星形厚度（Z方向）
+            uint  points = 5;               // 星角数量
+            uint  segments_per_point = 1;   // 每个角的细分段数
+        };
+
+        /**
+         * 创建一个星形几何体(三角形)
+         * 用途：装饰元素、评分系统、徽章、UI图标
+         */
+        Geometry *CreateStar(GeometryCreater *pc, const StarCreateInfo *sci);
+
+        // 新增：正多边形几何体创建信息
+        struct PolygonCreateInfo
+        {
+            float radius = 1.0f;            // 外接圆半径
+            float depth = 0.2f;             // 多边形厚度（Z方向）
+            uint  sides = 6;                // 边数（>=3）
+            bool  centered = true;          // true=中心在原点，false=顶点在原点
+        };
+
+        /**
+         * 创建一个正多边形几何体(三角形)
+         * 用途：基础形状、UI元素、平台、装饰
+         */
+        Geometry *CreatePolygon(GeometryCreater *pc, const PolygonCreateInfo *pci);
+
+        // 新增：楔形/三角棱柱创建信息
+        struct WedgeCreateInfo
+        {
+            float width = 1.0f;             // 底边宽度（X方向）
+            float depth = 1.0f;             // 深度（Y方向）
+            float height = 1.0f;            // 高度（Z方向）
+            bool  slope_direction_x = true; // true=沿X方向倾斜，false=沿Y方向倾斜
+        };
+
+        /**
+         * 创建一个楔形/三角棱柱(三角形)
+         * 用途：斜坡、建筑元素、物理斜面
+         */
+        Geometry *CreateWedge(GeometryCreater *pc, const WedgeCreateInfo *wci);
+
+        // 新增：水滴形几何体创建信息
+        struct TeardropCreateInfo
+        {
+            float radius = 0.5f;            // 圆形部分半径
+            float length = 1.5f;            // 总长度（从圆心到尖端）
+            uint  segments = 32;            // 轮廓分段数
+            uint  radial_segments = 16;     // 径向分段数（旋转体）
+        };
+
+        /**
+         * 创建一个水滴形几何体(三角形)
+         * 用途：液体模拟、装饰元素、自然形状
+         */
+        Geometry *CreateTeardrop(GeometryCreater *pc, const TeardropCreateInfo *tci);
+
+        // 新增：蛋形/椭球体创建信息
+        struct EggCreateInfo
+        {
+            float radius = 0.5f;            // 基础半径
+            float length_ratio = 1.5f;      // 长度与半径的比例
+            float bottom_scale = 1.0f;      // 底部缩放（1.0=对称，<1=底部更尖）
+            uint  slices = 32;              // 经线分段数
+            uint  stacks = 16;              // 纬线分段数
+        };
+
+        /**
+         * 创建一个蛋形/椭球体(三角形)
+         * 用途：自然物体、装饰元素、复活节主题
+         */
+        Geometry *CreateEgg(GeometryCreater *pc, const EggCreateInfo *eci);
+
+        // 新增：月牙形几何体创建信息
+        struct CrescentCreateInfo
+        {
+            float outer_radius = 1.0f;      // 外圆半径
+            float inner_radius = 0.8f;      // 内圆半径
+            float thickness = 0.2f;         // 厚度（Z方向）
+            float offset = 0.3f;            // 内圆偏移距离
+            uint  segments = 32;            // 圆弧分段数
+        };
+
+        /**
+         * 创建一个月牙形几何体(三角形)
+         * 用途：月亮图标、装饰元素、UI设计
+         */
+        Geometry *CreateCrescent(GeometryCreater *pc, const CrescentCreateInfo *cci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph
