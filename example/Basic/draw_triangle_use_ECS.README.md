@@ -59,7 +59,7 @@ class TestApp : public WorkObject
    ```cpp
    auto transform = triangle_entity->AddComponent<TransformComponent>();
    transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
-   transform->SetMobility(TransformMobility::Static);
+   transform->SetMovable(false);  // Set to static
    ```
 
 4. **添加 PrimitiveComponent**
@@ -91,7 +91,7 @@ class TestApp : public WorkObject
 
 ### TransformComponent 的特性
 - **SOA 存储**: 使用 Structure of Arrays 提高缓存性能
-- **Mobility 优化**: Static 对象会缓存世界矩阵，减少计算
+- **Movable 优化**: 静态对象（movable=false）会缓存世界矩阵，减少计算
 - **层级支持**: 支持父子关系和世界坐标转换
 
 ### PrimitiveComponent 的特性
@@ -102,7 +102,7 @@ class TestApp : public WorkObject
 
 ## 性能考虑 (Performance Considerations)
 
-1. **静态对象优化**: 使用 `TransformMobility::Static` 来缓存不变的变换矩阵
+1. **静态对象优化**: 使用 `SetMovable(false)` 来缓存不变的变换矩阵
 2. **SOA 数据布局**: TransformComponent 使用 SOA 存储，提高批处理性能
 3. **组件缓存**: Entity 使用哈希表快速查找组件
 

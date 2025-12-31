@@ -48,9 +48,9 @@ Spatial transformation component with:
 - **Local Space Transforms**: Position, Rotation (quaternion), Scale
 - **World Space Transforms**: Calculated from local space and parent hierarchy
 - **Parent-Child Hierarchy**: Support for transform inheritance
-- **Transform Mobility**: 
-  - `Static` - Never moves, matrix cached permanently
-  - `Movable` - Frequently updated, recalculated each frame
+- **Movable Flag**: Boolean flag indicating whether the object is movable
+  - `false` (static) - Never moves, matrix cached permanently
+  - `true` (movable) - Frequently updated, recalculated each frame
 - **SOA Storage**: Uses TransformDataStorage for cache-friendly data layout
 - **Batch Operations**: Efficient bulk updates through SOA storage
 - **Matrix Caching**: Optimization for static transforms

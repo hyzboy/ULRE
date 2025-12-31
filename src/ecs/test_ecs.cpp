@@ -114,9 +114,9 @@ int main()
     // Test entity count
     std::cout << "World has " << world->GetEntityCount() << " entities" << std::endl;
 
-    // Test TransformMobility
-    transform->SetMobility(TransformMobility::Static);
-    std::cout << "Transform mobility set to Static: " << (transform->IsStatic() ? "true" : "false") << std::endl;
+    // Test movable flag
+    transform->SetMovable(false);  // Set to static
+    std::cout << "Transform movable flag set to Static: " << (transform->IsStatic() ? "true" : "false") << std::endl;
 
     // Test SOA storage access
     std::cout << "\n=== SOA Storage Test ===" << std::endl;
