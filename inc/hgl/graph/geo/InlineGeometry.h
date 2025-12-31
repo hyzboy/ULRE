@@ -736,6 +736,70 @@ namespace hgl::graph
          * 特点：XY平面大圆角，Z轴方向小圆角，类似现代智能手机外形
          */
         Geometry *CreatePhoneShapedBox(GeometryCreater *pc, const PhoneShapedBoxCreateInfo *psci);
+
+        struct TorusKnotCreateInfo
+        {
+            float major_radius = 3.0f;      // 主半径 (大圆环半径)
+            float minor_radius = 1.0f;      // 次半径 (管道半径)
+            uint  p = 2;                    // P参数 (绕大圆环的圈数)
+            uint  q = 3;                    // Q参数 (绕小圆环的圈数)
+            uint  major_segments = 128;     // 沿路径的分段数
+            uint  minor_segments = 16;      // 管道圆周分段数
+        };
+
+        /**
+         * 创建一个环面纽结(三角形)
+         * 用途：数学可视化、装饰、艺术设计
+         * 特点：参数化的环面纽结曲线，扫掠圆形截面
+         */
+        Geometry *CreateTorusKnot(GeometryCreater *pc, const TorusKnotCreateInfo *tkci);
+
+        struct MobiusStripCreateInfo
+        {
+            float radius = 2.0f;            // 中心圆半径
+            float width = 1.0f;             // 条带宽度
+            uint  twists = 1;               // 扭转次数 (通常为1)
+            uint  length_segments = 64;     // 沿长度方向分段数
+            uint  width_segments = 8;       // 沿宽度方向分段数
+        };
+
+        /**
+         * 创建一个莫比乌斯带(三角形)
+         * 用途：数学教学、拓扑可视化、艺术装置
+         * 特点：单面不可定向曲面，扭转180度后首尾相连
+         */
+        Geometry *CreateMobiusStrip(GeometryCreater *pc, const MobiusStripCreateInfo *msci);
+
+        struct KleinBottleCreateInfo
+        {
+            float major_radius = 2.0f;      // 主半径
+            float minor_radius = 1.0f;      // 次半径
+            uint  u_segments = 64;          // U方向分段数
+            uint  v_segments = 32;          // V方向分段数
+        };
+
+        /**
+         * 创建一个克莱因瓶(三角形)
+         * 用途：数学可视化、拓扑学演示、科学展示
+         * 特点：无定向闭合曲面，4维物体在3维空间的投影
+         */
+        Geometry *CreateKleinBottle(GeometryCreater *pc, const KleinBottleCreateInfo *kbci);
+
+        struct SuperellipsoidCreateInfo
+        {
+            Vector3f size = Vector3f(1.0f, 1.0f, 1.0f);  // 椭球尺寸
+            float    n1 = 2.0f;                          // 东西方向指数 (1=菱形, 2=椭圆, >2=方形)
+            float    n2 = 2.0f;                          // 南北方向指数 (1=菱形, 2=椭圆, >2=方形)
+            uint     u_segments = 32;                    // 经度分段数
+            uint     v_segments = 16;                    // 纬度分段数
+        };
+
+        /**
+         * 创建一个超椭球体(三角形)
+         * 用途：软体建模、有机形状、可调圆滑度的盒子
+         * 特点：通过指数参数在球体和立方体之间连续过渡
+         */
+        Geometry *CreateSuperellipsoid(GeometryCreater *pc, const SuperellipsoidCreateInfo *seci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph

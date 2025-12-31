@@ -185,7 +185,11 @@ SET(GEOMETRY_PRIMITIVES_EXTENDED InlineGeometry/Frustum.cpp
                                  InlineGeometry/Crystal.cpp
                                  InlineGeometry/Cross.cpp
                                  InlineGeometry/Ribbon.cpp
-                                 InlineGeometry/PhoneShapedBox.cpp)
+                                 InlineGeometry/PhoneShapedBox.cpp
+                                 InlineGeometry/TorusKnot.cpp
+                                 InlineGeometry/MobiusStrip.cpp
+                                 InlineGeometry/KleinBottle.cpp
+                                 InlineGeometry/Superellipsoid.cpp)
 
 SET(GEOMETRY_PRIMITIVES_ADVANCED ${SG_INCLUDE_PATH}/geo/Extruded.h
                                  ${SG_INCLUDE_PATH}/geo/Wall.h
