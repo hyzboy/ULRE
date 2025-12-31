@@ -5,6 +5,7 @@
 #include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKVertexInputLayout.h>
+#include<hgl/graph/VKRenderAssign.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include"VKGeometryData.h"
 #include<hgl/io/MiniPack.h>
@@ -208,7 +209,8 @@ namespace
                 return false;
             }
 
-            if(vif->group==VertexInputGroup::Assign)
+            if(vif->group==VertexInputGroup::TransformID
+             ||vif->group==VertexInputGroup::MaterialInstanceID)
                 continue;
 
             const char *attr_name = vif->name;

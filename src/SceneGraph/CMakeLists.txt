@@ -1,5 +1,50 @@
 ﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
+SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/BitmapData.h
+                    ${SG_INCLUDE_PATH}/ImageRegion.h
+                    ${SG_INCLUDE_PATH}/TransformFaceToCamera.h
+                    ${SG_INCLUDE_PATH}/VertexAttrib.h
+                    ${SG_INCLUDE_PATH}/Sky.h
+                    ${SG_INCLUDE_PATH}/ViewportInfo.h
+                    ${SG_INCLUDE_PATH}/RealityCamera.h
+                    ${SG_INCLUDE_PATH}/Mesh.h)
+
+SET(CM_SG_VULKAN_HEADER     ${SG_INCLUDE_PATH}/VKFormat.h
+                            ${SG_INCLUDE_PATH}/VKString.h
+                            ${SG_INCLUDE_PATH}/VKInterpolation.h
+                            ${SG_INCLUDE_PATH}/VKDescriptorSetType.h
+                            ${SG_INCLUDE_PATH}/VKShaderDescriptor.h
+                            ${SG_INCLUDE_PATH}/VKShaderDescriptorSet.h
+                            ${SG_INCLUDE_PATH}/VKVertexInputAttribute.h
+                            ${SG_INCLUDE_PATH}/VKImageCreateInfo.h
+                            ${SG_INCLUDE_PATH}/VKNamespace.h
+                            ${SG_INCLUDE_PATH}/VKPrimitiveType.h
+                            ${SG_INCLUDE_PATH}/VKRenderbufferInfo.h
+                            ${SG_INCLUDE_PATH}/VKStruct.h
+                            ${SG_INCLUDE_PATH}/VKVertexInputConfig.h
+                            ${SG_INCLUDE_PATH}/VKVertexInput.h
+                            ${SG_INCLUDE_PATH}/VKVertexInputFormat.h
+                            ${SG_INCLUDE_PATH}/VKVertexInputLayout.h
+                            ${SG_INCLUDE_PATH}/VKVertexInputLayoutHash.h
+                            ${SG_INCLUDE_PATH}/VKSamplerType.h
+                            ${SG_INCLUDE_PATH}/VKImageType.h
+)
+
+SET(CM_SG_SOURCE    VertexAttrib.cpp
+                    Sky.cpp)
+
+SET(CM_SG_VULKAN_SOURCE Vulkan/VKFormat.cpp
+                        Vulkan/VKString.cpp
+                        Vulkan/VKPrimitiveType.cpp
+                        Vulkan/VKShaderStage.cpp
+                        Vulkan/VKShaderDescriptorSet.cpp
+                        Vulkan/VKVertexInput.cpp
+                        Vulkan/VKVertexInputLayout.cpp
+                        Vulkan/VKVertexInputLayoutHash.cpp)
+
+source_group("SceneGraph" FILES ${CM_SG_HEADER} ${CM_SG_SOURCE})
+source_group("SceneGraph\\Vulkan" FILES ${CM_SG_VULKAN_HEADER} ${CM_SG_VULKAN_SOURCE})
+
 # ============================================================================
 # 1. Core Framework - 核心框架
 # ============================================================================
@@ -82,6 +127,7 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/DrawNode.h
                             ${SG_INCLUDE_PATH}/RenderTask.h
                             ${SG_INCLUDE_PATH}/RenderContext.h
                             ${SG_INCLUDE_PATH}/SceneRenderer.h
+                            ${SG_INCLUDE_PATH}/VKRenderAssign.h
                             render/RenderContext.cpp
                             render/SceneRenderer.cpp
                             render/DrawNode.cpp
@@ -607,4 +653,11 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
 
                                         ${VULKAN_ALL_FILES}
                                         ${VK_DEVICE_PLATFORM_FILES}
+
+                                        ${CM_SG_HEADER}
+                                        ${CM_SG_SOURCE}
+                                        ${CM_SG_GEO_FILES}
+                                        ${CM_CAMERA_SOURCE}
+                                        ${CM_SG_VULKAN_HEADER}
+                                        ${CM_SG_VULKAN_SOURCE}
 )
