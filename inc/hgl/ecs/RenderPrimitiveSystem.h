@@ -24,7 +24,7 @@ namespace hgl
 namespace hgl::ecs
 {
     // Forward declarations
-    class World;
+    class ECSContext;
     class PrimitiveComponent;
 
     /**
@@ -49,7 +49,7 @@ namespace hgl::ecs
     {
     private:
 
-        std::shared_ptr<World> world;
+        std::shared_ptr<ECSContext> world;
         const graph::CameraInfo* cameraInfo;
         graph::VulkanDevice* device;
         math::Frustum frustum;
@@ -79,7 +79,7 @@ namespace hgl::ecs
     public:
 
         /// Set the world to collect from
-        void SetWorld(std::shared_ptr<World> w) { world = w; }
+        void SetWorld(std::shared_ptr<ECSContext> w) { world = w; }
 
         /// Set Vulkan device
         void SetDevice(graph::VulkanDevice* dev) { device = dev; }

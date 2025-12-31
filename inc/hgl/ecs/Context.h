@@ -13,10 +13,10 @@ namespace hgl
     namespace ecs
     {
         /**
-         * World manages all entities and systems
+         * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
          */
-        class World : public Object
+        class ECSContext : public Object
         {
         private:
 
@@ -26,8 +26,8 @@ namespace hgl
 
         public:
 
-            World(const std::string& name = "World");
-            ~World() override;
+            ECSContext(const std::string& name = "World");
+            ~ECSContext() override;
 
         public:
 

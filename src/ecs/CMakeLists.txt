@@ -4,7 +4,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/Component.h
                 ${ECS_INCLUDE_PATH}/Entity.h
                 ${ECS_INCLUDE_PATH}/System.h
-                ${ECS_INCLUDE_PATH}/World.h
+                ${ECS_INCLUDE_PATH}/Context.h
                 ${ECS_INCLUDE_PATH}/TransformComponent.h
                 ${ECS_INCLUDE_PATH}/TransformDataStorage.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxComponent.h
@@ -21,7 +21,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 Component.cpp
                 Entity.cpp
                 System.cpp
-                World.cpp
+                Context.cpp
                 TransformComponent.cpp
                 BoundingBoxComponent.cpp
                 PrimitiveComponent.cpp

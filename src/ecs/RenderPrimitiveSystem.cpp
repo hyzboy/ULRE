@@ -1,5 +1,5 @@
 #include<hgl/ecs/RenderPrimitiveSystem.h>
-#include<hgl/ecs/World.h>
+#include<hgl/ecs/Context.h>
 #include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/TransformComponent.h>

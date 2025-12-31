@@ -13,7 +13,7 @@
 #include<hgl/component/PrimitiveComponent.h>
 
 // 引入ECS相关头文件
-#include<hgl/ecs/World.h>
+#include<hgl/ecs/Context.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
@@ -50,7 +50,7 @@ class TestApp:public WorkObject
 private:
 
     // ECS组件
-    std::shared_ptr<World>  ecs_world           =nullptr;
+    std::shared_ptr<ECSContext>  ecs_world      =nullptr;
     std::shared_ptr<Entity> triangle_entity     =nullptr;
 
     // 传统渲染资源
@@ -112,7 +112,7 @@ private:
     {
         // === 步骤1: 创建ECS世界 ===
         // World是ECS架构的顶层容器，管理所有Entity和System
-        ecs_world = std::make_shared<World>("TriangleWorld");
+        ecs_world = std::make_shared<ECSContext>("TriangleWorld");
         
         // 初始化世界 - 这会初始化所有注册的System
         ecs_world->Initialize();
@@ -169,15 +169,15 @@ public:
         return(true);
     }
 
-    void Update(float time) override
+    void Tick(double delta_time) override
     {
         // 更新ECS世界 - 这会更新所有Entity和Component
         if(ecs_world)
         {
-            ecs_world->Update(time);
+            ecs_world->Update(delta_time);
         }
 
-        WorkObject::Update(time);
+        WorkObject::Tick(delta_time);
     }
 
     ~TestApp()
