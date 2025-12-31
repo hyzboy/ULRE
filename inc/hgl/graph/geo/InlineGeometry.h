@@ -652,6 +652,74 @@ namespace hgl::graph
          * 用途：机械场景、工业可视化、装配模拟
          */
         Geometry *CreateNut(GeometryCreater *pc, const NutCreateInfo *nci);
+
+        // 新增：钻石创建信息
+        struct DiamondCreateInfo
+        {
+            float radius = 1.0f;            // 钻石外接圆半径
+            float height = 1.5f;            // 钻石总高度
+            float top_ratio = 0.4f;         // 顶部高度占比 (0.0-1.0)
+            float table_ratio = 0.5f;       // 台面大小比例 (0.0-1.0)
+            float pavilion_ratio = 0.7f;    // 亭部宽度比例 (0.0-1.0)
+            uint  facets = 8;               // 刻面数（围绕Y轴的分段数）
+        };
+
+        /**
+         * 创建一个钻石(三角形)
+         * 用途：宝石可视化、装饰元素、游戏道具
+         */
+        Geometry *CreateDiamond(GeometryCreater *pc, const DiamondCreateInfo *dci);
+
+        // 新增：水晶创建信息
+        struct CrystalCreateInfo
+        {
+            float base_radius = 0.5f;       // 底部半径
+            float height = 2.0f;            // 总高度
+            float tip_sharpness = 0.1f;     // 尖端锐度 (0.0-1.0, 越小越尖)
+            uint  sides = 6;                // 侧面数
+            uint  segments = 4;             // 沿高度的分段数
+            float irregularity = 0.0f;      // 不规则度 (0.0-1.0)
+        };
+
+        /**
+         * 创建一个水晶(三角形)
+         * 用途：游戏资源、魔法元素、装饰品
+         */
+        Geometry *CreateCrystal(GeometryCreater *pc, const CrystalCreateInfo *cci);
+
+        // 新增：十字架创建信息
+        struct CrossCreateInfo
+        {
+            float vertical_length = 2.0f;   // 竖杆长度
+            float horizontal_length = 1.5f; // 横杆长度
+            float thickness = 0.2f;         // 厚度
+            float depth = 0.2f;             // 深度（Z轴）
+            float horizontal_offset = 0.7f; // 横杆位置（从顶部往下）
+        };
+
+        /**
+         * 创建一个十字架(三角形)
+         * 用途：宗教符号、游戏标记、UI图标、装饰元素
+         */
+        Geometry *CreateCross(GeometryCreater *pc, const CrossCreateInfo *cci);
+
+        // 新增：丝带创建信息
+        struct RibbonCreateInfo
+        {
+            float length = 3.0f;            // 丝带长度
+            float width = 0.5f;             // 丝带宽度
+            float thickness = 0.02f;        // 丝带厚度
+            uint  segments = 32;            // 沿长度的分段数
+            float twist_turns = 1.0f;       // 扭转圈数
+            float wave_amplitude = 0.0f;    // 波浪幅度 (0.0表示无波浪)
+            float wave_frequency = 2.0f;    // 波浪频率
+        };
+
+        /**
+         * 创建一个丝带(三角形)
+         * 用途：装饰元素、飘带、奖章、礼品包装
+         */
+        Geometry *CreateRibbon(GeometryCreater *pc, const RibbonCreateInfo *rci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph
