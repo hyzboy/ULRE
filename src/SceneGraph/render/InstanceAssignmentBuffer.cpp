@@ -210,8 +210,8 @@ void InstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
         
             if(du)
             {
-                du->SetBuffer(transform_vab->GetBuffer(),"VAB:Buffer:TransformIndex");
-                du->SetDeviceMemory(transform_vab->GetVkMemory(),"VAB:Memory:TransformIndex");
+                du->SetBuffer(transform_vab->GetBuffer(),"VAB:Buffer:TransformID");
+                du->SetDeviceMemory(transform_vab->GetVkMemory(),"VAB:Memory:TransformID");
             }
         #endif//_DEBUG
         }
@@ -226,8 +226,8 @@ void InstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
         
             if(du)
             {
-                du->SetBuffer(material_instance_vab->GetBuffer(),"VAB:Buffer:MaterialInstanceIndex");
-                du->SetDeviceMemory(material_instance_vab->GetVkMemory(),"VAB:Memory:MaterialInstanceIndex");
+                du->SetBuffer(material_instance_vab->GetBuffer(),"VAB:Buffer:MaterialInstanceID");
+                du->SetDeviceMemory(material_instance_vab->GetVkMemory(),"VAB:Memory:MaterialInstanceID");
             }
         #endif//_DEBUG
         }

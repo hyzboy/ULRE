@@ -98,16 +98,16 @@ void ShaderCreateInfoVertex::AddJoint()
 void ShaderCreateInfoVertex::AddAssign()
 {
     // 添加Transform索引输入
-    AddInput(   TRANSFORM_INDEX_VAT_FMT,
-                TRANSFORM_INDEX_VIS_NAME,
+    AddInput(   Assign::TransformID::VAT_FMT,
+                Assign::TransformID::VIS_NAME,
                 VK_VERTEX_INPUT_RATE_INSTANCE,
-                VertexInputGroup::TransformIndex);
+                VertexInputGroup::TransformID);
     
     // 添加MaterialInstance索引输入
-    AddInput(   MATERIAL_INSTANCE_INDEX_VAT_FMT,
-                MATERIAL_INSTANCE_INDEX_VIS_NAME,
+    AddInput(   Assign::MaterialInstanceID::VAT_FMT,
+                Assign::MaterialInstanceID::VIS_NAME,
                 VK_VERTEX_INPUT_RATE_INSTANCE,
-                VertexInputGroup::MaterialInstanceIndex);
+                VertexInputGroup::MaterialInstanceID);
     
     AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
 }

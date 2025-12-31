@@ -209,7 +209,8 @@ namespace
                 return false;
             }
 
-            if(vif->group==VertexInputGroup::TransformIndex||vif->group==VertexInputGroup::MaterialInstanceIndex)
+            if(vif->group==VertexInputGroup::TransformID
+             ||vif->group==VertexInputGroup::MaterialInstanceID)
                 continue;
 
             const char *attr_name = vif->name;
