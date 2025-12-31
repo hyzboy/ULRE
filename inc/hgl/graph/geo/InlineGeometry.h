@@ -537,6 +537,121 @@ namespace hgl::graph
          * 用途：月亮图标、装饰元素、UI设计
          */
         Geometry *CreateCrescent(GeometryCreater *pc, const CrescentCreateInfo *cci);
+
+        // 新增：直线楼梯创建信息
+        struct StraightStairsCreateInfo
+        {
+            float step_width = 1.0f;        // 台阶宽度
+            float step_depth = 0.3f;        // 台阶深度
+            float step_height = 0.2f;       // 台阶高度
+            uint  step_count = 10;          // 台阶数量
+            float side_thickness = 0.05f;   // 侧板厚度
+            bool  generate_sides = true;    // 是否生成侧板
+        };
+
+        /**
+         * 创建一个直线楼梯(三角形)
+         * 用途：建筑可视化、关卡设计、室内场景
+         */
+        Geometry *CreateStraightStairs(GeometryCreater *pc, const StraightStairsCreateInfo *ssci);
+
+        // 新增：螺旋楼梯创建信息
+        struct SpiralStairsCreateInfo
+        {
+            float inner_radius = 0.5f;      // 内半径（中心柱）
+            float outer_radius = 2.0f;      // 外半径
+            float step_height = 0.2f;       // 每级台阶高度
+            float total_angle = 360.0f;     // 总旋转角度（度）
+            uint  step_count = 12;          // 台阶数量
+            bool  clockwise = true;         // true=顺时针, false=逆时针
+        };
+
+        /**
+         * 创建一个螺旋楼梯(三角形)
+         * 用途：塔楼、螺旋建筑、现代设计
+         */
+        Geometry *CreateSpiralStairs(GeometryCreater *pc, const SpiralStairsCreateInfo *ssci);
+
+        // 新增：拱形创建信息
+        struct ArchCreateInfo
+        {
+            float width = 2.0f;             // 拱门宽度
+            float height = 3.0f;            // 拱门高度
+            float depth = 0.5f;             // 拱门深度
+            float thickness = 0.3f;         // 墙体厚度
+            uint  segments = 16;            // 弧线分段数
+            bool  pointed = false;          // true=尖拱, false=圆拱
+        };
+
+        /**
+         * 创建一个拱形(三角形)
+         * 用途：建筑入口、装饰拱门、哥特式建筑
+         */
+        Geometry *CreateArch(GeometryCreater *pc, const ArchCreateInfo *aci);
+
+        // 新增：直管创建信息
+        struct TubeCreateInfo
+        {
+            float length = 2.0f;            // 管道长度
+            float outer_radius = 0.3f;      // 外半径
+            float inner_radius = 0.25f;     // 内半径
+            uint  segments = 16;            // 圆周分段数
+            bool  generate_caps = true;     // 是否生成端面
+        };
+
+        /**
+         * 创建一个直管(三角形)
+         * 用途：管道系统、工业场景、连接件
+         */
+        Geometry *CreateTube(GeometryCreater *pc, const TubeCreateInfo *tci);
+
+        // 新增：链节创建信息
+        struct ChainLinkCreateInfo
+        {
+            float major_radius = 0.5f;      // 链节长轴半径
+            float minor_radius = 0.3f;      // 链节短轴半径
+            float wire_radius = 0.05f;      // 线材半径
+            uint  major_segments = 16;      // 长轴分段数
+            uint  minor_segments = 8;       // 短轴分段数
+        };
+
+        /**
+         * 创建一个链节(三角形)
+         * 用途：链条、装饰、工业元素
+         */
+        Geometry *CreateChainLink(GeometryCreater *pc, const ChainLinkCreateInfo *clci);
+
+        // 新增：六角螺栓创建信息
+        struct BoltCreateInfo
+        {
+            float head_radius = 0.5f;       // 螺栓头外接圆半径
+            float head_height = 0.3f;       // 螺栓头高度
+            float shaft_radius = 0.3f;      // 螺杆半径
+            float shaft_length = 2.0f;      // 螺杆长度
+            uint  head_segments = 6;        // 螺栓头边数（通常为6）
+            bool  generate_threads = false; // 是否生成螺纹（简化版）
+        };
+
+        /**
+         * 创建一个六角螺栓(三角形)
+         * 用途：机械场景、工业可视化、装配模拟
+         */
+        Geometry *CreateBolt(GeometryCreater *pc, const BoltCreateInfo *bci);
+
+        // 新增：六角螺母创建信息
+        struct NutCreateInfo
+        {
+            float outer_radius = 0.5f;      // 外接圆半径
+            float inner_radius = 0.3f;      // 内孔半径
+            float height = 0.3f;            // 螺母高度
+            uint  sides = 6;                // 边数（通常为6）
+        };
+
+        /**
+         * 创建一个六角螺母(三角形)
+         * 用途：机械场景、工业可视化、装配模拟
+         */
+        Geometry *CreateNut(GeometryCreater *pc, const NutCreateInfo *nci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph
