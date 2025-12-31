@@ -8,9 +8,9 @@ VK_NAMESPACE_BEGIN
 */
 class TransformAssignmentBuffer
 {
-    uint MaxTransformCount;
-
 private:
+
+    uint MaxTransformCount;
 
     VulkanDevice *device;
 
