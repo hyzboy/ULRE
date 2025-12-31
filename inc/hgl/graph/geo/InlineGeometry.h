@@ -329,13 +329,28 @@ namespace hgl::graph
         Geometry *CreateFrustum(GeometryCreater *pc, const FrustumCreateInfo *fci);
 
         // 新增：箭头创建信息
+        enum class ArrowCrossSection
+        {
+            Circular,   // 圆形截面
+            Square      // 方形截面
+        };
+
+        enum class ArrowTailStyle
+        {
+            Flat,           // 平尾
+            Concave         // 倒三角凹陷尾
+        };
+
         struct ArrowCreateInfo
         {
-            float shaft_radius = 0.1f;    // 杆部半径
-            float shaft_length = 2.0f;    // 杆部长度
-            float head_radius = 0.3f;     // 箭头半径
-            float head_length = 0.5f;     // 箭头长度
-            uint  numberSlices = 16;      // 圆周分段数
+            float shaft_radius = 0.1f;           // 杆部半径（或半宽，对于方形）
+            float shaft_length = 2.0f;           // 杆部长度
+            float head_radius = 0.3f;            // 箭头半径（或半宽，对于方形）
+            float head_length = 0.5f;            // 箭头长度
+            uint  numberSlices = 16;             // 圆周分段数（仅圆形截面使用）
+            ArrowCrossSection cross_section = ArrowCrossSection::Circular;  // 截面形状
+            ArrowTailStyle tail_style = ArrowTailStyle::Flat;  // 尾部样式
+            float tail_concave_depth = 0.2f;     // 尾部凹陷深度（仅Concave使用）
         };
 
         /**
