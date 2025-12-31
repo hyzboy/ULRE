@@ -388,20 +388,19 @@ namespace hgl::graph::inline_geometry
         Geometry *p = pc->Create();
 
         // Set bounding box
-        // The pipe bends in the XZ plane from -X direction
-        // Initial point: (-bend_r, 0, 0) 
-        // Final point depends on bend angle: (-bend_r*cos(a), 0, -bend_r*sin(a))
+        // The pipe bends in the XZ plane starting from (-bend_r, 0, 0)
+        // Endpoint: (-bend_r*cos(angle), 0, -bend_r*sin(angle))
         BoundingVolumes bv;
         
-        float max_x = 0.0f;
-        float min_x = -(bend_r + r_outer);
+        float min_x = -(bend_r + r_outer);  // Most negative X (at start)
+        float max_x = 0.0f;                 // Most positive X
+        float min_y = -r_outer;             // Pipe extends ±r_outer in Y
         float max_y = r_outer;
-        float min_y = -r_outer;
-        float max_z = 0.0f;
-        float min_z = -bend_r * sin(bend_angle_rad) - r_outer;
         
-        // If bend angle is small, Z might be positive
-        if(min_z > 0.0f) min_z = -r_outer;
+        // Z depends on bend angle
+        float end_z = -bend_r * sin(bend_angle_rad);
+        float min_z = std::min(0.0f, end_z) - r_outer;
+        float max_z = std::max(0.0f, end_z) + r_outer;
         
         bv.SetFromAABB(math::Vector3f(min_x, min_y, min_z),
                        Vector3f(max_x, max_y, max_z));

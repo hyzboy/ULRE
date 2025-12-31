@@ -31,12 +31,14 @@ namespace hgl::graph::inline_geometry
             // Solid tube: sweep circular cross-section along helix
             // Vertices: (total_segs + 1) path points * (coil_segs + 1) circle points
             numberVertices = (total_segs + 1) * (coil_segs + 1);
-            // Indices: total_segs * coil_segs * 6
+            // Indices: total_segs * coil_segs * 6 (triangles)
             numberIndices = total_segs * coil_segs * 6;
         }
         else
         {
             // Wireframe: just the center line
+            // Note: This generates GL_LINES indices (pairs of vertex indices)
+            // The geometry should be rendered with line primitive topology
             numberVertices = total_segs + 1;
             numberIndices = total_segs * 2;  // Each line segment uses 2 indices
         }
