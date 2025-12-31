@@ -394,6 +394,41 @@ namespace hgl::graph
          * 用途：弹簧、楼梯扶手、DNA双螺旋、装饰元素
          */
         Geometry *CreateHelix(GeometryCreater *pc, const HelixCreateInfo *hci);
+
+        // 新增：实心齿轮创建信息
+        struct SolidGearCreateInfo
+        {
+            float outer_radius = 1.0f;      // 外半径（齿顶圆半径）
+            float root_radius = 0.8f;       // 根圆半径（齿根圆半径）
+            float thickness = 0.2f;         // 齿轮厚度
+            uint  tooth_count = 12;         // 齿数
+            float tooth_width_ratio = 0.5f; // 齿宽比例（0-1，齿宽占齿距的比例）
+            uint  segments_per_tooth = 2;   // 每个齿的细分段数
+        };
+
+        /**
+         * 创建一个实心齿轮(三角形)
+         * 用途：机械可视化、工业场景、齿轮动画
+         */
+        Geometry *CreateSolidGear(GeometryCreater *pc, const SolidGearCreateInfo *sgci);
+
+        // 新增：空心齿轮创建信息
+        struct HollowGearCreateInfo
+        {
+            float outer_radius = 1.0f;      // 外半径（齿顶圆半径）
+            float root_radius = 0.8f;       // 根圆半径（齿根圆半径）
+            float inner_radius = 0.3f;      // 内孔半径
+            float thickness = 0.2f;         // 齿轮厚度
+            uint  tooth_count = 12;         // 齿数
+            float tooth_width_ratio = 0.5f; // 齿宽比例（0-1，齿宽占齿距的比例）
+            uint  segments_per_tooth = 2;   // 每个齿的细分段数
+        };
+
+        /**
+         * 创建一个空心齿轮(三角形)
+         * 用途：机械可视化、工业场景、齿轮传动系统
+         */
+        Geometry *CreateHollowGear(GeometryCreater *pc, const HollowGearCreateInfo *hgci);
          
     }//namespace inline_geometry
 }//namespace hgl::graph
