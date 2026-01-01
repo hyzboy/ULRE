@@ -12,12 +12,12 @@
 endmacro()
 
 CreateProject(01_draw_triangle                  draw_triangle_use_UBO.cpp)
-CreateProject(01b_draw_triangle_ECS             draw_triangle_use_ECS.cpp)
-CreateProject(01c_draw_triangle_ECS_standalone  draw_triangle_ECS_standalone.cpp)
+CreateProject(01b_draw_triangle_ECS             draw_triangle_use_ECS.cpp SimpleECSFramework.cpp)
+CreateProject(01c_draw_triangle_ECS_standalone  draw_triangle_ECS_standalone.cpp SimpleECSFramework.cpp)
 CreateProject(02_auto_instance                  auto_instance.cpp)
-CreateProject(02b_auto_instance_ECS             auto_instance_ECS.cpp)
+CreateProject(02b_auto_instance_ECS             auto_instance_ECS.cpp SimpleECSFramework.cpp)
 CreateProject(03_auto_merge_material_instance   auto_merge_material_instance.cpp)
-CreateProject(03b_auto_merge_material_instance_ECS   auto_merge_material_instance_ECS.cpp)
+CreateProject(03b_auto_merge_material_instance_ECS   auto_merge_material_instance_ECS.cpp SimpleECSFramework.cpp)
 
 CreateProject(04_Billboard                      BillboardTest.cpp)
 

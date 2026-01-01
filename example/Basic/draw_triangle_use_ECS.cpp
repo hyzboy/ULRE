@@ -1,13 +1,14 @@
-// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
-// This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
+// 该范例主要演示使用SimpleECSFramework和ECS架构管理和绘制一个渐变色的三角形
+// This example demonstrates using SimpleECSFramework and ECS architecture to manage and draw a gradient colored triangle
 // 
 // 本范例展示了：
-// 1. 创建ECS World和Entity
-// 2. 使用TransformComponent管理空间变换
-// 3. 使用PrimitiveComponent管理渲染图元
-// 4. 使用ECS RenderCollector进行实际渲染（不再依赖传统渲染系统）
+// 1. 使用SimpleECSFramework（不依赖World/SceneRenderer）
+// 2. 创建ECS World和Entity
+// 3. 使用TransformComponent管理空间变换
+// 4. 使用PrimitiveComponent管理渲染图元
+// 5. 使用ECS RenderCollector进行实际渲染
 
-#include<hgl/WorkManager.h>
+#include"SimpleECSFramework.h"
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
@@ -45,7 +46,7 @@ constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I16;
 
 constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4UN8;
 
-class TestApp:public WorkObject
+class TestApp:public SimpleECSWorkObject
 {
 private:
 
@@ -172,7 +173,7 @@ private:
 
 public:
 
-    using WorkObject::WorkObject;
+    using SimpleECSWorkObject::SimpleECSWorkObject;
 
     bool Init() override
     {
@@ -195,14 +196,12 @@ public:
         {
             ecs_world->Update(delta_time);
         }
-
-        WorkObject::Tick(delta_time);
     }
 
     void Draw(RenderCmdBuffer* cmd_buf) override
     {
         // === 使用ECS RenderCollector进行渲染 ===
-        if(render_collector)
+        if(render_collector && cmd_buf)
         {
             // 收集所有可渲染的Entity
             render_collector->CollectRenderables();
@@ -210,9 +209,6 @@ public:
             // 渲染收集到的Entity（使用间接渲染和批次优化）
             render_collector->Render(cmd_buf);
         }
-
-        // 调用基类Draw以处理其他渲染任务
-        WorkObject::Draw(cmd_buf);
     }
 
     ~TestApp()
@@ -223,9 +219,9 @@ public:
             ecs_world->Shutdown();
         }
     }
-};//class TestApp:public WorkObject
+};//class TestApp:public SimpleECSWorkObject
 
 int os_main(int,os_char **)
 {
-    return RunFramework<TestApp>(OS_TEXT("Draw triangle use ECS"));
+    return RunSimpleECSFramework<TestApp>(OS_TEXT("Draw triangle use ECS"));
 }

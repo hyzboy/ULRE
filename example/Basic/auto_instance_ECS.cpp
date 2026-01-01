@@ -1,7 +1,7 @@
-// 该范例主要演示使用ECS架构和RenderCollector系统绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
-// This example demonstrates using ECS architecture with RenderCollector to draw multiple triangles with automatic instance rendering
+// 该范例主要演示使用SimpleECSFramework和ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+// This example demonstrates using SimpleECSFramework and ECS architecture with RenderCollector to draw multiple triangles with automatic instance rendering
 
-#include<hgl/WorkManager.h>
+#include"SimpleECSFramework.h"
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
@@ -10,6 +10,7 @@
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/RenderCollector.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -32,14 +33,15 @@ constexpr uint8 color_data[VERTEX_COUNT][4]=
     {0,0,255,255}
 };
 
-class TestApp:public WorkObject
+class TestApp:public SimpleECSWorkObject
 {
 private:
 
     // ECS组件
     std::shared_ptr<ECSContext>  ecs_world      =nullptr;
+    RenderCollector* render_collector           =nullptr;
     
-    // 传统渲染资源
+    // 渲染资源
     MaterialInstance *  material_instance   =nullptr;
     Primitive *         render_obj          =nullptr;
     Pipeline *          pipeline            =nullptr;
@@ -88,7 +90,22 @@ private:
         ecs_world = std::make_shared<ECSContext>("AutoInstanceWorld");
         ecs_world->Initialize();
 
-        // === 步骤2: 创建多个三角形Entity，每个旋转不同角度 ===
+        // === 步骤2: 注册并初始化RenderCollector系统 ===
+        render_collector = ecs_world->RegisterSystem<RenderCollector>();
+        render_collector->SetWorld(ecs_world);
+        render_collector->SetDevice(GetDevice());
+        render_collector->Initialize();
+
+        // 配置相机信息（使用NDC坐标系，正交投影）
+        CameraInfo camera;
+        camera.position = glm::vec3(0.0f, 0.0f, 10.0f);
+        camera.forward = glm::vec3(0.0f, 0.0f, -1.0f);
+        camera.viewMatrix = glm::mat4(1.0f);  // 单位矩阵
+        camera.projectionMatrix = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.1f, 100.0f); // NDC坐标
+        camera.UpdateViewProjection();
+        render_collector->SetCameraInfo(&camera);
+
+        // === 步骤3: 创建多个三角形Entity，每个旋转不同角度 ===
         double rad;
         
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
@@ -111,12 +128,6 @@ private:
             auto ecs_primitive = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             ecs_primitive->SetPrimitive(render_obj);
             ecs_primitive->SetVisible(true);
-
-            // === 同时使用传统渲染系统 ===
-            // 由于ECS RenderCollector尚未完全集成，仍需要传统Component来实际渲染
-            CreateComponentInfo cci(GetWorldRootNode());
-            cci.mat = math::AxisRotate(rad, math::Vector3f(0,0,1));
-            CreateComponent<component::PrimitiveComponent>(&cci, render_obj);
         }
 
         return(true);
@@ -124,12 +135,10 @@ private:
 
 public:
 
-    using WorkObject::WorkObject;
+    using SimpleECSWorkObject::SimpleECSWorkObject;
 
     bool Init() override
     {
-        GetSceneRenderer()->SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
-
         if(!InitMaterial())
             return(false);
 
@@ -149,8 +158,19 @@ public:
         {
             ecs_world->Update(delta_time);
         }
+    }
 
-        WorkObject::Tick(delta_time);
+    void Draw(RenderCmdBuffer* cmd_buf) override
+    {
+        // 使用ECS RenderCollector进行渲染
+        if(render_collector && cmd_buf)
+        {
+            // 收集所有可渲染的Entity
+            render_collector->CollectRenderables();
+            
+            // 渲染收集到的Entity（自动合并为Instance渲染）
+            render_collector->Render(cmd_buf);
+        }
     }
 
     ~TestApp()
@@ -161,9 +181,9 @@ public:
             ecs_world->Shutdown();
         }
     }
-};//class TestApp:public WorkObject
+};//class TestApp:public SimpleECSWorkObject
 
 int os_main(int,os_char **)
 {
-    return RunFramework<TestApp>(OS_TEXT("AutoInstance_ECS"),1024,1024);
+    return RunSimpleECSFramework<TestApp>(OS_TEXT("AutoInstance_ECS"),1024,1024);
 }
