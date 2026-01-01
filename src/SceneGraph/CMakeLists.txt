@@ -168,6 +168,15 @@ SET(GEOMETRY_CORE_FILES ${SG_INCLUDE_PATH}/VKGeometry.h
 
 SOURCE_GROUP("5.Geometry\\Core" FILES ${GEOMETRY_CORE_FILES})
 
+SET(GEOMETRY_DATA_LAYER_FILES   ${SG_INCLUDE_PATH}/data/PrimitiveTopology.h
+                                ${SG_INCLUDE_PATH}/data/VertexLayout.h
+                                ${SG_INCLUDE_PATH}/data/Vertex.h
+                                ${SG_INCLUDE_PATH}/data/GeometryData.h
+                                data/VertexLayout.cpp
+                                data/GeometryData.cpp)
+
+SOURCE_GROUP("5.Geometry\\DataLayer" FILES ${GEOMETRY_DATA_LAYER_FILES})
+
 SET(GEOMETRY_MESH_FILES ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                         ${SG_INCLUDE_PATH}/mesh/GeometryDrawRange.h
                         ${SG_INCLUDE_PATH}/mesh/Primitive.h
@@ -635,6 +644,7 @@ SET(VULKAN_ALL_FILES    ${VK_MATERIAL_MANAGER_FILES}
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${GEOMETRY_CORE_FILES}
+                                        ${GEOMETRY_DATA_LAYER_FILES}
                                         ${GEOMETRY_FILES}
 
                                         ${GLTF_SOURCE}
