@@ -1,5 +1,6 @@
 ﻿// GL to VK: swap Y/Z of position/normal/tangent/index
 
+#include "InlineGeometryCommon.h"
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
@@ -141,6 +142,7 @@ namespace hgl::graph::inline_geometry
 
     Geometry *CreateExtrudedPolygon(GeometryCreater *pc, const ExtrudedPolygonCreateInfo *epci)
     {
+        // 1. 参数验证
         if (!pc || !epci || !epci->vertices || epci->vertexCount < 3)
             return nullptr;
 
@@ -148,7 +150,7 @@ namespace hgl::graph::inline_geometry
         const bool generateCaps = epci->generateCaps;
         const bool generateSides = epci->generateSides;
 
-        // 计算顶点和索引数量
+        // 2. 计算顶点和索引数量
         uint totalVertices = 0;
         uint totalIndices = 0;
 
@@ -162,26 +164,28 @@ namespace hgl::graph::inline_geometry
             totalIndices += (vertexCount - 2) * 6;  // 每个面用三角扇形分解：(n-2)个三角形 * 2个面 * 3个索引
         }
 
+        // 3. 验证参数
+        if(!GeometryValidator::ValidateBasicParams(pc, totalVertices, totalIndices))
+            return nullptr;
+
+        // 4. 初始化
         if (!pc->Init("ExtrudedPolygon", totalVertices, totalIndices, IndexType::U32))
             return nullptr;
 
-        VABMapFloat vertex_map(pc->GetVABMap(VAN::Position), VF_V3F);
-        VABMapFloat normal_map(pc->GetVABMap(VAN::Normal), VF_V3F);
+        // 5. 创建 GeometryBuilder
+        GeometryBuilder builder(pc);
+        if(!builder.IsValid())
+            return nullptr;
 
-        if (!vertex_map) return nullptr;
-
-        float *vp = vertex_map;
-        float *np = normal_map;
-
-        // 构建局部坐标系
+        // 6. 构建局部坐标系
         Vector3f right, up;
         BuildLocalCoordinateSystem(epci->extrudeAxis, right, up);
         Vector3f forward = glm::normalize(epci->extrudeAxis);
 
-        // 计算挤压的起始和结束位置
+        // 7. 计算挤压的起始和结束位置
         Vector3f extrudeOffset = forward * epci->extrudeDistance;
 
-        // 计算多边形中心（用于判断侧面法线朝外）
+        // 8. 计算多边形中心（用于判断侧面法线朝外）
         Vector3f polygonCenter(0.0f, 0.0f, 0.0f);
         for (uint i = 0; i < vertexCount; ++i) {
             const Vector2f &v2d = epci->vertices[i];
@@ -189,20 +193,7 @@ namespace hgl::graph::inline_geometry
         }
         polygonCenter = polygonCenter * (1.0f / static_cast<float>(vertexCount));
 
-        // 计算输入多边形的2D有向面积以判断顶点顺序（顺时针或逆时针）
-        double area2 = 0.0;
-        for (uint i = 0; i < vertexCount; ++i) {
-            uint j = (i + 1) % vertexCount;
-            const Vector2f &a = epci->vertices[i];
-            const Vector2f &b = epci->vertices[j];
-            area2 += static_cast<double>(a.x) * static_cast<double>(b.y) - static_cast<double>(b.x) * static_cast<double>(a.y);
-        }
-        // area2 > 0 => CCW, area2 < 0 => CW
-        const bool polygonIsClockwise = (area2 < 0.0);
-
-        uint vertexIndex = 0;
-
-        // 生成侧面顶点
+        // 9. 生成侧面顶点
         if (generateSides){
             for (uint i = 0; i < vertexCount; i++) {
                 const Vector2f& v2d = epci->vertices[i];
@@ -210,103 +201,63 @@ namespace hgl::graph::inline_geometry
                 // 将2D顶点转换为3D世界坐标
                 Vector3f v3d = right * v2d.x + up * v2d.y;
 
-                // 底面顶点
-                if (vp) {
-                    *vp++ = v3d.x;
-                    *vp++ = v3d.y;
-                    *vp++ = v3d.z;
+                // 计算侧面法线
+                // 计算边的方向与下一个顶点
+                const uint nextIndex = (i + 1) % vertexCount;
+                const Vector2f &next2d = epci->vertices[nextIndex];
+                Vector3f nextV3d = right * next2d.x + up * next2d.y;
+
+                Vector3f edge3d = nextV3d - v3d;
+
+                // 侧面法线 = edge × extrudeAxis
+                Vector3f sideNormal = glm::normalize(glm::cross(edge3d, forward));
+
+                // 确保法线指向外侧：通过与边中点到多边形中心的向量点乘判断
+                Vector3f midPoint = v3d + edge3d * 0.5f;
+                Vector3f toCenter = midPoint - polygonCenter;
+                if (glm::dot(sideNormal, toCenter) < 0.0f) {
+                    sideNormal = sideNormal * -1.0f;
                 }
+
+                // 底面顶点
+                builder.WriteVertex(v3d.x, v3d.y, v3d.z);
+                builder.WriteNormal(sideNormal.x, sideNormal.y, sideNormal.z);
 
                 // 顶面顶点
                 Vector3f topVertex = v3d + extrudeOffset;
-                if (vp) {
-                    *vp++ = topVertex.x;
-                    *vp++ = topVertex.y;
-                    *vp++ = topVertex.z;
-                }
-
-                // 计算侧面法线
-                if (np) {
-                    // 计算边的方向与下一个顶点
-                    uint nextIndex = (i + 1) % vertexCount;
-                    const Vector2f &next2d = epci->vertices[nextIndex];
-                    Vector3f nextV3d = right * next2d.x + up * next2d.y;
-
-                    Vector3f edge3d = nextV3d - v3d;
-
-                    // 侧面法线 = edge × extrudeAxis
-                    Vector3f sideNormal = glm::normalize(glm::cross(edge3d, forward));
-
-                    // 确保法线指向外侧：通过与边中点到多边形中心的向量点乘判断
-                    Vector3f midPoint = v3d + edge3d * 0.5f;
-                    Vector3f toCenter = midPoint - polygonCenter;
-                    if (glm::dot(sideNormal, toCenter) < 0.0f) {
-                        sideNormal = sideNormal * -1.0f;
-                    }
-
-                    // 底面顶点法线
-                    *np++ = sideNormal.x;
-                    *np++ = sideNormal.y;
-                    *np++ = sideNormal.z;
-
-                    // 顶面顶点法线
-                    *np++ = sideNormal.x;
-                    *np++ = sideNormal.y;
-                    *np++ = sideNormal.z;
-                }
-
-                vertexIndex += 2;
+                builder.WriteVertex(topVertex.x, topVertex.y, topVertex.z);
+                builder.WriteNormal(sideNormal.x, sideNormal.y, sideNormal.z);
             }
         }
 
-        // 生成顶底面顶点
+        // 10. 生成顶底面顶点
         if (generateCaps) {
             // 底面顶点
+            Vector3f bottomNormal = forward * -1.0f;
             for (uint i = 0; i < vertexCount; i++) {
                 const Vector2f& v2d = epci->vertices[i];
                 Vector3f v3d = right * v2d.x + up * v2d.y;
 
-                if (vp) {
-                    *vp++ = v3d.x;
-                    *vp++ = v3d.y;
-                    *vp++ = v3d.z;
-                }
-
-                if (np) {
-                    // 底面法线固定为 -forward（朝下）
-                    Vector3f bottomNormal = forward * -1.0f;
-                    *np++ = bottomNormal.x;
-                    *np++ = bottomNormal.y;
-                    *np++ = bottomNormal.z;
-                }
+                builder.WriteVertex(v3d.x, v3d.y, v3d.z);
+                builder.WriteNormal(bottomNormal.x, bottomNormal.y, bottomNormal.z);
             }
 
             // 顶面顶点
+            Vector3f topNormal = forward;
             for (uint i = 0; i < vertexCount; i++) {
                 const Vector2f& v2d = epci->vertices[i];
                 Vector3f v3d = right * v2d.x + up * v2d.y;
                 Vector3f topVertex = v3d + extrudeOffset;
 
-                if (vp) {
-                    *vp++ = topVertex.x;
-                    *vp++ = topVertex.y;
-                    *vp++ = topVertex.z;
-                }
-
-                if (np) {
-                    // 顶面法线固定为 forward（朝上）
-                    Vector3f topNormal = forward;
-                    *np++ = topNormal.x;
-                    *np++ = topNormal.y;
-                    *np++ = topNormal.z;
-                }
+                builder.WriteVertex(topVertex.x, topVertex.y, topVertex.z);
+                builder.WriteNormal(topNormal.x, topNormal.y, topNormal.z);
             }
         }
 
-        // 生成索引：根据 IndexType 选择对应大小的索引缓冲写入
+        // 11. 生成索引：根据 IndexType 选择对应大小的索引缓冲写入
         const IndexType index_type = pc->GetIndexType();
 
-        // Use the helper template to fill indices for the correct type
+        // 使用辅助模板填充正确类型的索引
         switch (index_type)
         {
             case IndexType::U16:
@@ -337,12 +288,14 @@ namespace hgl::graph::inline_geometry
                 break;
             }
             default:
-                // Unsupported index type
+                // 不支持的索引类型
                 return nullptr;
         }
 
+        // 12. 创建几何体
         Geometry *p = pc->Create();
 
+        // 13. 设置包围体
         if (p) {
             // 计算包围盒
             Vector3f minBounds(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -371,9 +324,7 @@ namespace hgl::graph::inline_geometry
             }
 
             BoundingVolumes bv;
-
-            bv.SetFromAABB(minBounds,maxBounds);
-
+            bv.SetFromAABB(minBounds, maxBounds);
             p->SetBoundingVolumes(bv);
         }
 
