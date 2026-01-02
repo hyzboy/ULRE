@@ -121,7 +121,7 @@ namespace hgl::graph
         {
             // Convert AABB to BoundingVolumes
             BoundingVolumes bv;
-            bv.SetFromAABB(geom_data.bounds.minPoint, geom_data.bounds.maxPoint);
+            bv.SetFromAABB(geom_data.bounds);
             geom->SetBoundingVolumes(bv);
         }
 

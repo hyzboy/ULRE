@@ -23,8 +23,7 @@ namespace hgl::graph::data
             max.z = std::max(max.z, v.position.z);
         }
 
-        bounds.minPoint = min;
-        bounds.maxPoint = max;
+        bounds.SetMinMax(min,max);
     }
 
     void GeometryData::CalculateNormals()
@@ -56,7 +55,7 @@ namespace hgl::graph::data
             // Calculate face normal using cross product
             Vector3f edge1 = p1 - p0;
             Vector3f edge2 = p2 - p0;
-            Vector3f normal = edge1.Cross(edge2);
+            Vector3f normal = math::Cross(edge1,edge2);
 
             vertices[i0].normal += normal;
             vertices[i1].normal += normal;

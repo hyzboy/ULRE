@@ -27,7 +27,7 @@ namespace hgl::graph::data
         geom->layout.has_texcoord = true;
         geom->topology = PrimitiveTopology::TriangleList;
 
-        float angleStep = (2.0f * M_PI) / static_cast<float>(cci.numberSlices);
+        float angleStep = (2.0f * math::pi) / static_cast<float>(cci.numberSlices);
 
         // Bottom center vertex
         Vertex v;

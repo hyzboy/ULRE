@@ -4,6 +4,8 @@
 
 namespace hgl::graph
 {
+    class GeometryCreater;
+
     /**
      * 将 GeometryData 转换为 Vulkan Geometry
      * Convert GeometryData to Vulkan Geometry
