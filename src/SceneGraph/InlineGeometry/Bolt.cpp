@@ -1,4 +1,4 @@
-// Bolt geometry generator for ULRE engine
+﻿// Bolt geometry generator for ULRE engine
 // Creates a hexagonal bolt with head and shaft
 
 #include "InlineGeometryCommon.h"
@@ -42,8 +42,8 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return nullptr;
 
-        const float angle_step_head = (2.0f * math::pi) / float(head_segs);
-        const float angle_step_shaft = (2.0f * math::pi) / float(circ_segs);
+        const float angle_step_head = (2.0f * std::numbers::pi_v<float>) / float(head_segs);
+        const float angle_step_shaft = (2.0f * std::numbers::pi_v<float>) / float(circ_segs);
 
         // Head top center
         builder.WriteFullVertex(0.0f, 0.0f, head_h,

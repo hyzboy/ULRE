@@ -4,7 +4,6 @@
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/math/geometry/GeometryUtils.h>
 #include<hgl/math/VectorOperations.h>
-#include<hgl/math/MathConstants.h>
 
 #include <vector>
 #include <algorithm>
@@ -360,8 +359,8 @@ namespace hgl::graph::inline_geometry
                 float a2_left = atan2(sNext.nrm.y, sNext.nrm.x);
                 float da_left = a2_left - a1_left;
                 
-                while(da_left <= -math::pi) da_left += 2 * math::pi;
-                while(da_left > math::pi) da_left -= 2 * math::pi;
+                while(da_left <= -std::numbers::pi_v<float>) da_left += 2 * std::numbers::pi_v<float>;
+                while(da_left > std::numbers::pi_v<float>) da_left -= 2 * std::numbers::pi_v<float>;
 
                 int segs = std::max<int>(3, (int)wci->roundSegments);
 
@@ -399,12 +398,12 @@ namespace hgl::graph::inline_geometry
                 else
                 {
                     // right is outer: generate right arc, keep left as single center
-                    float a1_right = a1_left + (float)math::pi;
-                    float a2_right = a2_left + (float)math::pi;
+                    float a1_right = a1_left + (float)std::numbers::pi_v<float>;
+                    float a2_right = a2_left + (float)std::numbers::pi_v<float>;
                     float da_right = a2_right - a1_right;
                     
-                    while(da_right <= -math::pi) da_right += 2 * math::pi;
-                    while(da_right > math::pi) da_right -= 2 * math::pi;
+                    while(da_right <= -std::numbers::pi_v<float>) da_right += 2 * std::numbers::pi_v<float>;
+                    while(da_right > std::numbers::pi_v<float>) da_right -= 2 * std::numbers::pi_v<float>;
 
                     for(int s = 0; s <= segs; s++)
                     {

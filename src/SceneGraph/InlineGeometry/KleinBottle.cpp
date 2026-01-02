@@ -1,4 +1,4 @@
-#include"InlineGeometryCommon.h"
+﻿#include"InlineGeometryCommon.h"
 #include<hgl/graph/GeometryCreater.h>
 
 namespace hgl::graph::inline_geometry
@@ -37,20 +37,20 @@ namespace hgl::graph::inline_geometry
         // 生成顶点 - 使用克莱因瓶的参数方程（figure-8沉浸）
         for(uint i = 0; i <= nU; ++i)
         {
-            const float u = 2.0f * math::pi * float(i) / float(nU);
+            const float u = 2.0f * std::numbers::pi_v<float> * float(i) / float(nU);
             const float cos_u = cos(u);
             const float sin_u = sin(u);
             
             for(uint j = 0; j <= nV; ++j)
             {
-                const float v = 2.0f * math::pi * float(j) / float(nV);
+                const float v = 2.0f * std::numbers::pi_v<float> * float(j) / float(nV);
                 const float cos_v = cos(v);
                 const float sin_v = sin(v);
                 
                 // 克莱因瓶参数方程（改进的figure-8形式）
                 float pos_x, pos_y, pos_z;
                 
-                if(u < math::pi)
+                if(u < std::numbers::pi_v<float>)
                 {
                     // 外部部分
                     pos_x = (R + r * cos_v) * cos_u;
@@ -84,7 +84,7 @@ namespace hgl::graph::inline_geometry
                 float sin_u_next = sin(u_next);
                 float twist_next = sin(u_next);
                 
-                if(u_next < math::pi)
+                if(u_next < std::numbers::pi_v<float>)
                 {
                     pos_u_plus_x = (R + r * cos_v) * cos_u_next + twist_next * r * 0.5f * sin_v * cos_u_next;
                     pos_u_plus_y = (R + r * cos_v) * sin_u_next + twist_next * r * 0.5f * sin_v * sin_u_next;
@@ -101,7 +101,7 @@ namespace hgl::graph::inline_geometry
                 float cos_v_next = cos(v_next);
                 float sin_v_next = sin(v_next);
                 
-                if(u < math::pi)
+                if(u < std::numbers::pi_v<float>)
                 {
                     pos_v_plus_x = (R + r * cos_v_next) * cos_u + twist * r * 0.5f * sin_v_next * cos_u;
                     pos_v_plus_y = (R + r * cos_v_next) * sin_u + twist * r * 0.5f * sin_v_next * sin_u;

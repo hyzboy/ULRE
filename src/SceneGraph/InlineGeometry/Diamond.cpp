@@ -1,4 +1,4 @@
-// Diamond geometry generator for ULRE engine
+﻿// Diamond geometry generator for ULRE engine
 // Creates a faceted diamond/gem shape with configurable proportions
 
 #include "InlineGeometryCommon.h"
@@ -65,7 +65,7 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return nullptr;
 
-        const float angle_step = (2.0f * math::pi) / float(facets);
+        const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(facets);
 
         // Crown facets (top part)
         for(uint i = 0; i < facets; i++)

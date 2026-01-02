@@ -7,13 +7,35 @@
 #include<hgl/graph/geo/GeometryBuilder.h>
 #include<hgl/graph/geo/IndexGenerator.h>
 #include "GeometryValidator.h"
-#include<hgl/math/MathConstants.h>
+#include <numbers>
 #include <algorithm>
 #include <cmath>
 
 namespace hgl::graph::inline_geometry
 {
     using namespace hgl::math;
+
+    // ==================== Angle conversion helpers ====================
+    
+    /**
+     * Convert degrees to radians
+     * @param degrees Angle in degrees
+     * @return Angle in radians
+     */
+    [[nodiscard]] constexpr float deg2rad(float degrees) noexcept
+    {
+        return degrees * (std::numbers::pi_v<float> / 180.0f);
+    }
+    
+    /**
+     * Convert radians to degrees
+     * @param radians Angle in radians
+     * @return Angle in degrees
+     */
+    [[nodiscard]] constexpr float rad2deg(float radians) noexcept
+    {
+        return radians * (180.0f / std::numbers::pi_v<float>);
+    }
 
     // Note: GLUS_* constants are now defined in GeometryValidator.h
     // They are available through the include above

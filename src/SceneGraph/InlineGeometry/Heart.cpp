@@ -80,7 +80,7 @@ namespace hgl::graph::inline_geometry
         float center_y = 0.0f;
         for(uint i = 0; i < segments; i++)
         {
-            float t = (float(i) / float(segments)) * 2.0f * math::pi;
+            float t = (float(i) / float(segments)) * 2.0f * std::numbers::pi_v<float>;
             auto [x, y] = heart_point(t);
             center_x += x;
             center_y += y;
@@ -97,7 +97,7 @@ namespace hgl::graph::inline_geometry
         // Front face profile
         for(uint i = 0; i <= segments; i++)
         {
-            float t = (float(i % segments) / float(segments)) * 2.0f * math::pi;
+            float t = (float(i % segments) / float(segments)) * 2.0f * std::numbers::pi_v<float>;
             auto [x, y] = heart_point(t);
 
             builder.WriteFullVertex(x, y, half_depth,
@@ -115,7 +115,7 @@ namespace hgl::graph::inline_geometry
         // Back face profile
         for(uint i = 0; i <= segments; i++)
         {
-            float t = (float(i % segments) / float(segments)) * 2.0f * math::pi;
+            float t = (float(i % segments) / float(segments)) * 2.0f * std::numbers::pi_v<float>;
             auto [x, y] = heart_point(t);
 
             builder.WriteFullVertex(x, y, -half_depth,
@@ -132,7 +132,7 @@ namespace hgl::graph::inline_geometry
 
             for(uint i = 0; i <= segments; i++)
             {
-                float t = (float(i % segments) / float(segments)) * 2.0f * math::pi;
+                float t = (float(i % segments) / float(segments)) * 2.0f * std::numbers::pi_v<float>;
                 auto [x, y] = heart_point(t);
 
                 // Calculate tangent (derivative of the curve at this point)

@@ -170,20 +170,20 @@ private:
         //
         rm_floor=CreateRenderMesh(CreatePlaneSqaure(prim_creater),&solid,0);
 
-        //Sphere
-        render_mesh.Add(CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1));
+        ////Sphere
+        //render_mesh.Add(CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1));
 
-        //Cone
-        {
-            struct ConeCreateInfo cci;
+        ////Cone
+        //{
+        //    struct ConeCreateInfo cci;
 
-            cci.radius      =1;         //圆锥半径
-            cci.halfExtend  =1;         //圆锤一半高度
-            cci.numberSlices=64;        //圆锥底部分割数
-            cci.numberStacks=4;         //圆锥高度分割数
+        //    cci.radius      =1;         //圆锥半径
+        //    cci.halfExtend  =1;         //圆锤一半高度
+        //    cci.numberSlices=64;        //圆锥底部分割数
+        //    cci.numberStacks=4;         //圆锥高度分割数
 
-            render_mesh.Add(CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2));
-        }
+        //    render_mesh.Add(CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2));
+        //}
 
         //Cyliner
         {
@@ -196,50 +196,50 @@ private:
             render_mesh.Add(CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,3));
         }
 
-        //Torus
-        {
-            struct TorusCreateInfo tci;
+        ////Torus
+        //{
+        //    struct TorusCreateInfo tci;
 
-            tci.innerRadius=1.9;
-            tci.outerRadius=2.1;
-            tci.numberSlices=128;
-            tci.numberStacks=16;
+        //    tci.innerRadius=1.9;
+        //    tci.outerRadius=2.1;
+        //    tci.numberSlices=128;
+        //    tci.numberStacks=16;
 
-            render_mesh.Add(CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4));
-        }
+        //    render_mesh.Add(CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4));
+        //}
 
-        {
-            struct HollowCylinderCreateInfo hcci;
+        //{
+        //    struct HollowCylinderCreateInfo hcci;
 
-            hcci.halfExtend    =1.25;      //圆柱一半高度
-            hcci.innerRadius   =0.8f;      //内半径
-            hcci.outerRadius   =1.25f;     //外半径
-            hcci.numberSlices  =64;        //圆柱底部分割数
+        //    hcci.halfExtend    =1.25;      //圆柱一半高度
+        //    hcci.innerRadius   =0.8f;      //内半径
+        //    hcci.outerRadius   =1.25f;     //外半径
+        //    hcci.numberSlices  =64;        //圆柱底部分割数
 
-            render_mesh.Add(CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5));
-        }
+        //    render_mesh.Add(CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5));
+        //}
 
-        {
-            struct HexSphereCreateInfo hsci;
+        //{
+        //    struct HexSphereCreateInfo hsci;
 
-            hsci.subdivisions=3;
+        //    hsci.subdivisions=3;
 
-            render_mesh.Add(CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6));
-        }
+        //    render_mesh.Add(CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6));
+        //}
 
-        {
-            struct CapsuleCreateInfo cci;
+        //{
+        //    struct CapsuleCreateInfo cci;
 
-            render_mesh.Add(CreateRenderMesh(CreateCapsule(prim_creater,&cci),&solid,7));
-        }
+        //    render_mesh.Add(CreateRenderMesh(CreateCapsule(prim_creater,&cci),&solid,7));
+        //}
 
-        {
-            TaperedCapsuleCreateInfo tcci;
+        //{
+        //    TaperedCapsuleCreateInfo tcci;
 
-            tcci.topRadius=0.1;
+        //    tcci.topRadius=0.1;
 
-            render_mesh.Add(CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,8));
-        }
+        //    render_mesh.Add(CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,8));
+        //}
 
         delete prim_creater;
         return(true);

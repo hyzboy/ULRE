@@ -1,4 +1,4 @@
-// Arch geometry generator for ULRE engine
+﻿// Arch geometry generator for ULRE engine
 // Creates an architectural arch (rounded or pointed)
 
 #include "InlineGeometryCommon.h"
@@ -58,7 +58,7 @@ namespace hgl::graph::inline_geometry
             if(!pointed)
             {
                 // Circular arch
-                float angle = math::pi * t;  // 0 to pi
+                float angle = std::numbers::pi_v<float> * t;  // 0 to pi
                 float x = -cos(angle) * hw * radius_scale;
                 float y = sin(angle) * height;
                 return {x, y};
@@ -66,7 +66,7 @@ namespace hgl::graph::inline_geometry
             else
             {
                 // Pointed arch (simplified Gothic)
-                float angle = math::pi * t;
+                float angle = std::numbers::pi_v<float> * t;
                 float x = -cos(angle) * hw * radius_scale;
                 float y_scale = (t < 0.5f) ? 1.0f + t : 2.0f - t;  // Peak in middle
                 float y = sin(angle) * height * y_scale;

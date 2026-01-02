@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/data/GeometryGenerators.h>
 #include<cmath>
+#include<numbers>
 
 namespace hgl::graph::data
 {
@@ -27,7 +28,7 @@ namespace hgl::graph::data
         geom->layout.has_texcoord = true;
         geom->topology = PrimitiveTopology::TriangleList;
 
-        float angleStep = (2.0f * math::pi) / static_cast<float>(cci.numberSlices);
+        float angleStep = (2.0f * std::numbers::pi_v<float>) / static_cast<float>(cci.numberSlices);
 
         // Bottom center vertex
         Vertex v;

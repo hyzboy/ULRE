@@ -1,4 +1,4 @@
-// GL to VK: swap Y/Z of position/normal/tangent/index
+﻿// GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/VKDevice.h>
@@ -408,7 +408,7 @@ namespace hgl::graph::inline_geometry
 
         // 创建圆形顶点（顺时针顺序，从+X轴开始）
         std::vector<Vector2f> circleVertices(segments);
-        float angleStep = 2.0f * math::pi / segments;
+        float angleStep = 2.0f * std::numbers::pi_v<float> / segments;
 
         for (uint i = 0; i < segments; i++) {
             // 注意：使用负角度来确保顺时针顺序

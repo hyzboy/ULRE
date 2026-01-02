@@ -51,7 +51,7 @@ namespace hgl::graph::inline_geometry
         // 生成顶点 - 超椭球参数方程
         for(uint j = 0; j <= nV; ++j)
         {
-            const float v = -math::pi * 0.5f + math::pi * float(j) / float(nV);  // -π/2 到 π/2
+            const float v = -std::numbers::pi_v<float> * 0.5f + std::numbers::pi_v<float> * float(j) / float(nV);  // -π/2 到 π/2
             const float cos_v = cos(v);
             const float sin_v = sin(v);
             
@@ -62,7 +62,7 @@ namespace hgl::graph::inline_geometry
             
             for(uint i = 0; i <= nU; ++i)
             {
-                const float u = 2.0f * math::pi * float(i) / float(nU);
+                const float u = 2.0f * std::numbers::pi_v<float> * float(i) / float(nU);
                 const float cos_u = cos(u);
                 const float sin_u = sin(u);
                 
