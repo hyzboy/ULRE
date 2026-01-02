@@ -832,33 +832,24 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        Geometry *p = pc->Create();
+        float minX = finalVerts[0].x, maxX = finalVerts[0].x;
+        float minY = finalVerts[0].y, maxY = finalVerts[0].y;
+        float minZ = finalVerts[0].z, maxZ = finalVerts[0].z;
         
-        if(p)
+        for(const auto &fv : finalVerts)
         {
-            float minX = finalVerts[0].x, maxX = finalVerts[0].x;
-            float minY = finalVerts[0].y, maxY = finalVerts[0].y;
-            float minZ = finalVerts[0].z, maxZ = finalVerts[0].z;
+            minX = std::min(minX, fv.x);
+            maxX = std::max(maxX, fv.x);
             
-            for(const auto &fv : finalVerts)
-            {
-                minX = std::min(minX, fv.x);
-                maxX = std::max(maxX, fv.x);
-                
-                minY = std::min(minY, fv.y);
-                maxY = std::max(maxY, fv.y);
-                
-                minZ = std::min(minZ, fv.z);
-                maxZ = std::max(maxZ, fv.z);
-            }
-
-            BoundingVolumes bv;
-
-            bv.SetFromAABB(Vector3f(minX, minY, minZ), Vector3f(maxX, maxY, maxZ));
-
-            p->SetBoundingVolumes(bv);
+            minY = std::min(minY, fv.y);
+            maxY = std::max(maxY, fv.y);
+            
+            minZ = std::min(minZ, fv.z);
+            maxZ = std::max(maxZ, fv.z);
         }
 
-        return p;
+        return pc->CreateWithAABB(
+            Vector3f(minX, minY, minZ), 
+            Vector3f(maxX, maxY, maxZ));
     }
 }

@@ -308,19 +308,12 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        Geometry *p = pc->Create();
-
-        // Set bounding box
-        BoundingVolumes bv;
         float hx = sx * 0.5f;
         float hy = sy * 0.5f;
         float hz = sz * 0.5f;
         
-        bv.SetFromAABB(math::Vector3f(-hx, -hy, -hz),
-                       Vector3f(hx, hy, hz));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            math::Vector3f(-hx, -hy, -hz),
+            Vector3f(hx, hy, hz));
     }
 } // namespace hgl::graph::inline_geometry

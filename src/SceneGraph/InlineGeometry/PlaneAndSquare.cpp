@@ -53,7 +53,21 @@ namespace hgl::graph::inline_geometry
             }
         }
 
-        return pc->Create();
+        Geometry *p = pc->Create();
+        if(p)
+        {
+            // Set bounding box for 2D plane grid
+            const float right = float(pgci->grid_size.Width()) / 2.0f;
+            const float left = -right;
+            const float bottom = float(pgci->grid_size.Height()) / 2.0f;
+            const float top = -bottom;
+            
+            BoundingVolumes bv;
+            bv.SetFromAABB(math::Vector3f(left, top, -0.01f),
+                          math::Vector3f(right, bottom, 0.01f));
+            p->SetBoundingVolumes(bv);
+        }
+        return p;
     }
 
     Geometry *CreatePlaneGrid3D(GeometryCreater *pc,const PlaneGridCreateInfo *pgci)
@@ -105,7 +119,21 @@ namespace hgl::graph::inline_geometry
             }
         }
 
-        return pc->Create();
+        Geometry *p = pc->Create();
+        if(p)
+        {
+            // Set bounding box for 3D plane grid (flat in XY plane at Z=0)
+            const float right = float(pgci->grid_size.Width()) / 2.0f;
+            const float left = -right;
+            const float bottom = float(pgci->grid_size.Height()) / 2.0f;
+            const float top = -bottom;
+            
+            BoundingVolumes bv;
+            bv.SetFromAABB(math::Vector3f(left, top, -0.01f),
+                          math::Vector3f(right, bottom, 0.01f));
+            p->SetBoundingVolumes(bv);
+        }
+        return p;
     }
 
     Geometry *CreatePlaneSqaure(GeometryCreater *pc)

@@ -77,6 +77,14 @@ public: //索引缓冲区
 public: //创建可渲染对象
 
             Geometry *     Create();                                                                                       ///<创建一个可渲染对象，并清除创建器数据
+            
+            /**
+             * 创建几何体并设置AABB包围体
+             * @param min_bounds AABB最小点
+             * @param max_bounds AABB最大点
+             * @return 创建的几何体指针
+             */
+            Geometry *     CreateWithAABB(const math::Vector3f& min_bounds, const math::Vector3f& max_bounds);
 };//class GeometryCreater
 
 Geometry *CreateGeometry(         VulkanDevice *  device,

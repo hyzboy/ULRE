@@ -173,15 +173,8 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        Geometry *p = pc->Create();
-
-        // Set bounding box
-        BoundingVolumes bv;
-        bv.SetFromAABB(math::Vector3f(-outer_r, -outer_r, 0.0f),
-                       Vector3f(outer_r, outer_r, total_height));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            math::Vector3f(-outer_r, -outer_r, 0.0f),
+            Vector3f(outer_r, outer_r, total_height));
     }
 } // namespace hgl::graph::inline_geometry

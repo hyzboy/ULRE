@@ -1,4 +1,5 @@
-#include<hgl/graph/geo/GeometryBuilder.h>
+﻿#include<hgl/graph/geo/GeometryBuilder.h>
+#include<hgl/graph/VKGeometry.h>
 
 namespace hgl::graph::inline_geometry
 {

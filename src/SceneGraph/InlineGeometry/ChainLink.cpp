@@ -107,23 +107,16 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        // 9. 创建几何体
-        Primitive *p = pc->Create();
-        
-        // 10. 设置包围盒
-        if(p)
-        {
-            // 基于缩放后的中心半径 + 环面半径保守估计包围盒
-            const float maxY = fabs(centerRadius * clci->scale_y) + torusRadius;
-            const float maxZ = fabs(centerRadius * clci->scale_z) + torusRadius;
-            const float maxX = torusRadius;
+        // 9. 创建几何体并设置包围体
+        // 基于缩放后的中心半径 + 环面半径保守估计包围盒
+        const float maxY = fabs(centerRadius * clci->scale_y) + torusRadius;
+        const float maxZ = fabs(centerRadius * clci->scale_z) + torusRadius;
+        const float maxX = torusRadius;
 
-            AABB aabb;
-            aabb.SetMinMax(Vector3f(-maxX, -maxY, -maxZ), Vector3f(maxX, maxY, maxZ));
-            p->SetBoundingBox(aabb);
-        }
-
-        return p;
+        return pc->CreateWithAABB(
+            Vector3f(-maxX, -maxY, -maxZ),
+            Vector3f(maxX, maxY, maxZ)
+        );
     }
 
 } // namespace hgl::graph::inline_geometry

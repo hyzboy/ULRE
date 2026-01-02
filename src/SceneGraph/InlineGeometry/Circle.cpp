@@ -52,7 +52,20 @@ namespace hgl::graph::inline_geometry
                 color->Write(cci->border_color);
         }
 
-        return pc->Create();
+        Geometry *p = pc->Create();
+        if(p)
+        {
+            // Set bounding box for 2D circle
+            BoundingVolumes bv;
+            float min_x = cci->center.x - cci->radius.x;
+            float max_x = cci->center.x + cci->radius.x;
+            float min_y = cci->center.y - cci->radius.y;
+            float max_y = cci->center.y + cci->radius.y;
+            bv.SetFromAABB(math::Vector3f(min_x, min_y, -0.01f),
+                          math::Vector3f(max_x, max_y, 0.01f));
+            p->SetBoundingVolumes(bv);
+        }
+        return p;
     }
 
     Geometry *CreateCircle3D(GeometryCreater *pc,const CircleCreateInfo *cci)
@@ -123,7 +136,20 @@ namespace hgl::graph::inline_geometry
             ib_map->Unmap();
         }
 
-        return pc->Create();
+        Geometry *p = pc->Create();
+        if(p)
+        {
+            // Set bounding box for 3D circle (flat in XY plane)
+            BoundingVolumes bv;
+            float min_x = cci->center.x - cci->radius.x;
+            float max_x = cci->center.x + cci->radius.x;
+            float min_y = cci->center.y - cci->radius.y;
+            float max_y = cci->center.y + cci->radius.y;
+            bv.SetFromAABB(math::Vector3f(min_x, min_y, -0.01f),
+                          math::Vector3f(max_x, max_y, 0.01f));
+            p->SetBoundingVolumes(bv);
+        }
+        return p;
     }
 
     Geometry *CreateCircle3DByIndexTriangles(GeometryCreater *pc,const CircleCreateInfo *cci)
@@ -172,6 +198,19 @@ namespace hgl::graph::inline_geometry
             ib_map->Unmap();
         }
 
-        return pc->Create();
+        Geometry *p = pc->Create();
+        if(p)
+        {
+            // Set bounding box for 3D circle (flat in XY plane)
+            BoundingVolumes bv;
+            float min_x = cci->center.x - cci->radius.x;
+            float max_x = cci->center.x + cci->radius.x;
+            float min_y = cci->center.y - cci->radius.y;
+            float max_y = cci->center.y + cci->radius.y;
+            bv.SetFromAABB(math::Vector3f(min_x, min_y, -0.01f),
+                          math::Vector3f(max_x, max_y, 0.01f));
+            p->SetBoundingVolumes(bv);
+        }
+        return p;
     }
 } // namespace

@@ -171,15 +171,8 @@ namespace hgl::graph::inline_geometry
                 return nullptr;
         }
 
-        Geometry *p = pc->Create();
-        if(!p)return nullptr;
-
-        // 计算包围盒
         Vector3f size(size_x, size_y, size_z);
-        BoundingVolumes bv;
-        bv.SetFromAABB(-size, size);
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        
+        return pc->CreateWithAABB(-size, size);
     }
 }//namespace hgl::graph::inline_geometry

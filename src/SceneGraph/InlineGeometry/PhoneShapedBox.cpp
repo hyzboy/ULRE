@@ -130,14 +130,8 @@ namespace hgl::graph::inline_geometry
         }
 
         // Set bounding volumes
-        Geometry *p = pc->Create();
-        if(p)
-        {
-            BoundingVolumes bv;
-            bv.SetFromAABB(Vector3f(-hx, -hy, -hz), Vector3f(hx, hy, hz));
-            p->SetBoundingVolumes(bv);
-        }
-
-        return p;
+        return pc->CreateWithAABB(
+            Vector3f(-hx, -hy, -hz), 
+            Vector3f(hx, hy, hz));
     }
 }  // namespace hgl::graph::inline_geometry
