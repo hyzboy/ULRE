@@ -17,7 +17,7 @@ namespace hgl::graph::inline_geometry
         if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
             return nullptr;
             
-        if(!GeometryValidator::ValidateRevolutionParams(cci->numberSlices))
+        if(!GeometryValidator::ValidateSlices(cci->numberSlices))
             return nullptr;
 
         if(!pc->Init("Cylinder",numberVertices,numberIndices))

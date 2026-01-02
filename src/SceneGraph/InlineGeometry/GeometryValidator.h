@@ -35,25 +35,25 @@ namespace hgl::graph::inline_geometry
         }
 
         /**
-         * 验证旋转体参数（用于Sphere, Cylinder, Cone等）
+         * 验证切片数量（用于Sphere等只需要切片参数的几何体）
          * @param slices 切片数量
          * @param minSlices 最小切片数量（默认3）
          * @return 如果参数有效返回true，否则返回false
          */
-        inline bool ValidateRevolutionParams(uint slices, uint minSlices = 3)
+        inline bool ValidateSlices(uint slices, uint minSlices = 3)
         {
             return slices >= minSlices;
         }
 
         /**
-         * 验证旋转体参数（包含堆栈）
+         * 验证切片和堆栈参数（用于Cylinder, Cone, Torus等需要切片和堆栈的几何体）
          * @param slices 切片数量
          * @param stacks 堆栈数量
          * @param minSlices 最小切片数量（默认3）
          * @param minStacks 最小堆栈数量（默认1）
          * @return 如果参数有效返回true，否则返回false
          */
-        inline bool ValidateRevolutionParams(uint slices, uint stacks, uint minSlices = 3, uint minStacks = 1)
+        inline bool ValidateSlicesAndStacks(uint slices, uint stacks, uint minSlices = 3, uint minStacks = 1)
         {
             return slices >= minSlices && stacks >= minStacks;
         }
