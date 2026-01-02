@@ -182,16 +182,10 @@ namespace hgl::graph::inline_geometry
                 return nullptr;
         }
 
-        Geometry *p = pc->Create();
-        if(!p)return nullptr;
-
-        // 计算包围盒
         const float max_extent = R + r * 1.5f;
-        BoundingVolumes bv;
-        bv.SetFromAABB(Vector3f(-max_extent, -max_extent, -r),
-                      Vector3f(max_extent, max_extent, r));
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        
+        return pc->CreateWithAABB(
+            Vector3f(-max_extent, -max_extent, -r),
+            Vector3f(max_extent, max_extent, r));
     }
 }//namespace hgl::graph::inline_geometry

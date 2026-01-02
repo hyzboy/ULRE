@@ -290,15 +290,8 @@ namespace hgl::graph::inline_geometry
         }
 
         // Set bounding box
-        Geometry *p = pc->Create();
-        if(p)
-        {
-            BoundingVolumes bv;
-            bv.SetFromAABB(Vector3f(-radius, -bottom_height, -radius),
-                          Vector3f(radius, top_height, radius));
-            p->SetBoundingVolumes(bv);
-        }
-
-        return p;
+        return pc->CreateWithAABB(
+            Vector3f(-radius, -bottom_height, -radius),
+            Vector3f(radius, top_height, radius));
     }
 }//namespace hgl::graph::inline_geometry

@@ -351,17 +351,11 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         // Set bounding box (conservative estimate)
-        Geometry *p = pc->Create();
-        if(p)
-        {
-            float max_y = wave_amplitude + half_width;
-            float max_z = half_width + half_thickness;
-            BoundingVolumes bv;
-            bv.SetFromAABB(Vector3f(-length * 0.5f, -max_y, -max_z),
-                          Vector3f(length * 0.5f, max_y, max_z));
-            p->SetBoundingVolumes(bv);
-        }
-
-        return p;
+        float max_y = wave_amplitude + half_width;
+        float max_z = half_width + half_thickness;
+        
+        return pc->CreateWithAABB(
+            Vector3f(-length * 0.5f, -max_y, -max_z),
+            Vector3f(length * 0.5f, max_y, max_z));
     }
 }//namespace hgl::graph::inline_geometry

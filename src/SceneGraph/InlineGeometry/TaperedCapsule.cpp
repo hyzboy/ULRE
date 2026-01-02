@@ -240,20 +240,11 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        // 11. 创建几何体
-        Geometry *p = pc->Create();
-
-        // 12. 设置包围体
-        BoundingVolumes bv;
+        // 11. 创建几何体并设置包围体
         const float maxr = std::max(bottomR, topR);
-
-        bv.SetFromAABB(
+        return pc->CreateWithAABB(
             math::Vector3f(-maxr, -maxr, -halfH - maxr),
             Vector3f(maxr, maxr, halfH + maxr)
         );
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
     }
 }

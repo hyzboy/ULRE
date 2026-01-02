@@ -21,6 +21,15 @@ namespace hgl::graph
         struct RectangleCreateInfo
         {
             RectScope2f scope;
+            uint segments_x = 1;    ///< X方向细分数量
+            uint segments_y = 1;    ///< Y方向细分数量
+            bool normal = false;    ///< 是否生成法线
+            bool tex_coord = true;  ///< 是否生成纹理坐标
+            
+            RectangleCreateInfo() = default;
+            
+            RectangleCreateInfo(const RectScope2f& s, uint seg_x = 1, uint seg_y = 1)
+                : scope(s), segments_x(seg_x), segments_y(seg_y) {}
         };//struct RectangleCreateInfo
 
         Geometry *CreateRectangle(GeometryCreater *pc,const RectangleCreateInfo *rci);
@@ -99,33 +108,32 @@ namespace hgl::graph
 
         struct CubeCreateInfo
         {
-            bool normal;
-            bool tangent;
-            bool tex_coord;
+            uint segments_x = 1;    ///< X方向细分数量
+            uint segments_y = 1;    ///< Y方向细分数量
+            uint segments_z = 1;    ///< Z方向细分数量
+            
+            bool normal = true;
+            bool tangent = false;
+            bool tex_coord = true;
 
             enum class ColorType
             {
                 NoColor=0,      ///<没有颜色
                 SameColor,      ///<一个颜色
                 FaceColor,      ///<每个面一个颜色(请写入6个颜色值)
-                VertexColor,    ///<每个顶点一个颜色(请写入24个颜色值)
 
-                ENUM_CLASS_RANGE(NoColor,VertexColor)
+                ENUM_CLASS_RANGE(NoColor,FaceColor)
             };
 
-            ColorType color_type;
-           Vector4f color[24];
+            ColorType color_type = ColorType::NoColor;
+            Vector4f color[6];
 
         public:
 
-            CubeCreateInfo()
-            {
-                normal=false;
-                tangent=false;
-                tex_coord=false;
-
-                color_type=ColorType::NoColor;
-            }
+            CubeCreateInfo() = default;
+            
+            CubeCreateInfo(uint seg_x, uint seg_y, uint seg_z)
+                : segments_x(seg_x), segments_y(seg_y), segments_z(seg_z) {}
         };//struct CubeCreateInfo
 
         /**

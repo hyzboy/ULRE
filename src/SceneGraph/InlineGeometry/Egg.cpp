@@ -151,16 +151,11 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        Geometry *p = pc->Create();
-
         // Set bounding box
-        float max_r = radius * std::max(1.0f, bottom_scale);
-        BoundingVolumes bv;
-        bv.SetFromAABB(math::Vector3f(-max_r, -max_r, -total_height * 0.5f),
-                       Vector3f(max_r, max_r, total_height * 0.5f));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        const float max_r = radius * std::max(1.0f, bottom_scale);
+        return pc->CreateWithAABB(
+            math::Vector3f(-max_r, -max_r, -total_height * 0.5f),
+            Vector3f(max_r, max_r, total_height * 0.5f)
+        );
     }
 } // namespace hgl::graph::inline_geometry

@@ -108,17 +108,10 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        // 12. 创建几何体
-        Geometry *p = pc->Create();
-
-        // 13. 设置包围体
-        BoundingVolumes bv;
-        bv.SetFromAABB(
+        // 12. 创建几何体并设置包围体
+        return pc->CreateWithAABB(
             Vector3f(-cci->radius, -cci->radius, -cci->halfExtend),
             Vector3f(cci->radius, cci->radius, cci->halfExtend)
         );
-        p->SetBoundingVolumes(bv);
-
-        return p;
     }
 }//namespace hgl::graph::inline_geometry

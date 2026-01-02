@@ -4,6 +4,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/VertexDataManager.h>
+#include<hgl/math/geometry/BoundingVolumes.h>
 #include"vulkan/VKGeometryData.h"
 
 VK_NAMESPACE_BEGIN
@@ -282,6 +283,19 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
     }
 
     return geometry;
+}
+
+Geometry* GeometryCreater::CreateWithAABB(const math::Vector3f& min_bounds, const math::Vector3f& max_bounds)
+{
+    Geometry *p = Create();
+    if(!p)
+        return nullptr;
+
+    math::BoundingVolumes bv;
+    bv.SetFromAABB(min_bounds, max_bounds);
+    p->SetBoundingVolumes(bv);
+
+    return p;
 }
 
 VK_NAMESPACE_END

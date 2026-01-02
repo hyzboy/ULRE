@@ -250,16 +250,10 @@ namespace hgl::graph::inline_geometry
         }
 
         // Create geometry and set bounding box
-        Geometry *p = pc->Create();
-        if(p)
-        {
-            float max_radius = base_radius * (1.0f + irregularity);
-            BoundingVolumes bv;
-            bv.SetFromAABB(Vector3f(-max_radius, 0.0f, -max_radius),
-                          Vector3f(max_radius, height, max_radius));
-            p->SetBoundingVolumes(bv);
-        }
-
-        return p;
+        float max_radius = base_radius * (1.0f + irregularity);
+        
+        return pc->CreateWithAABB(
+            Vector3f(-max_radius, 0.0f, -max_radius),
+            Vector3f(max_radius, height, max_radius));
     }
 }//namespace hgl::graph::inline_geometry

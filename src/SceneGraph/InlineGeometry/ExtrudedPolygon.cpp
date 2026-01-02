@@ -292,43 +292,34 @@ namespace hgl::graph::inline_geometry
                 return nullptr;
         }
 
-        // 12. 创建几何体
-        Geometry *p = pc->Create();
+        // 12. 计算包围盒
+        Vector3f minBounds(FLT_MAX, FLT_MAX, FLT_MAX);
+        Vector3f maxBounds(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
-        // 13. 设置包围体
-        if (p) {
-            // 计算包围盒
-            Vector3f minBounds(FLT_MAX, FLT_MAX, FLT_MAX);
-            Vector3f maxBounds(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+        for (uint i = 0; i < vertexCount; i++) {
+            const Vector2f& v2d = epci->vertices[i];
+            Vector3f v3d = right * v2d.x + up * v2d.y;
 
-            for (uint i = 0; i < vertexCount; i++) {
-                const Vector2f& v2d = epci->vertices[i];
-                Vector3f v3d = right * v2d.x + up * v2d.y;
+            // 底面顶点
+            minBounds.x = std::min(minBounds.x, v3d.x);
+            minBounds.y = std::min(minBounds.y, v3d.y);
+            minBounds.z = std::min(minBounds.z, v3d.z);
+            maxBounds.x = std::max(maxBounds.x, v3d.x);
+            maxBounds.y = std::max(maxBounds.y, v3d.y);
+            maxBounds.z = std::max(maxBounds.z, v3d.z);
 
-                // 底面顶点
-                minBounds.x = std::min(minBounds.x, v3d.x);
-                minBounds.y = std::min(minBounds.y, v3d.y);
-                minBounds.z = std::min(minBounds.z, v3d.z);
-                maxBounds.x = std::max(maxBounds.x, v3d.x);
-                maxBounds.y = std::max(maxBounds.y, v3d.y);
-                maxBounds.z = std::max(maxBounds.z, v3d.z);
-
-                // 顶面顶点
-                Vector3f topVertex = v3d + extrudeOffset;
-                minBounds.x = std::min(minBounds.x, topVertex.x);
-                minBounds.y = std::min(minBounds.y, topVertex.y);
-                minBounds.z = std::min(minBounds.z, topVertex.z);
-                maxBounds.x = std::max(maxBounds.x, topVertex.x);
-                maxBounds.y = std::max(maxBounds.y, topVertex.y);
-                maxBounds.z = std::max(maxBounds.z, topVertex.z);
-            }
-
-            BoundingVolumes bv;
-            bv.SetFromAABB(minBounds, maxBounds);
-            p->SetBoundingVolumes(bv);
+            // 顶面顶点
+            Vector3f topVertex = v3d + extrudeOffset;
+            minBounds.x = std::min(minBounds.x, topVertex.x);
+            minBounds.y = std::min(minBounds.y, topVertex.y);
+            minBounds.z = std::min(minBounds.z, topVertex.z);
+            maxBounds.x = std::max(maxBounds.x, topVertex.x);
+            maxBounds.y = std::max(maxBounds.y, topVertex.y);
+            maxBounds.z = std::max(maxBounds.z, topVertex.z);
         }
 
-        return p;
+        // 13. 创建几何体并设置包围体
+        return pc->CreateWithAABB(minBounds, maxBounds);
     }
 
     Geometry *CreateExtrudedRectangle(GeometryCreater *pc, float width, float height, float depth, const Vector3f &extrudeAxis)

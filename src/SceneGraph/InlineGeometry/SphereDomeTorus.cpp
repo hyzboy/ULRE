@@ -72,15 +72,9 @@ namespace hgl::graph::inline_geometry
                 return(nullptr);
         }
 
-        Geometry *p=pc->Create();
-
-        BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(-1.0f,-1.0f,-1.0f),math::Vector3f(1.0f,1.0f,1.0f));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            math::Vector3f(-1.0f, -1.0f, -1.0f),
+            math::Vector3f(1.0f, 1.0f, 1.0f));
     }
 
     Geometry *CreateDome(GeometryCreater *pc,const uint numberSlices)
@@ -158,16 +152,11 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        // 9. 创建几何体
-        Geometry *p = pc->Create();
-
-        // 10. 设置包围体（半球）
-        BoundingVolumes bv;
-        bv.SetFromAABB(math::Vector3f(-1.0f, -1.0f, 0.0f), math::Vector3f(1.0f, 1.0f, 1.0f));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        // 9. 创建几何体并设置包围体（半球）
+        return pc->CreateWithAABB(
+            math::Vector3f(-1.0f, -1.0f, 0.0f),
+            math::Vector3f(1.0f, 1.0f, 1.0f)
+        );
     }
 
     Geometry *CreateTorus(GeometryCreater *pc, const TorusCreateInfo *tci)
@@ -259,18 +248,11 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        // 10. 创建几何体
-        Geometry *p = pc->Create();
-
-        // 11. 设置包围体
-        BoundingVolumes bv;
+        // 10. 创建几何体并设置包围体
         const float maxExtent = centerRadius + torusRadius;
-        bv.SetFromAABB(
+        return pc->CreateWithAABB(
             Vector3f(-torusRadius, -maxExtent, -maxExtent),
             Vector3f(torusRadius, maxExtent, maxExtent)
         );
-        p->SetBoundingVolumes(bv);
-
-        return p;
     }
 }//namespace hgl::graph::inline_geometry

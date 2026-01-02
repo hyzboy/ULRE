@@ -345,19 +345,12 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        Geometry *p = pc->Create();
-
-        // Set bounding box
-        BoundingVolumes bv;
         float max_radius = std::max(shaft_r, head_r);
         float total_length = shaft_len + head_len;
         
-        bv.SetFromAABB(Vector3f(-max_radius, -max_radius, 0.0f),
-                       Vector3f(max_radius, max_radius, total_length));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            Vector3f(-max_radius, -max_radius, 0.0f),
+            Vector3f(max_radius, max_radius, total_length));
     }
 
     // Square cross-section arrow implementation
@@ -698,19 +691,12 @@ namespace hgl::graph::inline_geometry
         else
             return nullptr;
 
-        Geometry *p = pc->Create();
-
-        // Set bounding box
-        BoundingVolumes bv;
         float max_hw = std::max(shaft_hw, head_hw);
         float total_length = shaft_len + head_len;
         
-        bv.SetFromAABB(Vector3f(-max_hw, -max_hw, 0.0f),
-                       Vector3f(max_hw, max_hw, total_length));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            Vector3f(-max_hw, -max_hw, 0.0f),
+            Vector3f(max_hw, max_hw, total_length));
     }
 
 } // namespace hgl::graph::inline_geometry

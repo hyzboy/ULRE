@@ -99,15 +99,9 @@ namespace hgl::graph::inline_geometry
                 return(nullptr);
         }
 
-        Geometry *p=pc->Create();
-
-        BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
-                       Vector3f( cci->radius, cci->radius, cci->halfExtend));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            math::Vector3f(-cci->radius, -cci->radius, -cci->halfExtend),
+            Vector3f(cci->radius, cci->radius, cci->halfExtend)
+        );
     }
 } // namespace

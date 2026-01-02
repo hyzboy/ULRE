@@ -151,13 +151,13 @@ namespace hgl::graph::inline_geometry
         }
 
         Geometry *p = pc->Create();
-
-        BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(-R,-R,-R), Vector3f(R,R,R));
-
-        p->SetBoundingVolumes(bv);
-
+        if(p)
+        {
+            BoundingVolumes bv;
+            bv.SetFromAABB(math::Vector3f(-R, -R, -R), 
+                          Vector3f(R, R, R));
+            p->SetBoundingVolumes(bv);
+        }
         return p;
     }
 }//namespace hgl::graph::inline_geometry
