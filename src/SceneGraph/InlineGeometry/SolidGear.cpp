@@ -1,4 +1,4 @@
-// Solid gear geometry generator for ULRE engine
+﻿// Solid gear geometry generator for ULRE engine
 // Creates a solid cylindrical gear with teeth around the perimeter
 
 #include "InlineGeometryCommon.h"
@@ -53,7 +53,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         const float half_thickness = thickness * 0.5f;
-        const float angle_per_tooth = (2.0f * math::pi) / float(tooth_count);
+        const float angle_per_tooth = (2.0f * std::numbers::pi_v<float>) / float(tooth_count);
 
         GeometryBuilder builder(pc);
         
@@ -103,7 +103,7 @@ namespace hgl::graph::inline_geometry
         // Top cap ring
         for(uint i = 0; i <= total_segments; i++)
         {
-            float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(total_segments)) * 2.0f * std::numbers::pi_v<float>;
             float r = get_radius_at_angle(angle);
             // Note: Y uses negative sine to match ULRE's coordinate system convention
             // where the gear lies in the XY plane with Z as the height axis
@@ -125,7 +125,7 @@ namespace hgl::graph::inline_geometry
         // Bottom cap ring
         for(uint i = 0; i <= total_segments; i++)
         {
-            float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(total_segments)) * 2.0f * std::numbers::pi_v<float>;
             float r = get_radius_at_angle(angle);
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
@@ -139,7 +139,7 @@ namespace hgl::graph::inline_geometry
         // Side vertices
         for(uint i = 0; i <= total_segments; i++)
         {
-            float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(total_segments)) * 2.0f * std::numbers::pi_v<float>;
             float r = get_radius_at_angle(angle);
             float x = cos(angle) * r;
             float y = -sin(angle) * r;

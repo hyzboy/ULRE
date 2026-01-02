@@ -1,4 +1,4 @@
-// Ribbon geometry generator for ULRE engine
+﻿// Ribbon geometry generator for ULRE engine
 // Creates a twisted/waving ribbon strip
 
 #include "InlineGeometryCommon.h"
@@ -69,17 +69,17 @@ namespace hgl::graph::inline_geometry
             float x = (t - 0.5f) * length;
             
             // Wave in Y direction
-            float y = wave_amplitude * sin(t * wave_frequency * 2.0f * math::pi);
+            float y = wave_amplitude * sin(t * wave_frequency * 2.0f * std::numbers::pi_v<float>);
             float z = 0.0f;
             
             // Tangent (derivative of position)
             float dx = 1.0f;
-            float dy = wave_amplitude * wave_frequency * 2.0f * math::pi * cos(t * wave_frequency * 2.0f * math::pi);
+            float dy = wave_amplitude * wave_frequency * 2.0f * std::numbers::pi_v<float> * cos(t * wave_frequency * 2.0f * std::numbers::pi_v<float>);
             float t_len = sqrtf(dx * dx + dy * dy);
             Vector3f tangent(dx / t_len, dy / t_len, 0.0f);
             
             // Twist angle
-            float twist_angle = twist_turns * 2.0f * math::pi * t;
+            float twist_angle = twist_turns * 2.0f * std::numbers::pi_v<float> * t;
             
             // Initial normal (up) and binormal (right)
             Vector3f initial_normal(0.0f, 0.0f, 1.0f);

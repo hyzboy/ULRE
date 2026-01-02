@@ -43,7 +43,7 @@ namespace hgl::graph::inline_geometry
 
         if(!vp) return nullptr;
 
-        const float angleStep = (2.0f * math::pi) / float(slices);
+        const float angleStep = (2.0f * std::numbers::pi_v<float>) / float(slices);
         const float height = 2.0f * halfH;
         const float dr = topR - bottomR;
 
@@ -99,7 +99,7 @@ namespace hgl::graph::inline_geometry
         // Top hemisphere (center at +halfH)
         for(uint s=0;s<=stacks;s++)
         {
-            float phi = (float)s / (float)stacks * (math::pi * 0.5f);
+            float phi = (float)s / (float)stacks * (std::numbers::pi_v<float> * 0.5f);
             float cz = sin(phi); // from 0 to 1
             float r = cos(phi);  // ring radius, will be scaled by topR
 
@@ -144,7 +144,7 @@ namespace hgl::graph::inline_geometry
         // Bottom hemisphere (center at -halfH)
         for(uint s=0;s<=stacks;s++)
         {
-            float phi = (float)s / (float)stacks * (math::pi * 0.5f);
+            float phi = (float)s / (float)stacks * (std::numbers::pi_v<float> * 0.5f);
             float cz = -sin(phi); // from 0 to -1
             float r = cos(phi);
 

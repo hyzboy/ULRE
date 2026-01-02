@@ -55,7 +55,7 @@ namespace hgl::graph::inline_geometry
         float *tp = tan;
         float *uvp= uv;
 
-        const float dtheta = (2.0f * math::pi) / float(slices);
+        const float dtheta = (2.0f * std::numbers::pi_v<float>) / float(slices);
 
         auto write_vertex = [&](float x,float y,float z, float nx, float ny, float nz, float u, float v)
             {

@@ -23,7 +23,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Cylinder",numberVertices,numberIndices))
             return(nullptr);
 
-        float angleStep = (2.0f * math::pi) / ((float) cci->numberSlices);
+        float angleStep = (2.0f * std::numbers::pi_v<float>) / ((float) cci->numberSlices);
 
         // Use new GeometryBuilder for vertex attribute management
         GeometryBuilder builder(pc);

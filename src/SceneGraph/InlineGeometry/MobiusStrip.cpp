@@ -1,4 +1,4 @@
-#include"InlineGeometryCommon.h"
+﻿#include"InlineGeometryCommon.h"
 
 namespace hgl::graph::inline_geometry
 {
@@ -40,7 +40,7 @@ namespace hgl::graph::inline_geometry
         // 生成顶点
         for(uint i = 0; i <= nU; ++i)
         {
-            const float u = 2.0f * math::pi * float(i) / float(nU);
+            const float u = 2.0f * std::numbers::pi_v<float> * float(i) / float(nU);
             const float twist_angle = twists * u * 0.5f;  // 扭转角度
             
             const float cos_u = cos(u);

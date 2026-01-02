@@ -1,4 +1,4 @@
-// Teardrop geometry generator for ULRE engine
+﻿// Teardrop geometry generator for ULRE engine
 // Creates a 3D teardrop shape using surface of revolution
 
 #include "InlineGeometryCommon.h"
@@ -52,7 +52,7 @@ namespace hgl::graph::inline_geometry
             if(t < 0.5f)
             {
                 // Bottom half: circular
-                float theta = t * math::pi;
+                float theta = t * std::numbers::pi_v<float>;
                 float r = radius * sin(theta);
                 float z = radius * (1.0f - cos(theta));
                 return {r, z};
@@ -67,7 +67,7 @@ namespace hgl::graph::inline_geometry
             }
         };
 
-        const float angle_step = (2.0f * math::pi) / float(radial_segs);
+        const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(radial_segs);
 
         // Generate vertices
         for(uint i = 0; i <= profile_points; i++)

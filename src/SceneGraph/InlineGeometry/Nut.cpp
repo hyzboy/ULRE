@@ -1,4 +1,4 @@
-// Nut geometry generator for ULRE engine
+﻿// Nut geometry generator for ULRE engine
 // Creates a hexagonal nut with threaded hole
 
 #include "InlineGeometryCommon.h"
@@ -43,8 +43,8 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return nullptr;
 
-        const float angle_step_outer = (2.0f * math::pi) / float(sides);
-        const float angle_step_inner = (2.0f * math::pi) / float(circ_segs);
+        const float angle_step_outer = (2.0f * std::numbers::pi_v<float>) / float(sides);
+        const float angle_step_inner = (2.0f * std::numbers::pi_v<float>) / float(circ_segs);
 
         // Top face - outer ring
         for(uint i = 0; i <= sides; i++)
