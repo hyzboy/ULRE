@@ -1,4 +1,4 @@
-#include "Std3DMaterial.h"
+﻿#include "Std3DMaterial.h"
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 
@@ -114,8 +114,10 @@ void main()
     };
 }
 
-MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, const BasicLitMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMaterialCreateConfig *cfg)
 {
+    cfg->material_instance=true;
+
     MaterialBasicLit m(cfg, cfg->ibl);
 
     return m.Create(dev_attr);
