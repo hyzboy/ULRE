@@ -131,7 +131,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,const BasicLitMaterialCreateConfig);
+DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,BasicLitMaterialCreateConfig);
 
 /**
  * 从文件加载材质
