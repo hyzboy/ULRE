@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
@@ -7,6 +7,7 @@
 #include<hgl/graph/geo/GeometryBuilder.h>
 #include<hgl/graph/geo/IndexGenerator.h>
 #include "GeometryValidator.h"
+#include<hgl/math/MathConstants.h>
 #include <algorithm>
 #include <cmath>
 

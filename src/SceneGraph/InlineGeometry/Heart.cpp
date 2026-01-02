@@ -1,4 +1,4 @@
-// Heart geometry generator for ULRE engine
+﻿// Heart geometry generator for ULRE engine
 // Creates a 3D heart shape using parametric equations
 
 #include "InlineGeometryCommon.h"

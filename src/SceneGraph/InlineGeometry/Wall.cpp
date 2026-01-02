@@ -4,6 +4,7 @@
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/math/geometry/GeometryUtils.h>
 #include<hgl/math/VectorOperations.h>
+#include<hgl/math/MathConstants.h>
 
 #include <vector>
 #include <algorithm>
