@@ -173,6 +173,9 @@ private:
         //Sphere
         render_mesh.Add(CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1));
 
+        //Dome
+        render_mesh.Add(CreateRenderMesh(CreateDome(prim_creater,64),&solid,2));
+
         //Cone
         {
             struct ConeCreateInfo cci;
@@ -182,7 +185,7 @@ private:
             cci.numberSlices=64;        //圆锥底部分割数
             cci.numberStacks=4;         //圆锥高度分割数
 
-            render_mesh.Add(CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2));
+            render_mesh.Add(CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,3));
         }
 
         //Cyliner
@@ -193,7 +196,7 @@ private:
             cci.numberSlices=16;        //圆柱底部分割数
             cci.radius      =1.25f;     //圆柱半径
 
-            render_mesh.Add(CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,3));
+            render_mesh.Add(CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,4));
         }
 
         //Torus
@@ -205,7 +208,7 @@ private:
             tci.numberSlices=128;
             tci.numberStacks=16;
 
-            render_mesh.Add(CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4));
+            render_mesh.Add(CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,5));
         }
 
         {
@@ -216,7 +219,7 @@ private:
             hcci.outerRadius   =1.25f;     //外半径
             hcci.numberSlices  =64;        //圆柱底部分割数
 
-            render_mesh.Add(CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5));
+            render_mesh.Add(CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,6));
         }
 
         {
@@ -224,13 +227,13 @@ private:
 
             hsci.subdivisions=3;
 
-            render_mesh.Add(CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6));
+            render_mesh.Add(CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,7));
         }
 
         {
             struct CapsuleCreateInfo cci;
 
-            render_mesh.Add(CreateRenderMesh(CreateCapsule(prim_creater,&cci),&solid,7));
+            render_mesh.Add(CreateRenderMesh(CreateCapsule(prim_creater,&cci),&solid,8));
         }
 
         {
@@ -238,7 +241,7 @@ private:
 
             tcci.topRadius=0.1;
 
-            render_mesh.Add(CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,8));
+            render_mesh.Add(CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,9));
         }
 
         delete prim_creater;
