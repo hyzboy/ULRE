@@ -1,4 +1,4 @@
-// Enhanced Arrow geometry generator for ULRE engine
+﻿// Enhanced Arrow geometry generator for ULRE engine
 // Supports circular and square cross-sections with flat or concave tail
 
 #include "InlineGeometryCommon.h"
@@ -75,7 +75,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Arrow", numberVertices, numberIndices))
             return nullptr;
 
-        const float angleStep = (2.0f * math::pi) / float(slices);
+        const float angleStep = (2.0f * std::numbers::pi_v<float>) / float(slices);
 
         GeometryBuilder builder(pc);
         

@@ -1,4 +1,4 @@
-// Tube geometry generator for ULRE engine
+﻿// Tube geometry generator for ULRE engine
 // Creates a straight pipe/tube with thickness
 
 #include "InlineGeometryCommon.h"
@@ -52,7 +52,7 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return nullptr;
 
-        const float angle_step = (2.0f * math::pi) / float(segments);
+        const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(segments);
 
         // Outer surface
         for(uint i = 0; i <= segments; i++)

@@ -1,4 +1,4 @@
-// Rounded box geometry generator for ULRE engine
+﻿// Rounded box geometry generator for ULRE engine
 // Creates a box with rounded edges and corners
 
 #include "InlineGeometryCommon.h"
@@ -87,7 +87,7 @@ namespace hgl::graph::inline_geometry
 
         // For each corner, generate a spherical patch
         // The spherical patch covers 1/8 of a sphere (one octant)
-        const float pi_half = math::pi * 0.5f;
+        const float pi_half = std::numbers::pi_v<float> * 0.5f;
         
         // Corner sphere patch generation
         // Each corner has a different octant orientation

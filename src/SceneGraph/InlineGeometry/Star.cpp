@@ -1,4 +1,4 @@
-// Star geometry generator for ULRE engine
+﻿// Star geometry generator for ULRE engine
 // Creates a 3D star shape with configurable points and radii
 
 #include "InlineGeometryCommon.h"
@@ -56,7 +56,7 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return nullptr;
 
-        const float angle_step = (2.0f * math::pi) / float(profile_segments);
+        const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(profile_segments);
 
         // Front face center
         builder.WriteFullVertex(0.0f, 0.0f, half_depth,

@@ -1,4 +1,4 @@
-#include"InlineGeometryCommon.h"
+﻿#include"InlineGeometryCommon.h"
 
 namespace hgl::graph::inline_geometry
 {
@@ -41,7 +41,7 @@ namespace hgl::graph::inline_geometry
         // 生成顶点
         for(uint i = 0; i <= nU; ++i)
         {
-            const float u = 2.0f * math::pi * float(i) / float(nU);
+            const float u = 2.0f * std::numbers::pi_v<float> * float(i) / float(nU);
             
             // 环面纽结路径参数方程
             const float cosp_u = cos(p * u);
@@ -95,7 +95,7 @@ namespace hgl::graph::inline_geometry
             // 沿管道圆周生成顶点
             for(uint j = 0; j <= nV; ++j)
             {
-                const float v = 2.0f * math::pi * float(j) / float(nV);
+                const float v = 2.0f * std::numbers::pi_v<float> * float(j) / float(nV);
                 const float cos_v = cos(v);
                 const float sin_v = sin(v);
                 

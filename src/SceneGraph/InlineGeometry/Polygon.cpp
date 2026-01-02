@@ -1,4 +1,4 @@
-// Regular polygon geometry generator for ULRE engine
+﻿// Regular polygon geometry generator for ULRE engine
 // Creates a 3D regular polygon (triangle, pentagon, hexagon, etc.)
 
 #include "InlineGeometryCommon.h"
@@ -50,8 +50,8 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         // Angle offset: if centered, start at top; otherwise start at side
-        float angle_offset = centered ? (math::pi * 0.5f) : 0.0f;
-        const float angle_step = (2.0f * math::pi) / float(sides);
+        float angle_offset = centered ? (std::numbers::pi_v<float> * 0.5f) : 0.0f;
+        const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(sides);
 
         // Front face center
         builder.WriteFullVertex(0.0f, 0.0f, half_depth,

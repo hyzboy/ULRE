@@ -1,4 +1,4 @@
-// Frustum (truncated cone) geometry generator for ULRE engine
+﻿// Frustum (truncated cone) geometry generator for ULRE engine
 // Similar to cylinder but with different top and bottom radii
 
 #include "InlineGeometryCommon.h"
@@ -44,7 +44,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Frustum", numberVertices, numberIndices))
             return nullptr;
 
-        const float angleStep = (2.0f * math::pi) / float(slices);
+        const float angleStep = (2.0f * std::numbers::pi_v<float>) / float(slices);
         const float halfHeight = fci->height * 0.5f;
         const float r_bottom = fci->bottom_radius;
         const float r_top = fci->top_radius;

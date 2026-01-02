@@ -1,4 +1,4 @@
-// Crescent geometry generator for ULRE engine
+﻿// Crescent geometry generator for ULRE engine
 // Creates a 3D crescent/moon shape
 
 #include "InlineGeometryCommon.h"
@@ -97,7 +97,7 @@ namespace hgl::graph::inline_geometry
             float t = float(segments - i) / float(segments);
             
             // Calculate angle for inner circle centered at (offset, 0)
-            float inner_angle_range = math::pi - angle_outer;
+            float inner_angle_range = std::numbers::pi_v<float> - angle_outer;
             float angle = -inner_angle_range + 2.0f * inner_angle_range * t;
             
             float x = offset + cos(angle) * inner_r;
@@ -127,7 +127,7 @@ namespace hgl::graph::inline_geometry
         for(uint i = 0; i <= segments; i++)
         {
             float t = float(segments - i) / float(segments);
-            float inner_angle_range = math::pi - angle_outer;
+            float inner_angle_range = std::numbers::pi_v<float> - angle_outer;
             float angle = -inner_angle_range + 2.0f * inner_angle_range * t;
             
             float x = offset + cos(angle) * inner_r;
@@ -166,7 +166,7 @@ namespace hgl::graph::inline_geometry
         for(uint i = 0; i <= segments; i++)
         {
             float t = float(i) / float(segments);
-            float inner_angle_range = math::pi - angle_outer;
+            float inner_angle_range = std::numbers::pi_v<float> - angle_outer;
             float angle = -inner_angle_range + 2.0f * inner_angle_range * t;
             
             float x = offset + cos(angle) * inner_r;

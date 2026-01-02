@@ -1,4 +1,4 @@
-// Hollow gear geometry generator for ULRE engine
+﻿// Hollow gear geometry generator for ULRE engine
 // Creates a cylindrical gear with teeth around the perimeter and a circular hole in the center
 
 #include "InlineGeometryCommon.h"
@@ -54,7 +54,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         const float half_thickness = thickness * 0.5f;
-        const float angle_per_tooth = (2.0f * math::pi) / float(tooth_count);
+        const float angle_per_tooth = (2.0f * std::numbers::pi_v<float>) / float(tooth_count);
 
         GeometryBuilder builder(pc);
         
@@ -91,7 +91,7 @@ namespace hgl::graph::inline_geometry
         // Top face - outer ring
         for(uint i = 0; i <= total_segments; i++)
         {
-            float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(total_segments)) * 2.0f * std::numbers::pi_v<float>;
             float r = get_radius_at_angle(angle);
             // Note: Y uses negative sine to match ULRE's coordinate system
             float x = cos(angle) * r;
@@ -111,7 +111,7 @@ namespace hgl::graph::inline_geometry
         // Top face - inner ring
         for(uint i = 0; i <= inner_segments; i++)
         {
-            float angle = (float(i) / float(inner_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(inner_segments)) * 2.0f * std::numbers::pi_v<float>;
             float x = cos(angle) * inner_r;
             float y = -sin(angle) * inner_r;
 
@@ -128,7 +128,7 @@ namespace hgl::graph::inline_geometry
         // Bottom face - outer ring
         for(uint i = 0; i <= total_segments; i++)
         {
-            float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(total_segments)) * 2.0f * std::numbers::pi_v<float>;
             float r = get_radius_at_angle(angle);
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
@@ -145,7 +145,7 @@ namespace hgl::graph::inline_geometry
         // Bottom face - inner ring
         for(uint i = 0; i <= inner_segments; i++)
         {
-            float angle = (float(i) / float(inner_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(inner_segments)) * 2.0f * std::numbers::pi_v<float>;
             float x = cos(angle) * inner_r;
             float y = -sin(angle) * inner_r;
 
@@ -161,7 +161,7 @@ namespace hgl::graph::inline_geometry
         // Outer side vertices
         for(uint i = 0; i <= total_segments; i++)
         {
-            float angle = (float(i) / float(total_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(total_segments)) * 2.0f * std::numbers::pi_v<float>;
             float r = get_radius_at_angle(angle);
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
@@ -190,7 +190,7 @@ namespace hgl::graph::inline_geometry
         // Inner side vertices (normals pointing inward)
         for(uint i = 0; i <= inner_segments; i++)
         {
-            float angle = (float(i) / float(inner_segments)) * 2.0f * math::pi;
+            float angle = (float(i) / float(inner_segments)) * 2.0f * std::numbers::pi_v<float>;
             float x = cos(angle) * inner_r;
             float y = -sin(angle) * inner_r;
 

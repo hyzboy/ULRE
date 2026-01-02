@@ -1,4 +1,4 @@
-// Pipe elbow geometry generator for ULRE engine
+﻿// Pipe elbow geometry generator for ULRE engine
 // Creates a curved pipe segment with inner and outer radii
 
 #include "InlineGeometryCommon.h"
@@ -62,7 +62,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         const float bend_angle_rad = deg2rad(bend_angle);
-        const float pipe_angle_step = (2.0f * math::pi) / float(pipe_segs);
+        const float pipe_angle_step = (2.0f * std::numbers::pi_v<float>) / float(pipe_segs);
         const float bend_angle_step = bend_angle_rad / float(bend_segs);
 
         // Pipe cross-section is a ring (annulus)

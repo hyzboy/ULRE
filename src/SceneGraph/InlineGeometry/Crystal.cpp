@@ -1,4 +1,4 @@
-// Crystal geometry generator for ULRE engine
+﻿// Crystal geometry generator for ULRE engine
 // Creates a pointed crystal with polygonal base
 
 #include "InlineGeometryCommon.h"
@@ -66,7 +66,7 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return nullptr;
 
-        const float angle_step = (2.0f * math::pi) / float(sides);
+        const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(sides);
         const float tip_radius = base_radius * tip_sharpness;
 
         // Simple hash function for pseudo-random irregularity

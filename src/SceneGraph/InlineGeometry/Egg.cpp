@@ -1,4 +1,4 @@
-// Egg/ovoid geometry generator for ULRE engine
+﻿// Egg/ovoid geometry generator for ULRE engine
 // Creates a 3D egg shape with asymmetric ellipsoid
 
 #include "InlineGeometryCommon.h"
@@ -41,14 +41,14 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return nullptr;
 
-        const float angle_step = (2.0f * math::pi) / float(slices);
+        const float angle_step = (2.0f * std::numbers::pi_v<float>) / float(slices);
 
         // Generate vertices using modified sphere equations
         for(uint i = 0; i <= stacks; i++)
         {
             float v = float(i) / float(stacks);
             // Stack angle from -pi/2 (bottom) to +pi/2 (top)
-            float stack_angle = -math::pi * 0.5f + math::pi * v;
+            float stack_angle = -std::numbers::pi_v<float> * 0.5f + std::numbers::pi_v<float> * v;
             
             float cos_stack = cos(stack_angle);
             float sin_stack = sin(stack_angle);

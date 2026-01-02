@@ -1,4 +1,4 @@
-// Helix (spring/spiral) geometry generator for ULRE engine
+﻿// Helix (spring/spiral) geometry generator for ULRE engine
 // Creates a helical coil with optional solid tube or wireframe
 
 #include "InlineGeometryCommon.h"
@@ -60,14 +60,14 @@ namespace hgl::graph::inline_geometry
         // z = (height / (2*pi*turns)) * t
         // where t goes from 0 to 2*pi*turns
 
-        const float total_angle = 2.0f * math::pi * float(turns);
+        const float total_angle = 2.0f * std::numbers::pi_v<float> * float(turns);
         const float angle_step = total_angle / float(total_segs);
         const float z_per_angle = height / total_angle;
 
         if(solid)
         {
             // Generate solid tube
-            const float coil_angle_step = (2.0f * math::pi) / float(coil_segs);
+            const float coil_angle_step = (2.0f * std::numbers::pi_v<float>) / float(coil_segs);
 
             for(uint s = 0; s <= total_segs; s++)
             {
