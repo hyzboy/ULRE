@@ -28,15 +28,9 @@ namespace hgl::graph::inline_geometry
         vertex->Write(0,0,0);color->Write(aci->color[2]);
         vertex->Write(0,0,s);color->Write(aci->color[2]);
 
-        Geometry *p=pc->Create();
-
-        BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(0,0,0),math::Vector3f(s,s,s));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            math::Vector3f(0,0,0),
+            math::Vector3f(s,s,s));
     }
 
     Geometry *CreateBoundingBox(GeometryCreater *pc,const BoundingBoxCreateInfo *cci)
@@ -76,15 +70,9 @@ namespace hgl::graph::inline_geometry
 
         pc->WriteIBO<uint16>(indices);
 
-        Geometry *p=pc->Create();
-
-        BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(-0.5,-0.5,-0.5),math::Vector3f(0.5,0.5,0.5));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            math::Vector3f(-0.5,-0.5,-0.5),
+            math::Vector3f(0.5,0.5,0.5));
     }
 
     Geometry *CreateSqaureArray(GeometryCreater *pc,const uint row,const uint col)
@@ -131,14 +119,8 @@ namespace hgl::graph::inline_geometry
                 }
         }
 
-        Geometry *p=pc->Create();
-
-        BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(0,0,0),math::Vector3f(col,row,0));
-
-        p->SetBoundingVolumes(bv);
-
-        return p;
+        return pc->CreateWithAABB(
+            math::Vector3f(0,0,0),
+            math::Vector3f(col,row,0));
     }
 } // namespace
