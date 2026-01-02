@@ -68,8 +68,10 @@ void main()
     };//class MaterialVertexLuminance3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexLuminance3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexLuminance3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
 {
+    cfg->material_instance=true;
+
     MaterialVertexLuminance3D mvc3d(cfg);
 
     return mvc3d.Create(dev_attr);
