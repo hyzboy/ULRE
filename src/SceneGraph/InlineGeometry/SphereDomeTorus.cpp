@@ -1,4 +1,6 @@
-﻿#include "InlineGeometryCommon.h"
+﻿#include"InlineGeometryCommon.h"
+#include<hgl/math/Quaternion.h>
+#include<hgl/math/MatrixOperations.h>
 
 namespace hgl::graph::inline_geometry
 {
@@ -25,11 +27,8 @@ namespace hgl::graph::inline_geometry
         if(!builder.IsValid())
             return(nullptr);
 
-        // For tangent calculation, we still need quaternion helpers
-        float helpVector[3] = { 1.0f, 0.0f, 0.0f };
-        float helpQuaternion[4];
-        float helpMatrix[16];
-        float tangentBuffer[3];
+        // For tangent calculation using CMMATH
+        const Vector3f helpVector(1.0f, 0.0f, 0.0f);
 
         for (uint i = 0; i < numberParallels + 1; i++)
         {
@@ -42,16 +41,16 @@ namespace hgl::graph::inline_geometry
                 float tex_x = (float) j / (float) numberSlices;
                 float tex_y = 1.0f - (float) i / (float) numberParallels;
 
-                // Calculate tangent using quaternion (for backward compatibility)
+                // Calculate tangent using CMMATH quaternion functions
                 if(builder.HasTangents())
                 {
-                    QuaternionRotateY(helpQuaternion, 360.0f * tex_x);
-                    QuaternionToMatrix(helpMatrix, helpQuaternion);
-                    MatrixMultiplyVector3(tangentBuffer, helpMatrix, helpVector);
+                    Quatf quat = RotationQuat(360.0f * tex_x, AxisVector::Y);
+                    Matrix4f matrix = ToMatrix(quat);
+                    Vector3f tangent = TransformDirection(matrix, helpVector);
                     
                     builder.WriteFullVertex(x, y, z,
                                           x, y, z,  // normal same as position for sphere
-                                          tangentBuffer[0], tangentBuffer[1], tangentBuffer[2],
+                                          tangent.x, tangent.y, tangent.z,
                                           tex_x, tex_y);
                 }
                 else
@@ -94,11 +93,8 @@ namespace hgl::graph::inline_geometry
 
         float angleStep = (2.0f * std::numbers::pi_v<float>) / ((float) numberSlices);
 
-        // used later to help us calculating tangents vectors
-        float helpVector[3] = { 1.0f, 0.0f, 0.0f };
-        float helpQuaternion[4];
-        float helpMatrix[16];
-        float tex_x;
+        // used later to help us calculating tangents vectors using CMMATH
+        const Vector3f helpVector(1.0f, 0.0f, 0.0f);
 
         if (numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
             return nullptr;
@@ -145,19 +141,21 @@ namespace hgl::graph::inline_geometry
 
                 if(tcp)
                 {                        
-                    tex_x=(float) j / (float) numberSlices;
+                    float tex_x=(float) j / (float) numberSlices;
 
                     *tcp=tex_x;++tcp;
                     *tcp=1.0f - (float) i / (float) numberParallels;++tcp;
 
                     if(tp)
                     {
-                        // use quaternion to get the tangent vector
-                        QuaternionRotateY(helpQuaternion, 360.0f * tex_x);
-                        QuaternionToMatrix(helpMatrix, helpQuaternion);
-
-                        MatrixMultiplyVector3(tp, helpMatrix, helpVector);
-                        tp+=3;
+                        // use CMMATH quaternion to get the tangent vector
+                        Quatf quat = RotationQuat(360.0f * tex_x, AxisVector::Y);
+                        Matrix4f matrix = ToMatrix(quat);
+                        Vector3f tangentVec = TransformDirection(matrix, helpVector);
+                        
+                        *tp = tangentVec.x; ++tp;
+                        *tp = tangentVec.y; ++tp;
+                        *tp = tangentVec.z; ++tp;
                     }
                 }
             }
@@ -204,10 +202,8 @@ namespace hgl::graph::inline_geometry
         uint numberVertices;
         uint numberIndices;
 
-        // used later to help us calculating tangents vectors
-        float helpVector[3] = { 0.0f, 1.0f, 0.0f };
-        float helpQuaternion[4];
-        float helpMatrix[16];
+        // used later to help us calculating tangents vectors using CMMATH
+        const Vector3f helpVector(0.0f, 1.0f, 0.0f);
 
         float torusRadius = (tci->outerRadius - tci->innerRadius) / 2.0f;
         float centerRadius = tci->outerRadius - torusRadius;
@@ -271,11 +267,14 @@ namespace hgl::graph::inline_geometry
 
                 if(tp)
                 {
-                    QuaternionRotateZ(helpQuaternion, 360.0f * s);
-                    QuaternionToMatrix(helpMatrix, helpQuaternion);
-
-                    MatrixMultiplyVector3(tp, helpMatrix, helpVector);
-                    tp+=3;
+                    // use CMMATH quaternion to get the tangent vector
+                    Quatf quat = RotationQuat(360.0f * s, AxisVector::Z);
+                    Matrix4f matrix = ToMatrix(quat);
+                    Vector3f tangentVec = TransformDirection(matrix, helpVector);
+                    
+                    *tp = tangentVec.x; ++tp;
+                    *tp = tangentVec.y; ++tp;
+                    *tp = tangentVec.z; ++tp;
                 }
             }
         }
