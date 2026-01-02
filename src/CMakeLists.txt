@@ -1,5 +1,6 @@
 ﻿add_subdirectory(ShaderGen)
 add_subdirectory(SceneGraph)
+add_subdirectory(InlineGeometry)
 add_subdirectory(Work)
 add_subdirectory(ecs)
 add_subdirectory(Tools)

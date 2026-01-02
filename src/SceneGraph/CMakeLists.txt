@@ -183,82 +183,6 @@ SET(GEOMETRY_VERTEX_DATA_FILES  ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("5.Geometry\\VertexData" FILES ${GEOMETRY_VERTEX_DATA_FILES})
 
-SET(GEOMETRY_UTILS_FILES    ${SG_INCLUDE_PATH}/geo/GeometryBuilder.h
-                            ${SG_INCLUDE_PATH}/geo/IndexGenerator.h
-                            InlineGeometry/GeometryBuilder.cpp
-                            InlineGeometry/GeometryValidator.h)
-
-SOURCE_GROUP("5.Geometry\\Utils" FILES ${GEOMETRY_UTILS_FILES})
-
-SET(GEOMETRY_PRIMITIVES_BASIC   InlineGeometry/InlineGeometryCommon.h
-                                ${SG_INCLUDE_PATH}/geo/InlineGeometry.h
-                                InlineGeometry/PlaneAndSquare.cpp
-                                InlineGeometry/Rectangle.cpp
-                                InlineGeometry/Cube.cpp
-                                InlineGeometry/Circle.cpp
-                                InlineGeometry/AxisBoundingBoxSquareArray.cpp)
-
-SET(GEOMETRY_PRIMITIVES_SPHERE  InlineGeometry/SphereDomeTorus.cpp
-                                InlineGeometry/HexSphere.cpp)
-
-SET(GEOMETRY_PRIMITIVES_CYLINDER InlineGeometry/CylinderConeTorusIndices.cpp
-                                 InlineGeometry/Cylinder.cpp
-                                 InlineGeometry/HollowCylinder.cpp
-                                 InlineGeometry/Cone.cpp)
-
-SET(GEOMETRY_PRIMITIVES_CAPSULE InlineGeometry/Capsule.cpp
-                                InlineGeometry/TaperedCapsule.cpp)
-
-SET(GEOMETRY_PRIMITIVES_EXTENDED InlineGeometry/Frustum.cpp
-                                 InlineGeometry/Arrow.cpp
-                                 InlineGeometry/RoundedBox.cpp
-                                 InlineGeometry/PipeElbow.cpp
-                                 InlineGeometry/Helix.cpp
-                                 InlineGeometry/SolidGear.cpp
-                                 InlineGeometry/HollowGear.cpp
-                                 InlineGeometry/Heart.cpp
-                                 InlineGeometry/Star.cpp
-                                 InlineGeometry/Polygon.cpp
-                                 InlineGeometry/Wedge.cpp
-                                 InlineGeometry/Teardrop.cpp
-                                 InlineGeometry/Egg.cpp
-                                 InlineGeometry/Crescent.cpp
-                                 InlineGeometry/StraightStairs.cpp
-                                 InlineGeometry/SpiralStairs.cpp
-                                 InlineGeometry/Arch.cpp
-                                 InlineGeometry/Tube.cpp
-                                 InlineGeometry/Bolt.cpp
-                                 InlineGeometry/Nut.cpp
-                                 InlineGeometry/Diamond.cpp
-                                 InlineGeometry/Crystal.cpp
-                                 InlineGeometry/Cross.cpp
-                                 InlineGeometry/Ribbon.cpp
-                                 InlineGeometry/PhoneShapedBox.cpp
-                                 InlineGeometry/TorusKnot.cpp
-                                 InlineGeometry/MobiusStrip.cpp
-                                 InlineGeometry/KleinBottle.cpp
-                                 InlineGeometry/Superellipsoid.cpp)
-
-SET(GEOMETRY_PRIMITIVES_ADVANCED ${SG_INCLUDE_PATH}/geo/Extruded.h
-                                 ${SG_INCLUDE_PATH}/geo/Wall.h
-                                 InlineGeometry/ExtrudedPolygon.cpp
-                                 InlineGeometry/Wall.cpp)
-
-SOURCE_GROUP("5.Geometry\\Primitives\\Basic" FILES ${GEOMETRY_PRIMITIVES_BASIC})
-SOURCE_GROUP("5.Geometry\\Primitives\\Sphere" FILES ${GEOMETRY_PRIMITIVES_SPHERE})
-SOURCE_GROUP("5.Geometry\\Primitives\\Cylinder" FILES ${GEOMETRY_PRIMITIVES_CYLINDER})
-SOURCE_GROUP("5.Geometry\\Primitives\\Capsule" FILES ${GEOMETRY_PRIMITIVES_CAPSULE})
-SOURCE_GROUP("5.Geometry\\Primitives\\Extended" FILES ${GEOMETRY_PRIMITIVES_EXTENDED})
-SOURCE_GROUP("5.Geometry\\Primitives\\Advanced" FILES ${GEOMETRY_PRIMITIVES_ADVANCED})
-
-SET(GEOMETRY_FILES  ${GEOMETRY_UTILS_FILES}
-                    ${GEOMETRY_PRIMITIVES_BASIC}
-                    ${GEOMETRY_PRIMITIVES_SPHERE}
-                    ${GEOMETRY_PRIMITIVES_CYLINDER}
-                    ${GEOMETRY_PRIMITIVES_CAPSULE}
-                    ${GEOMETRY_PRIMITIVES_EXTENDED}
-                    ${GEOMETRY_PRIMITIVES_ADVANCED})
-
 # ============================================================================
 # 6. Texture System - 纹理系统
 # ============================================================================
@@ -633,7 +557,6 @@ SET(VULKAN_ALL_FILES    ${VK_MATERIAL_MANAGER_FILES}
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${GEOMETRY_CORE_FILES}
-                                        ${GEOMETRY_FILES}
 
                                         ${GLTF_SOURCE}
 
