@@ -15,7 +15,7 @@ namespace hgl::graph::inline_geometry
         const uint slices = fci->numberSlices;
         
         // Validate parameters
-        if(!GeometryValidator::ValidateRevolutionParams(slices))
+        if(!GeometryValidator::ValidateSlices(slices))
             return nullptr;
 
         // Calculate vertex and index counts

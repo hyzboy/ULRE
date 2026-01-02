@@ -4,144 +4,121 @@ namespace hgl::graph::inline_geometry
 {
     using namespace hgl::math;
 
-    Geometry *CreateCone(GeometryCreater *pc,const ConeCreateInfo *cci)
+    Geometry *CreateCone(GeometryCreater *pc, const ConeCreateInfo *cci)
     {
-        uint i, j;
-
-        uint numberVertices = (cci->numberSlices + 2) + (cci->numberSlices + 1) * (cci->numberStacks + 1);
-        uint numberIndices = cci->numberSlices * 3 + cci->numberSlices * 6 * cci->numberStacks;
-
-        if(!pc->Init("Cone",numberVertices,numberIndices))
-            return(nullptr);
-
-        float angleStep = (2.0f * std::numbers::pi_v<float>) / ((float) cci->numberSlices);
-
-        float h = 2.0f * cci->halfExtend;
-        float r = cci->radius;
-        float l = sqrtf(h*h + r*r);
-
-        if (cci->numberSlices < 3 || cci->numberStacks < 1 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+        // 1. 参数验证
+        if(!pc || !cci)
             return nullptr;
-                
-        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
-        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
-        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
-        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
 
-        float *vp=vertex;
-        float *np=normal;
-        float *tp=tangent;
-        float *tcp=tex_coord;
+        // 2. 验证参数合法性
+        if(!GeometryValidator::ValidateSlicesAndStacks(cci->numberSlices, cci->numberStacks))
+            return nullptr;
 
-        if(!vp)
-            return(nullptr);
+        // 3. 计算顶点和索引数量
+        const uint numberVertices = (cci->numberSlices + 2) + (cci->numberSlices + 1) * (cci->numberStacks + 1);
+        const uint numberIndices = cci->numberSlices * 3 + cci->numberSlices * 6 * cci->numberStacks;
 
-        *vp =  0.0f;            ++vp;
-        *vp =  0.0f;            ++vp;
-        *vp = -cci->halfExtend; ++vp;
+        // 4. 基本验证
+        if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
+            return nullptr;
 
-        if(np)
+        // 5. 初始化
+        if(!pc->Init("Cone", numberVertices, numberIndices))
+            return nullptr;
+
+        // 6. 创建 GeometryBuilder
+        GeometryBuilder builder(pc);
+        if(!builder.IsValid())
+            return nullptr;
+
+        // 7. 预计算常量
+        const float angleStep = (2.0f * std::numbers::pi_v<float>) / float(cci->numberSlices);
+        const float h = 2.0f * cci->halfExtend;
+        const float r = cci->radius;
+        const float l = sqrtf(h * h + r * r);
+
+        // 8. 生成底面中心顶点
+        builder.WriteFullVertex(
+            0.0f, 0.0f, -cci->halfExtend,
+            0.0f, 0.0f, -1.0f,
+            0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f
+        );
+
+        // 9. 生成底面圆周顶点
+        for(uint i = 0; i <= cci->numberSlices; ++i)
         {
-            *np = 0.0f;++np;
-            *np = 0.0f;++np;
-            *np =-1.0f;++np;
+            const float currentAngle = angleStep * float(i);
+            const float cosAngle = cos(currentAngle);
+            const float sinAngle = sin(currentAngle);
+
+            builder.WriteFullVertex(
+                cosAngle * cci->radius,
+                -sinAngle * cci->radius,
+                -cci->halfExtend,
+                0.0f, 0.0f, -1.0f,
+                sinAngle, cosAngle, 0.0f,
+                0.0f, 0.0f
+            );
         }
 
-        if(tp)
+        // 10. 生成侧面顶点（从底部到顶点）
+        for(uint j = 0; j <= cci->numberStacks; ++j)
         {
-            *tp = 0.0f; ++tp;
-            *tp = 1.0f; ++tp;
-            *tp = 0.0f; ++tp;
-        }
+            const float level = float(j) / float(cci->numberStacks);
+            const float currentRadius = cci->radius * (1.0f - level);
+            const float z = -cci->halfExtend + 2.0f * cci->halfExtend * level;
 
-        if(tcp)
-        {
-            *tcp = 0.0f; ++tcp;
-            *tcp = 0.0f; ++tcp;
-        }
-
-        for (i = 0; i < cci->numberSlices + 1; i++)
-        {
-            float currentAngle = angleStep * (float)i;
-
-            *vp =  cos(currentAngle) * cci->radius; ++vp;
-            *vp = -sin(currentAngle) * cci->radius; ++vp;
-            *vp = -cci->halfExtend;                 ++vp;
-
-            if(np)
+            for(uint i = 0; i <= cci->numberSlices; ++i)
             {
-                *np = 0.0f;++np;
-                *np = 0.0f;++np;
-                *np =-1.0f;++np;
-            }
+                const float currentAngle = angleStep * float(i);
+                const float cosAngle = cos(currentAngle);
+                const float sinAngle = sin(currentAngle);
 
-            if(tp)
-            {
-                *tp = sin(currentAngle);    ++tp;
-                *tp = cos(currentAngle);    ++tp;
-                *tp = 0.0f;                 ++tp;
-            }
+                // 位置
+                const float x = cosAngle * currentRadius;
+                const float y = -sinAngle * currentRadius;
 
-            if(tcp)
-            {
-                *tcp = 0.0f; ++tcp;
-                *tcp = 0.0f; ++tcp;
-            }
-        }
+                // 法线（圆锥侧面法线）
+                const float nx = (h / l) * cosAngle;
+                const float ny = -(h / l) * sinAngle;
+                const float nz = r / l;
 
-        for (j = 0; j < cci->numberStacks + 1; j++)
-        {
-            float level = (float)j / (float)cci->numberStacks;
+                // 切线
+                const float tx = -sinAngle;
+                const float ty = -cosAngle;
+                const float tz = 0.0f;
 
-            for (i = 0; i < cci->numberSlices + 1; i++)
-            {
-                float currentAngle = angleStep * (float)i;
+                // 纹理坐标
+                const float u = float(i) / float(cci->numberSlices);
+                const float v = level;
 
-                *vp =  cos(currentAngle) * cci->radius * (1.0f - level);    ++vp;
-                *vp = -sin(currentAngle) * cci->radius * (1.0f - level);    ++vp;
-                *vp = -cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
-
-                if(np)
-                {
-                    *np = h / l *  cos(currentAngle);   ++np;
-                    *np =-h / l *  sin(currentAngle);   ++np;
-                    *np = r / l;                        ++np;
-                }
-
-                if(tp)
-                {
-                    *tp = -sin(currentAngle);   ++tp;
-                    *tp = -cos(currentAngle);   ++tp;
-                    *tp = 0.0f;                 ++tp;
-                }
-
-                if(tcp)
-                {
-                    *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
-                    *tcp = level;                                ++tcp;
-                }
+                builder.WriteFullVertex(x, y, z, nx, ny, nz, tx, ty, tz, u, v);
             }
         }
 
-        //索引
-        {
-            const IndexType index_type=pc->GetIndexType();
+        // 11. 生成索引
+        const IndexType index_type = pc->GetIndexType();
+        if(index_type == IndexType::U16)
+            IndexGenerator::CreateConeIndices<uint16>(pc, cci->numberSlices, cci->numberStacks);
+        else if(index_type == IndexType::U32)
+            IndexGenerator::CreateConeIndices<uint32>(pc, cci->numberSlices, cci->numberStacks);
+        else if(index_type == IndexType::U8)
+            IndexGenerator::CreateConeIndices<uint8>(pc, cci->numberSlices, cci->numberStacks);
+        else
+            return nullptr;
 
-            if(index_type==IndexType::U16)IndexGenerator::CreateConeIndices<uint16>(pc,cci->numberSlices,cci->numberStacks);else
-            if(index_type==IndexType::U32)IndexGenerator::CreateConeIndices<uint32>(pc,cci->numberSlices,cci->numberStacks);else
-            if(index_type==IndexType::U8 )IndexGenerator::CreateConeIndices<uint8 >(pc,cci->numberSlices,cci->numberStacks);else
-                return(nullptr);
-        }
+        // 12. 创建几何体
+        Geometry *p = pc->Create();
 
-        Geometry *p=pc->Create();
-
+        // 13. 设置包围体
         BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(-cci->radius,-cci->radius,-cci->halfExtend),
-                       Vector3f( cci->radius, cci->radius, cci->halfExtend));
-
+        bv.SetFromAABB(
+            Vector3f(-cci->radius, -cci->radius, -cci->halfExtend),
+            Vector3f(cci->radius, cci->radius, cci->halfExtend)
+        );
         p->SetBoundingVolumes(bv);
 
         return p;
     }
-} // namespace
+}//namespace hgl::graph::inline_geometry
