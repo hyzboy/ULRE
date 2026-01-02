@@ -6,6 +6,7 @@ namespace hgl::graph::inline_geometry
 
     Geometry *CreateTaperedCapsule(GeometryCreater *pc,const TaperedCapsuleCreateInfo *tcci)
     {
+        // 1. 参数验证
         if(!pc||!tcci)return nullptr;
 
         const uint slices = std::max<uint>(3, tcci->numberSlices);
@@ -14,10 +15,12 @@ namespace hgl::graph::inline_geometry
         const float topR = tcci->topRadius;
         const float halfH = tcci->halfHeight;
 
-        // We'll build: side frustum (between -halfH and +halfH) with rings at -halfH and +halfH,
-        // top hemisphere centered at +halfH with radius topR, bottom hemisphere centered at -halfH with radius bottomR.
+        // 2. 计算几何体结构
+        // 构建：侧面圆台（在 -halfH 和 +halfH 之间），底部和顶部各有一个圆环
+        // 顶部半球：中心在 +halfH，半径为 topR
+        // 底部半球：中心在 -halfH，半径为 bottomR
 
-        const uint side_vertices = (slices + 1) * 2; // bottom ring and top ring
+        const uint side_vertices = (slices + 1) * 2; // 底环和顶环
         const uint hemi_vertices = (stacks + 1) * (slices + 1);
         const uint numberVertices = side_vertices + hemi_vertices * 2;
 
@@ -25,29 +28,28 @@ namespace hgl::graph::inline_geometry
         const uint hemi_faces = stacks * slices * 2;
         const uint numberIndices = (side_faces + hemi_faces * 2) * 3;
 
-        if(numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+        // 3. 验证参数
+        if(!GeometryValidator::ValidateSlicesAndStacks(slices, stacks, 3, 1))
             return nullptr;
 
+        if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
+            return nullptr;
+
+        // 4. 初始化
         if(!pc->Init("TaperedCapsule", numberVertices, numberIndices))
             return nullptr;
 
-        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
-        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
-        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
-        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
+        // 5. 创建 GeometryBuilder
+        GeometryBuilder builder(pc);
+        if(!builder.IsValid())
+            return nullptr;
 
-        float *vp = vertex;
-        float *np = normal;
-        float *tp = tangent;
-        float *tcp = tex_coord;
-
-        if(!vp) return nullptr;
-
+        // 6. 预计算常量
         const float angleStep = (2.0f * std::numbers::pi_v<float>) / float(slices);
         const float height = 2.0f * halfH;
         const float dr = topR - bottomR;
 
-        // Side frustum: bottom ring at -halfH, top ring at +halfH.
+        // 7. 生成侧面圆台顶点（底环和顶环）
         for(uint ring=0; ring<2; ++ring)
         {
             const float z = (ring==0) ? -halfH : halfH;
@@ -55,313 +57,200 @@ namespace hgl::graph::inline_geometry
 
             for(uint i=0;i<=slices;i++)
             {
-                float a = angleStep * float(i);
-                float ca = cos(a);
-                float sa = -sin(a); // keep parameterization
-                float x = ca * r;
-                float y = sa * r;
+                const float a = angleStep * float(i);
+                const float ca = cos(a);
+                const float sa = -sin(a);
+                const float x = ca * r;
+                const float y = sa * r;
 
-                *vp = x; ++vp;
-                *vp = y; ++vp;
-                *vp = z; ++vp;
+                // 圆台侧面法线计算
+                const float nx_unnorm = ca * height;
+                const float ny_unnorm = sa * height;
+                const float nz_unnorm = -dr;
+                const float norm_len = sqrtf(nx_unnorm*nx_unnorm + ny_unnorm*ny_unnorm + nz_unnorm*nz_unnorm);
+                
+                const float nx = (norm_len > 0.0f) ? (nx_unnorm / norm_len) : ca;
+                const float ny = (norm_len > 0.0f) ? (ny_unnorm / norm_len) : sa;
+                const float nz = (norm_len > 0.0f) ? (nz_unnorm / norm_len) : 0.0f;
 
-                if(np)
-                {
-                    // compute outward normal for frustum side: proportional to (cos*height, -sin*height, -dr)
-                    float nx = ca * height;
-                    float ny = sa * height;
-                    float nz = -dr;
+                // 切线沿圆周方向
+                const float tx = -sa;
+                const float ty = -ca;
+                const float tz = 0.0f;
 
-                    float len = sqrtf(nx*nx + ny*ny + nz*nz);
-                    if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
+                // 纹理坐标
+                const float u = float(i) / float(slices);
+                const float v = (ring == 0) ? 0.0f : 1.0f;
 
-                    *np = nx; ++np;
-                    *np = ny; ++np;
-                    *np = nz; ++np;
-                }
-
-                if(tp)
-                {
-                    // tangent along circumference
-                    *tp = -sa; ++tp; // -(-sin)=sin? keep consistent with other files
-                    *tp = -ca; ++tp;
-                    *tp = 0.0f; ++tp;
-                }
-
-                if(tcp)
-                {
-                    *tcp = float(i)/float(slices); ++tcp;
-                    *tcp = (ring==0)?0.0f:1.0f; ++tcp;
-                }
+                builder.WriteFullVertex(x, y, z, nx, ny, nz, tx, ty, tz, u, v);
             }
         }
 
-        // Top hemisphere (center at +halfH)
+        // 8. 生成顶部半球顶点
         for(uint s=0;s<=stacks;s++)
         {
-            float phi = (float)s / (float)stacks * (std::numbers::pi_v<float> * 0.5f);
-            float cz = sin(phi); // from 0 to 1
-            float r = cos(phi);  // ring radius, will be scaled by topR
+            const float phi = (float)s / (float)stacks * (std::numbers::pi_v<float> * 0.5f);
+            const float cz = sin(phi); // 从 0 到 1
+            const float r = cos(phi);  // 环半径，将被 topR 缩放
 
             for(uint i=0;i<=slices;i++)
             {
-                float a = angleStep * float(i);
-                float x = r * cos(a) * topR;
-                float y = -r * sin(a) * topR;
-                float z = halfH + cz * topR;
+                const float a = angleStep * float(i);
+                const float ca = cos(a);
+                const float sa = -sin(a);
+                
+                const float x = r * ca * topR;
+                const float y = r * sa * topR;
+                const float z = halfH + cz * topR;
 
-                *vp = x; ++vp;
-                *vp = y; ++vp;
-                *vp = z; ++vp;
+                // 法线（球面法线）
+                const float nz_pre = cz * topR;
+                const float norm_len = sqrtf(x*x + y*y + nz_pre*nz_pre);
+                const float nx = (norm_len > 0.0f) ? (x / norm_len) : 0.0f;
+                const float ny = (norm_len > 0.0f) ? (y / norm_len) : 0.0f;
+                const float nz = (norm_len > 0.0f) ? (nz_pre / norm_len) : 1.0f;
 
-                if(np)
-                {
-                    float nx = x;
-                    float ny = y;
-                    float nz = cz * topR;
-                    float len = sqrt(nx*nx+ny*ny+nz*nz);
-                    if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
-                    *np = nx; ++np;
-                    *np = ny; ++np;
-                    *np = nz; ++np;
-                }
+                // 切线
+                const float tx = -sa;
+                const float ty = -ca;
+                const float tz = 0.0f;
 
-                if(tp)
-                {
-                    *tp = -sin(a); ++tp;
-                    *tp = -cos(a); ++tp;
-                    *tp = 0.0f; ++tp;
-                }
+                // 纹理坐标
+                const float u = float(i) / float(slices);
+                const float v = 1.0f - (float)s / float(stacks);
 
-                if(tcp)
-                {
-                    *tcp = float(i)/float(slices); ++tcp;
-                    *tcp = 1.0f - (float)s/float(stacks); ++tcp;
-                }
+                builder.WriteFullVertex(x, y, z, nx, ny, nz, tx, ty, tz, u, v);
             }
         }
 
-        // Bottom hemisphere (center at -halfH)
+        // 9. 生成底部半球顶点
         for(uint s=0;s<=stacks;s++)
         {
-            float phi = (float)s / (float)stacks * (std::numbers::pi_v<float> * 0.5f);
-            float cz = -sin(phi); // from 0 to -1
-            float r = cos(phi);
+            const float phi = (float)s / (float)stacks * (std::numbers::pi_v<float> * 0.5f);
+            const float cz = -sin(phi); // 从 0 到 -1
+            const float r = cos(phi);
 
             for(uint i=0;i<=slices;i++)
             {
-                float a = angleStep * float(i);
-                float x = r * cos(a) * bottomR;
-                float y = -r * sin(a) * bottomR;
-                float z = -halfH + cz * bottomR;
+                const float a = angleStep * float(i);
+                const float ca = cos(a);
+                const float sa = -sin(a);
+                
+                const float x = r * ca * bottomR;
+                const float y = r * sa * bottomR;
+                const float z = -halfH + cz * bottomR;
 
-                *vp = x; ++vp;
-                *vp = y; ++vp;
-                *vp = z; ++vp;
+                // 法线（球面法线）
+                const float nz_pre = cz * bottomR;
+                const float norm_len = sqrtf(x*x + y*y + nz_pre*nz_pre);
+                const float nx = (norm_len > 0.0f) ? (x / norm_len) : 0.0f;
+                const float ny = (norm_len > 0.0f) ? (y / norm_len) : 0.0f;
+                const float nz = (norm_len > 0.0f) ? (nz_pre / norm_len) : -1.0f;
 
-                if(np)
-                {
-                    float nx = x;
-                    float ny = y;
-                    float nz = cz * bottomR;
-                    float len = sqrt(nx*nx+ny*ny+nz*nz);
-                    if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
-                    *np = nx; ++np;
-                    *np = ny; ++np;
-                    *np = nz; ++np;
-                }
+                // 切线
+                const float tx = -sa;
+                const float ty = -ca;
+                const float tz = 0.0f;
 
-                if(tp)
-                {
-                    *tp = -sin(a); ++tp;
-                    *tp = -cos(a); ++tp;
-                    *tp = 0.0f; ++tp;
-                }
+                // 纹理坐标
+                const float u = float(i) / float(slices);
+                const float v = (float)s / float(stacks);
 
-                if(tcp)
-                {
-                    *tcp = float(i)/float(slices); ++tcp;
-                    *tcp = (float)s/float(stacks); ++tcp;
-                }
+                builder.WriteFullVertex(x, y, z, nx, ny, nz, tx, ty, tz, u, v);
             }
         }
 
-        // Indices
+        // 10. 生成索引
         const IndexType index_type = pc->GetIndexType();
         const uint ringVertexCount = slices + 1;
 
-        if(index_type==IndexType::U16)
+        // 创建索引生成lambda（避免代码重复）
+        auto generateIndices = [&](auto* ip) 
+        {
+            using IndexT = std::remove_pointer_t<decltype(ip)>;
+            
+            // 侧面索引
+            uint base = 0;
+            for(uint i=0;i<slices;i++)
+            {
+                const uint a = base + i;
+                const uint b = base + i + 1;
+                const uint c = base + ringVertexCount + i;
+                const uint d = base + ringVertexCount + i + 1;
+
+                // 保持顺时针正面
+                *ip++ = (IndexT)a; *ip++ = (IndexT)d; *ip++ = (IndexT)b;
+                *ip++ = (IndexT)a; *ip++ = (IndexT)c; *ip++ = (IndexT)d;
+            }
+
+            // 顶部半球索引
+            const uint topBase = ringVertexCount * 2;
+            for(uint s=0;s<stacks;s++)
+            {
+                for(uint i=0;i<slices;i++)
+                {
+                    const uint row1 = topBase + s * (slices + 1);
+                    const uint row2 = topBase + (s + 1) * (slices + 1);
+
+                    const uint v0 = row1 + i;
+                    const uint v1 = row1 + i + 1;
+                    const uint v2 = row2 + i;
+                    const uint v3 = row2 + i + 1;
+
+                    *ip++ = (IndexT)v0; *ip++ = (IndexT)v3; *ip++ = (IndexT)v1;
+                    *ip++ = (IndexT)v0; *ip++ = (IndexT)v2; *ip++ = (IndexT)v3;
+                }
+            }
+
+            // 底部半球索引
+            const uint bottomBase = topBase + hemi_vertices;
+            for(uint s=0;s<stacks;s++)
+            {
+                for(uint i=0;i<slices;i++)
+                {
+                    const uint row1 = bottomBase + s * (slices + 1);
+                    const uint row2 = bottomBase + (s + 1) * (slices + 1);
+
+                    const uint v0 = row1 + i;
+                    const uint v1 = row1 + i + 1;
+                    const uint v2 = row2 + i;
+                    const uint v3 = row2 + i + 1;
+
+                    *ip++ = (IndexT)v0; *ip++ = (IndexT)v1; *ip++ = (IndexT)v3;
+                    *ip++ = (IndexT)v0; *ip++ = (IndexT)v3; *ip++ = (IndexT)v2;
+                }
+            }
+        };
+
+        if(index_type == IndexType::U16)
         {
             IBTypeMap<uint16> ib(pc->GetIBMap());
-            uint16 *ip = ib;
-
-            // side indices
-            uint base = 0;
-            for(uint i=0;i<slices;i++)
-            {
-                uint a = base + i;
-                uint b = base + i + 1;
-                uint c = base + ringVertexCount + i;
-                uint d = base + ringVertexCount + i + 1;
-
-                // maintain clockwise front
-                *ip = a; ++ip; *ip = d; ++ip; *ip = b; ++ip;
-                *ip = a; ++ip; *ip = c; ++ip; *ip = d; ++ip;
-            }
-
-            // top hemisphere indices
-            uint topBase = ringVertexCount*2;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = topBase + s*(slices+1);
-                    uint row2 = topBase + (s+1)*(slices+1);
-
-                    uint v0 = row1 + i;
-                    uint v1 = row1 + i + 1;
-                    uint v2 = row2 + i;
-                    uint v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
-                }
-            }
-
-            // bottom hemisphere
-            uint bottomBase = topBase + hemi_vertices;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = bottomBase + s*(slices+1);
-                    uint row2 = bottomBase + (s+1)*(slices+1);
-
-                    uint v0 = row1 + i;
-                    uint v1 = row1 + i + 1;
-                    uint v2 = row2 + i;
-                    uint v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
-                }
-            }
+            generateIndices(ib.operator uint16*());
         }
-        else if(index_type==IndexType::U32)
+        else if(index_type == IndexType::U32)
         {
             IBTypeMap<uint32> ib(pc->GetIBMap());
-            uint32 *ip = ib;
-
-            uint base = 0;
-            for(uint i=0;i<slices;i++)
-            {
-                uint a = base + i;
-                uint b = base + i + 1;
-                uint c = base + ringVertexCount + i;
-                uint d = base + ringVertexCount + i + 1;
-
-                *ip = a; ++ip; *ip = d; ++ip; *ip = b; ++ip;
-                *ip = a; ++ip; *ip = c; ++ip; *ip = d; ++ip;
-            }
-
-            uint topBase = ringVertexCount*2;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = topBase + s*(slices+1);
-                    uint row2 = topBase + (s+1)*(slices+1);
-
-                    uint v0 = row1 + i;
-                    uint v1 = row1 + i + 1;
-                    uint v2 = row2 + i;
-                    uint v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
-                }
-            }
-
-            uint bottomBase = topBase + hemi_vertices;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = bottomBase + s*(slices+1);
-                    uint row2 = bottomBase + (s+1)*(slices+1);
-
-                    uint v0 = row1 + i;
-                    uint v1 = row1 + i + 1;
-                    uint v2 = row2 + i;
-                    uint v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
-                }
-            }
+            generateIndices(ib.operator uint32*());
         }
-        else if(index_type==IndexType::U8)
+        else if(index_type == IndexType::U8)
         {
             IBTypeMap<uint8> ib(pc->GetIBMap());
-            uint8 *ip = ib;
-
-            uint base = 0;
-            for(uint i=0;i<slices;i++)
-            {
-                uint8 a = base + i;
-                uint8 b = base + i + 1;
-                uint8 c = base + ringVertexCount + i;
-                uint8 d = base + ringVertexCount + i + 1;
-
-                *ip = a; ++ip; *ip = d; ++ip; *ip = b; ++ip;
-                *ip = a; ++ip; *ip = c; ++ip; *ip = d; ++ip;
-            }
-
-            uint topBase = ringVertexCount*2;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = topBase + s*(slices+1);
-                    uint row2 = topBase + (s+1)*(slices+1);
-
-                    uint8 v0 = row1 + i;
-                    uint8 v1 = row1 + i + 1;
-                    uint8 v2 = row2 + i;
-                    uint8 v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
-                }
-            }
-
-            uint bottomBase = topBase + hemi_vertices;
-            for(uint s=0;s<stacks;s++)
-            {
-                for(uint i=0;i<slices;i++)
-                {
-                    uint row1 = bottomBase + s*(slices+1);
-                    uint row2 = bottomBase + (s+1)*(slices+1);
-
-                    uint8 v0 = row1 + i;
-                    uint8 v1 = row1 + i + 1;
-                    uint8 v2 = row2 + i;
-                    uint8 v3 = row2 + i + 1;
-
-                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
-                }
-            }
+            generateIndices(ib.operator uint8*());
         }
+        else
+            return nullptr;
 
+        // 11. 创建几何体
         Geometry *p = pc->Create();
 
+        // 12. 设置包围体
         BoundingVolumes bv;
+        const float maxr = std::max(bottomR, topR);
 
-        float maxr = std::max(bottomR, topR);
-
-        bv.SetFromAABB(math::Vector3f(-maxr,-maxr,-halfH-maxr),
-                       Vector3f(maxr,maxr,halfH+maxr));
+        bv.SetFromAABB(
+            math::Vector3f(-maxr, -maxr, -halfH - maxr),
+            Vector3f(maxr, maxr, halfH + maxr)
+        );
 
         p->SetBoundingVolumes(bv);
 

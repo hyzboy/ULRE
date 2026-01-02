@@ -85,224 +85,192 @@ namespace hgl::graph::inline_geometry
 
     Geometry *CreateDome(GeometryCreater *pc,const uint numberSlices)
     {
+        // 1. 参数验证
         if(!pc)return(nullptr);
 
-        uint numberParallels = numberSlices / 4;
-        uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
-        uint numberIndices = numberParallels * numberSlices * 6;
+        // 2. 计算几何体参数
+        const uint numberParallels = numberSlices / 4;
+        const uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
+        const uint numberIndices = numberParallels * numberSlices * 6;
+        const float angleStep = (2.0f * std::numbers::pi_v<float>) / ((float) numberSlices);
 
-        float angleStep = (2.0f * std::numbers::pi_v<float>) / ((float) numberSlices);
-
-        // used later to help us calculating tangents vectors using CMMATH
-        const Vector3f helpVector(1.0f, 0.0f, 0.0f);
-
-        if (numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+        // 3. 验证参数
+        if(!GeometryValidator::ValidateSlices(numberSlices, 3))
             return nullptr;
 
+        if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
+            return nullptr;
+
+        // 4. 初始化
         if(!pc->Init("Dome",numberVertices,numberIndices))
             return(nullptr);
-                
-        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
-        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
-        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
-        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
 
-        float *vp=vertex;
-        float *np=normal;
-        float *tp=tangent;
-        float *tcp=tex_coord;
+        // 5. 创建 GeometryBuilder
+        GeometryBuilder builder(pc);
+        if(!builder.IsValid())
+            return nullptr;
 
-        if(!vp)
-            return(nullptr);
+        // 6. 预计算常量（用于切线计算的辅助向量）
+        const Vector3f helpVector(1.0f, 0.0f, 0.0f);
 
+        // 7. 生成顶点
         for (uint i = 0; i < numberParallels + 1; i++)
         {
             for (uint j = 0; j < numberSlices + 1; j++)
             {
-                uint vertexIndex = (i * (numberSlices + 1) + j) * 4;
-                uint normalIndex = (i * (numberSlices + 1) + j) * 3;
-                uint tangentIndex = (i * (numberSlices + 1) + j) * 3;
-                uint texCoordsIndex = (i * (numberSlices + 1) + j) * 2;
-                    
-                float x = sin(angleStep * (double) i) * sin(angleStep * (double) j);
-                float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
-                float z = cos(angleStep * (double) i);
+                const float x = sin(angleStep * (double) i) * sin(angleStep * (double) j);
+                const float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
+                const float z = cos(angleStep * (double) i);
 
-                *vp=x;++vp;
-                *vp=y;++vp;
-                *vp=z;++vp;
+                // 法线（球面法线）
+                const float nx = +x;
+                const float ny = -y;
+                const float nz = +z;
 
-                if(np)
+                // 纹理坐标
+                const float tex_x = (float) j / (float) numberSlices;
+                const float tex_y = 1.0f - (float) i / (float) numberParallels;
+
+                // 切线（使用四元数计算）
+                float tx = 0.0f, ty = 0.0f, tz = 0.0f;
+                if(builder.HasTangents())
                 {
-                    *np=+x;++np;
-                    *np=-y;++np;
-                    *np=+z;++np;
+                    Quatf quat = RotationQuat(360.0f * tex_x, AxisVector::Y);
+                    Matrix4f matrix = ToMatrix(quat);
+                    Vector3f tangentVec = TransformDirection(matrix, helpVector);
+                    tx = tangentVec.x;
+                    ty = tangentVec.y;
+                    tz = tangentVec.z;
                 }
 
-                if(tcp)
-                {                        
-                    float tex_x=(float) j / (float) numberSlices;
-
-                    *tcp=tex_x;++tcp;
-                    *tcp=1.0f - (float) i / (float) numberParallels;++tcp;
-
-                    if(tp)
-                    {
-                        // use CMMATH quaternion to get the tangent vector
-                        Quatf quat = RotationQuat(360.0f * tex_x, AxisVector::Y);
-                        Matrix4f matrix = ToMatrix(quat);
-                        Vector3f tangentVec = TransformDirection(matrix, helpVector);
-                        
-                        *tp = tangentVec.x; ++tp;
-                        *tp = tangentVec.y; ++tp;
-                        *tp = tangentVec.z; ++tp;
-                    }
-                }
+                builder.WriteFullVertex(x, y, z, nx, ny, nz, tx, ty, tz, tex_x, tex_y);
             }
         }
 
-        //索引
-        {
-            const IndexType index_type=pc->GetIndexType();
+        // 8. 生成索引
+        const IndexType index_type = pc->GetIndexType();
+        if(index_type == IndexType::U16)
+            IndexGenerator::CreateSphereIndices<uint16>(pc, numberParallels, numberSlices);
+        else if(index_type == IndexType::U32)
+            IndexGenerator::CreateSphereIndices<uint32>(pc, numberParallels, numberSlices);
+        else if(index_type == IndexType::U8)
+            IndexGenerator::CreateSphereIndices<uint8>(pc, numberParallels, numberSlices);
+        else
+            return nullptr;
 
-            if(index_type==IndexType::U16)IndexGenerator::CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U32)IndexGenerator::CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
-            if(index_type==IndexType::U8 )IndexGenerator::CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
-                return(nullptr);
-        }
+        // 9. 创建几何体
+        Geometry *p = pc->Create();
 
-        Geometry *p=pc->Create();
-
+        // 10. 设置包围体（半球）
         BoundingVolumes bv;
-
-        bv.SetFromAABB(math::Vector3f(-1.0f,-1.0f,-1.0f),math::Vector3f(1.0f,1.0f,1.0f));        //这个不对，待查
+        bv.SetFromAABB(math::Vector3f(-1.0f, -1.0f, 0.0f), math::Vector3f(1.0f, 1.0f, 1.0f));
 
         p->SetBoundingVolumes(bv);
 
         return p;
     }
 
-    Geometry *CreateTorus(GeometryCreater *pc,const TorusCreateInfo *tci)
+    Geometry *CreateTorus(GeometryCreater *pc, const TorusCreateInfo *tci)
     {
-        if(!pc)return(nullptr);
+        // 1. 参数验证
+        if(!pc || !tci)
+            return nullptr;
 
-        // s, t = parametric values of the equations, in the range [0,1]
-        float s = 0;
-        float t = 0;
+        // 2. 计算半径
+        const float torusRadius = (tci->outerRadius - tci->innerRadius) / 2.0f;
+        const float centerRadius = tci->outerRadius - torusRadius;
 
-        // sIncr, tIncr are increment values aplied to s and t on each loop iteration to generate the torus
-        float sIncr;
-        float tIncr;
+        // 3. 计算顶点和索引数量
+        const uint numberVertices = (tci->numberStacks + 1) * (tci->numberSlices + 1);
+        const uint numberIndices = tci->numberStacks * tci->numberSlices * 2 * 3;
 
-        // to store precomputed sin and cos values
-        float cos2PIs, sin2PIs, cos2PIt, sin2PIt;
+        // 4. 验证参数
+        if(!GeometryValidator::ValidateSlicesAndStacks(tci->numberSlices, tci->numberStacks, 3, 3))
+            return nullptr;
 
-        uint sideCount,faceCount;
+        if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
+            return nullptr;
 
-        uint numberVertices;
-        uint numberIndices;
+        // 5. 初始化
+        if(!pc->Init("Torus", numberVertices, numberIndices))
+            return nullptr;
 
-        // used later to help us calculating tangents vectors using CMMATH
+        // 6. 创建 GeometryBuilder
+        GeometryBuilder builder(pc);
+        if(!builder.IsValid())
+            return nullptr;
+
+        // 7. 预计算常量
+        const float sIncr = 1.0f / float(tci->numberSlices);
+        const float tIncr = 1.0f / float(tci->numberStacks);
         const Vector3f helpVector(0.0f, 1.0f, 0.0f);
 
-        float torusRadius = (tci->outerRadius - tci->innerRadius) / 2.0f;
-        float centerRadius = tci->outerRadius - torusRadius;
-
-        numberVertices = (tci->numberStacks + 1) * (tci->numberSlices + 1);
-        numberIndices = tci->numberStacks * tci->numberSlices * 2 * 3; // 2 triangles per face * 3 indices per triangle
-
-        if (tci->numberSlices < 3 || tci->numberStacks < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
-            return(nullptr);
-
-        sIncr = 1.0f / (float) tci->numberSlices;
-        tIncr = 1.0f / (float) tci->numberStacks;
-
-        if(!pc->Init("Torus",numberVertices,numberIndices))
-            return(nullptr);                
-                
-        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
-        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
-        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
-        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
-
-        float *vp=vertex;
-        float *np=normal;
-        float *tp=tangent;
-        float *tcp=tex_coord;
-
-        if(!vp)
-            return(nullptr);
-
-        // generate vertices and its attributes
-        for (sideCount = 0; sideCount <= tci->numberSlices; ++sideCount, s += sIncr)
+        // 8. 生成顶点
+        float s = 0.0f;
+        for(uint sideCount = 0; sideCount <= tci->numberSlices; ++sideCount, s += sIncr)
         {
-            // precompute some values
-            cos2PIs = cos(2.0f * std::numbers::pi_v<float> * s);
-            sin2PIs = sin(2.0f * std::numbers::pi_v<float> * s);
+            const float cos2PIs = cos(2.0f * std::numbers::pi_v<float> * s);
+            const float sin2PIs = sin(2.0f * std::numbers::pi_v<float> * s);
 
-            t = 0.0f;
-            for (faceCount = 0; faceCount <= tci->numberStacks; ++faceCount, t += tIncr)
+            float t = 0.0f;
+            for(uint faceCount = 0; faceCount <= tci->numberStacks; ++faceCount, t += tIncr)
             {
-                // precompute some values
-                cos2PIt = cos(2.0f * std::numbers::pi_v<float> * t);
-                sin2PIt = sin(2.0f * std::numbers::pi_v<float> * t);
+                const float cos2PIt = cos(2.0f * std::numbers::pi_v<float> * t);
+                const float sin2PIt = sin(2.0f * std::numbers::pi_v<float> * t);
 
-                // generate vertex and stores it in the right position
-                *vp = torusRadius * sin2PIt; ++vp;
-                *vp =-(centerRadius + torusRadius * cos2PIt) * cos2PIs; ++vp;
-                *vp = (centerRadius + torusRadius * cos2PIt) * sin2PIs; ++vp;
+                // 位置
+                const float px = torusRadius * sin2PIt;
+                const float py = -(centerRadius + torusRadius * cos2PIt) * cos2PIs;
+                const float pz = (centerRadius + torusRadius * cos2PIt) * sin2PIs;
 
-                if(np)
+                // 法线
+                const float nx = sin2PIt;
+                const float ny = -cos2PIs * cos2PIt;
+                const float nz = sin2PIs * cos2PIt;
+
+                // 切线（使用四元数计算）
+                float tx = 0.0f, ty = 0.0f, tz = 0.0f;
+                if(builder.HasTangents())
                 {
-                    *np =  sin2PIt;             ++np;
-                    *np = -cos2PIs * cos2PIt;   ++np;
-                    *np =  sin2PIs * cos2PIt;   ++np;
-                }
-
-                if(tcp)
-                {
-                    *tcp = s*tci->uv_scale.x; ++tcp;
-                    *tcp = t*tci->uv_scale.y; ++tcp;
-                }
-
-                if(tp)
-                {
-                    // use CMMATH quaternion to get the tangent vector
                     Quatf quat = RotationQuat(360.0f * s, AxisVector::Z);
                     Matrix4f matrix = ToMatrix(quat);
                     Vector3f tangentVec = TransformDirection(matrix, helpVector);
-                    
-                    *tp = tangentVec.x; ++tp;
-                    *tp = tangentVec.y; ++tp;
-                    *tp = tangentVec.z; ++tp;
+                    tx = tangentVec.x;
+                    ty = tangentVec.y;
+                    tz = tangentVec.z;
                 }
+
+                // 纹理坐标
+                const float u = s * tci->uv_scale.x;
+                const float v = t * tci->uv_scale.y;
+
+                builder.WriteFullVertex(px, py, pz, nx, ny, nz, tx, ty, tz, u, v);
             }
         }
 
-        //索引
-        {
-            const IndexType index_type=pc->GetIndexType();
+        // 9. 生成索引
+        const IndexType index_type = pc->GetIndexType();
+        if(index_type == IndexType::U16)
+            IndexGenerator::CreateTorusIndices<uint16>(pc, tci->numberSlices, tci->numberStacks);
+        else if(index_type == IndexType::U32)
+            IndexGenerator::CreateTorusIndices<uint32>(pc, tci->numberSlices, tci->numberStacks);
+        else if(index_type == IndexType::U8)
+            IndexGenerator::CreateTorusIndices<uint8>(pc, tci->numberSlices, tci->numberStacks);
+        else
+            return nullptr;
 
-            if(index_type==IndexType::U16)IndexGenerator::CreateTorusIndices<uint16>(pc,tci->numberSlices,tci->numberStacks);else
-            if(index_type==IndexType::U32)IndexGenerator::CreateTorusIndices<uint32>(pc,tci->numberSlices,tci->numberStacks);else
-            if(index_type==IndexType::U8 )IndexGenerator::CreateTorusIndices<uint8 >(pc,tci->numberSlices,tci->numberStacks);else
-                return(nullptr);
-        }
+        // 10. 创建几何体
+        Geometry *p = pc->Create();
 
-        Geometry *p=pc->Create();
-
-        {
-            BoundingVolumes bv;
-
-            float maxExtent = centerRadius + torusRadius;
-            float minExtent = centerRadius - torusRadius;
-
-            bv.SetFromAABB(math::Vector3f(-torusRadius, -maxExtent, -maxExtent),
-                           Vector3f( torusRadius,  maxExtent,  maxExtent));
-
-            p->SetBoundingVolumes(bv);
-        }
+        // 11. 设置包围体
+        BoundingVolumes bv;
+        const float maxExtent = centerRadius + torusRadius;
+        bv.SetFromAABB(
+            Vector3f(-torusRadius, -maxExtent, -maxExtent),
+            Vector3f(torusRadius, maxExtent, maxExtent)
+        );
+        p->SetBoundingVolumes(bv);
 
         return p;
     }
-} // namespace
+}//namespace hgl::graph::inline_geometry

@@ -241,10 +241,8 @@ SET(GEOMETRY_PRIMITIVES_EXTENDED InlineGeometry/Frustum.cpp
 
 SET(GEOMETRY_PRIMITIVES_ADVANCED ${SG_INCLUDE_PATH}/geo/Extruded.h
                                  ${SG_INCLUDE_PATH}/geo/Wall.h
-                                 ${SG_INCLUDE_PATH}/geo/Revolution.h
                                  InlineGeometry/ExtrudedPolygon.cpp
-                                 InlineGeometry/Wall.cpp
-                                 InlineGeometry/Revolution.cpp)
+                                 InlineGeometry/Wall.cpp)
 
 SOURCE_GROUP("5.Geometry\\Primitives\\Basic" FILES ${GEOMETRY_PRIMITIVES_BASIC})
 SOURCE_GROUP("5.Geometry\\Primitives\\Sphere" FILES ${GEOMETRY_PRIMITIVES_SPHERE})
