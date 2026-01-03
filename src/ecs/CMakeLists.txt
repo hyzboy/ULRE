@@ -16,6 +16,16 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/MaterialBatch.h
                 ${ECS_INCLUDE_PATH}/RenderableComponent.h
                 ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
+
+                ECSTransformAssignmentBuffer.h
+                ECSMaterialInstanceAssignmentBuffer.h
+
+                ECSTransformAssignmentBuffer.cpp
+                ECSMaterialInstanceAssignmentBuffer.cpp
+
+                ECSPipelineMaterialRenderer.cpp
+                ECSPipelineMaterialRenderer.h
+
                 Object.cpp
                 Component.cpp
                 Entity.cpp

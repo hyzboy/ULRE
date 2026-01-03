@@ -13,8 +13,13 @@ namespace hgl
         class VulkanDevice;
         class IndirectDrawBuffer;
         class IndirectDrawIndexedBuffer;
-        class TransformAssignmentBuffer;
-        class MaterialInstanceAssignmentBuffer;
+    }
+    
+    namespace ecs
+    {
+        class ECSTransformAssignmentBuffer;
+        class ECSMaterialInstanceAssignmentBuffer;
+        class ECSPipelineMaterialRenderer;
     }
 }
 
@@ -42,16 +47,16 @@ namespace hgl::ecs
         graph::IndirectDrawBuffer* icb_draw;               ///<间接绘制命令缓冲（无索引）
         graph::IndirectDrawIndexedBuffer* icb_draw_indexed;///<间接绘制命令缓冲（有索引）
         
-        // === Instance data management ===
-        graph::TransformAssignmentBuffer* transform_buffer;          ///<Transform分配缓冲
-        graph::MaterialInstanceAssignmentBuffer* mi_buffer;          ///<材质实例分配缓冲
+        // === Instance data management (ECS versions) ===
+        ECSTransformAssignmentBuffer* transform_buffer;             ///<Transform分配缓冲（ECS版本）
+        ECSMaterialInstanceAssignmentBuffer* mi_buffer;             ///<材质实例分配缓冲（ECS版本）
         
         // === Draw batches ===
         graph::DrawBatchArray draw_batches;                ///<绘制批次数组
         uint32_t draw_batches_count;                       ///<有效批次数量
         
-        // === Renderer ===
-        graph::PipelineMaterialRenderer* renderer;         ///<渲染器实例
+        // === Renderer (ECS version) ===
+        ECSPipelineMaterialRenderer* renderer;             ///<ECS渲染器实例
 
         // === Batch building helper methods ===
         void ReallocICB();                          ///<重新分配间接绘制缓冲

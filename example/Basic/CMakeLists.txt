@@ -14,6 +14,7 @@ endmacro()
 CreateProject(01_draw_triangle                  draw_triangle_use_UBO.cpp)
 CreateProject(01b_draw_triangle_ECS             draw_triangle_use_ECS.cpp)
 CreateProject(02_auto_instance                  auto_instance.cpp)
+CreateProject(02b_auto_instance_ECS             auto_instance_use_ECS.cpp)
 CreateProject(03_auto_merge_material_instance   auto_merge_material_instance.cpp)
 
 CreateProject(04_Billboard                      BillboardTest.cpp)
