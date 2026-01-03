@@ -49,7 +49,7 @@ namespace hgl::ecs
     {
     private:
 
-        std::shared_ptr<ECSContext> world;
+        ECSContext* world = nullptr;
         const graph::CameraInfo* cameraInfo;
         graph::VulkanDevice* device;
         math::Frustum frustum;
@@ -74,12 +74,13 @@ namespace hgl::ecs
 
         void Initialize() override;
         void Update(float deltaTime) override;
+        void Render(graph::RenderCmdBuffer* cmdBuffer, float deltaTime) override;
         void Shutdown() override;
 
     public:
 
         /// Set the world to collect from
-        void SetWorld(std::shared_ptr<ECSContext> w) { world = w; }
+        void SetWorld(ECSContext* w) { world = w; }
 
         /// Set Vulkan device
         void SetDevice(graph::VulkanDevice* dev) { device = dev; }
@@ -131,7 +132,7 @@ namespace hgl::ecs
 
         /// Render all collected primitives
         /// Similar to hgl::graph::PipelineMaterialBatch::Render
-        void Render(graph::RenderCmdBuffer* cmdBuffer);
+        void RenderPrimitives(graph::RenderCmdBuffer* cmdBuffer);
 
     private:
 

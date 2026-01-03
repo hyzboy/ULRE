@@ -3,10 +3,13 @@
 #include<hgl/ecs/Object.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/System.h>
+#include<hgl/ecs/Component.h>
 #include<memory>
 #include<vector>
 #include<unordered_map>
 #include<typeinfo>
+
+namespace hgl { namespace graph { class RenderCmdBuffer; } }
 
 namespace hgl
 {
@@ -25,6 +28,9 @@ namespace hgl
             // 分类存储：更新系统与渲染系统分开
             std::unordered_map<size_t, std::shared_ptr<System>> tick_systems;
             std::unordered_map<size_t, std::shared_ptr<System>> render_systems;
+
+            // 组件注册表：按类型hash存储弱引用，便于系统快速查询
+            std::unordered_map<size_t, std::vector<std::weak_ptr<Component>>> component_registry;
 
             bool active = false;
 
@@ -45,7 +51,13 @@ namespace hgl
             void Tick(float deltaTime);
 
             /// Run all render systems
-            void Render(float deltaTime);
+            void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
+
+            /// 注册组件实例（由 Entity::AddComponent 调用）
+            void RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp);
+
+            /// 反注册组件实例（由 Entity::RemoveComponent 调用）
+            void UnregisterComponentInstance(size_t type_hash, Component* comp_ptr);
 
         public:
 
@@ -54,6 +66,7 @@ namespace hgl
             std::shared_ptr<T> CreateEntity(Args&&... args)
             {
                 auto entity = std::make_shared<T>(std::forward<Args>(args)...);
+                entity->SetContext(this);
                 entities.push_back(entity);
                 entity->OnCreate();
                 return entity;
@@ -115,6 +128,25 @@ namespace hgl
 
             /// Check if world is active
             bool IsActive() const { return active; }
+
+            /// 获取指定类型的组件列表（自动清理已失效的弱引用）
+            template<typename T>
+            void GetComponents(std::vector<std::shared_ptr<T>>& out) const
+            {
+                out.clear();
+                const size_t key = typeid(T).hash_code();
+                auto it = component_registry.find(key);
+                if(it == component_registry.end())
+                    return;
+
+                for(auto &weak_comp : it->second)
+                {
+                    if(auto comp = weak_comp.lock())
+                    {
+                        out.push_back(std::static_pointer_cast<T>(comp));
+                    }
+                }
+            }
         };
     }//namespace ecs
 }//namespace hgl

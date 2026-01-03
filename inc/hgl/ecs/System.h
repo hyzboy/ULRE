@@ -2,6 +2,8 @@
 
 #include<hgl/ecs/Object.h>
 
+namespace hgl { namespace graph { class RenderCmdBuffer; } }
+
 namespace hgl
 {
     namespace ecs
@@ -31,6 +33,9 @@ namespace hgl
 
             /// Update the system (called once per frame)
             virtual void Update(float deltaTime) {}
+
+            /// Render hook (optional). Default no-op.
+            virtual void Render(graph::RenderCmdBuffer *, float /*deltaTime*/ ) {}
 
             /// Get if system is initialized
             bool IsInitialized() const { return initialized; }

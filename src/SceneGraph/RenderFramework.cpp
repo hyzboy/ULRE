@@ -174,15 +174,21 @@ bool RenderFramework::Init(uint w,uint h)
 
     OnChangeDefaultWorld(new World(this));
     
-    // create default ECS context
+    // create default ECS context BEFORE creating SceneRenderer
     default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
+    
+    CreateDefaultSceneRenderer();
+
     if(default_ecs_context)
     {
-        default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSystem>();
+        auto render_primitive_system=default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSystem>();
+
+        render_primitive_system->SetDevice(device);
+        render_primitive_system->SetWorld(default_ecs_context);
+        render_primitive_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+
         default_ecs_context->Initialize();
     }
-
-    CreateDefaultSceneRenderer();
 
     return(true);
 }
