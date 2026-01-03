@@ -6,6 +6,8 @@
 #include<hgl/graph/World.h>
 #include<hgl/type/Map.h>
 #include<hgl/graph/RenderContext.h>
+// ECS forward declaration
+namespace hgl::ecs { class ECSContext; }
 
 namespace hgl::graph
 {
@@ -56,6 +58,7 @@ namespace hgl::graph
         const   VkExtent2D &        GetExtent           ()const {return render_context->GetExtent();}
 
                 World *             GetWorld            ()const {return render_context?render_context->GetWorld():nullptr;}
+                ecs::ECSContext *   GetECSContext       ()const {return render_context?render_context->GetECSContext():nullptr;}
                 Camera *            GetCamera           ()const {return render_context?render_context->GetCamera():nullptr;}
         const   CameraInfo *        GetCameraInfo       ()const {return render_context?render_context->GetCameraInfo():nullptr;}
                 CameraControl *     GetCameraControl    ()const {return camera_control_owned;}
@@ -85,6 +88,7 @@ namespace hgl::graph
 
         bool SetRenderTarget(IRenderTarget *);
         void SetWorld(World *);
+        void SetECSContext(ecs::ECSContext *ctx){ if(render_context) render_context->SetECSContext(ctx); }
         void SetCameraControl(CameraControl *);     ///< 设定新的相机控制器（SceneRenderer接管并负责释放）
         void UseDefaultCameraControl();             ///< 使用默认第一人称相机控制器
 

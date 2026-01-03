@@ -10,13 +10,12 @@
 #include<hgl/WorkManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/component/PrimitiveComponent.h>
-
-// 引入ECS相关头文件
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
+ 
+ // 引入ECS相关头文件
+ #include<hgl/ecs/Context.h>
+ #include<hgl/ecs/Entity.h>
+ #include<hgl/ecs/TransformComponent.h>
+ #include<hgl/ecs/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -50,7 +49,7 @@ class TestApp:public WorkObject
 private:
 
     // ECS组件
-    std::shared_ptr<ECSContext>  ecs_world      =nullptr;
+    ECSContext *  ecs_world      =nullptr;   // 由 RenderFramework 统一维护
     std::shared_ptr<Entity> triangle_entity     =nullptr;
 
     // 传统渲染资源
@@ -112,10 +111,9 @@ private:
     {
         // === 步骤1: 创建ECS世界 ===
         // World是ECS架构的顶层容器，管理所有Entity和System
-        ecs_world = std::make_shared<ECSContext>("TriangleWorld");
-        
-        // 初始化世界 - 这会初始化所有注册的System
-        ecs_world->Initialize();
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
 
         // === 步骤2: 创建Entity ===
         // Entity是游戏对象的容器，本身不包含数据，只是Component的集合
@@ -139,15 +137,6 @@ private:
         ecs_primitive->SetPrimitive(prim_triangle);
         ecs_primitive->SetVisible(true);
 
-        // === 步骤5: 集成传统渲染系统 ===
-        // 由于新的ECS PrimitiveComponent尚未完全集成到渲染管线，
-        // 我们同时使用传统的Component系统来实现实际渲染
-        // 这展示了如何在过渡期同时使用两个系统
-        // 
-        // CreateComponent会将Primitive添加到场景图，由SceneRenderer自动渲染
-        CreateComponentInfo cci(GetWorldRootNode());
-        CreateComponent<component::PrimitiveComponent>(&cci, prim_triangle);
-
         return true;
     }
 
@@ -166,29 +155,20 @@ public:
         if(!InitECS())
             return(false);
 
-        return(true);
-    }
-
-    void Tick(double delta_time) override
-    {
-        // 更新ECS世界 - 这会更新所有Entity和Component
-        if(ecs_world)
-        {
-            ecs_world->Update(delta_time);
-        }
-
-        WorkObject::Tick(delta_time);
-    }
-
-    ~TestApp()
-    {
-        // 关闭ECS世界
-        if(ecs_world)
-        {
-            ecs_world->Shutdown();
-        }
-    }
-};//class TestApp:public WorkObject
+        // SceneRenderer 已在框架层设置了默认 ECSContext
+ 
+         return(true);
+     }
+ 
+     void Tick(double delta_time) override
+     {
+         // 更新ECS世界 - 这会更新所有Entity和Component
+        // 框架层 SceneRenderer::Tick 会调用 ECSContext::Update
+ 
+         WorkObject::Tick(delta_time);
+     }
+ 
+ };//class TestApp:public WorkObject
 
 int os_main(int,os_char **)
 {

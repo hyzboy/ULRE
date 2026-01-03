@@ -14,6 +14,7 @@
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/component/CreateComponentInfo.h>
+#include<hgl/ecs/Context.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -76,6 +77,7 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
 
     World *                 default_world           =nullptr;
     SceneRenderer *         default_scene_renderer  =nullptr;
+    ecs::ECSContext *       default_ecs_context     =nullptr;
 
     void OnChangeDefaultWorld(World *);
 
@@ -115,6 +117,7 @@ public:
 public:
 
     World *                 GetDefaultWorld         (){return default_world;}
+    ecs::ECSContext *       GetECSContext           (){return default_ecs_context;}
     SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
 
     RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}

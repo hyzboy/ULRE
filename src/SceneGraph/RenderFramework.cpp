@@ -15,6 +15,7 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/log/Logger.h>
 #include<hgl/io/event/MouseEvent.h>
+#include<hgl/ecs/RenderPrimitiveSystem.h>
 
 COMPONENT_NAMESPACE_BEGIN
 void InitializeComponentManager();
@@ -58,6 +59,12 @@ RenderFramework::RenderFramework(const OSString &an)
 RenderFramework::~RenderFramework()
 {
     SAFE_CLEAR(default_world)
+    if(default_ecs_context)
+    {
+        default_ecs_context->Shutdown();
+        delete default_ecs_context;
+        default_ecs_context=nullptr;
+    }
     SAFE_CLEAR(default_scene_renderer);
     SAFE_CLEAR(module_manager)
 
@@ -166,6 +173,14 @@ bool RenderFramework::Init(uint w,uint h)
     module_manager->Register(sc_module);
 
     OnChangeDefaultWorld(new World(this));
+    
+    // create default ECS context
+    default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
+    if(default_ecs_context)
+    {
+        default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSystem>();
+        default_ecs_context->Initialize();
+    }
 
     CreateDefaultSceneRenderer();
 
@@ -191,10 +206,12 @@ void RenderFramework::CreateDefaultSceneRenderer()
         this->AddChildDispatcher(default_scene_renderer);
 
         default_scene_renderer->SetWorld(default_world);
+        default_scene_renderer->SetECSContext(default_ecs_context);
     }
     else
     {
         default_scene_renderer->SetRenderTarget(rt);
+        default_scene_renderer->SetECSContext(default_ecs_context);
     }
 }
 
