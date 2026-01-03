@@ -6,17 +6,13 @@
 #include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
-#include<hgl/graph/PipelineMaterialRenderer.h>
+#include"ECSPipelineMaterialRenderer.h"
 #include<algorithm>
 #include<iostream>
 
-// Import TransformAssignmentBuffer and MaterialInstanceAssignmentBuffer from SceneGraph
-// These are internal headers in src/SceneGraph/render
-namespace hgl::graph
-{
-    class TransformAssignmentBuffer;
-    class MaterialInstanceAssignmentBuffer;
-}
+// Import ECS-specific assignment buffers
+#include"ECSTransformAssignmentBuffer.h"
+#include"ECSMaterialInstanceAssignmentBuffer.h"
 
 namespace hgl::ecs
 {
@@ -36,20 +32,23 @@ namespace hgl::ecs
         
         if (key.material && key.pipeline)
         {
-            // Create renderer
-            renderer = new graph::PipelineMaterialRenderer(key.material, key.pipeline);
-            std::cout << "[ECS::MaterialBatch] Created renderer: " << (void*)renderer << std::endl;
+            // Create ECS renderer
+            renderer = new ECSPipelineMaterialRenderer(key.material, key.pipeline);
+            std::cout << "[ECS::MaterialBatch] Created ECSPipelineMaterialRenderer: " << (void*)renderer << std::endl;
             
-            // Note: TransformAssignmentBuffer and MaterialInstanceAssignmentBuffer
-            // are not created here because they require access to internal headers
-            // from src/SceneGraph/render. For now, we'll use nullptr and the renderer
-            // will handle the direct rendering path.
-            // 
-            // In a full implementation, these would be:
-            // if (key.material->hasLocalToWorld())
-            //     transform_buffer = new TransformAssignmentBuffer(device);
-            // if (key.material->hasMI())
-            //     mi_buffer = new MaterialInstanceAssignmentBuffer(device, key.material);
+            // Create ECSTransformAssignmentBuffer if material needs LocalToWorld
+            if (key.material->hasLocalToWorld())
+            {
+                transform_buffer = new ECSTransformAssignmentBuffer(device);
+                std::cout << "[ECS::MaterialBatch] Created ECSTransformAssignmentBuffer: " << (void*)transform_buffer << std::endl;
+            }
+            
+            // Create ECSMaterialInstanceAssignmentBuffer if material has material instance data
+            if (key.material->hasMI())
+            {
+                mi_buffer = new ECSMaterialInstanceAssignmentBuffer(device, key.material);
+                std::cout << "[ECS::MaterialBatch] Created ECSMaterialInstanceAssignmentBuffer: " << (void*)mi_buffer << std::endl;
+            }
         }
     }
 
@@ -97,6 +96,20 @@ namespace hgl::ecs
         
         // Build batches and indirect draw commands
         BuildBatches();
+        
+        // Write transform data to buffer
+        if (transform_buffer && !items.empty())
+        {
+            std::cout << "[ECS::MaterialBatch::Finalize] Writing transform data..." << std::endl;
+            transform_buffer->WriteItems(items);
+        }
+        
+        // Write material instance data to buffer
+        if (mi_buffer && !items.empty())
+        {
+            std::cout << "[ECS::MaterialBatch::Finalize] Writing material instance data..." << std::endl;
+            mi_buffer->WriteItems(items);
+        }
         
         std::cout << "[ECS::MaterialBatch::Finalize] Finalization complete. Batch count: " 
                   << draw_batches_count << std::endl;
@@ -387,17 +400,32 @@ namespace hgl::ecs
             return;
         }
 
-        // Use the renderer to handle indirect rendering
+        // Bind transform data if available
+        if (transform_buffer)
+        {
+            std::cout << "[ECS::MaterialBatch::Render] Binding transform buffer..." << std::endl;
+            transform_buffer->BindTransform(key.material);
+        }
+
+        // Bind material instance data if available
+        if (mi_buffer)
+        {
+            std::cout << "[ECS::MaterialBatch::Render] Binding material instance buffer..." << std::endl;
+            mi_buffer->BindMaterialInstance(key.material);
+        }
+
+        // Use the ECS renderer to handle rendering with ECS assignment buffers
         if (renderer)
         {
-            std::cout << "[ECS::MaterialBatch::Render] Delegating to PipelineMaterialRenderer..." << std::endl;
+            std::cout << "[ECS::MaterialBatch::Render] Delegating to ECSPipelineMaterialRenderer..." << std::endl;
             std::cout << "[ECS::MaterialBatch::Render] Params:" << std::endl;
             std::cout << "  - Batches: " << draw_batches_count << std::endl;
-            std::cout << "  - TransformBuffer: " << (void*)transform_buffer << std::endl;
-            std::cout << "  - MaterialInstanceBuffer: " << (void*)mi_buffer << std::endl;
+            std::cout << "  - ECS TransformBuffer: " << (void*)transform_buffer << std::endl;
+            std::cout << "  - ECS MaterialInstanceBuffer: " << (void*)mi_buffer << std::endl;
             std::cout << "  - IndirectDrawBuffer: " << (void*)icb_draw << std::endl;
             std::cout << "  - IndirectDrawIndexedBuffer: " << (void*)icb_draw_indexed << std::endl;
             
+            // Pass ECS buffers directly to ECS renderer
             renderer->Render(cmdBuffer, draw_batches, draw_batches_count,
                            transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
             
