@@ -11,9 +11,15 @@ COMPONENT_NAMESPACE_BEGIN
 */
 class SceneComponent:public Component,public NodeTransform
 {
+protected:
+
+    SceneComponent(ComponentDataPtr cdp,ComponentManager *cm,size_t derived_type_hash)
+        :Component(cdp,cm,derived_type_hash)
+    {
+    }
+
 public:
 
-    using Component::Component;
     virtual ~SceneComponent()=default;
 
     virtual Component *Clone() override

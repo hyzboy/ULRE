@@ -5,9 +5,10 @@ COMPONENT_NAMESPACE_BEGIN
 
 uint Component::unique_id_count=0;
 
-Component::Component(ComponentDataPtr cdp,ComponentManager *cm)
+Component::Component(ComponentDataPtr cdp,ComponentManager *cm,size_t derived_type_hash)
 {
     unique_id=++unique_id_count;
+    type_hash=derived_type_hash;    // 存储派生类的类型 hash
 
     Log.SetLoggerInstanceName(OSString::numberOf(unique_id));
 

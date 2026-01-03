@@ -66,7 +66,8 @@ public:
 
 public:
 
-    PrimitiveComponent(ComponentDataPtr cdp,PrimitiveComponentManager *cm):RenderComponent(cdp,cm)
+    PrimitiveComponent(ComponentDataPtr cdp,PrimitiveComponentManager *cm)
+        :RenderComponent(cdp,cm,StaticTypeHash())  // 传入 PrimitiveComponent 的类型 hash
     {
         primitive_data=cdp;
     }
