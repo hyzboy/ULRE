@@ -9,8 +9,6 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<iostream>
-#include<cstring>
 
 namespace hgl::ecs
 {
@@ -27,9 +25,6 @@ namespace hgl::ecs
         {
             material_instance_data_bytes = mtl->GetMIDataBytes();
         }
-
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer] Created for material: " << (void*)material 
-                  << ", MI data bytes: " << material_instance_data_bytes << std::endl;
     }
 
     void ECSMaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::Material* mtl) const
@@ -47,17 +42,13 @@ namespace hgl::ecs
         }
 
         mtl->BindUBO(&hgl::graph::mtl::SBS_MaterialInstance, material_instance_buffer);
-        
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::BindMaterialInstance] Bound MI buffer to material" << std::endl;
     }
 
     void ECSMaterialInstanceAssignmentBuffer::Clear()
     {
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::Clear] Cleaning up buffers..." << std::endl;
-        
         SAFE_CLEAR(material_instance_buffer);
         SAFE_CLEAR(material_instance_vab);
-        
+
         mi_set.Clear();
         node_count = 0;
         material_instance_vab_buffer = nullptr;
@@ -66,8 +57,6 @@ namespace hgl::ecs
     void ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance(const std::vector<RenderItem*>& items)
     {
         const size_t item_count = items.size();
-        
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] Processing " << item_count << " items" << std::endl;
 
         mi_set.Clear();
 
@@ -93,14 +82,9 @@ namespace hgl::ecs
         if (!material_instance_buffer)
         {
             const size_t buffer_size = material_instance_data_bytes * mi_set.GetAllocCount();
-            
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] Creating MI UBO - " 
-                      << "Capacity: " << mi_set.GetAllocCount()
-                      << ", Bytes per instance: " << material_instance_data_bytes
-                      << ", Total size: " << buffer_size << std::endl;
-            
+
             material_instance_buffer = device->CreateUBO(buffer_size);
-            
+
         #ifdef _DEBUG
             graph::DebugUtils* du = device->GetDebugUtils();
             if (du)
@@ -127,8 +111,6 @@ namespace hgl::ecs
         }
 
         const size_t unique_mi_count = mi_set.GetCount();
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] Found " << unique_mi_count 
-                  << " unique material instances" << std::endl;
 
         // 检查是否超出材质支持的最大数量
         if (material && unique_mi_count > material->GetMIMaxCount())
@@ -141,8 +123,6 @@ namespace hgl::ecs
         // 合并材质实例数据到缓冲
         {
             uint8* mip = (uint8*)(material_instance_buffer->Map());
-
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] Writing MI data..." << std::endl;
 
             for (graph::MaterialInstance* mi : mi_set)
             {
@@ -165,8 +145,6 @@ namespace hgl::ecs
 
             material_instance_buffer->Unmap();
         }
-
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] MI data written" << std::endl;
     }
 
     void ECSMaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData(RenderItem* item)
@@ -183,9 +161,6 @@ namespace hgl::ecs
             return;
         }
 
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] Updating item index: " 
-                  << item->index << std::endl;
-
         const size_t offset = sizeof(uint16) * item->index;
         uint16* mip = (uint16*)(material_instance_vab->Map(offset, sizeof(uint16)));
 
@@ -193,8 +168,6 @@ namespace hgl::ecs
         *mip = mi_set.Find(mi);
 
         material_instance_vab->Unmap();
-
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] Updated to MI index: " << *mip << std::endl;
     }
 
     void ECSMaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
@@ -206,8 +179,6 @@ namespace hgl::ecs
             std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
             return;
         }
-
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] === Writing " << item_count << " items ===" << std::endl;
 
         // 1. 收集并写入材质实例数据
         StatMaterialInstance(items);
@@ -233,12 +204,9 @@ namespace hgl::ecs
 
             if (!material_instance_vab)
             {
-                std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] Creating MI VAB with capacity: " 
-                          << node_count << std::endl;
-                
                 material_instance_vab = device->CreateVAB(VK_FORMAT_R16_UINT, node_count);
                 material_instance_vab_buffer = material_instance_vab->GetBuffer();
-                
+
             #ifdef _DEBUG
                 graph::DebugUtils* du = device->GetDebugUtils();
                 if (du)
@@ -252,17 +220,14 @@ namespace hgl::ecs
 
         // 3. 生成材质实例索引列表
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] Writing MI indices..." << std::endl;
-            
             uint16* mi_ptr = (uint16*)(material_instance_vab->DeviceBuffer::Map());
 
             for (size_t i = 0; i < item_count; i++)
             {
                 RenderItem* item = items[i];
-                
+
                 if (!item)
                 {
-                    std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] WARNING: Item " << i << " is null!" << std::endl;
                     *mi_ptr = 0;
                     ++mi_ptr;
                     continue;
@@ -272,23 +237,16 @@ namespace hgl::ecs
                 uint16 mi_index = mi_set.Find(mi);
                 *mi_ptr = mi_index;
                 ++mi_ptr;
-                
-                if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
-                {
-                    std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems]   Item[" << i 
-                              << "] -> MI_index=" << mi_index 
-                              << ", MI=" << (void*)mi << std::endl;
-                }
+
+                // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
+                // {
+                //     std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems]   Item[" << i 
+                //               << "] -> MI_index=" << mi_index 
+                //               << ", MI=" << (void*)mi << std::endl;
+                // }
             }
 
             material_instance_vab->Unmap();
         }
-
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] === Write complete ===" << std::endl;
-        std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] Summary:" << std::endl;
-        std::cout << "  - Unique MI count: " << mi_set.GetCount() << std::endl;
-        std::cout << "  - MI UBO capacity: " << mi_set.GetAllocCount() << std::endl;
-        std::cout << "  - MI VAB capacity: " << node_count << std::endl;
-        std::cout << "  - Items written: " << item_count << std::endl;
     }
 }//namespace hgl::ecs

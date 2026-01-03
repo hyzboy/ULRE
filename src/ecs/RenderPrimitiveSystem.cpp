@@ -36,13 +36,7 @@ namespace hgl::ecs
 
     void RenderPrimitiveSystem::Render(graph::RenderCmdBuffer* cmdBuffer, float /*deltaTime*/)
     {
-        std::cerr << "[RenderPrimitiveSystem::Render] === ENTRY ===" << std::endl;
-        std::cerr << "[RenderPrimitiveSystem::Render] CmdBuffer: " << cmdBuffer << std::endl;
-        std::cerr << "[RenderPrimitiveSystem::Render] Renderable count: " << renderableCount << std::endl;
-        
         RenderPrimitives(cmdBuffer);
-        
-        std::cerr << "[RenderPrimitiveSystem::Render] === EXIT ===" << std::endl;
     }
 
     void RenderPrimitiveSystem::Shutdown()
@@ -53,7 +47,7 @@ namespace hgl::ecs
     void RenderPrimitiveSystem::SetCameraInfo(const graph::CameraInfo* info)
     {
         cameraInfo = info;
-            
+
         // Extract frustum planes from camera info
         if (cameraInfo)
         {
@@ -99,7 +93,7 @@ namespace hgl::ecs
 
             auto item = std::make_unique<PrimitiveRenderItem>(
                 entity, transform, primitiveComp);
-            
+
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;
             glm::vec3 cameraPos = glm::vec3(0.0f);
@@ -147,15 +141,15 @@ namespace hgl::ecs
                 continue;
 
             auto bbox = entity->GetComponent<BoundingBoxComponent>();
-                
+
             if (bbox)
             {
                 // Use AABB for frustum culling (more accurate than sphere)
                 AABB aabb = bbox->GetAABB();
-                    
+
                 // Transform AABB to world space using entity's world matrix
                 glm::mat4 worldMat = item->GetWorldMatrix();
-                
+
                 // For accurate culling, transform all 8 corners and rebuild AABB
                 glm::vec3 corners[8] = {
                     glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMin().y, aabb.GetMin().z, 1.0f)),
@@ -167,7 +161,7 @@ namespace hgl::ecs
                     glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMax().y, aabb.GetMax().z, 1.0f)),
                     glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMax().y, aabb.GetMax().z, 1.0f))
                 };
-                    
+
                 // Find transformed AABB bounds
                 glm::vec3 transformedMin = corners[0];
                 glm::vec3 transformedMax = corners[0];
@@ -176,9 +170,9 @@ namespace hgl::ecs
                     transformedMin = glm::min(transformedMin, corners[i]);
                     transformedMax = glm::max(transformedMax, corners[i]);
                 }
-                    
+
                 AABB worldAABB(transformedMin, transformedMax);
-                    
+
                 // Use CMMath's Frustum to test AABB
                 // TODO: Replace with actual frustum.CheckAABB(worldAABB) when CMMath is available
                 glm::vec3 center = (transformedMin + transformedMax) * 0.5f;
@@ -199,7 +193,7 @@ namespace hgl::ecs
 
                 glm::vec3 worldPos = transform->GetWorldPosition();
                 float boundingRadius = primitiveComp->GetBoundingRadius();
-                    
+
                 // Use CMMath's Frustum to test sphere
                 // TODO: Replace with actual frustum.CheckSphere(worldPos, boundingRadius)
                 item->isVisible = (worldPos.z > -100.0f && worldPos.z < 100.0f &&
@@ -237,7 +231,7 @@ namespace hgl::ecs
             // Create or get batch for this material/pipeline combination
             MaterialPipelineKey key(material, pipeline);
             auto it = materialBatches.find(key);
-            
+
             if (it == materialBatches.end())
             {
                 // Create new batch with device
@@ -303,11 +297,6 @@ namespace hgl::ecs
 
     void RenderPrimitiveSystem::RenderPrimitives(graph::RenderCmdBuffer* cmdBuffer)
     {
-        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] === ENTRY ===" << std::endl;
-        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] CmdBuffer: " << cmdBuffer << std::endl;
-        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] Renderable count: " << renderableCount << std::endl;
-        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] Material batches: " << materialBatches.size() << std::endl;
-        
         if (!cmdBuffer)
         {
             std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] ERROR: No command buffer!" << std::endl;
@@ -325,32 +314,24 @@ namespace hgl::ecs
         for (auto& pair : materialBatches)
         {
             MaterialBatch* batch = pair.second.get();
-            std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] Processing batch " << batchIndex << std::endl;
-            std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Batch ptr: " << batch << std::endl;
-            
+
             if (batch)
             {
-                std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Batch item count: " << batch->GetCount() << std::endl;
-                
                 if (batch->GetCount() > 0)
                 {
-                    std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Calling batch->Render()..." << std::endl;
                     batch->Render(cmdBuffer);
-                    std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Batch render complete" << std::endl;
                 }
-                else
-                {
-                    std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Skipping empty batch" << std::endl;
-                }
+                // else
+                // {
+                //     std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Skipping empty batch" << std::endl;
+                // }
             }
-            else
-            {
-                std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   ERROR: Null batch pointer!" << std::endl;
-            }
-            
+            // else
+            // {
+            //     std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   ERROR: Null batch pointer!" << std::endl;
+            // }
+
             batchIndex++;
         }
-        
-        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] === EXIT ===" << std::endl;
     }
 }//namespace hgl::ecs
