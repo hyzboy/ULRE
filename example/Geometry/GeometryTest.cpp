@@ -210,7 +210,7 @@ private:
 
         for(Component *c:root->GetComponents())
         {
-            if(c->GetTypeHash()!=PrimitiveComponent::StaticTypeHash())
+            if(GetTypeHash(c)!=PrimitiveComponent::StaticTypeHash())
                 continue;
 
             PrimitiveComponent *component=(PrimitiveComponent *)c;
