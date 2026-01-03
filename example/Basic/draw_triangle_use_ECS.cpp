@@ -1,4 +1,4 @@
-// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
+﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
 // This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
 // 
 // 本范例展示了：
@@ -63,7 +63,7 @@ private:
     {
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::Ortho,
-                                        mtl::WithLocalToWorld::With);
+                                        mtl::WithLocalToWorld::Without);
 
         VILConfig vil_config;
 

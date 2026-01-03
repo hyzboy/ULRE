@@ -10,21 +10,29 @@ namespace hgl
 {
     namespace ecs
     {
+        class ECSContext;
+
         /**
          * Entity - represents game objects with components
          * Entities are containers for components
          */
-        class Entity : public Object
+        class Entity : public Object, public std::enable_shared_from_this<Entity>
         {
         private:
 
             // Use hash_code instead of string for faster lookups
             std::unordered_map<std::size_t, std::shared_ptr<Component>> components;
+            ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
+
+            void RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp);
+            void UnregisterFromContext(size_t type_hash, Component* comp_ptr);
 
         public:
 
             explicit Entity(const std::string& name = "Entity");
             ~Entity() override;
+
+            void SetContext(ECSContext *ctx) { context = ctx; }
 
         public:
 
@@ -34,8 +42,8 @@ namespace hgl
             {
                 auto component = std::make_shared<T>(std::forward<Args>(args)...);
                 components[typeid(T).hash_code()] = component;
-                // Note: owner is not set automatically to avoid circular reference issues
-                // Users can call component->SetOwner() manually if needed
+                component->SetOwner(shared_from_this());
+                RegisterToContext(typeid(T).hash_code(), component);
                 component->OnAttach();
                 return component;
             }
@@ -66,6 +74,7 @@ namespace hgl
                 auto it = components.find(typeid(T).hash_code());
                 if (it != components.end())
                 {
+                    UnregisterFromContext(typeid(T).hash_code(), it->second.get());
                     it->second->OnDetach();
                     components.erase(it);
                 }

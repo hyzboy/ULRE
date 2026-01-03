@@ -6,6 +6,7 @@
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
+#include<iostream>
 VK_NAMESPACE_BEGIN
 class VulkanCmdBuffer
 {
@@ -204,11 +205,13 @@ public:
     {
         if(!vab_list)
         {
+            std::cerr<<"[RenderCmdBuffer::BindVAB] ERROR: VABList is null!"<<std::endl;
             return(false);
         }
 
         if(!vab_list->IsFull())
         {
+            std::cerr<<"[RenderCmdBuffer::BindVAB] ERROR: VABList is not full!"<<std::endl;
             return(false);
         }
 

@@ -7,6 +7,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
+#include<iostream>
 
 namespace hgl::ecs
 {
@@ -31,6 +32,17 @@ namespace hgl::ecs
     {
         // Collect primitive renderables every frame
         CollectPrimitives();
+    }
+
+    void RenderPrimitiveSystem::Render(graph::RenderCmdBuffer* cmdBuffer, float /*deltaTime*/)
+    {
+        std::cerr << "[RenderPrimitiveSystem::Render] === ENTRY ===" << std::endl;
+        std::cerr << "[RenderPrimitiveSystem::Render] CmdBuffer: " << cmdBuffer << std::endl;
+        std::cerr << "[RenderPrimitiveSystem::Render] Renderable count: " << renderableCount << std::endl;
+        
+        RenderPrimitives(cmdBuffer);
+        
+        std::cerr << "[RenderPrimitiveSystem::Render] === EXIT ===" << std::endl;
     }
 
     void RenderPrimitiveSystem::Shutdown()
@@ -69,49 +81,45 @@ namespace hgl::ecs
             pair.second->Clear();
         }
 
-        // Get all entities from the world
-        const auto& entities = world->GetEntities();
+        std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
+        world->GetComponents<PrimitiveComponent>(primitives);
 
-        for (const auto& entity : entities)
+        for (const auto& primitiveComp : primitives)
         {
-            // Check if entity has TransformComponent and PrimitiveComponent
+            if (!primitiveComp || !primitiveComp->IsVisible() || !primitiveComp->CanRender())
+                continue;
+
+            auto entity = primitiveComp->GetOwner();
+            if(!entity)
+                continue;
+
             auto transform = entity->GetComponent<TransformComponent>();
-            auto primitiveComp = entity->GetComponent<PrimitiveComponent>();
+            if(!transform)
+                continue;
 
-            if (transform && primitiveComp && primitiveComp->IsVisible() && primitiveComp->CanRender())
-            {
-                // Create PrimitiveRenderItem
-                auto item = std::make_unique<PrimitiveRenderItem>(
-                    entity, transform, primitiveComp);
-                
-                // Calculate world position for distance calculation
-                glm::vec3 worldPos = transform->GetWorldPosition();
-                item->worldPosition = worldPos;
-                
-                // Calculate distance to camera
-                glm::vec3 cameraPos = glm::vec3(0.0f); // Default
-                // If CMMath provides: cameraPos = cameraInfo->eye; or cameraPos = cameraInfo->position;
-                glm::vec3 toCamera = worldPos - cameraPos;
-                item->distanceToCamera = glm::length(toCamera);
+            auto item = std::make_unique<PrimitiveRenderItem>(
+                entity, transform, primitiveComp);
+            
+            glm::vec3 worldPos = transform->GetWorldPosition();
+            item->worldPosition = worldPos;
+            glm::vec3 cameraPos = glm::vec3(0.0f);
+            glm::vec3 toCamera = worldPos - cameraPos;
+            item->distanceToCamera = glm::length(toCamera);
 
-                renderItems.push_back(std::move(item));
-                renderableCount++;
-            }
+            renderItems.push_back(std::move(item));
+            renderableCount++;
         }
 
-        // Perform frustum culling if enabled
         if (frustumCullingEnabled)
         {
             PerformFrustumCulling();
         }
 
-        // Sort by distance if enabled (before batching)
         if (distanceSortingEnabled)
         {
             SortByDistance();
         }
 
-        // Build material batches if enabled
         if (batchingEnabled)
         {
             BuildMaterialBatches();
@@ -293,22 +301,56 @@ namespace hgl::ecs
         }
     }
 
-    void RenderPrimitiveSystem::Render(graph::RenderCmdBuffer* cmdBuffer)
+    void RenderPrimitiveSystem::RenderPrimitives(graph::RenderCmdBuffer* cmdBuffer)
     {
+        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] === ENTRY ===" << std::endl;
+        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] CmdBuffer: " << cmdBuffer << std::endl;
+        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] Renderable count: " << renderableCount << std::endl;
+        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] Material batches: " << materialBatches.size() << std::endl;
+        
         if (!cmdBuffer)
+        {
+            std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] ERROR: No command buffer!" << std::endl;
             return;
+        }
 
         if (renderableCount == 0)
+        {
+            std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] WARNING: No renderable items!" << std::endl;
             return;
+        }
 
         // Render each material batch
+        int batchIndex = 0;
         for (auto& pair : materialBatches)
         {
             MaterialBatch* batch = pair.second.get();
-            if (batch && batch->GetCount() > 0)
+            std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] Processing batch " << batchIndex << std::endl;
+            std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Batch ptr: " << batch << std::endl;
+            
+            if (batch)
             {
-                batch->Render(cmdBuffer);
+                std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Batch item count: " << batch->GetCount() << std::endl;
+                
+                if (batch->GetCount() > 0)
+                {
+                    std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Calling batch->Render()..." << std::endl;
+                    batch->Render(cmdBuffer);
+                    std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Batch render complete" << std::endl;
+                }
+                else
+                {
+                    std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   Skipping empty batch" << std::endl;
+                }
             }
+            else
+            {
+                std::cerr << "[RenderPrimitiveSystem::RenderPrimitives]   ERROR: Null batch pointer!" << std::endl;
+            }
+            
+            batchIndex++;
         }
+        
+        std::cerr << "[RenderPrimitiveSystem::RenderPrimitives] === EXIT ===" << std::endl;
     }
 }//namespace hgl::ecs

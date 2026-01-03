@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/SceneRenderer.h>
+#include<iostream>
 #include<hgl/ecs/Context.h>
 #include<hgl/graph/World.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -117,24 +118,35 @@ namespace hgl::graph
         // ECS 渲染路径：目前仅执行空渲染流程，便于后续接入 ECS RenderSystem
         if(GetECSContext())
         {
+            std::cerr << "[SceneRenderer] RenderFrame: ECS path, target=" << render_target << " ecs=" << GetECSContext() << std::endl;
             LineRenderManager *lrm=GetLineRenderManager();
 
             RenderCmdBuffer *cmd = render_target->BeginRender();
+            std::cerr << "[SceneRenderer] BeginRender cmd=" << cmd << std::endl;
 
             if(render_context)
+            {
                 render_context->BindDescriptor(cmd);
+                std::cerr << "[SceneRenderer] BindDescriptor done" << std::endl;
+            }
 
             cmd->SetClearColor(0,clear_color);
             cmd->BeginRenderPass();
+            std::cerr << "[SceneRenderer] BeginRenderPass" << std::endl;
 
             // TODO: 在此处接入 ECS 的渲染收集与绘制
-            GetECSContext()->Render(0.0f);
+            GetECSContext()->Render(cmd, 0.0f);
+            std::cerr << "[SceneRenderer] ECSContext Render finished" << std::endl;
 
             if(lrm)
+            {
                 lrm->Draw(cmd);
+                std::cerr << "[SceneRenderer] LineRenderManager Draw" << std::endl;
+            }
 
             cmd->EndRenderPass();
             render_target->EndRender();
+            std::cerr << "[SceneRenderer] EndRenderPass/EndRender" << std::endl;
 
             render_state_dirty = true; // 标记有提交
             return true;
@@ -147,45 +159,59 @@ namespace hgl::graph
         SceneNode *root = GetWorld()->GetRootNode();
         if(!root)
             return(false);
+        std::cerr << "[SceneRenderer] RenderFrame: SceneGraph path root=" << root << std::endl;
 
         root->UpdateWorldTransform();
         const uint renderable = render_task->RebuildRenderList(root);
+        std::cerr << "[SceneRenderer] RebuildRenderList renderable=" << renderable << std::endl;
 
         LineRenderManager *lrm=GetLineRenderManager();
-
+ 
         if(renderable == 0 && (lrm&&lrm->GetLineCount()==0))
         {
             // nothing to draw this frame
             render_state_dirty = false;
+            std::cerr << "[SceneRenderer] Nothing to draw" << std::endl;
             return true;    // treat as successful no-op
         }
 
         bool result = false;
 
         RenderCmdBuffer *cmd = render_target->BeginRender();
+        std::cerr << "[SceneRenderer] BeginRender cmd=" << cmd << std::endl;
 
         render_context->BindDescriptor(cmd);
+        std::cerr << "[SceneRenderer] BindDescriptor done" << std::endl;
 
         cmd->SetClearColor(0,clear_color);
         cmd->BeginRenderPass();
+        std::cerr << "[SceneRenderer] BeginRenderPass" << std::endl;
 
         result=render_task->Render(cmd);
+        std::cerr << "[SceneRenderer] RenderTask result=" << result << std::endl;
 
         if(lrm)
+        {
             lrm->Draw(cmd);
+            std::cerr << "[SceneRenderer] LineRenderManager Draw" << std::endl;
+        }
 
         cmd->EndRenderPass();
         render_target->EndRender();
+        std::cerr << "[SceneRenderer] EndRenderPass/EndRender" << std::endl;
 
         render_state_dirty = result;
         return result;
-    }
+     }
 
-    bool SceneRenderer::Submit()
-    {
-        if(!render_target||!render_state_dirty)
-            return(false);
+     bool SceneRenderer::Submit()
+     {
+        std::cerr << "[SceneRenderer] Submit: target=" << render_target << " dirty=" << render_state_dirty << std::endl;
+         if(!render_target||!render_state_dirty)
+             return(false);
 
-        return render_target->Submit();
-    }
-}//namespace hgl::graph
+        bool ok = render_target->Submit();
+        std::cerr << "[SceneRenderer] Submit result=" << ok << std::endl;
+        return ok;
+     }
+ }//namespace hgl::graph
