@@ -1,4 +1,4 @@
-SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
+﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
 SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/Component.h
@@ -9,7 +9,6 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/TransformDataStorage.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxComponent.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxDataStorage.h
-                ${ECS_INCLUDE_PATH}/RenderCollector.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveSystem.h
                 ${ECS_INCLUDE_PATH}/RenderItem.h
                 ${ECS_INCLUDE_PATH}/PrimitiveRenderItem.h
@@ -28,7 +27,6 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 RenderItem.cpp
                 PrimitiveRenderItem.cpp
                 MaterialBatch.cpp
-                RenderCollector.cpp
                 RenderPrimitiveSystem.cpp)
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_SOURCE})
