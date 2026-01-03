@@ -17,3 +17,4 @@
 *.check_cache
 /out
 src/ecs/test_ecs
+/.vscode

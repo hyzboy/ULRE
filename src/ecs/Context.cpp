@@ -18,10 +18,11 @@ namespace hgl
         void ECSContext::Initialize()
         {
             // Initialize all systems
-            for (auto& pair : systems)
-            {
+            for (auto& pair : tick_systems)
                 pair.second->Initialize();
-            }
+
+            for (auto& pair : render_systems)
+                pair.second->Initialize();
 
             active = true;
             OnCreate();
@@ -40,32 +41,40 @@ namespace hgl
             entities.clear();
 
             // Shutdown all systems
-            for (auto& pair : systems)
-            {
+            for (auto& pair : tick_systems)
                 pair.second->Shutdown();
-            }
-            systems.clear();
+            tick_systems.clear();
+
+            for (auto& pair : render_systems)
+                pair.second->Shutdown();
+            render_systems.clear();
 
             active = false;
             OnDestroy();
         }
 
-        void ECSContext::Update(float deltaTime)
+        void ECSContext::Tick(float deltaTime)
         {
             if (!active)
                 return;
 
-            // Update all systems
-            for (auto& pair : systems)
-            {
+            // Update non-render systems
+            for (auto& pair : tick_systems)
                 pair.second->Update(deltaTime);
-            }
 
             // Update all entities
             for (auto& entity : entities)
-            {
                 entity->OnUpdate(deltaTime);
-            }
+        }
+
+        void ECSContext::Render(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            // Update/render render-systems
+            for (auto& pair : render_systems)
+                pair.second->Update(deltaTime);
         }
     }//namespace ecs
 }//namespace hgl
