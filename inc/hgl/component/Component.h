@@ -77,6 +77,11 @@ using ComponentDataPtr=SharedPtr<ComponentData>;
 /**
 * 基础组件<br>
 * 是一切组件的基类
+* 
+* 运行时类型识别 (RTTI):
+*   每个组件在构造时存储其实际派生类的类型 hash，
+*   通过 GetTypeHash() 可以获取运行时类型，
+*   通过 IsA<T>() 可以判断组件是否为特定类型
 */
 class Component
 {
@@ -85,6 +90,7 @@ class Component
     static uint unique_id_count;
 
     uint unique_id;
+    size_t type_hash;               // 存储派生类的类型 hash
 
     SceneNode *         OwnerNode;
     ComponentManager *  Manager;
@@ -103,16 +109,21 @@ protected:
 public:
 
     Component()=delete;
-    Component(ComponentDataPtr,ComponentManager *);
+    Component(ComponentDataPtr,ComponentManager *,size_t derived_type_hash);
     virtual ~Component();
 
 public:
 
     uint                GetUniqueID ()const{return unique_id;}
+    size_t              GetTypeHash ()const{return type_hash;}      // 获取运行时类型 hash
 
     SceneNode *         GetOwnerNode()const{return OwnerNode;}
     ComponentManager *  GetManager  ()const{return Manager;}
     ComponentDataPtr    GetData     ()const{return Data;}
+
+    // 类型判断辅助方法
+    template<typename T>
+    bool IsA() const { return type_hash == T::StaticTypeHash(); }
 
 public:
 

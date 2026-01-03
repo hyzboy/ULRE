@@ -12,9 +12,15 @@ COMPONENT_NAMESPACE_BEGIN
 */
 class RenderComponent:public GeometryComponent
 {
+protected:
+
+    RenderComponent(ComponentDataPtr cdp,ComponentManager *cm,size_t derived_type_hash)
+        :GeometryComponent(cdp,cm,derived_type_hash)
+    {
+    }
+
 public:
 
-    using GeometryComponent::GeometryComponent;
     virtual ~RenderComponent()=default;
 
     virtual const bool CanRender()const=0;                  ///<当前数据是否可以渲染

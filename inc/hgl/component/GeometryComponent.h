@@ -12,9 +12,14 @@ COMPONENT_NAMESPACE_BEGIN
 */
 class GeometryComponent:public SceneComponent
 {
-public:
+protected:
 
-    using SceneComponent::SceneComponent;
+    GeometryComponent(ComponentDataPtr cdp,ComponentManager *cm,size_t derived_type_hash)
+        :SceneComponent(cdp,cm,derived_type_hash)
+    {
+    }
+
+public:
 
     virtual ~GeometryComponent()=default;
 
