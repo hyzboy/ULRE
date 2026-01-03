@@ -11,6 +11,7 @@ namespace hgl::graph
     {
         this->rf = rf;
         render_target = rt;
+        ecs_context = nullptr;
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
         if(rf)
@@ -35,6 +36,7 @@ namespace hgl::graph
         SAFE_CLEAR(ubo_camera_info);
 
         camera_control = nullptr; // not owner
+        ecs_context = nullptr;
         world = nullptr;
         render_target = nullptr;
         viewport_info = nullptr;

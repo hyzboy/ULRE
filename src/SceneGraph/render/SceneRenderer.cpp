@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/SceneRenderer.h>
+#include<hgl/ecs/Context.h>
 #include<hgl/graph/World.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
@@ -104,10 +105,42 @@ namespace hgl::graph
 
         if(GetWorld())
             GetWorld()->Tick(delta);
+        else if(GetECSContext())
+        {
+            GetECSContext()->Tick(static_cast<float>(delta));
+            // 渲染系统在 RenderFrame 调用
+        }
     }
     
     bool SceneRenderer::RenderFrame()
     {
+        // ECS 渲染路径：目前仅执行空渲染流程，便于后续接入 ECS RenderSystem
+        if(GetECSContext())
+        {
+            LineRenderManager *lrm=GetLineRenderManager();
+
+            RenderCmdBuffer *cmd = render_target->BeginRender();
+
+            if(render_context)
+                render_context->BindDescriptor(cmd);
+
+            cmd->SetClearColor(0,clear_color);
+            cmd->BeginRenderPass();
+
+            // TODO: 在此处接入 ECS 的渲染收集与绘制
+            GetECSContext()->Render(0.0f);
+
+            if(lrm)
+                lrm->Draw(cmd);
+
+            cmd->EndRenderPass();
+            render_target->EndRender();
+
+            render_state_dirty = true; // 标记有提交
+            return true;
+        }
+
+        // 旧 SceneGraph 渲染路径
         if(!GetWorld())
             return(false);
 

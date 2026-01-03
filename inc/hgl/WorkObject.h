@@ -69,6 +69,7 @@ namespace hgl
         graph::World *              GetWorld            (){return world;}
         graph::SceneNode *          GetWorldRootNode    (){return world ? world->GetRootNode() : nullptr;}
         graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
+        ecs::ECSContext *          GetECSContext       (){return render_framework ? render_framework->GetECSContext() : nullptr;}
 
         const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer ? scene_renderer->GetViewportInfo() : nullptr;}
         graph::Camera *             GetCamera           ()      {return scene_renderer ? scene_renderer->GetCamera() : nullptr;}
