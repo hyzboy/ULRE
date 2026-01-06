@@ -98,23 +98,6 @@ SET(ECS_RENDERSYSTEM_SOURCE
 )
 
 # ============================================================================
-# Input & Camera Control
-# ============================================================================
-SET(ECS_INPUT_HEADERS
-    ${ECS_INCLUDE_PATH}/InputSystem.h
-    ${ECS_INCLUDE_PATH}/CameraController.h
-    ${ECS_INCLUDE_PATH}/OrbitCamera.h
-    ${ECS_INCLUDE_PATH}/ModelViewerCamera.h
-    ${ECS_INCLUDE_PATH}/FirstPersonCamera.h
-)
-
-SET(ECS_INPUT_SOURCE
-    OrbitCamera.cpp
-    ModelViewerCamera.cpp
-    FirstPersonCamera.cpp
-)
-
-# ============================================================================
 # Combine All Sources
 # ============================================================================
 SET(ECS_SOURCE
@@ -132,8 +115,6 @@ SET(ECS_SOURCE
     ${ECS_MATERIALBATCH_SOURCE}
     ${ECS_RENDERSYSTEM_HEADERS}
     ${ECS_RENDERSYSTEM_SOURCE}
-    ${ECS_INPUT_HEADERS}
-    ${ECS_INPUT_SOURCE}
 )
 
 # ============================================================================
@@ -162,6 +143,3 @@ source_group("MaterialBatch\\Private" FILES ${ECS_MATERIALBATCH_SOURCE})
 
 source_group("RenderSystem\\Public" FILES ${ECS_RENDERSYSTEM_HEADERS})
 source_group("RenderSystem\\Private" FILES ${ECS_RENDERSYSTEM_SOURCE})
-
-source_group("Input\\Public" FILES ${ECS_INPUT_HEADERS})
-source_group("Input\\Private" FILES ${ECS_INPUT_SOURCE})
