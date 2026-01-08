@@ -99,7 +99,7 @@ namespace hgl
 
         while(!cur_work_object->IsDestroy())
         {
-            cur_time=GetPreciseTime();
+            cur_time=GetTimeSec();
 
             render_framework->Tick();
 
