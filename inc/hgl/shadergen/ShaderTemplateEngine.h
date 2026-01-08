@@ -3,9 +3,10 @@
 
 #include<inja/inja.hpp>
 #include<nlohmann/json.hpp>
-#include<hgl/type/Map.h>
-#include<hgl/type/ArrayList.h>
-#include<hgl/type/StringList.h>
+#include<string>
+#include<vector>
+#include<unordered_map>
+#include<memory>
 
 namespace hgl::graph
 {
@@ -17,15 +18,15 @@ namespace hgl::graph
      */
     struct ShaderModule
     {
-        AnsiString name;                        ///<模块名称
-        AnsiString file_path;                   ///<模块文件路径
-        AnsiString code;                        ///<GLSL代码内容
+        std::string name;                        ///<模块名称
+        std::string file_path;                   ///<模块文件路径
+        std::string code;                        ///<GLSL代码内容
         
-        AnsiStringList provides;                ///<提供的函数名列表（此模块导出的函数）
-        AnsiStringList requires_funcs;          ///<依赖的函数名列表（需要其他模块提供）
-        AnsiStringList requires_inputs;         ///<需要的Input变量（如Input.Normal）
-        AnsiStringList requires_descriptors;    ///<需要的UBO/Sampler（如camera, sky）
-        AnsiStringList dependencies;            ///<依赖的其他模块名称
+        std::vector<std::string> provides;                ///<提供的函数名列表（此模块导出的函数）
+        std::vector<std::string> requires_funcs;          ///<依赖的函数名列表（需要其他模块提供）
+        std::vector<std::string> requires_inputs;         ///<需要的Input变量（如Input.Normal）
+        std::vector<std::string> requires_descriptors;    ///<需要的UBO/Sampler（如camera, sky）
+        std::vector<std::string> dependencies;            ///<依赖的其他模块名称
     };
     
     /**
@@ -34,10 +35,10 @@ namespace hgl::graph
      */
     struct ShaderRecipe
     {
-        AnsiString name;                        ///<配方名称（如"Metal", "Wood"）
-        AnsiString template_file;               ///<使用的模板文件名
+        std::string name;                        ///<配方名称（如"Metal", "Wood"）
+        std::string template_file;               ///<使用的模板文件名
         
-        Map<AnsiString, AnsiString> module_map; ///<模块映射："lighting" -> "blinn_phong"
+        std::unordered_map<std::string, std::string> module_map; ///<模块映射："lighting" -> "blinn_phong"
         json template_data;                     ///<传递给inja的模板数据
     };
     
@@ -49,11 +50,11 @@ namespace hgl::graph
     {
         inja::Environment env;                  ///<inja模板引擎环境
         
-        AnsiString template_root;               ///<模板文件根目录
-        AnsiString module_root;                 ///<模块文件根目录
+        std::string template_root;               ///<模板文件根目录
+        std::string module_root;                 ///<模块文件根目录
         
-        Map<AnsiString, ShaderModule*> module_cache;    ///<模块缓存
-        Map<AnsiString, json> interface_cache;          ///<接口定义缓存
+        std::unordered_map<std::string, std::unique_ptr<ShaderModule>> module_cache;    ///<模块缓存
+        std::unordered_map<std::string, json> interface_cache;          ///<接口定义缓存
         
     public:
         /**
@@ -61,8 +62,8 @@ namespace hgl::graph
          * @param template_path 模板文件根路径
          * @param module_path 模块文件根路径
          */
-        ShaderTemplateEngine(const AnsiString& template_path, const AnsiString& module_path);
-        ~ShaderTemplateEngine();
+        ShaderTemplateEngine(const std::string& template_path, const std::string& module_path);
+        ~ShaderTemplateEngine() = default;
         
         /**
          * 加载指定的模块
@@ -70,7 +71,7 @@ namespace hgl::graph
          * @param name 模块名称（如"blinn_phong"）
          * @return 加载的模块指针，失败返回nullptr
          */
-        ShaderModule* LoadModule(const AnsiString& category, const AnsiString& name);
+        ShaderModule* LoadModule(const std::string& category, const std::string& name);
         
         /**
          * 解析依赖树并进行拓扑排序
@@ -80,15 +81,15 @@ namespace hgl::graph
          * @return 成功返回true，存在循环依赖或缺失依赖返回false
          */
         bool ResolveDependencies(const ShaderRecipe& recipe, 
-                                AnsiStringList& ordered_modules,
-                                AnsiStringList& missing_deps);
+                                std::vector<std::string>& ordered_modules,
+                                std::vector<std::string>& missing_deps);
         
         /**
          * 根据配方生成最终的shader代码
          * @param recipe 材质配方
          * @return 生成的GLSL代码
          */
-        AnsiString Generate(const ShaderRecipe& recipe);
+        std::string Generate(const ShaderRecipe& recipe);
         
         /**
          * 从JSON配置文件加载配方
@@ -96,7 +97,7 @@ namespace hgl::graph
          * @param quality_level 质量等级（如"high", "medium", "low"）
          * @return 加载的配方
          */
-        ShaderRecipe LoadRecipe(const AnsiString& recipe_file, const AnsiString& quality_level);
+        ShaderRecipe LoadRecipe(const std::string& recipe_file, const std::string& quality_level);
         
     private:
         /**
@@ -105,14 +106,21 @@ namespace hgl::graph
          * @param ordered_modules 排序后的模块列表
          * @return inja使用的json数据
          */
-        json BuildTemplateData(const ShaderRecipe& recipe, const AnsiStringList& ordered_modules);
+        json BuildTemplateData(const ShaderRecipe& recipe, const std::vector<std::string>& ordered_modules);
         
         /**
          * 加载指定类别的接口定义
          * @param category 模块类别
          * @return 成功返回true
          */
-        bool LoadInterface(const AnsiString& category);
+        bool LoadInterface(const std::string& category);
+        
+        /**
+         * 读取文件内容到字符串
+         * @param file_path 文件路径
+         * @return 文件内容，失败返回空字符串
+         */
+        std::string ReadFileToString(const std::string& file_path);
     };
 }//namespace hgl::graph
 

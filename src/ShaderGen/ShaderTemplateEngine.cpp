@@ -1,86 +1,87 @@
 ﻿#include<hgl/shadergen/ShaderTemplateEngine.h>
-#include<hgl/filesystem/FileSystem.h>
-#include<hgl/io/FileAccess.h>
-#include<hgl/log/Log.h>
 #include<algorithm>
 #include<set>
 #include<queue>
+#include<fstream>
+#include<sstream>
+#include<iostream>
 
 namespace hgl::graph
 {
-    ShaderTemplateEngine::ShaderTemplateEngine(const AnsiString& template_path, const AnsiString& module_path)
+    ShaderTemplateEngine::ShaderTemplateEngine(const std::string& template_path, const std::string& module_path)
         : template_root(template_path), module_root(module_path)
     {
         // 配置inja环境
         env.set_trim_blocks(true);
         env.set_lstrip_blocks(true);
     }
-
-    ShaderTemplateEngine::~ShaderTemplateEngine()
+    
+    std::string ShaderTemplateEngine::ReadFileToString(const std::string& file_path)
     {
-        // 清理缓存的模块
-        for(auto& pair : module_cache)
+        std::ifstream file(file_path, std::ios::binary);
+        if (!file.is_open())
         {
-            delete pair->value;
+            return "";
         }
-        module_cache.Clear();
+        
+        std::ostringstream ss;
+        ss << file.rdbuf();
+        return ss.str();
     }
 
-    ShaderModule* ShaderTemplateEngine::LoadModule(const AnsiString& category, const AnsiString& name)
+    ShaderModule* ShaderTemplateEngine::LoadModule(const std::string& category, const std::string& name)
     {
         // 构建缓存键
-        AnsiString cache_key = category + "/" + name;
+        std::string cache_key = category + "/" + name;
         
         // 检查缓存
-        if(module_cache.ContainsKey(cache_key))
-            return module_cache[cache_key];
+        auto it = module_cache.find(cache_key);
+        if(it != module_cache.end())
+            return it->second.get();
         
         // 加载接口定义（如果还没加载）
-        if(!interface_cache.ContainsKey(category))
+        if(interface_cache.find(category) == interface_cache.end())
         {
             if(!LoadInterface(category))
             {
-                GLogError(U8_TEXT("Failed to load interface for category: ") + UTF8String(category.c_str()));
+                std::cerr << "Failed to load interface for category: " << category << std::endl;
                 return nullptr;
             }
         }
         
         // 从接口定义中获取模块信息
         const json& interface = interface_cache[category];
-        if(!interface.contains("modules") || !interface["modules"].contains(name.c_str()))
+        if(!interface.contains("modules") || !interface["modules"].contains(name))
         {
-            GLogError(U8_TEXT("Module not found in interface: ") + UTF8String(category.c_str()) + U8_TEXT("/") + UTF8String(name.c_str()));
+            std::cerr << "Module not found in interface: " << category << "/" << name << std::endl;
             return nullptr;
         }
         
-        const json& module_def = interface["modules"][name.c_str()];
+        const json& module_def = interface["modules"][name];
         
         // 创建模块对象
-        ShaderModule* module = new ShaderModule();
+        auto module = std::make_unique<ShaderModule>();
         module->name = name;
         
         // 读取GLSL代码文件
-        AnsiString file_path = module_root + "/" + category + "/" + AnsiString(module_def["file"].get<std::string>().c_str());
+        std::string file_path = module_root + "/" + category + "/" + module_def["file"].get<std::string>();
         module->file_path = file_path;
         
-        void* fp = filesystem::LoadFileToMemory(file_path);
-        if(!fp)
+        std::string code = ReadFileToString(file_path);
+        if(code.empty())
         {
-            GLogError(U8_TEXT("Failed to load module file: ") + UTF8String(file_path.c_str()));
-            delete module;
+            std::cerr << "Failed to load module file: " << file_path << std::endl;
             return nullptr;
         }
         
-        const int64 file_size = filesystem::GetFileLength(file_path);
-        module->code.Set((char*)fp, file_size);
-        hgl_free(fp);
+        module->code = code;
         
         // 解析provides
         if(module_def.contains("provides"))
         {
             for(const auto& func : module_def["provides"])
             {
-                module->provides.Add(AnsiString(func.get<std::string>().c_str()));
+                module->provides.push_back(func.get<std::string>());
             }
         }
         
@@ -93,7 +94,7 @@ namespace hgl::graph
             {
                 for(const auto& func : requires["functions"])
                 {
-                    module->requires_funcs.Add(AnsiString(func.get<std::string>().c_str()));
+                    module->requires_funcs.push_back(func.get<std::string>());
                 }
             }
             
@@ -101,7 +102,7 @@ namespace hgl::graph
             {
                 for(const auto& input : requires["inputs"])
                 {
-                    module->requires_inputs.Add(AnsiString(input.get<std::string>().c_str()));
+                    module->requires_inputs.push_back(input.get<std::string>());
                 }
             }
             
@@ -109,7 +110,7 @@ namespace hgl::graph
             {
                 for(const auto& desc : requires["descriptors"])
                 {
-                    module->requires_descriptors.Add(AnsiString(desc.get<std::string>().c_str()));
+                    module->requires_descriptors.push_back(desc.get<std::string>());
                 }
             }
         }
@@ -119,69 +120,63 @@ namespace hgl::graph
         {
             for(const auto& dep : module_def["dependencies"])
             {
-                module->dependencies.Add(AnsiString(dep.get<std::string>().c_str()));
+                module->dependencies.push_back(dep.get<std::string>());
             }
         }
         
         // 缓存模块
-        module_cache.Add(cache_key, module);
+        ShaderModule* module_ptr = module.get();
+        module_cache[cache_key] = std::move(module);
         
-        return module;
+        return module_ptr;
     }
 
-    bool ShaderTemplateEngine::LoadInterface(const AnsiString& category)
+    bool ShaderTemplateEngine::LoadInterface(const std::string& category)
     {
-        AnsiString interface_file = module_root + "/" + category + "/" + category + "_interface.json";
+        std::string interface_file = module_root + "/" + category + "/" + category + "_interface.json";
         
-        void* fp = filesystem::LoadFileToMemory(interface_file);
-        if(!fp)
+        std::string json_str = ReadFileToString(interface_file);
+        if(json_str.empty())
         {
-            GLogError(U8_TEXT("Failed to load interface file: ") + UTF8String(interface_file.c_str()));
+            std::cerr << "Failed to load interface file: " << interface_file << std::endl;
             return false;
         }
-        
-        const int64 file_size = filesystem::GetFileLength(interface_file);
-        std::string json_str((char*)fp, file_size);
-        hgl_free(fp);
         
         try
         {
             json interface_json = json::parse(json_str);
-            interface_cache.Add(category, interface_json);
+            interface_cache[category] = interface_json;
             return true;
         }
         catch(const json::exception& e)
         {
-            GLogError(U8_TEXT("Failed to parse interface JSON: ") + UTF8String(interface_file.c_str()) + U8_TEXT(", error: ") + UTF8String(e.what()));
+            std::cerr << "Failed to parse interface JSON: " << interface_file << ", error: " << e.what() << std::endl;
             return false;
         }
     }
 
     bool ShaderTemplateEngine::ResolveDependencies(const ShaderRecipe& recipe, 
-                                                   AnsiStringList& ordered_modules,
-                                                   AnsiStringList& missing_deps)
+                                                   std::vector<std::string>& ordered_modules,
+                                                   std::vector<std::string>& missing_deps)
     {
-        ordered_modules.Clear();
-        missing_deps.Clear();
+        ordered_modules.clear();
+        missing_deps.clear();
         
         // 收集所有需要的模块
         std::map<std::string, ShaderModule*> all_modules;
         std::set<std::string> to_process;
         
         // 从配方中的模块开始
-        for(auto it = recipe.module_map.begin(); it != recipe.module_map.end(); ++it)
+        for(const auto& [category, module_name] : recipe.module_map)
         {
-            const AnsiString& category = it->key;
-            const AnsiString& module_name = it->value;
-            
             ShaderModule* module = LoadModule(category, module_name);
             if(!module)
             {
-                missing_deps.Add(category + "/" + module_name);
+                missing_deps.push_back(category + "/" + module_name);
                 continue;
             }
             
-            std::string key = std::string(category.c_str()) + "/" + std::string(module_name.c_str());
+            std::string key = category + "/" + module_name;
             all_modules[key] = module;
             to_process.insert(key);
         }
@@ -195,17 +190,15 @@ namespace hgl::graph
             ShaderModule* current = all_modules[current_key];
             
             // 处理此模块的依赖
-            for(int i = 0; i < current->dependencies.GetCount(); ++i)
+            for(const auto& dep_func : current->dependencies)
             {
-                const AnsiString& dep_func = current->dependencies[i];
-                
                 // 查找提供此函数的模块
                 bool found = false;
-                for(const auto& pair : all_modules)
+                for(const auto& [key, module] : all_modules)
                 {
-                    for(int j = 0; j < pair.second->provides.GetCount(); ++j)
+                    for(const auto& provided : module->provides)
                     {
-                        if(pair.second->provides[j] == dep_func)
+                        if(provided == dep_func)
                         {
                             found = true;
                             break;
@@ -218,7 +211,7 @@ namespace hgl::graph
                 {
                     // 需要加载提供此函数的模块 - 这里简化处理，假设依赖直接是模块名
                     // 在实际实现中，可能需要更复杂的查找逻辑
-                    GLogWarning(U8_TEXT("Dependency function not found: ") + UTF8String(dep_func.c_str()));
+                    std::cerr << "Warning: Dependency function not found: " << dep_func << std::endl;
                 }
             }
         }
@@ -228,34 +221,29 @@ namespace hgl::graph
         std::map<std::string, std::vector<std::string>> graph;
         
         // 初始化入度
-        for(const auto& pair : all_modules)
+        for(const auto& [key, module] : all_modules)
         {
-            in_degree[pair.first] = 0;
-            graph[pair.first] = std::vector<std::string>();
+            in_degree[key] = 0;
+            graph[key] = std::vector<std::string>();
         }
         
         // 构建依赖图（注意：依赖是反向的）
-        for(const auto& pair : all_modules)
+        for(const auto& [key, module] : all_modules)
         {
-            const ShaderModule* module = pair.second;
-            
             // 对于每个此模块提供的函数，找到需要它的模块
-            for(int i = 0; i < module->provides.GetCount(); ++i)
+            for(const auto& provided_func : module->provides)
             {
-                const AnsiString& provided_func = module->provides[i];
-                
-                for(const auto& other_pair : all_modules)
+                for(const auto& [other_key, other] : all_modules)
                 {
-                    if(other_pair.first == pair.first) continue;
+                    if(other_key == key) continue;
                     
-                    const ShaderModule* other = other_pair.second;
-                    for(int j = 0; j < other->dependencies.GetCount(); ++j)
+                    for(const auto& dep : other->dependencies)
                     {
-                        if(other->dependencies[j] == provided_func)
+                        if(dep == provided_func)
                         {
                             // other依赖于module，所以module必须在other之前
-                            graph[pair.first].push_back(other_pair.first);
-                            in_degree[other_pair.first]++;
+                            graph[key].push_back(other_key);
+                            in_degree[other_key]++;
                         }
                     }
                 }
@@ -264,10 +252,10 @@ namespace hgl::graph
         
         // Kahn算法进行拓扑排序
         std::queue<std::string> zero_in_degree;
-        for(const auto& pair : in_degree)
+        for(const auto& [key, degree] : in_degree)
         {
-            if(pair.second == 0)
-                zero_in_degree.push(pair.first);
+            if(degree == 0)
+                zero_in_degree.push(key);
         }
         
         while(!zero_in_degree.empty())
@@ -275,7 +263,7 @@ namespace hgl::graph
             std::string current = zero_in_degree.front();
             zero_in_degree.pop();
             
-            ordered_modules.Add(AnsiString(current.c_str()));
+            ordered_modules.push_back(current);
             
             for(const std::string& neighbor : graph[current])
             {
@@ -286,30 +274,29 @@ namespace hgl::graph
         }
         
         // 检查是否有循环依赖
-        if(ordered_modules.GetCount() != all_modules.size())
+        if(ordered_modules.size() != all_modules.size())
         {
-            GLogError(U8_TEXT("Circular dependency detected"));
+            std::cerr << "Error: Circular dependency detected" << std::endl;
             return false;
         }
         
-        return missing_deps.GetCount() == 0;
+        return missing_deps.empty();
     }
 
-    json ShaderTemplateEngine::BuildTemplateData(const ShaderRecipe& recipe, const AnsiStringList& ordered_modules)
+    json ShaderTemplateEngine::BuildTemplateData(const ShaderRecipe& recipe, const std::vector<std::string>& ordered_modules)
     {
         json data = recipe.template_data;
         
         // 收集所有模块的代码
         std::string all_module_code;
-        for(int i = 0; i < ordered_modules.GetCount(); ++i)
+        for(const auto& module_key : ordered_modules)
         {
-            const AnsiString& module_key = ordered_modules[i];
-            
-            if(module_cache.ContainsKey(module_key))
+            auto it = module_cache.find(module_key);
+            if(it != module_cache.end())
             {
-                ShaderModule* module = module_cache[module_key];
-                all_module_code += "\n// ========== Module: " + std::string(module_key.c_str()) + " ==========\n";
-                all_module_code += std::string(module->code.c_str());
+                ShaderModule* module = it->second.get();
+                all_module_code += "\n// ========== Module: " + module_key + " ==========\n";
+                all_module_code += module->code;
                 all_module_code += "\n";
             }
         }
@@ -319,100 +306,89 @@ namespace hgl::graph
         return data;
     }
 
-    AnsiString ShaderTemplateEngine::Generate(const ShaderRecipe& recipe)
+    std::string ShaderTemplateEngine::Generate(const ShaderRecipe& recipe)
     {
         // 解析依赖
-        AnsiStringList ordered_modules;
-        AnsiStringList missing_deps;
+        std::vector<std::string> ordered_modules;
+        std::vector<std::string> missing_deps;
         
         if(!ResolveDependencies(recipe, ordered_modules, missing_deps))
         {
-            GLogError(U8_TEXT("Failed to resolve dependencies"));
-            for(int i = 0; i < missing_deps.GetCount(); ++i)
+            std::cerr << "Error: Failed to resolve dependencies" << std::endl;
+            for(const auto& dep : missing_deps)
             {
-                GLogError(U8_TEXT("  Missing: ") + UTF8String(missing_deps[i].c_str()));
+                std::cerr << "  Missing: " << dep << std::endl;
             }
-            return AnsiString();
+            return "";
         }
         
         // 构建模板数据
         json template_data = BuildTemplateData(recipe, ordered_modules);
         
         // 加载模板文件
-        AnsiString template_path = template_root + "/" + recipe.template_file;
+        std::string template_path = template_root + "/" + recipe.template_file;
         
-        void* fp = filesystem::LoadFileToMemory(template_path);
-        if(!fp)
+        std::string template_str = ReadFileToString(template_path);
+        if(template_str.empty())
         {
-            GLogError(U8_TEXT("Failed to load template file: ") + UTF8String(template_path.c_str()));
-            return AnsiString();
+            std::cerr << "Error: Failed to load template file: " << template_path << std::endl;
+            return "";
         }
-        
-        const int64 file_size = filesystem::GetFileLength(template_path);
-        std::string template_str((char*)fp, file_size);
-        hgl_free(fp);
         
         // 渲染模板
         try
         {
             std::string result = env.render(template_str, template_data);
-            return AnsiString(result.c_str());
+            return result;
         }
         catch(const std::exception& e)
         {
-            GLogError(U8_TEXT("Template rendering failed: ") + UTF8String(e.what()));
-            return AnsiString();
+            std::cerr << "Error: Template rendering failed: " << e.what() << std::endl;
+            return "";
         }
     }
 
-    ShaderRecipe ShaderTemplateEngine::LoadRecipe(const AnsiString& recipe_file, const AnsiString& quality_level)
+    ShaderRecipe ShaderTemplateEngine::LoadRecipe(const std::string& recipe_file, const std::string& quality_level)
     {
         ShaderRecipe recipe;
         
         // 加载配方文件
-        void* fp = filesystem::LoadFileToMemory(recipe_file);
-        if(!fp)
+        std::string json_str = ReadFileToString(recipe_file);
+        if(json_str.empty())
         {
-            GLogError(U8_TEXT("Failed to load recipe file: ") + UTF8String(recipe_file.c_str()));
+            std::cerr << "Error: Failed to load recipe file: " << recipe_file << std::endl;
             return recipe;
         }
-        
-        const int64 file_size = filesystem::GetFileLength(recipe_file);
-        std::string json_str((char*)fp, file_size);
-        hgl_free(fp);
         
         try
         {
             json recipe_json = json::parse(json_str);
             
-            recipe.name = AnsiString(recipe_json["name"].get<std::string>().c_str());
+            recipe.name = recipe_json["name"].get<std::string>();
             
             // 获取指定质量等级的配置
             if(!recipe_json.contains("quality_levels") || 
-               !recipe_json["quality_levels"].contains(quality_level.c_str()))
+               !recipe_json["quality_levels"].contains(quality_level))
             {
-                GLogError(U8_TEXT("Quality level not found: ") + UTF8String(quality_level.c_str()));
+                std::cerr << "Error: Quality level not found: " << quality_level << std::endl;
                 return recipe;
             }
             
-            const json& quality_config = recipe_json["quality_levels"][quality_level.c_str()];
+            const json& quality_config = recipe_json["quality_levels"][quality_level];
             
             // 解析fragment shader配置
             if(quality_config.contains("fragment_shader"))
             {
                 const json& frag_config = quality_config["fragment_shader"];
                 
-                recipe.template_file = AnsiString(frag_config["template"].get<std::string>().c_str());
+                recipe.template_file = frag_config["template"].get<std::string>();
                 
                 // 解析模块映射
                 if(frag_config.contains("modules"))
                 {
                     for(auto it = frag_config["modules"].begin(); it != frag_config["modules"].end(); ++it)
                     {
-                        recipe.module_map.Add(
-                            AnsiString(it.key().c_str()),
-                            AnsiString(it.value().get<std::string>().c_str())
-                        );
+                        recipe.module_map[it.key()] = it.value().get<std::string>();
                     }
                 }
                 
@@ -422,7 +398,7 @@ namespace hgl::graph
         }
         catch(const json::exception& e)
         {
-            GLogError(U8_TEXT("Failed to parse recipe JSON: ") + UTF8String(e.what()));
+            std::cerr << "Error: Failed to parse recipe JSON: " << e.what() << std::endl;
         }
         
         return recipe;
