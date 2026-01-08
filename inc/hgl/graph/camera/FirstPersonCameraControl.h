@@ -204,7 +204,7 @@ namespace hgl::graph
 
         bool Update() override
         {
-            cur_time=GetPreciseTime();
+            cur_time=GetTimeSec();
 
             return(true);
         }
