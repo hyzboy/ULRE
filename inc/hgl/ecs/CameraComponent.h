@@ -52,8 +52,8 @@ namespace hgl
             float near_clip   = 0.1f;
             float far_clip    = 1000.0f;
 
-            CameraExposure exposure;
-            CameraPostFX   post_fx;
+//            CameraExposure exposure;
+//            CameraPostFX   post_fx;
 
         public:
 
@@ -93,12 +93,12 @@ namespace hgl
 
         public:
 
-            // Exposure / post FX
-            CameraExposure& GetExposure() { return exposure; }
-            const CameraExposure& GetExposure() const { return exposure; }
+            // // Exposure / post FX
+            // CameraExposure& GetExposure() { return exposure; }
+            // const CameraExposure& GetExposure() const { return exposure; }
 
-            CameraPostFX& GetPostFX() { return post_fx; }
-            const CameraPostFX& GetPostFX() const { return post_fx; }
+            // CameraPostFX& GetPostFX() { return post_fx; }
+            // const CameraPostFX& GetPostFX() const { return post_fx; }
 
         public:
 
