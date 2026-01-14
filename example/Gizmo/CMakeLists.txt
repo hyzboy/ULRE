@@ -13,6 +13,7 @@ endmacro()
 CreateProject(01_SimplestAxis SimplestAxis.cpp)
 CreateProject(02_PlaneGrid3D PlaneGrid3D.cpp)
 CreateProject(03_RayPicking RayPicking.cpp)
+CreateProject(03b_RayPickingECS RayPicking_use_ECS.cpp)
 
 CreateProject(04_Gizmo3DTest GizmoTest.cpp 
                                 Gizmo.h
