@@ -18,6 +18,8 @@ namespace hgl::ecs
 
     public:
 
+        io::EventDispatcher *GetEventDispatcher() { return this; }
+
         const Vector2i &GetMouseCoord() const { return mouse_coord; }
 
     public:
