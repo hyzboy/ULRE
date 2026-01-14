@@ -19,6 +19,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/CameraComponent.h
 
                 ${ECS_INCLUDE_PATH}/InputSystem.h
+                InputSystem.cpp
 
                 ECSTransformAssignmentBuffer.h
                 ECSMaterialInstanceAssignmentBuffer.h

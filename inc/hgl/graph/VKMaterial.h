@@ -46,7 +46,7 @@ class Material
 
     uint32_t mi_data_bytes;             ///<实例数据大小
     uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
-    
+
     ActiveMemoryBlockManager *mi_data_manager;
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵

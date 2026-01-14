@@ -16,6 +16,7 @@
 #include<hgl/log/Logger.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/ecs/RenderPrimitiveSystem.h>
+#include<hgl/ecs/InputSystem.h>
 
 COMPONENT_NAMESPACE_BEGIN
 void InitializeComponentManager();
@@ -32,7 +33,7 @@ namespace mtl
     void ClearMaterialFactory();
 }
 
-namespace 
+namespace
 {
     static int RENDER_FRAMEWORK_COUNT=0;
 
@@ -88,7 +89,7 @@ io::EventProcResult RenderFramework::OnEvent(const io::EventHeader &header,const
 
             mouse_coord.x=med->x;
             mouse_coord.y=med->y;
-        }        
+        }
     }
 
     return io::WindowEvent::OnEvent(header,data);
@@ -126,7 +127,7 @@ bool RenderFramework::Init(uint w,uint h)
     inst=CreateVulkanInstance(u8_app_name);
     if(!inst)
         return(false);
-    
+
     VulkanHardwareRequirement vh_req;
 
     device=CreateRenderDevice(inst,win,&vh_req);
@@ -173,10 +174,10 @@ bool RenderFramework::Init(uint w,uint h)
     module_manager->Register(sc_module);
 
     OnChangeDefaultWorld(new World(this));
-    
+
     // create default ECS context BEFORE creating SceneRenderer
     default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
-    
+
     CreateDefaultSceneRenderer();
 
     if(default_ecs_context)
@@ -186,6 +187,10 @@ bool RenderFramework::Init(uint w,uint h)
         render_primitive_system->SetDevice(device);
         render_primitive_system->SetWorld(default_ecs_context);
         render_primitive_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+
+        auto input_system=default_ecs_context->RegisterTickSystem<ecs::InputSystem>();
+
+        AddChildDispatcher(input_system->GetEventDispatcher());
 
         default_ecs_context->Initialize();
     }

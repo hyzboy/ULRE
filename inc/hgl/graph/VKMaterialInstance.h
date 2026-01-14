@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE
-#define HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VKMaterial.h>
 
@@ -79,4 +78,3 @@ public:
             void    WriteMIData (const T &data){WriteMIData(&data,sizeof(T));}  ///<写入材质实例数据
 };//class MaterialInstance
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE
