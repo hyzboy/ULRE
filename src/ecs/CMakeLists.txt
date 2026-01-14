@@ -16,6 +16,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/MaterialBatch.h
                 ${ECS_INCLUDE_PATH}/RenderableComponent.h
                 ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
+                ${ECS_INCLUDE_PATH}/CameraComponent.h
+
+                ${ECS_INCLUDE_PATH}/InputSystem.h
 
                 ECSTransformAssignmentBuffer.h
                 ECSMaterialInstanceAssignmentBuffer.h
