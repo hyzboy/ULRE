@@ -237,8 +237,8 @@ public: // Geometry, Primitive
                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
 
-    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(r,mi,p);}    
-    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(pc,mi,p);}    
+    Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(r,mi,p);}
+    Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(pc,mi,p);}
 
 public: // ComponentManager
 
