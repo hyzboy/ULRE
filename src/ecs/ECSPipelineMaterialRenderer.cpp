@@ -40,16 +40,16 @@ namespace hgl::ecs
                                                ECSMaterialInstanceAssignmentBuffer* mi_buffer)
     {
         // Log GeometryDataBuffer details
-        if (batch->geom_data_buffer)
-        {
-            // Log each VAB
-            for (uint32_t i = 0; i < batch->geom_data_buffer->vab_count; i++)
-            {
-                std::cout << "[ECSPipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer=" 
-                          << batch->geom_data_buffer->vab_list[i] 
-                          << ", offset=" << batch->geom_data_buffer->vab_offset[i] << std::endl;
-            }
-        }
+        //if (batch->geom_data_buffer)
+        //{
+        //    // Log each VAB
+        //    for (uint32_t i = 0; i < batch->geom_data_buffer->vab_count; i++)
+        //    {
+        //        std::cout << "[ECSPipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer=" 
+        //                  << batch->geom_data_buffer->vab_list[i] 
+        //                  << ", offset=" << batch->geom_data_buffer->vab_offset[i] << std::endl;
+        //    }
+        //}
 
         vab_list->Restart();
 

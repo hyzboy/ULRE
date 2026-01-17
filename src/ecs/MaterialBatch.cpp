@@ -110,8 +110,8 @@ namespace hgl::ecs
         // If existing buffers are large enough, reuse them
         if (icb_draw && icb_new_count <= icb_draw->GetMaxCount())
         {
-            std::cout << "[ECS::MaterialBatch::ReallocICB] Reusing existing buffers (capacity: " 
-                      << icb_draw->GetMaxCount() << ")" << std::endl;
+            //std::cout << "[ECS::MaterialBatch::ReallocICB] Reusing existing buffers (capacity: " 
+            //          << icb_draw->GetMaxCount() << ")" << std::endl;
             return;
         }
 
@@ -121,6 +121,7 @@ namespace hgl::ecs
             std::cout << "[ECS::MaterialBatch::ReallocICB] Deleting old indirect draw buffer" << std::endl;
             delete icb_draw;
         }
+
         if (icb_draw_indexed)
         {
             std::cout << "[ECS::MaterialBatch::ReallocICB] Deleting old indexed indirect draw buffer" << std::endl;
@@ -320,14 +321,14 @@ namespace hgl::ecs
         // Bind transform data if available
         if (transform_buffer)
         {
-            std::cout << "[ECS::MaterialBatch::Render] Binding transform buffer..." << std::endl;
+//            std::cout << "[ECS::MaterialBatch::Render] Binding transform buffer..." << std::endl;
             transform_buffer->BindTransform(key.material);
         }
 
         // Bind material instance data if available
         if (mi_buffer)
         {
-            std::cout << "[ECS::MaterialBatch::Render] Binding material instance buffer..." << std::endl;
+//            std::cout << "[ECS::MaterialBatch::Render] Binding material instance buffer..." << std::endl;
             mi_buffer->BindMaterialInstance(key.material);
         }
 

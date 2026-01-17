@@ -26,7 +26,7 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
     
 bool SwapchainRenderTarget::NextFrame()
 {
-    std::cerr << "[SwapchainRenderTarget] NextFrame current=" << current_frame << " semaphore=" << present_complete_semaphore << std::endl;
+//    std::cerr << "[SwapchainRenderTarget] NextFrame current=" << current_frame << " semaphore=" << present_complete_semaphore << std::endl;
     return(vkAcquireNextImageKHR(GetVkDevice(),
                                  swapchain->swap_chain,
                                  UINT64_MAX,
@@ -37,7 +37,7 @@ bool SwapchainRenderTarget::NextFrame()
 
 bool SwapchainRenderTarget::Submit()
 {
-    std::cerr << "[SwapchainRenderTarget] Submit frame=" << current_frame << " rtd=" << (rtd_list+current_frame) << std::endl;
+//    std::cerr << "[SwapchainRenderTarget] Submit frame=" << current_frame << " rtd=" << (rtd_list+current_frame) << std::endl;
     RenderTargetData *rtd=rtd_list+current_frame;
 
     if(!rtd->Submit(present_complete_semaphore))
@@ -52,7 +52,7 @@ bool SwapchainRenderTarget::Submit()
     present_info.pImageIndices      =&current_frame;
 
     VkResult result=queue->Present(&present_info);
-    std::cerr << "[SwapchainRenderTarget] Present result=" << result << std::endl;
+//    std::cerr << "[SwapchainRenderTarget] Present result=" << result << std::endl;
     
     if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) 
     {
