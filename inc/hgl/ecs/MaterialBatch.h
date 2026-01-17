@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/MaterialPipelineKey.h>
 #include<hgl/graph/PipelineMaterialRenderer.h>

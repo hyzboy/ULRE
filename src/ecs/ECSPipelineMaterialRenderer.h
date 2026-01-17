@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ECSPipelineMaterialRenderer.h - ECS Pipeline材质渲染器
  * 
  * 参照 PipelineMaterialRenderer 设计，但支持 ECS 版本的 Assignment Buffers

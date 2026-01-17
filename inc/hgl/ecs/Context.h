@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/Object.h>
 #include<hgl/ecs/Entity.h>

@@ -22,7 +22,7 @@ namespace hgl
 
             // Use hash_code instead of string for faster lookups
             std::unordered_map<std::size_t, std::shared_ptr<Component>> components;
-            ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
+            ECSContext *context = nullptr;   ///< 鎵�灞炵殑 ECSContext锛屼笉鎷ユ湁
 
             void RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp);
             void UnregisterFromContext(size_t type_hash, Component* comp_ptr);
