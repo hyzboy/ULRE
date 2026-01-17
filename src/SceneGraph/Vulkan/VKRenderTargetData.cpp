@@ -9,18 +9,18 @@ VK_NAMESPACE_BEGIN
 
 bool RenderTargetData::Submit(Semaphore *wait_sem)
 {
-    std::cerr << "[RenderTargetData] Submit queue=" << queue << " cmd_buf=" << cmd_buf << " wait_sem=" << wait_sem << " render_complete=" << render_complete_semaphore << std::endl;
+//    std::cerr << "[RenderTargetData] Submit queue=" << queue << " cmd_buf=" << cmd_buf << " wait_sem=" << wait_sem << " render_complete=" << render_complete_semaphore << std::endl;
     if(!queue||!cmd_buf||!render_complete_semaphore)
         return(false);
 
     bool ok = queue->Submit(cmd_buf,wait_sem,render_complete_semaphore);
-    std::cerr << "[RenderTargetData] Submit result=" << ok << std::endl;
+//    std::cerr << "[RenderTargetData] Submit result=" << ok << std::endl;
     return ok;
 }
 
 RenderCmdBuffer *RenderTargetData::BeginRender(DescriptorBinding *db)
 {
-    std::cerr << "[RenderTargetData] BeginRender cmd_buf=" << cmd_buf << " fbo=" << fbo << std::endl;
+//    std::cerr << "[RenderTargetData] BeginRender cmd_buf=" << cmd_buf << " fbo=" << fbo << std::endl;
     if(!cmd_buf)
         return(nullptr);
 
@@ -32,7 +32,7 @@ RenderCmdBuffer *RenderTargetData::BeginRender(DescriptorBinding *db)
 
 void RenderTargetData::EndRender()
 {
-    std::cerr << "[RenderTargetData] EndRender cmd_buf=" << cmd_buf << std::endl;
+//    std::cerr << "[RenderTargetData] EndRender cmd_buf=" << cmd_buf << std::endl;
     if(!cmd_buf)
         return;
 
