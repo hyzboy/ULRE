@@ -16,7 +16,7 @@ namespace hgl::graph
         Vector3f pos;               ///<摄像机坐标
 
         Vector3f world_up;          ///<向上量(默认0,0,1，Z轴向上)
-            
+
         Vector3f viewDirection;     ///<视线方向 normalize(camera_pos - target)，从相机指向远方
 
     public:

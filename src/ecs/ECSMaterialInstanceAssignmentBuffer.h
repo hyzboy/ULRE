@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ECSMaterialInstanceAssignmentBuffer.h - ECS材质实例数据管理
  * 
  * 针对 ECS 架构的 RenderItem 和 MaterialBatch 设计

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ECSTransformAssignmentBuffer.cpp - ECS Transform 分配缓冲实现
  */
 

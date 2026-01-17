@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ECSTransformAssignmentBuffer.h - ECS渲染项Transform数据管理
  * 
  * 针对 ECS 架构的 RenderItem 和 MaterialBatch 设计
