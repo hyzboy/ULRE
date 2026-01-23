@@ -4,6 +4,7 @@
 #include<hgl/graph/VKIndirectCommandBuffer.h>
 #include<hgl/type/ArrayList.h>
 #include<hgl/component/Component.h>
+#include<compare>
 
 COMPONENT_NAMESPACE_BEGIN
 class RenderComponent;
@@ -16,23 +17,22 @@ class MaterialInstanceAssignmentBuffer;
 class SceneNode;
 struct CameraInfo;
 
-struct PipelineMaterialIndex:public Comparator<PipelineMaterialIndex>
+struct PipelineMaterialIndex
 {
     Material *material;
     Pipeline *pipeline;
 
 public:
 
-    const int compare(const PipelineMaterialIndex &rli)const override
+    std::strong_ordering operator<=>(const PipelineMaterialIndex &rli) const
     {
-        if(material<rli.material)return(-1);
-        if(material>rli.material)return(1);
+        if(auto cmp = material <=> rli.material; cmp != 0)
+            return cmp;
 
-        if(pipeline<rli.pipeline)return(-1);
-        if(pipeline>rli.pipeline)return(1);
-
-        return(0);
+        return pipeline <=> rli.pipeline;
     }
+
+    bool operator==(const PipelineMaterialIndex &rli) const = default;
 
 public:
 

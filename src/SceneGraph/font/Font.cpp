@@ -3,14 +3,14 @@
 
 namespace hgl::graph
 {
-    Font::Font():Comparator<Font>()
+    Font::Font()
     {
         mem_zero(name);
         width=height=0;
         bold=italic=anti=false;
     }
         
-    Font::Font(const os_char *n,int w,int h,bool b,bool i,bool aa):Comparator<Font>()
+    Font::Font(const os_char *n,int w,int h,bool b,bool i,bool aa)
     {
         hgl::strcpy(name,MAX_FONT_NAME_LENGTH,n);
 

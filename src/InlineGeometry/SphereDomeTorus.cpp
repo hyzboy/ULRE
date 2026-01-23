@@ -1,6 +1,6 @@
 ﻿#include"InlineGeometryCommon.h"
 #include<hgl/math/Quaternion.h>
-#include<hgl/math/MatrixOperations.h>
+#include<hgl/math/Matrix.h>
 
 namespace hgl::graph::inline_geometry
 {
@@ -44,7 +44,7 @@ namespace hgl::graph::inline_geometry
                 // Calculate tangent using CMMATH quaternion functions
                 if(builder.HasTangents())
                 {
-                    Quatf quat = RotationQuat(360.0f * tex_x, AxisVector::Y);
+                    Quatf quat = QuatFromAxisAngle(360.0f * tex_x, AxisVector::Y);
                     Matrix4f matrix = ToMatrix(quat);
                     Vector3f tangent = TransformDirection(matrix, helpVector);
                     
@@ -129,7 +129,7 @@ namespace hgl::graph::inline_geometry
                 float tx = 0.0f, ty = 0.0f, tz = 0.0f;
                 if(builder.HasTangents())
                 {
-                    Quatf quat = RotationQuat(360.0f * tex_x, AxisVector::Y);
+                    Quatf quat = QuatFromAxisAngle(360.0f * tex_x, AxisVector::Y);
                     Matrix4f matrix = ToMatrix(quat);
                     Vector3f tangentVec = TransformDirection(matrix, helpVector);
                     tx = tangentVec.x;
@@ -221,7 +221,7 @@ namespace hgl::graph::inline_geometry
                 float tx = 0.0f, ty = 0.0f, tz = 0.0f;
                 if(builder.HasTangents())
                 {
-                    Quatf quat = RotationQuat(360.0f * s, AxisVector::Z);
+                    Quatf quat = QuatFromAxisAngle(360.0f * s, AxisVector::Z);
                     Matrix4f matrix = ToMatrix(quat);
                     Vector3f tangentVec = TransformDirection(matrix, helpVector);
                     tx = tangentVec.x;

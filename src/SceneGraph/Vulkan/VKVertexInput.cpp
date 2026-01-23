@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/VKVertexInput.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderAssign.h>
-#include<hgl/type/ObjectManage.h>
+#include<hgl/type/ObjectManager.h>
 
 VK_NAMESPACE_BEGIN
 VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
@@ -185,7 +185,7 @@ namespace
     constexpr const uint VertexInputAttributeBytes=sizeof(VertexInputAttribute);
     constexpr const uint VIAIndexLength=(VertexInputAttributeBytes)*16;
 
-    ObjectManage<AnsiString,VertexInput> vertex_input_manager;
+    ObjectManager<AnsiString,VertexInput> vertex_input_manager;
 
     //完全没必要的管理
 

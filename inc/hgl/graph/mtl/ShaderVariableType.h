@@ -6,7 +6,6 @@
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/graph/VKSamplerType.h>
 #include<hgl/graph/VKImageType.h>
-#include<hgl/Comparator.h>
 
 VK_NAMESPACE_BEGIN
 enum class ShaderVariableBaseType:uint8
@@ -25,7 +24,7 @@ using SVBaseType=ShaderVariableBaseType;
         
 #pragma pack(push,1)
 
-struct ShaderVariableType:public Comparator<ShaderVariableType>
+struct ShaderVariableType
 {
     union
     {
@@ -80,191 +79,166 @@ struct ShaderVariableType:public Comparator<ShaderVariableType>
 
 public:
 
-    ShaderVariableType()
-    {
-        svt_code=0;
-    }
+    // ✅ 使用默认构造函数，使类型成为 trivial
+    constexpr ShaderVariableType() : svt_code(0) {}
+    
+    // ✅ 使用默认拷贝构造和赋值
+    constexpr ShaderVariableType(const ShaderVariableType &) = default;
+    constexpr ShaderVariableType& operator=(const ShaderVariableType &) = default;
 
-    ShaderVariableType(const ShaderVariableType &svt)
-    {
-        svt_code=svt.svt_code;
-    }
+    const bool Check() const;
 
-    ShaderVariableType(const VAType &vat,const uint count)
-    {
-        From(vat,count);
-    }
+    std::strong_ordering operator<=>(const ShaderVariableType &svt) const;
 
-    ShaderVariableType(const VABaseType &vabt,const uint32 count)
-    {
-        svt_code=0;
-
-        base_type=SVBaseType::Scalar;
-
-        scalar.type=vabt;
-
-        array_size=count;
-    }
-
-    ShaderVariableType(const VABaseType &vabt,const uint8 size,const uint32 count)
-    {
-        svt_code=0;
-
-        base_type=SVBaseType::Vector;
-
-        vector.type=vabt;
-        vector.vec_size=size;
-
-        array_size=count;
-    }
-
-    ShaderVariableType(const VABaseType &vabt,const uint8 row,const uint8 col,const uint32 count)
-    {
-        svt_code=0;
-
-        base_type=SVBaseType::Matrix;
-
-        matrix.type=vabt;
-        matrix.n=col;
-        matrix.m=row;
-
-        array_size=count;
-    }
-
-    ShaderVariableType(const SamplerType &st,const uint32 count)
-    {
-        svt_code=0;
-
-        base_type=SVBaseType::Sampler;
-
-        sampler.type=st;
-
-        array_size=count;
-    }
-
-    ShaderVariableType(const ShaderImageType &sit,const uint32 count)
-    {
-        svt_code=0;
-
-        base_type=SVBaseType::Image;
-
-        image.type=sit;
-
-        array_size=count;
-    }
-
-    const bool Check()const;
-
-    const int compare(const ShaderVariableType &svt)const override;
-
-    const char *GetTypename()const;
+    const char *GetTypename() const;
 
     bool ParseTypeString(const char *str);
 
-    const uint64 ToCode()const{return svt_code;}
-    const bool FromCode(const uint64 code)
+    constexpr uint64 ToCode() const { return svt_code; }
+    bool FromCode(const uint64 code)
     {
-        svt_code=code;
-
+        svt_code = code;
         return Check();
     }
 
-    const bool From(const VAType &vat,const uint16 count=1);
-
-    static const ShaderVariableType Scalar(const VABaseType &vabt,const uint count=1)
-    {
-        ShaderVariableType svt;
-
-        svt.base_type   =SVBaseType::Scalar;
-        svt.scalar.type =vabt;
-        svt.array_size  =count;
-
-        return svt;
-    }
+    const bool From(const VAType &vat, const uint16 count = 1);
 };//struct ShaderVariableType
 #pragma pack(pop)
 
 using SVType=ShaderVariableType;
 
-const SVType SVT_BOOL  (VABaseType::Bool,    1);
-const SVType SVT_INT   (VABaseType::Int,     1);
-const SVType SVT_UINT  (VABaseType::UInt,    1);
-const SVType SVT_FLOAT (VABaseType::Float,   1);
-const SVType SVT_DOUBLE(VABaseType::Double,  1);
+// ✅ 工厂函数命名空间
+namespace SVTypeFactory
+{
+    constexpr ShaderVariableType Scalar(VABaseType type, uint32 count = 1)
+    {
+        ShaderVariableType svt{};
+        svt.base_type = SVBaseType::Scalar;
+        svt.scalar.type = type;
+        svt.array_size = count;
+        return svt;
+    }
+    
+    constexpr ShaderVariableType Vector(VABaseType type, uint8 size, uint32 count = 1)
+    {
+        ShaderVariableType svt{};
+        svt.base_type = SVBaseType::Vector;
+        svt.vector.type = type;
+        svt.vector.vec_size = size;
+        svt.array_size = count;
+        return svt;
+    }
+    
+    constexpr ShaderVariableType Matrix(VABaseType type, uint8 rows, uint8 cols, uint32 count = 1)
+    {
+        ShaderVariableType svt{};
+        svt.base_type = SVBaseType::Matrix;
+        svt.matrix.type = type;
+        svt.matrix.m = rows;
+        svt.matrix.n = cols;
+        svt.array_size = count;
+        return svt;
+    }
+    
+    constexpr ShaderVariableType Sampler(SamplerType type, uint32 count = 1)
+    {
+        ShaderVariableType svt{};
+        svt.base_type = SVBaseType::Sampler;
+        svt.sampler.type = type;
+        svt.array_size = count;
+        return svt;
+    }
+    
+    constexpr ShaderVariableType Image(ShaderImageType type, uint32 count = 1)
+    {
+        ShaderVariableType svt{};
+        svt.base_type = SVBaseType::Image;
+        svt.image.type = type;
+        svt.array_size = count;
+        return svt;
+    }
+}
 
-const SVType SVT_BVEC2 (VABaseType::Bool,    2,1);
-const SVType SVT_BVEC3 (VABaseType::Bool,    3,1);
-const SVType SVT_BVEC4 (VABaseType::Bool,    4,1);
+// ✅ 使用 inline constexpr 定义常量（C++17 特性）
+inline constexpr SVType SVT_BOOL   = SVTypeFactory::Scalar(VABaseType::Bool,   1);
+inline constexpr SVType SVT_INT    = SVTypeFactory::Scalar(VABaseType::Int,    1);
+inline constexpr SVType SVT_UINT   = SVTypeFactory::Scalar(VABaseType::UInt,   1);
+inline constexpr SVType SVT_FLOAT  = SVTypeFactory::Scalar(VABaseType::Float,  1);
+inline constexpr SVType SVT_DOUBLE = SVTypeFactory::Scalar(VABaseType::Double, 1);
 
-const SVType SVT_IVEC2 (VABaseType::Int,     2,1);
-const SVType SVT_IVEC3 (VABaseType::Int,     3,1);
-const SVType SVT_IVEC4 (VABaseType::Int,     4,1);
+inline constexpr SVType SVT_BVEC2  = SVTypeFactory::Vector(VABaseType::Bool,   2, 1);
+inline constexpr SVType SVT_BVEC3  = SVTypeFactory::Vector(VABaseType::Bool,   3, 1);
+inline constexpr SVType SVT_BVEC4  = SVTypeFactory::Vector(VABaseType::Bool,   4, 1);
 
-const SVType SVT_UVEC2 (VABaseType::UInt,    2,1);
-const SVType SVT_UVEC3 (VABaseType::UInt,    3,1);
-const SVType SVT_UVEC4 (VABaseType::UInt,    4,1);
+inline constexpr SVType SVT_IVEC2  = SVTypeFactory::Vector(VABaseType::Int,    2, 1);
+inline constexpr SVType SVT_IVEC3  = SVTypeFactory::Vector(VABaseType::Int,    3, 1);
+inline constexpr SVType SVT_IVEC4  = SVTypeFactory::Vector(VABaseType::Int,    4, 1);
 
-const SVType SVT_VEC2  (VABaseType::Float,   2,1);
-const SVType SVT_VEC3  (VABaseType::Float,   3,1);
-const SVType SVT_VEC4  (VABaseType::Float,   4,1);
+inline constexpr SVType SVT_UVEC2  = SVTypeFactory::Vector(VABaseType::UInt,   2, 1);
+inline constexpr SVType SVT_UVEC3  = SVTypeFactory::Vector(VABaseType::UInt,   3, 1);
+inline constexpr SVType SVT_UVEC4  = SVTypeFactory::Vector(VABaseType::UInt,   4, 1);
 
-const SVType SVT_DVEC2 (VABaseType::Double,  2,1);
-const SVType SVT_DVEC3 (VABaseType::Double,  3,1);
-const SVType SVT_DVEC4 (VABaseType::Double,  4,1);
+inline constexpr SVType SVT_VEC2   = SVTypeFactory::Vector(VABaseType::Float,  2, 1);
+inline constexpr SVType SVT_VEC3   = SVTypeFactory::Vector(VABaseType::Float,  3, 1);
+inline constexpr SVType SVT_VEC4   = SVTypeFactory::Vector(VABaseType::Float,  4, 1);
 
-const SVType SVT_MAT2  (VABaseType::Float,   2,2,1);
-const SVType SVT_MAT3  (VABaseType::Float,   3,3,1);
-const SVType SVT_MAT4  (VABaseType::Float,   4,4,1);
-const SVType SVT_MAT2x3(VABaseType::Float,   2,3,1);
-const SVType SVT_MAT2x4(VABaseType::Float,   2,4,1);
-const SVType SVT_MAT3x2(VABaseType::Float,   3,2,1);
-const SVType SVT_MAT3x4(VABaseType::Float,   3,4,1);
-const SVType SVT_MAT4x2(VABaseType::Float,   4,2,1);
-const SVType SVT_MAT4x3(VABaseType::Float,   4,3,1);
+inline constexpr SVType SVT_DVEC2  = SVTypeFactory::Vector(VABaseType::Double, 2, 1);
+inline constexpr SVType SVT_DVEC3  = SVTypeFactory::Vector(VABaseType::Double, 3, 1);
+inline constexpr SVType SVT_DVEC4  = SVTypeFactory::Vector(VABaseType::Double, 4, 1);
 
-const SVType SVT_Sampler1D(SamplerType::Sampler1D,          1);
-const SVType SVT_Sampler2D(SamplerType::Sampler2D,          1);
-const SVType SVT_Sampler3D(SamplerType::Sampler3D,          1);
+inline constexpr SVType SVT_MAT2   = SVTypeFactory::Matrix(VABaseType::Float,  2, 2, 1);
+inline constexpr SVType SVT_MAT3   = SVTypeFactory::Matrix(VABaseType::Float,  3, 3, 1);
+inline constexpr SVType SVT_MAT4   = SVTypeFactory::Matrix(VABaseType::Float,  4, 4, 1);
+inline constexpr SVType SVT_MAT2x3 = SVTypeFactory::Matrix(VABaseType::Float,  2, 3, 1);
+inline constexpr SVType SVT_MAT2x4 = SVTypeFactory::Matrix(VABaseType::Float,  2, 4, 1);
+inline constexpr SVType SVT_MAT3x2 = SVTypeFactory::Matrix(VABaseType::Float,  3, 2, 1);
+inline constexpr SVType SVT_MAT3x4 = SVTypeFactory::Matrix(VABaseType::Float,  3, 4, 1);
+inline constexpr SVType SVT_MAT4x2 = SVTypeFactory::Matrix(VABaseType::Float,  4, 2, 1);
+inline constexpr SVType SVT_MAT4x3 = SVTypeFactory::Matrix(VABaseType::Float,  4, 3, 1);
 
-const SVType SVT_SamplerCube(SamplerType::SamplerCube,      1);
-const SVType SVT_Sampler2DRect(SamplerType::Sampler2DRect,  1);
+inline constexpr SVType SVT_Sampler1D          = SVTypeFactory::Sampler(SamplerType::Sampler1D,          1);
+inline constexpr SVType SVT_Sampler2D          = SVTypeFactory::Sampler(SamplerType::Sampler2D,          1);
+inline constexpr SVType SVT_Sampler3D          = SVTypeFactory::Sampler(SamplerType::Sampler3D,          1);
+
+inline constexpr SVType SVT_SamplerCube        = SVTypeFactory::Sampler(SamplerType::SamplerCube,        1);
+inline constexpr SVType SVT_Sampler2DRect      = SVTypeFactory::Sampler(SamplerType::Sampler2DRect,      1);
         
-const SVType SVT_Sampler1DArray(SamplerType::Sampler1DArray,1);
-const SVType SVT_Sampler2DArray(SamplerType::Sampler2DArray,1);
+inline constexpr SVType SVT_Sampler1DArray     = SVTypeFactory::Sampler(SamplerType::Sampler1DArray,     1);
+inline constexpr SVType SVT_Sampler2DArray     = SVTypeFactory::Sampler(SamplerType::Sampler2DArray,     1);
 
-const SVType SVT_SamplerCubeArray(SamplerType::SamplerCubeArray,1);
+inline constexpr SVType SVT_SamplerCubeArray   = SVTypeFactory::Sampler(SamplerType::SamplerCubeArray,   1);
 
-const SVType SVT_SamplerBuffer(SamplerType::SamplerBuffer,1);
+inline constexpr SVType SVT_SamplerBuffer      = SVTypeFactory::Sampler(SamplerType::SamplerBuffer,      1);
 
-const SVType SVT_Sampler2DMS(SamplerType::Sampler2DMS,1);
-const SVType SVT_Sampler2DMSArray(SamplerType::Sampler2DMSArray,1);
+inline constexpr SVType SVT_Sampler2DMS        = SVTypeFactory::Sampler(SamplerType::Sampler2DMS,        1);
+inline constexpr SVType SVT_Sampler2DMSArray   = SVTypeFactory::Sampler(SamplerType::Sampler2DMSArray,   1);
 
-const SVType SVT_Sampler1DShadow(SamplerType::Sampler1DShadow,1);
-const SVType SVT_Sampler2DShadow(SamplerType::Sampler2DShadow,1);
+inline constexpr SVType SVT_Sampler1DShadow         = SVTypeFactory::Sampler(SamplerType::Sampler1DShadow,         1);
+inline constexpr SVType SVT_Sampler2DShadow         = SVTypeFactory::Sampler(SamplerType::Sampler2DShadow,         1);
 
-const SVType SVT_SamplerCubeShadow(SamplerType::SamplerCubeShadow,1);
-const SVType SVT_Sampler2DRectShadow(SamplerType::Sampler2DRectShadow,1);
+inline constexpr SVType SVT_SamplerCubeShadow       = SVTypeFactory::Sampler(SamplerType::SamplerCubeShadow,       1);
+inline constexpr SVType SVT_Sampler2DRectShadow     = SVTypeFactory::Sampler(SamplerType::Sampler2DRectShadow,     1);
 
-const SVType SVT_Sampler1DArrayShadow(SamplerType::Sampler1DArrayShadow,1);
-const SVType SVT_Sampler2DArrayShadow(SamplerType::Sampler2DArrayShadow,1);
-const SVType SVT_SamplerCubeArrayShadow(SamplerType::SamplerCubeArrayShadow,1);
+inline constexpr SVType SVT_Sampler1DArrayShadow    = SVTypeFactory::Sampler(SamplerType::Sampler1DArrayShadow,    1);
+inline constexpr SVType SVT_Sampler2DArrayShadow    = SVTypeFactory::Sampler(SamplerType::Sampler2DArrayShadow,    1);
+inline constexpr SVType SVT_SamplerCubeArrayShadow  = SVTypeFactory::Sampler(SamplerType::SamplerCubeArrayShadow,  1);
 
-const SVType SVT_Image1D(ShaderImageType::Image1D,1);
-const SVType SVT_Image2D(ShaderImageType::Image2D,1);
-const SVType SVT_Image3D(ShaderImageType::Image3D,1);
+inline constexpr SVType SVT_Image1D            = SVTypeFactory::Image(ShaderImageType::Image1D,            1);
+inline constexpr SVType SVT_Image2D            = SVTypeFactory::Image(ShaderImageType::Image2D,            1);
+inline constexpr SVType SVT_Image3D            = SVTypeFactory::Image(ShaderImageType::Image3D,            1);
 
-const SVType SVT_ImageCube(ShaderImageType::ImageCube,1);
-const SVType SVT_Image2DRect(ShaderImageType::Image2DRect,1);
+inline constexpr SVType SVT_ImageCube          = SVTypeFactory::Image(ShaderImageType::ImageCube,          1);
+inline constexpr SVType SVT_Image2DRect        = SVTypeFactory::Image(ShaderImageType::Image2DRect,        1);
 
-const SVType SVT_Image1DArray(ShaderImageType::Image1DArray,1);
-const SVType SVT_Image2DArray(ShaderImageType::Image2DArray,1);
+inline constexpr SVType SVT_Image1DArray       = SVTypeFactory::Image(ShaderImageType::Image1DArray,       1);
+inline constexpr SVType SVT_Image2DArray       = SVTypeFactory::Image(ShaderImageType::Image2DArray,       1);
 
-const SVType SVT_ImageCubeArray(ShaderImageType::ImageCubeArray,1);
+inline constexpr SVType SVT_ImageCubeArray     = SVTypeFactory::Image(ShaderImageType::ImageCubeArray,     1);
 
-const SVType SVT_ImageBuffer(ShaderImageType::ImageBuffer,1);
+inline constexpr SVType SVT_ImageBuffer        = SVTypeFactory::Image(ShaderImageType::ImageBuffer,        1);
 
-const SVType SVT_Image2DMS(ShaderImageType::Image2DMS,1);
-const SVType SVT_Image2DMSArray(ShaderImageType::Image2DMSArray,1);
+inline constexpr SVType SVT_Image2DMS          = SVTypeFactory::Image(ShaderImageType::Image2DMS,          1);
+inline constexpr SVType SVT_Image2DMSArray     = SVTypeFactory::Image(ShaderImageType::Image2DMSArray,     1);
 
 struct ShaderVariable
 {
@@ -276,7 +250,7 @@ struct ShaderVariable
 
 using SVList=ArrayList<ShaderVariable>;
 
-struct ShaderVariableArray:public Comparator<ShaderVariableArray>
+struct ShaderVariableArray
 {
     uint count;
 
@@ -299,35 +273,30 @@ public:
         Clear();
     }
 
-    const int compare(const ShaderVariableArray &sva)const override
+    std::strong_ordering operator<=>(const ShaderVariableArray &sva)const
     {
-        int off=count-sva.count;
-        if(off)return off;
+        if(auto cmp = count <=> sva.count; cmp != 0)
+            return cmp;
 
         for(uint i=0;i<count;i++)
         {
-            off=items[i].location-sva.items[i].location;
-            if(off)
-                return off;
+            if(auto cmp = items[i].location <=> sva.items[i].location; cmp != 0)
+                return cmp;
 
-            if(items[i].type.ToCode()>sva.items[i].type.ToCode())
-                return 1;
+            const uint64 lhs_code = items[i].type.ToCode();
+            const uint64 rhs_code = sva.items[i].type.ToCode();
 
-            //ToCode返回的是uint64，可能差值超大，所以不能直接用-的结果
+            if(auto cmp = lhs_code <=> rhs_code; cmp != 0)
+                return cmp;
 
-            if(items[i].type.ToCode()<sva.items[i].type.ToCode())
-                return -1;
+            if(auto cmp = items[i].interpolation <=> sva.items[i].interpolation; cmp != 0)
+                return cmp;
 
-            off=int(items[i].interpolation)-int(sva.items[i].interpolation);
-            if(off)
-                return off;
-
-            off=hgl::strcmp(items[i].name,sva.items[i].name);
-            if(off)
-                return off;
+            if(auto cmp = hgl::strcmp_ordering(items[i].name, sva.items[i].name); cmp != 0)
+                return cmp;
         }
 
-        return 0;
+        return std::strong_ordering::equal;
     }
                 
     bool Init(const uint c=0)

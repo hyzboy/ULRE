@@ -22,21 +22,6 @@ VertexInputLayout::~VertexInputLayout()
     delete[] attr_list;
 }
 
-const int VertexInputLayout::compare(const VertexInputLayout &vil)const
-{
-    int result;
-
-    result=count-vil.count;
-    if(result)return result;
-
-    result=mem_compare(bind_list,vil.bind_list,count);
-    if(result)return result;
-
-    result=mem_compare(attr_list,vil.attr_list,count);
-    
-    return(result);
-}
-
 const int VertexInputLayout::GetIndex(const AnsiString &name)const
 {
     if(name.IsEmpty())return(-1);

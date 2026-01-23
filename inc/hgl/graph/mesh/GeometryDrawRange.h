@@ -1,13 +1,14 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
+#include<compare>
 
 VK_NAMESPACE_BEGIN
 /**
 * 网格绘制范围数据
 * 用于描述渲染时可绘制的顶点/索引范围，以及缓冲区中数据容量
 */
-struct GeometryDrawRange:public ComparatorData<GeometryDrawRange>
+struct GeometryDrawRange
 {
     //因为要VAB是流式访问，所以我们这个结构会被用做排序依据
     //也因此，把vertex_offset放在最前面
@@ -26,5 +27,27 @@ struct GeometryDrawRange:public ComparatorData<GeometryDrawRange>
 public:
 
     void Set(const Geometry *);
+
+    std::strong_ordering operator<=>(const GeometryDrawRange &other) const
+    {
+        if(auto cmp = vertex_offset <=> other.vertex_offset; cmp != 0)
+            return cmp;
+        
+        if(auto cmp = first_index <=> other.first_index; cmp != 0)
+            return cmp;
+        
+        if(auto cmp = vertex_count <=> other.vertex_count; cmp != 0)
+            return cmp;
+        
+        if(auto cmp = index_count <=> other.index_count; cmp != 0)
+            return cmp;
+        
+        if(auto cmp = data_vertex_count <=> other.data_vertex_count; cmp != 0)
+            return cmp;
+        
+        return data_index_count <=> other.data_index_count;
+    }
+
+    bool operator==(const GeometryDrawRange &other) const = default;
 };
 VK_NAMESPACE_END

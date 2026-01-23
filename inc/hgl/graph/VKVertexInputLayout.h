@@ -6,7 +6,7 @@ VK_NAMESPACE_BEGIN
 * 顶点输入布局<br>
 * 本对象用于传递给Material,用于已经确定好顶点格式的情况下，依然可修改部分设定(如instance)。
 */
-class VertexInputLayout:public Comparator<VertexInputLayout>
+class VertexInputLayout
 {
 private:
 
@@ -70,7 +70,52 @@ public:
     VkVertexInputBindingDescription *           NewBindListCopy()const{return hgl_new_copy(bind_list,count);}
     VkVertexInputAttributeDescription *         NewAttrListCopy()const{return hgl_new_copy(attr_list,count);}
 
-    const int compare(const VertexInputLayout &vil)const override;
+    std::strong_ordering operator<=>(const VertexInputLayout &vil)const
+    {
+        if(auto cmp = count <=> vil.count; cmp != 0)
+            return cmp;
+        
+        if(auto cmp = mem_compare_ordering(bind_list, vil.bind_list, count); cmp != 0)
+            return cmp;
+        
+        return mem_compare_ordering(attr_list, vil.attr_list, count);
+    }
+
+    /**
+     * 相等比较运算符
+     * @param vil 要比较的另一个 VertexInputLayout
+     * @return 如果两个布局的所有属性都相同，返回 true；否则返回 false
+     * 
+     * 用法示例：
+     * VertexInputLayout vil1(count), vil2(count);
+     * if(vil1 == vil2) { ... }
+     */
+    bool operator==(const VertexInputLayout &vil) const
+    {
+        if(count != vil.count)
+            return false;
+        
+        if(mem_compare(bind_list, vil.bind_list, count) != 0)
+            return false;
+        
+        return mem_compare(attr_list, vil.attr_list, count) == 0;
+    }
+
+    /**
+     * 不相等比较运算符
+     * @param vil 要比较的另一个 VertexInputLayout
+     * @return 如果两个布局的任何属性不同，返回 true；否则返回 false
+     * 
+     * 用法示例：
+     * VertexInputLayout vil1(count), vil2(count);
+     * if(vil1 != vil2) { ... }
+     */
+    bool operator!=(const VertexInputLayout &vil) const
+    {
+        return !(*this == vil);
+    }
+
+
 };//class VertexInputLayout
 
 using VIL=VertexInputLayout;

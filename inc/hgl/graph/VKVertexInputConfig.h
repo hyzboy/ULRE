@@ -4,7 +4,7 @@
 #include<hgl/type/Map.h>
 
 VK_NAMESPACE_BEGIN
-struct VAConfig:public ComparatorData<VAConfig>
+struct VAConfig
 {
     VkFormat format;
     VkVertexInputRate input_rate;
@@ -22,9 +22,11 @@ public:
         format=fmt;
         input_rate=ir;
     }
+
+    auto operator <=> (const VAConfig &vc)const=default;
 };//struct VAConfig
 
-class VILConfig:public Map<AnsiString,VAConfig>,public Comparator<VILConfig>
+class VILConfig:public Map<AnsiString,VAConfig>
 {
 public:
 
@@ -38,25 +40,21 @@ public:
         return Map<AnsiString,VAConfig>::Add(name,VAConfig(fmt,ir));
     }
 
-    const int compare(const VILConfig &vc)const override
+    auto operator <=> (const VILConfig &vc)const
     {
         int off;
 
         off=GetCount()-vc.GetCount();
         if(off)return(off);
 
-        auto **sp=GetDataList();
-        VAConfig vac;
-
-        for(int i=0;i<GetCount();i++)
+        for(const auto &pair:*this)
         {
-            if(!vc.Get((*sp)->key,vac))
+            VAConfig vac;
+            if(!vc.Get(pair->key,vac))
                 return(1);
 
-            off=(*sp)->value.compare(vac);
-            if(off)return(off);
-
-            ++sp;
+            auto cmp=pair->value<=>vac;
+            if(cmp!=0)return(cmp<0?-1:1);
         }
 
         return 0;

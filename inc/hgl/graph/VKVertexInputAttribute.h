@@ -4,6 +4,7 @@
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/type/ArrayList.h>
 #include<hgl/type/String.h>
+#include<compare>
 
 namespace hgl::graph
 {
@@ -42,7 +43,7 @@ namespace hgl::graph
 
     const VkFormat GetVulkanFormat(const VertexInputAttribute *sa);
 
-    struct VertexInputAttributeArray:public Comparator<VertexInputAttributeArray>
+    struct VertexInputAttributeArray
     {
         uint count;
         VIA *items;
@@ -68,34 +69,33 @@ namespace hgl::graph
             Clear();
         }
 
-        int Comp(const VertexInputAttributeArray *saa)const
+        std::strong_ordering operator<=>(const VertexInputAttributeArray &saa) const
         {
-            if(!saa)
-                return 1;
+            if(auto cmp = count <=> saa.count; cmp != 0)
+                return cmp;
 
-            int off=count-saa->count;
-            if(off)return off;
-
-            for(uint i=0;i<count;i++)
+            for(uint i = 0; i < count; i++)
             {
-            #define SAA_COMP_ITEM(name) off=items[i].name-saa->items[i].name;if(off)return off;
-                SAA_COMP_ITEM(location)
-                SAA_COMP_ITEM(basetype)
-                SAA_COMP_ITEM(vec_size)
-                SAA_COMP_ITEM(input_rate)
-            #undef SAA_COMP_ITEM
+                if(auto cmp = items[i].location <=> saa.items[i].location; cmp != 0)
+                    return cmp;
+                
+                if(auto cmp = items[i].basetype <=> saa.items[i].basetype; cmp != 0)
+                    return cmp;
+                
+                if(auto cmp = items[i].vec_size <=> saa.items[i].vec_size; cmp != 0)
+                    return cmp;
+                
+                if(auto cmp = items[i].input_rate <=> saa.items[i].input_rate; cmp != 0)
+                    return cmp;
                         
-                off=hgl::strcmp(items[i].name,saa->items[i].name);
-                if(off)return off;
+                if(auto cmp = hgl::strcmp_ordering(items[i].name, saa.items[i].name); cmp != 0)
+                    return cmp;
             }
 
-            return 0;
+            return std::strong_ordering::equal;
         }
 
-        const int compare(const VertexInputAttributeArray &saa)const override
-        {
-            return Comp(&saa);
-        }
+        bool operator==(const VertexInputAttributeArray &saa) const = default;
 
         bool Init(const uint c=0)
         {

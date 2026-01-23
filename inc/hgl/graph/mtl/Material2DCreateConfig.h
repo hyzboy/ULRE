@@ -6,7 +6,7 @@
 #include<hgl/graph/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
-struct Material2DCreateConfig:public MaterialCreateConfig,public Comparator<Material2DCreateConfig>
+struct Material2DCreateConfig:public MaterialCreateConfig
 {
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
 
@@ -32,18 +32,15 @@ public:
             position_format=VAT_VEC2;
     }
 
-    const int compare(const Material2DCreateConfig &cfg)const override
+    std::strong_ordering operator<=>(const Material2DCreateConfig &cfg)const
     {
-        int off=MaterialCreateConfig::compare(cfg);
+        if(auto cmp=MaterialCreateConfig::operator<=>(cfg); cmp!=0)
+            return cmp;
 
-        if(off)return off;
+        if(auto cmp=coordinate_system<=>cfg.coordinate_system; cmp!=0)
+            return cmp;
 
-        off=(int)coordinate_system-(int)cfg.coordinate_system;
-        if(off)return off;
-
-        off=position_format.Comp(cfg.position_format);
-       
-        return off;
+        return position_format <=> cfg.position_format;
     }
 
     const AnsiString ToHashString() override;

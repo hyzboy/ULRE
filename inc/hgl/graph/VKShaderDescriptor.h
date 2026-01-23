@@ -9,7 +9,7 @@ namespace hgl
     {
         constexpr size_t DESCRIPTOR_NAME_MAX_LENGTH=32;
 
-        struct ShaderDescriptor:public Comparator<ShaderDescriptor>
+        struct ShaderDescriptor
         {
             char name[DESCRIPTOR_NAME_MAX_LENGTH];
             VkDescriptorType desc_type;
@@ -57,12 +57,15 @@ namespace hgl
 
             virtual ~ShaderDescriptor()=default;
 
-            const int compare(const ShaderDescriptor &sr)const override
+            std::strong_ordering operator<=>(const ShaderDescriptor &sr)const
             {
-                if(set!=sr.set)return sr.set-set;
-                if(binding!=sr.binding)return sr.binding-binding;
+                if(auto cmp=set<=>sr.set;cmp!=0)
+                    return cmp;
 
-                return strcmp(name,sr.name);
+                if(auto cmp=binding<=>sr.binding;cmp!=0)
+                    return cmp;
+
+                return hgl::strcmp_ordering(name, sr.name);
             }
         };//struct ShaderDescriptor
 
