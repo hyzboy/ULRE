@@ -2,7 +2,7 @@
 
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/graph/VKSampler.h>
-#include <hgl/type/ObjectManage.h>
+#include <hgl/type/ObjectManager.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -11,7 +11,7 @@ using SamplerID = int;
 GRAPH_MODULE_CLASS(SamplerManager)
 {
 private:
-    IDObjectManage<SamplerID, Sampler> rm_samplers; ///<采样器合集
+    AutoIdObjectManager<SamplerID, Sampler> rm_samplers; ///<采样器合集
 
     SamplerManager(RenderFramework *);
     ~SamplerManager() = default;

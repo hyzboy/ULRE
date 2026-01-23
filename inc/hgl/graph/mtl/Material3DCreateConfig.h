@@ -6,7 +6,7 @@
 
 STD_MTL_NAMESPACE_BEGIN
 
-struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Material3DCreateConfig>
+struct Material3DCreateConfig:public MaterialCreateConfig
 {
     bool                camera;                 ///<包含摄像机矩阵信息
 
@@ -37,21 +37,18 @@ public:
 //        reverse_depth=false;
     }
 
-    const int compare(const Material3DCreateConfig &cfg)const override
+    std::strong_ordering operator<=>(const Material3DCreateConfig &cfg)const
     {
-        int off=MaterialCreateConfig::compare(cfg);
+        if(auto cmp=MaterialCreateConfig::operator<=>(cfg); cmp!=0)
+            return cmp;
 
-        if(off)return off;
+        if(auto cmp=camera<=>cfg.camera; cmp!=0)
+            return cmp;
 
-        off=camera-cfg.camera;
-        if(off)return off;
+        if(auto cmp=sky<=>cfg.sky; cmp!=0)
+            return cmp;
 
-        off=sky-cfg.sky;
-        if(off)return off;
-
-        off=position_format.Comp(cfg.position_format);
-
-        return off;
+        return position_format <=> cfg.position_format;
     }
 
     const AnsiString ToHashString() override;

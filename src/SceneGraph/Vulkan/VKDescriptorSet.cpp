@@ -106,13 +106,13 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDe
 
     if(binded_sets.Contains(binding))return(false);
 
-    DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
+    DescriptorBufferInfo buf_info(buf,offset,range);
 
     vab_list.Add(buf_info);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,desc_type));
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,&buf_info,desc_type));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -142,13 +142,13 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
 
     if(binded_sets.Contains(binding))return(false);
 
-    DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
+    DescriptorBufferInfo buf_info(buf,offset,range);
 
     vab_list.Add(buf_info);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,desc_type));
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,&buf_info,desc_type));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -162,11 +162,11 @@ bool DescriptorSet::BindTexture(const int binding,Texture *tex)
 
     if(binded_sets.Contains(binding))return(false);
 
-    DescriptorImageInfo *image_info=new DescriptorImageInfo(tex);
+    DescriptorImageInfo image_info(tex);
 
     image_list.Add(image_info);
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,&image_info));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -180,11 +180,11 @@ bool DescriptorSet::BindTextureSampler(const int binding,Texture *tex,Sampler *s
 
     if(binded_sets.Contains(binding))return(false);
 
-    DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,sampler);
+    DescriptorImageInfo image_info(tex,sampler);
 
     image_list.Add(image_info);
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,&image_info));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -198,11 +198,11 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
 
     if(binded_sets.Contains(binding))return(false);
 
-    DescriptorImageInfo *image_info=new DescriptorImageInfo(iv->GetImageView());
+    DescriptorImageInfo image_info(iv->GetImageView());
     
     image_list.Add(image_info);
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,&image_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
 
     binded_sets.Add(binding);
     is_dirty=true;

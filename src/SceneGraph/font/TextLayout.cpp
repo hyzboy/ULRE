@@ -41,7 +41,7 @@ namespace hgl::graph::layout
         return(true);
     }
 
-    bool TextLayout::AddString(const U16StringView &str,const TextDrawStyle &style)
+    bool TextLayout::AddString(const U16StringView &str, const TextDrawStyle &style)
     {
         if(!text_primitive)
             return(false);
@@ -51,10 +51,14 @@ namespace hgl::graph::layout
 
         DrawStringItem item;
 
-        if(draw_all_strings.AddString(item.str,str.c_str(),str.Length())<0)
+        // ✅ 使用 AddAndGet 获取 ConstStringView，并添加到 draw_all_strings
+        auto *csv = draw_all_strings.AddAndGet(str);
+        
+        if(!csv)
             return(false);
 
-        item.style=style;
+        item.str = *csv;  // 保存 ConstStringView
+        item.style = style;
 
         draw_string_list.Add(item);
         return(true);

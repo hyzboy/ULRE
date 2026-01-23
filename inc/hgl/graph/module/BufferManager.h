@@ -4,7 +4,7 @@
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
-#include<hgl/type/ObjectManage.h>
+#include<hgl/type/ObjectManager.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -14,7 +14,7 @@ GRAPH_MODULE_CLASS(BufferManager)
 {
 private:
 
-    IDObjectManage<BufferID, DeviceBuffer> rm_buffers;                 ///<缓冲区合集
+    AutoIdObjectManager<BufferID, DeviceBuffer> rm_buffers;                 ///<缓冲区合集
 
     void AddBuffer(const AnsiString &buf_name, DeviceBuffer *buf);
 

@@ -22,34 +22,6 @@ GeometryDataBuffer::~GeometryDataBuffer()
     delete[] vab_list;
 }
 
-const int GeometryDataBuffer::compare(const GeometryDataBuffer &gdb)const
-{
-    ptrdiff_t off;
-
-    if(vdm&&gdb.vdm)
-    {
-        off=(ptrdiff_t)vdm-(ptrdiff_t)gdb.vdm;
-        if(off)
-            return off;
-    }
-
-    off=vab_count-gdb.vab_count;
-    if(off)
-        return off;
-
-    off=mem_compare(vab_list,gdb.vab_list,vab_count);
-    if(off)
-        return off;
-
-    off=mem_compare(vab_offset,gdb.vab_offset,vab_count);
-    if(off)
-        return off;
-
-    off=ibo-gdb.ibo;
-
-    return off;
-}
-
 void GeometryDrawRange::Set(const Geometry *geometry)
 {
     if(!geometry)

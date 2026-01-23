@@ -2,7 +2,7 @@
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/VKGeometry.h>
-#include<hgl/type/ObjectManage.h>
+#include<hgl/type/ObjectManager.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -15,7 +15,7 @@ GRAPH_MODULE_CLASS(GeometryManager)
 {
 private:
 
-    IDObjectManage<GeometryID,Geometry> rm_geometry;              ///<图元合集
+    AutoIdObjectManager<GeometryID,Geometry> rm_geometry;              ///<图元合集
 
     GeometryManager(RenderFramework *);
     virtual ~GeometryManager()=default;

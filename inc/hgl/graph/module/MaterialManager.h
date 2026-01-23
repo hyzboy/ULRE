@@ -5,7 +5,7 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/ObjectManage.h>
+#include<hgl/type/ObjectManager.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
@@ -30,8 +30,8 @@ private:
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     Map<AnsiString,Material *> material_by_name;
     
-    IDObjectManage<MaterialID,             Material>           rm_material;                ///<材质合集
-    IDObjectManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
+    AutoIdObjectManager<MaterialID,             Material>           rm_material;                ///<材质合集
+    AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
 
 private:
 

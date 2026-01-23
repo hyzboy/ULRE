@@ -2,7 +2,7 @@
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/type/ObjectManage.h>
+#include<hgl/type/ObjectManager.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -18,7 +18,7 @@ GRAPH_MODULE_CLASS(PrimitiveManager)
 {
 private:
 
-    IDObjectManage<PrimitiveID, Primitive> rm_primitive_set;    ///<渲染实例集合集
+    AutoIdObjectManager<PrimitiveID, Primitive> rm_primitive_set;    ///<渲染实例集合集
 
     PrimitiveManager(RenderFramework *);
     ~PrimitiveManager() = default;

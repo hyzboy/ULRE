@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/math/transform/TransformAction.h>
-#include<hgl/math/MatrixOperations.h>
+#include<hgl/math/Matrix.h>
 
 namespace hgl::math
 {

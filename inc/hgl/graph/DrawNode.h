@@ -5,6 +5,7 @@
 #include<hgl/type/SortedSet.h>
 #include<hgl/graph/NodeTransform.h>   // need full type for combined transform
 #include<hgl/component/Component.h>
+#include<compare>
 
 namespace hgl
 {
@@ -25,7 +26,7 @@ namespace hgl
         class SceneNode;       // forward
 
         // 渲染节点：封装PrimitiveComponent，提供统一的渲染接口
-        class DrawNode:public Comparator<DrawNode>
+        class DrawNode
         {
         private:
             PrimitiveComponent *comp;
@@ -51,7 +52,7 @@ namespace hgl
             NodeTransform *     GetTransform()          const;    ///<返回用于渲染的最终变换
 
             //排序比较，定义在DrawNode.cpp
-            const int compare(const DrawNode &)const override;
+            std::strong_ordering operator<=>(const DrawNode &other) const;
         };
 
         using DrawNodeList=ArrayList<DrawNode *>;
@@ -60,15 +61,4 @@ namespace hgl
 
         using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph
-
-    template<> inline const int ItemComparator<graph::DrawNode>::compare(const graph::DrawNode &a,const graph::DrawNode &b)
-    {
-        return a.compare(b);
-    }
-
-    // 指针版本的比较器，便于对 DrawNode* 进行排序
-    template<> inline const int ItemComparator<graph::DrawNode *>::compare(graph::DrawNode * const &a,graph::DrawNode * const &b)
-    {
-        return a->compare(*b);
-    }
 }//namespace hgl

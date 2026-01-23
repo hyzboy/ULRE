@@ -8,43 +8,43 @@ VK_NAMESPACE_BEGIN
 /**
 * 见排序说明
 */
-const int DrawNode::compare(const DrawNode &other)const
+std::strong_ordering DrawNode::operator<=>(const DrawNode &other) const
 {
-    hgl::int64 off;
-
-    auto *prim_one=other.GetPrimitive()->GetGeometry();
-    auto *prim_two=this->GetPrimitive()->GetGeometry();
+    auto *prim_one = other.GetPrimitive()->GetGeometry();
+    auto *prim_two = this->GetPrimitive()->GetGeometry();
 
     //比较VDM
     if(prim_one->GetVDM())      //有VDM
     {
-        off=prim_one->GetVDM()
-           -prim_two->GetVDM();
+        hgl::int64 vdm_off = (hgl::int64)prim_one->GetVDM()
+                           - (hgl::int64)prim_two->GetVDM();
 
-        if(off)
-            return off;
+        if(vdm_off != 0)
+            return vdm_off < 0 ? std::strong_ordering::less : std::strong_ordering::greater;
 
         //比较模型
         {
-            off=(hgl::int64)prim_one
-               -(hgl::int64)prim_two;
+            hgl::int64 prim_off = (hgl::int64)prim_one
+                                - (hgl::int64)prim_two;
 
-            if(off)
+            if(prim_off != 0)
             {
-                off=prim_one->GetVertexOffset()-prim_two->GetVertexOffset();        //保证vertex offset小的在前面
-
-                return off;
+                //保证vertex offset小的在前面
+                hgl::int64 offset_diff = prim_one->GetVertexOffset() - prim_two->GetVertexOffset();
+                return offset_diff < 0 ? std::strong_ordering::less : std::strong_ordering::greater;
             }
         }
     }
 
     //比较距离（备注：正负方向等实际测试后再调整）
-    float foff=other.to_camera_distance-to_camera_distance;
+    float foff = other.to_camera_distance - to_camera_distance;
 
-    if(foff>0)
-        return 1;
+    if(foff > 0)
+        return std::strong_ordering::greater;
+    else if(foff < 0)
+        return std::strong_ordering::less;
     else
-        return -1;
+        return std::strong_ordering::equal;
 }
 
 // DrawNode implementation

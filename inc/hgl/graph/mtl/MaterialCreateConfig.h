@@ -12,7 +12,7 @@ class MaterialCreateInfo;
 /**
  * 材质配置结构
  */
-struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
+struct MaterialCreateConfig
 {
     bool                        material_instance;          ///<是否包含材质实例
 
@@ -50,25 +50,21 @@ public:
         local_to_world=l2w;
     }
 
-    const int compare(const MaterialCreateConfig &cfg)const override
+    std::strong_ordering operator<=>(const MaterialCreateConfig &cfg)const
     {
-        int off;
-        
-        off=material_instance-cfg.material_instance;
-        if(off)return(off);
+        if(auto cmp=material_instance<=>cfg.material_instance;cmp!=0)
+            return cmp;
 
-        off=mem_compare(rt_output,cfg.rt_output);
-        if(off)return(off);
+        if(auto cmp=mem_compare(rt_output,cfg.rt_output);cmp!=0)
+            return cmp<0?std::strong_ordering::less:std::strong_ordering::greater;
 
-        off=(int)prim-(int)cfg.prim;
-        if(off)return(off);
+        if(auto cmp=prim<=>cfg.prim;cmp!=0)
+            return cmp;
 
-        off=local_to_world-cfg.local_to_world;
-        if(off)return off;
+        if(auto cmp=local_to_world<=>cfg.local_to_world;cmp!=0)
+            return cmp;
 
-        off=shader_stage_flag_bit-cfg.shader_stage_flag_bit;
-
-        return off;
+        return shader_stage_flag_bit<=>cfg.shader_stage_flag_bit;
     }
 
     virtual const AnsiString ToHashString();

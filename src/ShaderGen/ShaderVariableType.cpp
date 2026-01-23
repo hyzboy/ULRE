@@ -85,48 +85,41 @@ const bool ShaderVariableType::Check()const
     return(true);
 }
 
-const int ShaderVariableType::compare(const ShaderVariableType &svt)const
+std::strong_ordering ShaderVariableType::operator<=>(const ShaderVariableType &svt)const
 {
     int off=(int)base_type-(int)svt.base_type;
 
-    if(off)return(off);
+    if(off)return std::strong_ordering(off<=>0);
 
     if(base_type==SVBaseType::Scalar)
-        return int(scalar.type)-int(svt.scalar.type);
+        return int(scalar.type)<=>int(svt.scalar.type);
 
     if(base_type==SVBaseType::Vector)
     {
-        off=int(vector.type)-int(svt.vector.type);
+        if(auto cmp=int(vector.type)<=>int(svt.vector.type); cmp!=0)
+            return cmp;
 
-        if(off)return(off);
-
-        off=vector.vec_size-svt.vector.vec_size;
-
-        if(off)return(off);
-
-        return int(vector.type)-int(svt.vector.type);
+        return vector.vec_size<=>svt.vector.vec_size;
     }
 
     if(base_type==SVBaseType::Matrix)
     {
-        off=int(matrix.type)-int(svt.matrix.type);
+        if(auto cmp=int(matrix.type)<=>int(svt.matrix.type); cmp!=0)
+            return cmp;
 
-        if(off)return(off);
+        if(auto cmp=matrix.n<=>svt.matrix.n; cmp!=0)
+            return cmp;
 
-        off=matrix.n-svt.matrix.n;
-
-        if(off)return(off);
-
-        return matrix.m-svt.matrix.m;
+        return matrix.m<=>svt.matrix.m;
     }
 
     if(base_type==SVBaseType::Sampler)
-        return int(sampler.type)-int(svt.sampler.type);
+        return int(sampler.type)<=>int(svt.sampler.type);
 
     if(base_type==SVBaseType::Image)
-        return int(image.type)-int(svt.image.type);
+        return int(image.type)<=>int(svt.image.type);
 
-    return 0;
+    return std::strong_ordering::equal;
 }
 
 const char *ShaderVariableType::GetTypename()const

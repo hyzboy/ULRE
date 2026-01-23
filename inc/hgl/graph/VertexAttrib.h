@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/type/EnumUtil.h>
+#include<compare>
 
 namespace hgl::graph
 {
@@ -74,23 +75,15 @@ namespace hgl::graph
             return(true);
         }
 
-        int Comp(const VertexAttribType &vat)const
+        std::strong_ordering operator<=>(const VertexAttribType &vat)const
         {
-            int off=(int)basetype-(int)vat.basetype;
-    
-            if(off)return(off);
-
-            off=vec_size-vat.vec_size;
-
-            return(off);
+            if(auto cmp = basetype <=> vat.basetype; cmp != 0)
+                return cmp;
+            
+            return vec_size <=> vat.vec_size;
         }
 
-        const bool operator > (const VertexAttribType& i)const {return Comp(i)>0;}
-        const bool operator < (const VertexAttribType& i)const {return Comp(i)<0;}
-        const bool operator >=(const VertexAttribType& i)const {return Comp(i) >= 0;}
-        const bool operator <=(const VertexAttribType& i)const {return Comp(i) <= 0;}
-        const bool operator ==(const VertexAttribType& i)const {return Comp(i) == 0;}
-        const bool operator !=(const VertexAttribType& i)const {return Comp(i) != 0;}
+        bool operator==(const VertexAttribType &vat)const = default;
 
         const uint8 ToCode()const{return vat_code;}
 

@@ -83,7 +83,7 @@ namespace hgl::graph
         using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
         using TEXT_COORD_VEC=math::Vector2i;
 
-        struct TextDrawStyle:public ComparatorData<TextDrawStyle>
+        struct TextDrawStyle
         {
             ParagraphStyle para_style;
 
@@ -105,6 +105,8 @@ namespace hgl::graph
             TEXT_COORD_TYPE char_gap;
             TEXT_COORD_TYPE line_gap;
             TEXT_COORD_TYPE line_height;
+
+            auto operator <=> (const TextDrawStyle &)const=default;
         };
     }//namespace layout
 }//namespace hgl::graph
