@@ -37,7 +37,7 @@ PipelineData::PipelineData(const PipelineData *pd)
 
     pipeline_info.pViewportState     = &viewport_state;
 
-#define PIPELINE_STRUCT_NEW_COPY(pname,name)  pipeline_info.pname=name=hgl_new_copy(pd->name);
+#define PIPELINE_STRUCT_NEW_COPY(pname,name)  pipeline_info.pname=name=new_copy(pd->name);
 
     PIPELINE_STRUCT_NEW_COPY(pTessellationState,tessellation);
     PIPELINE_STRUCT_NEW_COPY(pRasterizationState,rasterization);
@@ -242,14 +242,14 @@ PipelineData::PipelineData()
 
     sample_mask=nullptr;
    
-    tessellation              =hgl_zero_new<VkPipelineTessellationStateCreateInfo>();
-    rasterization             =hgl_zero_new<VkPipelineRasterizationStateCreateInfo>();
-    multi_sample              =hgl_zero_new<VkPipelineMultisampleStateCreateInfo>();
-    sample_mask               =hgl_zero_new<VkSampleMask>(VK_NAMESPACE::MAX_SAMPLE_MASK_COUNT);
+    tessellation              =zero_new<VkPipelineTessellationStateCreateInfo>();
+    rasterization             =zero_new<VkPipelineRasterizationStateCreateInfo>();
+    multi_sample              =zero_new<VkPipelineMultisampleStateCreateInfo>();
+    sample_mask               =zero_new<VkSampleMask>(VK_NAMESPACE::MAX_SAMPLE_MASK_COUNT);
     multi_sample->pSampleMask =nullptr;
     
-    depth_stencil             =hgl_zero_new<VkPipelineDepthStencilStateCreateInfo>();
-    color_blend               =hgl_zero_new<VkPipelineColorBlendStateCreateInfo>();
+    depth_stencil             =zero_new<VkPipelineDepthStencilStateCreateInfo>();
+    color_blend               =zero_new<VkPipelineColorBlendStateCreateInfo>();
 
     InitColorBlend(32);//暂时不可能MRT输出32个，就这样了
     
