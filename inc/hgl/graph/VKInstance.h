@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
 
 #include<hgl/type/String.h>
-#include<hgl/type/ObjectList.h>
+#include<hgl/type/ManagedArray.h>
 #include<hgl/platform/Window.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKDebugOut.h>
@@ -62,7 +62,7 @@ VK_NAMESPACE_BEGIN
 
         VKDebugOut *debug_out;
 
-        ObjectList<VulkanPhyDevice> physical_devices;
+        ManagedArray<VulkanPhyDevice> physical_devices;
 
     private:
     
@@ -81,7 +81,7 @@ VK_NAMESPACE_BEGIN
                 operator VkInstance (){return inst;}
 
         const   VkInstance                   GetVulkanInstance  ()const{return inst;}
-        const   ObjectList<VulkanPhyDevice> &GetDeviceList      ()const{return physical_devices;}
+        const   ManagedArray<VulkanPhyDevice> &GetDeviceList      ()const{return physical_devices;}
         const   VulkanPhyDevice *            GetDevice          (VkPhysicalDeviceType)const;
         
         template<typename T>

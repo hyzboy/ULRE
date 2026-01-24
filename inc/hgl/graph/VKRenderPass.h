@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
-#include<hgl/type/ObjectList.h>
+#include<hgl/type/ManagedArray.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -26,7 +26,7 @@ class RenderPass
 
 protected:
 
-    ObjectList<Pipeline> pipeline_list;
+    ManagedArray<Pipeline> pipeline_list;
 
     Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 

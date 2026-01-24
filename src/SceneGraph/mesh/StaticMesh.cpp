@@ -63,7 +63,7 @@ void StaticMesh::RemovePrimitive(Primitive *sm)
 
 void StaticMesh::ClearPrimitives()
 {
-    primitive_list.Clear();   // ObjectList::Clear 会负责 delete 其中的 Mesh*
+    primitive_list.Clear();   // ManagedArray::Clear 会负责 delete 其中的 Mesh*
 
     // 清空集合
     geometry_set.Clear();

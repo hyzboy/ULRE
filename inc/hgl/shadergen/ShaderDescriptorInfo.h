@@ -13,8 +13,8 @@ namespace hgl{namespace graph
 using UBODescriptorList=ValueArray<const UBODescriptor *>;
 using TextureDescriptorList = ValueArray<const TextureDescriptor *>;
 using TextureSamplerDescriptorList=ValueArray<const TextureSamplerDescriptor *>;
-using ConstValueDescriptorList=ObjectList<ConstValueDescriptor>;
-using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
+using ConstValueDescriptorList=ManagedArray<ConstValueDescriptor>;
+using SubpassInputDescriptorList=ManagedArray<SubpassInputDescriptor>;
 
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计

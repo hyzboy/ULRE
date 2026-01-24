@@ -3,7 +3,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/ObjectList.h>
+#include<hgl/type/ManagedArray.h>
 #include<hgl/type/SortedSet.h>
 VK_NAMESPACE_BEGIN
 class DeviceBuffer;
