@@ -93,7 +93,7 @@ namespace hgl::graph
     * 注销要使用的字符
     * @param ch_list 要注销的字符列表
     */
-    void TileFont::Unregistry(const DataArray<u32char> &ch_list)
+    void TileFont::Unregistry(const ValueBuffer<u32char> &ch_list)
     {
         for(const u32char &ch:ch_list)
             to_res.Release(ch);

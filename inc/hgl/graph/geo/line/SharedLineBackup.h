@@ -1,15 +1,15 @@
 #pragma once
 
 #include <hgl/math/Vector.h>
-#include <hgl/type/DataArray.h>
+#include <hgl/type/ValueBuffer.h>
 
 namespace hgl::graph
 {
     // Shared temporary backup buffers for LineWidthBatch
     struct SharedLineBackup
     {
-        DataArray<math::Vector3f> positions;
-        DataArray<uint8>  colors;
+        ValueBuffer<math::Vector3f> positions;
+        ValueBuffer<uint8>  colors;
 
         size_t max_reserved = 0;
 
