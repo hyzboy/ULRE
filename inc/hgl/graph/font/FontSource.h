@@ -2,7 +2,7 @@
 
 #include<hgl/type/StrChar.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/graph/font/Font.h>
 #include<hgl/type/UnicodeBlocks.h>
 
@@ -68,7 +68,7 @@ namespace hgl::graph
     {
     protected:
 
-        SortedSet<void *> ref_object;
+        OrderedValueSet<void *> ref_object;
 
         ObjectMap<u32char,CLA> cla_cache;
 

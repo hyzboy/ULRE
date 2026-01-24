@@ -23,7 +23,7 @@ namespace hgl::graph
 
         SceneNode *root_node;                           ///<世界根节点
 
-        SortedSet<SceneNode *> all_nodes;               ///<世界内所有节点
+        OrderedValueSet<SceneNode *> all_nodes;               ///<世界内所有节点
 
     protected:
 

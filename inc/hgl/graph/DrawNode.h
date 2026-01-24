@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/ValueArray.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/graph/NodeTransform.h>   // need full type for combined transform
 #include<hgl/component/Component.h>
 #include<compare>
@@ -59,6 +59,6 @@ namespace hgl
 
         using DrawNodePointerList=ValueArray<DrawNode *>; // 指针版本的列表，兼容旧代码
 
-        using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
+        using MaterialInstanceSets=OrderedValueSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph
 }//namespace hgl

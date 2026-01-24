@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/graph/VKGeometry.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/graph/font/FontSource.h>
 
 namespace hgl::graph

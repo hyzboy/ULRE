@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/ImageRegion.h>
@@ -22,8 +22,8 @@ private:
 
 private:
 
-    SortedSet<VkImage> image_set;
-    SortedSet<Texture *> texture_set;                                           ///<纹理合集
+    OrderedValueSet<VkImage> image_set;
+    OrderedValueSet<Texture *> texture_set;                                           ///<纹理合集
 
     Map<TextureID,Texture *> texture_by_id;
     Map<OSString,Texture *> texture_by_filename;

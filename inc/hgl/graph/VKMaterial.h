@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
@@ -118,5 +118,5 @@ public:
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 
-using MaterialSet=SortedSet<Material *>;
+using MaterialSet=OrderedValueSet<Material *>;
 VK_NAMESPACE_END
