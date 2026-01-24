@@ -4,7 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/ManagedArray.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 VK_NAMESPACE_BEGIN
 class DeviceBuffer;
 
@@ -20,7 +20,7 @@ class DescriptorSet
     ValueArray<VkDescriptorImageInfo> image_list;
     ValueArray<VkWriteDescriptorSet> wds_list;
 
-    SortedSet<uint32_t> binded_sets;
+    OrderedValueSet<uint32_t> binded_sets;
 
     bool is_dirty;
 

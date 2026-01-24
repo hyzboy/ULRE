@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/graph/NodeTransform.h>
 #include<hgl/math/geometry/AABB.h>
@@ -26,7 +26,7 @@ namespace hgl::graph
 
     using SceneNodeID   =int64;
 
-    using SceneNodeList =SortedSet<SceneNode *>;
+    using SceneNodeList =OrderedValueSet<SceneNode *>;
 
     HGL_DEFINE_U16_IDNAME(SceneNodeName)
 

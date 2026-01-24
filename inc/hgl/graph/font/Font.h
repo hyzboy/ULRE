@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<compare>
 
 namespace hgl::graph
@@ -95,5 +95,5 @@ namespace hgl::graph
 
     };//struct Font
 
-    using U32CharSet=SortedSet<u32char>;    ///<字符合集
+    using U32CharSet=OrderedValueSet<u32char>;    ///<字符合集
 }//namespace hgl::graph

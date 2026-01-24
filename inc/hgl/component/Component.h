@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/type/DataType.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/log/Log.h>
 
@@ -156,7 +156,7 @@ public: //事件
                                     static  constexpr const size_t  StaticDataTypeHash      ()              {return hgl::GetTypeHash<name##ComponentData>();} \
                                     static  constexpr const size_t  StaticManagerTypeHash   ()              {return hgl::GetTypeHash<name##ComponentManager>();}
 
-using ComponentSet=SortedSet<Component *>;
+using ComponentSet=OrderedValueSet<Component *>;
 using ComponentList=ValueArray<Component *>;
 
 class ComponentManager

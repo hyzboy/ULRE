@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/VKVertexInputLayout.h>
-#include<hgl/type/SortedSet.h>
+#include<hgl/type/OrderedValueSet.h>
 #include<hgl/graph/VKVertexInputAttribute.h>
 
 VK_NAMESPACE_BEGIN
@@ -33,7 +33,7 @@ class VertexInput
 
     VIL *default_vil;
     
-    SortedSet<VIL *> vil_sets;
+    OrderedValueSet<VIL *> vil_sets;
 
 public:
 
