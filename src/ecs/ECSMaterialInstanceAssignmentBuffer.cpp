@@ -98,12 +98,13 @@ namespace hgl::ecs
         // 收集所有唯一的材质实例
         mi_set.Reserve(item_count);
 
-        for (RenderItem* item : items)
+        for (RenderItem *item : items)
         {
             if (!item)
                 continue;
 
-            graph::MaterialInstance* mi = item->GetMaterialInstance();
+            graph::MaterialInstance *mi = item->GetMaterialInstance();
+
             if (mi)
             {
                 mi_set.Add(mi);
@@ -129,7 +130,8 @@ namespace hgl::ecs
                 if (!mi)
                     continue;
 
-                const void* mi_data = mi->GetMIData();
+                const void *mi_data = mi->GetMIData();
+
                 if (mi_data)
                 {
                     memcpy(mip, mi_data, material_instance_data_bytes);

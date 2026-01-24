@@ -265,16 +265,11 @@ namespace hgl::graph
         }
         
         // 递归添加子节点
-        int child_count = child_nodes.GetCount();
-        if(child_count > 0)
+        for(const SceneNode *child : child_nodes)
         {
-            SceneNode **children = child_nodes.GetData();
-            for(int i = 0; i < child_count; i++)
+            if(child)
             {
-                if(children[i])
-                {
-                    result += children[i]->GetSceneTreeText(depth + 1);
-                }
+                result += child->GetSceneTreeText(depth + 1);
             }
         }
         

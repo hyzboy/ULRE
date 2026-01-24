@@ -101,6 +101,16 @@ private:
             }
         }
 
+        {
+            for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
+            {
+                Color4f *mi_color=(Color4f *)triangles[i].mi->GetMIData();
+
+                std::cout<<"[TestApp::InitMaterial] Triangle["<<i<<"] MI Data Address: "<<(void*)mi_color
+                    <<", Color: R="<<mi_color->r<<", G="<<mi_color->g<<", B="<<mi_color->b<<", A="<<mi_color->a<<std::endl;
+            }
+        }
+
         pipeline = CreatePipeline(material, InlinePipeline::Solid2D);
         
         if (!pipeline)
