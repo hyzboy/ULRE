@@ -111,7 +111,7 @@ namespace hgl::graph
         return(true);
     }
 
-    DataChain::UserNode *VertexDataManager::AcquireIB(const VkDeviceSize count)
+    BlockAllocator::UserNode *VertexDataManager::AcquireIB(const VkDeviceSize count)
     {
         LogVerbose(OS_TEXT("AcquireIB requested: count=") + OSString::numberOf(count));
 
@@ -121,7 +121,7 @@ namespace hgl::graph
             return(nullptr);
         }
 
-        DataChain::UserNode *un=ibo_data_chain.Acquire(hgl_align<int>(count,4));
+        BlockAllocator::UserNode *un=ibo_data_chain.Acquire(hgl_align<int>(count,4));
 
         if(!un)
         {
@@ -136,7 +136,7 @@ namespace hgl::graph
         return(un);
     }
 
-    bool VertexDataManager::ReleaseIB(DataChain::UserNode *un)
+    bool VertexDataManager::ReleaseIB(BlockAllocator::UserNode *un)
     {
         if(!un)
         {
@@ -157,7 +157,7 @@ namespace hgl::graph
         return(true);
     }
 
-    DataChain::UserNode *VertexDataManager::AcquireVAB(const VkDeviceSize count)
+    BlockAllocator::UserNode *VertexDataManager::AcquireVAB(const VkDeviceSize count)
     {
         LogVerbose(OS_TEXT("AcquireVAB requested: count=") + OSString::numberOf(count));
 
@@ -167,7 +167,7 @@ namespace hgl::graph
             return(nullptr);
         }
 
-        DataChain::UserNode *un=vbo_data_chain.Acquire(hgl_align<int>(count,4));
+        BlockAllocator::UserNode *un=vbo_data_chain.Acquire(hgl_align<int>(count,4));
 
         if(!un)
         {
@@ -182,7 +182,7 @@ namespace hgl::graph
         return(un);
     }
 
-    bool VertexDataManager::ReleaseVAB(DataChain::UserNode *un)
+    bool VertexDataManager::ReleaseVAB(BlockAllocator::UserNode *un)
     {
         if(!un)
         {

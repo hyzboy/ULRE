@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKIndexBuffer.h>
-#include<hgl/type/DataChain.h>
+#include<hgl/type/BlockAllocator.h>
 #include<hgl/log/Logger.h>
 
 VK_NAMESPACE_BEGIN
@@ -28,8 +28,8 @@ protected:
 
 protected:
 
-    DataChain       vbo_data_chain; ///<数据链
-    DataChain       ibo_data_chain; ///<数据链
+    BlockAllocator       vbo_data_chain; ///<数据链
+    BlockAllocator       ibo_data_chain; ///<数据链
 
 public:
 
@@ -51,11 +51,11 @@ public:
 
     bool Init(const VkDeviceSize vbo_size,const VkDeviceSize ibo_size,const IndexType index_type);
 
-    DataChain::UserNode *AcquireIB(const VkDeviceSize count);
-    DataChain::UserNode *AcquireVAB(const VkDeviceSize count);
+    BlockAllocator::UserNode *AcquireIB(const VkDeviceSize count);
+    BlockAllocator::UserNode *AcquireVAB(const VkDeviceSize count);
 
-    bool ReleaseIB(DataChain::UserNode *);
-    bool ReleaseVAB(DataChain::UserNode *);
+    bool ReleaseIB(BlockAllocator::UserNode *);
+    bool ReleaseVAB(BlockAllocator::UserNode *);
 
     IndexBuffer *GetIBO(){return ibo;}
     VAB *GetVAB(const uint index){return vab[index];}
