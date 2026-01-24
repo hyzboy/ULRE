@@ -206,8 +206,8 @@ namespace
     {
         VertexDataManager *vdm;
 
-        DataChain::UserNode *ib_node;
-        DataChain::UserNode *vab_node;
+        BlockAllocator::UserNode *ib_node;
+        BlockAllocator::UserNode *vab_node;
 
     public:
 
