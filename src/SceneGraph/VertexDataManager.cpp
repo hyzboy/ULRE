@@ -18,7 +18,7 @@ namespace hgl::graph
 
         vab_max_size=0;
         vab_cur_size=0;
-        vab=hgl_zero_new<VAB *>(vi_count);
+        vab=zero_new<VAB *>(vi_count);
 
         ibo_cur_size=0;
         ibo=nullptr;

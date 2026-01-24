@@ -67,8 +67,8 @@ public:
 
 public:
 
-    VkVertexInputBindingDescription *           NewBindListCopy()const{return hgl_new_copy(bind_list,count);}
-    VkVertexInputAttributeDescription *         NewAttrListCopy()const{return hgl_new_copy(attr_list,count);}
+    VkVertexInputBindingDescription *           NewBindListCopy()const{return new_copy(bind_list,count);}
+    VkVertexInputAttributeDescription *         NewAttrListCopy()const{return new_copy(attr_list,count);}
 
     std::strong_ordering operator<=>(const VertexInputLayout &vil)const
     {

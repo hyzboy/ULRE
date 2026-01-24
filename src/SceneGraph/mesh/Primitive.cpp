@@ -9,8 +9,8 @@ GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDa
 {
     vab_count=c;
 
-    vab_list=hgl_zero_new<VkBuffer>(vab_count);
-    vab_offset=hgl_zero_new<VkDeviceSize>(vab_count);
+    vab_list=zero_new<VkBuffer>(vab_count);
+    vab_offset=zero_new<VkDeviceSize>(vab_count);
 
     ibo=ib;
     vdm=_vdm;

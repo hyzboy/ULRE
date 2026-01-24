@@ -14,7 +14,7 @@ GeometryData::GeometryData(const VIL *_vil,const uint32_t vc)
     vertex_count=vc;
     index_count=0;
 
-    vab_list=hgl_zero_new<VAB *>(_vil->GetVertexAttribCount());
+    vab_list=zero_new<VAB *>(_vil->GetVertexAttribCount());
     vab_map_list=new VABMap[_vil->GetVertexAttribCount()];
 
     ibo=nullptr;

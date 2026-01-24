@@ -129,7 +129,7 @@ namespace hgl::graph
         bmp->metrics_info.adv_x	=gm.gmCellIncX;
         bmp->metrics_info.adv_y	=gm.gmCellIncY;
 
-        bmp->data=hgl_zero_new<uint8>(bmp->metrics_info.w*bmp->metrics_info.h);
+        bmp->data=zero_new<uint8>(bmp->metrics_info.w*bmp->metrics_info.h);
 
         if(ggo==GGO_GRAY8_BITMAP)
             Convert8BitGrey	(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
