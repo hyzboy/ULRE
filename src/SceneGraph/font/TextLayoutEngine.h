@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/TileData.h>
-#include<hgl/type/IndexedList.h>
+#include<hgl/type/IndexedValueArray.h>
 #include<hgl/type/ConstStringSet.h>
 
 namespace hgl::graph::layout
@@ -26,9 +26,9 @@ namespace hgl::graph::layout
             TileUVFloat uv;
         };
 
-        using CharDrawAttrIt=IndexedList<CharDrawAttr>::Iterator;
+        using CharDrawAttrIt=IndexedValueArray<CharDrawAttr>::Iterator;
 
-        IndexedList<CharDrawAttr> draw_chars_list;  ///<所有字符属性列表
+        IndexedValueArray<CharDrawAttr> draw_chars_list;  ///<所有字符属性列表
 
         bool StatChars();  ///<统计所有字符
 
