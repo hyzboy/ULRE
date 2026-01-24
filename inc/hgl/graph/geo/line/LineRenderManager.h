@@ -158,7 +158,7 @@ namespace hgl::graph
          * \param list CN: 线段描述数组 EN: Array of line segment descriptors
          * \return CN: 成功返回 true EN: True on success
          */
-        bool AddLine(const uint8 width,const DataArray<LineSegmentDescriptor> &list);
+        bool AddLine(const uint8 width,const ValueBuffer<LineSegmentDescriptor> &list);
 
         /**
          * CN: 清空所有批次中的线段数据与统计计数。

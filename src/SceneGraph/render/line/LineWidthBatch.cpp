@@ -178,7 +178,7 @@ void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8 color
     primitive->SetDrawCounts(count*2);
 }
 
-void LineWidthBatch::AddLine(const DataArray<LineSegmentDescriptor> &lsi_list)
+void LineWidthBatch::AddLine(const ValueBuffer<LineSegmentDescriptor> &lsi_list)
 {
     Expand(lsi_list.GetCount());
 

@@ -28,7 +28,7 @@ struct DrawBatch
     void Set(class Primitive *);
 };//struct DrawBatch
 
-using DrawBatchArray = DataArray<DrawBatch>;
+using DrawBatchArray = ValueBuffer<DrawBatch>;
 
 /**
  * Pipeline材质渲染器

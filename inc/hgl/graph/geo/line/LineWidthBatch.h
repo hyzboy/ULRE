@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/math/Vector.h>
-#include <hgl/type/DataArray.h>
+#include <hgl/type/ValueBuffer.h>
 #include <hgl/graph/VKVertexAttribBuffer.h>
 #include <hgl/graph/VKBuffer.h>
 #include <hgl/graph/geo/line/SharedLineBackup.h>
@@ -50,7 +50,7 @@ public:
     void Expand(uint);
 
     void AddLine(const Vector3f &from,const Vector3f &to,uint8 color_index);
-    void AddLine(const DataArray<LineSegmentDescriptor> &);
+    void AddLine(const ValueBuffer<LineSegmentDescriptor> &);
 
     void Draw(RenderCmdBuffer *);
 

@@ -36,9 +36,9 @@ namespace hgl::graph::layout
 
         TextGeometry *text_primitive=nullptr;
 
-        DataArray<int16> vertex;
-        DataArray<float> tex_coord;
-        //DataArray<uint8> char_style;
+        ValueBuffer<int16> vertex;
+        ValueBuffer<float> tex_coord;
+        //ValueBuffer<uint8> char_style;
 
     protected:
 
