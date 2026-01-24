@@ -20,7 +20,7 @@ public:
 public: //FrameBuffer相关
 
     Framebuffer *CreateFBO(RenderPass *rp,ImageView **color_list,const uint image_count,ImageView *depth);
-//    Framebuffer *CreateFBO(RenderPass *,ArrayList<ImageView *> &color,ImageView *depth);
+//    Framebuffer *CreateFBO(RenderPass *,ValueArray<ImageView *> &color,ImageView *depth);
     Framebuffer *CreateFBO(RenderPass *,ImageView *color,ImageView *depth);
     Framebuffer *CreateFBO(RenderPass *,ImageView *);
 

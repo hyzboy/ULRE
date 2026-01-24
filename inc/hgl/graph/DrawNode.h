@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/type/SortedSet.h>
 #include<hgl/graph/NodeTransform.h>   // need full type for combined transform
 #include<hgl/component/Component.h>
@@ -55,9 +55,9 @@ namespace hgl
             std::strong_ordering operator<=>(const DrawNode &other) const;
         };
 
-        using DrawNodeList=ArrayList<DrawNode *>;
+        using DrawNodeList=ValueArray<DrawNode *>;
 
-        using DrawNodePointerList=ArrayList<DrawNode *>; // 指针版本的列表，兼容旧代码
+        using DrawNodePointerList=ValueArray<DrawNode *>; // 指针版本的列表，兼容旧代码
 
         using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph

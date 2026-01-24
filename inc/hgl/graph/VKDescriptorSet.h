@@ -16,9 +16,9 @@ class DescriptorSet
 
     VkPipelineLayout pipeline_layout;
 
-    ArrayList<VkDescriptorBufferInfo> vab_list;
-    ArrayList<VkDescriptorImageInfo> image_list;
-    ArrayList<VkWriteDescriptorSet> wds_list;
+    ValueArray<VkDescriptorBufferInfo> vab_list;
+    ValueArray<VkDescriptorImageInfo> image_list;
+    ValueArray<VkWriteDescriptorSet> wds_list;
 
     SortedSet<uint32_t> binded_sets;
 

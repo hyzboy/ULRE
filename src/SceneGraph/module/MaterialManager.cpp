@@ -19,7 +19,7 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    void CreateShaderStageList(ArrayList<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
+    void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
 

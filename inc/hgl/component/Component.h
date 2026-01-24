@@ -2,7 +2,7 @@
 
 #include<hgl/type/DataType.h>
 #include<hgl/type/SortedSet.h>
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/log/Log.h>
 
 /**
@@ -157,7 +157,7 @@ public: //事件
                                     static  constexpr const size_t  StaticManagerTypeHash   ()              {return hgl::GetTypeHash<name##ComponentManager>();}
 
 using ComponentSet=SortedSet<Component *>;
-using ComponentList=ArrayList<Component *>;
+using ComponentList=ValueArray<Component *>;
 
 class ComponentManager
 {

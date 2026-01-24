@@ -6,12 +6,12 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    static ArrayList<VkLayerProperties> layer_properties;
-    static ArrayList<VkExtensionProperties> extension_properties;
+    static ValueArray<VkLayerProperties> layer_properties;
+    static ValueArray<VkExtensionProperties> extension_properties;
 }//namespace
 
-const ArrayList<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
-const ArrayList<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
+const ValueArray<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
+const ValueArray<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
 
 void InitVulkanInstanceProperties()
 {

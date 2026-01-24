@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
 #include<compare>
 
@@ -34,7 +34,7 @@ namespace hgl::graph
 
     using VIA=VertexInputAttribute;
 
-    using VIAList=ArrayList<VIA>;
+    using VIAList=ValueArray<VIA>;
 
     inline const AnsiString GetShaderAttributeTypename(const VertexInputAttribute *ss)
     {

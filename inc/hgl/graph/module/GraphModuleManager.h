@@ -11,7 +11,7 @@ class GraphModuleManager
 
 protected:
 
-    ArrayList<GraphModule *> module_list;
+    ValueArray<GraphModule *> module_list;
     Map<size_t,GraphModule *> module_map;
 
 public:

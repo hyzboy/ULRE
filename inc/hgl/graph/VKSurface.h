@@ -1,14 +1,14 @@
 #pragma once
 
 #include<hgl/graph/VKPhysicalDevice.h>
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 
 VK_NAMESPACE_BEGIN
 
 constexpr const uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
-using VkSurfaceFormatList=ArrayList<VkSurfaceFormatKHR>;
-using VkPresentModeList=ArrayList<VkPresentModeKHR>;
+using VkSurfaceFormatList=ValueArray<VkSurfaceFormatKHR>;
+using VkPresentModeList=ValueArray<VkPresentModeKHR>;
 
 class VulkanSurface
 {

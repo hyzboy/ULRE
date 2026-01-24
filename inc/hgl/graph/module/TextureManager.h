@@ -90,11 +90,11 @@ public: //Create/Chagne
 
     void Clear(TextureCreateInfo *);
 
-    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const ArrayList<Image2DRegion> &,   VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const ValueArray<Image2DRegion> &,   VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,                         const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2D(Texture2D *,const void *data,const VkDeviceSize size,  const RectScope2ui &,               VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-//    bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,             const ArrayList<Image2DRegion> &,  const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+//    bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,             const ValueArray<Image2DRegion> &,  const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,                       const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2DArray(Texture2DArray *,const void *data,const VkDeviceSize size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 

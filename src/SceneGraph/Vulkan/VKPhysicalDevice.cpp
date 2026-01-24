@@ -5,7 +5,7 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    void debug_queue_family_properties_out(const char *front,const ArrayList<VkQueueFamilyProperties> &qfp_list)
+    void debug_queue_family_properties_out(const char *front,const ValueArray<VkQueueFamilyProperties> &qfp_list)
     {
         constexpr const char *queue_bit_name[]=
         {
