@@ -3,7 +3,7 @@
 #include<hgl/graph/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
-void CreateSubpassDependency(ArrayList<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)
+void CreateSubpassDependency(ValueArray<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)
 {
     if(count<=0)return;
 
@@ -73,7 +73,7 @@ inline void CreateColorAttachmentReference(VkAttachmentReference *ref_list, uint
 inline void CreateDepthAttachmentReference(VkAttachmentReference *depth_ref,uint index)             {CreateAttachmentReference(depth_ref,   index,1    ,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);}
 inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list, uint start,uint count)  {CreateAttachmentReference(ref_list,    start,count,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);}
     
-bool CreateAttachmentDescription(ArrayList<VkAttachmentDescription> &desc_list,const RenderbufferInfo *rbi)
+bool CreateAttachmentDescription(ValueArray<VkAttachmentDescription> &desc_list,const RenderbufferInfo *rbi)
 {
     const uint image_count=rbi->GetColorCount();
 
@@ -117,7 +117,7 @@ bool CreateAttachmentDescription(ArrayList<VkAttachmentDescription> &desc_list,c
     return(true);
 }
 
-bool CreateColorAttachment( ArrayList<VkAttachmentReference> &ref_list,ArrayList<VkAttachmentDescription> &desc_list,const ArrayList<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+bool CreateColorAttachment( ValueArray<VkAttachmentReference> &ref_list,ValueArray<VkAttachmentDescription> &desc_list,const ValueArray<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 {
     //const VkFormat *cf=color_format_list.GetData();
 
@@ -155,7 +155,7 @@ bool CreateColorAttachment( ArrayList<VkAttachmentReference> &ref_list,ArrayList
     return(true);
 }
 
-bool CreateDepthAttachment( ArrayList<VkAttachmentReference> &ref_list,ArrayList<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+bool CreateDepthAttachment( ValueArray<VkAttachmentReference> &ref_list,ValueArray<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 {
     //if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
     //    return(false);
@@ -263,9 +263,9 @@ namespace
     }
 }
 
-RenderPass *RenderPassManager::CreateRenderPass(const ArrayList<VkAttachmentDescription> &desc_list,
-                                                const ArrayList<VkSubpassDescription> &subpass,
-                                                const ArrayList<VkSubpassDependency> &dependency,
+RenderPass *RenderPassManager::CreateRenderPass(const ValueArray<VkAttachmentDescription> &desc_list,
+                                                const ValueArray<VkSubpassDescription> &subpass,
+                                                const ValueArray<VkSubpassDependency> &dependency,
                                                 const RenderbufferInfo *rbi)
 {
     const VkFormat depth_format=rbi->GetDepthFormat();
@@ -311,11 +311,11 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
     if(RenderPassList.Get(hash,rp))
         return rp;
 
-    ArrayList<VkAttachmentReference> color_ref_list;
+    ValueArray<VkAttachmentReference> color_ref_list;
     VkAttachmentReference depth_ref;
-    ArrayList<VkAttachmentDescription> atta_desc_list;
-    ArrayList<VkSubpassDescription> subpass_desc_list;
-    ArrayList<VkSubpassDependency> subpass_dependency_list;
+    ValueArray<VkAttachmentDescription> atta_desc_list;
+    ValueArray<VkSubpassDescription> subpass_desc_list;
+    ValueArray<VkSubpassDependency> subpass_dependency_list;
 
     color_ref_list.Resize(rbi->GetColorCount());
     CreateColorAttachmentReference(color_ref_list.GetData(),0,rbi->GetColorCount());

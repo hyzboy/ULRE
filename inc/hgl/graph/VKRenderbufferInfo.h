@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/graph/VKFormat.h>
 
 VK_NAMESPACE_BEGIN
@@ -7,7 +7,7 @@ class RenderbufferInfo
 {
 protected:
 
-    ArrayList<VkFormat> color_format_list;
+    ValueArray<VkFormat> color_format_list;
     VkFormat depth_stencil_format;
 
     bool _depth;
@@ -80,7 +80,7 @@ public:
         SetDepthOrStencil(ds);
     }
 
-    RenderbufferInfo(const ArrayList<VkFormat> &cl,const VkFormat ds):RenderbufferInfo(cl.GetData(),cl.GetCount(),ds){}
+    RenderbufferInfo(const ValueArray<VkFormat> &cl,const VkFormat ds):RenderbufferInfo(cl.GetData(),cl.GetCount(),ds){}
 
     bool AddColor(const VkFormat format)
     {
@@ -167,7 +167,7 @@ public:
     const uint32_t          GetColorCount ()const{return color_format_list.GetCount();}
     const VkFormat *        GetColorFormat()const{return color_format_list.GetData();}
     const VkFormat          GetDepthFormat()const{return depth_stencil_format;}
-    const ArrayList<VkFormat> &  GetColorFormatList()const{return color_format_list;}
+    const ValueArray<VkFormat> &  GetColorFormatList()const{return color_format_list;}
 
     const VkImageLayout     GetColorLayout()const{return color_final_image_layout;}
     const VkImageLayout     GetDepthLayout()const{return depth_final_image_layout;}

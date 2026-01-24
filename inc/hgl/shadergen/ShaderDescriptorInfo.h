@@ -10,9 +10,9 @@
 
 namespace hgl{namespace graph
 {
-using UBODescriptorList=ArrayList<const UBODescriptor *>;
-using TextureDescriptorList = ArrayList<const TextureDescriptor *>;
-using TextureSamplerDescriptorList=ArrayList<const TextureSamplerDescriptor *>;
+using UBODescriptorList=ValueArray<const UBODescriptor *>;
+using TextureDescriptorList = ValueArray<const TextureDescriptor *>;
+using TextureSamplerDescriptorList=ValueArray<const TextureSamplerDescriptor *>;
 using ConstValueDescriptorList=ObjectList<ConstValueDescriptor>;
 using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 

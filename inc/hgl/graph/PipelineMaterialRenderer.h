@@ -2,7 +2,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/VertexDataManager.h>
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 
 VK_NAMESPACE_BEGIN
 

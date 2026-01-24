@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/type/String.h>
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/graph/VKSamplerType.h>
@@ -248,7 +248,7 @@ struct ShaderVariable
     Interpolation   interpolation;  //插值方式
 };
 
-using SVList=ArrayList<ShaderVariable>;
+using SVList=ValueArray<ShaderVariable>;
 
 struct ShaderVariableArray
 {

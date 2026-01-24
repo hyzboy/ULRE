@@ -41,8 +41,8 @@ protected:
 
     AnsiString mi_codes;
 
-    ArrayList<const char *> user_data_list;
-    ArrayList<const char *> function_list;
+    ValueArray<const char *> user_data_list;
+    ValueArray<const char *> function_list;
     AnsiString main_function;
 
     AnsiString final_shader;

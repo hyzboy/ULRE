@@ -5,7 +5,7 @@
 
 VK_NAMESPACE_BEGIN
 
-using VkQueueFamilyPropertiesList=ArrayList<VkQueueFamilyProperties>;
+using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
 
 class VulkanPhyDevice
 {
@@ -26,8 +26,8 @@ class VulkanPhyDevice
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
 
-    ArrayList<VkLayerProperties>        layer_properties;
-    ArrayList<VkExtensionProperties>    extension_properties;
+    ValueArray<VkLayerProperties>        layer_properties;
+    ValueArray<VkExtensionProperties>    extension_properties;
 
     VkQueueFamilyPropertiesList         queue_family_properties;
 

@@ -69,7 +69,7 @@ private:
 
     RenderMesh *rm_box=nullptr;             //边框包围盒
 
-    ArrayList<RenderMesh *> render_mesh;
+    ValueArray<RenderMesh *> render_mesh;
 
 private:
 
@@ -206,7 +206,7 @@ private:
 
         CreateComponentInfo cci(root);
 
-        ArrayList<math::Matrix4f> box_matrices;
+        ValueArray<math::Matrix4f> box_matrices;
 
         for(Component *c:root->GetComponents())
         {

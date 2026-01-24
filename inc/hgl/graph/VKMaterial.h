@@ -19,7 +19,7 @@ namespace mtl
     class MaterialCreateInfo;
 }
 
-using ShaderStageCreateInfoList=ArrayList<VkPipelineShaderStageCreateInfo>;
+using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
 
 /**
  * 材质类<br>

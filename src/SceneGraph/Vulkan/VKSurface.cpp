@@ -1,7 +1,7 @@
 #include<hgl/graph/VKSurface.h>
 
 VK_NAMESPACE_BEGIN
-using VkQueueFamilyPropertiesList=ArrayList<VkQueueFamilyProperties>;
+using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
 
 VulkanSurface::VulkanSurface(const VulkanPhyDevice *phy_dev,VkSurfaceKHR sface)
 {

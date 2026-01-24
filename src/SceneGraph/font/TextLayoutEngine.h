@@ -56,7 +56,7 @@ namespace hgl::graph::layout
             float *tex_coord;
         };
 
-        ArrayList<DrawStringItem> draw_string_list;   ///<所有绘制字符串列表
+        ValueArray<DrawStringItem> draw_string_list;   ///<所有绘制字符串列表
 
     protected:
 

@@ -6,7 +6,7 @@
 
 VK_NAMESPACE_BEGIN
 
-using VkFormatList=ArrayList<VkFormat>;
+using VkFormatList=ValueArray<VkFormat>;
 
 /**
  * RenderPass功能封装<br>

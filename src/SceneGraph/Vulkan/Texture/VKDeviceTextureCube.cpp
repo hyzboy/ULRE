@@ -148,7 +148,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf
     return CopyBufferToImageCube(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ArrayList<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf||ir_list.GetCount()<=0)
 //        return(false);

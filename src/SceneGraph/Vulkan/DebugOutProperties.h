@@ -1,4 +1,4 @@
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/graph/VKNamespace.h>
 #include<iostream>
 
@@ -11,7 +11,7 @@ inline void debug_out_vk_version(const uint32_t version)
              <<VK_VERSION_PATCH(version);
 }
 
-inline void debug_out(const char *front,const hgl::ArrayList<VkLayerProperties> &layer_properties)
+inline void debug_out(const char *front,const hgl::ValueArray<VkLayerProperties> &layer_properties)
 {
     const int property_count=layer_properties.GetCount();
 
@@ -32,7 +32,7 @@ inline void debug_out(const char *front,const hgl::ArrayList<VkLayerProperties> 
     }
 }
 
-inline void debug_out(const char *front,const hgl::ArrayList<VkExtensionProperties> &extension_properties)
+inline void debug_out(const char *front,const hgl::ValueArray<VkExtensionProperties> &extension_properties)
 {
     const int extension_count=extension_properties.GetCount();
 

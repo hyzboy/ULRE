@@ -2,7 +2,7 @@
 
 #include <hgl/type/ObjectList.h>
 #include <hgl/type/SortedSet.h>
-#include <hgl/type/ArrayList.h>
+#include <hgl/type/ValueArray.h>
 #include <hgl/graph/mesh/Primitive.h>
 
 VK_NAMESPACE_BEGIN

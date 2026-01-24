@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include<hgl/type/String.h>
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 
 namespace hgl
@@ -69,7 +69,7 @@ namespace hgl
             }
         };//struct ShaderDescriptor
 
-        using ShaderDescriptorList=ArrayList<ShaderDescriptor *>;
+        using ShaderDescriptorList=ValueArray<ShaderDescriptor *>;
 
         struct UBODescriptor:public ShaderDescriptor
         {
