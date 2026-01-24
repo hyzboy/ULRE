@@ -277,8 +277,10 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
         surface_format.format=PF_RGBA8s;
         surface_format.colorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     }
-
+    
+#ifdef _DEBUG
     LogSurfaceFormat(surface_format);
+#endif//_DEBUG
 }
 
 VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
