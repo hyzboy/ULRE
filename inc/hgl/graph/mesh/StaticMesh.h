@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/type/ObjectList.h>
+#include <hgl/type/ManagedArray.h>
 #include <hgl/type/SortedSet.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/graph/mesh/Primitive.h>
@@ -10,7 +10,7 @@ VK_NAMESPACE_BEGIN
 using GeometryPtrSet        =SortedSet<Geometry *>;
 using MaterialInstanceSet   =SortedSet<MaterialInstance *>;
 using PipelinePtrSet        =SortedSet<Pipeline *>;
-using PrimitiveList         =ObjectList<Primitive>;
+using PrimitiveList         =ManagedArray<Primitive>;
 
 /**
 * StaticMesh
