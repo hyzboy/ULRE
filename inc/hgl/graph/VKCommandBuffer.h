@@ -6,6 +6,7 @@
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
+#include<hgl/type/MemoryUtil.h>
 #include<iostream>
 VK_NAMESPACE_BEGIN
 class VulkanCmdBuffer
@@ -100,7 +101,7 @@ public:
     {
         if(index>=cv_count)return;
 
-        mem_copy(clear_values[index].color.float32,cc.rgba,4);
+        mem_copy<float>(clear_values[index].color.float32,(const float *)&cc,4);
     }
 
     void SetClearDepthStencil(uint32_t index,float d=1.0f,float s=0)
