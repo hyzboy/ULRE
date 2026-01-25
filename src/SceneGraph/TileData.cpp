@@ -24,7 +24,7 @@ namespace hgl::graph
         {
             int col=0,row=0;
             TileObject to;
-            auto &to_idle_ids=to_pool.GetIdleArray();
+            auto &to_idle_ids=to_pool.GetIdleView();
 
             for(int idle_id:to_idle_ids)
             {

@@ -53,7 +53,7 @@ void StaticMesh::RemovePrimitive(Primitive *sm)
     if(!sm) return;
 
     // 先从列表删除并释放该 Mesh
-    primitive_list.DeleteByValueOwn(sm);
+    primitive_list.DeleteByValue(sm);
 
     // 资源集合可能需要重建（避免误删共享资源复杂性）
     RebuildResourceSets();
