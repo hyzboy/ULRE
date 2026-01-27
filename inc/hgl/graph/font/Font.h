@@ -6,21 +6,21 @@
 namespace hgl::graph
 {
     constexpr size_t MAX_FONT_NAME_LENGTH=128;
-        
+
     /**
     * 字体信息
     */
     struct Font
     {
-        os_char name[MAX_FONT_NAME_LENGTH];	///<字体名称
+        os_char name[MAX_FONT_NAME_LENGTH]; ///<字体名称
 
-        int width;							///<宽度
-        int height;							///<高度
+        int width;                          ///<宽度
+        int height;                         ///<高度
 
-        bool bold;							///<加粗
-        bool italic;						///<右斜
+        bool bold;                          ///<加粗
+        bool italic;                        ///<右斜
 
-        bool anti;							///<反矩齿
+        bool anti;                          ///<反矩齿
 
     public:
 
@@ -38,10 +38,10 @@ namespace hgl::graph
 
             if(auto cmp = bold <=> other.bold; cmp != 0)
                 return cmp;
-            
+
             if(auto cmp = italic <=> other.italic; cmp != 0)
                 return cmp;
-            
+
             if(auto cmp = anti <=> other.anti; cmp != 0)
                 return cmp;
 
@@ -52,7 +52,7 @@ namespace hgl::graph
          * 相等比较运算符
          * @param other 要比较的另一个 Font
          * @return 如果两个字体的所有属性都相同，返回 true；否则返回 false
-         * 
+         *
          * 用法示例：
          * Font font1("Arial", 12, 12);
          * Font font2("Arial", 12, 12);
@@ -62,19 +62,19 @@ namespace hgl::graph
         {
             if(width != other.width)
                 return false;
-            
+
             if(height != other.height)
                 return false;
-            
+
             if(bold != other.bold)
                 return false;
-            
+
             if(italic != other.italic)
                 return false;
-            
+
             if(anti != other.anti)
                 return false;
-            
+
             return hgl::strcmp(name, other.name) == 0;
         }
 
@@ -82,7 +82,7 @@ namespace hgl::graph
          * 不相等比较运算符
          * @param other 要比较的另一个 Font
          * @return 如果两个字体的任何属性不同，返回 true；否则返回 false
-         * 
+         *
          * 用法示例：
          * Font font1("Arial", 12, 12);
          * Font font2("Times", 14, 12);

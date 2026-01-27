@@ -7,7 +7,7 @@
 *   }color_pattle;
 *
 *   然后输入的一个R8UI顶点属性来指定使用那个颜色。
-*/ 
+*/
 
 #include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>

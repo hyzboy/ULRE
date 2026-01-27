@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,23 +10,23 @@
 class ConstraintVsCOMChangeTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ConstraintVsCOMChangeTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ConstraintVsCOMChangeTest)
 
-	// See: Test
-	virtual void				Initialize() override;
-	virtual void				PrePhysicsUpdate(const PreUpdateParams& inParams) override;
-	virtual void				SaveState(StateRecorder &inStream) const override;
-	virtual void				RestoreState(StateRecorder &inStream) override;
+    // See: Test
+    virtual void                Initialize() override;
+    virtual void                PrePhysicsUpdate(const PreUpdateParams& inParams) override;
+    virtual void                SaveState(StateRecorder &inStream) const override;
+    virtual void                RestoreState(StateRecorder &inStream) override;
 
 private:
-	void						UpdateShapes();
+    void                        UpdateShapes();
 
-	RefConst<Shape>				mBox;
-	Array<Body *>				mBodies;
-	Array<Ref<Constraint>>		mConstraints;
+    RefConst<Shape>             mBox;
+    Array<Body *>               mBodies;
+    Array<Ref<Constraint>>      mConstraints;
 
-	static constexpr float		cBoxSize = 2.0f;
+    static constexpr float      cBoxSize = 2.0f;
 
-	float						mTime = 0.0f;
-	int							mNumShapes = -1;
+    float                       mTime = 0.0f;
+    int                         mNumShapes = -1;
 };

@@ -48,7 +48,7 @@ namespace hgl::graph
             return FPCC;
         }
 
-        const CameraControlIDName GetControlName() const override 
+        const CameraControlIDName GetControlName() const override
         {
             return StaticControlName();
         }
@@ -66,7 +66,7 @@ namespace hgl::graph
 
         FirstPersonCameraControl();
         virtual ~FirstPersonCameraControl()=default;
-            
+
         // CN: 配置输入轴是否反转（传 true 则反转）
         // EN: Configure axis inversion for input: pass true to invert that axis
         void SetInvertAxis(bool invert_x,bool invert_y)
@@ -116,7 +116,7 @@ namespace hgl::graph
         void Refresh() override;
 
     public: // movement
-            
+
         void UpdateCameraVector();
 
         void Forward(float move_step)
@@ -186,7 +186,7 @@ namespace hgl::graph
     protected:
 
         io::EventProcResult OnPressed(const Vector2i &mouse_coord,io::MouseButton) override;
-    
+
         io::EventProcResult OnWheel(const Vector2i &mouse_coord) override;
 
         io::EventProcResult OnMove(const Vector2i &mouse_coord) override;

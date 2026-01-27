@@ -1,11 +1,11 @@
-#ifndef HGL_VULKAN_RENDER_CONTEXT_INCLUDE
+О╩©#ifndef HGL_VULKAN_RENDER_CONTEXT_INCLUDE
 #define HGL_VULKAN_RENDER_CONTEXT_INCLUDE
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKSwapchain.h>
 VK_NAMESPACE_BEGIN
 /**
- * Джх╬©ьжфиообнд
+ * Ф╦╡Ф÷⌠Ф▌╖Е┬╤Д╦┼Д╦▀Ф√┤
  */
 class RenderContext
 {

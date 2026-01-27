@@ -35,8 +35,8 @@ private:
 
     bool support_u8_index=false;
     bool dynamic_state=false;
-    
-public:    
+
+public:
 
     const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
     const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
@@ -47,7 +47,7 @@ public:
     const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
     const VkPhysicalDeviceLimits &          GetLimits           ()const{return properties.limits;}
-    
+
 public:
 
     VulkanPhyDevice(VkInstance,VkPhysicalDevice);
@@ -62,7 +62,7 @@ public:
 
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
     const char *            GetDeviceName()const{return properties.deviceName;}
-    
+
     const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
     const uint32_t          GetExtensionVersion(const AnsiString &name)const;
     const bool              CheckExtensionSupport(const AnsiString &name)const;
@@ -137,17 +137,17 @@ public:
     bool OptimalSupport (const VkFormat format,const VkFormatFeatureFlags flag)const{VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);return fp.optimalTilingFeatures&flag;}
     bool LinearSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);return fp.linearTilingFeatures&flag;}
     bool BufferSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);return fp.bufferFeatures&flag;}
-    
+
     bool IsColorAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
     bool IsDepthAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
 
     bool IsColorAttachmentLinear(const VkFormat format)const{return LinearSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
     bool IsDepthAttachmentLinear(const VkFormat format)const{return LinearSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
-    
+
     VkFormat GetDepthFormat(bool lower_to_high=false)const;
     VkFormat GetDepthStencilFormat(bool lower_to_high=false)const;
-    
-    const bool IsUBOTexelSupport    (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT);}    
+
+    const bool IsUBOTexelSupport    (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT);}
     const bool IsSTBSupport         (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT);}
     const bool IsSTBAtomicSupport   (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT);}
     const bool IsVBOSupport         (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT);}

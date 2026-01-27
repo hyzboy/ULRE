@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_MESH_DATA_INCLUDE
+﻿#ifndef HGL_GRAPH_MESH_DATA_INCLUDE
 #define HGL_GRAPH_MESH_DATA_INCLUDE
 
 #include<hgl/type/DataType.h>
@@ -7,7 +7,7 @@
 namespace hgl
 {
     namespace graph
-    {        
+    {
         struct MeshData
         {
             int index=-1;
@@ -40,7 +40,7 @@ namespace hgl
                 uint16 *indices16;
                 uint32 *indices32;
             };
-            
+
             AABB bounding_box;
 
         public:

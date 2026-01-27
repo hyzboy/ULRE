@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_TEXTURE_LOADER_INCLUDE
+﻿#ifndef HGL_GRAPH_VULKAN_TEXTURE_LOADER_INCLUDE
 #define HGL_GRAPH_VULKAN_TEXTURE_LOADER_INCLUDE
 
 #include<hgl/graph/TextureLoader.h>
@@ -64,7 +64,7 @@ public:
         tci->type=type;
 
         VkExtent3D extent;
-        
+
         extent.width    =file_header.width;
         extent.height   =file_header.height;
         extent.depth    =file_header.depth;

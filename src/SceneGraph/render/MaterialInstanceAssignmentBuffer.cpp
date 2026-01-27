@@ -55,7 +55,7 @@ void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &
 
     if(material_instance_data_bytes<=0)        //没有材质实例数据
         return;
-    
+
     if(!material_instance_buffer)
     {
         mi_set.Reserve(power_to_2(draw_nodes.GetCount()));
@@ -69,10 +69,10 @@ void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &
     if(!material_instance_buffer)
     {
         material_instance_buffer=device->CreateUBO(material_instance_data_bytes*mi_set.GetAllocCount());
-        
+
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
-        
+
         if(du)
         {
             du->SetBuffer(material_instance_buffer->GetBuffer(),"UBO:Buffer:MaterialInstanceData");
@@ -127,10 +127,10 @@ void MaterialInstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
         {
             material_instance_vab=device->CreateVAB(VK_FORMAT_R16_UINT,node_count);
             material_instance_vab_buffer=material_instance_vab->GetBuffer();
-        
+
         #ifdef _DEBUG
             DebugUtils *du=device->GetDebugUtils();
-        
+
             if(du)
             {
                 du->SetBuffer(material_instance_vab->GetBuffer(),"VAB:Buffer:MaterialInstanceID");

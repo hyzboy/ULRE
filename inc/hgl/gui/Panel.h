@@ -1,4 +1,4 @@
-#ifndef HGL_GUI_PANEL_INCLUDE
+﻿#ifndef HGL_GUI_PANEL_INCLUDE
 #define HGL_GUI_PANEL_INCLUDE
 
 #include<hgl/gui/Widget.h>

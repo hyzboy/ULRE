@@ -1,4 +1,4 @@
-#include<hgl/component/SceneComponent.h>
+﻿#include<hgl/component/SceneComponent.h>
 
 COMPONENT_NAMESPACE_BEGIN
 

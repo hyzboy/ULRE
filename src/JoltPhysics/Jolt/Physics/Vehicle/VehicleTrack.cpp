@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,42 +11,42 @@ JPH_NAMESPACE_BEGIN
 
 JPH_IMPLEMENT_SERIALIZABLE_NON_VIRTUAL(VehicleTrackSettings)
 {
-	JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mDrivenWheel)
-	JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mWheels)
-	JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mInertia)
-	JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mAngularDamping)
-	JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mMaxBrakeTorque)
-	JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mDifferentialRatio)
+    JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mDrivenWheel)
+    JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mWheels)
+    JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mInertia)
+    JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mAngularDamping)
+    JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mMaxBrakeTorque)
+    JPH_ADD_ATTRIBUTE(VehicleTrackSettings, mDifferentialRatio)
 }
 
 void VehicleTrackSettings::SaveBinaryState(StreamOut &inStream) const
 {
-	inStream.Write(mDrivenWheel);
-	inStream.Write(mWheels);
-	inStream.Write(mInertia);
-	inStream.Write(mAngularDamping);
-	inStream.Write(mMaxBrakeTorque);
-	inStream.Write(mDifferentialRatio);
+    inStream.Write(mDrivenWheel);
+    inStream.Write(mWheels);
+    inStream.Write(mInertia);
+    inStream.Write(mAngularDamping);
+    inStream.Write(mMaxBrakeTorque);
+    inStream.Write(mDifferentialRatio);
 }
 
 void VehicleTrackSettings::RestoreBinaryState(StreamIn &inStream)
 {
-	inStream.Read(mDrivenWheel);
-	inStream.Read(mWheels);
-	inStream.Read(mInertia);
-	inStream.Read(mAngularDamping);
-	inStream.Read(mMaxBrakeTorque);
-	inStream.Read(mDifferentialRatio);
+    inStream.Read(mDrivenWheel);
+    inStream.Read(mWheels);
+    inStream.Read(mInertia);
+    inStream.Read(mAngularDamping);
+    inStream.Read(mMaxBrakeTorque);
+    inStream.Read(mDifferentialRatio);
 }
 
 void VehicleTrack::SaveState(StateRecorder &inStream) const
 {
-	inStream.Write(mAngularVelocity);
+    inStream.Write(mAngularVelocity);
 }
 
 void VehicleTrack::RestoreState(StateRecorder &inStream)
 {
-	inStream.Read(mAngularVelocity);
+    inStream.Read(mAngularVelocity);
 }
 
 JPH_NAMESPACE_END

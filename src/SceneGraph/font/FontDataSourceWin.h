@@ -9,8 +9,8 @@ namespace hgl::graph
     class WinBitmapFont:public FontBitmapDataSource
     {
         HDC hdc;
-        HFONT hfont;    		
-            
+        HFONT hfont;
+
         GLYPHMETRICS gm;
         MAT2 mat;
 
@@ -23,6 +23,6 @@ namespace hgl::graph
         WinBitmapFont(const Font &);
         ~WinBitmapFont();
 
-        bool MakeCharBitmap(FontBitmap *,u32char) override;					///<产生字体数据
+        bool MakeCharBitmap(FontBitmap *,u32char) override;                 ///<产生字体数据
     };//class WinBitmapFont
 }//namespace hgl::graph

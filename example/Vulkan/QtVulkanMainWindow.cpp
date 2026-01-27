@@ -1,4 +1,4 @@
-#include"QtVulkanMainWindow.h"
+﻿#include"QtVulkanMainWindow.h"
 
 MainWindow::MainWindow(QtVulkanWindow *w):m_window(w)
 {

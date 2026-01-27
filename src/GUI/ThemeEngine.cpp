@@ -1,4 +1,4 @@
-#include<hgl/gui/ThemeEngine.h>
+﻿#include<hgl/gui/ThemeEngine.h>
 #include<hgl/gui/ThemeForm.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKDevice.h>
@@ -36,7 +36,7 @@ namespace hgl
 
             return device->CreateRT(&fbi);
         }
-        
+
         bool ThemeEngine::Registry(Form *f,const VkFormat format)
         {
             if(!f)return(false);
@@ -49,7 +49,7 @@ namespace hgl
             RenderTarget *rt=CreateRT(size.x,size.y,format);
 
             if(!rt)return(false);
-           
+
             ThemeForm *tf=CreateForm(f,rt);
 
             form_list.Add(f,tf);
@@ -96,7 +96,7 @@ namespace hgl
                     return(true);
                 }
             }
-                
+
             graph::RenderTarget *rt=CreateRT(w,h,format);
 
             if(!rt)return(false);
@@ -105,7 +105,7 @@ namespace hgl
             tf->Resize(w,h);
             return(true);
         }
-        
+
         bool ThemeEngine::Render(ThemeForm *tf)
         {
             tf->BeginRender();
@@ -114,7 +114,7 @@ namespace hgl
 
             tf->EndRender();
         }
-        
+
         bool ThemeEngine::Render(Form *f)
         {
             if(!f)return(false);
@@ -122,7 +122,7 @@ namespace hgl
             const Vector2f &size=f->GetSize();
 
             if(size.x==0&&size.y==0)return(false);
-            
+
             ThemeForm *tf;
 
             if(!form_list.Get(f,tf))

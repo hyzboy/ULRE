@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -9,8 +9,8 @@
 class TaperedCapsuleShapeTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, TaperedCapsuleShapeTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, TaperedCapsuleShapeTest)
 
-	// See: Test
-	virtual void	Initialize() override;
+    // See: Test
+    virtual void    Initialize() override;
 };

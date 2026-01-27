@@ -1,4 +1,4 @@
-#ifndef HGL_GUI_WIDGET_INCLUDE
+﻿#ifndef HGL_GUI_WIDGET_INCLUDE
 #define HGL_GUI_WIDGET_INCLUDE
 
 #include<hgl/type/RectScope.h>

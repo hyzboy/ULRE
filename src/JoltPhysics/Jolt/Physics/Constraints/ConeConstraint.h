@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -14,31 +14,31 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT ConeConstraintSettings final : public TwoBodyConstraintSettings
 {
 public:
-	JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, ConeConstraintSettings)
+    JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, ConeConstraintSettings)
 
-	// See: ConstraintSettings::SaveBinaryState
-	virtual void				SaveBinaryState(StreamOut &inStream) const override;
+    // See: ConstraintSettings::SaveBinaryState
+    virtual void                SaveBinaryState(StreamOut &inStream) const override;
 
-	/// Create an instance of this constraint
-	virtual TwoBodyConstraint *	Create(Body &inBody1, Body &inBody2) const override;
+    /// Create an instance of this constraint
+    virtual TwoBodyConstraint * Create(Body &inBody1, Body &inBody2) const override;
 
-	/// This determines in which space the constraint is setup, all properties below should be in the specified space
-	EConstraintSpace			mSpace = EConstraintSpace::WorldSpace;
+    /// This determines in which space the constraint is setup, all properties below should be in the specified space
+    EConstraintSpace            mSpace = EConstraintSpace::WorldSpace;
 
-	/// Body 1 constraint reference frame (space determined by mSpace)
-	RVec3						mPoint1 = RVec3::sZero();
-	Vec3						mTwistAxis1 = Vec3::sAxisX();
+    /// Body 1 constraint reference frame (space determined by mSpace)
+    RVec3                       mPoint1 = RVec3::sZero();
+    Vec3                        mTwistAxis1 = Vec3::sAxisX();
 
-	/// Body 2 constraint reference frame (space determined by mSpace)
-	RVec3						mPoint2 = RVec3::sZero();
-	Vec3						mTwistAxis2 = Vec3::sAxisX();
+    /// Body 2 constraint reference frame (space determined by mSpace)
+    RVec3                       mPoint2 = RVec3::sZero();
+    Vec3                        mTwistAxis2 = Vec3::sAxisX();
 
-	/// Half of maximum angle between twist axis of body 1 and 2
-	float						mHalfConeAngle = 0.0f;
+    /// Half of maximum angle between twist axis of body 1 and 2
+    float                       mHalfConeAngle = 0.0f;
 
 protected:
-	// See: ConstraintSettings::RestoreBinaryState
-	virtual void				RestoreBinaryState(StreamIn &inStream) override;
+    // See: ConstraintSettings::RestoreBinaryState
+    virtual void                RestoreBinaryState(StreamIn &inStream) override;
 };
 
 /// A cone constraint constraints 2 bodies to a single point and limits the swing between the twist axis within a cone:
@@ -69,65 +69,65 @@ protected:
 class JPH_EXPORT ConeConstraint final : public TwoBodyConstraint
 {
 public:
-	JPH_OVERRIDE_NEW_DELETE
+    JPH_OVERRIDE_NEW_DELETE
 
-	/// Construct cone constraint
-								ConeConstraint(Body &inBody1, Body &inBody2, const ConeConstraintSettings &inSettings);
+    /// Construct cone constraint
+                                ConeConstraint(Body &inBody1, Body &inBody2, const ConeConstraintSettings &inSettings);
 
-	// Generic interface of a constraint
-	virtual EConstraintSubType	GetSubType() const override					{ return EConstraintSubType::Cone; }
-	virtual void				NotifyShapeChanged(const BodyID &inBodyID, Vec3Arg inDeltaCOM) override;
-	virtual void				SetupVelocityConstraint(float inDeltaTime) override;
-	virtual void				ResetWarmStart() override;
-	virtual void				WarmStartVelocityConstraint(float inWarmStartImpulseRatio) override;
-	virtual bool				SolveVelocityConstraint(float inDeltaTime) override;
-	virtual bool				SolvePositionConstraint(float inDeltaTime, float inBaumgarte) override;
+    // Generic interface of a constraint
+    virtual EConstraintSubType  GetSubType() const override                 { return EConstraintSubType::Cone; }
+    virtual void                NotifyShapeChanged(const BodyID &inBodyID, Vec3Arg inDeltaCOM) override;
+    virtual void                SetupVelocityConstraint(float inDeltaTime) override;
+    virtual void                ResetWarmStart() override;
+    virtual void                WarmStartVelocityConstraint(float inWarmStartImpulseRatio) override;
+    virtual bool                SolveVelocityConstraint(float inDeltaTime) override;
+    virtual bool                SolvePositionConstraint(float inDeltaTime, float inBaumgarte) override;
 #ifdef JPH_DEBUG_RENDERER
-	virtual void				DrawConstraint(DebugRenderer *inRenderer) const override;
-	virtual void				DrawConstraintLimits(DebugRenderer *inRenderer) const override;
+    virtual void                DrawConstraint(DebugRenderer *inRenderer) const override;
+    virtual void                DrawConstraintLimits(DebugRenderer *inRenderer) const override;
 #endif // JPH_DEBUG_RENDERER
-	virtual void				SaveState(StateRecorder &inStream) const override;
-	virtual void				RestoreState(StateRecorder &inStream) override;
-	virtual Ref<ConstraintSettings> GetConstraintSettings() const override;
+    virtual void                SaveState(StateRecorder &inStream) const override;
+    virtual void                RestoreState(StateRecorder &inStream) override;
+    virtual Ref<ConstraintSettings> GetConstraintSettings() const override;
 
-	// See: TwoBodyConstraint
-	virtual Mat44				GetConstraintToBody1Matrix() const override;
-	virtual Mat44				GetConstraintToBody2Matrix() const override;
+    // See: TwoBodyConstraint
+    virtual Mat44               GetConstraintToBody1Matrix() const override;
+    virtual Mat44               GetConstraintToBody2Matrix() const override;
 
-	/// Update maximum angle between body 1 and 2 (see ConeConstraintSettings)
-	void						SetHalfConeAngle(float inHalfConeAngle)		{ JPH_ASSERT(inHalfConeAngle >= 0.0f && inHalfConeAngle <= JPH_PI); mCosHalfConeAngle = Cos(inHalfConeAngle); }
-	float						GetCosHalfConeAngle() const					{ return mCosHalfConeAngle; }
+    /// Update maximum angle between body 1 and 2 (see ConeConstraintSettings)
+    void                        SetHalfConeAngle(float inHalfConeAngle)     { JPH_ASSERT(inHalfConeAngle >= 0.0f && inHalfConeAngle <= JPH_PI); mCosHalfConeAngle = Cos(inHalfConeAngle); }
+    float                       GetCosHalfConeAngle() const                 { return mCosHalfConeAngle; }
 
-	///@name Get Lagrange multiplier from last physics update (the linear/angular impulse applied to satisfy the constraint)
-	inline Vec3 				GetTotalLambdaPosition() const				{ return mPointConstraintPart.GetTotalLambda(); }
-	inline float				GetTotalLambdaRotation() const				{ return mAngleConstraintPart.GetTotalLambda(); }
+    ///@name Get Lagrange multiplier from last physics update (the linear/angular impulse applied to satisfy the constraint)
+    inline Vec3                 GetTotalLambdaPosition() const              { return mPointConstraintPart.GetTotalLambda(); }
+    inline float                GetTotalLambdaRotation() const              { return mAngleConstraintPart.GetTotalLambda(); }
 
 private:
-	// Internal helper function to calculate the values below
-	void						CalculateRotationConstraintProperties(Mat44Arg inRotation1, Mat44Arg inRotation2);
+    // Internal helper function to calculate the values below
+    void                        CalculateRotationConstraintProperties(Mat44Arg inRotation1, Mat44Arg inRotation2);
 
-	// CONFIGURATION PROPERTIES FOLLOW
+    // CONFIGURATION PROPERTIES FOLLOW
 
-	// Local space constraint positions
-	Vec3						mLocalSpacePosition1;
-	Vec3						mLocalSpacePosition2;
+    // Local space constraint positions
+    Vec3                        mLocalSpacePosition1;
+    Vec3                        mLocalSpacePosition2;
 
-	// Local space constraint axis
-	Vec3						mLocalSpaceTwistAxis1;
-	Vec3						mLocalSpaceTwistAxis2;
+    // Local space constraint axis
+    Vec3                        mLocalSpaceTwistAxis1;
+    Vec3                        mLocalSpaceTwistAxis2;
 
-	// Angular limits
-	float						mCosHalfConeAngle;
+    // Angular limits
+    float                       mCosHalfConeAngle;
 
-	// RUN TIME PROPERTIES FOLLOW
+    // RUN TIME PROPERTIES FOLLOW
 
-	// Axis and angle of rotation between the two bodies
-	Vec3						mWorldSpaceRotationAxis;
-	float						mCosTheta;
+    // Axis and angle of rotation between the two bodies
+    Vec3                        mWorldSpaceRotationAxis;
+    float                       mCosTheta;
 
-	// The constraint parts
-	PointConstraintPart			mPointConstraintPart;
-	AngleConstraintPart			mAngleConstraintPart;
+    // The constraint parts
+    PointConstraintPart         mPointConstraintPart;
+    AngleConstraintPart         mAngleConstraintPart;
 };
 
 JPH_NAMESPACE_END

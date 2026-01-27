@@ -1,4 +1,4 @@
-#ifndef HGL_GUI_THEME_FORM_INCLUDE
+﻿#ifndef HGL_GUI_THEME_FORM_INCLUDE
 #define HGL_GUI_THEME_FORM_INCLUDE
 
 #include<hgl/graph/VKRenderTarget.h>
@@ -13,7 +13,7 @@ namespace hgl
         class ThemeForm
         {
         protected:
-        
+
             Form *form;
 
             RenderTarget *render_target;

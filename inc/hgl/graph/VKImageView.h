@@ -10,7 +10,7 @@ protected:
     VkDevice device;
     VkImageView image_view;
     ImageViewCreateInfo *ivci;
-    
+
     VkExtent3D extent;
 
 private:
@@ -30,7 +30,7 @@ public:
     virtual ~ImageView();
 
 public:
-    
+
 
           VkImageView           GetImageView    ()     {return image_view;}
     const VkImageViewType       GetViewType     ()const{return ivci->viewType;}

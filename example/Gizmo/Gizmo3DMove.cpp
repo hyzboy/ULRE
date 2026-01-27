@@ -3,8 +3,8 @@
 
  ref: Blender 4
 
- 
-        0                 9-10 
+
+        0                 9-10
         *----------------->>>>
         |
         |
@@ -37,7 +37,7 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-//    #define GIZMO_MOVE_SQUARE 
+//    #define GIZMO_MOVE_SQUARE
 
     const math::Vector3f one_scale(1.0f);
     const math::Vector3f square_scale(2.0f);

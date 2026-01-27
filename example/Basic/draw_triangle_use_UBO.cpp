@@ -21,7 +21,7 @@ static float position_data_float[VERTEX_COUNT][2]=
 static int16 position_data[VERTEX_COUNT][2]={};
 
 constexpr uint8 color_data[VERTEX_COUNT*4]=
-{   
+{
     255,0,0,255,
     0,255,0,255,
     0,0,255,255
@@ -63,7 +63,7 @@ private:
 
         if(!material_instance)
             return(false);
-           
+
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
 

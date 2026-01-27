@@ -28,7 +28,7 @@ protected:
 protected:
 
     BoundingVolumes bounding_volumes;    ///<包围体
-    
+
 public:
 
     Geometry(const AnsiString &pn,GeometryData *pd);

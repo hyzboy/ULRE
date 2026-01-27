@@ -50,7 +50,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -72,7 +72,7 @@ namespace hgl::graph::inline_geometry
             for(uint s = 0; s <= total_segs; s++)
             {
                 float t = angle_step * float(s);
-                
+
                 // Center point of coil at this position
                 float center_x = radius * cos(t);
                 float center_y = radius * sin(t);
@@ -154,7 +154,7 @@ namespace hgl::graph::inline_geometry
             for(uint s = 0; s <= total_segs; s++)
             {
                 float t = angle_step * float(s);
-                
+
                 float px = radius * cos(t);
                 float py = radius * sin(t);
                 float pz = z_per_angle * t;
@@ -243,7 +243,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         float max_radius = radius + coil_r;
-        
+
         return pc->CreateWithAABB(
             math::Vector3f(-max_radius, -max_radius, 0.0f),
             Vector3f(max_radius, max_radius, height));

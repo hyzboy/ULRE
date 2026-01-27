@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/graph/font/FontSource.h>
 
@@ -12,14 +12,14 @@ namespace hgl::graph
 {
     /**
      * FreeType-based font bitmap implementation for cross-platform support.
-     * This class provides the same functionality as WinBitmapFont but uses 
+     * This class provides the same functionality as WinBitmapFont but uses
      * FreeType library instead of Windows GDI APIs.
      */
     class FreeTypeBitmapFont : public FontBitmapDataSource
     {
         FT_Library ft_library;
         FT_Face ft_face;
-        
+
         // Simple buffer for glyph data - will implement as needed
         uint8 *buffer;
         int buffer_size;

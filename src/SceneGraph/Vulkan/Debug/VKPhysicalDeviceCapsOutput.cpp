@@ -145,7 +145,7 @@ namespace
         OUTPUT_PHYSICAL_DEVICE_FEATURE(subgroupBroadcastDynamicId)
     #undef OUTPUT_PHYSICAL_DEVICE_FEATURE
     }
-    
+
     void DebugOut(const VkPhysicalDeviceVulkan13Features &features)
     {
         std::cout<<"Vulkan 1.3 features"<<std::endl;

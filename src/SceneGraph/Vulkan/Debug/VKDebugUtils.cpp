@@ -9,7 +9,7 @@ DebugUtils *CreateDebugUtils(VkDevice device)
 
     DUF_GETFUNC(SetName,    SetDebugUtilsObjectName     );
     DUF_GETFUNC(SetTag,     SetDebugUtilsObjectTag      );
-    
+
     DUF_GETFUNC(QueueBegin, QueueBeginDebugUtilsLabel   );
     DUF_GETFUNC(QueueEnd,   QueueEndDebugUtilsLabel     );
     DUF_GETFUNC(QueueInsert,QueueInsertDebugUtilsLabel  );

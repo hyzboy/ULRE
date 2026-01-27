@@ -1,4 +1,4 @@
-#include<hgl/graph/VK.h>
+﻿#include<hgl/graph/VK.h>
 #include<hgl/graph/VKUUID.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/type/StringList.h>
@@ -12,7 +12,7 @@ namespace
     const OSString GetUUIDCachePath(const VkPhysicalDeviceProperties &pdp)
     {
         OSString app_data;
-        
+
         if(!GetLocalAppdataPath(app_data))return OS_TEXT("");
 
         OSStringList sl;
@@ -57,7 +57,7 @@ namespace
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &pdp)
 {
     PipelineCacheCreateInfo pipelineCache;
-    
+
     pipelineCache.initialDataSize   = 0;
     pipelineCache.pInitialData      = nullptr;
 
@@ -66,7 +66,7 @@ VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProper
     VkPipelineCache cache;
 
     VkResult result=vkCreatePipelineCache(device, &pipelineCache, nullptr, &cache);
-    
+
     if(pipelineCache.pInitialData)
         delete[] (char *)pipelineCache.pInitialData;
 
@@ -80,7 +80,7 @@ void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysica
 {
     size_t size = 0;
     AutoDeleteArray<char> data;
-    
+
     if(vkGetPipelineCacheData(device, cache, &size, nullptr)!=VK_SUCCESS)
         return;
 
@@ -92,7 +92,7 @@ void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysica
     const OSString pathname=GetUUIDCachePath(pdp);
     const OSString filename=VkUUID2String<os_char>(pdp.pipelineCacheUUID);
     const OSString fullname=JoinPathWithFilename(pathname,filename);
-        
+
     if(!IsDirectory(pathname))
         if(!MakePath(pathname))
             return;

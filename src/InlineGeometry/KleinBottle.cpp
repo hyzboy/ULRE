@@ -12,7 +12,7 @@ namespace hgl::graph::inline_geometry
         // 基本参数验证
         if(kbci->major_radius <= 0.0f || kbci->minor_radius <= 0.0f)
             return nullptr;
-            
+
         if(kbci->u_segments < 3 || kbci->v_segments < 3)
             return nullptr;
 
@@ -40,16 +40,16 @@ namespace hgl::graph::inline_geometry
             const float u = 2.0f * std::numbers::pi_v<float> * float(i) / float(nU);
             const float cos_u = cos(u);
             const float sin_u = sin(u);
-            
+
             for(uint j = 0; j <= nV; ++j)
             {
                 const float v = 2.0f * std::numbers::pi_v<float> * float(j) / float(nV);
                 const float cos_v = cos(v);
                 const float sin_v = sin(v);
-                
+
                 // 克莱因瓶参数方程（改进的figure-8形式）
                 float pos_x, pos_y, pos_z;
-                
+
                 if(u < std::numbers::pi_v<float>)
                 {
                     // 外部部分
@@ -64,26 +64,26 @@ namespace hgl::graph::inline_geometry
                     pos_y = (R + r * cos_v) * sin_u;
                     pos_z = r * sin_v;
                 }
-                
+
                 // 添加figure-8扭转
                 const float twist = sin(u);
                 pos_x += twist * r * 0.5f * sin_v * cos_u;
                 pos_y += twist * r * 0.5f * sin_v * sin_u;
-                
+
                 // 计算数值法线
                 const float delta = 0.01f;
-                
+
                 float pos_u_plus_x, pos_u_plus_y, pos_u_plus_z;
                 float pos_v_plus_x, pos_v_plus_y, pos_v_plus_z;
-                
+
                 float u_next = u + delta;
                 float v_next = v + delta;
-                
+
                 // du方向
                 float cos_u_next = cos(u_next);
                 float sin_u_next = sin(u_next);
                 float twist_next = sin(u_next);
-                
+
                 if(u_next < std::numbers::pi_v<float>)
                 {
                     pos_u_plus_x = (R + r * cos_v) * cos_u_next + twist_next * r * 0.5f * sin_v * cos_u_next;
@@ -96,11 +96,11 @@ namespace hgl::graph::inline_geometry
                     pos_u_plus_y = (R + r * cos_v) * sin_u_next + twist_next * r * 0.5f * sin_v * sin_u_next;
                     pos_u_plus_z = r * sin_v;
                 }
-                
+
                 // dv方向
                 float cos_v_next = cos(v_next);
                 float sin_v_next = sin(v_next);
-                
+
                 if(u < std::numbers::pi_v<float>)
                 {
                     pos_v_plus_x = (R + r * cos_v_next) * cos_u + twist * r * 0.5f * sin_v_next * cos_u;
@@ -113,21 +113,21 @@ namespace hgl::graph::inline_geometry
                     pos_v_plus_y = (R + r * cos_v_next) * sin_u + twist * r * 0.5f * sin_v_next * sin_u;
                     pos_v_plus_z = r * sin_v_next;
                 }
-                
+
                 // 计算切向量
                 float du_x = pos_u_plus_x - pos_x;
                 float du_y = pos_u_plus_y - pos_y;
                 float du_z = pos_u_plus_z - pos_z;
-                
+
                 float dv_x = pos_v_plus_x - pos_x;
                 float dv_y = pos_v_plus_y - pos_y;
                 float dv_z = pos_v_plus_z - pos_z;
-                
+
                 // 计算法线 (du × dv)
                 float normal_x = du_y * dv_z - du_z * dv_y;
                 float normal_y = du_z * dv_x - du_x * dv_z;
                 float normal_z = du_x * dv_y - du_y * dv_x;
-                
+
                 // 归一化法线
                 float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
                 if(normal_len > 0.0001f)
@@ -136,7 +136,7 @@ namespace hgl::graph::inline_geometry
                     normal_y /= normal_len;
                     normal_z /= normal_len;
                 }
-                
+
                 // 归一化切线
                 float tangent_x = du_x;
                 float tangent_y = du_y;
@@ -148,7 +148,7 @@ namespace hgl::graph::inline_geometry
                     tangent_y /= tangent_len;
                     tangent_z /= tangent_len;
                 }
-                
+
                 const float tex_u = float(i) / float(nU);
                 const float tex_v = float(j) / float(nV);
 
@@ -183,7 +183,7 @@ namespace hgl::graph::inline_geometry
         }
 
         const float max_extent = R + r * 1.5f;
-        
+
         return pc->CreateWithAABB(
             Vector3f(-max_extent, -max_extent, -r),
             Vector3f(max_extent, max_extent, r));

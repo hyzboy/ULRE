@@ -1,5 +1,5 @@
-// ×î¼òµ¥µÄµØĞÎäÖÈ¾
-// ÔÚCPU¶ËÉú³ÉÍø¸ñ£¬ÔÚvertexÖĞÈ¡Ñù¸ß¶ÈÍ¼
+ï»¿// æœ€ç®€å•çš„åœ°å½¢æ¸²æŸ“
+// åœ¨CPUç«¯ç”Ÿæˆç½‘æ ¼ï¼Œåœ¨vertexä¸­å–æ ·é«˜åº¦å›¾
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -16,17 +16,17 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
         struct TerrainCreateInfo
         {
-            uint Xcount;            ///<XÖáÍø¸ñÊı
-            uint Ycount;            ///<YÖáÍø¸ñÊı
+            uint Xcount;            ///<Xè½´ç½‘æ ¼æ•°
+            uint Ycount;            ///<Yè½´ç½‘æ ¼æ•°
 
-            struct //·­±¶±ßÔµ
+            struct //ç¿»å€è¾¹ç¼˜
             {
                 bool top,left,right,bottom;
             }dual;
         };//struct TerrainCreateInfo
 
         /**
-         * ´´½¨Ò»¸öµØĞÎÍø¸ñ
+         * åˆ›å»ºä¸€ä¸ªåœ°å½¢ç½‘æ ¼
          */
         Primitive *CreateRenderableTerrain(RenderResource *db,const VIL *vil,const TerrainCreateInfo *tci)
         {
@@ -58,14 +58,14 @@ private:
 
         material_instance=db->CreateMaterialInstance(material);
         if(!material_instance)return(false);
-        
+
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::TriangleStrip);
         if(!pipeline)
             return(false);
 
         return(true);
     }
-    
+
     Renderable *Add(Primitive *r,const Matrix4f &mat)
     {
         Renderable *ri=db->CreateRenderable(r,material_instance,pipeline);
@@ -127,7 +127,7 @@ public:
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-            
+
         render_list=new RenderList(device);
 
         if(!InitMDP())
@@ -152,7 +152,7 @@ public:
     void Resize(int w,int h)override
     {
         CameraAppFramework::Resize(w,h);
-        
+
         VulkanApplicationFramework::BuildCommandBuffer(render_list);
     }
 };//class TestApp:public CameraAppFramework

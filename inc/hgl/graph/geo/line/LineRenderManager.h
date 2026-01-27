@@ -101,7 +101,7 @@ namespace hgl::graph
         LineWidthBatch line_groups[MAX_LINE_WIDTH];      ///< CN: 以线宽为索引的批次数组 EN: Batches indexed by line width (1..MAX or 0 only if unsupported)
         uint32 total_line_count=0;                       ///< CN: 当前累计线段数量 EN: Accumulated line count
 
-    private:    
+    private:
 
         MaterialInstance *  mi_line   = nullptr;         ///< CN: 线材质实例 EN: Line material instance
         Pipeline *          pipeline  = nullptr;         ///< CN: 当前渲染管线 EN: Active graphics pipeline

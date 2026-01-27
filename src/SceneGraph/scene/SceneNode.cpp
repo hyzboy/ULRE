@@ -245,15 +245,15 @@ namespace hgl::graph
         U8String indent;
         for(int i = 0; i < depth; i++)
             indent += U8_TEXT("  ");
-        
+
         // 生成树符号
         U8String prefix = depth == 0 ? U8_TEXT("") : U8_TEXT("├─ ");
-        
+
         // 添加当前节点信息
         U8String node_info = indent + prefix + U8_TEXT("[Node] (ID: ") + U8String::numberOf(node_id) + U8_TEXT(")");
-        
+
         result += node_info + U8_TEXT("\n");
-        
+
         // 添加组件信息
         for(const Component *comp : component_set)
         {
@@ -263,7 +263,7 @@ namespace hgl::graph
             comp_info += comp->GetComponentInfo();
             result += comp_info + U8_TEXT("\n");
         }
-        
+
         // 递归添加子节点
         for(const SceneNode *child : child_nodes)
         {
@@ -272,7 +272,7 @@ namespace hgl::graph
                 result += child->GetSceneTreeText(depth + 1);
             }
         }
-        
+
         return result;
     }
 }//namespace hgl::graph

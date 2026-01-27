@@ -43,7 +43,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
             Clear(tci);
             return(nullptr);
         }
-        
+
         tci->memory=GetDevice()->CreateMemory(tci->image);
     }
 
@@ -61,7 +61,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
     }
 
     //我们暂不，也不准备支持从文件加载整个texture 2d array，所以这里的代码暂时注释掉。仅支持创建空的Texture2d array后，一张张2D纹理单独提交
-// 
+//
     //if((!tci->buffer)&&tci->pixels&&tci->total_bytes>0)
     //    tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->total_bytes,tci->pixels);
 
@@ -240,7 +240,7 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,const void *data,c
         ||scope.GetRight()>tex->GetWidth()
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
-    
+
     DeviceBuffer *buf=CreateTransferSourceBuffer(size,data);
 
     bool result=ChangeTexture2DArray(tex,buf,scope,base_layer,layer_count,destinationStage);

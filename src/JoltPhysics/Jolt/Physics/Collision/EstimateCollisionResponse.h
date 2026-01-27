@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,24 +11,24 @@ JPH_NAMESPACE_BEGIN
 /// A structure that contains the estimated contact and friction impulses and the resulting body velocities
 struct CollisionEstimationResult
 {
-	Vec3			mLinearVelocity1;				///< The estimated linear velocity of body 1 after collision
-	Vec3			mAngularVelocity1;				///< The estimated angular velocity of body 1 after collision
-	Vec3			mLinearVelocity2;				///< The estimated linear velocity of body 2 after collision
-	Vec3			mAngularVelocity2;				///< The estimated angular velocity of body 2 after collision
+    Vec3            mLinearVelocity1;               ///< The estimated linear velocity of body 1 after collision
+    Vec3            mAngularVelocity1;              ///< The estimated angular velocity of body 1 after collision
+    Vec3            mLinearVelocity2;               ///< The estimated linear velocity of body 2 after collision
+    Vec3            mAngularVelocity2;              ///< The estimated angular velocity of body 2 after collision
 
-	Vec3			mTangent1;						///< Normalized tangent of contact normal
-	Vec3			mTangent2;						///< Second normalized tangent of contact normal (forms a basis with mTangent1 and mWorldSpaceNormal)
+    Vec3            mTangent1;                      ///< Normalized tangent of contact normal
+    Vec3            mTangent2;                      ///< Second normalized tangent of contact normal (forms a basis with mTangent1 and mWorldSpaceNormal)
 
-	struct Impulse
-	{
-		float		mContactImpulse;				///< Estimated contact impulses (kg m / s)
-		float		mFrictionImpulse1;				///< Estimated friction impulses in the direction of tangent 1 (kg m / s)
-		float		mFrictionImpulse2;				///< Estimated friction impulses in the direction of tangent 2 (kg m / s)
-	};
+    struct Impulse
+    {
+        float       mContactImpulse;                ///< Estimated contact impulses (kg m / s)
+        float       mFrictionImpulse1;              ///< Estimated friction impulses in the direction of tangent 1 (kg m / s)
+        float       mFrictionImpulse2;              ///< Estimated friction impulses in the direction of tangent 2 (kg m / s)
+    };
 
-	using Impulses = StaticArray<Impulse, ContactPoints::Capacity>;
+    using Impulses = StaticArray<Impulse, ContactPoints::Capacity>;
 
-	Impulses		mImpulses;
+    Impulses        mImpulses;
 };
 
 /// This function estimates the contact impulses and body velocity changes as a result of a collision.

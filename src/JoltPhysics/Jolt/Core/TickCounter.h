@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -6,11 +6,11 @@
 
 // Include for __rdtsc
 #if defined(JPH_PLATFORM_WINDOWS)
-	#include <intrin.h>
+    #include <intrin.h>
 #elif defined(JPH_CPU_X86) && defined(JPH_COMPILER_GCC)
-	#include <x86intrin.h>
+    #include <x86intrin.h>
 #elif defined(JPH_CPU_E2K)
-	#include <x86intrin.h>
+    #include <x86intrin.h>
 #endif
 
 JPH_NAMESPACE_BEGIN
@@ -26,21 +26,21 @@ uint64 GetProcessorTickCount(); // Not inline to avoid having to include Windows
 JPH_INLINE uint64 GetProcessorTickCount()
 {
 #if defined(JPH_PLATFORM_BLUE)
-	return JPH_PLATFORM_BLUE_GET_TICKS();
+    return JPH_PLATFORM_BLUE_GET_TICKS();
 #elif defined(JPH_CPU_X86)
-	return __rdtsc();
+    return __rdtsc();
 #elif defined(JPH_CPU_E2K)
-	return __rdtsc();
+    return __rdtsc();
 #elif defined(JPH_CPU_ARM) && defined(JPH_USE_NEON)
-	uint64 val;
-	asm volatile("mrs %0, cntvct_el0" : "=r" (val));
-	return val;
+    uint64 val;
+    asm volatile("mrs %0, cntvct_el0" : "=r" (val));
+    return val;
 #elif defined(JPH_CPU_ARM)
-	return 0; // Not supported
+    return 0; // Not supported
 #elif defined(JPH_CPU_WASM)
-	return 0; // Not supported
+    return 0; // Not supported
 #else
-	#error Undefined
+    #error Undefined
 #endif
 }
 

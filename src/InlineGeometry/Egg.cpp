@@ -37,7 +37,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -49,7 +49,7 @@ namespace hgl::graph::inline_geometry
             float v = float(i) / float(stacks);
             // ValueStack angle from -pi/2 (bottom) to +pi/2 (top)
             float stack_angle = -std::numbers::pi_v<float> * 0.5f + std::numbers::pi_v<float> * v;
-            
+
             float cos_stack = cos(stack_angle);
             float sin_stack = sin(stack_angle);
 

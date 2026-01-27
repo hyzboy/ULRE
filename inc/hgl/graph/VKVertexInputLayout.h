@@ -74,10 +74,10 @@ public:
     {
         if(auto cmp = count <=> vil.count; cmp != 0)
             return cmp;
-        
+
         if(auto cmp = mem_compare_ordering(bind_list, vil.bind_list, count); cmp != 0)
             return cmp;
-        
+
         return mem_compare_ordering(attr_list, vil.attr_list, count);
     }
 
@@ -85,7 +85,7 @@ public:
      * 相等比较运算符
      * @param vil 要比较的另一个 VertexInputLayout
      * @return 如果两个布局的所有属性都相同，返回 true；否则返回 false
-     * 
+     *
      * 用法示例：
      * VertexInputLayout vil1(count), vil2(count);
      * if(vil1 == vil2) { ... }
@@ -94,10 +94,10 @@ public:
     {
         if(count != vil.count)
             return false;
-        
+
         if(mem_compare(bind_list, vil.bind_list, count) != 0)
             return false;
-        
+
         return mem_compare(attr_list, vil.attr_list, count) == 0;
     }
 
@@ -105,7 +105,7 @@ public:
      * 不相等比较运算符
      * @param vil 要比较的另一个 VertexInputLayout
      * @return 如果两个布局的任何属性不同，返回 true；否则返回 false
-     * 
+     *
      * 用法示例：
      * VertexInputLayout vil1(count), vil2(count);
      * if(vil1 != vil2) { ... }

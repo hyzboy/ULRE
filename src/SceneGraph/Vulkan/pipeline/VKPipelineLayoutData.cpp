@@ -49,7 +49,7 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
     //push_constant_range.stageFlags   = VK_SHADER_STAGE_VERTEX_BIT;
     //push_constant_range.size         = MAX_PUSH_CONSTANT_BYTES;
     //push_constant_range.offset       = 0;
-    
+
     PipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
 
     pPipelineLayoutCreateInfo.setLayoutCount            = pld->fin_dsl_count;
@@ -64,7 +64,7 @@ PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescrip
         delete pld;
         return(nullptr);
     }
-    
+
     return(pld);
 }
 

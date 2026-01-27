@@ -4,7 +4,7 @@ namespace hgl{namespace graph{
 ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
 {
     stage_flag=flag_bit;
-   
+
     mem_zero(push_constant);
 }
 

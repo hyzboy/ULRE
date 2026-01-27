@@ -60,7 +60,7 @@ private:
 
     DeviceBuffer *      ubo_sun             =nullptr;
 
-    
+
     Texture2DArray *    texture             =nullptr;
     Sampler *           sampler             =nullptr;
 
@@ -78,7 +78,7 @@ private:    //sphere
     Primitive *         prim_cylinder       =nullptr;
 
 private:
-    
+
     bool InitTexture()
     {
         texture=db->CreateTexture2DArray(   "SeamlessBackground",
@@ -142,7 +142,7 @@ private:
 
         mtl_blinnphong->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
         mtl_blinnphong->Update();
-        
+
         sampler=db->CreateSampler();
 
         if(!mtl_blinnphong->BindImageSampler(   DescriptorSetType::PerMaterial,     ///<描述符合集
@@ -241,8 +241,8 @@ private:
         }
 
         return(true);
-    }    
-    
+    }
+
     Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p,const Matrix4f &mat=Identity4f)
     {
         if(!r)
@@ -287,7 +287,7 @@ private:
 public:
 
     bool Init(uint w,uint h)
-    {        
+    {
         if(!SceneAppFramework::Init(w,h))
             return(false);
 
@@ -296,7 +296,7 @@ public:
 
         //if(!InitVertexLumMP())
         //    return(false);
-        
+
         if(!CreateBlinnPhongUBO())
             return(false);
 

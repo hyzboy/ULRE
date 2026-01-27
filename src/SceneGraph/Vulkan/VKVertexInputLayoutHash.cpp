@@ -17,7 +17,7 @@ const uint GetVertexInputStreamCount(const VertexInputLayoutHash &vil_hash)
 
     if(vil_hash.TexCoord)count+=vil_hash.TexCoord;
     if(vil_hash.Color)count+=vil_hash.Color;
-    
+
     if(vil_hash.Bone)count+=2;
     if(vil_hash.Assign)count+=1;
 

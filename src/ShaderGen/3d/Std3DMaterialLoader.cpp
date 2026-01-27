@@ -53,7 +53,7 @@ namespace
 
             return true;
         }
-        
+
         template<ShaderStage ss,typename SD,typename SCI>
         SD *CommonProc(SCI *sc)
         {
@@ -61,7 +61,7 @@ namespace
 
             if(!sd)
                 return (nullptr);
-            
+
             sc->AddOutput(sd->output);
 
             for(auto &s:sd->sampler)
@@ -78,7 +78,7 @@ namespace
 
             if(!Std3DMaterial::CustomVertexShader(vsc))
                 return (false);
-            
+
             return CommonProc<ShaderStage::Vertex,material_file::VertexShaderData,ShaderCreateInfoVertex>(vsc);
         }
 

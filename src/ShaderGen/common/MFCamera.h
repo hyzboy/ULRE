@@ -31,7 +31,7 @@ vec3 GetViewUp(mat4 cv)
     constexpr const char *FrustumCheck=R"(
 bool FrustumCheck(vec4 pos, float radius)
 {
-    for (int i = 0; i < 6; i++) 
+    for (int i = 0; i < 6; i++)
     {
         if (dot(pos, camera.frustum_planes[i]) + radius < 0.0)
         {

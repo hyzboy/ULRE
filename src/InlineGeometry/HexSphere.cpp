@@ -154,7 +154,7 @@ namespace hgl::graph::inline_geometry
         if(p)
         {
             BoundingVolumes bv;
-            bv.SetFromAABB(math::Vector3f(-R, -R, -R), 
+            bv.SetFromAABB(math::Vector3f(-R, -R, -R),
                           Vector3f(R, R, R));
             p->SetBoundingVolumes(bv);
         }

@@ -1,4 +1,4 @@
-#include<hgl/graph/module/RenderTargetManager.h>
+﻿#include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKImageView.h>
 #include<hgl/graph/VKFramebuffer.h>
@@ -28,7 +28,7 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_lis
     uint att_count=color_count;
 
     if(depth)++att_count;
-    
+
     AutoDeleteArray<VkImageView> attachments(att_count);
     VkImageView *ap=attachments;
 
@@ -82,7 +82,7 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_lis
 }
 //
 //Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ValueArray<ImageView *> &color,ImageView *depth)
-//{    
+//{
 //    if(!rp)return(nullptr);
 //
 //    if(rp->GetColorFormat().GetCount()!=color.GetCount())return(nullptr);

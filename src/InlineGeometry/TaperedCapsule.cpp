@@ -68,7 +68,7 @@ namespace hgl::graph::inline_geometry
                 const float ny_unnorm = sa * height;
                 const float nz_unnorm = -dr;
                 const float norm_len = sqrtf(nx_unnorm*nx_unnorm + ny_unnorm*ny_unnorm + nz_unnorm*nz_unnorm);
-                
+
                 const float nx = (norm_len > 0.0f) ? (nx_unnorm / norm_len) : ca;
                 const float ny = (norm_len > 0.0f) ? (ny_unnorm / norm_len) : sa;
                 const float nz = (norm_len > 0.0f) ? (nz_unnorm / norm_len) : 0.0f;
@@ -98,7 +98,7 @@ namespace hgl::graph::inline_geometry
                 const float a = angleStep * float(i);
                 const float ca = cos(a);
                 const float sa = -sin(a);
-                
+
                 const float x = r * ca * topR;
                 const float y = r * sa * topR;
                 const float z = halfH + cz * topR;
@@ -135,7 +135,7 @@ namespace hgl::graph::inline_geometry
                 const float a = angleStep * float(i);
                 const float ca = cos(a);
                 const float sa = -sin(a);
-                
+
                 const float x = r * ca * bottomR;
                 const float y = r * sa * bottomR;
                 const float z = -halfH + cz * bottomR;
@@ -165,10 +165,10 @@ namespace hgl::graph::inline_geometry
         const uint ringVertexCount = slices + 1;
 
         // 创建索引生成lambda（避免代码重复）
-        auto generateIndices = [&](auto* ip) 
+        auto generateIndices = [&](auto* ip)
         {
             using IndexT = std::remove_pointer_t<decltype(ip)>;
-            
+
             // 侧面索引
             uint base = 0;
             for(uint i=0;i<slices;i++)

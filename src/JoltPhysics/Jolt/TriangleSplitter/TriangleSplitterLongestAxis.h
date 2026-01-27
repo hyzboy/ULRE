@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -12,17 +12,17 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT TriangleSplitterLongestAxis : public TriangleSplitter
 {
 public:
-	/// Constructor
-							TriangleSplitterLongestAxis(const VertexList &inVertices, const IndexedTriangleList &inTriangles);
+    /// Constructor
+                            TriangleSplitterLongestAxis(const VertexList &inVertices, const IndexedTriangleList &inTriangles);
 
-	// See TriangleSplitter::GetStats
-	virtual void			GetStats(Stats &outStats) const override
-	{
-		outStats.mSplitterName = "TriangleSplitterLongestAxis";
-	}
+    // See TriangleSplitter::GetStats
+    virtual void            GetStats(Stats &outStats) const override
+    {
+        outStats.mSplitterName = "TriangleSplitterLongestAxis";
+    }
 
-	// See TriangleSplitter::Split
-	virtual bool			Split(const Range &inTriangles, Range &outLeft, Range &outRight) override;
+    // See TriangleSplitter::Split
+    virtual bool            Split(const Range &inTriangles, Range &outLeft, Range &outRight) override;
 };
 
 JPH_NAMESPACE_END

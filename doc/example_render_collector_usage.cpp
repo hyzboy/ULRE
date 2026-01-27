@@ -1,6 +1,6 @@
-/**
+﻿/**
  * Example: Using the new ECS RenderCollector with PrimitiveComponent
- * 
+ *
  * This example demonstrates the redesigned RenderCollector that supports
  * material/pipeline batching for efficient rendering of PrimitiveComponents.
  */
@@ -69,14 +69,14 @@ int main()
     // 5. Create entities with PrimitiveComponents
     // In a real application, you would load meshes and materials from files
     // Here we simulate the structure
-    
+
     std::cout << "\n=== Creating Entities with PrimitiveComponents ===" << std::endl;
 
     // Example: Creating multiple entities with different primitives
     for (int i = 0; i < 5; ++i)
     {
         auto entity = world->CreateEntity<Entity>("MeshObject_" + std::to_string(i));
-        
+
         // Add TransformComponent
         auto transform = entity->AddComponent<TransformComponent>();
         transform->SetLocalPosition(glm::vec3(i * 2.0f - 4.0f, 0.0f, 0.0f));
@@ -85,11 +85,11 @@ int main()
 
         // Add PrimitiveComponent
         auto primitiveComp = entity->AddComponent<PrimitiveComponent>();
-        
+
         // In a real app, you would:
         // Primitive* primitive = LoadPrimitive("mesh.obj", "material.json");
         // primitiveComp->SetPrimitive(primitive);
-        
+
         // Optionally override material:
         // MaterialInstance* customMaterial = CreateMaterial(...);
         // primitiveComp->SetOverrideMaterial(customMaterial);
@@ -152,7 +152,7 @@ int main()
             {
                 glm::mat4 worldMatrix = item->GetWorldMatrix();
                 Primitive* primitive = item->GetPrimitive();
-                
+
                 // Render the primitive with the world matrix
                 // RenderPrimitive(primitive, worldMatrix, ...);
             }
@@ -162,7 +162,7 @@ int main()
 
     // 9. Update transforms (when objects move)
     std::cout << "\n=== Updating Transforms ===" << std::endl;
-    
+
     // Simulate moving an entity
     const auto& entities = world->GetEntities();
     if (!entities.empty())
@@ -203,10 +203,10 @@ int main()
 
 /*
  * Expected Output:
- * 
+ *
  * === ECS RenderCollector with PrimitiveComponent Example ===
  * Camera configured at position: (0, 5, 10)
- * 
+ *
  * === Creating Entities with PrimitiveComponents ===
  * Created entity: MeshObject_0 at position (-4, 0, 0)
  * Created entity: MeshObject_1 at position (-2, 0, 0)
@@ -214,17 +214,17 @@ int main()
  * Created entity: MeshObject_3 at position (2, 0, 0)
  * Created entity: MeshObject_4 at position (4, 0, 0)
  * Total entities: 5
- * 
+ *
  * === Collecting Renderables ===
  * Renderable count: 5
  * Empty: No
- * 
+ *
  * === Method 1: Direct Render Items Access ===
  * Total render items: 5
  *   [0] MeshObject_0 | Distance: ... | Visible: Yes
  *   [1] MeshObject_1 | Distance: ... | Visible: Yes
  *   ...
- * 
+ *
  * === Method 2: Material Batches Access ===
  * Total material batches: 2  (depending on materials)
  * Batch [0]:
@@ -235,13 +235,13 @@ int main()
  *   Material: 0x...
  *   Pipeline: 0x...
  *   Items count: 2
- * 
+ *
  * === Updating Transforms ===
  * Moved entity to: (-3, 0, 0)
  * Transform data updated
- * 
+ *
  * === Next Frame ===
  * Re-collected 5 items
- * 
+ *
  * === Example Complete ===
  */

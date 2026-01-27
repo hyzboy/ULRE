@@ -46,7 +46,7 @@ namespace
                 {
                     bits>>=1;
                 }
-            }                
+            }
 
             std::cout<<"]"<<std::endl;
 
@@ -180,7 +180,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 }
 
 const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
-{    
+{
     for(const VkLayerProperties &lp:layer_properties)
     {
         if(name.Comp(lp.layerName)==0)

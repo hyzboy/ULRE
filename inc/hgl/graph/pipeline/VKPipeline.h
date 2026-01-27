@@ -19,7 +19,7 @@ class Pipeline
 
     bool alpha_test;
     bool alpha_blend;
-    
+
 private:
 
     friend class RenderPass;

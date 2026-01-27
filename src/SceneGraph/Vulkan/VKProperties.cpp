@@ -52,7 +52,7 @@ const bool CheckInstanceLayerSupport(const AnsiString &layer_name)
 }
 
 const bool GetInstanceLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)
-{    
+{
     for(const VkLayerProperties &lp:layer_properties)
     {
         if(name.Comp(lp.layerName)==0)
@@ -109,7 +109,7 @@ void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *lay
 
 #define VK_LAYER_BANDICAM_ADD(name)     VK_LAYER_CHECK(bandicam,"bandicam",name)
 
-    VK_LAYER_BANDICAM_ADD(helper)    
+    VK_LAYER_BANDICAM_ADD(helper)
 }
 
 const bool CheckInstanceExtensionSupport(const AnsiString &name)

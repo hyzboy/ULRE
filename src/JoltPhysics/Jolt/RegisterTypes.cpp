@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -72,126 +72,126 @@ JPH_NAMESPACE_BEGIN
 
 bool VerifyJoltVersionIDInternal(uint64 inVersionID)
 {
-	return inVersionID == JPH_VERSION_ID;
+    return inVersionID == JPH_VERSION_ID;
 }
 
 void RegisterTypesInternal(uint64 inVersionID)
 {
-	// Version check
-	if (!VerifyJoltVersionIDInternal(inVersionID))
-	{
-		Trace("Version mismatch, make sure you compile the client code with the same Jolt version and compiler definitions!");
-		uint64 mismatch = JPH_VERSION_ID ^ inVersionID;
-		auto check_bit = [mismatch](int inBit, const char *inLabel) { if (mismatch & (uint64(1) << (inBit + 23))) Trace("Mismatching define %s.", inLabel); };
-		check_bit(1, "JPH_DOUBLE_PRECISION");
-		check_bit(2, "JPH_CROSS_PLATFORM_DETERMINISTIC");
-		check_bit(3, "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED");
-		check_bit(4, "JPH_PROFILE_ENABLED");
-		check_bit(5, "JPH_EXTERNAL_PROFILE");
-		check_bit(6, "JPH_DEBUG_RENDERER");
-		check_bit(7, "JPH_DISABLE_TEMP_ALLOCATOR");
-		check_bit(8, "JPH_DISABLE_CUSTOM_ALLOCATOR");
-		check_bit(9, "JPH_OBJECT_LAYER_BITS");
-		check_bit(10, "JPH_ENABLE_ASSERTS");
-		std::abort();
-	}
+    // Version check
+    if (!VerifyJoltVersionIDInternal(inVersionID))
+    {
+        Trace("Version mismatch, make sure you compile the client code with the same Jolt version and compiler definitions!");
+        uint64 mismatch = JPH_VERSION_ID ^ inVersionID;
+        auto check_bit = [mismatch](int inBit, const char *inLabel) { if (mismatch & (uint64(1) << (inBit + 23))) Trace("Mismatching define %s.", inLabel); };
+        check_bit(1, "JPH_DOUBLE_PRECISION");
+        check_bit(2, "JPH_CROSS_PLATFORM_DETERMINISTIC");
+        check_bit(3, "JPH_FLOATING_POINT_EXCEPTIONS_ENABLED");
+        check_bit(4, "JPH_PROFILE_ENABLED");
+        check_bit(5, "JPH_EXTERNAL_PROFILE");
+        check_bit(6, "JPH_DEBUG_RENDERER");
+        check_bit(7, "JPH_DISABLE_TEMP_ALLOCATOR");
+        check_bit(8, "JPH_DISABLE_CUSTOM_ALLOCATOR");
+        check_bit(9, "JPH_OBJECT_LAYER_BITS");
+        check_bit(10, "JPH_ENABLE_ASSERTS");
+        std::abort();
+    }
 
 #ifndef JPH_DISABLE_CUSTOM_ALLOCATOR
-	JPH_ASSERT(Allocate != nullptr && Free != nullptr && AlignedAllocate != nullptr && AlignedFree != nullptr, "Need to supply an allocator first or call RegisterDefaultAllocator()");
+    JPH_ASSERT(Allocate != nullptr && Free != nullptr && AlignedAllocate != nullptr && AlignedFree != nullptr, "Need to supply an allocator first or call RegisterDefaultAllocator()");
 #endif // !JPH_DISABLE_CUSTOM_ALLOCATOR
 
-	JPH_ASSERT(Factory::sInstance != nullptr, "Need to create a factory first!");
+    JPH_ASSERT(Factory::sInstance != nullptr, "Need to create a factory first!");
 
-	// Initialize dispatcher
-	CollisionDispatch::sInit();
+    // Initialize dispatcher
+    CollisionDispatch::sInit();
 
-	// Register base classes first so that we can specialize them later
-	CompoundShape::sRegister();
-	ConvexShape::sRegister();
+    // Register base classes first so that we can specialize them later
+    CompoundShape::sRegister();
+    ConvexShape::sRegister();
 
-	// Register compounds before others so that we can specialize them later (register them in reverse order of collision complexity)
-	MutableCompoundShape::sRegister();
-	StaticCompoundShape::sRegister();
+    // Register compounds before others so that we can specialize them later (register them in reverse order of collision complexity)
+    MutableCompoundShape::sRegister();
+    StaticCompoundShape::sRegister();
 
-	// Leaf classes
-	TriangleShape::sRegister();
-	SphereShape::sRegister();
-	BoxShape::sRegister();
-	CapsuleShape::sRegister();
-	TaperedCapsuleShape::sRegister();
-	CylinderShape::sRegister();
-	MeshShape::sRegister();
-	ConvexHullShape::sRegister();
-	HeightFieldShape::sRegister();
-	SoftBodyShape::sRegister();
+    // Leaf classes
+    TriangleShape::sRegister();
+    SphereShape::sRegister();
+    BoxShape::sRegister();
+    CapsuleShape::sRegister();
+    TaperedCapsuleShape::sRegister();
+    CylinderShape::sRegister();
+    MeshShape::sRegister();
+    ConvexHullShape::sRegister();
+    HeightFieldShape::sRegister();
+    SoftBodyShape::sRegister();
 
-	// Register these last because their collision functions are simple so we want to execute them first (register them in reverse order of collision complexity)
-	RotatedTranslatedShape::sRegister();
-	OffsetCenterOfMassShape::sRegister();
-	ScaledShape::sRegister();
+    // Register these last because their collision functions are simple so we want to execute them first (register them in reverse order of collision complexity)
+    RotatedTranslatedShape::sRegister();
+    OffsetCenterOfMassShape::sRegister();
+    ScaledShape::sRegister();
 
-	// Create list of all types
-	const RTTI *types[] = {
-		JPH_RTTI(SkeletalAnimation),
-		JPH_RTTI(Skeleton),
-		JPH_RTTI(CompoundShapeSettings),
-		JPH_RTTI(StaticCompoundShapeSettings),
-		JPH_RTTI(MutableCompoundShapeSettings),
-		JPH_RTTI(TriangleShapeSettings),
-		JPH_RTTI(SphereShapeSettings),
-		JPH_RTTI(BoxShapeSettings),
-		JPH_RTTI(CapsuleShapeSettings),
-		JPH_RTTI(TaperedCapsuleShapeSettings),
-		JPH_RTTI(CylinderShapeSettings),
-		JPH_RTTI(ScaledShapeSettings),
-		JPH_RTTI(MeshShapeSettings),
-		JPH_RTTI(ConvexHullShapeSettings),
-		JPH_RTTI(HeightFieldShapeSettings),
-		JPH_RTTI(RotatedTranslatedShapeSettings),
-		JPH_RTTI(OffsetCenterOfMassShapeSettings),
-		JPH_RTTI(RagdollSettings),
-		JPH_RTTI(PointConstraintSettings),
-		JPH_RTTI(SixDOFConstraintSettings),
-		JPH_RTTI(SliderConstraintSettings),
-		JPH_RTTI(SwingTwistConstraintSettings),
-		JPH_RTTI(DistanceConstraintSettings),
-		JPH_RTTI(HingeConstraintSettings),
-		JPH_RTTI(FixedConstraintSettings),
-		JPH_RTTI(ConeConstraintSettings),
-		JPH_RTTI(PathConstraintSettings),
-		JPH_RTTI(VehicleConstraintSettings),
-		JPH_RTTI(WheeledVehicleControllerSettings),
-		JPH_RTTI(PathConstraintPath),
-		JPH_RTTI(PathConstraintPathHermite),
-		JPH_RTTI(RackAndPinionConstraintSettings),
-		JPH_RTTI(GearConstraintSettings),
-		JPH_RTTI(PulleyConstraintSettings),
-		JPH_RTTI(MotorSettings),
-		JPH_RTTI(PhysicsScene),
-		JPH_RTTI(PhysicsMaterial),
-		JPH_RTTI(PhysicsMaterialSimple),
-		JPH_RTTI(GroupFilter),
-		JPH_RTTI(GroupFilterTable),
-		JPH_RTTI(BodyCreationSettings),
-		JPH_RTTI(SoftBodyCreationSettings)
-	};
+    // Create list of all types
+    const RTTI *types[] = {
+        JPH_RTTI(SkeletalAnimation),
+        JPH_RTTI(Skeleton),
+        JPH_RTTI(CompoundShapeSettings),
+        JPH_RTTI(StaticCompoundShapeSettings),
+        JPH_RTTI(MutableCompoundShapeSettings),
+        JPH_RTTI(TriangleShapeSettings),
+        JPH_RTTI(SphereShapeSettings),
+        JPH_RTTI(BoxShapeSettings),
+        JPH_RTTI(CapsuleShapeSettings),
+        JPH_RTTI(TaperedCapsuleShapeSettings),
+        JPH_RTTI(CylinderShapeSettings),
+        JPH_RTTI(ScaledShapeSettings),
+        JPH_RTTI(MeshShapeSettings),
+        JPH_RTTI(ConvexHullShapeSettings),
+        JPH_RTTI(HeightFieldShapeSettings),
+        JPH_RTTI(RotatedTranslatedShapeSettings),
+        JPH_RTTI(OffsetCenterOfMassShapeSettings),
+        JPH_RTTI(RagdollSettings),
+        JPH_RTTI(PointConstraintSettings),
+        JPH_RTTI(SixDOFConstraintSettings),
+        JPH_RTTI(SliderConstraintSettings),
+        JPH_RTTI(SwingTwistConstraintSettings),
+        JPH_RTTI(DistanceConstraintSettings),
+        JPH_RTTI(HingeConstraintSettings),
+        JPH_RTTI(FixedConstraintSettings),
+        JPH_RTTI(ConeConstraintSettings),
+        JPH_RTTI(PathConstraintSettings),
+        JPH_RTTI(VehicleConstraintSettings),
+        JPH_RTTI(WheeledVehicleControllerSettings),
+        JPH_RTTI(PathConstraintPath),
+        JPH_RTTI(PathConstraintPathHermite),
+        JPH_RTTI(RackAndPinionConstraintSettings),
+        JPH_RTTI(GearConstraintSettings),
+        JPH_RTTI(PulleyConstraintSettings),
+        JPH_RTTI(MotorSettings),
+        JPH_RTTI(PhysicsScene),
+        JPH_RTTI(PhysicsMaterial),
+        JPH_RTTI(PhysicsMaterialSimple),
+        JPH_RTTI(GroupFilter),
+        JPH_RTTI(GroupFilterTable),
+        JPH_RTTI(BodyCreationSettings),
+        JPH_RTTI(SoftBodyCreationSettings)
+    };
 
-	// Register them all
-	Factory::sInstance->Register(types, (uint)size(types));
+    // Register them all
+    Factory::sInstance->Register(types, (uint)size(types));
 
-	// Initialize default physics material
-	if (PhysicsMaterial::sDefault == nullptr)
-		PhysicsMaterial::sDefault = new PhysicsMaterialSimple("Default", Color::sGrey);
+    // Initialize default physics material
+    if (PhysicsMaterial::sDefault == nullptr)
+        PhysicsMaterial::sDefault = new PhysicsMaterialSimple("Default", Color::sGrey);
 }
 
 void UnregisterTypes()
 {
-	// Unregister all types
-	if (Factory::sInstance != nullptr)
-		Factory::sInstance->Clear();
+    // Unregister all types
+    if (Factory::sInstance != nullptr)
+        Factory::sInstance->Clear();
 
-	// Delete default physics material
-	PhysicsMaterial::sDefault = nullptr;
+    // Delete default physics material
+    PhysicsMaterial::sDefault = nullptr;
 }
 
 JPH_NAMESPACE_END

@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_GPU_DATA_ARRAY_INCLUDE
+﻿#ifndef HGL_GRAPH_GPU_DATA_ARRAY_INCLUDE
 #define HGL_GRAPH_GPU_DATA_ARRAY_INCLUDE
 
 #include<hgl/graph/VKBuffer.h>
@@ -7,7 +7,7 @@ namespace hgl
     namespace graph
     {
         /**
-         * GPU数据阵列         
+         * GPU数据阵列
          **/
         class GPUDataArray
         {
@@ -68,8 +68,8 @@ namespace hgl
 
                 if(count*item_size<=0)
                     return(false);
-                
-                buf_cpu=new 
+
+                buf_cpu=new
             }
         };//class GPUDataArray
     }//namespace graph

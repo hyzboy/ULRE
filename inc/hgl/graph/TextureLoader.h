@@ -48,7 +48,7 @@ namespace hgl::graph
         };
 
         uint32 height;                  ///<高(2D/3D/Cube纹理用)
-              
+
         union
         {
             uint32 depth;               ///<深度(3D纹理用)

@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -9,8 +9,8 @@
 class ConstraintSingularityTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ConstraintSingularityTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ConstraintSingularityTest)
 
-	// See: Test
-	virtual void		Initialize() override;
+    // See: Test
+    virtual void        Initialize() override;
 };

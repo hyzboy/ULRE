@@ -1,4 +1,4 @@
-#include "FontDataSourceFreeType.h"
+﻿#include "FontDataSourceFreeType.h"
 #include <string>
 #include <cstring>
 
@@ -10,7 +10,7 @@ namespace hgl::graph
         ft_face = nullptr;
         buffer = nullptr;
         buffer_size = 0;
-        
+
         // Initialize FreeType library
         FT_Error error = FT_Init_FreeType(&ft_library);
         if (error)
@@ -33,7 +33,7 @@ namespace hgl::graph
                 "/System/Library/Fonts/Arial.ttf", // macOS
                 "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"
             };
-            
+
             bool loaded = false;
             for (const char* font_path : fallback_fonts)
             {
@@ -44,7 +44,7 @@ namespace hgl::graph
                     break;
                 }
             }
-            
+
             if (!loaded)
             {
                 // Failed to load any font face
@@ -77,13 +77,13 @@ namespace hgl::graph
             delete[] buffer;
             buffer = nullptr;
         }
-        
+
         if (ft_face)
         {
             FT_Done_Face(ft_face);
             ft_face = nullptr;
         }
-        
+
         if (ft_library)
         {
             FT_Done_FreeType(ft_library);
@@ -106,7 +106,7 @@ namespace hgl::graph
             return false;
 
         // Render glyph to bitmap
-        error = FT_Render_Glyph(ft_face->glyph, 
+        error = FT_Render_Glyph(ft_face->glyph,
                                fnt.anti ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO);
         if (error)
             return false;
@@ -145,7 +145,7 @@ namespace hgl::graph
                 {
                     uint8* src_row = bitmap.buffer + y * bitmap.pitch;
                     uint8* dst_row = bmp->data + y * bmp->metrics_info.w;
-                    
+
                     for (unsigned int x = 0; x < bitmap.width && x < bmp->metrics_info.w; ++x)
                     {
                         dst_row[x] = src_row[x];
@@ -159,7 +159,7 @@ namespace hgl::graph
                 {
                     uint8* src_row = bitmap.buffer + y * bitmap.pitch;
                     uint8* dst_row = bmp->data + y * bmp->metrics_info.w;
-                    
+
                     for (unsigned int x = 0; x < bitmap.width && x < bmp->metrics_info.w; ++x)
                     {
                         int src_byte_idx = x >> 3;

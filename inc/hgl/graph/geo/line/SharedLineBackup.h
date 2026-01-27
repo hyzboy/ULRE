@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/math/Vector.h>
 #include <hgl/type/ValueBuffer.h>

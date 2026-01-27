@@ -10,17 +10,17 @@ namespace hgl::ecs
     void PrimitiveComponent::SetPrimitive(hgl::graph::Primitive* prim)
     {
         primitive = prim;
-        
+
         // Update bounding radius based on primitive's bounding volume
         if (primitive)
         {
             const auto& bv = primitive->GetBoundingVolumes();
-            
+
             // Calculate bounding radius from AABB for frustum culling
             // Use the length (diagonal) of the AABB as the bounding radius
             auto extents = bv.aabb.GetLength();
             float radius = math::Length(extents) * 0.5f; // Half diagonal
-            
+
             SetBoundingRadius(radius);
         }
         else
@@ -109,7 +109,7 @@ namespace hgl::ecs
     void PrimitiveComponent::OnDetach()
     {
         RenderableComponent::OnDetach();
-        
+
         // Don't delete primitive or material - they're managed externally
         // Just clear our references
         primitive = nullptr;

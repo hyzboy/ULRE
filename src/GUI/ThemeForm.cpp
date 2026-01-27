@@ -1,4 +1,4 @@
-#include<hgl/gui/ThemeForm.h>
+﻿#include<hgl/gui/ThemeForm.h>
 #include<hgl/graph/VKCommandBuffer.h>
 
 namespace hgl
@@ -11,7 +11,7 @@ namespace hgl
             render_target=rt;
             cmd_buf=rc;
         }
-        
+
         ThemeForm::~ThemeForm()
         {
             delete cmd_buf;
@@ -33,7 +33,7 @@ namespace hgl
         {
             form->OnResize(w,h);
         }
-        
+
         bool ThemeForm::BeginRender()
         {
             if(!cmd_buf->Begin())return(false);
@@ -43,7 +43,7 @@ namespace hgl
 
             return(true);
         }
-        
+
         bool ThemeForm::EndRender()
         {
             if(!cmd_buf->End())return(false);

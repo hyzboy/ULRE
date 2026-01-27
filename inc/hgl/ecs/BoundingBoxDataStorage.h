@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<glm/glm.hpp>
 #include<vector>
@@ -14,7 +14,7 @@ namespace hgl
         /**
          * Structure of Arrays storage for bounding box data
          * Provides cache-friendly data layout for batch processing and SSBO uploads
-         * 
+         *
          * Based on CMMath's BoundingVolumes.h design
          * Uses AABB (Axis-Aligned Bounding Box) from CMMath library
          */
@@ -53,13 +53,13 @@ namespace hgl
             HandleID Allocate()
             {
                 HandleID handle;
-                
+
                 if (!freeList.empty())
                 {
                     // Reuse from free list
                     handle = freeList.back();
                     freeList.pop_back();
-                    
+
                     // Reset data
                     minPoints[handle] = glm::vec3(0.0f);
                     maxPoints[handle] = glm::vec3(0.0f);
@@ -77,7 +77,7 @@ namespace hgl
                     extents.push_back(glm::vec3(0.0f));
                     dirtyFlags.push_back(true);
                 }
-                
+
                 return handle;
             }
 
@@ -89,7 +89,7 @@ namespace hgl
             {
                 if (handle >= minPoints.size())
                     return;
-                
+
                 freeList.push_back(handle);
             }
 
@@ -102,10 +102,10 @@ namespace hgl
             {
                 if (handle >= minPoints.size())
                     return;
-                
+
                 minPoints[handle] = aabb.GetMin();
                 maxPoints[handle] = aabb.GetMax();
-                
+
                 // Calculate and cache center and extents
                 centers[handle] = (aabb.GetMin() + aabb.GetMax()) * 0.5f;
                 extents[handle] = (aabb.GetMax() - aabb.GetMin()) * 0.5f;
@@ -122,10 +122,10 @@ namespace hgl
             {
                 if (handle >= minPoints.size())
                     return;
-                
+
                 minPoints[handle] = minPoint;
                 maxPoints[handle] = maxPoint;
-                
+
                 // Calculate and cache center and extents
                 centers[handle] = (minPoint + maxPoint) * 0.5f;
                 extents[handle] = (maxPoint - minPoint) * 0.5f;
@@ -141,7 +141,7 @@ namespace hgl
             {
                 if (handle >= minPoints.size())
                     return AABB();
-                
+
                 return AABB(minPoints[handle], maxPoints[handle]);
             }
 

@@ -65,7 +65,7 @@ VK_NAMESPACE_BEGIN
         ManagedArray<VulkanPhyDevice> physical_devices;
 
     private:
-    
+
         PFN_vkGetDeviceProcAddr GetDeviceProcAddr;
 
     private:
@@ -83,7 +83,7 @@ VK_NAMESPACE_BEGIN
         const   VkInstance                   GetVulkanInstance  ()const{return inst;}
         const   ManagedArray<VulkanPhyDevice> &GetDeviceList      ()const{return physical_devices;}
         const   VulkanPhyDevice *            GetDevice          (VkPhysicalDeviceType)const;
-        
+
         template<typename T>
         T *GetInstanceProc(const char *name)
         {
@@ -98,7 +98,7 @@ VK_NAMESPACE_BEGIN
             return reinterpret_cast<T>(GetDeviceProcAddr(dev,name));
         }
     };//class VulkanInstance
-    
+
             void                            InitVulkanInstanceProperties();
     const   ValueArray<VkLayerProperties> &       GetInstanceLayerProperties();
     const   ValueArray<VkExtensionProperties> &   GetInstanceExtensionProperties();

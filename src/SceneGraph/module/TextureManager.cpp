@@ -1,4 +1,4 @@
-#include<hgl/graph/module/TextureManager.h>
+﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/module/RenderPassManager.h>
@@ -81,10 +81,10 @@ Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,b
 Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
 {
     Texture2D *tex;
-    
+
     if(texture_by_filename.Get(filename,(Texture *&)tex))
         return tex;
-    
+
     tex=CreateTexture2DFromFile(this,filename,auto_mipmaps);
 
     if(tex)
@@ -97,7 +97,7 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
     //    if(du)
     //    {
     //        const U8String name=U8_TEXT("Tex2D:")+ToUTF8String(filename);
-    //    
+    //
     //        du->SetImage(tex->GetImage(),(char *)(name.c_str()));
     //    }
     //#endif//_DEBUG
@@ -117,7 +117,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,cons
 
     //#ifdef _DEBUG
     //    DebugUtils *du=device->GetDebugUtils();
-    //    
+    //
     //    if(du)
     //    {
     //        du->SetImage(ta->GetImage(),"Tex2DArrayImage:"+name);

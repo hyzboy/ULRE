@@ -63,7 +63,7 @@ struct RenderResourceID
 {
     union
     {
-        struct 
+        struct
         {
             uint device:1;                  ///<在设备
             uint memory:1;                  ///<在内存

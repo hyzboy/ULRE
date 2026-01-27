@@ -98,7 +98,7 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
             delete geometry_data;
             return(false);
         }
-        
+
     #ifdef _DEBUG
         if(!vdm)
         {

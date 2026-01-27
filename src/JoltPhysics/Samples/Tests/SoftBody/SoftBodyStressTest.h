@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,19 +10,19 @@
 class SoftBodyStressTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyStressTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyStressTest)
 
-	// See: Test
-	virtual void			Initialize() override;
+    // See: Test
+    virtual void            Initialize() override;
 
-	// Optional settings menu
-	virtual bool			HasSettingsMenu() const override							{ return true; }
-	virtual void			CreateSettingsMenu(DebugUI *inUI, UIElement *inSubMenu) override;
+    // Optional settings menu
+    virtual bool            HasSettingsMenu() const override                            { return true; }
+    virtual void            CreateSettingsMenu(DebugUI *inUI, UIElement *inSubMenu) override;
 
 private:
-	// List of possible scene names
-	static const char *		sScenes[];
+    // List of possible scene names
+    static const char *     sScenes[];
 
-	// Filename of animation to load for this test
-	static const char *		sSceneName;
+    // Filename of animation to load for this test
+    static const char *     sSceneName;
 };

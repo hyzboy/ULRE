@@ -75,7 +75,7 @@ const uint Material::GetVILCount()
 bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
-        
+
     if(!mp)
         return(false);
 
@@ -85,7 +85,7 @@ bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,Devi
 bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
-        
+
     if(!mp)
         return(false);
 
@@ -105,7 +105,7 @@ bool Material::BindTexture(const DescriptorSetType &type,const AnsiString &name,
 bool Material::BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
-        
+
     if(!mp)
         return(false);
 

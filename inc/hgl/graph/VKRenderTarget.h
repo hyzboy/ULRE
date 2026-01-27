@@ -47,7 +47,7 @@ public:
 
     IRenderTarget(RenderFramework *,const VkExtent2D &);
     virtual ~IRenderTarget();
-    
+
     virtual Framebuffer *       GetFramebuffer  ()=0;
     virtual RenderPass *        GetRenderPass   ()=0;
 

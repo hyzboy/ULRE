@@ -19,7 +19,7 @@ public:
     GraphModuleManager(RenderFramework *rf){render_framework=rf;}
 
     virtual ~GraphModuleManager();
-    
+
 public:
 
     RenderFramework *   GetRenderFramework  ()const{return render_framework;}                                           ///<取得渲染框架

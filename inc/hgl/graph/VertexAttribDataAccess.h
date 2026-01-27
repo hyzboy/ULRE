@@ -1280,7 +1280,7 @@ namespace hgl::graph
     typedef VertexAttribDataAccess1<uint8 ,PF_R8UN   >   VB1uf8;            //输入0-255,但使用为0-1
     typedef VertexAttribDataAccess1<uint16,PF_R16UN  >   VB1uf16;           //输入0-65535,但使用为0-1
     typedef VertexAttribDataAccess1<half_float,PF_R16F   >   VB1hf;             //half float
-        
+
     typedef VertexAttribDataAccess2<int8  ,PF_RG8I   >   VB2i8   ,VB2b;
     typedef VertexAttribDataAccess2<int16 ,PF_RG16I  >   VB2i16  ,VB2s;
     typedef VertexAttribDataAccess2<int32 ,PF_RG32I  >   VB2i32  ,VB2i;

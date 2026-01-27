@@ -1,4 +1,4 @@
-#include<hgl/graph/module/MaterialManager.h>
+﻿#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
@@ -25,7 +25,7 @@ namespace
 
         const int shader_count=shader_maps->GetCount();
         shader_stage_list.Resize(shader_count);
-    
+
         VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();
 
         auto **itp=shader_maps->GetDataList();
@@ -93,7 +93,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     }
 
     VulkanDevice *device = GetDevice();
-    
+
     const ShaderCreateInfoMap &sci_map=mci->GetShaderMap();
     const uint sci_count=sci_map.GetCount();
 
@@ -158,7 +158,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
 
             #ifdef _DEBUG
                 AnsiString debug_name=mtl->GetName()+AnsiString(":")+GetDescriptorSetTypeName((DescriptorSetType)dst);
-        
+
                 if(du)
                 {
                     du->SetDescriptorSet(mtl->mp_array[dst]->GetVkDescriptorSet(),"DescSet:"+debug_name);

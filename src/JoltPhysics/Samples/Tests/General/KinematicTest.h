@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,12 +11,12 @@
 class KinematicTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, KinematicTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, KinematicTest)
 
-	// See: Test
-	virtual void	Initialize() override;
-	virtual void	PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    // See: Test
+    virtual void    Initialize() override;
+    virtual void    PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
 private:
-	Body *			mKinematic[2];
+    Body *          mKinematic[2];
 };

@@ -56,7 +56,7 @@ int os_main(int argc,os_char **argv)
     {
         std::cout<<"example: PipelineCompiler init"<<std::endl
                  <<"         the method should save all inline PipelineData to .toml files."<<std::endl<<std::endl;
-            
+
         std::cout<<"example: PipelineCompiler [pipeline filename]"<<std::endl
                  <<"         the method should load the pipeline toml file, and to save a binary pipeline file."<<std::endl<<std::endl;
 

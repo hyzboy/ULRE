@@ -191,7 +191,7 @@ namespace
     public:
 
         TessellationElement(VkPipelineTessellationStateCreateInfo *tsci):xml::ElementAttribute(u8"tessellation")
-        {            
+        {
             tessellation=tsci;
 
             tessellation->sType=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
@@ -217,7 +217,7 @@ namespace
         DepthBiasElement(VkPipelineRasterizationStateCreateInfo *prsci):xml::ElementAttribute(u8"depthbias")
         {
             rasterizer=prsci;
-                
+
             rasterizer->depthBiasEnable = VK_FALSE;
             rasterizer->depthBiasConstantFactor = 0;
             rasterizer->depthBiasClamp = 0;
@@ -272,7 +272,7 @@ namespace
             rasterizer->polygonMode              =ToEnum<VkPolygonMode>(polygon_mode,u8"PolygonMode",VK_POLYGON_MODE_FILL);
             rasterizer->cullMode                 =ToEnum<VkCullModeFlags>(cull_mode,u8"Cull",VK_CULL_MODE_BACK_BIT);
             rasterizer->frontFace                =ToEnum<VkFrontFace>(front_face,u8"FrontFace",VK_FRONT_FACE_CLOCKWISE);
-                
+
             rasterizer->lineWidth                =ToFloat(u8"LineWidth",1.0);
 
             return(true);
@@ -463,7 +463,7 @@ namespace
     public:
 
         ColorBlendElement(VkPipelineColorBlendStateCreateInfo *cbsci,VkPipelineColorBlendAttachmentState *cba_list):xml::ElementAttribute(u8"ColorBlend")
-        { 
+        {
             color_blend=cbsci;
 
             color_blend->sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -527,7 +527,7 @@ namespace
             ms=new MultisampleElement(data->multi_sample);
             ds=new DepthStencilElement(data->depth_stencil);
             cb=new ColorBlendElement(data->color_blend,data->color_blend_attachments);
-                
+
             Registry(tess);
             Registry(rasterizer);
             Registry(ms);

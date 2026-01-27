@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2022 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -16,35 +16,35 @@
 class SkeletonMapperTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SkeletonMapperTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SkeletonMapperTest)
 
-	// Destructor
-	virtual					~SkeletonMapperTest() override;
+    // Destructor
+    virtual                 ~SkeletonMapperTest() override;
 
-	// Number used to scale the terrain and camera movement to the scene
-	virtual float			GetWorldScale() const override								{ return 0.2f; }
+    // Number used to scale the terrain and camera movement to the scene
+    virtual float           GetWorldScale() const override                              { return 0.2f; }
 
-	virtual void			Initialize() override;
-	virtual void			PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    virtual void            Initialize() override;
+    virtual void            PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
-	// Optional settings menu
-	virtual bool			HasSettingsMenu() const override							{ return true; }
-	virtual void			CreateSettingsMenu(DebugUI *inUI, UIElement *inSubMenu) override;
+    // Optional settings menu
+    virtual bool            HasSettingsMenu() const override                            { return true; }
+    virtual void            CreateSettingsMenu(DebugUI *inUI, UIElement *inSubMenu) override;
 
-	// Saving / restoring state for replay
-	virtual void			SaveState(StateRecorder &inStream) const override;
-	virtual void			RestoreState(StateRecorder &inStream) override;
+    // Saving / restoring state for replay
+    virtual void            SaveState(StateRecorder &inStream) const override;
+    virtual void            RestoreState(StateRecorder &inStream) override;
 
 private:
-	inline static bool		sLockTranslations = false;
+    inline static bool      sLockTranslations = false;
 
-	void					CalculateRagdollPose();
+    void                    CalculateRagdollPose();
 
-	float					mTime = 0.0f;
-	Ref<RagdollSettings>	mRagdollSettings;
-	Ref<Ragdoll>			mRagdoll;
-	Ref<SkeletalAnimation>	mAnimation;
-	SkeletonMapper			mRagdollToAnimated;
-	SkeletonPose			mAnimatedPose;
-	SkeletonPose			mRagdollPose;
+    float                   mTime = 0.0f;
+    Ref<RagdollSettings>    mRagdollSettings;
+    Ref<Ragdoll>            mRagdoll;
+    Ref<SkeletalAnimation>  mAnimation;
+    SkeletonMapper          mRagdollToAnimated;
+    SkeletonPose            mAnimatedPose;
+    SkeletonPose            mRagdollPose;
 };

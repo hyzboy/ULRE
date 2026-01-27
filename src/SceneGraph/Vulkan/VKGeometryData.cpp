@@ -155,7 +155,7 @@ namespace
         VulkanDevice *device;
 
     public:
-        
+
         int32_t  GetVertexOffset ()const override{return 0;}
         uint32_t GetFirstIndex   ()const override{return 0;}
 

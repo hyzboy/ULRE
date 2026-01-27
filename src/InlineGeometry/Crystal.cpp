@@ -37,12 +37,12 @@ namespace hgl::graph::inline_geometry
         // - Body rings: (rings-1) * sides
         // - Tip point: 1
         // - Side faces need duplicate vertices for proper normals
-        
+
         // For smooth shading along height but flat faces on sides:
         // - Base cap: 1 center + sides vertices
         // - Side strips: sides * rings vertices
         // - Tip: 1 vertex
-        
+
         const uint base_cap_verts = 1 + sides;
         const uint side_verts = sides * (rings + 1); // including tip as last ring
         const uint numberVertices = base_cap_verts + side_verts;
@@ -62,7 +62,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -92,13 +92,13 @@ namespace hgl::graph::inline_geometry
             float angle = angle_step * float(i);
             float x = cos(angle) * base_radius;
             float z = -sin(angle) * base_radius;
-            
+
             // Add irregularity
             float random_factor = hash_float(i * 137 + 42);
             float radius_adjust = 1.0f + (random_factor - 0.5f) * irregularity * 2.0f;
             x *= radius_adjust;
             z *= radius_adjust;
-            
+
             builder.WriteFullVertex(x, 0.0f, z,
                                    0.0f, -1.0f, 0.0f,
                                    1.0f, 0.0f, 0.0f,
@@ -110,57 +110,57 @@ namespace hgl::graph::inline_geometry
         {
             float t = float(ring) / float(rings);
             float y = height * t;
-            
+
             // Radius tapers from base_radius to tip_radius
             float radius = base_radius * (1.0f - t) + tip_radius * t;
-            
+
             for(uint i = 0; i < sides; i++)
             {
                 float angle = angle_step * float(i);
                 float next_angle = angle_step * float(i + 1);
-                
+
                 // Current and next positions
                 float cos_a = cos(angle);
                 float sin_a = -sin(angle);
                 float cos_next = cos(next_angle);
                 float sin_next = -sin(next_angle);
-                
+
                 // Add irregularity
                 float random_factor = hash_float(i * 137 + ring * 73);
                 float radius_adjust = 1.0f + (random_factor - 0.5f) * irregularity * 2.0f;
                 float r = radius * radius_adjust;
-                
+
                 float x = cos_a * r;
                 float z = sin_a * r;
-                
+
                 // Calculate face normal (average of adjacent face normals)
                 float p0_x = x, p0_y = y, p0_z = z;
-                
+
                 // Get neighbor points for normal calculation
                 float r_next = radius * (1.0f + (hash_float((i+1) * 137 + ring * 73) - 0.5f) * irregularity * 2.0f);
                 float p1_x = cos_next * r_next;
                 float p1_y = y;
                 float p1_z = sin_next * r_next;
-                
+
                 float y_up = (ring < rings) ? height * float(ring + 1) / float(rings) : y;
                 float r_up = (ring < rings) ? (base_radius * (1.0f - t - 1.0f/rings) + tip_radius * (t + 1.0f/rings)) * radius_adjust : 0.0f;
                 float p2_x = cos_a * r_up;
                 float p2_y = y_up;
                 float p2_z = sin_a * r_up;
-                
+
                 // Calculate outward normal (edge1 × edge2)
                 float edge1_x = p1_x - p0_x;
                 float edge1_y = p1_y - p0_y;
                 float edge1_z = p1_z - p0_z;
-                
+
                 float edge2_x = p2_x - p0_x;
                 float edge2_y = p2_y - p0_y;
                 float edge2_z = p2_z - p0_z;
-                
+
                 float normal_x = edge1_y * edge2_z - edge1_z * edge2_y;
                 float normal_y = edge1_z * edge2_x - edge1_x * edge2_z;
                 float normal_z = edge1_x * edge2_y - edge1_y * edge2_x;
-                
+
                 // Normalize
                 float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
                 if(normal_len > 0.0001f)
@@ -169,10 +169,10 @@ namespace hgl::graph::inline_geometry
                     normal_y /= normal_len;
                     normal_z /= normal_len;
                 }
-                
+
                 float u = float(i) / float(sides);
                 float v = 1.0f - t;
-                
+
                 builder.WriteFullVertex(x, y, z,
                                        normal_x, normal_y, normal_z,
                                        1.0f, 0.0f, 0.0f,
@@ -183,7 +183,7 @@ namespace hgl::graph::inline_geometry
         // Generate indices
         {
             const IndexType index_type = pc->GetIndexType();
-            
+
             auto generate_indices = [&](auto *ip)
             {
                 // Base cap
@@ -193,7 +193,7 @@ namespace hgl::graph::inline_geometry
                     *ip++ = 1 + i;                  // current
                     *ip++ = 1 + (i + 1) % sides;    // next
                 }
-                
+
                 // Side quads
                 uint side_base = base_cap_verts;
                 for(uint ring = 0; ring < rings - 1; ring++)
@@ -204,18 +204,18 @@ namespace hgl::graph::inline_geometry
                         uint next = side_base + ring * sides + (i + 1) % sides;
                         uint current_up = side_base + (ring + 1) * sides + i;
                         uint next_up = side_base + (ring + 1) * sides + (i + 1) % sides;
-                        
+
                         // Quad as two triangles
                         *ip++ = current;
                         *ip++ = current_up;
                         *ip++ = next;
-                        
+
                         *ip++ = next;
                         *ip++ = current_up;
                         *ip++ = next_up;
                     }
                 }
-                
+
                 // Tip triangles
                 uint last_ring_base = side_base + (rings - 1) * sides;
                 uint tip_ring_base = side_base + rings * sides;
@@ -251,7 +251,7 @@ namespace hgl::graph::inline_geometry
 
         // Create geometry and set bounding box
         float max_radius = base_radius * (1.0f + irregularity);
-        
+
         return pc->CreateWithAABB(
             Vector3f(-max_radius, 0.0f, -max_radius),
             Vector3f(max_radius, height, max_radius));

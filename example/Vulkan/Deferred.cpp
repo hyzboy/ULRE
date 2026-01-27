@@ -272,7 +272,7 @@ private:
                                 *ro_torus,
                                 *ro_cylinder,
                                 *ro_cone,
-                                
+
                                 *ro_gbc_plane;
 
     vulkan::Sampler *           sampler=nullptr;
@@ -351,13 +351,13 @@ public:
 
             ro_plane=CreateRenderablePlane(db,mtl,&pci);
         }
-        
+
         {
-            struct CubeCreateInfo cci;            
+            struct CubeCreateInfo cci;
             ro_cube=CreateRenderableCube(db,mtl,&cci);
         }
-        
-        {        
+
+        {
             ro_sphere=CreateRenderableSphere(db,mtl,64);
         }
 
@@ -401,14 +401,14 @@ public:
 
         return ro_gbc_plane;
     }
-    
+
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
         render_root.Add(db->CreateRenderableInstance(sp->pipeline_fan,sp->desc_sets,ro_plane),scale(100,100,1));
         render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_torus    ),translate(0,0,0));
         render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_sphere   ),scale(20,20,20));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cube     ),translate(-30,  0,10)*scale(10,10,10));        
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cube     ),translate(-30,  0,10)*scale(10,10,10));
         render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cylinder ),translate( 30, 30,10)*scale(1,1,2));
         render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cone     ),translate(  0,-30, 0)*scale(1,1,2));
 
@@ -461,21 +461,21 @@ public:
 
         return(true);
     }
-    
+
     virtual void SubmitDraw(int index) override
-    {   
+    {
         gbuffer.rt->Submit(*gbuffer_cmd,present_complete_semaphore,gbuffer.render_complete_semaphore);
 
         VkCommandBuffer cb=*cmd_buf[index];
-        
+
         sc_render_target->Submit(cb,gbuffer.render_complete_semaphore,render_complete_semaphore);
         sc_render_target->PresentBackbuffer(render_complete_semaphore);
         sc_render_target->Wait();
         gbuffer.rt->Wait();
     }
-    
+
     void BuildCommandBuffer(uint32_t index) override
-    {    
+    {
         VulkanApplicationFramework::BuildCommandBuffer( index,
                                                         sp_composition.pipeline_triangles,
                                                         sp_composition.desc_sets,

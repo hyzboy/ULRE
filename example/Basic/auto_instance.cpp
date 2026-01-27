@@ -74,7 +74,7 @@ private:
         double rad;
 
         CreateComponentInfo cci(GetWorldRootNode());
-        
+
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
         {
             rad=deg2rad((360.0f/double(TRIANGLE_NUMBER))*i);       //这里一定要加<double>或<float>，否则结果用int保存会出现问题

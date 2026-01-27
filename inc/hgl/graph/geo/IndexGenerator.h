@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/VertexAttribDataAccess.h>

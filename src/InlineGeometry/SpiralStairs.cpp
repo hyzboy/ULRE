@@ -1,4 +1,4 @@
-// Spiral stairs geometry generator for ULRE engine
+﻿// Spiral stairs geometry generator for ULRE engine
 // Creates a spiral staircase wrapping around a central axis
 
 #include "InlineGeometryCommon.h"
@@ -41,7 +41,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -52,7 +52,7 @@ namespace hgl::graph::inline_geometry
         {
             float z_bottom = i * step_h;
             float z_top = (i + 1) * step_h;
-            
+
             float angle_start = direction * i * angle_per_step;
             float angle_end = direction * (i + 1) * angle_per_step;
 

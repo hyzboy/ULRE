@@ -1,4 +1,4 @@
-// Cross geometry generator for ULRE engine
+﻿// Cross geometry generator for ULRE engine
 // Creates a 3D cross/plus shape
 
 #include "InlineGeometryCommon.h"
@@ -19,7 +19,7 @@ namespace hgl::graph::inline_geometry
         const float horizontal_offset = cci->horizontal_offset;
 
         // Validate parameters
-        if(vertical_length <= 0.0f || horizontal_length <= 0.0f || 
+        if(vertical_length <= 0.0f || horizontal_length <= 0.0f ||
            thickness <= 0.0f || depth <= 0.0f)
             return nullptr;
 
@@ -29,7 +29,7 @@ namespace hgl::graph::inline_geometry
         // Cross is composed of two rectangular beams:
         // 1. Vertical beam: thickness x vertical_length x depth
         // 2. Horizontal beam: horizontal_length x thickness x depth
-        
+
         const float half_thickness = thickness * 0.5f;
         const float half_depth = depth * 0.5f;
         const float half_h_length = horizontal_length * 0.5f;
@@ -42,7 +42,7 @@ namespace hgl::graph::inline_geometry
 
         // Each beam is a box with 6 faces
         // We need to handle the intersection area specially
-        
+
         // For simplicity, generate two boxes and let them overlap
         // Vertical beam: 24 vertices (4 per face * 6 faces)
         // Horizontal beam: 24 vertices
@@ -56,7 +56,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -147,7 +147,7 @@ namespace hgl::graph::inline_geometry
         // Generate indices for quads (2 triangles per quad, 6 quads per box, 2 boxes)
         {
             const IndexType index_type = pc->GetIndexType();
-            
+
             auto generate_indices = [&](auto *ip)
             {
                 for(uint box = 0; box < 2; box++)

@@ -62,12 +62,12 @@ int main(int,char **)
     for(uint32_t i=0;i<count;i++)
     {
         std::cout<<std::setw(4)<<i<<". ";
-        
+
         std::cout<<"Format [ID:"<<std::setw(10)<<vf->format<<"]["<<std::setw(16)<<vf->name<<"]";
 
         if(vf->depth!=VulkanBaseType::NONE)
             std::cout<<"[  Depth:"<<std::setw(8)<<VulkanBaseTypeName[size_t(vf->depth)]<<"]";
-        
+
         if(vf->stencil!=VulkanBaseType::NONE)
             std::cout<<"[Stencil:"<<std::setw(8)<<VulkanBaseTypeName[size_t(vf->stencil)]<<"]";
 
@@ -91,13 +91,13 @@ int main(int,char **)
             std::cout<<" use "<<TextureCompressTypeName[size_t(vf->compress_type)]<<" compress.";
         else
             std::cout<<std::setw(4)<<vf->bytes<<" bytes/pixel.";
-            
+
         std::cout<<std::endl;
 
         ++vf;
     }
 
     delete inst;
- 
+
     return 0;
 }

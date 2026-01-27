@@ -51,7 +51,7 @@ public:
 
 /**
 * 同一材质与管线的渲染批次管理器
-* 
+*
 * 职责：
 * - 收集和管理使用相同 Material 和 Pipeline 的渲染节点
 * - 排序和组织渲染节点
@@ -99,7 +99,7 @@ public:
 
     // === 节点管理接口 ===
     void Add(DrawNode *node);                   ///<添加渲染节点
-    
+
     void Clear()                                ///<清空所有节点
     {
         for (auto *n : draw_nodes) delete n;

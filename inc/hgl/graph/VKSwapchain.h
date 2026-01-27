@@ -22,7 +22,7 @@ struct Swapchain
 public:
 
     VkDevice                        device          =VK_NULL_HANDLE;
-    
+
     VkExtent2D                      extent;
     VkSurfaceTransformFlagBitsKHR   transform;
 

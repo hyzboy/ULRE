@@ -31,9 +31,9 @@ protected:
     UBODescriptorList                   ubo_list;
     TextureDescriptorList               texture_list;
     TextureSamplerDescriptorList        texture_sampler_list;
-    
+
     ConstValueDescriptorList            const_value_list;
-    
+
     ShaderPushConstant                  push_constant;
 
 public:
@@ -62,7 +62,7 @@ public:
     bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
 
     bool AddConstValue(ConstValueDescriptor *sd);
-    
+
     void SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size);
 };//class ShaderDescriptorInfo
 

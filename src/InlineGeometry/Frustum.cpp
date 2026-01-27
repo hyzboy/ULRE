@@ -13,7 +13,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         const uint slices = fci->numberSlices;
-        
+
         // Validate parameters
         if(!GeometryValidator::ValidateSlices(slices))
             return nullptr;
@@ -27,7 +27,7 @@ namespace hgl::graph::inline_geometry
             // Bottom cap: center + ring
             numberVertices += 1 + (slices + 1);
             numberIndices += slices * 3;
-            
+
             // Top cap: center + ring
             numberVertices += 1 + (slices + 1);
             numberIndices += slices * 3;
@@ -58,7 +58,7 @@ namespace hgl::graph::inline_geometry
         const float normal_xy_scale = h / slant_length;  // XY scale for side normal
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -149,7 +149,7 @@ namespace hgl::graph::inline_geometry
                 // Bottom cap indices
                 IndexT centerIndex = 0;
                 IndexT ringStart = 1;
-                
+
                 for(uint i = 0; i < slices; i++)
                 {
                     *ip++ = centerIndex;
@@ -171,7 +171,7 @@ namespace hgl::graph::inline_geometry
 
             // Side indices
             IndexT sideBase = base_index;
-            
+
             for(uint i = 0; i < slices; i++)
             {
                 IndexT v0 = sideBase + i * 2;
@@ -211,7 +211,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         float max_radius = std::max(r_bottom, r_top);
-        
+
         return pc->CreateWithAABB(
             math::Vector3f(-max_radius, -max_radius, -halfHeight),
             Vector3f(max_radius, max_radius, halfHeight));

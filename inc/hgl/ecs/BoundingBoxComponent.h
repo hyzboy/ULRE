@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/Component.h>
 #include<hgl/ecs/Entity.h>
@@ -14,7 +14,7 @@ namespace hgl
          * Bounding box component for spatial queries and culling
          * Uses SOA (Structure of Arrays) storage for better cache performance
          * and efficient SSBO uploads
-         * 
+         *
          * Based on CMMath's BoundingVolumes.h and AIECS design patterns
          */
         class BoundingBoxComponent : public Component

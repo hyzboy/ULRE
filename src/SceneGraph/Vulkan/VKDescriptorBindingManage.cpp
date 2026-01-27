@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDescriptorBindingManage.h>
+﻿#include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
 
@@ -6,7 +6,7 @@ VK_NAMESPACE_BEGIN
 void DescriptorBinding::BindUBO(MaterialParameters *mp,const BindingMap &binding_map,bool dynamic)
 {
     if (binding_map.GetCount() <= 0)return;
-        
+
     DeviceBuffer* buf = nullptr;
 
     const auto *dp      =binding_map.GetDataList();

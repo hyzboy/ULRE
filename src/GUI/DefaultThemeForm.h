@@ -1,11 +1,11 @@
-#ifndef HGL_GUI_DEFAULT_THEME_FORM_INCLUDE
+﻿#ifndef HGL_GUI_DEFAULT_THEME_FORM_INCLUDE
 #define HGL_GUI_DEFAULT_THEME_FORM_INCLUDE
 
 #include<hgl/gui/ThemeForm.h>
 #include<hgl/graph/VK.h>
 
 namespace hgl
-{    
+{
     namespace gui
     {
         using namespace hgl::graph;

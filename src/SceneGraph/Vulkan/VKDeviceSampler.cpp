@@ -63,7 +63,7 @@ Sampler *VulkanDevice::CreateSampler(Texture *tex)
     };
 
     VkSampler sampler;
-    
+
     sci.anisotropyEnable = attr->physical_device->SupportSamplerAnisotropy();
 
     if(sci.anisotropyEnable)

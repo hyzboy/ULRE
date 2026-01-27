@@ -1,4 +1,4 @@
-#include<hgl/graph/Bitmap2DLoader.h>
+﻿#include<hgl/graph/Bitmap2DLoader.h>
 
 namespace hgl::graph
 {

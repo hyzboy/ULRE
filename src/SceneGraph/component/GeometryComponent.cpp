@@ -66,7 +66,7 @@ U8String GeometryComponent::GetComponentInfo() const
     {
         info += U8_TEXT(", has_aabb: false");
     }
-    
+
     info += U8_TEXT(")");
 
     return info;

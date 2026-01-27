@@ -11,7 +11,7 @@ namespace hgl
         VulkanArrayBuffer *VulkanDevice::CreateArrayInUBO(const VkDeviceSize &item_length)
         {
             const uint align_size=hgl_align<VkDeviceSize>(item_length,GetUBOAlign());
-            
+
             auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,align_size);
 
             return(new VulkanArrayBuffer(vk_ma,align_size,GetUBORange()));
@@ -20,7 +20,7 @@ namespace hgl
         VulkanArrayBuffer *VulkanDevice::CreateArrayInSSBO(const VkDeviceSize &item_length)
         {
             const uint align_size=hgl_align<VkDeviceSize>(item_length,GetSSBOAlign());
-            
+
             auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,align_size);
 
             return(new VulkanArrayBuffer(vk_ma,align_size,GetSSBORange()));

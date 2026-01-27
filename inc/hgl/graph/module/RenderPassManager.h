@@ -27,7 +27,7 @@ private:
     friend class GraphModuleManager;
 
 private:
-    
+
     RenderPass *    CreateRenderPass(   const ValueArray<VkAttachmentDescription> &desc_list,
                                         const ValueArray<VkSubpassDescription> &subpass,
                                         const ValueArray<VkSubpassDependency> &dependency,

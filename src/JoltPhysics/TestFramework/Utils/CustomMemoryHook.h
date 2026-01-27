@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -24,6 +24,6 @@ inline void RegisterCustomMemoryHook() { RegisterDefaultAllocator(); }
 /// Struct that, when put on the stack, temporarily disables checking that all allocations go through the custom memory allocator
 struct DisableCustomMemoryHook
 {
-	DisableCustomMemoryHook();
-	~DisableCustomMemoryHook();
+    DisableCustomMemoryHook();
+    ~DisableCustomMemoryHook();
 };

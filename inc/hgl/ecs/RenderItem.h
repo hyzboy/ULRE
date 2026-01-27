@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/TransformComponent.h>
@@ -30,7 +30,7 @@ namespace hgl::ecs
         uint32_t index = 0;                      // Index in batch
         uint32_t transform_version = 0;          // Transform version for dirty tracking
         uint32_t transform_index = 0;            // Transform index in buffer
-        
+
         glm::vec3 worldPosition{};               // World space position
         float distanceToCamera = 0.0f;           // Distance to camera for sorting
         bool isVisible = true;                   // Visibility flag
@@ -42,7 +42,7 @@ namespace hgl::ecs
         virtual std::shared_ptr<TransformComponent> GetTransform() const = 0;
         virtual std::shared_ptr<RenderableComponent> GetRenderable() const = 0;
         virtual glm::mat4 GetWorldMatrix() const = 0;
-        
+
         // For material batching support
         virtual hgl::graph::Primitive* GetPrimitive() const = 0;
         virtual hgl::graph::MaterialInstance* GetMaterialInstance() const = 0;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/TypeInfo.h>
@@ -14,7 +14,7 @@ class GraphModule
     RenderFramework *render_framework;
 
 public:
-    
+
             RenderFramework *   GetRenderFramework  ()const{return render_framework;}               ///<取得渲染框架
             VulkanDevice *      GetDevice           ();                                             ///<取得GPU设备
             VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice

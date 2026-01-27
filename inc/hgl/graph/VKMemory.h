@@ -33,7 +33,7 @@ public:
     const VkDeviceSize          GetAlignment    ()const{return req.alignment;}
     const uint32_t              GetTypeIndex    ()const{return index;}
     const uint32_t              GetProperties   ()const{return properties;}
-    
+
     void *  Map         ();
     void *  Map         (VkDeviceSize offset,VkDeviceSize size);
     void    Unmap       ();

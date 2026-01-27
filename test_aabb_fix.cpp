@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <hgl/graph/AABB.h>
 #include <hgl/graph/OBB.h>
 #include <hgl/graph/BoundingSphere.h>
@@ -16,7 +16,7 @@ int main()
 
     // 准备测试数据 - 使用 float 数组模拟可能内存对齐的情况
     const int point_count = 4;
-    
+
     // 如果 Vector3f 是 4 个 float (内存对齐)，这样的数据会正确处理
     float aligned_data[point_count * 4] = {
         1.0f, 2.0f, 3.0f, 0.0f,  // 第一个点 + padding

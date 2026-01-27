@@ -34,7 +34,7 @@ private:
     MaterialInstance *  mi_billboard        =nullptr;
     Pipeline *          pipeline_billboard  =nullptr;
     Primitive *         prim_billboard      =nullptr;
-    
+
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
 
@@ -55,7 +55,7 @@ private:
             VILConfig vil_config;
 
             vil_config.Add(VAN::Luminance,VF_V1UN8);
-       
+
             mi_plane_grid=CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 

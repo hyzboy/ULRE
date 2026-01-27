@@ -26,7 +26,7 @@ namespace hgl::graph
         constexpr u32char   VRotateSymbols  []=U32_TEXT("()[]{}〈〉《》「」『』【】〔〕〖〗（）［］｛｝―‖…∶｜～");                        //竖排必须旋转的符号
 
         constexpr int       BeginSymbolsCount   =(sizeof(BeginSymbols)   /sizeof(u32char))-1;
-        constexpr int       EndSymbolsCount	    =(sizeof(EndSymbols)     /sizeof(u32char))-1;
+        constexpr int       EndSymbolsCount     =(sizeof(EndSymbols)     /sizeof(u32char))-1;
         constexpr int       CurrencySymbolsCount=(sizeof(CurrencySymbols)/sizeof(u32char))-1;
         constexpr int       VRotateSymbolsCount =(sizeof(VRotateSymbols) /sizeof(u32char))-1;
 
@@ -47,7 +47,7 @@ namespace hgl::graph
         if(pos<0)
         {
             attr=new CharAttributes;
-                
+
             attr->ch=ch;
 
             attr->space=hgl::is_space(ch);
@@ -59,7 +59,7 @@ namespace hgl::graph
 
                 attr->is_currency   =hgl::strchr(CurrencySymbols,   ch,CurrencySymbolsCount );
 
-                if(!attr->end_disable)       
+                if(!attr->end_disable)
                 attr->end_disable   =attr->is_currency;     //货币符号同样行尾禁用
 
                 attr->vrotate       =hgl::strchr(VRotateSymbols,    ch,VRotateSymbolsCount  );
@@ -77,7 +77,7 @@ namespace hgl::graph
         char_draw_style->attr=attr;
 
         if(!attr->space)
-        {                        
+        {
             if(!GetCharMetrics(char_draw_style->metrics,ch))
             {
                 char_draw_style->visible=false;

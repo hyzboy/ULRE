@@ -62,7 +62,7 @@ public:
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
-                
+
 #ifdef _DEBUG
                 DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}
 #endif//_DEBUG
@@ -91,7 +91,7 @@ public: //Buffer相关
 
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive);
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,range,size,nullptr,sm);}
-    
+
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,data,sm);}
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,nullptr,sm);}
 
@@ -174,7 +174,7 @@ public: //Command Buffer 相关
 
     RenderCmdBuffer * CreateRenderCommandBuffer(const AnsiString &);
     TextureCmdBuffer *CreateTextureCommandBuffer(const AnsiString &);
-    
+
 public:
 
     Fence *      CreateFence(bool);
@@ -185,7 +185,7 @@ public:
 public:
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
-    
+
     TileFont *CreateTileFont(FontDataSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class VulkanDevice
 VK_NAMESPACE_END

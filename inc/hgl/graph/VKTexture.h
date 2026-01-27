@@ -17,7 +17,7 @@ class TextureManager;
 class Texture
 {
 protected:
-    
+
     TextureManager *manager;
     TextureID texture_id;
 
@@ -103,7 +103,7 @@ public:
 class TextureCube:public Texture
 {
 public:
-    
+
     using Texture::Texture;
     ~TextureCube()=default;
 

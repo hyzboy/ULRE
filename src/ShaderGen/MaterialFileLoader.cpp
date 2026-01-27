@@ -23,7 +23,7 @@ namespace
     enum class MaterialFileBlock
     {
         None,
-        
+
         Material,
         MaterialInstance,
         VertexInput,
@@ -139,7 +139,7 @@ namespace
 
                 return(false);
             }
-            
+
             if(*text=='}')
             {
                 *text=0;
@@ -271,7 +271,7 @@ namespace
                 start=text;
                 return(false);
             }
-            
+
             if(*text=='}')
             {
                 *text=0;
@@ -458,7 +458,7 @@ namespace
     {
         SD *                    shader_data=nullptr;
 
-        bool                    output=false; 
+        bool                    output=false;
 
         bool                    code=false;
         CodeParse               code_parse;
@@ -474,7 +474,7 @@ namespace
         {
             if(!text||!*text||len<=0)
                 return(false);
-    
+
             if(code)
             {
                 if(code_parse.OnLine(text,len))
@@ -741,7 +741,7 @@ namespace
         fa.Read(ptr,size);
 
         ptr[size]=0;
-        
+
         ptr+=size-1;
         while(*ptr=='\r'||*ptr=='\n')
         {
@@ -788,7 +788,7 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
 
     if(mfd->ubo_list.GetCount()<=0)
         return mfd;
-    
+
     const OSString mtl_path=filesystem::GetParentPath(mtl_os_filename,false);
 
     OSString ubo_os_fn;

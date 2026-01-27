@@ -11,7 +11,7 @@ protected:
 
     VkDevice device;
     VkQueue queue;
-    
+
     uint32_t current_fence;
     Fence **fence_list;
     uint32_t fence_count;
@@ -29,7 +29,7 @@ public:
     virtual ~DeviceQueue();
 
     operator VkQueue(){return queue;}
-    
+
     VkResult Present(const VkPresentInfoKHR *pi){return vkQueuePresentKHR(queue,pi);}
 
     /**

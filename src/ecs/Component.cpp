@@ -1,4 +1,4 @@
-#include<hgl/ecs/Component.h>
+﻿#include<hgl/ecs/Component.h>
 
 namespace hgl
 {

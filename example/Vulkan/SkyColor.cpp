@@ -45,7 +45,7 @@ private:
 
         material_instance=db->CreateMaterialInstance(material);
         if(!material_instance)return(false);
-        
+
         pipeline=CreatePipeline(material_instance,InlinePipeline::Sky,Prim::Triangles);
         if(!pipeline)
             return(false);
@@ -76,7 +76,7 @@ private:
 
         return(true);
     }
-    
+
     Renderable *Add(Primitive *r,const Matrix4f &mat)
     {
         Renderable *ri=db->CreateRenderable(r,material_instance,pipeline);
@@ -118,7 +118,7 @@ public:
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-            
+
         render_list=new RenderList(device);
 
         if(!InitMDP())
@@ -146,7 +146,7 @@ public:
     void Resize(int w,int h)override
     {
         CameraAppFramework::Resize(w,h);
-        
+
         VulkanApplicationFramework::BuildCommandBuffer(render_list);
     }
 };//class TestApp:public CameraAppFramework

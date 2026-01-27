@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2024 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,12 +10,12 @@
 class SoftBodyCustomUpdateTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyCustomUpdateTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyCustomUpdateTest)
 
-	// See: Test
-	virtual void		Initialize() override;
-	virtual void		PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    // See: Test
+    virtual void        Initialize() override;
+    virtual void        PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
 private:
-	Body *				mBody;
+    Body *              mBody;
 };

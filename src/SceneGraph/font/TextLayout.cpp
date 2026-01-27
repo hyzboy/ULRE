@@ -53,7 +53,7 @@ namespace hgl::graph::layout
 
         // ✅ 使用 AddAndGet 获取 ConstStringView，并添加到 draw_all_strings
         auto *csv = draw_all_strings.AddAndGet(str);
-        
+
         if(!csv)
             return(false);
 
@@ -117,7 +117,7 @@ namespace hgl::graph::layout
             {
                 tile_font->Unregistry(clear_chars_sets);
 
-                clear_chars_sets.Clear();   
+                clear_chars_sets.Clear();
             }
         }
 
@@ -154,7 +154,7 @@ namespace hgl::graph::layout
     //
     //    if(StatChars()<=0)
     //        return(-3);
-    //                
+    //
     //    if(!rc->Init(draw_chars_count))
     //        return(-4);
     //

@@ -1,4 +1,4 @@
-// 画一个圆角矩形，它是UI的基本绘图元件
+﻿// 画一个圆角矩形，它是UI的基本绘图元件
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
@@ -26,7 +26,7 @@ constexpr float tex_coord_data[4]=
 
 struct RoundedRectConfig
 {
-    
+
 };
 
 class TestApp:public WorkObject

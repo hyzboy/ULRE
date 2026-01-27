@@ -26,8 +26,8 @@ namespace hgl::graph
 
         uint tile_width,tile_height;                                                                                ///<Tile的宽和高
         uint tile_bytes;                                                                                            ///<一个tile字节数
-        uint tile_count,tile_max_count;														                        ///<当前Tile数量与最大数量
-        uint tile_rows,tile_cols;																                    ///<贴图中可用的Tile行数和列数
+        uint tile_count,tile_max_count;                                                                             ///<当前Tile数量与最大数量
+        uint tile_rows,tile_cols;                                                                                   ///<贴图中可用的Tile行数和列数
 
     protected:
 
@@ -36,20 +36,20 @@ namespace hgl::graph
         ValueArray<Image2DRegion> commit_list;
         uint8 *commit_ptr;
 
-        bool CommitTile(TileObject *,const void *,const uint,const int,const int);	                                ///<提交一个Tile数据
+        bool CommitTile(TileObject *,const void *,const uint,const int,const int);                                  ///<提交一个Tile数据
 
     public:
 
-        int			GetWidth	()const{return tile_width;}										                    ///<取得Tile宽
-        int			GetHeight	()const{return tile_height;}									                    ///<取得Tile高
-        int			GetCount	()const{return tile_count;}										                    ///<取得Tile数量
-        int			GetMaxCount	()const{return tile_max_count;}									                    ///<取得Tile最大数量
-        int			GetFreeCount()const{return tile_max_count-tile_count;}						                    ///<取得空余Tile数量
+        int         GetWidth    ()const{return tile_width;}                                                         ///<取得Tile宽
+        int         GetHeight   ()const{return tile_height;}                                                        ///<取得Tile高
+        int         GetCount    ()const{return tile_count;}                                                         ///<取得Tile数量
+        int         GetMaxCount ()const{return tile_max_count;}                                                     ///<取得Tile最大数量
+        int         GetFreeCount()const{return tile_max_count-tile_count;}                                          ///<取得空余Tile数量
 
-        Texture2D *	GetTexture	()const{return tile_texture;}									                    ///<取得贴图
+        Texture2D * GetTexture  ()const{return tile_texture;}                                                       ///<取得贴图
 
     public:
-            
+
         TileData(TextureManager *,Texture2D *,const uint tw,const uint th);
         virtual ~TileData();
 
@@ -59,11 +59,11 @@ namespace hgl::graph
         TileObject *Commit(BitmapData *bmp){return this->Commit(bmp->data,bmp->total_bytes,bmp->width,bmp->height);}///<提交一个Tile
 
         TileObject *Acquire();                                                                                      ///<请求一个Tile
-        bool        Change(TileObject *,const void *,const uint,const int=-1,const int=-1);	                        ///<更改一个Tile的数据内容
+        bool        Change(TileObject *,const void *,const uint,const int=-1,const int=-1);                         ///<更改一个Tile的数据内容
 
         int  EndCommit();
 
-        bool Delete(TileObject *);														                            ///<删除一个Tile
+        bool Delete(TileObject *);                                                                                  ///<删除一个Tile
         void Clear();                                                                                               ///<清除Tile数据
     };//class TileData
 }//namespace hgl::graph

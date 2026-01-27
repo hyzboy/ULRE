@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/BoundingBoxComponent.h>
@@ -29,16 +29,16 @@ namespace hgl::ecs
 
     /**
      * RenderPrimitiveSystem
-     * 
+     *
      * Specialized rendering system for PrimitiveComponent entities.
      * Follows ECS design principle: one system per component type.
-     * 
+     *
      * Features:
      * - Collects entities with TransformComponent and PrimitiveComponent
      * - Performs frustum culling using AABB or sphere
      * - Batches primitives by material/pipeline for efficient rendering
      * - Sorts by distance for optimal draw order
-     * 
+     *
      * Future systems can handle other component types:
      * - RenderParticleSystem for particle effects
      * - RenderLineSystem for line/wire rendering
@@ -53,13 +53,13 @@ namespace hgl::ecs
         const graph::CameraInfo* cameraInfo;
         graph::VulkanDevice* device;
         math::Frustum frustum;
-        
+
         // Primitive-specific render items
         std::vector<std::unique_ptr<PrimitiveRenderItem>> renderItems;
-        
+
         // Material batching for primitives
         std::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
-        
+
         bool frustumCullingEnabled;
         bool distanceSortingEnabled;
         bool batchingEnabled;
@@ -101,15 +101,15 @@ namespace hgl::ecs
         void CollectPrimitives();
 
         /// Get collected primitive render items
-        const std::vector<std::unique_ptr<PrimitiveRenderItem>>& GetRenderItems() const 
-        { 
-            return renderItems; 
+        const std::vector<std::unique_ptr<PrimitiveRenderItem>>& GetRenderItems() const
+        {
+            return renderItems;
         }
 
         /// Get material batches (for efficient rendering)
-        const std::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>>& GetMaterialBatches() const 
-        { 
-            return materialBatches; 
+        const std::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>>& GetMaterialBatches() const
+        {
+            return materialBatches;
         }
 
         /// Get camera info

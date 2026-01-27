@@ -49,10 +49,10 @@ void TransformAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
     if(!transform_buffer)
     {
         transform_buffer=device->CreateUBO(sizeof(math::Matrix4f)*transform_buffer_max_count);
-        
+
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
-        
+
         if(du)
         {
             du->SetBuffer(transform_buffer->GetBuffer(),"UBO:Buffer:LocalToWorld");
@@ -122,10 +122,10 @@ void TransformAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
         {
             transform_vab=device->CreateVAB(VK_FORMAT_R16_UINT,node_count);
             transform_vab_buffer=transform_vab->GetBuffer();
-        
+
         #ifdef _DEBUG
             DebugUtils *du=device->GetDebugUtils();
-        
+
             if(du)
             {
                 du->SetBuffer(transform_vab->GetBuffer(),"VAB:Buffer:TransformID");
@@ -134,7 +134,7 @@ void TransformAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
         #endif//_DEBUG
         }
     }
-    
+
     //生成transform索引列表
     {
         DrawNode **rn=draw_nodes.GetData();

@@ -475,7 +475,7 @@ enum class TextureCompressType
 enum class VulkanBaseType
 {
     NONE=0,
-    
+
     UINT,
     SINT,
     UNORM,
@@ -549,7 +549,7 @@ inline uint32_t GetImageBytes(const VkFormat &format,const uint32_t pixel_total)
 
     if(vcf&&vcf->bytes)
         return vcf->bytes*pixel_total;
-        
+
     if(format>=PF_BC1_RGBUN
      &&format<=PF_BC7s)
     {

@@ -52,7 +52,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -71,7 +71,7 @@ namespace hgl::graph::inline_geometry
             // Alternate between outer and inner radius
             bool is_outer = (i % 2) == 0;
             float r = is_outer ? outer_r : inner_r;
-            
+
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
 
@@ -93,7 +93,7 @@ namespace hgl::graph::inline_geometry
             float angle = angle_step * float(i);
             bool is_outer = (i % 2) == 0;
             float r = is_outer ? outer_r : inner_r;
-            
+
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
 
@@ -109,7 +109,7 @@ namespace hgl::graph::inline_geometry
             float angle = angle_step * float(i);
             bool is_outer = (i % 2) == 0;
             float r = is_outer ? outer_r : inner_r;
-            
+
             float x = cos(angle) * r;
             float y = -sin(angle) * r;
 

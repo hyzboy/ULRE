@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2024 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,11 +10,11 @@
 class EnhancedInternalEdgeRemovalTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, EnhancedInternalEdgeRemovalTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, EnhancedInternalEdgeRemovalTest)
 
-	// See: Test
-	virtual void	Initialize() override;
+    // See: Test
+    virtual void    Initialize() override;
 
 private:
-	void			CreateSlidingObjects(RVec3Arg inStart);
+    void            CreateSlidingObjects(RVec3Arg inStart);
 };

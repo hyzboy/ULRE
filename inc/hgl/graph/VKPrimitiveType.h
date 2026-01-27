@@ -28,7 +28,7 @@ namespace hgl::graph
 
         SolidCircles,                       ///<实心圆(以画点形式在Position中指定圆心，名为Size的VAB中指定半径)
 
-        WireRectangles=0x200,               ///<线框矩形    
+        WireRectangles=0x200,               ///<线框矩形
         WireCircles,                        ///<空心圆(以画点形式在Position中指定圆心，名为Sizes的VAB中指定半径)
 
         ////3D元素
@@ -55,7 +55,7 @@ namespace hgl::graph
                                             ///<如果存在一个名为Rotation的VAB，则其中的值代表每个Billboard的2D旋转角度，否则Rotation在UBO中指定。
 
         OBB=0x600,                          ///<OBB(以画点形式在Position中指定OBB的中心，名为Size的VAB中指定半径，名为Axis[0/1/2]的VAB中指定3个轴向)
-                                            
+
         ENUM_CLASS_RANGE(Points,Patchs),
 
         Error

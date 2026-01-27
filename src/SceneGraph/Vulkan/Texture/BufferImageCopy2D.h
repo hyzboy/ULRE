@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include<hgl/graph/VKTexture.h>
 #include<hgl/type/RectScope.h>
 VK_NAMESPACE_BEGIN

@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -9,7 +9,7 @@
 #include <Renderer/FatalErrorIfFailed.h>
 
 PipelineState::PipelineState(Renderer *inRenderer, ID3DBlob *inVertexShader, const D3D12_INPUT_ELEMENT_DESC *inInputDescription, uint inInputDescriptionCount, ID3DBlob *inPixelShader, D3D12_FILL_MODE inFillMode, D3D12_PRIMITIVE_TOPOLOGY_TYPE inTopology, EDepthTest inDepthTest, EBlendMode inBlendMode, ECullMode inCullMode) :
-	mRenderer(inRenderer)
+    mRenderer(inRenderer)
 {
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.InputLayout = { inInputDescription, inInputDescriptionCount };
@@ -32,30 +32,30 @@ PipelineState::PipelineState(Renderer *inRenderer, ID3DBlob *inVertexShader, con
     pso_desc.BlendState.AlphaToCoverageEnable = FALSE;
     pso_desc.BlendState.IndependentBlendEnable = FALSE;
 
-	D3D12_RENDER_TARGET_BLEND_DESC &blend_desc = pso_desc.BlendState.RenderTarget[0];
+    D3D12_RENDER_TARGET_BLEND_DESC &blend_desc = pso_desc.BlendState.RenderTarget[0];
     blend_desc.LogicOpEnable = FALSE;
     blend_desc.LogicOp = D3D12_LOGIC_OP_NOOP;
     blend_desc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	switch (inBlendMode)
-	{
-	case EBlendMode::Write:
-		blend_desc.BlendEnable = FALSE;
-		break;
+    switch (inBlendMode)
+    {
+    case EBlendMode::Write:
+        blend_desc.BlendEnable = FALSE;
+        break;
 
-	case EBlendMode::AlphaTest:
-		pso_desc.BlendState.AlphaToCoverageEnable = TRUE;
-		[[fallthrough]];
+    case EBlendMode::AlphaTest:
+        pso_desc.BlendState.AlphaToCoverageEnable = TRUE;
+        [[fallthrough]];
 
-	case EBlendMode::AlphaBlend:
-		blend_desc.BlendEnable = TRUE;
-		blend_desc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-		blend_desc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-		blend_desc.BlendOp = D3D12_BLEND_OP_ADD;
-		blend_desc.SrcBlendAlpha = D3D12_BLEND_ZERO;
-		blend_desc.DestBlendAlpha = D3D12_BLEND_ZERO;
-		blend_desc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-		break;
-	}
+    case EBlendMode::AlphaBlend:
+        blend_desc.BlendEnable = TRUE;
+        blend_desc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        blend_desc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        blend_desc.BlendOp = D3D12_BLEND_OP_ADD;
+        blend_desc.SrcBlendAlpha = D3D12_BLEND_ZERO;
+        blend_desc.DestBlendAlpha = D3D12_BLEND_ZERO;
+        blend_desc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        break;
+    }
 
     pso_desc.DepthStencilState.DepthEnable = inDepthTest == EDepthTest::On? TRUE : FALSE;
     pso_desc.DepthStencilState.DepthWriteMask = inDepthTest == EDepthTest::On? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
@@ -74,8 +74,8 @@ PipelineState::PipelineState(Renderer *inRenderer, ID3DBlob *inVertexShader, con
 
 PipelineState::~PipelineState()
 {
-	if (mPSO != nullptr)
-		mRenderer->RecycleD3DObject(mPSO.Get());
+    if (mPSO != nullptr)
+        mRenderer->RecycleD3DObject(mPSO.Get());
 }
 
 void PipelineState::Activate()

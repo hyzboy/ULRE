@@ -7,7 +7,7 @@ VK_NAMESPACE_BEGIN
 ShaderDescriptor *ShaderDescriptorSet::AddDescriptor(uint32_t ssb,ShaderDescriptor *new_sd)
 {
     ShaderDescriptor *sd;
-    
+
     if(descriptor_map.Get(new_sd->name,sd))
     {
         delete new_sd;

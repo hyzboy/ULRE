@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,31 +11,31 @@
 
 JPH_IMPLEMENT_RTTI_VIRTUAL(SoftBodyGravityFactorTest)
 {
-	JPH_ADD_BASE_CLASS(SoftBodyGravityFactorTest, Test)
+    JPH_ADD_BASE_CLASS(SoftBodyGravityFactorTest, Test)
 }
 
 void SoftBodyGravityFactorTest::Initialize()
 {
-	// Floor
-	CreateFloor();
+    // Floor
+    CreateFloor();
 
-	// Bodies with increasing gravity factor
-	SoftBodyCreationSettings sphere(SoftBodyCreator::CreateSphere(), RVec3::sZero(), Quat::sIdentity(), Layers::MOVING);
-	sphere.mPressure = 2000.0f;
+    // Bodies with increasing gravity factor
+    SoftBodyCreationSettings sphere(SoftBodyCreator::CreateSphere(), RVec3::sZero(), Quat::sIdentity(), Layers::MOVING);
+    sphere.mPressure = 2000.0f;
 
-	for (int i = 0; i <= 10; ++i)
-	{
-		sphere.mPosition = RVec3(-50.0f + i * 10.0f, 10.0f, 0);
-		sphere.mGravityFactor = 0.1f * i;
-		mBodyInterface->CreateAndAddSoftBody(sphere, EActivation::Activate);
-	}
+    for (int i = 0; i <= 10; ++i)
+    {
+        sphere.mPosition = RVec3(-50.0f + i * 10.0f, 10.0f, 0);
+        sphere.mGravityFactor = 0.1f * i;
+        mBodyInterface->CreateAndAddSoftBody(sphere, EActivation::Activate);
+    }
 
-	SoftBodyCreationSettings cube(SoftBodyCreator::CreateCube(), RVec3::sZero(), Quat::sIdentity(), Layers::MOVING);
+    SoftBodyCreationSettings cube(SoftBodyCreator::CreateCube(), RVec3::sZero(), Quat::sIdentity(), Layers::MOVING);
 
-	for (int i = 0; i <= 10; ++i)
-	{
-		cube.mPosition = RVec3(-50.0f + i * 10.0f, 10.0f, -5.0f);
-		cube.mGravityFactor = 0.1f * i;
-		mBodyInterface->CreateAndAddSoftBody(cube, EActivation::Activate);
-	}
+    for (int i = 0; i <= 10; ++i)
+    {
+        cube.mPosition = RVec3(-50.0f + i * 10.0f, 10.0f, -5.0f);
+        cube.mGravityFactor = 0.1f * i;
+        mBodyInterface->CreateAndAddSoftBody(cube, EActivation::Activate);
+    }
 }

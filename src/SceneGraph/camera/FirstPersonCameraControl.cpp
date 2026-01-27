@@ -1,4 +1,4 @@
-#include<hgl/graph/camera/FirstPersonCameraControl.h>
+﻿#include<hgl/graph/camera/FirstPersonCameraControl.h>
 
 namespace hgl::graph
 {
@@ -102,7 +102,7 @@ namespace hgl::graph
         // Clamp pitch to avoid flipping at the poles
         if(pitch>top_limit) pitch=top_limit;
         if(pitch<bottom_limit) pitch=bottom_limit;
-        
+
         UpdateCameraVector();
     }
 

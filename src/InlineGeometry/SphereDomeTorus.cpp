@@ -23,7 +23,7 @@ namespace hgl::graph::inline_geometry
 
         // Use new GeometryBuilder for vertex attribute management
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return(nullptr);
 
@@ -47,7 +47,7 @@ namespace hgl::graph::inline_geometry
                     Quatf quat = QuatFromAxisAngle(360.0f * tex_x, AxisVector::Y);
                     Matrix4f matrix = ToMatrix(quat);
                     Vector3f tangent = TransformDirection(matrix, helpVector);
-                    
+
                     builder.WriteFullVertex(x, y, z,
                                           x, y, z,  // normal same as position for sphere
                                           tangent.x, tangent.y, tangent.z,

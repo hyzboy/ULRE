@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -12,26 +12,26 @@
 class ChangeShapeTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ChangeShapeTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ChangeShapeTest)
 
-	// Initialize the test
-	virtual void			Initialize() override;
+    // Initialize the test
+    virtual void            Initialize() override;
 
-	// Update the test, called before the physics update
-	virtual void			PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    // Update the test, called before the physics update
+    virtual void            PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
-	// Saving / restoring state for replay
-	virtual void			SaveState(StateRecorder &inStream) const override;
-	virtual void			RestoreState(StateRecorder &inStream) override;
+    // Saving / restoring state for replay
+    virtual void            SaveState(StateRecorder &inStream) const override;
+    virtual void            RestoreState(StateRecorder &inStream) override;
 
-	// Optional settings menu
-	virtual bool			HasSettingsMenu() const override							{ return true; }
-	virtual void			CreateSettingsMenu(DebugUI *inUI, UIElement *inSubMenu) override;
+    // Optional settings menu
+    virtual bool            HasSettingsMenu() const override                            { return true; }
+    virtual void            CreateSettingsMenu(DebugUI *inUI, UIElement *inSubMenu) override;
 
 private:
-	bool					mActivateAfterSwitch = true;
-	BodyID					mBodyID;
-	Array<RefConst<Shape>> 	mShapes;
-	float					mTime = 0.0f;
-	int						mShapeIdx = 0;
+    bool                    mActivateAfterSwitch = true;
+    BodyID                  mBodyID;
+    Array<RefConst<Shape>>  mShapes;
+    float                   mTime = 0.0f;
+    int                     mShapeIdx = 0;
 };

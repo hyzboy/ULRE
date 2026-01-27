@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VKGeometry.h>
 #include<hgl/type/OrderedValueSet.h>

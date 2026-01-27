@@ -1,4 +1,4 @@
-#include<hgl/graph/TransformState.h>
+﻿#include<hgl/graph/TransformState.h>
 
 namespace hgl::math
 {
@@ -25,7 +25,7 @@ namespace hgl::math
         transform_matrix=Identity4f;
         UpdateVersion();
     }
-        
+
     void TransformState::MakeNewestData(Matrix4f &local_to_world_matrix)
     {
         if(local_is_identity)
@@ -50,7 +50,7 @@ namespace hgl::math
             WorldPosition=TransformPosition(local_to_world_matrix,ZeroVector3f);
             WorldNormal=TransformNormal(local_to_world_matrix,local_normal);
         }
-            
+
         inverse_local_to_world_matrix          =Inverse(local_to_world_matrix);
         inverse_transpose_local_to_world_matrix=Transpose(inverse_local_to_world_matrix);
     }

@@ -46,7 +46,7 @@ namespace hgl
 
             return UNKNOW_SHADER_STAGE_NAME;
         }
-        
+
         const uint GetShaderStageFlagBits(const char *str,int len)
         {
             if(!str||!*str)return(0);
@@ -76,7 +76,7 @@ namespace hgl
 
             return result;
         }
-        
+
         const uint GetMaxShaderStage(const uint32_t bits)
         {
             uint result=0;

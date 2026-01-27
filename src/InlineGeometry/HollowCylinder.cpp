@@ -190,7 +190,7 @@ namespace hgl::graph::inline_geometry
         else return nullptr;
 
         return pc->CreateWithAABB(
-            math::Vector3f(-r1, -r1, -he), 
+            math::Vector3f(-r1, -r1, -he),
             Vector3f(r1, r1, he));
     }
 }//namespace hgl::graph::inline_geometry

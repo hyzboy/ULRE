@@ -67,7 +67,7 @@ private:
         }
 
         pipeline=CreatePipeline(material,InlinePipeline::Solid2D);
-        
+
         return pipeline;
     }
 
@@ -82,7 +82,7 @@ private:
         Add(geometry);
 
         CreateComponentInfo cci(GetWorldRootNode());
-        
+
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
             render_obj[i].primitive=CreatePrimitive(geometry,render_obj[i].mi,pipeline);

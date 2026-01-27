@@ -12,8 +12,8 @@ namespace hgl::graph
 {
     struct CharMetricsInfo
     {
-        int x,y;		//图像显示偏移
-        int w,h;		//图像尺寸
+        int x,y;        //图像显示偏移
+        int w,h;        //图像尺寸
 
         int adv_x,adv_y;//字符尺寸
     };//struct CharMetricsInfo
@@ -23,7 +23,7 @@ namespace hgl::graph
     */
     struct FontBitmap
     {
-        int count;		//使用次数
+        int count;      //使用次数
 
         CharMetricsInfo metrics_info;
 
@@ -34,8 +34,8 @@ namespace hgl::graph
     {
         u32char ch;             ///<字符
 
-        bool space;			    ///<是否属于空格
-                
+        bool space;             ///<是否属于空格
+
         bool is_cjk;            ///<是否是中日韩文字
         bool is_emoji;          ///<是否是表情符号
         bool is_currency;       ///<是否货币符号
@@ -46,7 +46,7 @@ namespace hgl::graph
         bool end_disable;       ///<是否行尾禁用符号
         bool vrotate;           ///<竖排时是否需要旋转
     };//
-        
+
     /**
     * 字符排版属性
     */
@@ -78,14 +78,14 @@ namespace hgl::graph
 
     public:
 
-        virtual			FontBitmap *GetCharBitmap	(const u32char &)=0;						///<取得字符位图数据
-        virtual const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)=0;		///<取得字符绘制信息
-                const	CLA *		GetCLA			(const u32char &);							///<取得字符排版信息
-        virtual			int			GetCharHeight	()const=0;									///<取得字符高度
+        virtual         FontBitmap *GetCharBitmap   (const u32char &)=0;                        ///<取得字符位图数据
+        virtual const   bool        GetCharMetrics  (CharMetricsInfo &,const u32char &)=0;      ///<取得字符绘制信息
+                const   CLA *       GetCLA          (const u32char &);                          ///<取得字符排版信息
+        virtual         int         GetCharHeight   ()const=0;                                  ///<取得字符高度
 
-        void RefAcquire(void *);																///<引用请求
-        void RefRelease(void *);																///<引用释放
-        int  RefCount()const{return ref_object.GetCount();}										///<获取引用对象数量
+        void RefAcquire(void *);                                                                ///<引用请求
+        void RefRelease(void *);                                                                ///<引用释放
+        int  RefCount()const{return ref_object.GetCount();}                                     ///<获取引用对象数量
     };//class FontDataSource
 
     /**
@@ -97,11 +97,11 @@ namespace hgl::graph
 
         Font fnt;
 
-        ObjectMap<u32char,FontBitmap> chars_bitmap;												///<字符位图
+        ObjectMap<u32char,FontBitmap> chars_bitmap;                                             ///<字符位图
 
     protected:
 
-        virtual bool MakeCharBitmap(FontBitmap *,u32char)=0;									///<产生字符位图数据
+        virtual bool MakeCharBitmap(FontBitmap *,u32char)=0;                                    ///<产生字符位图数据
 
     public:
 
@@ -113,9 +113,9 @@ namespace hgl::graph
 
     public:
 
-                        FontBitmap *GetCharBitmap	(const u32char &ch) override;				///<取得字符位图数据
-                const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;///<取得字符绘制信息
-        virtual			int			GetCharHeight	()const override{return fnt.height;}		///<取得字符高度
+                        FontBitmap *GetCharBitmap   (const u32char &ch) override;               ///<取得字符位图数据
+                const   bool        GetCharMetrics  (CharMetricsInfo &,const u32char &)override;///<取得字符绘制信息
+        virtual         int         GetCharHeight   ()const override{return fnt.height;}        ///<取得字符高度
     };//class FontBitmapDataSource:public FontDataSource
 
     FontDataSource *AcquireFontDataSource(const Font &f);
@@ -173,10 +173,10 @@ namespace hgl::graph
 
     public:
 
-                FontBitmap *GetCharBitmap	(const u32char &ch);
-        const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &);		///<取得字符绘制信息
-        const	CLA *		GetCLA			(const u32char &);							///<取得字符排版信息
-                int			GetCharHeight	()const{return max_char_height;}			///<取得字符高度
+                FontBitmap *GetCharBitmap   (const u32char &ch);
+        const   bool        GetCharMetrics  (CharMetricsInfo &,const u32char &);        ///<取得字符绘制信息
+        const   CLA *       GetCLA          (const u32char &);                          ///<取得字符排版信息
+                int         GetCharHeight   ()const{return max_char_height;}            ///<取得字符高度
     };//class FontSource
 
     /**

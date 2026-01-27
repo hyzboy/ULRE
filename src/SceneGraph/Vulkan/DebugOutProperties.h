@@ -1,4 +1,4 @@
-#include<hgl/type/ValueArray.h>
+﻿#include<hgl/type/ValueArray.h>
 #include<hgl/graph/VKNamespace.h>
 #include<iostream>
 
@@ -21,9 +21,9 @@ inline void debug_out(const char *front,const hgl::ValueArray<VkLayerProperties>
 
     for(int i=0;i<property_count;i++)
     {
-        std::cout<<front<<" Layer Propertyes ["<<i<<"] : "<<lp->layerName<<" [spec: ";        
+        std::cout<<front<<" Layer Propertyes ["<<i<<"] : "<<lp->layerName<<" [spec: ";
         debug_out_vk_version(lp->specVersion);
-        
+
         std::cout<<", impl: ";
         debug_out_vk_version(lp->implementationVersion);
 
@@ -42,9 +42,9 @@ inline void debug_out(const char *front,const hgl::ValueArray<VkExtensionPropert
     for(int i=0;i<extension_count;i++)
     {
         std::cout<<front<<" Extension Propertyes ["<<i<<"] : "<<ep->extensionName<<" ver: ";
-        
+
         debug_out_vk_version(ep->specVersion);
-        
+
         std::cout<<std::endl;
         ++ep;
     }

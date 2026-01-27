@@ -14,7 +14,7 @@ namespace hgl::graph
         uint32_t max_vertices;
 
     public:
-    
+
         bool IsEmptyOutput()const override{return gsdi.IsEmptyOutput();}
         void GetOutputStrcutString(AnsiString &str) override;
 
@@ -26,7 +26,7 @@ namespace hgl::graph
         ~ShaderCreateInfoGeometry()override=default;
 
         bool SetGeom(const PrimitiveType &ip,const PrimitiveType &op,const uint32_t mv);
-    
+
         int AddOutput(SVList &);
         int AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
         void AddMaterialInstanceOutput() override;

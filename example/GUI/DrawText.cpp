@@ -28,7 +28,7 @@ private:
     bool InitTextRenderable()
     {
         U16String str;
-        
+
         LoadStringFromTextFile(str,OS_TEXT("res/text/道德经.txt"));
 
         if(str.IsEmpty())return(false);

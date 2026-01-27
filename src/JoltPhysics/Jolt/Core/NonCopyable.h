@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,9 +10,9 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT NonCopyable
 {
 public:
-			NonCopyable() = default;
-			NonCopyable(const NonCopyable &) = delete;
-	void	operator = (const NonCopyable &) = delete;
+            NonCopyable() = default;
+            NonCopyable(const NonCopyable &) = delete;
+    void    operator = (const NonCopyable &) = delete;
 };
 
 JPH_NAMESPACE_END

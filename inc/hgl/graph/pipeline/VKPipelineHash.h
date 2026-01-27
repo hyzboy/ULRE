@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/pipeline/VKPipelineData.h>
 #include<hgl/util/hash/Hash.h>

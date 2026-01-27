@@ -1,4 +1,4 @@
-#include<hgl/graph/TextureLoader.h>
+﻿#include<hgl/graph/TextureLoader.h>
 #include<hgl/io/FileInputStream.h>
 #include<hgl/utf.h>
 
@@ -62,7 +62,7 @@ namespace hgl::graph
 
         if(cf>=0&&cf<CompressFormatCount)
             return CompressFormatBits[cf];
-            
+
         return 0;
     }
 
@@ -217,7 +217,7 @@ namespace hgl::graph
 
         if(is->Read(&file_header,sizeof(TextureFileHeader))!=sizeof(TextureFileHeader))
             return(false);
-            
+
         constexpr char TEXTURE_FILE_HEADER[]="Texture";
         constexpr uint TEXTURE_FILE_HEADER_LENGTH=sizeof(TEXTURE_FILE_HEADER)-1;
 

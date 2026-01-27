@@ -14,7 +14,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,S
     present_info.swapchainCount     = 1;
     present_info.pResults           = nullptr;
     present_info.pSwapchains        = &(swapchain->swap_chain);
-   
+
     present_complete_semaphore=pcs;
 }
 
@@ -23,7 +23,7 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
     delete present_complete_semaphore;
     delete swapchain;
 }
-    
+
 bool SwapchainRenderTarget::NextFrame()
 {
 //    std::cerr << "[SwapchainRenderTarget] NextFrame current=" << current_frame << " semaphore=" << present_complete_semaphore << std::endl;
@@ -53,13 +53,13 @@ bool SwapchainRenderTarget::Submit()
 
     VkResult result=queue->Present(&present_info);
 //    std::cerr << "[SwapchainRenderTarget] Present result=" << result << std::endl;
-    
-    if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) 
+
+    if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR)))
     {
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             return false;
-        } 
+        }
     }
 
     return(true);

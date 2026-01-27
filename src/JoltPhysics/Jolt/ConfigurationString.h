@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -9,63 +9,63 @@ JPH_NAMESPACE_BEGIN
 /// Construct a string that lists the most important configuration settings
 inline const char *GetConfigurationString()
 {
-	return JPH_IF_SINGLE_PRECISION_ELSE("Single", "Double") " precision "
+    return JPH_IF_SINGLE_PRECISION_ELSE("Single", "Double") " precision "
 #if defined(JPH_CPU_X86)
-		"x86 "
+        "x86 "
 #elif defined(JPH_CPU_ARM)
-		"ARM "
+        "ARM "
 #elif defined(JPH_PLATFORM_WASM)
-		"WASM "
+        "WASM "
 #endif
 #if JPH_CPU_ADDRESS_BITS == 64
-		"64-bit "
+        "64-bit "
 #elif JPH_CPU_ADDRESS_BITS == 32
-		"32-bit "
+        "32-bit "
 #endif
-		"with instructions: "
+        "with instructions: "
 #ifdef JPH_USE_NEON
-		"NEON "
+        "NEON "
 #endif
 #ifdef JPH_USE_SSE
-		"SSE2 "
+        "SSE2 "
 #endif
 #ifdef JPH_USE_SSE4_1
-		"SSE4.1 "
+        "SSE4.1 "
 #endif
 #ifdef JPH_USE_SSE4_2
-		"SSE4.2 "
+        "SSE4.2 "
 #endif
 #ifdef JPH_USE_AVX
-		"AVX "
+        "AVX "
 #endif
 #ifdef JPH_USE_AVX2
-		"AVX2 "
+        "AVX2 "
 #endif
 #ifdef JPH_USE_AVX512
-		"AVX512 "
+        "AVX512 "
 #endif
 #ifdef JPH_USE_F16C
-		"F16C "
+        "F16C "
 #endif
 #ifdef JPH_USE_LZCNT
-		"LZCNT "
+        "LZCNT "
 #endif
 #ifdef JPH_USE_TZCNT
-		"TZCNT "
+        "TZCNT "
 #endif
 #ifdef JPH_USE_FMADD
-		"FMADD "
+        "FMADD "
 #endif
 #ifdef JPH_CROSS_PLATFORM_DETERMINISTIC
-		"(Cross Platform Deterministic) "
+        "(Cross Platform Deterministic) "
 #endif
 #ifdef JPH_FLOATING_POINT_EXCEPTIONS_ENABLED
-		"(FP Exceptions) "
+        "(FP Exceptions) "
 #endif
 #ifdef _DEBUG
-		"(Debug) "
+        "(Debug) "
 #endif
-		;
+        ;
 }
 
 JPH_NAMESPACE_END

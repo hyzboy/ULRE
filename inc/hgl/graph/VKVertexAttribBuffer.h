@@ -30,19 +30,19 @@ public:
     const uint32_t GetCount ()const { return count; }
 
     const VkDeviceSize GetTotalBytes()const { return stride*count; }
-            
+
 public:
 
     void *  Map     (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Map(start*stride,size*stride);}
     void    Flush   (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Flush(start*stride,size*stride);}
     void    Flush   (VkDeviceSize size)                             override {return DeviceBuffer::Flush(size*stride);}
-            
+
     bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return DeviceBuffer::Write(ptr,start*stride,size*stride);}
     bool    Write   (const void *ptr,uint32_t size)                 override {return DeviceBuffer::Write(ptr,0,size*stride);}
 };//class VertexAttribBuffer:public DeviceBuffer
 
 using VAB=VertexAttribBuffer;
-        
+
 class VABMap:public VKBufferMap<VAB>
 {
 public:
@@ -142,7 +142,7 @@ template<typename T> class VABFormatMap
 public:
 
     VABFormatMap(VABMap *map,bool now_map=true)
-    {   
+    {
         vab_map=map;
 
         if(vab_map&&vab_map->GetFormat()==T::GetVulkanFormat())
@@ -171,7 +171,7 @@ public:
     }
 
     const bool IsValid()const{ return map_ptr?map_ptr->IsValid():false; }
-    
+
     T *Map()
     {
         if(!vab_map)
@@ -186,7 +186,7 @@ public:
             if(!map_ptr->IsValid())
                 map_ptr->SetData(vab_map->Map());
         }
-        
+
         map_ptr->Begin();
         return map_ptr;
     }

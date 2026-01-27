@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/Component.h>
 #include<hgl/math/Projection.h>

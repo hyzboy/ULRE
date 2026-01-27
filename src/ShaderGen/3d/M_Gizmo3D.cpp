@@ -6,7 +6,7 @@ namespace
 {
     // Gizmo3D材质其实就是纯色的blinnphong材质，但不需要外部传入太阳光方向、高光系数等数据。
     // 其全部在Shader中直接包含，它是专门为Gizmo 3D控件所准备的一种材质。
-    
+
     constexpr const char mi_codes[]="vec4 Color;";                      //材质实例代码
     constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);                 //材质实例数据大小
 
@@ -49,7 +49,7 @@ void main()
 
         spec_color=specular*pow(specular,16)*SUN_COLOR;
     }
-        
+
     FragColor=vec4(direct_color+spec_color,1.0);
 })";
 

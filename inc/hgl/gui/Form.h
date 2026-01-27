@@ -1,4 +1,4 @@
-#ifndef HGL_GUI_FORM_INCLUDE
+﻿#ifndef HGL_GUI_FORM_INCLUDE
 #define HGL_GUI_FORM_INCLUDE
 
 #include<hgl/graph/VKPipeline.h>

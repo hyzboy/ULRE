@@ -8,7 +8,7 @@ VK_NAMESPACE_BEGIN
 
 /**
 * <summary>
-* 
+*
 *    layout(location=?) in uint MaterialInstanceID
 *
 *    #define MI_MAX_COUNT ???                //该值由引擎根据 UBORange/sizeof(MaterialInstance) 计算出来

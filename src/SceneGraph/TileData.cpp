@@ -87,9 +87,9 @@ namespace hgl::graph
         const int result=commit_list.GetCount();
 
         commit_list.Clear();
-        return result; 
+        return result;
     }
-        
+
     bool TileData::CommitTile(TileObject *obj,const void *data,const uint bytes,int ctw,int cth)
     {
         if(!commit_ptr)return(false);

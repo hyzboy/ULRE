@@ -31,7 +31,7 @@ protected:
     IndexBuffer *   ibo;              ///<索引缓冲区
 
 protected:
-    
+
     const int InitVAB(const AnsiString &name,const VkFormat format,const void *data);                                       ///<取得顶点属性索引
 
 public:
@@ -77,7 +77,7 @@ public: //索引缓冲区
 public: //创建可渲染对象
 
             Geometry *     Create();                                                                                       ///<创建一个可渲染对象，并清除创建器数据
-            
+
             /**
              * 创建几何体并设置AABB包围体
              * @param min_bounds AABB最小点

@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -14,8 +14,8 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT TriangleGrouperClosestCentroid : public TriangleGrouper
 {
 public:
-	// See: TriangleGrouper::Group
-	virtual void			Group(const VertexList &inVertices, const IndexedTriangleList &inTriangles, int inGroupSize, Array<uint> &outGroupedTriangleIndices) override;
+    // See: TriangleGrouper::Group
+    virtual void            Group(const VertexList &inVertices, const IndexedTriangleList &inTriangles, int inGroupSize, Array<uint> &outGroupedTriangleIndices) override;
 };
 
 JPH_NAMESPACE_END

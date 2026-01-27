@@ -64,7 +64,7 @@ namespace hgl::graph
 
             StdMaterial(const MaterialCreateConfig *);
             virtual ~StdMaterial()=default;
-    
+
             virtual MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr);
         };//class StdMaterial
     }//namespace mtl

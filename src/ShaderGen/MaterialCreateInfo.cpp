@@ -80,7 +80,7 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 
     if(!mdi.hasStruct(struct_name))
         return(false);
-    
+
     uint result=0;
     ShaderStage bit;
 

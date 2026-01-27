@@ -26,7 +26,7 @@ namespace hgl::graph::inline_geometry
     static Geometry *CreateCircularArrow(GeometryCreater *pc, const ArrowCreateInfo *aci)
     {
         const uint slices = aci->numberSlices;
-        
+
         // Validate parameters
         if(!GeometryValidator::ValidateSlices(slices))
             return nullptr;
@@ -78,7 +78,7 @@ namespace hgl::graph::inline_geometry
         const float angleStep = (2.0f * std::numbers::pi_v<float>) / float(slices);
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -118,7 +118,7 @@ namespace hgl::graph::inline_geometry
 
         // Generate tail cap
         uint tail_base = vertex_base;
-        
+
         if(has_concave_tail)
         {
             // Concave tail: cone pointing inward
@@ -347,7 +347,7 @@ namespace hgl::graph::inline_geometry
 
         float max_radius = std::max(shaft_r, head_r);
         float total_length = shaft_len + head_len;
-        
+
         return pc->CreateWithAABB(
             Vector3f(-max_radius, -max_radius, 0.0f),
             Vector3f(max_radius, max_radius, total_length));
@@ -402,7 +402,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -410,7 +410,7 @@ namespace hgl::graph::inline_geometry
 
         // Generate shaft (4 sides: +X, -X, +Y, -Y)
         uint shaft_base = vertex_base;
-        
+
         // Define square corners
         float corners[4][2] = {
             {shaft_hw, shaft_hw},    // 0: +X, +Y
@@ -450,7 +450,7 @@ namespace hgl::graph::inline_geometry
 
         // Generate tail cap
         uint tail_base = vertex_base;
-        
+
         if(has_concave_tail)
         {
             // Outer square at z=tail_depth
@@ -487,12 +487,12 @@ namespace hgl::graph::inline_geometry
 
                 Vector3f edge1 = v1 - v0;
                 Vector3f edge2 = v2 - v0;
-                
+
                 // Calculate cross product manually
                 float normal_x = edge1.y * edge2.z - edge1.z * edge2.y;
                 float normal_y = edge1.z * edge2.x - edge1.x * edge2.z;
                 float normal_z = edge1.x * edge2.y - edge1.y * edge2.x;
-                
+
                 // Normalize
                 float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
                 if(normal_len > 0.0001f)
@@ -532,7 +532,7 @@ namespace hgl::graph::inline_geometry
 
         // Connection square at shaft_len
         uint connection_base = vertex_base;
-        
+
         float head_corners[4][2] = {
             {head_hw, head_hw},
             {-head_hw, head_hw},
@@ -564,7 +564,7 @@ namespace hgl::graph::inline_geometry
 
         // Pyramid head (4 triangular faces)
         uint head_base = vertex_base;
-        
+
         for(int side = 0; side < 4; side++)
         {
             int c0 = side;
@@ -580,12 +580,12 @@ namespace hgl::graph::inline_geometry
 
             Vector3f edge1 = v1 - v0;
             Vector3f edge2 = v2 - v0;
-            
+
             // Calculate cross product manually
             float normal_x = edge1.y * edge2.z - edge1.z * edge2.y;
             float normal_y = edge1.z * edge2.x - edge1.x * edge2.z;
             float normal_z = edge1.x * edge2.y - edge1.y * edge2.x;
-            
+
             // Normalize
             float normal_len = sqrtf(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
             if(normal_len > 0.0001f)
@@ -693,7 +693,7 @@ namespace hgl::graph::inline_geometry
 
         float max_hw = std::max(shaft_hw, head_hw);
         float total_length = shaft_len + head_len;
-        
+
         return pc->CreateWithAABB(
             Vector3f(-max_hw, -max_hw, 0.0f),
             Vector3f(max_hw, max_hw, total_length));

@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_DYNAMIC_BUFFER_ACCESS_INCLUDE
+﻿#ifndef HGL_GRAPH_DYNAMIC_BUFFER_ACCESS_INCLUDE
 #define HGL_GRAPH_DYNAMIC_BUFFER_ACCESS_INCLUDE
 
 #include<hgl/graph/VKArrayBuffer.h>
@@ -26,8 +26,8 @@ private:
         current=nullptr;
         align_size=0;
         count=0;
-        index=0;         
-    }    
+        index=0;
+    }
 
     void Start(uchar *buf,const uint as,const uint c)
     {

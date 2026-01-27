@@ -1,6 +1,6 @@
 ﻿/**
  * ECSPipelineMaterialRenderer.h - ECS Pipeline材质渲染器
- * 
+ *
  * 参照 PipelineMaterialRenderer 设计，但支持 ECS 版本的 Assignment Buffers
  * 职责：
  * - 执行ECS渲染命令
@@ -27,7 +27,7 @@ namespace hgl
         struct GeometryDataBuffer;
         struct GeometryDrawRange;
     }
-    
+
     namespace ecs
     {
         class ECSTransformAssignmentBuffer;
@@ -39,7 +39,7 @@ namespace hgl::ecs
 {
     /**
      * ECS Pipeline材质渲染器
-     * 
+     *
      * 与 PipelineMaterialRenderer 功能相同，但接受 ECS 版本的 Assignment Buffers
      */
     class ECSPipelineMaterialRenderer
@@ -61,7 +61,7 @@ namespace hgl::ecs
         uint32_t indirect_draw_count;                       ///<累积的间接绘制数量
 
         // === 渲染辅助方法 ===
-        
+
         /**
          * 绑定顶点属性缓冲
          * @param batch 绘制批次
@@ -69,18 +69,18 @@ namespace hgl::ecs
          * @param mi_buffer ECS 材质实例分配缓冲
          * @return 绑定是否成功
          */
-        bool BindVAB(const graph::DrawBatch* batch, 
-                     ECSTransformAssignmentBuffer* transform_buffer, 
+        bool BindVAB(const graph::DrawBatch* batch,
+                     ECSTransformAssignmentBuffer* transform_buffer,
                      ECSMaterialInstanceAssignmentBuffer* mi_buffer);
-        
+
         /**
          * 处理间接渲染
          * @param icb_draw 间接绘制缓冲（无索引）
          * @param icb_draw_indexed 间接绘制缓冲（有索引）
          */
-        void ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw, 
+        void ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
                                graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
-        
+
         /**
          * 绘制单个批次
          * @param batch 绘制批次

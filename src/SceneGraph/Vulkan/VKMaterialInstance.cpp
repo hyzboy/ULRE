@@ -9,7 +9,7 @@ MaterialInstance *Material::CreateMI(const VIL *vil)
 
     if(mi_data_manager)
         mi_data_manager->GetOrCreate(&mi_id,1);
-    else 
+    else
         mi_id=-1;
 
     return(new MaterialInstance(this,vil?vil:GetDefaultVIL(),mi_id));
@@ -34,7 +34,7 @@ void *Material::GetMIData(int id)
 
     return mi_data_manager->GetData(id);
 }
- 
+
 void MaterialInstance::WriteMIData(const void *data,const uint32 size)
 {
     if(!data||!size||size>material->GetMIDataBytes())return;

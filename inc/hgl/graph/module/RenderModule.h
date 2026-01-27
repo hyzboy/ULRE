@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/Size2.h>

@@ -32,7 +32,7 @@ class VertexInput
     VertexInputConfig vic;
 
     VIL *default_vil;
-    
+
     OrderedValueSet<VIL *> vil_sets;
 
 public:

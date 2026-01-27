@@ -1,4 +1,4 @@
-#include "InlineGeometryCommon.h"
+﻿#include "InlineGeometryCommon.h"
 #include<hgl/graph/geo/GeometryBuilder.h>
 
 namespace hgl::graph::inline_geometry
@@ -10,7 +10,7 @@ namespace hgl::graph::inline_geometry
         // 1. 参数验证
         if(!pc || !rci)
             return nullptr;
-            
+
         if(rci->segments_x < 1 || rci->segments_y < 1)
             return nullptr;
 
@@ -40,19 +40,19 @@ namespace hgl::graph::inline_geometry
         {
             float ty = float(y) / float(rci->segments_y);
             float py = top + height * ty;
-            
+
             for(uint x = 0; x <= rci->segments_x; ++x)
             {
                 float tx = float(x) / float(rci->segments_x);
                 float px = left + width * tx;
-                
+
                 // 写入顶点位置 (2D)
                 builder.WriteVertex(px, py, 0.0f);
-                
+
                 // 写入法线 (Z+)
                 if(rci->normal)
                     builder.WriteNormal(0.0f, 0.0f, 1.0f);
-                
+
                 // 写入纹理坐标
                 if(rci->tex_coord)
                     builder.WriteTexCoord(tx, ty);
@@ -63,12 +63,12 @@ namespace hgl::graph::inline_geometry
         IBMap *ib_map = pc->GetIBMap();
         if(!ib_map)
             return nullptr;
-        
+
         const IndexType index_type = pc->GetIndexType();
         uint8_t  *idx8  = nullptr;
         uint16_t *idx16 = nullptr;
         uint32_t *idx32 = nullptr;
-        
+
         if(index_type == IndexType::U8)
             idx8 = (uint8_t*)ib_map->Map();
         else if(index_type == IndexType::U16)
@@ -92,12 +92,12 @@ namespace hgl::graph::inline_geometry
                 uint i1 = i0 + 1;
                 uint i2 = i0 + (rci->segments_x + 1);
                 uint i3 = i2 + 1;
-                
+
                 // 第一个三角形
                 write_index(i0);
                 write_index(i2);
                 write_index(i1);
-                
+
                 // 第二个三角形
                 write_index(i1);
                 write_index(i2);

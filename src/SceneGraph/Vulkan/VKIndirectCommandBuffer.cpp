@@ -15,7 +15,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,SharingMode sm)
 {
     DeviceBufferData buf;
-        
+
     if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndirectCommand),sm))
         return(nullptr);
 
@@ -25,7 +25,7 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
 IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm)
 {
     DeviceBufferData buf;
-        
+
     if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndexedIndirectCommand),sm))
         return(nullptr);
 
@@ -35,7 +35,7 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
 IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,SharingMode sm)
 {
     DeviceBufferData buf;
-        
+
     if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),sm))
         return(nullptr);
 
