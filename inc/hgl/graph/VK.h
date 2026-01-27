@@ -19,7 +19,7 @@ constexpr size_t VK_DESCRIPTOR_TYPE_BEGIN_RANGE=VK_DESCRIPTOR_TYPE_SAMPLER;
 #ifndef VK_DESCRIPTOR_TYPE_END_RANGE
 constexpr size_t VK_DESCRIPTOR_TYPE_END_RANGE=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 #endif//VK_DESCRIPTOR_TYPE_END_RANGE
-    
+
 #ifndef VK_DESCRIPTOR_TYPE_RANGE_SIZE
 constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_DESCRIPTOR_TYPE_BEGIN_RANGE+1;
 #endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
@@ -137,8 +137,8 @@ enum class DescriptorType:uint32
     // 如
     //  layout(set = 0, binding = 3, r32f) uniform image2D myImage;
     //
-    // 
-    //  vec4 value = imageLoad(myStorageImage, ivec2(x, y));                  //读取像素    
+    //
+    //  vec4 value = imageLoad(myStorageImage, ivec2(x, y));                  //读取像素
     //  imageStore(myStorageImage, ivec2(x, y), vec4(1.0, 0.0, 0.0, 1.0));    //写入像素
     RWImage             =VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 

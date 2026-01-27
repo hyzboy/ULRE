@@ -69,23 +69,23 @@ public:
         // 比较 vdm 指针
         if(vdm != other.vdm)
             return false;
-        
+
         // 比较 vab_count
         if(vab_count != other.vab_count)
             return false;
-        
+
         // 比较 vab_list 数组
         if(mem_compare(vab_list, other.vab_list, vab_count) != 0)
             return false;
-        
+
         // 比较 vab_offset 数组
         if(mem_compare(vab_offset, other.vab_offset, vab_count) != 0)
             return false;
-        
+
         // 比较 ibo 指针
         if(ibo != other.ibo)
             return false;
-        
+
         return true;
     }
 

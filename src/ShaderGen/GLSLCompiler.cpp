@@ -1,4 +1,4 @@
-#include"GLSLCompiler.h"
+﻿#include"GLSLCompiler.h"
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -124,7 +124,7 @@ namespace hgl
         {
             delete[] compile_info.includes;
             compile_info.includes=nullptr;
-        
+
             if(gsi)
             {
                 gsi->Close();

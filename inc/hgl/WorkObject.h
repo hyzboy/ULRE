@@ -33,7 +33,7 @@ namespace hgl
 
     /**
     * 工作对象</p>
-    * 
+    *
     * WorkObject被定义为工作对象，所有的渲染控制都需要被写在WorkObject的Render函数下。
     */
     class WorkObject:public TickObject
@@ -94,7 +94,7 @@ namespace hgl
         virtual bool Init()=0;
 
         virtual void OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r);
-        
+
         virtual void OnResize(const VkExtent2D &){}
 
         virtual void Tick(double);
@@ -147,12 +147,12 @@ namespace hgl
 
             if(!render_framework)
                 return nullptr;
-            
+
             graph::PrimitiveManager *mm = render_framework->GetPrimitiveManager();
 
             if(!mm)
                 return nullptr;
-                
+
             return mm->CreatePrimitive(geometry,mi,pipeline);
         }
 

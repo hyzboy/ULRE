@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/math/transform/TransformAction.h>
 #include<hgl/math/Matrix.h>
@@ -7,16 +7,16 @@ namespace hgl::math
 {
     /**
     * 场景节点矩阵类<br>
-    * 
+    *
     * 用于描述一个物体在3D空间中的位置、旋转、缩放等信息。<br>
     * 构成说明:<br>
     * <ul>
     *   <li>LocalMatrix 一般用于描述当前节点相对上一级的变换矩阵</li>
     *   <li>LocalToWorldMatrix 最终用于描述当前节点相对于世界的变换矩阵，在渲染时使用</li>
-    * 
+    *
     *   <li>transform_manager 用于管理当前节点所有的变换情况，如果本节点不存在额外变换，数量为0。</li>
     * </ul>
-    * 
+    *
     * LocalToWorldMatrix=ParnetMatrix * LocalMatrix * TransActionMatrix<br>
     */
     class TransformState :public VersionData<Matrix4f>

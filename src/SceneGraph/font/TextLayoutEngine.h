@@ -82,7 +82,7 @@ namespace hgl::graph::layout
             text_primitive=nullptr;
             vertex.Clear();
             tex_coord.Clear();
-            
+
             draw_chars_count=0;
             chars_sets.Clear();
             chars_uv.Clear();

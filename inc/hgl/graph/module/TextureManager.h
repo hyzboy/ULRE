@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/OrderedValueSet.h>
@@ -13,7 +13,7 @@ GRAPH_MODULE_CLASS(TextureManager)
 {
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
-    
+
 private:
 
     TextureID texture_serial=0;

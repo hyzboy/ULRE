@@ -1,4 +1,4 @@
-// 该范例演示使用LineManager进行3D线条绘制管理
+﻿// 该范例演示使用LineManager进行3D线条绘制管理
 
 #include<hgl/WorkManager.h>
 #include<hgl/math/Math.h>
@@ -32,7 +32,7 @@ public:
     {
         // 创建线条管理器
         line_manager = new LineManager(this);  // 传入RenderFramework (this)
-        
+
         if (!line_manager->Init())
         {
             LOG_ERROR("Failed to initialize LineManager");
@@ -53,12 +53,12 @@ public:
         if (line_manager->HasLines())
         {
             CreateComponentInfo cci(GetSceneRoot());
-            
+
             MeshComponentData* data = new MeshComponentData(line_manager->GetMesh());
             ComponentDataPtr cdp = data;
-            
+
             line_component = CreateComponent<MeshComponent>(&cci, cdp);
-            
+
             if (!line_component)
             {
                 LOG_ERROR("Failed to create line component");
@@ -112,16 +112,16 @@ private:
         const Color4f decoration_color(0, 1, 1, 1); // 青色
         const int circle_segments = 16;
         const float radius = 3.0f;
-        
+
         // 在XY平面创建一个圆形
         for (int i = 0; i < circle_segments; ++i)
         {
             float angle1 = (float(i) / circle_segments) * 2.0f * PI;
             float angle2 = (float(i + 1) / circle_segments) * 2.0f * PI;
-            
+
             Vector3f p1(radius * cos(angle1), radius * sin(angle1), 0);
             Vector3f p2(radius * cos(angle2), radius * sin(angle2), 0);
-            
+
             line_manager->AddLine(p1, p2, decoration_color);
         }
     }

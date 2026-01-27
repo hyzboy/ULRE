@@ -1,6 +1,6 @@
 ﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
 // This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
-// 
+//
 // 本范例展示了：
 // 1. 创建ECS World和Entity
 // 2. 使用TransformComponent管理空间变换
@@ -10,7 +10,7 @@
 #include<hgl/WorkManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
- 
+
  // 引入ECS相关头文件
  #include<hgl/ecs/Context.h>
  #include<hgl/ecs/Entity.h>
@@ -33,7 +33,7 @@ static float position_data_float[VERTEX_COUNT][2]=
 static int16 position_data[VERTEX_COUNT][2]={};
 
 constexpr uint8 color_data[VERTEX_COUNT*4]=
-{   
+{
     255,0,0,255,
     0,255,0,255,
     0,0,255,255
@@ -79,7 +79,7 @@ private:
 
         if(!material_instance)
             return(false);
-           
+
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);     //使用swapchain的render target
 
         return pipeline;
@@ -126,7 +126,7 @@ private:
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        
+
         // 设置为静态对象 - 系统会缓存世界矩阵，提高性能
         transform->SetMovable(false);
 
@@ -156,18 +156,18 @@ public:
             return(false);
 
         // SceneRenderer 已在框架层设置了默认 ECSContext
- 
+
          return(true);
      }
- 
+
      void Tick(double delta_time) override
      {
          // 更新ECS世界 - 这会更新所有Entity和Component
         // 框架层 SceneRenderer::Tick 会调用 ECSContext::Update
- 
+
          WorkObject::Tick(delta_time);
      }
- 
+
  };//class TestApp:public WorkObject
 
 int os_main(int,os_char **)

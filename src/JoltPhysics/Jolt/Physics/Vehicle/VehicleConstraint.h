@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -23,21 +23,21 @@ class PhysicsSystem;
 class JPH_EXPORT VehicleConstraintSettings : public ConstraintSettings
 {
 public:
-	JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, VehicleConstraintSettings)
+    JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, VehicleConstraintSettings)
 
-	/// Saves the contents of the constraint settings in binary form to inStream.
-	virtual void				SaveBinaryState(StreamOut &inStream) const override;
+    /// Saves the contents of the constraint settings in binary form to inStream.
+    virtual void                SaveBinaryState(StreamOut &inStream) const override;
 
-	Vec3						mUp { 0, 1, 0 };							///< Vector indicating the up direction of the vehicle (in local space to the body)
-	Vec3						mForward { 0, 0, 1 };						///< Vector indicating forward direction of the vehicle (in local space to the body)
-	float						mMaxPitchRollAngle = JPH_PI;				///< Defines the maximum pitch/roll angle (rad), can be used to avoid the car from getting upside down. The vehicle up direction will stay within a cone centered around the up axis with half top angle mMaxPitchRollAngle, set to pi to turn off.
-	Array<Ref<WheelSettings>>	mWheels;									///< List of wheels and their properties
-	Array<VehicleAntiRollBar>	mAntiRollBars;								///< List of anti rollbars and their properties
-	Ref<VehicleControllerSettings> mController;								///< Defines how the vehicle can accelerate / decelerate
+    Vec3                        mUp { 0, 1, 0 };                            ///< Vector indicating the up direction of the vehicle (in local space to the body)
+    Vec3                        mForward { 0, 0, 1 };                       ///< Vector indicating forward direction of the vehicle (in local space to the body)
+    float                       mMaxPitchRollAngle = JPH_PI;                ///< Defines the maximum pitch/roll angle (rad), can be used to avoid the car from getting upside down. The vehicle up direction will stay within a cone centered around the up axis with half top angle mMaxPitchRollAngle, set to pi to turn off.
+    Array<Ref<WheelSettings>>   mWheels;                                    ///< List of wheels and their properties
+    Array<VehicleAntiRollBar>   mAntiRollBars;                              ///< List of anti rollbars and their properties
+    Ref<VehicleControllerSettings> mController;                             ///< Defines how the vehicle can accelerate / decelerate
 
 protected:
-	/// This function should not be called directly, it is used by sRestoreFromBinaryState.
-	virtual void				RestoreBinaryState(StreamIn &inStream) override;
+    /// This function should not be called directly, it is used by sRestoreFromBinaryState.
+    virtual void                RestoreBinaryState(StreamIn &inStream) override;
 };
 
 /// Constraint that simulates a vehicle
@@ -65,172 +65,172 @@ protected:
 class JPH_EXPORT VehicleConstraint : public Constraint, public PhysicsStepListener
 {
 public:
-	/// Constructor / destructor
-								VehicleConstraint(Body &inVehicleBody, const VehicleConstraintSettings &inSettings);
-	virtual						~VehicleConstraint() override;
+    /// Constructor / destructor
+                                VehicleConstraint(Body &inVehicleBody, const VehicleConstraintSettings &inSettings);
+    virtual                     ~VehicleConstraint() override;
 
-	/// Get the type of a constraint
-	virtual EConstraintSubType	GetSubType() const override					{ return EConstraintSubType::Vehicle; }
+    /// Get the type of a constraint
+    virtual EConstraintSubType  GetSubType() const override                 { return EConstraintSubType::Vehicle; }
 
-	/// Defines the maximum pitch/roll angle (rad), can be used to avoid the car from getting upside down. The vehicle up direction will stay within a cone centered around the up axis with half top angle mMaxPitchRollAngle, set to pi to turn off.
-	void						SetMaxPitchRollAngle(float inMaxPitchRollAngle) { mCosMaxPitchRollAngle = Cos(inMaxPitchRollAngle); }
+    /// Defines the maximum pitch/roll angle (rad), can be used to avoid the car from getting upside down. The vehicle up direction will stay within a cone centered around the up axis with half top angle mMaxPitchRollAngle, set to pi to turn off.
+    void                        SetMaxPitchRollAngle(float inMaxPitchRollAngle) { mCosMaxPitchRollAngle = Cos(inMaxPitchRollAngle); }
 
-	/// Set the interface that tests collision between wheel and ground
-	void						SetVehicleCollisionTester(const VehicleCollisionTester *inTester) { mVehicleCollisionTester = inTester; }
+    /// Set the interface that tests collision between wheel and ground
+    void                        SetVehicleCollisionTester(const VehicleCollisionTester *inTester) { mVehicleCollisionTester = inTester; }
 
-	/// Callback function to combine the friction of a tire with the friction of the body it is colliding with.
-	/// On input ioLongitudinalFriction and ioLateralFriction contain the friction of the tire, on output they should contain the combined friction with inBody2.
-	using CombineFunction = function<void(uint inWheelIndex, float &ioLongitudinalFriction, float &ioLateralFriction, const Body &inBody2, const SubShapeID &inSubShapeID2)>;
+    /// Callback function to combine the friction of a tire with the friction of the body it is colliding with.
+    /// On input ioLongitudinalFriction and ioLateralFriction contain the friction of the tire, on output they should contain the combined friction with inBody2.
+    using CombineFunction = function<void(uint inWheelIndex, float &ioLongitudinalFriction, float &ioLateralFriction, const Body &inBody2, const SubShapeID &inSubShapeID2)>;
 
-	/// Set the function that combines the friction of two bodies and returns it
-	/// Default method is the geometric mean: sqrt(friction1 * friction2).
-	void						SetCombineFriction(const CombineFunction &inCombineFriction) { mCombineFriction = inCombineFriction; }
-	const CombineFunction &		GetCombineFriction() const					{ return mCombineFriction; }
+    /// Set the function that combines the friction of two bodies and returns it
+    /// Default method is the geometric mean: sqrt(friction1 * friction2).
+    void                        SetCombineFriction(const CombineFunction &inCombineFriction) { mCombineFriction = inCombineFriction; }
+    const CombineFunction &     GetCombineFriction() const                  { return mCombineFriction; }
 
-	/// Callback function to notify of current stage in PhysicsStepListener::OnStep.
-	using StepCallback = function<void(VehicleConstraint &inVehicle, float inDeltaTime, PhysicsSystem &inPhysicsSystem)>;
+    /// Callback function to notify of current stage in PhysicsStepListener::OnStep.
+    using StepCallback = function<void(VehicleConstraint &inVehicle, float inDeltaTime, PhysicsSystem &inPhysicsSystem)>;
 
-	/// Callback function to notify that PhysicsStepListener::OnStep has started for this vehicle. Default is to do nothing.
-	/// Can be used to allow higher-level code to e.g. control steering. This is the last moment that the position/orientation of the vehicle can be changed.
-	/// Wheel collision checks have not been performed yet.
-	const StepCallback &		GetPreStepCallback() const					{ return mPreStepCallback; }
-	void						SetPreStepCallback(const StepCallback &inPreStepCallback) { mPreStepCallback = inPreStepCallback; }
+    /// Callback function to notify that PhysicsStepListener::OnStep has started for this vehicle. Default is to do nothing.
+    /// Can be used to allow higher-level code to e.g. control steering. This is the last moment that the position/orientation of the vehicle can be changed.
+    /// Wheel collision checks have not been performed yet.
+    const StepCallback &        GetPreStepCallback() const                  { return mPreStepCallback; }
+    void                        SetPreStepCallback(const StepCallback &inPreStepCallback) { mPreStepCallback = inPreStepCallback; }
 
-	/// Callback function to notify that PhysicsStepListener::OnStep has just completed wheel collision checks. Default is to do nothing.
-	/// Can be used to allow higher-level code to e.g. detect tire contact or to modify the velocity of the vehicle based on the wheel contacts.
-	/// You should not change the position of the vehicle in this callback as the wheel collision checks have already been performed.
-	const StepCallback &		GetPostCollideCallback() const				{ return mPostCollideCallback; }
-	void						SetPostCollideCallback(const StepCallback &inPostCollideCallback) { mPostCollideCallback = inPostCollideCallback; }
+    /// Callback function to notify that PhysicsStepListener::OnStep has just completed wheel collision checks. Default is to do nothing.
+    /// Can be used to allow higher-level code to e.g. detect tire contact or to modify the velocity of the vehicle based on the wheel contacts.
+    /// You should not change the position of the vehicle in this callback as the wheel collision checks have already been performed.
+    const StepCallback &        GetPostCollideCallback() const              { return mPostCollideCallback; }
+    void                        SetPostCollideCallback(const StepCallback &inPostCollideCallback) { mPostCollideCallback = inPostCollideCallback; }
 
-	/// Callback function to notify that PhysicsStepListener::OnStep has completed for this vehicle. Default is to do nothing.
-	/// Can be used to allow higher-level code to e.g. control the vehicle in the air.
-	/// You should not change the position of the vehicle in this callback as the wheel collision checks have already been performed.
-	const StepCallback &		GetPostStepCallback() const					{ return mPostStepCallback; }
-	void						SetPostStepCallback(const StepCallback &inPostStepCallback) { mPostStepCallback = inPostStepCallback; }
+    /// Callback function to notify that PhysicsStepListener::OnStep has completed for this vehicle. Default is to do nothing.
+    /// Can be used to allow higher-level code to e.g. control the vehicle in the air.
+    /// You should not change the position of the vehicle in this callback as the wheel collision checks have already been performed.
+    const StepCallback &        GetPostStepCallback() const                 { return mPostStepCallback; }
+    void                        SetPostStepCallback(const StepCallback &inPostStepCallback) { mPostStepCallback = inPostStepCallback; }
 
-	/// Get the local space forward vector of the vehicle
-	Vec3						GetLocalForward() const						{ return mForward; }
+    /// Get the local space forward vector of the vehicle
+    Vec3                        GetLocalForward() const                     { return mForward; }
 
-	/// Get the local space up vector of the vehicle
-	Vec3						GetLocalUp() const							{ return mUp; }
+    /// Get the local space up vector of the vehicle
+    Vec3                        GetLocalUp() const                          { return mUp; }
 
-	/// Vector indicating the world space up direction (used to limit vehicle pitch/roll), calculated every frame by inverting gravity
-	Vec3						GetWorldUp() const							{ return mWorldUp; }
+    /// Vector indicating the world space up direction (used to limit vehicle pitch/roll), calculated every frame by inverting gravity
+    Vec3                        GetWorldUp() const                          { return mWorldUp; }
 
-	/// Access to the vehicle body
-	Body *						GetVehicleBody() const						{ return mBody; }
+    /// Access to the vehicle body
+    Body *                      GetVehicleBody() const                      { return mBody; }
 
-	/// Access to the vehicle controller interface (determines acceleration / deceleration)
-	const VehicleController *	GetController() const						{ return mController; }
+    /// Access to the vehicle controller interface (determines acceleration / deceleration)
+    const VehicleController *   GetController() const                       { return mController; }
 
-	/// Access to the vehicle controller interface (determines acceleration / deceleration)
-	VehicleController *			GetController()								{ return mController; }
+    /// Access to the vehicle controller interface (determines acceleration / deceleration)
+    VehicleController *         GetController()                             { return mController; }
 
-	/// Get the state of the wheels
-	const Wheels &				GetWheels() const							{ return mWheels; }
+    /// Get the state of the wheels
+    const Wheels &              GetWheels() const                           { return mWheels; }
 
-	/// Get the state of a wheels (writable interface, allows you to make changes to the configuration which will take effect the next time step)
-	Wheels &					GetWheels()									{ return mWheels; }
+    /// Get the state of a wheels (writable interface, allows you to make changes to the configuration which will take effect the next time step)
+    Wheels &                    GetWheels()                                 { return mWheels; }
 
-	/// Get the state of a wheel
-	Wheel *						GetWheel(uint inIdx)						{ return mWheels[inIdx]; }
-	const Wheel *				GetWheel(uint inIdx) const					{ return mWheels[inIdx]; }
+    /// Get the state of a wheel
+    Wheel *                     GetWheel(uint inIdx)                        { return mWheels[inIdx]; }
+    const Wheel *               GetWheel(uint inIdx) const                  { return mWheels[inIdx]; }
 
-	/// Get the basis vectors for the wheel in local space to the vehicle body (note: basis does not rotate when the wheel rotates around its axis)
-	/// @param inWheel Wheel to fetch basis for
-	/// @param outForward Forward vector for the wheel
-	/// @param outUp Up vector for the wheel
-	/// @param outRight Right vector for the wheel
-	void						GetWheelLocalBasis(const Wheel *inWheel, Vec3 &outForward, Vec3 &outUp, Vec3 &outRight) const;
+    /// Get the basis vectors for the wheel in local space to the vehicle body (note: basis does not rotate when the wheel rotates around its axis)
+    /// @param inWheel Wheel to fetch basis for
+    /// @param outForward Forward vector for the wheel
+    /// @param outUp Up vector for the wheel
+    /// @param outRight Right vector for the wheel
+    void                        GetWheelLocalBasis(const Wheel *inWheel, Vec3 &outForward, Vec3 &outUp, Vec3 &outRight) const;
 
-	/// Get the transform of a wheel in local space to the vehicle body, returns a matrix that transforms a cylinder aligned with the Y axis in body space (not COM space)
-	/// @param inWheelIndex Index of the wheel to fetch
-	/// @param inWheelRight Unit vector that indicates right in model space of the wheel (so if you only have 1 wheel model, you probably want to specify the opposite direction for the left and right wheels)
-	/// @param inWheelUp Unit vector that indicates up in model space of the wheel
-	Mat44						GetWheelLocalTransform(uint inWheelIndex, Vec3Arg inWheelRight, Vec3Arg inWheelUp) const;
+    /// Get the transform of a wheel in local space to the vehicle body, returns a matrix that transforms a cylinder aligned with the Y axis in body space (not COM space)
+    /// @param inWheelIndex Index of the wheel to fetch
+    /// @param inWheelRight Unit vector that indicates right in model space of the wheel (so if you only have 1 wheel model, you probably want to specify the opposite direction for the left and right wheels)
+    /// @param inWheelUp Unit vector that indicates up in model space of the wheel
+    Mat44                       GetWheelLocalTransform(uint inWheelIndex, Vec3Arg inWheelRight, Vec3Arg inWheelUp) const;
 
-	/// Get the transform of a wheel in world space, returns a matrix that transforms a cylinder aligned with the Y axis in world space
-	/// @param inWheelIndex Index of the wheel to fetch
-	/// @param inWheelRight Unit vector that indicates right in model space of the wheel (so if you only have 1 wheel model, you probably want to specify the opposite direction for the left and right wheels)
-	/// @param inWheelUp Unit vector that indicates up in model space of the wheel
-	RMat44						GetWheelWorldTransform(uint inWheelIndex, Vec3Arg inWheelRight, Vec3Arg inWheelUp) const;
+    /// Get the transform of a wheel in world space, returns a matrix that transforms a cylinder aligned with the Y axis in world space
+    /// @param inWheelIndex Index of the wheel to fetch
+    /// @param inWheelRight Unit vector that indicates right in model space of the wheel (so if you only have 1 wheel model, you probably want to specify the opposite direction for the left and right wheels)
+    /// @param inWheelUp Unit vector that indicates up in model space of the wheel
+    RMat44                      GetWheelWorldTransform(uint inWheelIndex, Vec3Arg inWheelRight, Vec3Arg inWheelUp) const;
 
-	/// Number of simulation steps between wheel collision tests when the vehicle is active. Default is 1. 0 = never, 1 = every step, 2 = every other step, etc.
-	/// Note that if a vehicle has multiple wheels and the number of steps > 1, the wheels will be tested in a round robin fashion.
-	/// If there are multiple vehicles, the tests will be spread out based on the BodyID of the vehicle.
-	/// If you set this to test less than every step, you may see simulation artifacts. This setting can be used to reduce the cost of simulating vehicles in the distance.
-	void						SetNumStepsBetweenCollisionTestActive(uint inSteps) { mNumStepsBetweenCollisionTestActive = inSteps; }
-	uint						GetNumStepsBetweenCollisionTestActive() const { return mNumStepsBetweenCollisionTestActive; }
+    /// Number of simulation steps between wheel collision tests when the vehicle is active. Default is 1. 0 = never, 1 = every step, 2 = every other step, etc.
+    /// Note that if a vehicle has multiple wheels and the number of steps > 1, the wheels will be tested in a round robin fashion.
+    /// If there are multiple vehicles, the tests will be spread out based on the BodyID of the vehicle.
+    /// If you set this to test less than every step, you may see simulation artifacts. This setting can be used to reduce the cost of simulating vehicles in the distance.
+    void                        SetNumStepsBetweenCollisionTestActive(uint inSteps) { mNumStepsBetweenCollisionTestActive = inSteps; }
+    uint                        GetNumStepsBetweenCollisionTestActive() const { return mNumStepsBetweenCollisionTestActive; }
 
-	/// Number of simulation steps between wheel collision tests when the vehicle is inactive. Default is 1. 0 = never, 1 = every step, 2 = every other step, etc.
-	/// Note that if a vehicle has multiple wheels and the number of steps > 1, the wheels will be tested in a round robin fashion.
-	/// If there are multiple vehicles, the tests will be spread out based on the BodyID of the vehicle.
-	/// This number can be lower than the number of steps when the vehicle is active as the only purpose of this test is
-	/// to allow the vehicle to wake up in response to bodies moving into the wheels but not touching the body of the vehicle.
-	void						SetNumStepsBetweenCollisionTestInactive(uint inSteps) { mNumStepsBetweenCollisionTestInactive = inSteps; }
-	uint						GetNumStepsBetweenCollisionTestInactive() const { return mNumStepsBetweenCollisionTestInactive; }
+    /// Number of simulation steps between wheel collision tests when the vehicle is inactive. Default is 1. 0 = never, 1 = every step, 2 = every other step, etc.
+    /// Note that if a vehicle has multiple wheels and the number of steps > 1, the wheels will be tested in a round robin fashion.
+    /// If there are multiple vehicles, the tests will be spread out based on the BodyID of the vehicle.
+    /// This number can be lower than the number of steps when the vehicle is active as the only purpose of this test is
+    /// to allow the vehicle to wake up in response to bodies moving into the wheels but not touching the body of the vehicle.
+    void                        SetNumStepsBetweenCollisionTestInactive(uint inSteps) { mNumStepsBetweenCollisionTestInactive = inSteps; }
+    uint                        GetNumStepsBetweenCollisionTestInactive() const { return mNumStepsBetweenCollisionTestInactive; }
 
-	// Generic interface of a constraint
-	virtual bool				IsActive() const override					{ return mIsActive && Constraint::IsActive(); }
-	virtual void				NotifyShapeChanged(const BodyID &inBodyID, Vec3Arg inDeltaCOM) override { /* Do nothing */ }
-	virtual void				SetupVelocityConstraint(float inDeltaTime) override;
-	virtual void				ResetWarmStart() override;
-	virtual void				WarmStartVelocityConstraint(float inWarmStartImpulseRatio) override;
-	virtual bool				SolveVelocityConstraint(float inDeltaTime) override;
-	virtual bool				SolvePositionConstraint(float inDeltaTime, float inBaumgarte) override;
-	virtual void				BuildIslands(uint32 inConstraintIndex, IslandBuilder &ioBuilder, BodyManager &inBodyManager) override;
-	virtual uint				BuildIslandSplits(LargeIslandSplitter &ioSplitter) const override;
+    // Generic interface of a constraint
+    virtual bool                IsActive() const override                   { return mIsActive && Constraint::IsActive(); }
+    virtual void                NotifyShapeChanged(const BodyID &inBodyID, Vec3Arg inDeltaCOM) override { /* Do nothing */ }
+    virtual void                SetupVelocityConstraint(float inDeltaTime) override;
+    virtual void                ResetWarmStart() override;
+    virtual void                WarmStartVelocityConstraint(float inWarmStartImpulseRatio) override;
+    virtual bool                SolveVelocityConstraint(float inDeltaTime) override;
+    virtual bool                SolvePositionConstraint(float inDeltaTime, float inBaumgarte) override;
+    virtual void                BuildIslands(uint32 inConstraintIndex, IslandBuilder &ioBuilder, BodyManager &inBodyManager) override;
+    virtual uint                BuildIslandSplits(LargeIslandSplitter &ioSplitter) const override;
 #ifdef JPH_DEBUG_RENDERER
-	virtual void				DrawConstraint(DebugRenderer *inRenderer) const override;
-	virtual void				DrawConstraintLimits(DebugRenderer *inRenderer) const override;
+    virtual void                DrawConstraint(DebugRenderer *inRenderer) const override;
+    virtual void                DrawConstraintLimits(DebugRenderer *inRenderer) const override;
 #endif // JPH_DEBUG_RENDERER
-	virtual void				SaveState(StateRecorder &inStream) const override;
-	virtual void				RestoreState(StateRecorder &inStream) override;
-	virtual Ref<ConstraintSettings> GetConstraintSettings() const override;
+    virtual void                SaveState(StateRecorder &inStream) const override;
+    virtual void                RestoreState(StateRecorder &inStream) override;
+    virtual Ref<ConstraintSettings> GetConstraintSettings() const override;
 
 private:
-	// See: PhysicsStepListener
-	virtual void				OnStep(float inDeltaTime, PhysicsSystem &inPhysicsSystem) override;
+    // See: PhysicsStepListener
+    virtual void                OnStep(float inDeltaTime, PhysicsSystem &inPhysicsSystem) override;
 
-	// Calculate the position where the suspension and traction forces should be applied in world space, relative to the center of mass of both bodies
-	void						CalculateSuspensionForcePoint(const Wheel &inWheel, Vec3 &outR1PlusU, Vec3 &outR2) const;
+    // Calculate the position where the suspension and traction forces should be applied in world space, relative to the center of mass of both bodies
+    void                        CalculateSuspensionForcePoint(const Wheel &inWheel, Vec3 &outR1PlusU, Vec3 &outR2) const;
 
-	// Calculate the constraint properties for mPitchRollPart
-	void						CalculatePitchRollConstraintProperties(RMat44Arg inBodyTransform);
+    // Calculate the constraint properties for mPitchRollPart
+    void                        CalculatePitchRollConstraintProperties(RMat44Arg inBodyTransform);
 
-	// Simulation information
-	Body *						mBody;										///< Body of the vehicle
-	Vec3						mForward;									///< Local space forward vector for the vehicle
-	Vec3						mUp;										///< Local space up vector for the vehicle
-	Vec3						mWorldUp;									///< Vector indicating the world space up direction (used to limit vehicle pitch/roll)
-	Wheels						mWheels;									///< Wheel states of the vehicle
-	Array<VehicleAntiRollBar>	mAntiRollBars;								///< Anti rollbars of the vehicle
-	VehicleController *			mController;								///< Controls the acceleration / deceleration of the vehicle
-	bool						mIsActive = false;							///< If this constraint is active
-	uint						mNumStepsBetweenCollisionTestActive = 1;	///< Number of simulation steps between wheel collision tests when the vehicle is active
-	uint						mNumStepsBetweenCollisionTestInactive = 1;	///< Number of simulation steps between wheel collision tests when the vehicle is inactive
-	uint						mCurrentStep = 0;							///< Current step number, used to determine when to test a wheel
+    // Simulation information
+    Body *                      mBody;                                      ///< Body of the vehicle
+    Vec3                        mForward;                                   ///< Local space forward vector for the vehicle
+    Vec3                        mUp;                                        ///< Local space up vector for the vehicle
+    Vec3                        mWorldUp;                                   ///< Vector indicating the world space up direction (used to limit vehicle pitch/roll)
+    Wheels                      mWheels;                                    ///< Wheel states of the vehicle
+    Array<VehicleAntiRollBar>   mAntiRollBars;                              ///< Anti rollbars of the vehicle
+    VehicleController *         mController;                                ///< Controls the acceleration / deceleration of the vehicle
+    bool                        mIsActive = false;                          ///< If this constraint is active
+    uint                        mNumStepsBetweenCollisionTestActive = 1;    ///< Number of simulation steps between wheel collision tests when the vehicle is active
+    uint                        mNumStepsBetweenCollisionTestInactive = 1;  ///< Number of simulation steps between wheel collision tests when the vehicle is inactive
+    uint                        mCurrentStep = 0;                           ///< Current step number, used to determine when to test a wheel
 
-	// Prevent vehicle from toppling over
-	float						mCosMaxPitchRollAngle;						///< Cos of the max pitch/roll angle
-	float						mCosPitchRollAngle;							///< Cos of the current pitch/roll angle
-	Vec3						mPitchRollRotationAxis { 0, 1, 0 };			///< Current axis along which to apply torque to prevent the car from toppling over
-	AngleConstraintPart			mPitchRollPart;								///< Constraint part that prevents the car from toppling over
+    // Prevent vehicle from toppling over
+    float                       mCosMaxPitchRollAngle;                      ///< Cos of the max pitch/roll angle
+    float                       mCosPitchRollAngle;                         ///< Cos of the current pitch/roll angle
+    Vec3                        mPitchRollRotationAxis { 0, 1, 0 };         ///< Current axis along which to apply torque to prevent the car from toppling over
+    AngleConstraintPart         mPitchRollPart;                             ///< Constraint part that prevents the car from toppling over
 
-	// Interfaces
-	RefConst<VehicleCollisionTester> mVehicleCollisionTester;				///< Class that performs testing of collision for the wheels
-	CombineFunction				mCombineFriction = [](uint, float &ioLongitudinalFriction, float &ioLateralFriction, const Body &inBody2, const SubShapeID &)
-	{
-		float body_friction = inBody2.GetFriction();
+    // Interfaces
+    RefConst<VehicleCollisionTester> mVehicleCollisionTester;               ///< Class that performs testing of collision for the wheels
+    CombineFunction             mCombineFriction = [](uint, float &ioLongitudinalFriction, float &ioLateralFriction, const Body &inBody2, const SubShapeID &)
+    {
+        float body_friction = inBody2.GetFriction();
 
-		ioLongitudinalFriction = sqrt(ioLongitudinalFriction * body_friction);
-		ioLateralFriction = sqrt(ioLateralFriction * body_friction);
-	};
+        ioLongitudinalFriction = sqrt(ioLongitudinalFriction * body_friction);
+        ioLateralFriction = sqrt(ioLateralFriction * body_friction);
+    };
 
-	// Callbacks
-	StepCallback				mPreStepCallback;
-	StepCallback				mPostCollideCallback;
-	StepCallback				mPostStepCallback;
+    // Callbacks
+    StepCallback                mPreStepCallback;
+    StepCallback                mPostCollideCallback;
+    StepCallback                mPostStepCallback;
 };
 
 JPH_NAMESPACE_END

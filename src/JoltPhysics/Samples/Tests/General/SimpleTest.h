@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,29 +11,29 @@
 class SimpleTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SimpleTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SimpleTest)
 
-	// Destructor
-	virtual				~SimpleTest() override;
+    // Destructor
+    virtual             ~SimpleTest() override;
 
-	// See: Test
-	virtual void		Initialize() override;
+    // See: Test
+    virtual void        Initialize() override;
 
 private:
-	// A demo of the activation listener
-	class Listener : public BodyActivationListener
-	{
-	public:
-		virtual void	OnBodyActivated(const BodyID &inBodyID, uint64 inBodyUserData) override
-		{
-			Trace("Body %d activated", inBodyID.GetIndex());
-		}
+    // A demo of the activation listener
+    class Listener : public BodyActivationListener
+    {
+    public:
+        virtual void    OnBodyActivated(const BodyID &inBodyID, uint64 inBodyUserData) override
+        {
+            Trace("Body %d activated", inBodyID.GetIndex());
+        }
 
-		virtual void	OnBodyDeactivated(const BodyID &inBodyID, uint64 inBodyUserData) override
-		{
-			Trace("Body %d deactivated", inBodyID.GetIndex());
-		}
-	};
+        virtual void    OnBodyDeactivated(const BodyID &inBodyID, uint64 inBodyUserData) override
+        {
+            Trace("Body %d deactivated", inBodyID.GetIndex());
+        }
+    };
 
-	Listener			mBodyActivationListener;
+    Listener            mBodyActivationListener;
 };

@@ -1,7 +1,7 @@
-// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
+﻿// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
 // 并依赖RenderCollector中的自动合并功能，让同一材质下所有不同材质实例的对象一次渲染完成
 // This example demonstrates using different material instances under one material with ECS architecture
-// 
+//
 // 本范例展示了：
 // 1. 使用ECS架构创建多个实体
 // 2. 每个实体使用不同的MaterialInstance（不同颜色）
@@ -57,7 +57,7 @@ private:
         MaterialInstance* mi;
         Primitive* primitive;
     };
-    
+
     TriangleData triangles[DRAW_OBJECT_COUNT];
 
 private:
@@ -94,7 +94,7 @@ private:
                 // 使用不同的颜色
                 Color4f color = GetColor4f((COLOR)(i + int(COLOR::Blue)), 1.0f);
 
-                std::cout << "[TestApp::InitMaterial] Triangle[" << i << "] color: " 
+                std::cout << "[TestApp::InitMaterial] Triangle[" << i << "] color: "
                           << "R=" << color.r << ", G=" << color.g << ", B=" << color.b << ", A=" << color.a << std::endl;
 
                 triangles[i].mi->WriteMIData(color);       //设置MaterialInstance的数据
@@ -112,7 +112,7 @@ private:
         }
 
         pipeline = CreatePipeline(material, InlinePipeline::Solid2D);
-        
+
         if (!pipeline)
         {
             std::cout << "[TestApp::InitMaterial] ERROR: Failed to create pipeline!" << std::endl;
@@ -120,7 +120,7 @@ private:
         }
 
         std::cout << "[TestApp::InitMaterial] Created pipeline: " << (void*)pipeline << std::endl;
-        
+
         return true;
     }
 
@@ -166,7 +166,7 @@ private:
                 return false;
             }
 
-            std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive 
+            std::cout << "[TestApp::InitECS] Created primitive[" << i << "]: " << (void*)triangles[i].primitive
                       << ", MI: " << (void*)triangles[i].mi << std::endl;
 
             // 创建实体

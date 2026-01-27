@@ -35,7 +35,7 @@ namespace hgl
                     vat->vec_size=1;
                     return(true);
                 }
-                
+
                 vat->vec_size=str[4]-'0';
             }
 
@@ -65,7 +65,7 @@ namespace hgl
 
         const char *GetVertexAttribName(const VAType *type)
         {
-            if(!type||!type->Check())return(nullptr);            
+            if(!type||!type->Check())return(nullptr);
 
             return vertex_attrib_vec_name[size_t(type->basetype)][type->vec_size-1];
         }
@@ -95,7 +95,7 @@ namespace hgl
         {
             if(!type||!type->Check())
                 return VK_FORMAT_UNDEFINED;
-        
+
             return vk_format_by_basetype[size_t(type->basetype)][type->vec_size-1];
         }
 

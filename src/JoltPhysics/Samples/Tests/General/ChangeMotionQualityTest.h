@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,17 +11,17 @@
 class ChangeMotionQualityTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ChangeMotionQualityTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ChangeMotionQualityTest)
 
-	// See: Test
-	virtual void	Initialize() override;
-	virtual void	PrePhysicsUpdate(const PreUpdateParams &inParams) override;
-	virtual void	SaveState(StateRecorder &inStream) const override;
-	virtual void	RestoreState(StateRecorder &inStream) override;
+    // See: Test
+    virtual void    Initialize() override;
+    virtual void    PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    virtual void    SaveState(StateRecorder &inStream) const override;
+    virtual void    RestoreState(StateRecorder &inStream) override;
 
 private:
-	void			UpdateMotionQuality();
+    void            UpdateMotionQuality();
 
-	Body *			mBody = nullptr;
-	float			mTime = 0.0f;
+    Body *          mBody = nullptr;
+    float           mTime = 0.0f;
 };

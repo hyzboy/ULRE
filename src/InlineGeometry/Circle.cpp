@@ -1,4 +1,4 @@
-#include "InlineGeometryCommon.h"
+﻿#include "InlineGeometryCommon.h"
 
 namespace hgl::graph::inline_geometry
 {
@@ -57,7 +57,7 @@ namespace hgl::graph::inline_geometry
         float max_x = cci->center.x + cci->radius.x;
         float min_y = cci->center.y - cci->radius.y;
         float max_y = cci->center.y + cci->radius.y;
-        
+
         return pc->CreateWithAABB(
             math::Vector3f(min_x, min_y, -0.01f),
             math::Vector3f(max_x, max_y, 0.01f));
@@ -198,7 +198,7 @@ namespace hgl::graph::inline_geometry
         float max_x = cci->center.x + cci->radius.x;
         float min_y = cci->center.y - cci->radius.y;
         float max_y = cci->center.y + cci->radius.y;
-        
+
         return pc->CreateWithAABB(
             math::Vector3f(min_x, min_y, -0.01f),
             math::Vector3f(max_x, max_y, 0.01f));

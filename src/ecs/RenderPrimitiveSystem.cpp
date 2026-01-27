@@ -1,4 +1,4 @@
-#include<hgl/ecs/RenderPrimitiveSystem.h>
+﻿#include<hgl/ecs/RenderPrimitiveSystem.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>

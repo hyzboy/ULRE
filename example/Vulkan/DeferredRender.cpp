@@ -85,7 +85,7 @@ private:
                             *ro_sphere,
                             *ro_torus,
                             *ro_cylinder,
-                            *ro_cone,                                
+                            *ro_cone,
                             *ro_gbc_plane,
                             *ro_axis;
 
@@ -112,7 +112,7 @@ public:
 private:
 
     void CreateGBufferSampler()
-    {    
+    {
         VkSamplerCreateInfo sci=
         {
             VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -136,7 +136,7 @@ private:
         };
 
         gbuffer.sampler=db->CreateSampler(&sci);
-        
+
     #ifdef _DEBUG
         {
             auto da=device->GetDevAttr();
@@ -304,10 +304,10 @@ private:
         if(!texture.color)return(false);
         texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
         if(!texture.normal)return(false);
-        
+
         texture.color_sampler=CreateSampler(texture.color);
         texture.normal_sampler=CreateSampler(texture.normal);
-      
+
         BindCameraUBO(sp_gbuffer.material_instance);
 
         {
@@ -320,12 +320,12 @@ private:
             mp->BindImageSampler("TexNormal"   ,texture.normal,   texture.normal_sampler);
             mp->Update();
         }
-        
+
         BindCameraUBO(sp_composition.material_instance);
 
-        {            
+        {
             MaterialParameters *mp=sp_composition.material_instance->GetMP(DescriptorSetType::Value);
-        
+
             if(!mp)
                 return(false);
 
@@ -349,11 +349,11 @@ private:
         }
 
         {
-            struct CubeCreateInfo cci;            
+            struct CubeCreateInfo cci;
             ro_cube=CreateCube(db,vil,&cci);
         }
 
-        {        
+        {
             ro_sphere=CreateSphere(db,vil,64);
         }
 
@@ -473,7 +473,7 @@ public:
     void UpdateLights()
     {
         const double timer=GetDoubleTime();
-        
+
         // White
         lights.position = Vector4f(0.0f, 0.0f, 25.0f, 0.0f);
         lights.color = Vector4f(15.0f);
@@ -484,13 +484,13 @@ public:
 
         ubo_lights->Write(&lights);
     }
-    
+
     virtual void SubmitDraw(int index) override
     {
         gbuffer.Submit(sc_render_target->GetPresentCompleteSemaphore());
 
         VkCommandBuffer cb=*cmd_buf[index];
-        
+
         sc_render_target->Submit(cb,gbuffer.rt->GetRenderCompleteSemaphore());
         sc_render_target->PresentBackbuffer();
         sc_render_target->WaitQueue();
@@ -499,19 +499,19 @@ public:
         gbuffer.rt->WaitQueue();
         gbuffer.rt->WaitFence();
     }
-    
+
     void BuildCommandBuffer(uint32_t index) override
     {
         VulkanApplicationFramework::BuildCommandBuffer(index,ro_gbc_plane_ri);
     }
-    
+
     void Draw()override
     {
         UpdateLights();
-        
+
         render_root.RefreshMatrix();
         render_list->Expend(GetCameraInfo(),&render_root);
-        
+
         CameraAppFramework::Draw();
     }
 };//class TestApp:public CameraAppFramework

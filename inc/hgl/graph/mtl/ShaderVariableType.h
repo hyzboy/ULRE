@@ -21,7 +21,7 @@ enum class ShaderVariableBaseType:uint8
 };//enum class ShaderVariableBaseType
 
 using SVBaseType=ShaderVariableBaseType;
-        
+
 #pragma pack(push,1)
 
 struct ShaderVariableType
@@ -81,7 +81,7 @@ public:
 
     // ✅ 使用默认构造函数，使类型成为 trivial
     constexpr ShaderVariableType() : svt_code(0) {}
-    
+
     // ✅ 使用默认拷贝构造和赋值
     constexpr ShaderVariableType(const ShaderVariableType &) = default;
     constexpr ShaderVariableType& operator=(const ShaderVariableType &) = default;
@@ -118,7 +118,7 @@ namespace SVTypeFactory
         svt.array_size = count;
         return svt;
     }
-    
+
     constexpr ShaderVariableType Vector(VABaseType type, uint8 size, uint32 count = 1)
     {
         ShaderVariableType svt{};
@@ -128,7 +128,7 @@ namespace SVTypeFactory
         svt.array_size = count;
         return svt;
     }
-    
+
     constexpr ShaderVariableType Matrix(VABaseType type, uint8 rows, uint8 cols, uint32 count = 1)
     {
         ShaderVariableType svt{};
@@ -139,7 +139,7 @@ namespace SVTypeFactory
         svt.array_size = count;
         return svt;
     }
-    
+
     constexpr ShaderVariableType Sampler(SamplerType type, uint32 count = 1)
     {
         ShaderVariableType svt{};
@@ -148,7 +148,7 @@ namespace SVTypeFactory
         svt.array_size = count;
         return svt;
     }
-    
+
     constexpr ShaderVariableType Image(ShaderImageType type, uint32 count = 1)
     {
         ShaderVariableType svt{};
@@ -202,7 +202,7 @@ inline constexpr SVType SVT_Sampler3D          = SVTypeFactory::Sampler(SamplerT
 
 inline constexpr SVType SVT_SamplerCube        = SVTypeFactory::Sampler(SamplerType::SamplerCube,        1);
 inline constexpr SVType SVT_Sampler2DRect      = SVTypeFactory::Sampler(SamplerType::Sampler2DRect,      1);
-        
+
 inline constexpr SVType SVT_Sampler1DArray     = SVTypeFactory::Sampler(SamplerType::Sampler1DArray,     1);
 inline constexpr SVType SVT_Sampler2DArray     = SVTypeFactory::Sampler(SamplerType::Sampler2DArray,     1);
 
@@ -298,7 +298,7 @@ public:
 
         return std::strong_ordering::equal;
     }
-                
+
     bool Init(const uint c=0)
     {
         if(items)
@@ -319,7 +319,7 @@ public:
     }
 
     bool Contains(const char *name)const
-    {                
+    {
         if(count<=0)
             return(false);
 
@@ -347,7 +347,7 @@ public:
             ++count;
             items=array_realloc(items,count);
         }
-                
+
         mem_copy(items[count-1],sv);
         return(true);
     }
@@ -374,7 +374,7 @@ public:
         mem_copy(items,src->items,src->count);
         return(true);
     }
-            
+
     void ToString(AnsiString &output_string)
     {
         if(IsEmpty())

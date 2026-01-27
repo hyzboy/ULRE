@@ -26,7 +26,7 @@ namespace hgl::graph::inline_geometry
         // x(t) = 16 * sin^3(t)
         // y(t) = 13*cos(t) - 5*cos(2t) - 2*cos(3t) - cos(4t)
         // where t goes from 0 to 2*pi
-        
+
         // Vertices:
         // - Front face: segments + 1 vertices around heart + center
         // - Back face: segments + 1 vertices around heart + center
@@ -50,7 +50,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -61,17 +61,17 @@ namespace hgl::graph::inline_geometry
             float sin_t = sin(t);
             float cos_t = cos(t);
             float sin3_t = sin_t * sin_t * sin_t;
-            
+
             float x = 16.0f * sin3_t;
-            float y = 13.0f * cos_t 
-                    - 5.0f * cos(2.0f * t) 
-                    - 2.0f * cos(3.0f * t) 
+            float y = 13.0f * cos_t
+                    - 5.0f * cos(2.0f * t)
+                    - 2.0f * cos(3.0f * t)
                     - cos(4.0f * t);
-            
+
             // Scale and normalize
             x = x * size / 16.0f;
             y = y * size / 16.0f;
-            
+
             return {x, y};
         };
 
@@ -141,7 +141,7 @@ namespace hgl::graph::inline_geometry
                 float t_next = t + dt;
                 auto [x_prev, y_prev] = heart_point(t_prev);
                 auto [x_next, y_next] = heart_point(t_next);
-                
+
                 // Tangent along the curve (derivative)
                 float tx = (x_next - x_prev) / (2.0f * dt);
                 float ty = (y_next - y_prev) / (2.0f * dt);
@@ -245,7 +245,7 @@ namespace hgl::graph::inline_geometry
         float max_x = size * (16.0f / 16.0f);      // ±1.0 * size
         float max_y = size * (17.0f / 16.0f);      // ~1.06 * size
         float min_y = size * (-4.0f / 16.0f);      // ~-0.25 * size
-        
+
         return pc->CreateWithAABB(
             Vector3f(-max_x, min_y, -half_depth),
             Vector3f(max_x, max_y, half_depth));

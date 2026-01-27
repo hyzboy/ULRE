@@ -1,4 +1,4 @@
-#include<hgl/ecs/BoundingBoxComponent.h>
+﻿#include<hgl/ecs/BoundingBoxComponent.h>
 
 namespace hgl
 {

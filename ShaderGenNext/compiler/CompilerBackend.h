@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "../core/Result.h"
 #include "../core/TypeSystem.h"
@@ -69,13 +69,13 @@ struct CompileOptions {
     bool debug_info = false;
     bool warnings_as_errors = false;
     FeatureSet features;
-    
+
     // 预处理器定义
     std::unordered_map<std::string, std::string> defines;
-    
+
     // 包含路径
     std::vector<std::string> include_paths;
-    
+
     // 入口点名称（HLSL 需要）
     std::string entry_point = "main";
 };
@@ -87,7 +87,7 @@ struct CompiledShader {
     std::vector<uint32_t> bytecode;  // SPIR-V 或其他字节码
     ShaderStage stage;
     GraphicsAPI api;
-    
+
     // 反射信息
     struct ReflectionData {
         struct Resource {
@@ -96,14 +96,14 @@ struct CompiledShader {
             uint32_t binding;
             uint32_t set;
         };
-        
+
         std::vector<Resource> inputs;
         std::vector<Resource> outputs;
         std::vector<Resource> uniforms;
         std::vector<Resource> samplers;
         std::vector<Resource> storage_buffers;
     } reflection;
-    
+
     // 统计信息
     struct Statistics {
         size_t instruction_count = 0;
@@ -115,28 +115,28 @@ struct CompiledShader {
 
 /**
  * 编译器后端抽象接口
- * 
+ *
  * 不同的图形 API 实现不同的后端
  */
 class CompilerBackend {
 public:
     virtual ~CompilerBackend() = default;
-    
+
     // 获取支持的 API
     virtual GraphicsAPI getAPI() const = 0;
-    
+
     // 编译着色器
     virtual Result<CompiledShader, Error> compile(
         const std::string& source,
         const CompileOptions& options
     ) = 0;
-    
+
     // 验证着色器代码
     virtual Result<void, Error> validate(const std::string& source) = 0;
-    
+
     // 反汇编字节码（用于调试）
     virtual std::string disassemble(const CompiledShader& shader) = 0;
-    
+
     // 获取后端信息
     virtual std::string getVersion() const = 0;
     virtual std::string getName() const = 0;
@@ -144,25 +144,25 @@ public:
 
 /**
  * SPIR-V 编译器后端
- * 
+ *
  * 使用 glslang 或 shaderc 编译 GLSL 到 SPIR-V
  */
 class SPIRVBackend : public CompilerBackend {
 public:
     GraphicsAPI getAPI() const override { return GraphicsAPI::Vulkan; }
-    
+
     Result<CompiledShader, Error> compile(
         const std::string& source,
         const CompileOptions& options
     ) override;
-    
+
     Result<void, Error> validate(const std::string& source) override;
-    
+
     std::string disassemble(const CompiledShader& shader) override;
-    
+
     std::string getVersion() const override;
     std::string getName() const override { return "SPIR-V Compiler"; }
-    
+
 private:
     // SPIR-V 特定的辅助函数
     Result<void, Error> performReflection(CompiledShader& shader);
@@ -170,44 +170,44 @@ private:
 
 /**
  * GLSL 编译器后端
- * 
+ *
  * 用于 OpenGL
  */
 class GLSLBackend : public CompilerBackend {
 public:
     GraphicsAPI getAPI() const override { return GraphicsAPI::OpenGL_4_6; }
-    
+
     Result<CompiledShader, Error> compile(
         const std::string& source,
         const CompileOptions& options
     ) override;
-    
+
     Result<void, Error> validate(const std::string& source) override;
-    
+
     std::string disassemble(const CompiledShader& shader) override;
-    
+
     std::string getVersion() const override;
     std::string getName() const override { return "GLSL Compiler"; }
 };
 
 /**
  * HLSL 编译器后端
- * 
+ *
  * 使用 DXC 编译 HLSL
  */
 class HLSLBackend : public CompilerBackend {
 public:
     GraphicsAPI getAPI() const override { return GraphicsAPI::DirectX12; }
-    
+
     Result<CompiledShader, Error> compile(
         const std::string& source,
         const CompileOptions& options
     ) override;
-    
+
     Result<void, Error> validate(const std::string& source) override;
-    
+
     std::string disassemble(const CompiledShader& shader) override;
-    
+
     std::string getVersion() const override;
     std::string getName() const override { return "HLSL Compiler (DXC)"; }
 };
@@ -218,16 +218,16 @@ public:
 class MetalBackend : public CompilerBackend {
 public:
     GraphicsAPI getAPI() const override { return GraphicsAPI::Metal; }
-    
+
     Result<CompiledShader, Error> compile(
         const std::string& source,
         const CompileOptions& options
     ) override;
-    
+
     Result<void, Error> validate(const std::string& source) override;
-    
+
     std::string disassemble(const CompiledShader& shader) override;
-    
+
     std::string getVersion() const override;
     std::string getName() const override { return "Metal Compiler"; }
 };
@@ -239,13 +239,13 @@ class CompilerFactory {
 public:
     // 根据 API 选择后端
     static std::unique_ptr<CompilerBackend> create(GraphicsAPI api);
-    
+
     // 获取默认后端（根据平台自动选择）
     static std::unique_ptr<CompilerBackend> createDefault();
-    
+
     // 检查 API 是否支持
     static bool isSupported(GraphicsAPI api);
-    
+
     // 获取所有支持的 API
     static std::vector<GraphicsAPI> getSupportedAPIs();
 };

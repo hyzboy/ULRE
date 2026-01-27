@@ -78,16 +78,16 @@ namespace hgl::graph
             {
                 if(auto cmp = items[i].location <=> saa.items[i].location; cmp != 0)
                     return cmp;
-                
+
                 if(auto cmp = items[i].basetype <=> saa.items[i].basetype; cmp != 0)
                     return cmp;
-                
+
                 if(auto cmp = items[i].vec_size <=> saa.items[i].vec_size; cmp != 0)
                     return cmp;
-                
+
                 if(auto cmp = items[i].input_rate <=> saa.items[i].input_rate; cmp != 0)
                     return cmp;
-                        
+
                 if(auto cmp = hgl::strcmp_ordering(items[i].name, saa.items[i].name); cmp != 0)
                     return cmp;
             }
@@ -117,7 +117,7 @@ namespace hgl::graph
         }
 
         bool Contains(const char *name)const
-        {                
+        {
             if(count<=0)
                 return(false);
 
@@ -145,7 +145,7 @@ namespace hgl::graph
                 ++count;
                 items=array_realloc(items,count);
             }
-                
+
             mem_copy(items[count-1],via);
             return(true);
         }

@@ -56,7 +56,7 @@ namespace hgl::graph::inline_geometry
         const float angle_per_tooth = (2.0f * std::numbers::pi_v<float>) / float(tooth_count);
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -73,7 +73,7 @@ namespace hgl::graph::inline_geometry
             // (1-tooth_width_ratio/2) - 1.0: transition down to root radius
 
             float half_width = tooth_width_ratio * 0.5f;
-            
+
             if(tooth_phase < half_width)
             {
                 // Rising edge
@@ -177,7 +177,7 @@ namespace hgl::graph::inline_geometry
             // Top cap
             IndexT center_top = 0;
             IndexT ring_start_top = 1;
-            
+
             for(uint i = 0; i < total_segments; i++)
             {
                 *ip++ = center_top;

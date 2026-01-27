@@ -72,7 +72,7 @@ bool PipelineMaterialRenderer::BindVAB(const DrawBatch *batch, TransformAssignme
     return true;
 }
 
-void PipelineMaterialRenderer::ProcIndirectRender(IndirectDrawBuffer *icb_draw, 
+void PipelineMaterialRenderer::ProcIndirectRender(IndirectDrawBuffer *icb_draw,
                                                    IndirectDrawIndexedBuffer *icb_draw_indexed)
 {
     // 提交累积的间接绘制命令
@@ -99,7 +99,7 @@ bool PipelineMaterialRenderer::Draw(DrawBatch *batch,
                                      IndirectDrawIndexedBuffer *icb_draw_indexed)
 {
     // 检查是否需要切换几何数据缓冲
-    const bool need_buffer_switch = !last_data_buffer || 
+    const bool need_buffer_switch = !last_data_buffer ||
                                    *(batch->geom_data_buffer) != *last_data_buffer;
 
     if (need_buffer_switch)
@@ -151,7 +151,7 @@ bool PipelineMaterialRenderer::Draw(DrawBatch *batch,
     else
     {
         // 直接绘制：立即提交
-        cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range, 
+        cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range,
                      batch->instance_count, batch->first_instance);
     }
 

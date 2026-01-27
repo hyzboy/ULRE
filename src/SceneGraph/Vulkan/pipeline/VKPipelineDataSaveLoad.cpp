@@ -112,12 +112,12 @@ bool PipelineData::LoadFromMemory(uchar *origin_data,uint size)
     size-=PipelineFileHeaderLength;
 
     uint16_t ver;
-    
+
     CHECK_SIZE_AND_EQUAL(ver,uint16_t)
 
     if(ver!=1)
         return(false);
-    
+
     CHECK_SIZE_AND_EQUAL(pipeline_info.stageCount,uint32_t);
     CHECK_SIZE_AND_MAP(tessellation,VkPipelineTessellationStateCreateInfo);
     CHECK_SIZE_AND_MAP(rasterization,VkPipelineRasterizationStateCreateInfo);
@@ -151,7 +151,7 @@ bool PipelineData::LoadFromMemory(uchar *origin_data,uint size)
     }
 
     CHECK_SIZE_AND_EQUAL(alpha_test,float);
-    
+
     pipeline_info.pInputAssemblyState=&input_assembly;
     pipeline_info.pTessellationState =tessellation;
     pipeline_info.pRasterizationState=rasterization;

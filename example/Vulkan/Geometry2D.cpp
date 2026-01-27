@@ -122,7 +122,7 @@ private:
         cam.height=extent.height;
 
         cam.Refresh();
-        
+
         ubo_camera_info    =CreateUBO("camera",         sizeof(CameraInfo),&cam.info);
         ubo_color_material =CreateUBO("color_material", sizeof(Vector4f),&color);
 

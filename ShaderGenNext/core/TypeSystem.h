@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string>
 #include <cstdint>
@@ -8,7 +8,7 @@ namespace hgl::shader_next {
 
 /**
  * 着色器类型系统
- * 
+ *
  * 提供编译期和运行时的类型检查
  */
 
@@ -37,7 +37,7 @@ enum class VectorSize : uint8_t {
 struct MatrixType {
     uint8_t rows;
     uint8_t cols;
-    
+
     constexpr MatrixType(uint8_t r, uint8_t c) : rows(r), cols(c) {}
     constexpr bool isSquare() const { return rows == cols; }
 };
@@ -52,45 +52,45 @@ class ShaderType {
     bool is_array_;
     uint32_t array_size_;
     std::string struct_name_;
-    
+
 public:
     constexpr ShaderType(BaseType base, VectorSize vec = VectorSize::Scalar)
-        : base_(base), vec_size_(vec), mat_type_(0, 0), 
+        : base_(base), vec_size_(vec), mat_type_(0, 0),
           is_array_(false), array_size_(0) {}
-    
+
     constexpr ShaderType(BaseType base, MatrixType mat)
         : base_(base), vec_size_(VectorSize::Scalar), mat_type_(mat),
           is_array_(false), array_size_(0) {}
-    
+
     // 类型查询
     BaseType baseType() const { return base_; }
     VectorSize vectorSize() const { return vec_size_; }
     MatrixType matrixType() const { return mat_type_; }
     bool isArray() const { return is_array_; }
     uint32_t arraySize() const { return array_size_; }
-    
+
     bool isScalar() const { return vec_size_ == VectorSize::Scalar; }
     bool isVector() const { return vec_size_ != VectorSize::Scalar; }
     bool isMatrix() const { return mat_type_.rows > 0; }
     bool isStruct() const { return base_ == BaseType::Struct; }
     bool isSampler() const { return base_ == BaseType::Sampler; }
-    
+
     // 类型大小（字节）
     size_t sizeInBytes() const;
-    
+
     // 对齐要求
     size_t alignment() const;
-    
+
     // 类型名称
     std::string name() const;
-    
+
     // 设置为数组
     ShaderType& asArray(uint32_t size) {
         is_array_ = true;
         array_size_ = size;
         return *this;
     }
-    
+
     // 比较
     bool operator==(const ShaderType& other) const;
     bool operator!=(const ShaderType& other) const { return !(*this == other); }
@@ -102,22 +102,22 @@ namespace types {
     constexpr ShaderType Float2 = ShaderType(BaseType::Float, VectorSize::Vec2);
     constexpr ShaderType Float3 = ShaderType(BaseType::Float, VectorSize::Vec3);
     constexpr ShaderType Float4 = ShaderType(BaseType::Float, VectorSize::Vec4);
-    
+
     constexpr ShaderType Int = ShaderType(BaseType::Int);
     constexpr ShaderType Int2 = ShaderType(BaseType::Int, VectorSize::Vec2);
     constexpr ShaderType Int3 = ShaderType(BaseType::Int, VectorSize::Vec3);
     constexpr ShaderType Int4 = ShaderType(BaseType::Int, VectorSize::Vec4);
-    
+
     constexpr ShaderType UInt = ShaderType(BaseType::UInt);
     constexpr ShaderType UInt2 = ShaderType(BaseType::UInt, VectorSize::Vec2);
     constexpr ShaderType UInt3 = ShaderType(BaseType::UInt, VectorSize::Vec3);
     constexpr ShaderType UInt4 = ShaderType(BaseType::UInt, VectorSize::Vec4);
-    
+
     constexpr ShaderType Bool = ShaderType(BaseType::Bool);
     constexpr ShaderType Bool2 = ShaderType(BaseType::Bool, VectorSize::Vec2);
     constexpr ShaderType Bool3 = ShaderType(BaseType::Bool, VectorSize::Vec3);
     constexpr ShaderType Bool4 = ShaderType(BaseType::Bool, VectorSize::Vec4);
-    
+
     constexpr ShaderType Mat2 = ShaderType(BaseType::Float, MatrixType(2, 2));
     constexpr ShaderType Mat3 = ShaderType(BaseType::Float, MatrixType(3, 3));
     constexpr ShaderType Mat4 = ShaderType(BaseType::Float, MatrixType(4, 4));
@@ -127,7 +127,7 @@ namespace types {
     constexpr ShaderType Mat3x4 = ShaderType(BaseType::Float, MatrixType(3, 4));
     constexpr ShaderType Mat4x2 = ShaderType(BaseType::Float, MatrixType(4, 2));
     constexpr ShaderType Mat4x3 = ShaderType(BaseType::Float, MatrixType(4, 3));
-    
+
     constexpr ShaderType Void = ShaderType(BaseType::Void);
 }
 
@@ -166,19 +166,19 @@ class TypeConverter {
 public:
     // 解析类型字符串 (e.g., "vec3", "mat4", "sampler2D")
     static ShaderType parse(const std::string& type_str);
-    
+
     // 类型兼容性检查
     static bool canConvert(const ShaderType& from, const ShaderType& to);
-    
+
     // 自动类型提升（如 float + int -> float）
     static ShaderType promote(const ShaderType& a, const ShaderType& b);
-    
+
     // 生成 GLSL 类型名
     static std::string toGLSL(const ShaderType& type);
-    
+
     // 生成 HLSL 类型名
     static std::string toHLSL(const ShaderType& type);
-    
+
     // 生成 Metal 类型名
     static std::string toMetal(const ShaderType& type);
 };

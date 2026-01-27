@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderTargetData.h>
@@ -39,7 +39,7 @@ public:
     RenderPass *        GetRenderPass       ()override{return data->fbo->GetRenderPass();}
 
     uint32_t            GetColorCount       ()override{return data->color_count;}
-    
+
     bool                hasDepth            ()override{return data->depth_texture;}
 
     Texture2D *         GetColorTexture     (const int index=0) override{return data->GetColorTexture(index);}

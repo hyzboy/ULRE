@@ -1,4 +1,4 @@
-#ifndef HGL_GUI_THEME_ENGINE_INCLUDE
+﻿#ifndef HGL_GUI_THEME_ENGINE_INCLUDE
 #define HGL_GUI_THEME_ENGINE_INCLUDE
 
 #include<hgl/type/RectScope.h>
@@ -45,7 +45,7 @@ namespace hgl
             virtual bool Render(Form *);
         };//class ThemeEngine
 
-//        ThemeEngine *CreateThemeEngine();                   
+//        ThemeEngine *CreateThemeEngine();
         ThemeEngine *GetDefaultThemeEngine();                                   ///<获取缺省主题引擎
     }//namespace gui
 }//namespace hgl

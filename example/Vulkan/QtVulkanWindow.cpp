@@ -1,4 +1,4 @@
-#include"QtVulkanWindow.h"
+﻿#include"QtVulkanWindow.h"
 
 void VulkanRenderer::initResources()
 {
@@ -21,5 +21,5 @@ void VulkanRenderer::releaseResources()
 void VulkanRenderer::startNextFrame()
 {
     m_window->frameReady();
-    m_window->requestUpdate(); // render continuously, throttled by the presentation rate        
+    m_window->requestUpdate(); // render continuously, throttled by the presentation rate
 }

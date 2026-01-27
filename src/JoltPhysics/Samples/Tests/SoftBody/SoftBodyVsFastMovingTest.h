@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2024 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,8 +10,8 @@
 class SoftBodyVsFastMovingTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyVsFastMovingTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyVsFastMovingTest)
 
-	// See: Test
-	virtual void		Initialize() override;
+    // See: Test
+    virtual void        Initialize() override;
 };

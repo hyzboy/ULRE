@@ -1,4 +1,4 @@
-#include<hgl/graph/Mesh.h>
+﻿#include<hgl/graph/Mesh.h>
 #include<hgl/graph/Material.h>
 #include<hgl/graph/VertexBuffer.h>
 #include<hgl/io/FileInputStream.h>
@@ -111,7 +111,7 @@ namespace hgl
 
                 md.va->SetIndex(face);
             }
-         
+
             else
             {
                 VB4u16 *face=new VB4u16(mfh.faces_number*3);

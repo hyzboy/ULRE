@@ -83,7 +83,7 @@ namespace hgl
 
                     mesh->vertex_count=*(uint32 *)sp;
                     sp+=sizeof(uint32);
-                    
+
                     LOG_INFO(OS_TEXT("\tVertex: ")+OSString::valueOf(mesh->vertex_count));
 
                     mesh->position=(float *)sp;
@@ -156,7 +156,7 @@ namespace hgl
                         LOG_INFO(OS_TEXT("\tFaces: ")+OSString::valueOf(mesh->indices_count/3));
 
                         mesh->indices=(void *)sp;
-                        
+
                         if(mesh->vertex_count>0xFFFF)
                             sp+=sizeof(uint32)*mesh->indices_count;
                         else

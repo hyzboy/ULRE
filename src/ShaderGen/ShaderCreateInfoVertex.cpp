@@ -80,7 +80,7 @@ int ShaderCreateInfoVertex::AddOutput(SVList &sv_list)
 int ShaderCreateInfoVertex::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
 {
     ShaderVariable sv;
-    
+
     hgl::strcpy(sv.name,sizeof(sv.name),name.c_str());
 
     sv.type=type;
@@ -102,7 +102,7 @@ void ShaderCreateInfoVertex::AddAssignTransform()
                 Assign::TransformID::VIS_NAME,
                 VK_VERTEX_INPUT_RATE_INSTANCE,
                 VertexInputGroup::TransformID);
-    
+
     AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
 }
 

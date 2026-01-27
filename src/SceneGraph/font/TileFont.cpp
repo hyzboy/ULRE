@@ -15,7 +15,7 @@ namespace hgl::graph
         delete tile_data;
         delete source;
     }
-        
+
     /**
     * 注册要使用的字符
     * @param rs 每个字符在纹理中的UV坐标

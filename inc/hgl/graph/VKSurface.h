@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/type/ValueArray.h>

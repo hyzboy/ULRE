@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/RenderableComponent.h>
 #include<glm/glm.hpp>
@@ -10,7 +10,7 @@ namespace hgl
     {
         class AABB;
     }
-    
+
     namespace graph
     {
         class Primitive;
@@ -24,10 +24,10 @@ namespace hgl::ecs
 {
     /**
      * PrimitiveComponent - Renderable component for static mesh rendering
-     * 
+     *
      * Manages a single Primitive (geometry + material) for rendering.
      * Derived from RenderableComponent to provide rendering capabilities.
-     * 
+     *
      * Features:
      * - Holds reference to hgl::graph::Primitive
      * - Supports MaterialInstance override

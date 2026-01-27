@@ -25,9 +25,9 @@ namespace hgl::graph
             uint segments_y = 1;    ///< Y方向细分数量
             bool normal = false;    ///< 是否生成法线
             bool tex_coord = true;  ///< 是否生成纹理坐标
-            
+
             RectangleCreateInfo() = default;
-            
+
             RectangleCreateInfo(const RectScope2f& s, uint seg_x = 1, uint seg_y = 1)
                 : scope(s), segments_x(seg_x), segments_y(seg_y) {}
         };//struct RectangleCreateInfo
@@ -69,7 +69,7 @@ namespace hgl::graph
             * 创建一个2D圆形(扇形/线圈)
             */
         Geometry *CreateCircle2D(GeometryCreater *pc,const CircleCreateInfo *cci);
-            
+
         /**
             * 创建一个3D圆形(扇形/圆形，XY，Z永远为0)
             */
@@ -111,7 +111,7 @@ namespace hgl::graph
             uint segments_x = 1;    ///< X方向细分数量
             uint segments_y = 1;    ///< Y方向细分数量
             uint segments_z = 1;    ///< Z方向细分数量
-            
+
             bool normal = true;
             bool tangent = false;
             bool tex_coord = true;
@@ -131,7 +131,7 @@ namespace hgl::graph
         public:
 
             CubeCreateInfo() = default;
-            
+
             CubeCreateInfo(uint seg_x, uint seg_y, uint seg_z)
                 : segments_x(seg_x), segments_y(seg_y), segments_z(seg_z) {}
         };//struct CubeCreateInfo
@@ -295,7 +295,7 @@ namespace hgl::graph
          * 创建一个胶囊体(三角形)
          */
         Geometry *CreateCapsule(GeometryCreater *pc,const CapsuleCreateInfo *cci);
-         
+
         // 新增：Tapered 胶囊体创建信息（上/下半球半径可不相同，中间为圆台）
         struct TaperedCapsuleCreateInfo
         {
@@ -319,7 +319,7 @@ namespace hgl::graph
          * 创建一个可锥缩的胶囊体(三角形)
          */
         Geometry *CreateTaperedCapsule(GeometryCreater *pc,const TaperedCapsuleCreateInfo *tcci);
-        
+
         // 新增：截锥体创建信息
         struct FrustumCreateInfo
         {
@@ -823,6 +823,6 @@ namespace hgl::graph
          * 特点：通过指数参数在球体和立方体之间连续过渡
          */
         Geometry *CreateSuperellipsoid(GeometryCreater *pc, const SuperellipsoidCreateInfo *seci);
-         
+
     }//namespace inline_geometry
 }//namespace hgl::graph

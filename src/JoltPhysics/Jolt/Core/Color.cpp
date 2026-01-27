@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -30,9 +30,9 @@ static constexpr Color sColors[] = { Color(255, 0, 0), Color(204, 143, 102), Col
 
 Color Color::sGetDistinctColor(int inIndex)
 {
-	JPH_ASSERT(inIndex >= 0);
+    JPH_ASSERT(inIndex >= 0);
 
-	return sColors[inIndex % (sizeof(sColors) / sizeof(uint32))];
+    return sColors[inIndex % (sizeof(sColors) / sizeof(uint32))];
 }
 
 JPH_NAMESPACE_END

@@ -80,7 +80,7 @@ public:
     const VkShaderStageFlagBits GetVkShaderStage()const{return (VkShaderStageFlagBits)shader_stage;}
 
 protected:
-    
+
     void Init(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
 
 public:

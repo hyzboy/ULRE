@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -13,62 +13,62 @@
 class CharacterSpaceShipTest : public Test, public CharacterContactListener
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, CharacterSpaceShipTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, CharacterSpaceShipTest)
 
-	// Initialize the test
-	virtual void			Initialize() override;
+    // Initialize the test
+    virtual void            Initialize() override;
 
-	// Process input
-	virtual void			ProcessInput(const ProcessInputParams &inParams) override;
+    // Process input
+    virtual void            ProcessInput(const ProcessInputParams &inParams) override;
 
-	// Update the test, called before the physics update
-	virtual void			PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    // Update the test, called before the physics update
+    virtual void            PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
-	// Override to specify the initial camera state (local to GetCameraPivot)
-	virtual void			GetInitialCamera(CameraState &ioState) const override;
+    // Override to specify the initial camera state (local to GetCameraPivot)
+    virtual void            GetInitialCamera(CameraState &ioState) const override;
 
-	// Override to specify a camera pivot point and orientation (world space)
-	virtual RMat44			GetCameraPivot(float inCameraHeading, float inCameraPitch) const override;
+    // Override to specify a camera pivot point and orientation (world space)
+    virtual RMat44          GetCameraPivot(float inCameraHeading, float inCameraPitch) const override;
 
-	// Saving / restoring state for replay
-	virtual void			SaveState(StateRecorder &inStream) const override;
-	virtual void			RestoreState(StateRecorder &inStream) override;
+    // Saving / restoring state for replay
+    virtual void            SaveState(StateRecorder &inStream) const override;
+    virtual void            RestoreState(StateRecorder &inStream) override;
 
-	// Saving / restoring controller input state for replay
-	virtual void			SaveInputState(StateRecorder &inStream) const override;
-	virtual void			RestoreInputState(StateRecorder &inStream) override;
+    // Saving / restoring controller input state for replay
+    virtual void            SaveInputState(StateRecorder &inStream) const override;
+    virtual void            RestoreInputState(StateRecorder &inStream) override;
 
 private:
-	// Calculate new ship velocity
-	void					UpdateShipVelocity();
+    // Calculate new ship velocity
+    void                    UpdateShipVelocity();
 
-	/// Callback to adjust the velocity of a body as seen by the character. Can be adjusted to e.g. implement a conveyor belt or an inertial dampener system of a sci-fi space ship.
-	virtual void			OnAdjustBodyVelocity(const CharacterVirtual *inCharacter, const Body &inBody2, Vec3 &ioLinearVelocity, Vec3 &ioAngularVelocity) override;
+    /// Callback to adjust the velocity of a body as seen by the character. Can be adjusted to e.g. implement a conveyor belt or an inertial dampener system of a sci-fi space ship.
+    virtual void            OnAdjustBodyVelocity(const CharacterVirtual *inCharacter, const Body &inBody2, Vec3 &ioLinearVelocity, Vec3 &ioAngularVelocity) override;
 
-	// Character size
-	static constexpr float	cCharacterHeightStanding = 1.35f;
-	static constexpr float	cCharacterRadiusStanding = 0.3f;
-	static constexpr float	cCharacterSpeed = 6.0f;
-	static constexpr float	cJumpSpeed = 4.0f;
+    // Character size
+    static constexpr float  cCharacterHeightStanding = 1.35f;
+    static constexpr float  cCharacterRadiusStanding = 0.3f;
+    static constexpr float  cCharacterSpeed = 6.0f;
+    static constexpr float  cJumpSpeed = 4.0f;
 
-	// The 'player' character
-	Ref<CharacterVirtual>	mCharacter;
+    // The 'player' character
+    Ref<CharacterVirtual>   mCharacter;
 
-	// The space ship
-	BodyID					mSpaceShip;
+    // The space ship
+    BodyID                  mSpaceShip;
 
-	// Previous frame space ship transform
-	RMat44					mSpaceShipPrevTransform;
+    // Previous frame space ship transform
+    RMat44                  mSpaceShipPrevTransform;
 
-	// Space ship velocity
-	Vec3					mSpaceShipLinearVelocity;
-	Vec3					mSpaceShipAngularVelocity;
+    // Space ship velocity
+    Vec3                    mSpaceShipLinearVelocity;
+    Vec3                    mSpaceShipAngularVelocity;
 
-	// Global time
-	float					mTime = 0.0f;
+    // Global time
+    float                   mTime = 0.0f;
 
-	// Player input
-	Vec3					mDesiredVelocity = Vec3::sZero();
-	bool					mJump = false;
-	bool					mWasJump = false;
+    // Player input
+    Vec3                    mDesiredVelocity = Vec3::sZero();
+    bool                    mJump = false;
+    bool                    mWasJump = false;
 };

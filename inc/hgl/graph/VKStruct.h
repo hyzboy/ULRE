@@ -151,7 +151,7 @@ struct PipelineShaderStageCreateInfo:public vkstruct_flag<VkPipelineShaderStageC
 public:
 
     PipelineShaderStageCreateInfo(VkShaderStageFlagBits bits)
-    {    
+    {
         pSpecializationInfo =nullptr;
         stage               =bits;
         module              =nullptr;

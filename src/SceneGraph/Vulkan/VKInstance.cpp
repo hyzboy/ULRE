@@ -91,7 +91,7 @@ VulkanInstance::VulkanInstance(VkInstance i,VKDebugOut *out)
 VulkanInstance::~VulkanInstance()
 {
     SAFE_CLEAR(debug_out);
-    
+
     physical_devices.Clear();
     vkDestroyInstance(inst,nullptr);
 }

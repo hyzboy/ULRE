@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -12,43 +12,43 @@ JPH_NAMESPACE_BEGIN
 template <class T>
 const RTTI *GetPrimitiveTypeOfType(T *)
 {
-	return GetRTTIOfType((T *)nullptr);
+    return GetRTTIOfType((T *)nullptr);
 }
 
 template <class T>
 const RTTI *GetPrimitiveTypeOfType(T **)
 {
-	return GetRTTIOfType((T *)nullptr);
+    return GetRTTIOfType((T *)nullptr);
 }
 
 template <class T>
 const RTTI *GetPrimitiveTypeOfType(Ref<T> *)
 {
-	return GetRTTIOfType((T *)nullptr);
+    return GetRTTIOfType((T *)nullptr);
 }
 
 template <class T>
 const RTTI *GetPrimitiveTypeOfType(RefConst<T> *)
 {
-	return GetRTTIOfType((T *)nullptr);
+    return GetRTTIOfType((T *)nullptr);
 }
 
 template <class T>
 const RTTI *GetPrimitiveTypeOfType(Array<T> *)
 {
-	return GetPrimitiveTypeOfType((T *)nullptr);
+    return GetPrimitiveTypeOfType((T *)nullptr);
 }
 
 template <class T, uint N>
 const RTTI *GetPrimitiveTypeOfType(StaticArray<T, N> *)
 {
-	return GetPrimitiveTypeOfType((T *)nullptr);
+    return GetPrimitiveTypeOfType((T *)nullptr);
 }
 
 template <class T, uint N>
 const RTTI *GetPrimitiveTypeOfType(T (*)[N])
 {
-	return GetPrimitiveTypeOfType((T *)nullptr);
+    return GetPrimitiveTypeOfType((T *)nullptr);
 }
 
 JPH_NAMESPACE_END

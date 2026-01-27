@@ -25,7 +25,7 @@ public: //FrameBuffer相关
     Framebuffer *CreateFBO(RenderPass *,ImageView *);
 
 public:
-    
+
     RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
     RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
 };//class RenderTargetManager

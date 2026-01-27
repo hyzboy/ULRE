@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDevice.h>
+﻿#include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 DeviceMemory *VulkanDevice::CreateMemory(VkImage image,const uint32_t flag)
@@ -8,7 +8,7 @@ DeviceMemory *VulkanDevice::CreateMemory(VkImage image,const uint32_t flag)
     vkGetImageMemoryRequirements(attr->device,image,&memReqs);
 
     DeviceMemory *mem=CreateMemory(memReqs,flag);
-    
+
     if(!mem)return(nullptr);
 
     if(!mem->BindImage(image))

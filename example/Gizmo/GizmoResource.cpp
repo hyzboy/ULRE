@@ -65,7 +65,7 @@ namespace
             cdp.unref();
         }
     };//class GizmoMesh
-    
+
     GizmoMesh         gizmo_mesh[size_t(GizmoShape::RANGE_SIZE)]{};
 
     void InitGizmoMesh(const GizmoShape &gs,Geometry *geometry)
@@ -104,7 +104,7 @@ namespace
         VulkanDevice *device=render_framework->GetDevice();
         VulkanDevAttr *dev_attr=device->GetDevAttr();
         RenderPass *render_pass=render_framework->GetDefaultRenderPass();
-        
+
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
@@ -132,7 +132,7 @@ namespace
 
         if(!InitMI(&gizmo_line))
             return(false);
-        
+
         {
             gizmo_line.vdm=new VertexDataManager(device,gizmo_line.mtl->GetDefaultVIL());
 
@@ -222,7 +222,7 @@ namespace
                 cci.radius=math::Vector2f(0.5,0.5);
                 cci.field_count=16;
                 cci.has_center=false;
-                
+
                 InitGizmoMesh(GizmoShape::Circle,CreateCircle3DByIndexTriangles(gizmo_triangle.prim_creater,&cci));
             }
 

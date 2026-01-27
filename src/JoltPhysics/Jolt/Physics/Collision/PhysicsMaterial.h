@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -22,29 +22,29 @@ class StreamOut;
 class JPH_EXPORT PhysicsMaterial : public SerializableObject, public RefTarget<PhysicsMaterial>
 {
 public:
-	JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, PhysicsMaterial)
+    JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, PhysicsMaterial)
 
-	/// Virtual destructor
-	virtual									~PhysicsMaterial() override = default;
+    /// Virtual destructor
+    virtual                                 ~PhysicsMaterial() override = default;
 
-	/// Default material that is used when a shape has no materials defined
-	static RefConst<PhysicsMaterial>		sDefault;
+    /// Default material that is used when a shape has no materials defined
+    static RefConst<PhysicsMaterial>        sDefault;
 
-	// Properties
-	virtual const char *					GetDebugName() const			{ return "Unknown"; }
-	virtual Color							GetDebugColor() const			{ return Color::sGrey; }
+    // Properties
+    virtual const char *                    GetDebugName() const            { return "Unknown"; }
+    virtual Color                           GetDebugColor() const           { return Color::sGrey; }
 
-	/// Saves the contents of the material in binary form to inStream.
-	virtual void							SaveBinaryState(StreamOut &inStream) const;
+    /// Saves the contents of the material in binary form to inStream.
+    virtual void                            SaveBinaryState(StreamOut &inStream) const;
 
-	using PhysicsMaterialResult = Result<Ref<PhysicsMaterial>>;
+    using PhysicsMaterialResult = Result<Ref<PhysicsMaterial>>;
 
-	/// Creates a PhysicsMaterial of the correct type and restores its contents from the binary stream inStream.
-	static PhysicsMaterialResult			sRestoreFromBinaryState(StreamIn &inStream);
+    /// Creates a PhysicsMaterial of the correct type and restores its contents from the binary stream inStream.
+    static PhysicsMaterialResult            sRestoreFromBinaryState(StreamIn &inStream);
 
 protected:
-	/// This function should not be called directly, it is used by sRestoreFromBinaryState.
-	virtual void							RestoreBinaryState(StreamIn &inStream);
+    /// This function should not be called directly, it is used by sRestoreFromBinaryState.
+    virtual void                            RestoreBinaryState(StreamIn &inStream);
 };
 
 using PhysicsMaterialList = Array<RefConst<PhysicsMaterial>>;

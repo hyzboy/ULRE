@@ -16,7 +16,7 @@ namespace hgl::graph::inline_geometry
         // Validate parameters using new validator
         if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
             return nullptr;
-            
+
         if(!GeometryValidator::ValidateSlices(cci->numberSlices))
             return nullptr;
 
@@ -27,7 +27,7 @@ namespace hgl::graph::inline_geometry
 
         // Use new GeometryBuilder for vertex attribute management
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return(nullptr);
 

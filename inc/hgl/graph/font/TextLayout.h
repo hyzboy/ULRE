@@ -29,7 +29,7 @@ namespace hgl::graph
         using CharDrawStyleID=uint8;
 
         constexpr const size_t CharDrawStyleBytes=sizeof(CharStyle);
-       
+
         /**
         * 文本排列方向
         */
@@ -79,7 +79,7 @@ namespace hgl::graph
 
             bool            compress_punctuation    =false;                                         ///<压缩标点符号
         };//struct ParagraphStyle
-        
+
         using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
         using TEXT_COORD_VEC=math::Vector2i;
 

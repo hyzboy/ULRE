@@ -214,7 +214,7 @@ namespace hgl::ecs
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个，避免刷屏
                 // {
-                //     std::cout << "[ECSTransformAssignmentBuffer::WriteItems]   Item[" << i 
+                //     std::cout << "[ECSTransformAssignmentBuffer::WriteItems]   Item[" << i
                 //               << "] -> transform_index=" << item->transform_index << std::endl;
                 // }
             }

@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -15,63 +15,63 @@ class SkeletonPose;
 class JPH_EXPORT SkeletalAnimation : public RefTarget<SkeletalAnimation>
 {
 public:
-	JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, SkeletalAnimation)
+    JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, SkeletalAnimation)
 
-	/// Contains the current state of a joint, a local space transformation relative to its parent joint
-	class JointState
-	{
-	public:
-		JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, JointState)
+    /// Contains the current state of a joint, a local space transformation relative to its parent joint
+    class JointState
+    {
+    public:
+        JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, JointState)
 
-		/// Convert from a local space matrix
-		void							FromMatrix(Mat44Arg inMatrix);
+        /// Convert from a local space matrix
+        void                            FromMatrix(Mat44Arg inMatrix);
 
-		/// Convert to matrix representation
-		inline Mat44					ToMatrix() const									{ return Mat44::sRotationTranslation(mRotation, mTranslation); }
+        /// Convert to matrix representation
+        inline Mat44                    ToMatrix() const                                    { return Mat44::sRotationTranslation(mRotation, mTranslation); }
 
-		Quat							mRotation = Quat::sIdentity();						///< Local space rotation of the joint
-		Vec3							mTranslation = Vec3::sZero();						///< Local space translation of the joint
-	};
+        Quat                            mRotation = Quat::sIdentity();                      ///< Local space rotation of the joint
+        Vec3                            mTranslation = Vec3::sZero();                       ///< Local space translation of the joint
+    };
 
-	/// Contains the state of a single joint at a particular time
-	class Keyframe : public JointState
-	{
-	public:
-		JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, Keyframe)
+    /// Contains the state of a single joint at a particular time
+    class Keyframe : public JointState
+    {
+    public:
+        JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, Keyframe)
 
-		float							mTime = 0.0f;										///< Time of keyframe in seconds
-	};
+        float                           mTime = 0.0f;                                       ///< Time of keyframe in seconds
+    };
 
-	using KeyframeVector = Array<Keyframe>;
+    using KeyframeVector = Array<Keyframe>;
 
-	/// Contains the animation for a single joint
-	class AnimatedJoint
-	{
-	public:
-		JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, AnimatedJoint)
+    /// Contains the animation for a single joint
+    class AnimatedJoint
+    {
+    public:
+        JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, AnimatedJoint)
 
-		String							mJointName;											///< Name of the joint
-		KeyframeVector					mKeyframes;											///< List of keyframes over time
-	};
+        String                          mJointName;                                         ///< Name of the joint
+        KeyframeVector                  mKeyframes;                                         ///< List of keyframes over time
+    };
 
-	using AnimatedJointVector = Array<AnimatedJoint>;
+    using AnimatedJointVector = Array<AnimatedJoint>;
 
-	/// Get the length (in seconds) of this animation
-	float								GetDuration() const;
+    /// Get the length (in seconds) of this animation
+    float                               GetDuration() const;
 
-	/// Scale the size of all joints by inScale
-	void								ScaleJoints(float inScale);
+    /// Scale the size of all joints by inScale
+    void                                ScaleJoints(float inScale);
 
-	/// Get the (interpolated) joint transforms at time inTime
-	void								Sample(float inTime, SkeletonPose &ioPose) const;
+    /// Get the (interpolated) joint transforms at time inTime
+    void                                Sample(float inTime, SkeletonPose &ioPose) const;
 
-	/// Get joint samples
-	const AnimatedJointVector &			GetAnimatedJoints() const							{ return mAnimatedJoints; }
-	AnimatedJointVector &				GetAnimatedJoints()									{ return mAnimatedJoints; }
+    /// Get joint samples
+    const AnimatedJointVector &         GetAnimatedJoints() const                           { return mAnimatedJoints; }
+    AnimatedJointVector &               GetAnimatedJoints()                                 { return mAnimatedJoints; }
 
 private:
-	AnimatedJointVector					mAnimatedJoints;									///< List of joints and keyframes
-	bool								mIsLooping = true;									///< If this animation loops back to start
+    AnimatedJointVector                 mAnimatedJoints;                                    ///< List of joints and keyframes
+    bool                                mIsLooping = true;                                  ///< If this animation loops back to start
 };
 
 JPH_NAMESPACE_END

@@ -44,7 +44,7 @@ namespace hgl
         int ShaderCreateInfoGeometry::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
         {
             ShaderVariable sv;
-    
+
             hgl::strcpy(sv.name,sizeof(sv.name),name.c_str());
 
             sv.type=type;
@@ -52,7 +52,7 @@ namespace hgl
 
             return gsdi.AddOutput(sv);
         }
-        
+
         void ShaderCreateInfoGeometry::GetOutputStrcutString(AnsiString &str)
         {
             gsdi.GetOutput().ToString(str);

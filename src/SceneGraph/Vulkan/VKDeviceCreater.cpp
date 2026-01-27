@@ -277,7 +277,7 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
         surface_format.format=PF_RGBA8s;
         surface_format.colorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     }
-    
+
 #ifdef _DEBUG
     LogSurfaceFormat(surface_format);
 #endif//_DEBUG
@@ -330,7 +330,7 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     if(!device_attr->cmd_pool)
         return(nullptr);
-        
+
     device_attr->desc_pool=CreateDescriptorPool(device_attr->device,require.descriptor_pool);
 
     if(!device_attr->desc_pool)
@@ -387,7 +387,7 @@ bool VulkanDeviceCreater::ChoosePhysicalDevice()
     if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
     if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
     if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
-        
+
     return physical_device;
 }
 

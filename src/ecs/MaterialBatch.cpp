@@ -1,4 +1,4 @@
-#include<hgl/ecs/MaterialBatch.h>
+﻿#include<hgl/ecs/MaterialBatch.h>
 #include<hgl/ecs/RenderItem.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKMaterial.h>
@@ -97,7 +97,7 @@ namespace hgl::ecs
     {
         if (!device || items.empty())
         {
-            std::cout << "[ECS::MaterialBatch::ReallocICB] Cannot allocate - Device: " 
+            std::cout << "[ECS::MaterialBatch::ReallocICB] Cannot allocate - Device: "
                       << (void*)device << ", Items: " << items.size() << std::endl;
             return;
         }
@@ -110,7 +110,7 @@ namespace hgl::ecs
         // If existing buffers are large enough, reuse them
         if (icb_draw && icb_new_count <= icb_draw->GetMaxCount())
         {
-            //std::cout << "[ECS::MaterialBatch::ReallocICB] Reusing existing buffers (capacity: " 
+            //std::cout << "[ECS::MaterialBatch::ReallocICB] Reusing existing buffers (capacity: "
             //          << icb_draw->GetMaxCount() << ")" << std::endl;
             return;
         }
@@ -137,7 +137,7 @@ namespace hgl::ecs
     {
         if (!draw_cmd || !batch || !batch->geom_draw_range)
         {
-            std::cout << "[ECS::MaterialBatch::WriteICB] ERROR: Invalid parameters - DrawCmd: " 
+            std::cout << "[ECS::MaterialBatch::WriteICB] ERROR: Invalid parameters - DrawCmd: "
                       << (void*)draw_cmd << ", Batch: " << (void*)batch << std::endl;
             return;
         }
@@ -152,7 +152,7 @@ namespace hgl::ecs
     {
         if (!indexed_draw_cmd || !batch || !batch->geom_draw_range)
         {
-            std::cout << "[ECS::MaterialBatch::WriteICB] ERROR: Invalid parameters - IndexedDrawCmd: " 
+            std::cout << "[ECS::MaterialBatch::WriteICB] ERROR: Invalid parameters - IndexedDrawCmd: "
                       << (void*)indexed_draw_cmd << ", Batch: " << (void*)batch << std::endl;
             return;
         }
@@ -255,7 +255,7 @@ namespace hgl::ecs
             }
             // else
             // {
-            //     std::cout << "[ECS::MaterialBatch::BuildBatches] Batch " << (draw_batches_count - 1) 
+            //     std::cout << "[ECS::MaterialBatch::BuildBatches] Batch " << (draw_batches_count - 1)
             //               << " has NO VDM - will use direct rendering" << std::endl;
             // }
 
@@ -289,7 +289,7 @@ namespace hgl::ecs
         }
         // else
         // {
-        //     std::cout << "[ECS::MaterialBatch::BuildBatches] LAST batch " << (draw_batches_count - 1) 
+        //     std::cout << "[ECS::MaterialBatch::BuildBatches] LAST batch " << (draw_batches_count - 1)
         //               << " has NO VDM - will use direct rendering" << std::endl;
         // }
 
@@ -307,7 +307,7 @@ namespace hgl::ecs
 
         if (!key.material || !key.pipeline)
         {
-            std::cout << "[ECS::MaterialBatch::Render] ERROR: No material or pipeline! Material: " 
+            std::cout << "[ECS::MaterialBatch::Render] ERROR: No material or pipeline! Material: "
                       << (void*)key.material << ", Pipeline: " << (void*)key.pipeline << std::endl;
             return;
         }

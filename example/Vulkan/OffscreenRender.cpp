@@ -1,4 +1,4 @@
-#include<hgl/graph/VKRenderTarget.h>
+﻿#include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/InlineGeometry.h>
 #include"VulkanAppFramework.h"
 
@@ -20,17 +20,17 @@ class TestApp:public CameraAppFramework
     };
 
     struct:public RenderObject
-    {        
+    {
         RenderTarget *      render_taget        =nullptr;
         RenderCmdBuffer *   command_buffer      =nullptr;
-        
+
         Pipeline *          pipeline            =nullptr;
         Renderable *renderable =nullptr;
 
     public:
 
         bool Submit()
-        {            
+        {
             if(!render_taget->Submit(command_buffer))
                 return(false);
             if(!render_taget->WaitQueue())
@@ -43,7 +43,7 @@ class TestApp:public CameraAppFramework
     struct:public RenderObject
     {
         Sampler *           sampler             =nullptr;
-       
+
         Pipeline *          pipeline            =nullptr;
         Renderable *renderable =nullptr;
 
@@ -85,7 +85,7 @@ public:
 
         os.command_buffer=device->CreateRenderCommandBuffer();
         if(!os.command_buffer)return(false);
-        
+
         os.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
         if(!os.material_instance)return(false);
 
@@ -99,7 +99,7 @@ public:
             using namespace inline_geometry;
 
             CircleCreateInfo cci;
-            
+
             cci.center=Vector2f(OFFSCREEN_SIZE*0.5,OFFSCREEN_SIZE*0.5);
             cci.radius=Vector2f(OFFSCREEN_SIZE*0.45,OFFSCREEN_SIZE*0.45);
             cci.field_count=32;
@@ -126,19 +126,19 @@ public:
     {
         cube.render_list=new RenderList(device);
 
-        cube.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureMask3D"));        
+        cube.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureMask3D"));
         if(!cube.material_instance)return(false);
 
         cube.pipeline=CreatePipeline(cube.material_instance,InlinePipeline::Solid3D,Prim::Triangles);
         if(!cube.pipeline)return(false);
-        
+
         cube.sampler=db->CreateSampler();
         if(!cube.sampler)return(false);
-        
+
         if(!cube.material_instance->BindImageSampler(DescriptorSetType::Value,"tex",os.render_taget->GetColorTexture(),cube.sampler))
             return(false);
 
-        {   
+        {
             using namespace inline_geometry;
 
             CubeCreateInfo cci;
@@ -154,7 +154,7 @@ public:
         }
 
         camera->pos=Vector4f(5,5,5,1.0);
-        
+
         cube.scene_root.RefreshMatrix();
         cube.render_list->Expend(GetCameraInfo(),&cube.scene_root);
 

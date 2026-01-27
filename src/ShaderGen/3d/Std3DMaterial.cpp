@@ -9,7 +9,7 @@ STD_MTL_NAMESPACE_BEGIN
 bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     vsc->AddInput(cfg->position_format,VAN::Position);
-    
+
     if(cfg->local_to_world)
     {
         mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics,SBS_LocalToWorld);

@@ -1,4 +1,4 @@
-#include<hgl/ecs/Entity.h>
+﻿#include<hgl/ecs/Entity.h>
 #include<hgl/ecs/Context.h>
 
 namespace hgl

@@ -61,7 +61,7 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
     PipelineData *pd=new PipelineData(cpd);
 
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
-    
+
     Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
 
     if(p)
@@ -90,7 +90,7 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const InlinePipeline &ip,cons
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const bool prim_restart)
 {
     if(!mi)return(nullptr);
-    
+
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim_restart);
 }
 

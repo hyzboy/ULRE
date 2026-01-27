@@ -10,7 +10,7 @@ VK_NAMESPACE_BEGIN
 template<typename T,typename TL> class VkTextureLoader:public TL
 {
 protected:
-    
+
     TextureManager *tex_manager;
     DeviceBuffer *buf;
     T *tex;
@@ -18,7 +18,7 @@ protected:
     bool auto_mipmaps;
 
 public:
-    
+
     VkTextureLoader(TextureManager *tm,const bool am)
     {
         tex_manager=tm;
@@ -39,7 +39,7 @@ public:
 
         if(!CheckVulkanFormat(tex_format))
             return(nullptr);
-        
+
         buf=tex_manager->CreateTransferSourceBuffer(total_bytes);
 
         if(!buf)
@@ -94,7 +94,7 @@ public:
 
         if(!tex)
             return nullptr;
-        
+
         buf=nullptr;
 
         T *result=tex;

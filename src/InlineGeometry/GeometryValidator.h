@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/GeometryCreater.h>
 
@@ -27,10 +27,10 @@ namespace hgl::graph::inline_geometry
         {
             if(!pc)
                 return false;
-                
+
             if(numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                 return false;
-                
+
             return true;
         }
 

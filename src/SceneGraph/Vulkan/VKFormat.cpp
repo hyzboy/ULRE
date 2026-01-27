@@ -32,7 +32,7 @@ namespace
                                                             COLOR_FORMAT_DEFINE(type##F,           byte,SFLOAT),
 
     #define COMPRESS_FORMAT_DEFINE(id,name,compress,color)  VULKAN_FORMAT_DEFINE(id,0,name,compress,color,NONE,NONE)
-    
+
     #define DEPTH_FORMAT_DEFINE(name,size,type)             VULKAN_FORMAT_DEFINE(PF_##name,size,#name,NONE,NONE,type,  NONE)
     #define STENCIL_FORMAT_DEFINE(name,size,type)           VULKAN_FORMAT_DEFINE(PF_##name,size,#name,NONE,NONE,NONE,  type)
     #define DEPTH_STENCIL_FORMAT_DEFINE(name,size,dt,st)    VULKAN_FORMAT_DEFINE(PF_##name,size,#name,NONE,NONE,dt,    st  )
@@ -57,7 +57,7 @@ namespace
                                                 COMPRESS_FORMAT_DEFINE(PF_ASTC_##mat##s,"ASTC" #mat "s",ASTC,SRGB)
 
     #define YUV_FORMAT_DEFINE(name)             COMPRESS_FORMAT_DEFINE(PF_##name,#name,YUV,UNORM)
-    
+
     #define YUV_FORMAT_COMBO(bit)               YUV_FORMAT_DEFINE(YUYV##bit##_422),   \
                                                 YUV_FORMAT_DEFINE(UYVY##bit##_422),   \
                                                 YUV_FORMAT_DEFINE(YUV##bit##_420),    \
@@ -69,7 +69,7 @@ namespace
     #define PVRTC_FORMAT_DEFINE(level,bpp)      COMPRESS_FORMAT_DEFINE(PF_PVRTC##level##_##bpp##UN,"PVRTC" #level "_" #bpp "UN",PVRTC,UNORM),    \
                                                 COMPRESS_FORMAT_DEFINE(PF_PVRTC##level##_##bpp##s,"PVRTC" #level "_" #bpp "s",PVRTC,SRGB)
 
-    #define ASTC_SFLOAT_FORMAT_DEFINE(mat)      COMPRESS_FORMAT_DEFINE(PF_ASTC_##mat##UN,"ASTC" #mat "F",ASTC,SFLOAT)  
+    #define ASTC_SFLOAT_FORMAT_DEFINE(mat)      COMPRESS_FORMAT_DEFINE(PF_ASTC_##mat##UN,"ASTC" #mat "F",ASTC,SFLOAT)
 
     constexpr VulkanFormat vulkan_color_format_list[]=
     {
@@ -130,7 +130,7 @@ namespace
         S3TC_NORM_FORMAT_DEFINE(   BC5),
         S3TC_FLOAT_FORMAT_DEFINE(  BC6),
         S3TC_Us_FORMAT_DEFINE(     BC7),
-          
+
         ETC2_FORMAT_DEFINE(RGB8),
         ETC2_FORMAT_DEFINE(RGB8A1),
         ETC2_FORMAT_DEFINE(RGBA8),
@@ -172,7 +172,7 @@ namespace
         PVRTC_FORMAT_DEFINE(1,4),
         PVRTC_FORMAT_DEFINE(2,2),
         PVRTC_FORMAT_DEFINE(2,4),
-        
+
         ASTC_SFLOAT_FORMAT_DEFINE(4x4),
         ASTC_SFLOAT_FORMAT_DEFINE(5x4),
         ASTC_SFLOAT_FORMAT_DEFINE(5x5),
@@ -192,7 +192,7 @@ namespace
     const VulkanFormat *vulkan_yuv_format_list          =vulkan_color_format_list+PF_RANGE_SIZE;
     const VulkanFormat *vulkan_pvrtc_format_list        =vulkan_color_format_list+PF_RANGE_SIZE+PF_YUV_RANGE_SIZE;
     const VulkanFormat *vulkan_astc_sfloat_format_list  =vulkan_color_format_list+PF_RANGE_SIZE+PF_YUV_RANGE_SIZE+PF_PVRTC_RANGE_SIZE;
-    
+
     constexpr size_t TEXTURE_FORMAT_COUNT=sizeof(vulkan_color_format_list)/sizeof(VulkanFormat);
 
 #ifdef _DEBUG
@@ -200,7 +200,7 @@ namespace
     {
         if(format<=PF_BEGIN_RANGE)
             return 0;
-        
+
         if(format>PF_END_RANGE)
         {
             if(format==VK_FORMAT_R10X6_UNORM_PACK16)return 2;
@@ -277,7 +277,7 @@ const VulkanFormat *GetVulkanFormat(const VkFormat &format)
 
     if(format<=PF_END_RANGE)
         return vulkan_color_format_list+format;
-        
+
     if(format>=PF_YUV_BEGIN_RANGE&&format<=PF_YUV_END_RANGE)
         return vulkan_yuv_format_list+format-PF_YUV_BEGIN_RANGE;
 
@@ -293,7 +293,7 @@ const VulkanFormat *GetVulkanFormat(const VkFormat &format)
 const VulkanFormat *GetVulkanFormat(const char *fmt_name)
 {
     if(!fmt_name||!*fmt_name)return(nullptr);
-    
+
     const VulkanFormat *vcf=vulkan_color_format_list;
 
     for(uint32_t i=PF_BEGIN_RANGE;i<=PF_END_RANGE;i++)

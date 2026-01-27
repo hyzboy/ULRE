@@ -126,7 +126,7 @@ namespace material_file
 
         char *                  data=nullptr;
         int                     data_length=0;
-    
+
     public:
 
         AnsiStringList          require_list;               ///<需求的内部模块(如LocalToWorld,Sun,Shadow等系统内置元素)

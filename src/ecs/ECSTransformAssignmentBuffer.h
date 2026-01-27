@@ -1,6 +1,6 @@
 ﻿/**
  * ECSTransformAssignmentBuffer.h - ECS渲染项Transform数据管理
- * 
+ *
  * 针对 ECS 架构的 RenderItem 和 MaterialBatch 设计
  * 与 SceneGraph 的 TransformAssignmentBuffer 功能相同，但适配 ECS 数据结构
  */
@@ -14,7 +14,7 @@ namespace hgl::ecs
 {
     /**
      * ECS Transform 分配缓冲
-     * 
+     *
      * 职责：
      * - 管理所有 RenderItem 的 LocalToWorld 矩阵数据（UBO/SSBO）
      * - 生成 Transform 索引分发数据（VAB）

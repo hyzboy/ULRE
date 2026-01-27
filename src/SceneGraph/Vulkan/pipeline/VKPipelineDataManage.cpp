@@ -14,7 +14,7 @@ namespace
     void InitInlinePipelineData()
     {
         PipelineData *pd;
-        
+
         {
             pd=new PipelineData(1);
             inline_pipeline_data.Add(InlinePipeline::Solid3D,pd);
@@ -68,7 +68,7 @@ namespace
 const PipelineData *GetPipelineData(const OSString &filename)
 {
     const OSString fn=filename+OS_TEXT(".pipeline");
-    
+
     PipelineData *pd;
 
     if(pipeline_data_by_filename.Get(fn,pd))

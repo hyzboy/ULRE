@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/VKMaterial.h>
@@ -29,7 +29,7 @@ private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     Map<AnsiString,Material *> material_by_name;
-    
+
     AutoIdObjectManager<MaterialID,             Material>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
 

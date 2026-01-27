@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -9,28 +9,28 @@
 // Trace to TTY
 void TraceImpl(const char *inFMT, ...)
 {
-	// Format the message
-	va_list list;
-	va_start(list, inFMT);
-	char buffer[1024];
-	vsnprintf(buffer, sizeof(buffer), inFMT, list);
-	va_end(list);
-	strcat_s(buffer, "\n");
+    // Format the message
+    va_list list;
+    va_start(list, inFMT);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), inFMT, list);
+    va_end(list);
+    strcat_s(buffer, "\n");
 
-	// Log to the output window
-	OutputDebugStringA(buffer);
+    // Log to the output window
+    OutputDebugStringA(buffer);
 }
 
 void FatalError [[noreturn]] (const char *inFMT, ...)
 {
-	// Format the message
-	va_list list;
-	va_start(list, inFMT);
-	char buffer[1024];
-	vsnprintf(buffer, sizeof(buffer), inFMT, list);
+    // Format the message
+    va_list list;
+    va_start(list, inFMT);
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), inFMT, list);
 
-	Trace("Fatal Error: %s", buffer);
+    Trace("Fatal Error: %s", buffer);
 
-	MessageBoxA(nullptr, buffer, "Fatal Error", MB_OK);
-	exit(1);
+    MessageBoxA(nullptr, buffer, "Fatal Error", MB_OK);
+    exit(1);
 }

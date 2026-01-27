@@ -12,7 +12,7 @@ struct VulkanDevAttr
 {
     VulkanInstance *                    instance        =nullptr;
     const VulkanPhyDevice *             physical_device =nullptr;
-    
+
     VkPhysicalDeviceDriverPropertiesKHR driver_properties;
 
     VulkanSurface *                     surface         =nullptr;

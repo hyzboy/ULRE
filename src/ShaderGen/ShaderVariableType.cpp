@@ -200,7 +200,7 @@ bool ShaderVariableType::ParseTypeString(const char *str)
 
         return(false);
     }
-    
+
     if(str[1]=='i')
     {
         if(str[2]=='n'&&str[3]=='t')

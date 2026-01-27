@@ -1,4 +1,4 @@
-#include<hgl/gui/Panel.h>
+﻿#include<hgl/gui/Panel.h>
 #include<hgl/gui/ThemeEngine.h>
 
 namespace hgl

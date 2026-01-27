@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -12,9 +12,9 @@
 
 void FatalErrorIfFailed(HRESULT inHResult)
 {
-	if (FAILED(inHResult))
-	{
-		string message = system_category().message(inHResult);
-		FatalError("DirectX error returned: %s (%s)", ConvertToString(inHResult).c_str(), message.c_str());
-	}
+    if (FAILED(inHResult))
+    {
+        string message = system_category().message(inHResult);
+        FatalError("DirectX error returned: %s (%s)", ConvertToString(inHResult).c_str(), message.c_str());
+    }
 }

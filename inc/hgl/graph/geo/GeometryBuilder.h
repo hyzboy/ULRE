@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
@@ -13,7 +13,7 @@ namespace hgl::graph::inline_geometry
     {
     protected:
         GeometryCreater *creater;
-        
+
         // VAB映射指针
         float *vp;      // 顶点位置指针
         float *np;      // 法线指针

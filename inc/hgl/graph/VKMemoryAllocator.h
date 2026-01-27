@@ -31,7 +31,7 @@ public:
 
     VKMemoryAllocator(VulkanDevice *,const uint32_t flags,const VkDeviceSize r);
     ~VKMemoryAllocator();
-    
+
     void Free() override {/* DON'T RUN ANY OPERATION.*/}
 
     void Flush(const VkDeviceSize);

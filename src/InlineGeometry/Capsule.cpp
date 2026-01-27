@@ -33,7 +33,7 @@ namespace hgl::graph::inline_geometry
 
         // Use new GeometryBuilder for vertex attribute management
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -76,7 +76,7 @@ namespace hgl::graph::inline_geometry
                 float nz = cz * radius;
                 float len = sqrt(nx*nx+ny*ny+nz*nz);
                 if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
-                
+
                 builder.WriteFullVertex(x, y, z,
                                        nx, ny, nz,
                                        -sin(a), -cos(a), 0.0f,

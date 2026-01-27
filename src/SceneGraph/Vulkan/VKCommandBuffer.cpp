@@ -18,7 +18,7 @@ VulkanCmdBuffer::~VulkanCmdBuffer()
 bool VulkanCmdBuffer::Begin()
 {
     CommandBufferBeginInfo cmd_buf_info;
-    
+
     cmd_buf_info.pInheritanceInfo = nullptr;
 
     if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)

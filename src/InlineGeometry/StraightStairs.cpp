@@ -1,4 +1,4 @@
-// Straight stairs geometry generator for ULRE engine
+﻿// Straight stairs geometry generator for ULRE engine
 // Creates a straight staircase with steps and optional side panels
 
 #include "InlineGeometryCommon.h"
@@ -44,7 +44,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 

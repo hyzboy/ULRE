@@ -116,8 +116,8 @@ namespace hgl::ecs
         // 检查是否超出材质支持的最大数量
         if (material && unique_mi_count > material->GetMIMaxCount())
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI count (" 
-                      << unique_mi_count << ") exceeds material max count (" 
+            std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI count ("
+                      << unique_mi_count << ") exceeds material max count ("
                       << material->GetMIMaxCount() << ")" << std::endl;
         }
 
@@ -242,8 +242,8 @@ namespace hgl::ecs
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
                 // {
-                //     std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems]   Item[" << i 
-                //               << "] -> MI_index=" << mi_index 
+                //     std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems]   Item[" << i
+                //               << "] -> MI_index=" << mi_index
                 //               << ", MI=" << (void*)mi << std::endl;
                 // }
             }

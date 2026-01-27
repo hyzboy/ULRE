@@ -34,12 +34,12 @@ namespace hgl::graph::inline_geometry
         // - 12 edge cylinders: 12 * (segs+1) * 2 vertices (but shared with corners)
         // - 6 faces: 6 * face_segs^2 vertices
         // For simplicity, we'll use a conservative estimate
-        
+
         // Actually, let's use a simpler approach:
         // Each corner: (segs+1) * (segs+1) vertices
         // Each edge: (segs+1) vertices (not counting shared with corners)
         // Each face: face_segs * face_segs vertices
-        
+
         // Simplified vertex count (with some redundancy for clarity)
         uint corner_verts_per = (segs + 1) * (segs + 1);
         uint edge_verts_per = segs + 1;
@@ -50,10 +50,10 @@ namespace hgl::graph::inline_geometry
 
         // Simplified implementation: we'll create a basic rounded box with corner spheres
         // and edge cylinders, keeping face flat for now
-        
+
         // For a minimal implementation, let's just create 8 corner sphere patches
         // connected by flat faces
-        
+
         // Recalculate with simpler approach
         numberVertices = 8 * corner_verts_per;
         numberIndices = 8 * segs * segs * 6;
@@ -69,7 +69,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -88,14 +88,14 @@ namespace hgl::graph::inline_geometry
         // For each corner, generate a spherical patch
         // The spherical patch covers 1/8 of a sphere (one octant)
         const float pi_half = std::numbers::pi_v<float> * 0.5f;
-        
+
         // Corner sphere patch generation
         // Each corner has a different octant orientation
         struct CornerInfo {
             int idx;
             float sign_x, sign_y, sign_z;
         };
-        
+
         CornerInfo corner_info[8] = {
             {0, -1, -1, -1},
             {1,  1, -1, -1},
@@ -173,7 +173,7 @@ namespace hgl::graph::inline_geometry
         };
 
         FaceInfo faces[6];
-        
+
         // -Z face (at inner box Z boundary)
         faces[0].normal = Vector3f(0, 0, -1);
         faces[0].corners[0] = Vector3f(-ix, -iy, -iz);
@@ -222,16 +222,16 @@ namespace hgl::graph::inline_geometry
             {
                 const Vector3f& pos = faces[f].corners[i];
                 const Vector3f& n = faces[f].normal;
-                
+
                 // Tangent perpendicular to normal
                 Vector3f t;
                 if(fabs(n.z) > 0.5f) t = Vector3f(1, 0, 0);
                 else t = Vector3f(0, 0, 1);
-                
+
                 float u = (i == 1 || i == 2) ? 1.0f : 0.0f;
                 float v = (i == 2 || i == 3) ? 1.0f : 0.0f;
 
-                builder.WriteFullVertex(pos.x, pos.y, pos.z, 
+                builder.WriteFullVertex(pos.x, pos.y, pos.z,
                                        n.x, n.y, n.z,
                                        t.x, t.y, t.z, u, v);
             }
@@ -248,7 +248,7 @@ namespace hgl::graph::inline_geometry
             for(uint c = 0; c < 8; c++)
             {
                 IndexT base = c * corner_verts_per;
-                
+
                 for(uint i = 0; i < segs; i++)
                 {
                     for(uint j = 0; j < segs; j++)
@@ -271,11 +271,11 @@ namespace hgl::graph::inline_geometry
 
             // Face indices
             IndexT face_base = 8 * corner_verts_per;
-            
+
             for(uint f = 0; f < 6; f++)
             {
                 IndexT base = face_base + f * 4;
-                
+
                 // Two triangles per face
                 *ip++ = base + 0;
                 *ip++ = base + 1;
@@ -311,7 +311,7 @@ namespace hgl::graph::inline_geometry
         float hx = sx * 0.5f;
         float hy = sy * 0.5f;
         float hz = sz * 0.5f;
-        
+
         return pc->CreateWithAABB(
             math::Vector3f(-hx, -hy, -hz),
             Vector3f(hx, hy, hz));

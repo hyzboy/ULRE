@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/System.h>
 #include<hgl/io/event/WindowEvent.h>

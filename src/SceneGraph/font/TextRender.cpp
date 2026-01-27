@@ -40,7 +40,7 @@ namespace hgl::graph
         primitive_manager=rf->GetPrimitiveManager();
         mtl_manager=rf->GetMaterialManager();
         tl_engine=new layout::TextLayout(tf);
-            
+
         mtl_fs      =nullptr;
         sampler     =nullptr;
         pipeline    =nullptr;
@@ -80,7 +80,7 @@ namespace hgl::graph
             delete tr;
 
         text_geometry_set.Clear();
-           
+
         SAFE_CLEAR(tl_engine);
         SAFE_CLEAR(tile_font);
         // render resource removed
@@ -129,7 +129,7 @@ namespace hgl::graph
     }
 
     TextGeometry *TextRender::Begin(const TextGeometryType &tpt,int limit)
-    {   
+    {
         TextGeometry *tr=new TextGeometry(device,mi_fs->GetVIL(),limit);
 
         text_geometry_set.Add(tr);

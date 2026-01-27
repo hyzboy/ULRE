@@ -25,7 +25,7 @@
 *   Component是组件的基类，所有组件都从这里派生。
 *
 *   SceneComponent是场景组件基类，只要是放在场景中的都从它派生，
-* 
+*
 *   GeometryComponent是图元组件的基类，所有图元组件都从这里派生。
 *   它再度派生出的任何Component都必须是一个有3D空间的几何图元。
 *   引擎中的空间、物理、等都由GeometryComponent提供数据进行计算。
@@ -77,7 +77,7 @@ using ComponentDataPtr=SharedPtr<ComponentData>;
 /**
 * 基础组件<br>
 * 是一切组件的基类
-* 
+*
 * 运行时类型识别 (RTTI):
 *   每个组件在构造时存储其实际派生类的类型 hash，
 *   通过 GetTypeHash() 可以获取运行时类型，
@@ -134,7 +134,7 @@ public:
     virtual Component *Clone();
 
     //virtual void Update(const double delta_time)=0;
-    
+
 public: //信息描述相关
 
     /// 获取 Component 的文本描述信息，用于日志或调试输出
@@ -168,7 +168,7 @@ class ComponentManager
 protected:
 
     friend class Component; //Component可以直接访问ComponentManager的成员
-    
+
     friend void InitializeComponentManager();
     friend void UninitializeComponentManager();
 

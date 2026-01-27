@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/VKBuffer.h>
@@ -6,7 +6,7 @@
 #include<hgl/io/event/WindowEvent.h>
 
 namespace hgl::math
-{  
+{
     struct Ray;
 }
 

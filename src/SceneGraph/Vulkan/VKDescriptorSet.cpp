@@ -12,7 +12,7 @@ namespace
     public:
 
         WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorType desc_type)
-        {            
+        {
             dstSet          = desc_set;
             dstBinding      = binding;
             dstArrayElement = 0;
@@ -28,7 +28,7 @@ namespace
         }
 
         WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorImageInfo *img_info,const VkDescriptorType desc_type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER):WriteDescriptorSet(desc_set,binding,desc_type)
-        {            
+        {
             pImageInfo      = img_info;
             pBufferInfo     = nullptr;
             pTexelBufferView= nullptr;
@@ -199,7 +199,7 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
     if(binded_sets.Contains(binding))return(false);
 
     DescriptorImageInfo image_info(iv->GetImageView());
-    
+
     image_list.Add(image_info);
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,&image_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));

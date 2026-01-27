@@ -35,7 +35,7 @@ private:
     bool InitMaterial(MDP *mdp,const OSString &vs,const OSString &fs)
     {
         mdp->material=shader_manage->CreateMaterial(vs,fs);
-        
+
         if(!mdp->material)
             return(false);
 
@@ -60,7 +60,7 @@ private:
 
     bool InitPipeline(MDP *mdp,const VkPrimitiveTopology primitive)
     {
-        AutoDelete<vulkan::PipelineCreater> 
+        AutoDelete<vulkan::PipelineCreater>
         pipeline_creater=new vulkan::PipelineCreater(device,mdp->material,sc_render_target);
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(primitive);

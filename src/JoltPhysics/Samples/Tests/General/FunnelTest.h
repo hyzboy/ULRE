@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,9 +10,9 @@
 class FunnelTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, FunnelTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, FunnelTest)
 
-	// See: Test
-	virtual void		Initialize() override;
-	virtual void		GetInitialCamera(CameraState &ioState) const override;
+    // See: Test
+    virtual void        Initialize() override;
+    virtual void        GetInitialCamera(CameraState &ioState) const override;
 };

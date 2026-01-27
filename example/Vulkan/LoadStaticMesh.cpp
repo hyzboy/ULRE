@@ -122,7 +122,7 @@ private:
 
     bool InitPipeline(MP *mp,VkPrimitiveTopology primitive)
     {
-        AutoDelete<vulkan::PipelineCreater> 
+        AutoDelete<vulkan::PipelineCreater>
         pipeline_creater=new vulkan::PipelineCreater(device,mp->material,sc_render_target);
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
@@ -271,7 +271,7 @@ public:
 
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))//,model_data->bounding_box))
             return(false);
-        
+
         if(!InitMP(&mp_solid, Prim::Triangles,   OS_TEXT("res/shader/pbr_Light.vert"),
                                                 OS_TEXT("res/shader/pbr_DirectionLight.frag")))
             return(false);
@@ -287,7 +287,7 @@ public:
 
         render_root.Add(axis_renderable_instance);
         render_root.Add(bbox_renderable_instance);
-        
+
         CreateSceneNode(render_root.CreateSubNode(),model_data->root_node);
 
         render_root.RefreshMatrix();
@@ -296,7 +296,7 @@ public:
 
         return(true);
     }
-    
+
     void BuildCommandBuffer(uint32 index)
     {
         VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);

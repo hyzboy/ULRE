@@ -18,7 +18,7 @@ namespace hgl
 
         bool        InitShaderCompiler();
         void        CloseShaderCompiler();
-    
+
         SPVData *   CompileShader   (const uint32 type,const char *source);
         void        FreeSPVData     (SPVData *spv_data);
     }//namespace graph

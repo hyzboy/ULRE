@@ -39,7 +39,7 @@ private:
 
     SceneNode           render_root;
     RenderList *        render_list         =nullptr;
-    
+
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
 
@@ -87,7 +87,7 @@ private:
             axis_pipeline=CreatePipeline(axis_mi,InlinePipeline::Solid3D,Prim::Lines);
             if(!axis_pipeline)return(false);
         }
-        
+
         {
             texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"),true);
             texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"),true);
@@ -128,9 +128,9 @@ private:
             material_instance=db->CreateMaterialInstance(material);
             if(!material_instance)return(false);
 
-            {            
+            {
                 MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetType::Value);
-        
+
                 if(!mp_texture)
                     return(false);
 
@@ -158,7 +158,7 @@ private:
         }
 
         const VIL *vil=material_instance->GetVIL();
-        
+
         {
             struct CubeCreateInfo cci;
             cci.normal=true;
@@ -168,7 +168,7 @@ private:
             cci.color[0]=Vector4f(1,1,1,1);
             ro_cube=CreateCube(db,vil,&cci);
         }
-        
+
         {
             ro_sphere=CreateSphere(db,vil,64);
         }
@@ -214,10 +214,10 @@ private:
     {
         ubo_light=db->CreateUBO(sizeof(PhongLight),&light);
         ubo_phong=db->CreateUBO(sizeof(PhongMaterial),&phong);
-        
+
         {
             MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetType::Value);
-        
+
             if(!mp_value)
                 return(false);
 
@@ -231,7 +231,7 @@ private:
 
         return(true);
     }
-    
+
     void Add(Primitive *r,Pipeline *pl)
     {
         auto ri=db->CreateRenderable(r,material_instance,pl);
@@ -273,9 +273,9 @@ public:
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-            
+
         render_list=new RenderList(device);
-            
+
         if(!InitMaterial())
             return(false);
 
@@ -289,12 +289,12 @@ public:
 
         return(true);
     }
-    
+
     void BuildCommandBuffer(uint32_t index) override
     {
         render_root.RefreshMatrix();
         render_list->Expend(GetCameraInfo(),&render_root);
-        
+
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 };//class TestApp:public CameraAppFramework

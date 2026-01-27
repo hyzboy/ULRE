@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -12,26 +12,26 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT PhysicsMaterialSimple : public PhysicsMaterial
 {
 public:
-	JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, PhysicsMaterialSimple)
+    JPH_DECLARE_SERIALIZABLE_VIRTUAL(JPH_EXPORT, PhysicsMaterialSimple)
 
-	/// Constructor
-											PhysicsMaterialSimple() = default;
-											PhysicsMaterialSimple(const string_view &inName, ColorArg inColor) : mDebugName(inName), mDebugColor(inColor) { }
+    /// Constructor
+                                            PhysicsMaterialSimple() = default;
+                                            PhysicsMaterialSimple(const string_view &inName, ColorArg inColor) : mDebugName(inName), mDebugColor(inColor) { }
 
-	// Properties
-	virtual const char *					GetDebugName() const override		{ return mDebugName.c_str(); }
-	virtual Color							GetDebugColor() const override		{ return mDebugColor; }
+    // Properties
+    virtual const char *                    GetDebugName() const override       { return mDebugName.c_str(); }
+    virtual Color                           GetDebugColor() const override      { return mDebugColor; }
 
-	// See: PhysicsMaterial::SaveBinaryState
-	virtual void							SaveBinaryState(StreamOut &inStream) const override;
+    // See: PhysicsMaterial::SaveBinaryState
+    virtual void                            SaveBinaryState(StreamOut &inStream) const override;
 
 protected:
-	// See: PhysicsMaterial::RestoreBinaryState
-	virtual void							RestoreBinaryState(StreamIn &inStream) override;
+    // See: PhysicsMaterial::RestoreBinaryState
+    virtual void                            RestoreBinaryState(StreamIn &inStream) override;
 
 private:
-	String									mDebugName;							///< Name of the material, used for debugging purposes
-	Color									mDebugColor = Color::sGrey;			///< Color of the material, used to render the shapes
+    String                                  mDebugName;                         ///< Name of the material, used for debugging purposes
+    Color                                   mDebugColor = Color::sGrey;         ///< Color of the material, used to render the shapes
 };
 
 JPH_NAMESPACE_END

@@ -3,7 +3,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
-namespace 
+namespace
 {
     const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 }//namespace
@@ -28,7 +28,7 @@ DeviceQueue::~DeviceQueue()
 bool DeviceQueue::WaitQueue()
 {
     VkResult result=vkQueueWaitIdle(queue);
-    
+
     if(result!=VK_SUCCESS)
         return(false);
 
@@ -86,7 +86,7 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
 
     submit_info.commandBufferCount  =cb_count;
     submit_info.pCommandBuffers     =cmd_buf;
-    
+
     VkFence fence=*fence_list[current_fence];
 
     VkResult result=vkQueueSubmit(queue,1,&submit_info,fence);

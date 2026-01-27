@@ -5,11 +5,11 @@
 
 STD_MTL_FUNC_NAMESPACE_BEGIN
 //C++端使用一个RG8UI或RGB16UI格式的顶点输入流来传递Assign数据，其中x为LocalToWorld ID，y为MaterialInstance ID
-    
+
     constexpr const char MF_GetLocalToWorld_ByAssign[]=     "\nmat4 GetLocalToWorld(){return l2w.mats[TransformID];}\n";
 
     constexpr const char MF_GetMaterialInstance_ByAssign[]= "\nMaterialInstance GetMaterialInstance(){return mi_set[MaterialInstanceID];}\n";
-    
+
     constexpr const char MI_ID_OUTPUT[]="MaterialInstanceID";
 
     constexpr const char MF_HandoverMI_VS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=MaterialInstanceID;}\n";

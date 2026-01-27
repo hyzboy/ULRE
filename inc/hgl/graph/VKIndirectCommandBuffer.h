@@ -29,7 +29,7 @@ private:
 public:
 
     virtual ~IndirectCommandBuffer()=default;
-   
+
     void *  Map     (VkDeviceSize start,VkDeviceSize size)          override{return DeviceBuffer::Map(start*sizeof(T),size*sizeof(T));}
     T *     MapCmd  (VkDeviceSize start,VkDeviceSize size)                  {return (T *)Map(start,size);}
     T *     MapCmd  ()                                                      {return (T *)Map(0,max_count);}
@@ -49,9 +49,9 @@ class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
     friend class VulkanDevice;
 
 public:
-    
+
     using IndirectCommandBuffer<VkDrawIndirectCommand>::IndirectCommandBuffer;
-        
+
     void Draw(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
     {
         vkCmdDrawIndirect(cmd_buf,
@@ -69,7 +69,7 @@ class IndirectDrawIndexedBuffer:public IndirectCommandBuffer<VkDrawIndexedIndire
 public:
 
     using IndirectCommandBuffer<VkDrawIndexedIndirectCommand>::IndirectCommandBuffer;
-    
+
     void DrawIndexed(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
     {
         vkCmdDrawIndexedIndirect(cmd_buf,
@@ -87,7 +87,7 @@ class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectComm
 public:
 
     using IndirectCommandBuffer<VkDispatchIndirectCommand>::IndirectCommandBuffer;
-            
+
     void Dispatch(VkCommandBuffer cmd_buf,uint32_t offset) const
     {
         vkCmdDispatchIndirect(cmd_buf,buf.buffer,offset);

@@ -1,0 +1,1 @@
+@python git_repos_cli.py pull github

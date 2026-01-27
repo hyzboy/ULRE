@@ -16,7 +16,7 @@ DeviceBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size
 bool TextureManager::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling) const
 {
     const VkFormatProperties fp=GetFormatProperties(format);
-    
+
     if(tiling==ImageTiling::Optimal)
         return(fp.optimalTilingFeatures&bits);
     else
@@ -82,7 +82,7 @@ bool TextureManager::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBu
 
     info.image      =tex->GetImage();
     info.buffer     =buf->GetBuffer();
-    
+
     info.isr.aspectMask     =tex->GetAspect();
     info.isr.baseMipLevel   =0;
     info.isr.levelCount     =tex->GetMipLevel();
@@ -91,7 +91,7 @@ bool TextureManager::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBu
 
     info.bic_list           =buffer_image_copy;
     info.bic_count          =count;
-    
+
     return CopyBufferToImage(&info,destinationStage);
 }
 

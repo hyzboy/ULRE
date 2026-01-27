@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_SCENE_NODE_DATA_INCLUDE
+﻿#ifndef HGL_GRAPH_SCENE_NODE_DATA_INCLUDE
 #define HGL_GRAPH_SCENE_NODE_DATA_INCLUDE
 
 #include<hgl/graph/data/MeshData.h>
@@ -7,7 +7,7 @@
 namespace hgl
 {
     namespace graph
-    {        
+    {
         struct SceneNodeData
         {
             UTF8String name;
@@ -28,7 +28,7 @@ namespace hgl
 
             UTF8StringList mesh_name;
             ObjectList<MeshData> mesh_list;
-            
+
             SceneNodeData *root_node=nullptr;
 
             AABB bounding_box;

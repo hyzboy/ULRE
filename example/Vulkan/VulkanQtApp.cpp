@@ -1,4 +1,4 @@
-#include<hgl/QT.h>
+﻿#include<hgl/QT.h>
 #include<QObject>
 #include<QApplication>
 #include<QVulkanInstance>
@@ -21,7 +21,7 @@ using namespace hgl::graph;
 //{
 //    QVulkanInstance qv_inst;
 //    QtVulkanWindow *qv_win;
-//    
+//
 //public:
 //
 //    VulkanQtAppFramework()
@@ -43,7 +43,7 @@ int main(int argc,char **argv)
     qv_win->setVulkanInstance(&qv_inst);
 
     MainWindow win(qv_win);
-    
+
     QObject::connect(qv_win,&QtVulkanWindow::vulkanInfoReceived,&win,&MainWindow::onVulkanInfoReceived);
 
     win.resize(1280,720);

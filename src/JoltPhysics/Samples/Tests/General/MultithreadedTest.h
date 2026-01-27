@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,35 +10,35 @@
 class MultithreadedTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, MultithreadedTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, MultithreadedTest)
 
-	// Destructor
-	virtual					~MultithreadedTest() override;
+    // Destructor
+    virtual                 ~MultithreadedTest() override;
 
-	// Number used to scale the terrain and camera movement to the scene
-	virtual float			GetWorldScale() const override								{ return 0.2f; }
+    // Number used to scale the terrain and camera movement to the scene
+    virtual float           GetWorldScale() const override                              { return 0.2f; }
 
-	// Initialization
-	virtual void			Initialize() override;
+    // Initialization
+    virtual void            Initialize() override;
 
-	// Test will never be deterministic since various threads are trying to concurrently add / remove bodies
-	virtual bool			IsDeterministic() const override							{ return false; }
+    // Test will never be deterministic since various threads are trying to concurrently add / remove bodies
+    virtual bool            IsDeterministic() const override                            { return false; }
 
 private:
-	// Execute a lambda either on this thread or in a separate job
-	void					Execute(default_random_engine &ioRandom, const char *inName, function<void()> inFunction);
+    // Execute a lambda either on this thread or in a separate job
+    void                    Execute(default_random_engine &ioRandom, const char *inName, function<void()> inFunction);
 
-	// Thread main function that spawns boxes
-	void					BoxSpawner();
+    // Thread main function that spawns boxes
+    void                    BoxSpawner();
 
-	// Thread main function that spawns ragdolls
-	void					RagdollSpawner();
+    // Thread main function that spawns ragdolls
+    void                    RagdollSpawner();
 
-	// Thread main function that casts rays
-	void					CasterMain();
+    // Thread main function that casts rays
+    void                    CasterMain();
 
-	thread					mBoxSpawnerThread;
-	thread					mRagdollSpawnerThread;
-	thread					mCasterThread;
-	atomic<bool>			mIsQuitting = false;
+    thread                  mBoxSpawnerThread;
+    thread                  mRagdollSpawnerThread;
+    thread                  mCasterThread;
+    atomic<bool>            mIsQuitting = false;
 };

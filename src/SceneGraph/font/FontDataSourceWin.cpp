@@ -86,7 +86,7 @@ namespace hgl::graph
 
         SelectObject(hdc,hfont);
 
-        if(!fnt.anti||fnt.height<=10)		//<=10象素强制用无抗矩齿字体
+        if(!fnt.anti||fnt.height<=10)       //<=10象素强制用无抗矩齿字体
             ggo=GGO_BITMAP;
         else
             ggo=GGO_GRAY8_BITMAP;
@@ -99,7 +99,7 @@ namespace hgl::graph
         DeleteObject(hfont);
         DeleteDC(hdc);
     }
-        
+
     bool WinBitmapFont::MakeCharBitmap(FontBitmap *bmp,u32char ch)
     {
         if(ch>0xFFFF)
@@ -120,21 +120,21 @@ namespace hgl::graph
 
         GetGlyphOutlineW(hdc,ch,ggo,&gm,DWORD(buffer.GetCount()),buffer.data(),&mat);
 
-        bmp->metrics_info.w		=hgl_align<uint>(gm.gmBlackBoxX,4);
-        bmp->metrics_info.h		=hgl_align<uint>(gm.gmBlackBoxY,4);
+        bmp->metrics_info.w     =hgl_align<uint>(gm.gmBlackBoxX,4);
+        bmp->metrics_info.h     =hgl_align<uint>(gm.gmBlackBoxY,4);
 
-        bmp->metrics_info.x		=gm.gmptGlyphOrigin.x;
-        bmp->metrics_info.y		=gm.gmptGlyphOrigin.y;
+        bmp->metrics_info.x     =gm.gmptGlyphOrigin.x;
+        bmp->metrics_info.y     =gm.gmptGlyphOrigin.y;
 
-        bmp->metrics_info.adv_x	=gm.gmCellIncX;
-        bmp->metrics_info.adv_y	=gm.gmCellIncY;
+        bmp->metrics_info.adv_x =gm.gmCellIncX;
+        bmp->metrics_info.adv_y =gm.gmCellIncY;
 
         bmp->data=zero_new<uint8>(bmp->metrics_info.w*bmp->metrics_info.h);
 
         if(ggo==GGO_GRAY8_BITMAP)
-            Convert8BitGrey	(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
+            Convert8BitGrey (bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
         else
-            ConvertBitmap	(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
+            ConvertBitmap   (bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
 
         return(true);
     }

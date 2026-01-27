@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include<hgl/type/String.h>
 #include<hgl/graph/VK.h>
 #include<hgl/io/MiniPack.h>

@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,7 +10,7 @@
 class CommandQueue
 {
 public:
-	/// Destructor
+    /// Destructor
                                         ~CommandQueue()
     {
         WaitUntilFinished();
@@ -38,8 +38,8 @@ public:
         // Create synchronization object
         FatalErrorIfFailed(inDevice->CreateFence(mFenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence)));
 
-		// Increment fence value so we don't skip waiting the first time a command list is executed
-		mFenceValue++;
+        // Increment fence value so we don't skip waiting the first time a command list is executed
+        mFenceValue++;
 
         // Create an event handle to use for frame synchronization
         mFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
@@ -50,13 +50,13 @@ public:
     /// Start the command list (requires waiting until the previous one is finished)
     ID3D12GraphicsCommandList *         Start()
     {
-	    // Reset the allocator
+        // Reset the allocator
         FatalErrorIfFailed(mCommandAllocator->Reset());
 
-	    // Reset the command list
+        // Reset the command list
         FatalErrorIfFailed(mCommandList->Reset(mCommandAllocator.Get(), nullptr));
 
-	    return mCommandList.Get();
+        return mCommandList.Get();
     }
 
     /// Execute accumulated command list
@@ -64,10 +64,10 @@ public:
     {
         JPH_ASSERT(!mIsExecuting);
 
-	    // Close the command list
+        // Close the command list
         FatalErrorIfFailed(mCommandList->Close());
 
-	    // Execute the command list
+        // Execute the command list
         ID3D12CommandList* ppCommandLists[] = { mCommandList.Get() };
         mCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
@@ -91,7 +91,7 @@ public:
                 WaitForSingleObjectEx(mFenceEvent, INFINITE, FALSE);
             }
 
-			// Increment the fence value
+            // Increment the fence value
             mFenceValue++;
 
             // Done executing
@@ -107,11 +107,11 @@ public:
     }
 
 private:
-    ComPtr<ID3D12CommandQueue>		    mCommandQueue;								///< The command queue that will hold command lists
-    ComPtr<ID3D12CommandAllocator>	    mCommandAllocator;							///< Allocator that holds the memory for the commands
-    ComPtr<ID3D12GraphicsCommandList>   mCommandList;								///< The command list that will hold the render commands / state changes
-    HANDLE							    mFenceEvent = INVALID_HANDLE_VALUE;			///< Fence event, used to wait for rendering to complete
-    ComPtr<ID3D12Fence>				    mFence;										///< Fence object, used to signal the fence event
-	UINT64							    mFenceValue = 0;							///< Current fence value, each time we need to wait we will signal the fence with this value, wait for it and then increase the value
-    bool                                mIsExecuting = false;						///< If a commandlist is currently executing on the queue
+    ComPtr<ID3D12CommandQueue>          mCommandQueue;                              ///< The command queue that will hold command lists
+    ComPtr<ID3D12CommandAllocator>      mCommandAllocator;                          ///< Allocator that holds the memory for the commands
+    ComPtr<ID3D12GraphicsCommandList>   mCommandList;                               ///< The command list that will hold the render commands / state changes
+    HANDLE                              mFenceEvent = INVALID_HANDLE_VALUE;         ///< Fence event, used to wait for rendering to complete
+    ComPtr<ID3D12Fence>                 mFence;                                     ///< Fence object, used to signal the fence event
+    UINT64                              mFenceValue = 0;                            ///< Current fence value, each time we need to wait we will signal the fence with this value, wait for it and then increase the value
+    bool                                mIsExecuting = false;                       ///< If a commandlist is currently executing on the queue
 };

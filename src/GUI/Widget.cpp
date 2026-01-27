@@ -1,4 +1,4 @@
-#include<hgl/gui/Widget.h>
+﻿#include<hgl/gui/Widget.h>
 #include<hgl/gui/ThemeEngine.h>
 
 namespace hgl
@@ -8,7 +8,7 @@ namespace hgl
         Widget::Widget(Widget *parent,ThemeEngine *te)
         {
             parent_widget=parent;
-            
+
             if(te)
                 theme_engine=te;
             else

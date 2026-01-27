@@ -1,4 +1,4 @@
-#ifndef HGL_VULKAN_SUBPASS_INFO_INCLUDE
+﻿#ifndef HGL_VULKAN_SUBPASS_INFO_INCLUDE
 #define HGL_VULKAN_SUBPASS_INFO_INCLUDE
 
 #include<hgl/graph/VK.h>
@@ -18,7 +18,7 @@ struct SubpassInfo
     {
         bool                    enable;
         uint32_t                attachment;
-	    VkResolveModeFlagBits   mode;
+        VkResolveModeFlagBits   mode;
     }depth_stencil;
 };//struct SubpassInfo
 VK_NAMESPACE_END

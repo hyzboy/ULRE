@@ -38,7 +38,7 @@ private:
             return(false);
 
         BindCameraUBO(material_instance);
-        
+
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::TriangleStrip);
 
         return pipeline;

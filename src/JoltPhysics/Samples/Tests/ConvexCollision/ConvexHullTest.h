@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,22 +10,22 @@
 class ConvexHullTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ConvexHullTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ConvexHullTest)
 
-	// Initialize the test
-	virtual void			Initialize() override;
+    // Initialize the test
+    virtual void            Initialize() override;
 
-	// Update the test, called before the physics update
-	virtual void			PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    // Update the test, called before the physics update
+    virtual void            PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
 private:
-	// A list of predefined points to feed the convex hull algorithm
-	using Points = Array<Vec3>;
-	Array<Points>			mPoints;
+    // A list of predefined points to feed the convex hull algorithm
+    using Points = Array<Vec3>;
+    Array<Points>           mPoints;
 
-	// Which index in the list we're currently using
-	size_t					mIteration = 0;
+    // Which index in the list we're currently using
+    size_t                  mIteration = 0;
 
-	// If we run out of points, we start creating random points
-	default_random_engine	mRandom { 12345 };
+    // If we run out of points, we start creating random points
+    default_random_engine   mRandom { 12345 };
 };

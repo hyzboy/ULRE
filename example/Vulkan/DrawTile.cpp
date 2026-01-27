@@ -26,7 +26,7 @@ struct TileBitmap
 };
 
 class TestApp:public VulkanApplicationFramework
-{    
+{
     ObjectList<TileBitmap> tile_list;
 
     TileData *tile_data=nullptr;
@@ -63,7 +63,7 @@ private:
         const int count=LoadStringListFromTextFile(sl,icon_path+OS_TEXT("list.txt"));
 
         Bitmap2DLoader loader;
-        
+
         int result=0;
 
         const VulkanFormat *vf=GetVulkanFormat(sl[0].c_str());
@@ -163,7 +163,7 @@ private:
 
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
 
-        sampler=db->CreateSampler();        
+        sampler=db->CreateSampler();
 
         if(!material_instance->BindImageSampler(DescriptorSetType::Value,"tex",tile_data->GetTexture(),sampler))return(false);
 
@@ -203,7 +203,7 @@ public:
 
         if(!InitVBO())
             return(false);
-            
+
         BuildCommandBuffer(render_obj);
 
         return(true);
@@ -212,7 +212,7 @@ public:
     void Resize(int w,int h)override
     {
         VulkanApplicationFramework::Resize(w,h);
-        
+
         BuildCommandBuffer(render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include<QVulkanWindow>
 
 class VulkanRenderer:public QVulkanWindowRenderer
@@ -7,7 +7,7 @@ private:
 
     QVulkanWindow *m_window;
     QVulkanDeviceFunctions *m_devFuncs;
-    
+
 public:
 
     VulkanRenderer(QVulkanWindow *w):m_window(w){}

@@ -5,7 +5,7 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKDescriptorSetType.h>
-#include<hgl/graph/VKMaterialDescriptorManager.h> 
+#include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKArrayBuffer.h>
 VK_NAMESPACE_BEGIN
 class MaterialParameters
@@ -55,7 +55,7 @@ public:
     bool BindTexture(const AnsiString &name,Texture *tex);
     bool BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const AnsiString &name,ImageView *);
-    
+
     void Update();
 };//class MaterialParameters
 VK_NAMESPACE_END

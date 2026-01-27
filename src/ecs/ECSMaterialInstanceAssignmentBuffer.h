@@ -1,6 +1,6 @@
 ﻿/**
  * ECSMaterialInstanceAssignmentBuffer.h - ECS材质实例数据管理
- * 
+ *
  * 针对 ECS 架构的 RenderItem 和 MaterialBatch 设计
  * 与 SceneGraph 的 MaterialInstanceAssignmentBuffer 功能相同，但适配 ECS 数据结构
  */
@@ -69,7 +69,7 @@ namespace hgl::ecs
 
     /**
      * ECS 材质实例分配缓冲
-     * 
+     *
      * 职责：
      * - 管理所有 RenderItem 的材质实例数据（UBO/SSBO）
      * - 去重材质实例，合并相同的MI数据

@@ -130,7 +130,7 @@ private:
 
             ro_axis=CreateAxis(db,axis_mi->GetVIL(),&aci);
         }
-        
+
         {
             struct CubeCreateInfo cci;
 

@@ -1,4 +1,4 @@
-#include<hgl/graph/VKMaterialDescriptorManager.h>
+﻿#include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/type/EnumUtil.h>
 
@@ -60,7 +60,7 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,Shad
 
                 ++dsl_bind[size_t(sp->set_type)];
 
-                ++sp;                                
+                ++sp;
             }
         }
     }
@@ -125,7 +125,7 @@ MaterialDescriptorManager::~MaterialDescriptorManager()
 {
     delete[] all_dslb;
 }
-    
+
 const int MaterialDescriptorManager::GetBinding(const DescriptorSetType &set_type,const VkDescriptorType &desc_type,const AnsiString &name)const
 {
     RANGE_CHECK_RETURN(set_type,-1)

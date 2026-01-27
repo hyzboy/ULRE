@@ -55,7 +55,7 @@ namespace hgl::graph
             ++fsp;
         }
     }
-        
+
     void FontSource::Remove(UnicodeBlock ub)
     {
         FontSourcePointer fsp;
@@ -88,10 +88,10 @@ namespace hgl::graph
                 RefreshMaxCharHeight();
         }
     }
-        
+
     FontDataSource *FontSource::GetFontDataSource(const u32char &ch)
     {
-        if(hgl::is_space(ch))return(nullptr);	//不能显示的数据或是空格
+        if(hgl::is_space(ch))return(nullptr);   //不能显示的数据或是空格
 
         const auto count=source_map.GetCount();
 
@@ -120,7 +120,7 @@ namespace hgl::graph
 
         return s->GetCharBitmap(ch);
     }
-        
+
     const bool FontSource::GetCharMetrics(CharMetricsInfo &cmi,const u32char &ch)
     {
         FontDataSource *s=GetFontDataSource(ch);
@@ -131,7 +131,7 @@ namespace hgl::graph
         return s->GetCharMetrics(cmi,ch);
     }
 
-    const	CLA *FontSource::GetCLA(const u32char &ch)
+    const   CLA *FontSource::GetCLA(const u32char &ch)
     {
         FontDataSource *s=GetFontDataSource(ch);
 

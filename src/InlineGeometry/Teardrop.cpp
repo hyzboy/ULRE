@@ -38,7 +38,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -48,7 +48,7 @@ namespace hgl::graph::inline_geometry
         {
             // t from 0 to 1
             // Returns (r, z) where r is distance from axis, z is height
-            
+
             if(t < 0.5f)
             {
                 // Bottom half: circular

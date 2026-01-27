@@ -14,7 +14,7 @@ VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
     const VertexInputAttribute *sa=via_array.items;
 
     mem_zero(count_by_group);
-    
+
     for(uint i=0;i<via_array.count;i++)
     {
         name_list[i]            =sa->name;
@@ -69,7 +69,7 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
 
             attr_desc->binding   =binding;
             attr_desc->location  =via->location;                 //此值对应shader中的layout(location=
-        
+
             attr_desc->offset    =0;
 
             bind_desc->binding   =binding;                      //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
@@ -164,7 +164,7 @@ VIL *VertexInput::CreateVIL(const VILConfig *cfg)
 {
     if(!cfg)
         return(default_vil);
-    
+
     //原本是想在这里做根据VILConfig的Map缓冲管理，避免重复创建VIL。
     //但VILConfig的复制与比较过于复杂，而且这种使用情况极少。所以放弃做这个事情，如未来真正产生这种需求时再做。
 

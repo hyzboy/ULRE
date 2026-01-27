@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include"BufferImageCopy2D.h"
 
 VK_NAMESPACE_BEGIN

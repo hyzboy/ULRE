@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -13,19 +13,19 @@
 
 JPH_IMPLEMENT_RTTI_VIRTUAL(BigVsSmallTest)
 {
-	JPH_ADD_BASE_CLASS(BigVsSmallTest, Test)
+    JPH_ADD_BASE_CLASS(BigVsSmallTest, Test)
 }
 
 void BigVsSmallTest::Initialize()
 {
-	// Create a big triangle
-	TriangleList triangles;
-	triangles.push_back(Triangle(Float3(-100, 0, 0), Float3(0, 0, 100), Float3(100, 0, -100)));
-	Body &triangle = *mBodyInterface->CreateBody(BodyCreationSettings(new MeshShapeSettings(triangles), RVec3::sZero(), Quat::sIdentity(), EMotionType::Static, Layers::NON_MOVING));
-	mBodyInterface->AddBody(triangle.GetID(), EActivation::DontActivate);
+    // Create a big triangle
+    TriangleList triangles;
+    triangles.push_back(Triangle(Float3(-100, 0, 0), Float3(0, 0, 100), Float3(100, 0, -100)));
+    Body &triangle = *mBodyInterface->CreateBody(BodyCreationSettings(new MeshShapeSettings(triangles), RVec3::sZero(), Quat::sIdentity(), EMotionType::Static, Layers::NON_MOVING));
+    mBodyInterface->AddBody(triangle.GetID(), EActivation::DontActivate);
 
-	// A small box
-	Body &body = *mBodyInterface->CreateBody(BodyCreationSettings(new BoxShape(Vec3(0.1f, 0.1f, 0.1f)), RVec3(0, 1.0f, 0), Quat::sIdentity(), EMotionType::Dynamic, Layers::MOVING));
-	body.SetAllowSleeping(false);
-	mBodyInterface->AddBody(body.GetID(), EActivation::Activate);
+    // A small box
+    Body &body = *mBodyInterface->CreateBody(BodyCreationSettings(new BoxShape(Vec3(0.1f, 0.1f, 0.1f)), RVec3(0, 1.0f, 0), Quat::sIdentity(), EMotionType::Dynamic, Layers::MOVING));
+    body.SetAllowSleeping(false);
+    mBodyInterface->AddBody(body.GetID(), EActivation::Activate);
 }

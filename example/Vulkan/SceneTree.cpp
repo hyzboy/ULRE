@@ -46,7 +46,7 @@ public:
     {
         start_time=GetDoubleTime();
     }
-    
+
     ~TestApp()
     {
         SAFE_CLEAR(render_list);
@@ -101,7 +101,7 @@ private:
     bool InitPipeline()
     {
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Triangles);
-        
+
         return pipeline;
     }
 
@@ -168,7 +168,7 @@ public:
         render_root.RefreshMatrix(&rot);
         render_list->Expend(GetCameraInfo(),&render_root);
     }
-    
+
     void BuildCommandBuffer(uint32 index)
     {
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);

@@ -1,4 +1,4 @@
-#include<hgl/graph/font/TextGeometry.h>
+﻿#include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>

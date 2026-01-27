@@ -12,7 +12,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
 {
     if(!tex_data)
         return(nullptr);
-    
+
     Texture2D *tex=new Texture2D(this,AcquireID(),tex_data);
 
     Add(tex);
@@ -227,7 +227,7 @@ bool TextureManager::ChangeTexture2D(Texture2D *tex,const void *data,const VkDev
         ||scope.GetRight()>tex->GetWidth()
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
-    
+
     DeviceBuffer *buf=CreateTransferSourceBuffer(size,data);
 
     bool result=ChangeTexture2D(tex,buf,scope,destinationStage);

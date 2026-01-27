@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -18,20 +18,20 @@ JPH_NAMESPACE_BEGIN
 /// @param inCapsuleRadius Radius of the top/bottom sphere
 JPH_INLINE float RayCapsule(Vec3Arg inRayOrigin, Vec3Arg inRayDirection, float inCapsuleHalfHeight, float inCapsuleRadius)
 {
-	// Test infinite cylinder
-	float cylinder = RayCylinder(inRayOrigin, inRayDirection, inCapsuleRadius);
-	if (cylinder == FLT_MAX)
-		return FLT_MAX;
+    // Test infinite cylinder
+    float cylinder = RayCylinder(inRayOrigin, inRayDirection, inCapsuleRadius);
+    if (cylinder == FLT_MAX)
+        return FLT_MAX;
 
-	// If this hit is in the finite cylinder we have our fraction
-	if (abs(inRayOrigin.GetY() + cylinder * inRayDirection.GetY()) <= inCapsuleHalfHeight)
-		return cylinder;
+    // If this hit is in the finite cylinder we have our fraction
+    if (abs(inRayOrigin.GetY() + cylinder * inRayDirection.GetY()) <= inCapsuleHalfHeight)
+        return cylinder;
 
-	// Test upper and lower sphere
-	Vec3 sphere_center(0, inCapsuleHalfHeight, 0);
-	float upper = RaySphere(inRayOrigin, inRayDirection, sphere_center, inCapsuleRadius);
-	float lower = RaySphere(inRayOrigin, inRayDirection, -sphere_center, inCapsuleRadius);
-	return min(upper, lower);
+    // Test upper and lower sphere
+    Vec3 sphere_center(0, inCapsuleHalfHeight, 0);
+    float upper = RaySphere(inRayOrigin, inRayDirection, sphere_center, inCapsuleRadius);
+    float lower = RaySphere(inRayOrigin, inRayDirection, -sphere_center, inCapsuleRadius);
+    return min(upper, lower);
 }
 
 JPH_NAMESPACE_END

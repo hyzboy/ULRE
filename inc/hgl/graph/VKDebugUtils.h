@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_DEBUG_UTILS_INCLUDE
+﻿#ifndef HGL_GRAPH_VULKAN_DEBUG_UTILS_INCLUDE
 #define HGL_GRAPH_VULKAN_DEBUG_UTILS_INCLUDE
 
 #include<hgl/graph/VK.h>
@@ -14,11 +14,11 @@ struct DebugUtilsFunction
     PFN_vkQueueBeginDebugUtilsLabelEXT  QueueBegin;
     PFN_vkQueueEndDebugUtilsLabelEXT    QueueEnd;
     PFN_vkQueueInsertDebugUtilsLabelEXT QueueInsert;
-    
+
     PFN_vkCmdBeginDebugUtilsLabelEXT    CmdBegin;
-    PFN_vkCmdEndDebugUtilsLabelEXT      CmdEnd;    
+    PFN_vkCmdEndDebugUtilsLabelEXT      CmdEnd;
     PFN_vkCmdInsertDebugUtilsLabelEXT   CmdInsert;
-};//struct DebugUtilsFunction    
+};//struct DebugUtilsFunction
 
 class DebugUtils
 {
@@ -27,8 +27,8 @@ class DebugUtils
     DebugUtilsFunction duf;
 
 private:
-    
-    friend DebugUtils *CreateDebugUtils(VkDevice);    
+
+    friend DebugUtils *CreateDebugUtils(VkDevice);
 
     DebugUtils(VkDevice dev,const DebugUtilsFunction &f)
     {
@@ -68,7 +68,7 @@ public:
     DU_FUNC(DescriptorSet       ,DESCRIPTOR_SET        )
     DU_FUNC(Framebuffer         ,FRAMEBUFFER           )
     DU_FUNC(CommandPool         ,COMMAND_POOL          )
-        
+
     DU_FUNC(SamplerYcbcrConversion,     SAMPLER_YCBCR_CONVERSION)
     DU_FUNC(DescriptorUpdateTemplate,   DESCRIPTOR_UPDATE_TEMPLATE)
     DU_FUNC(PrivateDataSlot,            PRIVATE_DATA_SLOT)
@@ -95,16 +95,16 @@ public:
 #undef DU_FUNC
 
     void SetTexture(Texture *tex,const AnsiString &info)
-    {   
+    {
         SetImage(       tex->GetImage(),            info+"_Image"       );
         SetImageView(   tex->GetVulkanImageView(),  info+"_ImageView"   );
         SetDeviceMemory(tex->GetDeviceMemory(),     info+"_Memory"      );
     }
-    
+
     void QueueBegin  (VkQueue,const char *,const Color4f &color=Color4f(1,1,1,1));
     void QueueEnd    (VkQueue q){duf.QueueEnd(q);}
     void QueueInsert (VkQueue q,const char *,const Color4f &color=Color4f(1,1,1,1));
-    
+
     void CmdBegin    (VkCommandBuffer,const char *,const Color4f &color=Color4f(1,1,1,1));
     void CmdEnd      (VkCommandBuffer cmd_buf){duf.CmdEnd(cmd_buf);}
     void CmdInsert   (VkCommandBuffer cmd_buf,const char *,const Color4f &color=Color4f(1,1,1,1));

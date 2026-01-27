@@ -96,7 +96,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 
     if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),sc_images)!=VK_SUCCESS)
         return(false);
-    
+
     swapchain->sc_image=new SwapchainImage[swapchain->image_count]();  // 使用 new[] 而不是 hgl_zero_new（因为有析构函数）
 
     AnsiString num_string;
@@ -118,7 +118,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
         swapchain->sc_image[i].fbo=rt_manager->CreateFBO(   sc_render_pass,
                                                             swapchain->sc_image[i].color->GetImageView(),
                                                             swapchain->sc_image[i].depth->GetImageView());
-        
+
         AnsiString num_string=AnsiString::numberOf(i);
 
         swapchain->sc_image[i].cmd_buf=device->CreateRenderCommandBuffer(AnsiString("Swapchain_RenderCmdBuffer_")+num_string);
@@ -231,7 +231,7 @@ SwapchainModule::SwapchainModule(RenderFramework *rf,TextureManager *tm,RenderTa
     tex_manager=tm;
     rt_manager=rtm;
     rp_manager=rpm;
-    
+
     auto *dev_attr=GetDevAttr();
 
     SwapchainRenderbufferInfo rbi(dev_attr->surface_format.format,dev_attr->physical_device->GetDepthFormat());
@@ -281,7 +281,7 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
             *ext=sc_render_target->GetExtent();
             return(true);
         }
-    
+
         bool SwapchainModule::AcquireNextImage()const
         {
             if(!sc_render_target)

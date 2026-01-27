@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/PrimitiveCreater.h>

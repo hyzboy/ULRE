@@ -76,7 +76,7 @@ namespace hgl
     {
         graph::RenderFramework rf(title);
 
-        if(!rf.Init(width,height))  
+        if(!rf.Init(width,height))
             return(-1);
 
         SwapchainWorkManager wm(&rf);

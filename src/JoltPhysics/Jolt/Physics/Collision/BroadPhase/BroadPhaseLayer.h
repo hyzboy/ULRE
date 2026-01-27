@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -17,40 +17,40 @@ JPH_NAMESPACE_BEGIN
 class BroadPhaseLayer
 {
 public:
-	using Type = uint8;
+    using Type = uint8;
 
-	JPH_INLINE 						BroadPhaseLayer() = default;
-	JPH_INLINE explicit constexpr	BroadPhaseLayer(Type inValue) : mValue(inValue) { }
-	JPH_INLINE constexpr			BroadPhaseLayer(const BroadPhaseLayer &) = default;
-	JPH_INLINE BroadPhaseLayer &	operator = (const BroadPhaseLayer &) = default;
+    JPH_INLINE                      BroadPhaseLayer() = default;
+    JPH_INLINE explicit constexpr   BroadPhaseLayer(Type inValue) : mValue(inValue) { }
+    JPH_INLINE constexpr            BroadPhaseLayer(const BroadPhaseLayer &) = default;
+    JPH_INLINE BroadPhaseLayer &    operator = (const BroadPhaseLayer &) = default;
 
-	JPH_INLINE constexpr bool		operator == (const BroadPhaseLayer &inRHS) const
-	{
-		return mValue == inRHS.mValue;
-	}
+    JPH_INLINE constexpr bool       operator == (const BroadPhaseLayer &inRHS) const
+    {
+        return mValue == inRHS.mValue;
+    }
 
-	JPH_INLINE constexpr bool		operator != (const BroadPhaseLayer &inRHS) const
-	{
-		return mValue != inRHS.mValue;
-	}
+    JPH_INLINE constexpr bool       operator != (const BroadPhaseLayer &inRHS) const
+    {
+        return mValue != inRHS.mValue;
+    }
 
-	JPH_INLINE constexpr bool		operator < (const BroadPhaseLayer &inRHS) const
-	{
-		return mValue < inRHS.mValue;
-	}
+    JPH_INLINE constexpr bool       operator < (const BroadPhaseLayer &inRHS) const
+    {
+        return mValue < inRHS.mValue;
+    }
 
-	JPH_INLINE explicit constexpr	operator Type() const
-	{
-		return mValue;
-	}
+    JPH_INLINE explicit constexpr   operator Type() const
+    {
+        return mValue;
+    }
 
-	JPH_INLINE Type					GetValue() const
-	{
-		return mValue;
-	}
+    JPH_INLINE Type                 GetValue() const
+    {
+        return mValue;
+    }
 
 private:
-	Type							mValue;
+    Type                            mValue;
 };
 
 /// Constant value used to indicate an invalid broad phase layer
@@ -60,18 +60,18 @@ static constexpr BroadPhaseLayer cBroadPhaseLayerInvalid(0xff);
 class BroadPhaseLayerInterface : public NonCopyable
 {
 public:
-	/// Destructor
-	virtual							~BroadPhaseLayerInterface() = default;
+    /// Destructor
+    virtual                         ~BroadPhaseLayerInterface() = default;
 
-	/// Return the number of broadphase layers there are
-	virtual uint					GetNumBroadPhaseLayers() const = 0;
+    /// Return the number of broadphase layers there are
+    virtual uint                    GetNumBroadPhaseLayers() const = 0;
 
-	/// Convert an object layer to the corresponding broadphase layer
-	virtual BroadPhaseLayer			GetBroadPhaseLayer(ObjectLayer inLayer) const = 0;
+    /// Convert an object layer to the corresponding broadphase layer
+    virtual BroadPhaseLayer         GetBroadPhaseLayer(ObjectLayer inLayer) const = 0;
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-	/// Get the user readable name of a broadphase layer (debugging purposes)
-	virtual const char *			GetBroadPhaseLayerName(BroadPhaseLayer inLayer) const = 0;
+    /// Get the user readable name of a broadphase layer (debugging purposes)
+    virtual const char *            GetBroadPhaseLayerName(BroadPhaseLayer inLayer) const = 0;
 #endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
 };
 
@@ -79,70 +79,70 @@ public:
 class ObjectVsBroadPhaseLayerFilter : public NonCopyable
 {
 public:
-	/// Destructor
-	virtual							~ObjectVsBroadPhaseLayerFilter() = default;
+    /// Destructor
+    virtual                         ~ObjectVsBroadPhaseLayerFilter() = default;
 
-	/// Returns true if an object layer should collide with a broadphase layer
-	virtual bool					ShouldCollide([[maybe_unused]] ObjectLayer inLayer1, [[maybe_unused]] BroadPhaseLayer inLayer2) const
-	{
-		return true;
-	}
+    /// Returns true if an object layer should collide with a broadphase layer
+    virtual bool                    ShouldCollide([[maybe_unused]] ObjectLayer inLayer1, [[maybe_unused]] BroadPhaseLayer inLayer2) const
+    {
+        return true;
+    }
 };
 
 /// Filter class for broadphase layers
 class BroadPhaseLayerFilter : public NonCopyable
 {
 public:
-	/// Destructor
-	virtual							~BroadPhaseLayerFilter() = default;
+    /// Destructor
+    virtual                         ~BroadPhaseLayerFilter() = default;
 
-	/// Function to filter out broadphase layers when doing collision query test (return true to allow testing against objects with this layer)
-	virtual bool					ShouldCollide([[maybe_unused]] BroadPhaseLayer inLayer) const
-	{
-		return true;
-	}
+    /// Function to filter out broadphase layers when doing collision query test (return true to allow testing against objects with this layer)
+    virtual bool                    ShouldCollide([[maybe_unused]] BroadPhaseLayer inLayer) const
+    {
+        return true;
+    }
 };
 
 /// Default filter class that uses the pair filter in combination with a specified layer to filter layers
 class DefaultBroadPhaseLayerFilter : public BroadPhaseLayerFilter
 {
 public:
-	/// Constructor
-									DefaultBroadPhaseLayerFilter(const ObjectVsBroadPhaseLayerFilter &inObjectVsBroadPhaseLayerFilter, ObjectLayer inLayer) :
-		mObjectVsBroadPhaseLayerFilter(inObjectVsBroadPhaseLayerFilter),
-		mLayer(inLayer)
-	{
-	}
+    /// Constructor
+                                    DefaultBroadPhaseLayerFilter(const ObjectVsBroadPhaseLayerFilter &inObjectVsBroadPhaseLayerFilter, ObjectLayer inLayer) :
+        mObjectVsBroadPhaseLayerFilter(inObjectVsBroadPhaseLayerFilter),
+        mLayer(inLayer)
+    {
+    }
 
-	// See BroadPhaseLayerFilter::ShouldCollide
-	virtual bool					ShouldCollide(BroadPhaseLayer inLayer) const override
-	{
-		return mObjectVsBroadPhaseLayerFilter.ShouldCollide(mLayer, inLayer);
-	}
+    // See BroadPhaseLayerFilter::ShouldCollide
+    virtual bool                    ShouldCollide(BroadPhaseLayer inLayer) const override
+    {
+        return mObjectVsBroadPhaseLayerFilter.ShouldCollide(mLayer, inLayer);
+    }
 
 private:
-	const ObjectVsBroadPhaseLayerFilter &mObjectVsBroadPhaseLayerFilter;
-	ObjectLayer						mLayer;
+    const ObjectVsBroadPhaseLayerFilter &mObjectVsBroadPhaseLayerFilter;
+    ObjectLayer                     mLayer;
 };
 
 /// Allows objects from a specific broad phase layer only
 class SpecifiedBroadPhaseLayerFilter : public BroadPhaseLayerFilter
 {
 public:
-	/// Constructor
-	explicit						SpecifiedBroadPhaseLayerFilter(BroadPhaseLayer inLayer) :
-		mLayer(inLayer)
-	{
-	}
+    /// Constructor
+    explicit                        SpecifiedBroadPhaseLayerFilter(BroadPhaseLayer inLayer) :
+        mLayer(inLayer)
+    {
+    }
 
-	// See BroadPhaseLayerFilter::ShouldCollide
-	virtual bool					ShouldCollide(BroadPhaseLayer inLayer) const override
-	{
-		return mLayer == inLayer;
-	}
+    // See BroadPhaseLayerFilter::ShouldCollide
+    virtual bool                    ShouldCollide(BroadPhaseLayer inLayer) const override
+    {
+        return mLayer == inLayer;
+    }
 
 private:
-	BroadPhaseLayer					mLayer;
+    BroadPhaseLayer                 mLayer;
 };
 
 JPH_NAMESPACE_END

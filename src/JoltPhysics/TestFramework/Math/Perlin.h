@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // Taken from: https://github.com/nothings/stb/blob/master/stb_perlin.h
 //

@@ -32,19 +32,19 @@ public:
     {
         if(auto cmp = vertex_offset <=> other.vertex_offset; cmp != 0)
             return cmp;
-        
+
         if(auto cmp = first_index <=> other.first_index; cmp != 0)
             return cmp;
-        
+
         if(auto cmp = vertex_count <=> other.vertex_count; cmp != 0)
             return cmp;
-        
+
         if(auto cmp = index_count <=> other.index_count; cmp != 0)
             return cmp;
-        
+
         if(auto cmp = data_vertex_count <=> other.data_vertex_count; cmp != 0)
             return cmp;
-        
+
         return data_index_count <=> other.data_index_count;
     }
 

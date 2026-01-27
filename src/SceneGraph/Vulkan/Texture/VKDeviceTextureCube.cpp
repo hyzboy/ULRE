@@ -1,4 +1,4 @@
-#include<hgl/graph/module/TextureManager.h>
+﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
@@ -38,7 +38,7 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
             Clear(tci);
             return(nullptr);
         }
-        
+
         tci->memory=GetDevice()->CreateMemory(tci->image);
     }
 
@@ -92,7 +92,7 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
 bool TextureManager::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||!mipmaps_zero_bytes)return(false);
-    
+
     BufferImageCopy buffer_image_copy(tex);
 
     return CopyBufferToImageCube(tex,buf,&buffer_image_copy,destinationStage);
@@ -109,7 +109,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf
     AutoDeleteArray<VkBufferImageCopy> buffer_image_copy(miplevel);
 
     VkDeviceSize offset=0;
-    
+
     uint32_t face=0;
     uint32_t level=0;
 
@@ -216,7 +216,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf
 //
 //    DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 //
-//    bool result=ChangeTexture2D(tex,buf,left,top,width,height,destinationStage);    
+//    bool result=ChangeTexture2D(tex,buf,left,top,width,height,destinationStage);
 //
 //    delete buf;
 //    return(result);

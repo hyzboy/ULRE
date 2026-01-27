@@ -139,7 +139,7 @@ namespace
         if(tv.contains("Alpha"))
         {
             toml::value &alpha=tv["Alpha"];
-        
+
             String2VkEnum(cbas->srcAlphaBlendFactor,alpha,"Src");
             String2VkEnum(cbas->dstAlphaBlendFactor,alpha,"Dst");
             String2VkEnum(cbas->alphaBlendOp,       alpha,"Op");

@@ -1,6 +1,6 @@
-// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+﻿// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 // This example demonstrates drawing multiple triangles using ECS architecture with automatic instancing
-// 
+//
 // 本范例展示了：
 // 1. 使用ECS架构创建多个实体
 // 2. 使用TransformComponent管理不同的空间变换
@@ -104,40 +104,40 @@ private:
         // === 步骤2: 创建多个三角形实体 ===
         // 每个实体都有自己的Transform，但共享同一个Primitive
         // RenderCollector会自动识别并进行Instance渲染
-        
+
         double rad;
-        
+
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
         {
             // 创建实体
             auto entity = ecs_world->CreateEntity<Entity>("Triangle_" + std::to_string(i));
-            
+
             // === 步骤3: 添加TransformComponent ===
             // 每个三角形有不同的旋转变换
             auto transform = entity->AddComponent<TransformComponent>();
-            
+
             // 计算旋转角度
             rad = deg2rad((360.0/double(TRIANGLE_NUMBER))*i);
-            
+
             // 使用四元数设置旋转（绕Z轴）
             // 注意：glm::angleAxis参数是(角度, 轴向量)
             glm::quat rotation = glm::angleAxis((float)rad, glm::vec3(0.0f, 0.0f, 1.0f));
-            
+
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform->SetLocalRotation(rotation);
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            
+
             // 设置为静态对象 - 因为三角形不会移动
             // 这样系统会缓存世界矩阵，提高性能
             transform->SetMovable(false);
-            
+
             // === 步骤4: 添加PrimitiveComponent ===
             // 所有实体共享同一个Primitive
             // RenderCollector会检测到这一点并自动使用Instance渲染
             auto primitive_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
             primitive_comp->SetPrimitive(prim_triangle);
             primitive_comp->SetVisible(true);
-            
+
             // 保存实体引用
             triangle_entities.push_back(entity);
         }
@@ -172,7 +172,7 @@ public:
     {
         // ECS世界的更新由框架层的 SceneRenderer::Tick 自动调用
         // 这里可以添加游戏逻辑更新
-        
+
         WorkObject::Tick(delta_time);
     }
 };//class TestApp:public WorkObject

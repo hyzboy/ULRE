@@ -57,13 +57,13 @@ private:
         MaterialInstance *  material_instance   =nullptr;
         RenderableInstance *renderable_instance =nullptr;
     }mir_nearest,mir_linear,mir_nearest_hq,mir_linear_hq;
-    
+
     Texture2D *         texture             =nullptr;
 
     VAB *               vertex_buffer       =nullptr;
     VAB *               tex_coord_buffer    =nullptr;
     IndexBuffer *       index_buffer        =nullptr;
-    
+
     SceneNode           render_root;
     RenderList          *render_list        =nullptr;
 
@@ -159,10 +159,10 @@ private:
     {
         mir->material_instance=db->CreateMaterialInstance(mp->material);
         if(!mir->material_instance)return(false);
-        
+
         {
             MaterialParameters *mp_global=mir->material_instance->GetMP(DescriptorSetsType::Global);
-        
+
             if(!mp_global)
                 return(false);
 
@@ -173,10 +173,10 @@ private:
 
         {
             MaterialParameters *mp_texture=mir->material_instance->GetMP(DescriptorSetsType::Value);
-        
+
             if(!mp_texture)
                 return(false);
-            
+
             if(!mp_texture->BindSampler("tex",texture,sampler))return(false);
 
             mp_texture->Update();
@@ -203,7 +203,7 @@ private:
         Add(&mir_linear,    translate( 0,-1,0));
         Add(&mir_nearest_hq,translate(-1, 0,0));
         Add(&mir_linear_hq, translate( 0, 0,0));
-        
+
         return(true);
     }
 
@@ -233,7 +233,7 @@ public:
         if(!InitMIR(&mir_linear,       sampler_linear  ,&mp_normal  ))return(false);
         if(!InitMIR(&mir_nearest_hq,   sampler_nearest ,&mp_hq      ))return(false);
         if(!InitMIR(&mir_linear_hq,    sampler_linear  ,&mp_hq      ))return(false);
-        
+
         if(!InitScene())
             return(false);
 
@@ -249,7 +249,7 @@ public:
     {
         render_root.RefreshMatrix();
         render_list->Expend(camera->info,&render_root);
-        
+
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 };//class TestApp:public VulkanApplicationFramework

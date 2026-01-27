@@ -1,4 +1,4 @@
-#include<hgl/component/Component.h>
+﻿#include<hgl/component/Component.h>
 #include<hgl/graph/SceneNode.h>
 
 COMPONENT_NAMESPACE_BEGIN

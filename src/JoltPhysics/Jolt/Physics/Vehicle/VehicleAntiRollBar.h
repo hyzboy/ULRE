@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -15,17 +15,17 @@ JPH_NAMESPACE_BEGIN
 class JPH_EXPORT VehicleAntiRollBar
 {
 public:
-	JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, VehicleAntiRollBar)
+    JPH_DECLARE_SERIALIZABLE_NON_VIRTUAL(JPH_EXPORT, VehicleAntiRollBar)
 
-	/// Saves the contents in binary form to inStream.
-	void					SaveBinaryState(StreamOut &inStream) const;
+    /// Saves the contents in binary form to inStream.
+    void                    SaveBinaryState(StreamOut &inStream) const;
 
-	/// Restores the contents in binary form to inStream.
-	void					RestoreBinaryState(StreamIn &inStream);
+    /// Restores the contents in binary form to inStream.
+    void                    RestoreBinaryState(StreamIn &inStream);
 
-	int						mLeftWheel = 0;								///< Index (in mWheels) that represents the left wheel of this anti-rollbar
-	int						mRightWheel = 1;							///< Index (in mWheels) that represents the right wheel of this anti-rollbar
-	float					mStiffness = 1000.0f;						///< Stiffness (spring constant in N/m) of anti rollbar, can be 0 to disable the anti-rollbar
+    int                     mLeftWheel = 0;                             ///< Index (in mWheels) that represents the left wheel of this anti-rollbar
+    int                     mRightWheel = 1;                            ///< Index (in mWheels) that represents the right wheel of this anti-rollbar
+    float                   mStiffness = 1000.0f;                       ///< Stiffness (spring constant in N/m) of anti rollbar, can be 0 to disable the anti-rollbar
 };
 
 JPH_NAMESPACE_END

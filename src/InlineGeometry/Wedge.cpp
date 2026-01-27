@@ -1,4 +1,4 @@
-// Wedge/triangular prism geometry generator for ULRE engine
+﻿// Wedge/triangular prism geometry generator for ULRE engine
 // Creates a wedge shape (half of a box with a sloped surface)
 
 #include "InlineGeometryCommon.h"
@@ -37,7 +37,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -45,7 +45,7 @@ namespace hgl::graph::inline_geometry
         {
             // Slope along X direction
             // Vertices: bottom 4 corners, top 2 corners (at x = -hw)
-            
+
             // Triangular face 1 (at -hd, facing -Y)
             builder.WriteFullVertex(-hw, -hd, -hh, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             builder.WriteFullVertex( hw, -hd, -hh, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -76,7 +76,7 @@ namespace hgl::graph::inline_geometry
             float ny = 0.0f;
             float nz = width / sqrtf(width * width + height * height);
             float nzx = -height / sqrtf(width * width + height * height);
-            
+
             builder.WriteFullVertex( hw, -hd, -hh, nzx, 0.0f, nz, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
             builder.WriteFullVertex(-hw, -hd,  hh, nzx, 0.0f, nz, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f);
             builder.WriteFullVertex( hw,  hd, -hh, nzx, 0.0f, nz, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
@@ -86,7 +86,7 @@ namespace hgl::graph::inline_geometry
         {
             // Slope along Y direction
             // Similar structure but rotated
-            
+
             // Triangular face 1 (at -hw, facing -X)
             builder.WriteFullVertex(-hw, -hd, -hh, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
             builder.WriteFullVertex(-hw,  hd, -hh, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
@@ -115,7 +115,7 @@ namespace hgl::graph::inline_geometry
             float nx = 0.0f;
             float ny = -depth / sqrtf(depth * depth + height * height);
             float nz = depth / sqrtf(depth * depth + height * height);
-            
+
             builder.WriteFullVertex(-hw,  hd, -hh, nx, ny, nz, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
             builder.WriteFullVertex( hw,  hd, -hh, nx, ny, nz, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
             builder.WriteFullVertex( hw, -hd,  hh, nx, ny, nz, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);

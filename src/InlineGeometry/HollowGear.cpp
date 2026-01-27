@@ -57,7 +57,7 @@ namespace hgl::graph::inline_geometry
         const float angle_per_tooth = (2.0f * std::numbers::pi_v<float>) / float(tooth_count);
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -68,7 +68,7 @@ namespace hgl::graph::inline_geometry
             float tooth_phase = tooth_angle / angle_per_tooth;
 
             float half_width = tooth_width_ratio * 0.5f;
-            
+
             if(tooth_phase < half_width)
             {
                 // Rising edge

@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_TEXTURE_CREATE_INFO_INCLUDE
+﻿#ifndef HGL_GRAPH_VULKAN_TEXTURE_CREATE_INFO_INCLUDE
 #define HGL_GRAPH_VULKAN_TEXTURE_CREATE_INFO_INCLUDE
 
 #include<hgl/graph/VK.h>
@@ -32,11 +32,11 @@ public:
 
     TextureCreateInfo()
     {
-        mem_zero(*this);        
+        mem_zero(*this);
     }
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img):TextureCreateInfo()
-    {   
+    {
         aspect=aspect_bit;
 
         extent.width=ext.width;
@@ -71,13 +71,13 @@ public:
             (tiling==ImageTiling::Optimal?
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
                 VK_IMAGE_LAYOUT_GENERAL)){}
-                
+
     TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const uint32_t u,const ImageTiling it)
         :TextureCreateInfo(aspect_bit,u,it)
     {
         extent.width=ext.width;
         extent.height=ext.height;
-        extent.depth=1;        
+        extent.depth=1;
     }
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkFormat &fmt,const VkExtent2D &ext,const uint32_t u,const ImageTiling it,const VkImageLayout il)
@@ -86,12 +86,12 @@ public:
         format=fmt;
         extent.width=ext.width;
         extent.height=ext.height;
-        extent.depth=1;        
+        extent.depth=1;
     }
-            
+
     TextureCreateInfo(const uint32_t aspect_bit,const uint32_t u)
         :TextureCreateInfo(aspect_bit,u,ImageTiling::Optimal,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL){}
-        
+
     TextureCreateInfo(const uint32_t aspect_bit)
         :TextureCreateInfo( aspect_bit,
                             VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -163,7 +163,7 @@ public:
 
         return(true);
     }
-    
+
     void SetAutoMipmaps()
     {
         target_mipmaps=hgl::GetMipLevel(extent.width,extent.height,extent.depth);
@@ -316,7 +316,7 @@ public:
 
         if(!tci->buffer&&!tci->pixels&&tci->image_layout==VK_IMAGE_LAYOUT_UNDEFINED)
             image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        else        
+        else
             image_layout=tci->image_layout;
     }
 };//struct TextureData

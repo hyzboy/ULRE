@@ -1,4 +1,4 @@
-#ifndef HGL_GUI_LAYOUT_INCLUDE
+﻿#ifndef HGL_GUI_LAYOUT_INCLUDE
 #define HGL_GUI_LAYOUT_INCLUDE
 
 #include<hgl/gui/Widget.h>
@@ -36,7 +36,7 @@ namespace hgl
         class VBoxLayout:public LayoutBase
         {
         public:
-        };//class VBoxLayout:public LayoutBase 
+        };//class VBoxLayout:public LayoutBase
 
         /**
          * 水平分布布局器

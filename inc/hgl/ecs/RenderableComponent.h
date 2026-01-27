@@ -35,5 +35,5 @@ namespace hgl::ecs
 
         // Override in derived classes for specific rendering
         virtual void Render(const glm::mat4& worldMatrix) {}
-    };        
+    };
 }//namespace hgl::ecs

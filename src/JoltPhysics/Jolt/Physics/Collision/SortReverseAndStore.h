@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -14,22 +14,22 @@ JPH_NAMESPACE_BEGIN
 /// @return The number of values that were kept
 JPH_INLINE int SortReverseAndStore(Vec4Arg inValues, float inMaxValue, UVec4 &ioIdentifiers, float *outValues)
 {
-	// Sort so that highest values are first (we want to first process closer hits and we process stack top to bottom)
-	Vec4 values = inValues;
-	Vec4::sSort4Reverse(values, ioIdentifiers);
+    // Sort so that highest values are first (we want to first process closer hits and we process stack top to bottom)
+    Vec4 values = inValues;
+    Vec4::sSort4Reverse(values, ioIdentifiers);
 
-	// Count how many results are less than the max value
-	UVec4 closer = Vec4::sLess(values, Vec4::sReplicate(inMaxValue));
-	int num_results = closer.CountTrues();
+    // Count how many results are less than the max value
+    UVec4 closer = Vec4::sLess(values, Vec4::sReplicate(inMaxValue));
+    int num_results = closer.CountTrues();
 
-	// Shift the values so that only the ones that are less than max are kept
-	values = values.ReinterpretAsInt().ShiftComponents4Minus(num_results).ReinterpretAsFloat();
-	ioIdentifiers = ioIdentifiers.ShiftComponents4Minus(num_results);
+    // Shift the values so that only the ones that are less than max are kept
+    values = values.ReinterpretAsInt().ShiftComponents4Minus(num_results).ReinterpretAsFloat();
+    ioIdentifiers = ioIdentifiers.ShiftComponents4Minus(num_results);
 
-	// Store the values
-	values.StoreFloat4(reinterpret_cast<Float4 *>(outValues));
+    // Store the values
+    values.StoreFloat4(reinterpret_cast<Float4 *>(outValues));
 
-	return num_results;
+    return num_results;
 }
 
 /// Shift the elements so that the identifiers that correspond with the trues in inValue come first
@@ -38,11 +38,11 @@ JPH_INLINE int SortReverseAndStore(Vec4Arg inValues, float inMaxValue, UVec4 &io
 /// @return The number of trues
 JPH_INLINE int CountAndSortTrues(UVec4Arg inValue, UVec4 &ioIdentifiers)
 {
-	// Sort the hits
-	ioIdentifiers = UVec4::sSort4True(inValue, ioIdentifiers);
+    // Sort the hits
+    ioIdentifiers = UVec4::sSort4True(inValue, ioIdentifiers);
 
-	// Return the amount of hits
-	return inValue.CountTrues();
+    // Return the amount of hits
+    return inValue.CountTrues();
 }
 
 JPH_NAMESPACE_END

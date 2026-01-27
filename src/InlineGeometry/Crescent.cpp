@@ -29,11 +29,11 @@ namespace hgl::graph::inline_geometry
 
         // Crescent is the difference between two circles
         // We need to find the intersection points to determine the arc range
-        
+
         // Calculate intersection angles
         // Using circle-circle intersection mathematics
         float d = offset;  // Distance between centers
-        
+
         if(d >= outer_r + inner_r || d + inner_r <= outer_r)
         {
             // Circles don't intersect properly for crescent
@@ -42,10 +42,10 @@ namespace hgl::graph::inline_geometry
 
         // Find intersection points using law of cosines
         float angle_outer = acos((outer_r * outer_r + d * d - inner_r * inner_r) / (2.0f * outer_r * d));
-        
+
         // Crescent outer arc goes from -angle_outer to +angle_outer
         // Inner arc center is offset by (offset, 0)
-        
+
         const uint outer_verts = segments + 1;
         const uint inner_verts = segments + 1;
         const uint profile_verts = outer_verts + inner_verts;
@@ -73,7 +73,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -95,11 +95,11 @@ namespace hgl::graph::inline_geometry
         for(uint i = 0; i <= segments; i++)
         {
             float t = float(segments - i) / float(segments);
-            
+
             // Calculate angle for inner circle centered at (offset, 0)
             float inner_angle_range = std::numbers::pi_v<float> - angle_outer;
             float angle = -inner_angle_range + 2.0f * inner_angle_range * t;
-            
+
             float x = offset + cos(angle) * inner_r;
             float y = sin(angle) * inner_r;
 
@@ -129,7 +129,7 @@ namespace hgl::graph::inline_geometry
             float t = float(segments - i) / float(segments);
             float inner_angle_range = std::numbers::pi_v<float> - angle_outer;
             float angle = -inner_angle_range + 2.0f * inner_angle_range * t;
-            
+
             float x = offset + cos(angle) * inner_r;
             float y = sin(angle) * inner_r;
 
@@ -168,7 +168,7 @@ namespace hgl::graph::inline_geometry
             float t = float(i) / float(segments);
             float inner_angle_range = std::numbers::pi_v<float> - angle_outer;
             float angle = -inner_angle_range + 2.0f * inner_angle_range * t;
-            
+
             float x = offset + cos(angle) * inner_r;
             float y = sin(angle) * inner_r;
 

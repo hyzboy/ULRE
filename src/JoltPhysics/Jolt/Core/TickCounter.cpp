@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -7,17 +7,17 @@
 #include <Jolt/Core/TickCounter.h>
 
 #if defined(JPH_PLATFORM_WINDOWS)
-	JPH_SUPPRESS_WARNING_PUSH
-	JPH_MSVC_SUPPRESS_WARNING(5039) // winbase.h(13179): warning C5039: 'TpSetCallbackCleanupGroup': pointer or reference to potentially throwing function passed to 'extern "C"' function under -EHc. Undefined behavior may occur if this function throws an exception.
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif//WIN32_LEAN_AND_MEAN
+    JPH_SUPPRESS_WARNING_PUSH
+    JPH_MSVC_SUPPRESS_WARNING(5039) // winbase.h(13179): warning C5039: 'TpSetCallbackCleanupGroup': pointer or reference to potentially throwing function passed to 'extern "C"' function under -EHc. Undefined behavior may occur if this function throws an exception.
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif//WIN32_LEAN_AND_MEAN
 #ifndef JPH_COMPILER_MINGW
-	#include <Windows.h>
+    #include <Windows.h>
 #else
-	#include <windows.h>
+    #include <windows.h>
 #endif
-	JPH_SUPPRESS_WARNING_POP
+    JPH_SUPPRESS_WARNING_POP
 #endif
 
 JPH_NAMESPACE_BEGIN
@@ -26,9 +26,9 @@ JPH_NAMESPACE_BEGIN
 
 uint64 GetProcessorTickCount()
 {
-	LARGE_INTEGER count;
-	QueryPerformanceCounter(&count);
-	return uint64(count.QuadPart);
+    LARGE_INTEGER count;
+    QueryPerformanceCounter(&count);
+    return uint64(count.QuadPart);
 }
 
 #endif // JPH_PLATFORM_WINDOWS_UWP || (JPH_PLATFORM_WINDOWS && JPH_CPU_ARM)

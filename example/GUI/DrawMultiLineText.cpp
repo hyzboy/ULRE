@@ -35,7 +35,7 @@ private:
     bool InitTextRenderable()
     {
         U16StringViewList str_list;
-        
+
         LoadStringViewListFromTextFile(str_list,OS_TEXT("res/text/百家姓.txt"));
 
         if(str_list.IsEmpty())return(false);
@@ -53,7 +53,7 @@ private:
         std::default_random_engine dre;
         std::uniform_int_distribution<int> rand_x(0,WINDOW_WIDTH -FONT_SIZE);
         std::uniform_int_distribution<int> rand_y(0,WINDOW_HEIGHT-FONT_SIZE);
-        
+
         for (auto str:str_list)
         {
             start_pos.x=rand_x(dre);

@@ -26,7 +26,7 @@ protected:
 
     uint32_t        vertex_count;
     uint32_t        index_count;
-    
+
     VAB **          vab_list;
     VABMap *        vab_map_list;
 
@@ -34,7 +34,7 @@ protected:
 
 protected:
 
-    IndexBuffer *   ibo;    
+    IndexBuffer *   ibo;
     IBMap           ibo_map;
 
     virtual IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it)=0;
@@ -45,7 +45,7 @@ public:
     virtual ~GeometryData();
 
 public:
-    
+
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;

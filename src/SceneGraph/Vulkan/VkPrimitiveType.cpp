@@ -27,7 +27,7 @@ namespace
         PRIM_NAME(TrianglesAdj,     "triangles_adjacency"),
         PRIM_NAME(TriangleStripAdj, "triangle_strip_adjacency"),
         PRIM_NAME(Patchs,           "patchs"),
-    
+
         PRIM_NAME(SolidRectangles,  "solid_rectangles"),
         PRIM_NAME(WireRectangles,   "wire_rectangles"),
         //PRIM_NAME(SolidCube,        "solid_cube"),

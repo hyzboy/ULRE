@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2024 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,15 +10,15 @@
 class SoftBodyLRAConstraintTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyLRAConstraintTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, SoftBodyLRAConstraintTest)
 
-	// See: Test
-	virtual void			Initialize() override;
-	virtual void			PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    // See: Test
+    virtual void            Initialize() override;
+    virtual void            PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
 private:
-	// Size and spacing of the cloth
-	static constexpr int	cNumVerticesX = 10;
-	static constexpr int	cNumVerticesZ = 50;
-	static constexpr float	cVertexSpacing = 0.5f;
+    // Size and spacing of the cloth
+    static constexpr int    cNumVerticesX = 10;
+    static constexpr int    cNumVerticesZ = 50;
+    static constexpr float  cVertexSpacing = 0.5f;
 };

@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -12,21 +12,21 @@
 class ChangeObjectLayerTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ChangeObjectLayerTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, ChangeObjectLayerTest)
 
-	// Initialize the test
-	virtual void			Initialize() override;
+    // Initialize the test
+    virtual void            Initialize() override;
 
-	// Update the test, called before the physics update
-	virtual void			PrePhysicsUpdate(const PreUpdateParams &inParams) override;
+    // Update the test, called before the physics update
+    virtual void            PrePhysicsUpdate(const PreUpdateParams &inParams) override;
 
-	// Saving / restoring state for replay
-	virtual void			SaveState(StateRecorder &inStream) const override;
-	virtual void			RestoreState(StateRecorder &inStream) override;
+    // Saving / restoring state for replay
+    virtual void            SaveState(StateRecorder &inStream) const override;
+    virtual void            RestoreState(StateRecorder &inStream) override;
 
 private:
-	BodyID					mMoving;
-	BodyIDVector			mDebris;
-	bool					mIsDebris = true;
-	float					mTime = 0.0f;
+    BodyID                  mMoving;
+    BodyIDVector            mDebris;
+    bool                    mIsDebris = true;
+    float                   mTime = 0.0f;
 };

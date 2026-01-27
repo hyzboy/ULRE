@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2022 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,17 +11,17 @@
 class CreateRigTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, CreateRigTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, CreateRigTest)
 
-	// Destructor
-	virtual							~CreateRigTest() override;
+    // Destructor
+    virtual                         ~CreateRigTest() override;
 
-	// Number used to scale the terrain and camera movement to the scene
-	virtual float					GetWorldScale() const override								{ return 0.2f; }
+    // Number used to scale the terrain and camera movement to the scene
+    virtual float                   GetWorldScale() const override                              { return 0.2f; }
 
-	virtual void					Initialize() override;
+    virtual void                    Initialize() override;
 
 private:
-	// Our ragdoll
-	Ref<Ragdoll>					mRagdoll;
+    // Our ragdoll
+    Ref<Ragdoll>                    mRagdoll;
 };

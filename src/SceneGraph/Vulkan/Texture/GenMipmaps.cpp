@@ -1,4 +1,4 @@
-#include<hgl/graph/VKCommandBuffer.h>
+﻿#include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32 layer_count)
@@ -18,7 +18,7 @@ void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspe
     int32_t width   =extent.width;
     int32_t height  =extent.height;
 
-    for (uint32_t i = 1; i < mipLevels; i++) 
+    for (uint32_t i = 1; i < mipLevels; i++)
     {
         subresourceRange.baseMipLevel = i - 1;
 
@@ -47,7 +47,7 @@ void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspe
             VK_FILTER_LINEAR);
 
         texture_cmd_buf->ImageMemoryBarrier(image,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, 
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             VK_ACCESS_TRANSFER_READ_BIT,
             VK_ACCESS_SHADER_READ_BIT,

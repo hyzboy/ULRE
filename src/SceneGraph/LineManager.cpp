@@ -1,4 +1,4 @@
-#include<hgl/graph/LineManager.h>
+﻿#include<hgl/graph/LineManager.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKDevice.h>
@@ -38,7 +38,7 @@ namespace hgl::graph
     {
         // 创建Line3D材质配置
         mtl::Line3DMaterialCreateConfig cfg;
-        
+
         // 创建Line3D材质
         auto* mci = mtl::CreateLine3D(render_framework->GetDevAttr(), &cfg);
         if (!mci)
@@ -127,7 +127,7 @@ namespace hgl::graph
         }
 
         PrimitiveCreater pc(render_framework->GetDevice(), vil);
-        
+
         // 初始化图元创建器 - 每条线对应一个点（几何着色器会将点转换为线）
         if (!pc.Init("LineManager_Lines", line_count))
         {

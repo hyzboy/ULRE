@@ -22,7 +22,7 @@ namespace hgl::graph::inline_geometry
         // Validate parameters
         if(r_inner >= r_outer)
             return nullptr;
-        
+
         if(bend_angle <= 0.0f || bend_angle > 180.0f)
             return nullptr;
 
@@ -31,15 +31,15 @@ namespace hgl::graph::inline_geometry
         // - Each position has a ring of (pipe_segs + 1) vertices for outer and inner
         // - Total: (bend_segs + 1) * (pipe_segs + 1) * 2
         // - Caps (if enabled): 2 * (pipe_segs + 1) * 2 (two rings per cap)
-        
+
         uint ring_verts = (pipe_segs + 1);
         uint path_rings = (bend_segs + 1);
         uint numberVertices = path_rings * ring_verts * 2;  // outer + inner
-        
+
         uint cap_verts = 0;
         if(peci->generate_caps)
             cap_verts = 2 * ring_verts * 2;  // 2 caps, each with 2 rings
-        
+
         numberVertices += cap_verts;
 
         // Index count:
@@ -57,7 +57,7 @@ namespace hgl::graph::inline_geometry
             return nullptr;
 
         GeometryBuilder builder(pc);
-        
+
         if(!builder.IsValid())
             return nullptr;
 
@@ -70,12 +70,12 @@ namespace hgl::graph::inline_geometry
 
         // Generate vertices along the bend path
         // The bend is in the XZ plane, starting from -X direction, rotating towards -Z
-        
+
         for(uint b = 0; b <= bend_segs; b++)
         {
             float t = float(b) / float(bend_segs);  // 0 to 1
             float bend_a = bend_angle_step * float(b);  // Current angle along bend
-            
+
             // Center of pipe at this bend position
             float cx = -bend_r * cos(bend_a);
             float cz = -bend_r * sin(bend_a);
@@ -390,17 +390,17 @@ namespace hgl::graph::inline_geometry
         // Set bounding box
         // The pipe bends in the XZ plane starting from (-bend_r, 0, 0)
         // Endpoint: (-bend_r*cos(angle), 0, -bend_r*sin(angle))
-        
+
         float min_x = -(bend_r + r_outer);  // Most negative X (at start)
         float max_x = 0.0f;                 // Most positive X
         float min_y = -r_outer;             // Pipe extends ±r_outer in Y
         float max_y = r_outer;
-        
+
         // Z depends on bend angle
         float end_z = -bend_r * sin(bend_angle_rad);
         float min_z = std::min(0.0f, end_z) - r_outer;
         float max_z = std::max(0.0f, end_z) + r_outer;
-        
+
         return pc->CreateWithAABB(
             math::Vector3f(min_x, min_y, min_z),
             Vector3f(max_x, max_y, max_z));

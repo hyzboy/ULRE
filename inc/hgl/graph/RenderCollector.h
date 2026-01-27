@@ -18,7 +18,7 @@ namespace hgl::graph
     */
     class RenderCollector
     {
-    protected:  
+    protected:
 
         VulkanDevice *      device;
 
@@ -39,7 +39,7 @@ namespace hgl::graph
 
         RenderCollector(VulkanDevice *);
         virtual ~RenderCollector()=default;
-            
+
         virtual void SetCameraInfo(const CameraInfo *ci){camera_info=ci;}       ///<设置相机信息
         virtual uint Expand(SceneNode *);                                       ///<展开场景树到渲染列表，返回可渲染对象数量
 

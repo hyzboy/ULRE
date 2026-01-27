@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -10,8 +10,8 @@
 class BigVsSmallTest : public Test
 {
 public:
-	JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, BigVsSmallTest)
+    JPH_DECLARE_RTTI_VIRTUAL(JPH_NO_EXPORT, BigVsSmallTest)
 
-	// See: Test
-	virtual void		Initialize() override;
+    // See: Test
+    virtual void        Initialize() override;
 };

@@ -31,7 +31,7 @@ private:
                 _stencil=true;
                 _depth_stencil=true;
             }
-            
+
             return(true);
         }
         else
@@ -41,7 +41,7 @@ private:
             depth_stencil_format=format;
             return(true);
         }
-        
+
         return(false);
     }
 
@@ -65,7 +65,7 @@ public:
 
     RenderbufferInfo(const VkFormat color,const VkFormat ds):RenderbufferInfo()
     {
-        AddColor(color);        
+        AddColor(color);
         SetDepthOrStencil(ds);
     }
 
@@ -134,7 +134,7 @@ public:
     }
 
     void ClearDepthStencil()
-    {        
+    {
         depth_stencil_format=PF_UNDEFINED;
         _depth=_stencil=_depth_stencil=false;
     }
@@ -203,7 +203,7 @@ public:
     {
         SetExtent(w,h);
     }
-    
+
     void SetExtent(const VkExtent2D &ext)
     {
         extent=ext;

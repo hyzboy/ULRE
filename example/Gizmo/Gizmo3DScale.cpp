@@ -3,8 +3,8 @@
 
  ref: Blender 4
 
- 
-        0                 9-10 
+
+        0                 9-10
         *----------------->>>>
         |
         |
@@ -84,7 +84,7 @@ bool InitGizmoScaleStaticMesh()
 
     {
         SceneNode *root_node=new SceneNode();
-        
+
         root_node->Add(new SceneNode(scale(GIZMO_CENTER_SPHERE_RADIUS*2),center_cube));
 
         {
@@ -127,7 +127,7 @@ bool InitGizmoScaleStaticMesh()
                 tm.SetScale(cylinder_scale);
                 tm.SetRotation(AxisVector::X,-90);
                 tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);
-                
+
                 root_node->Add(new SceneNode(tm,cylinder[1]));       //Y 向前圆柱
 
                 tm.SetScale(one_scale);

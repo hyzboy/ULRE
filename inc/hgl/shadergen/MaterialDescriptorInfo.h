@@ -20,7 +20,7 @@ class MaterialDescriptorInfo
     Map<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
 
 public:
-    
+
     MaterialDescriptorInfo();
     ~MaterialDescriptorInfo()=default;
 

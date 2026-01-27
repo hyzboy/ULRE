@@ -1,4 +1,4 @@
-// Phone-shaped box geometry generator for ULRE engine
+﻿// Phone-shaped box geometry generator for ULRE engine
 // Creates a simplified box with rounded edges
 // Note: This is a simplified placeholder implementation
 
@@ -29,7 +29,7 @@ namespace hgl::graph::inline_geometry
 
         // Simplified: Create a basic rounded box
         // For now, just create a simple box (full implementation would be much more complex)
-        
+
         const float hx = sx * 0.5f;
         const float hy = sy * 0.5f;
         const float hz = sz * 0.5f;
@@ -50,7 +50,7 @@ namespace hgl::graph::inline_geometry
 
         // Define the 6 faces of the box
         // Each face has 4 vertices with proper normals
-        
+
         // Front face (+Z)
         builder.WriteFullVertex(-hx, -hy, hz, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
         builder.WriteFullVertex( hx, -hy, hz, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
@@ -90,7 +90,7 @@ namespace hgl::graph::inline_geometry
         // Generate indices (2 triangles per face)
         {
             const IndexType index_type = pc->GetIndexType();
-            
+
             auto generate_indices = [&](auto *ip)
             {
                 for(uint face = 0; face < 6; face++)
@@ -131,7 +131,7 @@ namespace hgl::graph::inline_geometry
 
         // Set bounding volumes
         return pc->CreateWithAABB(
-            Vector3f(-hx, -hy, -hz), 
+            Vector3f(-hx, -hy, -hz),
             Vector3f(hx, hy, hz));
     }
 }  // namespace hgl::graph::inline_geometry

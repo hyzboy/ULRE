@@ -51,7 +51,7 @@ namespace hgl::graph
         return renderable_count;
     }
 
-    bool RenderCollector::Render(RenderCmdBuffer *cb) 
+    bool RenderCollector::Render(RenderCmdBuffer *cb)
     {
         if(!cb)
             return(false);
@@ -68,7 +68,7 @@ namespace hgl::graph
     {
         render_batch_map.Clear();
     }
-        
+
     void RenderCollector::UpdateTransformData()
     {
         if(renderable_count<=0)

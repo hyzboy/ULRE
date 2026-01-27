@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderTargetData.h>

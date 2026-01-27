@@ -35,7 +35,7 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
-    
+
     ubo_map.Add(obj->name,(UBODescriptor *)obj);
     return((UBODescriptor *)obj);
 }
@@ -57,7 +57,7 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
-    
+
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
@@ -107,7 +107,7 @@ void MaterialDescriptorInfo::Resort()
     {
         if(p.count<=0)
             continue;
-        
+
         descriptor_count+=p.count;
 
         p.set=set;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/RenderItem.h>
 
@@ -47,7 +47,7 @@ namespace hgl::ecs
 
         // PrimitiveComponent-specific accessors
         std::shared_ptr<PrimitiveComponent> GetPrimitiveComponent() const { return primitiveComp; }
-        
+
         // Material batching interface
         hgl::graph::Primitive* GetPrimitive() const override;
         hgl::graph::MaterialInstance* GetMaterialInstance() const override;

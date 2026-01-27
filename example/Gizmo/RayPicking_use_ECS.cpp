@@ -1,7 +1,7 @@
-// RayPicking (ECS Version)
+﻿// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
-// 
+//
 // 本范例展示了：
 // 1. 使用ECS架构创建场景对象（平面网格和射线）
 // 2. 使用TransformComponent管理空间变换
@@ -110,7 +110,7 @@ private:
     bool CreateGeometry()
     {
         using namespace inline_geometry;
-        
+
         // === 创建平面网格几何体 ===
         {
             auto pc=GetGeometryCreater(mi_plane_grid);
@@ -124,7 +124,7 @@ private:
             pgci.sub_lum=196;
 
             geom_plane_grid=CreatePlaneGrid2D(pc,&pgci);
-            
+
             if(!geom_plane_grid)
                 return(false);
         }

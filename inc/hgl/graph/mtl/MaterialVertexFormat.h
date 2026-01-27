@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_MATERIAL_VERTEX_FORMAT_INCLUDE
+ï»¿#ifndef HGL_GRAPH_MATERIAL_VERTEX_FORMAT_INCLUDE
 #define HGL_GRAPH_MATERIAL_VERTEX_FORMAT_INCLUDE
 
 #include<hgl/type/DataType.h>
@@ -8,19 +8,19 @@ namespace hgl
     namespace graph
     {
 /**
-* Local 2 World ¾ØÕó´æ·Å·½°¸
-* 
-*   1.Push Constants    ·ÅÆú
-* 
-*   2.UBO ÖĞ´æ·Åmatrix4fÕóÁĞ£¬vertex attribÖĞ´æ·ÅID
-*       UBOÍ¨³£Çé¿öÎª16k/64k£¬Ò»¸ömatrix4fÎª64×Ö½Ú¡£
-* 
+* Local 2 World çŸ©é˜µå­˜æ”¾æ–¹æ¡ˆ
+*
+*   1.Push Constants    æ”¾å¼ƒ
+*
+*   2.UBO ä¸­å­˜æ”¾matrix4fé˜µåˆ—ï¼Œvertex attribä¸­å­˜æ”¾ID
+*       UBOé€šå¸¸æƒ…å†µä¸º16k/64kï¼Œä¸€ä¸ªmatrix4fä¸º64å­—èŠ‚ã€‚
+*
 *   3.Vertex Attribute
 */
 
 
         /**
-        * ²ÄÖÊ¶¥µã½á¹¹
+        * æè´¨é¡¶ç‚¹ç»“æ„
         */
         union MaterialVertexFormat
         {

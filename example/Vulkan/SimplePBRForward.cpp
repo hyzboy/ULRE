@@ -1,4 +1,4 @@
-// 简易 PBR 前向渲染
+﻿// 简易 PBR 前向渲染
 
 #include"ViewModelFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -163,7 +163,7 @@ private:
 
     bool InitPipeline()
     {
-        AutoDelete<vulkan::PipelineCreater> 
+        AutoDelete<vulkan::PipelineCreater>
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);

@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2023 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -11,21 +11,21 @@
 
 JPH_IMPLEMENT_RTTI_VIRTUAL(SoftBodyPressureTest)
 {
-	JPH_ADD_BASE_CLASS(SoftBodyPressureTest, Test)
+    JPH_ADD_BASE_CLASS(SoftBodyPressureTest, Test)
 }
 
 void SoftBodyPressureTest::Initialize()
 {
-	// Floor
-	CreateFloor();
+    // Floor
+    CreateFloor();
 
-	// Bodies with increasing pressure
-	SoftBodyCreationSettings sphere(SoftBodyCreator::CreateSphere(2.0f), RVec3::sZero(), Quat::sIdentity(), Layers::MOVING);
+    // Bodies with increasing pressure
+    SoftBodyCreationSettings sphere(SoftBodyCreator::CreateSphere(2.0f), RVec3::sZero(), Quat::sIdentity(), Layers::MOVING);
 
-	for (int i = 0; i <= 10; ++i)
-	{
-		sphere.mPosition = RVec3(-50.0f + i * 10.0f, 10.0f, 0);
-		sphere.mPressure = 1000.0f * i;
-		mBodyInterface->CreateAndAddSoftBody(sphere, EActivation::Activate);
-	}
+    for (int i = 0; i <= 10; ++i)
+    {
+        sphere.mPosition = RVec3(-50.0f + i * 10.0f, 10.0f, 0);
+        sphere.mPressure = 1000.0f * i;
+        mBodyInterface->CreateAndAddSoftBody(sphere, EActivation::Activate);
+    }
 }

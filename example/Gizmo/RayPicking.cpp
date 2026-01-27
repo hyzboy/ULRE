@@ -89,7 +89,7 @@ private:
 
         return(true);
     }
-    
+
     Primitive *Add(SceneNode *parent_node,Geometry *r,MaterialInstance *mi,Pipeline *p)
     {
         Primitive *ri=CreatePrimitive(r,mi,p);
@@ -110,7 +110,7 @@ private:
     bool CreateRenderObject()
     {
         using namespace inline_geometry;
-        
+
         {
             auto pc=GetGeometryCreater(mi_plane_grid);
 

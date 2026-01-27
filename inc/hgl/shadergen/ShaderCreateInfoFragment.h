@@ -13,18 +13,18 @@ protected:
 
     bool IsEmptyOutput()const override{return false;/*这个返回啥无所谓，因为Fragment Shader走自己的ProcOutput*/ }
     bool ProcOutput() override;
-    
+
     void AddMaterialInstanceOutput() override{};
 
 public:
-    
+
     ShaderDescriptorInfo *GetSDI()override{return &fsdi;}
 
 public:
 
     ShaderCreateInfoFragment(MaterialDescriptorInfo *m):ShaderCreateInfo(){ShaderCreateInfo::Init(&fsdi,m);}
     ~ShaderCreateInfoFragment()=default;
-    
+
     int AddOutput(VIAList &);
     int AddOutput(const graph::VAType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);

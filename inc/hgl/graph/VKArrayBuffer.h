@@ -37,7 +37,7 @@ namespace hgl
             friend class VulkanDevice;
 
         public:
-        
+
             virtual ~VulkanArrayBuffer();
 
             const uint32_t  GetAlignSize()const{return align_size;}     ///<数据对齐字节数

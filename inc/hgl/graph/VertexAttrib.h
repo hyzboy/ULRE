@@ -79,7 +79,7 @@ namespace hgl::graph
         {
             if(auto cmp = basetype <=> vat.basetype; cmp != 0)
                 return cmp;
-            
+
             return vec_size <=> vat.vec_size;
         }
 

@@ -1,4 +1,4 @@
-#include <TestFramework.h>
+﻿#include <TestFramework.h>
 
 #include <Math/Perlin.h>
 
@@ -50,8 +50,8 @@ static float stb_perlin_lerp(float a, float b, float t)
 
 static int stb_perlin_fastfloor(float a)
 {
-	int ai = (int) a;
-	return (a < ai) ? ai-1 : ai;
+    int ai = (int) a;
+    return (a < ai) ? ai-1 : ai;
 }
 
 // different grad function from Perlin's, but easy to modify to match reference

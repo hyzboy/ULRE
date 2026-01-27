@@ -1,4 +1,4 @@
-#include "InlineGeometryCommon.h"
+﻿#include "InlineGeometryCommon.h"
 
 namespace hgl::graph::inline_geometry
 {

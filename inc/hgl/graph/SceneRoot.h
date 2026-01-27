@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_SCENE_ROOT_INCLUDE
+﻿#ifndef HGL_GRAPH_SCENE_ROOT_INCLUDE
 #define HGL_GRAPH_SCENE_ROOT_INCLUDE
 
 #include<hgl/graph/Camera.h>
@@ -16,7 +16,7 @@ namespace hgl
 
         public:
 
-            
+
         };//class SceneRoot
     }//namespace graph
 }//namespace hgl

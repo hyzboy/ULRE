@@ -96,7 +96,7 @@ void PipelineMaterialBatch::Finalize()
     {
         transform_buffer->WriteNode(draw_nodes);
     }
-    
+
     if (mi_buffer)
     {
         mi_buffer->WriteNode(draw_nodes);
@@ -121,7 +121,7 @@ void PipelineMaterialBatch::UpdateTransformData()
     {
         DrawNode *node = *node_ptr;
         NodeTransform *tf = node->GetTransform();
-        
+
         // 获取当前变换版本号
         const uint32 current_version = tf ? tf->GetTransformVersion() : 0;
 
@@ -157,7 +157,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(PrimitiveComponent *prim_
     // 提前返回，减少嵌套
     if (!prim_component) return;
     if (!mi_buffer) return;
-    
+
     const int node_count = draw_nodes.GetCount();
     if (node_count <= 0) return;
 
@@ -219,7 +219,7 @@ void PipelineMaterialBatch::BuildBatches()
      * 3. 为每个批次生成间接绘制命令
      * 4. 支持带索引和不带索引的绘制
      */
-    
+
     const uint count = draw_nodes.GetCount();
     DrawNode **node_ptr = draw_nodes.GetData();
 
@@ -304,14 +304,14 @@ void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 {
     // 前置条件检查
     if (!rcb) return;
-    
+
     const uint count = draw_nodes.GetCount();
     if (count <= 0) return;
 
     if (draw_batches_count <= 0) return;
 
     // 委托给渲染器执行渲染
-    renderer->Render(rcb, draw_batches, draw_batches_count, 
+    renderer->Render(rcb, draw_batches, draw_batches_count,
                     transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
 }
 

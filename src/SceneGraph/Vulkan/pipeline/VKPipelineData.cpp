@@ -5,7 +5,7 @@
 
 VK_NAMESPACE_BEGIN
 void SetDefault(VkPipelineColorBlendAttachmentState *cba)
-{    
+{
     cba->colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     cba->blendEnable = VK_FALSE;
     cba->alphaBlendOp = VK_BLEND_OP_ADD;
@@ -46,7 +46,7 @@ PipelineData::PipelineData(const PipelineData *pd)
     PIPELINE_STRUCT_NEW_COPY(pMultisampleState,multi_sample);
 
     PIPELINE_STRUCT_NEW_COPY(pDepthStencilState,depth_stencil);
-    
+
 #undef PIPELINE_STRUCT_COPY
 
     InitColorBlend(pd->color_blend->attachmentCount,pd->color_blend_attachments);
@@ -77,10 +77,10 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     //mem_zero(viewport);
     //mem_zero(scissor);
     //mem_zero(viewport_state);
-    //mem_zero(rasterization);    
+    //mem_zero(rasterization);
     //mem_zero(sample_mask);
     //mem_zero(multi_sample);
-    //mem_zero(depth_stencil);    
+    //mem_zero(depth_stencil);
     //mem_zero(color_blend);
     //mem_zero(dynamic_state_enables);
     //mem_zero(dynamic_state);
@@ -92,7 +92,7 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
 
     InitViewportState();
     InitDynamicState();
-    
+
     tessellation=new VkPipelineTessellationStateCreateInfo;
     tessellation->sType=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
     tessellation->pNext=nullptr;
@@ -100,7 +100,7 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     tessellation->patchControlPoints=0;
 
     pipeline_info.pTessellationState=tessellation;
-    
+
     rasterization=new VkPipelineRasterizationStateCreateInfo;
     rasterization->sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterization->pNext = nullptr;
@@ -117,7 +117,7 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     rasterization->lineWidth = 1.0f;
 
     pipeline_info.pRasterizationState=rasterization;
-    
+
     multi_sample=new VkPipelineMultisampleStateCreateInfo;
     multi_sample->sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multi_sample->pNext = nullptr;
@@ -128,11 +128,11 @@ PipelineData::PipelineData(const uint32_t color_attachment_count)
     multi_sample->pSampleMask = nullptr;
     multi_sample->alphaToCoverageEnable = VK_FALSE;
     multi_sample->alphaToOneEnable = VK_FALSE;
-    
+
     sample_mask=nullptr;
 
     pipeline_info.pMultisampleState=multi_sample;
-    
+
     depth_stencil=new VkPipelineDepthStencilStateCreateInfo;
     depth_stencil->sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depth_stencil->pNext = nullptr;
@@ -213,7 +213,7 @@ void PipelineData::SetColorAttachments(const uint32_t count)
     }
 
     if(count>color_blend->attachmentCount)
-    {        
+    {
         VkPipelineColorBlendAttachmentState *cba=color_blend_attachments+color_blend->attachmentCount;
 
         for(uint32_t i=color_blend->attachmentCount;i<count;i++)
@@ -241,24 +241,24 @@ PipelineData::PipelineData()
     vertex_input_binding_description=nullptr;
 
     sample_mask=nullptr;
-   
+
     tessellation              =zero_new<VkPipelineTessellationStateCreateInfo>();
     rasterization             =zero_new<VkPipelineRasterizationStateCreateInfo>();
     multi_sample              =zero_new<VkPipelineMultisampleStateCreateInfo>();
     sample_mask               =zero_new<VkSampleMask>(VK_NAMESPACE::MAX_SAMPLE_MASK_COUNT);
     multi_sample->pSampleMask =nullptr;
-    
+
     depth_stencil             =zero_new<VkPipelineDepthStencilStateCreateInfo>();
     color_blend               =zero_new<VkPipelineColorBlendStateCreateInfo>();
 
     InitColorBlend(32);//暂时不可能MRT输出32个，就这样了
-    
+
     pipeline_info.pTessellationState =tessellation;
     pipeline_info.pRasterizationState=rasterization;
     pipeline_info.pMultisampleState  =multi_sample;
     pipeline_info.pDepthStencilState =depth_stencil;
     pipeline_info.pColorBlendState   =color_blend;
-    
+
     alpha_test=0;
     alpha_blend=false;
 
@@ -278,7 +278,7 @@ void PipelineData::InitVertexInputState(const VIL *vil)
     vertex_input_state.pNext = nullptr;
     vertex_input_state.flags = 0;
 
-    vertex_input_state.vertexBindingDescriptionCount   = 
+    vertex_input_state.vertexBindingDescriptionCount   =
     vertex_input_state.vertexAttributeDescriptionCount = vil->GetVertexAttribCount();
 
     vertex_input_binding_description    =vil->NewBindListCopy();
@@ -286,7 +286,7 @@ void PipelineData::InitVertexInputState(const VIL *vil)
 
     vertex_input_state.pVertexBindingDescriptions      = vertex_input_binding_description;
     vertex_input_state.pVertexAttributeDescriptions    = vertex_input_attribute_description;
-    
+
     pipeline_info.pVertexInputState  = &vertex_input_state;
 }
 namespace
@@ -335,7 +335,7 @@ bool PipelineData::SetPrim(const PrimitiveType topology,bool prim_restart)
     pipeline_info.pInputAssemblyState = &input_assembly;
     return(true);
 }
-    
+
 void PipelineData::InitViewportState()
 {
     viewport.x = 0.0f;
@@ -355,7 +355,7 @@ void PipelineData::InitViewportState()
     viewport_state.pViewports = &viewport;
     viewport_state.scissorCount = 1;
     viewport_state.pScissors = &scissor;
-    
+
     pipeline_info.pViewportState     = &viewport_state;
 }
 
@@ -448,7 +448,7 @@ bool PipelineData::SetColorBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBle
 {
     if(index>=color_blend->attachmentCount)
         return(false);
-        
+
     VkPipelineColorBlendAttachmentState *cba=color_blend_attachments+index;
 
     cba->colorBlendOp=op;
@@ -462,7 +462,7 @@ bool PipelineData::SetAlphaBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBle
 {
     if(index>=color_blend->attachmentCount)
         return(false);
-        
+
     VkPipelineColorBlendAttachmentState *cba=color_blend_attachments+index;
 
     cba->colorBlendOp=op;

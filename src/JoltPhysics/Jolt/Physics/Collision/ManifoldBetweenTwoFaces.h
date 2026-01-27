@@ -1,4 +1,4 @@
-// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
+﻿// Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
 
@@ -19,9 +19,9 @@ JPH_NAMESPACE_BEGIN
 #endif
 JPH_EXPORT void PruneContactPoints(Vec3Arg inPenetrationAxis, ContactPoints &ioContactPointsOn1, ContactPoints &ioContactPointsOn2
 #ifdef JPH_DEBUG_RENDERER
-	, RVec3Arg inCenterOfMass
+    , RVec3Arg inCenterOfMass
 #endif
-	);
+    );
 
 /// Determine contact points between 2 faces of 2 shapes and return them in outContactPoints 1 & 2
 /// @param inContactPoint1 The contact point on shape 1 relative to inCenterOfMass
@@ -37,8 +37,8 @@ JPH_EXPORT void PruneContactPoints(Vec3Arg inPenetrationAxis, ContactPoints &ioC
 #endif
 JPH_EXPORT void ManifoldBetweenTwoFaces(Vec3Arg inContactPoint1, Vec3Arg inContactPoint2, Vec3Arg inPenetrationAxis, float inMaxContactDistanceSq, const ConvexShape::SupportingFace &inShape1Face, const ConvexShape::SupportingFace &inShape2Face, ContactPoints &outContactPoints1, ContactPoints &outContactPoints2
 #ifdef JPH_DEBUG_RENDERER
-	, RVec3Arg inCenterOfMass
+    , RVec3Arg inCenterOfMass
 #endif
-	);
+    );
 
 JPH_NAMESPACE_END

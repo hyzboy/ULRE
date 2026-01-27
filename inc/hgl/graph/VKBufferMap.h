@@ -68,7 +68,7 @@ public:
     }
 
     void Unmap()
-    {    
+    {
         if(buffer&&map_ptr)
         {
             buffer->Unmap();
@@ -88,7 +88,7 @@ public:
             /*
             * 注：这里的不管是offset还是c，都会走VAB/IndexBuffer的虚拟版本。
             *    其中的数据均为单元数据长度而非字节数。
-            * 
+            *
             *    如果需要传字节数，就需要buffer->DeviceBuffer::Write()这样操作
             */
             return buffer->Write(data,offset,c);

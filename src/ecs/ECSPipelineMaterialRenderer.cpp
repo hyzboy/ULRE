@@ -1,6 +1,6 @@
 ﻿/**
  * ECSPipelineMaterialRenderer.cpp - ECS Pipeline材质渲染器实现
- * 
+ *
  * 参照 PipelineMaterialRenderer 实现，但使用 ECS 版本的 Assignment Buffers
  */
 
@@ -35,8 +35,8 @@ namespace hgl::ecs
         SAFE_CLEAR(vab_list);
     }
 
-    bool ECSPipelineMaterialRenderer::BindVAB(const graph::DrawBatch* batch, 
-                                               ECSTransformAssignmentBuffer* transform_buffer, 
+    bool ECSPipelineMaterialRenderer::BindVAB(const graph::DrawBatch* batch,
+                                               ECSTransformAssignmentBuffer* transform_buffer,
                                                ECSMaterialInstanceAssignmentBuffer* mi_buffer)
     {
         // Log GeometryDataBuffer details
@@ -45,8 +45,8 @@ namespace hgl::ecs
         //    // Log each VAB
         //    for (uint32_t i = 0; i < batch->geom_data_buffer->vab_count; i++)
         //    {
-        //        std::cout << "[ECSPipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer=" 
-        //                  << batch->geom_data_buffer->vab_list[i] 
+        //        std::cout << "[ECSPipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer="
+        //                  << batch->geom_data_buffer->vab_list[i]
         //                  << ", offset=" << batch->geom_data_buffer->vab_offset[i] << std::endl;
         //    }
         //}
@@ -103,7 +103,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void ECSPipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw, 
+    void ECSPipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
                                                          graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
         // 提交累积的间接绘制命令
@@ -134,7 +134,7 @@ namespace hgl::ecs
         // }
 
         // 检查是否需要切换几何数据缓冲
-        const bool need_buffer_switch = !last_data_buffer || 
+        const bool need_buffer_switch = !last_data_buffer ||
                                        *(batch->geom_data_buffer) != *last_data_buffer;
 
         if (need_buffer_switch)
@@ -185,7 +185,7 @@ namespace hgl::ecs
         else
         {
             // 直接绘制：立即提交
-            cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range, 
+            cmd_buf->Draw(batch->geom_data_buffer, batch->geom_draw_range,
                          batch->instance_count, batch->first_instance);
         }
 
