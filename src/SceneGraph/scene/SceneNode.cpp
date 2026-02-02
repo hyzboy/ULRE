@@ -91,7 +91,7 @@ namespace hgl::graph
     void SceneNode::RefreshBoundingVolumes()
     {
         int count=child_nodes.GetCount();
-        
+
         if(count == 0)
             return;
 

@@ -109,21 +109,21 @@ namespace std
         {
             // Combine hashes of all font attributes
             size_t h = 0;
-            
+
             // Hash the name (character by character)
             for(size_t i = 0; i < hgl::graph::MAX_FONT_NAME_LENGTH && font.name[i] != 0; ++i)
             {
                 // Directly combine character value into hash
                 h = h * 31 + static_cast<size_t>(font.name[i]);
             }
-            
+
             // Combine with other attributes
             h ^= hash<int>{}(font.width) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= hash<int>{}(font.height) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= hash<bool>{}(font.bold) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= hash<bool>{}(font.italic) + 0x9e3779b9 + (h << 6) + (h >> 2);
             h ^= hash<bool>{}(font.anti) + 0x9e3779b9 + (h << 6) + (h >> 2);
-            
+
             return h;
         }
     };
