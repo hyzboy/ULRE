@@ -27,7 +27,7 @@ public:
 
 public:
 
-    GraphModule *   Get(const size_t type_hash)   
+    GraphModule *   Get(const size_t type_hash)
     {
         GraphModule** ptr = module_map.GetValuePointer(type_hash);
         return ptr ? *ptr : nullptr;

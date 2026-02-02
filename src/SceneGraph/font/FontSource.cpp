@@ -99,7 +99,7 @@ namespace hgl::graph
             const bool refresh=(fs->GetCharHeight()==max_char_height);
 
             fs->RefRelease(this);
-            
+
             // 删除所有值为fs的项
             for(const auto &key:keys)
             {

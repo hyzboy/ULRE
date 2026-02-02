@@ -58,9 +58,9 @@ namespace hgl::graph::layout
 
             bool operator==(const DrawStringItem& other) const
             {
-                return str.GetString() == other.str.GetString() 
+                return str.GetString() == other.str.GetString()
                     && str.GetLength() == other.str.GetLength()
-                    && vertex == other.vertex 
+                    && vertex == other.vertex
                     && tex_coord == other.tex_coord;
             }
         };
