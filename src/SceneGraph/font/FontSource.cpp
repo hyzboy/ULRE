@@ -83,11 +83,14 @@ namespace hgl::graph
         source_map.GetKeyArray(keys);
         for(const auto &key:keys)
         {
-            auto *value=source_map.GetValuePointer(key);
-            if(value && *value==fs)
+            if(source_map.ContainsKey(key))
             {
-                found=true;
-                break;
+                const auto &value=source_map.GetValueRef(key);
+                if(value==fs)
+                {
+                    found=true;
+                    break;
+                }
             }
         }
 
@@ -100,11 +103,14 @@ namespace hgl::graph
             // 删除所有值为fs的项
             for(const auto &key:keys)
             {
-                auto *value=source_map.GetValuePointer(key);
-                if(value && *value==fs)
+                if(source_map.ContainsKey(key))
                 {
-                    source_map.DeleteByKey(key);
-                    break;
+                    const auto &value=source_map.GetValueRef(key);
+                    if(value==fs)
+                    {
+                        source_map.DeleteByKey(key);
+                        break;
+                    }
                 }
             }
 
@@ -125,9 +131,8 @@ namespace hgl::graph
             {
                 if(IsInUnicodeBlock(key,ch))
                 {
-                    auto *value=source_map.GetValuePointer(key);
-                    if(value)
-                        return *value;
+                    if(source_map.ContainsKey(key))
+                        return source_map.GetValueRef(key);
                 }
             }
         }
