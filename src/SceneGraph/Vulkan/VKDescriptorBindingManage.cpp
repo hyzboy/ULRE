@@ -9,17 +9,12 @@ void DescriptorBinding::BindUBO(MaterialParameters *mp,const BindingMap &binding
 
     DeviceBuffer* buf = nullptr;
 
-    const auto *dp      =binding_map.GetDataList();
-    const uint  count   =binding_map.GetCount();
-
-    for(uint i=0;i<count;i++)
+    for(const auto& [name, binding] : binding_map)
     {
-        buf=GetUBO((*dp)->key);
+        buf=GetUBO(name);
 
         if(buf)
-            mp->BindUBO((*dp)->value,buf,dynamic);
-
-        ++dp;
+            mp->BindUBO(binding,buf,dynamic);
     }
 }
 

@@ -1,15 +1,15 @@
 ﻿#include<hgl/graph/pipeline/VKPipelineData.h>
 #include<hgl/graph/pipeline/VKInlinePipeline.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 
 VK_NAMESPACE_BEGIN
 PipelineData *LoadPipelineFromFile(const OSString &filename);
 
 namespace
 {
-    ObjectMap<InlinePipeline,PipelineData> inline_pipeline_data;
+    UnorderedMap<InlinePipeline,PipelineData*> inline_pipeline_data;
 
-    ObjectMap<OSString,PipelineData> pipeline_data_by_filename;
+    UnorderedMap<OSString,PipelineData*> pipeline_data_by_filename;
 
     void InitInlinePipelineData()
     {
@@ -88,6 +88,8 @@ const PipelineData *GetPipelineData(const InlinePipeline &ip)
     if(inline_pipeline_data.GetCount()<=0)
         InitInlinePipelineData();
 
-    return inline_pipeline_data[ip];
+    PipelineData *pd = nullptr;
+    inline_pipeline_data.Get(ip, pd);
+    return pd;
 }
 VK_NAMESPACE_END

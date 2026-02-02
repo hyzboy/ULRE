@@ -1,4 +1,5 @@
 ﻿#include<hgl/shadergen/MaterialDescriptorInfo.h>
+#include<vector>
 
 namespace hgl{namespace graph{
 MaterialDescriptorInfo::MaterialDescriptorInfo()
@@ -112,13 +113,16 @@ void MaterialDescriptorInfo::Resort()
 
         p.set=set;
 
-        auto *sdp=p.descriptor_map.GetDataList();
-        for(int i=0;i<p.descriptor_map.GetCount();i++)
+        int i = 0;
+        std::vector<AnsiString> keys;
+        p.descriptor_map.GetKeyArray(keys);
+        for(const auto &key:keys)
         {
-            (*sdp)->value->set=set;
-            (*sdp)->value->binding=i;
-
-            ++sdp;
+            auto *sd=p.descriptor_map.GetValuePointer(key);
+            if(!sd)continue;
+            sd->set = set;
+            sd->binding = i;
+            ++i;
         }
 
         ++set;

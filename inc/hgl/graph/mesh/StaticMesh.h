@@ -1,15 +1,15 @@
 ﻿#pragma once
 
 #include <hgl/type/ManagedArray.h>
-#include <hgl/type/OrderedValueSet.h>
+#include <hgl/type/OrderedSet.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/graph/mesh/Primitive.h>
 
 VK_NAMESPACE_BEGIN
 
-using GeometryPtrSet        =OrderedValueSet<Geometry *>;
-using MaterialInstanceSet   =OrderedValueSet<MaterialInstance *>;
-using PipelinePtrSet        =OrderedValueSet<Pipeline *>;
+using GeometryPtrSet        =OrderedSet<Geometry *>;
+using MaterialInstanceSet   =OrderedSet<MaterialInstance *>;
+using PipelinePtrSet        =OrderedSet<Pipeline *>;
 using PrimitiveList         =ManagedArray<Primitive>;
 
 /**

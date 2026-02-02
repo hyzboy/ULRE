@@ -30,7 +30,7 @@ namespace hgl::graph
         constexpr int       CurrencySymbolsCount=(sizeof(CurrencySymbols)/sizeof(u32char))-1;
         constexpr int       VRotateSymbolsCount =(sizeof(VRotateSymbols) /sizeof(u32char))-1;
 
-        ObjectMap<u32char,CharAttributes> all_char_attrs;
+        UnorderedMap<u32char,CharAttributes *> all_char_attrs;
     }//namespace
 
     const CLA *FontDataSource::GetCLA(const u32char &ch)
@@ -40,11 +40,9 @@ namespace hgl::graph
         if(cla_cache.Get(ch,char_draw_style))
             return char_draw_style;
 
-        CharAttributes *attr;
+        CharAttributes *attr=nullptr;
 
-        const int pos=all_char_attrs.GetValueAndSerial(ch,attr);
-
-        if(pos<0)
+        if(!all_char_attrs.Get(ch,attr))
         {
             attr=new CharAttributes;
 

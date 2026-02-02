@@ -1,7 +1,8 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/TileData.h>
-#include<hgl/type/IndexedValueArray.h>
+#include<hgl/type/IndexedList.h>
 #include<hgl/type/ConstStringSet.h>
+#include<vector>
 
 namespace hgl::graph::layout
 {
@@ -26,9 +27,9 @@ namespace hgl::graph::layout
             TileUVFloat uv;
         };
 
-        using CharDrawAttrIt=IndexedValueArray<CharDrawAttr>::Iterator;
+        using CharDrawAttrIt=IndexedList<CharDrawAttr>::Iterator;
 
-        IndexedValueArray<CharDrawAttr> draw_chars_list;  ///<所有字符属性列表
+        IndexedList<CharDrawAttr> draw_chars_list;  ///<所有字符属性列表
 
         bool StatChars();  ///<统计所有字符
 
@@ -36,9 +37,9 @@ namespace hgl::graph::layout
 
         TextGeometry *text_primitive=nullptr;
 
-        ValueBuffer<int16> vertex;
-        ValueBuffer<float> tex_coord;
-        //ValueBuffer<uint8> char_style;
+        std::vector<int16> vertex;
+        std::vector<float> tex_coord;
+        //std::vector<uint8> char_style;
 
     protected:
 
@@ -54,6 +55,14 @@ namespace hgl::graph::layout
 
             int16 *vertex;
             float *tex_coord;
+
+            bool operator==(const DrawStringItem& other) const
+            {
+                return str.GetString() == other.str.GetString() 
+                    && str.GetLength() == other.str.GetLength()
+                    && vertex == other.vertex 
+                    && tex_coord == other.tex_coord;
+            }
         };
 
         ValueArray<DrawStringItem> draw_string_list;   ///<所有绘制字符串列表
@@ -80,8 +89,8 @@ namespace hgl::graph::layout
         void Clear()
         {
             text_primitive=nullptr;
-            vertex.Clear();
-            tex_coord.Clear();
+            vertex.clear();
+            tex_coord.clear();
 
             draw_chars_count=0;
             chars_sets.Clear();

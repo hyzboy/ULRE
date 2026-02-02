@@ -4,7 +4,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/World.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/RenderContext.h>
 // ECS forward declaration
 namespace hgl::ecs { class ECSContext; }
@@ -19,7 +19,7 @@ namespace hgl::graph
     class SceneNode;        // fwd for GetWorldRootNode
     enum class InlinePipeline; // fwd for CreatePipeline
 
-    using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
+    using RenderTaskNameMap=UnorderedMap<RenderTaskName,RenderTask *>;
 
     class SceneEventDispatcher:public io::EventDispatcher
     {

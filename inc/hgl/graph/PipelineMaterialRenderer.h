@@ -3,6 +3,7 @@
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/type/ValueArray.h>
+#include<vector>
 
 VK_NAMESPACE_BEGIN
 
@@ -28,7 +29,7 @@ struct DrawBatch
     void Set(class Primitive *);
 };//struct DrawBatch
 
-using DrawBatchArray = ValueBuffer<DrawBatch>;
+using DrawBatchArray = std::vector<DrawBatch>;
 
 /**
  * Pipeline材质渲染器

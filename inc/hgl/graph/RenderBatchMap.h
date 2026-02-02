@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include<hgl/graph/PipelineMaterialBatch.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/type/UnorderedMap.h>
+#include<vector>
 
 VK_NAMESPACE_BEGIN
 class Primitive;                    // fwd
@@ -10,12 +12,22 @@ class Pipeline;                // fwd
 class DrawNode;                // fwd
 class NodeTransform;           // fwd
 
-class RenderBatchMap:public ObjectMap<PipelineMaterialIndex,PipelineMaterialBatch>
+class RenderBatchMap:public hgl::UnorderedMap<PipelineMaterialIndex,PipelineMaterialBatch *>
 {
     VulkanDevice *device = nullptr;                // 设备在构造/初始化时传入，供后续创建 batch 使用
     const CameraInfo *current_camera_info = nullptr;    // 记录 Begin 传入的相机信息，便于之后新建的 batch 同步设置
 
 public:
+
+    using hgl::UnorderedMap<PipelineMaterialIndex,PipelineMaterialBatch *>::Clear;
+    using hgl::UnorderedMap<PipelineMaterialIndex,PipelineMaterialBatch *>::Get;
+    using hgl::UnorderedMap<PipelineMaterialIndex,PipelineMaterialBatch *>::Add;
+
+    void ClearAll(){ this->Clear(); }
+    bool GetBatch(const PipelineMaterialIndex &key,PipelineMaterialBatch *&out){ return this->Get(key,out); }
+
+    void Clear(){ hgl::UnorderedMap<PipelineMaterialIndex,PipelineMaterialBatch *>::Clear(); }
+    bool Get(const PipelineMaterialIndex &key,PipelineMaterialBatch *&out){ return hgl::UnorderedMap<PipelineMaterialIndex,PipelineMaterialBatch *>::Get(key,out); }
 
     RenderBatchMap(VulkanDevice *dev=nullptr):device(dev){}
     virtual ~RenderBatchMap()=default;
@@ -26,42 +38,60 @@ public:
     {
         current_camera_info=ci;
 
-        for(auto *it:data_list)
+        std::vector<PipelineMaterialBatch *> values;
+        this->GetValueArray(values);
+        for(auto *batch:values)
         {
-            it->value->SetCameraInfo(ci);
-            it->value->Clear();
+            if(!batch)continue;
+            batch->SetCameraInfo(ci);
+            batch->Clear();
         }
     }
 
     void End()
     {
-        for(auto *it:data_list)
-            it->value->Finalize();
+        std::vector<PipelineMaterialBatch *> values;
+        this->GetValueArray(values);
+        for(auto *batch:values)
+        {
+            if(batch)
+                batch->Finalize();
+        }
     }
 
     void Render(RenderCmdBuffer *rcb)
     {
         if(!rcb)return;
 
-        for(auto *it:data_list)
-            it->value->Render(rcb);
+        std::vector<PipelineMaterialBatch *> values;
+        this->GetValueArray(values);
+        for(auto *batch:values)
+        {
+            if(batch)
+                batch->Render(rcb);
+        }
     }
 
     void UpdateTransformData()
     {
-        for(auto *it:data_list)
-            it->value->UpdateTransformData();
+        std::vector<PipelineMaterialBatch *> values;
+        this->GetValueArray(values);
+        for(auto *batch:values)
+        {
+            if(batch)
+                batch->UpdateTransformData();
+        }
     }
 
     // 统一获取或创建 batch，并自动处理去重与设置相机
     PipelineMaterialBatch *GetOrCreate(const PipelineMaterialIndex &rpi)
     {
         PipelineMaterialBatch *mrl=nullptr;
-        if(!Get(rpi,mrl))
+        if(!this->Get(rpi,mrl))
         {
             mrl=new PipelineMaterialBatch(device,true,rpi);
             if(current_camera_info) mrl->SetCameraInfo(current_camera_info);
-            Add(rpi,mrl);
+            this->Add(rpi,mrl);
         }
         return mrl;
     }

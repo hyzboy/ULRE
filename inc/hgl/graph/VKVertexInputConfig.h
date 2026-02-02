@@ -1,7 +1,8 @@
 ﻿#pragma once
 #include<hgl/graph/VKFormat.h>
 #include<hgl/type/String.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
+#include<vector>
 
 VK_NAMESPACE_BEGIN
 struct VAConfig
@@ -26,34 +27,38 @@ public:
     auto operator <=> (const VAConfig &vc)const=default;
 };//struct VAConfig
 
-class VILConfig:public Map<AnsiString,VAConfig>
+class VILConfig:public hgl::UnorderedMap<AnsiString,VAConfig>
 {
 public:
 
-    using Map<AnsiString,VAConfig>::Map;
+    using Base=hgl::UnorderedMap<AnsiString,VAConfig>;
 
-    bool Add(const AnsiString &name,const VkFormat fmt,const VkVertexInputRate ir=VK_VERTEX_INPUT_RATE_VERTEX)
+    using Base::Base;
+
+    bool Add(const AnsiString &name,const VAConfig &cfg)
     {
-        if(ContainsKey(name))
+        if(this->ContainsKey(name))
             return(false);
 
-        return Map<AnsiString,VAConfig>::Add(name,VAConfig(fmt,ir));
+        return static_cast<Base *>(this)->Add(name,cfg);
     }
 
     auto operator <=> (const VILConfig &vc)const
     {
-        int off;
-
-        off=GetCount()-vc.GetCount();
+        int off=this->GetCount()-vc.GetCount();
         if(off)return(off);
 
-        for(const auto &pair:*this)
+        std::vector<AnsiString> keys;
+        std::vector<VAConfig> values;
+        this->GetKeyValueArrays(keys, values);
+
+        for(size_t i=0;i<keys.size();++i)
         {
             VAConfig vac;
-            if(!vc.Get(pair->key,vac))
+            if(!vc.Get(keys[i],vac))
                 return(1);
 
-            auto cmp=pair->value<=>vac;
+            auto cmp=values[i]<=>vac;
             if(cmp!=0)return(cmp<0?-1:1);
         }
 

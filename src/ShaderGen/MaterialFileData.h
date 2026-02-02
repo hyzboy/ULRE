@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/StringList.h>
 #include<hgl/type/AccumMemoryManager.h>
 #include<hgl/graph/VK.h>
@@ -36,6 +36,12 @@ namespace material_file
         SamplerType type;
     };
 
+    // Comparison operator for SamplerData
+    inline bool operator==(const SamplerData& lhs, const SamplerData& rhs) {
+        return std::strcmp(lhs.name, rhs.name) == 0 &&
+               lhs.type == rhs.type;
+    }
+
     struct UBOData
     {
         ShaderNameVariable struct_name;
@@ -49,6 +55,16 @@ namespace material_file
 
         AccumMemoryManager::Block *block;
     };
+
+    // Comparison operator for UBOData
+    inline bool operator==(const UBOData& lhs, const UBOData& rhs) {
+        return std::strcmp(lhs.struct_name, rhs.struct_name) == 0 &&
+               std::strcmp(lhs.name, rhs.name) == 0 &&
+               std::strcmp(lhs.filename, rhs.filename) == 0 &&
+               lhs.shader_stage_flag_bits == rhs.shader_stage_flag_bits &&
+               lhs.set == rhs.set &&
+               lhs.block == rhs.block;
+    }
 
     using UBODataList=ValueArray<UBOData>;
 
@@ -114,7 +130,7 @@ namespace material_file
         void AddOutput(const VIA &via){output.Add(via);}
     };
 
-    using ShaderDataMap=ObjectMap<ShaderStage,ShaderData>;
+    using ShaderDataMap=UnorderedMap<ShaderStage,ShaderData *>;
 
     struct MaterialFileData
     {

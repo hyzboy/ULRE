@@ -91,7 +91,7 @@ namespace hgl::graph
         else
             ggo=GGO_GRAY8_BITMAP;
 
-        buffer.Reserve(fnt.width*fnt.height*4);
+        buffer.reserve(fnt.width*fnt.height*4);
     }
 
     WinBitmapFont::~WinBitmapFont()
@@ -115,10 +115,10 @@ namespace hgl::graph
 
         if(size<=0)return(false);
 
-        if(size>buffer.GetCount())
-            buffer.Resize(size);
+        if(size>buffer.size())
+            buffer.resize(size);
 
-        GetGlyphOutlineW(hdc,ch,ggo,&gm,DWORD(buffer.GetCount()),buffer.data(),&mat);
+        GetGlyphOutlineW(hdc,ch,ggo,&gm,DWORD(buffer.size()),buffer.data(),&mat);
 
         bmp->metrics_info.w     =hgl_align<uint>(gm.gmBlackBoxX,4);
         bmp->metrics_info.h     =hgl_align<uint>(gm.gmBlackBoxY,4);
@@ -132,9 +132,9 @@ namespace hgl::graph
         bmp->data=zero_new<uint8>(bmp->metrics_info.w*bmp->metrics_info.h);
 
         if(ggo==GGO_GRAY8_BITMAP)
-            Convert8BitGrey (bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
+            Convert8BitGrey (bmp->data,bmp->metrics_info.w,buffer.data(),gm.gmBlackBoxX,gm.gmBlackBoxY);
         else
-            ConvertBitmap   (bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
+            ConvertBitmap   (bmp->data,bmp->metrics_info.w,buffer.data(),gm.gmBlackBoxX,gm.gmBlackBoxY);
 
         return(true);
     }

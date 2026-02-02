@@ -27,13 +27,12 @@ namespace hgl::graph::layout
 
         draw_chars_count=0;
         chars_sets.Clear();
-        chars_sets.Reserve(Estimate);
         draw_chars_list.Clear();
         draw_chars_list.Reserve(Estimate);
 
         text_primitive=tr;
-        vertex.Reserve(Estimate*4);
-        tex_coord.Reserve(Estimate*4);
+        vertex.reserve(Estimate*4);
+        tex_coord.reserve(Estimate*4);
 
         draw_all_strings.Clear();
         draw_string_list.Clear();
@@ -111,11 +110,16 @@ namespace hgl::graph::layout
         {
             clear_chars_sets=text_primitive->GetCharsSets();        //获取不再使用的字符合集
 
-            clear_chars_sets.Delete(chars_sets);                    //清除下一步要用的字符合集
+            // 清除下一步要用的字符合集
+            for(auto ch : chars_sets)
+            {
+                clear_chars_sets.Delete(ch);
+            }
 
             if(clear_chars_sets.GetCount()>0)                       //可以彻底清除的字符
             {
-                tile_font->Unregistry(clear_chars_sets);
+                std::vector<u32char> temp_clear_chars(clear_chars_sets.begin(), clear_chars_sets.end());
+                tile_font->Unregistry(temp_clear_chars);
 
                 clear_chars_sets.Clear();
             }
@@ -248,18 +252,18 @@ namespace hgl::graph::layout
         if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
             return(-4);
 
-        vertex      .Resize(draw_chars_count*4);
-        tex_coord   .Resize(draw_chars_count*4);
+        vertex      .resize(draw_chars_count*4);
+        tex_coord   .resize(draw_chars_count*4);
 
-        if(!vertex||!tex_coord)
+        if(vertex.empty()||tex_coord.empty())
             return(-5);
 
         int total=0;
         int dc;
 
         auto it_cda=draw_chars_list.begin();
-        int16 *vp=vertex;
-        float *tcp=tex_coord;
+        int16 *vp=vertex.data();
+        float *tcp=tex_coord.data();
 
         for(DrawStringItem &dsi:draw_string_list)
         {
@@ -281,8 +285,8 @@ namespace hgl::graph::layout
         if(total>0) //理论上total==draw_chars_count，不然就是错误的
         {
             text_primitive->SetCharCount(total);
-            text_primitive->WriteVertex(vertex);
-            text_primitive->WriteTexCoord(tex_coord);
+            text_primitive->WriteVertex(vertex.data());
+            text_primitive->WriteTexCoord(tex_coord.data());
         }
 
         text_primitive=nullptr;

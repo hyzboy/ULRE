@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/type/ValueBuffer.h>
+#include<vector>
 #include<windows.h>
 
 namespace hgl::graph
@@ -16,7 +16,7 @@ namespace hgl::graph
 
         uint ggo;
 
-        ValueBuffer<uint8> buffer;
+        std::vector<uint8> buffer;
 
     public:
 

@@ -82,11 +82,10 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
         return(false);
 
     uint result=0;
-    ShaderStage bit;
 
-    for(int i=0;i<shader_map.GetCount();i++)
+    for(const auto& kv : shader_map)
     {
-        shader_map.GetKey(i,bit);
+        ShaderStage bit = kv.first;
 
         if(flag_bits&(uint32_t)bit)
             if(AddUBO(bit,set_type,struct_name,name))
@@ -208,17 +207,13 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     const AnsiString MI_MAX_COUNT_STRING=AnsiString::numberOf(mi_max_count);
 
-    auto *it=shader_map.GetDataList();
-
-    for(int i=0;i<shader_map.GetCount();i++)
+    for(auto& kv : shader_map)
     {
-        if(uint32_t((*it)->key)&shader_stage_flag_bits)
+        if(uint32_t(kv.first)&shader_stage_flag_bits)
         {
-            (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT_STRING);
-            (*it)->value->SetMaterialInstance(mi_ubo,mi_codes);
+            kv.second->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT_STRING);
+            kv.second->SetMaterialInstance(mi_ubo,mi_codes);
         }
-
-        ++it;
     }
 
     mi_shader_stage=shader_stage_flag_bits;
@@ -240,11 +235,11 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     const AnsiString L2W_MAX_COUNT_STRING=AnsiString::numberOf(l2w_max_count);
 
-    for(auto it:shader_map)
+    for(auto& kv : shader_map)
     {
-        if(uint32_t(it->key)&shader_stage_flag_bits)
+        if(uint32_t(kv.first)&shader_stage_flag_bits)
         {
-            it->value->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
+            kv.second->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
         }
     }
 
@@ -298,12 +293,11 @@ bool MaterialCreateInfo::CreateShader()
 
     mdi.Resort();
 
-    ShaderCreateInfo *sc,*last=nullptr;
+    ShaderCreateInfo *last=nullptr;
 
-    for(int i=0;i<shader_map.GetCount();i++)
+    for(auto& kv : shader_map)
     {
-        if(!shader_map.GetValue(i,sc))
-            return(false);
+        ShaderCreateInfo *sc = kv.second;
 
         if(static_cast<uint32_t>(sc->GetShaderStage())<mi_shader_stage)
             sc->AddMaterialInstanceOutput();

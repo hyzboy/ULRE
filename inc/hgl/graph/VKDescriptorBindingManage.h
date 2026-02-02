@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKBuffer.h>
 
@@ -19,9 +19,9 @@ class DescriptorBinding
 {
     DescriptorSetType set_type;                     ///<描述符合集类型
 
-    Map<AnsiString,DeviceBuffer *> ubo_map;
-    Map<AnsiString,DeviceBuffer *> ssbo_map;
-    Map<AnsiString,Texture *> texture_map;
+    UnorderedMap<AnsiString,DeviceBuffer *> ubo_map;
+    UnorderedMap<AnsiString,DeviceBuffer *> ssbo_map;
+    UnorderedMap<AnsiString,Texture *> texture_map;
 
 public:
 
@@ -72,14 +72,15 @@ public:
     {
         if(name.IsEmpty())return(nullptr);
 
-        return GetObjectFromMap(ubo_map,name);
+        DeviceBuffer** ptr = ubo_map.GetValuePointer(name);
+        return ptr ? *ptr : nullptr;
     }
 
-    void RemoveUBO(DeviceBuffer *buf)
+    void RemoveUBO(const AnsiString &name)
     {
-        if(!buf)return;
+        if(name.IsEmpty())return;
 
-        ubo_map.DeleteByValue(buf);
+        ubo_map.DeleteByKey(name);
     }
 
     bool AddSSBO(const AnsiString &name,DeviceBuffer *buf)
@@ -100,14 +101,15 @@ public:
     {
         if(name.IsEmpty())return(nullptr);
 
-        return GetObjectFromMap(ssbo_map,name);
+        DeviceBuffer** ptr = ssbo_map.GetValuePointer(name);
+        return ptr ? *ptr : nullptr;
     }
 
-    void RemoveSSBO(DeviceBuffer *buf)
+    void RemoveSSBO(const AnsiString &name)
     {
-        if(!buf)return;
+        if(name.IsEmpty())return;
 
-        ssbo_map.DeleteByValue(buf);
+        ssbo_map.DeleteByKey(name);
     }
 
     bool AddTexture(const AnsiString &name,Texture *tex)
@@ -122,14 +124,15 @@ public:
     {
         if(name.IsEmpty())return(nullptr);
 
-        return GetObjectFromMap(texture_map,name);
+        Texture** ptr = texture_map.GetValuePointer(name);
+        return ptr ? *ptr : nullptr;
     }
 
-    void RemoveTexture(Texture *tex)
+    void RemoveTexture(const AnsiString &name)
     {
-        if(!tex)return;
+        if(name.IsEmpty())return;
 
-        texture_map.DeleteByValue(tex);
+        texture_map.DeleteByKey(name);
     }
 
 private:

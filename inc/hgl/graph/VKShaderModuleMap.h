@@ -1,22 +1,20 @@
-﻿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_MAP_INCLUDE
-#define HGL_GRAPH_VULKAN_SHADER_MODULE_MAP_INCLUDE
+﻿#pragma once
 
-#include<hgl/type/Map.h>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKShaderModule.h>
+#include<hgl/type/UnorderedMap.h>
 
 VK_NAMESPACE_BEGIN
 
 using namespace hgl;
 
-class ShaderModuleMap:public Map<VkShaderStageFlagBits,const ShaderModule *>
+class ShaderModuleMap:public UnorderedMap<VkShaderStageFlagBits,const ShaderModule *>
 {
 public:
 
-    using Map<VkShaderStageFlagBits,const ShaderModule *>::Map;
+    using UnorderedMap<VkShaderStageFlagBits,const ShaderModule *>::UnorderedMap;
     ~ShaderModuleMap()=default;
 
     bool Add(const ShaderModule *sm);
 };//class ShaderModuleMap:public Map<VkShaderStageFlagBits,const ShaderModule *>
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_SHADER_MODULE_MAP_INCLUDE

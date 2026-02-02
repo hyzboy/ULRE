@@ -3,6 +3,8 @@
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 
 VK_NAMESPACE_BEGIN
+class RenderCmdBuffer;  // Forward declaration
+
 class VABList
 {
     uint32_t vab_count;
@@ -44,6 +46,10 @@ public:
     {
         return write_count>=vab_count;
     }
+
+    uint32_t GetWriteCount() const { return write_count; }
+    const VkBuffer* GetVABList() const { return vab_list; }
+    const VkDeviceSize* GetVABOffset() const { return vab_offset; }
 
     bool Add(const VkBuffer buf,const VkDeviceSize offset)
     {

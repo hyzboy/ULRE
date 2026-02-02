@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -12,7 +12,7 @@ class GraphModuleManager
 protected:
 
     ValueArray<GraphModule *> module_list;
-    Map<size_t,GraphModule *> module_map;
+    UnorderedMap<size_t,GraphModule *> module_map;
 
 public:
 
@@ -27,7 +27,11 @@ public:
 
 public:
 
-    GraphModule *   Get(const size_t type_hash)   {return GetObjectFromMap(module_map,type_hash);}                     ///<取得指定类型的模块
+    GraphModule *   Get(const size_t type_hash)   
+    {
+        GraphModule** ptr = module_map.GetValuePointer(type_hash);
+        return ptr ? *ptr : nullptr;
+    }                     ///<取得指定类型的模块
     template<typename T>
     T *             Get()                         {return((T *)Get(typeid(T).hash_code()));}                            ///<取得指定类型的模块
 

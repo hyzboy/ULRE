@@ -198,7 +198,9 @@ namespace hgl::graph
 
         if(!text_geometry_set.Delete(tr))return;
 
-        tile_font->Unregistry(tr->GetCharsSets());
+        const auto& chars_set = tr->GetCharsSets();
+        std::vector<u32char> temp_chars(chars_set.begin(), chars_set.end());
+        tile_font->Unregistry(temp_chars);
 
         delete tr;
     }

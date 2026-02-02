@@ -56,7 +56,8 @@ namespace
         template<ShaderStage ss,typename SD,typename SCI>
         SD *CommonProc(SCI *sc)
         {
-            SD *sd=(SD *)(mfd->shader_data_map[ss]);
+            auto* ptr = mfd->shader_data_map.GetValuePointer(ss);
+            SD *sd = ptr ? (SD *)(*ptr) : nullptr;
 
             if(!sd)
                 return(nullptr);

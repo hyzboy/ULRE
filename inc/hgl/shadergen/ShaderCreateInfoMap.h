@@ -1,13 +1,14 @@
 ﻿#pragma once
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/type/UnorderedMap.h>
 
 namespace hgl{namespace graph{
-class ShaderCreateInfoMap:public ObjectMap<ShaderStage,ShaderCreateInfo>
+class ShaderCreateInfoMap:public UnorderedMap<ShaderStage,ShaderCreateInfo *>
 {
 public:
 
-    using ObjectMap<ShaderStage,ShaderCreateInfo>::ObjectMap;
+    using UnorderedMap<ShaderStage,ShaderCreateInfo *>::UnorderedMap;
 
     bool Add(ShaderCreateInfo *sc)
     {
@@ -18,8 +19,21 @@ public:
         if(ContainsKey(flag))
             return(false);
 
-        ObjectMap<ShaderStage,ShaderCreateInfo>::Add(flag,sc);
+        UnorderedMap<ShaderStage,ShaderCreateInfo *>::Add(flag,sc);
         return(true);
+    }
+
+    // operator[] for accessing elements by key
+    ShaderCreateInfo* operator[](const ShaderStage& key)
+    {
+        auto* ptr = GetValuePointer(key);
+        return ptr ? *ptr : nullptr;
+    }
+
+    const ShaderCreateInfo* operator[](const ShaderStage& key) const
+    {
+        auto* ptr = GetValuePointer(key);
+        return ptr ? *ptr : nullptr;
     }
 };
 }}//namespace hgl::graph

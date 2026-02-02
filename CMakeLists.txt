@@ -15,6 +15,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 SET(ULRE_RUNTIME_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
+include(common)
 include(math)
 include(vulkan)
 include(use_cm_module)

@@ -91,21 +91,26 @@ namespace hgl::graph
     void SceneNode::RefreshBoundingVolumes()
     {
         int count=child_nodes.GetCount();
-        SceneNode **sub=child_nodes.GetData();
+        
+        if(count == 0)
+            return;
 
         AABB local,world;
+        auto it = child_nodes.begin();
+        SceneNode *sub = *it;
 
-        (*sub)->RefreshBoundingVolumes();
-        local=(*sub)->GetLocalBoundingBox();
+        sub->RefreshBoundingVolumes();
+        local=sub->GetLocalBoundingBox();
 
-        ++sub;
+        ++it;
         for(int i=1;i<count;i++)
         {
-            (*sub)->RefreshBoundingVolumes();
+            sub = *it;
+            sub->RefreshBoundingVolumes();
 
-            local.Merge((*sub)->GetLocalBoundingBox());
+            local.Merge(sub->GetLocalBoundingBox());
 
-            ++sub;
+            ++it;
         }
 
         local_bounding_box=local;

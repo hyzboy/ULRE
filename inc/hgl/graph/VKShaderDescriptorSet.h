@@ -1,8 +1,9 @@
 ﻿#pragma once
+
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/VKShaderDescriptor.h>
-#include<hgl/type/Map.h>
 
 VK_NAMESPACE_BEGIN
 struct ShaderDescriptorSet
@@ -12,7 +13,7 @@ struct ShaderDescriptorSet
     int set;
     int count;
 
-    ObjectMap<AnsiString,ShaderDescriptor>  descriptor_map;
+    UnorderedMap<AnsiString,ShaderDescriptor*>  descriptor_map;
 
 public:
 

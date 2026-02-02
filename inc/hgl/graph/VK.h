@@ -1,14 +1,74 @@
 ﻿#pragma once
 
 #include<hgl/type/ValueArray.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
-#include<hgl/type/Map.h>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKStruct.h>
 #include<hgl/graph/ViewportInfo.h>
 #include<hgl/graph/VKRenderbufferInfo.h>
+#include<cstring>
+
+inline bool operator==(const VkAttachmentReference& lhs, const VkAttachmentReference& rhs)
+{
+    return lhs.attachment == rhs.attachment &&
+           lhs.layout == rhs.layout;
+}
+
+inline bool operator==(const VkSubpassDependency& lhs, const VkSubpassDependency& rhs)
+{
+    return lhs.srcSubpass == rhs.srcSubpass &&
+           lhs.dstSubpass == rhs.dstSubpass &&
+           lhs.srcStageMask == rhs.srcStageMask &&
+           lhs.dstStageMask == rhs.dstStageMask &&
+           lhs.srcAccessMask == rhs.srcAccessMask &&
+           lhs.dstAccessMask == rhs.dstAccessMask &&
+           lhs.dependencyFlags == rhs.dependencyFlags;
+}
+
+inline bool operator==(const VkSubpassDescription& lhs, const VkSubpassDescription& rhs)
+{
+    return lhs.flags == rhs.flags &&
+           lhs.pipelineBindPoint == rhs.pipelineBindPoint &&
+           lhs.inputAttachmentCount == rhs.inputAttachmentCount &&
+           lhs.pInputAttachments == rhs.pInputAttachments &&
+           lhs.colorAttachmentCount == rhs.colorAttachmentCount &&
+           lhs.pColorAttachments == rhs.pColorAttachments &&
+           lhs.pResolveAttachments == rhs.pResolveAttachments &&
+           lhs.pDepthStencilAttachment == rhs.pDepthStencilAttachment &&
+           lhs.preserveAttachmentCount == rhs.preserveAttachmentCount &&
+           lhs.pPreserveAttachments == rhs.pPreserveAttachments;
+}
+
+inline bool operator==(const VkAttachmentDescription& lhs, const VkAttachmentDescription& rhs)
+{
+    return lhs.flags == rhs.flags &&
+           lhs.format == rhs.format &&
+           lhs.samples == rhs.samples &&
+           lhs.loadOp == rhs.loadOp &&
+           lhs.storeOp == rhs.storeOp &&
+           lhs.stencilLoadOp == rhs.stencilLoadOp &&
+           lhs.stencilStoreOp == rhs.stencilStoreOp &&
+           lhs.initialLayout == rhs.initialLayout &&
+           lhs.finalLayout == rhs.finalLayout;
+}
+
+inline bool operator==(const VkSurfaceFormatKHR& lhs, const VkSurfaceFormatKHR& rhs)
+{
+    return lhs.format == rhs.format &&
+           lhs.colorSpace == rhs.colorSpace;
+}
+
+// Comparison operator for VkPipelineShaderStageCreateInfo
+inline bool operator==(const VkPipelineShaderStageCreateInfo& lhs, const VkPipelineShaderStageCreateInfo& rhs)
+{
+    return lhs.stage == rhs.stage &&
+           lhs.module == rhs.module &&
+           lhs.pName != nullptr && rhs.pName != nullptr &&
+           strcmp(lhs.pName, rhs.pName) == 0;
+}
 
 VK_NAMESPACE_BEGIN
 
@@ -31,7 +91,7 @@ struct VertexAttribDataPtr
     const void *    data;
 };
 
-using BindingMap        =Map<AnsiString,int>;
+using BindingMap        =UnorderedMap<AnsiString,int>;
 using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
 class DescriptorBinding;

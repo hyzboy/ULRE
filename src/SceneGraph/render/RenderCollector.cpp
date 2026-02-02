@@ -66,7 +66,7 @@ namespace hgl::graph
 
     void RenderCollector::Clear()
     {
-        render_batch_map.Clear();
+        render_batch_map.ClearAll();
     }
 
     void RenderCollector::UpdateTransformData()
@@ -86,7 +86,7 @@ namespace hgl::graph
         PipelineMaterialIndex rli(smc->GetMaterial(),smc->GetPipeline());
         PipelineMaterialBatch *mrl;
 
-        if(!render_batch_map.Get(rli,mrl))        //找到对应的
+        if(!render_batch_map.GetBatch(rli,mrl))        //找到对应的
             return;
 
         mrl->UpdateMaterialInstanceData(smc);

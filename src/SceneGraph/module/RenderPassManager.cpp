@@ -187,22 +187,13 @@ bool CreateDepthAttachment( ValueArray<VkAttachmentReference> &ref_list,ValueArr
 
 GRAPH_MODULE_CONSTRUCT(RenderPassManager)
 {
-    hash=CreateRenderPassHash();
 }
 
 RenderPassManager::~RenderPassManager()
 {
-    SAFE_CLEAR(hash);
-
-    const int count=RenderPassList.GetCount();
-
-    auto *obj=RenderPassList.GetDataList();
-
-    for(int i=0;i<count;i++)
+    for(auto& kv : RenderPassList)
     {
-        delete (*obj)->value;
-
-        ++obj;
+        delete kv.second;
     }
 
     RenderPassList.Clear();
@@ -210,56 +201,11 @@ RenderPassManager::~RenderPassManager()
 
 namespace
 {
-//    void HashRenderPass(RenderPassHASHCode *code,const VkRenderPassCreateInfo &rpci)
-//    {
-//        util::Hash *hash=util::CreateSHA1LEHash();
-//
-//        hash->Init();
-//
-////        hash->Write(rpci.attachmentCount);
-//        hash->Write(rpci.pAttachments,rpci.attachmentCount);
-////        hash->Write(rpci.subpassCount);
-//        {
-//            const VkSubpassDescription *sd=rpci.pSubpasses;
-//
-//            for(uint32_t i=0;i<rpci.subpassCount;i++)
-//            {
-//                hash->Write(sd->pipelineBindPoint);
-//                hash->Write(sd->pInputAttachments,sd->inputAttachmentCount);
-//                hash->Write(sd->pColorAttachments,sd->colorAttachmentCount);
-//
-//                if(sd->pResolveAttachments)
-//                    hash->Write(*sd->pResolveAttachments);
-//
-//                if(sd->pDepthStencilAttachment)
-//                    hash->Write(*sd->pDepthStencilAttachment);
-//
-//                hash->Write(sd->pPreserveAttachments,sd->preserveAttachmentCount);
-//
-//                ++sd;
-//            }
-//        }
-//
-//        hash->Write(rpci.pDependencies,rpci.dependencyCount);
-//
-//        hash->Final(code);
-//
-//        delete hash;
-//    }
-
-    void HashRenderPass(RenderPassHASHCode *code,const RenderbufferInfo *rbi,const uint8 subpass_count)
+    AnsiString GenerateRenderPassKey(const RenderbufferInfo *rbi,const uint8 subpass_count)
     {
-        util::Hash *hash=CreateRenderPassHash();
-
-        hash->Init();
-
-        hash->Write<uint8>(subpass_count);
-
-        for(const VkFormat &fmt:rbi->GetColorFormatList())
-            hash->Write(fmt);
-
-        hash->Final(code);
-        delete hash;
+        AnsiString key;
+        hgl::Sprintf(key, "RenderPass_%d_%d", subpass_count, rbi->GetDepthFormat());
+        return key;
     }
 }
 
@@ -303,12 +249,10 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
                 return(nullptr);
     }
 
-    RenderPassHASHCode hash;
+    AnsiString key=GenerateRenderPassKey(rbi,subpass_count);
     RenderPass *rp=nullptr;
 
-    HashRenderPass(&hash,rbi,subpass_count);
-
-    if(RenderPassList.Get(hash,rp))
+    if(RenderPassList.Get(key,rp))
         return rp;
 
     ValueArray<VkAttachmentReference> color_ref_list;
@@ -336,7 +280,7 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
 
     rp=CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
 
-    RenderPassList.Add(hash,rp);
+    RenderPassList.Add(key,rp);
 
     return rp;
 }

@@ -15,7 +15,7 @@ VK_NAMESPACE_BEGIN
 
 class RenderFramework;
 
-using UBOViewportInfo=UBOInstance<graph::ViewportInfo>;
+using UBOViewportInfo=UBOInstance<ViewportInfo>;
 
 class IRenderTarget
 {

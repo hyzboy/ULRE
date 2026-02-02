@@ -5,8 +5,8 @@
 
 VK_NAMESPACE_BEGIN
 
-constexpr const hgl::util::HASH PipelineHash=hgl::util::HASH::xxH3_128;
+constexpr const hgl::util::hash::Algorithm PipelineHash=hgl::util::hash::Algorithm::XXH3_128;
 
-using PipelineHashCode=hgl::util::HashCode<128/8>;
+using PipelineHashCode=hgl::util::hash::Digest<128/8>;
 
 VK_NAMESPACE_END

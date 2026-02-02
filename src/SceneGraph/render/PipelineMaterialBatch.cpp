@@ -230,11 +230,11 @@ void PipelineMaterialBatch::BuildBatches()
     VkDrawIndexedIndirectCommand *indexed_draw_cmd = icb_draw_indexed->MapCmd();
 
     // 准备批次数组
-    draw_batches.Clear();
-    draw_batches.Reserve(count);
+    draw_batches.clear();
+    draw_batches.reserve(count);
 
     // 初始化第一个批次
-    DrawBatch *batch = draw_batches.GetData();
+    DrawBatch *batch = draw_batches.data();
     Primitive *primitive = (*node_ptr)->GetPrimitive();
 
     draw_batches_count = 1;

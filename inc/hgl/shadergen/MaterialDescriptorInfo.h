@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VKShaderDescriptorSet.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 
 namespace hgl{namespace graph{
 /**
@@ -14,10 +14,10 @@ class MaterialDescriptorInfo
     uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
-    Map<AnsiString,AnsiString> struct_map;
-    Map<AnsiString,UBODescriptor *> ubo_map;
-    Map<AnsiString,TextureDescriptor *> texture_map;
-    Map<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
+    UnorderedMap<AnsiString,AnsiString> struct_map;
+    UnorderedMap<AnsiString,UBODescriptor *> ubo_map;
+    UnorderedMap<AnsiString,TextureDescriptor *> texture_map;
+    UnorderedMap<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
 
 public:
 

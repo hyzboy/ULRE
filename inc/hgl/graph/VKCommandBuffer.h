@@ -218,9 +218,9 @@ public:
 
         vkCmdBindVertexBuffers(cmd_buf,
                                0,                           //first binding
-                               vab_list->write_count,       //binding count (use actual count, not capacity)
-                               vab_list->vab_list,          //buffers
-                               vab_list->vab_offset);       //buffer offsets
+                               vab_list->GetWriteCount(),   //binding count (use actual count, not capacity)
+                               vab_list->GetVABList(),      //buffers
+                               vab_list->GetVABOffset());   //buffer offsets
 
         return(true);
     }

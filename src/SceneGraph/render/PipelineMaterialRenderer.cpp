@@ -207,7 +207,7 @@ void PipelineMaterialRenderer::Render(RenderCmdBuffer *rcb,
     cmd_buf->BindDescriptorSets(material);
 
     // 遍历绘制批次 - batches is const, but Draw modifies internal state only
-    DrawBatch *batch = const_cast<DrawBatch *>(batches.GetData());
+    DrawBatch *batch = const_cast<DrawBatch *>(batches.data());
 
     for (uint i = 0; i < batch_count; i++)
     {
