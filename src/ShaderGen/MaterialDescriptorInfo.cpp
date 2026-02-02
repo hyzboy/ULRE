@@ -118,8 +118,8 @@ void MaterialDescriptorInfo::Resort()
         p.descriptor_map.GetKeyArray(keys);
         for(const auto &key:keys)
         {
-            auto *sd=p.descriptor_map.GetValuePointer(key);
-            if(!sd)continue;
+            if(!p.descriptor_map.ContainsKey(key))continue;
+            auto* sd=p.descriptor_map.GetValueRef(key);
             sd->set = set;
             sd->binding = i;
             ++i;
