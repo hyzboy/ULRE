@@ -60,7 +60,7 @@ inline const char *GetShaderImageTypeName(const ShaderImageType it)
 
 inline const ShaderImageType ParseShaderImageType(const char *name,int name_len=0)
 {
-    int result=hgl::find_str_in_array<char>(int(ShaderImageType::RANGE_SIZE),(const char **)ShaderImageTypeName,name,name_len);
+    int result=::hgl::find_str_in_array<char>(int(ShaderImageType::RANGE_SIZE),(const char **)ShaderImageTypeName,name,name_len);
 
     if(result<(int)ShaderImageType::BEGIN_RANGE||result>(int)ShaderImageType::END_RANGE)
         return ShaderImageType::Error;

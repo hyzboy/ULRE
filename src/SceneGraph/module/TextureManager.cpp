@@ -72,8 +72,8 @@ void TextureManager::Release(Texture *tex)
         return;
 
     texture_set.Delete(tex);
-    texture_by_id.DeleteByKey(tex->GetID());
-    texture_by_filename.DeleteByValue(tex);
+    texture_by_id.DeleteByValue(tex);          ///<从ID映射删除
+    texture_by_filename.DeleteByValue(tex);    ///<从文件名映射删除
 }
 
 Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps);

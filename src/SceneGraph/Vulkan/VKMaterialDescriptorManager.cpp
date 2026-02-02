@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/type/EnumUtil.h>
+#include<vector>
 
 VK_NAMESPACE_BEGIN
 void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDescriptor *sd)
@@ -102,20 +103,16 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,cons
 
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
-            auto *sp=sds_array[i].descriptor_map.GetDataList();
-            ShaderDescriptor *sd;
+            std::vector<ShaderDescriptor*> values;
+            sds_array[i].descriptor_map.GetValueArray(values);
 
-            for(int j=0;j<sds_array[i].count;j++)
+            for(auto sd:values)
             {
-                sd=(*sp)->value;
-
                 binding_map[size_t(sd->set_type)][size_t(sd->desc_type)].Add(sd->name,sd->binding);
 
                 WriteDescriptorSetLayoutBinding(dsl_bind[i],sd);
 
                 ++dsl_bind[i];
-
-                ++sp;
             }
         }
     }

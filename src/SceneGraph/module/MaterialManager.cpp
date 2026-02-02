@@ -28,14 +28,12 @@ namespace
 
         VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();
 
-        auto **itp=shader_maps->GetDataList();
-        for(int i=0;i<shader_count;i++)
+        for(auto [stage, module] : *shader_maps)
         {
-            sm=(*itp)->value;
+            sm = module;
             mem_copy(p,sm->GetCreateInfo(),1);
 
             ++p;
-            ++itp;
         }
     }
 }//namespace
@@ -108,18 +106,14 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     {
         const ShaderModule *sm;
 
-        auto **sci=sci_map.GetDataList();
-
-        for(uint i=0;i<sci_count;i++)
+        for(auto [stage, sci_ptr] : sci_map)
         {
-            sm=CreateShaderModule(mtl_name,(*sci)->value);
+            sm=CreateShaderModule(mtl_name, sci_ptr);
 
             if(!sm)
                 return(nullptr);
 
             mtl->shader_maps->Add(sm);
-
-            ++sci;
         }
     }
 

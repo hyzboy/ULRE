@@ -44,7 +44,8 @@ void MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData(const DrawNode
 
     uint16 *mip=(uint16 *)(material_instance_vab->DeviceBuffer::Map(sizeof(uint16)*rn->index,sizeof(uint16)));
 
-    *mip=mi_set.Find(rn->GetMaterialInstance());
+    const int64 index=mi_set.FindIndex(rn->GetMaterialInstance());
+    *mip=(index<0)?0:static_cast<uint16>(index);
 
     material_instance_vab->Unmap();
 }
@@ -56,19 +57,18 @@ void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &
     if(material_instance_data_bytes<=0)        //没有材质实例数据
         return;
 
-    if(!material_instance_buffer)
-    {
-        mi_set.Reserve(power_to_2(draw_nodes.GetCount()));
-    }
-    else if(draw_nodes.GetCount()>mi_set.GetAllocCount())
-    {
-        mi_set.Reserve(power_to_2(draw_nodes.GetCount()));
-        SAFE_CLEAR(material_instance_buffer);
-    }
+    const uint32 node_total=draw_nodes.GetCount();
+    if(node_total<=0)
+        return;
 
-    if(!material_instance_buffer)
+    const uint32 desired_capacity=power_to_2(node_total);
+
+    if(!material_instance_buffer || desired_capacity>material_instance_capacity)
     {
-        material_instance_buffer=device->CreateUBO(material_instance_data_bytes*mi_set.GetAllocCount());
+        SAFE_CLEAR(material_instance_buffer);
+        material_instance_capacity=desired_capacity;
+
+        material_instance_buffer=device->CreateUBO(material_instance_data_bytes*material_instance_capacity);
 
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
@@ -80,8 +80,6 @@ void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &
         }
     #endif//_DEBUG
     }
-
-    mi_set.Reserve(draw_nodes.GetCount());
 
     for(DrawNode *rn:draw_nodes)
         mi_set.Add(rn->GetMaterialInstance());
@@ -148,7 +146,8 @@ void MaterialInstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
 
         for(uint i=0;i<draw_nodes.GetCount();i++)
         {
-            *mi_ptr=mi_set.Find((*rn)->GetMaterialInstance());
+            const int64 index=mi_set.FindIndex((*rn)->GetMaterialInstance());
+            *mi_ptr=(index<0)?0:static_cast<uint16>(index);
             ++mi_ptr;
             ++rn;
         }

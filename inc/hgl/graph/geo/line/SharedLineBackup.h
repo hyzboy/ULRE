@@ -1,15 +1,15 @@
 ﻿#pragma once
 
 #include <hgl/math/Vector.h>
-#include <hgl/type/ValueBuffer.h>
+#include <vector>
 
 namespace hgl::graph
 {
     // Shared temporary backup buffers for LineWidthBatch
     struct SharedLineBackup
     {
-        ValueBuffer<math::Vector3f> positions;
-        ValueBuffer<uint8>  colors;
+        std::vector<math::Vector3f> positions;
+        std::vector<uint8> colors;
 
         size_t max_reserved = 0;
 
@@ -17,21 +17,21 @@ namespace hgl::graph
         {
             if(vertex_count > max_reserved)
             {
-                positions.Reserve(vertex_count);
-                colors.Reserve(vertex_count);
+                positions.reserve(vertex_count);
+                colors.reserve(vertex_count);
                 max_reserved = vertex_count;
             }
         }
 
         void Clear()
         {
-            positions.Clear();
-            colors.Clear();
+            positions.clear();
+            colors.clear();
         }
 
         bool IsEmpty() const
         {
-            return positions.IsEmpty();
+            return positions.empty();
         }
     };
 }

@@ -715,7 +715,7 @@ namespace
     constexpr const os_char HGL_SHADER_LIBRARY_FOLDER[]=OS_TEXT("ShaderLibrary");
 
     AccumMemoryManager ubo_memory;
-    hgl::Map<OSString,AccumMemoryManager::Block *> ubo_codes_map;
+    hgl::UnorderedMap<OSString,AccumMemoryManager::Block *> ubo_codes_map;
 
     AccumMemoryManager::Block *LoadUBO2Block(const OSString &filename)
     {

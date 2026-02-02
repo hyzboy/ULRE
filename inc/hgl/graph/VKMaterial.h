@@ -1,11 +1,10 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/type/Map.h>
-#include<hgl/type/OrderedValueSet.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<unordered_set>
 
 namespace hgl
 {
@@ -118,5 +117,5 @@ public:
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 
-using MaterialSet=OrderedValueSet<Material *>;
+using MaterialSet=std::unordered_set<Material *>;
 VK_NAMESPACE_END

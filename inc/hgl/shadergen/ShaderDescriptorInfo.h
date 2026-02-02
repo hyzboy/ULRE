@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVertexInputAttribute.h>

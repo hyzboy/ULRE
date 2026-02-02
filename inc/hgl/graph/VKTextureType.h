@@ -60,7 +60,7 @@ inline const char *GetTextureTypeName(const TextureType st)
 
 inline const TextureType ParseTextureType(const char *name,int name_len=0)
 {
-    int result=hgl::find_str_in_array<char>(int(TextureType::RANGE_SIZE),(const char **)TextureTypeName,name,name_len);
+    int result=::hgl::find_str_in_array<char>(int(TextureType::RANGE_SIZE),(const char **)TextureTypeName,name,name_len);
 
     if(result<(int)TextureType::BEGIN_RANGE||result>(int)TextureType::END_RANGE)
         return TextureType::Error;

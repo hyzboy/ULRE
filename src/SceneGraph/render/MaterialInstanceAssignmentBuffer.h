@@ -21,6 +21,7 @@ private:    //材质实例数据
     MaterialInstanceSets mi_set;
 
     uint32_t        material_instance_data_bytes;           ///<单个材质实例数据字节数
+    uint32_t        material_instance_capacity=0;           ///<材质实例缓冲区容量(元素数量)
     DeviceBuffer *  material_instance_buffer;               ///<材质实例数据(UBO/SSBO)
 
     void StatMaterialInstance(const DrawNodeList &);

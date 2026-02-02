@@ -1,10 +1,35 @@
-﻿#ifndef HGL_GRAPH_VULKAN_DESCRIPTOR_SET_INCLUDE
-#define HGL_GRAPH_VULKAN_DESCRIPTOR_SET_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/OrderedSet.h>
 #include<hgl/type/ManagedArray.h>
-#include<hgl/type/OrderedValueSet.h>
+
+// Comparison operators for Vulkan structures used in ValueArray
+inline bool operator==(const VkDescriptorBufferInfo& lhs, const VkDescriptorBufferInfo& rhs) {
+    return lhs.buffer == rhs.buffer &&
+           lhs.offset == rhs.offset &&
+           lhs.range == rhs.range;
+}
+
+inline bool operator==(const VkDescriptorImageInfo& lhs, const VkDescriptorImageInfo& rhs) {
+    return lhs.sampler == rhs.sampler &&
+           lhs.imageView == rhs.imageView &&
+           lhs.imageLayout == rhs.imageLayout;
+}
+
+inline bool operator==(const VkWriteDescriptorSet& lhs, const VkWriteDescriptorSet& rhs) {
+    return lhs.sType == rhs.sType &&
+           lhs.pNext == rhs.pNext &&
+           lhs.dstSet == rhs.dstSet &&
+           lhs.dstBinding == rhs.dstBinding &&
+           lhs.dstArrayElement == rhs.dstArrayElement &&
+           lhs.descriptorCount == rhs.descriptorCount &&
+           lhs.descriptorType == rhs.descriptorType &&
+           lhs.pImageInfo == rhs.pImageInfo &&
+           lhs.pBufferInfo == rhs.pBufferInfo &&
+           lhs.pTexelBufferView == rhs.pTexelBufferView;
+}
+
 VK_NAMESPACE_BEGIN
 class DeviceBuffer;
 
@@ -20,7 +45,7 @@ class DescriptorSet
     ValueArray<VkDescriptorImageInfo> image_list;
     ValueArray<VkWriteDescriptorSet> wds_list;
 
-    OrderedValueSet<uint32_t> binded_sets;
+    OrderedSet<uint32_t> binded_sets;
 
     bool is_dirty;
 
@@ -57,4 +82,3 @@ public:
     void Update();
 };//class DescriptorSet
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_DESCRIPTOR_SET_INCLUDE

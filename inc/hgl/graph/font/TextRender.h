@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/font/TextLayout.h>
-#include<hgl/type/OrderedValueSet.h>
+#include<hgl/type/OrderedSet.h>
 #include<hgl/type/String.h>
 
 namespace hgl::graph
@@ -60,7 +60,7 @@ namespace hgl::graph
 
     private:
 
-        OrderedValueSet<TextGeometry *> text_geometry_set;        ///<所有的文字绘制几何体
+        OrderedSet<TextGeometry *> text_geometry_set;        ///<所有的文字绘制几何体
 
     private:
 

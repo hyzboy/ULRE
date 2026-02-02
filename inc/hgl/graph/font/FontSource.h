@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/type/StrChar.h>
-#include<hgl/type/Map.h>
-#include<hgl/type/OrderedValueSet.h>
+#include<hgl/type/UnorderedMap.h>
+#include<hgl/type/OrderedSet.h>
 #include<hgl/graph/font/Font.h>
 #include<hgl/type/UnicodeBlocks.h>
 
@@ -68,9 +68,9 @@ namespace hgl::graph
     {
     protected:
 
-        OrderedValueSet<void *> ref_object;
+        OrderedSet<void *> ref_object;
 
-        ObjectMap<u32char,CLA> cla_cache;
+        UnorderedMap<u32char,CLA *> cla_cache;
 
     public:
 
@@ -97,7 +97,7 @@ namespace hgl::graph
 
         Font fnt;
 
-        ObjectMap<u32char,FontBitmap> chars_bitmap;                                             ///<字符位图
+        UnorderedMap<u32char,FontBitmap *> chars_bitmap;                                             ///<字符位图
 
     protected:
 
@@ -128,7 +128,7 @@ namespace hgl::graph
         using FontSourcePointer=FontDataSource *;
 
         FontDataSource *default_source;
-        Map<UnicodeBlock,FontSourcePointer> source_map;
+        UnorderedMap<UnicodeBlock,FontSourcePointer> source_map;
 
         int max_char_height;
 

@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/font/FontSource.h>
+#include<vector>
 
 namespace hgl::graph
 {
@@ -21,10 +22,12 @@ namespace hgl::graph
         if(default_source)
             default_source->RefRelease(this);
 
-        for(auto &fsp:source_map)
+        std::vector<FontSourcePointer> values;
+        source_map.GetValueArray(values);
+        for(auto *fsp:values)
         {
-            if(fsp->value)
-                fsp->value->RefRelease(this);
+            if(fsp)
+                fsp->RefRelease(this);
         }
     }
 
@@ -44,15 +47,12 @@ namespace hgl::graph
     {
         max_char_height=0;
 
-        const int count=source_map.GetCount();
-
-        auto **fsp=source_map.GetDataList();
-
-        for(int i=0;i<count;i++)
+        std::vector<FontSourcePointer> values;
+        source_map.GetValueArray(values);
+        for(auto *fsp:values)
         {
-            get_max(max_char_height,(*fsp)->value->GetCharHeight());
-
-            ++fsp;
+            if(fsp)
+                get_max(max_char_height, fsp->GetCharHeight());
         }
     }
 
@@ -77,12 +77,36 @@ namespace hgl::graph
         if(!fs)return;
         if(fs==default_source)return;
 
-        if(source_map.ContainsValue(fs))
+        // 查找是否存在此FontDataSource
+        bool found=false;
+        std::vector<UnicodeBlock> keys;
+        source_map.GetKeyArray(keys);
+        for(const auto &key:keys)
+        {
+            auto *value=source_map.GetValuePointer(key);
+            if(value && *value==fs)
+            {
+                found=true;
+                break;
+            }
+        }
+
+        if(found)
         {
             const bool refresh=(fs->GetCharHeight()==max_char_height);
 
             fs->RefRelease(this);
-            source_map.DeleteByValue(fs);
+            
+            // 删除所有值为fs的项
+            for(const auto &key:keys)
+            {
+                auto *value=source_map.GetValuePointer(key);
+                if(value && *value==fs)
+                {
+                    source_map.DeleteByKey(key);
+                    break;
+                }
+            }
 
             if(refresh)
                 RefreshMaxCharHeight();
@@ -93,18 +117,18 @@ namespace hgl::graph
     {
         if(hgl::is_space(ch))return(nullptr);   //不能显示的数据或是空格
 
-        const auto count=source_map.GetCount();
-
-        if(count>0)
+        if(!source_map.IsEmpty())
         {
-            auto **fsp=source_map.GetDataList();
-
-            for(int i=0;i<count;i++)
+            std::vector<UnicodeBlock> keys;
+            source_map.GetKeyArray(keys);
+            for(const auto &key:keys)
             {
-                if(IsInUnicodeBlock((*fsp)->key,ch))
-                    return (*fsp)->value;
-
-                ++fsp;
+                if(IsInUnicodeBlock(key,ch))
+                {
+                    auto *value=source_map.GetValuePointer(key);
+                    if(value)
+                        return *value;
+                }
             }
         }
 

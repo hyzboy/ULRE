@@ -189,11 +189,11 @@ namespace hgl::ecs
         VkDrawIndexedIndirectCommand* indexed_draw_cmd = icb_draw_indexed->MapCmd();
 
         // Prepare batch array
-        draw_batches.Clear();
-        draw_batches.Reserve(count);
+        draw_batches.clear();
+        draw_batches.reserve(count);
 
         // Initialize first batch
-        graph::DrawBatch* batch = draw_batches.GetData();
+        graph::DrawBatch* batch = draw_batches.data();
         RenderItem* item = items[0];
         graph::Primitive* primitive = item->GetPrimitive();
 

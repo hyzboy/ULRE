@@ -4,7 +4,7 @@ namespace hgl::graph
 {
     FontDataSource *CreateFontSource(const Font &f);        //各平台独立提供
 
-    static ObjectMap<Font,FontDataSource> FontStorage;
+    static UnorderedMap<Font,FontDataSource *> FontStorage;
 
     FontDataSource *AcquireFontDataSource(const Font &f)
     {

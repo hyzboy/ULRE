@@ -1,15 +1,14 @@
 ﻿#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/type/IDName.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 
 STD_MTL_NAMESPACE_BEGIN
 
 namespace
 {
-    using MaterialFactoryMap=ObjectMap<int,MaterialFactory>;
-    using MaterialFactoryMapPtr=MaterialFactoryMap *;
+    using MaterialFactoryMap=UnorderedMap<int,MaterialFactory *>;
 
-    MaterialFactoryMapPtr material_factory_map=nullptr;
+    MaterialFactoryMap material_factory_map;
 }//namespace
 
 bool RegisterMaterialFactory(MaterialFactory *mf)
@@ -20,30 +19,23 @@ bool RegisterMaterialFactory(MaterialFactory *mf)
     const MaterialName &name=mf->GetName();
     const int name_id=name.GetID();
 
-    if(!material_factory_map)
-    {
-        material_factory_map=new MaterialFactoryMap();
-    }
-
-    if(material_factory_map->ContainsKey(name_id))
+    if(material_factory_map.ContainsKey(name_id))
         return(false);
 
-    material_factory_map->Add(name_id,mf);
+    material_factory_map.Add(name_id,mf);
 
     return(true);
 }
 
 MaterialFactory *GetMaterialFactory(const MaterialName &name)
 {
-    if(!material_factory_map)
-        return(nullptr);
-
-    return (*material_factory_map)[name.GetID()];
+    MaterialFactory** ptr = material_factory_map.GetValuePointer(name.GetID());
+    return ptr ? *ptr : nullptr;
 }
 
 void ClearMaterialFactory()
 {
-    SAFE_CLEAR(material_factory_map);
+    material_factory_map.Clear();
 }
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialName &name,MaterialCreateConfig *cfg)

@@ -49,6 +49,27 @@ public:
     }
 };//struct PipelineMaterialIndex
 
+VK_NAMESPACE_END
+
+// Hash function for PipelineMaterialIndex to use with UnorderedMap
+namespace std
+{
+    template<>
+    struct hash<hgl::graph::PipelineMaterialIndex>
+    {
+        size_t operator()(const hgl::graph::PipelineMaterialIndex& pmi) const noexcept
+        {
+            // Combine hashes of the two pointers
+            size_t h1 = hash<hgl::graph::Material*>{}(pmi.material);
+            size_t h2 = hash<hgl::graph::Pipeline*>{}(pmi.pipeline);
+            // Use a simple hash combination (XOR with bit shift)
+            return h1 ^ (h2 << 1);
+        }
+    };
+}
+
+VK_NAMESPACE_BEGIN
+
 /**
 * 同一材质与管线的渲染批次管理器
 *

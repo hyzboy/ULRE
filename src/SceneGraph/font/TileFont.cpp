@@ -25,9 +25,15 @@ namespace hgl::graph
     {
         RefPoolStats stats;
 
-        chars_sets.Delete(not_bitmap_chars);                                     //清除所有没有位图的字符
+        // 删除所有没有位图的字符
+        for(const u32char cp : not_bitmap_chars)
+        {
+            chars_sets.Delete(cp);
+        }
 
-        to_res.Stats(stats,chars_sets.GetData(),chars_sets.GetCount());
+        // 构建临时数组用于Stats
+        std::vector<u32char> temp_chars(chars_sets.begin(), chars_sets.end());
+        to_res.Stats(stats, temp_chars.data(), temp_chars.size());
 
         if(stats.not_found>stats.can_free+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
             return(false);
@@ -93,7 +99,7 @@ namespace hgl::graph
     * 注销要使用的字符
     * @param ch_list 要注销的字符列表
     */
-    void TileFont::Unregistry(const ValueBuffer<u32char> &ch_list)
+    void TileFont::Unregistry(const std::vector<u32char> &ch_list)
     {
         for(const u32char &ch:ch_list)
             to_res.Release(ch);

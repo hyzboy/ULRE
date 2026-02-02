@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/type/RectScope.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 
 namespace hgl::graph
 {
@@ -18,5 +18,5 @@ namespace hgl::graph
     };
 
     using TileUVFloat=RectScope2f;
-    using TileUVFloatMap=Map<u32char,RectScope2f>;
+    using TileUVFloatMap=UnorderedMap<u32char,RectScope2f>;
 }//hgl::namespace graph

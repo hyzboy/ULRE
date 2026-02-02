@@ -89,7 +89,7 @@ void LineWidthBatch::Expand(uint c)
             backup->EnsureCapacity(vertex_count);
 
             // Bulk read using VABFormatMap::Read; must succeed
-            bool pos_ok = vab_position->Read(backup->positions.GetData(), vertex_count);
+            bool pos_ok = vab_position->Read(backup->positions.data(), vertex_count);
             if(!pos_ok)
             {
                 // cannot safely backup, abort expansion
@@ -97,7 +97,7 @@ void LineWidthBatch::Expand(uint c)
                 return;
             }
 
-            bool col_ok = vab_color->Read(backup->colors.GetData(), vertex_count);
+            bool col_ok = vab_color->Read(backup->colors.data(), vertex_count);
             if(!col_ok)
             {
                 // cannot safely backup, abort expansion
@@ -121,7 +121,7 @@ void LineWidthBatch::Expand(uint c)
         if(!backup->IsEmpty() && vab_position && vab_color)
         {
             // Bulk write using VABFormatMap::Write; must succeed
-            bool pos_write_ok = vab_position->Write(backup->positions.GetData(), static_cast<uint32_t>(backup->positions.GetCount()));
+            bool pos_write_ok = vab_position->Write(backup->positions.data(), static_cast<uint32_t>(backup->positions.size()));
             if(!pos_write_ok)
             {
                 // cannot restore safely, abort
@@ -129,7 +129,7 @@ void LineWidthBatch::Expand(uint c)
                 return;
             }
 
-            bool col_write_ok = vab_color->Write(backup->colors.GetData(), static_cast<uint32_t>(backup->colors.GetCount()));
+            bool col_write_ok = vab_color->Write(backup->colors.data(), static_cast<uint32_t>(backup->colors.size()));
             if(!col_write_ok)
             {
                 // cannot restore safely, abort
@@ -178,9 +178,9 @@ void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8 color
     primitive->SetDrawCounts(count*2);
 }
 
-void LineWidthBatch::AddLine(const ValueBuffer<LineSegmentDescriptor> &lsi_list)
+void LineWidthBatch::AddLine(const std::vector<LineSegmentDescriptor> &lsi_list)
 {
-    Expand(lsi_list.GetCount());
+    Expand(lsi_list.size());
 
     if(!position)
         return;

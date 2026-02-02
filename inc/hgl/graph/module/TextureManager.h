@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/type/OrderedValueSet.h>
+#include<hgl/type/OrderedSet.h>
+#include<hgl/type/BidirectionalMap.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/ImageRegion.h>
@@ -22,11 +23,11 @@ private:
 
 private:
 
-    OrderedValueSet<VkImage> image_set;
-    OrderedValueSet<Texture *> texture_set;                                           ///<纹理合集
+    OrderedSet<VkImage> image_set;
+    OrderedSet<Texture *> texture_set;                                           ///<纹理合集
 
-    Map<TextureID,Texture *> texture_by_id;
-    Map<OSString,Texture *> texture_by_filename;
+    BidirectionalMap<TextureID,Texture *> texture_by_id;          ///< ID <-> Texture* 双向映射
+    BidirectionalMap<OSString,Texture *> texture_by_filename;     ///< Filename <-> Texture* 双向映射
 
     const TextureID Add(Texture *);
     const TextureID Add(Texture *,const OSString &);

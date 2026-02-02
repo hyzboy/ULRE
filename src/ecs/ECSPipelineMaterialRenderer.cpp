@@ -241,7 +241,7 @@ namespace hgl::ecs
         cmd_buf->BindDescriptorSets(material);
 
         // 遍历绘制批次
-        graph::DrawBatch* batch = const_cast<graph::DrawBatch*>(batches.GetData());
+        graph::DrawBatch* batch = const_cast<graph::DrawBatch*>(batches.data());
 
         for (uint32_t i = 0; i < batch_count; i++)
         {

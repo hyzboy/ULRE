@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/VK.h>

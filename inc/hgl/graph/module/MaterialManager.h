@@ -4,7 +4,7 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKShaderModule.h>
-#include<hgl/type/Map.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
@@ -19,7 +19,7 @@ namespace mtl
 
 using MaterialID            = int;
 using MaterialInstanceID    = int;
-using ShaderModuleMapByName = ObjectMap<AnsiString,ShaderModule>;
+using ShaderModuleMapByName = UnorderedMap<AnsiString,ShaderModule *>;
 
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT = 20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
@@ -28,7 +28,7 @@ GRAPH_MODULE_CLASS(MaterialManager)
 private:
 
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    Map<AnsiString,Material *> material_by_name;
+    UnorderedMap<AnsiString,Material *> material_by_name;
 
     AutoIdObjectManager<MaterialID,             Material>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集

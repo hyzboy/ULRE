@@ -292,7 +292,7 @@ namespace hgl::graph
      * CN: 批量添加线段; 宽度非法或列表为空返回false并记录日志。
      * EN: Bulk add lines; invalid width or empty list returns false and logs.
      */
-    bool LineRenderManager::AddLine(const uint8 width,const ValueBuffer<LineSegmentDescriptor> &lsi_list)
+    bool LineRenderManager::AddLine(const uint8 width,const std::vector<LineSegmentDescriptor> &lsi_list)
     {
         if(width==0 || width>MAX_LINE_WIDTH)
         {
@@ -300,7 +300,7 @@ namespace hgl::graph
             return(false);
         }
 
-        if(lsi_list.IsEmpty())
+        if(lsi_list.empty())
         {
             LogWarning(OS_TEXT("CN: 批量AddLine失败 列表为空 EN: line list empty"));
             return(false);
@@ -311,7 +311,7 @@ namespace hgl::graph
         else
             line_groups[0].AddLine(lsi_list);
 
-        total_line_count += lsi_list.GetCount();
+        total_line_count += lsi_list.size();
         return(true);
     }
 

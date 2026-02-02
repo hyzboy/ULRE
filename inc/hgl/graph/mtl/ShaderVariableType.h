@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/type/Str.Comp.h>
 #include<hgl/type/String.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/graph/VertexAttrib.h>
@@ -89,6 +90,10 @@ public:
     const bool Check() const;
 
     std::strong_ordering operator<=>(const ShaderVariableType &svt) const;
+
+    bool operator==(const ShaderVariableType &svt) const {
+        return svt_code == svt.svt_code;
+    }
 
     const char *GetTypename() const;
 
@@ -248,6 +253,14 @@ struct ShaderVariable
     Interpolation   interpolation;  //插值方式
 };
 
+// Comparison operator for ShaderVariable
+inline bool operator==(const ShaderVariable& lhs, const ShaderVariable& rhs) {
+    return std::strcmp(lhs.name, rhs.name) == 0 &&
+           lhs.location == rhs.location &&
+           lhs.type == rhs.type &&
+           lhs.interpolation == rhs.interpolation;
+}
+
 using SVList=ValueArray<ShaderVariable>;
 
 struct ShaderVariableArray
@@ -292,7 +305,7 @@ public:
             if(auto cmp = items[i].interpolation <=> sva.items[i].interpolation; cmp != 0)
                 return cmp;
 
-            if(auto cmp = hgl::strcmp_ordering(items[i].name, sva.items[i].name); cmp != 0)
+            if(auto cmp = ::hgl::strcmp_ordering(items[i].name, sva.items[i].name); cmp != 0)
                 return cmp;
         }
 
@@ -324,7 +337,7 @@ public:
             return(false);
 
         for(uint i=0;i<count;i++)
-            if(hgl::strcmp(items[i].name,name)==0)
+            if(::hgl::strcmp(items[i].name,name)==0)
                 return(true);
 
         return(false);

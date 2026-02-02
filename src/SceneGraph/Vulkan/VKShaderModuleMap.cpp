@@ -10,6 +10,6 @@ bool ShaderModuleMap::Add(const ShaderModule *sm)
 
     if(this->ContainsKey(stage))return(false);
 
-    return this->Map::Add(stage,sm);
+    return UnorderedMap<VkShaderStageFlagBits,const ShaderModule *>::Add(stage,sm);
 }
 VK_NAMESPACE_END

@@ -36,6 +36,17 @@ namespace hgl::graph
 
     using VIAList=ValueArray<VIA>;
 
+    // Comparison operator for VertexInputAttribute
+    inline bool operator==(const VertexInputAttribute& lhs, const VertexInputAttribute& rhs) {
+        return std::strcmp(lhs.name, rhs.name) == 0 &&
+               lhs.location == rhs.location &&
+               lhs.basetype == rhs.basetype &&
+               lhs.vec_size == rhs.vec_size &&
+               lhs.input_rate == rhs.input_rate &&
+               lhs.group == rhs.group &&
+               lhs.interpolation == rhs.interpolation;
+    }
+
     inline const AnsiString GetShaderAttributeTypename(const VertexInputAttribute *ss)
     {
         return AnsiString(GetVertexAttribName((VABaseType)ss->basetype,ss->vec_size));
@@ -88,7 +99,7 @@ namespace hgl::graph
                 if(auto cmp = items[i].input_rate <=> saa.items[i].input_rate; cmp != 0)
                     return cmp;
 
-                if(auto cmp = hgl::strcmp_ordering(items[i].name, saa.items[i].name); cmp != 0)
+                if(auto cmp = ::hgl::strcmp_ordering(items[i].name, saa.items[i].name); cmp != 0)
                     return cmp;
             }
 
@@ -122,7 +133,7 @@ namespace hgl::graph
                 return(false);
 
             for(uint i=0;i<count;i++)
-                if(hgl::strcmp(items[i].name,name)==0)
+                if(::hgl::strcmp(items[i].name,name)==0)
                     return(true);
 
             return(false);

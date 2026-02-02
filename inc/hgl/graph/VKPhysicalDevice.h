@@ -2,6 +2,29 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/String.h>
+#include<cstring>
+
+// Comparison operators for Vulkan structures used in ValueArray
+inline bool operator==(const VkExtensionProperties& lhs, const VkExtensionProperties& rhs) {
+    return lhs.specVersion == rhs.specVersion &&
+           std::strcmp(lhs.extensionName, rhs.extensionName) == 0;
+}
+
+inline bool operator==(const VkLayerProperties& lhs, const VkLayerProperties& rhs) {
+    return lhs.specVersion == rhs.specVersion &&
+           lhs.implementationVersion == rhs.implementationVersion &&
+           std::strcmp(lhs.layerName, rhs.layerName) == 0 &&
+           std::strcmp(lhs.description, rhs.description) == 0;
+}
+
+inline bool operator==(const VkQueueFamilyProperties& lhs, const VkQueueFamilyProperties& rhs) {
+    return lhs.queueFlags == rhs.queueFlags &&
+           lhs.queueCount == rhs.queueCount &&
+           lhs.timestampValidBits == rhs.timestampValidBits &&
+           lhs.minImageTransferGranularity.width == rhs.minImageTransferGranularity.width &&
+           lhs.minImageTransferGranularity.height == rhs.minImageTransferGranularity.height &&
+           lhs.minImageTransferGranularity.depth == rhs.minImageTransferGranularity.depth;
+}
 
 VK_NAMESPACE_BEGIN
 
