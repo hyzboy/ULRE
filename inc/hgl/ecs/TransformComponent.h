@@ -97,6 +97,8 @@ namespace hgl
             /// Update world matrix if dirty
             void UpdateIfDirty();
 
+            void MarkDirty();
+
         public:
 
             // Get the SOA storage handle for batch operations
@@ -118,7 +120,6 @@ namespace hgl
         private:
 
             void UpdateWorldMatrix();
-            void MarkDirty();
             void MigrateStorage(bool toMovable);
             std::shared_ptr<TransformDataStorage> GetStorage() const;
         };
