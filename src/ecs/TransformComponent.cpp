@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/Context.h>
 #include<algorithm>
 
 namespace hgl
@@ -11,55 +12,56 @@ namespace hgl
             , matrixDirty(true)
             , movable(true)
         {
-            // Allocate storage in the shared SOA storage
-            storageHandle = GetSharedStorage()->Allocate();
+            // Allocate storage in the dynamic SOA storage by default
+            storageHandle = GetDynamicStorage()->Allocate();
+            GetDynamicStorage()->SetMobility(storageHandle, 1);
         }
 
         TransformComponent::~TransformComponent()
         {
-            // Free storage in the shared SOA storage
+            // Free storage in the corresponding SOA storage
             if (storageHandle != TransformDataStorage::INVALID_HANDLE)
             {
-                GetSharedStorage()->Deallocate(storageHandle);
+                GetStorage()->Deallocate(storageHandle);
             }
         }
 
         glm::vec3 TransformComponent::GetLocalPosition() const
         {
-            return GetSharedStorage()->GetPosition(storageHandle);
+            return GetStorage()->GetPosition(storageHandle);
         }
 
         void TransformComponent::SetLocalPosition(const glm::vec3& pos)
         {
-            GetSharedStorage()->SetPosition(storageHandle, pos);
+            GetStorage()->SetPosition(storageHandle, pos);
             MarkDirty();
         }
 
         glm::quat TransformComponent::GetLocalRotation() const
         {
-            return GetSharedStorage()->GetRotation(storageHandle);
+            return GetStorage()->GetRotation(storageHandle);
         }
 
         void TransformComponent::SetLocalRotation(const glm::quat& rot)
         {
-            GetSharedStorage()->SetRotation(storageHandle, rot);
+            GetStorage()->SetRotation(storageHandle, rot);
             MarkDirty();
         }
 
         glm::vec3 TransformComponent::GetLocalScale() const
         {
-            return GetSharedStorage()->GetScale(storageHandle);
+            return GetStorage()->GetScale(storageHandle);
         }
 
         void TransformComponent::SetLocalScale(const glm::vec3& scale)
         {
-            GetSharedStorage()->SetScale(storageHandle, scale);
+            GetStorage()->SetScale(storageHandle, scale);
             MarkDirty();
         }
 
         void TransformComponent::SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
         {
-            auto storage = GetSharedStorage();
+            auto storage = GetStorage();
             storage->SetPosition(storageHandle, pos);
             storage->SetRotation(storageHandle, rot);
             storage->SetScale(storageHandle, scale);
@@ -68,7 +70,7 @@ namespace hgl
 
         glm::mat4 TransformComponent::GetLocalMatrix() const
         {
-            auto storage = GetSharedStorage();
+            auto storage = GetStorage();
             glm::mat4 matrix(1.0f);
             matrix = glm::translate(matrix, storage->GetPosition(storageHandle));
             matrix = matrix * glm::mat4_cast(storage->GetRotation(storageHandle));
@@ -78,10 +80,6 @@ namespace hgl
 
         glm::mat4 TransformComponent::GetWorldMatrix()
         {
-            if (matrixDirty || movable)
-            {
-                UpdateWorldMatrix();
-            }
             return cachedWorldMatrix;
         }
 
@@ -93,7 +91,7 @@ namespace hgl
 
         void TransformComponent::SetWorldPosition(const glm::vec3& pos)
         {
-            auto storage = GetSharedStorage();
+            auto storage = GetStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -119,7 +117,7 @@ namespace hgl
 
         glm::quat TransformComponent::GetWorldRotation()
         {
-            auto storage = GetSharedStorage();
+            auto storage = GetStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -134,7 +132,7 @@ namespace hgl
 
         void TransformComponent::SetWorldRotation(const glm::quat& rot)
         {
-            auto storage = GetSharedStorage();
+            auto storage = GetStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -158,7 +156,7 @@ namespace hgl
 
         glm::vec3 TransformComponent::GetWorldScale()
         {
-            auto storage = GetSharedStorage();
+            auto storage = GetStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -173,7 +171,7 @@ namespace hgl
 
         void TransformComponent::SetWorldScale(const glm::vec3& scale)
         {
-            auto storage = GetSharedStorage();
+            auto storage = GetStorage();
             auto parent = parentEntity.lock();
             if (parent)
             {
@@ -249,27 +247,42 @@ namespace hgl
 
         void TransformComponent::SetMovable(bool isMovable)
         {
-            movable = isMovable;
-            // Update mobility in storage (0 = static, 1 = movable)
-            GetSharedStorage()->SetMobility(storageHandle, isMovable ? 1 : 0);
+            if (movable == isMovable)
+                return;
+
+            MigrateStorage(isMovable);
         }
 
         void TransformComponent::OnUpdate(float deltaTime)
         {
-            // Update transform if needed
-            if (matrixDirty && !movable)
-            {
-                UpdateWorldMatrix();
-            }
+            (void)deltaTime;
         }
 
         void TransformComponent::OnAttach()
         {
             MarkDirty();
+
+            // Register with context
+            if (auto owner = GetOwner())
+            {
+                if (auto ctx = owner->GetContext())
+                {
+                    ctx->RegisterTransformComponent(std::static_pointer_cast<TransformComponent>(shared_from_this()), movable);
+                }
+            }
         }
 
         void TransformComponent::OnDetach()
         {
+            // Unregister from context
+            if (auto owner = GetOwner())
+            {
+                if (auto ctx = owner->GetContext())
+                {
+                    ctx->UnregisterTransformComponent(this);
+                }
+            }
+
             // Remove from parent
             auto parent = parentEntity.lock();
             if (parent)
@@ -323,6 +336,24 @@ namespace hgl
             }
         }
 
+        void TransformComponent::UpdateIfDirty()
+        {
+            if (!matrixDirty)
+                return;
+
+            auto parent = parentEntity.lock();
+            if (parent)
+            {
+                auto parentTransform = parent->GetComponent<TransformComponent>();
+                if (parentTransform && parentTransform->IsMovable())
+                {
+                    parentTransform->UpdateIfDirty();
+                }
+            }
+
+            UpdateWorldMatrix();
+        }
+
         void TransformComponent::MarkDirty()
         {
             matrixDirty = true;
@@ -337,6 +368,57 @@ namespace hgl
                     {
                         childTransform->MarkDirty();
                     }
+                }
+            }
+        }
+
+        std::shared_ptr<TransformDataStorage> TransformComponent::GetStorage() const
+        {
+            return movable ? GetDynamicStorage() : GetStaticStorage();
+        }
+
+        void TransformComponent::MigrateStorage(bool toMovable)
+        {
+            if (movable == toMovable)
+                return;
+
+            if (storageHandle == TransformDataStorage::INVALID_HANDLE)
+            {
+                movable = toMovable;
+                return;
+            }
+
+            auto oldStorage = GetStorage();
+            auto newStorage = toMovable ? GetDynamicStorage() : GetStaticStorage();
+
+            TransformDataStorage::HandleID newHandle = newStorage->Allocate();
+
+            // Copy transform data
+            newStorage->SetPosition(newHandle, oldStorage->GetPosition(storageHandle));
+            newStorage->SetRotation(newHandle, oldStorage->GetRotation(storageHandle));
+            newStorage->SetScale(newHandle, oldStorage->GetScale(storageHandle));
+
+            // Update mobility in new storage (0 = static, 1 = movable)
+            newStorage->SetMobility(newHandle, toMovable ? 1 : 0);
+
+            // Release old storage
+            oldStorage->Deallocate(storageHandle);
+
+            storageHandle = newHandle;
+            movable = toMovable;
+
+            // If transitioning to static and dirty, compute world matrix once
+            if (!toMovable && matrixDirty)
+            {
+                UpdateWorldMatrix();
+            }
+
+            // Notify context of migration
+            if (auto owner = GetOwner())
+            {
+                if (auto ctx = owner->GetContext())
+                {
+                    ctx->MigrateTransformComponent(this, toMovable);
                 }
             }
         }

@@ -6,6 +6,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/System.h
                 ${ECS_INCLUDE_PATH}/Context.h
                 ${ECS_INCLUDE_PATH}/TransformComponent.h
+                ${ECS_INCLUDE_PATH}/TransformSystem.h
                 ${ECS_INCLUDE_PATH}/TransformDataStorage.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxComponent.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxDataStorage.h
@@ -36,6 +37,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 System.cpp
                 Context.cpp
                 TransformComponent.cpp
+                TransformSystem.cpp
                 BoundingBoxComponent.cpp
                 PrimitiveComponent.cpp
                 RenderItem.cpp
@@ -60,6 +62,8 @@ source_group("ECS\\Core" FILES
 source_group("ECS\\Transform" FILES
     ${ECS_INCLUDE_PATH}/TransformComponent.h
     TransformComponent.cpp
+    ${ECS_INCLUDE_PATH}/TransformSystem.h
+    TransformSystem.cpp
     ${ECS_INCLUDE_PATH}/TransformDataStorage.h
     ECSTransformAssignmentBuffer.h
     ECSTransformAssignmentBuffer.cpp

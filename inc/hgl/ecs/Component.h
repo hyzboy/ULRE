@@ -13,7 +13,7 @@ namespace hgl
          * Base component class for Entity
          * Components provide data and behavior to entities
          */
-        class Component
+        class Component : public std::enable_shared_from_this<Component>
         {
         protected:
 

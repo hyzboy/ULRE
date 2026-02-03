@@ -34,6 +34,8 @@ namespace hgl
 
             void SetContext(ECSContext *ctx) { context = ctx; }
 
+            ECSContext *GetContext() const { return context; }
+
         public:
 
             /// Add component to entity
