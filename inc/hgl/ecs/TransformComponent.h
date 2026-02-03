@@ -86,6 +86,7 @@ namespace hgl
             void SetMovable(bool isMovable);
             bool IsMovable() const { return movable; }
             bool IsStatic() const { return !movable; }
+            bool IsDirty() const { return matrixDirty; }
 
         public:
 
@@ -93,13 +94,22 @@ namespace hgl
             void OnAttach() override;
             void OnDetach() override;
 
+            /// Update world matrix if dirty
+            void UpdateIfDirty();
+
         public:
 
             // Get the SOA storage handle for batch operations
             TransformDataStorage::HandleID GetStorageHandle() const { return storageHandle; }
 
-            // Static access to shared storage for batch operations
-            static std::shared_ptr<TransformDataStorage>& GetSharedStorage()
+            // Static access to separate storages (static vs dynamic)
+            static std::shared_ptr<TransformDataStorage>& GetStaticStorage()
+            {
+                static auto storage = std::make_shared<TransformDataStorage>();
+                return storage;
+            }
+
+            static std::shared_ptr<TransformDataStorage>& GetDynamicStorage()
             {
                 static auto storage = std::make_shared<TransformDataStorage>();
                 return storage;
@@ -109,6 +119,8 @@ namespace hgl
 
             void UpdateWorldMatrix();
             void MarkDirty();
+            void MigrateStorage(bool toMovable);
+            std::shared_ptr<TransformDataStorage> GetStorage() const;
         };
     }//namespace ecs
 }//namespace hgl

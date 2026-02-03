@@ -3,7 +3,7 @@
 #include<hgl/ecs/Object.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/System.h>
-#include<hgl/ecs/Component.h>
+#include<hgl/ecs/TransformComponent.h>
 #include<memory>
 #include<vector>
 #include<unordered_map>
@@ -32,6 +32,10 @@ namespace hgl
             // 组件注册表：按类型hash存储弱引用，便于系统快速查询
             std::unordered_map<size_t, std::vector<std::weak_ptr<Component>>> component_registry;
 
+            // TransformComponent 分离列表
+            std::vector<std::weak_ptr<TransformComponent>> static_transforms;
+            std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
+
             bool active = false;
 
         public:
@@ -58,6 +62,21 @@ namespace hgl
 
             /// 反注册组件实例（由 Entity::RemoveComponent 调用）
             void UnregisterComponentInstance(size_t type_hash, Component* comp_ptr);
+
+            /// Register a transform component (called by TransformComponent::OnAttach)
+            void RegisterTransformComponent(const std::shared_ptr<TransformComponent>& comp, bool isMovable);
+
+            /// Migrate transform between static and movable lists
+            void MigrateTransformComponent(TransformComponent* comp_ptr, bool toMovable);
+
+            /// Unregister a transform component (called by TransformComponent::OnDetach)
+            void UnregisterTransformComponent(TransformComponent* comp_ptr);
+
+            /// Get static transforms for offline baking
+            const std::vector<std::weak_ptr<TransformComponent>>& GetStaticTransforms() const { return static_transforms; }
+
+            /// Get movable transforms for runtime updates
+            const std::vector<std::weak_ptr<TransformComponent>>& GetMovableTransforms() const { return movable_transforms; }
 
         public:
 
