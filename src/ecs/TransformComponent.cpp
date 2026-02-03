@@ -71,11 +71,14 @@ namespace hgl
         glm::mat4 TransformComponent::GetLocalMatrix() const
         {
             auto storage = GetStorage();
-            glm::mat4 matrix(1.0f);
-            matrix = glm::translate(matrix, storage->GetPosition(storageHandle));
-            matrix = matrix * glm::mat4_cast(storage->GetRotation(storageHandle));
-            matrix = glm::scale(matrix, storage->GetScale(storageHandle));
-            return matrix;
+
+            // 正确的TRS顺序：先构建各个矩阵，然后以正确的顺序相乘
+            // T * R * S（向量应用顺序：先缩放，再旋转，最后平移）
+            glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), storage->GetScale(storageHandle));
+            glm::mat4 rotMatrix = glm::mat4_cast(storage->GetRotation(storageHandle));
+            glm::mat4 transMatrix = glm::translate(glm::mat4(1.0f), storage->GetPosition(storageHandle));
+
+            return transMatrix * rotMatrix * scaleMatrix;
         }
 
         glm::mat4 TransformComponent::GetWorldMatrix()
