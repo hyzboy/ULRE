@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VKShaderDescriptorSet.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
-#include<hgl/type/Map.h>
+#include<unordered_map>
 
 namespace hgl{namespace graph{
 /**
@@ -14,11 +14,11 @@ class MaterialDescriptorInfo
     uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
-    Map<AnsiString,AnsiString> struct_map;
-    Map<AnsiString,UBODescriptor *> ubo_map;
-    Map<AnsiString,SSBODescriptor *> ssbo_map;
-    Map<AnsiString,TextureDescriptor *> texture_map;
-    Map<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
+    std::unordered_map<AnsiString,AnsiString> struct_map;
+    std::unordered_map<AnsiString,UBODescriptor *> ubo_map;
+    std::unordered_map<AnsiString,SSBODescriptor *> ssbo_map;
+    std::unordered_map<AnsiString,TextureDescriptor *> texture_map;
+    std::unordered_map<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
 
 public:
     
@@ -27,7 +27,7 @@ public:
 
     bool AddStruct(const AnsiString &name,const AnsiString &code)
     {
-        struct_map.Add(name,code);
+        struct_map[name] = code;
         return(true);
     }
 
@@ -38,12 +38,18 @@ public:
 
     bool GetStruct(const AnsiString &name,AnsiString &code)
     {
-        return(struct_map.Get(name,code));
+        auto it = struct_map.find(name);
+        if(it != struct_map.end())
+        {
+            code = it->second;
+            return true;
+        }
+        return false;
     }
 
     bool hasStruct(const AnsiString &name) const
     {
-        return(struct_map.ContainsKey(name));
+        return(struct_map.count(name) > 0);
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);

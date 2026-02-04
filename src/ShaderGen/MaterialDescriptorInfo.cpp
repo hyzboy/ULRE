@@ -36,7 +36,7 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
     
-    ubo_map.Add(obj->name,(UBODescriptor *)obj);
+    ubo_map[obj->name] = (UBODescriptor *)obj;
     return((UBODescriptor *)obj);
 }
 
@@ -49,7 +49,7 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
     
-    ssbo_map.Add(obj->name,(SSBODescriptor *)obj);
+    ssbo_map[obj->name] = (SSBODescriptor *)obj;
     return((SSBODescriptor *)obj);
 }
 
@@ -62,7 +62,7 @@ const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stag
 
     ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
 
-    texture_map.Add(obj->name,(TextureDescriptor *)obj);
+    texture_map[obj->name] = (TextureDescriptor *)obj;
     return((TextureDescriptor *)obj);
 }
 
@@ -75,46 +75,42 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    texture_sampler_map.Add(obj->name,(TextureSamplerDescriptor *)obj);
+    texture_sampler_map[obj->name] = (TextureSamplerDescriptor *)obj;
     return((TextureSamplerDescriptor *)obj);
 }
 
 UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
 {
-    UBODescriptor *sd;
-
-    if(ubo_map.Get(name,sd))
-        return(sd);
+    auto it = ubo_map.find(name);
+    if(it != ubo_map.end())
+        return it->second;
 
     return(nullptr);
 }
 
 SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const AnsiString &name)
 {
-    SSBODescriptor *sd;
-
-    if(ssbo_map.Get(name,sd))
-        return(sd);
+    auto it = ssbo_map.find(name);
+    if(it != ssbo_map.end())
+        return it->second;
 
     return(nullptr);
 }
 
 TextureDescriptor *MaterialDescriptorInfo::GetTexture(const AnsiString &name)
 {
-    TextureDescriptor *sd;
-
-    if(texture_map.Get(name,sd))
-        return(sd);
+    auto it = texture_map.find(name);
+    if(it != texture_map.end())
+        return it->second;
 
     return(nullptr);
 }
 
 TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const AnsiString &name)
 {
-    TextureSamplerDescriptor *sd;
-
-    if(texture_sampler_map.Get(name,sd))
-        return(sd);
+    auto it = texture_sampler_map.find(name);
+    if(it != texture_sampler_map.end())
+        return it->second;
 
     return(nullptr);
 }
