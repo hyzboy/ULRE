@@ -10,9 +10,9 @@ SSBOs (Storage Buffer Objects) are now fully supported in the ULRE ShaderGen sys
 ## Version Compatibility
 
 **Current Implementation**: Compatible with devel_49_ecs_input branch
-- Uses standard library containers (`std::unordered_map<>`)
-- Migrated from custom `Map<>` template to standard library
-- Aligns with ECS infrastructure container usage
+- Uses CMCore container types (`UnorderedMap<>` from `hgl/type/UnorderedMap.h`)
+- Migrated from custom `Map<>` template to UnorderedMap
+- Aligns with CMCore's container abstraction layer
 
 ## Implementation
 
@@ -193,28 +193,32 @@ Potential future additions:
 
 ### Container Template Migration (devel_49_ecs_input)
 
-The implementation uses standard library containers for compatibility with the devel_49_ecs_input branch:
+The implementation uses CMCore container types for consistency with the framework:
 
 **Container Changes:**
-- `Map<K,V>` → `std::unordered_map<K,V>`
-- `#include<hgl/type/Map.h>` → `#include<unordered_map>`
+- `Map<K,V>` → `UnorderedMap<K,V>`
+- `#include<hgl/type/Map.h>` → `#include<hgl/type/UnorderedMap.h>`
 
 **Affected Files:**
 - `inc/hgl/shadergen/MaterialDescriptorInfo.h`
 - `src/ShaderGen/MaterialDescriptorInfo.cpp`
 
-**API Changes:**
+**API Usage:**
 ```cpp
-// Old Custom Map<> API
-map.Add(key, value);
-bool found = map.Get(key, out_value);
-bool exists = map.ContainsKey(key);
+// CMCore UnorderedMap (current)
+#include<hgl/type/UnorderedMap.h>
 
-// New std::unordered_map<> API
+UnorderedMap<K,V> map;
 map[key] = value;
 auto it = map.find(key);
 if(it != map.end()) { out_value = it->second; }
 bool exists = map.count(key) > 0;
 ```
 
-This migration aligns with the ECS infrastructure which already uses standard library containers throughout (`std::unordered_map`, `std::map`, `std::vector`).
+**Why UnorderedMap from CMCore?**
+- Provides abstraction over standard library containers
+- Consistent with other CMCore type patterns (Map, ArrayList, etc.)
+- Allows for custom allocators and optimizations
+- Matches the framework's coding standards
+
+This migration aligns with CMCore's container abstraction layer which provides consistent interfaces across the entire ULRE framework.
