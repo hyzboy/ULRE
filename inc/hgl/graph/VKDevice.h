@@ -1,8 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/type/ArrayList.h>
+#include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
-#include<hgl/type/Map.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/ImageRegion.h>
 #include<hgl/platform/Window.h>
