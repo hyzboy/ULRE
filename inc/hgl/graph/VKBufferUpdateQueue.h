@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_BUFFER_UPDATE_QUEUE_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/type/List.h>
+#include<hgl/type/ValueArray.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -27,7 +27,7 @@ struct BufferUpdateRecord
 class BufferUpdateQueue
 {
     VkDevice device;
-    List<BufferUpdateRecord> pending_updates;
+    ValueArray<BufferUpdateRecord> pending_updates;
 
 public:
 
