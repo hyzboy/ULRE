@@ -83,6 +83,18 @@ namespace hgl
             }
         };
 
+        struct SSBODescriptor:public ShaderDescriptor
+        {
+            AnsiString type;
+
+        public:
+
+            SSBODescriptor()
+            {
+                desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            }
+        };
+
         struct TextureDescriptor:public ShaderDescriptor
         {
             AnsiString type;

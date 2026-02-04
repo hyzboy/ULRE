@@ -31,6 +31,18 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     has_l2w_matrix=mc->local_to_world;
 }
 
+MaterialCreateInfo::~MaterialCreateInfo()
+{
+    // Explicitly clear the shader_map to properly clean up ShaderCreateInfo objects
+    // This ensures proper destructor ordering and prevents crashes with UnorderedMap
+    for(auto [stage, sc] : shader_map)
+    {
+        if(sc)
+            delete sc;
+    }
+    shader_map.Clear();
+}
+
 bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
 {
     if(struct_name.IsEmpty()||codes.IsEmpty())
@@ -101,6 +113,68 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
         return(false);
 
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
+}
+
+bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
+{
+    if(!shader_map.ContainsKey(flag_bit))
+        return(false);
+
+    if(!mdi.hasStruct(struct_name))
+        return(false);
+
+    ShaderCreateInfo *sc=shader_map[flag_bit];
+
+    if(!sc)
+        return(false);
+
+    SSBODescriptor *ssbo=mdi.GetSSBO(name);
+
+    if(ssbo)
+    {
+        if(ssbo->type!=struct_name)
+            return(false);
+
+        ssbo->stage_flag|=(uint32_t)flag_bit;
+
+        return sc->AddSSBO(set_type,ssbo);
+    }
+    else
+    {
+        ssbo=new SSBODescriptor();
+
+        ssbo->type=struct_name;
+        hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
+
+        return sc->AddSSBO(set_type,mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo));
+    }
+}
+
+bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name)
+{
+    if(flag_bits==0)return(false);          //没有任何SHADER用?
+
+    if(!mdi.hasStruct(struct_name))
+        return(false);
+    
+    uint result=0;
+
+    for(auto [bit, shader_info] : shader_map)
+    {
+        if(flag_bits&(uint32_t)bit)
+            if(AddSSBO(bit,set_type,struct_name,name))
+                ++result;
+    }
+
+    return(result==shader_map.GetCount());
+}
+
+bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
+{
+    if(!AddStruct(ss.struct_name,ss.codes))
+        return(false);
+
+    return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
 bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name)

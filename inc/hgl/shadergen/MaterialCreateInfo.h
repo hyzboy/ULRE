@@ -79,7 +79,7 @@ namespace hgl::graph
         public:
 
             MaterialCreateInfo(const MaterialCreateConfig *);
-            ~MaterialCreateInfo()=default;
+            ~MaterialCreateInfo();  // Need explicit destructor to properly clean up shader_map
 
             void SetDevice(const VulkanDevAttr *dev_attr);
 
@@ -94,6 +94,11 @@ namespace hgl::graph
             bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
 
             bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
+
+            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
             bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name);
             bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);

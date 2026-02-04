@@ -24,6 +24,17 @@ bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ub
     return true;
 }
 
+bool ShaderDescriptorInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *ssbo)
+{
+    if(!ssbo)
+        return(false);
+
+    struct_list.AddUnique(ssbo->type);
+
+    ssbo_list.Add(ssbo);
+    return true;
+}
+
 bool ShaderDescriptorInfo::AddTexture(DescriptorSetType type,const TextureDescriptor *sd)
 {
     if(!sd)

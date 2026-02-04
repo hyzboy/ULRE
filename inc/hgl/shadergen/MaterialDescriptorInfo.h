@@ -16,6 +16,7 @@ class MaterialDescriptorInfo
 
     UnorderedMap<AnsiString,AnsiString> struct_map;
     UnorderedMap<AnsiString,UBODescriptor *> ubo_map;
+    UnorderedMap<AnsiString,SSBODescriptor *> ssbo_map;
     UnorderedMap<AnsiString,TextureDescriptor *> texture_map;
     UnorderedMap<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
 
@@ -26,7 +27,7 @@ public:
 
     bool AddStruct(const AnsiString &name,const AnsiString &code)
     {
-        struct_map.Add(name,code);
+        struct_map.ChangeOrAdd(name, code);
         return(true);
     }
 
@@ -37,19 +38,27 @@ public:
 
     bool GetStruct(const AnsiString &name,AnsiString &code)
     {
-        return(struct_map.Get(name,code));
+        const AnsiString* value_ptr = struct_map.GetValuePointer(name);
+        if(value_ptr)
+        {
+            code = *value_ptr;
+            return true;
+        }
+        return false;
     }
 
     bool hasStruct(const AnsiString &name) const
     {
-        return(struct_map.ContainsKey(name));
+        return struct_map.ContainsKey(name);
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
+    const SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,SSBODescriptor *sd);
     const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
     const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
     UBODescriptor *GetUBO(const AnsiString &name);
+    SSBODescriptor *GetSSBO(const AnsiString &name);
     TextureDescriptor *GetTexture(const AnsiString &name);
     TextureSamplerDescriptor *GetTextureSampler(const AnsiString &name);
 
