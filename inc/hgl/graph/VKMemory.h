@@ -12,7 +12,8 @@ enum class MemoryUsage
     CPUOnly,        // HOST_VISIBLE | HOST_COHERENT (current default)
     GPUOnly,        // DEVICE_LOCAL (best performance)
     CPUToGPU,       // Staging: HOST_VISIBLE | HOST_COHERENT
-    GPUToCPU        // Readback: HOST_VISIBLE | HOST_CACHED
+    GPUToCPU,       // Readback: HOST_VISIBLE | HOST_CACHED
+    ReBAR           // HOST_VISIBLE | HOST_COHERENT | DEVICE_LOCAL (requires Resizable BAR)
 };
 
 class DeviceMemory

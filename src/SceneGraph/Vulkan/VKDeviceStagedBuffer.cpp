@@ -42,6 +42,28 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
         break;
         
+    case MemoryUsage::ReBAR:
+        // Resizable BAR: HOST_VISIBLE + HOST_COHERENT + DEVICE_LOCAL
+        // This provides optimal performance when ReBAR is available
+        properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
+                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT 
+                   | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        
+        // Try to find memory type with all flags
+        {
+            int index = attr->physical_device->GetMemoryType(req.memoryTypeBits, properties);
+            if (index >= 0)
+            {
+                // ReBAR is available, use it
+                return CreateMemory(req, properties);
+            }
+        }
+        
+        // ReBAR not available, fallback to staging pattern (CPUToGPU)
+        // This ensures the code still works on systems without ReBAR
+        properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        break;
+        
     default:
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
