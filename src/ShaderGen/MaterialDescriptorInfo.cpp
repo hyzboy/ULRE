@@ -40,6 +40,19 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
     return((UBODescriptor *)obj);
 }
 
+const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
+{
+    RANGE_CHECK_RETURN_NULLPTR(set_type);
+    if(!sd)return(nullptr);
+
+    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
+
+    ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
+    
+    ssbo_map.Add(obj->name,(SSBODescriptor *)obj);
+    return((SSBODescriptor *)obj);
+}
+
 const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
@@ -71,6 +84,16 @@ UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
     UBODescriptor *sd;
 
     if(ubo_map.Get(name,sd))
+        return(sd);
+
+    return(nullptr);
+}
+
+SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const AnsiString &name)
+{
+    SSBODescriptor *sd;
+
+    if(ssbo_map.Get(name,sd))
         return(sd);
 
     return(nullptr);

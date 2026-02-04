@@ -95,6 +95,11 @@ namespace hgl::graph
 
             bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
+
+            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+
             bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name);
             bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
