@@ -23,6 +23,8 @@ class VulkanArrayBuffer;
 class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
+class BufferUpdateQueue;
+class StagedBuffer;
 
 struct CopyBufferToImageInfo;
 
@@ -31,6 +33,7 @@ class VulkanDevice
     OBJECT_LOGGER
 
     VulkanDevAttr *attr;
+    BufferUpdateQueue *buffer_update_queue;
 
 private:
 
@@ -80,6 +83,9 @@ public: //内存相关
 
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
     DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage);
+
+    BufferUpdateQueue * GetBufferUpdateQueue() { return buffer_update_queue; }
 
 private: //Buffer相关
 
@@ -93,6 +99,8 @@ public: //Buffer相关
 
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,data,sm);}
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,nullptr,sm);}
+
+    StagedBuffer *  CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data = nullptr, SharingMode sm = SharingMode::Exclusive);
 
     VAB *           CreateVAB   (VkFormat format, uint32_t count,const void *data,    SharingMode sm=SharingMode::Exclusive);
     VAB *           CreateVAB   (VkFormat format, uint32_t count,                     SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sm);}

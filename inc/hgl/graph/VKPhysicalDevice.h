@@ -58,6 +58,7 @@ private:
 
     bool support_u8_index=false;
     bool dynamic_state=false;
+    bool has_rebar=false;  // Resizable BAR support
 
 public:
 
@@ -238,6 +239,7 @@ public:
     }
 
     const bool      SupportDynamicState() const {return dynamic_state;}
+    const bool      HasReBAR() const {return has_rebar;}  ///< Check if Resizable BAR is available
 
 public: // Vulkan API
 

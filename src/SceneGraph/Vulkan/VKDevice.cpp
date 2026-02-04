@@ -1,15 +1,18 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKSemaphore.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKBufferUpdateQueue.h>
 
 VK_NAMESPACE_BEGIN
 VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 {
     attr=da;
+    buffer_update_queue = new BufferUpdateQueue(da->device);
 }
 
 VulkanDevice::~VulkanDevice()
 {
+    delete buffer_update_queue;
     delete attr;
 }
 
