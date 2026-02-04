@@ -17,8 +17,20 @@ struct BufferUpdateRecord
     VkDeviceSize    offset;
     VkDeviceSize    size;
 
+    BufferUpdateRecord() : buffer(nullptr), offset(0), size(0) {}
+
     BufferUpdateRecord(StagedBuffer *buf, VkDeviceSize off = 0, VkDeviceSize sz = VK_WHOLE_SIZE)
         : buffer(buf), offset(off), size(sz) {}
+
+    bool operator==(const BufferUpdateRecord& other) const
+    {
+        return buffer == other.buffer && offset == other.offset && size == other.size;
+    }
+
+    bool operator!=(const BufferUpdateRecord& other) const
+    {
+        return !(*this == other);
+    }
 };
 
 /**

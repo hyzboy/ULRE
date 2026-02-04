@@ -21,6 +21,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         break;
         
     case MemoryUsage::CPUToGPU:
+    {
         // Try HOST_VISIBLE + DEVICE_LOCAL first (ideal for integrated GPU)
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT 
@@ -37,6 +38,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         // Fallback to just HOST_VISIBLE + HOST_COHERENT for discrete GPU
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
+    }
         
     case MemoryUsage::GPUToCPU:
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
