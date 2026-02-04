@@ -17,6 +17,7 @@ class MaterialDescriptorInfo;
 class ShaderDescriptorInfo;
 
 struct UBODescriptor;
+struct SSBODescriptor;
 struct TextureDescriptor;
 struct TextureSamplerDescriptor;
 
@@ -92,6 +93,7 @@ public:
 
     void AddStruct(const AnsiString &);
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
+    bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
     bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
 
