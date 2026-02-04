@@ -4,6 +4,7 @@
 #include<hgl/graph/World.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
@@ -122,6 +123,27 @@ namespace hgl::graph
 
             RenderCmdBuffer *cmd = render_target->BeginRender();
 
+            // Flush all pending buffer updates before rendering
+            if(render_target && render_target->GetDevice())
+            {
+                BufferUpdateQueue *update_queue = render_target->GetDevice()->GetBufferUpdateQueue();
+                if(update_queue && update_queue->HasPendingUpdates())
+                {
+                    update_queue->FlushAll(cmd->operator VkCommandBuffer());
+                    
+                    // Add memory barrier to ensure copy operations complete before rendering
+                    VkMemoryBarrier barrier{};
+                    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                    barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+                    
+                    vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
+                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                       VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                       0, 1, &barrier, 0, nullptr, 0, nullptr);
+                }
+            }
+
             if(render_context)
             {
                 render_context->BindDescriptor(cmd);
@@ -168,6 +190,27 @@ namespace hgl::graph
         bool result = false;
 
         RenderCmdBuffer *cmd = render_target->BeginRender();
+
+        // Flush all pending buffer updates before rendering
+        if(render_target && render_target->GetDevice())
+        {
+            BufferUpdateQueue *update_queue = render_target->GetDevice()->GetBufferUpdateQueue();
+            if(update_queue && update_queue->HasPendingUpdates())
+            {
+                update_queue->FlushAll(cmd->operator VkCommandBuffer());
+                
+                // Add memory barrier to ensure copy operations complete before rendering
+                VkMemoryBarrier barrier{};
+                barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+                
+                vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                   0, 1, &barrier, 0, nullptr, 0, nullptr);
+            }
+        }
 
         render_context->BindDescriptor(cmd);
 
