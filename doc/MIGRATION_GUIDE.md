@@ -19,10 +19,11 @@ DeviceBuffer *ubo = device->CreateUBO(size, data);
 
 ### Opt-In to Better Performance
 
-To use staged buffers for improved performance:
+Choose the right strategy based on your use case:
 
+**For Static Data (Staged Buffer):**
 ```cpp
-// New: Create a staged buffer
+// Create a staged buffer for static geometry
 StagedBuffer *staged = device->CreateStagedBuffer(
     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
     size,
@@ -33,9 +34,32 @@ StagedBuffer *staged = device->CreateStagedBuffer(
 VkBuffer gpu_buffer = staged->GetDeviceBuffer();
 ```
 
+**For Dynamic Data (ReBAR with Fallback):**
+```cpp
+// Create buffer with ReBAR memory (zero-copy when available)
+BufferCreateInfo info;
+info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+info.size = sizeof(DynamicUBO);
+
+VkBuffer buffer;
+vkCreateBuffer(device, &info, nullptr, &buffer);
+
+VkMemoryRequirements req;
+vkGetBufferMemoryRequirements(device, buffer, &req);
+
+// Try ReBAR, automatic fallback to CPUOnly
+DeviceMemory *mem = device->CreateMemory(req, MemoryUsage::ReBAR);
+mem->BindBuffer(buffer);
+
+// Direct CPU updates (fast with ReBAR)
+void *mapped = mem->Map();
+memcpy(mapped, &ubo_data, sizeof(DynamicUBO));
+mem->Unmap();
+```
+
 ## When to Migrate
 
-### ✅ Good Candidates for Migration
+### ✅ Good Candidates for Staged Buffers
 
 1. **Static Geometry**
    - Vertex buffers that never change
@@ -52,16 +76,38 @@ VkBuffer gpu_buffer = staged->GetDeviceBuffer();
    - Large compute shader buffers
    - Terrain data
 
-### ❌ Poor Candidates for Migration
+### ✅ Good Candidates for ReBAR
 
-1. **Frequently Updated Buffers**
+1. **Frequently Updated Buffers** (if ReBAR available)
    - Per-frame uniform buffers (camera, time, etc.)
    - Particle system vertex buffers (every frame)
    - Dynamic UI elements
 
-2. **Small Buffers**
+2. **Real-time Data Streaming**
+   - Audio/video data
+   - Procedural generation
+   - Physics simulation results
+
+### ❌ Poor Candidates for Migration
+
+1. **Small Buffers**
    - < 64KB buffers (overhead exceeds benefit)
    - Push constants (already fast)
+
+2. **Read-only Static Data** (on systems without ReBAR)
+   - Use Staged Buffers instead
+
+### Decision Matrix
+
+| Buffer Type | Update Frequency | ReBAR Available? | Recommendation |
+|-------------|------------------|------------------|----------------|
+| Static Mesh | Never | N/A | StagedBuffer |
+| Level Data | Rare (per level) | N/A | StagedBuffer |
+| Per-Frame UBO | Every frame | ✅ Yes | ReBAR (zero-copy) |
+| Per-Frame UBO | Every frame | ❌ No | CPUOnly (legacy) |
+| Particle Data | Every frame | ✅ Yes | ReBAR |
+| Particle Data | Every frame | ❌ No | CPUOnly |
+| Material Props | Occasional | N/A | StagedBuffer |
 
 ## Migration Steps
 
