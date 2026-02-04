@@ -7,6 +7,13 @@ SSBOs (Storage Buffer Objects) are now fully supported in the ULRE ShaderGen sys
 - Large data storage beyond UBO limits (~64KB)
 - Read/write access from shaders (unlike read-only UBOs)
 
+## Version Compatibility
+
+**Current Implementation**: Compatible with devel_49_ecs_input branch
+- Uses standard library containers (`std::unordered_map<>`)
+- Migrated from custom `Map<>` template to standard library
+- Aligns with ECS infrastructure container usage
+
 ## Implementation
 
 The following components have been added to support SSBOs:
@@ -181,3 +188,33 @@ Potential future additions:
 - Atomic operations on SSBO data
 - SSBO size query/validation helpers
 - Performance profiling tools
+
+## Implementation Notes
+
+### Container Template Migration (devel_49_ecs_input)
+
+The implementation uses standard library containers for compatibility with the devel_49_ecs_input branch:
+
+**Container Changes:**
+- `Map<K,V>` → `std::unordered_map<K,V>`
+- `#include<hgl/type/Map.h>` → `#include<unordered_map>`
+
+**Affected Files:**
+- `inc/hgl/shadergen/MaterialDescriptorInfo.h`
+- `src/ShaderGen/MaterialDescriptorInfo.cpp`
+
+**API Changes:**
+```cpp
+// Old Custom Map<> API
+map.Add(key, value);
+bool found = map.Get(key, out_value);
+bool exists = map.ContainsKey(key);
+
+// New std::unordered_map<> API
+map[key] = value;
+auto it = map.find(key);
+if(it != map.end()) { out_value = it->second; }
+bool exists = map.count(key) > 0;
+```
+
+This migration aligns with the ECS infrastructure which already uses standard library containers throughout (`std::unordered_map`, `std::map`, `std::vector`).
