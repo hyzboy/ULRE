@@ -11,11 +11,13 @@ This PR implements a **staging buffer + device local buffer** dual-buffer system
 - ❌ Doesn't follow Vulkan best practices
 - ❌ Suboptimal memory bandwidth
 
-**After:** New system provides both staging (CPU) and device local (GPU) buffers
-- ✅ Fast GPU access via `VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT`
+**After:** New system provides multiple memory strategies
+- ✅ **Staging Buffers**: Fast GPU access via `VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT`
+- ✅ **ReBAR Support**: Direct CPU access to GPU memory (zero-copy when available)
 - ✅ Automatic batch copying from CPU → GPU
 - ✅ Follows Vulkan best practices
 - ✅ 10-30% expected FPS improvement for static geometry
+- ✅ Zero-copy updates for dynamic data (with ReBAR)
 
 ## Key Features
 
@@ -26,8 +28,10 @@ VAB *vab = device->CreateVAB(format, count, data);  // Still works!
 ```
 
 ### 2. Opt-In Performance
+
+**Staged Buffers (for static geometry):**
 ```cpp
-// New: Use staged buffers for better performance
+// Use staged buffers for better performance
 StagedBuffer *staged = device->CreateStagedBuffer(
     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
     size,
@@ -39,6 +43,29 @@ staged->Write(new_data, offset, size);  // Queued for next frame
 
 // Use device buffer for rendering
 VkBuffer gpu_buffer = staged->GetDeviceBuffer();
+```
+
+**ReBAR (for dynamic data - zero-copy):**
+```cpp
+// Try ReBAR memory (with automatic fallback)
+BufferCreateInfo info;
+info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+info.size = sizeof(UBO);
+
+VkBuffer buffer;
+vkCreateBuffer(device, &info, nullptr, &buffer);
+
+VkMemoryRequirements req;
+vkGetBufferMemoryRequirements(device, buffer, &req);
+
+// Use ReBAR if available, fallback to CPUOnly otherwise
+DeviceMemory *mem = device->CreateMemory(req, MemoryUsage::ReBAR);
+mem->BindBuffer(buffer);
+
+// Direct CPU updates (fast with ReBAR, no staging needed)
+void *mapped = mem->Map();
+memcpy(mapped, &ubo_data, sizeof(UBO));
+mem->Unmap();
 ```
 
 ### 3. Automatic Synchronization
@@ -53,6 +80,7 @@ if(update_queue->HasPendingUpdates())
 
 ## Architecture
 
+### Staging Buffer Pattern (for static data)
 ```
 ┌─────────────┐
 │ Application │
@@ -70,6 +98,22 @@ if(update_queue->HasPendingUpdates())
 │ Device Buffer   │  DEVICE_LOCAL
 │ (GPU Optimal)   │  ← Used for rendering
 └─────────────────┘
+```
+
+### ReBAR Pattern (for dynamic data)
+```
+┌─────────────┐
+│ Application │
+└──────┬──────┘
+       │ Write() - Direct access
+       ▼
+┌─────────────────┐
+│   ReBAR Memory  │  HOST_VISIBLE | DEVICE_LOCAL
+│ (Zero-copy!)    │  ← CPU writes, GPU reads
+└─────────────────┘
+       ▲
+       │ No staging, no copy needed!
+       └─ Used for rendering
 ```
 
 ## Files Added

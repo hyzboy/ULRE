@@ -16,7 +16,8 @@ enum class MemoryUsage
     CPUOnly,        // HOST_VISIBLE | HOST_COHERENT (legacy default)
     GPUOnly,        // DEVICE_LOCAL (best GPU performance)
     CPUToGPU,       // Staging: HOST_VISIBLE | HOST_COHERENT
-    GPUToCPU        // Readback: HOST_VISIBLE | HOST_CACHED
+    GPUToCPU,       // Readback: HOST_VISIBLE | HOST_CACHED
+    ReBAR           // HOST_VISIBLE | HOST_COHERENT | DEVICE_LOCAL (requires Resizable BAR)
 };
 ```
 
@@ -25,6 +26,7 @@ enum class MemoryUsage
 - `GPUOnly`: For GPU-only buffers that never need CPU access (best performance)
 - `CPUToGPU`: For staging buffers used to transfer data to GPU
 - `GPUToCPU`: For readback buffers (GPU → CPU transfers)
+- `ReBAR`: For direct CPU access to GPU memory (zero-copy, requires Resizable BAR support)
 
 ### 2. StagedBuffer Class
 
@@ -102,6 +104,66 @@ StagedBuffer *CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size,
 BufferUpdateQueue *GetBufferUpdateQueue();
 ```
 
+### 5. Resizable BAR (ReBAR) Support
+
+Located in: `inc/hgl/graph/VKPhysicalDevice.h`, `src/SceneGraph/Vulkan/VKPhysicalDevice.cpp`
+
+**What is ReBAR?**
+
+Resizable BAR (Base Address Register) is a PCIe feature that allows the CPU to directly access the entire GPU memory, eliminating the traditional 256MB aperture limitation. When ReBAR is enabled, `HOST_VISIBLE | DEVICE_LOCAL` memory becomes practical and performant.
+
+**Detection:**
+
+```cpp
+// Check if ReBAR is available
+bool hasReBAR = device->GetPhyDevice()->HasReBAR();
+```
+
+Detection logic:
+- Looks for memory type with `HOST_VISIBLE | DEVICE_LOCAL` flags
+- Checks if heap size > 512MB (traditional BAR is 256MB)
+- ReBAR typically exposes full GPU memory (4GB+)
+
+**Using ReBAR:**
+
+```cpp
+// Option 1: Use ReBAR directly (with automatic fallback)
+DeviceMemory *mem = device->CreateMemory(requirements, MemoryUsage::ReBAR);
+// If ReBAR not available, falls back to CPUOnly memory
+
+// Option 2: Conditional based on detection
+if (device->GetPhyDevice()->HasReBAR())
+{
+    // ReBAR is available - direct CPU access to GPU memory
+    DeviceMemory *mem = device->CreateMemory(requirements, MemoryUsage::ReBAR);
+}
+else
+{
+    // No ReBAR - use staging buffer approach
+    StagedBuffer *staged = device->CreateStagedBuffer(usage, size, data);
+}
+```
+
+**When to Use ReBAR:**
+
+✅ **Ideal for:**
+- Frequently updated buffers (per-frame uniforms, dynamic geometry)
+- Particle systems and dynamic vertex data
+- Buffers that change every frame
+- Real-time data streaming
+
+❌ **Not needed for:**
+- Static geometry (staging buffer is fine)
+- Rarely updated data
+- Systems where ReBAR is not available
+
+**Benefits:**
+- Zero-copy updates (CPU writes directly to GPU memory)
+- No staging buffer overhead
+- Lower memory usage (single buffer instead of dual)
+- Reduced latency for dynamic data
+- Simplified code (no queue management needed)
+
 ## Performance Characteristics
 
 ### Before (CPUOnly Memory)
@@ -123,11 +185,24 @@ CPU Write → Staging Buffer (HOST_VISIBLE)
            Device Buffer (DEVICE_LOCAL) ← GPU Read (optimal)
 ```
 
+### With ReBAR (Resizable BAR)
+
+```
+CPU Write → ReBAR Memory ← GPU Read
+           (HOST_VISIBLE + DEVICE_LOCAL, both fast!)
+```
+
+**Performance Summary:**
+- **ReBAR**: Zero-copy, best for dynamic data, requires ReBAR support
+- **Staging Buffer**: 10-30% FPS improvement for static geometry, works everywhere
+- **CPUOnly**: Compatibility fallback, slower on discrete GPUs
+
 **Benefits:**
-- 10-30% FPS improvement for geometry-heavy scenes
-- Better GPU cache utilization
-- Reduced PCIe bandwidth usage on discrete GPUs
-- Follows Vulkan best practices
+- Staging Buffer: 10-30% FPS improvement for geometry-heavy scenes
+- ReBAR: Zero-copy updates, ideal for dynamic data
+- Both: Better GPU cache utilization
+- Both: Reduced PCIe bandwidth usage on discrete GPUs
+- Both: Follow Vulkan best practices
 
 ## Usage Examples
 
@@ -173,6 +248,67 @@ staged_buffer->Unmap();
 staged_buffer->MarkDirty(offset, size);
 ```
 
+### Example 4: Using ReBAR for Dynamic Data
+
+```cpp
+// Check if ReBAR is available
+VulkanPhyDevice *phyDevice = device->GetPhyDevice();
+
+if (phyDevice->HasReBAR())
+{
+    // Create buffer with ReBAR memory (zero-copy)
+    BufferCreateInfo buf_info;
+    buf_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    buf_info.size = sizeof(DynamicUBO);
+    
+    VkBuffer buffer;
+    vkCreateBuffer(device, &buf_info, nullptr, &buffer);
+    
+    VkMemoryRequirements req;
+    vkGetBufferMemoryRequirements(device, buffer, &req);
+    
+    // Request ReBAR memory - direct CPU access to GPU memory
+    DeviceMemory *mem = device->CreateMemory(req, MemoryUsage::ReBAR);
+    mem->BindBuffer(buffer);
+    
+    // Direct CPU updates every frame
+    void *mapped = mem->Map();
+    memcpy(mapped, &ubo_data, sizeof(DynamicUBO));
+    mem->Unmap();
+    // No staging, no copy needed!
+}
+else
+{
+    // Fallback: Use CPUOnly memory or staging buffer
+    DeviceMemory *mem = device->CreateMemory(req, MemoryUsage::CPUOnly);
+    // ... standard path
+}
+```
+
+### Example 5: Automatic ReBAR with Fallback
+
+```cpp
+// Simplest approach - automatic fallback
+DeviceMemory *CreateDynamicBuffer()
+{
+    BufferCreateInfo buf_info;
+    buf_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    buf_info.size = buffer_size;
+    
+    VkBuffer buffer;
+    vkCreateBuffer(device, &buf_info, nullptr, &buffer);
+    
+    VkMemoryRequirements req;
+    vkGetBufferMemoryRequirements(device, buffer, &req);
+    
+    // Try ReBAR, automatically fallback to CPUOnly if not available
+    DeviceMemory *mem = device->CreateMemory(req, MemoryUsage::ReBAR);
+    mem->BindBuffer(buffer);
+    
+    return mem;
+}
+```
+
 ## Migration Strategy
 
 The new system is **backward compatible**. Existing code continues to work without changes:
@@ -184,29 +320,72 @@ The new system is **backward compatible**. Existing code continues to work witho
 ### Recommended Migration Order
 
 1. **Static Geometry** (High Impact, Low Risk)
-   - Static vertex buffers
-   - Static index buffers
-   - Texture staging buffers
+   - Static vertex buffers → Use StagedBuffer
+   - Static index buffers → Use StagedBuffer
+   - Texture staging buffers → Use StagedBuffer
 
-2. **Infrequently Updated Buffers** (Medium Impact, Medium Risk)
-   - Per-scene UBOs
-   - Material property buffers
-   - Light data buffers
+2. **Dynamic Buffers with ReBAR** (High Impact if ReBAR available)
+   - Per-frame UBOs → Use ReBAR (with fallback to CPUOnly)
+   - Dynamic vertex data (particles) → Use ReBAR (with fallback to CPUOnly)
+   - Frequently updated uniforms → Use ReBAR (with fallback to CPUOnly)
 
-3. **Frequently Updated Buffers** (Low Priority)
-   - Per-frame UBOs → Keep as CPUOnly
-   - Dynamic vertex data (particles) → Keep as CPUOnly or use special handling
+3. **Infrequently Updated Buffers** (Medium Impact, Medium Risk)
+   - Per-scene UBOs → Use StagedBuffer or ReBAR
+   - Material property buffers → Use StagedBuffer
+   - Light data buffers → Use StagedBuffer
+
+### Strategy Selection Guide
+
+| Update Frequency | ReBAR Available? | Recommended Strategy |
+|------------------|------------------|---------------------|
+| Static (never) | N/A | StagedBuffer |
+| Rare (per level) | N/A | StagedBuffer |
+| Occasional (per scene) | N/A | StagedBuffer |
+| Frequent (per frame) | ✅ Yes | ReBAR (zero-copy) |
+| Frequent (per frame) | ❌ No | CPUOnly (legacy) |
+| Dynamic (variable) | ✅ Yes | ReBAR |
+| Dynamic (variable) | ❌ No | StagedBuffer or CPUOnly |
 
 ## Implementation Details
 
 ### Memory Type Selection
 
-The system uses a fallback strategy for `CPUToGPU` usage:
+The system uses a fallback strategy for different usage patterns:
 
+**CPUToGPU:**
 1. Try to find: `HOST_VISIBLE | HOST_COHERENT | DEVICE_LOCAL` (ideal for integrated GPU)
 2. Fallback to: `HOST_VISIBLE | HOST_COHERENT` (standard for discrete GPU)
 
-This ensures optimal performance on both integrated and discrete GPUs.
+**ReBAR:**
+1. Try to find: `HOST_VISIBLE | HOST_COHERENT | DEVICE_LOCAL` (requires ReBAR)
+2. Fallback to: `HOST_VISIBLE | HOST_COHERENT` (if ReBAR not available)
+
+This ensures optimal performance on both integrated and discrete GPUs, with and without ReBAR.
+
+### ReBAR Detection Logic
+
+```cpp
+// Check for HOST_VISIBLE + DEVICE_LOCAL memory
+for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
+{
+    const VkMemoryType& type = memory_properties.memoryTypes[i];
+    const VkMemoryPropertyFlags required = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
+                                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    
+    if ((type.propertyFlags & required) == required)
+    {
+        // Check heap size - ReBAR exposes full GPU memory
+        const VkMemoryHeap& heap = memory_properties.memoryHeaps[type.heapIndex];
+        
+        // Traditional BAR is 256MB, ReBAR is typically 4GB+
+        if (heap.size > (512ULL * 1024 * 1024))
+        {
+            has_rebar = true;
+            break;
+        }
+    }
+}
+```
 
 ### Synchronization
 
