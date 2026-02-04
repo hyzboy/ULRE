@@ -3,6 +3,18 @@
 
 #include<hgl/graph/VK.h>
 VK_NAMESPACE_BEGIN
+
+/**
+ * Memory usage patterns for Vulkan buffers
+ */
+enum class MemoryUsage
+{
+    CPUOnly,        // HOST_VISIBLE | HOST_COHERENT (current default)
+    GPUOnly,        // DEVICE_LOCAL (best performance)
+    CPUToGPU,       // Staging: HOST_VISIBLE | HOST_COHERENT
+    GPUToCPU        // Readback: HOST_VISIBLE | HOST_CACHED
+};
+
 class DeviceMemory
 {
     VkDevice                device;
