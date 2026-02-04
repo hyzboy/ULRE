@@ -16,6 +16,7 @@ class MaterialDescriptorInfo
 
     Map<AnsiString,AnsiString> struct_map;
     Map<AnsiString,UBODescriptor *> ubo_map;
+    Map<AnsiString,SSBODescriptor *> ssbo_map;
     Map<AnsiString,TextureDescriptor *> texture_map;
     Map<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
 
@@ -46,10 +47,12 @@ public:
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
+    const SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,SSBODescriptor *sd);
     const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
     const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
     UBODescriptor *GetUBO(const AnsiString &name);
+    SSBODescriptor *GetSSBO(const AnsiString &name);
     TextureDescriptor *GetTexture(const AnsiString &name);
     TextureSamplerDescriptor *GetTextureSampler(const AnsiString &name);
 

@@ -112,6 +112,11 @@ bool ShaderCreateInfo::AddUBO(DescriptorSetType type,const UBODescriptor *sd)
     return GetSDI()->AddUBO(type,sd);
 }
 
+bool ShaderCreateInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *sd)
+{
+    return GetSDI()->AddSSBO(type,sd);
+}
+
 
 bool ShaderCreateInfo::AddTexture(DescriptorSetType type,const TextureDescriptor *sd)
 {
@@ -251,7 +256,41 @@ bool ShaderCreateInfo::ProcUBO()
 
 bool ShaderCreateInfo::ProcSSBO()
 {
-    return(false);
+    auto ssbo_list=GetSDI()->GetSSBOList();
+
+    const int count=ssbo_list.GetCount();
+
+    if(count<=0)return(true);
+
+    final_shader+="\n";
+
+    auto ssbo=ssbo_list.GetData();
+
+    AnsiString struct_codes;
+
+    for(int i=0;i<count;i++)
+    {
+        final_shader+="layout(set=";
+        final_shader+=AnsiString::numberOf((*ssbo)->set);
+        final_shader+=",binding=";
+        final_shader+=AnsiString::numberOf((*ssbo)->binding);
+        final_shader+=") buffer ";
+        final_shader+=(*ssbo)->type;
+        final_shader+="\n{";
+
+        if(!mdi->GetStruct((*ssbo)->type,struct_codes))
+            return(false);
+
+        final_shader+=struct_codes;
+
+        final_shader+="\n}";
+        final_shader+=(*ssbo)->name;
+        final_shader+=";\n";
+
+        ++ssbo;
+    }
+
+    return(true);
 }
 
 bool ShaderCreateInfo::ProcConstantID()
@@ -392,8 +431,8 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     if(!ProcUBO())
         return(false);
-    //if(!ProcSSBO())
-        //return(false);
+    if(!ProcSSBO())
+        return(false);
     if(!ProcConstantID())
         return(false);
     if(!ProcSampler())
