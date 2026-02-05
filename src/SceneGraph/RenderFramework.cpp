@@ -96,7 +96,8 @@ io::EventProcResult RenderFramework::OnEvent(const io::EventHeader &header,const
     // 保留原有逻辑(用于兼容)
     if(header.type == io::InputEventSource::Mouse)
     {
-        if(io::MouseEventID(header.id) == io::MouseEventID::Move)
+        // 使用MouseAction替代MouseAction / Use MouseAction instead of MouseAction
+        if(io::MouseAction(header.id) == io::MouseAction::Move)
         {
             const io::MouseEventData *med=(const io::MouseEventData *)&data;
 
