@@ -81,6 +81,19 @@ RenderFramework::~RenderFramework()
 
 io::EventProcResult RenderFramework::OnEvent(const io::EventHeader &header,const uint64 data)
 {
+    // 转发事件给ECS的InputSystem
+    if(default_ecs_context)
+    {
+        auto input_sys = default_ecs_context->GetSystem<ecs::InputSystem>();
+        if(input_sys)
+        {
+            auto* event_dispatcher = input_sys->GetEventDispatcher();
+            if(event_dispatcher)
+                event_dispatcher->OnEvent(header, data);
+        }
+    }
+
+    // 保留原有逻辑(用于兼容)
     if(header.type == io::InputEventSource::Mouse)
     {
         if(io::MouseEventID(header.id) == io::MouseEventID::Move)
