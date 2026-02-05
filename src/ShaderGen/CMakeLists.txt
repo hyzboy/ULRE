@@ -118,7 +118,9 @@ SET(SHADER_LIBRARY_FILES    ShaderLibrary.cpp
 
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
-add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
+add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
+
+                                        ${DESC_INFO_HEADER_FILES}
                                         ${DESC_INFO_SOURCE_FILES}
                                         ${MATERIAL_CREATE_INFO_HEADER_FILES}
                                         ${MATERIAL_CREATE_INFO_SOURCE_FILES}
