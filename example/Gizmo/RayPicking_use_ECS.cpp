@@ -7,6 +7,7 @@
 // 2. 使用TransformComponent管理空间变换
 // 3. 使用PrimitiveComponent管理渲染图元
 // 4. 动态更新顶点数据以显示实时射线
+// 5. 使用新的 ECS Camera 系统替代旧的 CameraControl
 
 #include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -24,6 +25,8 @@
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/CameraComponent.h>
+#include<hgl/ecs/CameraSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -205,14 +208,33 @@ private:
 
     bool InitScene()
     {
-        // === 设置相机位置 ===
-        CameraControl *camera_control=GetCameraControl();
+        // === 使用新的 ECS Camera 系统 ===
+        // Create camera entity and component
+        auto camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        auto camera_component = camera_entity->AddComponent<CameraComponent>();
 
-        if(camera_control)
-        {
-            camera_control->SetPosition(math::Vector3f(32,32,32));
-            camera_control->SetTarget(math::Vector3f(0,0,0));
-        }
+        // 设置纯数据 / Set pure data
+        camera_component->position = math::Vector3f(32, 32, 32);
+        camera_component->target = math::Vector3f(0, 0, 0);
+        camera_component->world_up = math::Vector3f(0, 0, 1);
+        camera_component->control_mode = CameraComponent::ControlMode::ViewModel;
+        camera_component->fov = 45.0f;
+        camera_component->near_plane = 0.1f;
+        camera_component->far_plane = 1000.0f;
+        camera_component->distance = length(camera_component->position - camera_component->target);
+        camera_component->rotation_sensitivity = 0.2f;
+        camera_component->zoom_sensitivity = 1.0f;
+        camera_component->move_speed = 10.0f;
+
+        // 连接到渲染系统 / Connect to rendering system
+        camera_component->camera_data = GetCamera();
+        camera_component->camera_info = GetCameraInfo();
+        camera_component->viewport_info = GetViewportInfo();
+        camera_component->camera_ubo = GetCameraUBO();
+        camera_component->is_main_camera = true;
+
+        // 注册 CameraSystem / Register CameraSystem
+        auto camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
 
         return(true);
     }
@@ -256,10 +278,12 @@ public:
 
         const math::Vector2i &mouse_position=*mouse_position_ptr;
 
-        CameraControl *camera_control=GetCameraControl();
+        // 从 ECS 获取摄像机信息（替代旧的 CameraControl）
+        const CameraInfo *ci = GetCameraInfo();
+        const ViewportInfo *vi = GetViewportInfo();
 
-        const CameraInfo *ci=camera_control->GetCameraInfo();
-        const ViewportInfo *vi=camera_control->GetViewportInfo();
+        if(!ci || !vi)
+            return;
 
         // 设置射线查询的屏幕坐标点
         ray.SetFromViewportPoint(mouse_position,ci,vi->GetViewport());
