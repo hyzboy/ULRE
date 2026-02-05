@@ -56,7 +56,7 @@ namespace hgl
 
             // === 控制参数 / Control parameters ===
             ControlMode control_mode;       ///< 控制模式 / Control mode
-            
+
             float distance;                 ///< 距离目标的距离 (ViewModel/LookAt模式) / Distance to target
             float min_distance;             ///< 最小距离 / Minimum distance
             float max_distance;             ///< 最大距离 / Maximum distance

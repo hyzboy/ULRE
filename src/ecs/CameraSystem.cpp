@@ -191,7 +191,7 @@ namespace hgl::ecs
         if (input_state.wheel_delta != 0)
         {
             camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
-            
+
             // 限制距离
             if (camera->distance < camera->min_distance)
                 camera->distance = camera->min_distance;
@@ -205,7 +205,7 @@ namespace hgl::ecs
         if (input_state.right_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
         {
             float pan_speed = 0.01f * camera->distance;
-            math::Vector3f pan_offset = 
+            math::Vector3f pan_offset =
                 camera->right * (-input_state.mouse_delta.x * pan_speed) +
                 camera->up * (input_state.mouse_delta.y * pan_speed);
 
@@ -230,7 +230,7 @@ namespace hgl::ecs
         if (input_state.middle_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
         {
             float pan_speed = 0.01f * camera->distance;
-            math::Vector3f pan_offset = 
+            math::Vector3f pan_offset =
                 camera->right * (-input_state.mouse_delta.x * pan_speed) +
                 camera->up * (input_state.mouse_delta.y * pan_speed);
 
@@ -242,7 +242,7 @@ namespace hgl::ecs
         if (input_state.wheel_delta != 0)
         {
             camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
-            
+
             // 限制距离
             if (camera->distance < camera->min_distance)
                 camera->distance = camera->min_distance;

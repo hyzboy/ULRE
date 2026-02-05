@@ -31,13 +31,13 @@ namespace hgl
                 math::Vector2i mouse_pos;           ///< 当前鼠标位置 / Current mouse position
                 math::Vector2i mouse_delta;         ///< 鼠标位移 / Mouse delta
                 math::Vector2i last_mouse_pos;      ///< 上一帧鼠标位置 / Last frame mouse position
-                
+
                 bool left_button;                   ///< 左键按下 / Left button pressed
                 bool right_button;                  ///< 右键按下 / Right button pressed
                 bool middle_button;                 ///< 中键按下 / Middle button pressed
-                
+
                 int wheel_delta;                    ///< 滚轮增量 / Wheel delta
-                
+
                 bool key_w, key_s, key_a, key_d;   ///< WASD键 / WASD keys
                 bool key_q, key_e;                  ///< QE键 / QE keys
 

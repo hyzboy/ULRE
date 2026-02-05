@@ -9,24 +9,24 @@ VK_NAMESPACE_BEGIN
 DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage)
 {
     uint32_t properties = 0;
-    
+
     switch(usage)
     {
     case MemoryUsage::CPUOnly:
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
-        
+
     case MemoryUsage::GPUOnly:
         properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         break;
-        
+
     case MemoryUsage::CPUToGPU:
     {
         // Try HOST_VISIBLE + DEVICE_LOCAL first (ideal for integrated GPU)
-        properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
-                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT 
+        properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                    | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        
+
         // Try to find memory type with all flags
         int index = attr->physical_device->GetMemoryType(req.memoryTypeBits, properties);
         if (index >= 0)
@@ -34,23 +34,23 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
             // Found ideal memory type, use existing CreateMemory
             return CreateMemory(req, properties);
         }
-        
+
         // Fallback to just HOST_VISIBLE + HOST_COHERENT for discrete GPU
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
     }
-        
+
     case MemoryUsage::GPUToCPU:
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
         break;
-        
+
     case MemoryUsage::ReBAR:
         // Resizable BAR: HOST_VISIBLE + HOST_COHERENT + DEVICE_LOCAL
         // This provides optimal performance when ReBAR is available
-        properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
-                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT 
+        properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                    | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        
+
         // Try to find memory type with all flags
         {
             int index = attr->physical_device->GetMemoryType(req.memoryTypeBits, properties);
@@ -60,17 +60,17 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
                 return CreateMemory(req, properties);
             }
         }
-        
+
         // ReBAR not available, fallback to staging pattern (CPUToGPU)
         // This ensures the code still works on systems without ReBAR
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
-        
+
     default:
         properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         break;
     }
-    
+
     return CreateMemory(req, properties);
 }
 

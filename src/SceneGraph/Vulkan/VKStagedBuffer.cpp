@@ -5,9 +5,9 @@
 
 VK_NAMESPACE_BEGIN
 
-StagedBuffer::StagedBuffer(VkDevice dev, BufferUpdateQueue *queue, 
+StagedBuffer::StagedBuffer(VkDevice dev, BufferUpdateQueue *queue,
                            VkBuffer staging_buf, DeviceMemory *staging_mem,
-                           VkBuffer device_buf, DeviceMemory *device_mem, 
+                           VkBuffer device_buf, DeviceMemory *device_mem,
                            VkDeviceSize size, VkBufferUsageFlags usage_flags)
 {
     device = dev;
@@ -27,10 +27,10 @@ StagedBuffer::~StagedBuffer()
 {
     if (staging_buffer)
         vkDestroyBuffer(device, staging_buffer, nullptr);
-    
+
     if (device_buffer)
         vkDestroyBuffer(device, device_buffer, nullptr);
-    
+
     delete staging_memory;
     delete device_memory;
 }
@@ -49,7 +49,7 @@ bool StagedBuffer::Write(const void *data, VkDeviceSize offset, VkDeviceSize siz
 
     // Mark as dirty and add to update queue
     MarkDirty(offset, size);
-    
+
     return true;
 }
 
@@ -57,7 +57,7 @@ void * StagedBuffer::Map()
 {
     if (!staging_memory)
         return nullptr;
-    
+
     return staging_memory->Map();
 }
 
@@ -65,7 +65,7 @@ void * StagedBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
 {
     if (!staging_memory)
         return nullptr;
-    
+
     return staging_memory->Map(offset, size);
 }
 
@@ -92,7 +92,7 @@ void StagedBuffer::MarkDirty(VkDeviceSize offset, VkDeviceSize size)
         // Merge dirty regions
         VkDeviceSize end1 = dirty_offset + dirty_size;
         VkDeviceSize end2 = offset + size;
-        
+
         dirty_offset = hgl_min(dirty_offset, offset);
         dirty_size = hgl_max(end1, end2) - dirty_offset;
     }

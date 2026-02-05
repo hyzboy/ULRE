@@ -156,7 +156,7 @@ bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetTyp
 
     if(!mdi.hasStruct(struct_name))
         return(false);
-    
+
     uint result=0;
 
     for(auto [bit, shader_info] : shader_map)

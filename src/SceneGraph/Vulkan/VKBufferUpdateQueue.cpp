@@ -25,12 +25,12 @@ void BufferUpdateQueue::AddUpdate(StagedBuffer *buffer, VkDeviceSize offset, VkD
         {
             // Update existing record with combined range
             BufferUpdateRecord &record = pending_updates[i];
-            
+
             VkDeviceSize new_offset = hgl_min(record.offset, offset);
             VkDeviceSize record_end = (record.size == VK_WHOLE_SIZE) ? buffer->GetSize() : (record.offset + record.size);
             VkDeviceSize new_end = (size == VK_WHOLE_SIZE) ? buffer->GetSize() : (offset + size);
             VkDeviceSize new_size = hgl_max(record_end, new_end) - new_offset;
-            
+
             record.offset = new_offset;
             record.size = new_size;
             return;
