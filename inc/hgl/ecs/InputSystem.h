@@ -16,7 +16,7 @@ namespace hgl::ecs
         Vector2i mouse_coord;
         bool mouse_buttons[3];          ///< 鼠标按钮状态 [0]=左键, [1]=右键, [2]=中键
         int wheel_delta;                ///< 滚轮增量（每帧重置）
-        
+
         std::unordered_map<uint32_t, bool> key_states;  ///< 键盘状态映射
 
         virtual io::EventProcResult OnEvent(const io::EventHeader &header, const uint64 data) override;
@@ -26,14 +26,14 @@ namespace hgl::ecs
         io::EventDispatcher *GetEventDispatcher() { return this; }
 
         const Vector2i &GetMouseCoord() const { return mouse_coord; }
-        
+
         /// 查询鼠标按钮状态 / Query mouse button state
         /// @param button 按钮索引: 0=左键, 1=右键, 2=中键
         bool IsMouseButtonDown(int button) const;
-        
+
         /// 获取滚轮增量 / Get wheel delta
         int GetWheelDelta() const { return wheel_delta; }
-        
+
         /// 查询键盘按键状态 / Query key state
         /// @param keycode 按键码（通常是ASCII码或虚拟键码）
         bool IsKeyDown(uint32_t keycode) const;

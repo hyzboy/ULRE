@@ -130,13 +130,13 @@ namespace hgl::graph
                 if(update_queue && update_queue->HasPendingUpdates())
                 {
                     update_queue->FlushAll(cmd->operator VkCommandBuffer());
-                    
+
                     // Add memory barrier to ensure copy operations complete before rendering
                     VkMemoryBarrier barrier{};
                     barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
                     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                     barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
-                    
+
                     vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
                                        VK_PIPELINE_STAGE_TRANSFER_BIT,
                                        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -198,13 +198,13 @@ namespace hgl::graph
             if(update_queue && update_queue->HasPendingUpdates())
             {
                 update_queue->FlushAll(cmd->operator VkCommandBuffer());
-                
+
                 // Add memory barrier to ensure copy operations complete before rendering
                 VkMemoryBarrier barrier{};
                 barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
                 barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
-                
+
                 vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
                                    VK_PIPELINE_STAGE_TRANSFER_BIT,
                                    VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,

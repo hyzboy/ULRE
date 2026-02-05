@@ -49,7 +49,7 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
-    
+
     ssbo_map.ChangeOrAdd(obj->name, (SSBODescriptor *)obj);
     return((SSBODescriptor *)obj);
 }
