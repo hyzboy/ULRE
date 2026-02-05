@@ -19,63 +19,35 @@ namespace hgl
         };
 
         /**
-         * MouseAction - 鼠标动作类型枚举(原MouseEventID) / Mouse action type enum (formerly MouseEventID)
-         * 注意：MouseAction已经包含了按键信息(LeftDown/RightDown/MiddleDown等)，无需额外的button字段
-         * Note: MouseAction already contains button info (LeftDown/RightDown/MiddleDown, etc.), no separate button field needed
+         * MouseAction - 鼠标动作类型枚举 / Mouse action type enum
+         * 表示鼠标的动作类型，与按键分离设计
+         * Represents mouse action type, separated from button design
          */
         enum class MouseAction : uint8
         {
             Move = 0,           ///< 鼠标移动 / Mouse move
-            LeftDown,           ///< 左键按下 / Left button down
-            LeftUp,             ///< 左键抬起 / Left button up
-            RightDown,          ///< 右键按下 / Right button down
-            RightUp,            ///< 右键抬起 / Right button up
-            MiddleDown,         ///< 中键按下 / Middle button down
-            MiddleUp,           ///< 中键抬起 / Middle button up
+            Down,               ///< 按键按下 / Button down
+            Up,                 ///< 按键抬起 / Button up
             Wheel               ///< 滚轮滚动 / Mouse wheel
         };
 
         /**
-         * 从MouseAction提取MouseButton / Extract MouseButton from MouseAction
-         * @param action 鼠标动作 / Mouse action
-         * @return 对应的鼠标按键，如果无法确定则返回Left / Corresponding mouse button, returns Left if indeterminate
-         */
-        inline MouseButton GetButtonFromAction(MouseAction action)
-        {
-            switch(action)
-            {
-                case MouseAction::LeftDown:
-                case MouseAction::LeftUp:
-                    return MouseButton::Left;
-                
-                case MouseAction::RightDown:
-                case MouseAction::RightUp:
-                    return MouseButton::Right;
-                
-                case MouseAction::MiddleDown:
-                case MouseAction::MiddleUp:
-                    return MouseButton::Middle;
-                
-                default:
-                    return MouseButton::Left; // Move和Wheel返回默认值
-            }
-        }
-
-        /**
          * MouseEventData - 鼠标事件数据结构 / Mouse event data structure
-         * action字段已包含按键信息，无需单独的button字段
-         * The action field already contains button info, no separate button field needed
+         * 按键和动作分开设计：button字段记录哪个按键，action字段记录什么动作
+         * Button and action are separated: button field records which button, action field records what action
          */
         #pragma pack(push, 1)
         struct MouseEventData
         {
-            MouseAction action;     ///< 鼠标动作类型(已包含按键信息) / Mouse action type (already contains button info)
+            MouseAction action;     ///< 鼠标动作类型 / Mouse action type
+            MouseButton button;     ///< 鼠标按键 / Mouse button
             int16 x;                ///< X坐标 / X coordinate
             int16 y;                ///< Y坐标 / Y coordinate
             int16 wheel_delta;      ///< 滚轮增量 / Wheel delta
 
             MouseEventData()
                 : action(MouseAction::Move)
+                , button(MouseButton::Left)
                 , x(0)
                 , y(0)
                 , wheel_delta(0)
@@ -149,33 +121,26 @@ namespace hgl
 
                 const MouseEventData *med = reinterpret_cast<const MouseEventData *>(&data);
                 MouseAction action = static_cast<MouseAction>(header.id);
+                MouseButton button = med->button;
                 math::Vector2i coord(med->x, med->y);
 
                 switch (action)
                 {
-                    case MouseAction::LeftDown:
-                        pressed[0] = true;
-                        return OnPressed(coord, MouseButton::Left);
+                    case MouseAction::Down:
+                    {
+                        int idx = static_cast<int>(button);
+                        if (idx >= 0 && idx < 3)
+                            pressed[idx] = true;
+                        return OnPressed(coord, button);
+                    }
 
-                    case MouseAction::LeftUp:
-                        pressed[0] = false;
-                        return OnReleased(coord, MouseButton::Left);
-
-                    case MouseAction::RightDown:
-                        pressed[1] = true;
-                        return OnPressed(coord, MouseButton::Right);
-
-                    case MouseAction::RightUp:
-                        pressed[1] = false;
-                        return OnReleased(coord, MouseButton::Right);
-
-                    case MouseAction::MiddleDown:
-                        pressed[2] = true;
-                        return OnPressed(coord, MouseButton::Middle);
-
-                    case MouseAction::MiddleUp:
-                        pressed[2] = false;
-                        return OnReleased(coord, MouseButton::Middle);
+                    case MouseAction::Up:
+                    {
+                        int idx = static_cast<int>(button);
+                        if (idx >= 0 && idx < 3)
+                            pressed[idx] = false;
+                        return OnReleased(coord, button);
+                    }
 
                     case MouseAction::Move:
                         return OnMove(coord);
