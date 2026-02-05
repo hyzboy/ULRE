@@ -3,7 +3,6 @@
 #include<hgl/ecs/InputSystem.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/ViewportInfo.h>
-#include<hgl/math/Math.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
 
