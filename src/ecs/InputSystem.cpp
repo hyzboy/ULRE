@@ -19,41 +19,42 @@ namespace hgl::ecs
         // 处理鼠标事件 / Handle mouse events
         if (header.type == io::InputEventSource::Mouse)
         {
-            io::MouseEventID event_id = io::MouseEventID(header.id);
+            // 使用MouseAction替代MouseEventID / Use MouseAction instead of MouseEventID
+            io::MouseAction action = io::MouseAction(header.id);
             const io::MouseEventData *med = (const io::MouseEventData *)&data;
 
-            switch (event_id)
+            switch (action)
             {
-                case io::MouseEventID::Move:
+                case io::MouseAction::Move:
                     mouse_coord.x = med->x;
                     mouse_coord.y = med->y;
                     break;
 
-                case io::MouseEventID::LeftDown:
+                case io::MouseAction::LeftDown:
                     mouse_buttons[0] = true;
                     break;
 
-                case io::MouseEventID::LeftUp:
+                case io::MouseAction::LeftUp:
                     mouse_buttons[0] = false;
                     break;
 
-                case io::MouseEventID::RightDown:
+                case io::MouseAction::RightDown:
                     mouse_buttons[1] = true;
                     break;
 
-                case io::MouseEventID::RightUp:
+                case io::MouseAction::RightUp:
                     mouse_buttons[1] = false;
                     break;
 
-                case io::MouseEventID::MiddleDown:
+                case io::MouseAction::MiddleDown:
                     mouse_buttons[2] = true;
                     break;
 
-                case io::MouseEventID::MiddleUp:
+                case io::MouseAction::MiddleUp:
                     mouse_buttons[2] = false;
                     break;
 
-                case io::MouseEventID::Wheel:
+                case io::MouseAction::Wheel:
                     wheel_delta += med->wheel_delta;
                     break;
 
