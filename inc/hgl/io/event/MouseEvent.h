@@ -20,6 +20,8 @@ namespace hgl
 
         /**
          * MouseAction - 鼠标动作类型枚举(原MouseEventID) / Mouse action type enum (formerly MouseEventID)
+         * 注意：MouseAction已经包含了按键信息(LeftDown/RightDown/MiddleDown等)，无需额外的button字段
+         * Note: MouseAction already contains button info (LeftDown/RightDown/MiddleDown, etc.), no separate button field needed
          */
         enum class MouseAction : uint8
         {
@@ -34,22 +36,46 @@ namespace hgl
         };
 
         /**
+         * 从MouseAction提取MouseButton / Extract MouseButton from MouseAction
+         * @param action 鼠标动作 / Mouse action
+         * @return 对应的鼠标按键，如果无法确定则返回Left / Corresponding mouse button, returns Left if indeterminate
+         */
+        inline MouseButton GetButtonFromAction(MouseAction action)
+        {
+            switch(action)
+            {
+                case MouseAction::LeftDown:
+                case MouseAction::LeftUp:
+                    return MouseButton::Left;
+                
+                case MouseAction::RightDown:
+                case MouseAction::RightUp:
+                    return MouseButton::Right;
+                
+                case MouseAction::MiddleDown:
+                case MouseAction::MiddleUp:
+                    return MouseButton::Middle;
+                
+                default:
+                    return MouseButton::Left; // Move和Wheel返回默认值
+            }
+        }
+
+        /**
          * MouseEventData - 鼠标事件数据结构 / Mouse event data structure
-         * 现在包含action字段，解决了之前只有button而缺少action信息的问题
-         * Now includes action field, fixing the issue of having only button without action info
+         * action字段已包含按键信息，无需单独的button字段
+         * The action field already contains button info, no separate button field needed
          */
         #pragma pack(push, 1)
         struct MouseEventData
         {
-            MouseAction action;     ///< 鼠标动作类型 / Mouse action type
-            MouseButton button;     ///< 鼠标按键(对于Move/Wheel可能无意义) / Mouse button (may be irrelevant for Move/Wheel)
+            MouseAction action;     ///< 鼠标动作类型(已包含按键信息) / Mouse action type (already contains button info)
             int16 x;                ///< X坐标 / X coordinate
             int16 y;                ///< Y坐标 / Y coordinate
             int16 wheel_delta;      ///< 滚轮增量 / Wheel delta
 
             MouseEventData()
                 : action(MouseAction::Move)
-                , button(MouseButton::Left)
                 , x(0)
                 , y(0)
                 , wheel_delta(0)
