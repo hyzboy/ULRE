@@ -108,4 +108,5 @@ source_group("ECS\\Input" FILES
 
 # ---------------------------------------------------------------------------
 
-add_cm_library(ULRE.ECS "ULRE" ${ECS_SOURCE})
+add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
+${ECS_SOURCE})

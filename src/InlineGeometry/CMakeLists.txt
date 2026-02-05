@@ -76,5 +76,5 @@ SET(GEOMETRY_FILES  ${GEOMETRY_UTILS_FILES}
                     ${GEOMETRY_PRIMITIVES_EXTENDED}
                     ${GEOMETRY_PRIMITIVES_ADVANCED})
 
-add_cm_library(ULRE.InlineGeometry "ULRE"   ${GEOMETRY_FILES}
-)
+add_cm_library(ULRE.InlineGeometry "ULRE" ${SG_INCLUDE_PATH}
+${GEOMETRY_FILES})

@@ -560,7 +560,9 @@ SET(VULKAN_ALL_FILES    ${VK_MATERIAL_MANAGER_FILES}
 # Build Library
 # ============================================================================
 
-add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
+add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
+
+                                        ${SCENE_GRAPH_FILES}
                                         ${GEOMETRY_CORE_FILES}
 
                                         ${GLTF_SOURCE}
