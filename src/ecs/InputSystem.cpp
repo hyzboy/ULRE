@@ -16,7 +16,7 @@ namespace hgl::ecs
 
     io::EventProcResult InputSystem::OnEvent(const io::EventHeader &header, const uint64 data)
     {
-        // 处理鼠标事件
+        // 处理鼠标事件 / Handle mouse events
         if (header.type == io::InputEventSource::Mouse)
         {
             io::MouseEventID event_id = io::MouseEventID(header.id);
@@ -61,7 +61,7 @@ namespace hgl::ecs
                     break;
             }
         }
-        // 处理键盘事件
+        // 处理键盘事件 / Handle keyboard events
         else if (header.type == io::InputEventSource::Keyboard)
         {
             io::KeyboardEventID event_id = io::KeyboardEventID(header.id);
@@ -102,7 +102,7 @@ namespace hgl::ecs
 
     void InputSystem::Update(float deltaTime)
     {
-        // 重置帧间状态
+        // 重置帧间状态 / Reset per-frame state
         wheel_delta = 0;
     }
 }//namespace hgl::ecs

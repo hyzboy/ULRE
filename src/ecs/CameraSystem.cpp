@@ -348,7 +348,9 @@ namespace hgl::ecs
     math::Vector3f CameraSystem::ComputeForward(float yaw, float pitch)
     {
         // 从欧拉角计算前向向量
-        // yaw: 绕Z轴旋转, pitch: 绕Y轴旋转
+        // yaw: 水平旋转角(绕Z轴), pitch: 垂直旋转角(俯仰)
+        // Compute forward vector from Euler angles
+        // yaw: horizontal rotation angle (around Z-axis), pitch: vertical rotation angle (up/down)
         float yaw_rad = glm::radians(yaw);
         float pitch_rad = glm::radians(pitch);
 
