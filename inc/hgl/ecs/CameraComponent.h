@@ -1,120 +1,86 @@
 ﻿#pragma once
 
 #include<hgl/ecs/Component.h>
-#include<hgl/math/Projection.h>
+#include<hgl/math/Vector.h>
+
+namespace hgl::graph
+{
+    struct Camera;
+    struct CameraInfo;
+    class ViewportInfo;
+    class GPUBuffer;
+}
 
 namespace hgl
 {
     namespace ecs
     {
-        enum class CameraProjection
-        {
-            Perspective,
-            Orthographic
-        };
-
-        enum class CameraControlMode
-        {
-            None,
-            FPS,
-            Orbit,
-            ViewModel,
-            FreeFly
-        };
-
-        //struct CameraPostFX
-        //{
-        //    bool  enable_tone_map   = true;
-        //    bool  enable_bloom      = false;
-        //    float bloom_intensity   = 0.8f;
-        //    float bloom_threshold   = 1.0f;
-        //    bool  enable_vignette   = false;
-        //    float vignette_strength = 0.25f;
-        //};
-
-        //struct CameraExposure
-        //{
-        //    float aperture_f        = 16.0f;    ///< f-number
-        //    float shutter_seconds   = 1.0f/60.0f;
-        //    float iso               = 100.0f;
-        //    float exposure_comp     = 0.0f;     ///< EV offset
-        //};
-
+        /**
+         * CameraComponent - 纯数据组件
+         * Pure data component for camera in ECS architecture
+         * 所有字段都是public，不包含逻辑方法
+         */
         class CameraComponent : public Component
         {
-        private:
+        public:
 
-            CameraProjection projection   = CameraProjection::Perspective;
-            CameraControlMode control_mode= CameraControlMode::None;
-
-            float fov_y_deg   = 60.0f;    ///< perspective vertical fov in degrees
-            float ortho_width = 16.0f;
-            float ortho_height= 9.0f;    ///< view height for ortho, width
-            float near_clip   = 0.1f;
-            float far_clip    = 1000.0f;
-
-//            CameraExposure exposure;
-//            CameraPostFX   post_fx;
+            /// 控制模式枚举 / Control mode enum
+            enum class ControlMode
+            {
+                FirstPerson,    ///< 第一人称模式 (WASD移动 + 鼠标旋转)
+                ViewModel,      ///< 视图模型模式 (左键旋转 + 滚轮缩放 + 右键平移)
+                LookAt,         ///< 观察模式 (中键平移 + 滚轮距离)
+                Free            ///< 自由模式
+            };
 
         public:
 
-            CameraComponent(const std::string& name = "Camera") : Component(name) {}
+            // === 基础摄像机数据 / Basic camera data ===
+            math::Vector3f position;        ///< 摄像机位置 / Camera position
+            math::Vector3f target;          ///< 目标点 / Target point
+            math::Vector3f world_up;        ///< 世界向上向量 / World up vector
+
+            float fov;                      ///< 视场角 / Field of view (degrees)
+            float near_plane;               ///< 近平面 / Near clipping plane
+            float far_plane;                ///< 远平面 / Far clipping plane
+
+            // === 欧拉角 / Euler angles ===
+            float yaw;                      ///< 偏航角 / Yaw angle (degrees)
+            float pitch;                    ///< 俯仰角 / Pitch angle (degrees)
+            float roll;                     ///< 翻滚角 / Roll angle (degrees)
+
+            // === 局部坐标系 / Local coordinate system ===
+            math::Vector3f forward;         ///< 前向向量 / Forward vector
+            math::Vector3f right;           ///< 右向向量 / Right vector
+            math::Vector3f up;              ///< 上向向量 / Up vector
+
+            // === 控制参数 / Control parameters ===
+            ControlMode control_mode;       ///< 控制模式 / Control mode
+            
+            float distance;                 ///< 距离目标的距离 (ViewModel/LookAt模式) / Distance to target
+            float min_distance;             ///< 最小距离 / Minimum distance
+            float max_distance;             ///< 最大距离 / Maximum distance
+
+            float rotation_sensitivity;     ///< 旋转灵敏度 / Rotation sensitivity
+            float zoom_sensitivity;         ///< 缩放灵敏度 / Zoom sensitivity
+            float move_speed;               ///< 移动速度 / Movement speed
+
+            math::Vector2f input_invert;    ///< 输入反转 (x, y) / Input inversion
+
+            // === 外部引用 / External references ===
+            graph::Camera* camera_data;             ///< 摄像机数据指针 / Camera data pointer
+            graph::CameraInfo* camera_info;         ///< 摄像机信息指针 / Camera info pointer
+            const graph::ViewportInfo* viewport_info; ///< 视口信息指针 / Viewport info pointer
+            graph::GPUBuffer* camera_ubo;           ///< 摄像机UBO / Camera uniform buffer object
+
+            // === 标记 / Flags ===
+            bool is_main_camera;            ///< 是否为主摄像机 / Is main camera
+            bool matrix_dirty;              ///< 矩阵脏标记 / Matrix dirty flag
+
+        public:
+
+            CameraComponent(const std::string& name = "Camera");
             ~CameraComponent() override = default;
-
-        public:
-
-            void SetProjectionType(const CameraProjection &cp){projection=cp;}
-            CameraProjection GetProjectionType()const{return projection;}
-
-            void SetSize(float width,float height)
-            {
-                ortho_width  = width;
-                ortho_height = height;
-            }
-
-            void SetFovYDeg (float fov_deg      ){fov_y_deg = fov_deg;}
-            void SetNearClip(float near_plane   ){near_clip = near_plane;}
-            void SetFarClip (float far_plane    ){far_clip  = far_plane;}
-
-            float GetFovYDeg    () const { return fov_y_deg; }
-            float GetOrthoWidth () const { return ortho_width; }
-            float GetOrthoHeight() const { return ortho_height; }
-            float GetNearClip   () const { return near_clip; }
-            float GetFarClip    () const { return far_clip; }
-
-        public:
-
-            // Control mode (consumed by control system/strategy)
-            void SetControlMode(CameraControlMode mode){ control_mode = mode; }
-            CameraControlMode GetControlMode() const { return control_mode; }
-
-        public:
-
-            // // Exposure / post FX
-            // CameraExposure& GetExposure() { return exposure; }
-            // const CameraExposure& GetExposure() const { return exposure; }
-
-            // CameraPostFX& GetPostFX() { return post_fx; }
-            // const CameraPostFX& GetPostFX() const { return post_fx; }
-
-        public:
-
-            // Derived matrices (built on demand;)
-            math::Matrix4f BuildProjectionMatrix() const
-            {
-                if(projection==CameraProjection::Perspective)
-                    return math::PerspectiveMatrix(fov_y_deg, ortho_width/ortho_height, near_clip, far_clip);
-
-                return math::OrthoMatrix(ortho_width, ortho_height, near_clip, far_clip);
-            }
-
-            // LookAt 视图矩阵（常用于相机控制系统）
-            math::Matrix4f BuildViewMatrixLookAt(const math::Vector3f& eye,
-                                                 const math::Vector3f& target,
-                                                 const math::Vector3f& up = math::AxisVector::Z) const
-            {
-                return math::LookAtMatrix(eye, target, up);
-            }
         };
     }//namespace ecs
 }//namespace hgl
