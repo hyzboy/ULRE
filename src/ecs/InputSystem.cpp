@@ -7,7 +7,8 @@ namespace hgl::ecs
 {
     InputSystem::InputSystem()
     {
-        mouse_coord.Set(0, 0);
+        mouse_coord.x = 0;
+        mouse_coord.y = 0;
         mouse_buttons[0] = false;
         mouse_buttons[1] = false;
         mouse_buttons[2] = false;
@@ -22,7 +23,7 @@ namespace hgl::ecs
             // 使用分离的button和action设计 / Use separated button and action design
             io::MouseAction action = io::MouseAction(header.id);
             const io::MouseEventData *med = (const io::MouseEventData *)&data;
-            io::MouseButton button = med->button;
+            io::MouseButton button = static_cast<io::MouseButton>(med->button);
 
             switch (action)
             {
@@ -31,7 +32,7 @@ namespace hgl::ecs
                     mouse_coord.y = med->y;
                     break;
 
-                case io::MouseAction::Down:
+                case io::MouseAction::Pressed:
                 {
                     int idx = static_cast<int>(button);
                     if (idx >= 0 && idx < 3)
@@ -39,7 +40,7 @@ namespace hgl::ecs
                     break;
                 }
 
-                case io::MouseAction::Up:
+                case io::MouseAction::Released:
                 {
                     int idx = static_cast<int>(button);
                     if (idx >= 0 && idx < 3)
@@ -48,7 +49,7 @@ namespace hgl::ecs
                 }
 
                 case io::MouseAction::Wheel:
-                    wheel_delta += med->wheel_delta;
+                    wheel_delta += med->y;
                     break;
 
                 default:
@@ -63,11 +64,11 @@ namespace hgl::ecs
 
             switch (event_id)
             {
-                case io::KeyboardEventID::Down:
+                case io::KeyboardEventID::Pressed:
                     key_states[ked->key] = true;
                     break;
 
-                case io::KeyboardEventID::Up:
+                case io::KeyboardEventID::Released:
                     key_states[ked->key] = false;
                     break;
 
