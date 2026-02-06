@@ -6,12 +6,12 @@
 VK_NAMESPACE_BEGIN
 struct SubpassInfo
 {
-    List<uint32_t> input_attachments;
-    List<uint32_t> output_attachments;
+    ValueArray<uint32_t> input_attachments;
+    ValueArray<uint32_t> output_attachments;
 
     struct
     {
-        List<uint32_t> attachments;
+        ValueArray<uint32_t> attachments;
     }color;
 
     struct

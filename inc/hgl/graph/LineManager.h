@@ -35,7 +35,7 @@ namespace hgl::graph
     class LineManager
     {
     private:
-        List<LineInfo> lines;                    // 存储所有线条信息
+        ValueArray<LineInfo> lines;                    // 存储所有线条信息
 
         RenderFramework*    render_framework;    // 渲染框架
         Material*           line_material;       // Line3D材质
