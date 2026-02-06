@@ -11,8 +11,8 @@ class Subpass
     VkSubpassDescription *desc;
     VkSubpassDependency *dependency;
 
-    List<VkAttachmentReference> ar_input;
-    List<VkAttachmentReference> ar_out_colors;
+    ValueArray<VkAttachmentReference> ar_input;
+    ValueArray<VkAttachmentReference> ar_out_colors;
     VkAttachmentReference       ar_out_depth;
 
 public:

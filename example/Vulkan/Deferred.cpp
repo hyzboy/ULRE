@@ -59,19 +59,19 @@ class DeferredRenderingFramework:public CameraAppFramework
             Texture2DPointer texture_list[4];
         };
 
-        List<VkFormat> gbuffer_format_list;
-        List<vulkan::ImageView *> image_view_list;
+        ValueArray<VkFormat> gbuffer_format_list;
+        ValueArray<vulkan::ImageView *> image_view_list;
 
         struct
         {
-            List<VkAttachmentDescription> desc_list;
-            List<VkAttachmentReference> ref_list;
+            ValueArray<VkAttachmentDescription> desc_list;
+            ValueArray<VkAttachmentReference> ref_list;
         }attachment;
 
         struct
         {
-            List<VkSubpassDescription> desc;
-            List<VkSubpassDependency> dependency;
+            ValueArray<VkSubpassDescription> desc;
+            ValueArray<VkSubpassDependency> dependency;
         }subpass;
     }gbuffer;//
 

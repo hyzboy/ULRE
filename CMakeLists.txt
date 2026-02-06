@@ -25,6 +25,7 @@ SET(ULRE    CMCoreType
             CMCore
             CMAssetsManage
             CMUtil
+            CMScript
             CM2D
 #            CMGUI
             ULRE.Work
@@ -44,6 +45,7 @@ use_cm_module(Util)
 use_cm_module(2D)
 use_cm_module(GUI)
 use_cm_module(AssetsManage)
+use_cm_module(Script)
 
 add_subdirectory(src)
 
