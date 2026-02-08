@@ -157,6 +157,8 @@ namespace
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, sets_count},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         sets_count},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, sets_count},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         sets_count},
+            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, sets_count},
             {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       sets_count}
         };
 
