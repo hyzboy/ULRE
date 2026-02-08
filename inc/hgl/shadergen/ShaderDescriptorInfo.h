@@ -2,13 +2,14 @@
 
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKVertexInputAttribute.h>
+#include<hgl/shader_schema/VertexInputAttribute.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 
 namespace hgl{namespace graph
 {
+const char *GetShaderStageName(const VkShaderStageFlagBits &);
 using UBODescriptorList=ValueArray<const UBODescriptor *>;
 using SSBODescriptorList=ValueArray<const SSBODescriptor *>;
 using TextureDescriptorList = ValueArray<const TextureDescriptor *>;

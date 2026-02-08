@@ -5,6 +5,8 @@ set(SHADER_SCHEMA_HEADER_FILES
     ${SHADER_SCHEMA_INCLUDE_PATH}/MaterialCreateConfig.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/Material2DCreateConfig.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/Material3DCreateConfig.h
+    ${SHADER_SCHEMA_INCLUDE_PATH}/VertexInputAttribute.h
+    ${SHADER_SCHEMA_INCLUDE_PATH}/TextureType.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/SamplerType.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/ShaderImageType.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/ShaderVariableType.h

@@ -1,10 +1,12 @@
 ﻿#include "Std3DMaterial.h"
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
+#include <hgl/shader_schema/TextureType.h>
 
 STD_MTL_NAMESPACE_BEGIN
 namespace
 {
+    using hgl::shader_schema::TextureType;
     // Vertex: generate grid from gl_VertexID, sample height and normal via texelFetch
     // Samplers (per-material): TextureHeight (R), TextureNormal (RGB)
     // Outputs: Position (clip space pos for FS), Normal (world space)

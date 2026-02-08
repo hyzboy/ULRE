@@ -9,6 +9,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 using hgl::shader_schema::GetSamplerTypeName;
+using hgl::shader_schema::GetTextureTypeName;
 
 STD_MTL_NAMESPACE_BEGIN
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)

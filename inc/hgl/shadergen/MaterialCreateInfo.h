@@ -8,7 +8,7 @@
 #include<hgl/graph/RenderTargetOutputConfig.h>
 #include<hgl/shader_schema/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
-#include<hgl/graph/VKTextureType.h>
+#include<hgl/shader_schema/TextureType.h>
 #include<hgl/shader_schema/SamplerType.h>
 
 namespace hgl::graph
@@ -18,6 +18,7 @@ namespace hgl::graph
 
     namespace mtl
     {
+        using hgl::shader_schema::TextureType;
         using hgl::shader_schema::SamplerType;
         class MaterialCreateInfo
         {
