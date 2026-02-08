@@ -52,9 +52,13 @@ namespace hgl::ecs
         std::vector<UpdateRange> pending_updates;
         const std::vector<RenderItem*>* last_items=nullptr;
 
-        static std::vector<ECSTransformAssignmentBuffer*> all_instances;
+        uint32_t last_static_count=0;
+        uint32_t last_dynamic_count=0;
 
-        void StatTransform(const std::vector<RenderItem*>& items,graph::BufferAllocPolicy policy);
+        static std::vector<ECSTransformAssignmentBuffer*> all_instances;
+        static uint32_t ring_frame_index;
+
+        void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
         void QueueUpdateRange(const int first,const int last);
         void WriteRange(const std::vector<RenderItem*>& items,const int first,const int last);
 
@@ -99,5 +103,7 @@ namespace hgl::ecs
          */
         void FlushPendingUpdates();
         static void FlushAllPendingUpdates();
+
+        static void AdvanceFrame();
     };
 }//namespace hgl::ecs

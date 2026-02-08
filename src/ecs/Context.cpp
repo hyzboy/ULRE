@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/Context.h>
 #include<hgl/ecs/TransformSystem.h>
+#include"ECSTransformAssignmentBuffer.h"
 #include<algorithm>
 
 namespace hgl
@@ -91,6 +92,8 @@ namespace hgl
         {
             if (!active)
                 return;
+
+            ECSTransformAssignmentBuffer::AdvanceFrame();
 
             for (auto& pair : render_systems)
             {
