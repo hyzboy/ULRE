@@ -344,4 +344,5 @@ namespace hgl::ecs
         //     std::cout << "[ECS::MaterialBatch::Render] ERROR: No renderer available!" << std::endl;
         // }
     }
+
 }//namespace hgl::ecs

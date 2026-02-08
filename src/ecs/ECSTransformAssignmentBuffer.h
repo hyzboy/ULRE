@@ -36,7 +36,19 @@ namespace hgl::ecs
         bool static_initialized;                ///<Static buffer already initialized
         size_t static_item_count;               ///<Static item count for validation
 
+        struct UpdateRange
+        {
+            int first=0;
+            int last=0;
+        };
+        std::vector<UpdateRange> pending_updates;
+        const std::vector<RenderItem*>* last_items=nullptr;
+
+        static std::vector<ECSTransformAssignmentBuffer*> all_instances;
+
         void StatTransform(const std::vector<RenderItem*>& items,graph::BufferAllocPolicy policy);
+        void QueueUpdateRange(const int first,const int last);
+        void WriteRange(const std::vector<RenderItem*>& items,const int first,const int last);
 
     private:    // 分发数据
         uint32_t node_count;                    ///<节点数量
@@ -73,5 +85,11 @@ namespace hgl::ecs
          * @param last 最后一个索引
          */
         void UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last);
+
+        /**
+         * Flush pending update ranges once per frame
+         */
+        void FlushPendingUpdates();
+        static void FlushAllPendingUpdates();
     };
 }//namespace hgl::ecs

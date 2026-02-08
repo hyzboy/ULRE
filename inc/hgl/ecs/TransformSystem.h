@@ -8,6 +8,7 @@
 
 namespace hgl::ecs
 {
+    class RenderPrimitiveSystem;
     /**
      * TransformSystem
      *
@@ -35,6 +36,7 @@ namespace hgl::ecs
 
         void Update(float deltaTime) override;
         void UpdateStaticDirty();
+        void SubmitTransformUpdates();
 
     private:
 
