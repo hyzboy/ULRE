@@ -32,6 +32,7 @@ namespace hgl::ecs
     {
         // Collect primitive renderables every frame
         CollectPrimitives();
+        UpdateTransformData();
     }
 
     void RenderPrimitiveSystem::Render(graph::RenderCmdBuffer* cmdBuffer, float /*deltaTime*/)
@@ -270,6 +271,15 @@ namespace hgl::ecs
         for (auto& itemPtr : renderItems)
         {
             itemPtr->UpdateWorldMatrix();
+        }
+
+        for (auto& pair : materialBatches)
+        {
+            MaterialBatch* batch = pair.second.get();
+            if (batch)
+            {
+                batch->QueueMovableTransformUpdates();
+            }
         }
     }
 
