@@ -12,9 +12,9 @@ namespace hgl
             , matrixDirty(true)
             , movable(true)
         {
-            // Allocate storage in the dynamic SOA storage by default
-            storageHandle = GetDynamicStorage()->Allocate();
-            GetDynamicStorage()->SetMobility(storageHandle, 1);
+            // Allocate storage in the shared SOA storage by default
+            storageHandle = GetSharedStorage()->Allocate();
+            GetSharedStorage()->SetMobility(storageHandle, 1);
         }
 
         TransformComponent::~TransformComponent()
@@ -383,7 +383,7 @@ namespace hgl
 
         std::shared_ptr<TransformDataStorage> TransformComponent::GetStorage() const
         {
-            return movable ? GetDynamicStorage() : GetStaticStorage();
+            return GetSharedStorage();
         }
 
         void TransformComponent::MigrateStorage(bool toMovable)
@@ -397,23 +397,8 @@ namespace hgl
                 return;
             }
 
-            auto oldStorage = GetStorage();
-            auto newStorage = toMovable ? GetDynamicStorage() : GetStaticStorage();
-
-            TransformDataStorage::HandleID newHandle = newStorage->Allocate();
-
-            // Copy transform data
-            newStorage->SetPosition(newHandle, oldStorage->GetPosition(storageHandle));
-            newStorage->SetRotation(newHandle, oldStorage->GetRotation(storageHandle));
-            newStorage->SetScale(newHandle, oldStorage->GetScale(storageHandle));
-
-            // Update mobility in new storage (0 = static, 1 = movable)
-            newStorage->SetMobility(newHandle, toMovable ? 1 : 0);
-
-            // Release old storage
-            oldStorage->Deallocate(storageHandle);
-
-            storageHandle = newHandle;
+            auto storage = GetStorage();
+            storage->SetMobility(storageHandle, toMovable ? 1 : 0);
             movable = toMovable;
 
             // If transitioning to static and dirty, compute world matrix once

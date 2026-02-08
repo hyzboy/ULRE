@@ -122,6 +122,50 @@ namespace hgl::ecs
         ring_writer.Unmap();
     }
 
+    void ECSTransformAssignmentBuffer::WriteStaticFromHandles(const TransformDataStorage& storage,
+                                                              const std::vector<TransformDataStorage::HandleID>& handles)
+    {
+        const uint32_t write_count = static_cast<uint32_t>(handles.size());
+        if (!transform_buffer || write_count == 0)
+            return;
+
+        const VkDeviceSize map_size = sizeof(math::Matrix4f) * write_count;
+        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map(0, map_size));
+        if (!l2wp)
+            return;
+
+        for (uint32_t i = 0; i < write_count; ++i)
+        {
+            const auto handle = handles[i];
+            const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+        }
+
+        transform_buffer->Unmap();
+    }
+
+    void ECSTransformAssignmentBuffer::WriteDynamicFromHandles(const TransformDataStorage& storage,
+                                                               const uint32_t static_count,
+                                                               const std::vector<TransformDataStorage::HandleID>& handles)
+    {
+        const uint32_t write_count = static_cast<uint32_t>(handles.size());
+        if (!transform_buffer || write_count == 0)
+            return;
+
+        math::Matrix4f* l2wp = (math::Matrix4f*)(ring_writer.MapDynamicRange(static_count, write_count));
+        if (!l2wp)
+            return;
+
+        for (uint32_t i = 0; i < write_count; ++i)
+        {
+            const auto handle = handles[i];
+            const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+        }
+
+        ring_writer.Unmap();
+    }
+
     void ECSTransformAssignmentBuffer::Clear()
     {
         SAFE_CLEAR(transform_buffer);
@@ -207,9 +251,7 @@ namespace hgl::ecs
             return false;
         }
 
-        const auto storage = transform->IsMovable()
-            ? TransformComponent::GetDynamicStorage()
-            : TransformComponent::GetStaticStorage();
+        const auto storage = TransformComponent::GetSharedStorage();
 
         if (!storage)
         {

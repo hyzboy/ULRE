@@ -378,9 +378,35 @@ namespace hgl
                 remove_from_list(movable_transforms);
             }
 
-            // Add to new list (need shared_ptr, so use owner if possible)
-            // For now, we can't directly add without shared_ptr, so caller must handle
-            // This is called after MigrateStorage(), so the component is already in correct storage
+            // Add to new list
+            std::shared_ptr<TransformComponent> comp_shared;
+
+            if (auto owner = comp_ptr->GetOwner())
+            {
+                comp_shared = owner->GetComponent<TransformComponent>();
+            }
+
+            if (!comp_shared)
+                return;
+
+            auto add_unique = [&comp_ptr](std::vector<std::weak_ptr<TransformComponent>>& list,
+                                          const std::shared_ptr<TransformComponent>& comp)
+            {
+                for (const auto& weak_comp : list)
+                {
+                    if (auto existing = weak_comp.lock())
+                    {
+                        if (existing.get() == comp_ptr)
+                            return;
+                    }
+                }
+                list.push_back(comp);
+            };
+
+            if (toMovable)
+                add_unique(movable_transforms, comp_shared);
+            else
+                add_unique(static_transforms, comp_shared);
         }
 
         void ECSContext::UnregisterTransformComponent(TransformComponent* comp_ptr)

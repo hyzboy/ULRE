@@ -127,10 +127,22 @@ namespace hgl::ecs
                         max_transform_index = item->transform_index;
                 }
 
-                auto static_storage = TransformComponent::GetStaticStorage();
-                auto dynamic_storage = TransformComponent::GetDynamicStorage();
-                const uint32_t static_count = static_cast<uint32_t>(static_storage ? static_storage->GetSize() : 0);
-                const uint32_t dynamic_count = static_cast<uint32_t>(dynamic_storage ? dynamic_storage->GetSize() : 0);
+                auto storage = TransformComponent::GetSharedStorage();
+                uint32_t static_count = 0;
+                uint32_t dynamic_count = 0;
+
+                if (storage)
+                {
+                    const size_t total = storage->GetSize();
+                    for (size_t i = 0; i < total; ++i)
+                    {
+                        if (storage->GetMobility(static_cast<TransformDataStorage::HandleID>(i)) == 0)
+                            ++static_count;
+                        else
+                            ++dynamic_count;
+                    }
+                }
+
                 const uint32_t total_count = transform_buffer->GetTotalCount(static_count, dynamic_count);
 
                 if (total_count > 0 && max_transform_index >= total_count)
@@ -441,10 +453,22 @@ namespace hgl::ecs
                     max_transform_index = item->transform_index;
             }
 
-            auto static_storage = TransformComponent::GetStaticStorage();
-            auto dynamic_storage = TransformComponent::GetDynamicStorage();
-            const uint32_t static_count = static_cast<uint32_t>(static_storage ? static_storage->GetSize() : 0);
-            const uint32_t dynamic_count = static_cast<uint32_t>(dynamic_storage ? dynamic_storage->GetSize() : 0);
+            auto storage = TransformComponent::GetSharedStorage();
+            uint32_t static_count = 0;
+            uint32_t dynamic_count = 0;
+
+            if (storage)
+            {
+                const size_t total = storage->GetSize();
+                for (size_t i = 0; i < total; ++i)
+                {
+                    if (storage->GetMobility(static_cast<TransformDataStorage::HandleID>(i)) == 0)
+                        ++static_count;
+                    else
+                        ++dynamic_count;
+                }
+            }
+
             const uint32_t total_count = transform_buffer->GetTotalCount(static_count, dynamic_count);
 
             if (total_count > 0 && max_transform_index >= total_count)
