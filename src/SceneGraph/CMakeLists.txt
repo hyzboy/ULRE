@@ -591,3 +591,5 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
                                         ${CM_SG_VULKAN_HEADER}
                                         ${CM_SG_VULKAN_SOURCE}
 )
+
+target_link_libraries(ULRE.SceneGraph PUBLIC ULRE.ShaderSchema)

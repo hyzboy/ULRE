@@ -30,6 +30,7 @@ SET(ULRE    CMCoreType
 #            CMGUI
             ULRE.Work
             ULRE.ECS
+            ULRE.ShaderSchema
             ULRE.ShaderGen
             ULRE.SceneGraph
             ULRE.InlineGeometry

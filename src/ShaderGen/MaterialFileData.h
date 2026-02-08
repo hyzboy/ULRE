@@ -4,7 +4,7 @@
 #include<hgl/type/AccumMemoryManager.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVertexInputAttribute.h>
-#include<hgl/graph/VKSamplerType.h>
+#include<hgl/shader_schema/SamplerType.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
@@ -33,7 +33,7 @@ namespace material_file
     {
         ShaderNameVariable name;
 
-        SamplerType type;
+        hgl::shader_schema::SamplerType type;
     };
 
     // Comparison operator for SamplerData

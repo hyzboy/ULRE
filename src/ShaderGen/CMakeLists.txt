@@ -136,3 +136,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${STD_MTL_2D_SOURCE_FILES}
                                         ${STD_MTL_3D_SOURCE_FILES}
 )
+
+target_link_libraries(ULRE.ShaderGen PUBLIC ULRE.ShaderSchema)
