@@ -12,6 +12,11 @@ const VkDeviceSize VulkanDevice::GetSSBORange  (){return attr->physical_device->
 
 bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
+    return CreateBuffer(buf,buf_usage,range,size,data,sharing_mode,MemoryUsage::CPUOnly);
+}
+
+bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,MemoryUsage mem_usage)
+{
     if(size<=0)return(false);
 
     BufferCreateInfo buf_info;
@@ -29,10 +34,7 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
 
     vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
 
-    DeviceMemory *dm=CreateMemory(mem_reqs,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT        //CPU端可以Map(主要用于Persistent map)
-                                            |VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);     //CPU端无需Flush,即可被GPU访问
-                                                                                        //注：这个模式并非最佳效能，但是在开发时最为方便
-                                                                                        //Device Local模式仅支持GPU访问，是性能最佳，考虑在一些极端情况下使用
+    DeviceMemory *dm=CreateMemory(mem_reqs,mem_usage);
 
     if(dm&&dm->BindBuffer(buf->buffer))
     {
@@ -55,7 +57,7 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     return(false);
 }
 
-VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
+VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode)
 {
     if(count==0)return(nullptr);
 
@@ -69,9 +71,38 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Sha
 
     const VkDeviceSize size=stride*count;
 
-    DeviceBufferData buf;
+    if(policy==BufferAllocPolicy::Auto)
+    {
+        if(attr->physical_device->HasReBAR())
+            policy=BufferAllocPolicy::CPUVisible;
+        else
+            policy=BufferAllocPolicy::StagedUpload;
+    }
 
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode))
+    if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
+    {
+        StagedBuffer *staged=CreateStagedBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,data,sharing_mode);
+        if(!staged)
+            return(nullptr);
+
+        DeviceBufferData buf;
+        buf.buffer=staged->GetDeviceBuffer();
+        buf.memory=staged->GetDeviceMemory();
+        buf.info.buffer=buf.buffer;
+        buf.info.offset=0;
+        buf.info.range=size;
+
+        return(new VertexAttribBuffer(attr->device,buf,format,stride,count,staged));
+    }
+
+    MemoryUsage mem_usage=MemoryUsage::CPUOnly;
+    if(policy==BufferAllocPolicy::CPUVisible)
+        mem_usage=MemoryUsage::ReBAR;
+    else if(policy==BufferAllocPolicy::Readback)
+        mem_usage=MemoryUsage::GPUToCPU;
+
+    DeviceBufferData buf;
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage))
         return(nullptr);
 
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
@@ -109,7 +140,7 @@ const bool VulkanDevice::CheckIndexType(const IndexType it,const VkDeviceSize &v
     return(false);
 }
 
-IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
+IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode)
 {
     if(count==0)return(nullptr);
 
@@ -122,9 +153,38 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
 
     const VkDeviceSize size=stride*count;
 
-    DeviceBufferData buf;
+    if(policy==BufferAllocPolicy::Auto)
+    {
+        if(attr->physical_device->HasReBAR())
+            policy=BufferAllocPolicy::CPUVisible;
+        else
+            policy=BufferAllocPolicy::StagedUpload;
+    }
 
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,data,sharing_mode))
+    if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
+    {
+        StagedBuffer *staged=CreateStagedBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,data,sharing_mode);
+        if(!staged)
+            return(nullptr);
+
+        DeviceBufferData buf;
+        buf.buffer=staged->GetDeviceBuffer();
+        buf.memory=staged->GetDeviceMemory();
+        buf.info.buffer=buf.buffer;
+        buf.info.offset=0;
+        buf.info.range=size;
+
+        return(new IndexBuffer(attr->device,buf,index_type,count,staged));
+    }
+
+    MemoryUsage mem_usage=MemoryUsage::CPUOnly;
+    if(policy==BufferAllocPolicy::CPUVisible)
+        mem_usage=MemoryUsage::ReBAR;
+    else if(policy==BufferAllocPolicy::Readback)
+        mem_usage=MemoryUsage::GPUToCPU;
+
+    DeviceBufferData buf;
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage))
         return(nullptr);
 
     return(new IndexBuffer(attr->device,buf,index_type,count));
@@ -132,11 +192,46 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
 
 DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
+    return CreateBuffer(buf_usage,range,size,data,BufferAllocPolicy::Auto,sharing_mode);
+}
+
+DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode)
+{
     if(size<=0)return(nullptr);
+
+    if(policy==BufferAllocPolicy::Auto)
+    {
+        if(attr->physical_device->HasReBAR())
+            policy=BufferAllocPolicy::CPUVisible;
+        else
+            policy=BufferAllocPolicy::StagedUpload;
+    }
+
+    if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
+    {
+        StagedBuffer *staged=CreateStagedBuffer(buf_usage,size,data,sharing_mode);
+        if(!staged)
+            return(nullptr);
+
+        DeviceBufferData buf;
+        buf.buffer=staged->GetDeviceBuffer();
+        buf.memory=staged->GetDeviceMemory();
+        buf.info.buffer=buf.buffer;
+        buf.info.offset=0;
+        buf.info.range=range;
+
+        return(new DeviceBuffer(attr->device,buf,staged));
+    }
+
+    MemoryUsage mem_usage=MemoryUsage::CPUOnly;
+    if(policy==BufferAllocPolicy::CPUVisible)
+        mem_usage=MemoryUsage::ReBAR;
+    else if(policy==BufferAllocPolicy::Readback)
+        mem_usage=MemoryUsage::GPUToCPU;
 
     DeviceBufferData buf;
 
-    if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode))
+    if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage))
         return(nullptr);
 
     return(new DeviceBuffer(attr->device,buf));

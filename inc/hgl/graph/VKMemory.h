@@ -16,6 +16,18 @@ enum class MemoryUsage
     ReBAR           // HOST_VISIBLE | HOST_COHERENT | DEVICE_LOCAL (requires Resizable BAR)
 };
 
+/**
+ * Buffer allocation policy for higher-level buffer creation
+ */
+enum class BufferAllocPolicy
+{
+    Auto,           // Prefer ReBAR direct mapping; fallback to staging upload
+    CPUVisible,     // HOST_VISIBLE | HOST_COHERENT
+    GPUOnly,        // DEVICE_LOCAL (use staging for uploads)
+    StagedUpload,   // Explicit staging upload to GPU-local buffer
+    Readback        // HOST_VISIBLE | HOST_CACHED
+};
+
 class DeviceMemory
 {
     VkDevice                device;

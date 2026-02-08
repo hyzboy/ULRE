@@ -2,6 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/graph/VKStagedBuffer.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 
 VK_NAMESPACE_BEGIN
@@ -18,6 +19,10 @@ protected:
 
     VkDevice device;
     DeviceBufferData buf;
+    StagedBuffer *staged_buffer=nullptr;
+    VkDeviceSize staged_map_offset=0;
+    VkDeviceSize staged_map_size=0;
+    bool staged_map_active=false;
 
 private:
 
@@ -32,6 +37,13 @@ private:
         buf=b;
     }
 
+    DeviceBuffer(VkDevice d,const DeviceBufferData &b,StagedBuffer *sb)
+    {
+        device=d;
+        buf=b;
+        staged_buffer=sb;
+    }
+
 public:
 
     virtual ~DeviceBuffer();
@@ -41,15 +53,90 @@ public:
             VkDeviceMemory              GetVkMemory     ()const{return buf.memory->operator VkDeviceMemory();}
     const   VkDescriptorBufferInfo *    GetBufferInfo   ()const{return &buf.info;}
 
-            void *  Map     ()                                              {return buf.memory->Map();}
-    virtual void *  Map     (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Map(start,size);}
-            void    Unmap   ()                                              {return buf.memory->Unmap();}
-    virtual void    Flush   (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Flush(start,size);}
-    virtual void    Flush   (VkDeviceSize size)                             {return buf.memory->Flush(size);}
+            void *  Map     ()
+            {
+                if(staged_buffer)
+                {
+                    staged_map_offset=0;
+                    staged_map_size=VK_WHOLE_SIZE;
+                    staged_map_active=true;
+                    return staged_buffer->Map();
+                }
 
-    virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
-    virtual bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
-            bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
+                return buf.memory?buf.memory->Map():nullptr;
+            }
+    virtual void *  Map     (VkDeviceSize start,VkDeviceSize size)
+            {
+                if(staged_buffer)
+                {
+                    staged_map_offset=start;
+                    staged_map_size=(size==0)?VK_WHOLE_SIZE:size;
+                    staged_map_active=true;
+                    return staged_buffer->Map(start,size);
+                }
+
+                return buf.memory?buf.memory->Map(start,size):nullptr;
+            }
+            void    Unmap   ()
+            {
+                if(staged_buffer)
+                {
+                    staged_buffer->Unmap();
+                    if(staged_map_active)
+                    {
+                        staged_buffer->MarkDirty(staged_map_offset,staged_map_size);
+                        staged_map_active=false;
+                    }
+                    return;
+                }
+
+                if(buf.memory)
+                    buf.memory->Unmap();
+            }
+    virtual void    Flush   (VkDeviceSize start,VkDeviceSize size)
+            {
+                if(staged_buffer)
+                {
+                    staged_buffer->MarkDirty(start,(size==0)?VK_WHOLE_SIZE:size);
+                    return;
+                }
+
+                if(buf.memory)
+                    buf.memory->Flush(start,size);
+            }
+    virtual void    Flush   (VkDeviceSize size)
+            {
+                if(staged_buffer)
+                {
+                    staged_buffer->MarkDirty(0,(size==0)?VK_WHOLE_SIZE:size);
+                    return;
+                }
+
+                if(buf.memory)
+                    buf.memory->Flush(size);
+            }
+
+    virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size)
+            {
+                if(staged_buffer)
+                    return staged_buffer->Write(ptr,start,size);
+
+                return buf.memory?buf.memory->Write(ptr,start,size):false;
+            }
+    virtual bool    Write   (const void *ptr,uint32_t size)
+            {
+                if(staged_buffer)
+                    return staged_buffer->Write(ptr,0,size);
+
+                return buf.memory?buf.memory->Write(ptr,0,size):false;
+            }
+            bool    Write   (const void *ptr)
+            {
+                if(staged_buffer)
+                    return staged_buffer->Write(ptr);
+
+                return buf.memory?buf.memory->Write(ptr):false;
+            }
 };//class DeviceBuffer
 
 template<typename T> class DeviceBufferMap

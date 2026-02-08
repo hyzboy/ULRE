@@ -25,6 +25,17 @@ private:
             stride=0;
     }
 
+    IndexBuffer(VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count,StagedBuffer *sb):DeviceBuffer(d,vb,sb)
+    {
+        index_type=it;
+        count=_count;
+
+        if(index_type==IndexType::U16)stride=2;else
+        if(index_type==IndexType::U32)stride=4;else
+        if(index_type==IndexType::U8)stride=1;else
+            stride=0;
+    }
+
 public:
 
     ~IndexBuffer()=default;
