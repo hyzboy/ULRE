@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_DEBUG_OUT_INCLUDE
 #define HGL_GRAPH_VULKAN_DEBUG_OUT_INCLUDE
 
-#include<hgl/graph/VK.h>
+#include<hgl/shader_schema/VkTypes.h>
 
 VK_NAMESPACE_BEGIN
 
