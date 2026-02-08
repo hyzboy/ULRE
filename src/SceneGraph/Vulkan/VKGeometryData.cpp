@@ -153,6 +153,7 @@ namespace
     class GeometryDataPrivateBuffer:public GeometryData
     {
         VulkanDevice *device;
+        BufferAllocPolicy policy;
 
     public:
 
@@ -163,9 +164,10 @@ namespace
 
     public:
 
-        GeometryDataPrivateBuffer(VulkanDevice *dev,const VIL *_vil,const uint32_t vc):GeometryData(_vil,vc)
+        GeometryDataPrivateBuffer(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy p):GeometryData(_vil,vc)
         {
             device=dev;
+            policy=p;
         }
 
         ~GeometryDataPrivateBuffer() override
@@ -188,14 +190,14 @@ namespace
         {
             if(!device)return(nullptr);
 
-            return device->CreateIBO(it,ic);
+            return device->CreateIBO(it,ic,nullptr,policy);
         }
 
         VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
         {
             if(!device)return(nullptr);
 
-            return device->CreateVAB(format,vertex_count,data);
+            return device->CreateVAB(format,vertex_count,data,policy);
         }
     };//class GeometryDataPrivateBuffer:public GeometryData
 
@@ -270,7 +272,16 @@ GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_
     if(!_vil)return(nullptr);
     if(vc<=0)return(nullptr);
 
-    return(new GeometryDataPrivateBuffer(dev,_vil,vc));
+    return(new GeometryDataPrivateBuffer(dev,_vil,vc,BufferAllocPolicy::GPUOnly));
+}
+
+GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy)
+{
+    if(!dev)return(nullptr);
+    if(!_vil)return(nullptr);
+    if(vc<=0)return(nullptr);
+
+    return(new GeometryDataPrivateBuffer(dev,_vil,vc,policy));
 }
 
 GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc)
