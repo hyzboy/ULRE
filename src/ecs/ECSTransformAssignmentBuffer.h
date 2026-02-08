@@ -38,7 +38,7 @@ namespace hgl::ecs
 
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
-        graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(SSBO)
+        graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(UBO/SSBO)
         graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
         bool static_only;                       ///<Only static transforms in this batch
 

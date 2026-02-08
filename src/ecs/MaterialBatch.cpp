@@ -9,6 +9,7 @@
 #include"ECSPipelineMaterialRenderer.h"
 #include<algorithm>
 #include<iostream>
+#include<limits>
 
 // Import ECS-specific assignment buffers
 #include"ECSTransformAssignmentBuffer.h"
@@ -379,9 +380,26 @@ namespace hgl::ecs
         if (!transform_buffer || static_count >= items.size())
             return;
 
-        const int first = static_cast<int>(static_count);
-        const int last = static_cast<int>(items.size() - 1);
-        transform_buffer->UpdateTransformData(items, first, last);
+        int first = std::numeric_limits<int>::max();
+        int last = -1;
+
+        for (size_t i = static_count; i < items.size(); ++i)
+        {
+            RenderItem* item = items[i];
+            if (!item)
+                continue;
+
+            const int idx = static_cast<int>(item->transform_index);
+            if (idx < first)
+                first = idx;
+            if (idx > last)
+                last = idx;
+        }
+
+        if (last >= 0)
+        {
+            transform_buffer->UpdateTransformData(items, first, last);
+        }
     }
 
 }//namespace hgl::ecs

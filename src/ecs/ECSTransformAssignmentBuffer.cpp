@@ -10,6 +10,7 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<algorithm>
 #include<iostream>
 
 namespace hgl::ecs
@@ -119,32 +120,6 @@ namespace hgl::ecs
             }
         #endif//_DEBUG
         }
-
-        // 写入所有 LocalToWorld 矩阵
-        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map());
-
-        for (size_t i = 0; i < item_count; i++)
-        {
-            RenderItem* item = items[i];
-
-            if (!item)
-            {
-                *l2wp = math::Identity4f;
-                ++l2wp;
-                continue;
-            }
-
-            // 从 RenderItem 获取世界矩阵
-            glm::mat4 world_matrix = item->GetWorldMatrix();
-
-            // 转换 glm::mat4 到 hgl::math::Matrix4f
-            // GLM是列主序，HGL也是列主序，可以直接memcpy
-            *l2wp = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-
-            ++l2wp;
-        }
-
-        transform_buffer->Unmap();
     }
 
     void ECSTransformAssignmentBuffer::UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last)
@@ -223,6 +198,81 @@ namespace hgl::ecs
         else
             StatTransform(items,graph::BufferAllocPolicy::Auto);
 
+        std::vector<RenderItem*> static_items;
+        std::vector<RenderItem*> movable_items;
+        static_items.reserve(item_count);
+        movable_items.reserve(item_count);
+
+        for (auto *item : items)
+        {
+            if (!item)
+                continue;
+
+            auto transform = item->GetTransform();
+            if (transform && !transform->IsMovable())
+                static_items.push_back(item);
+            else
+                movable_items.push_back(item);
+        }
+
+        std::sort(static_items.begin(), static_items.end(),
+            [](const RenderItem* a, const RenderItem* b) {
+                const auto at = a ? a->GetTransform() : nullptr;
+                const auto bt = b ? b->GetTransform() : nullptr;
+                const auto ah = at ? at->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
+                const auto bh = bt ? bt->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
+
+                if (ah == TransformDataStorage::INVALID_HANDLE && bh == TransformDataStorage::INVALID_HANDLE)
+                    return false;
+                if (ah == TransformDataStorage::INVALID_HANDLE)
+                    return false;
+                if (bh == TransformDataStorage::INVALID_HANDLE)
+                    return true;
+                return ah < bh;
+            });
+
+        uint32_t transform_index = 0;
+        for (auto *item : static_items)
+        {
+            item->transform_index = transform_index++;
+        }
+
+        for (auto *item : movable_items)
+        {
+            item->transform_index = transform_index++;
+        }
+
+        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map());
+        if (l2wp)
+        {
+            for (size_t i = 0; i < item_count; ++i)
+            {
+                l2wp[i] = math::Identity4f;
+            }
+
+            for (auto *item : static_items)
+            {
+                if (!item)
+                    continue;
+
+                const uint32_t idx = item->transform_index;
+                glm::mat4 world_matrix = item->GetWorldMatrix();
+                l2wp[idx] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            }
+
+            for (auto *item : movable_items)
+            {
+                if (!item)
+                    continue;
+
+                const uint32_t idx = item->transform_index;
+                glm::mat4 world_matrix = item->GetWorldMatrix();
+                l2wp[idx] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            }
+
+            transform_buffer->Unmap();
+        }
+
         // 2. 创建或重用 Transform VAB（索引缓冲）
         {
             if (!transform_vab)
@@ -267,9 +317,7 @@ namespace hgl::ecs
                     continue;
                 }
 
-                // 分配 transform_index
-                item->transform_index = i;
-                *transform_ptr = i;
+                *transform_ptr = static_cast<uint16>(item->transform_index);
                 ++transform_ptr;
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个，避免刷屏
