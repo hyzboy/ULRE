@@ -57,6 +57,8 @@ namespace hgl
             /// Run all render systems
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
 
+            void SetFrameIndex(const uint32_t index);
+
             /// 注册组件实例（由 Entity::AddComponent 调用）
             void RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp);
 

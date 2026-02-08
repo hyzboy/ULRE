@@ -302,11 +302,6 @@ namespace hgl::ecs
         math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map());
         if (l2wp)
         {
-            for (size_t i = 0; i < total_count; ++i)
-            {
-                l2wp[i] = math::Identity4f;
-            }
-
             for (auto *item : static_items)
             {
                 if (!item)
@@ -432,5 +427,10 @@ namespace hgl::ecs
     void ECSTransformAssignmentBuffer::AdvanceFrame()
     {
         ring_frame_index = (ring_frame_index + 1) % HGL_L2W_RING_FRAMES;
+    }
+
+    void ECSTransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
+    {
+        ring_frame_index = (HGL_L2W_RING_FRAMES > 0) ? (index % HGL_L2W_RING_FRAMES) : 0;
     }
 }//namespace hgl::ecs

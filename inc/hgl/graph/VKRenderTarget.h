@@ -71,6 +71,9 @@ public: // Command Buffer
     virtual RenderCmdBuffer *   BeginRender         ()=0;
     virtual void                EndRender           ()=0;
 
+    virtual uint32_t            GetCurrentFrameIndex()const{return 0;}
+    virtual uint32_t            GetFrameCount       ()const{return 1;}
+
 public:
 
     virtual ViewportInfo *      GetViewportInfo     ()
