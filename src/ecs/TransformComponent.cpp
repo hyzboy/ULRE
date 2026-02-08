@@ -325,6 +325,12 @@ namespace hgl
 
             matrixDirty = false;
 
+            auto storage = GetStorage();
+            if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
+            {
+                storage->SetWorldMatrix(storageHandle, cachedWorldMatrix);
+            }
+
             // Mark children as dirty
             for (auto& child : childEntities)
             {
