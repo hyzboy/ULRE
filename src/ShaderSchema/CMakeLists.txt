@@ -2,6 +2,9 @@ set(SHADER_SCHEMA_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/shader_schema)
 
 set(SHADER_SCHEMA_HEADER_FILES
     ${SHADER_SCHEMA_INCLUDE_PATH}/ShaderSchema.h
+    ${SHADER_SCHEMA_INCLUDE_PATH}/MaterialCreateConfig.h
+    ${SHADER_SCHEMA_INCLUDE_PATH}/Material2DCreateConfig.h
+    ${SHADER_SCHEMA_INCLUDE_PATH}/Material3DCreateConfig.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/SamplerType.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/ShaderImageType.h
     ${SHADER_SCHEMA_INCLUDE_PATH}/ShaderVariableType.h

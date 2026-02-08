@@ -1,6 +1,6 @@
 ﻿#include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/shader_schema/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include"common/MFGetPosition.h"
 #include"common/MFGetNormal.h"

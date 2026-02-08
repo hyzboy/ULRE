@@ -1,6 +1,6 @@
 ﻿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/shader_schema/Material2DCreateConfig.h>
 #include"common/MFRectPrimitive.h"
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/mtl/SamplerName.h>

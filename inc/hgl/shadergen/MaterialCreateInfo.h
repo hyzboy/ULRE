@@ -6,7 +6,7 @@
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/graph/RenderTargetOutputConfig.h>
-#include<hgl/graph/mtl/MaterialCreateConfig.h>
+#include<hgl/shader_schema/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/graph/VKTextureType.h>
 #include<hgl/shader_schema/SamplerType.h>

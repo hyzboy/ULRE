@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/shader_schema/Material2DCreateConfig.h>
 
 STD_MTL_NAMESPACE_BEGIN
 
