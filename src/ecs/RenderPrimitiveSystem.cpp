@@ -120,6 +120,7 @@ namespace hgl::ecs
         {
             transform_system->SetDevice(device);
             transform_system->EnsureTransformBuffer();
+            transform_system->RefreshHandleOrder();
         }
 
         AssignTransformIndices();
@@ -269,16 +270,15 @@ namespace hgl::ecs
 
     void RenderPrimitiveSystem::AssignTransformIndices()
     {
-        auto static_storage = TransformComponent::GetStaticStorage();
-        auto dynamic_storage = TransformComponent::GetDynamicStorage();
+        auto transform_system = world ? world->GetSystem<TransformSystem>() : nullptr;
+        uint32_t static_count = 0;
+        uint32_t dynamic_count = 0;
+        uint32_t dynamic_base = 0;
 
-        const uint32_t static_count = static_cast<uint32_t>(static_storage ? static_storage->GetSize() : 0);
-        const uint32_t dynamic_count = static_cast<uint32_t>(dynamic_storage ? dynamic_storage->GetSize() : 0);
-
-        uint32_t dynamic_base = static_count;
-
-        if (auto transform_system = world ? world->GetSystem<TransformSystem>() : nullptr)
+        if (transform_system)
         {
+            static_count = transform_system->GetStaticCount();
+            dynamic_count = transform_system->GetDynamicCount();
             dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
         }
 
@@ -299,10 +299,16 @@ namespace hgl::ecs
                 continue;
             }
 
-            if (transform->IsMovable())
-                item->transform_index = dynamic_base + handle;
+            uint32_t group_index = 0;
+            if (transform_system &&
+                transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
+            {
+                item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : group_index;
+            }
             else
-                item->transform_index = handle;
+            {
+                item->transform_index = 0;
+            }
         }
     }
 

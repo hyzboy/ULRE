@@ -6,6 +6,7 @@
 #include<hgl/ecs/TransformComponent.h>
 #include<vector>
 #include<memory>
+#include<unordered_map>
 
 namespace hgl::ecs
 {
@@ -29,6 +30,10 @@ namespace hgl::ecs
         uint32_t last_static_count = 0;
         uint32_t last_dynamic_count = 0;
         bool static_dirty = true;
+        std::vector<TransformDataStorage::HandleID> static_handles;
+        std::vector<TransformDataStorage::HandleID> dynamic_handles;
+        std::unordered_map<TransformDataStorage::HandleID, uint32_t> static_index_map;
+        std::unordered_map<TransformDataStorage::HandleID, uint32_t> dynamic_index_map;
 
     public:
 
@@ -49,6 +54,10 @@ namespace hgl::ecs
 
         void EnsureTransformBuffer();
         uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;
+        uint32_t GetStaticCount() const { return static_cast<uint32_t>(static_handles.size()); }
+        uint32_t GetDynamicCount() const { return static_cast<uint32_t>(dynamic_handles.size()); }
+        bool TryGetTransformGroupIndex(TransformDataStorage::HandleID handle, bool movable, uint32_t& out_index) const;
+        void RefreshHandleOrder();
 
     private:
 

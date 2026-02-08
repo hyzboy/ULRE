@@ -92,6 +92,11 @@ namespace hgl::ecs
 
         void WriteStaticFromStorage(const TransformDataStorage& storage,const uint32_t static_count);
         void WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count);
+        void WriteStaticFromHandles(const TransformDataStorage& storage,
+                        const std::vector<TransformDataStorage::HandleID>& handles);
+        void WriteDynamicFromHandles(const TransformDataStorage& storage,
+                         const uint32_t static_count,
+                         const std::vector<TransformDataStorage::HandleID>& handles);
 
         /**
          * 写入所有RenderItem的变换数据

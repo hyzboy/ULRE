@@ -104,14 +104,8 @@ namespace hgl
             // Get the SOA storage handle for batch operations
             TransformDataStorage::HandleID GetStorageHandle() const { return storageHandle; }
 
-            // Static access to separate storages (static vs dynamic)
-            static std::shared_ptr<TransformDataStorage>& GetStaticStorage()
-            {
-                static auto storage = std::make_shared<TransformDataStorage>();
-                return storage;
-            }
-
-            static std::shared_ptr<TransformDataStorage>& GetDynamicStorage()
+            // Shared storage for all transforms
+            static std::shared_ptr<TransformDataStorage>& GetSharedStorage()
             {
                 static auto storage = std::make_shared<TransformDataStorage>();
                 return storage;
