@@ -2,7 +2,7 @@
 
 #include<hgl/shader_schema/MaterialLibrary.h>
 #include<hgl/shader_schema/MaterialCreateConfig.h>
-#include<hgl/graph/CoordinateSystem.h>
+#include<hgl/shader_schema/CoordinateSystem.h>
 #include<hgl/shader_schema/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN

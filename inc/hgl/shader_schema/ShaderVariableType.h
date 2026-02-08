@@ -4,7 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/shader_schema/VertexAttrib.h>
-#include<hgl/graph/VKInterpolation.h>
+#include<hgl/shader_schema/Interpolation.h>
 #include<hgl/shader_schema/SamplerType.h>
 #include<hgl/shader_schema/ShaderImageType.h>
 
