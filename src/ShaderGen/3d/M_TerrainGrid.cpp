@@ -1,6 +1,6 @@
 ﻿#include "Std3DMaterial.h"
 #include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/graph/mtl/UBOCommon.h>
+#include <hgl/shader_schema/UBOCommon.h>
 #include <hgl/shader_schema/TextureType.h>
 
 STD_MTL_NAMESPACE_BEGIN

@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/VertexAttrib.h>
+#include<hgl/shader_schema/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>

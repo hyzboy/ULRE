@@ -10,6 +10,7 @@
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/shader_schema/TextureType.h>
 #include<hgl/shader_schema/SamplerType.h>
+#include<hgl/shader_schema/PrimitiveType.h>
 
 namespace hgl::graph
 {

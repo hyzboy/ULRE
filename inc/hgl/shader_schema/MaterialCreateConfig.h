@@ -2,9 +2,10 @@
 
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/type/String.h>
-#include<hgl/graph/RenderTargetOutputConfig.h>
-#include<hgl/graph/VK.h>
-#include<hgl/graph/mtl/SamplerName.h>
+#include<hgl/shader_schema/RenderTargetOutputConfig.h>
+#include<hgl/shader_schema/ShaderStage.h>
+#include<hgl/shader_schema/SamplerName.h>
+#include<hgl/shader_schema/PrimitiveType.h>
 
 STD_MTL_NAMESPACE_BEGIN
 class MaterialCreateInfo;

@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 #include<hgl/type/StringList.h>
-#include<hgl/graph/VK.h>
+#include<hgl/shader_schema/ShaderStage.h>
 #include<hgl/shader_schema/VertexInputAttribute.h>
-#include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/shader_schema/DescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 

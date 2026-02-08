@@ -1,6 +1,6 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/shader_schema/UBOCommon.h>
 
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"

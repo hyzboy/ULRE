@@ -1,6 +1,6 @@
 ﻿#include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/shader_schema/StdMaterial.h>
 #include<hgl/io/LoadString.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/Filesystem.h>

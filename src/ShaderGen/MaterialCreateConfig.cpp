@@ -1,6 +1,6 @@
 ﻿#include<hgl/shader_schema/Material2DCreateConfig.h>
 #include<hgl/shader_schema/Material3DCreateConfig.h>
-#include<hgl/graph/VertexAttrib.h>
+#include<hgl/shader_schema/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
 const AnsiString MaterialCreateConfig::ToHashString()

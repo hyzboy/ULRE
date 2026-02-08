@@ -2,6 +2,7 @@
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include<hgl/shader_schema/PrimitiveType.h>
 
 namespace hgl::graph
 {

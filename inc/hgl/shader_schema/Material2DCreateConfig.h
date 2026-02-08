@@ -1,9 +1,9 @@
 #pragma once
 
-#include<hgl/graph/mtl/MaterialLibrary.h>
+#include<hgl/shader_schema/MaterialLibrary.h>
 #include<hgl/shader_schema/MaterialCreateConfig.h>
 #include<hgl/graph/CoordinateSystem.h>
-#include<hgl/graph/VertexAttrib.h>
+#include<hgl/shader_schema/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
 struct Material2DCreateConfig:public MaterialCreateConfig

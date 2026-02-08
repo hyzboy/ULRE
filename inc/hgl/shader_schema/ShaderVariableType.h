@@ -3,7 +3,7 @@
 #include<hgl/type/Str.Comp.h>
 #include<hgl/type/String.h>
 #include<hgl/type/ValueArray.h>
-#include<hgl/graph/VertexAttrib.h>
+#include<hgl/shader_schema/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/shader_schema/SamplerType.h>
 #include<hgl/shader_schema/ShaderImageType.h>

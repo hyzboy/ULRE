@@ -2,6 +2,7 @@
 #include<hgl/type/String.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/shader_schema/VkTypes.h>
 
 namespace hgl
 {

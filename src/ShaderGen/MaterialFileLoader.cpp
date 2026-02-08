@@ -1,6 +1,7 @@
 ﻿#include<hgl/shader_schema/MaterialCreateConfig.h>
 #include<hgl/shader_schema/Material2DCreateConfig.h>
 #include<hgl/shader_schema/Material3DCreateConfig.h>
+#include<hgl/shader_schema/VertexInputAttribute.h>
 #include<hgl/graph/VKVertexInputAttribute.h>
 #include<hgl/shader_schema/SamplerType.h>
 

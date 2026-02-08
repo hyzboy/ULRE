@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 

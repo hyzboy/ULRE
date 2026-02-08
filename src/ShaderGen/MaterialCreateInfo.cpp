@@ -1,7 +1,7 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
-#include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/graph/VKDeviceAttribute.h>
+#include<hgl/shader_schema/UBOCommon.h>
+#include<hgl/shader_schema/VulkanDevAttr.h>
 #include"common/MFCommon.h"
 #include"common/MFGetPosition.h"
 #include"ShaderLibrary.h"
