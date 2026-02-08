@@ -13,6 +13,8 @@
 
 namespace hgl::ecs
 {
+    std::vector<ECSTransformAssignmentBuffer*> ECSTransformAssignmentBuffer::all_instances;
+
     ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::VulkanDevice* dev)
         : device(dev)
         , transform_buffer_max_count(0)
@@ -26,6 +28,7 @@ namespace hgl::ecs
         , transform_vab_buffer(nullptr)
     {
         MaxTransformCount = dev->GetUBORange() / sizeof(math::Matrix4f);
+        all_instances.push_back(this);
     }
 
     void ECSTransformAssignmentBuffer::BindTransform(graph::Material* mtl) const
@@ -53,6 +56,7 @@ namespace hgl::ecs
         transform_buffer_max_count = 0;
         node_count = 0;
         transform_vab_buffer = nullptr;
+        pending_updates.clear();
     }
 
     void ECSTransformAssignmentBuffer::StatTransform(const std::vector<RenderItem*>& items,graph::BufferAllocPolicy policy)
@@ -124,41 +128,56 @@ namespace hgl::ecs
 
     void ECSTransformAssignmentBuffer::UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last)
     {
-        if (!transform_buffer)
+        (void)items;
+        QueueUpdateRange(first,last);
+    }
+
+    void ECSTransformAssignmentBuffer::QueueUpdateRange(const int first,const int last)
+    {
+        if (first > last)
+            return;
+
+        UpdateRange range;
+        range.first = first;
+        range.last = last;
+
+        for (auto &pending : pending_updates)
         {
-            std::cout << "[ECSTransformAssignmentBuffer::UpdateTransformData] ERROR: Transform buffer not created" << std::endl;
+            if (range.last + 1 < pending.first || range.first > pending.last + 1)
+                continue;
+
+            pending.first = hgl_min(pending.first, range.first);
+            pending.last = hgl_max(pending.last, range.last);
             return;
         }
 
-        if (items.empty())
-        {
-            std::cout << "[ECSTransformAssignmentBuffer::UpdateTransformData] WARNING: Empty items list" << std::endl;
-            return;
-        }
+        pending_updates.push_back(range);
+    }
 
-        const size_t count = items.size();
+    void ECSTransformAssignmentBuffer::WriteRange(const std::vector<RenderItem*>& items,const int first,const int last)
+    {
+        if (!transform_buffer || items.empty() || first > last)
+            return;
+
         const size_t map_size = sizeof(math::Matrix4f) * (last - first + 1);
         const size_t map_offset = sizeof(math::Matrix4f) * first;
 
         math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map(map_offset, map_size));
+        if (!l2wp)
+            return;
 
+        const size_t count = items.size();
         for (size_t i = 0; i < count; i++)
         {
             RenderItem* item = items[i];
-
             if (!item)
                 continue;
 
             const uint32_t transform_idx = item->transform_index;
-
-            // 检查索引是否在更新范围内
-            if (transform_idx < first || transform_idx > last)
+            if (transform_idx < static_cast<uint32_t>(first) || transform_idx > static_cast<uint32_t>(last))
                 continue;
 
-            // 获取世界矩阵
             glm::mat4 world_matrix = item->GetWorldMatrix();
-
-            // 写入到缓冲的正确位置
             l2wp[transform_idx - first] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
         }
 
@@ -174,6 +193,8 @@ namespace hgl::ecs
             std::cout << "[ECSTransformAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
             return;
         }
+
+        last_items = &items;
 
         bool all_static = true;
         for (const auto *item : items)
@@ -191,13 +212,10 @@ namespace hgl::ecs
 
         if (all_static)
         {
-            if (static_initialized && static_item_count == item_count)
-                return;
-
             static_only = true;
             static_item_count = item_count;
-            StatTransform(items,graph::BufferAllocPolicy::GPUOnly);
             static_initialized = true;
+            StatTransform(items,graph::BufferAllocPolicy::GPUOnly);
         }
         else
         {
@@ -263,6 +281,28 @@ namespace hgl::ecs
             }
 
             transform_vab->Unmap();
+        }
+    }
+
+    void ECSTransformAssignmentBuffer::FlushPendingUpdates()
+    {
+        if (pending_updates.empty() || !last_items)
+            return;
+
+        for (const auto &range : pending_updates)
+        {
+            WriteRange(*last_items, range.first, range.last);
+        }
+
+        pending_updates.clear();
+    }
+
+    void ECSTransformAssignmentBuffer::FlushAllPendingUpdates()
+    {
+        for (auto *inst : all_instances)
+        {
+            if (inst)
+                inst->FlushPendingUpdates();
         }
     }
 }//namespace hgl::ecs

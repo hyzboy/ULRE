@@ -95,6 +95,15 @@ namespace hgl
             for (auto& pair : render_systems)
             {
                 pair.second->Update(deltaTime);
+            }
+
+            if (auto transform_system = GetSystem<TransformSystem>())
+            {
+                transform_system->SubmitTransformUpdates();
+            }
+
+            for (auto& pair : render_systems)
+            {
                 pair.second->Render(cmd, deltaTime);
             }
         }

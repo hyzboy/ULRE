@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/TransformSystem.h>
+#include"ECSTransformAssignmentBuffer.h"
 
 namespace hgl::ecs
 {
@@ -60,5 +61,13 @@ namespace hgl::ecs
         {
             comp->UpdateIfDirty();
         }
+    }
+
+    void TransformSystem::SubmitTransformUpdates()
+    {
+        if (!world)
+            return;
+
+        ECSTransformAssignmentBuffer::FlushAllPendingUpdates();
     }
 }//namespace hgl::ecs
