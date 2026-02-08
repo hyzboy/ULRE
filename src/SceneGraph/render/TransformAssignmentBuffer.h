@@ -17,7 +17,7 @@ private:
 private:    //LocalToWorld矩阵数据
 
     uint32 transform_buffer_max_count;        ///<LocalToWorld矩阵最大数量
-    DeviceBuffer *transform_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
+    DeviceBuffer *transform_buffer;           ///<LocalToWorld矩阵数据(SSBO)
 
     void StatTransform(const DrawNodeList &);
 

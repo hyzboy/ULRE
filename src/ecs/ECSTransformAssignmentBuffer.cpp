@@ -2,6 +2,7 @@
  * ECSTransformAssignmentBuffer.cpp - ECS Transform 分配缓冲实现
  */
 
+#include<hgl/graph/RenderOptions.h>
 #include"ECSTransformAssignmentBuffer.h"
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKDevice.h>
@@ -26,7 +27,11 @@ namespace hgl::ecs
         , transform_vab(nullptr)
         , transform_vab_buffer(nullptr)
     {
+#if defined(HGL_L2W_USE_SSBO)
+        MaxTransformCount = dev->GetSSBORange() / sizeof(math::Matrix4f);
+#else
         MaxTransformCount = dev->GetUBORange() / sizeof(math::Matrix4f);
+#endif
         all_instances.push_back(this);
     }
 
@@ -44,7 +49,13 @@ namespace hgl::ecs
             return;
         }
 
+    #if defined(HGL_L2W_USE_SSBO)
+        mtl->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.set_type,
+                  hgl::graph::mtl::SBS_LocalToWorld.name,
+                  transform_buffer);
+    #else
         mtl->BindUBO(&hgl::graph::mtl::SBS_LocalToWorld, transform_buffer);
+    #endif
     }
 
     void ECSTransformAssignmentBuffer::Clear()
@@ -84,16 +95,27 @@ namespace hgl::ecs
         // 创建或重用 Transform UBO
         if (!transform_buffer)
         {
+#if defined(HGL_L2W_USE_SSBO)
+            transform_buffer = device->CreateSSBO(sizeof(math::Matrix4f) * transform_buffer_max_count,
+                                                  nullptr,
+                                                  transform_policy);
+#else
             transform_buffer = device->CreateUBO(sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                  nullptr,
                                                  transform_policy);
+#endif
 
         #ifdef _DEBUG
             graph::DebugUtils* du = device->GetDebugUtils();
             if (du)
             {
+#if defined(HGL_L2W_USE_SSBO)
+                du->SetBuffer(transform_buffer->GetBuffer(), "ECS:SSBO:Buffer:LocalToWorld");
+                du->SetDeviceMemory(transform_buffer->GetVkMemory(), "ECS:SSBO:Memory:LocalToWorld");
+#else
                 du->SetBuffer(transform_buffer->GetBuffer(), "ECS:UBO:Buffer:LocalToWorld");
                 du->SetDeviceMemory(transform_buffer->GetVkMemory(), "ECS:UBO:Memory:LocalToWorld");
+#endif
             }
         #endif//_DEBUG
         }

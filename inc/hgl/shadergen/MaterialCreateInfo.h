@@ -5,6 +5,7 @@
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
+#include<hgl/graph/RenderOptions.h>
 #include<hgl/graph/RenderTargetOutputConfig.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
@@ -15,6 +16,7 @@ namespace hgl::graph
 {
     struct VulkanDevAttr;
     struct UBODescriptor;
+    struct SSBODescriptor;
 
     namespace mtl
     {
@@ -36,7 +38,11 @@ namespace hgl::graph
 
             uint32_t l2w_max_count;
             uint32_t l2w_shader_stage;
+        #if defined(HGL_L2W_USE_SSBO)
+            SSBODescriptor *l2w_ssbo;
+        #else
             UBODescriptor *l2w_ubo;
+        #endif
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 

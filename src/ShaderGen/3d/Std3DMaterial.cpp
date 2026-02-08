@@ -12,8 +12,6 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 
     if(cfg->local_to_world)
     {
-        mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics,SBS_LocalToWorld);
-
         vsc->AddAssignTransform();
     }
 
