@@ -1,6 +1,7 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<cstring>
 
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
@@ -274,7 +275,10 @@ bool ShaderCreateInfo::ProcSSBO()
         final_shader+=AnsiString::numberOf((*ssbo)->set);
         final_shader+=",binding=";
         final_shader+=AnsiString::numberOf((*ssbo)->binding);
-        final_shader+=") buffer ";
+        if(std::strcmp((*ssbo)->name,"l2w")==0)
+            final_shader+=") readonly buffer ";
+        else
+            final_shader+=") buffer ";
         final_shader+=(*ssbo)->type;
         final_shader+="\n{";
 
