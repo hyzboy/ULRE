@@ -49,7 +49,7 @@ public:
         return(true);
     }
 
-    uint32_t            GetCurrentFrameIndices      ()const{return current_frame;}
+    uint32_t            GetCurrentFrameIndex        ()const{return current_frame;}
     uint32_t            GetFrameCount               ()const{return frame_number;}
 
 public:
@@ -78,9 +78,6 @@ public: // Command Buffer
 
     bool                WaitQueue                   ()override{return rtd_list[current_frame].queue->WaitQueue();}
     bool                WaitFence                   ()override{return rtd_list[current_frame].queue->WaitFence();}
-
-    uint32_t            GetCurrentFrameIndex        ()const override{return current_frame;}
-    uint32_t            GetFrameCount               ()const override{return frame_number;}
 
 public:
 
