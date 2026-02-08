@@ -147,5 +147,8 @@ namespace hgl::ecs
 
         /// Finalize batches (sort and prepare for rendering)
         void FinalizeBatches();
+
+        /// Assign global transform indices for shared L2W buffer
+        void AssignTransformIndices();
     };
 }//namespace hgl::ecs

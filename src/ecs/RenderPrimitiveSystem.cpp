@@ -3,6 +3,7 @@
 #include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/TransformSystem.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -115,6 +116,14 @@ namespace hgl::ecs
             SortByDistance();
         }
 
+        if (auto transform_system = world->GetSystem<TransformSystem>())
+        {
+            transform_system->SetDevice(device);
+            transform_system->EnsureTransformBuffer();
+        }
+
+        AssignTransformIndices();
+
         if (batchingEnabled)
         {
             BuildMaterialBatches();
@@ -215,6 +224,13 @@ namespace hgl::ecs
 
     void RenderPrimitiveSystem::BuildMaterialBatches()
     {
+        ECSTransformAssignmentBuffer* shared_transform_buffer = nullptr;
+
+        if (auto transform_system = world ? world->GetSystem<TransformSystem>() : nullptr)
+        {
+            shared_transform_buffer = transform_system->GetTransformBuffer();
+        }
+
         // Build material batches from visible render items
         for (auto& itemPtr : renderItems)
         {
@@ -238,14 +254,55 @@ namespace hgl::ecs
                 // Create new batch with device
                 auto batch = std::make_unique<MaterialBatch>(key, device);
                 batch->SetCameraInfo(cameraInfo);
+                batch->SetTransformBuffer(shared_transform_buffer);
                 batch->AddItem(item);
                 materialBatches[key] = std::move(batch);
             }
             else
             {
                 // Add to existing batch
+                it->second->SetTransformBuffer(shared_transform_buffer);
                 it->second->AddItem(item);
             }
+        }
+    }
+
+    void RenderPrimitiveSystem::AssignTransformIndices()
+    {
+        auto static_storage = TransformComponent::GetStaticStorage();
+        auto dynamic_storage = TransformComponent::GetDynamicStorage();
+
+        const uint32_t static_count = static_cast<uint32_t>(static_storage ? static_storage->GetSize() : 0);
+        const uint32_t dynamic_count = static_cast<uint32_t>(dynamic_storage ? dynamic_storage->GetSize() : 0);
+
+        uint32_t dynamic_base = static_count;
+
+        if (auto transform_system = world ? world->GetSystem<TransformSystem>() : nullptr)
+        {
+            dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
+        }
+
+        for (auto& itemPtr : renderItems)
+        {
+            RenderItem* item = itemPtr.get();
+            if (!item)
+                continue;
+
+            auto transform = item->GetTransform();
+            if (!transform)
+                continue;
+
+            const auto handle = transform->GetStorageHandle();
+            if (handle == TransformDataStorage::INVALID_HANDLE)
+            {
+                item->transform_index = 0;
+                continue;
+            }
+
+            if (transform->IsMovable())
+                item->transform_index = dynamic_base + handle;
+            else
+                item->transform_index = handle;
         }
     }
 
@@ -271,15 +328,6 @@ namespace hgl::ecs
         for (auto& itemPtr : renderItems)
         {
             itemPtr->UpdateWorldMatrix();
-        }
-
-        for (auto& pair : materialBatches)
-        {
-            MaterialBatch* batch = pair.second.get();
-            if (batch)
-            {
-                batch->QueueMovableTransformUpdates();
-            }
         }
     }
 

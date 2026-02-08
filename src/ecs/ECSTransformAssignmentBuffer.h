@@ -10,6 +10,7 @@
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/DeviceBufferRingWriter.h>
 #include<hgl/ecs/RenderItem.h>
+#include<hgl/ecs/TransformDataStorage.h>
 #include<vector>
 
 namespace hgl::ecs
@@ -84,6 +85,13 @@ namespace hgl::ecs
          * 绑定Transform数据到材质
          */
         void BindTransform(graph::Material* mtl) const;
+
+        void EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy);
+        uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;
+        uint32_t GetTotalCount(const uint32_t static_count,const uint32_t dynamic_count) const;
+
+        void WriteStaticFromStorage(const TransformDataStorage& storage,const uint32_t static_count);
+        void WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count);
 
         /**
          * 写入所有RenderItem的变换数据

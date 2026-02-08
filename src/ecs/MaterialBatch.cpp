@@ -3,10 +3,13 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 #include"ECSPipelineMaterialRenderer.h"
+#include<hgl/ecs/TransformComponent.h>
 #include<algorithm>
 #include<iostream>
 #include<limits>
@@ -38,8 +41,8 @@ namespace hgl::ecs
             delete icb_draw_indexed;
         if (icb_draw)
             delete icb_draw;
-        if (transform_buffer)
-            delete transform_buffer;
+        if (transform_vab)
+            delete transform_vab;
         if (mi_buffer)
             delete mi_buffer;
         if (renderer)
@@ -102,16 +105,6 @@ namespace hgl::ecs
         BuildBatches(items, draw_batches, draw_batches_count,
                      icb_draw, icb_draw_indexed, 0);
 
-        // Write transform data to buffer
-        if (key.material)
-        {
-            if (!transform_buffer && !items.empty())
-                transform_buffer = new ECSTransformAssignmentBuffer(device, ECSTransformAssignmentBuffer::Mode::MovableOnly);
-
-            if (transform_buffer && !items.empty())
-                transform_buffer->WriteItems(items);
-        }
-
         // Write material instance data to buffer
         if (key.material && key.material->hasMI())
         {
@@ -120,6 +113,86 @@ namespace hgl::ecs
 
             if (mi_buffer && !items.empty())
                 mi_buffer->WriteItems(items);
+        }
+
+        if (device && !items.empty())
+        {
+        #ifdef _DEBUG
+            if (transform_buffer)
+            {
+                uint32_t max_transform_index = 0;
+                for (auto *item : items)
+                {
+                    if (item && item->transform_index > max_transform_index)
+                        max_transform_index = item->transform_index;
+                }
+
+                auto static_storage = TransformComponent::GetStaticStorage();
+                auto dynamic_storage = TransformComponent::GetDynamicStorage();
+                const uint32_t static_count = static_cast<uint32_t>(static_storage ? static_storage->GetSize() : 0);
+                const uint32_t dynamic_count = static_cast<uint32_t>(dynamic_storage ? dynamic_storage->GetSize() : 0);
+                const uint32_t total_count = transform_buffer->GetTotalCount(static_count, dynamic_count);
+
+                if (total_count > 0 && max_transform_index >= total_count)
+                {
+                    std::cout << "[ECS::MaterialBatch::Finalize] WARNING: Transform index out of range ("
+                              << max_transform_index << " >= " << total_count << ")" << std::endl;
+                }
+            }
+        #endif
+
+            const uint32_t item_count = static_cast<uint32_t>(items.size());
+            uint32_t new_node_count = 1;
+            while (new_node_count < item_count)
+                new_node_count <<= 1;
+
+            if (!transform_vab || transform_vab_node_count < item_count)
+            {
+                transform_vab_node_count = new_node_count;
+
+                if (transform_vab)
+                    delete transform_vab;
+
+                transform_vab = device->CreateVAB(graph::Assign::TransformID::VAB_FMT,
+                                                 transform_vab_node_count,
+                                                 nullptr,
+                                                 graph::BufferAllocPolicy::Auto);
+                transform_vab_buffer = transform_vab ? transform_vab->GetBuffer() : VK_NULL_HANDLE;
+            }
+
+            if (transform_vab)
+            {
+                graph::Assign::TransformID::ValueType* transform_ptr =
+                    (graph::Assign::TransformID::ValueType*)(transform_vab->DeviceBuffer::Map());
+                const uint32_t max_transform_id =
+                    std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+                bool warned_overflow = false;
+
+                for (size_t i = 0; i < items.size(); ++i)
+                {
+                    RenderItem* item = items[i];
+                    const uint32_t idx = item ? item->transform_index : 0;
+
+                    if (idx > max_transform_id)
+                    {
+                        if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
+                        {
+                            std::cout << "[ECS::MaterialBatch::Finalize] WARNING: TransformID overflow ("
+                                      << idx << ")" << std::endl;
+                            warned_overflow = true;
+                        }
+                        *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
+                    }
+                    else
+                    {
+                        *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
+                    }
+
+                    ++transform_ptr;
+                }
+
+                transform_vab->Unmap();
+            }
         }
     }
 
@@ -358,6 +431,30 @@ namespace hgl::ecs
             return;
         }
 
+    #ifdef _DEBUG
+        if (transform_buffer && !items.empty())
+        {
+            uint32_t max_transform_index = 0;
+            for (auto *item : items)
+            {
+                if (item && item->transform_index > max_transform_index)
+                    max_transform_index = item->transform_index;
+            }
+
+            auto static_storage = TransformComponent::GetStaticStorage();
+            auto dynamic_storage = TransformComponent::GetDynamicStorage();
+            const uint32_t static_count = static_cast<uint32_t>(static_storage ? static_storage->GetSize() : 0);
+            const uint32_t dynamic_count = static_cast<uint32_t>(dynamic_storage ? dynamic_storage->GetSize() : 0);
+            const uint32_t total_count = transform_buffer->GetTotalCount(static_count, dynamic_count);
+
+            if (total_count > 0 && max_transform_index >= total_count)
+            {
+                std::cout << "[ECS::MaterialBatch::Render] WARNING: Transform index out of range ("
+                          << max_transform_index << " >= " << total_count << ")" << std::endl;
+            }
+        }
+    #endif
+
         if (transform_buffer)
             transform_buffer->BindTransform(key.material);
 
@@ -367,7 +464,8 @@ namespace hgl::ecs
         if (renderer && draw_batches_count > 0)
         {
             renderer->Render(cmdBuffer, draw_batches, draw_batches_count,
-                           transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
+                           transform_buffer, mi_buffer, transform_vab_buffer,
+                           icb_draw, icb_draw_indexed);
         }
         // else
         // {
