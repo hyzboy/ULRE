@@ -68,3 +68,11 @@ inline const ShaderImageType ParseShaderImageType(const char *name,int name_len=
     return (ShaderImageType)result;
 }
 }
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::ShaderImageType;
+    using hgl::shader_schema::GetShaderImageTypeName;
+    using hgl::shader_schema::GetShaderImageTypeByString;
+}//namespace hgl::graph

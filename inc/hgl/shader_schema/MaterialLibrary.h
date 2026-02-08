@@ -98,3 +98,12 @@ inline MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_att
 }
 
 STD_MTL_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph::mtl
+namespace hgl::graph::mtl
+{
+    using hgl::shader_schema::mtl::MaterialName;
+    using hgl::shader_schema::mtl::MaterialFactory;
+    using hgl::shader_schema::mtl::MaterialLibrary;
+    using hgl::shader_schema::mtl::CreateMaterialCreateInfo;
+}//namespace hgl::graph::mtl

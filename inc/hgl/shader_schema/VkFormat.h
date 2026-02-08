@@ -583,3 +583,13 @@ struct VulkanColorSpace
 const VulkanColorSpace *GetVulkanColorSpace(const VkColorSpaceKHR &cs);
 
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::VulkanFormat;
+    using hgl::shader_schema::GetVulkanFormatList;
+    using hgl::shader_schema::GetVulkanFormat;
+    using hgl::shader_schema::VulkanColorSpace;
+    using hgl::shader_schema::GetVulkanColorSpace;
+}//namespace hgl::graph

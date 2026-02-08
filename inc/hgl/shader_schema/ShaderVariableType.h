@@ -424,3 +424,16 @@ public:
 using SVArray=ShaderVariableArray;
 
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::ShaderVariableBaseType;
+    using hgl::shader_schema::SVBaseType;
+    using hgl::shader_schema::ShaderVariableType;
+    using hgl::shader_schema::SVType;
+    namespace SVTypeFactory = hgl::shader_schema::SVTypeFactory;
+    using hgl::shader_schema::ShaderVariable;
+    using hgl::shader_schema::ShaderVariableArray;
+    using hgl::shader_schema::SVArray;
+}//namespace hgl::graph

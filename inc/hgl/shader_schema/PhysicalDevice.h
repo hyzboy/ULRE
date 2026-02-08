@@ -218,3 +218,10 @@ public:
 };//class VulkanPhyDevice
 
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::VkQueueFamilyPropertiesList;
+    using hgl::shader_schema::VulkanPhyDevice;
+}//namespace hgl::graph

@@ -58,3 +58,11 @@ public:
 	}
 };//class VulkanDevAttr
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::VulkanInstance;
+    using hgl::shader_schema::VulkanSurface;
+    using hgl::shader_schema::VulkanDevAttr;
+}//namespace hgl::graph

@@ -139,3 +139,10 @@ DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,BasicLitMaterialCreateConfig);
  */
 MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg);
 STD_MTL_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph::mtl
+namespace hgl::graph::mtl
+{
+    using hgl::shader_schema::mtl::Material3DCreateConfig;
+    using hgl::shader_schema::mtl::LoadMaterialFromFile;
+}//namespace hgl::graph::mtl

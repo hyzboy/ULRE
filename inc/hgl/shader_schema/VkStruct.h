@@ -159,3 +159,10 @@ public:
     }
 };
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::vkstruct_flag;
+    using hgl::shader_schema::PipelineShaderStageCreateInfo;
+}//namespace hgl::graph

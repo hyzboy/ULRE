@@ -30,3 +30,10 @@ namespace Assign
 }//namespace Assign
 
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph::Assign
+{
+	namespace TransformID = hgl::shader_schema::Assign::TransformID;
+	namespace MaterialInstanceID = hgl::shader_schema::Assign::MaterialInstanceID;
+}//namespace hgl::graph::Assign

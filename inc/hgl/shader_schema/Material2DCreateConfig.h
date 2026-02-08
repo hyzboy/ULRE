@@ -85,3 +85,10 @@ DEFINE_MATERIAL_FACTORY_CLASS(Text2D,const Text2DMaterialCreateConfig)
 MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
 
 STD_MTL_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph::mtl
+namespace hgl::graph::mtl
+{
+    using hgl::shader_schema::mtl::Material2DCreateConfig;
+    using hgl::shader_schema::mtl::LoadMaterialFromFile;
+}//namespace hgl::graph::mtl

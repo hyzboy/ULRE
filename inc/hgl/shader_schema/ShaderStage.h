@@ -29,3 +29,9 @@ enum class ShaderStage:uint32_t
 };
 
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::ShaderStage;
+}//namespace hgl::graph

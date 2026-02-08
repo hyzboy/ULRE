@@ -28,3 +28,10 @@ public:
 
 using ShaderDescriptorSetArray=ShaderDescriptorSet[DESCRIPTOR_SET_TYPE_COUNT];
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+	using hgl::shader_schema::ShaderDescriptorSet;
+	using hgl::shader_schema::ShaderDescriptorSetArray;
+}//namespace hgl::graph

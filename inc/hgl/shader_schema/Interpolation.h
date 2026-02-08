@@ -26,3 +26,11 @@ inline const char *GetInterpolationName(const Interpolation &i)
     return InterpolationName[(size_t)i];
 }
 VK_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::Interpolation;
+    using hgl::shader_schema::InterpolationName;
+    using hgl::shader_schema::GetInterpolationName;
+}//namespace hgl::graph

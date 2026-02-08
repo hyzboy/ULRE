@@ -68,3 +68,11 @@ inline const TextureType ParseTextureType(const char *name,int name_len=0)
     return (TextureType)result;
 }
 }
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::TextureType;
+    using hgl::shader_schema::GetTextureTypeName;
+    using hgl::shader_schema::GetTextureTypeByString;
+}//namespace hgl::graph

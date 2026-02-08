@@ -88,3 +88,11 @@ inline const SamplerType ParseSamplerType(const char *name,int name_len=0)
     return (SamplerType)result;
 }
 }
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::SamplerType;
+    using hgl::shader_schema::GetSamplerTypeName;
+    using hgl::shader_schema::GetSamplerTypeByString;
+}//namespace hgl::graph
