@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/shader_schema/StdMaterial.h>
 #include<hgl/type/String.h>
 #include<hgl/shader_schema/RenderTargetOutputConfig.h>
 #include<hgl/shader_schema/ShaderStage.h>

@@ -1,3 +1,71 @@
 #pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/type/String.h>
+
+#define STD_MTL_NAMESPACE_BEGIN namespace hgl::graph::mtl{
+#define STD_MTL_NAMESPACE_END   }
+
+#define STD_MTL_NAMESPACE hgl::graph::mtl
+#define STD_MTL_NAMESPACE_USING using namespace STD_MTL_NAMESPACE;
+
+#define STD_MTL_FUNC_NAMESPACE_BEGIN namespace hgl::graph::mtl::func{
+#define STD_MTL_FUNC_NAMESPACE_END   }
+
+#define STD_MTL_FUNC_NAMESPACE hgl::graph::mtl::func
+#define STD_MTL_FUNC_NAMESPACE_USING using namespace STD_MTL_FUNC_NAMESPACE;
+
+namespace hgl::graph
+{
+	class ShaderCreateInfoVertex;
+	class ShaderCreateInfoGeometry;
+	class ShaderCreateInfoFragment;
+	struct VulkanDevAttr;
+
+	namespace mtl
+	{
+		enum class WithSky:uint8
+		{
+			Without=0,
+			With
+		};
+
+		enum class WithCamera:uint8
+		{
+			Without=0,
+			With
+		};
+
+		enum class WithLocalToWorld:uint8
+		{
+			Without=0,
+			With
+		};
+
+		class MaterialCreateInfo;
+		struct MaterialCreateConfig;
+
+		class StdMaterial
+		{
+		protected:
+
+			MaterialCreateInfo *mci;
+
+		protected:
+
+			virtual bool BeginCustomShader(){return true;/*some work before create shader*/};
+
+			virtual bool CustomVertexShader(ShaderCreateInfoVertex *)=0;
+			virtual bool CustomGeometryShader(ShaderCreateInfoGeometry *){return false;}
+			virtual bool CustomFragmentShader(ShaderCreateInfoFragment *)=0;
+
+			virtual bool EndCustomShader(){return true;/*some work after create shader*/};
+
+		public:
+
+			StdMaterial(const MaterialCreateConfig *);
+			virtual ~StdMaterial()=default;
+
+			virtual MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr);
+		};//class StdMaterial
+	}//namespace mtl
+}//namespace hgl::graph

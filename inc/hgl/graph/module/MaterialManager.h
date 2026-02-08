@@ -6,9 +6,10 @@
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
-#include<hgl/shadergen/MaterialCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
+
+class ShaderCreateInfo;
 
 namespace mtl
 {
