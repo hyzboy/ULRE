@@ -122,6 +122,43 @@ namespace hgl::ecs
         }
     }
 
+    static bool GetStorageWorldMatrix(const RenderItem* item, math::Matrix4f& out)
+    {
+        if (!item)
+        {
+            out = math::Identity4f;
+            return false;
+        }
+
+        auto transform = item->GetTransform();
+        if (!transform)
+        {
+            out = math::Identity4f;
+            return false;
+        }
+
+        const auto handle = transform->GetStorageHandle();
+        if (handle == TransformDataStorage::INVALID_HANDLE)
+        {
+            out = math::Identity4f;
+            return false;
+        }
+
+        const auto storage = transform->IsMovable()
+            ? TransformComponent::GetDynamicStorage()
+            : TransformComponent::GetStaticStorage();
+
+        if (!storage)
+        {
+            out = math::Identity4f;
+            return false;
+        }
+
+        const glm::mat4 world_matrix = storage->GetWorldMatrix(handle);
+        out = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+        return true;
+    }
+
     void ECSTransformAssignmentBuffer::UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last)
     {
         (void)items;
@@ -173,8 +210,9 @@ namespace hgl::ecs
             if (transform_idx < static_cast<uint32_t>(first) || transform_idx > static_cast<uint32_t>(last))
                 continue;
 
-            glm::mat4 world_matrix = item->GetWorldMatrix();
-            l2wp[transform_idx - first] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            math::Matrix4f l2w;
+            GetStorageWorldMatrix(item, l2w);
+            l2wp[transform_idx - first] = l2w;
         }
 
         transform_buffer->Unmap();
@@ -256,8 +294,9 @@ namespace hgl::ecs
                     continue;
 
                 const uint32_t idx = item->transform_index;
-                glm::mat4 world_matrix = item->GetWorldMatrix();
-                l2wp[idx] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+                math::Matrix4f l2w;
+                GetStorageWorldMatrix(item, l2w);
+                l2wp[idx] = l2w;
             }
 
             for (auto *item : movable_items)
@@ -266,8 +305,9 @@ namespace hgl::ecs
                     continue;
 
                 const uint32_t idx = item->transform_index;
-                glm::mat4 world_matrix = item->GetWorldMatrix();
-                l2wp[idx] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+                math::Matrix4f l2w;
+                GetStorageWorldMatrix(item, l2w);
+                l2wp[idx] = l2w;
             }
 
             transform_buffer->Unmap();
