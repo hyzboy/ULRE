@@ -28,16 +28,18 @@ namespace hgl::ecs
     class PrimitiveComponent;
 
     /**
-     * RenderPrimitiveSystem
+    * RenderPrimitiveSystem
      *
-     * Specialized rendering system for PrimitiveComponent entities.
-     * Follows ECS design principle: one system per component type.
+    * Primitive batching system for PrimitiveComponent entities.
+    * Follows ECS design principle: one system per component type.
      *
      * Features:
      * - Collects entities with TransformComponent and PrimitiveComponent
      * - Performs frustum culling using AABB or sphere
-     * - Batches primitives by material/pipeline for efficient rendering
-     * - Sorts by distance for optimal draw order
+    * - Batches primitives by material/pipeline for efficient rendering
+    * - Sorts by distance for optimal draw order
+    *
+    * Rendering is handled by RenderPrimitiveRenderSystem.
      *
      * Future systems can handle other component types:
      * - RenderParticleSystem for particle effects
@@ -130,8 +132,7 @@ namespace hgl::ecs
         /// Update material instance data for a specific component
         void UpdateMaterialInstanceData(PrimitiveComponent* comp);
 
-        /// Render all collected primitives
-        /// Similar to hgl::graph::PipelineMaterialBatch::Render
+        /// Render all collected primitives (used by RenderPrimitiveRenderSystem)
         void RenderPrimitives(graph::RenderCmdBuffer* cmdBuffer);
 
     private:
