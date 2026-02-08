@@ -17,7 +17,6 @@
 namespace hgl::ecs
 {
     std::vector<ECSTransformAssignmentBuffer*> ECSTransformAssignmentBuffer::all_instances;
-    uint32_t ECSTransformAssignmentBuffer::ring_frame_index = 0;
 
     ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::VulkanDevice* dev, const Mode m)
         : device(dev)
@@ -29,6 +28,7 @@ namespace hgl::ecs
         , node_count(0)
         , transform_vab(nullptr)
         , transform_vab_buffer(nullptr)
+        , ring_writer(nullptr, sizeof(math::Matrix4f), HGL_L2W_RING_FRAMES)
     {
 #if defined(HGL_L2W_USE_SSBO)
         MaxTransformCount = dev->GetSSBORange() / sizeof(math::Matrix4f);
@@ -120,6 +120,8 @@ namespace hgl::ecs
             }
         #endif//_DEBUG
         }
+
+        ring_writer.SetBuffer(transform_buffer);
     }
 
     static bool GetStorageWorldMatrix(const RenderItem* item, math::Matrix4f& out)
@@ -267,9 +269,9 @@ namespace hgl::ecs
 
         const uint32_t static_count = static_cast<uint32_t>(static_items.size());
         const uint32_t dynamic_count = static_cast<uint32_t>(movable_items.size());
-        const uint32_t ring_frames = HGL_L2W_RING_FRAMES;
-        const uint32_t ring_base = static_count + ring_frame_index * dynamic_count;
-        const uint32_t total_count = static_count + dynamic_count * ring_frames;
+        const uint32_t ring_frames = ring_writer.GetRingFrames();
+        const uint32_t ring_base = ring_writer.GetBaseIndex(static_count, dynamic_count);
+        const uint32_t total_count = ring_writer.GetTotalCount(static_count, dynamic_count);
         const uint32_t max_transform_id = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
 
         if (sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t)
@@ -426,11 +428,19 @@ namespace hgl::ecs
 
     void ECSTransformAssignmentBuffer::AdvanceFrame()
     {
-        ring_frame_index = (ring_frame_index + 1) % HGL_L2W_RING_FRAMES;
+        for (auto *inst : all_instances)
+        {
+            if (inst)
+                inst->ring_writer.AdvanceFrame();
+        }
     }
 
     void ECSTransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
     {
-        ring_frame_index = (HGL_L2W_RING_FRAMES > 0) ? (index % HGL_L2W_RING_FRAMES) : 0;
+        for (auto *inst : all_instances)
+        {
+            if (inst)
+                inst->ring_writer.SetFrameIndex(index);
+        }
     }
 }//namespace hgl::ecs

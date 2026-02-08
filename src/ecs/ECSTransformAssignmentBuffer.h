@@ -8,6 +8,7 @@
 #pragma once
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/graph/DeviceBufferRingWriter.h>
 #include<hgl/ecs/RenderItem.h>
 #include<vector>
 
@@ -56,7 +57,7 @@ namespace hgl::ecs
         uint32_t last_dynamic_count=0;
 
         static std::vector<ECSTransformAssignmentBuffer*> all_instances;
-        static uint32_t ring_frame_index;
+        graph::DeviceBufferRingWriter ring_writer;
 
         void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
         void QueueUpdateRange(const int first,const int last);
