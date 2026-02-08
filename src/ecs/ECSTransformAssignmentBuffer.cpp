@@ -16,6 +16,7 @@
 namespace hgl::ecs
 {
     std::vector<ECSTransformAssignmentBuffer*> ECSTransformAssignmentBuffer::all_instances;
+    uint32_t ECSTransformAssignmentBuffer::ring_frame_index = 0;
 
     ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::VulkanDevice* dev, const Mode m)
         : device(dev)
@@ -70,18 +71,16 @@ namespace hgl::ecs
         pending_updates.clear();
     }
 
-    void ECSTransformAssignmentBuffer::StatTransform(const std::vector<RenderItem*>& items,graph::BufferAllocPolicy policy)
+    void ECSTransformAssignmentBuffer::StatTransform(const size_t required_count,graph::BufferAllocPolicy policy)
     {
-        const size_t item_count = items.size();
-
         // 检查是否需要重新分配缓冲
         if (!transform_buffer)
         {
-            transform_buffer_max_count = hgl::power_to_2(item_count);
+            transform_buffer_max_count = hgl::power_to_2(required_count);
         }
-        else if (item_count > transform_buffer_max_count)
+        else if (required_count > transform_buffer_max_count)
         {
-            transform_buffer_max_count = hgl::power_to_2(item_count);
+            transform_buffer_max_count = hgl::power_to_2(required_count);
             SAFE_CLEAR(transform_buffer);
         }
 
@@ -231,10 +230,6 @@ namespace hgl::ecs
         last_items = &items;
 
         static_only = (mode == Mode::StaticOnly);
-        if (static_only)
-            StatTransform(items,graph::BufferAllocPolicy::GPUOnly);
-        else
-            StatTransform(items,graph::BufferAllocPolicy::Auto);
 
         std::vector<RenderItem*> static_items;
         std::vector<RenderItem*> movable_items;
@@ -269,21 +264,36 @@ namespace hgl::ecs
                 return ah < bh;
             });
 
+        const uint32_t static_count = static_cast<uint32_t>(static_items.size());
+        const uint32_t dynamic_count = static_cast<uint32_t>(movable_items.size());
+        const uint32_t ring_frames = HGL_L2W_RING_FRAMES;
+        const uint32_t ring_base = static_count + ring_frame_index * dynamic_count;
+        const uint32_t total_count = static_count + dynamic_count * ring_frames;
+
+        last_static_count = static_count;
+        last_dynamic_count = dynamic_count;
+
+        if (static_only)
+            StatTransform(total_count,graph::BufferAllocPolicy::GPUOnly);
+        else
+            StatTransform(total_count,graph::BufferAllocPolicy::Auto);
+
         uint32_t transform_index = 0;
         for (auto *item : static_items)
         {
             item->transform_index = transform_index++;
         }
 
+        uint32_t dynamic_index = 0;
         for (auto *item : movable_items)
         {
-            item->transform_index = transform_index++;
+            item->transform_index = ring_base + dynamic_index++;
         }
 
         math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map());
         if (l2wp)
         {
-            for (size_t i = 0; i < item_count; ++i)
+            for (size_t i = 0; i < total_count; ++i)
             {
                 l2wp[i] = math::Identity4f;
             }
@@ -391,5 +401,10 @@ namespace hgl::ecs
             if (inst)
                 inst->FlushPendingUpdates();
         }
+    }
+
+    void ECSTransformAssignmentBuffer::AdvanceFrame()
+    {
+        ring_frame_index = (ring_frame_index + 1) % HGL_L2W_RING_FRAMES;
     }
 }//namespace hgl::ecs
