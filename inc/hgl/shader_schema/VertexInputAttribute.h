@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/shader_schema/VertexAttrib.h>
-#include<hgl/graph/VKInterpolation.h>
+#include<hgl/shader_schema/Interpolation.h>
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/String.h>
 #include<compare>
