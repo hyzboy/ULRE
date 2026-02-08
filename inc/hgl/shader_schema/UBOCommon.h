@@ -135,3 +135,10 @@ constexpr const ShaderBufferSource SBS_SkyInfo=
 };
 
 STD_MTL_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph::mtl
+namespace hgl::graph::mtl
+{
+    using hgl::shader_schema::mtl::CreateUBODescriptor;
+    // All SBS_* constants are also available via the namespace alias
+}//namespace hgl::graph::mtl

@@ -28,3 +28,9 @@ namespace blinnphong
     };
 }//namespace blinnphong
 STD_MTL_NAMESPACE_END
+
+// Backward compatibility aliases for hgl::graph::mtl
+namespace hgl::graph::mtl
+{
+    namespace blinnphong = hgl::shader_schema::mtl::blinnphong;
+}//namespace hgl::graph::mtl
