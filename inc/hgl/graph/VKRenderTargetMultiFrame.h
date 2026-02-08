@@ -79,6 +79,9 @@ public: // Command Buffer
     bool                WaitQueue                   ()override{return rtd_list[current_frame].queue->WaitQueue();}
     bool                WaitFence                   ()override{return rtd_list[current_frame].queue->WaitFence();}
 
+    uint32_t            GetCurrentFrameIndex        ()const override{return current_frame;}
+    uint32_t            GetFrameCount               ()const override{return frame_number;}
+
 public:
 
     virtual RenderCmdBuffer *BeginRender()override

@@ -152,6 +152,11 @@ namespace hgl::graph
             cmd->SetClearColor(0,clear_color);
             cmd->BeginRenderPass();
 
+            if(render_target && GetECSContext())
+            {
+                GetECSContext()->SetFrameIndex(render_target->GetCurrentFrameIndex());
+            }
+
             // TODO: 在此处接入 ECS 的渲染收集与绘制
             GetECSContext()->Render(cmd, 0.0f);
 

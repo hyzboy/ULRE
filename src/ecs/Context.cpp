@@ -93,8 +93,6 @@ namespace hgl
             if (!active)
                 return;
 
-            ECSTransformAssignmentBuffer::AdvanceFrame();
-
             for (auto& pair : render_systems)
             {
                 pair.second->Update(deltaTime);
@@ -109,6 +107,11 @@ namespace hgl
             {
                 pair.second->Render(cmd, deltaTime);
             }
+        }
+
+        void ECSContext::SetFrameIndex(const uint32_t index)
+        {
+            ECSTransformAssignmentBuffer::SetFrameIndex(index);
         }
 
         void ECSContext::RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp)

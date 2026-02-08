@@ -105,5 +105,6 @@ namespace hgl::ecs
         static void FlushAllPendingUpdates();
 
         static void AdvanceFrame();
+        static void SetFrameIndex(const uint32_t index);
     };
 }//namespace hgl::ecs
