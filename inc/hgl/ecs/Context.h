@@ -29,6 +29,25 @@ namespace hgl
             std::unordered_map<size_t, std::shared_ptr<System>> tick_systems;
             std::unordered_map<size_t, std::shared_ptr<System>> render_systems;
 
+            struct OrderedSystem
+            {
+                size_t key = 0;
+                int priority = 0;
+                uint64_t order = 0;
+                std::shared_ptr<System> system;
+            };
+
+            using DependencyMap = std::unordered_map<size_t, std::vector<size_t>>;
+
+            std::vector<OrderedSystem> tick_system_order;
+            std::vector<OrderedSystem> render_system_order;
+            bool tick_order_dirty = false;
+            bool render_order_dirty = false;
+            uint64_t next_system_order = 1;
+
+            DependencyMap tick_dependencies;
+            DependencyMap render_dependencies;
+
             // 组件注册表：按类型hash存储弱引用，便于系统快速查询
             std::unordered_map<size_t, std::vector<std::weak_ptr<Component>>> component_registry;
 
@@ -37,6 +56,18 @@ namespace hgl
             std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
 
             bool active = false;
+
+        private:
+
+            void SortTickSystems();
+            void SortRenderSystems();
+            void SortSystemList(std::vector<OrderedSystem>& order_list,
+                                const DependencyMap& dependencies,
+                                bool& dirty_flag,
+                                const char* label);
+            OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);
+            void AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system, int priority);
+            void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
 
         public:
 
@@ -100,12 +131,17 @@ namespace hgl
             {
                 auto system = std::make_shared<T>(std::forward<Args>(args)...);
                 const size_t key = typeid(T).hash_code();
+                AddOrUpdateSystem(is_render, key, system, 0);
+                return system;
+            }
 
-                if(is_render)
-                    render_systems[key] = system;
-                else
-                    tick_systems[key] = system;
-
+            /// Register a system with explicit priority (lower runs earlier)
+            template<typename T, typename... Args>
+            std::shared_ptr<T> RegisterSystemWithPriority(bool is_render, int priority, Args&&... args)
+            {
+                auto system = std::make_shared<T>(std::forward<Args>(args)...);
+                const size_t key = typeid(T).hash_code();
+                AddOrUpdateSystem(is_render, key, system, priority);
                 return system;
             }
 
@@ -116,11 +152,68 @@ namespace hgl
                 return RegisterSystem<T>(false, std::forward<Args>(args)...);
             }
 
+            /// Register a tick (logic) system with explicit priority
+            template<typename T, typename... Args>
+            std::shared_ptr<T> RegisterTickSystemWithPriority(int priority, Args&&... args)
+            {
+                return RegisterSystemWithPriority<T>(false, priority, std::forward<Args>(args)...);
+            }
+
             /// Register a render system
             template<typename T, typename... Args>
             std::shared_ptr<T> RegisterRenderSystem(Args&&... args)
             {
                 return RegisterSystem<T>(true, std::forward<Args>(args)...);
+            }
+
+            /// Register a render system with explicit priority
+            template<typename T, typename... Args>
+            std::shared_ptr<T> RegisterRenderSystemWithPriority(int priority, Args&&... args)
+            {
+                return RegisterSystemWithPriority<T>(true, priority, std::forward<Args>(args)...);
+            }
+
+            /// Update system priority (lower runs earlier)
+            template<typename T>
+            bool SetSystemPriority(int priority)
+            {
+                const size_t key = typeid(T).hash_code();
+
+                if (auto it = tick_systems.find(key); it != tick_systems.end())
+                {
+                    if (auto *entry = FindOrderedSystem(tick_system_order, key))
+                    {
+                        entry->priority = priority;
+                        tick_order_dirty = true;
+                        return true;
+                    }
+                }
+
+                if (auto it = render_systems.find(key); it != render_systems.end())
+                {
+                    if (auto *entry = FindOrderedSystem(render_system_order, key))
+                    {
+                        entry->priority = priority;
+                        render_order_dirty = true;
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            /// Add dependency for tick systems (Dependent runs after Dependency)
+            template<typename Dependent, typename Dependency>
+            void AddTickDependency()
+            {
+                AddSystemDependency(false, typeid(Dependent).hash_code(), typeid(Dependency).hash_code());
+            }
+
+            /// Add dependency for render systems (Dependent runs after Dependency)
+            template<typename Dependent, typename Dependency>
+            void AddRenderDependency()
+            {
+                AddSystemDependency(true, typeid(Dependent).hash_code(), typeid(Dependency).hash_code());
             }
 
              /// Get a system by type

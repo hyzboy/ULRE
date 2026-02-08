@@ -34,12 +34,21 @@ namespace hgl
                 }
             }
 
-            // Initialize all systems
-            for (auto& pair : tick_systems)
-                pair.second->Initialize();
+                SortTickSystems();
+                SortRenderSystems();
 
-            for (auto& pair : render_systems)
-                pair.second->Initialize();
+            // Initialize all systems
+                for (auto& entry : tick_system_order)
+                {
+                    if (entry.system)
+                        entry.system->Initialize();
+                }
+
+                for (auto& entry : render_system_order)
+                {
+                    if (entry.system)
+                        entry.system->Initialize();
+                }
 
             active = true;
             OnCreate();
@@ -62,13 +71,24 @@ namespace hgl
             movable_transforms.clear();
 
             // Shutdown all systems
-            for (auto& pair : tick_systems)
-                pair.second->Shutdown();
-            tick_systems.clear();
+            SortTickSystems();
+            SortRenderSystems();
 
-            for (auto& pair : render_systems)
-                pair.second->Shutdown();
+            for (auto& entry : tick_system_order)
+            {
+                if (entry.system)
+                    entry.system->Shutdown();
+            }
+            tick_systems.clear();
+            tick_system_order.clear();
+
+            for (auto& entry : render_system_order)
+            {
+                if (entry.system)
+                    entry.system->Shutdown();
+            }
             render_systems.clear();
+            render_system_order.clear();
 
             active = false;
             OnDestroy();
@@ -79,9 +99,14 @@ namespace hgl
             if (!active)
                 return;
 
+            SortTickSystems();
+
             // Update non-render systems
-            for (auto& pair : tick_systems)
-                pair.second->Update(deltaTime);
+            for (auto& entry : tick_system_order)
+            {
+                if (entry.system)
+                    entry.system->Update(deltaTime);
+            }
 
             // Update all entities
             for (auto& entity : entities)
@@ -93,9 +118,12 @@ namespace hgl
             if (!active)
                 return;
 
-            for (auto& pair : render_systems)
+            SortRenderSystems();
+
+            for (auto& entry : render_system_order)
             {
-                pair.second->Update(deltaTime);
+                if (entry.system)
+                    entry.system->Update(deltaTime);
             }
 
             if (auto transform_system = GetSystem<TransformSystem>())
@@ -103,9 +131,183 @@ namespace hgl
                 transform_system->SubmitTransformUpdates();
             }
 
-            for (auto& pair : render_systems)
+            for (auto& entry : render_system_order)
             {
-                pair.second->Render(cmd, deltaTime);
+                if (entry.system)
+                    entry.system->Render(cmd, deltaTime);
+            }
+        }
+
+        void ECSContext::SortTickSystems()
+        {
+            SortSystemList(tick_system_order, tick_dependencies, tick_order_dirty, "Tick");
+        }
+
+        void ECSContext::SortRenderSystems()
+        {
+            SortSystemList(render_system_order, render_dependencies, render_order_dirty, "Render");
+        }
+
+        void ECSContext::SortSystemList(std::vector<OrderedSystem>& order_list,
+                                         const DependencyMap& dependencies,
+                                         bool& dirty_flag,
+                                         const char* label)
+        {
+            if (!dirty_flag)
+                return;
+
+            if (order_list.empty())
+            {
+                dirty_flag = false;
+                return;
+            }
+
+            std::unordered_map<size_t, size_t> index_map;
+            index_map.reserve(order_list.size());
+
+            for (size_t i = 0; i < order_list.size(); ++i)
+            {
+                index_map[order_list[i].key] = i;
+            }
+
+            std::vector<size_t> indegree(order_list.size(), 0);
+            std::vector<std::vector<size_t>> adj(order_list.size());
+
+            for (const auto& pair : dependencies)
+            {
+                const size_t dependent_key = pair.first;
+                auto dep_it = index_map.find(dependent_key);
+                if (dep_it == index_map.end())
+                    continue;
+
+                const size_t dependent_index = dep_it->second;
+
+                for (const size_t dependency_key : pair.second)
+                {
+                    auto dependency_it = index_map.find(dependency_key);
+                    if (dependency_it == index_map.end())
+                    {
+                    #ifdef _DEBUG
+                        std::cout << "[ECSContext::SortSystemList] WARNING: " << label
+                                  << " dependency missing for key " << dependent_key
+                                  << " -> " << dependency_key << std::endl;
+                    #endif
+                        continue;
+                    }
+
+                    const size_t dependency_index = dependency_it->second;
+                    adj[dependency_index].push_back(dependent_index);
+                    ++indegree[dependent_index];
+                }
+            }
+
+            auto order_compare = [&order_list](size_t a, size_t b)
+            {
+                const auto& lhs = order_list[a];
+                const auto& rhs = order_list[b];
+                if (lhs.priority != rhs.priority)
+                    return lhs.priority < rhs.priority;
+                return lhs.order < rhs.order;
+            };
+
+            std::vector<size_t> available;
+            available.reserve(order_list.size());
+
+            for (size_t i = 0; i < order_list.size(); ++i)
+            {
+                if (indegree[i] == 0)
+                    available.push_back(i);
+            }
+
+            std::vector<OrderedSystem> sorted;
+            sorted.reserve(order_list.size());
+
+            while (!available.empty())
+            {
+                std::sort(available.begin(), available.end(), order_compare);
+                const size_t current = available.front();
+                available.erase(available.begin());
+
+                sorted.push_back(order_list[current]);
+
+                for (const size_t next : adj[current])
+                {
+                    if (--indegree[next] == 0)
+                        available.push_back(next);
+                }
+            }
+
+            if (sorted.size() != order_list.size())
+            {
+                std::stable_sort(order_list.begin(), order_list.end(),
+                    [](const OrderedSystem& a, const OrderedSystem& b)
+                    {
+                        if (a.priority != b.priority)
+                            return a.priority < b.priority;
+                        return a.order < b.order;
+                    });
+
+                std::cout << "[ECSContext::SortSystemList] WARNING: " << label
+                          << " system dependencies contain a cycle. Falling back to priority order." << std::endl;
+            }
+            else
+            {
+                order_list.swap(sorted);
+            }
+
+            dirty_flag = false;
+        }
+
+        ECSContext::OrderedSystem* ECSContext::FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key)
+        {
+            for (auto& entry : list)
+            {
+                if (entry.key == key)
+                    return &entry;
+            }
+
+            return nullptr;
+        }
+
+        void ECSContext::AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system, int priority)
+        {
+            auto& sys_map = is_render ? render_systems : tick_systems;
+            auto& order_list = is_render ? render_system_order : tick_system_order;
+            auto& dirty_flag = is_render ? render_order_dirty : tick_order_dirty;
+
+            sys_map[key] = system;
+
+            if (auto *entry = FindOrderedSystem(order_list, key))
+            {
+                entry->system = system;
+                entry->priority = priority;
+                dirty_flag = true;
+                return;
+            }
+
+            OrderedSystem entry;
+            entry.key = key;
+            entry.priority = priority;
+            entry.order = next_system_order++;
+            entry.system = system;
+            order_list.push_back(std::move(entry));
+            dirty_flag = true;
+        }
+
+        void ECSContext::AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key)
+        {
+            if (dependent_key == dependency_key)
+                return;
+
+            auto& deps = is_render ? render_dependencies : tick_dependencies;
+            auto& order_dirty = is_render ? render_order_dirty : tick_order_dirty;
+
+            auto& list = deps[dependent_key];
+            const auto it = std::find(list.begin(), list.end(), dependency_key);
+            if (it == list.end())
+            {
+                list.push_back(dependency_key);
+                order_dirty = true;
             }
         }
 
