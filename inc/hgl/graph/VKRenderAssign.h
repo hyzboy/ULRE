@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/RenderOptions.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VertexAttrib.h>
 
@@ -14,10 +15,16 @@ namespace Assign
 {
     namespace TransformID
     {
+    #if defined(HGL_TRANSFORM_ID_U32) && HGL_TRANSFORM_ID_U32
+        using ValueType = uint32_t;
+        constexpr VkFormat          VAB_FMT         = VK_FORMAT_R32_UINT;      // Transform索引格式(R32UI)
+    #else
+        using ValueType = uint16_t;
         constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;      // Transform索引格式(R16UI)
+    #endif
         constexpr const char *      VIS_NAME        = "TransformID";           // Transform索引顶点输入名称
         constexpr VAType            VAT_FMT         = VAT_UINT;                // Transform索引顶点属性类型
-        constexpr const uint32_t    STRIDE_BYTES    = sizeof(uint16);          // Transform索引顶点属性字节大小
+        constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);       // Transform索引顶点属性字节大小
     }//namespace Transform
 
     namespace MaterialInstanceID

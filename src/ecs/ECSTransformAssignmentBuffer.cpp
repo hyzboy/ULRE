@@ -11,6 +11,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<algorithm>
+#include<limits>
 #include<iostream>
 
 namespace hgl::ecs
@@ -269,6 +270,14 @@ namespace hgl::ecs
         const uint32_t ring_frames = HGL_L2W_RING_FRAMES;
         const uint32_t ring_base = static_count + ring_frame_index * dynamic_count;
         const uint32_t total_count = static_count + dynamic_count * ring_frames;
+        const uint32_t max_transform_id = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+
+        if (sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t)
+         && total_count > max_transform_id + 1)
+        {
+            std::cout << "[ECSTransformAssignmentBuffer::WriteItems] WARNING: Transform count exceeds R16 limit ("
+                      << total_count << ")" << std::endl;
+        }
 
         last_static_count = static_count;
         last_dynamic_count = dynamic_count;
@@ -338,7 +347,7 @@ namespace hgl::ecs
             if (!transform_vab)
             {
                 graph::BufferAllocPolicy vab_policy = static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto;
-                transform_vab = device->CreateVAB(VK_FORMAT_R16_UINT, node_count, nullptr, vab_policy);
+                transform_vab = device->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
                 transform_vab_buffer = transform_vab->GetBuffer();
 
             #ifdef _DEBUG
@@ -354,7 +363,9 @@ namespace hgl::ecs
 
         // 3. 生成 transform 索引列表
         {
-            uint16* transform_ptr = (uint16*)(transform_vab->DeviceBuffer::Map());
+            graph::Assign::TransformID::ValueType* transform_ptr =
+                (graph::Assign::TransformID::ValueType*)(transform_vab->DeviceBuffer::Map());
+            bool warned_overflow = false;
 
             for (size_t i = 0; i < item_count; i++)
             {
@@ -367,7 +378,22 @@ namespace hgl::ecs
                     continue;
                 }
 
-                *transform_ptr = static_cast<uint16>(item->transform_index);
+                const uint32_t idx = item->transform_index;
+                if (idx > max_transform_id)
+                {
+                    if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
+                    {
+                        std::cout << "[ECSTransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
+                                  << idx << ")" << std::endl;
+                        warned_overflow = true;
+                    }
+
+                    *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
+                }
+                else
+                {
+                    *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
+                }
                 ++transform_ptr;
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个，避免刷屏

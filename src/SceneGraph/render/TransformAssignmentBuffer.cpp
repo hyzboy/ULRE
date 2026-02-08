@@ -138,7 +138,7 @@ void TransformAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
 
         if(!transform_vab)
         {
-            transform_vab=device->CreateVAB(VK_FORMAT_R16_UINT,node_count);
+            transform_vab=device->CreateVAB(Assign::TransformID::VAB_FMT,node_count);
             transform_vab_buffer=transform_vab->GetBuffer();
 
         #ifdef _DEBUG
@@ -157,12 +157,13 @@ void TransformAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
     {
         DrawNode **rn=draw_nodes.GetData();
 
-        uint16 *transform_ptr=(uint16 *)(transform_vab->DeviceBuffer::Map());
+        Assign::TransformID::ValueType *transform_ptr=
+            (Assign::TransformID::ValueType *)(transform_vab->DeviceBuffer::Map());
 
         for(uint i=0;i<draw_nodes.GetCount();i++)
         {
             (*rn)->transform_index=i;
-            *transform_ptr=i;
+            *transform_ptr=static_cast<Assign::TransformID::ValueType>(i);
             ++transform_ptr;
             ++rn;
         }
