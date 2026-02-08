@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/MaterialPipelineKey.h>
+#include<hgl/graph/VK.h>
 #include<hgl/graph/PipelineMaterialRenderer.h>
 #include<vector>
 
@@ -48,8 +49,12 @@ namespace hgl::ecs
         graph::IndirectDrawBuffer* icb_draw=nullptr;               ///<间接绘制命令缓冲（无索引）
         graph::IndirectDrawIndexedBuffer* icb_draw_indexed=nullptr;///<间接绘制命令缓冲（有索引）
 
+        graph::VAB* transform_vab=nullptr;                        ///<Transform index VAB (per batch)
+        VkBuffer transform_vab_buffer=VK_NULL_HANDLE;             ///<Transform index VAB buffer
+        uint32_t transform_vab_node_count=0;                      ///<Transform VAB capacity
+
         // === Instance data management (shared) ===
-        ECSTransformAssignmentBuffer* transform_buffer=nullptr;           ///<Transform分配缓冲
+        ECSTransformAssignmentBuffer* transform_buffer=nullptr;           ///<Transform分配缓冲(非拥有)
         ECSMaterialInstanceAssignmentBuffer* mi_buffer=nullptr;           ///<材质实例分配缓冲
 
         // === Draw batches ===
@@ -80,6 +85,7 @@ namespace hgl::ecs
 
         void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
         void SetDevice(graph::VulkanDevice* dev) { device = dev; }
+        void SetTransformBuffer(ECSTransformAssignmentBuffer* buf) { transform_buffer = buf; }
 
         void Clear()
         {

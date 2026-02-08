@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/VKDevice.h>
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/TransformComponent.h>
@@ -8,6 +9,7 @@
 
 namespace hgl::ecs
 {
+    class ECSTransformAssignmentBuffer;
     class RenderPrimitiveSystem;
     /**
      * TransformSystem
@@ -22,6 +24,11 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         bool updateMovable = true;
+        graph::VulkanDevice* device = nullptr;
+        ECSTransformAssignmentBuffer* transform_buffer = nullptr;
+        uint32_t last_static_count = 0;
+        uint32_t last_dynamic_count = 0;
+        bool static_dirty = true;
 
     public:
 
@@ -31,12 +38,17 @@ namespace hgl::ecs
     public:
 
         void SetWorld(ECSContext* w) { world = w; }
+        void SetDevice(graph::VulkanDevice* dev) { device = dev; }
+        ECSTransformAssignmentBuffer* GetTransformBuffer() const { return transform_buffer; }
         void SetUpdateMovable(bool enabled) { updateMovable = enabled; }
         bool IsUpdateMovableEnabled() const { return updateMovable; }
 
         void Update(float deltaTime) override;
         void UpdateStaticDirty();
         void SubmitTransformUpdates();
+
+        void EnsureTransformBuffer();
+        uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;
 
     private:
 

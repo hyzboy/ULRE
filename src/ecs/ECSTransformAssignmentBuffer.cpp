@@ -61,6 +61,67 @@ namespace hgl::ecs
     #endif
     }
 
+    void ECSTransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
+    {
+        const uint32_t total_count = ring_writer.GetTotalCount(static_count, dynamic_count);
+        StatTransform(total_count, policy);
+    }
+
+    uint32_t ECSTransformAssignmentBuffer::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
+    {
+        return ring_writer.GetBaseIndex(static_count, dynamic_count);
+    }
+
+    uint32_t ECSTransformAssignmentBuffer::GetTotalCount(const uint32_t static_count,const uint32_t dynamic_count) const
+    {
+        return ring_writer.GetTotalCount(static_count, dynamic_count);
+    }
+
+    void ECSTransformAssignmentBuffer::WriteStaticFromStorage(const TransformDataStorage& storage,const uint32_t static_count)
+    {
+        if (!transform_buffer || static_count == 0)
+            return;
+
+        const auto &mats = storage.GetAllWorldMatrices();
+        const uint32_t write_count = static_cast<uint32_t>(mats.size() < static_count ? mats.size() : static_count);
+        if (write_count == 0)
+            return;
+
+        const VkDeviceSize map_size = sizeof(math::Matrix4f) * write_count;
+        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map(0, map_size));
+        if (!l2wp)
+            return;
+
+        for (uint32_t i = 0; i < write_count; ++i)
+        {
+            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&mats[i]);
+        }
+
+        transform_buffer->Unmap();
+    }
+
+    void ECSTransformAssignmentBuffer::WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count)
+    {
+        if (!transform_buffer || dynamic_count == 0)
+            return;
+
+        const auto &mats = storage.GetAllWorldMatrices();
+        const uint32_t write_count = static_cast<uint32_t>(mats.size() < dynamic_count ? mats.size() : dynamic_count);
+        if (write_count == 0)
+            return;
+
+        math::Matrix4f* l2wp = (math::Matrix4f*)(ring_writer.MapDynamicRange(static_count, dynamic_count));
+        if (!l2wp)
+            return;
+
+        for (uint32_t i = 0; i < write_count; ++i)
+        {
+            l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&mats[i]);
+        }
+
+        ring_writer.Unmap();
+    }
+
     void ECSTransformAssignmentBuffer::Clear()
     {
         SAFE_CLEAR(transform_buffer);

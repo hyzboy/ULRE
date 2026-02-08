@@ -36,7 +36,7 @@ namespace hgl::ecs
     }
 
     bool ECSPipelineMaterialRenderer::BindVAB(const graph::DrawBatch* batch,
-                                               ECSTransformAssignmentBuffer* transform_buffer,
+                                               VkBuffer transform_vab,
                                                ECSMaterialInstanceAssignmentBuffer* mi_buffer)
     {
         // Log GeometryDataBuffer details
@@ -61,21 +61,12 @@ namespace hgl::ecs
         }
 
         // 如果有ECS Transform分配缓冲，绑定Transform索引VAB
-        if (transform_buffer)
+        if (transform_vab != VK_NULL_HANDLE)
         {
-            VkBuffer transform_vab = transform_buffer->GetTransformVAB();
-
-            if (transform_vab == VK_NULL_HANDLE)
+            if (!vab_list->Add(transform_vab, 0))
             {
-                std::cout << "[ECSPipelineMaterialRenderer::BindVAB] WARNING: Transform VAB is null!" << std::endl;
-            }
-            else
-            {
-                if (!vab_list->Add(transform_vab, 0))
-                {
-                    std::cout << "[ECSPipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS transform VAB!" << std::endl;
-                    return false;
-                }
+                std::cout << "[ECSPipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS transform VAB!" << std::endl;
+                return false;
             }
         }
 
@@ -95,6 +86,19 @@ namespace hgl::ecs
                     std::cout << "[ECSPipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS MI VAB!" << std::endl;
                     return false;
                 }
+            }
+        }
+
+        if (!vab_list->IsFull())
+        {
+            std::cout << "[ECSPipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
+                      << vab_list->GetWriteCount() << "/"
+                      << material->GetVertexInput()->GetCount()
+                      << "), padding with VK_NULL_HANDLE" << std::endl;
+
+            while (!vab_list->IsFull())
+            {
+                vab_list->Add(VK_NULL_HANDLE, 0);
             }
         }
 
@@ -124,6 +128,7 @@ namespace hgl::ecs
     bool ECSPipelineMaterialRenderer::Draw(graph::DrawBatch* batch,
                                             ECSTransformAssignmentBuffer* transform_buffer,
                                             ECSMaterialInstanceAssignmentBuffer* mi_buffer,
+                                            VkBuffer transform_vab,
                                             graph::IndirectDrawBuffer* icb_draw,
                                             graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
@@ -150,7 +155,7 @@ namespace hgl::ecs
             last_draw_range = nullptr;
 
             // 绑定新的顶点数组缓冲
-            if (!BindVAB(batch, transform_buffer, mi_buffer))
+            if (!BindVAB(batch, transform_vab, mi_buffer))
             {
                 std::cout << "[ECSPipelineMaterialRenderer::Draw] ERROR: BindVAB failed!" << std::endl;
                 return false;
@@ -197,6 +202,7 @@ namespace hgl::ecs
                                               uint32_t batch_count,
                                               ECSTransformAssignmentBuffer* transform_buffer,
                                               ECSMaterialInstanceAssignmentBuffer* mi_buffer,
+                                              VkBuffer transform_vab,
                                               graph::IndirectDrawBuffer* icb_draw,
                                               graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
@@ -245,7 +251,7 @@ namespace hgl::ecs
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
-            Draw(batch, transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
+            Draw(batch, transform_buffer, mi_buffer, transform_vab, icb_draw, icb_draw_indexed);
             ++batch;
         }
 
