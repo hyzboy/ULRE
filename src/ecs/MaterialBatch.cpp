@@ -18,12 +18,9 @@ namespace hgl::ecs
 {
     MaterialBatch::MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev)
         : key(k)
+        , static_count(0)
         , cameraInfo(nullptr)
         , device(dev)
-        , icb_draw(nullptr)
-        , icb_draw_indexed(nullptr)
-        , transform_buffer(nullptr)
-        , mi_buffer(nullptr)
         , draw_batches_count(0)
         , renderer(nullptr)
     {
@@ -31,18 +28,6 @@ namespace hgl::ecs
         {
             // Create ECS renderer
             renderer = new ECSPipelineMaterialRenderer(key.material, key.pipeline);
-
-            // Create ECSTransformAssignmentBuffer if material needs LocalToWorld
-            if (key.material->hasLocalToWorld())
-            {
-                transform_buffer = new ECSTransformAssignmentBuffer(device);
-            }
-
-            // Create ECSMaterialInstanceAssignmentBuffer if material has material instance data
-            if (key.material->hasMI())
-            {
-                mi_buffer = new ECSMaterialInstanceAssignmentBuffer(device, key.material);
-            }
         }
     }
 
@@ -71,44 +56,90 @@ namespace hgl::ecs
 
     void MaterialBatch::Finalize()
     {
-        // Sort items by geometry/distance for optimal rendering
-        std::sort(items.begin(), items.end(),
+        std::vector<RenderItem*> static_items;
+        std::vector<RenderItem*> movable_items;
+        static_items.reserve(items.size());
+        movable_items.reserve(items.size());
+
+        for (auto *item : items)
+        {
+            if (!item)
+                continue;
+
+            auto transform = item->GetTransform();
+            if (transform && !transform->IsMovable())
+                static_items.push_back(item);
+            else
+                movable_items.push_back(item);
+        }
+
+        std::sort(static_items.begin(), static_items.end(),
             [](const RenderItem* a, const RenderItem* b) {
                 return a->Compare(*b) < 0;
             });
 
+        std::sort(movable_items.begin(), movable_items.end(),
+            [](const RenderItem* a, const RenderItem* b) {
+                return a->Compare(*b) < 0;
+            });
+
+        items.clear();
+        items.reserve(static_items.size() + movable_items.size());
+        for (auto *item : static_items)
+            items.push_back(item);
+        for (auto *item : movable_items)
+            items.push_back(item);
+
+        for (size_t i = 0; i < items.size(); ++i)
+        {
+            items[i]->index = i;
+        }
+
+        static_count = static_cast<uint32_t>(static_items.size());
+
         // Build batches and indirect draw commands
-        BuildBatches();
+        BuildBatches(items, draw_batches, draw_batches_count,
+                     icb_draw, icb_draw_indexed, 0);
 
         // Write transform data to buffer
-        if (transform_buffer && !items.empty())
+        if (key.material)
         {
-            transform_buffer->WriteItems(items);
+            if (!transform_buffer && !items.empty())
+                transform_buffer = new ECSTransformAssignmentBuffer(device, ECSTransformAssignmentBuffer::Mode::MovableOnly);
+
+            if (transform_buffer && !items.empty())
+                transform_buffer->WriteItems(items);
         }
 
         // Write material instance data to buffer
-        if (mi_buffer && !items.empty())
+        if (key.material && key.material->hasMI())
         {
-            mi_buffer->WriteItems(items);
+            if (!mi_buffer && !items.empty())
+                mi_buffer = new ECSMaterialInstanceAssignmentBuffer(device, key.material);
+
+            if (mi_buffer && !items.empty())
+                mi_buffer->WriteItems(items);
         }
     }
 
-    void MaterialBatch::ReallocICB()
+    void MaterialBatch::ReallocICB(const std::vector<RenderItem*>& list,
+                                   graph::IndirectDrawBuffer*& icb_draw_out,
+                                   graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out)
     {
-        if (!device || items.empty())
+        if (!device || list.empty())
         {
             std::cout << "[ECS::MaterialBatch::ReallocICB] Cannot allocate - Device: "
-                      << (void*)device << ", Items: " << items.size() << std::endl;
+                      << (void*)device << ", Items: " << list.size() << std::endl;
             return;
         }
 
         // Calculate required buffer size (power of 2)
         uint32_t icb_new_count = 1;
-        while (icb_new_count < items.size())
+        while (icb_new_count < list.size())
             icb_new_count <<= 1;
 
         // If existing buffers are large enough, reuse them
-        if (icb_draw && icb_new_count <= icb_draw->GetMaxCount())
+        if (icb_draw_out && icb_new_count <= icb_draw_out->GetMaxCount())
         {
             //std::cout << "[ECS::MaterialBatch::ReallocICB] Reusing existing buffers (capacity: "
             //          << icb_draw->GetMaxCount() << ")" << std::endl;
@@ -116,21 +147,21 @@ namespace hgl::ecs
         }
 
         // Delete old buffers
-        if (icb_draw)
+        if (icb_draw_out)
         {
             std::cout << "[ECS::MaterialBatch::ReallocICB] Deleting old indirect draw buffer" << std::endl;
-            delete icb_draw;
+            delete icb_draw_out;
         }
 
-        if (icb_draw_indexed)
+        if (icb_draw_indexed_out)
         {
             std::cout << "[ECS::MaterialBatch::ReallocICB] Deleting old indexed indirect draw buffer" << std::endl;
-            delete icb_draw_indexed;
+            delete icb_draw_indexed_out;
         }
 
         // Create new buffers
-        icb_draw = device->CreateIndirectDrawBuffer(icb_new_count);
-        icb_draw_indexed = device->CreateIndirectDrawIndexedBuffer(icb_new_count);
+        icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count);
+        icb_draw_indexed_out = device->CreateIndirectDrawIndexedBuffer(icb_new_count);
     }
 
     void MaterialBatch::WriteICB(VkDrawIndirectCommand* draw_cmd, graph::DrawBatch* batch)
@@ -164,50 +195,58 @@ namespace hgl::ecs
         indexed_draw_cmd->firstInstance = batch->first_instance;
     }
 
-    void MaterialBatch::BuildBatches()
+    void MaterialBatch::BuildBatches(const std::vector<RenderItem*>& list,
+                                     graph::DrawBatchArray& batches,
+                                     uint32_t& batch_count,
+                                     graph::IndirectDrawBuffer*& icb_draw_out,
+                                     graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out,
+                                     const uint32_t base_instance)
     {
-        const size_t count = items.size();
+        const size_t count = list.size();
         if (count == 0)
         {
             std::cout << "[ECS::MaterialBatch::BuildBatches] No items to batch" << std::endl;
-            draw_batches_count = 0;
+            batch_count = 0;
+            batches.clear();
             return;
         }
 
         // Allocate indirect command buffers
-        ReallocICB();
+        ReallocICB(list, icb_draw_out, icb_draw_indexed_out);
 
-        if (!icb_draw || !icb_draw_indexed)
+        if (!icb_draw_out || !icb_draw_indexed_out)
         {
             std::cout << "[ECS::MaterialBatch::BuildBatches] ERROR: Failed to allocate indirect buffers!" << std::endl;
-            draw_batches_count = 0;
+            batch_count = 0;
+            batches.clear();
             return;
         }
 
         // Map indirect command buffers
-        VkDrawIndirectCommand* draw_cmd = icb_draw->MapCmd();
-        VkDrawIndexedIndirectCommand* indexed_draw_cmd = icb_draw_indexed->MapCmd();
+        VkDrawIndirectCommand* draw_cmd = icb_draw_out->MapCmd();
+        VkDrawIndexedIndirectCommand* indexed_draw_cmd = icb_draw_indexed_out->MapCmd();
 
         // Prepare batch array
-        draw_batches.clear();
-        draw_batches.reserve(count);
+        batches.clear();
+        batches.resize(count);
 
         // Initialize first batch
-        graph::DrawBatch* batch = draw_batches.data();
-        RenderItem* item = items[0];
+        graph::DrawBatch* batch = batches.data();
+        RenderItem* item = list[0];
         graph::Primitive* primitive = item->GetPrimitive();
 
         if (!primitive)
         {
             std::cout << "[ECS::MaterialBatch::BuildBatches] ERROR: First item has no primitive!" << std::endl;
-            icb_draw->Unmap();
-            icb_draw_indexed->Unmap();
-            draw_batches_count = 0;
+            icb_draw_out->Unmap();
+            icb_draw_indexed_out->Unmap();
+            batch_count = 0;
+            batches.clear();
             return;
         }
 
-        draw_batches_count = 1;
-        batch->first_instance = 0;
+        batch_count = 1;
+        batch->first_instance = base_instance;
         batch->instance_count = 1;
         batch->Set(primitive);
 
@@ -221,7 +260,7 @@ namespace hgl::ecs
         // Process remaining items
         for (size_t i = 1; i < count; i++)
         {
-            item = items[i];
+            item = list[i];
             primitive = item->GetPrimitive();
 
             if (!primitive)
@@ -260,10 +299,10 @@ namespace hgl::ecs
             // }
 
             // Start new batch
-            ++draw_batches_count;
+            ++batch_count;
             ++batch;
 
-            batch->first_instance = i;
+            batch->first_instance = base_instance + static_cast<uint32_t>(i);
             batch->instance_count = 1;
             batch->Set(primitive);
 
@@ -293,8 +332,8 @@ namespace hgl::ecs
         //               << " has NO VDM - will use direct rendering" << std::endl;
         // }
 
-        icb_draw->Unmap();
-        icb_draw_indexed->Unmap();
+        icb_draw_out->Unmap();
+        icb_draw_indexed_out->Unmap();
     }
 
     void MaterialBatch::Render(graph::RenderCmdBuffer* cmdBuffer)
@@ -318,24 +357,14 @@ namespace hgl::ecs
             return;
         }
 
-        // Bind transform data if available
         if (transform_buffer)
-        {
-//            std::cout << "[ECS::MaterialBatch::Render] Binding transform buffer..." << std::endl;
             transform_buffer->BindTransform(key.material);
-        }
 
-        // Bind material instance data if available
         if (mi_buffer)
-        {
-//            std::cout << "[ECS::MaterialBatch::Render] Binding material instance buffer..." << std::endl;
             mi_buffer->BindMaterialInstance(key.material);
-        }
 
-        // Use the ECS renderer to handle rendering with ECS assignment buffers
-        if (renderer)
+        if (renderer && draw_batches_count > 0)
         {
-            // Pass ECS buffers directly to ECS renderer
             renderer->Render(cmdBuffer, draw_batches, draw_batches_count,
                            transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
         }
@@ -343,6 +372,16 @@ namespace hgl::ecs
         // {
         //     std::cout << "[ECS::MaterialBatch::Render] ERROR: No renderer available!" << std::endl;
         // }
+    }
+
+    void MaterialBatch::QueueMovableTransformUpdates()
+    {
+        if (!transform_buffer || static_count >= items.size())
+            return;
+
+        const int first = static_cast<int>(static_count);
+        const int last = static_cast<int>(items.size() - 1);
+        transform_buffer->UpdateTransformData(items, first, last);
     }
 
 }//namespace hgl::ecs

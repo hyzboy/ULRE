@@ -24,6 +24,14 @@ namespace hgl::ecs
      */
     class ECSTransformAssignmentBuffer
     {
+    public:
+
+        enum class Mode
+        {
+            StaticOnly,
+            MovableOnly
+        };
+
     private:
         uint32_t MaxTransformCount;             ///<单个UBO最大支持的变换数量
         graph::VulkanDevice* device;            ///<Vulkan设备
@@ -33,8 +41,8 @@ namespace hgl::ecs
         graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(UBO/SSBO)
         graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
         bool static_only;                       ///<Only static transforms in this batch
-        bool static_initialized;                ///<Static buffer already initialized
-        size_t static_item_count;               ///<Static item count for validation
+
+        Mode mode;
 
         struct UpdateRange
         {
@@ -59,7 +67,7 @@ namespace hgl::ecs
         void Clear();
 
     public:
-        ECSTransformAssignmentBuffer(graph::VulkanDevice* dev);
+        ECSTransformAssignmentBuffer(graph::VulkanDevice* dev, const Mode m = Mode::MovableOnly);
         ~ECSTransformAssignmentBuffer() { Clear(); }
 
         /**

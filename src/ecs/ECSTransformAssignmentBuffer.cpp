@@ -15,14 +15,13 @@ namespace hgl::ecs
 {
     std::vector<ECSTransformAssignmentBuffer*> ECSTransformAssignmentBuffer::all_instances;
 
-    ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::VulkanDevice* dev)
+    ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::VulkanDevice* dev, const Mode m)
         : device(dev)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
         , transform_policy(graph::BufferAllocPolicy::Auto)
         , static_only(false)
-        , static_initialized(false)
-        , static_item_count(0)
+        , mode(m)
         , node_count(0)
         , transform_vab(nullptr)
         , transform_vab_buffer(nullptr)
@@ -196,33 +195,11 @@ namespace hgl::ecs
 
         last_items = &items;
 
-        bool all_static = true;
-        for (const auto *item : items)
-        {
-            if (!item)
-                continue;
-
-            auto transform = item->GetTransform();
-            if (transform && transform->IsMovable())
-            {
-                all_static = false;
-                break;
-            }
-        }
-
-        if (all_static)
-        {
-            static_only = true;
-            static_item_count = item_count;
-            static_initialized = true;
+        static_only = (mode == Mode::StaticOnly);
+        if (static_only)
             StatTransform(items,graph::BufferAllocPolicy::GPUOnly);
-        }
         else
-        {
-            static_only = false;
-            static_initialized = false;
             StatTransform(items,graph::BufferAllocPolicy::Auto);
-        }
 
         // 2. 创建或重用 Transform VAB（索引缓冲）
         {
