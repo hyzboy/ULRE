@@ -6,7 +6,7 @@
 #include<hgl/type/String.h>
 #include<compare>
 
-namespace hgl::graph
+namespace hgl::shader_schema
 {
 #pragma pack(push,1)
     struct VertexInputAttribute
@@ -16,7 +16,7 @@ namespace hgl::graph
         char    name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
         uint8   location;
 
-        //对应hgl/graph/VertexAttrib.h中的enum class VABaseType
+        //对应hgl/shader_schema/VertexAttrib.h中的enum class VABaseType
         uint8   basetype;
         uint8   vec_size;
 
@@ -179,4 +179,15 @@ namespace hgl::graph
     };//struct VertexInputAttributeArray
 
     using VIAArray=VertexInputAttributeArray;
+}//namespace hgl::shader_schema
+
+namespace hgl::graph
+{
+    using hgl::shader_schema::VertexInputAttribute;
+    using hgl::shader_schema::VIA;
+    using hgl::shader_schema::VIAList;
+    using hgl::shader_schema::VertexInputAttributeArray;
+    using hgl::shader_schema::VIAArray;
+    using hgl::shader_schema::GetShaderAttributeTypename;
+    using hgl::shader_schema::operator==;
 }//namespace hgl::graph

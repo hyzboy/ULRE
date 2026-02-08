@@ -3,7 +3,7 @@
 #include<hgl/type/EnumUtil.h>
 #include<compare>
 
-namespace hgl::graph
+namespace hgl::shader_schema
 {
 	#pragma pack(push,1)
 	enum class VertexInputGroup:uint8
@@ -161,4 +161,48 @@ namespace hgl::graph
 	}//namespace VertexAttribName
 
 	#define VAN VertexAttribName
+}//namespace hgl::shader_schema
+
+namespace hgl::graph
+{
+	using hgl::shader_schema::VertexInputGroup;
+	using hgl::shader_schema::VertexInputGroupName;
+	using hgl::shader_schema::GetVertexInputGroupName;
+
+	using hgl::shader_schema::VertexAttribBaseType;
+	using hgl::shader_schema::VABaseType;
+	using hgl::shader_schema::VertexAttribType;
+	using hgl::shader_schema::VAType;
+
+	using hgl::shader_schema::ParseVertexAttribType;
+	using hgl::shader_schema::GetVertexAttribName;
+
+	using hgl::shader_schema::VAT_BOOL;
+	using hgl::shader_schema::VAT_BVEC2;
+	using hgl::shader_schema::VAT_BVEC3;
+	using hgl::shader_schema::VAT_BVEC4;
+
+	using hgl::shader_schema::VAT_INT;
+	using hgl::shader_schema::VAT_IVEC2;
+	using hgl::shader_schema::VAT_IVEC3;
+	using hgl::shader_schema::VAT_IVEC4;
+
+	using hgl::shader_schema::VAT_UINT;
+	using hgl::shader_schema::VAT_UVEC2;
+	using hgl::shader_schema::VAT_UVEC3;
+	using hgl::shader_schema::VAT_UVEC4;
+
+	using hgl::shader_schema::VAT_FLOAT;
+	using hgl::shader_schema::VAT_VEC2;
+	using hgl::shader_schema::VAT_VEC3;
+	using hgl::shader_schema::VAT_VEC4;
+
+	using hgl::shader_schema::VAT_DOUBLE;
+	using hgl::shader_schema::VAT_DVEC2;
+	using hgl::shader_schema::VAT_DVEC3;
+	using hgl::shader_schema::VAT_DVEC4;
+
+	using hgl::shader_schema::VERTEX_ATTRIB_NAME_MAX_LENGTH;
+
+	namespace VertexAttribName=hgl::shader_schema::VertexAttribName;
 }//namespace hgl::graph

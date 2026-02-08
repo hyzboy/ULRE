@@ -1,7 +1,8 @@
 #pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/shader_schema/VkTypes.h>
 #include<hgl/type/String.h>
+#include<hgl/type/ValueArray.h>
 #include<cstring>
 
 // Comparison operators for Vulkan structures used in ValueArray

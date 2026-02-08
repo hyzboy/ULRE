@@ -4,6 +4,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKGeometry.h>
 #include<hgl/graph/VertexDataManager.h>
+#include<hgl/graph/VKDebugUtils.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include"vulkan/VKGeometryData.h"
 

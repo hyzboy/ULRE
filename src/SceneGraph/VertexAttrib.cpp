@@ -1,11 +1,9 @@
-﻿#include<hgl/graph/VertexAttrib.h>
-#include<hgl/graph/VKFormat.h>
-#include<hgl/graph/VKVertexInputAttribute.h>
+﻿#include<hgl/shader_schema/VertexAttrib.h>
+#include<hgl/shader_schema/VkFormat.h>
+#include<hgl/shader_schema/VertexInputAttribute.h>
 
-namespace hgl
+namespace hgl::shader_schema
 {
-    namespace graph
-    {
         bool ParseVertexAttribType(VAType *vat,const char *str)
         {
             if(!vat||!str||!*str)return(false);
@@ -110,5 +108,12 @@ namespace hgl
 
             return vk_format_by_basetype[size_t(sa->basetype)][sa->vec_size-1];
         }
-    }//namespace graph
-}//namespace hgl
+}//namespace hgl::shader_schema
+
+namespace hgl::graph
+{
+    const VkFormat GetVulkanFormat(const VertexInputAttribute *sa)
+    {
+        return hgl::shader_schema::GetVulkanFormat(sa);
+    }
+}//namespace hgl::graph

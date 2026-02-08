@@ -2,6 +2,7 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shader_schema/UBOCommon.h>
 #include<hgl/shader_schema/VulkanDevAttr.h>
+#include<hgl/math/Matrix.h>
 #include"./common/MFCommon.h"
 #include"./common/MFGetPosition.h"
 #include"./ShaderLibrary.h"

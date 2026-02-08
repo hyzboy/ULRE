@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/VKDeviceAttribute.h>
+#include<hgl/graph/VKInstance.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKImageView.h>
 #include<hgl/graph/VKTexture.h>
@@ -44,6 +45,14 @@ VulkanDevAttr::~VulkanDevAttr()
 int VulkanDevAttr::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const
 {
     return physical_device->GetMemoryType(typeBits,properties);
+}
+
+void *VulkanDevAttr::GetDeviceProcRaw(const char *name)
+{
+    if(!instance)
+        return nullptr;
+
+    return instance->GetDeviceProc<void>(device,name);
 }
 
 VK_NAMESPACE_END

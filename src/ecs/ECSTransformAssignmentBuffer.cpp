@@ -8,6 +8,7 @@
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/VKDebugUtils.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<iostream>
 

@@ -1,11 +1,15 @@
 #pragma once
 
-#include<hgl/graph/VKInstance.h>
-#include<hgl/graph/VKTexture.h>
+#include<hgl/shader_schema/VkTypes.h>
 
+VK_NAMESPACE_BEGIN
+class VulkanInstance;
+class VulkanPhyDevice;
+class VulkanSurface;
 #ifdef _DEBUG
-#include<hgl/graph/VKDebugUtils.h>
+class DebugUtils;
 #endif//_DEBUG
+VK_NAMESPACE_END
 
 VK_NAMESPACE_BEGIN
 struct VulkanDevAttr
@@ -43,13 +47,14 @@ public:
 	~VulkanDevAttr();
 
 	int GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const;
+	void *GetDeviceProcRaw(const char *name);
 
 public:
 
 	template<typename T>
 	T *GetDeviceProc(const char *name)
 	{
-		return instance->GetDeviceProc<T>(device,name);
+		return reinterpret_cast<T *>(GetDeviceProcRaw(name));
 	}
 };//class VulkanDevAttr
 VK_NAMESPACE_END
