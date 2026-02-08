@@ -2,7 +2,7 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKVertexInputAttribute.h>
-#include<hgl/graph/VKSamplerType.h>
+#include<hgl/shader_schema/SamplerType.h>
 
 #include<hgl/io/TextInputStream.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -17,6 +17,8 @@ STD_MTL_NAMESPACE_BEGIN
 namespace
 {
     using namespace material_file;
+    using hgl::shader_schema::SamplerType;
+    using hgl::shader_schema::ParseSamplerType;
 
     using TextParse=io::TextInputStream::ParseCallback<char>;
 

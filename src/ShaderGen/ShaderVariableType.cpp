@@ -1,6 +1,11 @@
-﻿#include<hgl/graph/mtl/ShaderVariableType.h>
+﻿#include<hgl/shader_schema/ShaderVariableType.h>
 
 VK_NAMESPACE_BEGIN
+
+using hgl::shader_schema::GetSamplerTypeName;
+using hgl::shader_schema::GetShaderImageTypeName;
+using hgl::shader_schema::ParseSamplerType;
+using hgl::shader_schema::ParseShaderImageType;
 
 namespace
 {

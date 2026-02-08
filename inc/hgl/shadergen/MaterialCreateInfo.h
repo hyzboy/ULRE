@@ -9,7 +9,7 @@
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/graph/VKTextureType.h>
-#include<hgl/graph/VKSamplerType.h>
+#include<hgl/shader_schema/SamplerType.h>
 
 namespace hgl::graph
 {
@@ -18,6 +18,7 @@ namespace hgl::graph
 
     namespace mtl
     {
+        using hgl::shader_schema::SamplerType;
         class MaterialCreateInfo
         {
         protected:

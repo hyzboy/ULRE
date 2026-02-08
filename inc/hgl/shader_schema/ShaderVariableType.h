@@ -5,10 +5,12 @@
 #include<hgl/type/ValueArray.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
-#include<hgl/graph/VKSamplerType.h>
-#include<hgl/graph/VKImageType.h>
+#include<hgl/shader_schema/SamplerType.h>
+#include<hgl/shader_schema/ShaderImageType.h>
 
 VK_NAMESPACE_BEGIN
+using hgl::shader_schema::SamplerType;
+using hgl::shader_schema::ShaderImageType;
 enum class ShaderVariableBaseType:uint8
 {
     Scalar=0,
