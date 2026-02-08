@@ -3,7 +3,7 @@
 #include<hgl/type/StrChar.h>
 #include<hgl/type/EnumUtil.h>
 
-namespace hgl::graph
+namespace hgl::shader_schema
 {
 /**
 * 描述符集类型
@@ -69,4 +69,14 @@ inline const DescriptorSetType GetDescriptorSetType(const char *str)
 
     return(DescriptorSetType::Unknow);
 }
-}
+}//namespace hgl::shader_schema
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+    using hgl::shader_schema::DescriptorSetType;
+    using hgl::shader_schema::DESCRIPTOR_SET_TYPE_COUNT;
+    using hgl::shader_schema::DescriptSetTypeName;
+    using hgl::shader_schema::GetDescriptorSetTypeName;
+    using hgl::shader_schema::GetDescriptorSetType;
+}//namespace hgl::graph

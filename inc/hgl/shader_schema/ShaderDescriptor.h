@@ -5,151 +5,164 @@
 #include<hgl/shader_schema/DescriptorSetType.h>
 #include<hgl/shader_schema/VkTypes.h>
 
-namespace hgl
+namespace hgl::shader_schema
 {
-	namespace graph
+	constexpr size_t DESCRIPTOR_NAME_MAX_LENGTH=32;
+
+	struct ShaderDescriptor
 	{
-		constexpr size_t DESCRIPTOR_NAME_MAX_LENGTH=32;
+		char name[DESCRIPTOR_NAME_MAX_LENGTH];
+		VkDescriptorType desc_type;
+		DescriptorSetType set_type;
 
-		struct ShaderDescriptor
+		int set;
+		int binding;
+		uint32_t stage_flag;
+
+	private:
+
+		void Init()
 		{
-			char name[DESCRIPTOR_NAME_MAX_LENGTH];
-			VkDescriptorType desc_type;
-			DescriptorSetType set_type;
+			mem_zero(name);
+			desc_type=VK_DESCRIPTOR_TYPE_MAX_ENUM;
+			set_type=DescriptorSetType::Global;
+			set=-1;
+			binding=-1;
+			stage_flag=0;
+		}
 
-			int set;
-			int binding;
-			uint32_t stage_flag;
+	public:
 
-		private:
+		ShaderDescriptor()
+		{
+			Init();
+		}
 
-			void Init()
+		ShaderDescriptor(const ShaderDescriptor *sr)
+		{
+			if(!sr)
 			{
-				mem_zero(name);
-				desc_type=VK_DESCRIPTOR_TYPE_MAX_ENUM;
-				set_type=DescriptorSetType::Global;
-				set=-1;
-				binding=-1;
-				stage_flag=0;
+				Init();     ////注：请不要使用memset(this,0..)，因为这会破坏Comparator<>纯虚函数表
 			}
-
-		public:
-
-			ShaderDescriptor()
-			{
-				Init();
+			else
+			{       //注：请不要使用memcpy/mem_copy(*this,sr)来复制数据，因为这会破坏Comparator<>纯虚函数表
+				mem_copy(name,sr->name);
+				desc_type   =sr->desc_type;
+				set_type    =sr->set_type;
+				set         =sr->set;
+				binding     =sr->binding;
+				stage_flag  =sr->stage_flag;
 			}
+		}
 
-			ShaderDescriptor(const ShaderDescriptor *sr)
-			{
-				if(!sr)
-				{
-					Init();     ////注：请不要使用memset(this,0..)，因为这会破坏Comparator<>纯虚函数表
-				}
-				else
-				{       //注：请不要使用memcpy/mem_copy(*this,sr)来复制数据，因为这会破坏Comparator<>纯虚函数表
-					mem_copy(name,sr->name);
-					desc_type   =sr->desc_type;
-					set_type    =sr->set_type;
-					set         =sr->set;
-					binding     =sr->binding;
-					stage_flag  =sr->stage_flag;
-				}
-			}
+		virtual ~ShaderDescriptor()=default;
 
-			virtual ~ShaderDescriptor()=default;
-
-			std::strong_ordering operator<=>(const ShaderDescriptor &sr)const
-			{
-				if(auto cmp=set<=>sr.set;cmp!=0)
-					return cmp;
-
-				if(auto cmp=binding<=>sr.binding;cmp!=0)
-					return cmp;
-
-				return hgl::strcmp_ordering(name, sr.name);
-			}
-		};//struct ShaderDescriptor
-
-		using ShaderDescriptorList=ValueArray<ShaderDescriptor *>;
-
-		struct UBODescriptor:public ShaderDescriptor
+		std::strong_ordering operator<=>(const ShaderDescriptor &sr)const
 		{
-			AnsiString type;
+			if(auto cmp=set<=>sr.set;cmp!=0)
+				return cmp;
 
-		public:
+			if(auto cmp=binding<=>sr.binding;cmp!=0)
+				return cmp;
 
-			UBODescriptor()
-			{
-				desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			}
-		};
+			return hgl::strcmp_ordering(name, sr.name);
+		}
+	};//struct ShaderDescriptor
 
-		struct SSBODescriptor:public ShaderDescriptor
+	using ShaderDescriptorList=ValueArray<ShaderDescriptor *>;
+
+	struct UBODescriptor:public ShaderDescriptor
+	{
+		AnsiString type;
+
+	public:
+
+		UBODescriptor()
 		{
-			AnsiString type;
+			desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		}
+	};
 
-		public:
+	struct SSBODescriptor:public ShaderDescriptor
+	{
+		AnsiString type;
 
-			SSBODescriptor()
-			{
-				desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			}
-		};
+	public:
 
-		struct TextureDescriptor:public ShaderDescriptor
+		SSBODescriptor()
 		{
-			AnsiString type;
+			desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		}
+	};
 
-		public:
+	struct TextureDescriptor:public ShaderDescriptor
+	{
+		AnsiString type;
 
-			TextureDescriptor()
-			{
-				desc_type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			}
-		};
+	public:
 
-		struct TextureSamplerDescriptor:public ShaderDescriptor
+		TextureDescriptor()
 		{
-			AnsiString type;
+			desc_type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		}
+	};
 
-		public:
+	struct TextureSamplerDescriptor:public ShaderDescriptor
+	{
+		AnsiString type;
 
-			TextureSamplerDescriptor()
-			{
-				desc_type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			}
-		};
+	public:
 
-		/**
-		 * 未归类的描述符对象，暂没想好怎么命名
-		 */
-		struct ShaderObjectData:public ShaderDescriptor
+		TextureSamplerDescriptor()
 		{
-			AnsiString type;
-		};
+			desc_type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		}
+	};
 
-		struct ConstValueDescriptor
-		{
-			int constant_id;
+	/**
+	 * 未归类的描述符对象，暂没想好怎么命名
+	 */
+	struct ShaderObjectData:public ShaderDescriptor
+	{
+		AnsiString type;
+	};
 
-			AnsiString type;
-			AnsiString name;
-			AnsiString value;
-		};
+	struct ConstValueDescriptor
+	{
+		int constant_id;
 
-		struct SubpassInputDescriptor
-		{
-			AnsiString name;
-			uint8_t input_attachment_index;
-			uint8_t binding;
-		};
+		AnsiString type;
+		AnsiString name;
+		AnsiString value;
+	};
 
-		struct ShaderPushConstant
-		{
-			AnsiString name;
-			uint8_t offset;
-			uint8_t size;
-		};
-	}//namespace graph
-}//namespace hgl
+	struct SubpassInputDescriptor
+	{
+		AnsiString name;
+		uint8_t input_attachment_index;
+		uint8_t binding;
+	};
+
+	struct ShaderPushConstant
+	{
+		AnsiString name;
+		uint8_t offset;
+		uint8_t size;
+	};
+}//namespace hgl::shader_schema
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+	using hgl::shader_schema::DESCRIPTOR_NAME_MAX_LENGTH;
+	using hgl::shader_schema::ShaderDescriptor;
+	using hgl::shader_schema::ShaderDescriptorList;
+	using hgl::shader_schema::UBODescriptor;
+	using hgl::shader_schema::SSBODescriptor;
+	using hgl::shader_schema::TextureDescriptor;
+	using hgl::shader_schema::TextureSamplerDescriptor;
+	using hgl::shader_schema::ShaderObjectData;
+	using hgl::shader_schema::ConstValueDescriptor;
+	using hgl::shader_schema::SubpassInputDescriptor;
+	using hgl::shader_schema::ShaderPushConstant;
+}//namespace hgl::graph

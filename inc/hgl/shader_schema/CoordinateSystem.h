@@ -1,7 +1,8 @@
 #pragma once
 
 #include<hgl/type/EnumUtil.h>
-namespace hgl::graph
+
+namespace hgl::shader_schema
 {
 	enum class CoordinateSystem2D
 	{
@@ -25,4 +26,12 @@ namespace hgl::graph
 
 		return CoordinateSystem2DName[size_t(cs)];
 	}
+}//namespace hgl::shader_schema
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+	using hgl::shader_schema::CoordinateSystem2D;
+	using hgl::shader_schema::CoordinateSystem2DName;
+	using hgl::shader_schema::GetCoordinateSystem2DName;
 }//namespace hgl::graph

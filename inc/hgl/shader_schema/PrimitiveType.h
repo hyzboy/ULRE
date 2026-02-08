@@ -3,7 +3,7 @@
 #include<hgl/CoreType.h>
 #include<hgl/type/EnumUtil.h>
 
-namespace hgl::graph
+namespace hgl::shader_schema
 {
 	/**
 	 * Primitive type enumeration
@@ -44,4 +44,14 @@ namespace hgl::graph
 
 	bool CheckGeometryShaderIn(const PrimitiveType &);
 	bool CheckGeometryShaderOut(const PrimitiveType &);
+}//namespace hgl::shader_schema
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+	using hgl::shader_schema::PrimitiveType;
+	using hgl::shader_schema::GetPrimName;
+	using hgl::shader_schema::ParsePrimitiveType;
+	using hgl::shader_schema::CheckGeometryShaderIn;
+	using hgl::shader_schema::CheckGeometryShaderOut;
 }//namespace hgl::graph

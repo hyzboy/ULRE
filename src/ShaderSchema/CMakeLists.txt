@@ -33,6 +33,7 @@ set(SHADER_SCHEMA_HEADER_FILES
 
 set(SHADER_SCHEMA_SOURCE_FILES
     ShaderSchema.cpp
+    ShaderStageHelpers.cpp
 )
 
 source_group("ShaderSchema" FILES ${SHADER_SCHEMA_HEADER_FILES} ${SHADER_SCHEMA_SOURCE_FILES})

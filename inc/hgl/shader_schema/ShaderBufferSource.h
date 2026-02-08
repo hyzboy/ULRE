@@ -2,7 +2,7 @@
 
 #include<hgl/shader_schema/DescriptorSetType.h>
 
-namespace hgl::graph
+namespace hgl::shader_schema
 {
 	struct ShaderBufferDesc
 	{
@@ -16,4 +16,11 @@ namespace hgl::graph
 		const char *struct_name;
 		const char *codes;
 	};
+}//namespace hgl::shader_schema
+
+// Backward compatibility aliases for hgl::graph
+namespace hgl::graph
+{
+	using hgl::shader_schema::ShaderBufferDesc;
+	using hgl::shader_schema::ShaderBufferSource;
 }//namespace hgl::graph
