@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/VKNamespace.h>
+#include<hgl/shader_schema/VkTypes.h>
 
 VK_NAMESPACE_BEGIN
 enum class Interpolation:uint8
