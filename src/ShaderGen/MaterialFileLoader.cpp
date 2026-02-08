@@ -2,7 +2,7 @@
 #include<hgl/shader_schema/Material2DCreateConfig.h>
 #include<hgl/shader_schema/Material3DCreateConfig.h>
 #include<hgl/shader_schema/VertexInputAttribute.h>
-#include<hgl/graph/VKVertexInputAttribute.h>
+#include<hgl/shader_schema/ShaderStageHelpers.h>
 #include<hgl/shader_schema/SamplerType.h>
 
 #include<hgl/io/TextInputStream.h>
@@ -11,7 +11,7 @@
 #include<hgl/type/AccumMemoryManager.h>
 #include<hgl/io/FileAccess.h>
 
-#include"MaterialFileData.h"
+#include"./MaterialFileData.h"
 
 STD_MTL_NAMESPACE_BEGIN
 

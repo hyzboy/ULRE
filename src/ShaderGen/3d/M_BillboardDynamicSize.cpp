@@ -1,5 +1,5 @@
-﻿#include"Std3DMaterial.h"
-#include"S_BillboardVertex.h"
+﻿#include"./Std3DMaterial.h"
+#include"./S_BillboardVertex.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 STD_MTL_NAMESPACE_BEGIN

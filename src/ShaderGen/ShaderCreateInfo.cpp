@@ -2,9 +2,9 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shader_schema/UBOCommon.h>
 
-#include"GLSLCompiler.h"
-#include"common/MFCommon.h"
-#include"ShaderLibrary.h"
+#include"./GLSLCompiler.h"
+#include"./common/MFCommon.h"
+#include"./ShaderLibrary.h"
 
 namespace hgl{namespace graph{
 

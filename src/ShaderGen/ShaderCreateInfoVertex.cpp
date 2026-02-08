@@ -1,10 +1,10 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shader_schema/VertexAttrib.h>
 #include<hgl/shader_schema/VertexInputAttribute.h>
-#include<hgl/graph/VKRenderAssign.h>
-#include"GLSLCompiler.h"
-#include"common/MFCommon.h"
-#include"ShaderLibrary.h"
+#include<hgl/shader_schema/RenderAssign.h>
+#include"./GLSLCompiler.h"
+#include"./common/MFCommon.h"
+#include"./ShaderLibrary.h"
 
 VK_NAMESPACE_BEGIN
 

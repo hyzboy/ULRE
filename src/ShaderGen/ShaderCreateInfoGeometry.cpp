@@ -1,5 +1,5 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
-#include"common/MFCommon.h"
+#include"./common/MFCommon.h"
 
 namespace hgl
 {

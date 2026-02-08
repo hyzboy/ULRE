@@ -1,9 +1,9 @@
-﻿#include"Std3DMaterial.h"
+﻿#include"./Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shader_schema/Material3DCreateConfig.h>
 #include<hgl/shader_schema/UBOCommon.h>
-#include"common/MFGetPosition.h"
-#include"common/MFGetNormal.h"
+#include"../common/MFGetPosition.h"
+#include"../common/MFGetNormal.h"
 
 STD_MTL_NAMESPACE_BEGIN
 bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)

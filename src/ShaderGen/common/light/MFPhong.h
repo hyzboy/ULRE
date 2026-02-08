@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <hgl/graph/mtl/StdMaterial.h>
+#include <hgl/shader_schema/StdMaterial.h>
 
 STD_MTL_FUNC_NAMESPACE_BEGIN
 constexpr const char* Phong

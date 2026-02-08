@@ -1,5 +1,5 @@
-﻿#include"Std2DMaterial.h"
-#include"MaterialFileData.h"
+﻿#include"./Std2DMaterial.h"
+#include"../MaterialFileData.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 STD_MTL_NAMESPACE_BEGIN

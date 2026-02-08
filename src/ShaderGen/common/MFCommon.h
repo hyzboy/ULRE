@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKRenderAssign.h>
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/shader_schema/RenderAssign.h>
+#include<hgl/shader_schema/StdMaterial.h>
 
 STD_MTL_FUNC_NAMESPACE_BEGIN
 //C++端使用一个RG8UI或RGB16UI格式的顶点输入流来传递Assign数据，其中x为LocalToWorld ID，y为MaterialInstance ID

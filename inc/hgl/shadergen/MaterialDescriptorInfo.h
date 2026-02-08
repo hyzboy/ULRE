@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKShaderDescriptorSet.h>
-#include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/shader_schema/ShaderDescriptorSet.h>
+#include<hgl/shader_schema/ShaderBufferSource.h>
 #include<hgl/type/UnorderedMap.h>
 
 namespace hgl{namespace graph{

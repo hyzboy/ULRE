@@ -1,7 +1,7 @@
-﻿#include"Std2DMaterial.h"
+﻿#include"./Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shader_schema/Material2DCreateConfig.h>
-#include<hgl/graph/mtl/SamplerName.h>
+#include<hgl/shader_schema/SamplerName.h>
 
 STD_MTL_NAMESPACE_BEGIN
 namespace

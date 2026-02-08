@@ -2,9 +2,9 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shader_schema/UBOCommon.h>
 #include<hgl/shader_schema/VulkanDevAttr.h>
-#include"common/MFCommon.h"
-#include"common/MFGetPosition.h"
-#include"ShaderLibrary.h"
+#include"./common/MFCommon.h"
+#include"./common/MFGetPosition.h"
+#include"./ShaderLibrary.h"
 
 using namespace hgl;
 using namespace hgl::graph;

@@ -1,4 +1,4 @@
-﻿#include"Std3DMaterial.h"
+﻿#include"./Std3DMaterial.h"
 
 STD_MTL_NAMESPACE_BEGIN
 

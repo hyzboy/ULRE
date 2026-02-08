@@ -1,9 +1,9 @@
-﻿#include"Std2DMaterial.h"
+﻿#include"./Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shader_schema/Material2DCreateConfig.h>
-#include"common/MFRectPrimitive.h"
+#include"../common/MFRectPrimitive.h"
 #include<hgl/shader_schema/UBOCommon.h>
-#include<hgl/graph/mtl/SamplerName.h>
+#include<hgl/shader_schema/SamplerName.h>
 
 STD_MTL_NAMESPACE_BEGIN
 namespace

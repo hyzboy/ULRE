@@ -8,7 +8,7 @@
 #include<hgl/shader_schema/VertexInputAttribute.h>
 #include<hgl/shader_schema/SamplerType.h>
 #include<hgl/shader_schema/VkTypes.h>
-#include<hgl/graph/mtl/ShaderVariableType.h>
+#include<hgl/shader_schema/ShaderVariableType.h>
 
 namespace material_file
 {

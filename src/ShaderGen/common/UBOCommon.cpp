@@ -1,5 +1,5 @@
 ﻿#include<hgl/shader_schema/UBOCommon.h>
-#include<hgl/graph/VKShaderDescriptor.h>
+#include<hgl/shader_schema/ShaderDescriptor.h>
 
 STD_MTL_NAMESPACE_BEGIN
 UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits)

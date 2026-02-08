@@ -4,7 +4,7 @@
 #include<hgl/shader_schema/ShaderStage.h>
 #include<hgl/shader_schema/VertexInputAttribute.h>
 #include<hgl/shader_schema/DescriptorSetType.h>
-#include<hgl/graph/mtl/ShaderVariableType.h>
+#include<hgl/shader_schema/ShaderVariableType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 
 namespace hgl{namespace graph

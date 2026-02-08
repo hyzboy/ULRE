@@ -5,9 +5,9 @@
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/graph/RenderTargetOutputConfig.h>
+#include<hgl/shader_schema/RenderTargetOutputConfig.h>
 #include<hgl/shader_schema/MaterialCreateConfig.h>
-#include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/shader_schema/ShaderBufferSource.h>
 #include<hgl/shader_schema/TextureType.h>
 #include<hgl/shader_schema/SamplerType.h>
 #include<hgl/shader_schema/PrimitiveType.h>

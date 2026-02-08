@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/graph/CoordinateSystem.h>
+#include<hgl/shader_schema/StdMaterial.h>
+#include<hgl/shader_schema/CoordinateSystem.h>
 STD_MTL_NAMESPACE_BEGIN
 namespace func
 {
