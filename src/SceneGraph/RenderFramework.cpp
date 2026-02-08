@@ -16,6 +16,7 @@
 #include<hgl/log/Logger.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/ecs/RenderPrimitiveSystem.h>
+#include<hgl/ecs/RenderPrimitiveRenderSystem.h>
 #include<hgl/ecs/InputSystem.h>
 
 COMPONENT_NAMESPACE_BEGIN
@@ -196,11 +197,14 @@ bool RenderFramework::Init(uint w,uint h)
 
     if(default_ecs_context)
     {
-        auto render_primitive_system=default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSystem>();
+        auto render_primitive_system=default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveSystem>();
+        auto render_primitive_render_system=default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveRenderSystem>();
 
         render_primitive_system->SetDevice(device);
         render_primitive_system->SetWorld(default_ecs_context);
         render_primitive_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+
+        render_primitive_render_system->SetWorld(default_ecs_context);
 
         auto input_system=default_ecs_context->RegisterTickSystem<ecs::InputSystem>();
 

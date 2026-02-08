@@ -36,9 +36,9 @@ namespace hgl::ecs
         UpdateTransformData();
     }
 
-    void RenderPrimitiveSystem::Render(graph::RenderCmdBuffer* cmdBuffer, float /*deltaTime*/)
+    void RenderPrimitiveSystem::Render(graph::RenderCmdBuffer* /*cmdBuffer*/, float /*deltaTime*/)
     {
-        RenderPrimitives(cmdBuffer);
+        // Rendering is handled by RenderPrimitiveRenderSystem.
     }
 
     void RenderPrimitiveSystem::Shutdown()

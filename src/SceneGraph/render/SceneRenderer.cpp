@@ -107,7 +107,8 @@ namespace hgl::graph
 
         if(GetWorld())
             GetWorld()->Tick(delta);
-        else if(GetECSContext())
+
+        if(GetECSContext())
         {
             GetECSContext()->Tick(static_cast<float>(delta));
             // 渲染系统在 RenderFrame 调用
