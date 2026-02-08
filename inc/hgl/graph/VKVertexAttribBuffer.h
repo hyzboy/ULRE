@@ -21,6 +21,13 @@ private:
         count=_count;
     }
 
+    VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count,StagedBuffer *sb):DeviceBuffer(d,vb,sb)
+    {
+        format=fmt;
+        stride=_stride;
+        count=_count;
+    }
+
 public:
 
     ~VertexAttribBuffer()=default;

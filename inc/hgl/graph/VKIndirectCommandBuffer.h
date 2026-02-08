@@ -26,6 +26,11 @@ private:
         max_count=mc;
     }
 
+    IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc,StagedBuffer *sb):DeviceBuffer(d,vb,sb)
+    {
+        max_count=mc;
+    }
+
 public:
 
     virtual ~IndirectCommandBuffer()=default;

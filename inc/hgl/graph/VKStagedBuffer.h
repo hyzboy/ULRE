@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_STAGED_BUFFER_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKMemory.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -72,6 +72,7 @@ public:
      */
     VkBuffer GetDeviceBuffer() const { return device_buffer; }
     VkBuffer GetStagingBuffer() const { return staging_buffer; }
+    DeviceMemory *GetDeviceMemory() const { return device_memory; }
 
     VkDeviceSize GetSize() const { return buffer_size; }
     bool IsDirty() const { return is_dirty; }
