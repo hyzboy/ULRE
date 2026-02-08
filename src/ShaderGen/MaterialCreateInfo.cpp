@@ -28,6 +28,12 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         mi_ubo=nullptr;
     }
 
+#if defined(HGL_L2W_USE_SSBO)
+    l2w_ssbo=nullptr;
+#else
+    l2w_ubo=nullptr;
+#endif
+
     has_l2w_matrix=mc->local_to_world;
 }
 
@@ -299,6 +305,14 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
+#if defined(HGL_L2W_USE_SSBO)
+    l2w_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
+
+    if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
+        return(false);
+
+    l2w_ssbo=mdi.GetSSBO(SBS_LocalToWorld.name);
+#else
     l2w_max_count=std::min<uint32_t>(ubo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
     mdi.AddStruct(SBS_LocalToWorld);
@@ -306,6 +320,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     l2w_ubo=CreateUBODescriptor(SBS_LocalToWorld,shader_stage_flag_bits);
 
     mdi.AddUBO(shader_stage_flag_bits,SBS_LocalToWorld.set_type,l2w_ubo);
+#endif
 
     const AnsiString L2W_MAX_COUNT_STRING=AnsiString::numberOf(l2w_max_count);
 
@@ -314,6 +329,9 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
         if(uint32_t(kv.first)&shader_stage_flag_bits)
         {
             kv.second->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
+// #if defined(HGL_L2W_USE_SSBO)
+//             kv.second->AddDefine("L2W_USE_SSBO","1");
+// #endif
         }
     }
 

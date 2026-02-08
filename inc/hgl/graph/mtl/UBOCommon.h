@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/RenderOptions.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 
@@ -67,9 +68,15 @@ constexpr const ShaderBufferSource SBS_LocalToWorld=
     "l2w",
     "LocalToWorldData",
 
+    #if defined(HGL_L2W_USE_SSBO)
+    R"(
+    mat4 mats[];
+)"
+    #else
     R"(
     mat4 mats[L2W_MAX_COUNT];
 )"
+    #endif
 };
 
 constexpr const ShaderBufferSource SBS_ColorPattle =

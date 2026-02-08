@@ -1,4 +1,5 @@
-﻿#include"TransformAssignmentBuffer.h"
+﻿#include<hgl/graph/RenderOptions.h>
+#include"TransformAssignmentBuffer.h"
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/SceneNode.h>
@@ -11,7 +12,11 @@ TransformAssignmentBuffer::TransformAssignmentBuffer(VulkanDevice *dev)
 {
     device=dev;
 
+#if defined(HGL_L2W_USE_SSBO)
+    MaxTransformCount=dev->GetSSBORange()/sizeof(math::Matrix4f);
+#else
     MaxTransformCount=dev->GetUBORange()/sizeof(math::Matrix4f);
+#endif
 
     transform_buffer_max_count=0;
     transform_buffer=nullptr;
@@ -25,7 +30,11 @@ void TransformAssignmentBuffer::BindTransform(Material *mtl)const
 {
     if(!mtl)return;
 
+#if defined(HGL_L2W_USE_SSBO)
+    mtl->BindSSBO(mtl::SBS_LocalToWorld.set_type,mtl::SBS_LocalToWorld.name,transform_buffer);
+#else
     mtl->BindUBO(&mtl::SBS_LocalToWorld, transform_buffer);
+#endif
 }
 
 void TransformAssignmentBuffer::Clear()
@@ -48,15 +57,24 @@ void TransformAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
 
     if(!transform_buffer)
     {
+    #if defined(HGL_L2W_USE_SSBO)
+        transform_buffer=device->CreateSSBO(sizeof(math::Matrix4f)*transform_buffer_max_count);
+    #else
         transform_buffer=device->CreateUBO(sizeof(math::Matrix4f)*transform_buffer_max_count);
+    #endif
 
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
 
         if(du)
         {
+#if defined(HGL_L2W_USE_SSBO)
+            du->SetBuffer(transform_buffer->GetBuffer(),"SSBO:Buffer:LocalToWorld");
+            du->SetDeviceMemory(transform_buffer->GetVkMemory(),"SSBO:Memory:LocalToWorld");
+#else
             du->SetBuffer(transform_buffer->GetBuffer(),"UBO:Buffer:LocalToWorld");
             du->SetDeviceMemory(transform_buffer->GetVkMemory(),"UBO:Memory:LocalToWorld");
+#endif
         }
     #endif//_DEBUG
     }

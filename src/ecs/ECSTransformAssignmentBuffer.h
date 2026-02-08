@@ -33,12 +33,12 @@ namespace hgl::ecs
         };
 
     private:
-        uint32_t MaxTransformCount;             ///<单个UBO最大支持的变换数量
+        uint32_t MaxTransformCount;             ///<单个SSBO最大支持的变换数量
         graph::VulkanDevice* device;            ///<Vulkan设备
 
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
-        graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(UBO/SSBO)
+        graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(SSBO)
         graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
         bool static_only;                       ///<Only static transforms in this batch
 
