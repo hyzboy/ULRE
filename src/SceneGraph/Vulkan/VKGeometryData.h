@@ -2,6 +2,7 @@
 
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKMemory.h>
 
 VK_NAMESPACE_BEGIN
 /*
@@ -73,5 +74,6 @@ public:
 };//class GeometryData
 
 GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc);
+GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
 GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc);
 VK_NAMESPACE_END

@@ -7,6 +7,7 @@
 
 #pragma once
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKMemory.h>
 #include<hgl/ecs/RenderItem.h>
 #include<vector>
 
@@ -30,8 +31,12 @@ namespace hgl::ecs
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
         graph::DeviceBuffer* transform_buffer;  ///<LocalToWorld矩阵数据(UBO/SSBO)
+        graph::BufferAllocPolicy transform_policy;     ///<Transform buffer allocation policy
+        bool static_only;                       ///<Only static transforms in this batch
+        bool static_initialized;                ///<Static buffer already initialized
+        size_t static_item_count;               ///<Static item count for validation
 
-        void StatTransform(const std::vector<RenderItem*>& items);
+        void StatTransform(const std::vector<RenderItem*>& items,graph::BufferAllocPolicy policy);
 
     private:    // 分发数据
         uint32_t node_count;                    ///<节点数量

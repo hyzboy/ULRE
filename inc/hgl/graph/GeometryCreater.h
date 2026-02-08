@@ -4,6 +4,7 @@
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/graph/VKMemory.h>
 
 VK_NAMESPACE_BEGIN
 /**
@@ -30,6 +31,8 @@ protected:
     IndexType       index_type;       ///<索引类型
     IndexBuffer *   ibo;              ///<索引缓冲区
 
+    BufferAllocPolicy buffer_policy=BufferAllocPolicy::GPUOnly;
+
 protected:
 
     const int InitVAB(const AnsiString &name,const VkFormat format,const void *data);                                       ///<取得顶点属性索引
@@ -50,6 +53,9 @@ public:
             bool            Init(const AnsiString &name,
                                  const uint32_t vertices_count,
                                  const uint32_t index_count=0,IndexType it=IndexType::AUTO);
+
+            void            SetBufferPolicy(const BufferAllocPolicy policy){buffer_policy=policy;}
+            const BufferAllocPolicy GetBufferPolicy()const{return buffer_policy;}
 
             void            Clear();                                                                                        ///<清除创建器数据
 

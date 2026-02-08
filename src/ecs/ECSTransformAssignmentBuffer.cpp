@@ -17,6 +17,10 @@ namespace hgl::ecs
         : device(dev)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
+        , transform_policy(graph::BufferAllocPolicy::Auto)
+        , static_only(false)
+        , static_initialized(false)
+        , static_item_count(0)
         , node_count(0)
         , transform_vab(nullptr)
         , transform_vab_buffer(nullptr)
@@ -51,7 +55,7 @@ namespace hgl::ecs
         transform_vab_buffer = nullptr;
     }
 
-    void ECSTransformAssignmentBuffer::StatTransform(const std::vector<RenderItem*>& items)
+    void ECSTransformAssignmentBuffer::StatTransform(const std::vector<RenderItem*>& items,graph::BufferAllocPolicy policy)
     {
         const size_t item_count = items.size();
 
@@ -66,10 +70,20 @@ namespace hgl::ecs
             SAFE_CLEAR(transform_buffer);
         }
 
+        // Recreate if policy changed
+        if (transform_buffer && transform_policy != policy)
+        {
+            SAFE_CLEAR(transform_buffer);
+        }
+
+        transform_policy = policy;
+
         // 创建或重用 Transform UBO
         if (!transform_buffer)
         {
-            transform_buffer = device->CreateUBO(sizeof(math::Matrix4f) * transform_buffer_max_count);
+            transform_buffer = device->CreateUBO(sizeof(math::Matrix4f) * transform_buffer_max_count,
+                                                 nullptr,
+                                                 transform_policy);
 
         #ifdef _DEBUG
             graph::DebugUtils* du = device->GetDebugUtils();
@@ -161,8 +175,36 @@ namespace hgl::ecs
             return;
         }
 
-        // 1. 写入变换矩阵数据
-        StatTransform(items);
+        bool all_static = true;
+        for (const auto *item : items)
+        {
+            if (!item)
+                continue;
+
+            auto transform = item->GetTransform();
+            if (transform && transform->IsMovable())
+            {
+                all_static = false;
+                break;
+            }
+        }
+
+        if (all_static)
+        {
+            if (static_initialized && static_item_count == item_count)
+                return;
+
+            static_only = true;
+            static_item_count = item_count;
+            StatTransform(items,graph::BufferAllocPolicy::GPUOnly);
+            static_initialized = true;
+        }
+        else
+        {
+            static_only = false;
+            static_initialized = false;
+            StatTransform(items,graph::BufferAllocPolicy::Auto);
+        }
 
         // 2. 创建或重用 Transform VAB（索引缓冲）
         {
@@ -178,7 +220,8 @@ namespace hgl::ecs
 
             if (!transform_vab)
             {
-                transform_vab = device->CreateVAB(VK_FORMAT_R16_UINT, node_count);
+                graph::BufferAllocPolicy vab_policy = static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto;
+                transform_vab = device->CreateVAB(VK_FORMAT_R16_UINT, node_count, nullptr, vab_policy);
                 transform_vab_buffer = transform_vab->GetBuffer();
 
             #ifdef _DEBUG

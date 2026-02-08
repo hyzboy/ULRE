@@ -85,7 +85,7 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
         index_type=vdm->GetIndexType();
     }
     else
-        geometry_data=CreateGeometryData(device,vil,vertices_number);
+        geometry_data=CreateGeometryData(device,vil,vertices_number,buffer_policy);
 
     if(!geometry_data)return(false);
 
