@@ -8,6 +8,7 @@
 #include<glm/gtc/matrix_transform.hpp>
 #include<memory>
 #include<vector>
+#include<cstdint>
 
 namespace hgl
 {
@@ -37,6 +38,22 @@ namespace hgl
             bool movable;  // true = movable, false = static
 
         public:
+
+            enum class TransformChange : uint32_t
+            {
+                Position = 1u << 0,
+                Rotation = 1u << 1,
+                Scale = 1u << 2,
+                Parent = 1u << 3,
+                WorldMatrix = 1u << 4,
+                Mobility = 1u << 5,
+                LocalTRS = Position | Rotation | Scale,
+            };
+
+            static constexpr uint32_t ToChangeMask(TransformChange change)
+            {
+                return static_cast<uint32_t>(change);
+            }
 
             TransformComponent(const std::string& name = "Transform");
             ~TransformComponent() override;
@@ -102,6 +119,7 @@ namespace hgl
             void UpdateIfDirty();
 
             void MarkDirty();
+            void MarkDirty(uint32_t change_mask);
 
         public:
 
@@ -116,7 +134,6 @@ namespace hgl
             }
 
         private:
-
             void UpdateWorldMatrix();
             void MigrateStorage(bool toMovable);
             std::shared_ptr<TransformDataStorage> GetStorage() const;

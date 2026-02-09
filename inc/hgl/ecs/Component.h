@@ -2,6 +2,7 @@
 
 #include<string>
 #include<memory>
+#include<cstdint>
 #include<hgl/ecs/EntityHandle.h>
 
 namespace hgl
@@ -22,6 +23,8 @@ namespace hgl
             std::string componentName;
             EntityID owner_id;
             ECSContext* owner_context = nullptr;
+            uint64_t version = 0;
+            uint32_t change_mask = 0;
 
         public:
 
@@ -43,6 +46,14 @@ namespace hgl
 
             const std::string& GetName() const { return componentName; }
 
+            uint64_t GetVersion() const { return version; }
+
+            uint32_t GetChangeMask() const { return change_mask; }
+
+            void ClearChangeMask(uint32_t mask) { change_mask &= ~mask; }
+
+            void ClearAllChanges() { change_mask = 0; }
+
             /// Set the owner entity by ID
             void SetOwner(EntityID id, ECSContext* context = nullptr) 
             { 
@@ -55,6 +66,19 @@ namespace hgl
 
             /// Get the owner entity (returns nullptr if ID is invalid)
             Entity* GetOwner() const;
+
+        protected:
+
+            void TouchChange(uint32_t mask)
+            {
+                ++version;
+                change_mask |= mask;
+            }
+
+            void AddChangeMask(uint32_t mask)
+            {
+                change_mask |= mask;
+            }
         };
     }//namespace ecs
 }//namespace hgl

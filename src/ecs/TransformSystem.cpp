@@ -22,11 +22,24 @@ namespace hgl::ecs
 
         const auto& movable_transforms = world->GetMovableTransforms();
 
+        const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
+
         for (const auto& weak_comp : movable_transforms)
         {
             if (auto comp = weak_comp.lock())
             {
-                comp->UpdateIfDirty();
+                if (ShouldUpdateTransform(comp, update_mask))
+                {
+                    comp->UpdateIfDirty();
+                    MarkTransformSeen(comp);
+                }
+                else
+                {
+                    MarkTransformSeen(comp);
+                }
             }
         }
     }
@@ -64,9 +77,19 @@ namespace hgl::ecs
             }
         }
 
-        if (comp->IsDirty())
+        const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
+
+        if (ShouldUpdateTransform(comp, update_mask))
         {
             comp->UpdateIfDirty();
+            MarkTransformSeen(comp);
+        }
+        else
+        {
+            MarkTransformSeen(comp);
         }
     }
 
@@ -184,5 +207,37 @@ namespace hgl::ecs
                 dynamic_index_map[handle] = index;
             }
         }
+    }
+
+    bool TransformSystem::ShouldUpdateTransform(const std::shared_ptr<TransformComponent>& comp, uint32_t update_mask)
+    {
+        if (!comp || !comp->IsDirty())
+            return false;
+
+        if ((comp->GetChangeMask() & update_mask) == 0)
+            return false;
+
+        const auto handle = comp->GetStorageHandle();
+        if (handle == TransformDataStorage::INVALID_HANDLE)
+            return true;
+
+        const uint64_t version = comp->GetVersion();
+        auto it = last_seen_version.find(handle);
+        if (it != last_seen_version.end() && it->second == version)
+            return false;
+
+        return true;
+    }
+
+    void TransformSystem::MarkTransformSeen(const std::shared_ptr<TransformComponent>& comp)
+    {
+        if (!comp)
+            return;
+
+        const auto handle = comp->GetStorageHandle();
+        if (handle == TransformDataStorage::INVALID_HANDLE)
+            return;
+
+        last_seen_version[handle] = comp->GetVersion();
     }
 }//namespace hgl::ecs

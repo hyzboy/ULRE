@@ -34,7 +34,7 @@ namespace hgl
         void TransformComponent::SetLocalPosition(const glm::vec3& pos)
         {
             GetStorage()->SetPosition(storageHandle, pos);
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::Position));
         }
 
         glm::quat TransformComponent::GetLocalRotation() const
@@ -45,7 +45,7 @@ namespace hgl
         void TransformComponent::SetLocalRotation(const glm::quat& rot)
         {
             GetStorage()->SetRotation(storageHandle, rot);
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::Rotation));
         }
 
         glm::vec3 TransformComponent::GetLocalScale() const
@@ -56,7 +56,7 @@ namespace hgl
         void TransformComponent::SetLocalScale(const glm::vec3& scale)
         {
             GetStorage()->SetScale(storageHandle, scale);
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::Scale));
         }
 
         void TransformComponent::SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)
@@ -65,7 +65,7 @@ namespace hgl
             storage->SetPosition(storageHandle, pos);
             storage->SetRotation(storageHandle, rot);
             storage->SetScale(storageHandle, scale);
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::LocalTRS));
         }
 
         glm::mat4 TransformComponent::GetLocalMatrix() const
@@ -115,7 +115,7 @@ namespace hgl
             {
                 storage->SetPosition(storageHandle, pos);
             }
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::Position));
         }
 
         glm::quat TransformComponent::GetWorldRotation()
@@ -154,7 +154,7 @@ namespace hgl
             {
                 storage->SetRotation(storageHandle, rot);
             }
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::Rotation));
         }
 
         glm::vec3 TransformComponent::GetWorldScale()
@@ -193,7 +193,7 @@ namespace hgl
             {
                 storage->SetScale(storageHandle, scale);
             }
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::Scale));
         }
 
         void TransformComponent::SetParent(EntityID parent)
@@ -227,7 +227,7 @@ namespace hgl
                 }
             }
 
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::Parent) | ToChangeMask(TransformChange::WorldMatrix));
         }
         
         Entity* TransformComponent::GetParent() const
@@ -281,6 +281,7 @@ namespace hgl
             if (movable == isMovable)
                 return;
 
+            TouchChange(ToChangeMask(TransformChange::Mobility));
             MigrateStorage(isMovable);
         }
 
@@ -291,7 +292,7 @@ namespace hgl
 
         void TransformComponent::OnAttach()
         {
-            MarkDirty();
+            MarkDirty(ToChangeMask(TransformChange::LocalTRS));
 
             // Register with context
             if (auto owner = GetOwner())
@@ -357,6 +358,8 @@ namespace hgl
 
             matrixDirty = false;
 
+            AddChangeMask(ToChangeMask(TransformChange::WorldMatrix));
+
             auto storage = GetStorage();
             if (storage && storageHandle != TransformDataStorage::INVALID_HANDLE)
             {
@@ -401,6 +404,12 @@ namespace hgl
 
         void TransformComponent::MarkDirty()
         {
+            MarkDirty(ToChangeMask(TransformChange::WorldMatrix));
+        }
+
+        void TransformComponent::MarkDirty(uint32_t change_mask)
+        {
+            TouchChange(change_mask);
             matrixDirty = true;
 
             // Mark children as dirty
