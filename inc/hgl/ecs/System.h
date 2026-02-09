@@ -1,8 +1,10 @@
 ﻿#pragma once
 
 #include<hgl/ecs/Object.h>
+#include<hgl/ecs/EntityQuery.h>
 #include<vector>
 #include<typeindex>
+#include<memory>
 
 namespace hgl { namespace graph { class RenderCmdBuffer; } }
 
@@ -40,6 +42,8 @@ namespace hgl
             SystemType systemType = SystemType::Unknown;
             int executionOrder = 0; // Lower values execute first
             std::vector<std::type_index> dependencies; // Type IDs of systems this depends on
+            std::unique_ptr<SystemCache> cache_manager;  // Component query cache
+            class ECSContext* context = nullptr;  // Owning context
 
         public:
 
@@ -75,6 +79,23 @@ namespace hgl
             /// Called after all dependencies are ready
             virtual void OnDependenciesReady() {}
 
+            /// Get the cache manager for this system
+            SystemCache* GetCache();
+            const SystemCache* GetCache() const;
+
+            /// Manual participation: Explicitly add an entity to a query
+            /// Used for custom logic where entity doesn't match standard signature
+            /// Example: Add entity to LOD system when close to camera
+            void AddEntityManually(EntityQuery* query, EntityID entity_id);
+
+            /// Manual participation: Explicitly remove an entity from a query
+            /// Used to remove entities from optional processing
+            /// Example: Remove entity from AI update when too far from player
+            void RemoveEntityManually(EntityQuery* query, EntityID entity_id);
+
+            /// Set the context (called by Context when system is registered)
+            void SetContext(ECSContext* ctx) { context = ctx; }
+
         protected:
 
             void SetInitialized(bool value) { initialized = value; }
@@ -90,6 +111,17 @@ namespace hgl
             void AddDependency()
             {
                 dependencies.push_back(std::type_index(typeid(T)));
+            }
+
+            /// Create a query for finding entities with specific components
+            /// Usage: auto query = CreateQuery<TransformComponent, RenderComponent>();
+            template<typename FirstComponent, typename... RestComponents>
+            EntityQuery* CreateQuery()
+            {
+                auto cache = GetCache();
+                if (!cache)
+                    return nullptr;
+                return cache->CreateQuery<FirstComponent, RestComponents...>();
             }
         };
     }//namespace ecs

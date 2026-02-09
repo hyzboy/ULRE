@@ -33,6 +33,22 @@ namespace hgl
                 context->UnregisterComponentInstance(type_hash, comp_ptr);
         }
 
+        void Entity::NotifyComponentAdded(const std::type_index& component_type)
+        {
+            if (context && id.IsValid())
+            {
+                context->NotifyComponentAdded(id, component_type);
+            }
+        }
+
+        void Entity::NotifyComponentRemoved(const std::type_index& component_type)
+        {
+            if (context && id.IsValid())
+            {
+                context->NotifyComponentRemoved(id, component_type);
+            }
+        }
+
         void Entity::OnUpdate(float deltaTime)
         {
             // Update all components
