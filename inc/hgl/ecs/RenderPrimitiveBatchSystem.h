@@ -2,6 +2,8 @@
 
 #include<hgl/ecs/System.h>
 #include<hgl/math/geometry/Frustum.h>
+#include<functional>
+#include<cstddef>
 
 namespace hgl
 {
@@ -36,7 +38,27 @@ namespace hgl::ecs
         bool distanceSortingEnabled = true;
         bool batchingEnabled = true;
 
+        struct Statistics
+        {
+            size_t totalEntities = 0;
+            size_t visibleEntities = 0;
+            size_t culledEntities = 0;
+            size_t batchCount = 0;
+            float cullingTimeMs = 0.0f;
+            float sortingTimeMs = 0.0f;
+            float batchingTimeMs = 0.0f;
+        } stats;
+
     public:
+
+        struct Events
+        {
+            std::function<void(size_t totalEntities)> onCullingStart;
+            std::function<void(size_t visibleCount, size_t culledCount)> onCullingComplete;
+            std::function<void(size_t totalEntities)> onSortingComplete;
+            std::function<void(size_t batchCount)> onBatchesBuilt;
+            std::function<void()> onBatchingComplete;
+        } events;
 
         RenderPrimitiveBatchSystem(const std::string& name = "RenderPrimitiveBatchSystem");
         ~RenderPrimitiveBatchSystem() override = default;
@@ -50,6 +72,8 @@ namespace hgl::ecs
         void SetFrustumCullingEnabled(bool enabled) { frustumCullingEnabled = enabled; }
         void SetDistanceSortingEnabled(bool enabled) { distanceSortingEnabled = enabled; }
         void SetBatchingEnabled(bool enabled) { batchingEnabled = enabled; }
+
+        const Statistics& GetStatistics() const { return stats; }
 
         void Update(float deltaTime) override;
 
