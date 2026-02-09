@@ -308,6 +308,12 @@ namespace hgl
 
             sys_map[key] = system;
 
+            // Set the context for the system so it can access entities and create queries
+            if (system)
+            {
+                system->SetContext(this);
+            }
+
             // Determine effective priority
             int effective_priority = priority;
             if (system && system->GetExecutionOrder() != 0 && priority == 0)
@@ -476,6 +482,53 @@ namespace hgl
 
             remove_from_list(static_transforms);
             remove_from_list(movable_transforms);
+        }
+
+        void ECSContext::NotifyComponentAdded(EntityID entity_id, const std::type_index& component_type)
+        {
+            // Get entity for predicate checking
+            Entity* entity = GetEntity(entity_id);
+            if (!entity)
+                return;
+
+            // Notify all tick systems - directly push entity to matching queries
+            for (auto& [key, system] : tick_systems)
+            {
+                if (system && system->GetCache())
+                {
+                    system->GetCache()->OnComponentAdded(entity_id, component_type, entity);
+                }
+            }
+
+            // Notify all render systems - directly push entity to matching queries
+            for (auto& [key, system] : render_systems)
+            {
+                if (system && system->GetCache())
+                {
+                    system->GetCache()->OnComponentAdded(entity_id, component_type, entity);
+                }
+            }
+        }
+
+        void ECSContext::NotifyComponentRemoved(EntityID entity_id, const std::type_index& component_type)
+        {
+            // Notify all tick systems - remove entity from affected queries
+            for (auto& [key, system] : tick_systems)
+            {
+                if (system && system->GetCache())
+                {
+                    system->GetCache()->OnComponentRemoved(entity_id, component_type);
+                }
+            }
+
+            // Notify all render systems - remove entity from affected queries
+            for (auto& [key, system] : render_systems)
+            {
+                if (system && system->GetCache())
+                {
+                    system->GetCache()->OnComponentRemoved(entity_id, component_type);
+                }
+            }
         }
     }//namespace ecs
 }//namespace hgl

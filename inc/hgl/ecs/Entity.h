@@ -6,6 +6,7 @@
 #include<memory>
 #include<unordered_map>
 #include<typeinfo>
+#include<typeindex>
 
 namespace hgl
 {
@@ -28,6 +29,8 @@ namespace hgl
 
             void RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp);
             void UnregisterFromContext(size_t type_hash, Component* comp_ptr);
+            void NotifyComponentAdded(const std::type_index& component_type);
+            void NotifyComponentRemoved(const std::type_index& component_type);
 
         public:
 
@@ -55,6 +58,7 @@ namespace hgl
                 component->SetOwner(id, context);
                 RegisterToContext(typeid(T).hash_code(), component);
                 component->OnAttach();
+                NotifyComponentAdded(std::type_index(typeid(T)));  // Notify systems
                 return component;
             }
 
@@ -77,6 +81,12 @@ namespace hgl
                 return components.find(typeid(T).hash_code()) != components.end();
             }
 
+            /// Check if entity has component by type_index
+            bool HasComponentByType(const std::type_index& type) const
+            {
+                return components.find(type.hash_code()) != components.end();
+            }
+
             /// Remove component by type
             template<typename T>
             void RemoveComponent()
@@ -87,6 +97,7 @@ namespace hgl
                     UnregisterFromContext(typeid(T).hash_code(), it->second.get());
                     it->second->OnDetach();
                     components.erase(it);
+                    NotifyComponentRemoved(std::type_index(typeid(T)));  // Notify systems
                 }
             }
 

@@ -117,6 +117,12 @@ namespace hgl
             /// 反注册组件实例（由 Entity::RemoveComponent 调用）
             void UnregisterComponentInstance(size_t type_hash, Component* comp_ptr);
 
+            /// Notify all systems that an entity gained a component (for cache invalidation)
+            void NotifyComponentAdded(EntityID entity_id, const std::type_index& component_type);
+
+            /// Notify all systems that an entity lost a component (for cache invalidation)
+            void NotifyComponentRemoved(EntityID entity_id, const std::type_index& component_type);
+
             /// Register a transform component (called by TransformComponent::OnAttach)
             void RegisterTransformComponent(const std::shared_ptr<TransformComponent>& comp, bool isMovable);
 
