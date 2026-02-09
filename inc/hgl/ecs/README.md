@@ -1,5 +1,22 @@
 # ECS (Entity-Component-System) Architecture
 
+## ECS (Entity-Component-System) 架构（中文概要）
+
+本目录提供 ULRE 的 ECS 基础实现，核心思路是组件化与数据驱动。
+
+### 核心模块
+- Object / Component / Entity / System / ECSContext：提供基础对象、组件、实体与系统生命周期管理
+- TransformComponent + TransformDataStorage：单一共享 SOA 存储，集中管理 L2W
+- RenderPrimitiveCollectSystem / RenderPrimitiveBatchSystem / RenderPrimitiveSubmitSystem：
+  - Collect：收集可渲染实体
+  - Batch：裁剪、排序、分批
+  - Submit：提交绘制
+- RenderFrameCache：ECSContext 持有的每帧共享缓存（renderItems/materialBatches 等）
+
+### 执行流程（建议）
+- Tick：Transform -> RenderPrimitiveCollect -> RenderPrimitiveBatch
+- Render：RenderPrimitiveSubmit
+
 This directory contains a basic ECS architecture implementation for the ULRE project, inspired by the hyzboy/AIECS repository design.
 
 ## Overview
@@ -69,24 +86,20 @@ Structure of Arrays (SOA) storage for transform data:
   - Easier to parallelize operations
   - Lower memory overhead per transform
 
-### 8. RenderCollector (`RenderCollector.h/cpp`)
-System for collecting and processing renderable entities:
-- **Entity Collection**: Gathers entities with TransformComponent and RenderableComponent
-- **Frustum Culling**: Uses Frustum from CMMath (`hgl/math/geometry/Frustum.h`) for view culling
-  - **AABB-based culling**: When entity has BoundingBoxComponent, uses accurate AABB test
-  - **Sphere-based culling**: Falls back to sphere test using RenderableComponent's bounding radius
-  - **Transform-aware**: Transforms AABB to world space before culling test
-- **Distance Sorting**: Sorts render items by distance to camera (near to far)
-- **CameraInfo Integration**: Uses CameraInfo from CMMath (`hgl/graph/CameraInfo.h`) for camera data
-- **Visibility Filtering**: Respects component visibility flags
-- **Features**:
-  - RenderableComponent base class for renderable objects
-  - RenderItem struct with collected rendering data
-  - Enable/disable frustum culling and distance sorting
-  - Efficient batch collection every frame
-  - Prioritizes AABB culling when BoundingBoxComponent is available
+### 8. RenderPrimitiveCollectSystem / RenderPrimitiveBatchSystem / RenderPrimitiveSubmitSystem
+Rendering is split into three systems for clearer responsibilities:
+- **Collect**: Gathers entities with TransformComponent + PrimitiveComponent into render items
+- **Batch**: Frustum culls, sorts, assigns transform indices, and builds MaterialBatch lists
+- **Submit**: Issues draw calls using batched data
 
-**Note**: Requires CMMath library to be linked for CameraInfo and Frustum types.
+**Note**: Uses CMMath Frustum (`hgl/math/geometry/Frustum.h`) and CameraInfo (`hgl/graph/CameraInfo.h`).
+
+### 9. RenderFrameCache
+Shared per-frame data cache owned by `ECSContext`:
+- `renderItems` - Collected render items for the current frame
+- `materialBatches` - Batched draws grouped by material/pipeline
+- `renderableCount` - Number of collected items
+- `cameraInfo` - Active camera data for the frame
 
 ### 9. PrimitiveComponent (`PrimitiveComponent.h/cpp`)
 Renderable component for static mesh rendering:
@@ -163,10 +176,10 @@ storage->UpdateAllDirtyMatrices([](TransformDataStorage::HandleID id,
     // This is much faster than individual component updates
 });
 
-// Set up rendering with RenderCollector
-auto renderCollector = world->RegisterSystem<RenderCollector>();
-renderCollector->SetWorld(world);
-renderCollector->Initialize();
+// Set up rendering systems
+auto renderCollect = world->RegisterTickSystem<RenderPrimitiveCollectSystem>();
+auto renderBatch = world->RegisterTickSystem<RenderPrimitiveBatchSystem>();
+auto renderSubmit = world->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
 
 // Configure camera (requires CMMath)
 // CameraInfo and Frustum come from CMMath library
@@ -175,7 +188,8 @@ hgl::graph::CameraInfo camera;
 // camera.position = ...
 // camera.viewMatrix = ...
 // camera.projectionMatrix = ...
-renderCollector->SetCameraInfo(&camera);
+renderCollect->SetCameraInfo(&camera);
+renderBatch->SetCameraInfo(&camera);
 
 // Add renderable component to entity
 auto renderable = player->AddComponent<RenderableComponent>();
@@ -207,34 +221,7 @@ const auto& minPoints = bboxStorage->GetAllMinPoints();
 const auto& maxPoints = bboxStorage->GetAllMaxPoints();
 // Upload to GPU: glBufferData(GL_SHADER_STORAGE_BUFFER, minPoints.size() * sizeof(glm::vec3), minPoints.data(), GL_STATIC_DRAW);
 
-// Collect visible entities (with frustum culling and distance sorting)
-renderCollector->CollectRenderables();
-
-// Access material batches (optimized for indirect rendering)
-const auto& materialBatches = renderCollector->GetMaterialBatches();
-for (const auto& [key, batch] : materialBatches) {
-    // Each batch contains render items with the same material/pipeline
-    // Internally uses indirect draw commands for efficient GPU rendering
-    std::cout << "Batch has " << batch->GetCount() << " items\n";
-}
-
-// Or access raw render items
-const auto& renderItems = renderCollector->GetRenderItems();
-for (const auto& item : renderItems) {
-    if (item->isVisible) {
-        // Each item has been sorted and batched
-        // Render using batch system for best performance
-    }
-}
-
-// Render all collected items (uses indirect rendering internally)
-hgl::graph::RenderCmdBuffer* cmdBuffer = GetCommandBuffer();
-renderCollector->Render(cmdBuffer);
-// This will:
-// 1. Bind pipeline and material for each batch
-// 2. Build indirect draw commands in GPU memory
-// 3. Submit batched indirect draws (vkCmdDrawIndirect/vkCmdDrawIndexedIndirect)
-// 4. Minimize state changes and draw call overhead
+// Collect/Batch run during Tick, Submit runs during Render.
 
 // Game loop
 float deltaTime = 0.016f; // 16ms = 60 FPS
