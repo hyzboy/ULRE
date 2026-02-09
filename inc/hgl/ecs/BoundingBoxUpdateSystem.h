@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/ecs/System.h>
+#include<hgl/ecs/TransformDataStorage.h>
 #include<cstdint>
 #include<memory>
 #include<unordered_map>
@@ -9,6 +10,7 @@ namespace hgl::ecs
 {
     class ECSContext;
     class BoundingBoxComponent;
+    class TransformComponent;
 
     /**
      * BoundingBoxUpdateSystem
@@ -23,6 +25,7 @@ namespace hgl::ecs
         ECSContext* world = nullptr;
         bool update_enabled = true;
         std::unordered_map<const BoundingBoxComponent*, uint64_t> last_seen_version;
+        std::unordered_map<TransformDataStorage::HandleID, uint64_t> last_seen_transform_version;
 
     public:
 
@@ -39,7 +42,11 @@ namespace hgl::ecs
 
     private:
 
-        bool ShouldProcess(const std::shared_ptr<BoundingBoxComponent>& bbox, uint32_t update_mask);
-        void MarkSeen(const std::shared_ptr<BoundingBoxComponent>& bbox);
+        bool ShouldProcess(const std::shared_ptr<BoundingBoxComponent>& bbox,
+                           const std::shared_ptr<TransformComponent>& transform,
+                           uint32_t bbox_update_mask,
+                           uint32_t transform_update_mask);
+        void MarkSeen(const std::shared_ptr<BoundingBoxComponent>& bbox,
+                      const std::shared_ptr<TransformComponent>& transform);
     };
 }//namespace hgl::ecs

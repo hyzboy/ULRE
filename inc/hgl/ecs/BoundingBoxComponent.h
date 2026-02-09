@@ -24,6 +24,9 @@ namespace hgl
             // SOA storage handle
             BoundingBoxDataStorage::HandleID storageHandle = BoundingBoxDataStorage::INVALID_HANDLE;
 
+            AABB worldAABB;
+            bool worldAABBValid = false;
+
             // Shared SOA storage (singleton)
             static std::shared_ptr<BoundingBoxDataStorage> sharedStorage;
 
@@ -195,6 +198,17 @@ namespace hgl
                     sharedStorage = std::make_shared<BoundingBoxDataStorage>();
                 }
                 return sharedStorage;
+            }
+
+            bool HasWorldAABB() const { return worldAABBValid; }
+
+            const AABB& GetWorldAABB() const { return worldAABB; }
+
+            void SetWorldAABB(const AABB& aabb)
+            {
+                worldAABB = aabb;
+                worldAABBValid = true;
+                TouchChange(static_cast<uint32_t>(BoundingBoxChange::WorldAABB));
             }
 
             // Component lifecycle hooks
