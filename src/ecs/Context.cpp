@@ -1,4 +1,5 @@
 ﻿#include<hgl/ecs/Context.h>
+#include<hgl/ecs/EntityManager.h>
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/MaterialBatch.h>
 #include<hgl/ecs/PrimitiveRenderItem.h>
@@ -25,6 +26,7 @@ namespace hgl
 
         ECSContext::ECSContext(const std::string& name)
             : Object(name)
+            , entity_manager(std::make_unique<EntityManager>(1000))
             , active(false)
         {
         }
@@ -82,11 +84,10 @@ namespace hgl
                 return;
 
             // Destroy all entities
-            for (auto& entity : entities)
+            if (entity_manager)
             {
-                entity->OnDestroy();
+                entity_manager->Clear();
             }
-            entities.clear();
 
             component_registry.clear();
             static_transforms.clear();
@@ -131,8 +132,16 @@ namespace hgl
             }
 
             // Update all entities
-            for (auto& entity : entities)
-                entity->OnUpdate(deltaTime);
+            if (entity_manager)
+            {
+                std::vector<Entity*> entities;
+                entity_manager->GetAllEntityPointers(entities);
+                for (auto entity : entities)
+                {
+                    if (entity)
+                        entity->OnUpdate(deltaTime);
+                }
+            }
         }
 
         void ECSContext::Render(graph::RenderCmdBuffer *cmd, float deltaTime)

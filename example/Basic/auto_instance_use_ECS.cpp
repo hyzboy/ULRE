@@ -53,7 +53,7 @@ private:
     Pipeline *          pipeline            =nullptr;
 
     // 存储所有创建的实体
-    std::vector<std::shared_ptr<Entity>> triangle_entities;
+    std::vector<Entity*> triangle_entities;
 
 private:
 

@@ -1,4 +1,6 @@
 ﻿#include<hgl/ecs/PrimitiveRenderItem.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/Context.h>
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/RenderableComponent.h>
 #include<hgl/ecs/TransformComponent.h>
@@ -11,10 +13,12 @@ namespace hgl::ecs
 {
     // PrimitiveRenderItem implementation
     PrimitiveRenderItem::PrimitiveRenderItem(
-        std::shared_ptr<Entity> ent,
+        EntityID ent_id,
         std::shared_ptr<TransformComponent> trans,
-        std::shared_ptr<PrimitiveComponent> prim)
-        : entity(ent)
+        std::shared_ptr<PrimitiveComponent> prim,
+        ECSContext* ctx)
+        : entity_id(ent_id)
+        , context(ctx)
         , transform(trans)
         , primitiveComp(prim)
         , worldMatrix(1.0f)
@@ -24,6 +28,13 @@ namespace hgl::ecs
             worldMatrix = transform->GetWorldMatrix();
             worldPosition = transform->GetWorldPosition();
         }
+    }
+    
+    Entity* PrimitiveRenderItem::GetEntity() const
+    {
+        if (!context || !entity_id.IsValid())
+            return nullptr;
+        return context->GetEntity(entity_id);
     }
 
     std::shared_ptr<RenderableComponent> PrimitiveRenderItem::GetRenderable() const

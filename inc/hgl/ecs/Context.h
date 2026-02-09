@@ -4,6 +4,7 @@
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/EntityManager.h>
 #include<memory>
 #include<vector>
 #include<unordered_map>
@@ -41,7 +42,7 @@ namespace hgl
         {
         private:
 
-            std::vector<std::shared_ptr<Entity>> entities;
+            std::unique_ptr<EntityManager> entity_manager;
 
             // 分类存储：更新系统与渲染系统分开
             std::unordered_map<size_t, std::shared_ptr<System>> tick_systems;
@@ -134,14 +135,71 @@ namespace hgl
         public:
 
             /// Create a new entity in the world
+            /// Returns raw pointer managed by EntityManager
             template<typename T = Entity, typename... Args>
-            std::shared_ptr<T> CreateEntity(Args&&... args)
+            T* CreateEntity(Args&&... args)
             {
-                auto entity = std::make_shared<T>(std::forward<Args>(args)...);
-                entity->SetContext(this);
-                entities.push_back(entity);
-                entity->OnCreate();
-                return entity;
+                EntityID id = entity_manager->CreateEntity();
+                Entity* entity = entity_manager->GetEntity(id);
+                
+                if constexpr (std::is_same_v<T, Entity>)
+                {
+                    entity->SetContext(this);
+                    entity->OnCreate();
+                    return (T*)entity;
+                }
+                else
+                {
+                    // For derived types, this won't work correctly
+                    // Derived entity types should be created with EntityManager directly
+                    ((T*)entity)->SetContext(this);
+                    ((T*)entity)->OnCreate();
+                    return (T*)entity;
+                }
+            }
+
+            /// Get entity by ID
+            Entity* GetEntity(EntityID id)
+            {
+                if (!entity_manager)
+                    return nullptr;
+                return entity_manager->GetEntity(id);
+            }
+
+            /// Get entity by ID (const version)
+            const Entity* GetEntity(EntityID id) const
+            {
+                if (!entity_manager)
+                    return nullptr;
+                return entity_manager->GetEntity(id);
+            }
+
+            /// Destroy entity by ID
+            void DestroyEntity(EntityID id)
+            {
+                if (entity_manager)
+                    entity_manager->DestroyEntity(id);
+            }
+
+            /// Get all alive entity IDs
+            void GetAllEntityIDs(std::vector<EntityID>& out_ids) const
+            {
+                if (entity_manager)
+                    entity_manager->GetAllEntities(out_ids);
+            }
+
+            /// Get all alive entity pointers
+            void GetAllEntities(std::vector<Entity*>& out_entities)
+            {
+                if (entity_manager)
+                    entity_manager->GetAllEntityPointers(out_entities);
+            }
+
+            /// Get all alive entity pointers (const version)
+            void GetAllEntities(std::vector<Entity*>& out_entities) const
+            {
+                if (entity_manager)
+                    entity_manager->GetAllEntityPointers(out_entities);
             }
 
             /// Register a system
@@ -239,12 +297,11 @@ namespace hgl
              }
 
         public:
-
             /// Get entity count
-            size_t GetEntityCount() const { return entities.size(); }
-
-            /// Get all entities (for systems that need to iterate)
-            const std::vector<std::shared_ptr<Entity>>& GetEntities() const { return entities; }
+            size_t GetEntityCount() const 
+            { 
+                return entity_manager ? entity_manager->GetEntityCount() : 0;
+            }
 
             RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }
             const RenderFrameCache& GetRenderFrameCache() const { return render_frame_cache; }

@@ -2,12 +2,14 @@
 
 #include<string>
 #include<memory>
+#include<hgl/ecs/EntityHandle.h>
 
 namespace hgl
 {
     namespace ecs
     {
         class Entity; // Forward declaration
+        class ECSContext; // Forward declaration
 
         /**
          * Base component class for Entity
@@ -18,7 +20,8 @@ namespace hgl
         protected:
 
             std::string componentName;
-            std::weak_ptr<Entity> owner;
+            EntityID owner_id;
+            ECSContext* owner_context = nullptr;
 
         public:
 
@@ -40,11 +43,18 @@ namespace hgl
 
             const std::string& GetName() const { return componentName; }
 
-            /// Set the owner entity
-            void SetOwner(std::shared_ptr<Entity> entity) { owner = entity; }
+            /// Set the owner entity by ID
+            void SetOwner(EntityID id, ECSContext* context = nullptr) 
+            { 
+                owner_id = id;
+                owner_context = context;
+            }
 
-            /// Get the owner entity
-            std::shared_ptr<Entity> GetOwner() const { return owner.lock(); }
+            /// Get the owner entity ID
+            EntityID GetOwnerID() const { return owner_id; }
+
+            /// Get the owner entity (returns nullptr if ID is invalid)
+            Entity* GetOwner() const;
         };
     }//namespace ecs
 }//namespace hgl

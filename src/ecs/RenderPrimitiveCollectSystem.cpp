@@ -41,7 +41,8 @@ namespace hgl::ecs
             if (!primitiveComp || !primitiveComp->IsVisible() || !primitiveComp->CanRender())
                 continue;
 
-            auto entity = primitiveComp->GetOwner();
+            EntityID entity_id = primitiveComp->GetOwnerID();
+            Entity* entity = primitiveComp->GetOwner();
             if (!entity)
                 continue;
 
@@ -49,7 +50,7 @@ namespace hgl::ecs
             if (!transform)
                 continue;
 
-            auto item = std::make_unique<PrimitiveRenderItem>(entity, transform, primitiveComp);
+            auto item = std::make_unique<PrimitiveRenderItem>(entity_id, transform, primitiveComp, world);
 
             glm::vec3 worldPos = transform->GetWorldPosition();
             item->worldPosition = worldPos;

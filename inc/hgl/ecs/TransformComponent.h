@@ -25,9 +25,9 @@ namespace hgl
             // SOA storage handle
             TransformDataStorage::HandleID storageHandle = TransformDataStorage::INVALID_HANDLE;
 
-            // Hierarchy
-            std::weak_ptr<Entity> parentEntity;
-            std::vector<std::shared_ptr<Entity>> childEntities;
+            // Hierarchy (using EntityID instead of shared_ptr)
+            EntityID parent_id;
+            std::vector<EntityID> child_ids;
 
             // Cached world transform (for static objects)
             glm::mat4 cachedWorldMatrix;
@@ -73,12 +73,16 @@ namespace hgl
         public:
 
             // Parent/Child relationships
-            void SetParent(std::shared_ptr<Entity> parent);
-            std::shared_ptr<Entity> GetParent() const { return parentEntity.lock(); }
+            void SetParent(EntityID parent);
+            EntityID GetParentID() const { return parent_id; }
+            Entity* GetParent() const;
 
-            void AddChild(std::shared_ptr<Entity> child);
-            void RemoveChild(std::shared_ptr<Entity> child);
-            const std::vector<std::shared_ptr<Entity>>& GetChildren() const { return childEntities; }
+            void AddChild(EntityID child);
+            void RemoveChild(EntityID child);
+            const std::vector<EntityID>& GetChildren() const { return child_ids; }
+            
+            // Helper function to get child entities as pointers
+            void GetChildEntities(std::vector<Entity*>& out) const;
 
         public:
 

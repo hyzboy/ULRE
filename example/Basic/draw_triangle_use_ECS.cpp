@@ -50,7 +50,7 @@ private:
 
     // ECS组件
     ECSContext *  ecs_world      =nullptr;   // 由 RenderFramework 统一维护
-    std::shared_ptr<Entity> triangle_entity     =nullptr;
+    Entity* triangle_entity     =nullptr;
 
     // 传统渲染资源
     MaterialInstance *  material_instance   =nullptr;

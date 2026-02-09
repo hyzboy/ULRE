@@ -53,7 +53,7 @@ private:
     // 每个三角形的数据
     struct TriangleData
     {
-        std::shared_ptr<Entity> entity;
+        Entity* entity;
         MaterialInstance* mi;
         Primitive* primitive;
     };

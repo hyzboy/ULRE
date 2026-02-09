@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/Object.h>
 #include<hgl/ecs/Component.h>
+#include<hgl/ecs/EntityHandle.h>
 #include<memory>
 #include<unordered_map>
 #include<typeinfo>
@@ -16,10 +17,11 @@ namespace hgl
          * Entity - represents game objects with components
          * Entities are containers for components
          */
-        class Entity : public Object, public std::enable_shared_from_this<Entity>
+        class Entity : public Object
         {
         private:
 
+            EntityID id;
             // Use hash_code instead of string for faster lookups
             std::unordered_map<std::size_t, std::shared_ptr<Component>> components;
             ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
@@ -31,6 +33,12 @@ namespace hgl
 
             explicit Entity(const std::string& name = "Entity");
             ~Entity() override;
+
+            /// Get entity ID
+            EntityID GetID() const { return id; }
+            
+            /// Set entity ID (called by EntityManager)
+            void SetID(EntityID entity_id) { id = entity_id; }
 
             void SetContext(ECSContext *ctx) { context = ctx; }
 
@@ -44,7 +52,7 @@ namespace hgl
             {
                 auto component = std::make_shared<T>(std::forward<Args>(args)...);
                 components[typeid(T).hash_code()] = component;
-                component->SetOwner(shared_from_this());
+                component->SetOwner(id, context);
                 RegisterToContext(typeid(T).hash_code(), component);
                 component->OnAttach();
                 return component;

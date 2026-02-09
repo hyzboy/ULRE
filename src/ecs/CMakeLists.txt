@@ -3,6 +3,8 @@
 SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/Component.h
                 ${ECS_INCLUDE_PATH}/Entity.h
+                ${ECS_INCLUDE_PATH}/EntityHandle.h
+                ${ECS_INCLUDE_PATH}/EntityManager.h
                 ${ECS_INCLUDE_PATH}/System.h
                 ${ECS_INCLUDE_PATH}/Context.h
                 ${ECS_INCLUDE_PATH}/TransformComponent.h
@@ -37,6 +39,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 Object.cpp
                 Component.cpp
                 Entity.cpp
+                EntityManager.cpp
                 System.cpp
                 Context.cpp
                 TransformComponent.cpp
