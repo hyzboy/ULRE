@@ -6,6 +6,8 @@
 #include<hgl/ecs/PrimitiveRenderItem.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/TransformSystem.h>
+#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/RenderPrimitiveCollectSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKRenderAssign.h>
@@ -311,6 +313,14 @@ namespace hgl::ecs
     RenderPrimitiveBatchSystem::RenderPrimitiveBatchSystem(const std::string& name)
         : System(name)
     {
+        // Set system type and properties
+        SetSystemType(SystemType::RenderBatch);
+        SetExecutionOrder(110);  // Second render stage
+        
+        // Declare dependencies
+        AddDependency<TransformSystem>();            // Needs transform indices
+        AddDependency<CameraSystem>();               // Needs camera for frustum culling
+        AddDependency<RenderPrimitiveCollectSystem>(); // Needs collected items
     }
 
     void RenderPrimitiveBatchSystem::Update(float /*deltaTime*/)

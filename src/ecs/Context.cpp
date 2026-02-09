@@ -57,13 +57,19 @@ namespace hgl
                 for (auto& entry : tick_system_order)
                 {
                     if (entry.system)
+                    {
+                        entry.system->OnDependenciesReady();
                         entry.system->Initialize();
+                    }
                 }
 
                 for (auto& entry : render_system_order)
                 {
                     if (entry.system)
+                    {
+                        entry.system->OnDependenciesReady();
                         entry.system->Initialize();
+                    }
                 }
 
             active = true;
@@ -293,21 +299,40 @@ namespace hgl
 
             sys_map[key] = system;
 
+            // Determine effective priority
+            int effective_priority = priority;
+            if (system && system->GetExecutionOrder() != 0 && priority == 0)
+            {
+                effective_priority = system->GetExecutionOrder();
+            }
+
             if (auto *entry = FindOrderedSystem(order_list, key))
             {
                 entry->system = system;
-                entry->priority = priority;
+                entry->priority = effective_priority;
                 dirty_flag = true;
-                return;
             }
-
-            OrderedSystem entry;
-            entry.key = key;
-            entry.priority = priority;
-            entry.order = next_system_order++;
-            entry.system = system;
-            order_list.push_back(std::move(entry));
-            dirty_flag = true;
+            else
+            {
+                OrderedSystem new_entry;
+                new_entry.key = key;
+                new_entry.priority = effective_priority;
+                new_entry.order = next_system_order++;
+                new_entry.system = system;
+                order_list.push_back(std::move(new_entry));
+                dirty_flag = true;
+            }
+            
+            // Automatically register dependencies declared by the system
+            if (system)
+            {
+                const auto& deps = system->GetDependencies();
+                for (const auto& dep_type : deps)
+                {
+                    size_t dep_key = dep_type.hash_code();
+                    AddSystemDependency(is_render, key, dep_key);
+                }
+            }
         }
 
         void ECSContext::AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key)

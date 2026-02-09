@@ -212,9 +212,6 @@ bool RenderFramework::Init(uint w,uint h)
 
         render_submit_system->SetWorld(default_ecs_context);
 
-        default_ecs_context->AddTickDependency<ecs::RenderPrimitiveCollectSystem, ecs::TransformSystem>();
-        default_ecs_context->AddTickDependency<ecs::RenderPrimitiveBatchSystem, ecs::RenderPrimitiveCollectSystem>();
-
         auto input_system=default_ecs_context->RegisterTickSystem<ecs::InputSystem>();
 
         AddChildDispatcher(input_system->GetEventDispatcher());

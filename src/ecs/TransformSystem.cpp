@@ -6,6 +6,11 @@ namespace hgl::ecs
     TransformSystem::TransformSystem(const std::string& name)
         : System(name)
     {
+        // Set system type and properties
+        SetSystemType(SystemType::Transform);
+        SetExecutionOrder(10);  // Run after Input
+        
+        // No dependencies - Transform is fundamental
     }
 
     void TransformSystem::Update(float deltaTime)
