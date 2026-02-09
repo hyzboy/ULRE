@@ -13,6 +13,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/TransformDataStorage.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxComponent.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxDataStorage.h
+                ${ECS_INCLUDE_PATH}/BoundingBoxUpdateSystem.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveCollectSystem.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveBatchSystem.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
@@ -47,6 +48,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 TransformComponent.cpp
                 TransformSystem.cpp
                 BoundingBoxComponent.cpp
+                BoundingBoxUpdateSystem.cpp
                 PrimitiveComponent.cpp
                 RenderItem.cpp
                 PrimitiveRenderItem.cpp
@@ -85,6 +87,8 @@ source_group("ECS\\BoundingBox" FILES
     ${ECS_INCLUDE_PATH}/BoundingBoxComponent.h
     BoundingBoxComponent.cpp
     ${ECS_INCLUDE_PATH}/BoundingBoxDataStorage.h
+    ${ECS_INCLUDE_PATH}/BoundingBoxUpdateSystem.h
+    BoundingBoxUpdateSystem.cpp
 )
 
 source_group("ECS\\Rendering" FILES

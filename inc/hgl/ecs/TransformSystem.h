@@ -7,6 +7,7 @@
 #include<vector>
 #include<memory>
 #include<unordered_map>
+#include<cstdint>
 
 namespace hgl::ecs
 {
@@ -34,6 +35,7 @@ namespace hgl::ecs
         std::vector<TransformDataStorage::HandleID> dynamic_handles;
         std::unordered_map<TransformDataStorage::HandleID, uint32_t> static_index_map;
         std::unordered_map<TransformDataStorage::HandleID, uint32_t> dynamic_index_map;
+        std::unordered_map<TransformDataStorage::HandleID, uint64_t> last_seen_version;
 
     public:
 
@@ -62,5 +64,7 @@ namespace hgl::ecs
     private:
 
         void UpdateStaticTransformRecursive(const std::shared_ptr<TransformComponent>& comp);
+        bool ShouldUpdateTransform(const std::shared_ptr<TransformComponent>& comp, uint32_t update_mask);
+        void MarkTransformSeen(const std::shared_ptr<TransformComponent>& comp);
     };
 }//namespace hgl::ecs

@@ -5,6 +5,7 @@
 #include<hgl/ecs/BoundingBoxDataStorage.h>
 #include<glm/glm.hpp>
 #include<memory>
+#include<cstdint>
 
 namespace hgl
 {
@@ -27,6 +28,13 @@ namespace hgl
             static std::shared_ptr<BoundingBoxDataStorage> sharedStorage;
 
         public:
+            enum class BoundingBoxChange : uint32_t
+            {
+                MinMax = 1u << 0,
+                CenterExtents = 1u << 1,
+                WorldAABB = 1u << 2,
+            };
+
             explicit BoundingBoxComponent(const std::string& name = "BoundingBox")
                 : Component(name)
             {
@@ -58,6 +66,8 @@ namespace hgl
                 if (sharedStorage && storageHandle != BoundingBoxDataStorage::INVALID_HANDLE)
                 {
                     sharedStorage->SetAABB(storageHandle, aabb);
+                    TouchChange(static_cast<uint32_t>(BoundingBoxChange::MinMax) |
+                                static_cast<uint32_t>(BoundingBoxChange::CenterExtents));
                 }
             }
 
@@ -71,6 +81,8 @@ namespace hgl
                 if (sharedStorage && storageHandle != BoundingBoxDataStorage::INVALID_HANDLE)
                 {
                     sharedStorage->SetAABB(storageHandle, minPoint, maxPoint);
+                    TouchChange(static_cast<uint32_t>(BoundingBoxChange::MinMax) |
+                                static_cast<uint32_t>(BoundingBoxChange::CenterExtents));
                 }
             }
 
