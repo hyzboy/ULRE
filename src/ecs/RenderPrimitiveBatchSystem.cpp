@@ -19,6 +19,7 @@
 #include<algorithm>
 #include<iostream>
 #include<limits>
+#include<chrono>
 
 namespace hgl::ecs
 {
@@ -334,6 +335,9 @@ namespace hgl::ecs
         if (cache.renderItems.empty())
             return;
 
+        stats = Statistics{};
+        stats.totalEntities = cache.renderItems.size();
+
         if (frustumCullingEnabled)
             PerformFrustumCulling();
 
@@ -353,14 +357,30 @@ namespace hgl::ecs
 
         if (batchingEnabled)
         {
+            const auto start = std::chrono::high_resolution_clock::now();
+
             BuildMaterialBatches();
             FinalizeBatches();
+
+            const auto end = std::chrono::high_resolution_clock::now();
+            stats.batchingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
+            stats.batchCount = cache.materialBatches.size();
+
+            if (events.onBatchesBuilt)
+                events.onBatchesBuilt(stats.batchCount);
+            if (events.onBatchingComplete)
+                events.onBatchingComplete();
         }
     }
 
     void RenderPrimitiveBatchSystem::PerformFrustumCulling()
     {
         auto& cache = world->GetRenderFrameCache();
+
+        const auto start = std::chrono::high_resolution_clock::now();
+
+        if (events.onCullingStart)
+            events.onCullingStart(cache.renderItems.size());
 
         frustum.SetMatrix(cameraInfo->vp);
 
@@ -417,16 +437,40 @@ namespace hgl::ecs
                     item->isVisible = (frustum.SphereIn(worldPos, boundingRadius) != math::Frustum::Scope::OUTSIDE);
             }
         }
+
+        size_t visible_count = 0;
+        for (const auto& itemPtr : cache.renderItems)
+        {
+            if (itemPtr && itemPtr->isVisible)
+                ++visible_count;
+        }
+
+        stats.visibleEntities = visible_count;
+        stats.culledEntities = cache.renderItems.size() - visible_count;
+
+        const auto end = std::chrono::high_resolution_clock::now();
+        stats.cullingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
+
+        if (events.onCullingComplete)
+            events.onCullingComplete(stats.visibleEntities, stats.culledEntities);
     }
 
     void RenderPrimitiveBatchSystem::SortByDistance()
     {
         auto& cache = world->GetRenderFrameCache();
 
+        const auto start = std::chrono::high_resolution_clock::now();
+
         std::sort(cache.renderItems.begin(), cache.renderItems.end(),
             [](const std::unique_ptr<PrimitiveRenderItem>& a, const std::unique_ptr<PrimitiveRenderItem>& b) {
                 return a->distanceToCamera < b->distanceToCamera;
             });
+
+        const auto end = std::chrono::high_resolution_clock::now();
+        stats.sortingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
+
+        if (events.onSortingComplete)
+            events.onSortingComplete(cache.renderItems.size());
     }
 
     void RenderPrimitiveBatchSystem::AssignTransformIndices(TransformSystem* transform_system)
