@@ -61,7 +61,7 @@ private:
     // 刻度数据
     struct TickData
     {
-        std::shared_ptr<Entity> entity;
+        Entity* entity;
         MaterialInstance* mi;
         Primitive* primitive;
     };
@@ -71,10 +71,10 @@ private:
     // 指针数据
     struct HandData
     {
-        std::shared_ptr<Entity> entity;
+        Entity* entity;
         MaterialInstance* mi;
         Primitive* primitive;
-        std::shared_ptr<TransformComponent> transform;
+        TransformComponent* transform;
         float length_scale;  // 指针长度倍数
     };
 
@@ -235,7 +235,7 @@ private:
             hands[i].entity = ecs_world->CreateEntity<Entity>(hand_names[i]);
 
             // 添加TransformComponent - 动态变换
-            hands[i].transform = hands[i].entity->AddComponent<TransformComponent>();
+            hands[i].transform = hands[i].entity->AddComponent<TransformComponent>().get();
 
             hands[i].transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             hands[i].transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));  // 单位四元数

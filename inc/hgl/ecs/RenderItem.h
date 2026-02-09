@@ -1,7 +1,8 @@
 ﻿#pragma once
 
-#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/EntityHandle.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<memory>
 
 namespace hgl
 {
@@ -11,6 +12,11 @@ namespace hgl
         class Material;
         class MaterialInstance;
         class Pipeline;
+    }
+    
+    namespace ecs
+    {
+        class Entity;
     }
 }
 
@@ -37,8 +43,9 @@ namespace hgl::ecs
 
         virtual ~RenderItem() = default;
 
-        // Abstract interface - must be implemented by derived classes
-        virtual std::shared_ptr<Entity> GetEntity() const = 0;
+        // Abstract interface - returns EntityID and entity pointer
+        virtual EntityID GetEntityID() const = 0;
+        virtual Entity* GetEntity() const = 0;
         virtual std::shared_ptr<TransformComponent> GetTransform() const = 0;
         virtual std::shared_ptr<RenderableComponent> GetRenderable() const = 0;
         virtual glm::mat4 GetWorldMatrix() const = 0;

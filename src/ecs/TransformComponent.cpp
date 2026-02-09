@@ -95,7 +95,7 @@ namespace hgl
         void TransformComponent::SetWorldPosition(const glm::vec3& pos)
         {
             auto storage = GetStorage();
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
@@ -121,7 +121,7 @@ namespace hgl
         glm::quat TransformComponent::GetWorldRotation()
         {
             auto storage = GetStorage();
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
@@ -136,7 +136,7 @@ namespace hgl
         void TransformComponent::SetWorldRotation(const glm::quat& rot)
         {
             auto storage = GetStorage();
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
@@ -160,7 +160,7 @@ namespace hgl
         glm::vec3 TransformComponent::GetWorldScale()
         {
             auto storage = GetStorage();
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
@@ -175,7 +175,7 @@ namespace hgl
         void TransformComponent::SetWorldScale(const glm::vec3& scale)
         {
             auto storage = GetStorage();
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
@@ -196,55 +196,83 @@ namespace hgl
             MarkDirty();
         }
 
-        void TransformComponent::SetParent(std::shared_ptr<Entity> parent)
+        void TransformComponent::SetParent(EntityID parent)
         {
             // Remove from old parent
-            auto oldParent = parentEntity.lock();
-            if (oldParent)
+            if (parent_id.IsValid() && owner_context)
             {
-                auto oldParentTransform = oldParent->GetComponent<TransformComponent>();
-                if (oldParentTransform)
+                Entity* oldParentEntity = owner_context->GetEntity(parent_id);
+                if (oldParentEntity)
                 {
-                    oldParentTransform->RemoveChild(owner.lock());
+                    auto oldParentTransform = oldParentEntity->GetComponent<TransformComponent>();
+                    if (oldParentTransform)
+                    {
+                        oldParentTransform->RemoveChild(owner_id);
+                    }
                 }
             }
 
             // Set new parent
-            parentEntity = parent;
-            if (parent)
+            parent_id = parent;
+            if (parent.IsValid() && owner_context)
             {
-                auto parentTransform = parent->GetComponent<TransformComponent>();
-                if (parentTransform)
+                Entity* parentEntity = owner_context->GetEntity(parent);
+                if (parentEntity)
                 {
-                    parentTransform->AddChild(owner.lock());
+                    auto parentTransform = parentEntity->GetComponent<TransformComponent>();
+                    if (parentTransform)
+                    {
+                        parentTransform->AddChild(owner_id);
+                    }
                 }
             }
 
             MarkDirty();
         }
-
-        void TransformComponent::AddChild(std::shared_ptr<Entity> child)
+        
+        Entity* TransformComponent::GetParent() const
         {
-            if (!child)
+            if (!owner_context || !parent_id.IsValid())
+                return nullptr;
+            return owner_context->GetEntity(parent_id);
+        }
+
+        void TransformComponent::AddChild(EntityID child)
+        {
+            if (!child.IsValid())
                 return;
 
             // Check if already a child
-            auto it = std::find(childEntities.begin(), childEntities.end(), child);
-            if (it == childEntities.end())
+            auto it = std::find(child_ids.begin(), child_ids.end(), child);
+            if (it == child_ids.end())
             {
-                childEntities.push_back(child);
+                child_ids.push_back(child);
             }
         }
 
-        void TransformComponent::RemoveChild(std::shared_ptr<Entity> child)
+        void TransformComponent::RemoveChild(EntityID child)
         {
-            if (!child)
+            if (!child.IsValid())
                 return;
 
-            auto it = std::find(childEntities.begin(), childEntities.end(), child);
-            if (it != childEntities.end())
+            auto it = std::find(child_ids.begin(), child_ids.end(), child);
+            if (it != child_ids.end())
             {
-                childEntities.erase(it);
+                child_ids.erase(it);
+            }
+        }
+        
+        void TransformComponent::GetChildEntities(std::vector<Entity*>& out) const
+        {
+            out.clear();
+            if (!owner_context)
+                return;
+                
+            for (const EntityID& child_id : child_ids)
+            {
+                Entity* entity = owner_context->GetEntity(child_id);
+                if (entity)
+                    out.push_back(entity);
             }
         }
 
@@ -287,25 +315,29 @@ namespace hgl
             }
 
             // Remove from parent
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
                 if (parentTransform)
                 {
-                    parentTransform->RemoveChild(owner.lock());
+                    Entity* owner_entity = owner_context ? owner_context->GetEntity(owner_id) : nullptr;
+                    if (owner_entity)
+                    {
+                        parentTransform->RemoveChild(owner_entity->GetID());
+                    }
                 }
             }
 
             // Clear children
-            childEntities.clear();
+            child_ids.clear();
         }
 
         void TransformComponent::UpdateWorldMatrix()
         {
             glm::mat4 localMatrix = GetLocalMatrix();
 
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
@@ -332,14 +364,18 @@ namespace hgl
             }
 
             // Mark children as dirty
-            for (auto& child : childEntities)
+            if (owner_context)
             {
-                if (child)
+                for (const EntityID& child_id : child_ids)
                 {
-                    auto childTransform = child->GetComponent<TransformComponent>();
-                    if (childTransform)
+                    Entity* child = owner_context->GetEntity(child_id);
+                    if (child)
                     {
-                        childTransform->MarkDirty();
+                        auto childTransform = child->GetComponent<TransformComponent>();
+                        if (childTransform)
+                        {
+                            childTransform->MarkDirty();
+                        }
                     }
                 }
             }
@@ -350,7 +386,7 @@ namespace hgl
             if (!matrixDirty)
                 return;
 
-            auto parent = parentEntity.lock();
+            Entity* parent = owner_context ? owner_context->GetEntity(parent_id) : nullptr;
             if (parent)
             {
                 auto parentTransform = parent->GetComponent<TransformComponent>();
@@ -368,14 +404,18 @@ namespace hgl
             matrixDirty = true;
 
             // Mark children as dirty
-            for (auto& child : childEntities)
+            if (owner_context)
             {
-                if (child)
+                for (const EntityID& child_id : child_ids)
                 {
-                    auto childTransform = child->GetComponent<TransformComponent>();
-                    if (childTransform)
+                    Entity* child = owner_context->GetEntity(child_id);
+                    if (child)
                     {
-                        childTransform->MarkDirty();
+                        auto childTransform = child->GetComponent<TransformComponent>();
+                        if (childTransform)
+                        {
+                            childTransform->MarkDirty();
+                        }
                     }
                 }
             }

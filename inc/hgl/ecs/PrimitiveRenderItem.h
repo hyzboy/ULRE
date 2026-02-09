@@ -16,6 +16,8 @@ namespace hgl
 namespace hgl::ecs
 {
     // Forward declarations
+    class Entity;
+    class ECSContext;
     class TransformComponent;
     class PrimitiveComponent;
 
@@ -26,21 +28,24 @@ namespace hgl::ecs
     class PrimitiveRenderItem : public RenderItem
     {
     private:
-        std::shared_ptr<Entity> entity;
+        EntityID entity_id;
+        ECSContext* context = nullptr;
         std::shared_ptr<TransformComponent> transform;
         std::shared_ptr<PrimitiveComponent> primitiveComp;
         glm::mat4 worldMatrix;
 
     public:
         PrimitiveRenderItem(
-            std::shared_ptr<Entity> ent,
+            EntityID ent_id,
             std::shared_ptr<TransformComponent> trans,
-            std::shared_ptr<PrimitiveComponent> prim);
+            std::shared_ptr<PrimitiveComponent> prim,
+            ECSContext* ctx = nullptr);
 
         virtual ~PrimitiveRenderItem() = default;
 
         // Implement abstract interface
-        std::shared_ptr<Entity> GetEntity() const override { return entity; }
+        EntityID GetEntityID() const override { return entity_id; }
+        Entity* GetEntity() const override;
         std::shared_ptr<TransformComponent> GetTransform() const override { return transform; }
         std::shared_ptr<RenderableComponent> GetRenderable() const override;
         glm::mat4 GetWorldMatrix() const override { return worldMatrix; }

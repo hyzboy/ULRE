@@ -49,8 +49,8 @@ private:
 
     // ECS组件
     ECSContext* ecs_world = nullptr;   // 由 RenderFramework 统一维护
-    std::shared_ptr<Entity> plane_grid_entity = nullptr;
-    std::shared_ptr<Entity> ray_line_entity = nullptr;
+    Entity* plane_grid_entity = nullptr;
+    Entity* ray_line_entity = nullptr;
 
     // 传统渲染资源
     Material *          mtl_plane_grid      =nullptr;
@@ -228,9 +228,9 @@ private:
 
         // 连接到渲染系统 / Connect to rendering system
         camera_component->camera_data = GetCamera();
-        camera_component->camera_info = GetCameraInfo();
+        camera_component->camera_info = const_cast<graph::CameraInfo*>(GetCameraInfo());
         camera_component->viewport_info = GetViewportInfo();
-        camera_component->camera_ubo = GetCameraUBO();
+        // camera_component->camera_ubo = nullptr; // UBO is managed internally
         camera_component->is_main_camera = true;
 
         // 注册 CameraSystem / Register CameraSystem
