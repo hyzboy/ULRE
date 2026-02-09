@@ -1,6 +1,7 @@
 #include<hgl/ecs/RenderPrimitiveBatchSystem.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/BoundingBoxComponent.h>
+#include<hgl/ecs/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/MaterialBatch.h>
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/PrimitiveRenderItem.h>
@@ -320,6 +321,7 @@ namespace hgl::ecs
         // Declare dependencies
         AddDependency<TransformSystem>();            // Needs transform indices
         AddDependency<CameraSystem>();               // Needs camera for frustum culling
+        AddDependency<BoundingBoxUpdateSystem>();    // Needs updated world AABBs
         AddDependency<RenderPrimitiveCollectSystem>(); // Needs collected items
     }
 
@@ -375,14 +377,26 @@ namespace hgl::ecs
             auto bbox = entity->GetComponent<BoundingBoxComponent>();
             if (bbox)
             {
-                const glm::vec3 local_center = bbox->GetCenter();
-                const glm::vec3 local_extents = bbox->GetExtents();
-                const float radius = glm::length(local_extents);
+                if (bbox->HasWorldAABB())
+                {
+                    const auto& world_aabb = bbox->GetWorldAABB();
+                    const glm::vec3 world_center = world_aabb.GetCenter();
+                    const glm::vec3 world_extents = world_aabb.GetExtent();
+                    const float radius = glm::length(world_extents);
 
-                const glm::mat4 worldMat = item->GetWorldMatrix();
-                const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
+                    item->isVisible = (frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE);
+                }
+                else
+                {
+                    const glm::vec3 local_center = bbox->GetCenter();
+                    const glm::vec3 local_extents = bbox->GetExtents();
+                    const float radius = glm::length(local_extents);
 
-                item->isVisible = (frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE);
+                    const glm::mat4 worldMat = item->GetWorldMatrix();
+                    const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
+
+                    item->isVisible = (frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE);
+                }
             }
             else
             {

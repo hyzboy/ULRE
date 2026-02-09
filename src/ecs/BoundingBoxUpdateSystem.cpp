@@ -2,8 +2,10 @@
 #include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/math/geometry/AABB.h>
+#include<glm/glm.hpp>
 
 namespace hgl::ecs
 {
@@ -23,39 +25,44 @@ namespace hgl::ecs
         std::vector<std::shared_ptr<BoundingBoxComponent>> bboxes;
         world->GetComponents<BoundingBoxComponent>(bboxes);
 
-        const uint32_t update_mask = static_cast<uint32_t>(BoundingBoxComponent::BoundingBoxChange::MinMax) |
-                                     static_cast<uint32_t>(BoundingBoxComponent::BoundingBoxChange::CenterExtents) |
-                                     static_cast<uint32_t>(BoundingBoxComponent::BoundingBoxChange::WorldAABB);
+        const uint32_t bbox_update_mask = static_cast<uint32_t>(BoundingBoxComponent::BoundingBoxChange::MinMax) |
+                          static_cast<uint32_t>(BoundingBoxComponent::BoundingBoxChange::CenterExtents) |
+                          static_cast<uint32_t>(BoundingBoxComponent::BoundingBoxChange::WorldAABB);
+
+        const uint32_t transform_update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
+                               TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
+                               TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix);
 
         for (const auto& bbox : bboxes)
         {
             if (!bbox)
                 continue;
 
-            if (!ShouldProcess(bbox, update_mask))
-            {
-                MarkSeen(bbox);
-                continue;
-            }
-
             Entity* owner = bbox->GetOwner();
             if (!owner)
             {
-                MarkSeen(bbox);
+                MarkSeen(bbox, nullptr);
                 continue;
             }
 
             auto primitive = owner->GetComponent<PrimitiveComponent>();
             if (!primitive)
             {
-                MarkSeen(bbox);
+                MarkSeen(bbox, nullptr);
+                continue;
+            }
+
+            auto transform = owner->GetComponent<TransformComponent>();
+            if (!ShouldProcess(bbox, transform, bbox_update_mask, transform_update_mask))
+            {
+                MarkSeen(bbox, transform);
                 continue;
             }
 
             hgl::math::AABB local_aabb;
             if (!primitive->GetLocalAABB(local_aabb))
             {
-                MarkSeen(bbox);
+                MarkSeen(bbox, transform);
                 continue;
             }
 
@@ -65,34 +72,67 @@ namespace hgl::ecs
                 bbox->SetAABB(local_aabb);
             }
 
-            MarkSeen(bbox);
+            const glm::mat4 world_matrix = transform ? transform->GetWorldMatrix() : glm::mat4(1.0f);
+            const auto world_aabb = local_aabb.Transformed(world_matrix);
+            bbox->SetWorldAABB(world_aabb);
+
+            MarkSeen(bbox, transform);
         }
     }
 
-    bool BoundingBoxUpdateSystem::ShouldProcess(const std::shared_ptr<BoundingBoxComponent>& bbox, uint32_t update_mask)
+    bool BoundingBoxUpdateSystem::ShouldProcess(const std::shared_ptr<BoundingBoxComponent>& bbox,
+                                                const std::shared_ptr<TransformComponent>& transform,
+                                                uint32_t bbox_update_mask,
+                                                uint32_t transform_update_mask)
     {
         if (!bbox)
             return false;
 
-        const uint64_t version = bbox->GetVersion();
-        if (version == 0)
-            return true;
+        const uint64_t bbox_version = bbox->GetVersion();
+        bool bbox_new = false;
+        if (bbox_version == 0)
+        {
+            bbox_new = true;
+        }
+        else
+        {
+            auto it = last_seen_version.find(bbox.get());
+            bbox_new = (it == last_seen_version.end() || it->second != bbox_version);
+        }
 
-        if ((bbox->GetChangeMask() & update_mask) == 0)
-            return false;
+        const bool bbox_mask_match = (bbox->GetChangeMask() & bbox_update_mask) != 0;
+        const bool bbox_changed = bbox_new && (bbox_mask_match || bbox_version == 0);
 
-        auto it = last_seen_version.find(bbox.get());
-        if (it != last_seen_version.end() && it->second == version)
-            return false;
+        bool transform_changed = false;
+        if (transform)
+        {
+            const uint64_t transform_version = transform->GetVersion();
+            if ((transform->GetChangeMask() & transform_update_mask) != 0)
+            {
+                const auto handle = transform->GetStorageHandle();
+                auto it = last_seen_transform_version.find(handle);
+                transform_changed = (it == last_seen_transform_version.end() || it->second != transform_version);
+            }
+        }
 
-        return true;
+        return bbox_changed || transform_changed;
     }
 
-    void BoundingBoxUpdateSystem::MarkSeen(const std::shared_ptr<BoundingBoxComponent>& bbox)
+    void BoundingBoxUpdateSystem::MarkSeen(const std::shared_ptr<BoundingBoxComponent>& bbox,
+                                           const std::shared_ptr<TransformComponent>& transform)
     {
         if (!bbox)
             return;
 
         last_seen_version[bbox.get()] = bbox->GetVersion();
+
+        if (!transform)
+            return;
+
+        const auto handle = transform->GetStorageHandle();
+        if (handle == TransformDataStorage::INVALID_HANDLE)
+            return;
+
+        last_seen_transform_version[handle] = transform->GetVersion();
     }
 }//namespace hgl::ecs
