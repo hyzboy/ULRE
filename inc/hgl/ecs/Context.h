@@ -8,13 +8,31 @@
 #include<vector>
 #include<unordered_map>
 #include<typeinfo>
+#include<map>
+#include<hgl/ecs/MaterialPipelineKey.h>
 
-namespace hgl { namespace graph { class RenderCmdBuffer; } }
+namespace hgl { namespace graph { class RenderCmdBuffer; class CameraInfo; } }
 
 namespace hgl
 {
     namespace ecs
     {
+        class MaterialBatch;
+        class PrimitiveRenderItem;
+
+        struct RenderFrameCache
+        {
+            std::vector<std::unique_ptr<PrimitiveRenderItem>> renderItems;
+            std::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
+            const graph::CameraInfo* cameraInfo = nullptr;
+            uint32_t renderableCount = 0;
+
+            RenderFrameCache() = default;
+            ~RenderFrameCache();
+
+            void BeginFrame();
+        };
+
         /**
          * ECSContext manages all entities and systems
          * Acts as the main container for the ECS simulation
@@ -56,6 +74,8 @@ namespace hgl
             std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
 
             bool active = false;
+
+            RenderFrameCache render_frame_cache;
 
         private:
 
@@ -239,6 +259,9 @@ namespace hgl
 
             /// Get all entities (for systems that need to iterate)
             const std::vector<std::shared_ptr<Entity>>& GetEntities() const { return entities; }
+
+            RenderFrameCache& GetRenderFrameCache() { return render_frame_cache; }
+            const RenderFrameCache& GetRenderFrameCache() const { return render_frame_cache; }
 
             /// Check if world is active
             bool IsActive() const { return active; }

@@ -10,7 +10,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/TransformDataStorage.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxComponent.h
                 ${ECS_INCLUDE_PATH}/BoundingBoxDataStorage.h
-                ${ECS_INCLUDE_PATH}/RenderPrimitiveSystem.h
+                ${ECS_INCLUDE_PATH}/RenderPrimitiveCollectSystem.h
+                ${ECS_INCLUDE_PATH}/RenderPrimitiveBatchSystem.h
+                ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/RenderItem.h
                 ${ECS_INCLUDE_PATH}/PrimitiveRenderItem.h
                 ${ECS_INCLUDE_PATH}/MaterialPipelineKey.h
@@ -44,7 +46,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 RenderItem.cpp
                 PrimitiveRenderItem.cpp
                 MaterialBatch.cpp
-                RenderPrimitiveSystem.cpp
+                RenderPrimitiveCollectSystem.cpp
+                RenderPrimitiveBatchSystem.cpp
+                RenderPrimitiveSubmitSystem.cpp
                 CameraComponent.cpp
                 CameraSystem.cpp)
 
@@ -85,8 +89,12 @@ source_group("ECS\\Rendering" FILES
     PrimitiveRenderItem.cpp
     ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
     PrimitiveComponent.cpp
-    ${ECS_INCLUDE_PATH}/RenderPrimitiveSystem.h
-    RenderPrimitiveSystem.cpp
+    ${ECS_INCLUDE_PATH}/RenderPrimitiveCollectSystem.h
+    RenderPrimitiveCollectSystem.cpp
+    ${ECS_INCLUDE_PATH}/RenderPrimitiveBatchSystem.h
+    RenderPrimitiveBatchSystem.cpp
+    ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
+    RenderPrimitiveSubmitSystem.cpp
     ${ECS_INCLUDE_PATH}/RenderableComponent.h
 )
 
