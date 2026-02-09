@@ -1,5 +1,7 @@
 ﻿#include<hgl/ecs/Context.h>
 #include<hgl/ecs/TransformSystem.h>
+#include<hgl/ecs/MaterialBatch.h>
+#include<hgl/ecs/PrimitiveRenderItem.h>
 #include"ECSTransformAssignmentBuffer.h"
 #include<algorithm>
 
@@ -7,6 +9,20 @@ namespace hgl
 {
     namespace ecs
     {
+        RenderFrameCache::~RenderFrameCache() = default;
+
+        void RenderFrameCache::BeginFrame()
+        {
+            renderItems.clear();
+            renderableCount = 0;
+
+            for (auto& pair : materialBatches)
+            {
+                if (pair.second)
+                    pair.second->Clear();
+            }
+        }
+
         ECSContext::ECSContext(const std::string& name)
             : Object(name)
             , active(false)

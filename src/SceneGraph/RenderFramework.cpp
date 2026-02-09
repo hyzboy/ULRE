@@ -15,7 +15,10 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/log/Logger.h>
 #include<hgl/io/event/MouseEvent.h>
-#include<hgl/ecs/RenderPrimitiveSystem.h>
+#include<hgl/ecs/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
+#include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/InputSystem.h>
 
 COMPONENT_NAMESPACE_BEGIN
@@ -196,11 +199,21 @@ bool RenderFramework::Init(uint w,uint h)
 
     if(default_ecs_context)
     {
-        auto render_primitive_system=default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSystem>();
+        auto render_collect_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveCollectSystem>();
+        auto render_batch_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveBatchSystem>();
+        auto render_submit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
 
-        render_primitive_system->SetDevice(device);
-        render_primitive_system->SetWorld(default_ecs_context);
-        render_primitive_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+        render_collect_system->SetWorld(default_ecs_context);
+        render_collect_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+
+        render_batch_system->SetWorld(default_ecs_context);
+        render_batch_system->SetDevice(device);
+        render_batch_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+
+        render_submit_system->SetWorld(default_ecs_context);
+
+        default_ecs_context->AddTickDependency<ecs::RenderPrimitiveCollectSystem, ecs::TransformSystem>();
+        default_ecs_context->AddTickDependency<ecs::RenderPrimitiveBatchSystem, ecs::RenderPrimitiveCollectSystem>();
 
         auto input_system=default_ecs_context->RegisterTickSystem<ecs::InputSystem>();
 
