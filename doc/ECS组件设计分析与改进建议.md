@@ -16,6 +16,7 @@
 | Component版本控制/脏标记 | ✅ 已实现 | 版本号 + Change Mask |
 | BoundingBox更新系统 | ✅ 已实现 | BoundingBoxUpdateSystem + WorldAABB |
 | 事件系统 | ✅ 已实现 | RenderPrimitiveBatchSystem 事件回调 |
+| System性能分析器 | ✅ 已实现 | SystemProfiler + ECSContext 统计 |
 | 多线程优化 | 🔴 待实现 | - |
 | Archetype系统 | 🔴 待实现 | - |
 
@@ -717,6 +718,31 @@ void SetupDebugCallbacks(RenderPrimitiveBatchSystem* batchSystem)
 - 支持可视化调试
 - 易于添加自定义扩展
 
+**简单示例（控制台输出统计）**:
+
+```cpp
+// Example: attach callbacks and print stats
+auto batchSystem = world->GetSystem<RenderPrimitiveBatchSystem>();
+if (batchSystem)
+{
+    batchSystem->events.onCullingComplete = [](size_t visible, size_t culled)
+    {
+        std::cout << "Culling: visible=" << visible
+                  << ", culled=" << culled << std::endl;
+    };
+
+    batchSystem->events.onBatchingComplete = [batchSystem]()
+    {
+        const auto& stats = batchSystem->GetStatistics();
+        std::cout << "Batching: batches=" << stats.batchCount
+                  << ", cull_ms=" << stats.cullingTimeMs
+                  << ", sort_ms=" << stats.sortingTimeMs
+                  << ", batch_ms=" << stats.batchingTimeMs
+                  << std::endl;
+    };
+}
+```
+
 ---
 
 ### 6. Component 对象池
@@ -1328,9 +1354,10 @@ sequenceDiagram
 5. **Component 版本控制与脏标记** - 版本号 + Change Mask
 6. **BoundingBox 更新系统** - WorldAABB 计算与缓存
 7. **事件系统** - 渲染流程事件回调
+8. **System 性能分析器** - Update耗时统计
 
 ### 高优先级 🔴
-1. **System 性能分析器** (便于持续优化)
+1. **事件系统** (提升可调试性和可扩展性)
 
 ### 中优先级 🟡
 4. **多线程优化** (Frustum Culling、距离排序并行化)
@@ -1349,7 +1376,7 @@ sequenceDiagram
 
 - **性能优化**: 查询缓存（✅已实现），多线程（待实现），对象池（待实现）
 - **可维护性**: 依赖管理（✅已实现），版本控制（✅已实现），序列化（待实现）
-- **可扩展性**: 三级参与（✅已实现），事件系统（✅已实现），性能分析（待实现）
+- **可扩展性**: 三级参与（✅已实现），事件系统（✅已实现），性能分析（✅已实现）
 - **健壮性**: 句柄化（✅已实现），类型安全（✅已实现），调试支持（部分实现）
 
 **核心成果**:
@@ -1359,6 +1386,7 @@ sequenceDiagram
 - ✅ 版本控制 + Change Mask
 - ✅ BoundingBox WorldAABB 更新
 - ✅ 渲染流程事件回调
+- ✅ System Update 性能统计
 - ✅ 完整的示例代码和文档
 
 建议按照优先级逐步实施剩余功能，每次改动后进行充分测试，确保系统稳定性。
@@ -1372,5 +1400,6 @@ sequenceDiagram
 - 新增组件版本控制与 Change Mask
 - 新增 BoundingBoxUpdateSystem 与 WorldAABB
 - 新增 RenderPrimitiveBatchSystem 事件回调
+- 新增 SystemProfiler 统计能力
 - 更新优先级建议
 - 添加实现详情文档链接

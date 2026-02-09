@@ -128,7 +128,13 @@ namespace hgl
             for (auto& entry : tick_system_order)
             {
                 if (entry.system)
+                {
+                    if (system_profiling_enabled)
+                        profiler.Begin(entry.system.get());
                     entry.system->Update(deltaTime);
+                    if (system_profiling_enabled)
+                        profiler.End(entry.system.get());
+                }
             }
 
             // Update all entities
@@ -154,7 +160,13 @@ namespace hgl
             for (auto& entry : render_system_order)
             {
                 if (entry.system)
+                {
+                    if (system_profiling_enabled)
+                        profiler.Begin(entry.system.get());
                     entry.system->Update(deltaTime);
+                    if (system_profiling_enabled)
+                        profiler.End(entry.system.get());
+                }
             }
 
             if (auto transform_system = GetSystem<TransformSystem>())

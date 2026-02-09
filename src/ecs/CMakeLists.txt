@@ -7,6 +7,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/EntityManager.h
                 ${ECS_INCLUDE_PATH}/EntityQuery.h
                 ${ECS_INCLUDE_PATH}/System.h
+                ${ECS_INCLUDE_PATH}/SystemProfiler.h
                 ${ECS_INCLUDE_PATH}/Context.h
                 ${ECS_INCLUDE_PATH}/TransformComponent.h
                 ${ECS_INCLUDE_PATH}/TransformSystem.h
@@ -44,6 +45,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 EntityManager.cpp
                 EntityQuery.cpp
                 System.cpp
+                SystemProfiler.cpp
                 Context.cpp
                 TransformComponent.cpp
                 TransformSystem.cpp
@@ -68,7 +70,9 @@ source_group("ECS\\Core" FILES
     ${ECS_INCLUDE_PATH}/Entity.h
     Entity.cpp
     ${ECS_INCLUDE_PATH}/System.h
+    ${ECS_INCLUDE_PATH}/SystemProfiler.h
     System.cpp
+    SystemProfiler.cpp
     ${ECS_INCLUDE_PATH}/Context.h
     Context.cpp
 )
