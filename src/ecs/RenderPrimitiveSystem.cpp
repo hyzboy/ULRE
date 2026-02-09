@@ -137,8 +137,7 @@ namespace hgl::ecs
         if (!cameraInfo)
             return;
 
-        // Update frustum from camera (if CMMath API allows)
-        // Assuming: frustum.Set(*cameraInfo) or similar
+        frustum.SetMatrix(cameraInfo->vp);
 
         for (auto& itemPtr : renderItems)
         {
@@ -146,7 +145,7 @@ namespace hgl::ecs
             if (!item->isVisible)
                 continue;
 
-            // Try to get BoundingBoxComponent first for accurate AABB culling
+            // Try to get BoundingBoxComponent first for a tighter sphere
             auto entity = item->GetEntity();
             if (!entity)
                 continue;
@@ -155,41 +154,14 @@ namespace hgl::ecs
 
             if (bbox)
             {
-                // Use AABB for frustum culling (more accurate than sphere)
-                AABB aabb = bbox->GetAABB();
+                const glm::vec3 local_center = bbox->GetCenter();
+                const glm::vec3 local_extents = bbox->GetExtents();
+                const float radius = glm::length(local_extents);
 
-                // Transform AABB to world space using entity's world matrix
-                glm::mat4 worldMat = item->GetWorldMatrix();
+                const glm::mat4 worldMat = item->GetWorldMatrix();
+                const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
 
-                // For accurate culling, transform all 8 corners and rebuild AABB
-                glm::vec3 corners[8] = {
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMin().y, aabb.GetMin().z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMin().y, aabb.GetMin().z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMax().y, aabb.GetMin().z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMax().y, aabb.GetMin().z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMin().y, aabb.GetMax().z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMin().y, aabb.GetMax().z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMin().x, aabb.GetMax().y, aabb.GetMax().z, 1.0f)),
-                    glm::vec3(worldMat * glm::vec4(aabb.GetMax().x, aabb.GetMax().y, aabb.GetMax().z, 1.0f))
-                };
-
-                // Find transformed AABB bounds
-                glm::vec3 transformedMin = corners[0];
-                glm::vec3 transformedMax = corners[0];
-                for (int i = 1; i < 8; ++i)
-                {
-                    transformedMin = glm::min(transformedMin, corners[i]);
-                    transformedMax = glm::max(transformedMax, corners[i]);
-                }
-
-                AABB worldAABB(transformedMin, transformedMax);
-
-                // Use CMMath's Frustum to test AABB
-                // TODO: Replace with actual frustum.CheckAABB(worldAABB) when CMMath is available
-                glm::vec3 center = (transformedMin + transformedMax) * 0.5f;
-                item->isVisible = (center.z > -100.0f && center.z < 100.0f &&
-                                    center.x > -100.0f && center.x < 100.0f &&
-                                    center.y > -100.0f && center.y < 100.0f);
+                item->isVisible = (frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE);
             }
             else
             {
@@ -205,11 +177,15 @@ namespace hgl::ecs
                 glm::vec3 worldPos = transform->GetWorldPosition();
                 float boundingRadius = primitiveComp->GetBoundingRadius();
 
-                // Use CMMath's Frustum to test sphere
-                // TODO: Replace with actual frustum.CheckSphere(worldPos, boundingRadius)
-                item->isVisible = (worldPos.z > -100.0f && worldPos.z < 100.0f &&
-                                    worldPos.x > -100.0f && worldPos.x < 100.0f &&
-                                    worldPos.y > -100.0f && worldPos.y < 100.0f);
+                if (boundingRadius <= 0.0f)
+                {
+                    // No valid radius available; skip frustum culling for this item.
+                    item->isVisible = true;
+                }
+                else
+                {
+                    item->isVisible = (frustum.SphereIn(worldPos, boundingRadius) != math::Frustum::Scope::OUTSIDE);
+                }
             }
         }
     }
