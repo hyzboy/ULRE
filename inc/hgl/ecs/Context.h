@@ -222,20 +222,6 @@ namespace hgl
                 return false;
             }
 
-            /// Add dependency for tick systems (Dependent runs after Dependency)
-            template<typename Dependent, typename Dependency>
-            void AddTickDependency()
-            {
-                AddSystemDependency(false, typeid(Dependent).hash_code(), typeid(Dependency).hash_code());
-            }
-
-            /// Add dependency for render systems (Dependent runs after Dependency)
-            template<typename Dependent, typename Dependency>
-            void AddRenderDependency()
-            {
-                AddSystemDependency(true, typeid(Dependent).hash_code(), typeid(Dependency).hash_code());
-            }
-
              /// Get a system by type
              template<typename T>
              std::shared_ptr<T> GetSystem() const

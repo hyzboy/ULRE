@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/CameraSystem.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/InputSystem.h>
+#include<hgl/ecs/TransformSystem.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/ViewportInfo.h>
 #include<glm/gtc/quaternion.hpp>
@@ -12,6 +13,13 @@ namespace hgl::ecs
         : context(ctx)
         , input_system(nullptr)
     {
+        // Set system type and properties
+        SetSystemType(SystemType::Camera);
+        SetExecutionOrder(20);  // Run after Transform
+        
+        // Declare dependencies
+        AddDependency<InputSystem>();     // Needs input for camera control
+        AddDependency<TransformSystem>(); // Needs transforms updated first
     }
 
     void CameraSystem::Update(float deltaTime)

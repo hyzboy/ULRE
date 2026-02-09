@@ -7,6 +7,12 @@ namespace hgl::ecs
 {
     InputSystem::InputSystem()
     {
+        // Set system type and properties
+        SetSystemType(SystemType::Input);
+        SetExecutionOrder(0);  // Run first
+        
+        // No dependencies - Input runs first
+        
         mouse_coord.x = 0;
         mouse_coord.y = 0;
         mouse_buttons[0] = false;

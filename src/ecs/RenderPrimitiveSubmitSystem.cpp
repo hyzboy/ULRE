@@ -1,8 +1,9 @@
-#include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
+﻿#include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/MaterialBatch.h>
 #include<hgl/ecs/RenderItem.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/RenderPrimitiveBatchSystem.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include"ECSPipelineMaterialRenderer.h"
 #include"ECSTransformAssignmentBuffer.h"
@@ -13,6 +14,12 @@ namespace hgl::ecs
     RenderPrimitiveSubmitSystem::RenderPrimitiveSubmitSystem(const std::string& name)
         : System(name)
     {
+        // Set system type and properties
+        SetSystemType(SystemType::RenderSubmit);
+        SetExecutionOrder(120);  // Final render stage
+        
+        // Declare dependencies
+        AddDependency<RenderPrimitiveBatchSystem>(); // Needs batched data
     }
 
     void RenderPrimitiveSubmitSystem::Render(graph::RenderCmdBuffer* cmdBuffer, float /*deltaTime*/)

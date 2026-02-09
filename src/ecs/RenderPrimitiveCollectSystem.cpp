@@ -1,8 +1,10 @@
-#include<hgl/ecs/RenderPrimitiveCollectSystem.h>
+﻿#include<hgl/ecs/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/PrimitiveRenderItem.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/TransformSystem.h>
+#include<hgl/ecs/CameraSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<glm/glm.hpp>
 
@@ -11,6 +13,13 @@ namespace hgl::ecs
     RenderPrimitiveCollectSystem::RenderPrimitiveCollectSystem(const std::string& name)
         : System(name)
     {
+        // Set system type and properties
+        SetSystemType(SystemType::RenderCollect);
+        SetExecutionOrder(100);  // First render stage
+        
+        // Declare dependencies
+        AddDependency<TransformSystem>(); // Needs world transforms
+        AddDependency<CameraSystem>();    // Needs camera info
     }
 
     void RenderPrimitiveCollectSystem::Update(float /*deltaTime*/)
