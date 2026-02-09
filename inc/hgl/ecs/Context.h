@@ -5,6 +5,7 @@
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/EntityManager.h>
+#include<hgl/ecs/SystemProfiler.h>
 #include<memory>
 #include<vector>
 #include<unordered_map>
@@ -77,6 +78,8 @@ namespace hgl
             bool active = false;
 
             RenderFrameCache render_frame_cache;
+            SystemProfiler profiler;
+            bool system_profiling_enabled = true;
 
         private:
 
@@ -108,6 +111,11 @@ namespace hgl
 
             /// Run all render systems
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
+
+            void SetSystemProfilingEnabled(bool enabled) { system_profiling_enabled = enabled; }
+            bool IsSystemProfilingEnabled() const { return system_profiling_enabled; }
+            SystemProfiler& GetSystemProfiler() { return profiler; }
+            const SystemProfiler& GetSystemProfiler() const { return profiler; }
 
             void SetFrameIndex(const uint32_t index);
 
