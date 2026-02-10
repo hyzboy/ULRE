@@ -204,7 +204,20 @@ namespace
     AnsiString GenerateRenderPassKey(const RenderbufferInfo *rbi,const uint8 subpass_count)
     {
         AnsiString key;
-        hgl::Sprintf(key, "RenderPass_%d_%d", subpass_count, rbi->GetDepthFormat());
+        hgl::Sprintf(key,
+                     "RenderPass_%d_%d_%u_%u_%u",
+                     subpass_count,
+                     rbi->GetDepthFormat(),
+                     (uint)rbi->GetColorLayout(),
+                     (uint)rbi->GetDepthLayout(),
+                     rbi->GetColorCount());
+
+        for (const VkFormat &fmt : rbi->GetColorFormatList())
+        {
+            key += "_";
+            key += AnsiString::numberOf((int)fmt);
+        }
+
         return key;
     }
 }

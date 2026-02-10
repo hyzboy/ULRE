@@ -1,6 +1,7 @@
 ﻿#include"InlineGeometryCommon.h"
 #include<hgl/math/Quaternion.h>
 #include<hgl/math/Matrix.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph::inline_geometry
 {
@@ -18,6 +19,12 @@ namespace hgl::graph::inline_geometry
         if(!GeometryValidator::ValidateBasicParams(pc, numberVertices, numberIndices))
             return nullptr;
 
+        GLogInfo("[CreateSphere] slices=%u parallels=%u vertices=%u indices=%u",
+                 numberSlices,
+                 numberParallels,
+                 numberVertices,
+                 numberIndices);
+
         if(!pc->Init("Sphere",numberVertices,numberIndices))
             return(nullptr);
 
@@ -25,7 +32,15 @@ namespace hgl::graph::inline_geometry
         GeometryBuilder builder(pc);
 
         if(!builder.IsValid())
+        {
+            GLogWarning("[CreateSphere] builder invalid: missing position VAB map");
             return(nullptr);
+        }
+
+        GLogInfo("[CreateSphere] hasNormals=%d hasTangents=%d hasTexCoords=%d",
+                 builder.HasNormals() ? 1 : 0,
+                 builder.HasTangents() ? 1 : 0,
+                 builder.HasTexCoords() ? 1 : 0);
 
         // For tangent calculation using CMMATH
         const Vector3f helpVector(1.0f, 0.0f, 0.0f);
@@ -40,6 +55,15 @@ namespace hgl::graph::inline_geometry
 
                 float tex_x = (float) j / (float) numberSlices;
                 float tex_y = 1.0f - (float) i / (float) numberParallels;
+
+                if (i == 0 && j == 0)
+                {
+                    GLogInfo("[CreateSphere] v00 pos=(%f,%f,%f) uv=(%f,%f)", x, y, z, tex_x, tex_y);
+                }
+                else if (i == 1 && j == 1)
+                {
+                    GLogInfo("[CreateSphere] v11 pos=(%f,%f,%f) uv=(%f,%f)", x, y, z, tex_x, tex_y);
+                }
 
                 // Calculate tangent using CMMATH quaternion functions
                 if(builder.HasTangents())

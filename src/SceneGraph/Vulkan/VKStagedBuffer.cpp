@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKStagedBuffer.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/log/Log.h>
 #include<string.h>
 
 VK_NAMESPACE_BEGIN
@@ -49,6 +50,11 @@ bool StagedBuffer::Write(const void *data, VkDeviceSize offset, VkDeviceSize siz
 
     // Mark as dirty and add to update queue
     MarkDirty(offset, size);
+
+    GLogInfo("[StagedBuffer] Write buffer=%p offset=%llu size=%llu",
+             (void *)this,
+             static_cast<unsigned long long>(offset),
+             static_cast<unsigned long long>(size));
 
     return true;
 }
@@ -100,6 +106,11 @@ void StagedBuffer::MarkDirty(VkDeviceSize offset, VkDeviceSize size)
     // Add to update queue
     if (update_queue)
         update_queue->AddUpdate(this, dirty_offset, dirty_size);
+
+    GLogInfo("[StagedBuffer] MarkDirty buffer=%p offset=%llu size=%llu",
+             (void *)this,
+             static_cast<unsigned long long>(dirty_offset),
+             static_cast<unsigned long long>(dirty_size));
 }
 
 void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)
@@ -115,6 +126,11 @@ void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)
     vkCmdCopyBuffer(cmd, staging_buffer, device_buffer, 1, &copy_region);
 
     ClearDirty();
+
+    GLogInfo("[StagedBuffer] CopyToDevice buffer=%p offset=%llu size=%llu",
+             (void *)this,
+             static_cast<unsigned long long>(copy_region.srcOffset),
+             static_cast<unsigned long long>(copy_region.size));
 }
 
 void StagedBuffer::ClearDirty()
