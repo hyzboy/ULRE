@@ -108,6 +108,12 @@ namespace hgl
 
             /// Get component count
             size_t GetComponentCount() const { return components.size(); }
+
+            /// Get all components (for serialization)
+            void GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const;
+
+            /// Attach a pre-constructed component instance (for deserialization)
+            void AddComponentInstance(const std::shared_ptr<Component>& component);
         };
     }//namespace ecs
 }//namespace hgl

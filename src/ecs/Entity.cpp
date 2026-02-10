@@ -57,5 +57,28 @@ namespace hgl
                 pair.second->OnUpdate(deltaTime);
             }
         }
+
+        void Entity::GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const
+        {
+            out.clear();
+            out.reserve(components.size());
+            for (const auto& pair : components)
+            {
+                out.push_back(pair.second);
+            }
+        }
+
+        void Entity::AddComponentInstance(const std::shared_ptr<Component>& component)
+        {
+            if (!component)
+                return;
+
+            const size_t type_hash = typeid(*component).hash_code();
+            components[type_hash] = component;
+            component->SetOwner(id, context);
+            RegisterToContext(type_hash, component);
+            component->OnAttach();
+            NotifyComponentAdded(std::type_index(typeid(*component)));
+        }
     }//namespace ecs
 }//namespace hgl
