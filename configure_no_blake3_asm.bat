@@ -48,7 +48,7 @@ if not exist "%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" (
     set "VCPKG_ROOT=C:\src\vcpkg"
 )
 
-cmake.exe -G "Visual Studio 17 2022" -A x64 ^
+cmake.exe -G "Visual Studio 18 2026" -A x64 ^
     -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" ^
     -DBLAKE3_SIMD_TYPE=none ^
     ..

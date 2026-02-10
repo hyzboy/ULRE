@@ -54,7 +54,7 @@ if (-not $vcpkgRoot -or -not (Test-Path "$vcpkgRoot\scripts\buildsystems\vcpkg.c
 
 # Run CMake with BLAKE3_SIMD_TYPE disabled
 $cmakeArgs = @(
-    "-G", "Visual Studio 17 2022"
+    "-G", "Visual Studio 18 2026"
     "-A", "x64"
 )
 
