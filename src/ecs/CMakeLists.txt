@@ -27,6 +27,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
                 ${ECS_INCLUDE_PATH}/CameraComponent.h
                 ${ECS_INCLUDE_PATH}/CameraSystem.h
+                ${ECS_INCLUDE_PATH}/CameraInputMapping.h
 
                 ${ECS_INCLUDE_PATH}/InputSystem.h
                 InputSystem.cpp
@@ -62,7 +63,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 RenderPrimitiveBatchSystem.cpp
                 RenderPrimitiveSubmitSystem.cpp
                 CameraComponent.cpp
-                CameraSystem.cpp)
+                CameraSystem.cpp
+                CameraInputMapping.cpp)
 
 # --- Source groups (按功能分类，将 .h/.cpp 配对放在同一组) ----------------------
 source_group("ECS\\Core" FILES
@@ -132,6 +134,8 @@ source_group("ECS\\Camera" FILES
     CameraComponent.cpp
     ${ECS_INCLUDE_PATH}/CameraSystem.h
     CameraSystem.cpp
+    ${ECS_INCLUDE_PATH}/CameraInputMapping.h
+    CameraInputMapping.cpp
 )
 
 source_group("ECS\\Input" FILES

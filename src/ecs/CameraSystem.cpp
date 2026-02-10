@@ -11,38 +11,220 @@ namespace hgl::ecs
 {
     namespace
     {
-        constexpr io::ActionID kActionMoveForward = 1100;
-        constexpr io::ActionID kActionMoveBackward = 1101;
-        constexpr io::ActionID kActionMoveLeft = 1102;
-        constexpr io::ActionID kActionMoveRight = 1103;
-        constexpr io::ActionID kActionMoveDown = 1104;
-        constexpr io::ActionID kActionMoveUp = 1105;
+        class FirstPersonCameraMode final : public CameraModeProcessor
+        {
+        public:
+            CameraComponent::ControlMode GetMode() const override
+            {
+                return CameraComponent::ControlMode::FirstPerson;
+            }
 
-        constexpr io::ActionID kActionRotate = 1110;
-        constexpr io::ActionID kActionPanRight = 1111;
-        constexpr io::ActionID kActionPanMiddle = 1112;
+            void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float deltaTime) override
+            {
+                if (!camera)
+                    return;
 
-        constexpr io::ActionID kActionZoomWheel = 1120;
-        constexpr io::ActionID kActionZoomIn = 1121;
-        constexpr io::ActionID kActionZoomOut = 1122;
+                bool input_changed = false;
 
-        constexpr io::ActionID kActionResetView = 1130;
-        constexpr io::ActionID kActionFocusView = 1131;
+                if (input_state.left_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
+                {
+                    camera->yaw += input_state.mouse_delta.x * camera->rotation_sensitivity * camera->input_invert.x;
+                    camera->pitch -= input_state.mouse_delta.y * camera->rotation_sensitivity * camera->input_invert.y;
+
+                    if (camera->pitch > 89.0f) camera->pitch = 89.0f;
+                    if (camera->pitch < -89.0f) camera->pitch = -89.0f;
+
+                    input_changed = true;
+                }
+
+                math::Vector3f movement(0.0f, 0.0f, 0.0f);
+
+                if (input_state.move_forward)
+                    movement += camera->forward;
+                if (input_state.move_backward)
+                    movement -= camera->forward;
+                if (input_state.move_right)
+                    movement += camera->right;
+                if (input_state.move_left)
+                    movement -= camera->right;
+                if (input_state.move_up)
+                    movement += camera->up;
+                if (input_state.move_down)
+                    movement -= camera->up;
+
+                if (length(movement) > 0.001f)
+                {
+                    movement = normalize(movement) * camera->move_speed * deltaTime;
+                    camera->position += movement;
+                    input_changed = true;
+                }
+
+                if (input_changed)
+                {
+                    camera->matrix_dirty = true;
+                }
+            }
+
+            void UpdateTransform(CameraComponent* camera) override
+            {
+                if (!camera)
+                    return;
+                camera->target = camera->position + camera->forward;
+            }
+        };
+
+        class ViewModelCameraMode final : public CameraModeProcessor
+        {
+        public:
+            CameraComponent::ControlMode GetMode() const override
+            {
+                return CameraComponent::ControlMode::ViewModel;
+            }
+
+            void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float /*deltaTime*/) override
+            {
+                if (!camera)
+                    return;
+
+                bool input_changed = false;
+
+                if (input_state.left_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
+                {
+                    camera->yaw += input_state.mouse_delta.x * camera->rotation_sensitivity * camera->input_invert.x;
+                    camera->pitch -= input_state.mouse_delta.y * camera->rotation_sensitivity * camera->input_invert.y;
+
+                    if (camera->pitch > 89.0f) camera->pitch = 89.0f;
+                    if (camera->pitch < -89.0f) camera->pitch = -89.0f;
+
+                    input_changed = true;
+                }
+
+                if (input_state.wheel_delta != 0)
+                {
+                    camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
+
+                    if (camera->distance < camera->min_distance)
+                        camera->distance = camera->min_distance;
+                    if (camera->distance > camera->max_distance)
+                        camera->distance = camera->max_distance;
+
+                    input_changed = true;
+                }
+
+                if (input_state.right_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
+                {
+                    float pan_speed = 0.01f * camera->distance;
+                    math::Vector3f pan_offset =
+                        camera->right * (-input_state.mouse_delta.x * pan_speed) +
+                        camera->up * (input_state.mouse_delta.y * pan_speed);
+
+                    camera->target += pan_offset;
+                    input_changed = true;
+                }
+
+                if (input_changed)
+                {
+                    camera->matrix_dirty = true;
+                }
+            }
+
+            void UpdateTransform(CameraComponent* camera) override
+            {
+                if (!camera)
+                    return;
+                camera->position = camera->target - camera->forward * camera->distance;
+            }
+        };
+
+        class LookAtCameraMode final : public CameraModeProcessor
+        {
+        public:
+            CameraComponent::ControlMode GetMode() const override
+            {
+                return CameraComponent::ControlMode::LookAt;
+            }
+
+            void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float /*deltaTime*/) override
+            {
+                if (!camera)
+                    return;
+
+                bool input_changed = false;
+
+                if (input_state.middle_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
+                {
+                    float pan_speed = 0.01f * camera->distance;
+                    math::Vector3f pan_offset =
+                        camera->right * (-input_state.mouse_delta.x * pan_speed) +
+                        camera->up * (input_state.mouse_delta.y * pan_speed);
+
+                    camera->target += pan_offset;
+                    input_changed = true;
+                }
+
+                if (input_state.wheel_delta != 0)
+                {
+                    camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
+
+                    if (camera->distance < camera->min_distance)
+                        camera->distance = camera->min_distance;
+                    if (camera->distance > camera->max_distance)
+                        camera->distance = camera->max_distance;
+
+                    input_changed = true;
+                }
+
+                if (input_changed)
+                {
+                    camera->matrix_dirty = true;
+                }
+            }
+
+            void UpdateTransform(CameraComponent* camera) override
+            {
+                if (!camera)
+                    return;
+                camera->position = camera->target - camera->forward * camera->distance;
+            }
+        };
+
+        class FreeCameraMode final : public CameraModeProcessor
+        {
+        public:
+            CameraComponent::ControlMode GetMode() const override
+            {
+                return CameraComponent::ControlMode::Free;
+            }
+
+            void ProcessInput(CameraComponent* /*camera*/, const CameraInputState& /*input_state*/, float /*deltaTime*/) override
+            {
+            }
+
+            void UpdateTransform(CameraComponent* /*camera*/) override
+            {
+            }
+        };
     }
 
     CameraSystem::CameraSystem(ECSContext* ctx)
         : context(ctx)
         , input_system(nullptr)
-        , input_context_ready(false)
     {
         // Set system type and properties
         SetSystemType(SystemType::Camera);
         SetExecutionOrder(20);  // Run after Transform
-        
+
         // Declare dependencies
         AddDependency<InputSystem>();     // Needs input for camera control
         AddDependency<TransformSystem>(); // Needs transforms updated first
+
+        first_person_mode = std::make_unique<FirstPersonCameraMode>();
+        view_model_mode = std::make_unique<ViewModelCameraMode>();
+        look_at_mode = std::make_unique<LookAtCameraMode>();
+        free_mode = std::make_unique<FreeCameraMode>();
     }
+
+    CameraSystem::~CameraSystem() = default;
 
     void CameraSystem::Update(float deltaTime)
     {
@@ -109,219 +291,41 @@ namespace hgl::ecs
         input_state.mouse_delta = input_state.mouse_pos - input_state.last_mouse_pos;
 
         // 获取动作状态
-        input_state.left_button = input_system->IsActionActive(kActionRotate);
-        input_state.right_button = input_system->IsActionActive(kActionPanRight);
-        input_state.middle_button = input_system->IsActionActive(kActionPanMiddle);
+        input_state.left_button = input_system->IsActionActive(CameraInputMapping::kActionRotate);
+        input_state.right_button = input_system->IsActionActive(CameraInputMapping::kActionPanRight);
+        input_state.middle_button = input_system->IsActionActive(CameraInputMapping::kActionPanMiddle);
 
         // 获取滚轮和按键缩放
-        input_state.wheel_delta = input_system->GetActionAnalog1D(kActionZoomWheel);
-        if (input_system->IsActionActive(kActionZoomIn))
+        input_state.wheel_delta = input_system->GetActionAnalog1D(CameraInputMapping::kActionZoomWheel);
+        if (input_system->IsActionActive(CameraInputMapping::kActionZoomIn))
             input_state.wheel_delta += 1.0f;
-        if (input_system->IsActionActive(kActionZoomOut))
+        if (input_system->IsActionActive(CameraInputMapping::kActionZoomOut))
             input_state.wheel_delta -= 1.0f;
 
         // 获取键盘状态
-        input_state.key_w = input_system->IsActionActive(kActionMoveForward);
-        input_state.key_s = input_system->IsActionActive(kActionMoveBackward);
-        input_state.key_a = input_system->IsActionActive(kActionMoveLeft);
-        input_state.key_d = input_system->IsActionActive(kActionMoveRight);
-        input_state.key_q = input_system->IsActionActive(kActionMoveDown);
-        input_state.key_e = input_system->IsActionActive(kActionMoveUp);
+        input_state.move_forward = input_system->IsActionActive(CameraInputMapping::kActionMoveForward);
+        input_state.move_backward = input_system->IsActionActive(CameraInputMapping::kActionMoveBackward);
+        input_state.move_left = input_system->IsActionActive(CameraInputMapping::kActionMoveLeft);
+        input_state.move_right = input_system->IsActionActive(CameraInputMapping::kActionMoveRight);
+        input_state.move_down = input_system->IsActionActive(CameraInputMapping::kActionMoveDown);
+        input_state.move_up = input_system->IsActionActive(CameraInputMapping::kActionMoveUp);
     }
 
     void CameraSystem::EnsureInputContext()
     {
-        if (input_context_ready || !input_system)
+        if (!input_system)
             return;
-
-        input_context.Clear();
-        input_context.BindKey(kActionMoveForward, io::KeyboardButton::W);
-        input_context.BindKey(kActionMoveBackward, io::KeyboardButton::S);
-        input_context.BindKey(kActionMoveLeft, io::KeyboardButton::A);
-        input_context.BindKey(kActionMoveRight, io::KeyboardButton::D);
-        input_context.BindKey(kActionMoveDown, io::KeyboardButton::Q);
-        input_context.BindKey(kActionMoveUp, io::KeyboardButton::E);
-
-        input_context.BindMouse(kActionRotate, io::MouseButton::Left);
-        input_context.BindMouse(kActionPanRight, io::MouseButton::Right);
-        input_context.BindMouse(kActionPanMiddle, io::MouseButton::Mid);
-
-        input_context.BindMouseWheel(kActionZoomWheel);
-        input_context.BindKey(kActionZoomIn, io::KeyboardButton::PageUp);
-        input_context.BindKey(kActionZoomIn, io::KeyboardButton::Equals);
-        input_context.BindKey(kActionZoomOut, io::KeyboardButton::PageDown);
-        input_context.BindKey(kActionZoomOut, io::KeyboardButton::Minus);
-
-        input_context.BindKey(kActionResetView, io::KeyboardButton::R);
-        input_context.BindKey(kActionFocusView, io::KeyboardButton::F);
-
-        input_system->GetInputMapper().PushContext(&input_context);
-        input_context_ready = true;
+        input_mapping.EnsureContext(input_system->GetInputMapper());
     }
 
     void CameraSystem::ProcessInput(CameraComponent* camera, float deltaTime)
     {
         if (!camera)
             return;
-
-        switch (camera->control_mode)
-        {
-            case CameraComponent::ControlMode::FirstPerson:
-                ProcessFirstPersonInput(camera, deltaTime);
-                break;
-
-            case CameraComponent::ControlMode::ViewModel:
-                ProcessViewModelInput(camera, deltaTime);
-                break;
-
-            case CameraComponent::ControlMode::LookAt:
-                ProcessLookAtInput(camera, deltaTime);
-                break;
-
-            case CameraComponent::ControlMode::Free:
-                // 自由模式不处理输入
-                break;
-        }
-    }
-
-    void CameraSystem::ProcessFirstPersonInput(CameraComponent* camera, float deltaTime)
-    {
-        if (!camera)
+        CameraModeProcessor* processor = GetModeProcessor(camera->control_mode);
+        if (!processor)
             return;
-
-        bool input_changed = false;
-
-        // 鼠标旋转
-        if (input_state.left_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
-        {
-            camera->yaw += input_state.mouse_delta.x * camera->rotation_sensitivity * camera->input_invert.x;
-            camera->pitch -= input_state.mouse_delta.y * camera->rotation_sensitivity * camera->input_invert.y;
-
-            // 限制俯仰角
-            if (camera->pitch > 89.0f) camera->pitch = 89.0f;
-            if (camera->pitch < -89.0f) camera->pitch = -89.0f;
-
-            input_changed = true;
-        }
-
-        // WASD移动
-        math::Vector3f movement(0.0f, 0.0f, 0.0f);
-
-        if (input_state.key_w)
-            movement += camera->forward;
-        if (input_state.key_s)
-            movement -= camera->forward;
-        if (input_state.key_d)
-            movement += camera->right;
-        if (input_state.key_a)
-            movement -= camera->right;
-        if (input_state.key_e)
-            movement += camera->up;
-        if (input_state.key_q)
-            movement -= camera->up;
-
-        if (length(movement) > 0.001f)
-        {
-            movement = normalize(movement) * camera->move_speed * deltaTime;
-            camera->position += movement;
-            input_changed = true;
-        }
-
-        if (input_changed)
-        {
-            camera->matrix_dirty = true;
-        }
-    }
-
-    void CameraSystem::ProcessViewModelInput(CameraComponent* camera, float deltaTime)
-    {
-        if (!camera)
-            return;
-
-        bool input_changed = false;
-
-        // 左键拖拽旋转
-        if (input_state.left_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
-        {
-            camera->yaw += input_state.mouse_delta.x * camera->rotation_sensitivity * camera->input_invert.x;
-            camera->pitch -= input_state.mouse_delta.y * camera->rotation_sensitivity * camera->input_invert.y;
-
-            // 限制俯仰角
-            if (camera->pitch > 89.0f) camera->pitch = 89.0f;
-            if (camera->pitch < -89.0f) camera->pitch = -89.0f;
-
-            input_changed = true;
-        }
-
-        // 滚轮缩放距离
-        if (input_state.wheel_delta != 0)
-        {
-            camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
-
-            // 限制距离
-            if (camera->distance < camera->min_distance)
-                camera->distance = camera->min_distance;
-            if (camera->distance > camera->max_distance)
-                camera->distance = camera->max_distance;
-
-            input_changed = true;
-        }
-
-        // 右键平移
-        if (input_state.right_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
-        {
-            float pan_speed = 0.01f * camera->distance;
-            math::Vector3f pan_offset =
-                camera->right * (-input_state.mouse_delta.x * pan_speed) +
-                camera->up * (input_state.mouse_delta.y * pan_speed);
-
-            camera->target += pan_offset;
-            input_changed = true;
-        }
-
-        if (input_changed)
-        {
-            camera->matrix_dirty = true;
-        }
-    }
-
-    void CameraSystem::ProcessLookAtInput(CameraComponent* camera, float deltaTime)
-    {
-        if (!camera)
-            return;
-
-        bool input_changed = false;
-
-        // 中键平移
-        if (input_state.middle_button && (input_state.mouse_delta.x != 0 || input_state.mouse_delta.y != 0))
-        {
-            float pan_speed = 0.01f * camera->distance;
-            math::Vector3f pan_offset =
-                camera->right * (-input_state.mouse_delta.x * pan_speed) +
-                camera->up * (input_state.mouse_delta.y * pan_speed);
-
-            camera->target += pan_offset;
-            input_changed = true;
-        }
-
-        // 滚轮调整距离
-        if (input_state.wheel_delta != 0)
-        {
-            camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
-
-            // 限制距离
-            if (camera->distance < camera->min_distance)
-                camera->distance = camera->min_distance;
-            if (camera->distance > camera->max_distance)
-                camera->distance = camera->max_distance;
-
-            input_changed = true;
-        }
-
-        if (input_changed)
-        {
-            camera->matrix_dirty = true;
-        }
+        processor->ProcessInput(camera, input_state, deltaTime);
     }
 
     void CameraSystem::UpdateBasis(CameraComponent* camera)
@@ -340,25 +344,27 @@ namespace hgl::ecs
     {
         if (!camera)
             return;
+        CameraModeProcessor* processor = GetModeProcessor(camera->control_mode);
+        if (!processor)
+            return;
+        processor->UpdateTransform(camera);
+    }
 
-        // 根据控制模式更新位置或目标
-        switch (camera->control_mode)
+    CameraModeProcessor* CameraSystem::GetModeProcessor(CameraComponent::ControlMode mode) const
+    {
+        switch (mode)
         {
             case CameraComponent::ControlMode::FirstPerson:
-                // 第一人称：target = position + forward
-                camera->target = camera->position + camera->forward;
-                break;
-
+                return first_person_mode.get();
             case CameraComponent::ControlMode::ViewModel:
+                return view_model_mode.get();
             case CameraComponent::ControlMode::LookAt:
-                // ViewModel/LookAt：position = target - forward * distance
-                camera->position = camera->target - camera->forward * camera->distance;
-                break;
-
+                return look_at_mode.get();
             case CameraComponent::ControlMode::Free:
-                // 自由模式：不自动更新
-                break;
+                return free_mode.get();
         }
+
+        return nullptr;
     }
 
     void CameraSystem::UpdateMatrices(CameraComponent* camera)

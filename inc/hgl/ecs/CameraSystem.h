@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/CameraComponent.h>
-#include<hgl/io/event/InputContext.h>
+#include<hgl/ecs/CameraInputMapping.h>
 #include<hgl/math/Vector.h>
 #include<vector>
 #include<memory>
@@ -13,6 +13,52 @@ namespace hgl
     {
         class ECSContext;
         class InputSystem;
+
+        struct CameraInputState
+        {
+            math::Vector2i mouse_pos;           ///< 当前鼠标位置 / Current mouse position
+            math::Vector2i mouse_delta;         ///< 鼠标位移 / Mouse delta
+            math::Vector2i last_mouse_pos;      ///< 上一帧鼠标位置 / Last frame mouse position
+
+            bool left_button;                   ///< 左键按下 / Left button pressed
+            bool right_button;                  ///< 右键按下 / Right button pressed
+            bool middle_button;                 ///< 中键按下 / Middle button pressed
+
+            float wheel_delta;                  ///< 滚轮增量 / Wheel delta
+
+            bool move_forward;                 ///< 前进 / Move forward
+            bool move_backward;                ///< 后退 / Move backward
+            bool move_left;                    ///< 左移 / Move left
+            bool move_right;                   ///< 右移 / Move right
+            bool move_down;                    ///< 下移 / Move down
+            bool move_up;                      ///< 上移 / Move up
+
+            CameraInputState()
+                : mouse_pos(0, 0)
+                , mouse_delta(0, 0)
+                , last_mouse_pos(0, 0)
+                , left_button(false)
+                , right_button(false)
+                , middle_button(false)
+                , wheel_delta(0.0f)
+                , move_forward(false)
+                , move_backward(false)
+                , move_left(false)
+                , move_right(false)
+                , move_down(false)
+                , move_up(false)
+            {
+            }
+        };
+
+        class CameraModeProcessor
+        {
+        public:
+            virtual ~CameraModeProcessor() = default;
+            virtual CameraComponent::ControlMode GetMode() const = 0;
+            virtual void ProcessInput(CameraComponent* camera, const CameraInputState& input_state, float deltaTime) = 0;
+            virtual void UpdateTransform(CameraComponent* camera) = 0;
+        };
 
         /**
          * CameraSystem - 纯逻辑系统
@@ -26,47 +72,24 @@ namespace hgl
             ECSContext* context;
             InputSystem* input_system;
 
-            /// 输入状态缓存 / Input state cache
-            struct InputState
-            {
-                math::Vector2i mouse_pos;           ///< 当前鼠标位置 / Current mouse position
-                math::Vector2i mouse_delta;         ///< 鼠标位移 / Mouse delta
-                math::Vector2i last_mouse_pos;      ///< 上一帧鼠标位置 / Last frame mouse position
+            CameraInputState input_state;
 
-                bool left_button;                   ///< 左键按下 / Left button pressed
-                bool right_button;                  ///< 右键按下 / Right button pressed
-                bool middle_button;                 ///< 中键按下 / Middle button pressed
+            std::unique_ptr<CameraModeProcessor> first_person_mode;
+            std::unique_ptr<CameraModeProcessor> view_model_mode;
+            std::unique_ptr<CameraModeProcessor> look_at_mode;
+            std::unique_ptr<CameraModeProcessor> free_mode;
 
-                float wheel_delta;                  ///< 滚轮增量 / Wheel delta
-
-                bool key_w, key_s, key_a, key_d;   ///< WASD键 / WASD keys
-                bool key_q, key_e;                  ///< QE键 / QE keys
-
-                InputState()
-                    : mouse_pos(0, 0)
-                    , mouse_delta(0, 0)
-                    , last_mouse_pos(0, 0)
-                    , left_button(false)
-                    , right_button(false)
-                    , middle_button(false)
-                    , wheel_delta(0.0f)
-                    , key_w(false), key_s(false), key_a(false), key_d(false)
-                    , key_q(false), key_e(false)
-                {
-                }
-            };
-
-            InputState input_state;
-
-            io::InputContext input_context;
-            bool input_context_ready;
+            CameraInputMapping input_mapping;
 
         public:
 
             CameraSystem(ECSContext* ctx);
-            ~CameraSystem() override = default;
+            ~CameraSystem() override;
 
             void Update(float deltaTime) override;
+
+            CameraInputMapping& GetInputMapping() { return input_mapping; }
+            const CameraInputMapping& GetInputMapping() const { return input_mapping; }
 
         private:
 
@@ -94,16 +117,7 @@ namespace hgl
             /// 上传到GPU / Upload to GPU
             void UploadToGPU(CameraComponent* camera);
 
-            // === 不同控制模式的输入处理 / Input processing for different control modes ===
-
-            /// 第一人称输入处理 / First-person input processing
-            void ProcessFirstPersonInput(CameraComponent* camera, float deltaTime);
-
-            /// 视图模型输入处理 / View-model input processing
-            void ProcessViewModelInput(CameraComponent* camera, float deltaTime);
-
-            /// 观察模式输入处理 / Look-at input processing
-            void ProcessLookAtInput(CameraComponent* camera, float deltaTime);
+            CameraModeProcessor* GetModeProcessor(CameraComponent::ControlMode mode) const;
 
             // === 数学辅助函数 / Math helper functions ===
 
