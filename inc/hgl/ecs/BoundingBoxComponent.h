@@ -5,12 +5,17 @@
 #include<hgl/ecs/BoundingBoxDataStorage.h>
 #include<glm/glm.hpp>
 #include<memory>
+#include<unordered_map>
+#include<utility>
+#include<vector>
 #include<cstdint>
 
 namespace hgl
 {
     namespace ecs
     {
+    struct ComponentRecord;
+    class TransformComponent;
         /**
          * Bounding box component for spatial queries and culling
          * Uses SOA (Structure of Arrays) storage for better cache performance
@@ -215,6 +220,14 @@ namespace hgl
             void OnAttach() override {}
             void OnUpdate(float deltaTime) override {}
             void OnDetach() override {}
+
+            static const char* GetSerializationType();
+            static bool SerializeToRecord(const std::shared_ptr<Component>& component,
+                                          const std::unordered_map<EntityID, int32_t>& entity_index,
+                                          ComponentRecord& out_record);
+            static void DeserializeFromRecord(const ComponentRecord& record,
+                                              Entity* entity,
+                                              std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
         };
 
         // Static member definition (needs to be in .cpp file)

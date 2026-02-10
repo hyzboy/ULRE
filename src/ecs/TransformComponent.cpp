@@ -1,11 +1,36 @@
 ﻿#include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/Context.h>
+#include<hgl/ecs/ECSComponentRecords.h>
 #include<algorithm>
+#include<array>
 
 namespace hgl
 {
     namespace ecs
     {
+        namespace
+        {
+            std::array<float, 3> ToArray3(const glm::vec3& value)
+            {
+                return {value.x, value.y, value.z};
+            }
+
+            std::array<float, 4> ToArray4(const glm::quat& value)
+            {
+                return {value.x, value.y, value.z, value.w};
+            }
+
+            glm::vec3 ToVec3(const std::array<float, 3>& value)
+            {
+                return glm::vec3(value[0], value[1], value[2]);
+            }
+
+            glm::quat ToQuat(const std::array<float, 4>& value)
+            {
+                return glm::quat(value[3], value[0], value[1], value[2]);
+            }
+        }
+
         TransformComponent::TransformComponent(const std::string& name)
             : Component(name)
             , cachedWorldMatrix(1.0f)
@@ -464,6 +489,50 @@ namespace hgl
                     ctx->MigrateTransformComponent(this, toMovable);
                 }
             }
+        }
+
+        const char* TransformComponent::GetSerializationType()
+        {
+            return "Transform";
+        }
+
+        bool TransformComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
+                                                    const std::unordered_map<EntityID, int32_t>& entity_index,
+                                                    ComponentRecord& out_record)
+        {
+            auto transform = std::dynamic_pointer_cast<TransformComponent>(component);
+            if (!transform)
+                return false;
+
+            TransformRecord data{};
+            data.position = ToArray3(transform->GetLocalPosition());
+            data.rotation = ToArray4(transform->GetLocalRotation());
+            data.scale = ToArray3(transform->GetLocalScale());
+            data.movable = transform->IsMovable();
+
+            const auto parent_id = transform->GetParentID();
+            auto it = entity_index.find(parent_id);
+            if (parent_id.IsValid() && it != entity_index.end())
+                data.parentIndex = it->second;
+
+            out_record.type = GetSerializationType();
+            out_record.payload = data;
+            return true;
+        }
+
+        void TransformComponent::DeserializeFromRecord(const ComponentRecord& record,
+                                                        Entity* entity,
+                                                        std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents)
+        {
+            const auto& data = std::get<TransformRecord>(record.payload);
+            auto transform = std::make_shared<TransformComponent>();
+            transform->SetLocalTRS(ToVec3(data.position), ToQuat(data.rotation), ToVec3(data.scale));
+            entity->AddComponentInstance(transform);
+
+            if (data.movable != transform->IsMovable())
+                transform->SetMovable(data.movable);
+
+            pending_parents.emplace_back(transform, data.parentIndex);
         }
     }//namespace ecs
 }//namespace hgl

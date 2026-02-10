@@ -9,6 +9,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/System.h
                 ${ECS_INCLUDE_PATH}/SystemProfiler.h
                 ${ECS_INCLUDE_PATH}/Context.h
+                ${ECS_INCLUDE_PATH}/ECSComponentRecords.h
                 ${ECS_INCLUDE_PATH}/TransformComponent.h
                 ${ECS_INCLUDE_PATH}/TransformSystem.h
                 ${ECS_INCLUDE_PATH}/TransformDataStorage.h
@@ -48,6 +49,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 SystemProfiler.cpp
                 Context.cpp
                 ECSContextSerialization.cpp
+                RenderableComponentSerialization.cpp
                 TransformComponent.cpp
                 TransformSystem.cpp
                 BoundingBoxComponent.cpp
@@ -75,6 +77,7 @@ source_group("ECS\\Core" FILES
     System.cpp
     SystemProfiler.cpp
     ${ECS_INCLUDE_PATH}/Context.h
+    ${ECS_INCLUDE_PATH}/ECSComponentRecords.h
     Context.cpp
     ECSContextSerialization.cpp
 )
@@ -111,6 +114,7 @@ source_group("ECS\\Rendering" FILES
     ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
     RenderPrimitiveSubmitSystem.cpp
     ${ECS_INCLUDE_PATH}/RenderableComponent.h
+    RenderableComponentSerialization.cpp
 )
 
 source_group("ECS\\Material" FILES

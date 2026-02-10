@@ -1,4 +1,6 @@
 ﻿#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/ECSComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
@@ -7,6 +9,41 @@
 
 namespace hgl::ecs
 {
+    const char* PrimitiveComponent::GetSerializationType()
+    {
+        return "Primitive";
+    }
+
+    bool PrimitiveComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
+                                               const std::unordered_map<EntityID, int32_t>&,
+                                               ComponentRecord& out_record)
+    {
+        auto primitive = std::dynamic_pointer_cast<PrimitiveComponent>(component);
+        if (!primitive)
+            return false;
+
+        PrimitiveRecord data{};
+        data.renderable.visible = primitive->IsVisible();
+        data.renderable.boundingRadius = primitive->GetBoundingRadius();
+        data.hasPrimitive = primitive->GetPrimitive() != nullptr;
+        data.hasOverrideMaterial = primitive->GetOverrideMaterial() != nullptr;
+
+        out_record.type = GetSerializationType();
+        out_record.payload = data;
+        return true;
+    }
+
+    void PrimitiveComponent::DeserializeFromRecord(const ComponentRecord& record,
+                                                   Entity* entity,
+                                                   std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>&)
+    {
+        const auto& data = std::get<PrimitiveRecord>(record.payload);
+        auto primitive = std::make_shared<PrimitiveComponent>();
+        primitive->SetVisible(data.renderable.visible);
+        primitive->SetBoundingRadius(data.renderable.boundingRadius);
+        entity->AddComponentInstance(primitive);
+    }
+
     void PrimitiveComponent::SetPrimitive(hgl::graph::Primitive* prim)
     {
         primitive = prim;
