@@ -99,6 +99,13 @@ bool MaterialParameters::BindTexture(const AnsiString &name,Texture *tex)
 
 bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sampler *sampler)
 {
+        LogInfo(u8"[VKMaterialParameters] BindTextureSampler index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+            index,
+            (uint)set_type,
+            (void*)tex,
+            (void*)sampler,
+            (void*)descriptor_set);
+
     if(index<0||!tex||!sampler)
         return(false);
 
@@ -114,6 +121,14 @@ bool MaterialParameters::BindTextureSampler(const AnsiString &name,Texture *tex,
         return(false);
 
     const int index=desc_manager->GetTextureSampler(set_type,name);
+
+        LogInfo(u8"[VKMaterialParameters] BindTextureSampler name=%s index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+            name.c_str() ? name.c_str() : "(null)",
+            index,
+            (uint)set_type,
+            (void*)tex,
+            (void*)sampler,
+            (void*)descriptor_set);
 
     if(index<0)
         return(false);

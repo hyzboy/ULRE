@@ -164,9 +164,19 @@ bool DescriptorSet::BindTexture(const int binding,Texture *tex)
 
     DescriptorImageInfo image_info(tex);
 
-    image_list.Add(image_info);
+    const int image_index = image_list.Add(image_info);
+    auto *stored_info = image_list.GetData() ? (image_list.GetData() + image_index) : nullptr;
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,&image_info));
+        LogInfo(u8"[VKDescriptorSet] BindTexture binding=%d tex=%p imageView=%p imageLayout=%u image_info_ptr=%p stored_ptr=%p image_list_count=%d",
+            binding,
+            (void*)tex,
+            (void*)image_info.imageView,
+            (uint)image_info.imageLayout,
+            (void*)&image_info,
+            (void*)stored_info,
+            image_list.GetCount());
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,stored_info));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -182,9 +192,20 @@ bool DescriptorSet::BindTextureSampler(const int binding,Texture *tex,Sampler *s
 
     DescriptorImageInfo image_info(tex,sampler);
 
-    image_list.Add(image_info);
+    const int image_index = image_list.Add(image_info);
+    auto *stored_info = image_list.GetData() ? (image_list.GetData() + image_index) : nullptr;
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,&image_info));
+        LogInfo(u8"[VKDescriptorSet] BindTextureSampler binding=%d tex=%p sampler=%p imageView=%p imageLayout=%u image_info_ptr=%p stored_ptr=%p image_list_count=%d",
+            binding,
+            (void*)tex,
+            (void*)sampler,
+            (void*)image_info.imageView,
+            (uint)image_info.imageLayout,
+            (void*)&image_info,
+            (void*)stored_info,
+            image_list.GetCount());
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,stored_info));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -200,9 +221,10 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
 
     DescriptorImageInfo image_info(iv->GetImageView());
 
-    image_list.Add(image_info);
+    const int image_index = image_list.Add(image_info);
+    auto *stored_info = image_list.GetData() ? (image_list.GetData() + image_index) : nullptr;
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,&image_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,stored_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -214,7 +236,25 @@ void DescriptorSet::Update()
     if(!is_dirty)return;
 
     if(wds_list.GetCount()>0)
+    {
+        LogInfo(u8"[VKDescriptorSet] Update wds_count=%d image_count=%d buffer_count=%d desc_set=%p",
+            wds_list.GetCount(),
+            image_list.GetCount(),
+            vab_list.GetCount(),
+            (void*)desc_set);
+
+        for(int i=0;i<wds_list.GetCount();++i)
+        {
+            const auto &wds = wds_list[i];
+                LogInfo(u8"  [VKDescriptorSet] WDS[%d] binding=%u type=%u pImageInfo=%p pBufferInfo=%p",
+                    i,
+                    wds.dstBinding,
+                    (uint)wds.descriptorType,
+                    (void*)wds.pImageInfo,
+                    (void*)wds.pBufferInfo);
+        }
         vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
+    }
 
     Clear();
 }

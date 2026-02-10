@@ -106,6 +106,13 @@ bool Material::BindTextureSampler(const DescriptorSetType &type,const AnsiString
 {
     MaterialParameters *mp=GetMP(type);
 
+        LogInfo(u8"[VKMaterial] BindTextureSampler type=%u name=%s tex=%p sampler=%p mp=%p",
+            (uint)type,
+            name.c_str() ? name.c_str() : "(null)",
+            (void*)tex,
+            (void*)sampler,
+            (void*)mp);
+
     if(!mp)
         return(false);
 
