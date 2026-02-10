@@ -124,7 +124,7 @@ namespace hgl::ecs
         if (!bbox)
             return;
 
-        last_seen_version.ChangeOrAdd(bbox.get(), bbox->GetVersion());
+        last_seen_version[bbox.get()] = bbox->GetVersion();
 
         if (!transform)
             return;
@@ -133,6 +133,6 @@ namespace hgl::ecs
         if (handle == TransformDataStorage::INVALID_HANDLE)
             return;
 
-        last_seen_transform_version.ChangeOrAdd(handle, transform->GetVersion());
+        last_seen_transform_version[handle] = transform->GetVersion();
     }
 }//namespace hgl::ecs

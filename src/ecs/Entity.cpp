@@ -74,7 +74,7 @@ namespace hgl
                 return;
 
             const size_t type_hash = typeid(*component).hash_code();
-            components.ChangeOrAdd(type_hash, component);
+            components[type_hash] = component;
             component->SetOwner(id, context);
             RegisterToContext(type_hash, component);
             component->OnAttach();

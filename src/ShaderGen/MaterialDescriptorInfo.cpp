@@ -37,7 +37,7 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    ubo_map.ChangeOrAdd(obj->name, (UBODescriptor *)obj);
+    ubo_map[obj->name] = (UBODescriptor *)obj;
     return((UBODescriptor *)obj);
 }
 
@@ -50,7 +50,7 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    ssbo_map.ChangeOrAdd(obj->name, (SSBODescriptor *)obj);
+    ssbo_map[obj->name] = (SSBODescriptor *)obj;
     return((SSBODescriptor *)obj);
 }
 
@@ -63,7 +63,7 @@ const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stag
 
     ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
 
-    texture_map.ChangeOrAdd(obj->name, (TextureDescriptor *)obj);
+    texture_map[obj->name] = (TextureDescriptor *)obj;
     return((TextureDescriptor *)obj);
 }
 
@@ -76,7 +76,7 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    texture_sampler_map.ChangeOrAdd(obj->name, (TextureSamplerDescriptor *)obj);
+    texture_sampler_map[obj->name] = (TextureSamplerDescriptor *)obj;
     return((TextureSamplerDescriptor *)obj);
 }
 

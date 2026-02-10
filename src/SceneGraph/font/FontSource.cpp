@@ -40,7 +40,7 @@ namespace hgl::graph
 
         get_max(max_char_height,fs->GetCharHeight());
 
-        source_map.ChangeOrAdd(ub,fs);
+        source_map[ub] = fs;
     }
 
     void FontSource::RefreshMaxCharHeight()

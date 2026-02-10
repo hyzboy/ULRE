@@ -191,7 +191,7 @@ namespace hgl::ecs
                     continue;
                 const uint32_t index = static_cast<uint32_t>(static_handles.size());
                 static_handles.push_back(handle);
-                static_index_map.ChangeOrAdd(handle, index);
+                static_index_map[handle] = index;
             }
         }
 
@@ -204,7 +204,7 @@ namespace hgl::ecs
                     continue;
                 const uint32_t index = static_cast<uint32_t>(dynamic_handles.size());
                 dynamic_handles.push_back(handle);
-                dynamic_index_map.ChangeOrAdd(handle, index);
+                dynamic_index_map[handle] = index;
             }
         }
     }
@@ -238,6 +238,6 @@ namespace hgl::ecs
         if (handle == TransformDataStorage::INVALID_HANDLE)
             return;
 
-        last_seen_version.ChangeOrAdd(handle, comp->GetVersion());
+        last_seen_version[handle] = comp->GetVersion();
     }
 }//namespace hgl::ecs
