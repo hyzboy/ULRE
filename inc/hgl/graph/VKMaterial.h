@@ -4,6 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/log/Log.h>
 #include<unordered_set>
 
 namespace hgl
@@ -27,6 +28,8 @@ using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
  */
 class Material
 {
+    OBJECT_LOGGER
+
     AnsiString name;
 
     PrimitiveType geometry;                       ///<图元类型

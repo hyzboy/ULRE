@@ -20,6 +20,7 @@ CreateProject(03b_auto_merge_material_instance_use_ECS    auto_merge_material_in
 CreateProject(03c_clock_use_ECS                 clock_use_ECS.cpp)
 
 CreateProject(04_Billboard                      BillboardTest.cpp)
+CreateProject(04b_Billboard_ECS                 BillboardTest_use_ECS.cpp)
 
 CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(05b_RenderBoundBox_ECS            RenderBoundBox_use_ECS.cpp)

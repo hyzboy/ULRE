@@ -3,6 +3,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/type/ManagedArray.h>
+#include<hgl/log/Log.h>
 
 // Comparison operators for Vulkan structures used in ValueArray
 inline bool operator==(const VkDescriptorBufferInfo& lhs, const VkDescriptorBufferInfo& rhs) {
@@ -35,6 +36,8 @@ class DeviceBuffer;
 
 class DescriptorSet
 {
+    OBJECT_LOGGER
+
     VkDevice device;
     int vab_count;
     VkDescriptorSet desc_set;

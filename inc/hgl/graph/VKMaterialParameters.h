@@ -7,9 +7,12 @@
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKArrayBuffer.h>
+#include<hgl/log/Log.h>
 VK_NAMESPACE_BEGIN
 class MaterialParameters
 {
+    OBJECT_LOGGER
+
 protected:
 
     const MaterialDescriptorManager *desc_manager;
