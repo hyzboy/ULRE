@@ -100,7 +100,7 @@ namespace hgl
             void AddChild(EntityID child);
             void RemoveChild(EntityID child);
             const std::vector<EntityID>& GetChildren() const { return child_ids; }
-            
+
             // Helper function to get child entities as pointers
             void GetChildEntities(std::vector<Entity*>& out) const;
 

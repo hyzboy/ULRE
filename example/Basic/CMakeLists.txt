@@ -22,6 +22,7 @@ CreateProject(03c_clock_use_ECS                 clock_use_ECS.cpp)
 CreateProject(04_Billboard                      BillboardTest.cpp)
 
 CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
+CreateProject(05b_RenderBoundBox_ECS            RenderBoundBox_use_ECS.cpp)
 
 CreateProject(06_RenderToTexture                RenderToTexture.cpp)
 
