@@ -27,7 +27,7 @@ public:
 
     bool AddStruct(const AnsiString &name,const AnsiString &code)
     {
-        struct_map.ChangeOrAdd(name, code);
+           struct_map[name] = code;
         return(true);
     }
 

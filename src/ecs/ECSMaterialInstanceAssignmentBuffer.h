@@ -45,7 +45,7 @@ namespace hgl::ecs
             {
                 uint16 index = static_cast<uint16>(instances.size());
                 instances.push_back(mi);
-                index_map.ChangeOrAdd(mi, index);
+                index_map[mi] = index;
             }
         }
 

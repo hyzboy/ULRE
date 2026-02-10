@@ -80,11 +80,11 @@ namespace hgl::ecs
             switch (event_id)
             {
                 case io::KeyboardEventID::Pressed:
-                    key_states.ChangeOrAdd(ked->key, true);
+                    key_states[ked->key] = true;
                     break;
 
                 case io::KeyboardEventID::Released:
-                    key_states.ChangeOrAdd(ked->key, false);
+                    key_states[ked->key] = false;
                     break;
 
                 default:
@@ -162,28 +162,28 @@ namespace hgl::ecs
 
     void InputSystem::OnActionEvent(const io::ActionEvent& evt)
     {
-        action_values.ChangeOrAdd(evt.action, evt.value);
+        action_values[evt.action] = evt.value;
 
         switch (evt.state)
         {
             case io::ActionEventState::Started:
-                action_active.ChangeOrAdd(evt.action, true);
-                action_started.ChangeOrAdd(evt.action, true);
+                action_active[evt.action] = true;
+                action_started[evt.action] = true;
                 break;
 
             case io::ActionEventState::Ongoing:
                 if (evt.value.type == io::ActionValueType::Digital)
-                    action_active.ChangeOrAdd(evt.action, evt.value.digital);
+                    action_active[evt.action] = evt.value.digital;
                 break;
 
             case io::ActionEventState::Completed:
-                action_active.ChangeOrAdd(evt.action, false);
-                action_completed.ChangeOrAdd(evt.action, true);
+                action_active[evt.action] = false;
+                action_completed[evt.action] = true;
                 break;
 
             case io::ActionEventState::Canceled:
-                action_active.ChangeOrAdd(evt.action, false);
-                action_completed.ChangeOrAdd(evt.action, true);
+                action_active[evt.action] = false;
+                action_completed[evt.action] = true;
                 break;
         }
 

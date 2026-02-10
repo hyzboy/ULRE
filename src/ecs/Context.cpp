@@ -220,7 +220,7 @@ namespace hgl
 
             for (size_t i = 0; i < order_list.size(); ++i)
             {
-                index_map.ChangeOrAdd(order_list[i].key, i);
+                index_map[order_list[i].key] = i;
             }
 
             std::vector<size_t> indegree(order_list.size(), 0);
@@ -325,7 +325,7 @@ namespace hgl
             auto& order_list = is_render ? render_system_order : tick_system_order;
             auto& dirty_flag = is_render ? render_order_dirty : tick_order_dirty;
 
-            sys_map.ChangeOrAdd(key, system);
+            sys_map[key] = system;
 
             // Set the context for the system so it can access entities and create queries
             if (system)

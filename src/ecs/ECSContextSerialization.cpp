@@ -345,7 +345,7 @@ namespace hgl::ecs
         for (size_t i = 0; i < entities.size(); ++i)
         {
             if (entities[i])
-            entity_index.ChangeOrAdd(entities[i]->GetID(), static_cast<int32_t>(i));
+                entity_index[entities[i]->GetID()] = static_cast<int32_t>(i);
         }
 
         SerializableWorldRecord world;
@@ -441,7 +441,7 @@ namespace hgl::ecs
         for (size_t i = 0; i < entities.size(); ++i)
         {
             if (entities[i])
-            entity_index.ChangeOrAdd(entities[i]->GetID(), static_cast<int32_t>(i));
+                entity_index[entities[i]->GetID()] = static_cast<int32_t>(i);
         }
 
         SerializableWorldRecord world;

@@ -54,7 +54,7 @@ namespace hgl
             std::shared_ptr<T> AddComponent(Args&&... args)
             {
                 auto component = std::make_shared<T>(std::forward<Args>(args)...);
-                components.ChangeOrAdd(typeid(T).hash_code(), component);
+                components[typeid(T).hash_code()] = component;
                 component->SetOwner(id, context);
                 RegisterToContext(typeid(T).hash_code(), component);
                 component->OnAttach();
