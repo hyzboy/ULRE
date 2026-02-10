@@ -1,10 +1,10 @@
-﻿// sphere、cylinear、cone、tours code from McNopper,website: https://github.com/McNopper/GLUS
+// sphere、cylinear、cone、tours code from McNopper,website: https://github.com/McNopper/GLUS
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/GeometryCreater.h>
-#include <unordered_map>
+#include <hgl/type/UnorderedMap.h>
 #include <algorithm>
 #include <vector>
 #include <cmath>
@@ -42,7 +42,7 @@ namespace hgl::graph::inline_geometry
         // 索引缓存中间点
         struct EdgeKey { uint a,b; bool operator==(const EdgeKey& o)const{return a==o.a&&b==o.b;} };
         struct EdgeHash { size_t operator()(const EdgeKey& k)const { return (size_t(k.a)<<32) ^ k.b; } };
-        std::unordered_map<EdgeKey,uint,EdgeHash> midpoint;
+        hgl::UnorderedMap<EdgeKey,uint,EdgeHash> midpoint;
 
         auto get_mid = [&](uint a,uint b){
             EdgeKey key{std::min(a,b),std::max(a,b)};
@@ -161,3 +161,4 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 }//namespace hgl::graph::inline_geometry
+

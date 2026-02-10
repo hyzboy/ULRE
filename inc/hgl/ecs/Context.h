@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/Object.h>
 #include<hgl/ecs/Entity.h>
@@ -8,7 +8,7 @@
 #include<hgl/ecs/SystemProfiler.h>
 #include<memory>
 #include<vector>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<map>
 #include<hgl/ecs/MaterialPipelineKey.h>
@@ -46,8 +46,8 @@ namespace hgl
             std::unique_ptr<EntityManager> entity_manager;
 
             // 分类存储：更新系统与渲染系统分开
-            std::unordered_map<size_t, std::shared_ptr<System>> tick_systems;
-            std::unordered_map<size_t, std::shared_ptr<System>> render_systems;
+            hgl::UnorderedMap<size_t, std::shared_ptr<System>> tick_systems;
+            hgl::UnorderedMap<size_t, std::shared_ptr<System>> render_systems;
 
             struct OrderedSystem
             {
@@ -57,7 +57,7 @@ namespace hgl
                 std::shared_ptr<System> system;
             };
 
-            using DependencyMap = std::unordered_map<size_t, std::vector<size_t>>;
+            using DependencyMap = hgl::UnorderedMap<size_t, std::vector<size_t>>;
 
             std::vector<OrderedSystem> tick_system_order;
             std::vector<OrderedSystem> render_system_order;
@@ -69,7 +69,7 @@ namespace hgl
             DependencyMap render_dependencies;
 
             // 组件注册表：按类型hash存储弱引用，便于系统快速查询
-            std::unordered_map<size_t, std::vector<std::weak_ptr<Component>>> component_registry;
+            hgl::UnorderedMap<size_t, std::vector<std::weak_ptr<Component>>> component_registry;
 
             // TransformComponent 分离列表
             std::vector<std::weak_ptr<TransformComponent>> static_transforms;
@@ -359,3 +359,4 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
+

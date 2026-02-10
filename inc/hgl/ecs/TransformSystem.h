@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/graph/VKDevice.h>
 #include<hgl/ecs/System.h>
@@ -6,7 +6,7 @@
 #include<hgl/ecs/TransformComponent.h>
 #include<vector>
 #include<memory>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 #include<cstdint>
 
 namespace hgl::ecs
@@ -33,9 +33,9 @@ namespace hgl::ecs
         bool static_dirty = true;
         std::vector<TransformDataStorage::HandleID> static_handles;
         std::vector<TransformDataStorage::HandleID> dynamic_handles;
-        std::unordered_map<TransformDataStorage::HandleID, uint32_t> static_index_map;
-        std::unordered_map<TransformDataStorage::HandleID, uint32_t> dynamic_index_map;
-        std::unordered_map<TransformDataStorage::HandleID, uint64_t> last_seen_version;
+        hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> static_index_map;
+        hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> dynamic_index_map;
+        hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_seen_version;
 
     public:
 
@@ -68,3 +68,4 @@ namespace hgl::ecs
         void MarkTransformSeen(const std::shared_ptr<TransformComponent>& comp);
     };
 }//namespace hgl::ecs
+

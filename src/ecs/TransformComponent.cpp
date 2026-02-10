@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/ECSComponentRecords.h>
 #include<algorithm>
@@ -506,7 +506,7 @@ namespace hgl
         }
 
         bool TransformComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
-                                                    const std::unordered_map<EntityID, int32_t>& entity_index,
+                                                    const hgl::UnorderedMap<EntityID, int32_t>& entity_index,
                                                     ComponentRecord& out_record)
         {
             auto transform = std::dynamic_pointer_cast<TransformComponent>(component);
@@ -545,3 +545,4 @@ namespace hgl
         }
     }//namespace ecs
 }//namespace hgl
+

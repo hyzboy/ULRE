@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/CameraComponent.h>
+#include<hgl/ecs/CameraComponent.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/ECSComponentRecords.h>
 #include<array>
@@ -89,7 +89,7 @@ namespace hgl::ecs
     }
 
     bool CameraComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
-                                            const std::unordered_map<EntityID, int32_t>&,
+                                            const hgl::UnorderedMap<EntityID, int32_t>&,
                                             ComponentRecord& out_record)
     {
         auto camera = std::dynamic_pointer_cast<CameraComponent>(component);
@@ -162,3 +162,4 @@ namespace hgl::ecs
         entity->AddComponentInstance(camera);
     }
 }//namespace hgl::ecs
+

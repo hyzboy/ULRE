@@ -19,7 +19,7 @@ namespace hgl::ecs
     }
 
     bool RenderableComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
-                                                const std::unordered_map<EntityID, int32_t>&,
+                                                const hgl::UnorderedMap<EntityID, int32_t>&,
                                                 ComponentRecord& out_record)
     {
         auto renderable = std::dynamic_pointer_cast<RenderableComponent>(component);
@@ -46,3 +46,4 @@ namespace hgl::ecs
         entity->AddComponentInstance(renderable);
     }
 }
+

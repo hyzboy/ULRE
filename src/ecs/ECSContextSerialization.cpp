@@ -20,7 +20,7 @@
 #include<fstream>
 #include<string>
 #include<utility>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 #include<variant>
 #include<vector>
 
@@ -202,7 +202,7 @@ namespace hgl::ecs
             return result;
         }
         using SerializeFn = bool (*)(const std::shared_ptr<Component>&,
-                                     const std::unordered_map<EntityID, int32_t>&,
+                                     const hgl::UnorderedMap<EntityID, int32_t>&,
                                      ComponentRecord&);
         using DeserializeFn = void (*)(const ComponentRecord&,
                                        Entity*,
@@ -229,9 +229,9 @@ namespace hgl::ecs
 
         const ComponentRegistryEntry* FindRegistryEntry(const std::string& type)
         {
-            static const std::unordered_map<std::string, const ComponentRegistryEntry*> lookup = []()
+            static const hgl::UnorderedMap<std::string, const ComponentRegistryEntry*> lookup = []()
             {
-                std::unordered_map<std::string, const ComponentRegistryEntry*> table;
+                hgl::UnorderedMap<std::string, const ComponentRegistryEntry*> table;
                 for (const auto& entry : GetComponentRegistry())
                     table.emplace(entry.type, &entry);
                 return table;
@@ -244,7 +244,7 @@ namespace hgl::ecs
         }
 
         ComponentRecord BuildComponentRecord(const std::shared_ptr<Component>& component,
-                                             const std::unordered_map<EntityID, int32_t>& entity_index)
+                                             const hgl::UnorderedMap<EntityID, int32_t>& entity_index)
         {
             for (const auto& entry : GetComponentRegistry())
             {
@@ -340,7 +340,7 @@ namespace hgl::ecs
         if (entity_manager)
             entity_manager->GetAllEntityPointers(entities);
 
-        std::unordered_map<EntityID, int32_t> entity_index;
+        hgl::UnorderedMap<EntityID, int32_t> entity_index;
         entity_index.reserve(entities.size());
         for (size_t i = 0; i < entities.size(); ++i)
         {
@@ -436,7 +436,7 @@ namespace hgl::ecs
         if (entity_manager)
             entity_manager->GetAllEntityPointers(entities);
 
-        std::unordered_map<EntityID, int32_t> entity_index;
+        hgl::UnorderedMap<EntityID, int32_t> entity_index;
         entity_index.reserve(entities.size());
         for (size_t i = 0; i < entities.size(); ++i)
         {
@@ -526,3 +526,4 @@ namespace hgl::ecs
         return true;
     }
 }
+

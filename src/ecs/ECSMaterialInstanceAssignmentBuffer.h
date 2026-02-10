@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ECSMaterialInstanceAssignmentBuffer.h - ECS材质实例数据管理
  *
  * 针对 ECS 架构的 RenderItem 和 MaterialBatch 设计
@@ -10,7 +10,7 @@
 #include<hgl/ecs/RenderItem.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<vector>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 
 namespace hgl::ecs
 {
@@ -21,7 +21,7 @@ namespace hgl::ecs
     {
     private:
         std::vector<graph::MaterialInstance*> instances;
-        std::unordered_map<graph::MaterialInstance*, uint16> index_map;
+        hgl::UnorderedMap<graph::MaterialInstance*, uint16> index_map;
 
     public:
         void Clear()
@@ -125,3 +125,4 @@ namespace hgl::ecs
         void UpdateMaterialInstanceData(RenderItem* item);
     };
 }//namespace hgl::ecs
+

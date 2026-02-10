@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/Component.h>
 #include<hgl/math/Vector.h>
 #include<memory>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 #include<utility>
 #include<vector>
 
@@ -90,7 +90,7 @@ namespace hgl
 
             static const char* GetSerializationType();
             static bool SerializeToRecord(const std::shared_ptr<Component>& component,
-                                          const std::unordered_map<EntityID, int32_t>& entity_index,
+                                          const hgl::UnorderedMap<EntityID, int32_t>& entity_index,
                                           ComponentRecord& out_record);
             static void DeserializeFromRecord(const ComponentRecord& record,
                                               Entity* entity,
@@ -98,3 +98,4 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
+

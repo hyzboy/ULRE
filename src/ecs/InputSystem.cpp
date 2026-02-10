@@ -19,10 +19,19 @@ namespace hgl::ecs
         mouse_buttons[1] = false;
         mouse_buttons[2] = false;
         wheel_delta = 0;
+        current_time = 0.0;
+
+        input_mapper.SetActionCallback([this](const io::ActionEvent& evt)
+        {
+            OnActionEvent(evt);
+        });
     }
 
     io::EventProcResult InputSystem::OnEvent(const io::EventHeader &header, const uint64 data)
     {
+        input_mapper.SetCurrentTime(current_time);
+        input_mapper.ProcessPhysicalInput(header, data);
+
         // 处理鼠标事件 / Handle mouse events
         if (header.type == io::InputEventSource::Mouse)
         {
@@ -101,9 +110,91 @@ namespace hgl::ecs
         return false;
     }
 
+    bool InputSystem::IsActionActive(io::ActionID action) const
+    {
+        auto it = action_active.find(action);
+        if (it != action_active.end())
+            return it->second;
+        return false;
+    }
+
+    bool InputSystem::WasActionStarted(io::ActionID action) const
+    {
+        auto it = action_started.find(action);
+        if (it != action_started.end())
+            return it->second;
+        return false;
+    }
+
+    bool InputSystem::WasActionCompleted(io::ActionID action) const
+    {
+        auto it = action_completed.find(action);
+        if (it != action_completed.end())
+            return it->second;
+        return false;
+    }
+
+    float InputSystem::GetActionAnalog1D(io::ActionID action) const
+    {
+        auto it = action_analog_1d.find(action);
+        if (it != action_analog_1d.end())
+            return it->second;
+        return 0.0f;
+    }
+
+    io::ActionValue InputSystem::GetActionValue(io::ActionID action) const
+    {
+        auto it = action_values.find(action);
+        if (it != action_values.end())
+            return it->second;
+        return io::ActionValue();
+    }
+
     void InputSystem::Update(float deltaTime)
     {
+        current_time += static_cast<double>(deltaTime);
+        input_mapper.SetCurrentTime(current_time);
+
         // 重置帧间状态 / Reset per-frame state
         wheel_delta = 0;
+        ResetActionFrameState();
+    }
+
+    void InputSystem::OnActionEvent(const io::ActionEvent& evt)
+    {
+        action_values[evt.action] = evt.value;
+
+        switch (evt.state)
+        {
+            case io::ActionEventState::Started:
+                action_active[evt.action] = true;
+                action_started[evt.action] = true;
+                break;
+
+            case io::ActionEventState::Ongoing:
+                if (evt.value.type == io::ActionValueType::Digital)
+                    action_active[evt.action] = evt.value.digital;
+                break;
+
+            case io::ActionEventState::Completed:
+                action_active[evt.action] = false;
+                action_completed[evt.action] = true;
+                break;
+
+            case io::ActionEventState::Canceled:
+                action_active[evt.action] = false;
+                action_completed[evt.action] = true;
+                break;
+        }
+
+        if (evt.value.type == io::ActionValueType::Analog1D)
+            action_analog_1d[evt.action] += evt.value.analog_1d;
+    }
+
+    void InputSystem::ResetActionFrameState()
+    {
+        action_started.clear();
+        action_completed.clear();
+        action_analog_1d.clear();
     }
 }//namespace hgl::ecs

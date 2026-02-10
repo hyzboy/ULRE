@@ -4,7 +4,7 @@
 #include<hgl/ecs/TransformDataStorage.h>
 #include<cstdint>
 #include<memory>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 
 namespace hgl::ecs
 {
@@ -24,8 +24,8 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         bool update_enabled = true;
-        std::unordered_map<const BoundingBoxComponent*, uint64_t> last_seen_version;
-        std::unordered_map<TransformDataStorage::HandleID, uint64_t> last_seen_transform_version;
+        hgl::UnorderedMap<const BoundingBoxComponent*, uint64_t> last_seen_version;
+        hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_seen_transform_version;
 
     public:
 
@@ -50,3 +50,4 @@ namespace hgl::ecs
                       const std::shared_ptr<TransformComponent>& transform);
     };
 }//namespace hgl::ecs
+

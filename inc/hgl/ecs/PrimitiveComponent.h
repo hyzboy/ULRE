@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/RenderableComponent.h>
 #include<glm/glm.hpp>
@@ -88,10 +88,11 @@ namespace hgl::ecs
 
         static const char* GetSerializationType();
         static bool SerializeToRecord(const std::shared_ptr<Component>& component,
-                                      const std::unordered_map<EntityID, int32_t>& entity_index,
+                                      const hgl::UnorderedMap<EntityID, int32_t>& entity_index,
                                       ComponentRecord& out_record);
         static void DeserializeFromRecord(const ComponentRecord& record,
                                           Entity* entity,
                                           std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
     };
 }//namespace hgl::ecs
+

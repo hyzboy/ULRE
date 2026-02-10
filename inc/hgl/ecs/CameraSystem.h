@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/System.h>
 #include<hgl/ecs/CameraComponent.h>
+#include<hgl/io/event/InputContext.h>
 #include<hgl/math/Vector.h>
 #include<vector>
 #include<memory>
@@ -36,7 +37,7 @@ namespace hgl
                 bool right_button;                  ///< 右键按下 / Right button pressed
                 bool middle_button;                 ///< 中键按下 / Middle button pressed
 
-                int wheel_delta;                    ///< 滚轮增量 / Wheel delta
+                float wheel_delta;                  ///< 滚轮增量 / Wheel delta
 
                 bool key_w, key_s, key_a, key_d;   ///< WASD键 / WASD keys
                 bool key_q, key_e;                  ///< QE键 / QE keys
@@ -48,7 +49,7 @@ namespace hgl
                     , left_button(false)
                     , right_button(false)
                     , middle_button(false)
-                    , wheel_delta(0)
+                    , wheel_delta(0.0f)
                     , key_w(false), key_s(false), key_a(false), key_d(false)
                     , key_q(false), key_e(false)
                 {
@@ -56,6 +57,9 @@ namespace hgl
             };
 
             InputState input_state;
+
+            io::InputContext input_context;
+            bool input_context_ready;
 
         public:
 
@@ -71,6 +75,9 @@ namespace hgl
 
             /// 收集输入状态 / Collect input state
             void CollectInput();
+
+            /// 初始化输入映射上下文 / Ensure input context is setup
+            void EnsureInputContext();
 
             /// 处理输入 / Process input
             void ProcessInput(CameraComponent* camera, float deltaTime);

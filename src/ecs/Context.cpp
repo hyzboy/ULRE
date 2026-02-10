@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Context.h>
 #include<hgl/ecs/EntityManager.h>
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/MaterialBatch.h>
@@ -215,7 +215,7 @@ namespace hgl
                 return;
             }
 
-            std::unordered_map<size_t, size_t> index_map;
+            hgl::UnorderedMap<size_t, size_t> index_map;
             index_map.reserve(order_list.size());
 
             for (size_t i = 0; i < order_list.size(); ++i)
@@ -554,3 +554,4 @@ namespace hgl
         }
     }//namespace ecs
 }//namespace hgl
+
