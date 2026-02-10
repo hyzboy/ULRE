@@ -14,6 +14,11 @@ namespace hgl::graph::inline_geometry
     protected:
         GeometryCreater *creater;
 
+        VABMap *vab_position;
+        VABMap *vab_normal;
+        VABMap *vab_tangent;
+        VABMap *vab_texcoord;
+
         // VAB映射指针
         float *vp;      // 顶点位置指针
         float *np;      // 法线指针
@@ -22,7 +27,7 @@ namespace hgl::graph::inline_geometry
 
     public:
         GeometryBuilder(GeometryCreater *pc);
-        virtual ~GeometryBuilder() = default;
+        virtual ~GeometryBuilder();
 
         /**
          * 检查构建器是否有效
