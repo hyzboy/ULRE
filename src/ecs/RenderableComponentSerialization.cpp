@@ -4,6 +4,15 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        struct RenderableRecord
+        {
+            bool visible = true;
+            float boundingRadius = 1.0f;
+        };
+    }
+
     const char* RenderableComponent::GetSerializationType()
     {
         return "Renderable";
@@ -30,7 +39,7 @@ namespace hgl::ecs
                                                     Entity* entity,
                                                     std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>&)
     {
-        const auto& data = std::get<RenderableRecord>(record.payload);
+        const auto& data = std::any_cast<const RenderableRecord&>(record.payload);
         auto renderable = std::make_shared<RenderableComponent>();
         renderable->SetVisible(data.visible);
         renderable->SetBoundingRadius(data.boundingRadius);

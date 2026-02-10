@@ -9,6 +9,15 @@ namespace hgl
     {
         namespace
         {
+            struct BoundingBoxRecord
+            {
+                std::array<float, 3> min{};
+                std::array<float, 3> max{};
+                bool hasWorld = false;
+                std::array<float, 3> worldMin{};
+                std::array<float, 3> worldMax{};
+            };
+
             std::array<float, 3> ToArray3(const glm::vec3& value)
             {
                 return {value.x, value.y, value.z};
@@ -54,7 +63,7 @@ namespace hgl
                                                          Entity* entity,
                                                          std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>&)
         {
-            const auto& data = std::get<BoundingBoxRecord>(record.payload);
+            const auto& data = std::any_cast<const BoundingBoxRecord&>(record.payload);
             auto bbox = std::make_shared<BoundingBoxComponent>();
             bbox->SetAABB(ToVec3(data.min), ToVec3(data.max));
             if (data.hasWorld)

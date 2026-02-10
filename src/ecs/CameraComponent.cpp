@@ -7,6 +7,40 @@ namespace hgl::ecs
 {
     namespace
     {
+        struct CameraRecord
+        {
+            std::array<float, 3> position{};
+            std::array<float, 3> target{};
+            std::array<float, 3> worldUp{};
+
+            float fov = 60.0f;
+            float nearPlane = 0.1f;
+            float farPlane = 1000.0f;
+
+            float yaw = 0.0f;
+            float pitch = 0.0f;
+            float roll = 0.0f;
+
+            std::array<float, 3> forward{};
+            std::array<float, 3> right{};
+            std::array<float, 3> up{};
+
+            int controlMode = 0;
+
+            float distance = 0.0f;
+            float minDistance = 0.0f;
+            float maxDistance = 0.0f;
+
+            float rotationSensitivity = 0.0f;
+            float zoomSensitivity = 0.0f;
+            float moveSpeed = 0.0f;
+
+            std::array<float, 2> inputInvert{};
+
+            bool isMainCamera = false;
+            bool matrixDirty = false;
+        };
+
         std::array<float, 3> ToArray3(const hgl::math::Vector3f& value)
         {
             return {value.x, value.y, value.z};
@@ -95,7 +129,7 @@ namespace hgl::ecs
                                                 Entity* entity,
                                                 std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>&)
     {
-        const auto& data = std::get<CameraRecord>(record.payload);
+        const auto& data = std::any_cast<const CameraRecord&>(record.payload);
         auto camera = std::make_shared<CameraComponent>();
         camera->position = hgl::math::Vector3f(data.position[0], data.position[1], data.position[2]);
         camera->target = hgl::math::Vector3f(data.target[0], data.target[1], data.target[2]);
