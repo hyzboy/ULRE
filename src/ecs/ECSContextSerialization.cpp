@@ -233,14 +233,14 @@ namespace hgl::ecs
             {
                 hgl::UnorderedMap<std::string, const ComponentRegistryEntry*> table;
                 for (const auto& entry : GetComponentRegistry())
-                    table.emplace(entry.type, &entry);
+                    table.Add(entry.type, &entry);
                 return table;
             }();
 
-            auto it = lookup.find(type);
-            if (it == lookup.end())
+            auto entry = lookup.GetValuePointer(type);
+            if (!entry)
                 return nullptr;
-            return it->second;
+            return *entry;
         }
 
         ComponentRecord BuildComponentRecord(const std::shared_ptr<Component>& component,
@@ -341,11 +341,11 @@ namespace hgl::ecs
             entity_manager->GetAllEntityPointers(entities);
 
         hgl::UnorderedMap<EntityID, int32_t> entity_index;
-        entity_index.reserve(entities.size());
+        entity_index.SetMaxCount(entities.size());
         for (size_t i = 0; i < entities.size(); ++i)
         {
             if (entities[i])
-                entity_index[entities[i]->GetID()] = static_cast<int32_t>(i);
+            entity_index.ChangeOrAdd(entities[i]->GetID(), static_cast<int32_t>(i));
         }
 
         SerializableWorldRecord world;
@@ -437,11 +437,11 @@ namespace hgl::ecs
             entity_manager->GetAllEntityPointers(entities);
 
         hgl::UnorderedMap<EntityID, int32_t> entity_index;
-        entity_index.reserve(entities.size());
+        entity_index.SetMaxCount(entities.size());
         for (size_t i = 0; i < entities.size(); ++i)
         {
             if (entities[i])
-                entity_index[entities[i]->GetID()] = static_cast<int32_t>(i);
+            entity_index.ChangeOrAdd(entities[i]->GetID(), static_cast<int32_t>(i));
         }
 
         SerializableWorldRecord world;

@@ -96,8 +96,8 @@ namespace hgl::ecs
         }
         else
         {
-            auto it = last_seen_version.find(bbox.get());
-            bbox_new = (it == last_seen_version.end() || it->second != bbox_version);
+            auto last_version = last_seen_version.GetValuePointer(bbox.get());
+            bbox_new = (!last_version || *last_version != bbox_version);
         }
 
         const bool bbox_mask_match = (bbox->GetChangeMask() & bbox_update_mask) != 0;
@@ -110,8 +110,8 @@ namespace hgl::ecs
             if ((transform->GetChangeMask() & transform_update_mask) != 0)
             {
                 const auto handle = transform->GetStorageHandle();
-                auto it = last_seen_transform_version.find(handle);
-                transform_changed = (it == last_seen_transform_version.end() || it->second != transform_version);
+                auto last_version = last_seen_transform_version.GetValuePointer(handle);
+                transform_changed = (!last_version || *last_version != transform_version);
             }
         }
 
@@ -124,7 +124,7 @@ namespace hgl::ecs
         if (!bbox)
             return;
 
-        last_seen_version[bbox.get()] = bbox->GetVersion();
+        last_seen_version.ChangeOrAdd(bbox.get(), bbox->GetVersion());
 
         if (!transform)
             return;
@@ -133,6 +133,6 @@ namespace hgl::ecs
         if (handle == TransformDataStorage::INVALID_HANDLE)
             return;
 
-        last_seen_transform_version[handle] = transform->GetVersion();
+        last_seen_transform_version.ChangeOrAdd(handle, transform->GetVersion());
     }
 }//namespace hgl::ecs

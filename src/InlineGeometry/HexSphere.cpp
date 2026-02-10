@@ -46,10 +46,10 @@ namespace hgl::graph::inline_geometry
 
         auto get_mid = [&](uint a,uint b){
             EdgeKey key{std::min(a,b),std::max(a,b)};
-            auto it = midpoint.find(key);
-            if(it!=midpoint.end()) return it->second;
+            if (auto value = midpoint.GetValuePointer(key))
+                return *value;
             Vector3f m = verts[a]+verts[b]; m = glm::normalize(m);
-            uint id = (uint)verts.size(); verts.push_back(m); midpoint.emplace(key,id); return id;
+            uint id = (uint)verts.size(); verts.push_back(m); midpoint.Add(key,id); return id;
             };
 
         // 细分

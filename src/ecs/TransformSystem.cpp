@@ -152,17 +152,17 @@ namespace hgl::ecs
 
         if (movable)
         {
-            auto it = dynamic_index_map.find(handle);
-            if (it == dynamic_index_map.end())
+            const uint32_t *index = dynamic_index_map.GetValuePointer(handle);
+            if (!index)
                 return false;
-            out_index = it->second;
+            out_index = *index;
             return true;
         }
 
-        auto it = static_index_map.find(handle);
-        if (it == static_index_map.end())
+        const uint32_t *index = static_index_map.GetValuePointer(handle);
+        if (!index)
             return false;
-        out_index = it->second;
+        out_index = *index;
         return true;
     }
 
@@ -170,8 +170,8 @@ namespace hgl::ecs
     {
         static_handles.clear();
         dynamic_handles.clear();
-        static_index_map.clear();
-        dynamic_index_map.clear();
+        static_index_map.Clear();
+        dynamic_index_map.Clear();
 
         if (!world)
             return;
@@ -191,7 +191,7 @@ namespace hgl::ecs
                     continue;
                 const uint32_t index = static_cast<uint32_t>(static_handles.size());
                 static_handles.push_back(handle);
-                static_index_map[handle] = index;
+                static_index_map.ChangeOrAdd(handle, index);
             }
         }
 
@@ -204,7 +204,7 @@ namespace hgl::ecs
                     continue;
                 const uint32_t index = static_cast<uint32_t>(dynamic_handles.size());
                 dynamic_handles.push_back(handle);
-                dynamic_index_map[handle] = index;
+                dynamic_index_map.ChangeOrAdd(handle, index);
             }
         }
     }
@@ -222,8 +222,8 @@ namespace hgl::ecs
             return true;
 
         const uint64_t version = comp->GetVersion();
-        auto it = last_seen_version.find(handle);
-        if (it != last_seen_version.end() && it->second == version)
+        const uint64_t *last_version = last_seen_version.GetValuePointer(handle);
+        if (last_version && *last_version == version)
             return false;
 
         return true;
@@ -238,6 +238,6 @@ namespace hgl::ecs
         if (handle == TransformDataStorage::INVALID_HANDLE)
             return;
 
-        last_seen_version[handle] = comp->GetVersion();
+        last_seen_version.ChangeOrAdd(handle, comp->GetVersion());
     }
 }//namespace hgl::ecs

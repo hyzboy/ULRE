@@ -18,7 +18,7 @@ namespace hgl
                 UnregisterFromContext(pair.first, pair.second.get());
                 pair.second->OnDetach();
             }
-            components.clear();
+            components.Clear();
         }
 
         void Entity::RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp)
@@ -61,7 +61,7 @@ namespace hgl
         void Entity::GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const
         {
             out.clear();
-            out.reserve(components.size());
+            out.reserve(static_cast<size_t>(components.GetCount()));
             for (const auto& pair : components)
             {
                 out.push_back(pair.second);
@@ -74,7 +74,7 @@ namespace hgl
                 return;
 
             const size_t type_hash = typeid(*component).hash_code();
-            components[type_hash] = component;
+            components.ChangeOrAdd(type_hash, component);
             component->SetOwner(id, context);
             RegisterToContext(type_hash, component);
             component->OnAttach();

@@ -89,7 +89,7 @@ namespace hgl
                 entity_manager->Clear();
             }
 
-            component_registry.clear();
+            component_registry.Clear();
             static_transforms.clear();
             movable_transforms.clear();
 
@@ -102,7 +102,7 @@ namespace hgl
                 if (entry.system)
                     entry.system->Shutdown();
             }
-            tick_systems.clear();
+            tick_systems.Clear();
             tick_system_order.clear();
 
             for (auto& entry : render_system_order)
@@ -110,7 +110,7 @@ namespace hgl
                 if (entry.system)
                     entry.system->Shutdown();
             }
-            render_systems.clear();
+            render_systems.Clear();
             render_system_order.clear();
 
             active = false;
@@ -186,7 +186,7 @@ namespace hgl
             if (entity_manager)
                 entity_manager->Clear();
 
-            component_registry.clear();
+            component_registry.Clear();
             static_transforms.clear();
             movable_transforms.clear();
         }
@@ -216,11 +216,11 @@ namespace hgl
             }
 
             hgl::UnorderedMap<size_t, size_t> index_map;
-            index_map.reserve(order_list.size());
+            index_map.SetMaxCount(order_list.size());
 
             for (size_t i = 0; i < order_list.size(); ++i)
             {
-                index_map[order_list[i].key] = i;
+                index_map.ChangeOrAdd(order_list[i].key, i);
             }
 
             std::vector<size_t> indegree(order_list.size(), 0);
@@ -229,16 +229,14 @@ namespace hgl
             for (const auto& pair : dependencies)
             {
                 const size_t dependent_key = pair.first;
-                auto dep_it = index_map.find(dependent_key);
-                if (dep_it == index_map.end())
+                const size_t* dependent_index = index_map.GetValuePointer(dependent_key);
+                if (!dependent_index)
                     continue;
-
-                const size_t dependent_index = dep_it->second;
 
                 for (const size_t dependency_key : pair.second)
                 {
-                    auto dependency_it = index_map.find(dependency_key);
-                    if (dependency_it == index_map.end())
+                    const size_t* dependency_index = index_map.GetValuePointer(dependency_key);
+                    if (!dependency_index)
                     {
                     #ifdef _DEBUG
                         std::cout << "[ECSContext::SortSystemList] WARNING: " << label
@@ -248,9 +246,8 @@ namespace hgl
                         continue;
                     }
 
-                    const size_t dependency_index = dependency_it->second;
-                    adj[dependency_index].push_back(dependent_index);
-                    ++indegree[dependent_index];
+                    adj[*dependency_index].push_back(*dependent_index);
+                    ++indegree[*dependent_index];
                 }
             }
 
@@ -328,7 +325,7 @@ namespace hgl
             auto& order_list = is_render ? render_system_order : tick_system_order;
             auto& dirty_flag = is_render ? render_order_dirty : tick_order_dirty;
 
-            sys_map[key] = system;
+            sys_map.ChangeOrAdd(key, system);
 
             // Set the context for the system so it can access entities and create queries
             if (system)
@@ -380,11 +377,17 @@ namespace hgl
             auto& deps = is_render ? render_dependencies : tick_dependencies;
             auto& order_dirty = is_render ? render_order_dirty : tick_order_dirty;
 
-            auto& list = deps[dependent_key];
-            const auto it = std::find(list.begin(), list.end(), dependency_key);
-            if (it == list.end())
+            auto* list = deps.GetValuePointer(dependent_key);
+            if (!list)
             {
-                list.push_back(dependency_key);
+                deps.Add(dependent_key, std::vector<size_t>{});
+                list = deps.GetValuePointer(dependent_key);
+            }
+
+            const auto it = std::find(list->begin(), list->end(), dependency_key);
+            if (it == list->end())
+            {
+                list->push_back(dependency_key);
                 order_dirty = true;
             }
         }
@@ -399,21 +402,25 @@ namespace hgl
             if(!comp)
                 return;
 
-            auto &vec = component_registry[type_hash];
-            vec.push_back(comp);
+            auto* vec = component_registry.GetValuePointer(type_hash);
+            if (!vec)
+            {
+                component_registry.Add(type_hash, std::vector<std::weak_ptr<Component>>{});
+                vec = component_registry.GetValuePointer(type_hash);
+            }
+            vec->push_back(comp);
         }
 
         void ECSContext::UnregisterComponentInstance(size_t type_hash, Component* comp_ptr)
         {
-            auto it = component_registry.find(type_hash);
-            if(it == component_registry.end())
+            auto* vec = component_registry.GetValuePointer(type_hash);
+            if (!vec)
                 return;
 
-            auto &vec = it->second;
-            vec.erase(std::remove_if(vec.begin(), vec.end(), [comp_ptr](const std::weak_ptr<Component>& w){
+            vec->erase(std::remove_if(vec->begin(), vec->end(), [comp_ptr](const std::weak_ptr<Component>& w){
                 auto sp = w.lock();
                 return !sp || sp.get()==comp_ptr;
-            }), vec.end());
+            }), vec->end());
         }
 
         void ECSContext::RegisterTransformComponent(const std::shared_ptr<TransformComponent>& comp, bool isMovable)

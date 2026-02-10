@@ -520,9 +520,9 @@ namespace hgl
             data.movable = transform->IsMovable();
 
             const auto parent_id = transform->GetParentID();
-            auto it = entity_index.find(parent_id);
-            if (parent_id.IsValid() && it != entity_index.end())
-                data.parentIndex = it->second;
+            auto index = entity_index.GetValuePointer(parent_id);
+            if (parent_id.IsValid() && index)
+                data.parentIndex = *index;
 
             out_record.type = GetSerializationType();
             out_record.payload = data;
