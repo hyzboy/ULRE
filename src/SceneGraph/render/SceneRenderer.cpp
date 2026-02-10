@@ -112,6 +112,11 @@ namespace hgl::graph
         {
             GetECSContext()->Tick(static_cast<float>(delta));
             // 渲染系统在 RenderFrame 调用
+
+            // ECS updates camera data after RenderContext::Tick,
+            // so refresh camera UBO once more to sync GPU data.
+            if (render_context)
+                render_context->Tick(0.0);
         }
     }
 

@@ -237,22 +237,22 @@ void DescriptorSet::Update()
 
     if(wds_list.GetCount()>0)
     {
-        LogInfo(u8"[VKDescriptorSet] Update wds_count=%d image_count=%d buffer_count=%d desc_set=%p",
-            wds_list.GetCount(),
-            image_list.GetCount(),
-            vab_list.GetCount(),
-            (void*)desc_set);
+        //LogInfo(u8"[VKDescriptorSet] Update wds_count=%d image_count=%d buffer_count=%d desc_set=%p",
+        //    wds_list.GetCount(),
+        //    image_list.GetCount(),
+        //    vab_list.GetCount(),
+        //    (void*)desc_set);
 
-        for(int i=0;i<wds_list.GetCount();++i)
-        {
-            const auto &wds = wds_list[i];
-                LogInfo(u8"  [VKDescriptorSet] WDS[%d] binding=%u type=%u pImageInfo=%p pBufferInfo=%p",
-                    i,
-                    wds.dstBinding,
-                    (uint)wds.descriptorType,
-                    (void*)wds.pImageInfo,
-                    (void*)wds.pBufferInfo);
-        }
+        //for(int i=0;i<wds_list.GetCount();++i)
+        //{
+        //    const auto &wds = wds_list[i];
+        //        LogInfo(u8"  [VKDescriptorSet] WDS[%d] binding=%u type=%u pImageInfo=%p pBufferInfo=%p",
+        //            i,
+        //            wds.dstBinding,
+        //            (uint)wds.descriptorType,
+        //            (void*)wds.pImageInfo,
+        //            (void*)wds.pBufferInfo);
+        //}
         vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
     }
 
