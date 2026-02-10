@@ -102,6 +102,7 @@ public:
         renderer = new SceneRenderer(rf, rt);
         if(!renderer) return false;
         renderer->SetWorld(world);
+        renderer->SetClearColor(GetColor4f(COLOR::DarkSlateBlue, 1.0f));
 
         ecs_world = new ECSContext("OffscreenECSWorld");
         renderer->SetECSContext(ecs_world);
