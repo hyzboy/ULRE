@@ -116,11 +116,6 @@ namespace hgl::graph::inline_geometry
                 const float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
                 const float z = cos(angleStep * (double) i);
 
-                // 法线（球面法线）
-                const float nx = +x;
-                const float ny = -y;
-                const float nz = +z;
-
                 // 纹理坐标
                 const float tex_x = (float) j / (float) numberSlices;
                 const float tex_y = 1.0f - (float) i / (float) numberParallels;
@@ -137,7 +132,7 @@ namespace hgl::graph::inline_geometry
                     tz = tangentVec.z;
                 }
 
-                builder.WriteFullVertex(x, y, z, nx, ny, nz, tx, ty, tz, tex_x, tex_y);
+                builder.WriteFullVertex(x, y, z, x, y, z, tx, ty, tz, tex_x, tex_y);
             }
         }
 
