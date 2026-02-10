@@ -9,6 +9,22 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        struct RenderableRecord
+        {
+            bool visible = true;
+            float boundingRadius = 1.0f;
+        };
+
+        struct PrimitiveRecord
+        {
+            RenderableRecord renderable;
+            bool hasPrimitive = false;
+            bool hasOverrideMaterial = false;
+        };
+    }
+
     const char* PrimitiveComponent::GetSerializationType()
     {
         return "Primitive";
@@ -37,7 +53,7 @@ namespace hgl::ecs
                                                    Entity* entity,
                                                    std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>&)
     {
-        const auto& data = std::get<PrimitiveRecord>(record.payload);
+        const auto& data = std::any_cast<const PrimitiveRecord&>(record.payload);
         auto primitive = std::make_shared<PrimitiveComponent>();
         primitive->SetVisible(data.renderable.visible);
         primitive->SetBoundingRadius(data.renderable.boundingRadius);

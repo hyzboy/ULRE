@@ -10,6 +10,15 @@ namespace hgl
     {
         namespace
         {
+            struct TransformRecord
+            {
+                std::array<float, 3> position{};
+                std::array<float, 4> rotation{};
+                std::array<float, 3> scale{};
+                bool movable = true;
+                int32_t parentIndex = -1;
+            };
+
             std::array<float, 3> ToArray3(const glm::vec3& value)
             {
                 return {value.x, value.y, value.z};
@@ -524,7 +533,7 @@ namespace hgl
                                                         Entity* entity,
                                                         std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents)
         {
-            const auto& data = std::get<TransformRecord>(record.payload);
+            const auto& data = std::any_cast<const TransformRecord&>(record.payload);
             auto transform = std::make_shared<TransformComponent>();
             transform->SetLocalTRS(ToVec3(data.position), ToQuat(data.rotation), ToVec3(data.scale));
             entity->AddComponentInstance(transform);
