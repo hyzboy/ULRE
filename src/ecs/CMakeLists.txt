@@ -47,6 +47,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 System.cpp
                 SystemProfiler.cpp
                 Context.cpp
+                ECSContextSerialization.cpp
                 TransformComponent.cpp
                 TransformSystem.cpp
                 BoundingBoxComponent.cpp
@@ -75,6 +76,7 @@ source_group("ECS\\Core" FILES
     SystemProfiler.cpp
     ${ECS_INCLUDE_PATH}/Context.h
     Context.cpp
+    ECSContextSerialization.cpp
 )
 
 source_group("ECS\\Transform" FILES

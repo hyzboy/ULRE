@@ -112,6 +112,21 @@ namespace hgl
             /// Run all render systems
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
 
+            /// Clear all entities and component registries
+            void ClearEntities();
+
+            /// Serialize world to JSON
+            bool SaveToJson(const std::string& path) const;
+
+            /// Deserialize world from JSON (IDs remapped)
+            bool LoadFromJson(const std::string& path);
+
+            /// Serialize world to binary
+            bool SaveToBinary(const std::string& path) const;
+
+            /// Deserialize world from binary (IDs remapped)
+            bool LoadFromBinary(const std::string& path);
+
             void SetSystemProfilingEnabled(bool enabled) { system_profiling_enabled = enabled; }
             bool IsSystemProfilingEnabled() const { return system_profiling_enabled; }
             SystemProfiler& GetSystemProfiler() { return profiler; }

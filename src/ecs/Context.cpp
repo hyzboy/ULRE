@@ -181,6 +181,16 @@ namespace hgl
             }
         }
 
+        void ECSContext::ClearEntities()
+        {
+            if (entity_manager)
+                entity_manager->Clear();
+
+            component_registry.clear();
+            static_transforms.clear();
+            movable_transforms.clear();
+        }
+
         void ECSContext::SortTickSystems()
         {
             SortSystemList(tick_system_order, tick_dependencies, tick_order_dirty, "Tick");
