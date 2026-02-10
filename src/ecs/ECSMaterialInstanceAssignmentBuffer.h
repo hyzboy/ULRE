@@ -27,13 +27,13 @@ namespace hgl::ecs
         void Clear()
         {
             instances.clear();
-            index_map.clear();
+            index_map.Clear();
         }
 
         void Reserve(size_t count)
         {
             instances.reserve(count);
-            index_map.reserve(count);
+            index_map.SetMaxCount(count);
         }
 
         void Add(graph::MaterialInstance* mi)
@@ -41,18 +41,18 @@ namespace hgl::ecs
             if (!mi)
                 return;
 
-            if (index_map.find(mi) == index_map.end())
+            if (!index_map.ContainsKey(mi))
             {
                 uint16 index = static_cast<uint16>(instances.size());
                 instances.push_back(mi);
-                index_map[mi] = index;
+                index_map.ChangeOrAdd(mi, index);
             }
         }
 
         uint16 Find(graph::MaterialInstance* mi) const
         {
-            auto it = index_map.find(mi);
-            return (it != index_map.end()) ? it->second : 0;
+            auto index = index_map.GetValuePointer(mi);
+            return index ? *index : 0;
         }
 
         size_t GetCount() const { return instances.size(); }

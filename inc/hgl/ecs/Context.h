@@ -286,7 +286,7 @@ namespace hgl
             {
                 const size_t key = typeid(T).hash_code();
 
-                if (auto it = tick_systems.find(key); it != tick_systems.end())
+                if (tick_systems.ContainsKey(key))
                 {
                     if (auto *entry = FindOrderedSystem(tick_system_order, key))
                     {
@@ -296,7 +296,7 @@ namespace hgl
                     }
                 }
 
-                if (auto it = render_systems.find(key); it != render_systems.end())
+                if (render_systems.ContainsKey(key))
                 {
                     if (auto *entry = FindOrderedSystem(render_system_order, key))
                     {
@@ -315,13 +315,11 @@ namespace hgl
              {
                 const size_t key = typeid(T).hash_code();
 
-                auto it = tick_systems.find(key);
-                if (it != tick_systems.end())
-                    return std::static_pointer_cast<T>(it->second);
+                if (auto *system = tick_systems.GetValuePointer(key))
+                    return std::static_pointer_cast<T>(*system);
 
-                it = render_systems.find(key);
-                if (it != render_systems.end())
-                    return std::static_pointer_cast<T>(it->second);
+                if (auto *system = render_systems.GetValuePointer(key))
+                    return std::static_pointer_cast<T>(*system);
                  return nullptr;
              }
 
@@ -344,11 +342,11 @@ namespace hgl
             {
                 out.clear();
                 const size_t key = typeid(T).hash_code();
-                auto it = component_registry.find(key);
-                if(it == component_registry.end())
+                auto *list = component_registry.GetValuePointer(key);
+                if (!list)
                     return;
 
-                for(auto &weak_comp : it->second)
+                for(auto &weak_comp : *list)
                 {
                     if(auto comp = weak_comp.lock())
                     {

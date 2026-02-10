@@ -54,7 +54,7 @@ namespace hgl
             std::shared_ptr<T> AddComponent(Args&&... args)
             {
                 auto component = std::make_shared<T>(std::forward<Args>(args)...);
-                components[typeid(T).hash_code()] = component;
+                components.ChangeOrAdd(typeid(T).hash_code(), component);
                 component->SetOwner(id, context);
                 RegisterToContext(typeid(T).hash_code(), component);
                 component->OnAttach();
@@ -66,11 +66,9 @@ namespace hgl
             template<typename T>
             std::shared_ptr<T> GetComponent() const
             {
-                auto it = components.find(typeid(T).hash_code());
-                if (it != components.end())
-                {
-                    return std::static_pointer_cast<T>(it->second);
-                }
+                auto *component = components.GetValuePointer(typeid(T).hash_code());
+                if (component)
+                    return std::static_pointer_cast<T>(*component);
                 return nullptr;
             }
 
@@ -78,27 +76,28 @@ namespace hgl
             template<typename T>
             bool HasComponent() const
             {
-                return components.find(typeid(T).hash_code()) != components.end();
+                return components.ContainsKey(typeid(T).hash_code());
             }
 
             /// Check if entity has component by type_index
             bool HasComponentByType(const std::type_index& type) const
             {
-                return components.find(type.hash_code()) != components.end();
+                return components.ContainsKey(type.hash_code());
             }
 
             /// Remove component by type
             template<typename T>
             void RemoveComponent()
             {
-                auto it = components.find(typeid(T).hash_code());
-                if (it != components.end())
-                {
-                    UnregisterFromContext(typeid(T).hash_code(), it->second.get());
-                    it->second->OnDetach();
-                    components.erase(it);
-                    NotifyComponentRemoved(std::type_index(typeid(T)));  // Notify systems
-                }
+                const size_t type_hash = typeid(T).hash_code();
+                auto *component = components.GetValuePointer(type_hash);
+                if (!component)
+                    return;
+
+                UnregisterFromContext(type_hash, component->get());
+                (*component)->OnDetach();
+                components.DeleteByKey(type_hash);
+                NotifyComponentRemoved(std::type_index(typeid(T)));  // Notify systems
             }
 
         public:
@@ -107,7 +106,7 @@ namespace hgl
             void OnUpdate(float deltaTime) override;
 
             /// Get component count
-            size_t GetComponentCount() const { return components.size(); }
+            size_t GetComponentCount() const { return static_cast<size_t>(components.GetCount()); }
 
             /// Get all components (for serialization)
             void GetAllComponents(std::vector<std::shared_ptr<Component>>& out) const;

@@ -80,11 +80,11 @@ namespace hgl::ecs
             switch (event_id)
             {
                 case io::KeyboardEventID::Pressed:
-                    key_states[ked->key] = true;
+                    key_states.ChangeOrAdd(ked->key, true);
                     break;
 
                 case io::KeyboardEventID::Released:
-                    key_states[ked->key] = false;
+                    key_states.ChangeOrAdd(ked->key, false);
                     break;
 
                 default:
@@ -104,49 +104,49 @@ namespace hgl::ecs
 
     bool InputSystem::IsKeyDown(uint32_t keycode) const
     {
-        auto it = key_states.find(keycode);
-        if (it != key_states.end())
-            return it->second;
+        auto value = key_states.GetValuePointer(keycode);
+        if (value)
+            return *value;
         return false;
     }
 
     bool InputSystem::IsActionActive(io::ActionID action) const
     {
-        auto it = action_active.find(action);
-        if (it != action_active.end())
-            return it->second;
+        auto value = action_active.GetValuePointer(action);
+        if (value)
+            return *value;
         return false;
     }
 
     bool InputSystem::WasActionStarted(io::ActionID action) const
     {
-        auto it = action_started.find(action);
-        if (it != action_started.end())
-            return it->second;
+        auto value = action_started.GetValuePointer(action);
+        if (value)
+            return *value;
         return false;
     }
 
     bool InputSystem::WasActionCompleted(io::ActionID action) const
     {
-        auto it = action_completed.find(action);
-        if (it != action_completed.end())
-            return it->second;
+        auto value = action_completed.GetValuePointer(action);
+        if (value)
+            return *value;
         return false;
     }
 
     float InputSystem::GetActionAnalog1D(io::ActionID action) const
     {
-        auto it = action_analog_1d.find(action);
-        if (it != action_analog_1d.end())
-            return it->second;
+        auto value = action_analog_1d.GetValuePointer(action);
+        if (value)
+            return *value;
         return 0.0f;
     }
 
     io::ActionValue InputSystem::GetActionValue(io::ActionID action) const
     {
-        auto it = action_values.find(action);
-        if (it != action_values.end())
-            return it->second;
+        auto value = action_values.GetValuePointer(action);
+        if (value)
+            return *value;
         return io::ActionValue();
     }
 
@@ -162,39 +162,48 @@ namespace hgl::ecs
 
     void InputSystem::OnActionEvent(const io::ActionEvent& evt)
     {
-        action_values[evt.action] = evt.value;
+        action_values.ChangeOrAdd(evt.action, evt.value);
 
         switch (evt.state)
         {
             case io::ActionEventState::Started:
-                action_active[evt.action] = true;
-                action_started[evt.action] = true;
+                action_active.ChangeOrAdd(evt.action, true);
+                action_started.ChangeOrAdd(evt.action, true);
                 break;
 
             case io::ActionEventState::Ongoing:
                 if (evt.value.type == io::ActionValueType::Digital)
-                    action_active[evt.action] = evt.value.digital;
+                    action_active.ChangeOrAdd(evt.action, evt.value.digital);
                 break;
 
             case io::ActionEventState::Completed:
-                action_active[evt.action] = false;
-                action_completed[evt.action] = true;
+                action_active.ChangeOrAdd(evt.action, false);
+                action_completed.ChangeOrAdd(evt.action, true);
                 break;
 
             case io::ActionEventState::Canceled:
-                action_active[evt.action] = false;
-                action_completed[evt.action] = true;
+                action_active.ChangeOrAdd(evt.action, false);
+                action_completed.ChangeOrAdd(evt.action, true);
                 break;
         }
 
         if (evt.value.type == io::ActionValueType::Analog1D)
-            action_analog_1d[evt.action] += evt.value.analog_1d;
+        {
+            if (auto value = action_analog_1d.GetValuePointer(evt.action))
+            {
+                *value += evt.value.analog_1d;
+            }
+            else
+            {
+                action_analog_1d.Add(evt.action, evt.value.analog_1d);
+            }
+        }
     }
 
     void InputSystem::ResetActionFrameState()
     {
-        action_started.clear();
-        action_completed.clear();
-        action_analog_1d.clear();
+        action_started.Clear();
+        action_completed.Clear();
+        action_analog_1d.Clear();
     }
 }//namespace hgl::ecs
