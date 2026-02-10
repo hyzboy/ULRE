@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/Object.h>
 #include<hgl/ecs/Component.h>
 #include<hgl/ecs/EntityHandle.h>
 #include<memory>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<typeindex>
 
@@ -24,7 +24,7 @@ namespace hgl
 
             EntityID id;
             // Use hash_code instead of string for faster lookups
-            std::unordered_map<std::size_t, std::shared_ptr<Component>> components;
+            hgl::UnorderedMap<std::size_t, std::shared_ptr<Component>> components;
             ECSContext *context = nullptr;   ///< 所属的 ECSContext，不拥有
 
             void RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp);
@@ -117,3 +117,4 @@ namespace hgl
         };
     }//namespace ecs
 }//namespace hgl
+

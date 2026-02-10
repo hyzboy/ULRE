@@ -9,9 +9,31 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        constexpr io::ActionID kActionMoveForward = 1100;
+        constexpr io::ActionID kActionMoveBackward = 1101;
+        constexpr io::ActionID kActionMoveLeft = 1102;
+        constexpr io::ActionID kActionMoveRight = 1103;
+        constexpr io::ActionID kActionMoveDown = 1104;
+        constexpr io::ActionID kActionMoveUp = 1105;
+
+        constexpr io::ActionID kActionRotate = 1110;
+        constexpr io::ActionID kActionPanRight = 1111;
+        constexpr io::ActionID kActionPanMiddle = 1112;
+
+        constexpr io::ActionID kActionZoomWheel = 1120;
+        constexpr io::ActionID kActionZoomIn = 1121;
+        constexpr io::ActionID kActionZoomOut = 1122;
+
+        constexpr io::ActionID kActionResetView = 1130;
+        constexpr io::ActionID kActionFocusView = 1131;
+    }
+
     CameraSystem::CameraSystem(ECSContext* ctx)
         : context(ctx)
         , input_system(nullptr)
+        , input_context_ready(false)
     {
         // Set system type and properties
         SetSystemType(SystemType::Camera);
@@ -32,6 +54,8 @@ namespace hgl::ecs
         {
             input_system = context->GetSystem<InputSystem>().get();
         }
+
+        EnsureInputContext();
 
         // 收集所有摄像机
         auto cameras = CollectCameras();
@@ -84,21 +108,55 @@ namespace hgl::ecs
         input_state.mouse_pos = input_system->GetMouseCoord();
         input_state.mouse_delta = input_state.mouse_pos - input_state.last_mouse_pos;
 
-        // 获取鼠标按钮状态
-        input_state.left_button = input_system->IsMouseButtonDown(0);
-        input_state.right_button = input_system->IsMouseButtonDown(1);
-        input_state.middle_button = input_system->IsMouseButtonDown(2);
+        // 获取动作状态
+        input_state.left_button = input_system->IsActionActive(kActionRotate);
+        input_state.right_button = input_system->IsActionActive(kActionPanRight);
+        input_state.middle_button = input_system->IsActionActive(kActionPanMiddle);
 
-        // 获取滚轮增量
-        input_state.wheel_delta = input_system->GetWheelDelta();
+        // 获取滚轮和按键缩放
+        input_state.wheel_delta = input_system->GetActionAnalog1D(kActionZoomWheel);
+        if (input_system->IsActionActive(kActionZoomIn))
+            input_state.wheel_delta += 1.0f;
+        if (input_system->IsActionActive(kActionZoomOut))
+            input_state.wheel_delta -= 1.0f;
 
-        // 获取键盘状态 (使用ASCII码)
-        input_state.key_w = input_system->IsKeyDown('W') || input_system->IsKeyDown('w');
-        input_state.key_s = input_system->IsKeyDown('S') || input_system->IsKeyDown('s');
-        input_state.key_a = input_system->IsKeyDown('A') || input_system->IsKeyDown('a');
-        input_state.key_d = input_system->IsKeyDown('D') || input_system->IsKeyDown('d');
-        input_state.key_q = input_system->IsKeyDown('Q') || input_system->IsKeyDown('q');
-        input_state.key_e = input_system->IsKeyDown('E') || input_system->IsKeyDown('e');
+        // 获取键盘状态
+        input_state.key_w = input_system->IsActionActive(kActionMoveForward);
+        input_state.key_s = input_system->IsActionActive(kActionMoveBackward);
+        input_state.key_a = input_system->IsActionActive(kActionMoveLeft);
+        input_state.key_d = input_system->IsActionActive(kActionMoveRight);
+        input_state.key_q = input_system->IsActionActive(kActionMoveDown);
+        input_state.key_e = input_system->IsActionActive(kActionMoveUp);
+    }
+
+    void CameraSystem::EnsureInputContext()
+    {
+        if (input_context_ready || !input_system)
+            return;
+
+        input_context.Clear();
+        input_context.BindKey(kActionMoveForward, io::KeyboardButton::W);
+        input_context.BindKey(kActionMoveBackward, io::KeyboardButton::S);
+        input_context.BindKey(kActionMoveLeft, io::KeyboardButton::A);
+        input_context.BindKey(kActionMoveRight, io::KeyboardButton::D);
+        input_context.BindKey(kActionMoveDown, io::KeyboardButton::Q);
+        input_context.BindKey(kActionMoveUp, io::KeyboardButton::E);
+
+        input_context.BindMouse(kActionRotate, io::MouseButton::Left);
+        input_context.BindMouse(kActionPanRight, io::MouseButton::Right);
+        input_context.BindMouse(kActionPanMiddle, io::MouseButton::Mid);
+
+        input_context.BindMouseWheel(kActionZoomWheel);
+        input_context.BindKey(kActionZoomIn, io::KeyboardButton::PageUp);
+        input_context.BindKey(kActionZoomIn, io::KeyboardButton::Equals);
+        input_context.BindKey(kActionZoomOut, io::KeyboardButton::PageDown);
+        input_context.BindKey(kActionZoomOut, io::KeyboardButton::Minus);
+
+        input_context.BindKey(kActionResetView, io::KeyboardButton::R);
+        input_context.BindKey(kActionFocusView, io::KeyboardButton::F);
+
+        input_system->GetInputMapper().PushContext(&input_context);
+        input_context_ready = true;
     }
 
     void CameraSystem::ProcessInput(CameraComponent* camera, float deltaTime)

@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/ecs/System.h>
+#include<hgl/io/event/InputMapping.h>
 #include<hgl/io/event/WindowEvent.h>
 #include<hgl/math/Vector.h>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 
 namespace hgl::ecs
 {
@@ -17,13 +18,27 @@ namespace hgl::ecs
         bool mouse_buttons[3];          ///< 鼠标按钮状态 [0]=左键, [1]=右键, [2]=中键
         int wheel_delta;                ///< 滚轮增量（每帧重置）
 
-        std::unordered_map<uint32_t, bool> key_states;  ///< 键盘状态映射
+        hgl::UnorderedMap<uint32_t, bool> key_states;  ///< 键盘状态映射
+
+        io::InputMapper input_mapper;
+        double current_time;
+
+        hgl::UnorderedMap<io::ActionID, bool> action_active;
+        hgl::UnorderedMap<io::ActionID, bool> action_started;
+        hgl::UnorderedMap<io::ActionID, bool> action_completed;
+        hgl::UnorderedMap<io::ActionID, io::ActionValue> action_values;
+        hgl::UnorderedMap<io::ActionID, float> action_analog_1d;
 
         virtual io::EventProcResult OnEvent(const io::EventHeader &header, const uint64 data) override;
+
+        void OnActionEvent(const io::ActionEvent& evt);
+        void ResetActionFrameState();
 
     public:
 
         io::EventDispatcher *GetEventDispatcher() { return this; }
+
+        io::InputMapper &GetInputMapper() { return input_mapper; }
 
         const Vector2i &GetMouseCoord() const { return mouse_coord; }
 
@@ -38,6 +53,21 @@ namespace hgl::ecs
         /// @param keycode 按键码（通常是ASCII码或虚拟键码）
         bool IsKeyDown(uint32_t keycode) const;
 
+        /// 查询动作是否处于激活状态 / Check if action is active
+        bool IsActionActive(io::ActionID action) const;
+
+        /// 查询动作本帧是否开始 / Check if action started this frame
+        bool WasActionStarted(io::ActionID action) const;
+
+        /// 查询动作本帧是否结束 / Check if action completed this frame
+        bool WasActionCompleted(io::ActionID action) const;
+
+        /// 获取1D模拟量动作值（按帧累计） / Get analog 1D action value (per-frame)
+        float GetActionAnalog1D(io::ActionID action) const;
+
+        /// 获取动作最新值 / Get latest action value
+        io::ActionValue GetActionValue(io::ActionID action) const;
+
     public:
 
         InputSystem();
@@ -46,3 +76,4 @@ namespace hgl::ecs
         void Update(float deltaTime) override;
     };
 }//namespace hgl::ecs
+

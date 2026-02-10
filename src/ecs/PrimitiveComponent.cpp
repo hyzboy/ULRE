@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/ECSComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -31,7 +31,7 @@ namespace hgl::ecs
     }
 
     bool PrimitiveComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
-                                               const std::unordered_map<EntityID, int32_t>&,
+                                               const hgl::UnorderedMap<EntityID, int32_t>&,
                                                ComponentRecord& out_record)
     {
         auto primitive = std::dynamic_pointer_cast<PrimitiveComponent>(component);
@@ -169,3 +169,4 @@ namespace hgl::ecs
         overrideMaterial = nullptr;
     }
 }//namespace hgl::ecs
+

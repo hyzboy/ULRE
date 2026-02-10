@@ -1,7 +1,7 @@
 #pragma once
 
 #include<string>
-#include<unordered_map>
+#include <hgl/type/UnorderedMap.h>
 #include<chrono>
 #include<cstdint>
 
@@ -33,9 +33,10 @@ namespace hgl::ecs
         void End(System* system);
         void Reset();
 
-        const std::unordered_map<System*, ProfileData>& GetProfiles() const { return profiles; }
+        const hgl::UnorderedMap<System*, ProfileData>& GetProfiles() const { return profiles; }
 
     private:
-        std::unordered_map<System*, ProfileData> profiles;
+        hgl::UnorderedMap<System*, ProfileData> profiles;
     };
 }//namespace hgl::ecs
+

@@ -1,4 +1,4 @@
-﻿#include<hgl/ecs/BoundingBoxComponent.h>
+#include<hgl/ecs/BoundingBoxComponent.h>
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/ECSComponentRecords.h>
 #include<array>
@@ -35,7 +35,7 @@ namespace hgl
         }
 
         bool BoundingBoxComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
-                                                     const std::unordered_map<EntityID, int32_t>&,
+                                                     const hgl::UnorderedMap<EntityID, int32_t>&,
                                                      ComponentRecord& out_record)
         {
             auto bbox = std::dynamic_pointer_cast<BoundingBoxComponent>(component);
@@ -79,3 +79,4 @@ namespace hgl
         std::shared_ptr<BoundingBoxDataStorage> BoundingBoxComponent::sharedStorage = nullptr;
     }//namespace ecs
 }//namespace hgl
+
