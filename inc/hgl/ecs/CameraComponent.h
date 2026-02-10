@@ -2,6 +2,10 @@
 
 #include<hgl/ecs/Component.h>
 #include<hgl/math/Vector.h>
+#include<memory>
+#include<unordered_map>
+#include<utility>
+#include<vector>
 
 namespace hgl::graph
 {
@@ -15,6 +19,8 @@ namespace hgl
 {
     namespace ecs
     {
+    struct ComponentRecord;
+    class TransformComponent;
         /**
          * CameraComponent - 纯数据组件
          * Pure data component for camera in ECS architecture
@@ -81,6 +87,14 @@ namespace hgl
 
             CameraComponent(const std::string& name = "Camera");
             ~CameraComponent() override = default;
+
+            static const char* GetSerializationType();
+            static bool SerializeToRecord(const std::shared_ptr<Component>& component,
+                                          const std::unordered_map<EntityID, int32_t>& entity_index,
+                                          ComponentRecord& out_record);
+            static void DeserializeFromRecord(const ComponentRecord& record,
+                                              Entity* entity,
+                                              std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
         };
     }//namespace ecs
 }//namespace hgl

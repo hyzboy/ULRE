@@ -85,5 +85,13 @@ namespace hgl::ecs
         void OnAttach() override;
         void OnUpdate(float deltaTime) override;
         void OnDetach() override;
+
+        static const char* GetSerializationType();
+        static bool SerializeToRecord(const std::shared_ptr<Component>& component,
+                                      const std::unordered_map<EntityID, int32_t>& entity_index,
+                                      ComponentRecord& out_record);
+        static void DeserializeFromRecord(const ComponentRecord& record,
+                                          Entity* entity,
+                                          std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
     };
 }//namespace hgl::ecs

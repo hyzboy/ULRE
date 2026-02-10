@@ -7,6 +7,8 @@
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<memory>
+#include<unordered_map>
+#include<utility>
 #include<vector>
 #include<cstdint>
 
@@ -14,6 +16,7 @@ namespace hgl
 {
     namespace ecs
     {
+    struct ComponentRecord;
         /**
          * Transform component for spatial transformation
          * Uses SOA (Structure of Arrays) storage for better cache performance
@@ -132,6 +135,14 @@ namespace hgl
                 static auto storage = std::make_shared<TransformDataStorage>();
                 return storage;
             }
+
+            static const char* GetSerializationType();
+            static bool SerializeToRecord(const std::shared_ptr<Component>& component,
+                                          const std::unordered_map<EntityID, int32_t>& entity_index,
+                                          ComponentRecord& out_record);
+            static void DeserializeFromRecord(const ComponentRecord& record,
+                                              Entity* entity,
+                                              std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
 
         private:
             void UpdateWorldMatrix();
