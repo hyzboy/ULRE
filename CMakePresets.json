@@ -1,0 +1,257 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 28,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_CXX_STANDARD": "20",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_EXTENSIONS": "OFF",
+                "CMAKE_C_STANDARD": "17",
+                "CMAKE_C_STANDARD_REQUIRED": "ON",
+                "CMAKE_C_EXTENSIONS": "OFF"
+            }
+        },
+        {
+            "name": "windows-base",
+            "hidden": true,
+            "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "USE_STATIC_CRT": "ON",
+                "VCPKG_TARGET_TRIPLET": "x64-windows"
+            }
+        },
+        {
+            "name": "linux-base",
+            "hidden": true,
+            "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "USE_STATIC_CRT": "ON",
+                "VCPKG_TARGET_TRIPLET": "x64-linux"
+            }
+        },
+        {
+            "name": "macos-base",
+            "hidden": true,
+            "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            },
+            "cacheVariables": {
+                "USE_STATIC_CRT": "OFF",
+                "VCPKG_TARGET_TRIPLET": "x64-osx"
+            }
+        },
+        {
+            "name": "windows-msvc-debug",
+            "displayName": "Windows MSVC Debug",
+            "description": "Windows debug build with MSVC",
+            "inherits": "windows-base",
+            "generator": "Visual Studio 18 2026",
+            "architecture": "x64",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDebug"
+            }
+        },
+        {
+            "name": "windows-msvc-release",
+            "displayName": "Windows MSVC Release",
+            "description": "Windows release build with MSVC",
+            "inherits": "windows-base",
+            "generator": "Visual Studio 18 2026",
+            "architecture": "x64",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded"
+            }
+        },
+        {
+            "name": "windows-ninja-debug",
+            "displayName": "Windows Ninja Debug",
+            "description": "Windows debug build with Ninja",
+            "inherits": "windows-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "windows-ninja-release",
+            "displayName": "Windows Ninja Release",
+            "description": "Windows release build with Ninja",
+            "inherits": "windows-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "linux-gcc-debug",
+            "displayName": "Linux GCC Debug",
+            "description": "Linux debug build with GCC",
+            "inherits": "linux-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "linux-gcc-release",
+            "displayName": "Linux GCC Release",
+            "description": "Linux release build with GCC",
+            "inherits": "linux-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "linux-clang-debug",
+            "displayName": "Linux Clang Debug",
+            "description": "Linux debug build with Clang",
+            "inherits": "linux-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "linux-clang-release",
+            "displayName": "Linux Clang Release",
+            "description": "Linux release build with Clang",
+            "inherits": "linux-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "macos-debug",
+            "displayName": "macOS Debug",
+            "description": "macOS debug build with AppleClang",
+            "inherits": "macos-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "macos-release",
+            "displayName": "macOS Release",
+            "description": "macOS release build with AppleClang",
+            "inherits": "macos-base",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "asan",
+            "displayName": "AddressSanitizer",
+            "description": "Debug build with AddressSanitizer enabled",
+            "inherits": "linux-gcc-debug",
+            "cacheVariables": {
+                "ENABLE_ASAN": "ON"
+            }
+        },
+        {
+            "name": "ubsan",
+            "displayName": "UndefinedBehaviorSanitizer",
+            "description": "Debug build with UBSan enabled",
+            "inherits": "linux-gcc-debug",
+            "cacheVariables": {
+                "ENABLE_UBSAN": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "windows-msvc-debug",
+            "configurePreset": "windows-msvc-debug",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-msvc-release",
+            "configurePreset": "windows-msvc-release",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-ninja-debug",
+            "configurePreset": "windows-ninja-debug"
+        },
+        {
+            "name": "windows-ninja-release",
+            "configurePreset": "windows-ninja-release"
+        },
+        {
+            "name": "linux-gcc-debug",
+            "configurePreset": "linux-gcc-debug"
+        },
+        {
+            "name": "linux-gcc-release",
+            "configurePreset": "linux-gcc-release"
+        },
+        {
+            "name": "linux-clang-debug",
+            "configurePreset": "linux-clang-debug"
+        },
+        {
+            "name": "linux-clang-release",
+            "configurePreset": "linux-clang-release"
+        },
+        {
+            "name": "macos-debug",
+            "configurePreset": "macos-debug"
+        },
+        {
+            "name": "macos-release",
+            "configurePreset": "macos-release"
+        },
+        {
+            "name": "asan",
+            "configurePreset": "asan"
+        },
+        {
+            "name": "ubsan",
+            "configurePreset": "ubsan"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "default",
+            "configurePreset": "linux-gcc-debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}
