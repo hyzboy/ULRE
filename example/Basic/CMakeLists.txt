@@ -26,4 +26,5 @@ CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(06_RenderToTexture                RenderToTexture.cpp)
 
 CreateProject(07_SimpleCube                     SimpleCube.cpp)
+CreateProject(07b_SimpleCube_ECS                SimpleCube_use_ECS.cpp)
 
