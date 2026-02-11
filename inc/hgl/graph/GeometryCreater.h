@@ -37,6 +37,9 @@ protected:
 protected:
 
     const int InitVAB(const AnsiString &name,const VkFormat format,const void *data);                                       ///<取得顶点属性索引
+    
+    IndexBuffer * GetIBO();                                                                                                 ///<取得索引缓冲区
+    int32_t GetFirstIndex()const;                                                                                           ///<取得第一个索引
 
 public:
 
@@ -89,6 +92,21 @@ public: //索引缓冲区
     const   uint32_t        GetIndexCount()const{return index_number;}
 
             IBMap *         GetIBMap();
+
+            /**
+             * 创建 IndexAccessor（自动使用正确的索引类型）
+             * @tparam T 索引类型（uint8, uint16, uint32）
+             * @return 已绑定的 BufferAccessor
+             */
+            template<typename T>
+            BufferAccessor<RawDataAccess<T>> GetIndexAccessor()
+            {
+                IndexBuffer *ibo = GetIBO();
+                if(!ibo)
+                    return BufferAccessor<RawDataAccess<T>>();
+                
+                return BufferAccessor<RawDataAccess<T>>(ibo, GetFirstIndex(), index_number);
+            }
 
             bool            WriteIBO(const void *data,const uint32_t count);
 
