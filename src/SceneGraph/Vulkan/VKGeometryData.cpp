@@ -15,14 +15,12 @@ GeometryData::GeometryData(const VIL *_vil,const uint32_t vc)
     index_count=0;
 
     vab_list=zero_new<VAB *>(_vil->GetVertexAttribCount());
-    vab_map_list=new VABMap[_vil->GetVertexAttribCount()];
 
     ibo=nullptr;
 }
 
 GeometryData::~GeometryData()
 {
-    delete[] vab_map_list;
     delete[] vab_list;       //注意：这里并不释放VAB，在派生类中释放
 }
 
@@ -102,23 +100,6 @@ VAB *GeometryData::InitVAB(const int vab_index,const void *data)
     }
 
     return vab_list[vab_index];
-}
-
-VABMap *GeometryData::GetVABMap(const int vab_index)
-{
-    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())return nullptr;
-
-    VABMap *vab_map=vab_map_list+vab_index;
-
-    if(!vab_map->IsValid())
-    {
-        if(!vab_list[vab_index])
-            return(nullptr);
-
-        vab_map->BindVAB(vab_list[vab_index],GetVertexOffset(),vertex_count);
-    }
-
-    return vab_map;
 }
 
 IndexBuffer *GeometryData::InitIBO(const int ic,IndexType it)

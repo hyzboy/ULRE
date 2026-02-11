@@ -56,8 +56,6 @@ public:
             VkBuffer        GetVkBuffer     (const AnsiString &name)const;
 
     const   int32_t         GetVertexOffset ()const;                        ///<取得顶点偏移(注意是顶点不是字节)
-            VABMap *        GetVABMap       (const int);                    ///<取得VAB映射器
-            VABMap *        GetVABMap       (const AnsiString &name){return GetVABMap(GetVABIndex(name));}
 
     const   uint32_t        GetIndexCount   ()const;
             IndexBuffer *   GetIBO          ()const;

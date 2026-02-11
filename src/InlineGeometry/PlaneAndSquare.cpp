@@ -32,24 +32,36 @@ namespace hgl::graph::inline_geometry
                                 Vector2f(left+col,bottom));
         }
 
-        VABMap1uf8 lum(pc->GetVABMap(VAN::Luminance));
+        auto lum = pc->GetBufferAccessor<BufferAccessor1u8>(VAN::Luminance);
 
         if(lum.IsValid())
         {
             for(uint row=0;row<=pgci->grid_size.Height();row++)
             {
                 if((row%pgci->sub_count.Height())==0)
-                    lum->RepeatWrite(pgci->sub_lum,2);
+                {
+                    lum->Write(pgci->sub_lum);
+                    lum->Write(pgci->sub_lum);
+                }
                 else
-                    lum->RepeatWrite(pgci->lum,2);
+                {
+                    lum->Write(pgci->lum);
+                    lum->Write(pgci->lum);
+                }
             }
 
             for(uint col=0;col<=pgci->grid_size.Width();col++)
             {
                 if((col%pgci->sub_count.Width())==0)
-                    lum->RepeatWrite(pgci->sub_lum,2);
+                {
+                    lum->Write(pgci->sub_lum);
+                    lum->Write(pgci->sub_lum);
+                }
                 else
-                    lum->RepeatWrite(pgci->lum,2);
+                {
+                    lum->Write(pgci->lum);
+                    lum->Write(pgci->lum);
+                }
             }
         }
 
@@ -87,24 +99,36 @@ namespace hgl::graph::inline_geometry
                                 Vector3f(left+col,bottom,0));
         }
 
-        VABMap1uf8 lum(pc->GetVABMap(VAN::Luminance));
+        auto lum = pc->GetBufferAccessor<BufferAccessor1u8>(VAN::Luminance);
 
         if(lum.IsValid())
         {
             for(uint row=0;row<=pgci->grid_size.Height();row++)
             {
                 if((row%pgci->sub_count.Height())==0)
-                    lum->RepeatWrite(pgci->sub_lum,2);
+                {
+                    lum->Write(pgci->sub_lum);
+                    lum->Write(pgci->sub_lum);
+                }
                 else
-                    lum->RepeatWrite(pgci->lum,2);
+                {
+                    lum->Write(pgci->lum);
+                    lum->Write(pgci->lum);
+                }
             }
 
             for(uint col=0;col<=pgci->grid_size.Width();col++)
             {
                 if((col%pgci->sub_count.Width())==0)
-                    lum->RepeatWrite(pgci->sub_lum,2);
+                {
+                    lum->Write(pgci->sub_lum);
+                    lum->Write(pgci->sub_lum);
+                }
                 else
-                    lum->RepeatWrite(pgci->lum,2);
+                {
+                    lum->Write(pgci->lum);
+                    lum->Write(pgci->lum);
+                }
             }
         }
 

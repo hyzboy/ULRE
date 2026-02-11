@@ -53,8 +53,6 @@ public:
 
             VAB *               GetVAB              (const int index)const{return geometry->GetVAB(index);}
             VAB *               GetVAB              (const AnsiString &name)const{return geometry->GetVAB(name);}
-            VABMap *            GetVABMap           (const int vab_index){return geometry->GetVABMap(vab_index);}
-            VABMap *            GetVABMap           (const AnsiString &name) { return geometry->GetVABMap(name); }
             IndexBuffer *       GetIBO              (){return geometry->GetIBO();}
             IBMap *             GetIBMap            (){return geometry->GetIBMap();}
 

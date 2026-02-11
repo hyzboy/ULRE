@@ -161,15 +161,6 @@ const int GeometryCreater::InitVAB(const AnsiString &name,const VkFormat format,
     return(vab_index);
 }
 
-VABMap *GeometryCreater::GetVABMap(const AnsiString &name,const VkFormat format)
-{
-    const int vab_index=InitVAB(name,format,nullptr);
-
-    if(vab_index<0)return nullptr;
-
-    return geometry_data->GetVABMap(vab_index);
-}
-
 VertexAttribBuffer *GeometryCreater::GetVAB(const AnsiString &name,const VkFormat format)
 {
     const int vab_index=InitVAB(name,format,nullptr);

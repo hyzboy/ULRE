@@ -80,40 +80,35 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("HexSphere", vertex_count, index_count))
             return nullptr;
 
-        VABMapFloat pos(pc->GetVABMap(VAN::Position));
-        VABMapFloat nrm(pc->GetVABMap(VAN::Normal));
-        VABMapFloat tan(pc->GetVABMap(VAN::Tangent));
-        VABMapFloat uv (pc->GetVABMap(VAN::TexCoord));
+        auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
+        auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
+        auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
+        auto uv  = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
 
-        float *vp = pos;
-        float *np = nrm;
-        float *tp = tan;
-        float *uvp= uv;
-
-        if(!vp) return nullptr;
+        if(!pos.IsValid())
+            return nullptr;
 
         // 写顶点属性：法线=单位方向，切线取经向方向（在极点退化时给固定值）
         for(const auto &v:verts)
         {
-            *vp++ = v.x; *vp++ = v.y; *vp++ = v.z;
+            pos->Write(v);
 
-            if(np)
+            if(nrm.IsValid())
             {
                 Vector3f n = glm::normalize(v);
-                *np++ = n.x; *np++ = n.y; *np++ = n.z;
+                nrm->Write(n);
             }
 
-            if(uvp)
+            if(uv.IsValid())
             {
                 Vector3f n = glm::normalize(v);
                 // 球面 UV，经度[-pi,pi] -> u in [0,1]，纬度[-pi/2,pi/2] -> v in [0,1]
                 float u = (atan2f(n.y, n.x) / (2.0f*std::numbers::pi_v<float>)) + 0.5f;
                 float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/std::numbers::pi_v<float>) + 0.5f;
-                *uvp++ = u * hsci->uv_scale.x;
-                *uvp++ = vtex * hsci->uv_scale.y;
+                uv->Write(Vector2f(u * hsci->uv_scale.x, vtex * hsci->uv_scale.y));
             }
 
-            if(tp)
+            if(tan.IsValid())
             {
                 Vector3f n = glm::normalize(v);
                 // 经向切线：沿 +theta（绕Z）方向近似：(-y, x, 0) 并去掉与 n 的投影
@@ -121,7 +116,7 @@ namespace hgl::graph::inline_geometry
                 if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // 极点备选
                 tdir = (tdir - n * Dot(n, tdir));
                 tdir = glm::normalize(tdir);
-                *tp++ = tdir.x; *tp++ = tdir.y; *tp++ = tdir.z;
+                tan->Write(tdir);
             }
         }
 

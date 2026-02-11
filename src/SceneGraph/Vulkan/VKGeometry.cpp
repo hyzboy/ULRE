@@ -84,11 +84,6 @@ const int32_t Geometry::GetVertexOffset()const
     return geometry_data->GetVertexOffset();
 }
 
-VABMap *Geometry::GetVABMap(const int vab_index)
-{
-    return geometry_data->GetVABMap(vab_index);
-}
-
 const uint32_t Geometry::GetIndexCount()const
 {
     return geometry_data->GetIndexCount();
