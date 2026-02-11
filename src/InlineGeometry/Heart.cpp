@@ -219,19 +219,19 @@ namespace hgl::graph::inline_geometry
 
         if(index_type == IndexType::U16)
         {
-            IBTypeMap<uint16> ib(pc->GetIBMap());
+            auto ib = pc->GetIndexAccessor<uint16>();
             uint16 *ip = ib;
             generate_indices(ip);
         }
         else if(index_type == IndexType::U32)
         {
-            IBTypeMap<uint32> ib(pc->GetIBMap());
+            auto ib = pc->GetIndexAccessor<uint32>();
             uint32 *ip = ib;
             generate_indices(ip);
         }
         else if(index_type == IndexType::U8)
         {
-            IBTypeMap<uint8> ib(pc->GetIBMap());
+            auto ib = pc->GetIndexAccessor<uint8>();
             uint8 *ip = ib;
             generate_indices(ip);
         }

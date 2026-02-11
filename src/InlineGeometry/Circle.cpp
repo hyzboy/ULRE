@@ -122,13 +122,21 @@ namespace hgl::graph::inline_geometry
 
         if(has_index)
         {
-            IBMap *ib_map = pc->GetIBMap();
-
-            if(pc->GetIndexType() == IndexType::U16)IndexGenerator::WriteSequentialIndices<uint16>((uint16 *)(ib_map->Map()),0,vertex_count);else
-                if(pc->GetIndexType() == IndexType::U32)IndexGenerator::WriteSequentialIndices<uint32>((uint32 *)(ib_map->Map()),0,vertex_count);else
-                    if(pc->GetIndexType() == IndexType::U8)IndexGenerator::WriteSequentialIndices<uint8 >((uint8 *)(ib_map->Map()),0,vertex_count);
-
-            ib_map->Unmap();
+            if(pc->GetIndexType() == IndexType::U16)
+            {
+                auto ib_accessor = pc->GetIndexAccessor<uint16>();
+                IndexGenerator::WriteSequentialIndices<uint16>((uint16*)ib_accessor,0,vertex_count);
+            }
+            else if(pc->GetIndexType() == IndexType::U32)
+            {
+                auto ib_accessor = pc->GetIndexAccessor<uint32>();
+                IndexGenerator::WriteSequentialIndices<uint32>((uint32*)ib_accessor,0,vertex_count);
+            }
+            else if(pc->GetIndexType() == IndexType::U8)
+            {
+                auto ib_accessor = pc->GetIndexAccessor<uint8>();
+                IndexGenerator::WriteSequentialIndices<uint8>((uint8*)ib_accessor,0,vertex_count);
+            }
         }
 
         Geometry *p = pc->Create();
@@ -184,13 +192,16 @@ namespace hgl::graph::inline_geometry
         }
 
         {
-            IBMap *ib_map = pc->GetIBMap();
-
-            if(pc->GetIndexType() == IndexType::U16)IndexGenerator::WriteCircleIndices<uint16>((uint16 *)(ib_map->Map()),cci->field_count);else
-                if(pc->GetIndexType() == IndexType::U32)IndexGenerator::WriteCircleIndices<uint32>((uint32 *)(ib_map->Map()),cci->field_count);else
-                    if(pc->GetIndexType() == IndexType::U8)IndexGenerator::WriteCircleIndices<uint8 >((uint8 *)(ib_map->Map()),cci->field_count);
-
-            ib_map->Unmap();
+            if(pc->GetIndexType() == IndexType::U16) {
+                auto ib = pc->GetIndexAccessor<uint16>();
+                IndexGenerator::WriteCircleIndices<uint16>(ib, cci->field_count);
+            } else if(pc->GetIndexType() == IndexType::U32) {
+                auto ib = pc->GetIndexAccessor<uint32>();
+                IndexGenerator::WriteCircleIndices<uint32>(ib, cci->field_count);
+            } else if(pc->GetIndexType() == IndexType::U8) {
+                auto ib = pc->GetIndexAccessor<uint8>();
+                IndexGenerator::WriteCircleIndices<uint8>(ib, cci->field_count);
+            }
         }
 
         // Set bounding box for 3D circle (flat in XY plane)

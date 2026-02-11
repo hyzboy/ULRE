@@ -99,7 +99,7 @@ namespace hgl::graph::inline_geometry
         }
 
         {
-            IBTypeMap<uint16> ib_map(pc->GetIBMap());
+            auto ib_map = pc->GetIndexAccessor<uint16>();
 
             uint16 *tp=ib_map;
 

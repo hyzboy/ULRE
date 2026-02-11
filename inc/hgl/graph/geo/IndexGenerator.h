@@ -58,7 +58,7 @@ namespace hgl::graph::inline_geometry
         template<typename T>
         void CreateSphereIndices(GeometryCreater *pc, uint numberParallels, const uint numberSlices)
         {
-            IBTypeMap<T> ib_map(pc->GetIBMap());
+            auto ib_map = pc->GetIndexAccessor<T>();
             T *tp = ib_map;
 
             for (uint i = 0; i < numberParallels; i++)
@@ -85,7 +85,7 @@ namespace hgl::graph::inline_geometry
         template<typename T>
         void CreateTorusIndices(GeometryCreater *pc, uint numberSlices, uint numberStacks)
         {
-            IBTypeMap<T> ib_map(pc->GetIBMap());
+            auto ib_map = pc->GetIndexAccessor<T>();
             T *tp = ib_map;
 
             uint sideCount, faceCount;
@@ -119,7 +119,7 @@ namespace hgl::graph::inline_geometry
         template<typename T>
         void CreateCylinderIndices(GeometryCreater *pc, const uint numberSlices)
         {
-            IBTypeMap<T> ib_map(pc->GetIBMap());
+            auto ib_map = pc->GetIndexAccessor<T>();
             T *tp = ib_map;
             uint i;
 
@@ -175,7 +175,7 @@ namespace hgl::graph::inline_geometry
         template<typename T>
         void CreateConeIndices(GeometryCreater *pc, const uint numberSlices, const uint numberStacks)
         {
-            IBTypeMap<T> ib_map(pc->GetIBMap());
+            auto ib_map = pc->GetIndexAccessor<T>();
             T *tp = ib_map;
 
             uint centerIndex = 0;

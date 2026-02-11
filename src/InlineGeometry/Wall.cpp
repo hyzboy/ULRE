@@ -781,12 +781,11 @@ namespace hgl::graph::inline_geometry
                 uv->Write(finalUV[i]);
         }
 
-        IBMap *ib_map = pc->GetIBMap();
         const IndexType itype = pc->GetIndexType();
 
         if(itype == IndexType::U16)
         {
-            IBTypeMap<uint16> im(ib_map);
+            auto im = pc->GetIndexAccessor<uint16>();
             uint16 *ip = im;
 
             for(size_t i = 0; i < finalIndices.size(); ++i)
@@ -794,7 +793,7 @@ namespace hgl::graph::inline_geometry
         }
         else if(itype == IndexType::U32)
         {
-            IBTypeMap<uint32> im(ib_map);
+            auto im = pc->GetIndexAccessor<uint32>();
             uint32 *ip = im;
 
             for(size_t i = 0; i < finalIndices.size(); ++i)
@@ -802,7 +801,7 @@ namespace hgl::graph::inline_geometry
         }
         else if(itype == IndexType::U8)
         {
-            IBTypeMap<uint8> im(ib_map);
+            auto im = pc->GetIndexAccessor<uint8>();
             uint8 *ip = im;
 
             for(size_t i = 0; i < finalIndices.size(); ++i)

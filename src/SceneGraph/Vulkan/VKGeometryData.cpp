@@ -113,15 +113,12 @@ IndexBuffer *GeometryData::InitIBO(const int ic,IndexType it)
 
     index_count=ic;
 
-    ibo_map.SetIBO(ibo,GetFirstIndex(),index_count);
-
     return(ibo);
 }
 
 void GeometryData::UnmapAll()
 {
-    // VAB 已自动管理 Map/Unmap，只需 Unmap IBO
-    ibo_map.Unmap();
+    // VAB/IBO 访问已由 BufferAccessor 自动管理
 }
 
 namespace

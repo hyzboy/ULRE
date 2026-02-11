@@ -262,7 +262,7 @@ namespace hgl::graph::inline_geometry
         {
             case IndexType::U16:
             {
-                IBTypeMap<uint16> ib_map(pc->GetIBMap());
+                auto ib_map = pc->GetIndexAccessor<uint16>();
                 uint16 *ip = ib_map;
                 if (totalIndices > 0 && ip == nullptr) return nullptr;
 
@@ -271,7 +271,7 @@ namespace hgl::graph::inline_geometry
             }
             case IndexType::U32:
             {
-                IBTypeMap<uint32> ib_map(pc->GetIBMap());
+                auto ib_map = pc->GetIndexAccessor<uint32>();
                 uint32 *ip = ib_map;
                 if (totalIndices > 0 && ip == nullptr) return nullptr;
 
@@ -280,7 +280,7 @@ namespace hgl::graph::inline_geometry
             }
             case IndexType::U8:
             {
-                IBTypeMap<uint8> ib_map(pc->GetIBMap());
+                auto ib_map = pc->GetIndexAccessor<uint8>();
                 uint8 *ip = ib_map;
                 if (totalIndices > 0 && ip == nullptr) return nullptr;
 

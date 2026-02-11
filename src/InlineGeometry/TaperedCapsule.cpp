@@ -224,18 +224,27 @@ namespace hgl::graph::inline_geometry
 
         if(index_type == IndexType::U16)
         {
-            IBTypeMap<uint16> ib(pc->GetIBMap());
-            generateIndices(ib.operator uint16*());
+            auto ib = pc->GetIndexAccessor<uint16>();
+            auto *ip = ib.Get() ? ib.Get()->Get() : nullptr;
+            if(!ip)
+                return nullptr;
+            generateIndices(ip);
         }
         else if(index_type == IndexType::U32)
         {
-            IBTypeMap<uint32> ib(pc->GetIBMap());
-            generateIndices(ib.operator uint32*());
+            auto ib = pc->GetIndexAccessor<uint32>();
+            auto *ip = ib.Get() ? ib.Get()->Get() : nullptr;
+            if(!ip)
+                return nullptr;
+            generateIndices(ip);
         }
         else if(index_type == IndexType::U8)
         {
-            IBTypeMap<uint8> ib(pc->GetIBMap());
-            generateIndices(ib.operator uint8*());
+            auto ib = pc->GetIndexAccessor<uint8>();
+            auto *ip = ib.Get() ? ib.Get()->Get() : nullptr;
+            if(!ip)
+                return nullptr;
+            generateIndices(ip);
         }
         else
             return nullptr;

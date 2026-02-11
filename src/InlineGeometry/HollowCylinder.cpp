@@ -117,7 +117,6 @@ namespace hgl::graph::inline_geometry
         write_cap(-he, false);
 
         // Indices
-        IBMap *ib_map = pc->GetIBMap();
         const IndexType it = pc->GetIndexType();
 
         auto emit_wall_indices = [&](auto *ip, uint base, bool invert)
@@ -166,7 +165,7 @@ namespace hgl::graph::inline_geometry
 
         if(it==IndexType::U16)
         {
-            IBTypeMap<uint16> im(ib_map);
+            auto im = pc->GetIndexAccessor<uint16>();
             uint16 *ip = im;
             ip = emit_wall_indices(ip, wall_outer_start, false);
             ip = emit_wall_indices(ip, wall_inner_start, true);
@@ -175,7 +174,7 @@ namespace hgl::graph::inline_geometry
         }
         else if(it==IndexType::U32)
         {
-            IBTypeMap<uint32> im(ib_map);
+            auto im = pc->GetIndexAccessor<uint32>();
             uint32 *ip = im;
             ip = emit_wall_indices(ip, wall_outer_start, false);
             ip = emit_wall_indices(ip, wall_inner_start, true);
@@ -184,7 +183,7 @@ namespace hgl::graph::inline_geometry
         }
         else if(it==IndexType::U8)
         {
-            IBTypeMap<uint8> im(ib_map);
+            auto im = pc->GetIndexAccessor<uint8>();
             uint8 *ip = im;
             ip = emit_wall_indices(ip, wall_outer_start, false);
             ip = emit_wall_indices(ip, wall_inner_start, true);

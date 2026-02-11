@@ -60,7 +60,6 @@ public:
     const   uint32_t        GetIndexCount   ()const;
             IndexBuffer *   GetIBO          ()const;
     const   uint32_t        GetFirstIndex   ()const;                        ///<取得第一个索引
-            IBMap *         GetIBMap        ();                             ///<取得索引缓冲区映射器
 
     VertexDataManager *     GetVDM          ()const;                        ///<取得顶点数据管理器
 };//class Geometry
