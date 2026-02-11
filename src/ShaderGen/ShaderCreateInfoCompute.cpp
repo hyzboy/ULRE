@@ -16,7 +16,7 @@ namespace hgl::graph
         layout_str += AnsiString::numberOf(z);
         layout_str += ") in;\n";
         
-        // 添加到shader的开头
+        // Add to the beginning of shader
         if(final_shader.IsEmpty())
             final_shader = layout_str;
         else
@@ -25,11 +25,11 @@ namespace hgl::graph
 
     bool ShaderCreateInfoCompute::ProcLayout()
     {
-        // Compute shader的layout由SetWorkGroupSize设置
-        // 这里确保如果没有设置，使用默认值
+        // Compute shader layout is set by SetWorkGroupSize
+        // Ensure default values are used if not set
         if(final_shader.Find("local_size_x") == -1)
         {
-            // 默认工作组大小为 (1, 1, 1)
+            // Default work group size is (1, 1, 1)
             SetWorkGroupSize(1, 1, 1);
         }
         

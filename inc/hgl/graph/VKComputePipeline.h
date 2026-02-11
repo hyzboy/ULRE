@@ -9,8 +9,8 @@ VK_NAMESPACE_BEGIN
 class Material;
 
 /**
- * Compute Pipeline类
- * 用于管理计算着色器管线
+ * Compute Pipeline class
+ * Used to manage compute shader pipelines
  */
 class ComputePipeline
 {

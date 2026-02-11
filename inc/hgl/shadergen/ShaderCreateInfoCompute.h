@@ -6,8 +6,8 @@
 namespace hgl::graph
 {
     /**
-     * Compute Shader创建信息类
-     * Compute Shader不需要传统的输入输出，主要通过UBO/SSBO/Image进行数据交互
+     * Compute Shader creation info class
+     * Compute Shader does not require traditional input/output, mainly exchanges data through UBO/SSBO/Image
      */
     class ShaderCreateInfoCompute:public ShaderCreateInfo
     {
@@ -17,9 +17,9 @@ namespace hgl::graph
 
         bool ProcLayout() override;
         
-        bool IsEmptyOutput()const override{return true;}  // Compute shader没有传统输出
+        bool IsEmptyOutput()const override{return true;}  // Compute shader has no traditional output
         
-        void AddMaterialInstanceOutput() override{};  // Compute shader不需要材质实例输出
+        void AddMaterialInstanceOutput() override{};  // Compute shader does not need material instance output
 
     public:
 
@@ -31,10 +31,10 @@ namespace hgl::graph
         ~ShaderCreateInfoCompute()override=default;
 
         /**
-         * 设置工作组大小
-         * @param x X维度的工作组大小
-         * @param y Y维度的工作组大小
-         * @param z Z维度的工作组大小
+         * Set work group size
+         * @param x Work group size in X dimension
+         * @param y Work group size in Y dimension
+         * @param z Work group size in Z dimension
          */
         void SetWorkGroupSize(uint32 x, uint32 y, uint32 z);
     };//class ShaderCreateInfoCompute:public ShaderCreateInfo
