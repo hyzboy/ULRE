@@ -1,29 +1,23 @@
 ﻿#pragma once
 
 #include<hgl/graph/GeometryCreater.h>
-#include<hgl/graph/VertexAttribDataAccess.h>
+#include<hgl/graph/VKBufferAccessor.h>
 
 namespace hgl::graph::inline_geometry
 {
     /**
      * 几何体构建器基类
-     * 封装VAB映射的初始化和管理，提供统一的顶点写入接口
+     * 使用 BufferAccessor 封装顶点属性访问，提供统一的顶点写入接口
      */
     class GeometryBuilder
     {
     protected:
         GeometryCreater *creater;
 
-        VABMap *vab_position;
-        VABMap *vab_normal;
-        VABMap *vab_tangent;
-        VABMap *vab_texcoord;
-
-        // VAB映射指针
-        float *vp;      // 顶点位置指针
-        float *np;      // 法线指针
-        float *tp;      // 切线指针
-        float *tcp;     // 纹理坐标指针
+        BufferAccessor3f accessor_position;
+        BufferAccessor3f accessor_normal;
+        BufferAccessor3f accessor_tangent;
+        BufferAccessor2f accessor_texcoord;
 
     public:
         GeometryBuilder(GeometryCreater *pc);
@@ -31,9 +25,9 @@ namespace hgl::graph::inline_geometry
 
         /**
          * 检查构建器是否有效
-         * @return 如果顶点位置指针有效返回true
+         * @return 如果顶点位置访问器有效返回true
          */
-        bool IsValid() const { return vp != nullptr; }
+        bool IsValid() const { return accessor_position.IsValid(); }
 
         /**
          * 写入顶点位置
@@ -41,12 +35,8 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteVertex(float x, float y, float z)
         {
-            if(vp)
-            {
-                *vp++ = x;
-                *vp++ = y;
-                *vp++ = z;
-            }
+            if(accessor_position.IsValid())
+                accessor_position->Write(x, y, z);
         }
 
         /**
@@ -55,12 +45,8 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteNormal(float x, float y, float z)
         {
-            if(np)
-            {
-                *np++ = x;
-                *np++ = y;
-                *np++ = z;
-            }
+            if(accessor_normal.IsValid())
+                accessor_normal->Write(x, y, z);
         }
 
         /**
@@ -69,12 +55,8 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTangent(float x, float y, float z)
         {
-            if(tp)
-            {
-                *tp++ = x;
-                *tp++ = y;
-                *tp++ = z;
-            }
+            if(accessor_tangent.IsValid())
+                accessor_tangent->Write(x, y, z);
         }
 
         /**
@@ -83,11 +65,8 @@ namespace hgl::graph::inline_geometry
          */
         inline void WriteTexCoord(float u, float v)
         {
-            if(tcp)
-            {
-                *tcp++ = u;
-                *tcp++ = v;
-            }
+            if(accessor_texcoord.IsValid())
+                accessor_texcoord->Write(u, v);
         }
 
         /**
@@ -111,16 +90,16 @@ namespace hgl::graph::inline_geometry
         /**
          * 检查是否有法线缓冲
          */
-        bool HasNormals() const { return np != nullptr; }
+        bool HasNormals() const { return accessor_normal.IsValid(); }
 
         /**
          * 检查是否有切线缓冲
          */
-        bool HasTangents() const { return tp != nullptr; }
+        bool HasTangents() const { return accessor_tangent.IsValid(); }
 
         /**
          * 检查是否有纹理坐标缓冲
          */
-        bool HasTexCoords() const { return tcp != nullptr; }
+        bool HasTexCoords() const { return accessor_texcoord.IsValid(); }
     };
 }

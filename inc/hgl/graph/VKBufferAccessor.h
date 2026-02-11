@@ -36,6 +36,8 @@ private:
     void *mapped_pointer;               ///< 映射指针 / Mapped pointer
     bool dirty;                         ///< 修改标志 / Dirty flag
     bool owns_buffer;                   ///< 是否拥有 buffer / Owns buffer
+    int32_t element_offset;             ///< 顶点偏移(单位:元素) / Element offset
+    uint32_t element_count;             ///< 访问元素数量 / Element count
 
     /**
      * CN: 内部 Map 操作
@@ -46,10 +48,25 @@ private:
         if(!buffer || mapped_pointer)
             return;
 
-        mapped_pointer = buffer->Map(0, buffer->GetCount());
+        if(element_offset < 0)
+            element_offset = 0;
+
+        uint32_t count = element_count;
+        const uint32_t total = buffer->GetCount();
+
+        if(static_cast<uint32_t>(element_offset) >= total)
+            return;
+
+        if(count == 0)
+            count = total - static_cast<uint32_t>(element_offset);
+
+        if(count == 0)
+            return;
+
+        mapped_pointer = buffer->Map(static_cast<VkDeviceSize>(element_offset), count);
         if(mapped_pointer)
         {
-            data_access = DataAccessType::Create(buffer->GetCount(), mapped_pointer);
+            data_access = DataAccessType::Create(count, mapped_pointer);
             if(data_access)
                 data_access->Begin();
         }
@@ -88,6 +105,21 @@ public:
         , mapped_pointer(nullptr)
         , dirty(false)
         , owns_buffer(take_ownership)
+        , element_offset(0)
+        , element_count(0)
+    {
+        if(buffer)
+            MapInternal();
+    }
+
+    BufferAccessor(VAB *vab, int32_t offset, uint32_t count, bool take_ownership = false)
+        : buffer(vab)
+        , data_access(nullptr)
+        , mapped_pointer(nullptr)
+        , dirty(false)
+        , owns_buffer(take_ownership)
+        , element_offset(offset)
+        , element_count(count)
     {
         if(buffer)
             MapInternal();
@@ -114,7 +146,7 @@ public:
      * \param vab Buffer指针 / Buffer pointer
      * \param take_ownership 是否获取所有权 / Take ownership
      */
-    void Bind(VAB *vab, bool take_ownership = false)
+    void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0, bool take_ownership = false)
     {
         UnmapInternal();
         if(owns_buffer && buffer)
@@ -123,6 +155,8 @@ public:
         buffer = vab;
         owns_buffer = take_ownership;
         dirty = false;
+        element_offset = offset;
+        element_count = count;
 
         if(buffer)
             MapInternal();
@@ -215,7 +249,21 @@ public:
         if(!buffer || !data || element_count == 0)
             return false;
 
-        bool result = buffer->Write(data, element_count);
+        if(element_offset < 0)
+            element_offset = 0;
+
+        const uint32_t total = buffer->GetCount();
+        if(static_cast<uint32_t>(element_offset) >= total)
+            return false;
+
+        const uint32_t max_count = (this->element_count == 0)
+            ? (total - static_cast<uint32_t>(element_offset))
+            : this->element_count;
+
+        if(element_count > max_count)
+            return false;
+
+        bool result = buffer->Write(data, static_cast<uint32_t>(element_offset), element_count);
         if(result)
             dirty = true;
         return result;

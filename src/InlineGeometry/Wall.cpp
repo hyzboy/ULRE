@@ -760,10 +760,10 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size()))
             return nullptr;
 
-        VABMapFloat pos_map(pc->GetVABMap(VAN::Position), VF_V3F);
-        VABMapFloat nrm_map(pc->GetVABMap(VAN::Normal), VF_V3F);
-        VABMapFloat tan_map(pc->GetVABMap(VAN::Tangent), VF_V3F);
-        VABMapFloat tex_map(pc->GetVABMap(VAN::TexCoord), VF_V2F);
+        VABMapFloat pos_map(pc->GetVABMap(VAN::Position));
+        VABMapFloat nrm_map(pc->GetVABMap(VAN::Normal));
+        VABMapFloat tan_map(pc->GetVABMap(VAN::Tangent));
+        VABMapFloat tex_map(pc->GetVABMap(VAN::TexCoord));
 
         float *vp = pos_map;
         float *np = nrm_map;

@@ -170,12 +170,26 @@ VABMap *GeometryCreater::GetVABMap(const AnsiString &name,const VkFormat format)
     return geometry_data->GetVABMap(vab_index);
 }
 
+VertexAttribBuffer *GeometryCreater::GetVAB(const AnsiString &name,const VkFormat format)
+{
+    const int vab_index=InitVAB(name,format,nullptr);
+
+    if(vab_index<0)return nullptr;
+
+    return geometry_data->GetVAB(vab_index);
+}
+
 bool GeometryCreater::WriteVAB(const AnsiString &name,const VkFormat format,const void *data)
 {
     if(!geometry_data)return(false);
     if(!data)return(false);
 
     return InitVAB(name,format,data)>=0;
+}
+
+int32_t GeometryCreater::GetVertexOffset()const
+{
+    return geometry_data?geometry_data->GetVertexOffset():0;
 }
 
 IBMap *GeometryCreater::GetIBMap()

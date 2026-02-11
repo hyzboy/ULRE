@@ -61,9 +61,11 @@ public:
 
 public: //顶点缓冲区
 
-    const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
+        const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
+            int32_t         GetVertexOffset()const;                                                                         ///<取得顶点偏移(单位:元素)
 
-            VABMap *        GetVABMap   (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);
+            VABMap *        GetVABMap   (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);               ///<[已废弃] 获取VABMap，请使用GetVAB
+            VertexAttribBuffer * GetVAB (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);               ///<获取VAB用于BufferAccessor
 
             bool            WriteVAB    (const AnsiString &name,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
 
