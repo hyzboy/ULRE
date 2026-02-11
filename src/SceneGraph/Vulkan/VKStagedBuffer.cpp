@@ -51,10 +51,10 @@ bool StagedBuffer::Write(const void *data, VkDeviceSize offset, VkDeviceSize siz
     // Mark as dirty and add to update queue
     MarkDirty(offset, size);
 
-    GLogInfo("[StagedBuffer] Write buffer=%p offset=%llu size=%llu",
-             (void *)this,
-             static_cast<unsigned long long>(offset),
-             static_cast<unsigned long long>(size));
+    //GLogInfo("[StagedBuffer] Write buffer=%p offset=%llu size=%llu",
+    //         (void *)this,
+    //         static_cast<unsigned long long>(offset),
+    //         static_cast<unsigned long long>(size));
 
     return true;
 }
@@ -107,10 +107,10 @@ void StagedBuffer::MarkDirty(VkDeviceSize offset, VkDeviceSize size)
     if (update_queue)
         update_queue->AddUpdate(this, dirty_offset, dirty_size);
 
-    GLogInfo("[StagedBuffer] MarkDirty buffer=%p offset=%llu size=%llu",
-             (void *)this,
-             static_cast<unsigned long long>(dirty_offset),
-             static_cast<unsigned long long>(dirty_size));
+    //GLogInfo("[StagedBuffer] MarkDirty buffer=%p offset=%llu size=%llu",
+    //         (void *)this,
+    //         static_cast<unsigned long long>(dirty_offset),
+    //         static_cast<unsigned long long>(dirty_size));
 }
 
 void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)
@@ -127,10 +127,10 @@ void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)
 
     ClearDirty();
 
-    GLogInfo("[StagedBuffer] CopyToDevice buffer=%p offset=%llu size=%llu",
-             (void *)this,
-             static_cast<unsigned long long>(copy_region.srcOffset),
-             static_cast<unsigned long long>(copy_region.size));
+    //GLogInfo("[StagedBuffer] CopyToDevice buffer=%p offset=%llu size=%llu",
+    //         (void *)this,
+    //         static_cast<unsigned long long>(copy_region.srcOffset),
+    //         static_cast<unsigned long long>(copy_region.size));
 }
 
 void StagedBuffer::ClearDirty()

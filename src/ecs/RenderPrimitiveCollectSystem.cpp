@@ -80,13 +80,13 @@ namespace hgl::ecs
             ++added;
         }
 
-        if (cache.renderableCount == 0)
-        {
-            GLogInfo("[RenderPrimitiveCollectSystem] No renderables: total=%zu visible=%zu no_owner=%zu no_transform=%zu",
-                     primitives.size(),
-                     added,
-                     skipped_no_owner,
-                     skipped_no_transform);
-        }
+        //if (cache.renderableCount == 0)
+        //{
+        //    GLogInfo("[RenderPrimitiveCollectSystem] No renderables: total=%zu visible=%zu no_owner=%zu no_transform=%zu",
+        //             primitives.size(),
+        //             added,
+        //             skipped_no_owner,
+        //             skipped_no_transform);
+        //}
     }
 }//namespace hgl::ecs
