@@ -26,6 +26,8 @@ class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 class BufferUpdateQueue;
 class StagedBuffer;
+class ComputePipeline;
+class Material;
 
 struct CopyBufferToImageInfo;
 
@@ -204,6 +206,17 @@ public:
     Semaphore *  CreateGPUSemaphore();
 
     DeviceQueue *CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
+
+public: // Compute Pipeline相关
+
+    /**
+     * 创建计算管线
+     * @param name 管线名称
+     * @param shader_module 计算着色器模块
+     * @param pipeline_layout 管线布局
+     * @return 计算管线指针，失败返回nullptr
+     */
+    ComputePipeline *CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout);
 
 public:
 
