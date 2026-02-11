@@ -29,6 +29,7 @@ void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pi
     count = 0;
 
     shared_backup = sb;
+    dirty = false;
 }
 
 void LineWidthBatch::Clear()
@@ -158,6 +159,9 @@ void LineWidthBatch::Expand(uint c)
 
             // Clear contents but do not reduce capacity
             backup->Clear();
+            
+            // 重建mesh并恢复数据后需要标记dirty
+            dirty = true;
         }
     }
 }
@@ -176,6 +180,8 @@ void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8 color
     color->Write(color_index);
 
     primitive->SetDrawCounts(count*2);
+    
+    dirty = true; // 标记数据已修改
 }
 
 void LineWidthBatch::AddLine(const std::vector<LineSegmentDescriptor> &lsi_list)
@@ -195,12 +201,32 @@ void LineWidthBatch::AddLine(const std::vector<LineSegmentDescriptor> &lsi_list)
     }
 
     primitive->SetDrawCounts(count*2);
+    
+    dirty = true; // 标记数据已修改
 }
 
 void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
 {
     if(!primitive)
         return;
+
+    // 只在数据被修改时才flush到GPU
+    if(dirty)
+    {
+        // Unmap触发staged buffer的flush操作，将CPU staging buffer数据复制到GPU device buffer
+        if(vab_position)
+            vab_position->Unmap();
+        if(vab_color)
+            vab_color->Unmap();
+        
+        // 立即remap以便下次修改
+        if(vab_position)
+            position = vab_position->Map();
+        if(vab_color)
+            color = vab_color->Map();
+        
+        dirty = false; // 清除dirty标志
+    }
 
     cmd->BindDataBuffer(primitive->GetDataBuffer());
 

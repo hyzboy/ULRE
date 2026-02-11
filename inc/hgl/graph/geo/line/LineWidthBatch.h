@@ -36,6 +36,8 @@ class LineWidthBatch
     VB1u8 *     color       =nullptr;   // 每条线段2个顶点，每个顶点4个uint8
 
     SharedLineBackup *shared_backup = nullptr; // optional shared backup
+    
+    bool        dirty       = false;    // 标记数据是否已修改需要flush到GPU
 
 public:
 
@@ -55,7 +57,7 @@ public:
 
     // expose count for manager usage
     uint32 GetCount() const { return count; }
-    void SetCount(uint32 v) { count = v; }
+    void SetCount(uint32 v) { if(count != v) { count = v; dirty = true; } }
 
     // 新增：更新 Pipeline（RenderTarget 改变后重建的 Pipeline）
     void UpdatePipeline(Pipeline *p);
