@@ -1,2 +1,3 @@
 ﻿CreateProject(ComputeShaderBasicTest ComputeShaderBasicTest.cpp)
 CreateProject(ComputeShaderArrayAdd ComputeShaderArrayAdd.cpp)
+CreateProject(ComputeShaderImageBlur ComputeShaderImageBlur.cpp)
