@@ -99,11 +99,6 @@ const uint32_t Geometry::GetFirstIndex()const
     return geometry_data->GetFirstIndex();
 }
 
-IBMap *Geometry::GetIBMap()
-{
-    return geometry_data->GetIBMap();
-}
-
 VertexDataManager *Geometry::GetVDM()const
 {
     return geometry_data->GetVDM();

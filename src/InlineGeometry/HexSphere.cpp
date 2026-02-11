@@ -122,23 +122,22 @@ namespace hgl::graph::inline_geometry
 
         // 索引：顺时针为正面，直接按 tris 中的 (a,b,c) 顺序写
         {
-            IBMap *ib = pc->GetIBMap();
             const IndexType it = pc->GetIndexType();
             if(it==IndexType::U16)
             {
-                IBTypeMap<uint16> im(ib);
+                auto im = pc->GetIndexAccessor<uint16>();
                 uint16 *ip = im;
                 for(const auto &t : tris){ *ip++=(uint16)t.a; *ip++=(uint16)t.b; *ip++=(uint16)t.c; }
             }
             else if(it==IndexType::U32)
             {
-                IBTypeMap<uint32> im(ib);
+                auto im = pc->GetIndexAccessor<uint32>();
                 uint32 *ip = im;
                 for(const auto &t : tris){ *ip++=t.a; *ip++=t.b; *ip++=t.c; }
             }
             else if(it==IndexType::U8)
             {
-                IBTypeMap<uint8> im(ib);
+                auto im = pc->GetIndexAccessor<uint8>();
                 uint8 *ip = im;
                 for(const auto &t : tris){ *ip++=(uint8)t.a; *ip++=(uint8)t.b; *ip++=(uint8)t.c; }
             }

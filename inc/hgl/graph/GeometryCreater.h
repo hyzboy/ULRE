@@ -91,8 +91,6 @@ public: //索引缓冲区
     const   IndexType       GetIndexType()const{return index_type;}
     const   uint32_t        GetIndexCount()const{return index_number;}
 
-            IBMap *         GetIBMap();
-
             /**
              * 创建 IndexAccessor（自动使用正确的索引类型）
              * @tparam T 索引类型（uint8, uint16, uint32）

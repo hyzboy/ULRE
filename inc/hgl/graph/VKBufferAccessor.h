@@ -16,6 +16,9 @@ VK_NAMESPACE_BEGIN
 template<typename T>
 class RawDataAccess
 {
+public:
+    using value_type = T;  // 类型别名，用于模板元编程
+
 private:
     T *data;
     T *data_end;
@@ -123,7 +126,9 @@ template<typename DataAccessType>
 class BufferAccessor
 {
 private:
-    VAB *buffer;                        ///< 底层 buffer / Underlying buffer
+    DeviceBuffer *buffer;               ///< 底层 buffer / Underlying buffer
+    uint32_t buffer_total_count;        ///< 总元素数量 / Total element count
+    uint32_t buffer_stride;             ///< 单元素字节数 / Stride in bytes
     DataAccessType *data_access;        ///< 数据访问器 / Data accessor
     void *mapped_pointer;               ///< 映射指针 / Mapped pointer
     bool dirty;                         ///< 修改标志 / Dirty flag
@@ -144,7 +149,7 @@ private:
             element_offset = 0;
 
         uint32_t count = element_count;
-        const uint32_t total = buffer->GetCount();
+        const uint32_t total = buffer_total_count;
 
         if(static_cast<uint32_t>(element_offset) >= total)
             return;
@@ -193,6 +198,8 @@ public:
      */
     BufferAccessor(VAB *vab = nullptr, bool take_ownership = false)
         : buffer(vab)
+        , buffer_total_count(vab ? vab->GetCount() : 0)
+        , buffer_stride(vab ? vab->GetStride() : 0)
         , data_access(nullptr)
         , mapped_pointer(nullptr)
         , dirty(false)
@@ -206,6 +213,23 @@ public:
 
     BufferAccessor(VAB *vab, int32_t offset, uint32_t count, bool take_ownership = false)
         : buffer(vab)
+        , buffer_total_count(vab ? vab->GetCount() : 0)
+        , buffer_stride(vab ? vab->GetStride() : 0)
+        , data_access(nullptr)
+        , mapped_pointer(nullptr)
+        , dirty(false)
+        , owns_buffer(take_ownership)
+        , element_offset(offset)
+        , element_count(count)
+    {
+        if(buffer)
+            MapInternal();
+    }
+
+    BufferAccessor(IndexBuffer *ibo, int32_t offset, uint32_t count, bool take_ownership = false)
+        : buffer(ibo)
+        , buffer_total_count(ibo ? ibo->GetCount() : 0)
+        , buffer_stride(ibo ? ibo->GetStride() : 0)
         , data_access(nullptr)
         , mapped_pointer(nullptr)
         , dirty(false)
@@ -245,6 +269,8 @@ public:
             delete buffer;
 
         buffer = vab;
+        buffer_total_count = vab ? vab->GetCount() : 0;
+        buffer_stride = vab ? vab->GetStride() : 0;
         owns_buffer = take_ownership;
         dirty = false;
         element_offset = offset;
@@ -281,6 +307,22 @@ public:
      */
     DataAccessType* operator->() { return data_access; }
     const DataAccessType* operator->() const { return data_access; }
+
+    /**
+     * CN: 隐式转换为原始指针 (通过 DataAccessType 的operator T*())
+     * EN: Implicit conversion to raw pointer (via DataAccessType's operator T*())
+     */
+    template<typename T = DataAccessType>
+    operator typename T::value_type*()
+    {
+        return data_access ? static_cast<typename T::value_type*>(*data_access) : nullptr;
+    }
+
+    template<typename T = DataAccessType>
+    operator const typename T::value_type*() const
+    {
+        return data_access ? static_cast<const typename T::value_type*>(*data_access) : nullptr;
+    }
 
     /**
      * CN: 标记为 dirty
@@ -344,7 +386,7 @@ public:
         if(element_offset < 0)
             element_offset = 0;
 
-        const uint32_t total = buffer->GetCount();
+        const uint32_t total = buffer_total_count;
         if(static_cast<uint32_t>(element_offset) >= total)
             return false;
 
@@ -370,8 +412,10 @@ public:
         if(!buffer || !dst || element_count == 0 || !mapped_pointer)
             return false;
 
-        const uint32_t stride = buffer->GetStride();
-        memcpy(dst, mapped_pointer, static_cast<size_t>(stride) * element_count);
+        if(buffer_stride == 0)
+            return false;
+
+        memcpy(dst, mapped_pointer, static_cast<size_t>(buffer_stride) * element_count);
         return true;
     }
 

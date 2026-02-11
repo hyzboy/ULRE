@@ -193,14 +193,6 @@ int32_t GeometryCreater::GetFirstIndex()const
     return geometry_data?geometry_data->GetFirstIndex():0;
 }
 
-IBMap *GeometryCreater::GetIBMap()
-{
-    if(!geometry_data)
-        return(nullptr);
-
-    return geometry_data->GetIBMap();
-}
-
 bool GeometryCreater::WriteIBO(const void *data,const uint32_t count)
 {
     if(!data)return(false);

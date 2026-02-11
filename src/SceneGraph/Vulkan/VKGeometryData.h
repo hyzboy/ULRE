@@ -35,7 +35,6 @@ protected:
 protected:
 
     IndexBuffer *   ibo;
-    IBMap           ibo_map;
 
     virtual IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it)=0;
 
@@ -60,7 +59,6 @@ public:
 
             IndexBuffer *   InitIBO         (const int index_count,IndexType it);
             IndexBuffer *   GetIBO          (){return ibo;}
-            IBMap *         GetIBMap        (){return &ibo_map;}
             uint32_t        GetIndexCount   ()const{return index_count;}
 
     virtual int32_t         GetVertexOffset ()const=0;                      ///<取得顶点偏移(注意是顶点不是字节)

@@ -150,9 +150,6 @@ using VAB=VertexAttribBuffer;
 
 class IndexBuffer;
 
-class VABMap;
-class IBMap;
-
 class VulkanCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;

@@ -266,21 +266,21 @@ namespace hgl::graph::inline_geometry
 
             if(index_type == IndexType::U16)
             {
-                IBTypeMap<uint16> ib(pc->GetIBMap());
+                auto ib = pc->GetIndexAccessor<uint16>();
                 uint16 *ip = ib;
                 for(uint i = 0; i < numberIndices; i++)
                     *ip++ = (uint16)i;
             }
             else if(index_type == IndexType::U32)
             {
-                IBTypeMap<uint32> ib(pc->GetIBMap());
+                auto ib = pc->GetIndexAccessor<uint32>();
                 uint32 *ip = ib;
                 for(uint i = 0; i < numberIndices; i++)
                     *ip++ = i;
             }
             else if(index_type == IndexType::U8)
             {
-                IBTypeMap<uint8> ib(pc->GetIBMap());
+                auto ib = pc->GetIndexAccessor<uint8>();
                 uint8 *ip = ib;
                 for(uint i = 0; i < numberIndices; i++)
                     *ip++ = (uint8)i;
