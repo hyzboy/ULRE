@@ -232,9 +232,17 @@ namespace hgl::ecs
         first_indirect_draw_index = -1;
 
         // 绑定ECS Transform分配缓冲（如果有）
-        if (transform_buffer)
+        if (material->hasLocalToWorld())
         {
-            transform_buffer->BindTransform(material);
+            if(transform_buffer)
+            {
+                transform_buffer->BindTransform(material);
+            }
+        }
+        else
+        {
+            transform_buffer=nullptr;       // 如果材质不需要LocalToWorld，就不绑定Transform分配缓冲,否则传入了还会判定有问题
+            transform_vab=nullptr;
         }
 
         // 绑定ECS MaterialInstance分配缓冲（如果有）
