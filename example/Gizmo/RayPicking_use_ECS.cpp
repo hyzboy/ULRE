@@ -63,7 +63,7 @@ private:
     Pipeline *          pipeline_line       =nullptr;
     Geometry *          geom_line           =nullptr;
     Primitive *         prim_line           =nullptr;
-    VABMap *            prim_line_vab_map   =nullptr;
+    VAB *               prim_line_vab       =nullptr;
 
     math::Ray           ray;
 
@@ -187,8 +187,8 @@ private:
             if(!prim_line)
                 return false;
 
-            // 获取VABMap用于后续动态更新顶点数据
-            prim_line_vab_map = prim_line->GetVABMap(VAN::Position);
+            // 获取VAB用于后续动态更新顶点数据
+            prim_line_vab = prim_line->GetVAB(VAN::Position);
 
             // 添加TransformComponent
             auto transform = ray_line_entity->AddComponent<TransformComponent>();
@@ -292,9 +292,9 @@ public:
         const math::Vector3f pos=ray.ClosestPoint(math::Vector3f(0,0,0));
 
         // 更新VAB上这个点的位置（动态更新顶点数据）
-        if(prim_line_vab_map)
+        if(prim_line_vab)
         {
-            prim_line_vab_map->Write(&pos, 1);  // 1代表数据数量,不是字节数
+            prim_line_vab->Write(&pos, 1);  // 1代表数据数量,不是字节数
         }
     }
 };//class TestApp:public WorkObject

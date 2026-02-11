@@ -45,15 +45,19 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("HollowCylinder", numberVertices, numberIndices))
             return nullptr;
 
-        VABMapFloat pos   (pc->GetVABMap(VAN::Position));
-        VABMapFloat nrm   (pc->GetVABMap(VAN::Normal));
-        VABMapFloat tan   (pc->GetVABMap(VAN::Tangent));
-        VABMapFloat uv    (pc->GetVABMap(VAN::TexCoord));
+        // 直接获取 VAB 并手动 Map 来访问原始指针（高性能路径）
+        VAB *vab_pos = pc->GetVAB(VAN::Position);
+        VAB *vab_nrm = pc->GetVAB(VAN::Normal);
+        VAB *vab_tan = pc->GetVAB(VAN::Tangent);
+        VAB *vab_uv  = pc->GetVAB(VAN::TexCoord);
 
-        float *vp = pos;
-        float *np = nrm;
-        float *tp = tan;
-        float *uvp= uv;
+        const int32_t vertex_offset = pc->GetVertexOffset();
+        const uint32_t vertex_count = pc->GetVertexCount();
+
+        float *vp  = vab_pos ? (float*)vab_pos->Map(vertex_offset, vertex_count) : nullptr;
+        float *np  = vab_nrm ? (float*)vab_nrm->Map(vertex_offset, vertex_count) : nullptr;
+        float *tp  = vab_tan ? (float*)vab_tan->Map(vertex_offset, vertex_count) : nullptr;
+        float *uvp = vab_uv  ? (float*)vab_uv->Map(vertex_offset, vertex_count)  : nullptr;
 
         const float dtheta = (2.0f * std::numbers::pi_v<float>) / float(slices);
 
@@ -188,6 +192,12 @@ namespace hgl::graph::inline_geometry
             ip = emit_cap_indices(ip, cap_bottom_start, false);
         }
         else return nullptr;
+
+        // 手动 Unmap VAB
+        if(vab_pos) vab_pos->Unmap();
+        if(vab_nrm) vab_nrm->Unmap();
+        if(vab_tan) vab_tan->Unmap();
+        if(vab_uv)  vab_uv->Unmap();
 
         return pc->CreateWithAABB(
             math::Vector3f(-r1, -r1, -he),

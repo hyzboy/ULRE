@@ -760,46 +760,25 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size()))
             return nullptr;
 
-        VABMapFloat pos_map(pc->GetVABMap(VAN::Position));
-        VABMapFloat nrm_map(pc->GetVABMap(VAN::Normal));
-        VABMapFloat tan_map(pc->GetVABMap(VAN::Tangent));
-        VABMapFloat tex_map(pc->GetVABMap(VAN::TexCoord));
-
-        float *vp = pos_map;
-        float *np = nrm_map;
-        float *tp = tan_map;
-        float *uvp = tex_map;
+        auto pos = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
+        auto nrm = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
+        auto tan = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
+        auto uv  = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
 
         for(size_t i = 0; i < finalVerts.size(); ++i)
         {
             const auto &v = finalVerts[i];
 
-            if(vp)
-            {
-                *vp++ = v.x;
-                *vp++ = v.y;
-                *vp++ = v.z;
-            }
+            pos->Write(v);
 
-            if(np)
-            {
-                *np++ = vertNormals[i].x;
-                *np++ = vertNormals[i].y;
-                *np++ = vertNormals[i].z;
-            }
+            if(nrm.IsValid())
+                nrm->Write(vertNormals[i]);
 
-            if(tp)
-            {
-                *tp++ = 1.0f;
-                *tp++ = 0.0f;
-                *tp++ = 0.0f;
-            }
+            if(tan.IsValid())
+                tan->Write(Vector3f(1.0f, 0.0f, 0.0f));
 
-            if(uvp)
-            {
-                *uvp++ = finalUV[i].x;
-                *uvp++ = finalUV[i].y;
-            }
+            if(uv.IsValid())
+                uv->Write(finalUV[i]);
         }
 
         IBMap *ib_map = pc->GetIBMap();

@@ -308,6 +308,7 @@ public:
 // 常用类型定义 / Common type definitions
 using BufferAccessor1u8  = BufferAccessor<VB1u8>;
 using BufferAccessor1i8  = BufferAccessor<VB1i8>;
+using BufferAccessor2u8  = BufferAccessor<VB2u8>;
 using BufferAccessor2f   = BufferAccessor<VB2f>;
 using BufferAccessor3f   = BufferAccessor<VB3f>;
 using BufferAccessor4f   = BufferAccessor<VB4f>;
@@ -319,6 +320,7 @@ using BufferAccessor4i   = BufferAccessor<VB4i>;
 // 推荐逐步迁移到 BufferAccessor，但旧代码可以继续使用这些别名
 using StagedVB1u8  = BufferAccessor1u8;
 using StagedVB1i8  = BufferAccessor1i8;
+using StagedVB2u8  = BufferAccessor2u8;
 using StagedVB2f   = BufferAccessor2f;
 using StagedVB3f   = BufferAccessor3f;
 using StagedVB4f   = BufferAccessor4f;

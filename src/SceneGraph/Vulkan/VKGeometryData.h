@@ -29,7 +29,6 @@ protected:
     uint32_t        index_count;
 
     VAB **          vab_list;
-    VABMap *        vab_map_list;
 
     virtual VAB * CreateVAB(const int vab_index,const VkFormat format,const void *data)=0;
 

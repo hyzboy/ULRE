@@ -56,7 +56,7 @@ namespace hgl::graph::inline_geometry
         {
             RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-            VABMap4f color(pc->GetVABMap(VAN::Color));
+            auto color = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
 
             if(color.IsValid())
             {
@@ -88,7 +88,7 @@ namespace hgl::graph::inline_geometry
             return(nullptr);
 
         {
-            VABMap2u8 vertex(pc->GetVABMap(VAN::Position),VF_V2U8);       //顶点坐标使用 uint8
+            auto vertex = pc->GetBufferAccessor<BufferAccessor2u8>(VAN::Position);  //顶点坐标使用 uint8
 
             if(!vertex.IsValid())
                 return(nullptr);
