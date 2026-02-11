@@ -5,6 +5,7 @@
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/RenderPrimitiveBatchSystem.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/log/Log.h>
 #include"ECSPipelineMaterialRenderer.h"
 #include"ECSTransformAssignmentBuffer.h"
 #include<iostream>
@@ -31,7 +32,11 @@ namespace hgl::ecs
 
         if (cache.renderableCount == 0)
         {
-            std::cerr << "[RenderPrimitiveSubmitSystem::Render] WARNING: No renderable items!" << std::endl;
+            if (!cache.materialBatches.empty())
+            {
+                GLogWarning("[RenderPrimitiveSubmitSystem] No renderables but material batches exist (%zu)",
+                            cache.materialBatches.size());
+            }
             return;
         }
 

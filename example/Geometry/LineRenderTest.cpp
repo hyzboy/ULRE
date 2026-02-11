@@ -1,6 +1,7 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/ecs/LineRenderSystem.h>
 #include<cmath>
 
 using namespace hgl;
@@ -26,6 +27,17 @@ public:
         {
             LogError("WireShapeTestApp::Init: Failed to get LineRenderManager from RenderFramework\n");
             return(false);
+        }
+
+        // Ensure ECS line render system is registered and wired
+        auto ecs_world = GetECSContext();
+        if (ecs_world)
+        {
+            auto line_system = ecs_world->GetSystem<hgl::ecs::LineRenderSystem>();
+            if (!line_system)
+                line_system = ecs_world->RegisterRenderSystem<hgl::ecs::LineRenderSystem>();
+            if (line_system)
+                line_system->SetLineRenderManager(line_mgr);
         }
 
         // Setup a larger palette

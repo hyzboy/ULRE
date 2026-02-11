@@ -125,8 +125,6 @@ namespace hgl::graph
         // ECS 渲染路径：目前仅执行空渲染流程，便于后续接入 ECS RenderSystem
         if(GetECSContext())
         {
-            LineRenderManager *lrm=GetLineRenderManager();
-
             RenderCmdBuffer *cmd = render_target->BeginRender();
 
             // Flush all pending buffer updates before rendering
@@ -165,11 +163,6 @@ namespace hgl::graph
 
             // TODO: 在此处接入 ECS 的渲染收集与绘制
             GetECSContext()->Render(cmd, 0.0f);
-
-            if(lrm)
-            {
-                lrm->Draw(cmd);
-            }
 
             cmd->EndRenderPass();
             render_target->EndRender();
