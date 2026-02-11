@@ -13,13 +13,8 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("Axis",6,0))
             return(nullptr);
 
-        BufferAccessor3f vertex;
-        BufferAccessor4f color;
-        const int32_t vertex_offset = pc->GetVertexOffset();
-        const uint32_t vertex_count = pc->GetVertexCount();
-        
-        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count);
-        color.Bind(pc->GetVAB(VAN::Color), vertex_offset, vertex_count);
+        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
+        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
 
         if(!vertex.IsValid()||!color.IsValid())
             return(nullptr);
