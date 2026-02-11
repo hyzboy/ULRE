@@ -5,45 +5,34 @@ namespace hgl::graph::inline_geometry
 {
     GeometryBuilder::GeometryBuilder(GeometryCreater *pc)
         : creater(pc)
-        , vab_position(nullptr)
-        , vab_normal(nullptr)
-        , vab_tangent(nullptr)
-        , vab_texcoord(nullptr)
-        , vp(nullptr)
-        , np(nullptr)
-        , tp(nullptr)
-        , tcp(nullptr)
     {
         if(!pc)
             return;
 
-        // 初始化VAB映射 (keep mapped until GeometryBuilder destruction)
-        vab_position = pc->GetVABMap(VAN::Position);
-        if (vab_position && vab_position->GetFormat() == VF_V3F)
-            vp = static_cast<float *>(vab_position->Map());
+        // 绑定 BufferAccessor 到 VAB
+        VertexAttribBuffer *vab;
+        const int32_t vertex_offset = pc->GetVertexOffset();
+        const uint32_t vertex_count = pc->GetVertexCount();
+        
+        vab = pc->GetVAB(VAN::Position);
+        if(vab)
+            accessor_position.Bind(vab, vertex_offset, vertex_count);
 
-        vab_normal = pc->GetVABMap(VAN::Normal);
-        if (vab_normal && vab_normal->GetFormat() == VF_V3F)
-            np = static_cast<float *>(vab_normal->Map());
+        vab = pc->GetVAB(VAN::Normal);
+        if(vab)
+            accessor_normal.Bind(vab, vertex_offset, vertex_count);
 
-        vab_tangent = pc->GetVABMap(VAN::Tangent);
-        if (vab_tangent && vab_tangent->GetFormat() == VF_V3F)
-            tp = static_cast<float *>(vab_tangent->Map());
+        vab = pc->GetVAB(VAN::Tangent);
+        if(vab)
+            accessor_tangent.Bind(vab, vertex_offset, vertex_count);
 
-        vab_texcoord = pc->GetVABMap(VAN::TexCoord);
-        if (vab_texcoord && vab_texcoord->GetFormat() == VF_V2F)
-            tcp = static_cast<float *>(vab_texcoord->Map());
+        vab = pc->GetVAB(VAN::TexCoord);
+        if(vab)
+            accessor_texcoord.Bind(vab, vertex_offset, vertex_count);
     }
 
     GeometryBuilder::~GeometryBuilder()
     {
-        if (vab_position)
-            vab_position->Unmap();
-        if (vab_normal)
-            vab_normal->Unmap();
-        if (vab_tangent)
-            vab_tangent->Unmap();
-        if (vab_texcoord)
-            vab_texcoord->Unmap();
+        // BufferAccessor 自动管理生命周期，无需手动清理
     }
 }

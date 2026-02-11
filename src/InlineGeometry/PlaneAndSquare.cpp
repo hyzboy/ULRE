@@ -9,7 +9,10 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        VABMap2f vertex(pc->GetVABMap(VAN::Position));
+        BufferAccessor2f vertex;
+        const int32_t vertex_offset = pc->GetVertexOffset();
+        const uint32_t vertex_count = pc->GetVertexCount();
+        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -64,7 +67,10 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        VABMap3f vertex(pc->GetVABMap(VAN::Position));
+        BufferAccessor3f vertex;
+        const int32_t vertex_offset = pc->GetVertexOffset();
+        const uint32_t vertex_count = pc->GetVertexCount();
+        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -131,21 +137,30 @@ namespace hgl::graph::inline_geometry
             return(nullptr);
 
         {
-            VABMap3f normal(pc->GetVABMap(VAN::Normal));
+            BufferAccessor3f normal;
+            const int32_t vertex_offset = pc->GetVertexOffset();
+            const uint32_t vertex_count = pc->GetVertexCount();
+            normal.Bind(pc->GetVAB(VAN::Normal), vertex_offset, vertex_count);
 
             if(normal.IsValid())
                 normal->RepeatWrite(xy_normal,4);
         }
 
         {
-            VABMap3f tangent(pc->GetVABMap(VAN::Tangent));
+            BufferAccessor3f tangent;
+            const int32_t vertex_offset = pc->GetVertexOffset();
+            const uint32_t vertex_count = pc->GetVertexCount();
+            tangent.Bind(pc->GetVAB(VAN::Tangent), vertex_offset, vertex_count);
 
             if(tangent.IsValid())
                 tangent->RepeatWrite(xy_tangent,4);
         }
 
         {
-            VABMap2f tex_coord(pc->GetVABMap(VAN::TexCoord));
+            BufferAccessor2f tex_coord;
+            const int32_t vertex_offset = pc->GetVertexOffset();
+            const uint32_t vertex_count = pc->GetVertexCount();
+            tex_coord.Bind(pc->GetVAB(VAN::TexCoord), vertex_offset, vertex_count);
 
             if(tex_coord.IsValid())
                 tex_coord->Write(xy_tex_coord,4);

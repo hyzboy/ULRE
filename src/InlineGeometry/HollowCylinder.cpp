@@ -45,10 +45,10 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("HollowCylinder", numberVertices, numberIndices))
             return nullptr;
 
-        VABMapFloat pos   (pc->GetVABMap(VAN::Position), VF_V3F);
-        VABMapFloat nrm   (pc->GetVABMap(VAN::Normal),   VF_V3F);
-        VABMapFloat tan   (pc->GetVABMap(VAN::Tangent),  VF_V3F);
-        VABMapFloat uv    (pc->GetVABMap(VAN::TexCoord), VF_V2F);
+        VABMapFloat pos   (pc->GetVABMap(VAN::Position));
+        VABMapFloat nrm   (pc->GetVABMap(VAN::Normal));
+        VABMapFloat tan   (pc->GetVABMap(VAN::Tangent));
+        VABMapFloat uv    (pc->GetVABMap(VAN::TexCoord));
 
         float *vp = pos;
         float *np = nrm;

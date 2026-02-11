@@ -25,8 +25,13 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,0))return(nullptr);
 
-        VABMap2f vertex(pc->GetVABMap(VAN::Position));
-        VABMap4f color(pc->GetVABMap(VAN::Color));
+        BufferAccessor2f vertex;
+        BufferAccessor4f color;
+        const int32_t vertex_offset = pc->GetVertexOffset();
+        const uint32_t vertex_count_actual = pc->GetVertexCount();
+        
+        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count_actual);
+        color.Bind(pc->GetVAB(VAN::Color), vertex_offset, vertex_count_actual);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -159,9 +164,15 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,index_count))return(nullptr);
 
-        VABMap3f vertex(pc->GetVABMap(VAN::Position));
-        VABMap4f color(pc->GetVABMap(VAN::Color));
-        VABMap3f normal(pc->GetVABMap(VAN::Normal));
+        BufferAccessor3f vertex;
+        BufferAccessor4f color;
+        BufferAccessor3f normal;
+        const int32_t vertex_offset = pc->GetVertexOffset();
+        const uint32_t vertex_count_actual = pc->GetVertexCount();
+        
+        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count_actual);
+        color.Bind(pc->GetVAB(VAN::Color), vertex_offset, vertex_count_actual);
+        normal.Bind(pc->GetVAB(VAN::Normal), vertex_offset, vertex_count_actual);
 
         if(!vertex.IsValid())
             return(nullptr);
