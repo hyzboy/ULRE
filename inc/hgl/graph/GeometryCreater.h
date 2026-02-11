@@ -69,11 +69,24 @@ public: //顶点缓冲区
 
             bool            WriteVAB    (const AnsiString &name,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
 
+            /**
+             * 创建带偏移的 BufferAccessor（自动使用VDM子分配的正确范围）
+             * @tparam BufferAccessorType BufferAccessor类型（如 BufferAccessor3f）
+             * @param name 顶点属性名称
+             * @return 已绑定到正确偏移/数量的 BufferAccessor
+             */
+            template<typename BufferAccessorType>
+            BufferAccessorType GetBufferAccessor(const AnsiString &name)
+            {
+                VAB *vab = GetVAB(name);
+                return BufferAccessorType(vab, GetVertexOffset(), GetVertexCount());
+            }
+
 public: //索引缓冲区
 
-    const   bool            hasIndex()const{return vdm?has_index:index_number>0;}                                           ///<是否有索引缓冲区
-    const   IndexType       GetIndexType()const{return index_type;}                                                         ///<取得索引类型
-    const   uint32_t        GetIndexCount()const{return index_number;}                                                      ///<取得索引数量
+    const   bool            hasIndex()const{return vdm?has_index:index_number>0;}
+    const   IndexType       GetIndexType()const{return index_type;}
+    const   uint32_t        GetIndexCount()const{return index_number;}
 
             IBMap *         GetIBMap();
 

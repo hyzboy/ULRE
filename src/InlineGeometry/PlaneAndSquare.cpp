@@ -9,10 +9,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        BufferAccessor2f vertex;
-        const int32_t vertex_offset = pc->GetVertexOffset();
-        const uint32_t vertex_count = pc->GetVertexCount();
-        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count);
+        auto vertex = pc->GetBufferAccessor<BufferAccessor2f>(VAN::Position);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -67,10 +64,7 @@ namespace hgl::graph::inline_geometry
         if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
             return(nullptr);
 
-        BufferAccessor3f vertex;
-        const int32_t vertex_offset = pc->GetVertexOffset();
-        const uint32_t vertex_count = pc->GetVertexCount();
-        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count);
+        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -137,30 +131,21 @@ namespace hgl::graph::inline_geometry
             return(nullptr);
 
         {
-            BufferAccessor3f normal;
-            const int32_t vertex_offset = pc->GetVertexOffset();
-            const uint32_t vertex_count = pc->GetVertexCount();
-            normal.Bind(pc->GetVAB(VAN::Normal), vertex_offset, vertex_count);
+            auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
 
             if(normal.IsValid())
                 normal->RepeatWrite(xy_normal,4);
         }
 
         {
-            BufferAccessor3f tangent;
-            const int32_t vertex_offset = pc->GetVertexOffset();
-            const uint32_t vertex_count = pc->GetVertexCount();
-            tangent.Bind(pc->GetVAB(VAN::Tangent), vertex_offset, vertex_count);
+            auto tangent = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Tangent);
 
             if(tangent.IsValid())
                 tangent->RepeatWrite(xy_tangent,4);
         }
 
         {
-            BufferAccessor2f tex_coord;
-            const int32_t vertex_offset = pc->GetVertexOffset();
-            const uint32_t vertex_count = pc->GetVertexCount();
-            tex_coord.Bind(pc->GetVAB(VAN::TexCoord), vertex_offset, vertex_count);
+            auto tex_coord = pc->GetBufferAccessor<BufferAccessor2f>(VAN::TexCoord);
 
             if(tex_coord.IsValid())
                 tex_coord->Write(xy_tex_coord,4);

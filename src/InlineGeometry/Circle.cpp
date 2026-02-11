@@ -25,13 +25,8 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,0))return(nullptr);
 
-        BufferAccessor2f vertex;
-        BufferAccessor4f color;
-        const int32_t vertex_offset = pc->GetVertexOffset();
-        const uint32_t vertex_count_actual = pc->GetVertexCount();
-        
-        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count_actual);
-        color.Bind(pc->GetVAB(VAN::Color), vertex_offset, vertex_count_actual);
+        auto vertex = pc->GetBufferAccessor<BufferAccessor2f>(VAN::Position);
+        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
 
         if(!vertex.IsValid())
             return(nullptr);
@@ -164,15 +159,9 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,index_count))return(nullptr);
 
-        BufferAccessor3f vertex;
-        BufferAccessor4f color;
-        BufferAccessor3f normal;
-        const int32_t vertex_offset = pc->GetVertexOffset();
-        const uint32_t vertex_count_actual = pc->GetVertexCount();
-        
-        vertex.Bind(pc->GetVAB(VAN::Position), vertex_offset, vertex_count_actual);
-        color.Bind(pc->GetVAB(VAN::Color), vertex_offset, vertex_count_actual);
-        normal.Bind(pc->GetVAB(VAN::Normal), vertex_offset, vertex_count_actual);
+        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
+        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
+        auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
 
         if(!vertex.IsValid())
             return(nullptr);
