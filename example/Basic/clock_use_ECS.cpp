@@ -68,6 +68,8 @@ private:
 
     TickData ticks[TICK_COUNT];
 
+    MaterialInstance *mi_tick;
+
     // 指针数据
     struct HandData
     {
@@ -106,13 +108,10 @@ private:
         {
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
-            for (uint i = 0; i < TICK_COUNT; i++)
-            {
-                ticks[i].mi = CreateMaterialInstance(material);
-                if (!ticks[i].mi)
-                    return false;
-                ticks[i].mi->WriteMIData(tick_color);
-            }
+
+            mi_tick = CreateMaterialInstance(material);
+            if(mi_tick)
+                mi_tick->WriteMIData(tick_color);
 
             // 指针颜色
             Color4f hand_colors[3] = {
@@ -176,7 +175,7 @@ private:
         // === 创建12个刻度（Static Transform） ===
         for (uint i = 0; i < TICK_COUNT; i++)
         {
-            ticks[i].primitive = CreatePrimitive(geometry, ticks[i].mi, pipeline);
+            ticks[i].primitive = CreatePrimitive(geometry, mi_tick, pipeline);
 
             if (!ticks[i].primitive)
             {
