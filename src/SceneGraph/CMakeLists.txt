@@ -395,6 +395,7 @@ SET(VK_MEMORY_FILES ${SG_INCLUDE_PATH}/VKMemory.h
                     ${SG_INCLUDE_PATH}/VKBufferMap.h
                     ${SG_INCLUDE_PATH}/VKBufferUpdateQueue.h
                     ${SG_INCLUDE_PATH}/VKStagedBuffer.h
+                    ${SG_INCLUDE_PATH}/VKStagedBufferAccessor.h
                     Vulkan/VKMemory.cpp
                     Vulkan/VKMemoryAllocator.cpp
                     Vulkan/VKBuffer.cpp

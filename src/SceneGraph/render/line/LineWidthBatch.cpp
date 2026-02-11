@@ -29,13 +29,15 @@ void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pi
     count = 0;
 
     shared_backup = sb;
-    dirty = false;
 }
 
 void LineWidthBatch::Clear()
 {
-    SAFE_CLEAR(vab_position)
-    SAFE_CLEAR(vab_color)
+    // BufferAccessor会在析构时自动Unmap
+    // 所以这里不需要手动清理，但需要解绑
+    position.Bind(nullptr);
+    color.Bind(nullptr);
+    
     SAFE_CLEAR(primitive);
     SAFE_CLEAR(geometry);
 }
@@ -53,11 +55,9 @@ bool LineWidthBatch::RebuildMesh()
 
     primitive=DirectCreatePrimitive(geometry,mtl_inst,pipeline);
 
-    vab_position=new VABMap3f(geometry->GetVABMap(VAN::Position));
-    vab_color=new VABMap1u8(geometry->GetVABMap(VAN::Color));
-
-    position=vab_position->Map();
-    color=vab_color->Map();
+    // 直接绑定到VAB，自动Map
+    position.Bind(geometry->GetVAB(geometry->GetVABIndex(VAN::Position)));
+    color.Bind(geometry->GetVAB(geometry->GetVABIndex(VAN::Color)));
 
     return(true);
 }
@@ -84,13 +84,13 @@ void LineWidthBatch::Expand(uint c)
             return;
         }
 
-        if(vab_position && vab_color && vertex_count>0)
+        if(position.IsValid() && color.IsValid() && vertex_count>0)
         {
             // Ensure shared backup has enough capacity (only grows)
             backup->EnsureCapacity(vertex_count);
 
-            // Bulk read using VABFormatMap::Read; must succeed
-            bool pos_ok = vab_position->Read(backup->positions.data(), vertex_count);
+            // 使用BufferAccessor的ReadBulk方法
+            bool pos_ok = position.ReadBulk(backup->positions.data(), vertex_count);
             if(!pos_ok)
             {
                 // cannot safely backup, abort expansion
@@ -98,7 +98,7 @@ void LineWidthBatch::Expand(uint c)
                 return;
             }
 
-            bool col_ok = vab_color->Read(backup->colors.data(), vertex_count);
+            bool col_ok = color.ReadBulk(backup->colors.data(), vertex_count);
             if(!col_ok)
             {
                 // cannot safely backup, abort expansion
@@ -119,10 +119,10 @@ void LineWidthBatch::Expand(uint c)
         }
 
         // Restore backed up data into new buffers (bulk write)
-        if(!backup->IsEmpty() && vab_position && vab_color)
+        if(!backup->IsEmpty() && position.IsValid() && color.IsValid())
         {
-            // Bulk write using VABFormatMap::Write; must succeed
-            bool pos_write_ok = vab_position->Write(backup->positions.data(), static_cast<uint32_t>(backup->positions.size()));
+            // 使用BufferAccessor的WriteBulk方法，自动标记dirty
+            bool pos_write_ok = position.WriteBulk(backup->positions.data(), static_cast<uint32_t>(backup->positions.size()));
             if(!pos_write_ok)
             {
                 // cannot restore safely, abort
@@ -130,7 +130,7 @@ void LineWidthBatch::Expand(uint c)
                 return;
             }
 
-            bool col_write_ok = vab_color->Write(backup->colors.data(), static_cast<uint32_t>(backup->colors.size()));
+            bool col_write_ok = color.WriteBulk(backup->colors.data(), static_cast<uint32_t>(backup->colors.size()));
             if(!col_write_ok)
             {
                 // cannot restore safely, abort
@@ -142,26 +142,12 @@ void LineWidthBatch::Expand(uint c)
                 primitive->SetDrawCounts(old_count*2);
 
             // Move access pointers to the end of existing data so subsequent writes append
-            // old_count lines => old_count*2 vertices
             const uint32_t vertex_end = old_count * 2;
-
-            if(position)
-            {
-                // position is VB3f* (VertexAttribDataAccess3)
-                position->Seek(vertex_end);
-            }
-
-            if(color)
-            {
-                // color is VB1u8* (VertexAttribDataAccess1)
-                color->Seek(vertex_end);
-            }
+            position.Seek(vertex_end);
+            color.Seek(vertex_end);
 
             // Clear contents but do not reduce capacity
             backup->Clear();
-            
-            // 重建mesh并恢复数据后需要标记dirty
-            dirty = true;
         }
     }
 }
@@ -170,39 +156,37 @@ void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8 color
 {
     Expand(1);
 
-    if(!position)
+    if(!position.IsValid())
         return;
 
-    position->Write(from);
-    position->Write(to);
+    // Write方法会自动标记dirty
+    position.Write(from);
+    position.Write(to);
 
-    color->Write(color_index);
-    color->Write(color_index);
+    color.Write(color_index);
+    color.Write(color_index);
 
     primitive->SetDrawCounts(count*2);
-    
-    dirty = true; // 标记数据已修改
 }
 
 void LineWidthBatch::AddLine(const std::vector<LineSegmentDescriptor> &lsi_list)
 {
     Expand(lsi_list.size());
 
-    if(!position)
+    if(!position.IsValid())
         return;
 
     for(auto &lsi:lsi_list)
     {
-        position->Write(lsi.from);
-        position->Write(lsi.to);
+        // Write方法会自动标记dirty
+        position.Write(lsi.from);
+        position.Write(lsi.to);
 
-        color->Write(lsi.color);
-        color->Write(lsi.color);
+        color.Write(lsi.color);
+        color.Write(lsi.color);
     }
 
     primitive->SetDrawCounts(count*2);
-    
-    dirty = true; // 标记数据已修改
 }
 
 void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
@@ -210,23 +194,9 @@ void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
     if(!primitive)
         return;
 
-    // 只在数据被修改时才flush到GPU
-    if(dirty)
-    {
-        // Unmap触发staged buffer的flush操作，将CPU staging buffer数据复制到GPU device buffer
-        if(vab_position)
-            vab_position->Unmap();
-        if(vab_color)
-            vab_color->Unmap();
-        
-        // 立即remap以便下次修改
-        if(vab_position)
-            position = vab_position->Map();
-        if(vab_color)
-            color = vab_color->Map();
-        
-        dirty = false; // 清除dirty标志
-    }
+    // Commit会自动检查dirty状态，只在需要时才Unmap/Remap
+    position.Commit();
+    color.Commit();
 
     cmd->BindDataBuffer(primitive->GetDataBuffer());
 

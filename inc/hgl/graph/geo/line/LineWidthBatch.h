@@ -3,6 +3,7 @@
 #include <hgl/math/Vector.h>
 #include <hgl/graph/VKVertexAttribBuffer.h>
 #include <hgl/graph/VKBuffer.h>
+#include <hgl/graph/VKBufferAccessor.h>
 #include <hgl/graph/geo/line/SharedLineBackup.h>
 
 using namespace hgl;
@@ -29,15 +30,12 @@ class LineWidthBatch
 
     Geometry *  geometry    =nullptr;
     Primitive * primitive   =nullptr;
-    VABMap3f *  vab_position=nullptr;
-    VABMap1u8 * vab_color   =nullptr;
-
-    VB3f *      position    =nullptr;   // 每条线段2个顶点，每个顶点3个float
-    VB1u8 *     color       =nullptr;   // 每条线段2个顶点，每个顶点4个uint8
+    
+    // 使用统一的BufferAccessor，适用于所有buffer类型
+    BufferAccessor3f  position;   // 位置数据访问器 / Position data accessor
+    BufferAccessor1u8 color;      // 颜色数据访问器 / Color data accessor
 
     SharedLineBackup *shared_backup = nullptr; // optional shared backup
-    
-    bool        dirty       = false;    // 标记数据是否已修改需要flush到GPU
 
 public:
 
@@ -57,7 +55,7 @@ public:
 
     // expose count for manager usage
     uint32 GetCount() const { return count; }
-    void SetCount(uint32 v) { if(count != v) { count = v; dirty = true; } }
+    void SetCount(uint32 v) { count = v; }
 
     // 新增：更新 Pipeline（RenderTarget 改变后重建的 Pipeline）
     void UpdatePipeline(Pipeline *p);
