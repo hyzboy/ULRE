@@ -11,23 +11,13 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Basic")
 endmacro()
 
-CreateProject(01_draw_triangle                  draw_triangle_use_UBO.cpp)
-CreateProject(01b_draw_triangle_ECS             draw_triangle_use_ECS.cpp)
-CreateProject(02_auto_instance                  auto_instance.cpp)
-CreateProject(02b_auto_instance_ECS             auto_instance_use_ECS.cpp)
-CreateProject(03_auto_merge_material_instance   auto_merge_material_instance.cpp)
-CreateProject(03b_auto_merge_material_instance_use_ECS    auto_merge_material_instance_use_ECS.cpp)
-CreateProject(03c_clock_use_ECS                 clock_use_ECS.cpp)
 
-CreateProject(04_Billboard                      BillboardTest.cpp)
-CreateProject(04b_Billboard_ECS                 BillboardTest_use_ECS.cpp)
-
-CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
-CreateProject(05b_RenderBoundBox_ECS            RenderBoundBox_use_ECS.cpp)
-
-CreateProject(06_RenderToTexture                RenderToTexture.cpp)
-CreateProject(06b_RenderToTexture_ECS           RenderToTexture_use_ECS.cpp)
-
-CreateProject(07_SimpleCube                     SimpleCube.cpp)
-CreateProject(07b_SimpleCube_ECS                SimpleCube_use_ECS.cpp)
+CreateProject(01_draw_triangle                  draw_triangle_use_ECS.cpp)
+CreateProject(02_auto_instance                  auto_instance_use_ECS.cpp)
+CreateProject(03_auto_merge_material_instance   auto_merge_material_instance_use_ECS.cpp)
+CreateProject(04_clock_use                      clock_use_ECS.cpp)
+CreateProject(05_Billboard                      BillboardTest_use_ECS.cpp)
+CreateProject(06_SimpleCube                     SimpleCube_use_ECS.cpp)
+CreateProject(07_RenderBoundBox                 RenderBoundBox_use_ECS.cpp)
+CreateProject(08_RenderToTexture                RenderToTexture_use_ECS.cpp)
 
