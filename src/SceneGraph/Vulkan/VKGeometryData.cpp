@@ -96,7 +96,7 @@ VAB *GeometryData::InitVAB(const int vab_index,const void *data)
     }
     else
     {
-        vab_map_list[vab_index].Write(data,vertex_count);
+        vab_list[vab_index]->Write(data, vertex_count);
     }
 
     return vab_list[vab_index];
@@ -120,9 +120,7 @@ IndexBuffer *GeometryData::InitIBO(const int ic,IndexType it)
 
 void GeometryData::UnmapAll()
 {
-    for(uint32_t i=0;i<vil->GetVertexAttribCount();i++)
-        vab_map_list[i].Unmap();
-
+    // VAB 已自动管理 Map/Unmap，只需 Unmap IBO
     ibo_map.Unmap();
 }
 
