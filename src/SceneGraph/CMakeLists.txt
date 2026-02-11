@@ -395,7 +395,6 @@ SET(VK_MEMORY_FILES ${SG_INCLUDE_PATH}/VKMemory.h
                     ${SG_INCLUDE_PATH}/VKBufferMap.h
                     ${SG_INCLUDE_PATH}/VKBufferUpdateQueue.h
                     ${SG_INCLUDE_PATH}/VKStagedBuffer.h
-                    ${SG_INCLUDE_PATH}/VKStagedBufferAccessor.h
                     Vulkan/VKMemory.cpp
                     Vulkan/VKMemoryAllocator.cpp
                     Vulkan/VKBuffer.cpp
@@ -413,6 +412,7 @@ SET(VK_PIPELINE_FILES   ${PIPELINE_HEADER_PATH}/VKPipeline.h
                         ${PIPELINE_HEADER_PATH}/VKPipelineData.h
                         ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
                         ${PIPELINE_HEADER_PATH}/VKInlinePipeline.h
+                        ${SG_INCLUDE_PATH}/VKComputePipeline.h
                         ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
                         ${PIPELINE_SOURCE_PATH}/VKPipelineData.cpp
                         ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
@@ -421,7 +421,8 @@ SET(VK_PIPELINE_FILES   ${PIPELINE_HEADER_PATH}/VKPipeline.h
                         ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
                         ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
                         ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.h)
+                        ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.h
+                        Vulkan/VKComputePipeline.cpp)
 
 SOURCE_GROUP("9.Vulkan\\Pipeline" FILES ${VK_PIPELINE_FILES})
 
