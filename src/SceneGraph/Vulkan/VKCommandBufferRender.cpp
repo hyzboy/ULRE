@@ -185,12 +185,12 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
 //    std::cerr << "[RenderCmdBuffer::BindDataBuffer] Calling vkCmdBindVertexBuffers..." << std::endl;
 
     // Log each buffer
-    for(uint32_t i = 0; i < geom_data_buffer->vab_count; i++)
-    {
-        std::cerr << "[RenderCmdBuffer::BindDataBuffer]   Buffer[" << i << "]: "
-                  << geom_data_buffer->vab_list[i]
-                  << ", offset: " << geom_data_buffer->vab_offset[i] << std::endl;
-    }
+    //for(uint32_t i = 0; i < geom_data_buffer->vab_count; i++)
+    //{
+    //    std::cerr << "[RenderCmdBuffer::BindDataBuffer]   Buffer[" << i << "]: "
+    //              << geom_data_buffer->vab_list[i]
+    //              << ", offset: " << geom_data_buffer->vab_offset[i] << std::endl;
+    //}
 
     vkCmdBindVertexBuffers(cmd_buf,
                            0,               //first binding
@@ -207,7 +207,7 @@ bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
     }
     else
     {
-        std::cerr << "[RenderCmdBuffer::BindDataBuffer] No IBO to bind" << std::endl;
+//        std::cerr << "[RenderCmdBuffer::BindDataBuffer] No IBO to bind" << std::endl;
     }
 
 //    std::cerr << "[RenderCmdBuffer::BindDataBuffer] === EXIT (success) ===" << std::endl;
