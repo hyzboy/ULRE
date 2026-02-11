@@ -2,6 +2,7 @@
 #include<hgl/graph/VKSemaphore.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
+#include<hgl/graph/VKComputePipeline.h>
 
 VK_NAMESPACE_BEGIN
 VulkanDevice::VulkanDevice(VulkanDevAttr *da)
@@ -99,4 +100,30 @@ DeviceQueue *VulkanDevice::CreateQueue(const uint32_t fence_count,const bool cre
 
     return(new DeviceQueue(attr->device,attr->graphics_queue,fence_list,fence_count));
 }
+
+ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkShaderModule shader_module, VkPipelineLayout pipeline_layout)
+{
+    VkComputePipelineCreateInfo compute_pipeline_info = {};
+    compute_pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    compute_pipeline_info.layout = pipeline_layout;
+    compute_pipeline_info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    compute_pipeline_info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    compute_pipeline_info.stage.module = shader_module;
+    compute_pipeline_info.stage.pName = "main";
+
+    VkPipeline pipeline;
+    if (vkCreateComputePipelines(attr->device, attr->pipeline_cache, 1, &compute_pipeline_info, nullptr, &pipeline) != VK_SUCCESS)
+    {
+        LOG_ERROR(name + " create compute pipeline failed!");
+        return nullptr;
+    }
+
+#ifdef _DEBUG
+    if(attr->debug_utils)
+        attr->debug_utils->SetPipeline(pipeline, name);
+#endif//_DEBUG
+
+    return new ComputePipeline(name, attr->device, pipeline, pipeline_layout);
+}
+
 VK_NAMESPACE_END

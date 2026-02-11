@@ -113,5 +113,6 @@ using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessC
 using TessEvalShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessEval,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
 using GeometryShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Geometry,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
 using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Fragment,    SVArray,  ShaderVariable,   VIAArray,   VIA             >;
+using ComputeShaderDescriptorInfo =CustomShaderDescriptorInfo<ShaderStage::Compute,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
 
 }}//namespace hgl::graph
