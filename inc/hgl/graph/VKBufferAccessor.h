@@ -1,9 +1,101 @@
 #pragma once
 
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 
 VK_NAMESPACE_BEGIN
+
+/**
+ * 原始类型数据访问器（单元素类型）
+ * CN: 用于单通道 VBO 和 IndexBuffer 的轻量级包装器
+ * EN: Lightweight wrapper for single-channel VBO and IndexBuffer
+ * 
+ * 提供与 VertexAttribDataAccess 兼容的接口，但直接返回原始指针
+ */
+template<typename T>
+class RawDataAccess
+{
+private:
+    T *data;
+    T *data_end;
+    T *access;
+    size_t count;
+
+public:
+    RawDataAccess(size_t _count, T *_data)
+        : data(_data)
+        , count(_count)
+        , access(nullptr)
+    {
+        if(data && count > 0)
+            data_end = data + count;
+        else
+            data_end = nullptr;
+    }
+
+    virtual ~RawDataAccess() = default;
+
+    static RawDataAccess<T>* Create(size_t count, void *ptr)
+    {
+        return new RawDataAccess<T>(count, static_cast<T*>(ptr));
+    }
+
+    bool IsValid() const { return data != nullptr; }
+
+    T* Begin(size_t offset = 0)
+    {
+        if(!data)
+            return nullptr;
+        
+        access = (offset < count) ? (data + offset) : data;
+        return access;
+    }
+
+    void End()
+    {
+        access = nullptr;
+    }
+
+    bool Seek(size_t offset)
+    {
+        if(!data || offset >= count)
+            return false;
+        
+        access = data + offset;
+        return true;
+    }
+
+    bool Write(const T& value)
+    {
+        if(!access || access >= data_end)
+            return false;
+        
+        *access++ = value;
+        return true;
+    }
+
+    bool WriteData(const T *ptr, uint32_t number)
+    {
+        if(!access || access + number > data_end || !ptr)
+            return false;
+        
+        memcpy(access, ptr, number * sizeof(T));
+        access += number;
+        return true;
+    }
+
+    // 直接访问指针
+    T* Get() { return data; }
+    const T* Get() const { return data; }
+    operator T*() { return data; }
+    operator const T*() const { return data; }
+    
+    T& operator[](size_t index) { return data[index]; }
+    const T& operator[](size_t index) const { return data[index]; }
+};
+
+
 
 /**
  * 统一的 Buffer 访问器 (薄封装版本)
@@ -327,5 +419,19 @@ using StagedVB4f   = BufferAccessor4f;
 using StagedVB2i   = BufferAccessor2i;
 using StagedVB3i   = BufferAccessor3i;
 using StagedVB4i   = BufferAccessor4i;
+
+// IndexBuffer 访问器（使用 BufferAccessor + RawDataAccess）
+using IndexAccessorU8  = BufferAccessor<RawDataAccess<uint8>>;
+using IndexAccessorU16 = BufferAccessor<RawDataAccess<uint16>>;
+using IndexAccessorU32 = BufferAccessor<RawDataAccess<uint32>>;
+
+// 单通道原始类型访问器（用于单通道 VBO）
+using RawAccessorU8    = BufferAccessor<RawDataAccess<uint8>>;
+using RawAccessorI8    = BufferAccessor<RawDataAccess<int8>>;
+using RawAccessorU16   = BufferAccessor<RawDataAccess<uint16>>;
+using RawAccessorI16   = BufferAccessor<RawDataAccess<int16>>;
+using RawAccessorU32   = BufferAccessor<RawDataAccess<uint32>>;
+using RawAccessorI32   = BufferAccessor<RawDataAccess<int32>>;
+using RawAccessorFloat = BufferAccessor<RawDataAccess<float>>;
 
 VK_NAMESPACE_END

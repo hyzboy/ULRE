@@ -183,6 +183,16 @@ int32_t GeometryCreater::GetVertexOffset()const
     return geometry_data?geometry_data->GetVertexOffset():0;
 }
 
+IndexBuffer *GeometryCreater::GetIBO()
+{
+    return geometry_data?geometry_data->GetIBO():nullptr;
+}
+
+int32_t GeometryCreater::GetFirstIndex()const
+{
+    return geometry_data?geometry_data->GetFirstIndex():0;
+}
+
 IBMap *GeometryCreater::GetIBMap()
 {
     if(!geometry_data)
