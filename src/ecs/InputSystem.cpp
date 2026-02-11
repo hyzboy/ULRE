@@ -65,6 +65,9 @@ namespace hgl::ecs
 
                 case io::MouseAction::Wheel:
                     wheel_delta += med->y;
+                    //std::cout << "[InputSystem] Wheel event y=" << med->y
+                    //          << " wheel_delta=" << wheel_delta
+                    //          << " time=" << current_time << "\n";
                     break;
 
                 default:
@@ -154,7 +157,10 @@ namespace hgl::ecs
     {
         current_time += static_cast<double>(deltaTime);
         input_mapper.SetCurrentTime(current_time);
+    }
 
+    void InputSystem::EndFrame()
+    {
         // 重置帧间状态 / Reset per-frame state
         wheel_delta = 0;
         ResetActionFrameState();
