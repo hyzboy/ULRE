@@ -86,9 +86,9 @@ namespace hgl::graph::inline_geometry
 
         if(!pc->Init("Circle",vertex_count,has_index ? vertex_count : 0))return(nullptr);
 
-        VABMap3f vertex(pc->GetVABMap(VAN::Position));
-        VABMap4f color(pc->GetVABMap(VAN::Color));
-        VABMap3f normal(pc->GetVABMap(VAN::Normal));
+        auto vertex = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Position);
+        auto color  = pc->GetBufferAccessor<BufferAccessor4f>(VAN::Color);
+        auto normal = pc->GetBufferAccessor<BufferAccessor3f>(VAN::Normal);
 
         if(!vertex.IsValid())
             return(nullptr);
