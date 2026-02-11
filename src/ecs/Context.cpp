@@ -1,6 +1,7 @@
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/EntityManager.h>
 #include<hgl/ecs/TransformSystem.h>
+#include<hgl/ecs/InputSystem.h>
 #include<hgl/ecs/MaterialBatch.h>
 #include<hgl/ecs/PrimitiveRenderItem.h>
 #include"ECSTransformAssignmentBuffer.h"
@@ -147,6 +148,11 @@ namespace hgl
                     if (entity)
                         entity->OnUpdate(deltaTime);
                 }
+            }
+
+            if (auto input_system = GetSystem<InputSystem>())
+            {
+                input_system->EndFrame();
             }
         }
 

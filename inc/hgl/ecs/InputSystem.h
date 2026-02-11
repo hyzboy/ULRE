@@ -74,6 +74,7 @@ namespace hgl::ecs
         virtual ~InputSystem() = default;
 
         void Update(float deltaTime) override;
+        void EndFrame();
     };
 }//namespace hgl::ecs
 

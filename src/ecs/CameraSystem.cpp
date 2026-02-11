@@ -6,6 +6,8 @@
 #include<hgl/graph/ViewportInfo.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
+#include<cmath>
+#include<iostream>
 
 namespace hgl::ecs
 {
@@ -101,7 +103,7 @@ namespace hgl::ecs
 
                 if (input_state.wheel_delta != 0)
                 {
-                    camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
+                    camera->distance *= std::pow(1.0f + camera->zoom_sensitivity, -input_state.wheel_delta);
 
                     if (camera->distance < camera->min_distance)
                         camera->distance = camera->min_distance;
@@ -164,7 +166,7 @@ namespace hgl::ecs
 
                 if (input_state.wheel_delta != 0)
                 {
-                    camera->distance -= input_state.wheel_delta * camera->zoom_sensitivity;
+                    camera->distance *= std::pow(1.0f + camera->zoom_sensitivity, -input_state.wheel_delta);
 
                     if (camera->distance < camera->min_distance)
                         camera->distance = camera->min_distance;
@@ -296,11 +298,23 @@ namespace hgl::ecs
         input_state.middle_button = input_system->IsActionActive(CameraInputMapping::kActionPanMiddle);
 
         // 获取滚轮和按键缩放
-        input_state.wheel_delta = input_system->GetActionAnalog1D(CameraInputMapping::kActionZoomWheel);
+        float wheel_delta = input_system->GetActionAnalog1D(CameraInputMapping::kActionZoomWheel);
+        const float raw_wheel_delta = static_cast<float>(input_system->GetWheelDelta());
+        if (wheel_delta == 0.0f)
+            wheel_delta = raw_wheel_delta;
         if (input_system->IsActionActive(CameraInputMapping::kActionZoomIn))
-            input_state.wheel_delta += 1.0f;
+            wheel_delta += 1.0f;
         if (input_system->IsActionActive(CameraInputMapping::kActionZoomOut))
-            input_state.wheel_delta -= 1.0f;
+            wheel_delta -= 1.0f;
+        input_state.wheel_delta = wheel_delta;
+
+        //if (wheel_delta != 0.0f || raw_wheel_delta != 0.0f)
+        //{
+        //    std::cout << "[CameraSystem] Wheel collect action="
+        //              << input_system->GetActionAnalog1D(CameraInputMapping::kActionZoomWheel)
+        //              << " raw=" << raw_wheel_delta
+        //              << " result=" << wheel_delta << "\n";
+        //}
 
         // 获取键盘状态
         input_state.move_forward = input_system->IsActionActive(CameraInputMapping::kActionMoveForward);
