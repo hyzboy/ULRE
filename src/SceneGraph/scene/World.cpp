@@ -3,12 +3,9 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph
 {
-    LineRenderManager *CreateLineRenderManager(RenderFramework *rf,IRenderTarget *);
-
     namespace
     {
         UnorderedMap<IDString,World *> registered_world_map;  ///<世界列表
@@ -56,8 +53,12 @@ namespace hgl::graph
 
         {
             ubo_sky_info=rf->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo,BufferUpdateClass::Deferred);
-            ubo_sky_info->Data()->SetTime(10,0,0);  //早上10点
-            world_desc_binding->AddUBO(ubo_sky_info);
+            if(ubo_sky_info)
+            {
+                ubo_sky_info->Data()->SetTime(10,0,0);  //早上10点
+
+                world_desc_binding->AddUBO(ubo_sky_info);
+            }
         }
 
         root_node=new SceneNode(this);
