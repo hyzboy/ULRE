@@ -10,7 +10,6 @@ COMPONENT_NAMESPACE_END
 
 VK_NAMESPACE_BEGIN
 
-class SceneNode;
 class GeometryCreater;
 
 constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=

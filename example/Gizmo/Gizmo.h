@@ -2,10 +2,22 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/component/Component.h>
+#include<hgl/math/VectorTypes.h>
+
+namespace hgl
+{
+    namespace ecs
+    {
+        class ECSContext;
+    }
+}
 
 VK_NAMESPACE_BEGIN
 
-class World;
+struct CameraInfo;
+class ViewportInfo;
+
+struct GizmoMoveECS;
 
 enum class GizmoColor:uint
 {
@@ -40,8 +52,16 @@ void FreeGizmoResource();
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);
 COMPONENT_NAMESPACE::ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape);
 
-SceneNode *GetGizmoMoveNode(World *);
-//SceneNode *GetGizmoScaleMesh();
-//SceneNode *GetGizmoRotateMesh();
+GizmoMoveECS *CreateGizmoMoveECS(::hgl::ecs::ECSContext *world,
+                                 const char *name,
+                                 const math::Vector3f &position);
+void DestroyGizmoMoveECS(GizmoMoveECS *gizmo);
+void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
+                        const math::Vector2i &mouse_coord,
+                        const CameraInfo *camera_info,
+                        const ViewportInfo *viewport_info,
+                        bool left_down,
+                        bool left_pressed,
+                        bool left_released);
 
 VK_NAMESPACE_END

@@ -7,15 +7,11 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/component/PrimitiveComponent.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
-
-bool InitGizmoMoveNode(RenderFramework *);
-void ClearGizmoMoveNode();
 
 //bool InitGizmoScaleMesh();
 //void ClearGizmoScaleMesh();
@@ -298,10 +294,6 @@ bool InitGizmoResource(RenderFramework *rf)
     if(!InitGizmoResource2D())
         return(false);
 
-    InitGizmoMoveNode(rf);
-    //InitGizmoScaleMesh();
-    //InitGizmoRotateMesh();
-
     return(true);
 }
 
@@ -309,7 +301,6 @@ void FreeGizmoResource()
 {
     //ClearGizmoRotateMesh();
     //ClearGizmoScaleMesh();
-    ClearGizmoMoveNode();
 
     for(GizmoMesh &gr:gizmo_mesh)
         gr.Clear();
