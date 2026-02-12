@@ -4,13 +4,20 @@
 #include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/RenderCollector.h>
-#include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/PrimitiveComponent.h>
+
+// ECS headers
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/CameraComponent.h>
+#include<hgl/ecs/CameraSystem.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -18,6 +25,9 @@ using namespace hgl::graph;
 class TestApp:public WorkObject
 {
 private:
+
+    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
@@ -55,20 +65,85 @@ private:
 
     bool InitScene()
     {
+        if(!ecs_world)
+            return false;
+
         Primitive *ri=CreatePrimitive(prim_axis,material_instance,pipeline);
+        if(!ri)
+            return false;
 
-        CreateComponentInfo cci(GetWorldRootNode());
+        auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Axis");
+        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-        CreateComponent<PrimitiveComponent>(&cci,ri);
+        transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform->SetMovable(false);
 
-        CameraControl *camera_control=GetCameraControl();
+        prim_comp->SetPrimitive(ri);
+        prim_comp->SetVisible(true);
 
-        camera_control->SetPosition(math::Vector3f(32,32,32));
-        camera_control->SetTarget(math::Vector3f(0,0,0));
+        return true;
+    }
 
-//        camera_control->SetReserveDirection(true,true);        //反转x,y
+    bool EnsureCameraSystem()
+    {
+        if(!ecs_world)
+            return false;
 
-        return(true);
+        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
+        if(!camera_system)
+        {
+            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
+            if(ecs_world->IsActive())
+            {
+                camera_system->OnDependenciesReady();
+                camera_system->Initialize();
+            }
+        }
+
+        return camera_system != nullptr;
+    }
+
+    bool InitCamera()
+    {
+        if(!EnsureCameraSystem())
+            return false;
+
+        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+
+        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 48.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        camera->camera_data = GetCamera();
+        camera->camera_info = const_cast<hgl::graph::CameraInfo *>(GetCameraInfo());
+        camera->viewport_info = GetViewportInfo();
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
+        GetSceneRenderer()->SetCameraControl(nullptr);
+
+        if(!InitScene())
+            return false;
+
+        if(!InitCamera())
+            return false;
+
+        return true;
     }
 
 public:
@@ -88,7 +163,7 @@ public:
         if(!CreateRenderObject())
             return(false);
 
-        if(!InitScene())
+        if(!InitECS())
             return(false);
 
         return(true);
