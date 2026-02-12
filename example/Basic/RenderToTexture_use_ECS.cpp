@@ -6,6 +6,8 @@
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/GeometryCreater.h>
+#include<hgl/graph/SceneCaptureStage.h>
+#include<hgl/graph/SceneRenderer.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
 
@@ -207,6 +209,7 @@ class RenderToTextureApp final: public WorkObject
 {
 private:
     OffscreenSceneECS *      offscreen          = nullptr;
+    SceneCaptureStage *      offscreen_stage    = nullptr;
 
     ECSContext *             ecs_world          = nullptr;
     Entity *                 cube_entity        = nullptr;
@@ -221,7 +224,50 @@ private:
     std::shared_ptr<TransformComponent> cube_transform;
 
     float                    cube_theta          = 0.0f;
-    bool                     captured_offscreen  = false;
+    bool InstallOffscreenStage()
+    {
+        SceneRenderer *renderer = GetSceneRenderer();
+        if(!renderer || !offscreen)
+            return false;
+
+        renderer->EnsurePipeline(RenderPath::Ecs);
+
+        offscreen_stage = new SceneCaptureStage(
+            [this](RenderStageContext &)->bool
+            {
+                if(!offscreen)
+                    return false;
+
+                if(offscreen->RenderOnce())
+                {
+                    LogTextureInfo("onscreen_after_offscreen_render",
+                                   offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
+                    return true;
+                }
+
+                return false;
+            },
+            true,
+            SceneCaptureStage::CaptureTarget::Texture2D);
+        if(!renderer->GetEcsPipeline().InsertStageBefore(offscreen_stage, "BeginFrame"))
+        {
+            delete offscreen_stage;
+            offscreen_stage = nullptr;
+            return false;
+        }
+
+        return true;
+    }
+
+    void CleanupOffscreenStage()
+    {
+        SceneRenderer *renderer = GetSceneRenderer();
+        if(renderer && offscreen_stage)
+            renderer->GetEcsPipeline().RemoveStage(offscreen_stage);
+
+        delete offscreen_stage;
+        offscreen_stage = nullptr;
+    }
 
 private:
     bool EnsureCameraSystem()
@@ -344,6 +390,7 @@ public:
 
     ~RenderToTextureApp() override
     {
+        CleanupOffscreenStage();
         SAFE_CLEAR(offscreen);
         delete cube_primitive;
     }
@@ -363,18 +410,14 @@ public:
         if (!SetupMainCamera())
             return false;
 
+        if (!InstallOffscreenStage())
+            return false;
+
         return true;
     }
 
     void Render(double delta_time) override
     {
-        if (offscreen && !captured_offscreen)
-        {
-            offscreen->RenderOnce();
-            LogTextureInfo("onscreen_after_offscreen_render", offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
-            captured_offscreen = true;
-        }
-
         if (cube_transform)
         {
             cube_theta += float(delta_time) * 0.8f;
