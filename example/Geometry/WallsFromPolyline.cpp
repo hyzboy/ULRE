@@ -4,7 +4,17 @@
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/PrimitiveComponent.h>
+
+// ECS headers
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/CameraComponent.h>
+#include<hgl/ecs/CameraSystem.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -12,6 +22,9 @@ using namespace hgl::graph;
 class TestApp:public WorkObject
 {
 private:
+
+    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
 
     mtl::BasicLitMaterialInstance mi_data;
 
@@ -22,7 +35,6 @@ private:
     VertexDataManager *mesh_vdm = nullptr;
 
     std::vector<Primitive*> wall_meshes;
-    std::vector<PrimitiveComponent*> wall_components;
 
 public:
     using WorkObject::WorkObject;
@@ -30,6 +42,75 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(mesh_vdm)
+    }
+
+    bool EnsureCameraSystem()
+    {
+        if(!ecs_world)
+            return false;
+
+        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
+        if(!camera_system)
+        {
+            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
+            if(ecs_world->IsActive())
+            {
+                camera_system->OnDependenciesReady();
+                camera_system->Initialize();
+            }
+        }
+
+        return camera_system != nullptr;
+    }
+
+    bool InitCamera()
+    {
+        if(!EnsureCameraSystem())
+            return false;
+
+        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+
+        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 14.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        camera->camera_data = GetCamera();
+        camera->camera_info = const_cast<hgl::graph::CameraInfo *>(GetCameraInfo());
+        camera->viewport_info = GetViewportInfo();
+
+        return true;
+    }
+
+    bool InitECSScene()
+    {
+        if(!ecs_world)
+            return false;
+
+        for(size_t i = 0; i < wall_meshes.size(); ++i)
+        {
+            Primitive *primitive = wall_meshes[i];
+            if(!primitive)
+                continue;
+
+            auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
+            auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+            auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+
+            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetMovable(false);
+
+            prim_comp->SetPrimitive(primitive);
+            prim_comp->SetVisible(true);
+        }
+
+        return true;
     }
 
     bool Init() override
@@ -185,21 +266,18 @@ public:
             }
         }
 
-        // Create components for each primitive
-        CreateComponentInfo cci(GetWorldRootNode());
-        for(auto primitive: wall_meshes)
-        {
-            PrimitiveComponentData *mcd = new PrimitiveComponentData(primitive);
-            ComponentDataPtr cdp = mcd;
-            PrimitiveComponent *mc = CreateComponent<PrimitiveComponent>(&cci, cdp);
-            if(mc) wall_components.push_back(mc);
-        }
-
         delete pc;
 
-        CameraControl *cc = GetCameraControl();
-        cc->SetPosition(math::Vector3f(10,8,10));
-        cc->SetTarget(math::Vector3f(0,0,0));
+        ecs_world = GetECSContext();
+        if(!ecs_world) return false;
+
+        GetSceneRenderer()->SetCameraControl(nullptr);
+
+        if(!InitECSScene())
+            return false;
+
+        if(!InitCamera())
+            return false;
 
         return true;
     }

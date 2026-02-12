@@ -5,8 +5,18 @@
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/PrimitiveComponent.h>
 #include<cmath>
+
+// ECS headers
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/CameraComponent.h>
+#include<hgl/ecs/CameraSystem.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -14,6 +24,9 @@ using namespace hgl::graph;
 class ExtrudedPolygonTestApp : public WorkObject
 {
 private:
+
+    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            = nullptr;
     Pipeline *          pipeline            = nullptr;
@@ -102,49 +115,105 @@ private:
         return prim_rect_cube && prim_circle_cylinder && prim_triangle && prim_pentagon;
     }
 
-    bool InitScene()
+    bool EnsureCameraSystem()
     {
-        CreateComponentInfo cci(GetWorldRootNode());
+        if(!ecs_world)
+            return false;
 
-        // 创建矩形立方体网格 (位置: 原点)
-        if (prim_rect_cube) {
-
-            cci.mat=math::TranslateMatrix(-3,0,0);
-
-            Primitive *mesh_rect = CreatePrimitive(prim_rect_cube, material_instance, pipeline);
-            auto comp_rect = CreateComponent<PrimitiveComponent>(&cci, mesh_rect);
+        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
+        if(!camera_system)
+        {
+            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
+            if(ecs_world->IsActive())
+            {
+                camera_system->OnDependenciesReady();
+                camera_system->Initialize();
+            }
         }
 
-        // 创建圆柱体网格 (位置: 右侧)
-        if (prim_circle_cylinder) {
+        return camera_system != nullptr;
+    }
 
-            cci.mat=math::TranslateMatrix(3,0,0);
+    bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
+    {
+        if(!ecs_world || !geometry || !material_instance || !pipeline)
+            return false;
 
-            Primitive *mesh_cylinder = CreatePrimitive(prim_circle_cylinder, material_instance, pipeline);
-            auto comp_cylinder = CreateComponent<PrimitiveComponent>(&cci, mesh_cylinder);
-        }
+        Primitive *mesh = CreatePrimitive(geometry, material_instance, pipeline);
+        if(!mesh)
+            return false;
 
-        // 创建三角形柱网格 (位置: 前方)
-        if (prim_triangle) {
+        auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>(name);
+        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            cci.mat=math::TranslateMatrix(0,3,0);
+        transform->SetLocalPosition(pos);
+        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        transform->SetMovable(false);
 
-            Primitive *mesh_triangle = CreatePrimitive(prim_triangle, material_instance, pipeline);
-            auto comp_triangle = CreateComponent<PrimitiveComponent>(&cci, mesh_triangle);
-        }
+        prim_comp->SetPrimitive(mesh);
+        prim_comp->SetVisible(true);
 
-        // 创建五边形柱网格 (位置: 后方)
-        if (prim_pentagon) {
+        return true;
+    }
 
-            cci.mat=math::TranslateMatrix(0,-3,0);
+    bool InitECSScene()
+    {
+        if(!ecs_world)
+            return false;
 
-            Primitive *mesh_pentagon = CreatePrimitive(prim_pentagon, material_instance, pipeline);
-            auto comp_pentagon = CreateComponent<PrimitiveComponent>(&cci, mesh_pentagon);
-        }
+        if(!CreateMeshEntity("RectCube", prim_rect_cube, glm::vec3(-3.0f, 0.0f, 0.0f)))
+            return false;
 
-        CameraControl *camera_control = GetCameraControl();
-        camera_control->SetPosition(math::Vector3f(8, 8, 8));
-        camera_control->SetTarget(math::Vector3f(0, 0, 0));
+        if(!CreateMeshEntity("CircleCylinder", prim_circle_cylinder, glm::vec3(3.0f, 0.0f, 0.0f)))
+            return false;
+
+        if(!CreateMeshEntity("TrianglePrism", prim_triangle, glm::vec3(0.0f, 3.0f, 0.0f)))
+            return false;
+
+        if(!CreateMeshEntity("PentagonPrism", prim_pentagon, glm::vec3(0.0f, -3.0f, 0.0f)))
+            return false;
+
+        return true;
+    }
+
+    bool InitCamera()
+    {
+        if(!EnsureCameraSystem())
+            return false;
+
+        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+
+        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 12.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        camera->camera_data = GetCamera();
+        camera->camera_info = const_cast<hgl::graph::CameraInfo *>(GetCameraInfo());
+        camera->viewport_info = GetViewportInfo();
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
+        GetSceneRenderer()->SetCameraControl(nullptr);
+
+        if(!InitECSScene())
+            return false;
+
+        if(!InitCamera())
+            return false;
 
         return true;
     }
@@ -168,7 +237,7 @@ public:
         if (!CreateRenderObjects())
             return false;
 
-        if (!InitScene())
+        if (!InitECS())
             return false;
 
         return true;

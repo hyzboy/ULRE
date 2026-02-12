@@ -12,5 +12,5 @@
 endmacro()
 
 CreateProject(01_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
-CreateProject(02_TerrainHeightmap               TerrainHeightmap.cpp)
+
 
