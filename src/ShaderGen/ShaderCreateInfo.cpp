@@ -139,6 +139,16 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
     mi_codes=mi;
 }
 
+void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo,const AnsiString &mi)
+{
+    AddSSBO(DescriptorSetType::PerMaterial,ssbo);
+    AddStruct(mtl::MaterialInstanceStruct);
+
+    AddFunction(shader_stage==ShaderStage::Vertex?mtl::func::MF_GetMI_VS:mtl::func::MF_GetMI_Other);
+
+    mi_codes=mi;
+}
+
 bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
 {
     if(!last_sc)

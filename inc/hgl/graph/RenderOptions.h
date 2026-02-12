@@ -19,3 +19,10 @@
 #ifndef HGL_TRANSFORM_ID_U32
 #define HGL_TRANSFORM_ID_U32 0
 #endif
+
+// MaterialInstance buffer options
+// 1: Use SSBO (storage buffer)
+// 0: Use UBO (uniform buffer)
+#ifndef HGL_MI_USE_SSBO
+#define HGL_MI_USE_SSBO 0
+#endif
