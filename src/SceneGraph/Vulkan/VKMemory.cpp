@@ -26,6 +26,8 @@ DeviceMemory::DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirem
     req=mr;
     index=i;
     properties=p;
+    is_mapped=false;  // Initially not mapped
+    mapped_ptr=nullptr; // No mapped pointer initially
 
     memory_range.sType  =VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
     memory_range.pNext  =nullptr;
@@ -36,15 +38,30 @@ DeviceMemory::DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirem
 
 DeviceMemory::~DeviceMemory()
 {
+    if(is_mapped)
+    {
+        vkUnmapMemory(device,memory);
+        is_mapped=false;
+    }
+    
     vkFreeMemory(device,memory,nullptr);
 }
 
 void *DeviceMemory::Map()
 {
+    if(is_mapped)
+    {
+        // Already mapped, return existing pointer
+        return mapped_ptr;
+    }
+    
     void *result;
 
     if(vkMapMemory(device,memory,0,req.size,0,&result)==VK_SUCCESS)
     {
+        is_mapped=true;
+        mapped_ptr=result;
+        
         /** 只要是MAP成功，那么数据就可以直接访问
 
         关键点
@@ -74,7 +91,7 @@ void *DeviceMemory::Map()
         •   建议只在必要时读取，并优先考虑数据在CPU端准备好后一次性上传。
         */
 
-        return result;
+        return mapped_ptr;
     }
 
     return(nullptr);
@@ -84,22 +101,49 @@ void *DeviceMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
 {
     if(offset<0||offset+size>req.size)
         return(nullptr);
+        
+    if(is_mapped)
+    {
+        // Already mapped, return pointer with offset adjustment
+        // Note: mapped_ptr points to the start of the mapped region (offset 0)
+        return (char*)mapped_ptr + offset;
+    }
 
+    // Always map the entire memory to avoid partial mapping conflicts
     void *result;
 
-    if(vkMapMemory(device,memory,offset,size,0,&result)==VK_SUCCESS)
-        return result;
+    if(vkMapMemory(device,memory,0,req.size,0,&result)==VK_SUCCESS)
+    {
+        is_mapped=true;
+        mapped_ptr=result;
+        // Return pointer with requested offset
+        return (char*)result + offset;
+    }
 
     return(nullptr);
 }
 
 void DeviceMemory::Unmap()
 {
+    if(!is_mapped)
+    {
+        // Not currently mapped, skip unmap to avoid validation error
+        return;
+    }
+    
     vkUnmapMemory(device,memory);
+    is_mapped=false;
+    mapped_ptr=nullptr;
 }
 
 void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
 {
+    if(!is_mapped)
+    {
+        // Not currently mapped, skip flush to avoid validation error
+        return;
+    }
+    
     memory_range.offset =offset;
     memory_range.size   =size>0?hgl_align(size,nonCoherentAtomSize):0;
 
@@ -109,6 +153,15 @@ void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
 bool DeviceMemory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
 {
     if(!ptr)return(false);
+    
+    // Check if already mapped - use existing mapping
+    if(is_mapped)
+    {
+        if(!mapped_ptr)return false;
+        // Use existing mapped pointer (assuming offset matches)
+        memcpy((char*)mapped_ptr+start,ptr,size);
+        return true;
+    }
 
     void *dst;
 
