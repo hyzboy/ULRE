@@ -129,11 +129,13 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/DrawNode.h
                             ${SG_INCLUDE_PATH}/SceneRenderer.h
                             ${SG_INCLUDE_PATH}/RenderStagePipeline.h
                             ${SG_INCLUDE_PATH}/RenderStages.h
+                            ${SG_INCLUDE_PATH}/SceneCaptureStage.h
                             ${SG_INCLUDE_PATH}/VKRenderAssign.h
                             render/RenderContext.cpp
                             render/SceneRenderer.cpp
                             render/RenderStagePipeline.cpp
                             render/RenderStages.cpp
+                            render/SceneCaptureStage.cpp
                             render/DrawNode.cpp
                             render/RenderTask.cpp
                             render/RenderCollector.cpp
