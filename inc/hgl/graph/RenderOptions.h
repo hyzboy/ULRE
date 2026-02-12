@@ -24,5 +24,5 @@
 // 1: Use SSBO (storage buffer)
 // 0: Use UBO (uniform buffer)
 #ifndef HGL_MI_USE_SSBO
-#define HGL_MI_USE_SSBO 0
+#define HGL_MI_USE_SSBO 1
 #endif
