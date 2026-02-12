@@ -287,13 +287,14 @@ private:
             CreateRenderMesh(CreateArrow(prim_creater,&aci),&solid,12);
         }
 
-        {
-            RoundedBoxCreateInfo rbci;
-            rbci.size = Vector3f(1.0f, 1.0f, 1.0f);
-            rbci.edge_radius = 0.2f;
-            rbci.edge_segments = 4;
-            CreateRenderMesh(CreateRoundedBox(prim_creater,&rbci),&solid,13);
-        }
+        // 可以运行，但是生成的模型不对劲，有BUG
+        // {
+        //     RoundedBoxCreateInfo rbci;
+        //     rbci.size = Vector3f(1.0f, 1.0f, 1.0f);
+        //     rbci.edge_radius = 0.2f;
+        //     rbci.edge_segments = 4;
+        //     CreateRenderMesh(CreateRoundedBox(prim_creater,&rbci),&solid,13);
+        // }
 
         {
             PipeElbowCreateInfo peci;
