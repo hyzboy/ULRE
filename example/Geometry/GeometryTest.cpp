@@ -2,10 +2,25 @@
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/GeometryCreater.h>
-#include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/PrimitiveComponent.h>
+#include<hgl/math/geometry/AABB.h>
+
+// ECS headers
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/CameraComponent.h>
+#include<hgl/ecs/CameraSystem.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
+#include<glm/gtx/quaternion.hpp>
+
+#include<memory>
+#include<string>
+#include<vector>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -36,6 +51,9 @@ class TestApp:public WorkObject
 {
 private:
 
+    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
+
     struct MaterialData
     {
         Material *material = nullptr;
@@ -52,24 +70,32 @@ private:
     {
         Geometry *geometry;
         Primitive *primitive;
-        PrimitiveComponentData *data;
-        ComponentDataPtr cdp;
 
-        PrimitiveComponent *component;
+        hgl::ecs::Entity *entity = nullptr;
+        std::shared_ptr<hgl::ecs::TransformComponent> transform;
+        std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive_comp;
 
     public:
 
         ~RenderMesh()
         {
-            cdp.unref();
             delete primitive;
             delete geometry;
         }
     };
 
-    RenderMesh *rm_box=nullptr;             //边框包围盒
+    struct BoundingBoxMesh
+    {
+        hgl::ecs::Entity *entity = nullptr;
+        std::shared_ptr<hgl::ecs::TransformComponent> transform;
+        std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive_comp;
+    };
 
-    ValueArray<RenderMesh *> render_mesh;
+    std::vector<std::unique_ptr<RenderMesh>> render_mesh;
+    std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
+
+    Geometry *bbox_geometry = nullptr;
+    Primitive *bbox_primitive = nullptr;
 
 private:
 
@@ -136,9 +162,12 @@ private:
 
         inline_geometry::BoundingBoxCreateInfo bbci;
 
-        rm_box=CreateRenderMesh(CreateBoundingBox(pc,&bbci),&wire,5);
+        bbox_geometry = CreateBoundingBox(pc,&bbci);
+        if(!bbox_geometry)
+            return false;
 
-        return rm_box;
+        bbox_primitive = CreatePrimitive(bbox_geometry, wire.mi[5], wire.pipeline);
+        return bbox_primitive != nullptr;
     }
 
     RenderMesh *CreateRenderMesh(Geometry *geometry,MaterialData *md,const int color)
@@ -151,14 +180,13 @@ private:
         if(!primitive)
             return nullptr;
 
-        RenderMesh *rm = new RenderMesh;
-
+        auto rm = std::make_unique<RenderMesh>();
         rm->geometry = geometry;
         rm->primitive = primitive;
-        rm->data = new PrimitiveComponentData(primitive);
-        rm->cdp = rm->data;
 
-        return rm;
+        RenderMesh *result = rm.get();
+        render_mesh.push_back(std::move(rm));
+        return result;
     }
 
     bool CreateGeometryMesh()
@@ -182,19 +210,7 @@ private:
                 continue;
             }
 
-            {
-                CreateComponentInfo cci(GetWorldRootNode());
-
-                //螺旋排列
-                cci.mat = math::AxisZRotate(deg2rad(360.0f * i / COLOR_COUNT)) * math::TranslateMatrix(0.25,0,0);
-
-                rm->component = CreateComponent<PrimitiveComponent>(&cci,rm->cdp);
-                rm->component->SetOverrideMaterial(solid.mi[i]);
-
-                ++count;
-            }
-
-            render_mesh.Add(rm);
+            ++count;
         }
 
         return(count>0);
@@ -202,54 +218,152 @@ private:
 
     bool InitBoundingBoxScene()
     {
-        SceneNode *root=GetWorldRootNode();
+        if(!bbox_primitive)
+            return false;
 
-        CreateComponentInfo cci(root);
-
-        ValueArray<math::Matrix4f> box_matrices;
-
-        for(Component *c:root->GetComponents())
+        for(size_t i = 0; i < render_mesh.size(); ++i)
         {
-            if(GetTypeHash(c)!=PrimitiveComponent::StaticTypeHash())
+            auto *rm = render_mesh[i].get();
+            if(!rm || !rm->entity || !rm->primitive_comp)
                 continue;
 
-            PrimitiveComponent *component=(PrimitiveComponent *)c;
+            hgl::math::AABB local_aabb;
+            if(!rm->primitive_comp->GetLocalAABB(local_aabb))
+                continue;
 
-            math::Matrix4f mat;
+            auto bbox = std::make_unique<BoundingBoxMesh>();
+            bbox->entity = ecs_world->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
+            bbox->transform = bbox->entity->AddComponent<hgl::ecs::TransformComponent>();
+            bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            if(component->GetWorldOBBMatrix(mat))
-                box_matrices.Add(mat);
+            bbox->transform->SetParent(rm->entity->GetID());
+
+            const auto &center = local_aabb.GetCenter();
+            const auto &size = local_aabb.GetLength();
+
+            bbox->transform->SetLocalPosition(glm::vec3(center.x, center.y, center.z));
+            bbox->transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            bbox->transform->SetLocalScale(glm::vec3(size.x, size.y, size.z));
+            bbox->transform->SetMovable(false);
+
+            bbox->primitive_comp->SetPrimitive(bbox_primitive);
+            bbox->primitive_comp->SetOverrideMaterial(wire.mi[i % COLOR_COUNT]);
+            bbox->primitive_comp->SetVisible(true);
+
+            bounding_boxes.push_back(std::move(bbox));
         }
 
-        //不可以直接在上面的循环中创建新的Component，因为循环本身就要读取Component列表
-
-        for(const math::Matrix4f &mat:box_matrices)
-        {
-            cci.mat=mat;
-
-            if(!CreateComponent<PrimitiveComponent>(&cci,rm_box->cdp))
-                return(false);
-        }
-
-        return(true);
+        return true;
     }
 
-    void SetCamera()
+    bool EnsureCameraSystem()
     {
-        CameraControl *camera_control = GetCameraControl();
+        if(!ecs_world)
+            return false;
 
-        RenderMesh *rm=*render_mesh.At(0);
+        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
+        if(!camera_system)
+        {
+            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
+            if(ecs_world->IsActive())
+            {
+                camera_system->OnDependenciesReady();
+                camera_system->Initialize();
+            }
+        }
 
-        math::AABB aabb;
-        rm->component->GetWorldAABB(aabb);
+        return camera_system != nullptr;
+    }
 
-        camera_control->SetPosition(aabb.GetMax()*math::Vector3f(2,2,2));
-        camera_control->SetTarget(math::Vector3f(0,0,0));
+    bool InitScene()
+    {
+        if(!ecs_world)
+            return false;
+
+        const size_t mesh_count = render_mesh.empty() ? 1 : render_mesh.size();
+
+        for(size_t i = 0; i < render_mesh.size(); ++i)
+        {
+            auto *rm = render_mesh[i].get();
+            if(!rm || !rm->primitive)
+                continue;
+
+            rm->entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
+            rm->transform = rm->entity->AddComponent<hgl::ecs::TransformComponent>();
+            rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+
+            const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));
+            const glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
+            const glm::vec3 pos = glm::rotate(rotation, glm::vec3(0.25f, 0.0f, 0.0f));
+
+            rm->transform->SetLocalPosition(pos);
+            rm->transform->SetLocalRotation(rotation);
+            rm->transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            rm->transform->SetMovable(false);
+
+            rm->primitive_comp->SetPrimitive(rm->primitive);
+            rm->primitive_comp->SetOverrideMaterial(solid.mi[i % COLOR_COUNT]);
+            rm->primitive_comp->SetVisible(true);
+        }
+
+        return true;
+    }
+
+    bool InitCamera()
+    {
+        if(!EnsureCameraSystem())
+            return false;
+
+        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+
+        camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+        camera->distance = 8.0f;
+        camera->yaw = 45.0f;
+        camera->pitch = -20.0f;
+        camera->is_main_camera = true;
+        camera->matrix_dirty = true;
+
+        camera->camera_data = GetCamera();
+        camera->camera_info = const_cast<hgl::graph::CameraInfo *>(GetCameraInfo());
+        camera->viewport_info = GetViewportInfo();
+
+        return true;
+    }
+
+    bool InitECS()
+    {
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
+        GetSceneRenderer()->SetCameraControl(nullptr);
+
+        if(!EnsureCameraSystem())
+            return false;
+
+        if(!InitScene())
+            return false;
+
+        if(!InitBoundingBoxScene())
+            return false;
+
+        if(!InitCamera())
+            return false;
+
+        return true;
     }
 
 public:
 
     using WorkObject::WorkObject;
+
+    ~TestApp()
+    {
+        delete bbox_primitive;
+        delete bbox_geometry;
+    }
 
     bool Init() override
     {
@@ -265,10 +379,8 @@ public:
         if(!CreateBoundingBoxMesh())
             return(false);
 
-        if(!InitBoundingBoxScene())
+        if(!InitECS())
             return(false);
-
-        SetCamera();
 
         return(true);
     }
