@@ -329,6 +329,8 @@ SOURCE_GROUP("9.Vulkan\\Device\\Logical" FILES ${VK_DEVICE_LOGICAL_FILES})
 
 SET(VK_DEVICE_OPERATIONS_FILES  Vulkan/VKDeviceMemory.cpp
                                 Vulkan/VKDeviceBuffer.cpp
+                                Vulkan/VKBufferAccessBase.cpp
+                                Vulkan/VKBufferPolicyConfig.cpp
                                 Vulkan/VKDeviceStagedBuffer.cpp
                                 Vulkan/VKDeviceImage.cpp
                                 Vulkan/VKDeviceSampler.cpp
@@ -390,15 +392,18 @@ SOURCE_GROUP("9.Vulkan\\Device\\Platform" FILES ${VK_DEVICE_PLATFORM_FILES})
 SET(VK_MEMORY_FILES ${SG_INCLUDE_PATH}/VKMemory.h
                     ${SG_INCLUDE_PATH}/VKMemoryAllocator.h
                     ${SG_INCLUDE_PATH}/VKBuffer.h
+                    ${SG_INCLUDE_PATH}/VKBufferAccessBase.h
                     ${SG_INCLUDE_PATH}/VKIndexBuffer.h
                     ${SG_INCLUDE_PATH}/VKArrayBuffer.h
                     ${SG_INCLUDE_PATH}/VKBufferMap.h
+                    ${SG_INCLUDE_PATH}/VKBufferCommitQueue.h
                     ${SG_INCLUDE_PATH}/VKBufferUpdateQueue.h
                     ${SG_INCLUDE_PATH}/VKStagedBuffer.h
                     Vulkan/VKMemory.cpp
                     Vulkan/VKMemoryAllocator.cpp
                     Vulkan/VKBuffer.cpp
                     Vulkan/VKArrayBuffer.cpp
+                    Vulkan/VKBufferCommitQueue.cpp
                     Vulkan/VKBufferUpdateQueue.cpp
                     Vulkan/VKStagedBuffer.cpp)
 

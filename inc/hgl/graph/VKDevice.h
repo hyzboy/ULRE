@@ -9,12 +9,14 @@
 #include<hgl/graph/font/Font.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/graph/VKBufferPolicyConfig.h>
 
 VK_NAMESPACE_BEGIN
 class TileData;
@@ -25,6 +27,7 @@ class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 class BufferUpdateQueue;
+class BufferCommitQueue;
 class StagedBuffer;
 class ComputePipeline;
 class Material;
@@ -37,6 +40,8 @@ class VulkanDevice
 
     VulkanDevAttr *attr;
     BufferUpdateQueue *buffer_update_queue;
+    BufferCommitQueue *buffer_commit_queue;
+    BufferPolicyReader *buffer_policy_reader;
 
 private:
 
@@ -89,6 +94,8 @@ public: //内存相关
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage);
 
     BufferUpdateQueue * GetBufferUpdateQueue() { return buffer_update_queue; }
+    BufferCommitQueue * GetBufferCommitQueue() { return buffer_commit_queue; }
+    BufferPolicyReader * GetBufferPolicyReader() { return buffer_policy_reader; }
 
 private: //Buffer相关
 
@@ -105,6 +112,8 @@ public: //Buffer相关
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,nullptr,sm);}
 
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive);
+    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class);
+    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sm,BufferUpdateClass update_class);
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,range,size,nullptr,policy,sm);}
 
     DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,data,policy,sm);}
@@ -112,7 +121,7 @@ public: //Buffer相关
 
     StagedBuffer *  CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data = nullptr, SharingMode sm = SharingMode::Exclusive);
 
-    VAB *           CreateVAB   (VkFormat format, uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive);
+    VAB *           CreateVAB   (VkFormat format, uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive,BufferUpdateClass update_class=BufferUpdateClass::Default);
     VAB *           CreateVAB   (VkFormat format, uint32_t count,const void *data,    SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,count,data,BufferAllocPolicy::Auto,sm);}
     VAB *           CreateVAB   (VkFormat format, uint32_t count,                     SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,BufferAllocPolicy::Auto,sm);}
 
@@ -120,7 +129,7 @@ public: //Buffer相关
     const IndexType ChooseIndexType (const VkDeviceSize &vertex_count)const;                    ///<求一个合适的索引类型
     const bool      CheckIndexType  (const IndexType,const VkDeviceSize &vertex_count)const;    ///<检测一个索引类型是否合适
 
-    IndexBuffer *   CreateIBO   (IndexType type,  uint32_t count,const void *  data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive);
+    IndexBuffer *   CreateIBO   (IndexType type,  uint32_t count,const void *  data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive,BufferUpdateClass update_class=BufferUpdateClass::Default);
     IndexBuffer *   CreateIBO   (IndexType type,  uint32_t count,const void *  data,  SharingMode sm=SharingMode::Exclusive){return CreateIBO(type,count,data,BufferAllocPolicy::Auto,sm);}
     IndexBuffer *   CreateIBO8  (                 uint32_t count,const void *  data,  SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U8,  count,(void *)data,sm);}
     IndexBuffer *   CreateIBO16 (                 uint32_t count,const uint16 *data,  SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16, count,(void *)data,sm);}
@@ -143,6 +152,9 @@ public: //Buffer相关
                                                 DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,nullptr,   BufferAllocPolicy::Auto,sm);} \
                                                 DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      BufferAllocPolicy::Auto,sm);} \
 \
+    DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      policy,sm,update_class);} \
+    DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm,BufferUpdateClass update_class)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      policy,sm,update_class);} \
+\
     template<typename T> T *Create##LargeName()  \
     {   \
         DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
@@ -152,6 +164,12 @@ public: //Buffer相关
     template<typename T> T *Create##LargeName(const ShaderBufferDesc *desc)  \
     {   \
         DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
+        return(buf?new T(buf,desc):nullptr);  \
+    }   \
+\
+    template<typename T> T *Create##LargeName(const ShaderBufferDesc *desc,BufferUpdateClass update_class)  \
+    {   \
+        DeviceBuffer *buf=Create##LargeName(T::GetSize(),nullptr,BufferAllocPolicy::Auto,SharingMode::Exclusive,update_class);    \
         return(buf?new T(buf,desc):nullptr);  \
     }   \
 \

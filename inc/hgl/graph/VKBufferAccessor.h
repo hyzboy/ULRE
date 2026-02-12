@@ -3,6 +3,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
+#include<hgl/graph/VKBufferAccessBase.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -123,16 +124,13 @@ public:
  * ```
  */
 template<typename DataAccessType>
-class BufferAccessor
+class BufferAccessor:public BufferAccessBase
 {
 private:
-    DeviceBuffer *buffer;               ///< 底层 buffer / Underlying buffer
     uint32_t buffer_total_count;        ///< 总元素数量 / Total element count
     uint32_t buffer_stride;             ///< 单元素字节数 / Stride in bytes
     DataAccessType *data_access;        ///< 数据访问器 / Data accessor
     void *mapped_pointer;               ///< 映射指针 / Mapped pointer
-    bool dirty;                         ///< 修改标志 / Dirty flag
-    bool owns_buffer;                   ///< 是否拥有 buffer / Owns buffer
     int32_t element_offset;             ///< 顶点偏移(单位:元素) / Element offset
     uint32_t element_count;             ///< 访问元素数量 / Element count
 
@@ -197,46 +195,43 @@ public:
      * \param take_ownership 是否获取所有权 / Take ownership
      */
     BufferAccessor(VAB *vab = nullptr, bool take_ownership = false)
-        : buffer(vab)
+        : BufferAccessBase()
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
         , data_access(nullptr)
         , mapped_pointer(nullptr)
-        , dirty(false)
-        , owns_buffer(take_ownership)
         , element_offset(0)
         , element_count(0)
     {
+        SetBuffer(vab, take_ownership);
         if(buffer)
             MapInternal();
     }
 
     BufferAccessor(VAB *vab, int32_t offset, uint32_t count, bool take_ownership = false)
-        : buffer(vab)
+        : BufferAccessBase()
         , buffer_total_count(vab ? vab->GetCount() : 0)
         , buffer_stride(vab ? vab->GetStride() : 0)
         , data_access(nullptr)
         , mapped_pointer(nullptr)
-        , dirty(false)
-        , owns_buffer(take_ownership)
         , element_offset(offset)
         , element_count(count)
     {
+        SetBuffer(vab, take_ownership);
         if(buffer)
             MapInternal();
     }
 
     BufferAccessor(IndexBuffer *ibo, int32_t offset, uint32_t count, bool take_ownership = false)
-        : buffer(ibo)
+        : BufferAccessBase()
         , buffer_total_count(ibo ? ibo->GetCount() : 0)
         , buffer_stride(ibo ? ibo->GetStride() : 0)
         , data_access(nullptr)
         , mapped_pointer(nullptr)
-        , dirty(false)
-        , owns_buffer(take_ownership)
         , element_offset(offset)
         , element_count(count)
     {
+        SetBuffer(ibo, take_ownership);
         if(buffer)
             MapInternal();
     }
@@ -248,8 +243,6 @@ public:
     ~BufferAccessor()
     {
         UnmapInternal();
-        if(owns_buffer && buffer)
-            delete buffer;
     }
 
     // 禁止拷贝 / Disable copy
@@ -265,14 +258,9 @@ public:
     void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0, bool take_ownership = false)
     {
         UnmapInternal();
-        if(owns_buffer && buffer)
-            delete buffer;
-
-        buffer = vab;
+        SetBuffer(vab, take_ownership);
         buffer_total_count = vab ? vab->GetCount() : 0;
         buffer_stride = vab ? vab->GetStride() : 0;
-        owns_buffer = take_ownership;
-        dirty = false;
         element_offset = offset;
         element_count = count;
 
@@ -291,8 +279,8 @@ public:
      * CN: 获取底层 buffer
      * EN: Get underlying buffer
      */
-    VAB* GetBuffer() { return buffer; }
-    const VAB* GetBuffer() const { return buffer; }
+    VAB* GetBuffer() { return static_cast<VAB*>(buffer); }
+    const VAB* GetBuffer() const { return static_cast<const VAB*>(buffer); }
 
     /**
      * CN: 获取数据访问器
@@ -356,6 +344,11 @@ public:
 
         dirty = false;
         return true;
+    }
+
+    void Update() const override
+    {
+        const_cast<BufferAccessor*>(this)->Commit();
     }
 
     /**

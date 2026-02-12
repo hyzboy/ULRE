@@ -1,8 +1,15 @@
 ﻿#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKBufferAccessBase.h>
 
 VK_NAMESPACE_BEGIN
 DeviceBuffer::~DeviceBuffer()
 {
+    if(auto_commit_proxy)
+    {
+        delete auto_commit_proxy;
+        auto_commit_proxy=nullptr;
+    }
+
     if(staged_buffer)
     {
         delete staged_buffer;

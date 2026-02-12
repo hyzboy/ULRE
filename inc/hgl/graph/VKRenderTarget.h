@@ -6,6 +6,8 @@
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKQueue.h>
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/StructuredBufferAccessor.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
@@ -15,7 +17,7 @@ VK_NAMESPACE_BEGIN
 
 class RenderFramework;
 
-using UBOViewportInfo=UBOInstance<ViewportInfo>;
+using UBOViewportInfo=StructuredBufferAccessor<ViewportInfo>;  ///< 统一使用 StructuredBufferAccessor
 
 class IRenderTarget
 {
@@ -78,7 +80,7 @@ public:
 
     virtual ViewportInfo *      GetViewportInfo     ()
     {
-        return ubo_vp_info->data();
+        return ubo_vp_info->Data();
     }
 };//class IRenderTarget
 

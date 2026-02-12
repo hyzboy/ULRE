@@ -69,9 +69,9 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
         return(nullptr);
 
     if(staged)
-        return(new IndirectDrawBuffer(attr->device,buf,cmd_count,staged));
+        return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count,staged));
 
-    return(new IndirectDrawBuffer(attr->device,buf,cmd_count));
+    return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count));
 }
 
 IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm)
@@ -88,9 +88,9 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
         return(nullptr);
 
     if(staged)
-        return(new IndirectDrawIndexedBuffer(attr->device,buf,cmd_count,staged));
+        return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count,staged));
 
-    return(new IndirectDrawIndexedBuffer(attr->device,buf,cmd_count));
+    return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count));
 }
 
 IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,SharingMode sm)
@@ -107,9 +107,9 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
         return(nullptr);
 
     if(staged)
-        return(new IndirectDispatchBuffer(attr->device,buf,cmd_count,staged));
+        return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count,staged));
 
-    return(new IndirectDispatchBuffer(attr->device,buf,cmd_count));
+    return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count));
 }
 
 VK_NAMESPACE_END
