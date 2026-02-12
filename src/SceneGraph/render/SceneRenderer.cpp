@@ -2,14 +2,12 @@
 #include<iostream>
 #include<hgl/ecs/Context.h>
 #include<hgl/graph/World.h>
-#include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
 #include<hgl/graph/camera/FirstPersonCameraControl.h>
+#include<hgl/graph/RenderStages.h>
 
 namespace hgl::graph
 {
@@ -120,51 +118,51 @@ namespace hgl::graph
         }
     }
 
+    void SceneRenderer::EnsureEcsPipeline()
+    {
+        BuildEcsPipeline(ecs_pipeline);
+    }
+
+    void SceneRenderer::EnsureScenePipeline()
+    {
+        BuildScenePipeline(scene_pipeline);
+    }
+
+    RenderStagePipeline &SceneRenderer::GetPipeline(RenderPath path)
+    {
+        return path == RenderPath::Ecs ? ecs_pipeline : scene_pipeline;
+    }
+
+    const RenderStagePipeline &SceneRenderer::GetPipeline(RenderPath path)const
+    {
+        return path == RenderPath::Ecs ? ecs_pipeline : scene_pipeline;
+    }
+
+    void SceneRenderer::EnsurePipeline(RenderPath path)
+    {
+        if(path == RenderPath::Ecs)
+            EnsureEcsPipeline();
+        else
+            EnsureScenePipeline();
+    }
+
     bool SceneRenderer::RenderFrame()
     {
         // ECS 渲染路径：目前仅执行空渲染流程，便于后续接入 ECS RenderSystem
         if(GetECSContext())
         {
-            RenderCmdBuffer *cmd = render_target->BeginRender();
+            if(!render_target)
+                return(false);
 
-            if(render_target && GetECSContext())
-                GetECSContext()->SetFrameIndex(render_target->GetCurrentFrameIndex());
+            EnsurePipeline(RenderPath::Ecs);
 
-            if(render_context)
-            {
-                render_context->BindDescriptor(cmd);
-            }
+            RenderStageContext ctx{};
+            ctx.render_context = render_context;
+            ctx.render_target = render_target;
+            ctx.ecs_context = GetECSContext();
+            ctx.clear_color = &clear_color;
 
-            cmd->SetClearColor(0,clear_color);
-            
-            // Flush buffer updates BEFORE BeginRenderPass (vkCmdCopyBuffer/vkCmdPipelineBarrier must be outside RenderPass)
-            VulkanDevice *device = render_target->GetDevice();
-            if (device)
-            {
-                auto *update_queue = device->GetBufferUpdateQueue();
-                if (update_queue && update_queue->HasPendingUpdates())
-                {
-                    update_queue->FlushAll(cmd->operator VkCommandBuffer());
-
-                    VkMemoryBarrier barrier{};
-                    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-                    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                    barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
-
-                    vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
-                                       VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                       VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                       0, 1, &barrier, 0, nullptr, 0, nullptr);
-                }
-            }
-            
-            cmd->BeginRenderPass();
-
-            // Render all ECS systems
-            GetECSContext()->Render(cmd, 0.0f);
-
-            cmd->EndRenderPass();
-            render_target->EndRender();
+            ecs_pipeline.Execute(ctx);
 
             render_state_dirty = true; // 标记有提交
             return true;
@@ -192,22 +190,18 @@ namespace hgl::graph
 
         bool result = false;
 
-        RenderCmdBuffer *cmd = render_target->BeginRender();
+        EnsurePipeline(RenderPath::Scene);
 
-        render_context->BindDescriptor(cmd);
+        RenderStageContext ctx{};
+        ctx.render_context = render_context;
+        ctx.render_target = render_target;
+        ctx.render_task = render_task;
+        ctx.line_render_manager = lrm;
+        ctx.clear_color = &clear_color;
 
-        cmd->SetClearColor(0,clear_color);
-        cmd->BeginRenderPass();
+        scene_pipeline.Execute(ctx);
 
-        result=render_task->Render(cmd);
-
-        if(lrm)
-        {
-            lrm->Draw(cmd);
-        }
-
-        cmd->EndRenderPass();
-        render_target->EndRender();
+        result = ctx.render_result;
 
         render_state_dirty = result;
         return result;

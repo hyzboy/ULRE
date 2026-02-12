@@ -6,11 +6,18 @@
 #include<hgl/graph/World.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/RenderContext.h>
+#include<hgl/graph/RenderStagePipeline.h>
 // ECS forward declaration
 namespace hgl::ecs { class ECSContext; }
 
 namespace hgl::graph
 {
+    enum class RenderPath
+    {
+        Ecs,
+        Scene
+    };
+
     class World;
     class RenderContext;    // forward
     class RenderCmdBuffer;  // forward
@@ -42,6 +49,9 @@ namespace hgl::graph
         RenderContext * render_context = nullptr;  ///< 渲染上下文
 
         RenderTask *    render_task = nullptr;     ///< 当前渲染任务
+
+        RenderStagePipeline ecs_pipeline;          ///< ECS 渲染阶段管线(逐步迁移)
+        RenderStagePipeline scene_pipeline;        ///< SceneGraph 渲染阶段管线(逐步迁移)
 
         // CameraControl 始终由 SceneRenderer 负责创建/管理/释放
         CameraControl * camera_control_owned = nullptr;
@@ -95,6 +105,18 @@ namespace hgl::graph
         void SetClearColor(const Color4f &c){clear_color=c;}
 
         void Tick(double);
+
+        RenderStagePipeline &GetEcsPipeline(){ return ecs_pipeline; }
+        const RenderStagePipeline &GetEcsPipeline()const{ return ecs_pipeline; }
+        void EnsureEcsPipeline();
+
+        RenderStagePipeline &GetScenePipeline(){ return scene_pipeline; }
+        const RenderStagePipeline &GetScenePipeline()const{ return scene_pipeline; }
+        void EnsureScenePipeline();
+
+        RenderStagePipeline &GetPipeline(RenderPath path);
+        const RenderStagePipeline &GetPipeline(RenderPath path)const;
+        void EnsurePipeline(RenderPath path);
 
         bool BeginRender();
         bool RenderFrame();
