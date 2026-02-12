@@ -400,6 +400,7 @@ namespace hgl
 
         void ECSContext::SetFrameIndex(const uint32_t index)
         {
+            frame_index = index;
             ECSTransformAssignmentBuffer::SetFrameIndex(index);
         }
 

@@ -80,6 +80,7 @@ namespace hgl
             RenderFrameCache render_frame_cache;
             SystemProfiler profiler;
             bool system_profiling_enabled = true;
+            uint32_t frame_index = 0;
 
         private:
 
@@ -133,6 +134,7 @@ namespace hgl
             const SystemProfiler& GetSystemProfiler() const { return profiler; }
 
             void SetFrameIndex(const uint32_t index);
+            uint32_t GetFrameIndex() const { return frame_index; }
 
             /// 注册组件实例（由 Entity::AddComponent 调用）
             void RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp);
