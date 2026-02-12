@@ -11,11 +11,13 @@
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/CameraComponent.h>
 #include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/InputSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 
 #include<vector>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -74,6 +76,8 @@ class TestApp:public WorkObject
 
     Pipeline *gizmo_pipeline = nullptr;
     std::vector<Primitive *> gizmo_primitives;
+    GizmoMoveECS *gizmo_move = nullptr;
+    bool last_left_down = false;
 
 private:
 
@@ -101,92 +105,17 @@ private:
         return prim;
     }
 
-    bool CreateGizmoEntity(const char *name,
-                           Primitive *prim,
-                           const math::Vector3f &position,
-                           const glm::quat &rotation,
-                           const math::Vector3f &scale)
-    {
-        if(!ecs_world || !prim)
-            return false;
-
-        auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>(name);
-        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
-        auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
-
-        transform->SetLocalPosition(glm::vec3(position.x, position.y, position.z));
-        transform->SetLocalRotation(rotation);
-        transform->SetLocalScale(glm::vec3(scale.x, scale.y, scale.z));
-        transform->SetMovable(false);
-
-        prim_comp->SetPrimitive(prim);
-        prim_comp->SetVisible(true);
-
-        return true;
-    }
-
     bool InitGizmo()
     {
         if(!InitGizmoResource(GetRenderFramework()))
             return(false);
 
-        Primitive *center_sphere = CreateGizmoPrimitive(GizmoShape::Sphere, GizmoColor::White);
-        if(!center_sphere)
+        if(!ecs_world)
             return false;
 
-        if(!CreateGizmoEntity("GizmoCenter", center_sphere,
-                              math::Vector3f(0.0f, 0.0f, 0.0f),
-                              glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                              math::Vector3f(1.0f, 1.0f, 1.0f)))
+        gizmo_move = CreateGizmoMoveECS(ecs_world, "GizmoMove", GizmoPosition);
+        if(!gizmo_move)
             return false;
-
-        struct AxisConfig
-        {
-            math::Vector3f rotation_axis;
-            float rotation_angle;
-            GizmoColor color;
-        };
-
-        const AxisConfig axis_config[3]=
-        {
-            {math::Vector3f(0.0f, 1.0f, 0.0f),  90.0f, GizmoColor::Red},
-            {math::Vector3f(1.0f, 0.0f, 0.0f), -90.0f, GizmoColor::Green},
-            {math::Vector3f(0.0f, 0.0f, 0.0f),   0.0f, GizmoColor::Blue}
-        };
-
-        const math::Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_HALF_LENGTH);
-        const math::Vector3f one_scale(1.0f, 1.0f, 1.0f);
-
-        for(int i=0;i<3;i++)
-        {
-            const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(i));
-            const AxisConfig &cfg = axis_config[i];
-
-            glm::quat rotation(1.0f, 0.0f, 0.0f, 0.0f);
-            if(cfg.rotation_angle != 0.0f)
-            {
-                rotation = glm::angleAxis(glm::radians(cfg.rotation_angle),
-                                          glm::vec3(cfg.rotation_axis.x, cfg.rotation_axis.y, cfg.rotation_axis.z));
-            }
-
-            Primitive *cylinder = CreateGizmoPrimitive(GizmoShape::Cylinder, cfg.color);
-            if(!cylinder)
-                return false;
-
-            const math::Vector3f cylinder_pos = axis_vector * GIZMO_CYLINDER_OFFSET;
-            if(!CreateGizmoEntity((i==0) ? "GizmoX_Cylinder" : (i==1) ? "GizmoY_Cylinder" : "GizmoZ_Cylinder",
-                                  cylinder, cylinder_pos, rotation, cylinder_scale))
-                return false;
-
-            Primitive *cone = CreateGizmoPrimitive(GizmoShape::Cone, cfg.color);
-            if(!cone)
-                return false;
-
-            const math::Vector3f cone_pos = axis_vector * GIZMO_CONE_OFFSET;
-            if(!CreateGizmoEntity((i==0) ? "GizmoX_Cone" : (i==1) ? "GizmoY_Cone" : "GizmoZ_Cone",
-                                  cone, cone_pos, rotation, one_scale))
-                return false;
-        }
 
         return true;
     }
@@ -264,11 +193,37 @@ public:
 
     ~TestApp()
     {
+        if(gizmo_move)
+        {
+            DestroyGizmoMoveECS(gizmo_move);
+            gizmo_move = nullptr;
+        }
+
         for(Primitive *prim : gizmo_primitives)
             delete prim;
         gizmo_primitives.clear();
 
         FreeGizmoResource();
+    }
+
+    void Tick(double delta) override
+    {
+        WorkObject::Tick(delta);
+
+        if(!ecs_world || !gizmo_move)
+            return;
+
+        auto input_system = ecs_world->GetSystem<hgl::ecs::InputSystem>();
+        if(!input_system)
+            return;
+
+        const math::Vector2i &mouse_coord = input_system->GetMouseCoord();
+        const bool left_down = input_system->IsMouseButtonDown(0);
+        const bool left_pressed = left_down && !last_left_down;
+        const bool left_released = !left_down && last_left_down;
+        last_left_down = left_down;
+
+        UpdateGizmoMoveECS(gizmo_move, mouse_coord, GetCameraInfo(), GetViewportInfo(), left_down, left_pressed, left_released);
     }
 
     //void BuildCommandBuffer(uint32 index) override

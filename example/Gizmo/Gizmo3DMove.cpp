@@ -1,8 +1,7 @@
-﻿/*
- Gizmo move
+/*
+ Gizmo move (ECS)
 
  ref: Blender 4
-
 
         0                 9-10
         *----------------->>>>
@@ -22,384 +21,331 @@
 */
 
 #include"GizmoResource.h"
-#include<hgl/graph/SceneNode.h>
-#include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/World.h>
+#include"Gizmo.h"
 #include<hgl/component/PrimitiveComponent.h>
-#include<hgl/io/event/MouseEvent.h>
+
+// ECS
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+
 #include<hgl/math/geometry/Ray.h>
-#include<hgl/math/transform/Transform.h>
-#include<hgl/log/Log.h>
+#include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/ViewportInfo.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
+
+#include<vector>
+#include<cmath>
 
 USING_COMPONENT_NAMESPACE
 
 VK_NAMESPACE_BEGIN
 
+struct GizmoMoveECS
+{
+    hgl::ecs::ECSContext *world = nullptr;
+    hgl::ecs::Entity *root = nullptr;
+    std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
+
+    MaterialInstance *pick_mi = nullptr;
+
+    struct Axis
+    {
+        MaterialInstance *mi = nullptr;
+        std::shared_ptr<hgl::ecs::PrimitiveComponent> cylinder;
+        std::shared_ptr<hgl::ecs::PrimitiveComponent> cone;
+    };
+
+    Axis axis[3]{};
+
+    math::Ray mouse_ray;
+
+    int cur_axis = -1;
+    int pick_axis = -1;
+    float cur_dist = 0.0f;
+    float pick_dist = 0.0f;
+
+    math::Matrix4f pick_l2w = math::Identity4f;
+    math::Vector3f pick_center = math::Vector3f(0.0f, 0.0f, 0.0f);
+    math::Vector3f pick_base_pos = math::Vector3f(0.0f, 0.0f, 0.0f);
+
+    bool dragging = false;
+
+    std::vector<hgl::ecs::EntityID> entity_ids;
+};
+
 namespace
 {
-//    #define GIZMO_MOVE_SQUARE
+    const math::Vector3f one_scale(1.0f, 1.0f, 1.0f);
+    const math::Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_HALF_LENGTH);
 
-    const math::Vector3f one_scale(1.0f);
-    const math::Vector3f square_scale(2.0f);
-    const math::Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
-
-    /**
-    * 移动 Gizmo 节点
-    */
-    class GizmoMoveNode:public SceneNode,io::MouseEvent
+    Primitive *GetGizmoPrimitive(const GizmoShape &shape)
     {
-        OBJECT_LOGGER
-
-    private:
-
-        struct GizmoMoveAxis
-        {
-            MaterialInstance *mi;       //材质实例
-            PrimitiveComponent *cylinder;    //圆柱
-            PrimitiveComponent *cone;        //圆锥
-
-        #ifdef GIZMO_MOVE_SQUARE
-            PrimitiveComponent *square;      //双轴调节正方形
-        #endif//GIZMO_MOVE_SQUARE
-        };
-
-        MaterialInstance *pick_mi;
-        PrimitiveComponent *sphere=nullptr;
-        GizmoMoveAxis axis[3]{};  //X,Y,Z 三个轴
-
-    protected:
-
-        math::Ray     MouseRay;
-
-        int     CurAXIS=-1;             //当前鼠标选中轴
-        float   CurDist=0;              //当前距离
-
-        int         PickAXIS=-1;        //拾取轴
-
-        float       PickDist=0;         //拾取辆距离轴心的距离
-        math::Matrix4f    PickL2W;            //拾取时的变换矩阵
-        math::Vector3f    PickCenter;         //拾取时的中心位置
-
-        math::TransActionTranslate *CurTranslate=nullptr;
-
-    public:
-
-        using SceneNode::SceneNode;
-
-        ~GizmoMoveNode() override
-        {
-            LogVerbose("~GizmoMoveNode");
-        }
-
-        io::EventDispatcher *GetEventDispatcher() override
-        {
-            return this; // GizmoMoveNode 处理鼠标事件
-        }
-
-        SceneNode *CreateNode(World *world)const override
-        {
-            return world->CreateNode<GizmoMoveNode>();
-        }
-
-        void CloneComponents(SceneNode *node) const override
-        {
-            GizmoMoveNode *gmn=(GizmoMoveNode *)node;
-
-            if(!gmn)
-                return;
-
-            gmn->pick_mi=pick_mi;
-
-        #define DUPLICATION_COMPONENT(c)    gmn->c=(PrimitiveComponent *)(c->Clone()); \
-                                            gmn->AttachComponent(gmn->c);
-
-            DUPLICATION_COMPONENT(sphere);
-
-            for(size_t i=0;i<3;i++)
-            {
-                gmn->axis[i].mi=axis[i].mi; // 复制材质实例
-
-                DUPLICATION_COMPONENT(axis[i].cylinder);
-                DUPLICATION_COMPONENT(axis[i].cone);
-
-            #ifdef GIZMO_MOVE_SQUARE
-                DUPLICATION_COMPONENT(axis[i].square);
-            #endif//GIZMO_MOVE_SQUARE
-            }
-
-        #undef DUPLICATION_COMPONENT
-        }
-
-        bool CreateGizmoGeometry(RenderFramework *render_framework)
-        {
-            ComponentDataPtr SpherePtr  =GetGizmoMeshCDP(GizmoShape::Sphere);
-            if(!SpherePtr   )return(false);
-
-            ComponentDataPtr CylinderPtr=GetGizmoMeshCDP(GizmoShape::Cylinder);
-            if(!CylinderPtr )return(false);
-
-            ComponentDataPtr ConePtr    =GetGizmoMeshCDP(GizmoShape::Cone);
-            if(!ConePtr     )return(false);
-
-        #ifdef GIZMO_MOVE_SQUARE
-            ComponentDataPtr SquarePtr  =GetGizmoMeshCDP(GizmoShape::Square);
-            if(!SquarePtr   )return(false);
-        #endif//GIZMO_MOVE_SQUARE
-
-            CreateComponentInfo cci(this);
-
-            pick_mi=GetGizmoMI3D(GizmoColor::Yellow); //获取拾取材质实例
-
-            sphere=render_framework->CreateComponent<PrimitiveComponent>(&cci,SpherePtr);        //中心球
-            sphere->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::White));                     //白色
-
-            {
-                struct
-                {
-                    //圆柱模型是向上的，所以要旋转
-                    math::Vector3f    RotationAxis;
-                    float       RotationAngle;
-
-                    GizmoColor  Color;
-                }
-                GizmoAxisDrawConfig[3]=
-                {
-                    {math::AxisVector::Y, 90,GizmoColor::Red},
-                    {math::AxisVector::X,-90,GizmoColor::Green},
-                    {math::Vector3f(0,0,0),0,GizmoColor::Blue}
-                };
-
-                math::Transform tm;
-                GizmoMoveAxis *gma=axis;
-                math::Vector3f axis_vector;
-
-            #ifdef GIZMO_MOVE_SQUARE
-                math::Vector3f inv_axis_vector;
-            #endif//GIZMO_MOVE_SQUARE
-
-                const auto *cfg=GizmoAxisDrawConfig;
-
-                for(int i=0;i<3;i++)
-                {
-                    gma->mi=GetGizmoMI3D(cfg->Color);
-
-                    axis_vector=math::GetAxisVector(math::AXIS(i)); //取得轴向量
-
-                    tm.SetScale(cylinder_scale);
-                    tm.SetRotation(cfg->RotationAxis,cfg->RotationAngle);
-                    tm.SetTranslation(axis_vector*GIZMO_CYLINDER_OFFSET);
-                    cci.mat=tm;
-                    gma->cylinder=render_framework->CreateComponent<PrimitiveComponent>(&cci,CylinderPtr);       //X 向右圆柱
-                    gma->cylinder->SetOverrideMaterial(gma->mi);
-
-                    tm.SetScale(one_scale);
-                    tm.SetTranslation(axis_vector*GIZMO_CONE_OFFSET);
-                    cci.mat=tm;
-                    gma->cone=render_framework->CreateComponent<PrimitiveComponent>(&cci,ConePtr);           //Z 向上圆锥
-                    gma->cone->SetOverrideMaterial(gma->mi);
-
-                #ifdef GIZMO_MOVE_SQUARE
-                    inv_axis_vector=Vector3f(1,1,1)-axis_vector;
-
-                    tm.SetScale(square_scale);
-                    tm.SetTranslation(inv_axis_vector*GIZMO_TWO_AXIS_OFFSET);
-                    cci.mat=tm;
-                    gma->square=render_framework->CreateComponent<PrimitiveComponent>(&cci,SquarePtr);
-                    gma->square->SetOverrideMaterial(gma->mi);
-                #endif//GIZMO_MOVE_SQUARE
-
-                    ++cfg;
-                    ++gma;
-                }
-            }
-
-            return(true);
-        }
-
-        io::EventProcResult OnPressed(const math::Vector2i &mp,io::MouseButton mb) override
-        {
-            GizmoMoveNode::OnMove(mp);
-
-            if(CurAXIS>=0&&CurAXIS<3)
-            {
-                PickAXIS    =CurAXIS;
-                PickDist    =CurDist;
-
-                if(CurTranslate)
-                {
-                    CurTranslate->SetOffset(math::Vector3f(0,0,0));
-                }
-                else
-                {
-                    CurTranslate=GetTransform().AddTranslate(math::Vector3f(0,0,0));
-                }
-
-                return io::EventProcResult::Break; // 处理完鼠标按下事件，停止进一步处理
-            }
-
-            return io::EventProcResult::Continue;
-        }
-
-        io::EventProcResult OnReleased(const math::Vector2i &,io::MouseButton mb) override
-        {
-            if(CurTranslate)
-            {
-                const math::Matrix4f new_l2w=GetLocalToWorldMatrix();
-
-                ClearTransforms(); //清除所有变换
-
-                SetLocalMatrix(new_l2w); //设置新的变换矩阵
-
-                CurTranslate=nullptr;
-
-                GetRenderFramework()->GetEventDispatcher()->RemoveExclusiveDispatcher(this); //移除独占事件分发器
-            }
-
-            return io::EventProcResult::Continue;
-        }
-
-        io::EventProcResult OnMoveAtControl(const math::Vector2i &mouse_coord)
-        {
-            RenderContext *rc = GetRenderContext();
-
-            if(!rc)
-                return io::EventProcResult::Continue;
-
-            MouseRay.SetFromViewportPoint(mouse_coord,rc->GetCameraInfo(),rc->GetViewportSize());
-
-            const CameraInfo *ci=rc->GetCameraInfo();
-
-            const math::Vector3f axis_vector=math::GetAxisVector(math::AXIS(PickAXIS)); //取得轴向量
-
-            math::Vector3f p1= axis_vector*std::fabs(ci->zfar-ci->znear);
-            math::Vector3f p2=-p1;
-
-            p1=math::TransformPosition(PickL2W,p1);
-            p2=math::TransformPosition(PickL2W,p2);
-
-            math::Vector3f p_ray,p_ls;
-
-            MouseRay.ClosestPoint(
-                p_ray,          // 射线上的点
-                p_ls,           // 线段上的点
-                p1,p2);         // 线段
-
-            CurDist=glm::dot(p_ls-PickCenter,axis_vector);              //计算偏移量
-
-            CurTranslate->SetOffset(axis_vector*(CurDist-PickDist));    //设置偏移量
-
-            return io::EventProcResult::Continue;
-        }
-
-        io::EventProcResult OnMove(const math::Vector2i &mouse_coord) override
-        {
-            if(CurTranslate)
-            {
-                return OnMoveAtControl(mouse_coord); //已经选中一个轴了
-            }
-
-            RenderContext *rc = GetRenderContext();
-
-            if(!rc)
-                return io::EventProcResult::Continue;
-
-            MouseRay.SetFromViewportPoint(mouse_coord,rc->GetCameraInfo(),rc->GetViewportSize());
-
-            const CameraInfo *ci = rc->GetCameraInfo();
-            const math::Matrix4f l2w=GetLocalToWorldMatrix();
-            const math::Vector3f center=math::TransformPosition(l2w,math::Vector3f(0,0,0));
-            math::Vector3f axis_vector;
-            math::Vector3f axis_endpoint;
-            math::Vector3f p_ray,p_ls;
-            float dist;
-            float to_center_dist;
-            MaterialInstance *mi;
-
-            const float axis_sphere_radius  =glm::length(math::AxisVector::X*(GIZMO_CENTER_SPHERE_RADIUS/2.0f));
-            const float axis_length         =glm::length(math::AxisVector::X*GIZMO_ARROW_LENGTH);
-
-            CurAXIS=-1;
-
-            for(int i=0;i<3;i++)
-            {
-                axis_vector=math::GetAxisVector(math::AXIS(i)); //取得轴向量
-
-                axis_endpoint=math::TransformPosition(l2w,axis_vector*axis_length);
-
-                //求射线与线段的最近点
-                MouseRay.ClosestPoint(  p_ray,          //射线上的点
-                                        p_ls,           //线段上的点
-                                        center,         //中心点
-                                        axis_endpoint); //轴射线终点
-
-                //求p_ls坐标相对屏幕空间象素的缩放比
-                to_center_dist  =glm::distance(p_ls,center);    //到中心点的距离
-                dist            =glm::distance(p_ls,p_ray);     //计算射线与线段的距离
-
-                if(to_center_dist>axis_sphere_radius
-                 &&to_center_dist<axis_length
-                 &&dist<GIZMO_CYLINDER_RADIUS)
-                {
-                    mi=pick_mi;
-
-                    CurAXIS=i;
-
-                    PickCenter=center;  //记录拾取时的中心位置
-                    PickL2W=l2w;        //记录拾取时的变换矩阵
-
-                    CurDist=to_center_dist;
-
-                    GetRenderFramework()->GetEventDispatcher()->SetExclusiveDispatcher(this); //设置为独占事件分发器
-                }
-                else
-                {
-                    mi=axis[i].mi;
-                }
-
-                axis[i].cylinder->SetOverrideMaterial(mi);
-                axis[i].cone->SetOverrideMaterial(mi);
-            }
-
-            if(CurAXIS<0||CurAXIS>=3)
-            {
-                GetRenderFramework()->GetEventDispatcher()->RemoveExclusiveDispatcher(this); //移除独占事件分发器
-            }
-
-            if(CurTranslate)
-                return io::EventProcResult::Break;
-
-            return io::EventProcResult::Continue;
-        }
-    };//class GizmoMoveNode:public SceneNode
-
-    static GizmoMoveNode *sn_gizmo_move=nullptr;
-}//namespace
-
-SceneNode *GetGizmoMoveNode(World *world)
-{
-    return sn_gizmo_move->Clone(world);;
-}
-
-void ClearGizmoMoveNode()
-{
-    SAFE_CLEAR(sn_gizmo_move);
-}
-
-bool InitGizmoMoveNode(RenderFramework *render_framework)
-{
-    if(sn_gizmo_move)
-        return(false);
-
-    sn_gizmo_move=new GizmoMoveNode;
-
-    if(!sn_gizmo_move->CreateGizmoGeometry(render_framework))
-    {
-        delete sn_gizmo_move;
-        sn_gizmo_move=nullptr;
-        return(false);
+        ComponentDataPtr cdp = GetGizmoMeshCDP(shape);
+        auto *mcd = dynamic_cast<PrimitiveComponentData *>(cdp.get());
+        if(!mcd)
+            return nullptr;
+        return mcd->primitive;
     }
 
-    return(true);
+    math::Vector3f TransformPosition(const math::Matrix4f &mat, const math::Vector3f &pos)
+    {
+        const glm::vec4 v = mat * glm::vec4(pos, 1.0f);
+        return math::Vector3f(v.x, v.y, v.z);
+    }
+
+    void ApplyAxisMaterials(GizmoMoveECS *gizmo)
+    {
+        if(!gizmo)
+            return;
+
+        for(int i=0;i<3;i++)
+        {
+            MaterialInstance *mi = (gizmo->cur_axis == i) ? gizmo->pick_mi : gizmo->axis[i].mi;
+
+            if(gizmo->axis[i].cylinder)
+                gizmo->axis[i].cylinder->SetOverrideMaterial(mi);
+            if(gizmo->axis[i].cone)
+                gizmo->axis[i].cone->SetOverrideMaterial(mi);
+        }
+    }
+
+    bool CreateAxisEntities(GizmoMoveECS *gizmo, Primitive *cylinder, Primitive *cone)
+    {
+        if(!gizmo || !gizmo->world || !gizmo->root)
+            return false;
+
+        struct AxisConfig
+        {
+            math::Vector3f rotation_axis;
+            float rotation_angle;
+            GizmoColor color;
+        };
+
+        const AxisConfig axis_config[3]=
+        {
+            {math::Vector3f(0.0f, 1.0f, 0.0f),  90.0f, GizmoColor::Red},
+            {math::Vector3f(1.0f, 0.0f, 0.0f), -90.0f, GizmoColor::Green},
+            {math::Vector3f(0.0f, 0.0f, 0.0f),   0.0f, GizmoColor::Blue}
+        };
+
+        for(int i=0;i<3;i++)
+        {
+            const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(i));
+            const AxisConfig &cfg = axis_config[i];
+
+            glm::quat rotation(1.0f, 0.0f, 0.0f, 0.0f);
+            if(cfg.rotation_angle != 0.0f)
+            {
+                rotation = glm::angleAxis(glm::radians(cfg.rotation_angle),
+                                          glm::vec3(cfg.rotation_axis.x, cfg.rotation_axis.y, cfg.rotation_axis.z));
+            }
+
+            gizmo->axis[i].mi = GetGizmoMI3D(cfg.color);
+
+            {
+                auto entity = gizmo->world->CreateEntity<hgl::ecs::Entity>(
+                    (i==0) ? "GizmoMove_X_Cylinder" : (i==1) ? "GizmoMove_Y_Cylinder" : "GizmoMove_Z_Cylinder");
+                if(!entity)
+                    return false;
+
+                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+                transform->SetLocalTRS(glm::vec3(axis_vector * GIZMO_CYLINDER_OFFSET), rotation, glm::vec3(cylinder_scale));
+                transform->SetParent(gizmo->root->GetID());
+
+                auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+                prim_comp->SetPrimitive(cylinder);
+                prim_comp->SetOverrideMaterial(gizmo->axis[i].mi);
+
+                gizmo->axis[i].cylinder = prim_comp;
+                gizmo->entity_ids.push_back(entity->GetID());
+            }
+
+            {
+                auto entity = gizmo->world->CreateEntity<hgl::ecs::Entity>(
+                    (i==0) ? "GizmoMove_X_Cone" : (i==1) ? "GizmoMove_Y_Cone" : "GizmoMove_Z_Cone");
+                if(!entity)
+                    return false;
+
+                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+                transform->SetLocalTRS(glm::vec3(axis_vector * GIZMO_CONE_OFFSET), rotation, glm::vec3(one_scale));
+                transform->SetParent(gizmo->root->GetID());
+
+                auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+                prim_comp->SetPrimitive(cone);
+                prim_comp->SetOverrideMaterial(gizmo->axis[i].mi);
+
+                gizmo->axis[i].cone = prim_comp;
+                gizmo->entity_ids.push_back(entity->GetID());
+            }
+        }
+
+        return true;
+    }
+}
+
+GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::ECSContext *world,
+                                 const char *name,
+                                 const math::Vector3f &position)
+{
+    if(!world)
+        return nullptr;
+
+    auto *gizmo = new GizmoMoveECS;
+    gizmo->world = world;
+    gizmo->pick_mi = GetGizmoMI3D(GizmoColor::Yellow);
+
+    gizmo->root = world->CreateEntity<hgl::ecs::Entity>(name ? name : "GizmoMove");
+    if(!gizmo->root)
+    {
+        delete gizmo;
+        return nullptr;
+    }
+
+    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>();
+    gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+    gizmo->root_transform->SetMovable(true);
+    gizmo->entity_ids.push_back(gizmo->root->GetID());
+
+    Primitive *sphere = GetGizmoPrimitive(GizmoShape::Sphere);
+    Primitive *cylinder = GetGizmoPrimitive(GizmoShape::Cylinder);
+    Primitive *cone = GetGizmoPrimitive(GizmoShape::Cone);
+
+    if(!sphere || !cylinder || !cone)
+    {
+        DestroyGizmoMoveECS(gizmo);
+        return nullptr;
+    }
+
+    {
+        auto entity = world->CreateEntity<hgl::ecs::Entity>("GizmoMove_Sphere");
+        if(!entity)
+        {
+            DestroyGizmoMoveECS(gizmo);
+            return nullptr;
+        }
+
+        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+        transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+        transform->SetParent(gizmo->root->GetID());
+
+        auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        prim_comp->SetPrimitive(sphere);
+        prim_comp->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::White));
+
+        gizmo->entity_ids.push_back(entity->GetID());
+    }
+
+    if(!CreateAxisEntities(gizmo, cylinder, cone))
+    {
+        DestroyGizmoMoveECS(gizmo);
+        return nullptr;
+    }
+
+    return gizmo;
+}
+
+void DestroyGizmoMoveECS(GizmoMoveECS *gizmo)
+{
+    if(!gizmo)
+        return;
+
+    if(gizmo->world)
+    {
+        for(const auto &id : gizmo->entity_ids)
+        {
+            if(id.IsValid())
+                gizmo->world->DestroyEntity(id);
+        }
+    }
+
+    delete gizmo;
+}
+
+void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
+                        const math::Vector2i &mouse_coord,
+                        const graph::CameraInfo *camera_info,
+                        const graph::ViewportInfo *viewport_info,
+                        bool left_down,
+                        bool left_pressed,
+                        bool left_released)
+{
+    if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
+        return;
+
+    gizmo->mouse_ray.SetFromViewportPoint(mouse_coord, camera_info, viewport_info->GetViewport());
+
+    if(gizmo->dragging)
+    {
+        if(gizmo->pick_axis >= 0 && gizmo->pick_axis < 3)
+        {
+            const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(gizmo->pick_axis));
+
+            math::Vector3f p1 = axis_vector * std::fabs(camera_info->zfar - camera_info->znear);
+            math::Vector3f p2 = -p1;
+
+            p1 = TransformPosition(gizmo->pick_l2w, p1);
+            p2 = TransformPosition(gizmo->pick_l2w, p2);
+
+            math::Vector3f p_ray, p_ls;
+            gizmo->mouse_ray.ClosestPoint(p_ray, p_ls, p1, p2);
+
+            gizmo->cur_dist = glm::dot(p_ls - gizmo->pick_center, axis_vector);
+
+            const math::Vector3f offset = axis_vector * (gizmo->cur_dist - gizmo->pick_dist);
+            gizmo->root_transform->SetLocalPosition(glm::vec3(gizmo->pick_base_pos + offset));
+        }
+
+        if(left_released)
+            gizmo->dragging = false;
+
+        return;
+    }
+
+    const math::Matrix4f l2w = gizmo->root_transform->GetWorldMatrix();
+    const math::Vector3f center = TransformPosition(l2w, math::Vector3f(0.0f, 0.0f, 0.0f));
+
+    const float axis_sphere_radius = glm::length(math::AxisVector::X * (GIZMO_CENTER_SPHERE_RADIUS / 2.0f));
+    const float axis_length = glm::length(math::AxisVector::X * GIZMO_ARROW_LENGTH);
+
+    gizmo->cur_axis = -1;
+
+    for(int i=0;i<3;i++)
+    {
+        const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(i));
+        const math::Vector3f axis_endpoint = TransformPosition(l2w, axis_vector * axis_length);
+
+        math::Vector3f p_ray, p_ls;
+
+        gizmo->mouse_ray.ClosestPoint(p_ray, p_ls, center, axis_endpoint);
+
+        const float to_center_dist = glm::distance(p_ls, center);
+        const float dist = glm::distance(p_ls, p_ray);
+
+        if(to_center_dist > axis_sphere_radius &&
+           to_center_dist < axis_length &&
+           dist < GIZMO_CYLINDER_RADIUS)
+        {
+            gizmo->cur_axis = i;
+            gizmo->pick_center = center;
+            gizmo->pick_l2w = l2w;
+            gizmo->cur_dist = to_center_dist;
+            break;
+        }
+    }
+
+    ApplyAxisMaterials(gizmo);
+
+    if(left_pressed && gizmo->cur_axis >= 0 && gizmo->cur_axis < 3)
+    {
+        gizmo->pick_axis = gizmo->cur_axis;
+        gizmo->pick_dist = gizmo->cur_dist;
+        gizmo->pick_base_pos = gizmo->root_transform->GetLocalPosition();
+        gizmo->dragging = true;
+    }
 }
 
 VK_NAMESPACE_END
