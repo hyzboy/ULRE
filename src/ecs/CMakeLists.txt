@@ -27,6 +27,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/MaterialBatch.h
                 ${ECS_INCLUDE_PATH}/RenderableComponent.h
                 ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
+                ${ECS_INCLUDE_PATH}/StaticMesh.h
+                ${ECS_INCLUDE_PATH}/StaticMeshComponent.h
                 ${ECS_INCLUDE_PATH}/CameraComponent.h
                 ${ECS_INCLUDE_PATH}/CameraSystem.h
                 ${ECS_INCLUDE_PATH}/CameraInputMapping.h
@@ -58,6 +60,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 BoundingBoxComponent.cpp
                 BoundingBoxUpdateSystem.cpp
                 PrimitiveComponent.cpp
+                StaticMesh.cpp
+                StaticMeshComponent.cpp
                 RenderItem.cpp
                 PrimitiveRenderItem.cpp
                 MaterialBatch.cpp
@@ -113,6 +117,10 @@ source_group("ECS\\Rendering" FILES
     PrimitiveRenderItem.cpp
     ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
     PrimitiveComponent.cpp
+    ${ECS_INCLUDE_PATH}/StaticMesh.h
+    ${ECS_INCLUDE_PATH}/StaticMeshComponent.h
+    StaticMesh.cpp
+    StaticMeshComponent.cpp
     ${ECS_INCLUDE_PATH}/RenderPrimitiveCollectSystem.h
     RenderPrimitiveCollectSystem.cpp
     ${ECS_INCLUDE_PATH}/RenderPrimitiveBatchSystem.h
