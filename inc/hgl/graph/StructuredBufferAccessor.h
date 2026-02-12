@@ -2,6 +2,8 @@
 
 #include<hgl/graph/VKBufferAccessBase.h>
 
+#include<type_traits>
+
 VK_NAMESPACE_BEGIN
 
 /**
@@ -40,6 +42,7 @@ class StructuredBufferAccessor:public BufferAccessBase
 private:
     T *mapped_data;                 ///< 映射后的数据指针 / Mapped data pointer
     VkDeviceSize aligned_size = 0;
+    bool initialized = false;
     friend class VulkanDevice;
 
     /**
@@ -56,6 +59,20 @@ private:
             mapped_data = static_cast<T*>(ptr);
     }
 
+    void InitDefaultsIfNeeded()
+    {
+        if(initialized || !mapped_data)
+            return;
+
+        if constexpr (std::is_default_constructible_v<T>)
+        {
+            *mapped_data = T();
+            ImmediateUpdate();
+        }
+
+        initialized = true;
+    }
+
     StructuredBufferAccessor(DeviceBuffer *buf, VkDeviceSize aligned_size_param, bool take_ownership)
         : BufferAccessBase()
         , mapped_data(nullptr)
@@ -64,6 +81,7 @@ private:
         SetBuffer(buf, take_ownership);
         if(buffer)
             MapInternal();
+        InitDefaultsIfNeeded();
     }
 
     /**
@@ -87,6 +105,7 @@ private:
         SetBuffer(buf, take_ownership);
         if(buffer)
             MapInternal();
+        InitDefaultsIfNeeded();
     }
 
     StructuredBufferAccessor(DeviceBuffer *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
@@ -98,6 +117,7 @@ private:
         SetUBOMeta(dst, name);
         if(buffer)
             MapInternal();
+        InitDefaultsIfNeeded();
     }
 
     StructuredBufferAccessor(DeviceBuffer *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
@@ -109,6 +129,7 @@ private:
         SetUBOMeta(desc ? desc->set_type : DescriptorSetType::PerMaterial, desc ? desc->name : "");
         if(buffer)
             MapInternal();
+        InitDefaultsIfNeeded();
     }
 
 public:
