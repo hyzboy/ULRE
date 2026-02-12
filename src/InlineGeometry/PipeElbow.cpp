@@ -292,12 +292,12 @@ namespace hgl::graph::inline_geometry
                     IndexT v3 = base + ring_verts * 2 + p + 1;
 
                     *ip++ = v0;
-                    *ip++ = v2;
                     *ip++ = v1;
+                    *ip++ = v2;
 
                     *ip++ = v1;
-                    *ip++ = v2;
                     *ip++ = v3;
+                    *ip++ = v2;
                 }
             }
 
@@ -314,12 +314,12 @@ namespace hgl::graph::inline_geometry
 
                     // Reverse winding for inner surface
                     *ip++ = v0;
-                    *ip++ = v1;
                     *ip++ = v2;
+                    *ip++ = v1;
 
                     *ip++ = v1;
-                    *ip++ = v3;
                     *ip++ = v2;
+                    *ip++ = v3;
                 }
             }
 
