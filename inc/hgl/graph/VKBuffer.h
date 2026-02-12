@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
+#include<hgl/graph/BufferPolicy.h>
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKStagedBuffer.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
@@ -11,119 +12,6 @@ VK_NAMESPACE_BEGIN
 class VulkanDevice;
 class RawBufferAccessor;
 struct DeviceBufferData;
-
-enum class BufferCommitPolicy
-{
-    Auto,       // Decide by buffer usage / memory type
-    StagedOnly, // Only flush staged buffers when dirty
-    Always,     // Always flush on Update
-    Manual      // Never auto flush
-};
-
-enum class BufferUpdateClass
-{
-    Default,
-    CriticalPerFrame, // camera, per-frame UBO
-    TransformData,    // transform ID/data buffers
-    MeshStatic,       // static VBO/IBO
-    MeshDynamic,      // dynamic VBO/IBO
-    TextureTile,      // tile/streaming textures
-    Particle,         // particle positions
-    Deferred,         // can be applied next frame
-    Manual            // caller controls manually
-};
-
-enum class BufferPriority
-{
-    CRITICAL = 0,     // Must submit earliest
-    HIGH = 1,         // High priority
-    NORMAL = 2,       // Normal priority
-    LOW = 3           // Low priority, can defer
-};
-
-enum class BufferUpdateRate
-{
-    PER_FRAME = 0,    // Update every frame
-    FREQUENT = 1,     // Update frequently
-    BURST = 2,        // Burst updates then stable
-    SPARSE = 3,       // Sparse updates
-    RARE = 4          // Rarely updated
-};
-
-enum class BufferSubmitTiming
-{
-    IMMEDIATE = 0,    // Submit immediately
-    SAME_FRAME = 1,   // Must submit in same frame
-    NEXT_FRAME_OK = 2,// Can defer to next frame
-    DEFERRED = 3      // Arbitrary deferral OK
-};
-
-enum class BufferDropPolicy
-{
-    NEVER = 0,        // Never drop data
-    DROP_OLD = 1,     // Drop old pending data
-    DROP_NEW = 2      // Drop new incoming data
-};
-
-enum class BufferDeadlinePolicy
-{
-    NONE = 0,         // No hard deadline
-    SOFT = 1,         // Soft deadline, promote priority
-    HARD = 2          // Hard deadline, force immediate
-};
-
-enum class BufferPromotePolicy
-{
-    NONE = 0,         // No auto-promotion
-    AUTO_RAISE = 1,   // Raise priority one level
-    FORCE_HIGH = 2    // Force to HIGH priority
-};
-
-enum class BufferMemoryPolicy
-{
-    REBAR = 0,        // Resizable BAR (or fallback)
-    RING = 1,         // Ring buffer (N-frame cycle)
-    STAGED = 2,       // Staged buffer (CPU->GPU)
-    AUTO = 3          // Auto-select by usage
-};
-
-enum class BufferCpuResident
-{
-    KEEP = 0,         // Keep CPU data alive
-    RELEASE = 1,      // Can release after submit
-    AUTO = 2          // System decides
-};
-
-enum class BufferSplitPolicy
-{
-    NO_SPLIT = 0,     // Never split
-    ALLOW_SPLIT = 1,  // Allow splitting
-    PREFER_SPLIT = 2  // Prefer splitting
-};
-
-struct BufferPolicy
-{
-    BufferPriority priority = BufferPriority::NORMAL;
-    BufferUpdateRate updateRate = BufferUpdateRate::RARE;
-    BufferSubmitTiming submitTiming = BufferSubmitTiming::DEFERRED;
-    uint32_t maxLatency = 2;                          // 0 = AUTO
-    std::string budgetGroup = "GLOBAL";
-    VkDeviceSize budgetLimit = 0;                     // 0 = AUTO
-    bool queueing = true;                             // Enable queue submission
-    BufferSplitPolicy splitPolicy = BufferSplitPolicy::NO_SPLIT;
-    VkDeviceSize splitChunk = 0;                      // 0 = AUTO
-    BufferDropPolicy dropPolicy = BufferDropPolicy::NEVER;
-    BufferDeadlinePolicy deadlinePolicy = BufferDeadlinePolicy::NONE;
-    uint32_t deadline = 0;                            // 0 = AUTO
-    BufferPromotePolicy promotePolicy = BufferPromotePolicy::NONE;
-    std::string promoteRule;
-    BufferMemoryPolicy memoryPolicy = BufferMemoryPolicy::AUTO;
-    BufferCpuResident cpuResident = BufferCpuResident::AUTO;
-    uint32_t ringFrameCount = 3;                      // For RING memory policy
-    BufferCpuResident stagedPersist = BufferCpuResident::AUTO;  // For STAGED policy
-    BufferCommitPolicy commitPolicy = BufferCommitPolicy::Auto;
-    std::string devNotes;
-};
 
 struct DeviceBufferData
 {
