@@ -28,7 +28,13 @@ void MaterialInstanceAssignmentBuffer::BindMaterialInstance(Material *mtl)const
 {
     if(!mtl)return;
 
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+    mtl->BindSSBO(mtl::SBS_MaterialInstance.set_type,
+                  mtl::SBS_MaterialInstance.name,
+                  material_instance_buffer);
+#else
     mtl->BindUBO(&mtl::SBS_MaterialInstance, material_instance_buffer);
+#endif
 }
 
 void MaterialInstanceAssignmentBuffer::Clear()
@@ -68,15 +74,32 @@ void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &
         SAFE_CLEAR(material_instance_buffer);
         material_instance_capacity=desired_capacity;
 
-        material_instance_buffer=device->CreateUBO(material_instance_data_bytes*material_instance_capacity,nullptr,BufferAllocPolicy::Auto,SharingMode::Exclusive,BufferUpdateClass::Deferred);
+    #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+        material_instance_buffer=device->CreateSSBO(material_instance_data_bytes*material_instance_capacity,
+                                nullptr,
+                                BufferAllocPolicy::Auto,
+                                SharingMode::Exclusive,
+                                BufferUpdateClass::Deferred);
+    #else
+        material_instance_buffer=device->CreateUBO(material_instance_data_bytes*material_instance_capacity,
+                               nullptr,
+                               BufferAllocPolicy::Auto,
+                               SharingMode::Exclusive,
+                               BufferUpdateClass::Deferred);
+    #endif
 
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
 
         if(du)
         {
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+            du->SetBuffer(material_instance_buffer->GetBuffer(),"SSBO:Buffer:MaterialInstanceData");
+            du->SetDeviceMemory(material_instance_buffer->GetVkMemory(),"SSBO:Memory:MaterialInstanceData");
+#else
             du->SetBuffer(material_instance_buffer->GetBuffer(),"UBO:Buffer:MaterialInstanceData");
             du->SetDeviceMemory(material_instance_buffer->GetVkMemory(),"UBO:Memory:MaterialInstanceData");
+#endif
         }
     #endif//_DEBUG
     }

@@ -34,7 +34,11 @@ namespace hgl::graph
             uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
             uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
             uint32_t mi_max_count;
+        #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+            SSBODescriptor *mi_ssbo;
+        #else
             UBODescriptor *mi_ubo;
+        #endif
 
             uint32_t l2w_max_count;
             uint32_t l2w_shader_stage;

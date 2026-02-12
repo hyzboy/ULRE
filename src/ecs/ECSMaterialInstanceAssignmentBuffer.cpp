@@ -41,7 +41,13 @@ namespace hgl::ecs
             return;
         }
 
+    #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+        mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstance.set_type,
+                  hgl::graph::mtl::SBS_MaterialInstance.name,
+                  material_instance_buffer);
+    #else
         mtl->BindUBO(&hgl::graph::mtl::SBS_MaterialInstance, material_instance_buffer);
+    #endif
     }
 
     void ECSMaterialInstanceAssignmentBuffer::Clear()
@@ -83,14 +89,31 @@ namespace hgl::ecs
         {
             const size_t buffer_size = material_instance_data_bytes * mi_set.GetAllocCount();
 
-            material_instance_buffer = device->CreateUBO(buffer_size);
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+            material_instance_buffer = device->CreateSSBO(buffer_size,
+                                                          nullptr,
+                                                          graph::BufferAllocPolicy::Auto,
+                                                          graph::SharingMode::Exclusive,
+                                                          graph::BufferUpdateClass::Deferred);
+#else
+            material_instance_buffer = device->CreateUBO(buffer_size,
+                                                         nullptr,
+                                                         graph::BufferAllocPolicy::Auto,
+                                                         graph::SharingMode::Exclusive,
+                                                         graph::BufferUpdateClass::Deferred);
+#endif
 
         #ifdef _DEBUG
             graph::DebugUtils* du = device->GetDebugUtils();
             if (du)
             {
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+                du->SetBuffer(material_instance_buffer->GetBuffer(), "ECS:SSBO:Buffer:MaterialInstanceData");
+                du->SetDeviceMemory(material_instance_buffer->GetVkMemory(), "ECS:SSBO:Memory:MaterialInstanceData");
+#else
                 du->SetBuffer(material_instance_buffer->GetBuffer(), "ECS:UBO:Buffer:MaterialInstanceData");
                 du->SetDeviceMemory(material_instance_buffer->GetVkMemory(), "ECS:UBO:Memory:MaterialInstanceData");
+#endif
             }
         #endif//_DEBUG
         }

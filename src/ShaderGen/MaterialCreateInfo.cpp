@@ -25,7 +25,11 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         mi_data_bytes=0;
         mi_shader_stage=0;
         mi_max_count=0;
+    #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+        mi_ssbo=nullptr;
+    #else
         mi_ubo=nullptr;
+    #endif
     }
 
 #if defined(HGL_L2W_USE_SSBO)
@@ -275,15 +279,23 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
-    mi_max_count=std::min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
-
     mdi.AddStruct(MaterialInstanceStruct,mi_codes); //外部指定的 struct MaterialInstance代码
 
-    mdi.AddStruct(SBS_MaterialInstance);            //MaterialInstance mi[MI_MAX_COUNT];
+    mdi.AddStruct(SBS_MaterialInstance);            //MaterialInstance mi[...];
+
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+    mi_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
+
+    mi_ssbo=CreateSSBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
+
+    mdi.AddSSBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,mi_ssbo);
+#else
+    mi_max_count=std::min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
 
     mi_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
 
     mdi.AddUBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,mi_ubo);
+#endif
 
     const AnsiString MI_MAX_COUNT_STRING=AnsiString::numberOf(mi_max_count);
 
@@ -292,7 +304,11 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
         if(uint32_t(kv.first)&shader_stage_flag_bits)
         {
             kv.second->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT_STRING);
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+            kv.second->SetMaterialInstance(mi_ssbo,mi_codes);
+#else
             kv.second->SetMaterialInstance(mi_ubo,mi_codes);
+#endif
         }
     }
 

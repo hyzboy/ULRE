@@ -101,6 +101,7 @@ public:
     void AddFunction(const char *str){function_list.Add(str);}
 
     void SetMaterialInstance(UBODescriptor *,const AnsiString &);
+    void SetMaterialInstance(SSBODescriptor *,const AnsiString &);
     virtual void AddMaterialInstanceOutput()=0;
 
     void SetMain(const AnsiString &str){main_function=str;}

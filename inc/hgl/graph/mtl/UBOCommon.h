@@ -6,11 +6,13 @@
 
 VK_NAMESPACE_BEGIN
 struct UBODescriptor;
+struct SSBODescriptor;
 VK_NAMESPACE_END
 
 STD_MTL_NAMESPACE_BEGIN
 
 UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
+SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
 
 constexpr const ShaderBufferSource SBS_ViewportInfo=
 {
@@ -101,8 +103,14 @@ constexpr const ShaderBufferSource SBS_MaterialInstance=
     "mtl",
     "MaterialInstanceData",
 
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+    R"(
+    MaterialInstance mi[];
+    )"
+#else
     R"(
     MaterialInstance mi[MI_MAX_COUNT];)"
+#endif
 };
 
 constexpr const ShaderBufferSource SBS_JointInfo=
