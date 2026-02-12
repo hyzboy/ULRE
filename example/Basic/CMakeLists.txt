@@ -12,12 +12,12 @@
 endmacro()
 
 
-CreateProject(01_draw_triangle                  draw_triangle_use_ECS.cpp)
-CreateProject(02_auto_instance                  auto_instance_use_ECS.cpp)
-CreateProject(03_auto_merge_material_instance   auto_merge_material_instance_use_ECS.cpp)
-CreateProject(04_clock_use                      clock_use_ECS.cpp)
-CreateProject(05_Billboard                      BillboardTest_use_ECS.cpp)
-CreateProject(06_SimpleCube                     SimpleCube_use_ECS.cpp)
-CreateProject(07_RenderBoundBox                 RenderBoundBox_use_ECS.cpp)
-CreateProject(08_RenderToTexture                RenderToTexture_use_ECS.cpp)
+CreateProject(01_draw_triangle                  draw_triangle.cpp)
+CreateProject(02_auto_instance                  auto_instance.cpp)
+CreateProject(03_auto_merge_material_instance   auto_merge_material_instance.cpp)
+CreateProject(04_clock_use                      clock.cpp)
+CreateProject(05_Billboard                      BillboardTest.cpp)
+CreateProject(06_SimpleCube                     SimpleCube.cpp)
+CreateProject(07_RenderBoundBox                 RenderBoundBox.cpp)
+CreateProject(08_RenderToTexture                RenderToTexture.cpp)
 
