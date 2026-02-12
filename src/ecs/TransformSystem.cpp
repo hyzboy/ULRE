@@ -8,7 +8,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::Transform);
-        SetExecutionOrder(10);  // Run after Input
+        SetExecutionOrder(ExecutionPhase::TickTransform);
         
         // No dependencies - Transform is fundamental
     }

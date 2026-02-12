@@ -9,7 +9,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(130);
+        SetExecutionOrder(ExecutionPhase::RenderPostProcess);
         AddDependency<RenderPrimitiveSubmitSystem>();
     }
 

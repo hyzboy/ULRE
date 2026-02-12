@@ -9,7 +9,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::Input);
-        SetExecutionOrder(0);  // Run first
+        SetExecutionOrder(ExecutionPhase::TickInput);
         
         // No dependencies - Input runs first
         

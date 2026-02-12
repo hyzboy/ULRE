@@ -8,9 +8,6 @@ namespace hgl
     {
         System::System(const std::string& name)
             : Object(name)
-            , initialized(false)
-            , systemType(SystemType::Unknown)
-            , executionOrder(0)
         {
         }
 
