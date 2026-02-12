@@ -1,9 +1,20 @@
 #include<hgl/graph/VKBufferCommitQueue.h>
 #include<hgl/graph/VKBufferAccessBase.h>
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/BufferPolicyImpl.h>
 #include<algorithm>
 
 VK_NAMESPACE_BEGIN
+
+BufferCommitQueue::BufferCommitQueue(const AllDeviceBufferPolicies *policies)
+    : device_policies(policies)
+{
+}
+
+void BufferCommitQueue::SetPolicies(const AllDeviceBufferPolicies *policies)
+{
+    device_policies = policies;
+}
 
 void BufferCommitQueue::Add(BufferAccessBase *accessor)
 {
@@ -14,6 +25,21 @@ void BufferCommitQueue::Add(BufferAccessBase *accessor)
     {
         if(pending_buffers[i] == accessor)
             return;
+    }
+
+    // Automatically apply appropriate policy from device policies if available
+    if(device_policies)
+    {
+        DeviceBuffer *buf = accessor->GetBuffer();
+        if(buf)
+        {
+            BufferUpdateClass update_class = buf->GetUpdateClass();
+            const BufferPolicy *policy = device_policies->GetPolicy(update_class);
+            if(policy)
+            {
+                buf->SetPolicy(*policy);
+            }
+        }
     }
 
     pending_buffers.Add(accessor);

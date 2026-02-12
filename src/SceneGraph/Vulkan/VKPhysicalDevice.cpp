@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKInstance.h>
+#include<hgl/graph/BufferPolicyImpl.h>
 #include"DebugOutProperties.h"
 
 VK_NAMESPACE_BEGIN
@@ -201,6 +202,18 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
 
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+
+    // Generate all buffer policies for this device
+    all_buffer_policies=new AllDeviceBufferPolicies(GenerateAllDeviceBufferPolicies(this));
+}
+
+VulkanPhyDevice::~VulkanPhyDevice()
+{
+    if(all_buffer_policies)
+    {
+        delete all_buffer_policies;
+        all_buffer_policies=nullptr;
+    }
 }
 
 const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
