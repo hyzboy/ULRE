@@ -16,6 +16,10 @@
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/log/Log.h>
+#include<typeinfo>
+#include<type_traits>
+#include<utility>
 
 VK_NAMESPACE_BEGIN
 class TileData;
@@ -142,6 +146,59 @@ public: //Buffer相关
     const VkDeviceSize GetUBORange();
     const VkDeviceSize GetSSBORange();
 
+    VkDeviceSize AlignStructuredBufferSize(VkDeviceSize size,VkBufferUsageFlags usage) const
+    {
+        if(!(usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)))
+            return size;
+
+        const VkDeviceSize atom_size = attr->physical_device->GetLimits().nonCoherentAtomSize;
+        if(atom_size == 0)
+            return size;
+
+        return hgl_align(size, atom_size);
+    }
+
+    template<typename T>
+    static void LogCreateBufferBegin(const char *name,const ShaderBufferDesc *desc,BufferUpdateClass update_class)
+    {
+#ifdef _DEBUG
+        GLogWarning("[Create%s] type=%s size=%llu desc=%p update_class=%u",
+                    name,
+                    typeid(T).name(),
+                    static_cast<unsigned long long>(T::GetSize()),
+                    (void *)desc,
+                    static_cast<unsigned>(update_class));
+#endif//_DEBUG
+    }
+
+    template<typename T>
+    static void LogCreateBufferEnd(const char *name,DeviceBuffer *buf)
+    {
+#ifdef _DEBUG
+        GLogWarning("[Create%s] type=%s buffer=%p mem=%p memSize=%llu bufRange=%llu",
+                    name,
+                    typeid(T).name(),
+                    (void *)buf,
+                    buf ? (void *)static_cast<VkDeviceMemory>(buf->GetVkMemory()) : nullptr,
+                    buf && buf->GetMemory() ? static_cast<unsigned long long>(buf->GetMemory()->GetSize()) : 0ULL,
+                    buf ? static_cast<unsigned long long>(buf->GetSize()) : 0ULL);
+#endif//_DEBUG
+    }
+
+    template<typename T,typename... Args>
+    static std::enable_if_t<std::is_constructible<T, Args..., VkDeviceSize>::value, T *>
+    CreateBufferObjectWithAligned(VkDeviceSize aligned_size, Args&&... args)
+    {
+        return new T(std::forward<Args>(args)..., aligned_size);
+    }
+
+    template<typename T,typename... Args>
+    static std::enable_if_t<!std::is_constructible<T, Args..., VkDeviceSize>::value, T *>
+    CreateBufferObjectWithAligned(VkDeviceSize, Args&&... args)
+    {
+        return new T(std::forward<Args>(args)...);
+    }
+
 #define CREATE_BUFFER_OBJECT(LargeName,type)    DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      policy,sm);} \
                                                 DeviceBuffer *Create##LargeName(                   VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,nullptr,   BufferAllocPolicy::Auto,sm);} \
                                                 DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      BufferAllocPolicy::Auto,sm);} \
@@ -154,26 +211,36 @@ public: //Buffer相关
 \
     template<typename T> T *Create##LargeName()  \
     {   \
-        DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
-        return(buf?new T(buf):nullptr);  \
+        const VkDeviceSize range_size = T::GetSize();    \
+        const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
+        DeviceBuffer *buf=Create##LargeName(range_size, alloc_size);    \
+        return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf):nullptr);  \
     } \
 \
     template<typename T> T *Create##LargeName(const ShaderBufferDesc *desc)  \
     {   \
-        DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
-        return(buf?new T(buf,desc):nullptr);  \
+        const VkDeviceSize range_size = T::GetSize();    \
+        const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
+        DeviceBuffer *buf=Create##LargeName(range_size, alloc_size);    \
+        return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, desc):nullptr);  \
     }   \
 \
     template<typename T> T *Create##LargeName(const ShaderBufferDesc *desc,BufferUpdateClass update_class)  \
     {   \
-        DeviceBuffer *buf=Create##LargeName(T::GetSize(),nullptr,BufferAllocPolicy::Auto,SharingMode::Exclusive,update_class);    \
-        return(buf?new T(buf,desc):nullptr);  \
+        LogCreateBufferBegin<T>(#LargeName, desc, update_class);\
+        const VkDeviceSize range_size = T::GetSize();    \
+        const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
+        DeviceBuffer *buf=Create##LargeName(range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, update_class);    \
+        LogCreateBufferEnd<T>(#LargeName, buf);\
+        return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, desc):nullptr);  \
     }   \
 \
     template<typename T> T *Create##LargeName(const DescriptorSetType &set_type,const AnsiString &name)  \
     {   \
-        DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
-        return(buf?new T(buf,set_type,name):nullptr);  \
+        const VkDeviceSize range_size = T::GetSize();    \
+        const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
+        DeviceBuffer *buf=Create##LargeName(range_size, alloc_size);    \
+        return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, set_type, name):nullptr);  \
     }
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)

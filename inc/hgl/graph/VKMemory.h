@@ -38,6 +38,8 @@ class DeviceMemory
 
     VkMappedMemoryRange     memory_range;
     VkDeviceSize            nonCoherentAtomSize;
+    VkDeviceSize            mapped_offset = 0;
+    VkDeviceSize            mapped_size = 0;
     
     bool                    is_mapped;  // Track mapping state to avoid double map/unmap
     void *                  mapped_ptr; // Store mapped pointer for reuse
@@ -63,6 +65,8 @@ public:
     const uint32_t              GetProperties   ()const{return properties;}
     
     bool    IsMapped    ()const{return is_mapped;}
+    VkDeviceSize GetMappedOffset() const { return mapped_offset; }
+    VkDeviceSize GetMappedSize() const { return mapped_size; }
 
     void *  Map         ();
     void *  Map         (VkDeviceSize offset,VkDeviceSize size);
