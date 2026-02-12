@@ -9,6 +9,7 @@
 VK_NAMESPACE_BEGIN
 
 class BufferAccessBase;
+struct AllDeviceBufferPolicies;
 
 /**
  * Unified buffer commit queue with priority ordering, budget control, and deadline enforcement
@@ -19,6 +20,8 @@ class BufferAccessBase;
 class BufferCommitQueue
 {
     ValueArray<BufferAccessBase *> pending_buffers;
+
+    const AllDeviceBufferPolicies *device_policies = nullptr;
 
     struct BudgetGroupState
     {
@@ -51,10 +54,19 @@ public:
     };
 
     BufferCommitQueue() = default;
+    BufferCommitQueue(const AllDeviceBufferPolicies *policies);
     ~BufferCommitQueue() = default;
 
     /**
+     * Set buffer policies for automatic policy application.
+     * CN: 设置缓冲策略以自动应用。
+     */
+    void SetPolicies(const AllDeviceBufferPolicies *policies);
+
+    /**
      * Add a buffer accessor to the queue (deduplicated).
+     * Automatically applies the appropriate BufferPolicy based on buffer's UpdateClass.
+     * CN: 将缓冲访问器添加到队列（去重）。根据缓冲的UpdateClass自动应用相应的BufferPolicy。
      */
     void Add(BufferAccessBase *accessor);
 

@@ -4,13 +4,19 @@
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/VKBufferCommitQueue.h>
 #include<hgl/graph/VKComputePipeline.h>
+#include<hgl/graph/BufferPolicyImpl.h>
 
 VK_NAMESPACE_BEGIN
 VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 {
     attr=da;
     buffer_update_queue = new BufferUpdateQueue(da->device);
-    buffer_commit_queue = new BufferCommitQueue();
+    
+    // Initialize BufferCommitQueue with device policies from physical device
+    const AllDeviceBufferPolicies *policies = nullptr;
+    if(da->physical_device)
+        policies = da->physical_device->GetAllBufferPolicies();
+    buffer_commit_queue = new BufferCommitQueue(policies);
 }
 
 VulkanDevice::~VulkanDevice()

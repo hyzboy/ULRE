@@ -28,6 +28,9 @@ inline bool operator==(const VkQueueFamilyProperties& lhs, const VkQueueFamilyPr
 
 VK_NAMESPACE_BEGIN
 
+// Forward declaration
+struct AllDeviceBufferPolicies;
+
 using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
 
 class VulkanPhyDevice
@@ -60,6 +63,8 @@ private:
     bool dynamic_state=false;
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
 
+    AllDeviceBufferPolicies *all_buffer_policies=nullptr;  // All buffer policies for this device
+
 public:
 
     const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
@@ -75,7 +80,7 @@ public:
 public:
 
     VulkanPhyDevice(VkInstance,VkPhysicalDevice);
-    ~VulkanPhyDevice()=default;
+    ~VulkanPhyDevice();
 
     const VkInstance        GetVulkanInstance()const{return instance;}
     const VkPhysicalDevice  GetVulkanDevice()const{return physical_device;}
@@ -125,6 +130,8 @@ public:
 
     const bool HasReBAR         ()const{return rebar_size > 0;}                                                          ///<是否支持Resizable BAR
     const VkDeviceSize GetReBarSize()const{return rebar_size;}                                                           ///<获取Resizable BAR容量
+
+    const AllDeviceBufferPolicies *GetAllBufferPolicies()const{return all_buffer_policies;}                           ///<获取所有缓冲策略
 
 #define HGL_VK_IS_BRAND(name)   (hgl::stricmp(properties.deviceName,#name,sizeof(#name))==0)
 

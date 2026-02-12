@@ -398,13 +398,16 @@ SET(VK_MEMORY_FILES ${SG_INCLUDE_PATH}/VKMemory.h
                     ${SG_INCLUDE_PATH}/VKBufferCommitQueue.h
                     ${SG_INCLUDE_PATH}/VKBufferUpdateQueue.h
                     ${SG_INCLUDE_PATH}/VKStagedBuffer.h
+                    ${SG_INCLUDE_PATH}/BufferPolicy.h
+                    ${SG_INCLUDE_PATH}/BufferPolicyImpl.h
                     Vulkan/VKMemory.cpp
                     Vulkan/VKMemoryAllocator.cpp
                     Vulkan/VKBuffer.cpp
                     Vulkan/VKArrayBuffer.cpp
                     Vulkan/VKBufferCommitQueue.cpp
                     Vulkan/VKBufferUpdateQueue.cpp
-                    Vulkan/VKStagedBuffer.cpp)
+                    Vulkan/VKStagedBuffer.cpp
+                    Vulkan/BufferPolicyImpl.cpp)
 
 SOURCE_GROUP("9.Vulkan\\Memory" FILES ${VK_MEMORY_FILES})
 
