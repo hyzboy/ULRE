@@ -214,7 +214,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::Camera);
-        SetExecutionOrder(20);  // Run after Transform
+        SetExecutionOrder(ExecutionPhase::TickCamera);
 
         // Declare dependencies
         AddDependency<InputSystem>();     // Needs input for camera control

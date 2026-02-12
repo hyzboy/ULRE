@@ -13,6 +13,47 @@ namespace hgl
     namespace ecs
     {
         /**
+         * Execution Phase - Defines the stage (may have multiple systems per phase)
+         * ordered by enum value; systems with same phase use Priority to order
+         */
+        enum class ExecutionPhase
+        {
+            // ===== Tick Phase =====
+            TickInput,           // Keyboard/mouse
+            TickTransform,       // Transform calculations
+            TickCamera,          // Camera setup
+            
+            // ===== Pre-Render Phase =====
+            RenderBufferCommit,  // Commit UBO/material data (single system typically)
+            
+            // ===== Render Collection Phase (may have multiple collectors) =====
+            RenderCollect,       // Collect render data - can have multiple
+            
+            // ===== Render Batch Phase =====
+            RenderBatch,         // Batch render data
+            
+            // ===== Render Submit Phase =====
+            RenderSubmit,        // Submit draw calls - can have multiple
+            
+            // ===== Post-Render Phase =====
+            RenderPostProcess    // Line rendering, post-effects, etc
+        };
+
+        /**
+         * Execution Priority - Determines order WITHIN the same phase
+         * Lower values run first
+         */
+        enum class ExecutionPriority
+        {
+            First = 0,
+            Second = 10,
+            Third = 20,
+            Fourth = 30,
+            Fifth = 40,
+            Last = 100
+        };
+
+        /**
          * System type identifiers for dependency management
          */
         enum class SystemType
@@ -27,6 +68,7 @@ namespace hgl
             RenderSubmit,
             Physics,
             Animation,
+            Material,
             // Add more as needed
         };
 
@@ -40,7 +82,8 @@ namespace hgl
 
             bool initialized = false;
             SystemType systemType = SystemType::Unknown;
-            int executionOrder = 0; // Lower values execute first
+            ExecutionPhase executionPhase = ExecutionPhase::TickInput;
+            ExecutionPriority executionPriority = ExecutionPriority::First;
             std::vector<std::type_index> dependencies; // Type IDs of systems this depends on
             std::unique_ptr<SystemCache> cache_manager;  // Component query cache
             class ECSContext* context = nullptr;  // Owning context
@@ -70,8 +113,11 @@ namespace hgl
             /// Get system type
             SystemType GetSystemType() const { return systemType; }
 
-            /// Get execution order (lower runs earlier)
-            int GetExecutionOrder() const { return executionOrder; }
+            /// Get execution phase
+            ExecutionPhase GetExecutionPhase() const { return executionPhase; }
+
+            /// Get execution priority (within phase)
+            ExecutionPriority GetExecutionPriority() const { return executionPriority; }
 
             /// Get dependencies (systems that must run before this one)
             const std::vector<std::type_index>& GetDependencies() const { return dependencies; }
@@ -103,8 +149,12 @@ namespace hgl
             /// Set system type (call in derived constructor)
             void SetSystemType(SystemType type) { systemType = type; }
 
-            /// Set execution order (call in derived constructor, lower runs first)
-            void SetExecutionOrder(int order) { executionOrder = order; }
+            /// Set execution order by phase and priority within phase
+            void SetExecutionOrder(ExecutionPhase phase, ExecutionPriority priority = ExecutionPriority::First)
+            {
+                executionPhase = phase;
+                executionPriority = priority;
+            }
 
             /// Add a dependency to another system type
             template<typename T>

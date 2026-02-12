@@ -261,9 +261,14 @@ namespace hgl
             {
                 const auto& lhs = order_list[a];
                 const auto& rhs = order_list[b];
+                // First sort by phase
+                if (lhs.phase != rhs.phase)
+                    return lhs.phase < rhs.phase;
+                // Then sort by priority within phase
                 if (lhs.priority != rhs.priority)
                     return lhs.priority < rhs.priority;
-                return lhs.order < rhs.order;
+                // Finally use insertion order for stable sort
+                return lhs.insertion_order < rhs.insertion_order;
             };
 
             std::vector<size_t> available;
@@ -298,13 +303,15 @@ namespace hgl
                 std::stable_sort(order_list.begin(), order_list.end(),
                     [](const OrderedSystem& a, const OrderedSystem& b)
                     {
+                        if (a.phase != b.phase)
+                            return a.phase < b.phase;
                         if (a.priority != b.priority)
                             return a.priority < b.priority;
-                        return a.order < b.order;
+                        return a.insertion_order < b.insertion_order;
                     });
 
                 std::cout << "[ECSContext::SortSystemList] WARNING: " << label
-                          << " system dependencies contain a cycle. Falling back to priority order." << std::endl;
+                          << " system dependencies contain a cycle. Falling back to phase/priority order." << std::endl;
             }
             else
             {
@@ -339,16 +346,14 @@ namespace hgl
                 system->SetContext(this);
             }
 
-            // Determine effective priority
-            int effective_priority = priority;
-            if (system && system->GetExecutionOrder() != 0 && priority == 0)
-            {
-                effective_priority = system->GetExecutionOrder();
-            }
+            // Extract phase and priority from system
+            int effective_phase = static_cast<int>(system->GetExecutionPhase());
+            int effective_priority = static_cast<int>(system->GetExecutionPriority());
 
             if (auto *entry = FindOrderedSystem(order_list, key))
             {
                 entry->system = system;
+                entry->phase = effective_phase;
                 entry->priority = effective_priority;
                 dirty_flag = true;
             }
@@ -356,8 +361,9 @@ namespace hgl
             {
                 OrderedSystem new_entry;
                 new_entry.key = key;
+                new_entry.phase = effective_phase;
                 new_entry.priority = effective_priority;
-                new_entry.order = next_system_order++;
+                new_entry.insertion_order = next_system_order++;
                 new_entry.system = system;
                 order_list.push_back(std::move(new_entry));
                 dirty_flag = true;

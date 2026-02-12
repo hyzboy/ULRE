@@ -52,8 +52,9 @@ namespace hgl
             struct OrderedSystem
             {
                 size_t key = 0;
-                int priority = 0;
-                uint64_t order = 0;
+                int phase = 0;          // ExecutionPhase as int
+                int priority = 0;       // ExecutionPriority as int (for ordering within phase)
+                uint64_t insertion_order = 0;  // For stable sorting
                 std::shared_ptr<System> system;
             };
 

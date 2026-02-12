@@ -317,7 +317,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::RenderBatch);
-        SetExecutionOrder(110);  // Second render stage
+        SetExecutionOrder(ExecutionPhase::RenderBatch);
         
         // Declare dependencies
         AddDependency<TransformSystem>();            // Needs transform indices
