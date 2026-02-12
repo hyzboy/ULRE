@@ -138,7 +138,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
     // Detect Resizable BAR support
     // ReBAR is available if there's a large HOST_VISIBLE + DEVICE_LOCAL memory heap
-    has_rebar = false;
+    rebar_size = 0;
     for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
     {
         const VkMemoryType& type = memory_properties.memoryTypes[i];
@@ -154,7 +154,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
             // If heap is > 512MB, it's likely ReBAR (traditional BAR is 256MB)
             if (heap.size > (512ULL * 1024 * 1024))
             {
-                has_rebar = true;
+                rebar_size = heap.size;
                 break;
             }
         }

@@ -58,7 +58,7 @@ private:
 
     bool support_u8_index=false;
     bool dynamic_state=false;
-    bool has_rebar=false;  // Resizable BAR support
+    VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
 
 public:
 
@@ -123,7 +123,8 @@ public:
     const bool isIntegratedGPU  ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);}         ///<是否是集成显卡
     const bool isVirtualGPU     ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);}            ///<是否是虚拟显卡
 
-    const bool HasReBAR         ()const{return has_rebar;}                                                               ///<是否支持Resizable BAR
+    const bool HasReBAR         ()const{return rebar_size > 0;}                                                          ///<是否支持Resizable BAR
+    const VkDeviceSize GetReBarSize()const{return rebar_size;}                                                           ///<获取Resizable BAR容量
 
 #define HGL_VK_IS_BRAND(name)   (hgl::stricmp(properties.deviceName,#name,sizeof(#name))==0)
 
