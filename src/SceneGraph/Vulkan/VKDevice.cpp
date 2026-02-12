@@ -3,9 +3,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/VKBufferCommitQueue.h>
-#include<hgl/graph/VKBufferPolicyConfig.h>
 #include<hgl/graph/VKComputePipeline.h>
-#include<iostream>
 
 VK_NAMESPACE_BEGIN
 VulkanDevice::VulkanDevice(VulkanDevAttr *da)
@@ -13,35 +11,12 @@ VulkanDevice::VulkanDevice(VulkanDevAttr *da)
     attr=da;
     buffer_update_queue = new BufferUpdateQueue(da->device);
     buffer_commit_queue = new BufferCommitQueue();
-    buffer_policy_reader = new BufferPolicyReader();
-    
-    // Try to load BufferPolicy.txt from common locations
-    const char* policy_paths[] = {
-        "BufferPolicy.txt",
-        "../BufferPolicy.txt",
-        "../../BufferPolicy.txt"
-    };
-    
-    bool loaded = false;
-    for (const char* path : policy_paths)
-    {
-        if (buffer_policy_reader->LoadFromFile(path))
-        {
-            loaded = true;
-            std::cout << "Loaded " << buffer_policy_reader->GetPolicyCount() << " buffer policies from " << path << std::endl;
-            break;
-        }
-    }
-    
-    if (!loaded)
-        std::cerr << "Warning: Could not load BufferPolicy.txt from common locations" << std::endl;
 }
 
 VulkanDevice::~VulkanDevice()
 {
     delete buffer_update_queue;
     delete buffer_commit_queue;
-    delete buffer_policy_reader;
     delete attr;
 }
 
