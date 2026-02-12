@@ -64,7 +64,17 @@ private:
         if(initialized || !mapped_data)
             return;
 
-        if constexpr (std::is_default_constructible_v<T>)
+        if constexpr (std::is_array_v<T>)
+        {
+            using Element = std::remove_extent_t<T>;
+            constexpr size_t kCount = std::extent_v<T>;
+
+            for(size_t i = 0; i < kCount; ++i)
+                (*mapped_data)[i] = Element();
+
+            ImmediateUpdate();
+        }
+        else if constexpr (std::is_default_constructible_v<T>)
         {
             *mapped_data = T();
             ImmediateUpdate();
