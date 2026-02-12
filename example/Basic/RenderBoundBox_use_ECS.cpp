@@ -47,6 +47,14 @@ constexpr const COLOR TestColor[]=
     COLOR::SkyBlue,
     COLOR::GrassGreen,
     COLOR::BloodRed,
+    
+    COLOR::Lavender,
+    COLOR::Mint,
+    COLOR::Coral,
+    
+    COLOR::DarkOrange,
+    COLOR::DarkTurquoise,
+    COLOR::DarkViolet,
 };
 
 constexpr const size_t COLOR_COUNT=sizeof(TestColor)/sizeof(COLOR);
@@ -251,6 +259,53 @@ private:
             CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,9);
         }
 
+        {
+            CubeCreateInfo cci;
+            cci.segments_x = 2;
+            cci.segments_y = 2;
+            cci.segments_z = 2;
+            CreateRenderMesh(CreateCube(prim_creater,&cci),&solid,10);
+        }
+
+        {
+            FrustumCreateInfo fci;
+            fci.bottom_radius = 1.0f;
+            fci.top_radius = 0.5f;
+            fci.height = 2.0f;
+            fci.numberSlices = 32;
+            CreateRenderMesh(CreateFrustum(prim_creater,&fci),&solid,11);
+        }
+
+        {
+            ArrowCreateInfo aci;
+            aci.shaft_radius = 0.1f;
+            aci.shaft_length = 2.0f;
+            aci.head_radius = 0.3f;
+            aci.head_length = 0.5f;
+            aci.numberSlices = 16;
+            aci.cross_section = ArrowCrossSection::Circular;
+            CreateRenderMesh(CreateArrow(prim_creater,&aci),&solid,12);
+        }
+
+        {
+            RoundedBoxCreateInfo rbci;
+            rbci.size = Vector3f(1.0f, 1.0f, 1.0f);
+            rbci.edge_radius = 0.2f;
+            rbci.edge_segments = 4;
+            CreateRenderMesh(CreateRoundedBox(prim_creater,&rbci),&solid,13);
+        }
+
+        {
+            PipeElbowCreateInfo peci;
+            peci.inner_radius = 0.3f;
+            peci.outer_radius = 0.5f;
+            peci.bend_angle = 90.0f;
+            peci.bend_radius = 1.0f;
+            peci.pipe_segments = 16;
+            peci.bend_segments = 16;
+            CreateRenderMesh(CreatePipeElbow(prim_creater,&peci),&solid,14);
+        }
+
         delete prim_creater;
         return true;
     }
@@ -354,7 +409,7 @@ private:
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
             glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
-            glm::vec3 pos = glm::rotate(rotation, glm::vec3(3.0f, 0.0f, 0.0f));
+            glm::vec3 pos = glm::rotate(rotation, glm::vec3(6.5f, 0.0f, 0.0f));
 
             rm->transform->SetLocalPosition(pos);
             rm->transform->SetLocalRotation(rotation);
