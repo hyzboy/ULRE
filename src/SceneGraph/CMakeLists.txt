@@ -330,7 +330,6 @@ SOURCE_GROUP("9.Vulkan\\Device\\Logical" FILES ${VK_DEVICE_LOGICAL_FILES})
 SET(VK_DEVICE_OPERATIONS_FILES  Vulkan/VKDeviceMemory.cpp
                                 Vulkan/VKDeviceBuffer.cpp
                                 Vulkan/VKBufferAccessBase.cpp
-                                Vulkan/VKBufferPolicyConfig.cpp
                                 Vulkan/VKDeviceStagedBuffer.cpp
                                 Vulkan/VKDeviceImage.cpp
                                 Vulkan/VKDeviceSampler.cpp

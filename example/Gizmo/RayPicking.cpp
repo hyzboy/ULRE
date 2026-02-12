@@ -48,7 +48,6 @@ private:
     math::Ray           ray;
 
 private:
-
     bool InitMaterialAndPipeline()
     {
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
@@ -132,7 +131,16 @@ private:
                                         {VAN::Luminance,VF_V1UN8,lumiance_data}
                                     });
 
-            prim_line_vab_map=prim_line->GetVABMap(VAN::Position);
+            VAB *prim_line_vab = prim_line ? prim_line->GetVAB(VAN::Position) : nullptr;
+            if(prim_line_vab)
+            {
+                prim_line_vab_map = new VABMap();
+                prim_line_vab_map->BindVAB(prim_line_vab, 0, prim_line_vab->GetCount());
+            }
+            else
+            {
+                return false;
+            }
         }
 
         return(true);
@@ -162,6 +170,9 @@ public:
 
     ~TestApp()
     {
+        delete prim_line_vab_map;
+        prim_line_vab_map = nullptr;
+
         SAFE_CLEAR(geom_plane_grid);
     }
 
@@ -198,8 +209,11 @@ public:
 
         const math::Vector3f pos=ray.ClosestPoint(math::Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
-        prim_line_vab_map->Write(&pos,          //更新VAB上这个点的位置
-                                 1);            //这里的1代表的数据数量,不是字节数
+        if(prim_line_vab_map)
+        {
+            prim_line_vab_map->Write(&pos,          //更新VAB上这个点的位置
+                                     1);            //这里的1代表的数据数量,不是字节数
+        }
     }
 };//class TestApp:public CameraAppFramework
 

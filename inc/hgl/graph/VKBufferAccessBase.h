@@ -158,11 +158,15 @@ public:
         if(buffer->HasStagedDirty())
         {
             buffer->Flush(0);
+            const_cast<DeviceBuffer*>(buffer)->ResetFramesSinceUpdate();
             return;
         }
 
         if(policy == BufferCommitPolicy::Always || update_class == BufferUpdateClass::CriticalPerFrame)
+        {
             buffer->Flush(0);
+            const_cast<DeviceBuffer*>(buffer)->ResetFramesSinceUpdate();
+        }
     }
 };//class RawBufferAccessor
 

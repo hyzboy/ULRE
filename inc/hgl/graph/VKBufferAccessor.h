@@ -343,6 +343,11 @@ public:
         MapInternal();
 
         dirty = false;
+        
+        // Reset frame counter after successful commit
+        if(buffer)
+            buffer->ResetFramesSinceUpdate();
+            
         return true;
     }
 

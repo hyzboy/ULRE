@@ -5,6 +5,8 @@
 #include<hgl/graph/VKStagedBuffer.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 
+#include<string>
+
 VK_NAMESPACE_BEGIN
 class VulkanDevice;
 class RawBufferAccessor;
@@ -99,6 +101,30 @@ enum class BufferSplitPolicy
     PREFER_SPLIT = 2  // Prefer splitting
 };
 
+struct BufferPolicy
+{
+    BufferPriority priority = BufferPriority::NORMAL;
+    BufferUpdateRate updateRate = BufferUpdateRate::RARE;
+    BufferSubmitTiming submitTiming = BufferSubmitTiming::DEFERRED;
+    uint32_t maxLatency = 2;                          // 0 = AUTO
+    std::string budgetGroup = "GLOBAL";
+    VkDeviceSize budgetLimit = 0;                     // 0 = AUTO
+    bool queueing = true;                             // Enable queue submission
+    BufferSplitPolicy splitPolicy = BufferSplitPolicy::NO_SPLIT;
+    VkDeviceSize splitChunk = 0;                      // 0 = AUTO
+    BufferDropPolicy dropPolicy = BufferDropPolicy::NEVER;
+    BufferDeadlinePolicy deadlinePolicy = BufferDeadlinePolicy::NONE;
+    uint32_t deadline = 0;                            // 0 = AUTO
+    BufferPromotePolicy promotePolicy = BufferPromotePolicy::NONE;
+    std::string promoteRule;
+    BufferMemoryPolicy memoryPolicy = BufferMemoryPolicy::AUTO;
+    BufferCpuResident cpuResident = BufferCpuResident::AUTO;
+    uint32_t ringFrameCount = 3;                      // For RING memory policy
+    BufferCpuResident stagedPersist = BufferCpuResident::AUTO;  // For STAGED policy
+    BufferCommitPolicy commitPolicy = BufferCommitPolicy::Auto;
+    std::string devNotes;
+};
+
 struct DeviceBufferData
 {
     VkBuffer                buffer=nullptr;
@@ -120,27 +146,11 @@ protected:
     VkDeviceSize staged_map_offset=0;
     VkDeviceSize staged_map_size=0;
     bool staged_map_active=false;
+
+    BufferPolicy policy;
     
-    // Policy fields
-    BufferPriority priority=BufferPriority::NORMAL;
-    BufferUpdateRate updateRate=BufferUpdateRate::RARE;
-    BufferSubmitTiming submitTiming=BufferSubmitTiming::DEFERRED;
-    uint32_t maxLatency=2;                          // AUTO: inferred from priority
-    std::string budgetGroup="GLOBAL";
-    VkDeviceSize budgetLimit=0;                     // 0 = AUTO
-    bool queueing=true;                             // Enable queue submission
-    BufferSplitPolicy splitPolicy=BufferSplitPolicy::NO_SPLIT;
-    VkDeviceSize splitChunk=0;                      // 0 = AUTO
-    BufferDropPolicy dropPolicy=BufferDropPolicy::NEVER;
-    BufferDeadlinePolicy deadlinePolicy=BufferDeadlinePolicy::NONE;
-    uint32_t deadline=0;                            // 0 = AUTO
-    BufferPromotePolicy promotePolicy=BufferPromotePolicy::NONE;
-    std::string promoteRule="";
-    BufferMemoryPolicy memoryPolicy=BufferMemoryPolicy::AUTO;
-    BufferCpuResident cpuResident=BufferCpuResident::AUTO;
-    uint32_t ringFrameCount=3;                      // For RING memory policy
-    BufferCpuResident stagedPersist=BufferCpuResident::AUTO;  // For STAGED policy
-    std::string devNotes="";
+    // Frame tracking for deadline enforcement
+    uint32_t frames_since_update = 0;               // Frames since last commit
 
 private:
 
@@ -172,6 +182,7 @@ public:
             DeviceMemory *              GetMemory       ()const{return buf.memory;}
             VkDeviceMemory              GetVkMemory     ()const{return buf.memory->operator VkDeviceMemory();}
     const   VkDescriptorBufferInfo *    GetBufferInfo   ()const{return &buf.info;}
+            VkDeviceSize                GetSize         ()const{return buf.info.range;}
                 VulkanDevice *              GetOwnerDevice  ()const{return owner_device;}
                 bool                        HasStagedDirty  ()const{return staged_buffer ? staged_buffer->IsDirty() : false;}
                 void                        SetAutoCommitProxy(RawBufferAccessor *proxy){auto_commit_proxy=proxy;}
@@ -181,44 +192,51 @@ public:
                 BufferUpdateClass           GetUpdateClass()const{return update_class;}
                 
                 // Policy accessors
-                void                        SetPriority(BufferPriority p){priority=p;}
-                BufferPriority              GetPriority()const{return priority;}
-                void                        SetUpdateRate(BufferUpdateRate r){updateRate=r;}
-                BufferUpdateRate            GetUpdateRate()const{return updateRate;}
-                void                        SetSubmitTiming(BufferSubmitTiming t){submitTiming=t;}
-                BufferSubmitTiming          GetSubmitTiming()const{return submitTiming;}
-                void                        SetMaxLatency(uint32_t f){maxLatency=f;}
-                uint32_t                    GetMaxLatency()const{return maxLatency;}
-                void                        SetBudgetGroup(const std::string &g){budgetGroup=g;}
-                const std::string&          GetBudgetGroup()const{return budgetGroup;}
-                void                        SetBudgetLimit(VkDeviceSize limit){budgetLimit=limit;}
-                VkDeviceSize                GetBudgetLimit()const{return budgetLimit;}
-                void                        SetQueueing(bool q){queueing=q;}
-                bool                        GetQueueing()const{return queueing;}
-                void                        SetSplitPolicy(BufferSplitPolicy p){splitPolicy=p;}
-                BufferSplitPolicy           GetSplitPolicy()const{return splitPolicy;}
-                void                        SetSplitChunk(VkDeviceSize size){splitChunk=size;}
-                VkDeviceSize                GetSplitChunk()const{return splitChunk;}
-                void                        SetDropPolicy(BufferDropPolicy p){dropPolicy=p;}
-                BufferDropPolicy            GetDropPolicy()const{return dropPolicy;}
-                void                        SetDeadlinePolicy(BufferDeadlinePolicy p){deadlinePolicy=p;}
-                BufferDeadlinePolicy        GetDeadlinePolicy()const{return deadlinePolicy;}
-                void                        SetDeadline(uint32_t d){deadline=d;}
-                uint32_t                    GetDeadline()const{return deadline;}
-                void                        SetPromotePolicy(BufferPromotePolicy p){promotePolicy=p;}
-                BufferPromotePolicy         GetPromotePolicy()const{return promotePolicy;}
-                void                        SetPromoteRule(const std::string &r){promoteRule=r;}
-                const std::string&          GetPromoteRule()const{return promoteRule;}
-                void                        SetMemoryPolicy(BufferMemoryPolicy p){memoryPolicy=p;}
-                BufferMemoryPolicy          GetMemoryPolicy()const{return memoryPolicy;}
-                void                        SetCpuResident(BufferCpuResident r){cpuResident=r;}
-                BufferCpuResident           GetCpuResident()const{return cpuResident;}
-                void                        SetRingFrameCount(uint32_t n){ringFrameCount=n;}
-                uint32_t                    GetRingFrameCount()const{return ringFrameCount;}
-                void                        SetStagedPersist(BufferCpuResident p){stagedPersist=p;}
-                BufferCpuResident           GetStagedPersist()const{return stagedPersist;}
-                void                        SetDevNotes(const std::string &notes){devNotes=notes;}
-                const std::string&          GetDevNotes()const{return devNotes;}
+                void                        SetPriority(BufferPriority p){policy.priority=p;}
+                BufferPriority              GetPriority()const{return policy.priority;}
+                void                        SetUpdateRate(BufferUpdateRate r){policy.updateRate=r;}
+                BufferUpdateRate            GetUpdateRate()const{return policy.updateRate;}
+                void                        SetSubmitTiming(BufferSubmitTiming t){policy.submitTiming=t;}
+                BufferSubmitTiming          GetSubmitTiming()const{return policy.submitTiming;}
+                void                        SetMaxLatency(uint32_t f){policy.maxLatency=f;}
+                uint32_t                    GetMaxLatency()const{return policy.maxLatency;}
+                void                        SetBudgetGroup(const std::string &g){policy.budgetGroup=g;}
+                const std::string&          GetBudgetGroup()const{return policy.budgetGroup;}
+                void                        SetBudgetLimit(VkDeviceSize limit){policy.budgetLimit=limit;}
+                VkDeviceSize                GetBudgetLimit()const{return policy.budgetLimit;}
+                void                        SetQueueing(bool q){policy.queueing=q;}
+                bool                        GetQueueing()const{return policy.queueing;}
+                void                        SetSplitPolicy(BufferSplitPolicy p){policy.splitPolicy=p;}
+                BufferSplitPolicy           GetSplitPolicy()const{return policy.splitPolicy;}
+                void                        SetSplitChunk(VkDeviceSize size){policy.splitChunk=size;}
+                VkDeviceSize                GetSplitChunk()const{return policy.splitChunk;}
+                void                        SetDropPolicy(BufferDropPolicy p){policy.dropPolicy=p;}
+                BufferDropPolicy            GetDropPolicy()const{return policy.dropPolicy;}
+                void                        SetDeadlinePolicy(BufferDeadlinePolicy p){policy.deadlinePolicy=p;}
+                BufferDeadlinePolicy        GetDeadlinePolicy()const{return policy.deadlinePolicy;}
+                void                        SetDeadline(uint32_t d){policy.deadline=d;}
+                uint32_t                    GetDeadline()const{return policy.deadline;}
+                void                        SetPromotePolicy(BufferPromotePolicy p){policy.promotePolicy=p;}
+                BufferPromotePolicy         GetPromotePolicy()const{return policy.promotePolicy;}
+                void                        SetPromoteRule(const std::string &r){policy.promoteRule=r;}
+                const std::string&          GetPromoteRule()const{return policy.promoteRule;}
+                void                        SetMemoryPolicy(BufferMemoryPolicy p){policy.memoryPolicy=p;}
+                BufferMemoryPolicy          GetMemoryPolicy()const{return policy.memoryPolicy;}
+                void                        SetCpuResident(BufferCpuResident r){policy.cpuResident=r;}
+                BufferCpuResident           GetCpuResident()const{return policy.cpuResident;}
+                void                        SetRingFrameCount(uint32_t n){policy.ringFrameCount=n;}
+                uint32_t                    GetRingFrameCount()const{return policy.ringFrameCount;}
+                void                        SetStagedPersist(BufferCpuResident p){policy.stagedPersist=p;}
+                BufferCpuResident           GetStagedPersist()const{return policy.stagedPersist;}
+                void                        SetDevNotes(const std::string &notes){policy.devNotes=notes;}
+                const std::string&          GetDevNotes()const{return policy.devNotes;}
+                void                        SetPolicy(const BufferPolicy &p){policy=p;}
+                const BufferPolicy&         GetPolicy()const{return policy;}
+                
+                // Frame tracking for deadline enforcement
+                uint32_t                    GetFramesSinceUpdate()const{return frames_since_update;}
+                void                        IncrementFramesSinceUpdate(){frames_since_update++;}
+                void                        ResetFramesSinceUpdate(){frames_since_update=0;}
 
             void *  Map     ()
             {

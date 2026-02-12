@@ -281,6 +281,9 @@ public:
 
         buffer->Write(mapped_data, sizeof(T));
         buffer->Flush(sizeof(T));
+        
+        // Reset frame counter after successful commit
+        const_cast<DeviceBuffer*>(buffer)->ResetFramesSinceUpdate();
     }
 
     /**

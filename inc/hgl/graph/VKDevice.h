@@ -16,7 +16,6 @@
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKDescriptorSetType.h>
-#include<hgl/graph/VKBufferPolicyConfig.h>
 
 VK_NAMESPACE_BEGIN
 class TileData;
@@ -41,7 +40,6 @@ class VulkanDevice
     VulkanDevAttr *attr;
     BufferUpdateQueue *buffer_update_queue;
     BufferCommitQueue *buffer_commit_queue;
-    BufferPolicyReader *buffer_policy_reader;
 
 private:
 
@@ -95,7 +93,6 @@ public: //内存相关
 
     BufferUpdateQueue * GetBufferUpdateQueue() { return buffer_update_queue; }
     BufferCommitQueue * GetBufferCommitQueue() { return buffer_commit_queue; }
-    BufferPolicyReader * GetBufferPolicyReader() { return buffer_policy_reader; }
 
 private: //Buffer相关
 

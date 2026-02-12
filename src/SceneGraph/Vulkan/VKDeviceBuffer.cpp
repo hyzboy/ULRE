@@ -48,81 +48,261 @@ static void ApplyUpdateClass(DeviceBuffer *buf, BufferUpdateClass update_class, 
     buf->SetCommitPolicy(SelectCommitPolicy(update_class, usage, policy));
 }
 
-// Map BufferUpdateClass to policy name in BufferPolicy.txt
-static const char* MapUpdateClassToPolicy(BufferUpdateClass update_class)
+static BufferPolicy MakeCameraUBOPolicy()
 {
+    BufferPolicy p;
+    p.priority = BufferPriority::CRITICAL;
+    p.updateRate = BufferUpdateRate::PER_FRAME;
+    p.submitTiming = BufferSubmitTiming::SAME_FRAME;
+    p.maxLatency = 0;
+    p.budgetGroup = "GLOBAL";
+    p.budgetLimit = 0;
+    p.queueing = true;
+    p.splitPolicy = BufferSplitPolicy::NO_SPLIT;
+    p.splitChunk = 0;
+    p.dropPolicy = BufferDropPolicy::NEVER;
+    p.deadlinePolicy = BufferDeadlinePolicy::HARD;
+    p.deadline = 0;
+    p.promotePolicy = BufferPromotePolicy::FORCE_HIGH;
+    p.promoteRule = "always";
+    p.memoryPolicy = BufferMemoryPolicy::REBAR;
+    p.cpuResident = BufferCpuResident::KEEP;
+    p.ringFrameCount = 0;
+    p.stagedPersist = BufferCpuResident::AUTO;
+    p.commitPolicy = BufferCommitPolicy::Always;
+    p.devNotes = "Camera matrix updates every frame; highest priority; prefer ReBAR";
+    return p;
+}
+
+static BufferPolicy MakeStaticTransformPolicy()
+{
+    BufferPolicy p;
+    p.priority = BufferPriority::HIGH;
+    p.updateRate = BufferUpdateRate::BURST;
+    p.submitTiming = BufferSubmitTiming::SAME_FRAME;
+    p.maxLatency = 1;
+    p.budgetGroup = "TRANSFORM";
+    p.budgetLimit = 32ull * 1024 * 1024;
+    p.queueing = true;
+    p.splitPolicy = BufferSplitPolicy::NO_SPLIT;
+    p.splitChunk = 0;
+    p.dropPolicy = BufferDropPolicy::NEVER;
+    p.deadlinePolicy = BufferDeadlinePolicy::SOFT;
+    p.deadline = 2;
+    p.promotePolicy = BufferPromotePolicy::AUTO_RAISE;
+    p.promoteRule = "latency>1f";
+    p.memoryPolicy = BufferMemoryPolicy::RING;
+    p.cpuResident = BufferCpuResident::KEEP;
+    p.ringFrameCount = 3;
+    p.stagedPersist = BufferCpuResident::AUTO;
+    p.commitPolicy = BufferCommitPolicy::Always;
+    p.devNotes = "Transform ID/matrix buffer; burst update then stable; ring buffer";
+    return p;
+}
+
+static BufferPolicy MakeMeshVABPolicy()
+{
+    BufferPolicy p;
+    p.priority = BufferPriority::LOW;
+    p.updateRate = BufferUpdateRate::RARE;
+    p.submitTiming = BufferSubmitTiming::DEFERRED;
+    p.maxLatency = 4;
+    p.budgetGroup = "MESH";
+    p.budgetLimit = 64ull * 1024 * 1024;
+    p.queueing = true;
+    p.splitPolicy = BufferSplitPolicy::NO_SPLIT;
+    p.splitChunk = 0;
+    p.dropPolicy = BufferDropPolicy::NEVER;
+    p.deadlinePolicy = BufferDeadlinePolicy::NONE;
+    p.deadline = 0;
+    p.promotePolicy = BufferPromotePolicy::NONE;
+    p.memoryPolicy = BufferMemoryPolicy::STAGED;
+    p.cpuResident = BufferCpuResident::RELEASE;
+    p.ringFrameCount = 0;
+    p.stagedPersist = BufferCpuResident::RELEASE;
+    p.commitPolicy = BufferCommitPolicy::StagedOnly;
+    p.devNotes = "Static mesh VAB; one-time or rare uploads; CPU can release";
+    return p;
+}
+
+static BufferPolicy MakeDynamicMeshVABPolicy()
+{
+    BufferPolicy p;
+    p.priority = BufferPriority::NORMAL;
+    p.updateRate = BufferUpdateRate::FREQUENT;
+    p.submitTiming = BufferSubmitTiming::NEXT_FRAME_OK;
+    p.maxLatency = 1;
+    p.budgetGroup = "MESH";
+    p.budgetLimit = 64ull * 1024 * 1024;
+    p.queueing = true;
+    p.splitPolicy = BufferSplitPolicy::NO_SPLIT;
+    p.splitChunk = 0;
+    p.dropPolicy = BufferDropPolicy::DROP_OLD;
+    p.deadlinePolicy = BufferDeadlinePolicy::SOFT;
+    p.deadline = 2;
+    p.promotePolicy = BufferPromotePolicy::AUTO_RAISE;
+    p.promoteRule = "latency>1f";
+    p.memoryPolicy = BufferMemoryPolicy::RING;
+    p.cpuResident = BufferCpuResident::KEEP;
+    p.ringFrameCount = 3;
+    p.stagedPersist = BufferCpuResident::AUTO;
+    p.commitPolicy = BufferCommitPolicy::StagedOnly;
+    p.devNotes = "Dynamic mesh VAB; frequent but scattered; ring buffer; soft deadline";
+    return p;
+}
+
+static BufferPolicy MakeTextureTilePolicy()
+{
+    BufferPolicy p;
+    p.priority = BufferPriority::LOW;
+    p.updateRate = BufferUpdateRate::BURST;
+    p.submitTiming = BufferSubmitTiming::NEXT_FRAME_OK;
+    p.maxLatency = 2;
+    p.budgetGroup = "TILE";
+    p.budgetLimit = 16ull * 1024 * 1024;
+    p.queueing = true;
+    p.splitPolicy = BufferSplitPolicy::ALLOW_SPLIT;
+    p.splitChunk = 1ull * 1024 * 1024;
+    p.dropPolicy = BufferDropPolicy::DROP_OLD;
+    p.deadlinePolicy = BufferDeadlinePolicy::SOFT;
+    p.deadline = 4;
+    p.promotePolicy = BufferPromotePolicy::AUTO_RAISE;
+    p.promoteRule = "latency>2f";
+    p.memoryPolicy = BufferMemoryPolicy::STAGED;
+    p.cpuResident = BufferCpuResident::KEEP;
+    p.ringFrameCount = 0;
+    p.stagedPersist = BufferCpuResident::KEEP;
+    p.commitPolicy = BufferCommitPolicy::StagedOnly;
+    p.devNotes = "Texture tiles; split-friendly; drop old if overload; can defer";
+    return p;
+}
+
+static BufferPolicy MakeParticlePolicy()
+{
+    BufferPolicy p;
+    p.priority = BufferPriority::LOW;
+    p.updateRate = BufferUpdateRate::FREQUENT;
+    p.submitTiming = BufferSubmitTiming::NEXT_FRAME_OK;
+    p.maxLatency = 2;
+    p.budgetGroup = "PARTICLE";
+    p.budgetLimit = 16ull * 1024 * 1024;
+    p.queueing = true;
+    p.splitPolicy = BufferSplitPolicy::ALLOW_SPLIT;
+    p.splitChunk = 256ull * 1024;
+    p.dropPolicy = BufferDropPolicy::DROP_OLD;
+    p.deadlinePolicy = BufferDeadlinePolicy::SOFT;
+    p.deadline = 4;
+    p.promotePolicy = BufferPromotePolicy::AUTO_RAISE;
+    p.promoteRule = "latency>2f";
+    p.memoryPolicy = BufferMemoryPolicy::STAGED;
+    p.cpuResident = BufferCpuResident::KEEP;
+    p.ringFrameCount = 0;
+    p.stagedPersist = BufferCpuResident::KEEP;
+    p.commitPolicy = BufferCommitPolicy::StagedOnly;
+    p.devNotes = "Particle data; allow split; drop old if over budget; soft deadline";
+    return p;
+}
+
+static BufferPolicy MakeDeferredPolicy()
+{
+    BufferPolicy p;
+    p.priority = BufferPriority::LOW;
+    p.updateRate = BufferUpdateRate::SPARSE;
+    p.submitTiming = BufferSubmitTiming::DEFERRED;
+    p.maxLatency = 4;
+    p.budgetGroup = "CUSTOM";
+    p.budgetLimit = 0;
+    p.queueing = true;
+    p.splitPolicy = BufferSplitPolicy::NO_SPLIT;
+    p.splitChunk = 0;
+    p.dropPolicy = BufferDropPolicy::DROP_OLD;
+    p.deadlinePolicy = BufferDeadlinePolicy::NONE;
+    p.deadline = 0;
+    p.promotePolicy = BufferPromotePolicy::NONE;
+    p.memoryPolicy = BufferMemoryPolicy::STAGED;
+    p.cpuResident = BufferCpuResident::RELEASE;
+    p.ringFrameCount = 0;
+    p.stagedPersist = BufferCpuResident::RELEASE;
+    p.commitPolicy = BufferCommitPolicy::StagedOnly;
+    p.devNotes = "Deferred updates; no hard deadline; can drop; flexible timing";
+    return p;
+}
+
+static BufferPolicy MakeManualPolicy()
+{
+    BufferPolicy p;
+    p.priority = BufferPriority::LOW;
+    p.updateRate = BufferUpdateRate::RARE;
+    p.submitTiming = BufferSubmitTiming::DEFERRED;
+    p.maxLatency = 0;
+    p.budgetGroup = "CUSTOM";
+    p.budgetLimit = 0;
+    p.queueing = false;
+    p.splitPolicy = BufferSplitPolicy::NO_SPLIT;
+    p.splitChunk = 0;
+    p.dropPolicy = BufferDropPolicy::NEVER;
+    p.deadlinePolicy = BufferDeadlinePolicy::NONE;
+    p.deadline = 0;
+    p.promotePolicy = BufferPromotePolicy::NONE;
+    p.memoryPolicy = BufferMemoryPolicy::AUTO;
+    p.cpuResident = BufferCpuResident::AUTO;
+    p.ringFrameCount = 0;
+    p.stagedPersist = BufferCpuResident::AUTO;
+    p.commitPolicy = BufferCommitPolicy::Manual;
+    p.devNotes = "Manual only; no auto-commit; full application control";
+    return p;
+}
+
+static const BufferPolicy *GetPolicyForUpdateClass(BufferUpdateClass update_class)
+{
+    static const BufferPolicy kCameraUBO = MakeCameraUBOPolicy();
+    static const BufferPolicy kStaticTransform = MakeStaticTransformPolicy();
+    static const BufferPolicy kMeshVAB = MakeMeshVABPolicy();
+    static const BufferPolicy kDynamicMeshVAB = MakeDynamicMeshVABPolicy();
+    static const BufferPolicy kTextureTile = MakeTextureTilePolicy();
+    static const BufferPolicy kParticle = MakeParticlePolicy();
+    static const BufferPolicy kDeferred = MakeDeferredPolicy();
+    static const BufferPolicy kManual = MakeManualPolicy();
+
     switch(update_class)
     {
-        case BufferUpdateClass::CriticalPerFrame:  return "CameraUBO";           // Both Camera & Viewport
-        case BufferUpdateClass::TransformData:      return "StaticTransformData"; // Transform data
-        case BufferUpdateClass::MeshStatic:         return "MeshVAB";            // Static mesh
-        case BufferUpdateClass::MeshDynamic:        return "DynamicMeshVAB";     // Dynamic mesh
-        case BufferUpdateClass::TextureTile:        return "TextureTile";        // Tile/streaming
-        case BufferUpdateClass::Particle:           return "Particle";           // Particle effects
-        case BufferUpdateClass::Deferred:           return "Deferred";           // Deferred updates
-        case BufferUpdateClass::Manual:             return "ManualSpecial";      // Manual only
-        default:                                     return nullptr;
+        case BufferUpdateClass::CriticalPerFrame:  return &kCameraUBO;
+        case BufferUpdateClass::TransformData:     return &kStaticTransform;
+        case BufferUpdateClass::MeshStatic:        return &kMeshVAB;
+        case BufferUpdateClass::MeshDynamic:       return &kDynamicMeshVAB;
+        case BufferUpdateClass::TextureTile:       return &kTextureTile;
+        case BufferUpdateClass::Particle:          return &kParticle;
+        case BufferUpdateClass::Deferred:          return &kDeferred;
+        case BufferUpdateClass::Manual:            return &kManual;
+        default:                                   return nullptr;
     }
 }
 
-// Apply complete policy configuration to buffer
-static void ApplyPolicyConfig(VulkanDevice *device, DeviceBuffer *buf, const BufferPolicyConfig *policy_config)
+static void ApplyPolicy(DeviceBuffer *buf, const BufferPolicy *policy)
 {
-    if(!buf || !policy_config)
+    if(!buf || !policy)
         return;
 
-    buf->SetPriority(policy_config->priority);
-    buf->SetUpdateRate(policy_config->updateRate);
-    buf->SetSubmitTiming(policy_config->submitTiming);
-    buf->SetMaxLatency(policy_config->maxLatency);
-    buf->SetBudgetGroup(policy_config->budgetGroup);
-    buf->SetBudgetLimit(policy_config->budgetLimit);
-    buf->SetQueueing(policy_config->queueing);
-    buf->SetSplitPolicy(policy_config->splitPolicy);
-    buf->SetSplitChunk(policy_config->splitChunk);
-    buf->SetDropPolicy(policy_config->dropPolicy);
-    buf->SetDeadlinePolicy(policy_config->deadlinePolicy);
-    buf->SetDeadline(policy_config->deadline);
-    buf->SetPromotePolicy(policy_config->promotePolicy);
-    buf->SetPromoteRule(policy_config->promoteRule);
-    buf->SetMemoryPolicy(policy_config->memoryPolicy);
-    buf->SetCpuResident(policy_config->cpuResident);
-    buf->SetRingFrameCount(policy_config->ringFrameCount);
-    buf->SetStagedPersist(policy_config->stagedPersist);
-    buf->SetDevNotes(policy_config->devNotes);
-    
-    // Also apply the commit policy from configuration
-    BufferCommitPolicy commit_policy = BufferCommitPolicy::Auto;
-    if(policy_config->commitPolicy != BufferCommitPolicy::Auto)
-        commit_policy = policy_config->commitPolicy;
-    else
+    buf->SetPolicy(*policy);
+
+    BufferCommitPolicy commit_policy = policy->commitPolicy;
+    if(commit_policy == BufferCommitPolicy::Auto)
         commit_policy = SelectCommitPolicy(buf->GetUpdateClass(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, BufferAllocPolicy::Auto);
-    
+
     buf->SetCommitPolicy(commit_policy);
 }
 
-// Apply policy by looking up in loaded BufferPolicy.txt (or use defaults)
-static void ApplyUpdateClassWithPolicy(VulkanDevice *device, DeviceBuffer *buf, BufferUpdateClass update_class, 
+static void ApplyUpdateClassWithPolicy(VulkanDevice *device, DeviceBuffer *buf, BufferUpdateClass update_class,
                                        VkBufferUsageFlags usage, BufferAllocPolicy policy)
 {
-    // First apply the basic update class
     ApplyUpdateClass(buf, update_class, usage, policy);
-    
-    // Then try to load and apply policy configuration if available
-    if(!device)
+
+    if(!buf)
         return;
-    
-    BufferPolicyReader *policy_reader = device->GetBufferPolicyReader();
-    if(!policy_reader)
-        return;
-    
-    const char *policy_name = MapUpdateClassToPolicy(update_class);
-    if(!policy_name)
-        return;
-    
-    const BufferPolicyConfig *policy_config = policy_reader->GetPolicyByName(policy_name);
-    if(policy_config)
-        ApplyPolicyConfig(device, buf, policy_config);
+
+    const BufferPolicy *hardcoded = GetPolicyForUpdateClass(update_class);
+    if(hardcoded)
+        ApplyPolicy(buf, hardcoded);
 }
 
 const VkDeviceSize VulkanDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
