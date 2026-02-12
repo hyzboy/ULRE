@@ -21,12 +21,12 @@ private:
 
     friend class VulkanDevice;
 
-    IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc):DeviceBuffer(d,vb)
+    IndirectCommandBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,const uint32_t mc):DeviceBuffer(owner,d,vb)
     {
         max_count=mc;
     }
 
-    IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc,StagedBuffer *sb):DeviceBuffer(d,vb,sb)
+    IndirectCommandBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,const uint32_t mc,StagedBuffer *sb):DeviceBuffer(owner,d,vb,sb)
     {
         max_count=mc;
     }

@@ -4,6 +4,7 @@
 #include<hgl/color/Color4f.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/StructuredBufferAccessor.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
@@ -14,7 +15,7 @@ namespace hgl::graph
     constexpr const size_t MAX_LINE_WIDTH = 16;                 ///< CN: 最大支持线宽 EN: Maximum supported line width
 
     using LineColorPalette=Color4f[256];                        ///< CN: 线颜色调色板(256项) EN: Line color palette (256 entries)
-    using UBOLineColorPalette=UBOInstance<LineColorPalette>;    ///< CN: 线颜色调色板UBO封装 EN: UBO instance for line color palette
+    using UBOLineColorPalette=StructuredBufferAccessor<LineColorPalette>;    ///< CN: 线颜色调色板UBO封装 EN: UBO instance for line color palette (统一使用 StructuredBufferAccessor)
 
     /** \class LineRenderManager
      * CN: 管理并绘制 3D/场景 中的调试/辅助/通用线段。核心特性:

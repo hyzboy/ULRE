@@ -204,11 +204,15 @@ namespace hgl::ecs
 #if defined(HGL_L2W_USE_SSBO)
             transform_buffer = device->CreateSSBO(sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                   nullptr,
-                                                  transform_policy);
+                                                  transform_policy,
+                                                  graph::SharingMode::Exclusive,
+                                                  graph::BufferUpdateClass::TransformData);
 #else
             transform_buffer = device->CreateUBO(sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                  nullptr,
-                                                 transform_policy);
+                                                 transform_policy,
+                                                 graph::SharingMode::Exclusive,
+                                                 graph::BufferUpdateClass::TransformData);
 #endif
 
         #ifdef _DEBUG

@@ -4,6 +4,7 @@
 #include<hgl/graph/World.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKBufferCommitQueue.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/RenderFramework.h>
@@ -130,6 +131,10 @@ namespace hgl::graph
             // Flush all pending buffer updates before rendering
             if(render_target && render_target->GetDevice())
             {
+                    BufferCommitQueue *commit_queue = render_target->GetDevice()->GetBufferCommitQueue();
+                    if(commit_queue && commit_queue->HasPending())
+                        commit_queue->CommitAll();
+
                 BufferUpdateQueue *update_queue = render_target->GetDevice()->GetBufferUpdateQueue();
                 if(update_queue && update_queue->HasPendingUpdates())
                 {
@@ -198,6 +203,10 @@ namespace hgl::graph
         // Flush all pending buffer updates before rendering
         if(render_target && render_target->GetDevice())
         {
+                BufferCommitQueue *commit_queue = render_target->GetDevice()->GetBufferCommitQueue();
+                if(commit_queue && commit_queue->HasPending())
+                    commit_queue->CommitAll();
+
             BufferUpdateQueue *update_queue = render_target->GetDevice()->GetBufferUpdateQueue();
             if(update_queue && update_queue->HasPendingUpdates())
             {

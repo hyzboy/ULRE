@@ -68,7 +68,7 @@ void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &
         SAFE_CLEAR(material_instance_buffer);
         material_instance_capacity=desired_capacity;
 
-        material_instance_buffer=device->CreateUBO(material_instance_data_bytes*material_instance_capacity);
+        material_instance_buffer=device->CreateUBO(material_instance_data_bytes*material_instance_capacity,nullptr,BufferAllocPolicy::Auto,SharingMode::Exclusive,BufferUpdateClass::Deferred);
 
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();

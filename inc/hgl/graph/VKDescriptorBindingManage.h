@@ -3,6 +3,7 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKBufferAccessBase.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -42,17 +43,7 @@ public:
         return ubo_map.Add(name,buf);
     }
 
-    template<typename T>
-    bool AddUBO(const AnsiString &name,DeviceBufferMap<T> *dbm)
-    {
-        if(name.IsEmpty()||!dbm)
-            return(false);
-
-        return ubo_map.Add(name,dbm->GetDeviceBuffer());
-    }
-
-    template<typename T>
-    bool AddUBO(const UBOInstance<T> *ubo_instance)
+    bool AddUBO(const BufferAccessBase *ubo_instance)
     {
         if(!ubo_instance)
             return(false);
@@ -91,10 +82,12 @@ public:
         return ssbo_map.Add(name,buf);
     }
 
-    template<typename T>
-    bool AddSSBO(const AnsiString &name,DeviceBufferMap<T> *dbm)
+    bool AddSSBO(const AnsiString &name,const BufferAccessBase *accessor)
     {
-        return AddSSBO(name,dbm->GetDeviceBuffer());
+        if(!accessor)
+            return false;
+
+        return AddSSBO(name, const_cast<DeviceBuffer*>(accessor->GetBuffer()));
     }
 
     DeviceBuffer *GetSSBO(const AnsiString &name)

@@ -55,8 +55,8 @@ namespace hgl::graph
         world_desc_binding=new DescriptorBinding(DescriptorSetType::World);
 
         {
-            ubo_sky_info=rf->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo);
-            ubo_sky_info->data()->SetTime(10,0,0);  //早上10点
+            ubo_sky_info=rf->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo,BufferUpdateClass::Deferred);
+            ubo_sky_info->Data()->SetTime(10,0,0);  //早上10点
             world_desc_binding->AddUBO(ubo_sky_info);
         }
 

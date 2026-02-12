@@ -5,6 +5,7 @@
 #include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/StructuredBufferAccessor.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
@@ -14,7 +15,7 @@ namespace hgl::ecs { class ECSContext; }
 
 namespace hgl::graph
 {
-    using UBOCameraInfo = UBOInstance<CameraInfo>;      ///< 摄像机信息UBO类型
+    using UBOCameraInfo = StructuredBufferAccessor<CameraInfo>;      ///< 摄像机信息UBO类型（统一使用 StructuredBufferAccessor）
 
     /** 渲染上下文，聚合与单帧渲染相关资源(可持续扩展) */
     class RenderContext
@@ -44,8 +45,8 @@ namespace hgl::graph
                 Camera *            GetCamera           ()      { return &camera; }
         const   Camera *            GetCamera           ()const { return &camera; }
 
-                CameraInfo *        GetCameraInfo       ()      { return ubo_camera_info ? ubo_camera_info->data() : nullptr; }
-        const   CameraInfo *        GetCameraInfo       ()const { return ubo_camera_info ? ubo_camera_info->data() : nullptr; }
+                CameraInfo *        GetCameraInfo       ()      { return ubo_camera_info ? ubo_camera_info->Data() : nullptr; }
+        const   CameraInfo *        GetCameraInfo       ()const { return ubo_camera_info ? ubo_camera_info->Data() : nullptr; }
                 CameraControl *     GetCameraControl    ()const { return camera_control; }
 
                 World *             GetWorld            ()const { return world; }

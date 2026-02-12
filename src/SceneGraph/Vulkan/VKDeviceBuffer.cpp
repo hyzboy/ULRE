@@ -1,10 +1,130 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKBufferAccessBase.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
+static BufferAllocPolicy ResolvePolicy(VulkanDevice *device, BufferAllocPolicy policy)
+{
+    if(policy!=BufferAllocPolicy::Auto)
+        return policy;
+
+    if(device->GetPhyDevice()->HasReBAR())
+        return BufferAllocPolicy::CPUVisible;
+
+    return BufferAllocPolicy::StagedUpload;
+}
+
+static BufferCommitPolicy SelectCommitPolicy(BufferUpdateClass update_class, VkBufferUsageFlags usage, BufferAllocPolicy policy)
+{
+    if(update_class == BufferUpdateClass::Manual)
+        return BufferCommitPolicy::Manual;
+
+    if(update_class == BufferUpdateClass::CriticalPerFrame || update_class == BufferUpdateClass::TransformData)
+        return BufferCommitPolicy::Always;
+
+    if(update_class == BufferUpdateClass::MeshStatic || update_class == BufferUpdateClass::MeshDynamic ||
+       update_class == BufferUpdateClass::TextureTile || update_class == BufferUpdateClass::Particle ||
+       update_class == BufferUpdateClass::Deferred)
+        return BufferCommitPolicy::StagedOnly;
+
+    if(policy == BufferAllocPolicy::StagedUpload || policy == BufferAllocPolicy::GPUOnly)
+        return BufferCommitPolicy::StagedOnly;
+
+    if((usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) || (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+        return BufferCommitPolicy::Always;
+
+    return BufferCommitPolicy::Auto;
+}
+
+static void ApplyUpdateClass(DeviceBuffer *buf, BufferUpdateClass update_class, VkBufferUsageFlags usage, BufferAllocPolicy policy)
+{
+    if(!buf)
+        return;
+
+    buf->SetUpdateClass(update_class);
+    buf->SetCommitPolicy(SelectCommitPolicy(update_class, usage, policy));
+}
+
+// Map BufferUpdateClass to policy name in BufferPolicy.txt
+static const char* MapUpdateClassToPolicy(BufferUpdateClass update_class)
+{
+    switch(update_class)
+    {
+        case BufferUpdateClass::CriticalPerFrame:  return "CameraUBO";           // Both Camera & Viewport
+        case BufferUpdateClass::TransformData:      return "StaticTransformData"; // Transform data
+        case BufferUpdateClass::MeshStatic:         return "MeshVAB";            // Static mesh
+        case BufferUpdateClass::MeshDynamic:        return "DynamicMeshVAB";     // Dynamic mesh
+        case BufferUpdateClass::TextureTile:        return "TextureTile";        // Tile/streaming
+        case BufferUpdateClass::Particle:           return "Particle";           // Particle effects
+        case BufferUpdateClass::Deferred:           return "Deferred";           // Deferred updates
+        case BufferUpdateClass::Manual:             return "ManualSpecial";      // Manual only
+        default:                                     return nullptr;
+    }
+}
+
+// Apply complete policy configuration to buffer
+static void ApplyPolicyConfig(VulkanDevice *device, DeviceBuffer *buf, const BufferPolicyConfig *policy_config)
+{
+    if(!buf || !policy_config)
+        return;
+
+    buf->SetPriority(policy_config->priority);
+    buf->SetUpdateRate(policy_config->updateRate);
+    buf->SetSubmitTiming(policy_config->submitTiming);
+    buf->SetMaxLatency(policy_config->maxLatency);
+    buf->SetBudgetGroup(policy_config->budgetGroup);
+    buf->SetBudgetLimit(policy_config->budgetLimit);
+    buf->SetQueueing(policy_config->queueing);
+    buf->SetSplitPolicy(policy_config->splitPolicy);
+    buf->SetSplitChunk(policy_config->splitChunk);
+    buf->SetDropPolicy(policy_config->dropPolicy);
+    buf->SetDeadlinePolicy(policy_config->deadlinePolicy);
+    buf->SetDeadline(policy_config->deadline);
+    buf->SetPromotePolicy(policy_config->promotePolicy);
+    buf->SetPromoteRule(policy_config->promoteRule);
+    buf->SetMemoryPolicy(policy_config->memoryPolicy);
+    buf->SetCpuResident(policy_config->cpuResident);
+    buf->SetRingFrameCount(policy_config->ringFrameCount);
+    buf->SetStagedPersist(policy_config->stagedPersist);
+    buf->SetDevNotes(policy_config->devNotes);
+    
+    // Also apply the commit policy from configuration
+    BufferCommitPolicy commit_policy = BufferCommitPolicy::Auto;
+    if(policy_config->commitPolicy != BufferCommitPolicy::Auto)
+        commit_policy = policy_config->commitPolicy;
+    else
+        commit_policy = SelectCommitPolicy(buf->GetUpdateClass(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, BufferAllocPolicy::Auto);
+    
+    buf->SetCommitPolicy(commit_policy);
+}
+
+// Apply policy by looking up in loaded BufferPolicy.txt (or use defaults)
+static void ApplyUpdateClassWithPolicy(VulkanDevice *device, DeviceBuffer *buf, BufferUpdateClass update_class, 
+                                       VkBufferUsageFlags usage, BufferAllocPolicy policy)
+{
+    // First apply the basic update class
+    ApplyUpdateClass(buf, update_class, usage, policy);
+    
+    // Then try to load and apply policy configuration if available
+    if(!device)
+        return;
+    
+    BufferPolicyReader *policy_reader = device->GetBufferPolicyReader();
+    if(!policy_reader)
+        return;
+    
+    const char *policy_name = MapUpdateClassToPolicy(update_class);
+    if(!policy_name)
+        return;
+    
+    const BufferPolicyConfig *policy_config = policy_reader->GetPolicyByName(policy_name);
+    if(policy_config)
+        ApplyPolicyConfig(device, buf, policy_config);
+}
+
 const VkDeviceSize VulkanDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
 const VkDeviceSize VulkanDevice::GetSSBOAlign  (){return attr->physical_device->GetSSBOAlign();}
 const VkDeviceSize VulkanDevice::GetUBORange   (){return attr->physical_device->GetUBORange();}
@@ -57,7 +177,7 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     return(false);
 }
 
-VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode)
+VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class)
 {
     if(count==0)return(nullptr);
 
@@ -71,13 +191,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
 
     const VkDeviceSize size=stride*count;
 
-    if(policy==BufferAllocPolicy::Auto)
-    {
-        if(attr->physical_device->HasReBAR())
-            policy=BufferAllocPolicy::CPUVisible;
-        else
-            policy=BufferAllocPolicy::StagedUpload;
-    }
+    policy = ResolvePolicy(this, policy);
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
@@ -92,7 +206,11 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
         buf.info.offset=0;
         buf.info.range=size;
 
-        return(new VertexAttribBuffer(attr->device,buf,format,stride,count,staged));
+            VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count,staged);
+            ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
+                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
+            vab->SetAutoCommitProxy(new RawBufferAccessor(vab));
+            return vab;
     }
 
     MemoryUsage mem_usage=MemoryUsage::CPUOnly;
@@ -105,7 +223,11 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage))
         return(nullptr);
 
-    return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
+        VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count);
+        ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
+                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
+        vab->SetAutoCommitProxy(new RawBufferAccessor(vab));
+        return vab;
 }
 
 const bool VulkanDevice::IsSupport(const IndexType &type)const
@@ -140,7 +262,7 @@ const bool VulkanDevice::CheckIndexType(const IndexType it,const VkDeviceSize &v
     return(false);
 }
 
-IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode)
+IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class)
 {
     if(count==0)return(nullptr);
 
@@ -153,13 +275,7 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
 
     const VkDeviceSize size=stride*count;
 
-    if(policy==BufferAllocPolicy::Auto)
-    {
-        if(attr->physical_device->HasReBAR())
-            policy=BufferAllocPolicy::CPUVisible;
-        else
-            policy=BufferAllocPolicy::StagedUpload;
-    }
+    policy = ResolvePolicy(this, policy);
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
@@ -174,7 +290,11 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
         buf.info.offset=0;
         buf.info.range=size;
 
-        return(new IndexBuffer(attr->device,buf,index_type,count,staged));
+            IndexBuffer *ibo = new IndexBuffer(this,attr->device,buf,index_type,count,staged);
+            ApplyUpdateClassWithPolicy(this, ibo, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
+                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
+            ibo->SetAutoCommitProxy(new RawBufferAccessor(ibo));
+            return ibo;
     }
 
     MemoryUsage mem_usage=MemoryUsage::CPUOnly;
@@ -187,7 +307,11 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage))
         return(nullptr);
 
-    return(new IndexBuffer(attr->device,buf,index_type,count));
+        IndexBuffer *ibo = new IndexBuffer(this,attr->device,buf,index_type,count);
+        ApplyUpdateClassWithPolicy(this, ibo, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
+                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
+        ibo->SetAutoCommitProxy(new RawBufferAccessor(ibo));
+        return ibo;
 }
 
 DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
@@ -199,13 +323,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
 {
     if(size<=0)return(nullptr);
 
-    if(policy==BufferAllocPolicy::Auto)
-    {
-        if(attr->physical_device->HasReBAR())
-            policy=BufferAllocPolicy::CPUVisible;
-        else
-            policy=BufferAllocPolicy::StagedUpload;
-    }
+    policy = ResolvePolicy(this, policy);
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
@@ -220,7 +338,10 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
         buf.info.offset=0;
         buf.info.range=range;
 
-        return(new DeviceBuffer(attr->device,buf,staged));
+            DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,staged);
+            ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
+        dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
+        return dev_buf;
     }
 
     MemoryUsage mem_usage=MemoryUsage::CPUOnly;
@@ -234,6 +355,21 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage))
         return(nullptr);
 
-    return(new DeviceBuffer(attr->device,buf));
+        DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf);
+        ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
+    dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
+    return dev_buf;
 }
+
+    DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class)
+    {
+        DeviceBuffer *buf = CreateBuffer(buf_usage,range,size,data,policy,sharing_mode);
+        ApplyUpdateClassWithPolicy(this, buf, update_class, buf_usage, ResolvePolicy(this, policy));
+        return buf;
+    }
+
+    DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,BufferUpdateClass update_class)
+    {
+        return CreateBuffer(buf_usage,range,size,data,BufferAllocPolicy::Auto,sharing_mode,update_class);
+    }
 VK_NAMESPACE_END

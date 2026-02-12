@@ -2,6 +2,7 @@
 
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
+#include<hgl/graph/StructuredBufferAccessor.h>
 #include<hgl/graph/Sky.h>
 #include<hgl/io/event/EventDispatcher.h>
 
@@ -9,7 +10,7 @@ namespace hgl::graph
 {
     class RenderFramework;
 
-    using UBOSkyInfo=UBOInstance<SkyInfo>;
+    using UBOSkyInfo=StructuredBufferAccessor<SkyInfo>;      ///< 统一使用 StructuredBufferAccessor
 
     /**
     * 世界管理器<Br>

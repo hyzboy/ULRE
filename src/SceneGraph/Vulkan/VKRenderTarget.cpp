@@ -13,7 +13,7 @@ IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext):desc_bin
 {
     render_framework=rf;
 
-    ubo_vp_info=GetDevice()->CreateUBO<UBOViewportInfo>(&mtl::SBS_ViewportInfo);
+    ubo_vp_info=GetDevice()->CreateUBO<UBOViewportInfo>(&mtl::SBS_ViewportInfo,BufferUpdateClass::CriticalPerFrame);
 
     desc_binding.AddUBO(ubo_vp_info);
 
@@ -29,9 +29,9 @@ void IRenderTarget::OnResize(const VkExtent2D &ext)
 {
     extent=ext;
 
-    ubo_vp_info->data()->Set(ext.width,ext.height);
+    ubo_vp_info->Data()->Set(ext.width,ext.height);
 
-    ubo_vp_info->Update();
+    ubo_vp_info->ImmediateUpdate();  // 立即同步到 GPU / Immediate sync to GPU
 }
 
 VK_NAMESPACE_END

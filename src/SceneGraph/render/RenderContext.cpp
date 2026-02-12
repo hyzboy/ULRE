@@ -16,7 +16,7 @@ namespace hgl::graph
 
         if(rf)
         {
-            ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
+            ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo,BufferUpdateClass::CriticalPerFrame);
             if(ubo_camera_info)
             {
                 camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
@@ -48,7 +48,7 @@ namespace hgl::graph
             camera_control->Refresh();
 
         if(ubo_camera_info)
-            ubo_camera_info->Update();
+            ubo_camera_info->ImmediateUpdate();  // 立即同步到 GPU / Immediate sync to GPU
     }
 
     void RenderContext::SetRenderTarget(IRenderTarget *rt)
@@ -60,6 +60,10 @@ namespace hgl::graph
         {
             camera_control->SetViewport(viewport_info);
             UpdateCamera();
+
+            // Flush StagedBuffer to ensure viewport changes are immediately reflected
+            if(ubo_camera_info)
+                ubo_camera_info->Flush();
         }
 
         if(render_target)
@@ -86,9 +90,13 @@ namespace hgl::graph
             if(viewport_info)
                 camera_control->SetViewport(viewport_info);
 
-            camera_control->SetCamera(&camera, ubo_camera_info ? ubo_camera_info->data() : nullptr);
+            camera_control->SetCamera(&camera, ubo_camera_info ? ubo_camera_info->Data() : nullptr);
 
             UpdateCamera();
+
+            // Flush StagedBuffer to ensure camera changes are immediately reflected
+            if(ubo_camera_info)
+                ubo_camera_info->Flush();
         }
     }
 

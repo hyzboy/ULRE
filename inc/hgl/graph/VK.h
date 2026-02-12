@@ -140,7 +140,6 @@ class TextRender;
 class DeviceMemory;
 class DeviceBuffer;
 struct DeviceBufferData;
-template<typename T> class DeviceBufferMap;
 
 struct GeometryDataBuffer;
 struct GeometryDrawRange;
