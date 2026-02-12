@@ -19,6 +19,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveCollectSystem.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveBatchSystem.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
+                ${ECS_INCLUDE_PATH}/RenderBufferCommitSystem.h
                 ${ECS_INCLUDE_PATH}/LineRenderSystem.h
                 ${ECS_INCLUDE_PATH}/RenderItem.h
                 ${ECS_INCLUDE_PATH}/PrimitiveRenderItem.h
@@ -63,6 +64,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 RenderPrimitiveCollectSystem.cpp
                 RenderPrimitiveBatchSystem.cpp
                 RenderPrimitiveSubmitSystem.cpp
+                RenderBufferCommitSystem.cpp
                 LineRenderSystem.cpp
                 CameraComponent.cpp
                 CameraSystem.cpp
@@ -117,6 +119,8 @@ source_group("ECS\\Rendering" FILES
     RenderPrimitiveBatchSystem.cpp
     ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
     RenderPrimitiveSubmitSystem.cpp
+    ${ECS_INCLUDE_PATH}/RenderBufferCommitSystem.h
+    RenderBufferCommitSystem.cpp
     ${ECS_INCLUDE_PATH}/LineRenderSystem.h
     LineRenderSystem.cpp
     ${ECS_INCLUDE_PATH}/RenderableComponent.h

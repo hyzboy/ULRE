@@ -4,7 +4,6 @@
 #include<hgl/graph/World.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKBufferCommitQueue.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/RenderFramework.h>
@@ -128,48 +127,25 @@ namespace hgl::graph
         {
             RenderCmdBuffer *cmd = render_target->BeginRender();
 
-            // Flush all pending buffer updates before rendering
-            if(render_target && render_target->GetDevice())
+            if(render_target && GetECSContext())
+                GetECSContext()->SetFrameIndex(render_target->GetCurrentFrameIndex());
+
+            if(render_context)
             {
-                    BufferCommitQueue *commit_queue = render_target->GetDevice()->GetBufferCommitQueue();
-                    if(commit_queue)
-                    {
-                        const uint32_t frame_index = render_target->GetCurrentFrameIndex();
-                        commit_queue->BeginFrame(frame_index);
+                render_context->BindDescriptor(cmd);
+            }
 
-                        if(commit_queue->HasPending())
-                            commit_queue->CommitAll();
-
-                        //if((frame_index % 120) == 0)
-                        //{
-                        //    BufferCommitQueue::BudgetGroupSnapshot group_stats;
-                        //    const bool has_group = commit_queue->GetBudgetGroupStats("GLOBAL", group_stats);
-
-                        //    std::cout << "[BufferCommitQueue] frame=" << commit_queue->GetCurrentFrameNumber()
-                        //              << " pending=" << commit_queue->GetLastPendingCount()
-                        //              << " committed=" << commit_queue->GetLastCommittedCount()
-                        //              << " skipped_budget=" << commit_queue->GetLastSkippedBudget()
-                        //              << " deadline_forced=" << commit_queue->GetLastDeadlineForced()
-                        //              << " bytes_frame=" << commit_queue->GetCurrentFrameBytes()
-                        //              << " bytes_total=" << commit_queue->GetTotalCommittedBytes();
-
-                        //    if(has_group)
-                        //    {
-                        //        std::cout << " group_frame=" << group_stats.frame_bytes
-                        //                  << " group_limit=" << group_stats.frame_limit
-                        //                  << " group_total=" << group_stats.total_bytes;
-                        //    }
-
-                        //    std::cout << std::endl;
-                        //}
-                    }
-
-                BufferUpdateQueue *update_queue = render_target->GetDevice()->GetBufferUpdateQueue();
-                if(update_queue && update_queue->HasPendingUpdates())
+            cmd->SetClearColor(0,clear_color);
+            
+            // Flush buffer updates BEFORE BeginRenderPass (vkCmdCopyBuffer/vkCmdPipelineBarrier must be outside RenderPass)
+            VulkanDevice *device = render_target->GetDevice();
+            if (device)
+            {
+                auto *update_queue = device->GetBufferUpdateQueue();
+                if (update_queue && update_queue->HasPendingUpdates())
                 {
                     update_queue->FlushAll(cmd->operator VkCommandBuffer());
 
-                    // Add memory barrier to ensure copy operations complete before rendering
                     VkMemoryBarrier barrier{};
                     barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
                     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -181,21 +157,10 @@ namespace hgl::graph
                                        0, 1, &barrier, 0, nullptr, 0, nullptr);
                 }
             }
-
-            if(render_context)
-            {
-                render_context->BindDescriptor(cmd);
-            }
-
-            cmd->SetClearColor(0,clear_color);
+            
             cmd->BeginRenderPass();
 
-            if(render_target && GetECSContext())
-            {
-                GetECSContext()->SetFrameIndex(render_target->GetCurrentFrameIndex());
-            }
-
-            // TODO: 在此处接入 ECS 的渲染收集与绘制
+            // Render all ECS systems
             GetECSContext()->Render(cmd, 0.0f);
 
             cmd->EndRenderPass();
@@ -228,60 +193,6 @@ namespace hgl::graph
         bool result = false;
 
         RenderCmdBuffer *cmd = render_target->BeginRender();
-
-        // Flush all pending buffer updates before rendering
-        if(render_target && render_target->GetDevice())
-        {
-                BufferCommitQueue *commit_queue = render_target->GetDevice()->GetBufferCommitQueue();
-                if(commit_queue)
-                {
-                    const uint32_t frame_index = render_target->GetCurrentFrameIndex();
-                    commit_queue->BeginFrame(frame_index);
-
-                    if(commit_queue->HasPending())
-                        commit_queue->CommitAll();
-
-                    if((frame_index % 120) == 0)
-                    {
-                        BufferCommitQueue::BudgetGroupSnapshot group_stats;
-                        const bool has_group = commit_queue->GetBudgetGroupStats("GLOBAL", group_stats);
-
-                        std::cout << "[BufferCommitQueue] frame=" << commit_queue->GetCurrentFrameNumber()
-                                  << " pending=" << commit_queue->GetLastPendingCount()
-                                  << " committed=" << commit_queue->GetLastCommittedCount()
-                                  << " skipped_budget=" << commit_queue->GetLastSkippedBudget()
-                                  << " deadline_forced=" << commit_queue->GetLastDeadlineForced()
-                                  << " bytes_frame=" << commit_queue->GetCurrentFrameBytes()
-                                  << " bytes_total=" << commit_queue->GetTotalCommittedBytes();
-
-                        if(has_group)
-                        {
-                            std::cout << " group_frame=" << group_stats.frame_bytes
-                                      << " group_limit=" << group_stats.frame_limit
-                                      << " group_total=" << group_stats.total_bytes;
-                        }
-
-                        std::cout << std::endl;
-                    }
-                }
-
-            BufferUpdateQueue *update_queue = render_target->GetDevice()->GetBufferUpdateQueue();
-            if(update_queue && update_queue->HasPendingUpdates())
-            {
-                update_queue->FlushAll(cmd->operator VkCommandBuffer());
-
-                // Add memory barrier to ensure copy operations complete before rendering
-                VkMemoryBarrier barrier{};
-                barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
-
-                vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
-                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                   0, 1, &barrier, 0, nullptr, 0, nullptr);
-            }
-        }
 
         render_context->BindDescriptor(cmd);
 
