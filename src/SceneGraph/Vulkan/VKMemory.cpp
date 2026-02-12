@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/log/Log.h>
 VK_NAMESPACE_BEGIN
 DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
 {
@@ -61,6 +62,8 @@ void *DeviceMemory::Map()
     {
         is_mapped=true;
         mapped_ptr=result;
+        mapped_offset = 0;
+        mapped_size = req.size;
         
         /** 只要是MAP成功，那么数据就可以直接访问
 
@@ -116,6 +119,8 @@ void *DeviceMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
     {
         is_mapped=true;
         mapped_ptr=result;
+        mapped_offset = 0;
+        mapped_size = req.size;
         // Return pointer with requested offset
         return (char*)result + offset;
     }
@@ -134,6 +139,8 @@ void DeviceMemory::Unmap()
     vkUnmapMemory(device,memory);
     is_mapped=false;
     mapped_ptr=nullptr;
+    mapped_offset = 0;
+    mapped_size = 0;
 }
 
 void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
@@ -143,9 +150,57 @@ void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
         // Not currently mapped, skip flush to avoid validation error
         return;
     }
-    
-    memory_range.offset =offset;
-    memory_range.size   =size>0?hgl_align(size,nonCoherentAtomSize):0;
+
+    VkDeviceSize aligned_size = size;
+    if(size == VK_WHOLE_SIZE)
+        aligned_size = VK_WHOLE_SIZE;
+    else if(size > 0)
+        aligned_size = hgl_align(size, nonCoherentAtomSize);
+
+    if(size == VK_WHOLE_SIZE)
+    {
+        if(offset < mapped_offset || offset >= mapped_offset + mapped_size)
+        {
+            GLogWarning("[DeviceMemory::Flush] whole-size offset out of mapped range memory=%p vkMemory=%p offset=%llu mappedOffset=%llu mappedSize=%llu",
+                        (void *)this,
+                        (void *)memory,
+                        static_cast<unsigned long long>(offset),
+                        static_cast<unsigned long long>(mapped_offset),
+                        static_cast<unsigned long long>(mapped_size));
+            return;
+        }
+    }
+    else
+    {
+        const VkDeviceSize mapped_end = mapped_offset + mapped_size;
+        if(offset < mapped_offset || offset + aligned_size > mapped_end)
+        {
+            GLogWarning("[DeviceMemory::Flush] range exceeds mapped region memory=%p vkMemory=%p offset=%llu size=%llu aligned=%llu mappedOffset=%llu mappedSize=%llu",
+                        (void *)this,
+                        (void *)memory,
+                        static_cast<unsigned long long>(offset),
+                        static_cast<unsigned long long>(size),
+                        static_cast<unsigned long long>(aligned_size),
+                        static_cast<unsigned long long>(mapped_offset),
+                        static_cast<unsigned long long>(mapped_size));
+            return;
+        }
+    }
+
+    if(size != VK_WHOLE_SIZE && aligned_size > 0 && offset + aligned_size > req.size)
+    {
+        GLogWarning("[DeviceMemory::Flush] range overflow memory=%p vkMemory=%p offset=%llu size=%llu aligned=%llu memSize=%llu atomSize=%llu",
+                    (void *)this,
+                    (void *)memory,
+                    static_cast<unsigned long long>(offset),
+                    static_cast<unsigned long long>(size),
+                    static_cast<unsigned long long>(aligned_size),
+                    static_cast<unsigned long long>(req.size),
+                    static_cast<unsigned long long>(nonCoherentAtomSize));
+    }
+
+    memory_range.offset = offset;
+    memory_range.size   = aligned_size;
 
     vkFlushMappedMemoryRanges(device,1,&memory_range);
 }

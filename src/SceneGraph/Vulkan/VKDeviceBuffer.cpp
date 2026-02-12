@@ -4,6 +4,7 @@
 #include<hgl/graph/VKBufferAccessBase.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/BufferPolicyImpl.h>
+#include<hgl/log/Log.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -90,6 +91,29 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     VkMemoryRequirements mem_reqs;
 
     vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
+
+#ifdef _DEBUG
+    if(buf_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+    {
+        GLogWarning("[CreateBuffer] UBO size=%llu range=%llu memReqSize=%llu memReqAlign=%llu uboAlign=%llu uboRange=%llu", 
+                    static_cast<unsigned long long>(size),
+                    static_cast<unsigned long long>(range),
+                    static_cast<unsigned long long>(mem_reqs.size),
+                    static_cast<unsigned long long>(mem_reqs.alignment),
+                    static_cast<unsigned long long>(GetUBOAlign()),
+                    static_cast<unsigned long long>(GetUBORange()));
+    }
+    if(buf_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+    {
+        GLogWarning("[CreateBuffer] SSBO size=%llu range=%llu memReqSize=%llu memReqAlign=%llu ssboAlign=%llu ssboRange=%llu", 
+                    static_cast<unsigned long long>(size),
+                    static_cast<unsigned long long>(range),
+                    static_cast<unsigned long long>(mem_reqs.size),
+                    static_cast<unsigned long long>(mem_reqs.alignment),
+                    static_cast<unsigned long long>(GetSSBOAlign()),
+                    static_cast<unsigned long long>(GetSSBORange()));
+    }
+#endif//_DEBUG
 
     DeviceMemory *dm=CreateMemory(mem_reqs,mem_usage);
 

@@ -39,6 +39,8 @@ class StructuredBufferAccessor:public BufferAccessBase
 {
 private:
     T *mapped_data;                 ///< 映射后的数据指针 / Mapped data pointer
+    VkDeviceSize aligned_size = 0;
+    friend class VulkanDevice;
 
     /**
      * CN: 内部 Map 操作
@@ -49,9 +51,19 @@ private:
         if(!buffer || mapped_data)
             return;
 
-        void *ptr = buffer->Map(0, sizeof(T));
+        void *ptr = buffer->Map(0, aligned_size);
         if(ptr)
             mapped_data = static_cast<T*>(ptr);
+    }
+
+    StructuredBufferAccessor(DeviceBuffer *buf, VkDeviceSize aligned_size_param, bool take_ownership)
+        : BufferAccessBase()
+        , mapped_data(nullptr)
+        , aligned_size(aligned_size_param)
+    {
+        SetBuffer(buf, take_ownership);
+        if(buffer)
+            MapInternal();
     }
 
     /**
@@ -67,36 +79,20 @@ private:
         mapped_data = nullptr;
     }
 
-public:
-
-    /**
-     * CN: 构造函数
-     * EN: Constructor
-     * 
-     * \param buf DeviceBuffer 指针，必须至少能容纳 sizeof(T) 字节 / Buffer pointer, must hold sizeof(T) bytes
-     * \param take_ownership 是否获取缓冲区的所有权，析构时删除 / Whether to take ownership (delete on dtor)
-     */
     StructuredBufferAccessor(DeviceBuffer *buf, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
+        , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf, take_ownership);
         if(buffer)
             MapInternal();
     }
 
-    /**
-     * CN: 构造函数（带 UBO 元数据）- 支持 DescriptorBinding::AddUBO()
-     * EN: Constructor with UBO metadata - compatible with DescriptorBinding::AddUBO()
-     * 
-     * \param buf DeviceBuffer 指针
-     * \param dst 描述符集合类型 / Descriptor set type
-     * \param name UBO 名称 / UBO name
-     * \param take_ownership 是否获取缓冲区的所有权
-     */
     StructuredBufferAccessor(DeviceBuffer *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
+        , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf, take_ownership);
         SetUBOMeta(dst, name);
@@ -104,17 +100,10 @@ public:
             MapInternal();
     }
 
-    /**
-     * CN: 构造函数（带 ShaderBufferDesc）- 支持来自 ShaderBufferSource 的初始化
-     * EN: Constructor with ShaderBufferDesc - compatible with ShaderBufferSource
-     * 
-     * \param buf DeviceBuffer 指针
-     * \param desc 着色器缓冲区描述符 / Shader buffer descriptor
-     * \param take_ownership 是否获取缓冲区的所有权
-     */
     StructuredBufferAccessor(DeviceBuffer *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
+        , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf, take_ownership);
         SetUBOMeta(desc ? desc->set_type : DescriptorSetType::PerMaterial, desc ? desc->name : "");
@@ -122,6 +111,7 @@ public:
             MapInternal();
     }
 
+public:
     /**
      * CN: 析构函数 - 自动 Unmap 和可选的 buffer 删除
      * EN: Destructor - auto unmap and optional buffer cleanup
@@ -139,9 +129,11 @@ public:
     StructuredBufferAccessor(StructuredBufferAccessor&& other) noexcept
         : BufferAccessBase()
         , mapped_data(other.mapped_data)
+        , aligned_size(other.aligned_size)
     {
         MoveFrom(std::move(other));
         other.mapped_data = nullptr;
+        other.aligned_size = 0;
     }
 
     StructuredBufferAccessor& operator=(StructuredBufferAccessor&& other) noexcept
@@ -153,10 +145,14 @@ public:
 
             MoveFrom(std::move(other));
             mapped_data = other.mapped_data;
+            aligned_size = other.aligned_size;
             other.mapped_data = nullptr;
+            other.aligned_size = 0;
         }
         return *this;
     }
+
+private:
 
     /**
      * CN: 绑定到新的缓冲区
@@ -165,11 +161,14 @@ public:
     void Bind(DeviceBuffer *buf, bool take_ownership = false)
     {
         UnmapInternal();
+        aligned_size = buf ? buf->GetSize() : 0;
         SetBuffer(buf, take_ownership);
 
         if(buffer)
             MapInternal();
     }
+
+public:
 
     /**
      * CN: 检查是否有效
@@ -262,7 +261,7 @@ public:
 
         // 对于 StagedBuffer，需要标记为 dirty 并检查提交
         // For StagedBuffer, mark as dirty to trigger staged buffer submission
-        buffer->Flush(sizeof(T));
+        buffer->Flush(aligned_size);
 
         dirty = false;
         return true;
@@ -280,7 +279,7 @@ public:
             return;
 
         buffer->Write(mapped_data, sizeof(T));
-        buffer->Flush(sizeof(T));
+        buffer->Flush(aligned_size);
         
         // Reset frame counter after successful commit
         const_cast<DeviceBuffer*>(buffer)->ResetFramesSinceUpdate();
@@ -298,20 +297,20 @@ public:
         return buffer->Write(ptr, offset, size);
     }
 
+    void Flush(uint32_t)
+    {
+        if(buffer)
+            buffer->Flush(aligned_size);
+    }
+
     /**
      * CN: 代理 DeviceBuffer::Flush 方法
      * EN: Proxy DeviceBuffer::Flush method
      */
-    void Flush(uint32_t size)
-    {
-        if(buffer)
-            buffer->Flush(size);
-    }
-
     void Flush()
     {
         if(buffer)
-            buffer->Flush(sizeof(T));
+            buffer->Flush(aligned_size);
     }
 
     // ===== UBOInstance 兼容接口 / UBOInstance Compatible Interface =====

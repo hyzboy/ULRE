@@ -140,28 +140,28 @@ namespace hgl::graph
                         if(commit_queue->HasPending())
                             commit_queue->CommitAll();
 
-                        if((frame_index % 120) == 0)
-                        {
-                            BufferCommitQueue::BudgetGroupSnapshot group_stats;
-                            const bool has_group = commit_queue->GetBudgetGroupStats("GLOBAL", group_stats);
+                        //if((frame_index % 120) == 0)
+                        //{
+                        //    BufferCommitQueue::BudgetGroupSnapshot group_stats;
+                        //    const bool has_group = commit_queue->GetBudgetGroupStats("GLOBAL", group_stats);
 
-                            std::cout << "[BufferCommitQueue] frame=" << commit_queue->GetCurrentFrameNumber()
-                                      << " pending=" << commit_queue->GetLastPendingCount()
-                                      << " committed=" << commit_queue->GetLastCommittedCount()
-                                      << " skipped_budget=" << commit_queue->GetLastSkippedBudget()
-                                      << " deadline_forced=" << commit_queue->GetLastDeadlineForced()
-                                      << " bytes_frame=" << commit_queue->GetCurrentFrameBytes()
-                                      << " bytes_total=" << commit_queue->GetTotalCommittedBytes();
+                        //    std::cout << "[BufferCommitQueue] frame=" << commit_queue->GetCurrentFrameNumber()
+                        //              << " pending=" << commit_queue->GetLastPendingCount()
+                        //              << " committed=" << commit_queue->GetLastCommittedCount()
+                        //              << " skipped_budget=" << commit_queue->GetLastSkippedBudget()
+                        //              << " deadline_forced=" << commit_queue->GetLastDeadlineForced()
+                        //              << " bytes_frame=" << commit_queue->GetCurrentFrameBytes()
+                        //              << " bytes_total=" << commit_queue->GetTotalCommittedBytes();
 
-                            if(has_group)
-                            {
-                                std::cout << " group_frame=" << group_stats.frame_bytes
-                                          << " group_limit=" << group_stats.frame_limit
-                                          << " group_total=" << group_stats.total_bytes;
-                            }
+                        //    if(has_group)
+                        //    {
+                        //        std::cout << " group_frame=" << group_stats.frame_bytes
+                        //                  << " group_limit=" << group_stats.frame_limit
+                        //                  << " group_total=" << group_stats.total_bytes;
+                        //    }
 
-                            std::cout << std::endl;
-                        }
+                        //    std::cout << std::endl;
+                        //}
                     }
 
                 BufferUpdateQueue *update_queue = render_target->GetDevice()->GetBufferUpdateQueue();

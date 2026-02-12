@@ -5,6 +5,7 @@
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKStagedBuffer.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/log/Log.h>
 
 #include<string>
 
@@ -175,7 +176,29 @@ public:
                 }
 
                 if(buf.memory)
+                {
+//#ifdef _DEBUG
+//                    if(size==0)
+//                    {
+//                        GLogWarning("[DeviceBuffer::Flush] size=0 (interpreted as whole) buffer=%p vkBuffer=%p memory=%p memSize=%llu",
+//                                    (void *)this,
+//                                    (void *)buf.buffer,
+//                                    (void *)static_cast<VkDeviceMemory>(*buf.memory),
+//                                    static_cast<unsigned long long>(buf.memory->GetSize()));
+//                    }
+//                    else if(start + size > buf.memory->GetSize())
+//                    {
+//                        GLogWarning("[DeviceBuffer::Flush] range overflow buffer=%p vkBuffer=%p memory=%p start=%llu size=%llu memSize=%llu",
+//                                    (void *)this,
+//                                    (void *)buf.buffer,
+//                                    (void *)static_cast<VkDeviceMemory>(*buf.memory),
+//                                    static_cast<unsigned long long>(start),
+//                                    static_cast<unsigned long long>(size),
+//                                    static_cast<unsigned long long>(buf.memory->GetSize()));
+//                    }
+//#endif//_DEBUG
                     buf.memory->Flush(start,size);
+                }
             }
     virtual void    Flush   (VkDeviceSize size)
             {
@@ -186,7 +209,28 @@ public:
                 }
 
                 if(buf.memory)
+                {
+//#ifdef _DEBUG
+//                    if(size==0)
+//                    {
+//                        GLogWarning("[DeviceBuffer::Flush] size=0 (interpreted as whole) buffer=%p vkBuffer=%p memory=%p memSize=%llu",
+//                                    (void *)this,
+//                                    (void *)buf.buffer,
+//                                    (void *)static_cast<VkDeviceMemory>(*buf.memory),
+//                                    static_cast<unsigned long long>(buf.memory->GetSize()));
+//                    }
+//                    else if(size > buf.memory->GetSize())
+//                    {
+//                        GLogWarning("[DeviceBuffer::Flush] size overflow buffer=%p vkBuffer=%p memory=%p size=%llu memSize=%llu",
+//                                    (void *)this,
+//                                    (void *)buf.buffer,
+//                                    (void *)static_cast<VkDeviceMemory>(*buf.memory),
+//                                    static_cast<unsigned long long>(size),
+//                                    static_cast<unsigned long long>(buf.memory->GetSize()));
+//                    }
+//#endif//_DEBUG
                     buf.memory->Flush(size);
+                }
             }
 
     virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size)
