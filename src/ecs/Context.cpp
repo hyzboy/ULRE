@@ -38,6 +38,18 @@ namespace hgl
             Shutdown();
         }
 
+        void ECSContext::AttachToParent(ECSContext* parent)
+        {
+            if (!parent)
+                return;
+
+            parent_context = parent;
+            owns_transform_storage = false;
+
+            // Don't create our own transform storage if we have a parent
+            // The TransformComponent will use the shared storage from the parent
+        }
+
         void ECSContext::Initialize()
         {
             // Ensure TransformSystem is registered and bound to this world

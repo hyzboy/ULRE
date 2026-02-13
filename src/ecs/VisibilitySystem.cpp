@@ -28,6 +28,9 @@ namespace hgl::ecs
         if (!world)
             return;
 
+        // Set context for hierarchical visibility checks
+        visibility_storage->SetContext(world);
+
         // Set storage reference for all existing VisibilityComponents
         std::vector<std::shared_ptr<VisibilityComponent>> components;
         world->GetComponents<VisibilityComponent>(components);

@@ -83,6 +83,10 @@ namespace hgl
             bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
 
+            // SubWorld support - hierarchical context
+            ECSContext* parent_context = nullptr;       // nullptr if this is a root context
+            bool owns_transform_storage = false;         // true if this context created the storage
+
         private:
 
             void SortTickSystems();
@@ -338,6 +342,18 @@ namespace hgl
 
             /// Check if world is active
             bool IsActive() const { return active; }
+
+            /// SubWorld Hierarchical Support ///
+            
+            /// Attach this context as a child to a parent context (for SubWorld support)
+            /// Shares the parent's TransformDataStorage for seamless parent-child relationships
+            void AttachToParent(ECSContext* parent);
+
+            /// Get parent context (nullptr if root)
+            ECSContext* GetParentContext() const { return parent_context; }
+
+            /// Check if this context owns its transform storage
+            bool OwnsTransformStorage() const { return owns_transform_storage; }
 
             /// 获取指定类型的组件列表（自动清理已失效的弱引用）
             template<typename T>

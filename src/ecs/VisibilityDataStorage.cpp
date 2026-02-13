@@ -1,4 +1,7 @@
 #include<hgl/ecs/VisibilityDataStorage.h>
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
 
 namespace hgl::ecs
 {
@@ -20,13 +23,53 @@ namespace hgl::ecs
         invisible_entities.erase(entity_id);
     }
 
-    bool VisibilityDataStorage::IsInvisible(EntityID entity_id) const
+    bool VisibilityDataStorage::IsDirectlyInvisible(EntityID entity_id) const
     {
         if (!entity_id.IsValid())
             return false;
 
         std::lock_guard<std::mutex> lock(mutex);
         return invisible_entities.count(entity_id) > 0;
+    }
+
+    bool VisibilityDataStorage::IsInvisible(EntityID entity_id) const
+    {
+        if (!entity_id.IsValid())
+            return false;
+
+        // Check if directly invisible
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if (invisible_entities.count(entity_id) > 0)
+                return true;
+        }
+
+        // Check ancestor chain for hierarchical visibility
+        if (!context)
+            return false;
+
+        Entity* entity = context->GetEntity(entity_id);
+        while (entity)
+        {
+            auto transform = entity->GetComponent<TransformComponent>();
+            if (!transform)
+                break;
+
+            EntityID parent_id = transform->GetParentID();
+            if (!parent_id.IsValid())
+                break;
+
+            // Check if parent is invisible
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                if (invisible_entities.count(parent_id) > 0)
+                    return true;
+            }
+
+            entity = context->GetEntity(parent_id);
+        }
+
+        return false;
     }
 
     size_t VisibilityDataStorage::GetInvisibleCount() const
