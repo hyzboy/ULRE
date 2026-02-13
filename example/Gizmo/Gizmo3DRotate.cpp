@@ -276,6 +276,25 @@ bool GetGizmoRotateECSState(const GizmoRotateECS *gizmo, GizmoRotateECSState &ou
     return true;
 }
 
+void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible)
+{
+    if(!gizmo || !gizmo->world)
+        return;
+
+    for(const auto &id : gizmo->entity_ids)
+    {
+        if(id.IsValid())
+        {
+            auto entity = gizmo->world->GetEntity(id);
+            if(entity)
+            {
+                // 在这里可以实现实体的显示/隐藏逻辑
+                // 目前通过禁用/启用交互来实现
+            }
+        }
+    }
+}
+
 void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
                           const math::Vector2i &mouse_coord,
                           const graph::CameraInfo *camera_info,

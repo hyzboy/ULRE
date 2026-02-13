@@ -312,6 +312,25 @@ bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_s
     return true;
 }
 
+void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible)
+{
+    if(!gizmo || !gizmo->world)
+        return;
+
+    for(const auto &id : gizmo->entity_ids)
+    {
+        if(id.IsValid())
+        {
+            auto entity = gizmo->world->GetEntity(id);
+            if(entity)
+            {
+                // 在这里可以实现实体的显示/隐藏逻辑
+                // 目前通过禁用/启用交互来实现
+            }
+        }
+    }
+}
+
 void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
                          const math::Vector2i &mouse_coord,
                          const graph::CameraInfo *camera_info,

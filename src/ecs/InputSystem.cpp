@@ -111,11 +111,15 @@ namespace hgl::ecs
         return io::WindowEvent::OnEvent(header, data);
     }
 
-    bool InputSystem::IsMouseButtonDown(int button) const
+    bool InputSystem::IsMouseButtonDown(io::MouseButton button) const
     {
-        if (button < 0 || button >= 3)
-            return false;
-        return mouse_buttons[button];
+        switch (button)
+        {
+            case io::MouseButton::Left:  return mouse_buttons[0];
+            case io::MouseButton::Right: return mouse_buttons[1];
+            case io::MouseButton::Mid:   return mouse_buttons[2];
+            default:                     return false;
+        }
     }
 
     bool InputSystem::BeginMouseCapture(void* owner)
@@ -136,9 +140,9 @@ namespace hgl::ecs
             mouse_capture_owner = nullptr;
     }
 
-    bool InputSystem::IsKeyDown(uint32_t keycode) const
+    bool InputSystem::IsKeyDown(io::KeyboardButton key) const
     {
-        auto value = key_states.GetValuePointer(keycode);
+        auto value = key_states.GetValuePointer((uint32_t)key);
         if (value)
             return *value;
         return false;
