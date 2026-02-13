@@ -292,10 +292,12 @@ namespace hgl::ecs
         input_state.mouse_pos = input_system->GetMouseCoord();
         input_state.mouse_delta = input_state.mouse_pos - input_state.last_mouse_pos;
 
+        const bool mouse_blocked = input_system->IsMouseCaptured() && !input_system->IsMouseCapturedBy(this);
+
         // 获取动作状态
-        input_state.left_button = input_system->IsActionActive(CameraInputMapping::kActionRotate);
-        input_state.right_button = input_system->IsActionActive(CameraInputMapping::kActionPanRight);
-        input_state.middle_button = input_system->IsActionActive(CameraInputMapping::kActionPanMiddle);
+        input_state.left_button = !mouse_blocked && input_system->IsActionActive(CameraInputMapping::kActionRotate);
+        input_state.right_button = !mouse_blocked && input_system->IsActionActive(CameraInputMapping::kActionPanRight);
+        input_state.middle_button = !mouse_blocked && input_system->IsActionActive(CameraInputMapping::kActionPanMiddle);
 
         // 获取滚轮和按键缩放
         float wheel_delta = input_system->GetActionAnalog1D(CameraInputMapping::kActionZoomWheel);
@@ -306,7 +308,10 @@ namespace hgl::ecs
             wheel_delta += 1.0f;
         if (input_system->IsActionActive(CameraInputMapping::kActionZoomOut))
             wheel_delta -= 1.0f;
-        input_state.wheel_delta = wheel_delta;
+        input_state.wheel_delta = mouse_blocked ? 0.0f : wheel_delta;
+
+        if (mouse_blocked)
+            input_state.mouse_delta = math::Vector2i(0, 0);
 
         //if (wheel_delta != 0.0f || raw_wheel_delta != 0.0f)
         //{

@@ -3,6 +3,10 @@
 #include"GizmoResource.h"
 #include<hgl/math/VectorTypes.h>
 #include<hgl/component/PrimitiveComponent.h>
+#include<hgl/component/CreateComponentInfo.h>
+#include<hgl/graph/font/TextRender.h>
+#include<hgl/graph/font/TextGeometry.h>
+#include<hgl/utf.h>
 
 // ECS headers
 #include<hgl/ecs/Context.h>
@@ -18,6 +22,7 @@
 
 #include<vector>
 #include<memory>
+#include<string>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -79,6 +84,12 @@ class TestApp:public WorkObject
     GizmoMoveECS *gizmo_move = nullptr;
     bool last_left_down = false;
 
+    TextRender *debug_text_render = nullptr;
+    TextGeometry *debug_text_geom = nullptr;
+    Primitive *debug_text_prim = nullptr;
+    PrimitiveComponent *debug_text_comp = nullptr;
+    std::string debug_text_cache;
+
 private:
 
     Primitive *CreateGizmoPrimitive(const GizmoShape &shape,const GizmoColor &color)
@@ -118,6 +129,59 @@ private:
             return false;
 
         return true;
+    }
+
+    bool InitDebugOverlay()
+    {
+        FontSource *fs = CreateFontSource(OS_TEXT("Consolas"), 16);
+        if(!fs)
+            return false;
+
+        debug_text_render = CreateTextRender(fs, 256);
+        if(!debug_text_render)
+            return false;
+
+        U16String initial_text = U16_TEXT("gizmo debug");
+        debug_text_geom = debug_text_render->CreateGeometry(TextGeometryType::FixedStyle, initial_text);
+        if(!debug_text_geom || !debug_text_geom->IsValid())
+            return false;
+
+        debug_text_prim = debug_text_render->CreatePrimitive(debug_text_geom);
+        if(!debug_text_prim)
+            return false;
+
+        CreateComponentInfo cci(GetWorldRootNode());
+        debug_text_comp = CreateComponent<PrimitiveComponent>(&cci, debug_text_prim);
+        return debug_text_comp != nullptr;
+    }
+
+    void UpdateDebugOverlay(hgl::ecs::InputSystem *input_system)
+    {
+        if(!debug_text_render || !debug_text_geom || !input_system)
+            return;
+
+        GizmoMoveECSState state;
+        const bool has_state = GetGizmoMoveECSState(gizmo_move, state);
+
+        std::string text = "capture=";
+        text += input_system->IsMouseCaptured() ? "1" : "0";
+        text += " owner=";
+        text += input_system->IsMouseCapturedBy(gizmo_move) ? "gizmo" : "other";
+        text += " left=";
+        text += input_system->IsMouseButtonDown(0) ? "1" : "0";
+        text += " dragging=";
+        text += (has_state && state.dragging) ? "1" : "0";
+        text += " axis=";
+        text += has_state ? std::to_string(state.cur_axis) : "-";
+
+        if(text == debug_text_cache)
+            return;
+
+        debug_text_cache = text;
+
+        //U16String u16_text = to_u16(reinterpret_cast<const u8char *>(text.c_str()));
+        //debug_text_render->SimpleLayout(debug_text_geom, u16_text);
+        std::cout<<text<<std::endl;
     }
 
     bool EnsureCameraSystem()
@@ -176,6 +240,9 @@ private:
         if(!InitCamera())
             return false;
 
+        if(!InitDebugOverlay())
+            return false;
+
         return true;
     }
 
@@ -193,6 +260,11 @@ public:
 
     ~TestApp()
     {
+        SAFE_CLEAR(debug_text_render);
+        debug_text_geom = nullptr;
+        debug_text_prim = nullptr;
+        debug_text_comp = nullptr;
+
         if(gizmo_move)
         {
             DestroyGizmoMoveECS(gizmo_move);
@@ -208,22 +280,31 @@ public:
 
     void Tick(double delta) override
     {
+        if(ecs_world && gizmo_move)
+        {
+            auto input_system = ecs_world->GetSystem<hgl::ecs::InputSystem>();
+            if(input_system)
+            {
+                const math::Vector2i &mouse_coord = input_system->GetMouseCoord();
+                const bool left_down = input_system->IsMouseButtonDown(0);
+                const bool left_pressed = left_down && !last_left_down;
+                const bool left_released = !left_down && last_left_down;
+                last_left_down = left_down;
+
+                UpdateGizmoMoveECS(gizmo_move,
+                                   mouse_coord,
+                                   GetCameraInfo(),
+                                   GetViewportInfo(),
+                                   input_system.get(),
+                                   left_down,
+                                   left_pressed,
+                                   left_released);
+
+                UpdateDebugOverlay(input_system.get());
+            }
+        }
+
         WorkObject::Tick(delta);
-
-        if(!ecs_world || !gizmo_move)
-            return;
-
-        auto input_system = ecs_world->GetSystem<hgl::ecs::InputSystem>();
-        if(!input_system)
-            return;
-
-        const math::Vector2i &mouse_coord = input_system->GetMouseCoord();
-        const bool left_down = input_system->IsMouseButtonDown(0);
-        const bool left_pressed = left_down && !last_left_down;
-        const bool left_released = !left_down && last_left_down;
-        last_left_down = left_down;
-
-        UpdateGizmoMoveECS(gizmo_move, mouse_coord, GetCameraInfo(), GetViewportInfo(), left_down, left_pressed, left_released);
     }
 
     //void BuildCommandBuffer(uint32 index) override

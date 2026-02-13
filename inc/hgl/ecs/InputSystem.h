@@ -23,6 +23,8 @@ namespace hgl::ecs
         io::InputMapper input_mapper;
         double current_time;
 
+        void* mouse_capture_owner = nullptr;
+
         hgl::UnorderedMap<io::ActionID, bool> action_active;
         hgl::UnorderedMap<io::ActionID, bool> action_started;
         hgl::UnorderedMap<io::ActionID, bool> action_completed;
@@ -45,6 +47,11 @@ namespace hgl::ecs
         /// 查询鼠标按钮状态 / Query mouse button state
         /// @param button 按钮索引: 0=左键, 1=右键, 2=中键
         bool IsMouseButtonDown(int button) const;
+
+        bool BeginMouseCapture(void* owner);
+        void EndMouseCapture(void* owner);
+        bool IsMouseCaptured() const { return mouse_capture_owner != nullptr; }
+        bool IsMouseCapturedBy(const void* owner) const { return mouse_capture_owner == owner; }
 
         /// 获取滚轮增量 / Get wheel delta
         int GetWheelDelta() const { return wheel_delta; }

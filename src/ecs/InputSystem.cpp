@@ -5,6 +5,19 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        int MouseButtonToIndex(io::MouseButton button)
+        {
+            switch (button)
+            {
+                case io::MouseButton::Left:  return 0;
+                case io::MouseButton::Right: return 1;
+                case io::MouseButton::Mid:   return 2;
+                default:                     return -1;
+            }
+        }
+    }
     InputSystem::InputSystem()
     {
         // Set system type and properties
@@ -49,7 +62,7 @@ namespace hgl::ecs
 
                 case io::MouseAction::Pressed:
                 {
-                    int idx = static_cast<int>(button);
+                    int idx = MouseButtonToIndex(button);
                     if (idx >= 0 && idx < 3)
                         mouse_buttons[idx] = true;
                     break;
@@ -57,7 +70,7 @@ namespace hgl::ecs
 
                 case io::MouseAction::Released:
                 {
-                    int idx = static_cast<int>(button);
+                    int idx = MouseButtonToIndex(button);
                     if (idx >= 0 && idx < 3)
                         mouse_buttons[idx] = false;
                     break;
@@ -103,6 +116,24 @@ namespace hgl::ecs
         if (button < 0 || button >= 3)
             return false;
         return mouse_buttons[button];
+    }
+
+    bool InputSystem::BeginMouseCapture(void* owner)
+    {
+        if (!owner)
+            return false;
+
+        if (mouse_capture_owner && mouse_capture_owner != owner)
+            return false;
+
+        mouse_capture_owner = owner;
+        return true;
+    }
+
+    void InputSystem::EndMouseCapture(void* owner)
+    {
+        if (mouse_capture_owner == owner)
+            mouse_capture_owner = nullptr;
     }
 
     bool InputSystem::IsKeyDown(uint32_t keycode) const
