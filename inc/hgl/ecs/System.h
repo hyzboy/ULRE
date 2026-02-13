@@ -22,19 +22,21 @@ namespace hgl
             TickInput,           // Keyboard/mouse
             TickTransform,       // Transform calculations
             TickCamera,          // Camera setup
-            
+
             // ===== Pre-Render Phase =====
-            RenderBufferCommit,  // Commit UBO/material data (single system typically)
-            
+            RenderPreBeginFrame, // Pre-BeginFrame updates (no render target frame index)
+            RenderBeginFrame,    // BeginFrame updates (frame index available)
+            RenderPostBeginFrame,// Post-BeginFrame updates (frame index available)
+
             // ===== Render Collection Phase (may have multiple collectors) =====
             RenderCollect,       // Collect render data - can have multiple
-            
+
             // ===== Render Batch Phase =====
             RenderBatch,         // Batch render data
-            
+
             // ===== Render Submit Phase =====
             RenderSubmit,        // Submit draw calls - can have multiple
-            
+
             // ===== Post-Render Phase =====
             RenderPostProcess    // Line rendering, post-effects, etc
         };

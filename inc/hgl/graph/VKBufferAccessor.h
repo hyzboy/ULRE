@@ -11,7 +11,7 @@ VK_NAMESPACE_BEGIN
  * 原始类型数据访问器（单元素类型）
  * CN: 用于单通道 VBO 和 IndexBuffer 的轻量级包装器
  * EN: Lightweight wrapper for single-channel VBO and IndexBuffer
- * 
+ *
  * 提供与 VertexAttribDataAccess 兼容的接口，但直接返回原始指针
  */
 template<typename T>
@@ -51,7 +51,7 @@ public:
     {
         if(!data)
             return nullptr;
-        
+
         access = (offset < count) ? (data + offset) : data;
         return access;
     }
@@ -65,7 +65,7 @@ public:
     {
         if(!data || offset >= count)
             return false;
-        
+
         access = data + offset;
         return true;
     }
@@ -74,7 +74,7 @@ public:
     {
         if(!access || access >= data_end)
             return false;
-        
+
         *access++ = value;
         return true;
     }
@@ -83,7 +83,7 @@ public:
     {
         if(!access || access + number > data_end || !ptr)
             return false;
-        
+
         memcpy(access, ptr, number * sizeof(T));
         access += number;
         return true;
@@ -94,7 +94,7 @@ public:
     const T* Get() const { return data; }
     operator T*() { return data; }
     operator const T*() const { return data; }
-    
+
     T& operator[](size_t index) { return data[index]; }
     const T& operator[](size_t index) const { return data[index]; }
 };
@@ -103,19 +103,19 @@ public:
 
 /**
  * 统一的 Buffer 访问器 (薄封装版本)
- * 
+ *
  * CN: 核心设计理念：
  * 1. 统一访问接口 - 不管底层是 CPUOnly、ReBAR、StagedBuffer 还是 RingBuffer
  * 2. 自动 Map/Unmap - RAII 管理，自动生命周期
  * 3. Dirty追踪 - 写入自动标记，Commit时才上传
  * 4. 零中间层 - 直接操作 VAB，不再需要 VABMap
- * 
+ *
  * EN: Core design principles:
  * 1. Unified access interface - regardless of CPUOnly, ReBAR, StagedBuffer or RingBuffer
  * 2. Auto Map/Unmap - RAII management, automatic lifecycle
  * 3. Dirty tracking - writes auto-mark, upload only on Commit
  * 4. Zero intermediate layers - direct VAB access, no VABMap needed
- * 
+ *
  * 使用示例 / Usage:
  * ```cpp
  * BufferAccessor<VB3f> positions(vab);
@@ -343,11 +343,11 @@ public:
         MapInternal();
 
         dirty = false;
-        
+
         // Reset frame counter after successful commit
         if(buffer)
             buffer->ResetFramesSinceUpdate();
-            
+
         return true;
     }
 

@@ -9,7 +9,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderBufferCommit);
+        SetExecutionOrder(ExecutionPhase::RenderBeginFrame);
     }
 
     void RenderBufferCommitSystem::Update(float /*deltaTime*/)

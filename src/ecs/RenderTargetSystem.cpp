@@ -10,7 +10,7 @@ namespace hgl::ecs
     RenderTargetSystem::RenderTargetSystem(const std::string &name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderBufferCommit, ExecutionPriority::First);
+        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame, ExecutionPriority::First);
     }
 
     void RenderTargetSystem::SetRenderFramework(graph::RenderFramework *rf)

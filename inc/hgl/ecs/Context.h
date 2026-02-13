@@ -98,6 +98,9 @@ namespace hgl
             OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);
             void AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system, int priority);
             void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
+            void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
+            void RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime);
+            void RunSystemUpdate(System *system, float deltaTime);
 
         public:
 
@@ -117,6 +120,15 @@ namespace hgl
 
             /// Run all render systems
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
+
+            /// Run pre-begin-frame render updates (no command buffer)
+            void RenderPreBeginFrame(float deltaTime);
+
+            /// Run begin-frame render updates (frame index available)
+            void RenderBeginFrame(float deltaTime);
+
+            /// Run post-begin-frame render updates (no command buffer)
+            void RenderPostBeginFrame(float deltaTime);
 
             /// Clear all entities and component registries
             void ClearEntities();
