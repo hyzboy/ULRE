@@ -36,6 +36,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/InputSystem.h
                 InputSystem.cpp
 
+                ${ECS_INCLUDE_PATH}/VisibilityComponent.h
+
                 ECSTransformAssignmentBuffer.h
                 ECSMaterialInstanceAssignmentBuffer.h
 
@@ -157,6 +159,10 @@ source_group("ECS\\Camera" FILES
 source_group("ECS\\Input" FILES
     ${ECS_INCLUDE_PATH}/InputSystem.h
     InputSystem.cpp
+)
+
+source_group("ECS\\Components" FILES
+    ${ECS_INCLUDE_PATH}/VisibilityComponent.h
 )
 
 # ---------------------------------------------------------------------------

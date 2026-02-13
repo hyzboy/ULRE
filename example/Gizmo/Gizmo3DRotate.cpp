@@ -16,6 +16,7 @@
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
 #include<hgl/ecs/InputSystem.h>
+#include<hgl/ecs/VisibilityComponent.h>
 
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/CameraInfo.h>
@@ -288,8 +289,16 @@ void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible)
             auto entity = gizmo->world->GetEntity(id);
             if(entity)
             {
-                // 在这里可以实现实体的显示/隐藏逻辑
-                // 目前通过禁用/启用交互来实现
+                // Add or get VisibilityComponent
+                auto vis_comp = entity->GetComponent<hgl::ecs::VisibilityComponent>();
+                if(!vis_comp)
+                {
+                    vis_comp = entity->AddComponent<hgl::ecs::VisibilityComponent>();
+                }
+                if(vis_comp)
+                {
+                    vis_comp->SetVisible(visible);
+                }
             }
         }
     }
@@ -306,6 +315,14 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
 {
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;
+
+    // Check visibility
+    if(gizmo->root)
+    {
+        auto vis_comp = gizmo->root->GetComponent<hgl::ecs::VisibilityComponent>();
+        if(!vis_comp || !vis_comp->IsVisible())
+            return;
+    }
 
     // 更新白色圆环朝向相机
     if(gizmo->white_torus_transform)
