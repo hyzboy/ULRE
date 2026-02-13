@@ -4,16 +4,19 @@
 
 namespace hgl::ecs
 {
+    class VisibilityDataStorage;
+
     /**
-     * VisibilityComponent - Controls entity visibility
+     * VisibilityComponent - Controls entity visibility in rendering
      * 
-     * Used to control whether an entity and its components should be rendered/active.
-     * Rendering systems check this component to determine visibility.
+     * Simple component that marks whether an entity should be rendered.
+     * Automatically updates VisibilityDataStorage when visibility changes.
      */
     class VisibilityComponent : public Component
     {
     private:
-        bool visible = true;    ///< Visibility state
+        bool visible = true;
+        VisibilityDataStorage* storage = nullptr;
 
     public:
 
@@ -22,10 +25,13 @@ namespace hgl::ecs
         {
         }
 
-        virtual ~VisibilityComponent() = default;
+        virtual ~VisibilityComponent();
 
-        /// Set visibility state
-        void SetVisible(bool v) { visible = v; }
+        /// Set storage for automatic updates (called by system)
+        void SetStorage(VisibilityDataStorage* s) { storage = s; }
+
+        /// Set visibility state (automatically updates storage)
+        void SetVisible(bool v);
 
         /// Get visibility state
         bool IsVisible() const { return visible; }

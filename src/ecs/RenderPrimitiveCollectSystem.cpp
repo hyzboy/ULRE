@@ -5,6 +5,8 @@
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/VisibilitySystem.h>
+#include<hgl/ecs/VisibilityDataStorage.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/log/Log.h>
 #include<glm/glm.hpp>
@@ -32,6 +34,14 @@ namespace hgl::ecs
         cache.cameraInfo = cameraInfo;
         cache.BeginFrame();
 
+        // Get visibility storage for fast O(1) lookup
+        VisibilityDataStorage* visibility_storage = nullptr;
+        auto vis_system = world->GetSystem<VisibilitySystem>();
+        if (vis_system)
+        {
+            visibility_storage = vis_system->GetStorage();
+        }
+
         std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
         world->GetComponents<PrimitiveComponent>(primitives);
 
@@ -52,6 +62,14 @@ namespace hgl::ecs
             }
 
             EntityID entity_id = primitiveComp->GetOwnerID();
+            
+            // Fast O(1) lookup from VisibilityDataStorage
+            if (visibility_storage && visibility_storage->IsInvisible(entity_id))
+            {
+                ++skipped_invisible;
+                continue;
+            }
+
             Entity* entity = primitiveComp->GetOwner();
             if (!entity)
             {

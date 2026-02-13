@@ -1,6 +1,7 @@
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/EntityManager.h>
 #include<hgl/ecs/TransformSystem.h>
+#include<hgl/ecs/VisibilitySystem.h>
 #include<hgl/ecs/InputSystem.h>
 #include<hgl/ecs/MaterialBatch.h>
 #include<hgl/ecs/PrimitiveRenderItem.h>
@@ -50,6 +51,21 @@ namespace hgl
                 if (transform_system)
                 {
                     transform_system->SetWorld(this);
+                }
+            }
+
+            // Ensure VisibilitySystem is registered
+            {
+                auto visibility_system = GetSystem<VisibilitySystem>();
+                if (!visibility_system)
+                {
+                    visibility_system = RegisterTickSystem<VisibilitySystem>();
+                }
+
+                if (visibility_system)
+                {
+                    visibility_system->SetWorld(this);
+                    // VulkanDevice will be set later when available
                 }
             }
 
