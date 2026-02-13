@@ -15,8 +15,8 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/graph/RenderPass.h>
-#include<hgl/graph/Primitive.h>
+#include<hgl/graph/VKRenderPass.h>
+#include<hgl/graph/mesh/Primitive.h>
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>
 #include<cmath>
@@ -61,7 +61,7 @@ namespace hgl::ecs
 
         for (auto& pair : resources_by_font)
         {
-            auto& res = pair.value;
+            auto& res = pair.second;
 
             if (res.geometry)
             {
@@ -138,8 +138,8 @@ namespace hgl::ecs
     {
         for (const auto& pair : resources_by_font)
         {
-            if (pair.value.primitive)
-                out_primitives.push_back(pair.value.primitive);
+            if (pair.second.primitive)
+                out_primitives.push_back(pair.second.primitive);
         }
     }
 

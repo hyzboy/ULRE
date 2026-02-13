@@ -19,7 +19,7 @@ namespace hgl::ecs
         if (!world || !cmdBuffer)
             return;
 
-        auto* text_render_sys = world->GetSystem<TextRenderSystem>();
+        auto text_render_sys = world->GetSystem<TextRenderSystem>();
         if (!text_render_sys)
             return;
 

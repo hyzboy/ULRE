@@ -4,6 +4,11 @@
 #include<hgl/type/OrderedSet.h>
 #include<hgl/graph/font/FontSource.h>
 
+namespace hgl::ecs
+{
+    class TextRenderSystem;
+}//namespace hgl::ecs
+
 namespace hgl::graph
 {
     namespace layout
@@ -29,6 +34,7 @@ namespace hgl::graph
 
         friend class layout::TextLayout;
         friend class TextRender;
+        friend class ::hgl::ecs::TextRenderSystem;
 
         U32CharSet chars_sets;
 

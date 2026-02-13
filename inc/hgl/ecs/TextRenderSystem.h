@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/System.h>
 #include<hgl/type/UnorderedMap.h>
+#include<hgl/graph/font/TextLayout.h>
 #include<cstdint>
 #include<vector>
 
