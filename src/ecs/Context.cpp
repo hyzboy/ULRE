@@ -158,13 +158,7 @@ namespace hgl
             for (auto& entry : tick_system_order)
             {
                 if (entry.system)
-                {
-                    if (system_profiling_enabled)
-                        profiler.Begin(entry.system.get());
-                    entry.system->Update(deltaTime);
-                    if (system_profiling_enabled)
-                        profiler.End(entry.system.get());
-                }
+                    RunSystemUpdate(entry.system.get(), deltaTime);
             }
 
             // Update all entities
@@ -201,19 +195,7 @@ namespace hgl
             if (!active)
                 return;
 
-            SortRenderSystems();
-
-            for (auto& entry : render_system_order)
-            {
-                if (entry.system)
-                {
-                    if (system_profiling_enabled)
-                        profiler.Begin(entry.system.get());
-                    entry.system->Update(deltaTime);
-                    if (system_profiling_enabled)
-                        profiler.End(entry.system.get());
-                }
-            }
+            RunRenderUpdatesFrom(ExecutionPhase::RenderCollect, deltaTime);
 
             if (auto transform_system = GetSystem<TransformSystem>())
             {
@@ -222,8 +204,13 @@ namespace hgl
 
             for (auto& entry : render_system_order)
             {
-                if (entry.system)
-                    entry.system->Render(cmd, deltaTime);
+                if (!entry.system)
+                    continue;
+
+                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect))
+                    continue;
+
+                entry.system->Render(cmd, deltaTime);
             }
 
             // Render sub-worlds attached via SubWorldComponent
@@ -236,6 +223,76 @@ namespace hgl
                         sub_world->RenderSubWorld(cmd, deltaTime);
                 }
             }
+        }
+
+        void ECSContext::RenderPreBeginFrame(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderPreBeginFrame, deltaTime);
+        }
+
+        void ECSContext::RenderBeginFrame(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBeginFrame, deltaTime);
+        }
+
+        void ECSContext::RenderPostBeginFrame(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame, deltaTime);
+        }
+
+        void ECSContext::RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime)
+        {
+            SortRenderSystems();
+
+            for (auto& entry : render_system_order)
+            {
+                if (!entry.system)
+                    continue;
+
+                if (entry.phase != static_cast<int>(phase))
+                    continue;
+
+                RunSystemUpdate(entry.system.get(), deltaTime);
+            }
+        }
+
+        void ECSContext::RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime)
+        {
+            SortRenderSystems();
+
+            const int min_phase = static_cast<int>(phase);
+
+            for (auto& entry : render_system_order)
+            {
+                if (!entry.system)
+                    continue;
+
+                if (entry.phase < min_phase)
+                    continue;
+
+                RunSystemUpdate(entry.system.get(), deltaTime);
+            }
+        }
+
+        void ECSContext::RunSystemUpdate(System *system, float deltaTime)
+        {
+            if (!system)
+                return;
+
+            if (system_profiling_enabled)
+                profiler.Begin(system);
+            system->Update(deltaTime);
+            if (system_profiling_enabled)
+                profiler.End(system);
         }
 
         void ECSContext::ClearEntities()
@@ -419,7 +476,7 @@ namespace hgl
                 order_list.push_back(std::move(new_entry));
                 dirty_flag = true;
             }
-            
+
             // Automatically register dependencies declared by the system
             if (system)
             {

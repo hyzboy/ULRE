@@ -10,6 +10,19 @@ namespace hgl::graph
 {
     namespace
     {
+        class StageEcsPreBeginFrame : public RenderStage
+        {
+        public:
+
+            const char *GetName() const override { return "EcsPreBeginFrame"; }
+
+            void Execute(RenderStageContext &ctx) override
+            {
+                if (ctx.ecs_context)
+                    ctx.ecs_context->RenderPreBeginFrame(0.0f);
+            }
+        };
+
         class StageBeginFrame : public RenderStage
         {
         public:
@@ -24,7 +37,10 @@ namespace hgl::graph
                 ctx.cmd = ctx.render_target->BeginRender();
 
                 if(ctx.ecs_context)
+                {
                     ctx.ecs_context->SetFrameIndex(ctx.render_target->GetCurrentFrameIndex());
+                    ctx.ecs_context->RenderBeginFrame(0.0f);
+                }
             }
         };
 
@@ -113,6 +129,19 @@ namespace hgl::graph
             }
         };
 
+        class StageEcsPostBeginFrame : public RenderStage
+        {
+        public:
+
+            const char *GetName() const override { return "EcsPostBeginFrame"; }
+
+            void Execute(RenderStageContext &ctx) override
+            {
+                if (ctx.ecs_context)
+                    ctx.ecs_context->RenderPostBeginFrame(0.0f);
+            }
+        };
+
         class StageLineRender : public RenderStage
         {
         public:
@@ -151,14 +180,18 @@ namespace hgl::graph
         if(!pipeline.GetStages().empty())
             return;
 
+        static StageEcsPreBeginFrame ecs_pre_begin_frame;
         static StageBeginFrame begin_frame;
+        static StageEcsPostBeginFrame ecs_post_begin_frame;
         static StageBindDescriptor bind_descriptor;
         static StageFlushUpload flush_upload;
         static StageBeginRenderPass begin_pass;
         static StageEcsRender ecs_render;
         static StageEndRenderPass end_pass;
 
+        pipeline.AddStage(&ecs_pre_begin_frame);
         pipeline.AddStage(&begin_frame);
+        pipeline.AddStage(&ecs_post_begin_frame);
         pipeline.AddStage(&bind_descriptor);
         pipeline.AddStage(&flush_upload);
         pipeline.AddStage(&begin_pass);

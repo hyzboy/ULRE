@@ -32,7 +32,7 @@ class BufferCommitQueue
     };
 
     std::unordered_map<std::string, BudgetGroupState> budget_groups;
-    
+
     // Budget tracking
     uint64_t current_frame_bytes = 0;       // Bytes committed in current frame
     uint64_t total_committed_bytes = 0;      // Total bytes committed since creation
@@ -45,6 +45,7 @@ class BufferCommitQueue
     uint32_t last_deadline_forced = 0;
 
 public:
+
     struct BudgetGroupSnapshot
     {
         uint64_t frame_bytes = 0;
@@ -89,7 +90,7 @@ public:
     /**
      * Commit all pending buffers with priority ordering, budget control, and deadline enforcement.
      * CN: 提交所有待处理缓冲区，应用优先级排序、预算控制和 Deadline 检查。
-     * 
+     *
      * Execution order:
      * 1. Sort by priority (Critical -> High -> Normal -> Low -> Background)
      * 2. For each buffer in priority order:

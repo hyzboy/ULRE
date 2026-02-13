@@ -17,7 +17,7 @@ namespace hgl::ecs
     /**
      * RenderBufferCommitSystem
      *
-     * Flushes BufferCommitQueue before render submission.
+     * Flushes BufferCommitQueue during BeginFrame, before render submission.
      */
     class RenderBufferCommitSystem : public System
     {

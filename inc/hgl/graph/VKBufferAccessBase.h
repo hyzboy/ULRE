@@ -36,6 +36,7 @@ protected:
     AnsiString ubo_name;
 
 protected:
+
     void RegisterAutoCommit()
     {
         if(auto_commit && commit_queue)
