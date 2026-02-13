@@ -19,6 +19,15 @@ CreateProject(04_Gizmo3DTest GizmoTest.cpp
                                 GizmoResource.h
                                 GizmoResource.cpp
                                 Gizmo3DMove.cpp
-                                #Gizmo3DScale.cpp
-                                #Gizmo3DRotate.cpp
+                                Gizmo3DScale.cpp
+                                Gizmo3DRotate.cpp
+)
+
+CreateProject(05_GizmoUsageExample GizmoUsageExample.cpp
+                                Gizmo.h
+                                GizmoResource.h
+                                GizmoResource.cpp
+                                Gizmo3DMove.cpp
+                                Gizmo3DScale.cpp
+                                Gizmo3DRotate.cpp
 )
