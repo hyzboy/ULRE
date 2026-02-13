@@ -41,6 +41,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/VisibilityDataStorage.h
                 ${ECS_INCLUDE_PATH}/VisibilitySystem.h
 
+                ${ECS_INCLUDE_PATH}/SubWorldComponent.h
+                SubWorldComponent.cpp
+
                 ECSTransformAssignmentBuffer.h
                 ECSMaterialInstanceAssignmentBuffer.h
 
@@ -173,6 +176,11 @@ source_group("ECS\\Visibility" FILES
     VisibilityDataStorage.cpp
     ${ECS_INCLUDE_PATH}/VisibilitySystem.h
     VisibilitySystem.cpp
+)
+
+source_group("ECS\\SubWorld" FILES
+    ${ECS_INCLUDE_PATH}/SubWorldComponent.h
+    SubWorldComponent.cpp
 )
 
 # ---------------------------------------------------------------------------
