@@ -1,13 +1,22 @@
-﻿// 画一个带纹理的矩形，2D模式专用
+﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/filesystem/Filename.h>
+#include<hgl/graph/module/TextureManager.h>
 
-#include<hgl/component/PrimitiveComponent.h>
+// ECS headers
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::ecs;
 
 constexpr const os_char *tex_filename[]=
 {
@@ -37,16 +46,19 @@ class TestApp:public WorkObject
 {
 private:
 
-    Texture2DArray *    texture             =nullptr;
-    Sampler *           sampler             =nullptr;
-    Material *          material            =nullptr;
+    ECSContext *        ecs_world           = nullptr;
 
-    Pipeline *          pipeline            =nullptr;
+    Texture2DArray *    texture             = nullptr;
+    Sampler *           sampler             = nullptr;
+    Material *          material            = nullptr;
+
+    Pipeline *          pipeline            = nullptr;
+    Primitive *         mesh_rect           = nullptr;
 
     struct
     {
+        Entity *            entity;
         MaterialInstance *  mi;
-        PrimitiveComponent *     component;
     }render_obj[TexCount]{};
 
 private:
@@ -85,17 +97,17 @@ private:
         if(!material)
             return(false);
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);
 
         if(!pipeline)
             return(false);
 
         sampler=CreateSampler();
 
-        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
-                                        mtl::SamplerName::BaseColor,        ///<采样器名称
-                                        texture,                            ///<纹理
-                                        sampler))                           ///<采样器
+        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
+                                        mtl::SamplerName::BaseColor,
+                                        texture,
+                                        sampler))
             return(false);
 
         for(uint32_t i=0;i<TexCount;i++)
@@ -105,7 +117,7 @@ private:
             if(!render_obj[i].mi)
                 return(false);
 
-            render_obj[i].mi->WriteMIData(i);       //设置MaterialInstance的数据
+            render_obj[i].mi->WriteMIData(i);
         }
 
         return(true);
@@ -113,11 +125,7 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        //CreateMesh传入MaterialInstance本质要的是VIL和Material
-        //当前Mesh也是需要mi才能渲染。
-        //这里因为所有render_obj的VIL/Material都是一样的，所以可以直接使用render_obj[0].mi
-
-        Primitive *mesh_rect=CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
+        mesh_rect=CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}
@@ -126,7 +134,14 @@ private:
         if(!mesh_rect)
             return(false);
 
-        CreateComponentInfo cci(GetWorldRootNode());
+        return(true);
+    }
+
+    bool InitECS()
+    {
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
 
         math::Vector3f offset(1.0f/float(TexCount),0,0);
 
@@ -134,17 +149,21 @@ private:
         {
             offset.x=position_data[2]*float(i);
 
-            cci.mat=math::TranslateMatrix(offset);
+            render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
+            auto transform = render_obj[i].entity->AddComponent<TransformComponent>();
+            auto primitive = render_obj[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-            render_obj[i].component=CreateComponent<PrimitiveComponent>(&cci,mesh_rect);
+            transform->SetLocalPosition(glm::vec3(offset.x, offset.y, offset.z));
+            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetMovable(false);
 
-            if(!render_obj[i].component)
-                return(false);
-
-            render_obj[i].component->SetOverrideMaterial(render_obj[i].mi);
+            primitive->SetPrimitive(mesh_rect);
+            primitive->SetOverrideMaterial(render_obj[i].mi);
+            primitive->SetVisible(true);
         }
 
-        return(true);
+        return true;
     }
 
 public:
@@ -160,6 +179,9 @@ public:
             return(false);
 
         if(!InitVBOAndRenderList())
+            return(false);
+
+        if(!InitECS())
             return(false);
 
         return(true);
