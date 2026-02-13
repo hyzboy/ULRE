@@ -3,6 +3,7 @@
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/VisibilitySystem.h>
 #include<hgl/ecs/InputSystem.h>
+#include<hgl/ecs/SubWorldComponent.h>
 #include<hgl/ecs/MaterialBatch.h>
 #include<hgl/ecs/PrimitiveRenderItem.h>
 #include"ECSTransformAssignmentBuffer.h"
@@ -178,6 +179,17 @@ namespace hgl
                 }
             }
 
+            // Update sub-worlds attached via SubWorldComponent
+            {
+                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
+                GetComponents(sub_worlds);
+                for (const auto& sub_world : sub_worlds)
+                {
+                    if (sub_world)
+                        sub_world->UpdateSubWorld(deltaTime);
+                }
+            }
+
             if (auto input_system = GetSystem<InputSystem>())
             {
                 input_system->EndFrame();
@@ -212,6 +224,17 @@ namespace hgl
             {
                 if (entry.system)
                     entry.system->Render(cmd, deltaTime);
+            }
+
+            // Render sub-worlds attached via SubWorldComponent
+            {
+                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
+                GetComponents(sub_worlds);
+                for (const auto& sub_world : sub_worlds)
+                {
+                    if (sub_world)
+                        sub_world->RenderSubWorld(cmd, deltaTime);
+                }
             }
         }
 

@@ -35,6 +35,7 @@ namespace hgl::ecs
 
         void SetWorld(ECSContext* w) { world = w; }
         void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
+        const graph::CameraInfo* GetCameraInfo() const { return cameraInfo; }
 
         void Update(float deltaTime) override;
     };

@@ -3,6 +3,14 @@
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/VisibilityComponent.h>
 #include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/BoundingBoxUpdateSystem.h>
+#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/RenderBufferCommitSystem.h>
+#include<hgl/ecs/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
+#include<hgl/graph/CameraInfo.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -27,6 +35,62 @@ namespace hgl::ecs
         // Attach this context to parent (share TransformDataStorage)
         sub_world->AttachToParent(parent_context);
 
+        const graph::CameraInfo* parent_camera_info = nullptr;
+        graph::VulkanDevice* parent_device = nullptr;
+
+        if (auto parent_collect = parent_context->GetSystem<RenderPrimitiveCollectSystem>())
+        {
+            parent_camera_info = parent_collect->GetCameraInfo();
+        }
+
+        if (auto parent_batch = parent_context->GetSystem<RenderPrimitiveBatchSystem>())
+        {
+            if (!parent_camera_info)
+                parent_camera_info = parent_batch->GetCameraInfo();
+            parent_device = parent_batch->GetDevice();
+        }
+
+        if (!parent_device)
+        {
+            if (auto parent_commit = parent_context->GetSystem<RenderBufferCommitSystem>())
+                parent_device = parent_commit->GetDevice();
+        }
+
+        // Register required systems for sub-world rendering
+        auto camera_system = sub_world->RegisterTickSystem<CameraSystem>(sub_world.get());
+        auto bbox_system = sub_world->RegisterTickSystem<BoundingBoxUpdateSystem>();
+        auto render_collect_system = sub_world->RegisterTickSystem<RenderPrimitiveCollectSystem>();
+        auto render_batch_system = sub_world->RegisterTickSystem<RenderPrimitiveBatchSystem>();
+        auto render_commit_system = sub_world->RegisterRenderSystem<RenderBufferCommitSystem>();
+        auto render_submit_system = sub_world->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
+
+        if (bbox_system)
+            bbox_system->SetWorld(sub_world.get());
+
+        if (render_collect_system)
+        {
+            render_collect_system->SetWorld(sub_world.get());
+            render_collect_system->SetCameraInfo(parent_camera_info);
+        }
+
+        if (render_batch_system)
+        {
+            render_batch_system->SetWorld(sub_world.get());
+            render_batch_system->SetCameraInfo(parent_camera_info);
+            render_batch_system->SetDevice(parent_device);
+        }
+
+        if (render_commit_system)
+        {
+            render_commit_system->SetWorld(sub_world.get());
+            render_commit_system->SetDevice(parent_device);
+        }
+
+        if (render_submit_system)
+        {
+            render_submit_system->SetWorld(sub_world.get());
+        }
+
         // Initialize sub-world systems
         sub_world->Initialize();
 
@@ -41,6 +105,13 @@ namespace hgl::ecs
         if (!sub_world || !sub_world->IsActive())
             return;
 
+        static bool update_logged = false;
+        if (!update_logged)
+        {
+            update_logged = true;
+            GLogInfo(OS_TEXT("SubWorldComponent UpdateSubWorld active"));
+        }
+
         sub_world->Tick(delta_time);
     }
 
@@ -48,6 +119,13 @@ namespace hgl::ecs
     {
         if (!sub_world || !sub_world->IsActive())
             return;
+
+        static bool render_logged = false;
+        if (!render_logged)
+        {
+            render_logged = true;
+            GLogInfo(OS_TEXT("SubWorldComponent RenderSubWorld active"));
+        }
 
         sub_world->Render(cmd, delta_time);
     }

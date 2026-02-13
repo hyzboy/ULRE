@@ -16,6 +16,7 @@
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/VisibilityComponent.h>
 #include<hgl/ecs/InputSystem.h>
+#include<iostream>
 
 USING_COMPONENT_NAMESPACE
 
@@ -98,14 +99,17 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
 
     auto *gizmo = new GizmoECS;
     gizmo->world = world;
+    std::cout << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo") << std::endl;
 
     // Create root entity for entire Gizmo
     gizmo->root = world->CreateEntity<hgl::ecs::Entity>(name ? name : "Gizmo");
     if (!gizmo->root)
     {
+        std::cout << "[GizmoECS] Create root entity failed" << std::endl;
         delete gizmo;
         return nullptr;
     }
+    std::cout << "[GizmoECS] Root entity id=" << gizmo->root->GetID().index << std::endl;
 
     gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>();
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
@@ -118,6 +122,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         gizmo->move_entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Move");
         if (!gizmo->move_entity)
         {
+            std::cout << "[GizmoECS] Create move entity failed" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -131,6 +136,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
 
         if (!gizmo->move_world)
         {
+            std::cout << "[GizmoECS] Move subworld is null" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -138,6 +144,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         gizmo->move_impl = (void*)CreateGizmoMoveECS(gizmo->move_world, "GizmoMove", math::Vector3f(0, 0, 0));
         if (!gizmo->move_impl)
         {
+            std::cout << "[GizmoECS] Create move gizmo failed" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -148,6 +155,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         gizmo->rotate_entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Rotate");
         if (!gizmo->rotate_entity)
         {
+            std::cout << "[GizmoECS] Create rotate entity failed" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -161,6 +169,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
 
         if (!gizmo->rotate_world)
         {
+            std::cout << "[GizmoECS] Rotate subworld is null" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -168,6 +177,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         gizmo->rotate_impl = (void*)CreateGizmoRotateECS(gizmo->rotate_world, "GizmoRotate", math::Vector3f(0, 0, 0));
         if (!gizmo->rotate_impl)
         {
+            std::cout << "[GizmoECS] Create rotate gizmo failed" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -178,6 +188,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         gizmo->scale_entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Scale");
         if (!gizmo->scale_entity)
         {
+            std::cout << "[GizmoECS] Create scale entity failed" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -191,6 +202,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
 
         if (!gizmo->scale_world)
         {
+            std::cout << "[GizmoECS] Scale subworld is null" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -198,6 +210,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         gizmo->scale_impl = (void*)CreateGizmoScaleECS(gizmo->scale_world, "GizmoScale", math::Vector3f(0, 0, 0));
         if (!gizmo->scale_impl)
         {
+            std::cout << "[GizmoECS] Create scale gizmo failed" << std::endl;
             DestroyGizmoECS(gizmo);
             return nullptr;
         }
@@ -205,6 +218,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
 
     // Initialize with Move mode active
     SetGizmoMode(gizmo, GizmoMode::Move);
+    std::cout << "[GizmoECS] Create done" << std::endl;
 
     return gizmo;
 }
@@ -213,6 +227,8 @@ void DestroyGizmoECS(GizmoECS *gizmo)
 {
     if (!gizmo)
         return;
+
+    std::cout << "[GizmoECS] Destroy begin" << std::endl;
 
     if (gizmo->move_impl)
     {
@@ -242,6 +258,7 @@ void DestroyGizmoECS(GizmoECS *gizmo)
     }
 
     delete gizmo;
+    std::cout << "[GizmoECS] Destroy done" << std::endl;
 }
 
 void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
@@ -250,6 +267,7 @@ void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
         return;
 
     gizmo->current_mode = mode;
+    std::cout << "[GizmoECS] Set mode=" << static_cast<int>(mode) << std::endl;
 
     // Set visibility based on mode
     SetGizmoMoveVisible((GizmoMoveECS*)gizmo->move_impl, mode == GizmoMode::Move);
@@ -276,6 +294,7 @@ void SetGizmoVisible(GizmoECS *gizmo, bool visible)
     if (vis_comp)
     {
         vis_comp->SetVisible(visible);
+        std::cout << "[GizmoECS] Set root visible=" << (visible ? 1 : 0) << std::endl;
     }
 }
 
