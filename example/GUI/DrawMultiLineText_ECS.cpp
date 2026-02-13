@@ -62,7 +62,7 @@ protected:
                 continue;
 
             // Set text, font, and random position
-            text_comp->SetText(str);
+            text_comp->SetText(U16String(str.c_str(), str.Length()));
             text_comp->SetFontSource(fs);
             text_comp->SetStartPosition({rand_x(dre), rand_y(dre)});
 
