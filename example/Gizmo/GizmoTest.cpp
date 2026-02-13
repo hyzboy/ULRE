@@ -406,6 +406,11 @@ public:
                 last_key_e = key_2;
                 last_key_r = key_3;
 
+                // 根据当前模式设置 Gizmo 可见性
+                SetGizmoMoveVisible(gizmo_move, current_gizmo_mode == GizmoMode::Move);
+                SetGizmoRotateVisible(gizmo_rotate, current_gizmo_mode == GizmoMode::Rotate);
+                SetGizmoScaleVisible(gizmo_scale, current_gizmo_mode == GizmoMode::Scale);
+
                 // 更新当前激活的 Gizmo
                 if(current_gizmo_mode == GizmoMode::Move && gizmo_move)
                 {
