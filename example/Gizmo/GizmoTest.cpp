@@ -82,17 +82,7 @@ class TestApp:public WorkObject
 
     Pipeline *gizmo_pipeline = nullptr;
     std::vector<Primitive *> gizmo_primitives;
-    GizmoMoveECS *gizmo_move = nullptr;
-    GizmoRotateECS *gizmo_rotate = nullptr;
-    GizmoScaleECS *gizmo_scale = nullptr;
-    
-    enum class GizmoMode
-    {
-        Move,
-        Rotate,
-        Scale
-    };
-    GizmoMode current_gizmo_mode = GizmoMode::Move;
+    GizmoECS *gizmo = nullptr;  // 统一的 Gizmo 世界
     
     bool last_left_down = false;
     bool last_key_w = false;
@@ -139,16 +129,8 @@ private:
         if(!ecs_world)
             return false;
 
-        gizmo_move = CreateGizmoMoveECS(ecs_world, "GizmoMove", GizmoPosition);
-        if(!gizmo_move)
-            return false;
-
-        gizmo_rotate = CreateGizmoRotateECS(ecs_world, "GizmoRotate", GizmoPosition);
-        if(!gizmo_rotate)
-            return false;
-
-        gizmo_scale = CreateGizmoScaleECS(ecs_world, "GizmoScale", GizmoPosition);
-        if(!gizmo_scale)
+        gizmo = CreateGizmoECS(ecs_world, "Gizmo", GizmoPosition);
+        if(!gizmo)
             return false;
 
         return true;
@@ -183,58 +165,14 @@ private:
         if(!debug_text_render || !debug_text_geom || !input_system)
             return;
 
+        GizmoMode mode = GetGizmoMode(gizmo);
         std::string text = "mode=";
-        if(current_gizmo_mode == GizmoMode::Move)
-            text += "Move(1)";
-        else if(current_gizmo_mode == GizmoMode::Rotate)
-            text += "Rotate(2)";
-        else if(current_gizmo_mode == GizmoMode::Scale)
-            text += "Scale(3)";
-        
+        text += std::to_string(static_cast<int>(mode));
+        text += " (1=Move, 2=Rotate, 3=Scale)";
         text += " capture=";
         text += input_system->IsMouseCaptured() ? "1" : "0";
         text += " left=";
         text += input_system->IsMouseButtonDown(hgl::io::MouseButton::Left) ? "1" : "0";
-
-        if(current_gizmo_mode == GizmoMode::Move && gizmo_move)
-        {
-            GizmoMoveECSState state;
-            if(GetGizmoMoveECSState(gizmo_move, state))
-            {
-                text += " dragging=";
-                text += state.dragging ? "1" : "0";
-                text += " axis=";
-                text += std::to_string(state.cur_axis);
-                text += " dist=";
-                text += std::to_string(state.cur_dist);
-            }
-        }
-        else if(current_gizmo_mode == GizmoMode::Rotate && gizmo_rotate)
-        {
-            GizmoRotateECSState state;
-            if(GetGizmoRotateECSState(gizmo_rotate, state))
-            {
-                text += " dragging=";
-                text += state.dragging ? "1" : "0";
-                text += " axis=";
-                text += std::to_string(state.cur_axis);
-                text += " angle=";
-                text += std::to_string(state.cur_angle);
-            }
-        }
-        else if(current_gizmo_mode == GizmoMode::Scale && gizmo_scale)
-        {
-            GizmoScaleECSState state;
-            if(GetGizmoScaleECSState(gizmo_scale, state))
-            {
-                text += " dragging=";
-                text += state.dragging ? "1" : "0";
-                text += " axis=";
-                text += std::to_string(state.cur_axis);
-                text += " scale=";
-                text += std::to_string(state.cur_scale);
-            }
-        }
 
         if(text == debug_text_cache)
             return;
@@ -327,22 +265,10 @@ public:
         debug_text_prim = nullptr;
         debug_text_comp = nullptr;
 
-        if(gizmo_move)
+        if(gizmo)
         {
-            DestroyGizmoMoveECS(gizmo_move);
-            gizmo_move = nullptr;
-        }
-
-        if(gizmo_rotate)
-        {
-            DestroyGizmoRotateECS(gizmo_rotate);
-            gizmo_rotate = nullptr;
-        }
-
-        if(gizmo_scale)
-        {
-            DestroyGizmoScaleECS(gizmo_scale);
-            gizmo_scale = nullptr;
+            DestroyGizmoECS(gizmo);
+            gizmo = nullptr;
         }
 
         for(Primitive *prim : gizmo_primitives)
@@ -370,35 +296,19 @@ public:
                 const bool key_2 = input_system->IsKeyDown(hgl::io::KeyboardButton::_2);
                 const bool key_3 = input_system->IsKeyDown(hgl::io::KeyboardButton::_3);
                 
-                static bool debug_printed = false;
-                if(!debug_printed)
-                {
-                    std::cout << "Key detection active. Press 1/2/3 to switch." << std::endl;
-                    debug_printed = true;
-                }
-                
-                // 调试：每帧打印按键状态（仅前几帧）
-                static int debug_frame = 0;
-                if(debug_frame < 120)
-                {
-                    std::cout << "Keys: 1=" << key_1 << " 2=" << key_2 << " 3=" << key_3 
-                              << " last_w=" << last_key_w << " last_e=" << last_key_e << " last_r=" << last_key_r << std::endl;
-                    debug_frame++;
-                }
-                
                 if(key_1 && !last_key_w)
                 {
-                    current_gizmo_mode = GizmoMode::Move;
+                    SetGizmoMode(gizmo, GizmoMode::Move);
                     std::cout << ">>> Switched to Move mode <<<" << std::endl;
                 }
                 else if(key_2 && !last_key_e)
                 {
-                    current_gizmo_mode = GizmoMode::Rotate;
+                    SetGizmoMode(gizmo, GizmoMode::Rotate);
                     std::cout << ">>> Switched to Rotate mode <<<" << std::endl;
                 }
                 else if(key_3 && !last_key_r)
                 {
-                    current_gizmo_mode = GizmoMode::Scale;
+                    SetGizmoMode(gizmo, GizmoMode::Scale);
                     std::cout << ">>> Switched to Scale mode <<<" << std::endl;
                 }
                 
@@ -406,91 +316,15 @@ public:
                 last_key_e = key_2;
                 last_key_r = key_3;
 
-                // 根据当前模式设置 Gizmo 可见性
-                SetGizmoMoveVisible(gizmo_move, current_gizmo_mode == GizmoMode::Move);
-                SetGizmoRotateVisible(gizmo_rotate, current_gizmo_mode == GizmoMode::Rotate);
-                SetGizmoScaleVisible(gizmo_scale, current_gizmo_mode == GizmoMode::Scale);
-
-                // 更新当前激活的 Gizmo
-                if(current_gizmo_mode == GizmoMode::Move && gizmo_move)
-                {
-                    UpdateGizmoMoveECS(gizmo_move,
-                                       mouse_coord,
-                                       GetCameraInfo(),
-                                       GetViewportInfo(),
-                                       input_system.get(),
-                                       left_down,
-                                       left_pressed,
-                                       left_released);
-                }
-                else if(current_gizmo_mode == GizmoMode::Rotate && gizmo_rotate)
-                {
-                    UpdateGizmoRotateECS(gizmo_rotate,
-                                         mouse_coord,
-                                         GetCameraInfo(),
-                                         GetViewportInfo(),
-                                         input_system.get(),
-                                         left_down,
-                                         left_pressed,
-                                         left_released);
-                    // 非激活的 Gizmo 只会更新内部状态（无交互）
-                    if(gizmo_move)
-                    {
-                        UpdateGizmoMoveECS(gizmo_move,
-                                           mouse_coord,
-                                           GetCameraInfo(),
-                                           GetViewportInfo(),
-                                           nullptr,  // 不传入 input_system，禁用交互
-                                           false,
-                                           false,
-                                           false);
-                    }
-                    if(gizmo_scale)
-                    {
-                        UpdateGizmoScaleECS(gizmo_scale,
-                                            mouse_coord,
-                                            GetCameraInfo(),
-                                            GetViewportInfo(),
-                                            nullptr,  // 不传入 input_system，禁用交互
-                                            false,
-                                            false,
-                                            false);
-                    }
-                }
-                else if(current_gizmo_mode == GizmoMode::Scale && gizmo_scale)
-                {
-                    UpdateGizmoScaleECS(gizmo_scale,
-                                        mouse_coord,
-                                        GetCameraInfo(),
-                                        GetViewportInfo(),
-                                        input_system.get(),
-                                        left_down,
-                                        left_pressed,
-                                        left_released);
-                    // 非激活的 Gizmo 只会更新内部状态（无交互）
-                    if(gizmo_move)
-                    {
-                        UpdateGizmoMoveECS(gizmo_move,
-                                           mouse_coord,
-                                           GetCameraInfo(),
-                                           GetViewportInfo(),
-                                           nullptr,  // 不传入 input_system，禁用交互
-                                           false,
-                                           false,
-                                           false);
-                    }
-                    if(gizmo_rotate)
-                    {
-                        UpdateGizmoRotateECS(gizmo_rotate,
-                                             mouse_coord,
-                                             GetCameraInfo(),
-                                             GetViewportInfo(),
-                                             nullptr,  // 不传入 input_system，禁用交互
-                                             false,
-                                             false,
-                                             false);
-                    }
-                }
+                // 更新统一的 Gizmo（内部会根据当前模式处理）
+                UpdateGizmoECS(gizmo,
+                               mouse_coord,
+                               GetCameraInfo(),
+                               GetViewportInfo(),
+                               input_system.get(),
+                               left_down,
+                               left_pressed,
+                               left_released);
 
                 UpdateDebugOverlay(input_system.get());
             }
