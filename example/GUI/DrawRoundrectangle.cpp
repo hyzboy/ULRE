@@ -5,7 +5,13 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 
-#include<hgl/component/MeshComponent.h>
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -32,6 +38,9 @@ struct RoundedRectConfig
 class TestApp:public WorkObject
 {
 private:
+
+    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::Entity *rect_entity = nullptr;
 
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
@@ -77,18 +86,38 @@ private:
 
     bool InitVBO()
     {
-        Mesh *render_obj=CreateMesh("TextureRect",1,material_instance,pipeline,
-                                    {
-                                        {VAN::Position,VF_V4F,position_data},
-                                    {VAN::TexCoord,VF_V4F,tex_coord_data}
-                                    });
+        if(!ecs_world)
+        {
+            ecs_world = GetECSContext();
+            if(!ecs_world)
+                return false;
+        }
 
-        if(!render_obj)
-            return(false);
+        Primitive *primitive = CreatePrimitive("TextureRect", 1, material_instance, pipeline,
+                                                {
+                                                    {VAN::Position, VF_V4F, position_data},
+                                                    {VAN::TexCoord, VF_V4F, tex_coord_data}
+                                                });
 
-        CreateComponentInfo cci(GetSceneRoot());
+        if(!primitive)
+            return false;
 
-        return CreateComponent<MeshComponent>(&cci,render_obj); //创建一个静态网格组件
+        rect_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Rect2D");
+        if(!rect_entity)
+            return false;
+
+        auto transform = rect_entity->AddComponent<hgl::ecs::TransformComponent>();
+        transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+        transform->SetMovable(false);
+
+        auto prim_comp = rect_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        if(!prim_comp)
+            return false;
+
+        prim_comp->SetPrimitive(primitive);
+        prim_comp->SetVisible(true);
+
+        return true;
     }
 
 public:
@@ -97,6 +126,10 @@ public:
 
     bool Init() override
     {
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
         if(!InitMaterial())
             return(false);
 

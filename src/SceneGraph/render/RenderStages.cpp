@@ -1,7 +1,6 @@
 #include<hgl/graph/RenderStages.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/graph/RenderContext.h>
-#include<hgl/graph/RenderTask.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
@@ -106,19 +105,6 @@ namespace hgl::graph
             }
         };
 
-        class StageSceneRender : public RenderStage
-        {
-        public:
-
-            const char *GetName() const override { return "SceneRender"; }
-
-            void Execute(RenderStageContext &ctx) override
-            {
-                if(ctx.render_task && ctx.cmd)
-                    ctx.render_result = ctx.render_task->Render(ctx.cmd);
-            }
-        };
-
         class StageLineRender : public RenderStage
         {
         public:
@@ -169,26 +155,6 @@ namespace hgl::graph
         pipeline.AddStage(&flush_upload);
         pipeline.AddStage(&begin_pass);
         pipeline.AddStage(&ecs_render);
-        pipeline.AddStage(&end_pass);
-    }
-
-    void BuildScenePipeline(RenderStagePipeline &pipeline)
-    {
-        if(!pipeline.GetStages().empty())
-            return;
-
-        static StageBeginFrame begin_frame;
-        static StageBindDescriptor bind_descriptor;
-        static StageBeginRenderPass begin_pass;
-        static StageSceneRender scene_render;
-        static StageLineRender line_render;
-        static StageEndRenderPass end_pass;
-
-        pipeline.AddStage(&begin_frame);
-        pipeline.AddStage(&bind_descriptor);
-        pipeline.AddStage(&begin_pass);
-        pipeline.AddStage(&scene_render);
-        pipeline.AddStage(&line_render);
         pipeline.AddStage(&end_pass);
     }
 }//namespace hgl::graph

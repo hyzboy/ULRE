@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/ecs/MaterialPipelineKey.h>
+#include<hgl/ecs/ECSPipelineMaterialRenderer.h>
 #include<hgl/graph/VK.h>
-#include<hgl/graph/PipelineMaterialRenderer.h>
 #include<vector>
 
 namespace hgl
@@ -55,7 +55,7 @@ namespace hgl::ecs
         ECSTransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
         ECSMaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
 
-        graph::DrawBatchArray                   draw_batches;                               ///<绘制批次数组
+        DrawBatchArray                          draw_batches;                               ///<绘制批次数组
         uint32_t                                draw_batches_count      = 0;                ///<有效批次数量
 
         ECSPipelineMaterialRenderer *           renderer                = nullptr;          ///<ECS渲染器实例

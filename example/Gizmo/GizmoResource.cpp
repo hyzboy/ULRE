@@ -8,7 +8,6 @@
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/component/PrimitiveComponent.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
@@ -40,25 +39,21 @@ namespace
     struct GizmoMesh
     {
         Geometry *geometry;
-
         Primitive *primitive;
-        PrimitiveComponentData *mcd;
-        ComponentDataPtr cdp;
 
     public:
 
         void Create(Geometry *p)
         {
             geometry=p;
-
             primitive=render_framework->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
-            mcd=new PrimitiveComponentData(primitive);
-            cdp=mcd;
+            primitive=render_framework->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
         }
 
         void Clear()
         {
-            cdp.unref();
+            primitive=nullptr;
+            geometry=nullptr;
         }
     };//class GizmoMesh
 
@@ -319,14 +314,14 @@ MaterialInstance *GetGizmoMI3D(const GizmoColor &color)
     return gizmo_triangle.mi[size_t(color)];
 }
 
-ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape)
+Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape)
 {
     if(!render_framework)
-        return(nullptr);
+        return nullptr;
 
     RANGE_CHECK_RETURN_NULLPTR(shape)
 
-    return gizmo_mesh[size_t(shape)].cdp;
+    return gizmo_mesh[size_t(shape)].primitive;
 }
 
 VK_NAMESPACE_END

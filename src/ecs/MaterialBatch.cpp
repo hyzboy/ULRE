@@ -2,7 +2,7 @@
 #include<hgl/ecs/RenderItem.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKDevice.h>
-#include"ECSPipelineMaterialRenderer.h"
+#include<hgl/ecs/ECSPipelineMaterialRenderer.h>
 
 namespace hgl::ecs
 {

@@ -18,8 +18,6 @@
 #include<hgl/ecs/InputSystem.h>
 #include<iostream>
 
-USING_COMPONENT_NAMESPACE
-
 VK_NAMESPACE_BEGIN
 
 struct GizmoECS

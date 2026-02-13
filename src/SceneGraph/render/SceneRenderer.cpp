@@ -15,7 +15,6 @@ namespace hgl::graph
     {
         render_target=rt;
         render_context=new RenderContext(rf,rt);
-        render_task=new RenderTask("DefaultRenderTask",rt);
         clear_color.set(0,0,0,1);
 
         // Ensure there is always a camera control managed by this renderer
@@ -31,7 +30,6 @@ namespace hgl::graph
         // release owned camera
         SAFE_CLEAR(camera_control_owned);
 
-        SAFE_CLEAR(render_task);
         SAFE_CLEAR(render_context);
     }
 
@@ -44,7 +42,6 @@ namespace hgl::graph
         if(render_context)
             render_context->SetRenderTarget(rt);
 
-        render_task->SetRenderTarget(rt);
         return(true);
     }
 
@@ -80,7 +77,6 @@ namespace hgl::graph
 
         if(camera_control_owned)
         {
-            render_task->SetCameraInfo(GetCameraInfo());
             AddChildDispatcher(camera_control_owned);
         }
     }
@@ -123,88 +119,27 @@ namespace hgl::graph
         BuildEcsPipeline(ecs_pipeline);
     }
 
-    void SceneRenderer::EnsureScenePipeline()
-    {
-        BuildScenePipeline(scene_pipeline);
-    }
-
-    RenderStagePipeline &SceneRenderer::GetPipeline(RenderPath path)
-    {
-        return path == RenderPath::Ecs ? ecs_pipeline : scene_pipeline;
-    }
-
-    const RenderStagePipeline &SceneRenderer::GetPipeline(RenderPath path)const
-    {
-        return path == RenderPath::Ecs ? ecs_pipeline : scene_pipeline;
-    }
-
-    void SceneRenderer::EnsurePipeline(RenderPath path)
-    {
-        if(path == RenderPath::Ecs)
-            EnsureEcsPipeline();
-        else
-            EnsureScenePipeline();
-    }
-
     bool SceneRenderer::RenderFrame()
     {
         // ECS 渲染路径：目前仅执行空渲染流程，便于后续接入 ECS RenderSystem
-        if(GetECSContext())
-        {
-            if(!render_target)
-                return(false);
-
-            EnsurePipeline(RenderPath::Ecs);
-
-            RenderStageContext ctx{};
-            ctx.render_context = render_context;
-            ctx.render_target = render_target;
-            ctx.ecs_context = GetECSContext();
-            ctx.clear_color = &clear_color;
-
-            ecs_pipeline.Execute(ctx);
-
-            render_state_dirty = true; // 标记有提交
-            return true;
-        }
-
-        // 旧 SceneGraph 渲染路径
-        if(!GetWorld())
+        if(!GetECSContext())
             return(false);
 
-        SceneNode *root = GetWorld()->GetRootNode();
-        if(!root)
+        if(!render_target)
             return(false);
 
-        root->UpdateWorldTransform();
-        const uint renderable = render_task->RebuildRenderList(root);
-
-        LineRenderManager *lrm=GetLineRenderManager();
-
-        if(renderable == 0 && (lrm&&lrm->GetLineCount()==0))
-        {
-            // nothing to draw this frame
-            render_state_dirty = false;
-            return true;    // treat as successful no-op
-        }
-
-        bool result = false;
-
-        EnsurePipeline(RenderPath::Scene);
+        EnsureEcsPipeline();
 
         RenderStageContext ctx{};
         ctx.render_context = render_context;
         ctx.render_target = render_target;
-        ctx.render_task = render_task;
-        ctx.line_render_manager = lrm;
+        ctx.ecs_context = GetECSContext();
         ctx.clear_color = &clear_color;
 
-        scene_pipeline.Execute(ctx);
+        ecs_pipeline.Execute(ctx);
 
-        result = ctx.render_result;
-
-        render_state_dirty = result;
-        return result;
+        render_state_dirty = true; // 标记有提交
+        return true;
      }
 
      bool SceneRenderer::Submit()

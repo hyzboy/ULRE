@@ -6,7 +6,7 @@
 #include<hgl/ecs/RenderPrimitiveBatchSystem.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
-#include"ECSPipelineMaterialRenderer.h"
+#include<hgl/ecs/ECSPipelineMaterialRenderer.h>
 #include"ECSTransformAssignmentBuffer.h"
 #include<iostream>
 

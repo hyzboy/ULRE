@@ -12,7 +12,7 @@
 #pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/PipelineMaterialRenderer.h>
+#include<hgl/graph/mesh/Primitive.h>
 
 namespace hgl
 {
@@ -37,6 +37,26 @@ namespace hgl
 
 namespace hgl::ecs
 {
+    /**
+     * 绘制批次：将使用相同几何数据的节点合并为一个批次
+     */
+    struct DrawBatch
+    {
+                uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
+                uint32_t                instance_count;     ///<此批次包含的实例数量
+
+        const   graph::GeometryDataBuffer *    geom_data_buffer;   ///<几何数据缓冲
+        const   graph::GeometryDrawRange *     geom_draw_range;    ///<绘制范围（顶点/索引偏移和数量）
+
+        void Set(class graph::Primitive *prim)
+        {
+            geom_data_buffer = prim->GetDataBuffer();
+            geom_draw_range = prim->GetRenderData();
+        }
+    };//struct DrawBatch
+
+    using DrawBatchArray = std::vector<DrawBatch>;
+
     /**
      * ECS Pipeline材质渲染器
      *
@@ -69,7 +89,7 @@ namespace hgl::ecs
          * @param mi_buffer ECS 材质实例分配缓冲
          * @return 绑定是否成功
          */
-        bool BindVAB(const graph::DrawBatch* batch,
+        bool BindVAB(const DrawBatch* batch,
                      VkBuffer transform_vab,
                      ECSMaterialInstanceAssignmentBuffer* mi_buffer);
 
@@ -90,7 +110,7 @@ namespace hgl::ecs
          * @param icb_draw_indexed 间接绘制缓冲（有索引）
          * @return 绘制是否成功
          */
-        bool Draw(graph::DrawBatch* batch,
+        bool Draw(DrawBatch* batch,
                   ECSTransformAssignmentBuffer* transform_buffer,
                   ECSMaterialInstanceAssignmentBuffer* mi_buffer,
                   VkBuffer transform_vab,
@@ -112,7 +132,7 @@ namespace hgl::ecs
          * @param icb_draw_indexed 间接绘制缓冲（有索引）
          */
         void Render(graph::RenderCmdBuffer* rcb,
-                    const graph::DrawBatchArray& batches,
+                    const DrawBatchArray& batches,
                     uint32_t batch_count,
                     ECSTransformAssignmentBuffer* transform_buffer,
                     ECSMaterialInstanceAssignmentBuffer* mi_buffer,

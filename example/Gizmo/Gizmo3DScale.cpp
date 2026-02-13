@@ -22,7 +22,6 @@
 
 #include"GizmoResource.h"
 #include"Gizmo.h"
-#include<hgl/component/PrimitiveComponent.h>
 
 // ECS
 #include<hgl/ecs/Context.h>
@@ -41,8 +40,6 @@
 
 #include<vector>
 #include<cmath>
-
-USING_COMPONENT_NAMESPACE
 
 VK_NAMESPACE_BEGIN
 
@@ -89,11 +86,7 @@ namespace
 
     Primitive *GetGizmoPrimitive(const GizmoShape &shape)
     {
-        ComponentDataPtr cdp = GetGizmoMeshCDP(shape);
-        auto *mcd = dynamic_cast<PrimitiveComponentData *>(cdp.get());
-        if(!mcd)
-            return nullptr;
-        return mcd->primitive;
+        return GetGizmoMeshPrimitive(shape);
     }
 
     math::Vector3f TransformPosition(const math::Matrix4f &mat, const math::Vector3f &pos)

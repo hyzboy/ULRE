@@ -13,7 +13,6 @@
 #include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/GeometryCreater.h>
-#include<hgl/component/CreateComponentInfo.h>
 #include<hgl/ecs/Context.h>
 
 VK_NAMESPACE_BEGIN
@@ -40,9 +39,6 @@ class World;
 class SceneRenderer;
 class LineRenderManager; // forward
 
-class CameraComponentManager{/*现阶段测试使用*/};
-class LightComponentManager{/*现阶段测试使用*/};
-
 class RenderFramework:public io::WindowEvent
 {
     OSString                app_name;
@@ -67,11 +63,6 @@ protected:
     PrimitiveManager *      primitive_manager   =nullptr;
 
     SwapchainModule *       sc_module           =nullptr;
-
-protected:
-
-    CameraComponentManager *camera_component_manager=nullptr;
-    LightComponentManager  *light_component_manager =nullptr;
 
 protected:  //RenderContext,未来合并成一个RenderContext结构
 
@@ -239,58 +230,6 @@ public: // Geometry, Primitive
 
     Primitive *CreatePrimitive(Geometry *r, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(r,mi,p);}
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(pc,mi,p);}
-
-public: // ComponentManager
-
-    template<typename T> T *GetComponentManager()
-    {
-        return COMPONENT_NAMESPACE::GetComponentManager<T>(true);
-    }
-
-    template<> CameraComponentManager *GetComponentManager<CameraComponentManager>()
-    {
-        return camera_component_manager;
-    }
-
-    template<> LightComponentManager *GetComponentManager<LightComponentManager>()
-    {
-        return light_component_manager;
-    }
-
-public: //Component 相关
-
-    template<typename C,typename ...ARGS>
-    inline C *CreateComponent(const CreateComponentInfo *cci,ARGS...args)
-    {
-        auto manager=C::GetDefaultManager();  //取得默认管理器
-
-        if(!manager)
-        {
-            //        LogError(OS_TEXT("CreateComponent failed, no default manager!"));
-            return(nullptr);
-        }
-
-        C *c=(C *)(manager->CreateComponent(args...)); //创建组件
-
-        if(!c)
-        {
-            //        LogError(OS_TEXT("CreateComponent failed, create component failed!"));
-            return(nullptr);
-        }
-
-        /**
-        * 如果此处出现转换错误，请检查是否包含了对应的Component头文件。
-        */
-        if(cci)
-        {
-            if(cci->owner_node)
-                cci->owner_node->AttachComponent(c); //将组件附加到所属节点
-
-            c->graph::NodeTransform::SetLocalMatrix(cci->mat);
-        }
-
-        return c;
-    }
 };//class RenderFramework
 
 VK_NAMESPACE_END

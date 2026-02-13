@@ -25,11 +25,6 @@
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/InputSystem.h>
 
-COMPONENT_NAMESPACE_BEGIN
-void InitializeComponentManager();
-void UninitializeComponentManager();
-COMPONENT_NAMESPACE_END
-
 VK_NAMESPACE_BEGIN
 
 bool InitShaderCompiler();
@@ -80,7 +75,6 @@ RenderFramework::~RenderFramework()
 
     if(RENDER_FRAMEWORK_COUNT==0)
     {
-        UninitializeComponentManager();
         STD_MTL_NAMESPACE::ClearMaterialFactory();
         CloseShaderCompiler();
     }
@@ -126,8 +120,6 @@ bool RenderFramework::Init(uint w,uint h)
         logger::InitLogger(app_name);
 
         InitNativeWindowSystem();
-
-        InitializeComponentManager();
     }
 
     ++RENDER_FRAMEWORK_COUNT;

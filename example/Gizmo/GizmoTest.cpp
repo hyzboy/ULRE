@@ -2,8 +2,6 @@
 #include"Gizmo.h"
 #include"GizmoResource.h"
 #include<hgl/math/VectorTypes.h>
-#include<hgl/component/PrimitiveComponent.h>
-#include<hgl/component/CreateComponentInfo.h>
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/utf.h>
@@ -92,19 +90,19 @@ class TestApp:public WorkObject
     TextRender *debug_text_render = nullptr;
     TextGeometry *debug_text_geom = nullptr;
     Primitive *debug_text_prim = nullptr;
-    PrimitiveComponent *debug_text_comp = nullptr;
+    hgl::ecs::Entity *debug_text_entity = nullptr;
+    std::shared_ptr<hgl::ecs::PrimitiveComponent> debug_text_comp;
     std::string debug_text_cache;
 
 private:
 
     Primitive *CreateGizmoPrimitive(const GizmoShape &shape,const GizmoColor &color)
     {
-        COMPONENT_NAMESPACE::ComponentDataPtr cdp = GetGizmoMeshCDP(shape);
-        auto *mcd = dynamic_cast<COMPONENT_NAMESPACE::PrimitiveComponentData *>(cdp.get());
-        if(!mcd || !mcd->primitive)
+        Primitive *base_prim = GetGizmoMeshPrimitive(shape);
+        if(!base_prim)
             return nullptr;
 
-        Geometry *geometry = mcd->primitive->GetGeometry();
+        Geometry *geometry = base_prim->GetGeometry();
         MaterialInstance *mi = GetGizmoMI3D(color);
         if(!geometry || !mi)
             return nullptr;
@@ -138,6 +136,9 @@ private:
 
     bool InitDebugOverlay()
     {
+        if(!ecs_world)
+            return false;
+
         FontSource *fs = CreateFontSource(OS_TEXT("Consolas"), 16);
         if(!fs)
             return false;
@@ -155,9 +156,19 @@ private:
         if(!debug_text_prim)
             return false;
 
-        CreateComponentInfo cci(GetWorldRootNode());
-        debug_text_comp = CreateComponent<PrimitiveComponent>(&cci, debug_text_prim);
-        return debug_text_comp != nullptr;
+        debug_text_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("GizmoDebugText");
+        if(!debug_text_entity)
+            return false;
+
+        auto transform = debug_text_entity->AddComponent<hgl::ecs::TransformComponent>();
+        transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
+
+        debug_text_comp = debug_text_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+        if(!debug_text_comp)
+            return false;
+
+        debug_text_comp->SetPrimitive(debug_text_prim);
+        return true;
     }
 
     void UpdateDebugOverlay(hgl::ecs::InputSystem *input_system)
@@ -260,10 +271,16 @@ public:
 
     ~TestApp()
     {
+        if(ecs_world && debug_text_entity)
+        {
+            ecs_world->DestroyEntity(debug_text_entity->GetID());
+            debug_text_entity = nullptr;
+        }
+
         SAFE_CLEAR(debug_text_render);
         debug_text_geom = nullptr;
         debug_text_prim = nullptr;
-        debug_text_comp = nullptr;
+        debug_text_comp.reset();
 
         if(gizmo)
         {

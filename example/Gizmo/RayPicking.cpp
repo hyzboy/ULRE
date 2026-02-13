@@ -12,7 +12,6 @@
 #include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
