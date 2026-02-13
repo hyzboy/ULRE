@@ -21,7 +21,6 @@ namespace hgl::ecs
     void RenderTargetSystem::SetRenderTarget(graph::IRenderTarget *rt)
     {
         render_target = rt;
-        extent_valid = false;
         SyncSubsystems();
     }
 
@@ -33,30 +32,7 @@ namespace hgl::ecs
         if (!render_framework)
             render_framework = render_target->GetRenderFramework();
 
-        SyncViewport();
         SyncSubsystems();
-
-        if (context)
-        {
-            auto camera_system = context->GetSystem<CameraSystem>();
-            if (camera_system)
-                camera_system->SyncCameraUBO();
-        }
-    }
-
-    void RenderTargetSystem::SyncViewport()
-    {
-        if (!render_target)
-            return;
-
-        const VkExtent2D &ext = render_target->GetExtent();
-        if (!extent_valid || ext.width != last_width || ext.height != last_height)
-        {
-            render_target->OnResize(ext);
-            last_width = ext.width;
-            last_height = ext.height;
-            extent_valid = true;
-        }
     }
 
     void RenderTargetSystem::SyncSubsystems()

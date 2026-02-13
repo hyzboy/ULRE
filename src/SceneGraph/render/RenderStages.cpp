@@ -1,9 +1,11 @@
 #include<hgl/graph/RenderStages.h>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/EnvironmentSystem.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/ViewportInfo.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph
@@ -23,6 +25,7 @@ namespace hgl::graph
             }
         };
 
+
         class StageBeginFrame : public RenderStage
         {
         public:
@@ -34,12 +37,27 @@ namespace hgl::graph
                 if(!ctx.render_target)
                     return;
 
+                const VkExtent2D &ext = ctx.render_target->GetExtent();
+                const auto *vp_info = ctx.render_target->GetViewportInfo();
+                if (!vp_info || vp_info->GetViewport().x != ext.width || vp_info->GetViewport().y != ext.height)
+                {
+                    ctx.render_target->OnResize(ext);
+                }
+
                 ctx.cmd = ctx.render_target->BeginRender();
 
                 if(ctx.ecs_context)
                 {
                     ctx.ecs_context->SetFrameIndex(ctx.render_target->GetCurrentFrameIndex());
                     ctx.ecs_context->RenderBeginFrame(0.0f);
+
+                    auto camera_system = ctx.ecs_context->GetSystem<ecs::CameraSystem>();
+                    if (camera_system)
+                        camera_system->SyncCameraUBO();
+
+                    auto environment_system = ctx.ecs_context->GetSystem<ecs::EnvironmentSystem>();
+                    if (environment_system)
+                        environment_system->SyncSkyUBO();
                 }
             }
         };
