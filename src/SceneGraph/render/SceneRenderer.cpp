@@ -1,8 +1,8 @@
 ﻿#include<hgl/graph/SceneRenderer.h>
 #include<iostream>
 #include<hgl/ecs/Context.h>
+#include<hgl/ecs/CameraSystem.h>
 #include<hgl/graph/World.h>
-#include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
@@ -20,6 +20,26 @@ namespace hgl::graph
     SceneRenderer::~SceneRenderer()
     {
         SAFE_CLEAR(render_context);
+    }
+
+    Camera *SceneRenderer::GetCamera() const
+    {
+        auto ecs_ctx = GetECSContext();
+        if (!ecs_ctx)
+            return nullptr;
+
+        auto camera_system = ecs_ctx->GetSystem<ecs::CameraSystem>();
+        return camera_system ? camera_system->GetCamera() : nullptr;
+    }
+
+    const CameraInfo *SceneRenderer::GetCameraInfo() const
+    {
+        auto ecs_ctx = GetECSContext();
+        if (!ecs_ctx)
+            return nullptr;
+
+        auto camera_system = ecs_ctx->GetSystem<ecs::CameraSystem>();
+        return camera_system ? camera_system->GetCameraInfo() : nullptr;
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)

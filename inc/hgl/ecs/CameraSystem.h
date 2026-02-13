@@ -4,8 +4,20 @@
 #include<hgl/ecs/CameraComponent.h>
 #include<hgl/ecs/CameraInputMapping.h>
 #include<hgl/math/Vector.h>
+#include<hgl/graph/camera/Camera.h>
 #include<vector>
 #include<memory>
+
+namespace hgl::graph
+{
+    struct Camera;
+    struct CameraInfo;
+    class ViewportInfo;
+    class RenderFramework;
+    class RenderCmdBuffer;
+    class DescriptorBinding;
+    template<typename T> class StructuredBufferAccessor;
+}
 
 namespace hgl
 {
@@ -69,7 +81,6 @@ namespace hgl
         {
         private:
 
-            ECSContext* context;
             InputSystem* input_system;
 
             CameraInputState input_state;
@@ -81,15 +92,31 @@ namespace hgl
 
             CameraInputMapping input_mapping;
 
+            graph::RenderFramework* render_framework = nullptr;
+            const graph::ViewportInfo* viewport_info = nullptr;
+            graph::Camera camera_data{};
+            graph::CameraInfo* camera_info = nullptr;
+            graph::StructuredBufferAccessor<graph::CameraInfo>* camera_ubo = nullptr;
+            graph::DescriptorBinding* camera_desc_binding = nullptr;
+
         public:
 
-            CameraSystem(ECSContext* ctx);
+            CameraSystem(ECSContext* ctx = nullptr);
             ~CameraSystem() override;
 
             void Update(float deltaTime) override;
 
             CameraInputMapping& GetInputMapping() { return input_mapping; }
             const CameraInputMapping& GetInputMapping() const { return input_mapping; }
+
+            void SetRenderFramework(graph::RenderFramework* rf);
+            void SetViewportInfo(const graph::ViewportInfo* vp);
+
+            graph::Camera* GetCamera();
+            const graph::CameraInfo* GetCameraInfo() const;
+
+            void BindDescriptor(graph::RenderCmdBuffer* cmd);
+            void SyncCameraUBO();
 
         private:
 
@@ -118,6 +145,10 @@ namespace hgl
             void UploadToGPU(CameraComponent* camera);
 
             CameraModeProcessor* GetModeProcessor(CameraComponent::ControlMode mode) const;
+
+            CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const;
+            void BindCameraResources(CameraComponent* camera);
+            void EnsureCameraResources();
 
             // === 数学辅助函数 / Math helper functions ===
 

@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/RenderContext.h>
 #include<hgl/graph/World.h>
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/ecs/CameraSystem.h>
 
 namespace hgl::graph
 {
@@ -14,17 +14,6 @@ namespace hgl::graph
         ecs_context = nullptr;
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
-        if(rf)
-        {
-            ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo,BufferUpdateClass::CriticalPerFrame);
-            if(ubo_camera_info)
-            {
-                camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
-                if(camera_desc_binding)
-                    camera_desc_binding->AddUBO(ubo_camera_info);
-            }
-        }
-
         if(rf && rt)
             line_render_mgr = CreateLineRenderManager(rf,rt);
     }
@@ -32,19 +21,25 @@ namespace hgl::graph
     RenderContext::~RenderContext()
     {
         SAFE_CLEAR(line_render_mgr);
-        SAFE_CLEAR(camera_desc_binding);
-        SAFE_CLEAR(ubo_camera_info);
-
         ecs_context = nullptr;
         world = nullptr;
         render_target = nullptr;
         viewport_info = nullptr;
     }
 
-    void RenderContext::UpdateCamera()
+    static void SyncCameraSystem(hgl::ecs::ECSContext* ctx,
+                                 RenderFramework* rf,
+                                 const ViewportInfo* viewport)
     {
-        if(ubo_camera_info)
-            ubo_camera_info->ImmediateUpdate();  // 立即同步到 GPU / Immediate sync to GPU
+        if(!ctx)
+            return;
+
+        auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>();
+        if(!camera_system)
+            return;
+
+        camera_system->SetRenderFramework(rf);
+        camera_system->SetViewportInfo(viewport);
     }
 
     void RenderContext::SetRenderTarget(IRenderTarget *rt)
@@ -52,7 +47,7 @@ namespace hgl::graph
         render_target = rt;
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
-        UpdateCamera();
+        SyncCameraSystem(ecs_context, rf, viewport_info);
 
         if(render_target)
         {
@@ -63,15 +58,30 @@ namespace hgl::graph
         }
     }
 
+    void RenderContext::SetECSContext(ecs::ECSContext *ctx)
+    {
+        ecs_context = ctx;
+        SyncCameraSystem(ecs_context, rf, viewport_info);
+    }
+
     void RenderContext::Tick(double)
     {
-        UpdateCamera();
+        if(ecs_context)
+        {
+            auto camera_system = ecs_context->GetSystem<hgl::ecs::CameraSystem>();
+            if(camera_system)
+                camera_system->SyncCameraUBO();
+        }
     }
 
     void RenderContext::BindDescriptor(RenderCmdBuffer *cmd)
     {
-        if(camera_desc_binding)
-            cmd->SetDescriptorBinding(camera_desc_binding);
+        if(ecs_context)
+        {
+            auto camera_system = ecs_context->GetSystem<hgl::ecs::CameraSystem>();
+            if(camera_system)
+                camera_system->BindDescriptor(cmd);
+        }
 
         if(world)
             cmd->SetDescriptorBinding(world->GetDescriptorBinding());
