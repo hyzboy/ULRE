@@ -60,7 +60,6 @@ namespace hgl::ecs
 
     void EnvironmentSystem::Update(float /*deltaTime*/)
     {
-        SyncSkyUBO();
     }
 
     void EnvironmentSystem::EnsureResources()

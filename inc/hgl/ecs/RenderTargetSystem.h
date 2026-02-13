@@ -15,10 +15,7 @@ namespace hgl
         /**
          * RenderTargetSystem
          *
-         * Prepares render target data before render submission:
-         * - sync viewport info and UBO
-         * - update camera viewport binding
-         * - propagate render target to dependent render systems
+         * Keeps render-target related references in sync for ECS systems.
          */
         class RenderTargetSystem : public System
         {
@@ -26,9 +23,6 @@ namespace hgl
 
             graph::RenderFramework *render_framework = nullptr;
             graph::IRenderTarget *render_target = nullptr;
-            uint32_t last_width = 0;
-            uint32_t last_height = 0;
-            bool extent_valid = false;
 
         public:
 
@@ -47,7 +41,6 @@ namespace hgl
 
         private:
 
-            void SyncViewport();
             void SyncSubsystems();
         };
     }//namespace ecs
