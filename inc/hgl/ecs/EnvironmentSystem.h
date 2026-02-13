@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/System.h>
 #include<hgl/graph/StructuredBufferAccessor.h>
-#include<hgl/graph/Sky.h>
+#include<hgl/graph/SkyInfo.h>
 
 namespace hgl
 {
