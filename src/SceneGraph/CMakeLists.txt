@@ -4,7 +4,6 @@ SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/BitmapData.h
                     ${SG_INCLUDE_PATH}/ImageRegion.h
                     ${SG_INCLUDE_PATH}/TransformFaceToCamera.h
                     ${SG_INCLUDE_PATH}/VertexAttrib.h
-                    ${SG_INCLUDE_PATH}/Sky.h
                     ${SG_INCLUDE_PATH}/ViewportInfo.h
                     ${SG_INCLUDE_PATH}/RealityCamera.h
                     ${SG_INCLUDE_PATH}/Mesh.h)
@@ -30,8 +29,7 @@ SET(CM_SG_VULKAN_HEADER     ${SG_INCLUDE_PATH}/VKFormat.h
                             ${SG_INCLUDE_PATH}/VKImageType.h
 )
 
-SET(CM_SG_SOURCE    VertexAttrib.cpp
-                    Sky.cpp)
+SET(CM_SG_SOURCE    VertexAttrib.cpp)
 
 SET(CM_SG_VULKAN_SOURCE Vulkan/VKFormat.cpp
                         Vulkan/VKString.cpp
@@ -90,8 +88,8 @@ SET(SCENE_CORE_FILES ${SG_INCLUDE_PATH}/TransformState.h
 
 SOURCE_GROUP("2.Scene\\Core" FILES ${SCENE_CORE_FILES})
 
-SET(SCENE_ENVIRONMENT_FILES ${SG_INCLUDE_PATH}/env/Sky.h
-                            env/Sky.cpp)
+SET(SCENE_ENVIRONMENT_FILES ${SG_INCLUDE_PATH}/SkyInfo.h
+                            SkyInfo.cpp)
 
 SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 

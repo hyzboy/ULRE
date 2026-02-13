@@ -1,4 +1,4 @@
-﻿#include <hgl/graph/Sky.h>
+﻿#include <hgl/graph/SkyInfo.h>
 
 namespace hgl::graph
 {
