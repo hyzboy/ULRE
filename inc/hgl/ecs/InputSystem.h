@@ -3,6 +3,7 @@
 #include<hgl/ecs/System.h>
 #include<hgl/io/event/InputMapping.h>
 #include<hgl/io/event/WindowEvent.h>
+#include<hgl/io/event/MouseEvent.h>
 #include<hgl/math/Vector.h>
 #include <hgl/type/UnorderedMap.h>
 
@@ -45,8 +46,12 @@ namespace hgl::ecs
         const Vector2i &GetMouseCoord() const { return mouse_coord; }
 
         /// 查询鼠标按钮状态 / Query mouse button state
-        /// @param button 按钮索引: 0=左键, 1=右键, 2=中键
-        bool IsMouseButtonDown(int button) const;
+        /// @param button 鼠标按钮枚举值
+        bool IsMouseButtonDown(io::MouseButton button) const;
+
+        // 禁用隐式类型转换 / Disable implicit type conversions
+        bool IsMouseButtonDown(int) const = delete;
+        bool IsMouseButtonDown(unsigned int) const = delete;
 
         bool BeginMouseCapture(void* owner);
         void EndMouseCapture(void* owner);
@@ -57,8 +62,14 @@ namespace hgl::ecs
         int GetWheelDelta() const { return wheel_delta; }
 
         /// 查询键盘按键状态 / Query key state
-        /// @param keycode 按键码（通常是ASCII码或虚拟键码）
-        bool IsKeyDown(uint32_t keycode) const;
+        /// @param key 键盘按键枚举值
+        bool IsKeyDown(io::KeyboardButton key) const;
+
+        // 禁用隐式类型转换 / Disable implicit type conversions
+        bool IsKeyDown(int) const = delete;
+        bool IsKeyDown(unsigned int) const = delete;
+        bool IsKeyDown(char) const = delete;
+        bool IsKeyDown(unsigned char) const = delete;
 
         /// 查询动作是否处于激活状态 / Check if action is active
         bool IsActionActive(io::ActionID action) const;

@@ -22,6 +22,11 @@ struct GizmoMoveECS;
 struct GizmoRotateECS;
 struct GizmoScaleECS;
 
+// 辅助函数：设置 Gizmo 可见性
+void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible);
+void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible);
+void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible);
+
 struct GizmoMoveECSState
 {
     int cur_axis = -1;

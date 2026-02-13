@@ -17,6 +17,7 @@
 #include<hgl/ecs/CameraComponent.h>
 #include<hgl/ecs/CameraSystem.h>
 #include<hgl/ecs/InputSystem.h>
+#include<hgl/io/event/KeyboardEvent.h>
 
 #include<glm/glm.hpp>
 #include<iostream>
@@ -126,14 +127,14 @@ private:
 
         std::string text = "mode=";
         if(current_mode == GizmoMode::Move)
-            text += "Move(W)";
+            text += "Move(1)";
         else if(current_mode == GizmoMode::Rotate)
-            text += "Rotate(E)";
+            text += "Rotate(2)";
         else if(current_mode == GizmoMode::Scale)
-            text += "Scale(R)";
+            text += "Scale(3)";
         
         text += " left=";
-        text += input_system->IsMouseButtonDown(0) ? "1" : "0";
+        text += input_system->IsMouseButtonDown(hgl::io::MouseButton::Left) ? "1" : "0";
 
         if(current_mode == GizmoMode::Move && gizmo_move)
         {
@@ -241,26 +242,35 @@ public:
             return;
 
         const math::Vector2i &mouse_coord = input_system->GetMouseCoord();
-        const bool left_down = input_system->IsMouseButtonDown(0);
+        const bool left_down = input_system->IsMouseButtonDown(hgl::io::MouseButton::Left);
         const bool left_pressed = left_down && !last_left_down;
         const bool left_released = !left_down && last_left_down;
         last_left_down = left_down;
         
-        // 切换 Gizmo 模式（按键 W/E/R）
-        const bool key_w = input_system->IsKeyDown('W');
-        const bool key_e = input_system->IsKeyDown('E');
-        const bool key_r = input_system->IsKeyDown('R');
+        // 切换 Gizmo 模式（按键 1/2/3）
+        const bool key_1 = input_system->IsKeyDown(hgl::io::KeyboardButton::_1);
+        const bool key_2 = input_system->IsKeyDown(hgl::io::KeyboardButton::_2);
+        const bool key_3 = input_system->IsKeyDown(hgl::io::KeyboardButton::_3);
         
-        if(key_w && !last_key_w)
+        if(key_1 && !last_key_w)
+        {
             current_mode = GizmoMode::Move;
-        else if(key_e && !last_key_e)
+            std::cout << "Switched to Move mode" << std::endl;
+        }
+        else if(key_2 && !last_key_e)
+        {
             current_mode = GizmoMode::Rotate;
-        else if(key_r && !last_key_r)
+            std::cout << "Switched to Rotate mode" << std::endl;
+        }
+        else if(key_3 && !last_key_r)
+        {
             current_mode = GizmoMode::Scale;
+            std::cout << "Switched to Scale mode" << std::endl;
+        }
         
-        last_key_w = key_w;
-        last_key_e = key_e;
-        last_key_r = key_r;
+        last_key_w = key_1;
+        last_key_e = key_2;
+        last_key_r = key_3;
         
         // 更新当前激活的 Gizmo
         if(current_mode == GizmoMode::Move && gizmo_move)
@@ -284,6 +294,29 @@ public:
                                  left_down,
                                  left_pressed,
                                  left_released);
+            // 非激活的 Gizmo 只会更新内部状态（无交互）
+            if(gizmo_move)
+            {
+                UpdateGizmoMoveECS(gizmo_move,
+                                   mouse_coord,
+                                   GetCameraInfo(),
+                                   GetViewportInfo(),
+                                   nullptr,  // 不传入 input_system，禁用交互
+                                   false,
+                                   false,
+                                   false);
+            }
+            if(gizmo_scale)
+            {
+                UpdateGizmoScaleECS(gizmo_scale,
+                                    mouse_coord,
+                                    GetCameraInfo(),
+                                    GetViewportInfo(),
+                                    nullptr,  // 不传入 input_system，禁用交互
+                                    false,
+                                    false,
+                                    false);
+            }
         }
         else if(current_mode == GizmoMode::Scale && gizmo_scale)
         {
@@ -295,6 +328,29 @@ public:
                                 left_down,
                                 left_pressed,
                                 left_released);
+            // 非激活的 Gizmo 只会更新内部状态（无交互）
+            if(gizmo_move)
+            {
+                UpdateGizmoMoveECS(gizmo_move,
+                                   mouse_coord,
+                                   GetCameraInfo(),
+                                   GetViewportInfo(),
+                                   nullptr,  // 不传入 input_system，禁用交互
+                                   false,
+                                   false,
+                                   false);
+            }
+            if(gizmo_rotate)
+            {
+                UpdateGizmoRotateECS(gizmo_rotate,
+                                     mouse_coord,
+                                     GetCameraInfo(),
+                                     GetViewportInfo(),
+                                     nullptr,  // 不传入 input_system，禁用交互
+                                     false,
+                                     false,
+                                     false);
+            }
         }
 
         UpdateDebug(input_system.get());
