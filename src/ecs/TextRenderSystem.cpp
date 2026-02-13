@@ -100,8 +100,8 @@ namespace hgl::ecs
         if (!resources.tile_font)
             return nullptr;
 
-        mtl::Text2DMaterialCreateConfig mtl_cfg;
-        mtl::MaterialCreateInfo* mci = mtl::CreateText2D(framework->GetDevAttr(), &mtl_cfg);
+        graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
+        graph::mtl::MaterialCreateInfo* mci = graph::mtl::CreateText2D(framework->GetDevAttr(), &mtl_cfg);
         if (!mci)
             return nullptr;
 
@@ -124,8 +124,8 @@ namespace hgl::ecs
         if (!resources.sampler)
             return nullptr;
 
-        if (!resources.material->BindTextureSampler(DescriptorSetType::PerMaterial,
-                                                    mtl::SamplerName::Text,
+        if (!resources.material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
+                                                    graph::mtl::SamplerName::Text,
                                                     resources.tile_font->GetTexture(),
                                                     resources.sampler))
             return nullptr;
@@ -219,7 +219,8 @@ namespace hgl::ecs
             graph::MaterialInstance* mi = resources->material_instance;
             if (!mi)
             {
-                VILConfig vil_config;
+                graph::VILConfig vil_config;
+
                 vil_config.Add("Position", VF_V4I16);
 
                 mi = material_manager->CreateMaterialInstance(resources->material,
@@ -238,7 +239,7 @@ namespace hgl::ecs
 
             if (!resources->pipeline)
             {
-                resources->pipeline = render_pass->CreatePipeline(mi, InlinePipeline::Solid2D);
+                resources->pipeline = render_pass->CreatePipeline(mi, graph::InlinePipeline::Solid2D);
                 if (!resources->pipeline)
                     continue;
             }

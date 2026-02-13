@@ -64,7 +64,7 @@ namespace hgl::graph
                 ecs::ECSContext *   GetECSContext       ()const {return render_context?render_context->GetECSContext():nullptr;}
                 Camera *            GetCamera           ()const;
             const   CameraInfo *        GetCameraInfo       ()const;
-                LineRenderManager * GetLineRenderManager()const {return render_context?render_context->GetLineRenderManager():nullptr;}
+                LineRenderManager * GetLineRenderManager()const;
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 
                 // 便捷方法：基于当前RenderPass创建内置管线
