@@ -24,6 +24,16 @@ namespace hgl
     {
     }
 
+    graph::Camera *WorkObject::GetCamera()
+    {
+        return scene_renderer ? scene_renderer->GetCamera() : nullptr;
+    }
+
+    const graph::CameraInfo *WorkObject::GetCameraInfo() const
+    {
+        return scene_renderer ? scene_renderer->GetCameraInfo() : nullptr;
+    }
+
     void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r)
     {
         if(!rf)

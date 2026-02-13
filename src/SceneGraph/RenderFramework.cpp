@@ -24,6 +24,7 @@
 #include<hgl/ecs/TextRenderSubmitSystem.h>
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/InputSystem.h>
+#include<hgl/ecs/CameraSystem.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -196,6 +197,7 @@ bool RenderFramework::Init(uint w,uint h)
     if(default_ecs_context)
     {
         auto text_render_system = default_ecs_context->RegisterTickSystem<ecs::TextRenderSystem>();
+        auto camera_system = default_ecs_context->RegisterTickSystem<ecs::CameraSystem>();
         auto render_collect_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveCollectSystem>();
         auto render_batch_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveBatchSystem>();
         auto render_commit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
@@ -209,12 +211,20 @@ bool RenderFramework::Init(uint w,uint h)
             text_render_system->SetRenderFramework(this);
         }
 
+        if (camera_system)
+        {
+            camera_system->SetRenderFramework(this);
+            camera_system->SetViewportInfo(default_scene_renderer->GetViewportInfo());
+        }
+
+        const CameraInfo* camera_info = camera_system ? camera_system->GetCameraInfo() : nullptr;
+
         render_collect_system->SetWorld(default_ecs_context);
-        render_collect_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+        render_collect_system->SetCameraInfo(camera_info);
 
         render_batch_system->SetWorld(default_ecs_context);
         render_batch_system->SetDevice(device);
-        render_batch_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
+        render_batch_system->SetCameraInfo(camera_info);
 
         if (render_commit_system)
         {

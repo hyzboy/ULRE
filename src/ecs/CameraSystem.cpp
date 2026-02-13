@@ -2,8 +2,12 @@
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/InputSystem.h>
 #include<hgl/ecs/TransformSystem.h>
-#include<hgl/graph/camera/Camera.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKDescriptorBindingManage.h>
+#include<hgl/graph/StructuredBufferAccessor.h>
 #include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>
 #include<cmath>
@@ -209,9 +213,9 @@ namespace hgl::ecs
     }
 
     CameraSystem::CameraSystem(ECSContext* ctx)
-        : context(ctx)
-        , input_system(nullptr)
+        : input_system(nullptr)
     {
+        SetContext(ctx);
         // Set system type and properties
         SetSystemType(SystemType::Camera);
         SetExecutionOrder(ExecutionPhase::TickCamera);
@@ -226,12 +230,54 @@ namespace hgl::ecs
         free_mode = std::make_unique<FreeCameraMode>();
     }
 
-    CameraSystem::~CameraSystem() = default;
+    CameraSystem::~CameraSystem()
+    {
+        delete camera_desc_binding;
+        delete camera_ubo;
+    }
+
+    void CameraSystem::SetRenderFramework(graph::RenderFramework* rf)
+    {
+        if (render_framework == rf)
+            return;
+
+        render_framework = rf;
+        EnsureCameraResources();
+    }
+
+    void CameraSystem::SetViewportInfo(const graph::ViewportInfo* vp)
+    {
+        viewport_info = vp;
+    }
+
+    graph::Camera* CameraSystem::GetCamera()
+    {
+        return &camera_data;
+    }
+
+    const graph::CameraInfo* CameraSystem::GetCameraInfo() const
+    {
+        return camera_info;
+    }
+
+    void CameraSystem::BindDescriptor(graph::RenderCmdBuffer* cmd)
+    {
+        if (cmd && camera_desc_binding)
+            cmd->SetDescriptorBinding(camera_desc_binding);
+    }
+
+    void CameraSystem::SyncCameraUBO()
+    {
+        if (camera_ubo)
+            camera_ubo->Commit();
+    }
 
     void CameraSystem::Update(float deltaTime)
     {
         if (!context)
             return;
+
+        EnsureCameraResources();
 
         // 获取InputSystem（首次调用时查找）
         if (!input_system)
@@ -245,6 +291,10 @@ namespace hgl::ecs
         auto cameras = CollectCameras();
         if (cameras.empty())
             return;
+
+        CameraComponent* main_camera = SelectMainCamera(cameras);
+        if (main_camera)
+            BindCameraResources(main_camera);
 
         // 收集输入状态
         CollectInput();
@@ -264,8 +314,13 @@ namespace hgl::ecs
             // 更新位置和目标
             UpdateTransform(camera_comp.get());
 
+            const bool was_dirty = camera_comp->matrix_dirty;
+
             // 更新矩阵
             UpdateMatrices(camera_comp.get());
+
+            if (was_dirty && camera_comp.get() == main_camera && camera_ubo)
+                camera_ubo->MarkDirty();
 
             // 上传到GPU
             UploadToGPU(camera_comp.get());
@@ -431,6 +486,62 @@ namespace hgl::ecs
         // 上传CameraInfo到GPU
         // 注意：这里假设camera_ubo有Write方法，实际实现可能需要调整
         // camera->camera_ubo->Write(camera->camera_info, sizeof(graph::CameraInfo));
+    }
+
+    CameraComponent* CameraSystem::SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const
+    {
+        for (const auto& camera : cameras)
+        {
+            if (camera && camera->is_main_camera)
+                return camera.get();
+        }
+
+        for (const auto& camera : cameras)
+        {
+            if (camera)
+                return camera.get();
+        }
+
+        return nullptr;
+    }
+
+    void CameraSystem::BindCameraResources(CameraComponent* camera)
+    {
+        if (!camera)
+            return;
+
+        if (!camera_info && camera_ubo)
+            camera_info = camera_ubo->Data();
+
+        camera->camera_data = &camera_data;
+        camera->camera_info = camera_info;
+        camera->viewport_info = viewport_info;
+        camera->camera_ubo = camera_ubo;
+    }
+
+    void CameraSystem::EnsureCameraResources()
+    {
+        if (!render_framework)
+            return;
+
+        if (!camera_ubo)
+        {
+            using UBOCameraInfo = graph::StructuredBufferAccessor<graph::CameraInfo>;
+            camera_ubo = render_framework->CreateUBO<UBOCameraInfo>(&graph::mtl::SBS_CameraInfo,
+                                                                    graph::BufferUpdateClass::CriticalPerFrame);
+            if (camera_ubo)
+                camera_info = camera_ubo->Data();
+        }
+
+        if (!camera_desc_binding)
+            camera_desc_binding = new graph::DescriptorBinding(graph::DescriptorSetType::Camera);
+
+        if (camera_desc_binding && camera_ubo)
+        {
+            const AnsiString ubo_name = camera_ubo->name();
+            if (!camera_desc_binding->GetUBO(ubo_name))
+                camera_desc_binding->AddUBO(camera_ubo);
+        }
     }
 
     // === 数学辅助函数 ===

@@ -24,6 +24,8 @@ namespace hgl::graph
     class Material;         // fwd for CreatePipeline
     class SceneNode;        // fwd for GetWorldRootNode
     enum class InlinePipeline; // fwd for CreatePipeline
+    class Camera;
+    struct CameraInfo;
 
     class SceneEventDispatcher:public io::EventDispatcher
     {
@@ -60,8 +62,8 @@ namespace hgl::graph
 
                 World *             GetWorld            ()const {return render_context?render_context->GetWorld():nullptr;}
                 ecs::ECSContext *   GetECSContext       ()const {return render_context?render_context->GetECSContext():nullptr;}
-                Camera *            GetCamera           ()const {return render_context?render_context->GetCamera():nullptr;}
-        const   CameraInfo *        GetCameraInfo       ()const {return render_context?render_context->GetCameraInfo():nullptr;}
+                Camera *            GetCamera           ()const;
+            const   CameraInfo *        GetCameraInfo       ()const;
                 LineRenderManager * GetLineRenderManager()const {return render_context?render_context->GetLineRenderManager():nullptr;}
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 

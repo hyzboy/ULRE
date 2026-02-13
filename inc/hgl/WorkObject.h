@@ -71,8 +71,8 @@ namespace hgl
         ecs::ECSContext *           GetECSContext       (){return render_framework ? render_framework->GetECSContext() : nullptr;}
 
         const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer ? scene_renderer->GetViewportInfo() : nullptr;}
-        graph::Camera *             GetCamera           ()      {return scene_renderer ? scene_renderer->GetCamera() : nullptr;}
-        const graph::CameraInfo *   GetCameraInfo       ()const {return scene_renderer ? scene_renderer->GetCameraInfo() : nullptr;}
+        graph::Camera *             GetCamera           ();
+        const graph::CameraInfo *   GetCameraInfo       ()const;
 
         const math::Vector2i *      GetMouseCoord       ()const {return render_framework ? &render_framework->GetMouseCoord() : nullptr;}
 
