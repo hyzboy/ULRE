@@ -238,7 +238,10 @@ bool RenderFramework::Init(uint w,uint h)
             text_submit_system->SetWorld(default_ecs_context);
 
         if (line_render_system)
-            line_render_system->SetLineRenderManager(default_scene_renderer->GetLineRenderManager());
+        {
+            line_render_system->SetRenderFramework(this);
+            line_render_system->SetRenderTarget(GetSwapchainRenderTarget());
+        }
 
         auto input_system=default_ecs_context->RegisterTickSystem<ecs::InputSystem>();
 

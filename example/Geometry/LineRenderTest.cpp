@@ -2,17 +2,19 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
 #include<hgl/ecs/LineRenderSystem.h>
+#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/CameraComponent.h>
+#include<hgl/ecs/Entity.h>
 #include<cmath>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-// Forward declare factory function (implemented in LineRenderManager.cpp)
-namespace hgl::graph { LineRenderManager *CreateLineRenderManager(RenderFramework *rf); }
-
 class WireShapeTestApp:public WorkObject
 {
     LineRenderManager *line_mgr = nullptr;
+    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::Entity *camera_entity = nullptr;
 
 public:
 
@@ -75,12 +77,23 @@ public:
             }
         }
 
-        // Position the camera so lines are visible
-        CameraControl *cc = GetCameraControl();
-        if(cc)
+        ecs_world = GetECSContext();
+        if (ecs_world)
         {
-            cc->SetPosition(math::Vector3f(8,8,8));
-            cc->SetTarget(math::Vector3f(0,0,0));
+            auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
+            if (!camera_system)
+                camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
+
+            camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+            auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
+
+            camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
+            camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
+            camera->distance = 12.0f;
+            camera->yaw = 45.0f;
+            camera->pitch = -20.0f;
+            camera->is_main_camera = true;
+            camera->matrix_dirty = true;
         }
 
         return true;

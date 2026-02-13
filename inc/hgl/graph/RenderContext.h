@@ -2,7 +2,6 @@
 
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/math/geometry/Ray.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
 
 // ECS forward decl
 namespace hgl::ecs { class ECSContext; }
@@ -17,7 +16,6 @@ namespace hgl::graph
         const   ViewportInfo *      viewport_info       = nullptr;  ///< 缓存视口
                 World *             world               = nullptr;  ///< 世界指针(不负责释放)
                 ecs::ECSContext *   ecs_context         = nullptr;  ///< ECS 上下文（可选，不负责释放）
-                LineRenderManager * line_render_mgr     = nullptr;  ///< 线段渲染管理器
 
     public:
 
@@ -27,7 +25,6 @@ namespace hgl::graph
 
                 World *             GetWorld            ()const { return world; }
                 ecs::ECSContext *   GetECSContext       ()const { return ecs_context; }
-                LineRenderManager * GetLineRenderManager()const { return line_render_mgr; }
 
     public:
 

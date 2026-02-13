@@ -2,6 +2,7 @@
 #include<iostream>
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/LineRenderSystem.h>
 #include<hgl/graph/World.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
@@ -40,6 +41,16 @@ namespace hgl::graph
 
         auto camera_system = ecs_ctx->GetSystem<ecs::CameraSystem>();
         return camera_system ? camera_system->GetCameraInfo() : nullptr;
+    }
+
+    LineRenderManager *SceneRenderer::GetLineRenderManager() const
+    {
+        auto ecs_ctx = GetECSContext();
+        if (!ecs_ctx)
+            return nullptr;
+
+        auto line_system = ecs_ctx->GetSystem<ecs::LineRenderSystem>();
+        return line_system ? line_system->GetLineRenderManager() : nullptr;
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)

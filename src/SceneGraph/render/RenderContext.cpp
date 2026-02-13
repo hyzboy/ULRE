@@ -2,25 +2,20 @@
 #include<hgl/graph/World.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/LineRenderSystem.h>
 
 namespace hgl::graph
 {
-    extern LineRenderManager *CreateLineRenderManager(RenderFramework *,IRenderTarget *); // forward factory
-
     RenderContext::RenderContext(RenderFramework *rf,IRenderTarget *rt)
     {
         this->rf = rf;
         render_target = rt;
         ecs_context = nullptr;
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
-
-        if(rf && rt)
-            line_render_mgr = CreateLineRenderManager(rf,rt);
     }
 
     RenderContext::~RenderContext()
     {
-        SAFE_CLEAR(line_render_mgr);
         ecs_context = nullptr;
         world = nullptr;
         render_target = nullptr;
@@ -42,26 +37,35 @@ namespace hgl::graph
         camera_system->SetViewportInfo(viewport);
     }
 
+    static void SyncLineRenderSystem(hgl::ecs::ECSContext* ctx,
+                                     RenderFramework* rf,
+                                     IRenderTarget* rt)
+    {
+        if(!ctx)
+            return;
+
+        auto line_system = ctx->GetSystem<hgl::ecs::LineRenderSystem>();
+        if(!line_system)
+            return;
+
+        line_system->SetRenderFramework(rf);
+        line_system->SetRenderTarget(rt);
+    }
+
     void RenderContext::SetRenderTarget(IRenderTarget *rt)
     {
         render_target = rt;
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
         SyncCameraSystem(ecs_context, rf, viewport_info);
-
-        if(render_target)
-        {
-            if(!line_render_mgr)
-                line_render_mgr = CreateLineRenderManager(rf,rt);
-            else
-                line_render_mgr->SetRenderTarget(rt);
-        }
+        SyncLineRenderSystem(ecs_context, rf, render_target);
     }
 
     void RenderContext::SetECSContext(ecs::ECSContext *ctx)
     {
         ecs_context = ctx;
         SyncCameraSystem(ecs_context, rf, viewport_info);
+        SyncLineRenderSystem(ecs_context, rf, render_target);
     }
 
     void RenderContext::Tick(double)
