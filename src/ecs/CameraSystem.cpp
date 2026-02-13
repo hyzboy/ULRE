@@ -2,6 +2,7 @@
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/InputSystem.h>
 #include<hgl/ecs/TransformSystem.h>
+#include<hgl/ecs/EnvironmentSystem.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
@@ -541,6 +542,21 @@ namespace hgl::ecs
             const AnsiString ubo_name = camera_ubo->name();
             if (!camera_desc_binding->GetUBO(ubo_name))
                 camera_desc_binding->AddUBO(camera_ubo);
+        }
+
+        if (camera_desc_binding && context)
+        {
+            auto environment_system = context->GetSystem<EnvironmentSystem>();
+            if (environment_system)
+            {
+                auto *sky_ubo = environment_system->GetSkyUBO();
+                if (sky_ubo)
+                {
+                    const AnsiString sky_name = sky_ubo->name();
+                    if (!camera_desc_binding->GetUBO(sky_name))
+                        camera_desc_binding->AddUBO(sky_ubo);
+                }
+            }
         }
     }
 

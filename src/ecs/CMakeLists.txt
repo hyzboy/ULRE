@@ -20,6 +20,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveBatchSystem.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/RenderBufferCommitSystem.h
+                ${ECS_INCLUDE_PATH}/RenderTargetSystem.h
+                ${ECS_INCLUDE_PATH}/EnvironmentSystem.h
                 ${ECS_INCLUDE_PATH}/LineRenderSystem.h
                 ${ECS_INCLUDE_PATH}/TextComponent.h
                 ${ECS_INCLUDE_PATH}/TextRenderSystem.h
@@ -80,6 +82,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 RenderPrimitiveBatchSystem.cpp
                 RenderPrimitiveSubmitSystem.cpp
                 RenderBufferCommitSystem.cpp
+                RenderTargetSystem.cpp
+                EnvironmentSystem.cpp
                 LineRenderSystem.cpp
                 TextRenderSystem.cpp
                 TextRenderSubmitSystem.cpp
@@ -149,6 +153,10 @@ source_group("ECS\\Rendering" FILES
     RenderPrimitiveSubmitSystem.cpp
     ${ECS_INCLUDE_PATH}/RenderBufferCommitSystem.h
     RenderBufferCommitSystem.cpp
+    ${ECS_INCLUDE_PATH}/RenderTargetSystem.h
+    RenderTargetSystem.cpp
+    ${ECS_INCLUDE_PATH}/EnvironmentSystem.h
+    EnvironmentSystem.cpp
     ${ECS_INCLUDE_PATH}/LineRenderSystem.h
     LineRenderSystem.cpp
     ${ECS_INCLUDE_PATH}/RenderableComponent.h

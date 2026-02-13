@@ -71,7 +71,7 @@ class RenderCmdBuffer:public VulkanCmdBuffer
     * 该数据在渲染前分别会有各自的模块设置进来
     * 比如
     *    DescriptSetType::RenderTarget  即该由RenderTarget模块设置
-    *    DescriptSetType::World         World的自然由World模块设置
+    *    DescriptSetType::World         预留/旧体系标记
     */
     DescriptorBindingPtrArray desc_binding{};
 

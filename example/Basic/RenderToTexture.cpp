@@ -50,7 +50,6 @@ class OffscreenSceneECS
 {
 public:
     IRenderTarget *   rt          = nullptr;
-    World *           world       = nullptr;
     SceneRenderer *   renderer    = nullptr;
     ECSContext *      ecs_world   = nullptr;
 
@@ -73,7 +72,6 @@ public:
             delete ecs_world;
         }
         SAFE_CLEAR(renderer);
-        SAFE_CLEAR(world);
         rt = nullptr; // managed by manager
 
         delete primitive;
@@ -100,10 +98,8 @@ public:
 
         LogTextureInfo("offscreen_rt_color0_init", rt->GetColorTexture(0));
 
-        world = new World(rf);
         renderer = new SceneRenderer(rf, rt);
         if(!renderer) return false;
-        renderer->SetWorld(world);
         renderer->SetClearColor(GetColor4f(COLOR::DarkSlateBlue, 1.0f));
 
         ecs_world = new ECSContext("OffscreenECSWorld");

@@ -2,10 +2,10 @@
 
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKBuffer.h>
-#include<hgl/graph/World.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/RenderContext.h>
 #include<hgl/graph/RenderStagePipeline.h>
+#include<hgl/io/event/EventDispatcher.h>
 // ECS forward declaration
 namespace hgl::ecs { class ECSContext; }
 
@@ -17,7 +17,6 @@ namespace hgl::graph
         Scene
     };
 
-    class World;
     class RenderContext;    // forward
     class RenderCmdBuffer;  // forward
     class Pipeline;         // fwd for CreatePipeline
@@ -27,11 +26,11 @@ namespace hgl::graph
     class Camera;
     struct CameraInfo;
 
-    class SceneEventDispatcher:public io::EventDispatcher
+    class SceneEventDispatcher:public hgl::io::EventDispatcher
     {
     public:
 
-        using io::EventDispatcher::EventDispatcher;
+        using hgl::io::EventDispatcher::EventDispatcher;
         virtual ~SceneEventDispatcher() = default;
 
     public:
@@ -57,13 +56,12 @@ namespace hgl::graph
     public:
 
                 RenderPass *        GetRenderPass       ()      {return render_target->GetRenderPass();}
-        const   ViewportInfo *      GetViewportInfo     ()const {return render_context?render_context->GetViewportInfo():nullptr;}
+        const   ViewportInfo *      GetViewportInfo     ()const;
         const   VkExtent2D &        GetExtent           ()const {return render_context->GetExtent();}
 
-                World *             GetWorld            ()const {return render_context?render_context->GetWorld():nullptr;}
                 ecs::ECSContext *   GetECSContext       ()const {return render_context?render_context->GetECSContext():nullptr;}
                 Camera *            GetCamera           ()const;
-            const   CameraInfo *        GetCameraInfo       ()const;
+        const   CameraInfo *        GetCameraInfo       ()const;
                 LineRenderManager * GetLineRenderManager()const;
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 
@@ -87,7 +85,6 @@ namespace hgl::graph
         virtual ~SceneRenderer();
 
         bool SetRenderTarget(IRenderTarget *);
-        void SetWorld(World *);
         void SetECSContext(ecs::ECSContext *ctx){ if(render_context) render_context->SetECSContext(ctx); }
         void SetClearColor(const Color4f &c){clear_color=c;}
 

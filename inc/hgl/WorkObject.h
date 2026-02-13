@@ -4,7 +4,6 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/SceneRenderer.h>
-#include<hgl/graph/World.h>
 #include<hgl/time/Time.h>
 //#include<iostream>
 #include <hgl/graph/module/SamplerManager.h>
@@ -53,7 +52,6 @@ namespace hgl
 
         //以下数据均取自RenderFramework
 
-        graph::World *          world           =nullptr;           //场景
         graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
 
     public:
@@ -66,7 +64,6 @@ namespace hgl
 
         const VkExtent2D *          GetExtent           (){return scene_renderer ? &scene_renderer->GetExtent() : nullptr;}
 
-        graph::World *              GetWorld            (){return world;}
         graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
         ecs::ECSContext *           GetECSContext       (){return render_framework ? render_framework->GetECSContext() : nullptr;}
 
