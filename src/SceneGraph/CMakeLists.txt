@@ -50,8 +50,7 @@ source_group("SceneGraph\\Vulkan" FILES ${CM_SG_VULKAN_HEADER} ${CM_SG_VULKAN_SO
 # ============================================================================
 
 SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
-                            RenderFramework.cpp
-                            CameraControl.cpp)
+                            RenderFramework.cpp)
 
 SOURCE_GROUP("1.Core\\Framework" FILES ${GRAPH_FRAMEWORK_FILES})
 
@@ -103,12 +102,7 @@ SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 # ============================================================================
 
 SET(CAMERA_FILES    ${SG_INCLUDE_PATH}/camera/Camera.h
-                    ${SG_INCLUDE_PATH}/camera/CameraControl.h
-                    ${SG_INCLUDE_PATH}/camera/LookAtCameraControl.h
-                    ${SG_INCLUDE_PATH}/camera/FirstPersonCameraControl.h
-                    ${SG_INCLUDE_PATH}/camera/ViewModelCameraControl.h
-                    camera/Camera.cpp
-                    camera/FirstPersonCameraControl.cpp)
+                    camera/Camera.cpp)
 
 SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 

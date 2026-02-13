@@ -47,9 +47,6 @@ namespace hgl::graph
 
         RenderStagePipeline ecs_pipeline;          ///< ECS 渲染阶段管线(逐步迁移)
 
-        // CameraControl 始终由 SceneRenderer 负责创建/管理/释放
-        CameraControl * camera_control_owned = nullptr;
-
     protected:
 
         Color4f clear_color;                       ///< 清屏颜色
@@ -65,7 +62,6 @@ namespace hgl::graph
                 ecs::ECSContext *   GetECSContext       ()const {return render_context?render_context->GetECSContext():nullptr;}
                 Camera *            GetCamera           ()const {return render_context?render_context->GetCamera():nullptr;}
         const   CameraInfo *        GetCameraInfo       ()const {return render_context?render_context->GetCameraInfo():nullptr;}
-                CameraControl *     GetCameraControl    ()const {return camera_control_owned;}
                 LineRenderManager * GetLineRenderManager()const {return render_context?render_context->GetLineRenderManager():nullptr;}
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 
@@ -91,9 +87,6 @@ namespace hgl::graph
         bool SetRenderTarget(IRenderTarget *);
         void SetWorld(World *);
         void SetECSContext(ecs::ECSContext *ctx){ if(render_context) render_context->SetECSContext(ctx); }
-        void SetCameraControl(CameraControl *);     ///< 设定新的相机控制器（SceneRenderer接管并负责释放）
-        void UseDefaultCameraControl();             ///< 使用默认第一人称相机控制器
-
         void SetClearColor(const Color4f &c){clear_color=c;}
 
         void Tick(double);
