@@ -21,6 +21,7 @@ CreateProject(04_Gizmo3DTest GizmoTest.cpp
                                 Gizmo3DMove.cpp
                                 Gizmo3DScale.cpp
                                 Gizmo3DRotate.cpp
+                                GizmoUnified.cpp
 )
 
 CreateProject(05_GizmoUsageExample GizmoUsageExample.cpp
@@ -30,4 +31,5 @@ CreateProject(05_GizmoUsageExample GizmoUsageExample.cpp
                                 Gizmo3DMove.cpp
                                 Gizmo3DScale.cpp
                                 Gizmo3DRotate.cpp
+                                GizmoUnified.cpp
 )

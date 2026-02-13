@@ -4,9 +4,6 @@
 #include<hgl/ecs/VisibilityComponent.h>
 #include<hgl/ecs/TransformComponent.h>
 
-// Forward declaration satisfied in header
-namespace hgl::graph { class RenderCmdBuffer; }
-
 namespace hgl::ecs
 {
     SubWorldComponent::SubWorldComponent(const std::string& name)
