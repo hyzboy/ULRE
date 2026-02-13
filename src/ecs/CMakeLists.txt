@@ -37,6 +37,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 InputSystem.cpp
 
                 ${ECS_INCLUDE_PATH}/VisibilityComponent.h
+                VisibilityComponent.cpp
+                ${ECS_INCLUDE_PATH}/VisibilityDataStorage.h
+                ${ECS_INCLUDE_PATH}/VisibilitySystem.h
 
                 ECSTransformAssignmentBuffer.h
                 ECSMaterialInstanceAssignmentBuffer.h
@@ -74,7 +77,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 LineRenderSystem.cpp
                 CameraComponent.cpp
                 CameraSystem.cpp
-                CameraInputMapping.cpp)
+                CameraInputMapping.cpp
+                VisibilityDataStorage.cpp
+                VisibilitySystem.cpp)
 
 # --- Source groups (按功能分类，将 .h/.cpp 配对放在同一组) ----------------------
 source_group("ECS\\Core" FILES
@@ -161,8 +166,13 @@ source_group("ECS\\Input" FILES
     InputSystem.cpp
 )
 
-source_group("ECS\\Components" FILES
+source_group("ECS\\Visibility" FILES
     ${ECS_INCLUDE_PATH}/VisibilityComponent.h
+    VisibilityComponent.cpp
+    ${ECS_INCLUDE_PATH}/VisibilityDataStorage.h
+    VisibilityDataStorage.cpp
+    ${ECS_INCLUDE_PATH}/VisibilitySystem.h
+    VisibilitySystem.cpp
 )
 
 # ---------------------------------------------------------------------------

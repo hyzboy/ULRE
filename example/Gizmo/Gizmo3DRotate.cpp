@@ -316,14 +316,6 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;
 
-    // Check visibility
-    if(gizmo->root)
-    {
-        auto vis_comp = gizmo->root->GetComponent<hgl::ecs::VisibilityComponent>();
-        if(!vis_comp || !vis_comp->IsVisible())
-            return;
-    }
-
     // 更新白色圆环朝向相机
     if(gizmo->white_torus_transform)
     {
