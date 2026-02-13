@@ -19,6 +19,8 @@ struct CameraInfo;
 class ViewportInfo;
 
 struct GizmoMoveECS;
+struct GizmoRotateECS;
+struct GizmoScaleECS;
 
 struct GizmoMoveECSState
 {
@@ -27,6 +29,24 @@ struct GizmoMoveECSState
     bool dragging = false;
     float cur_dist = 0.0f;
     float pick_dist = 0.0f;
+};
+
+struct GizmoRotateECSState
+{
+    int cur_axis = -1;
+    int pick_axis = -1;
+    bool dragging = false;
+    float cur_angle = 0.0f;
+    float pick_angle = 0.0f;
+};
+
+struct GizmoScaleECSState
+{
+    int cur_axis = -1;
+    int pick_axis = -1;
+    bool dragging = false;
+    float cur_scale = 1.0f;
+    float pick_scale = 1.0f;
 };
 
 enum class GizmoColor:uint
@@ -75,5 +95,33 @@ void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
                         bool left_down,
                         bool left_pressed,
                         bool left_released);
+
+GizmoRotateECS *CreateGizmoRotateECS(::hgl::ecs::ECSContext *world,
+                                      const char *name,
+                                      const math::Vector3f &position);
+void DestroyGizmoRotateECS(GizmoRotateECS *gizmo);
+bool GetGizmoRotateECSState(const GizmoRotateECS *gizmo, GizmoRotateECSState &out_state);
+void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
+                          const math::Vector2i &mouse_coord,
+                          const CameraInfo *camera_info,
+                          const ViewportInfo *viewport_info,
+                          ::hgl::ecs::InputSystem *input_system,
+                          bool left_down,
+                          bool left_pressed,
+                          bool left_released);
+
+GizmoScaleECS *CreateGizmoScaleECS(::hgl::ecs::ECSContext *world,
+                                    const char *name,
+                                    const math::Vector3f &position);
+void DestroyGizmoScaleECS(GizmoScaleECS *gizmo);
+bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_state);
+void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
+                         const math::Vector2i &mouse_coord,
+                         const CameraInfo *camera_info,
+                         const ViewportInfo *viewport_info,
+                         ::hgl::ecs::InputSystem *input_system,
+                         bool left_down,
+                         bool left_pressed,
+                         bool left_released);
 
 VK_NAMESPACE_END
