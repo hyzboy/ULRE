@@ -54,7 +54,7 @@ namespace hgl::ecs
             icb_draw_indexed_out = device->CreateIndirectDrawIndexedBuffer(icb_new_count);
         }
 
-        void WriteICB(VkDrawIndirectCommand* draw_cmd, graph::DrawBatch* batch)
+        void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
             if (!draw_cmd || !batch || !batch->geom_draw_range)
                 return;
@@ -65,7 +65,7 @@ namespace hgl::ecs
             draw_cmd->firstInstance = batch->first_instance;
         }
 
-        void WriteICB(VkDrawIndexedIndirectCommand* indexed_draw_cmd, graph::DrawBatch* batch)
+        void WriteICB(VkDrawIndexedIndirectCommand* indexed_draw_cmd, DrawBatch* batch)
         {
             if (!indexed_draw_cmd || !batch || !batch->geom_draw_range)
                 return;
@@ -79,7 +79,7 @@ namespace hgl::ecs
 
         void BuildBatches(graph::VulkanDevice* device,
                           const std::vector<RenderItem*>& list,
-                          graph::DrawBatchArray& batches,
+                          DrawBatchArray& batches,
                           uint32_t& batch_count,
                           graph::IndirectDrawBuffer*& icb_draw_out,
                           graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out,
@@ -124,7 +124,7 @@ namespace hgl::ecs
             batches.clear();
             batches.resize(count);
 
-            graph::DrawBatch* batch = batches.data();
+            DrawBatch* batch = batches.data();
             RenderItem* item = list[0];
             graph::Primitive* primitive = item ? item->GetPrimitive() : nullptr;
 

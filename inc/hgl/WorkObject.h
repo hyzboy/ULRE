@@ -67,9 +67,8 @@ namespace hgl
         const VkExtent2D *          GetExtent           (){return scene_renderer ? &scene_renderer->GetExtent() : nullptr;}
 
         graph::World *              GetWorld            (){return world;}
-        graph::SceneNode *          GetWorldRootNode    (){return world ? world->GetRootNode() : nullptr;}
         graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
-        ecs::ECSContext *          GetECSContext       (){return render_framework ? render_framework->GetECSContext() : nullptr;}
+        ecs::ECSContext *           GetECSContext       (){return render_framework ? render_framework->GetECSContext() : nullptr;}
 
         const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer ? scene_renderer->GetViewportInfo() : nullptr;}
         graph::Camera *             GetCamera           ()      {return scene_renderer ? scene_renderer->GetCamera() : nullptr;}
@@ -213,14 +212,6 @@ namespace hgl
         graph::TextureCube *    LoadTextureCube     (const OSString &,bool auto_mipmaps=false);
         graph::Texture2DArray * CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
         bool                    LoadTexture2DArray  (graph::Texture2DArray *,const uint32_t layer,const OSString &);
-
-    public: //Component 相关
-
-        template<typename C,typename ...ARGS>
-        inline C *CreateComponent(const graph::CreateComponentInfo *cci,ARGS...args)
-        {
-            return render_framework?render_framework->CreateComponent<C>(cci,args...):nullptr; //创建组件
-        }
 
     #undef FUNC_FROM_RENDER_FRAMEWORK
     };//class WorkObject

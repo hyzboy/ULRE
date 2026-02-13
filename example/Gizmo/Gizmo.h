@@ -2,7 +2,6 @@
 
 #include<hgl/CoreType.h>
 #include<hgl/graph/VK.h>
-#include<hgl/component/Component.h>
 #include<hgl/math/VectorTypes.h>
 
 namespace hgl
@@ -158,6 +157,6 @@ bool InitGizmoResource(RenderFramework *);
 void FreeGizmoResource();
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);
-COMPONENT_NAMESPACE::ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape);
+Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);
 
 VK_NAMESPACE_END

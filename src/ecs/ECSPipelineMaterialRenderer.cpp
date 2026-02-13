@@ -4,7 +4,7 @@
  * 参照 PipelineMaterialRenderer 实现，但使用 ECS 版本的 Assignment Buffers
  */
 
-#include"ECSPipelineMaterialRenderer.h"
+#include<hgl/ecs/ECSPipelineMaterialRenderer.h>
 #include"ECSTransformAssignmentBuffer.h"
 #include"ECSMaterialInstanceAssignmentBuffer.h"
 #include<hgl/graph/mesh/Primitive.h>
@@ -35,7 +35,7 @@ namespace hgl::ecs
         SAFE_CLEAR(vab_list);
     }
 
-    bool ECSPipelineMaterialRenderer::BindVAB(const graph::DrawBatch* batch,
+    bool ECSPipelineMaterialRenderer::BindVAB(const DrawBatch* batch,
                                                VkBuffer transform_vab,
                                                ECSMaterialInstanceAssignmentBuffer* mi_buffer)
     {
@@ -125,7 +125,7 @@ namespace hgl::ecs
         indirect_draw_count = 0;
     }
 
-    bool ECSPipelineMaterialRenderer::Draw(graph::DrawBatch* batch,
+    bool ECSPipelineMaterialRenderer::Draw( DrawBatch* batch,
                                             ECSTransformAssignmentBuffer* transform_buffer,
                                             ECSMaterialInstanceAssignmentBuffer* mi_buffer,
                                             VkBuffer transform_vab,
@@ -198,7 +198,7 @@ namespace hgl::ecs
     }
 
     void ECSPipelineMaterialRenderer::Render(graph::RenderCmdBuffer* rcb,
-                                              const graph::DrawBatchArray& batches,
+                                              const DrawBatchArray& batches,
                                               uint32_t batch_count,
                                               ECSTransformAssignmentBuffer* transform_buffer,
                                               ECSMaterialInstanceAssignmentBuffer* mi_buffer,
@@ -255,7 +255,7 @@ namespace hgl::ecs
         cmd_buf->BindDescriptorSets(material);
 
         // 遍历绘制批次
-        graph::DrawBatch* batch = const_cast<graph::DrawBatch*>(batches.data());
+        DrawBatch* batch = const_cast<DrawBatch*>(batches.data());
 
         for (uint32_t i = 0; i < batch_count; i++)
         {

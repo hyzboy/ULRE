@@ -343,5 +343,5 @@ public:
 
 int os_main(int, os_char**)
 {
-    return RunFramework<ClockApp>(OS_TEXT("Clock (Static/Movable Transform Separation with ECS)"), 1024, 1024);
+    return RunFramework<ClockApp>(OS_TEXT("Clock (Static and Movable Transform Separation with ECS)"), 1024, 1024);
 }

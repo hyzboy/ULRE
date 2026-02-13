@@ -60,18 +60,10 @@ namespace hgl::graph
                 world_desc_binding->AddUBO(ubo_sky_info);
             }
         }
-
-        root_node=new SceneNode(this);
     }
 
     World::~World()
     {
-        for(SceneNode *sn : all_nodes)
-        {
-            delete sn;
-        }
-
-        SAFE_CLEAR(root_node);
         SAFE_CLEAR(world_desc_binding);
     }
 }//namespace hgl::graph

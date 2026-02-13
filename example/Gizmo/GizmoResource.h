@@ -3,11 +3,6 @@
 #include"Gizmo.h"
 #include<hgl/color/Color.h>
 
-COMPONENT_NAMESPACE_BEGIN
-class Component;
-class PrimitiveComponent;
-COMPONENT_NAMESPACE_END
-
 VK_NAMESPACE_BEGIN
 
 class GeometryCreater;

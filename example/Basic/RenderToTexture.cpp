@@ -230,7 +230,7 @@ private:
         if(!renderer || !offscreen)
             return false;
 
-        renderer->EnsurePipeline(RenderPath::Ecs);
+        renderer->EnsureEcsPipeline();
 
         offscreen_stage = new SceneCaptureStage(
             [this](RenderStageContext &)->bool

@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/graph/RenderTask.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/World.h>
@@ -26,8 +25,6 @@ namespace hgl::graph
     class SceneNode;        // fwd for GetWorldRootNode
     enum class InlinePipeline; // fwd for CreatePipeline
 
-    using RenderTaskNameMap=UnorderedMap<RenderTaskName,RenderTask *>;
-
     class SceneEventDispatcher:public io::EventDispatcher
     {
     public:
@@ -48,10 +45,7 @@ namespace hgl::graph
         IRenderTarget * render_target = nullptr;   ///< 当前渲染目标(便捷缓存)
         RenderContext * render_context = nullptr;  ///< 渲染上下文
 
-        RenderTask *    render_task = nullptr;     ///< 当前渲染任务
-
         RenderStagePipeline ecs_pipeline;          ///< ECS 渲染阶段管线(逐步迁移)
-        RenderStagePipeline scene_pipeline;        ///< SceneGraph 渲染阶段管线(逐步迁移)
 
         // CameraControl 始终由 SceneRenderer 负责创建/管理/释放
         CameraControl * camera_control_owned = nullptr;
@@ -75,8 +69,6 @@ namespace hgl::graph
                 LineRenderManager * GetLineRenderManager()const {return render_context?render_context->GetLineRenderManager():nullptr;}
                 RenderContext *     GetRenderContext    ()const override {return render_context;}
 
-                // 便捷方法：取得场景根节点
-                SceneNode *         GetWorldRootNode        ()const {auto s=GetWorld(); return s?s->GetRootNode():nullptr;}
                 // 便捷方法：基于当前RenderPass创建内置管线
                 Pipeline *          CreatePipeline      (Material *mtl,const InlinePipeline &ip)
                 { return GetRenderPass()?GetRenderPass()->CreatePipeline(mtl,ip):nullptr; }
@@ -109,14 +101,6 @@ namespace hgl::graph
         RenderStagePipeline &GetEcsPipeline(){ return ecs_pipeline; }
         const RenderStagePipeline &GetEcsPipeline()const{ return ecs_pipeline; }
         void EnsureEcsPipeline();
-
-        RenderStagePipeline &GetScenePipeline(){ return scene_pipeline; }
-        const RenderStagePipeline &GetScenePipeline()const{ return scene_pipeline; }
-        void EnsureScenePipeline();
-
-        RenderStagePipeline &GetPipeline(RenderPath path);
-        const RenderStagePipeline &GetPipeline(RenderPath path)const;
-        void EnsurePipeline(RenderPath path);
 
         bool BeginRender();
         bool RenderFrame();

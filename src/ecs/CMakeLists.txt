@@ -54,7 +54,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ECSMaterialInstanceAssignmentBuffer.cpp
 
                 ECSPipelineMaterialRenderer.cpp
-                ECSPipelineMaterialRenderer.h
+                ${ECS_INCLUDE_PATH}/ECSPipelineMaterialRenderer.h
 
                 Object.cpp
                 Component.cpp

@@ -86,10 +86,7 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 # ============================================================================
 
 SET(SCENE_CORE_FILES ${SG_INCLUDE_PATH}/World.h
-                     ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
-                     ${SG_INCLUDE_PATH}/SceneNode.h
                      ${SG_INCLUDE_PATH}/TransformState.h
-                     Scene/SceneNode.cpp
                      Scene/NodeTransform.cpp
                      Scene/TransformState.cpp
                      Scene/World.cpp)
@@ -119,13 +116,7 @@ SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 # 4. Rendering System - 渲染系统
 # ============================================================================
 
-SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/DrawNode.h
-                            ${SG_INCLUDE_PATH}/RenderCollector.h
-                            ${SG_INCLUDE_PATH}/PipelineMaterialBatch.h
-                            ${SG_INCLUDE_PATH}/PipelineMaterialRenderer.h
-                            ${SG_INCLUDE_PATH}/RenderBatchMap.h
-                            ${SG_INCLUDE_PATH}/RenderTask.h
-                            ${SG_INCLUDE_PATH}/RenderContext.h
+SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/RenderContext.h
                             ${SG_INCLUDE_PATH}/SceneRenderer.h
                             ${SG_INCLUDE_PATH}/RenderStagePipeline.h
                             ${SG_INCLUDE_PATH}/RenderStages.h
@@ -136,15 +127,7 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/DrawNode.h
                             render/RenderStagePipeline.cpp
                             render/RenderStages.cpp
                             render/SceneCaptureStage.cpp
-                            render/DrawNode.cpp
-                            render/RenderTask.cpp
-                            render/RenderCollector.cpp
-                            render/PipelineMaterialBatch.cpp
-                            render/PipelineMaterialRenderer.cpp
-                            render/TransformAssignmentBuffer.h
-                            render/TransformAssignmentBuffer.cpp
-                            render/MaterialInstanceAssignmentBuffer.h
-                            render/MaterialInstanceAssignmentBuffer.cpp)
+)
 
 SOURCE_GROUP("4.Rendering\\Core" FILES ${RENDERING_CORE_FILES})
 
@@ -264,45 +247,6 @@ SET(FONT_ALL_FILES  ${FONT_CORE_FILES}
                     ${FONT_TILE_FILES}
                     ${FONT_LAYOUT_FILES}
                     ${FONT_RENDERING_FILES})
-
-# ============================================================================
-# 8. Component System - 组件系统
-# ============================================================================
-
-set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
-
-SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
-                        ${COMPONENT_INCLUDE_PATH}/SceneComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/GeometryComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
-                        component/Component.cpp
-                        component/ComponentManager.cpp
-                        component/SceneComponent.cpp
-                        component/GeometryComponent.cpp
-                        component/PrimitiveComponentManager.cpp)
-
-SOURCE_GROUP("8.Component\\Core" FILES ${COMPONENT_FILES})
-
-SET(COLLISION_COMPONENT_INCLUDE_PATH    ${COMPONENT_INCLUDE_PATH}/collision)
-
-SET(COLLISION_COMPONENT_FILES   ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponent.h
-                                ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponentManager.h
-                                ${COLLISION_COMPONENT_INCLUDE_PATH}/GeometryCollisionComponent.h
-                                ${COLLISION_COMPONENT_INCLUDE_PATH}/SphereCollisionComponent.h
-                                ${COLLISION_COMPONENT_INCLUDE_PATH}/BoxCollisionComponent.h
-                                ${COLLISION_COMPONENT_INCLUDE_PATH}/CapsuleCollisionComponent.h
-                                ${COLLISION_COMPONENT_INCLUDE_PATH}/PlaneCollisionComponent.h
-#                                component/collision/CollisionComponent.cpp
-#                                component/collision/CollisionComponentManager.cpp
-#                                component/collision/GeometryCollisionComponent.cpp
-#                                component/collision/SphereCollisionComponent.cpp
-#                                component/collision/BoxCollisionComponent.cpp
-#                                component/collision/CapsuleCollisionComponent.cpp
-#                                component/collision/PlaneCollisionComponent.cpp
-)
-
-SOURCE_GROUP("8.Component\\Collision" FILES ${COLLISION_COMPONENT_FILES})
 
 # ============================================================================
 # 9. Vulkan Backend - Vulkan后端实现

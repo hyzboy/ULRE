@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/StructuredBufferAccessor.h>
 #include<hgl/graph/Sky.h>
@@ -22,10 +21,6 @@ namespace hgl::graph
 
         IDString world_name;                            ///<世界名称
 
-        SceneNode *root_node;                           ///<世界根节点
-
-        OrderedSet<SceneNode *> all_nodes;               ///<世界内所有节点
-
     protected:
 
         DescriptorBinding * world_desc_binding  =nullptr;   ///<世界通用描述符绑定器(仅包含与世界相关的公用UBO，如天空等)
@@ -40,8 +35,6 @@ namespace hgl::graph
 
         const   IDString &  GetWorldName()const{return world_name;}                                 ///<获取世界名称
 
-                SceneNode * GetRootNode (){return root_node;}                                       ///<获取世界根节点
-
         RenderFramework *   GetRenderFramework()const{return render_framework;}
 
         DescriptorBinding * GetDescriptorBinding()const{return world_desc_binding;}                 ///<获取世界描述符绑定器
@@ -52,23 +45,6 @@ namespace hgl::graph
         virtual ~World();
 
         io::EventDispatcher *GetEventDispatcher(){return &event_dispatcher;}                        ///<获取事件分发器
-
-        template<typename T,typename ...ARGS>
-        T *CreateNode(ARGS...args)
-        {
-            T *sn=new T(args...);
-
-            if(!sn)
-                return(nullptr);
-
-            if(!root_node)
-                root_node=sn;
-
-            all_nodes.Add(sn);
-
-            sn->OnChangeScene(this);
-            return sn;
-        }
 
         virtual void Tick(double){}                                                                 // 世界自身逐帧更新
     };//class World
