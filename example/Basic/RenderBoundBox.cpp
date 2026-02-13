@@ -504,7 +504,6 @@ public:
     bool Init() override
     {
         GetSceneRenderer()->SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
-        GetSceneRenderer()->SetCameraControl(nullptr);
 
         if(!InitSolidMDP())
             return false;

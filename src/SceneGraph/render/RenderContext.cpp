@@ -35,7 +35,6 @@ namespace hgl::graph
         SAFE_CLEAR(camera_desc_binding);
         SAFE_CLEAR(ubo_camera_info);
 
-        camera_control = nullptr; // not owner
         ecs_context = nullptr;
         world = nullptr;
         render_target = nullptr;
@@ -44,9 +43,6 @@ namespace hgl::graph
 
     void RenderContext::UpdateCamera()
     {
-        if(camera_control)
-            camera_control->Refresh();
-
         if(ubo_camera_info)
             ubo_camera_info->ImmediateUpdate();  // 立即同步到 GPU / Immediate sync to GPU
     }
@@ -56,15 +52,7 @@ namespace hgl::graph
         render_target = rt;
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
-        if(camera_control && viewport_info)
-        {
-            camera_control->SetViewport(viewport_info);
-            UpdateCamera();
-
-            // Flush StagedBuffer to ensure viewport changes are immediately reflected
-            if(ubo_camera_info)
-                ubo_camera_info->Flush();
-        }
+        UpdateCamera();
 
         if(render_target)
         {
@@ -72,31 +60,6 @@ namespace hgl::graph
                 line_render_mgr = CreateLineRenderManager(rf,rt);
             else
                 line_render_mgr->SetRenderTarget(rt);
-        }
-    }
-
-    void RenderContext::SetCameraControl(CameraControl *cc)
-    {
-        if(camera_control == cc)
-            return;
-
-        if(camera_control)
-            camera_control->SetCamera(nullptr,nullptr);
-
-        camera_control = cc;
-
-        if(camera_control)
-        {
-            if(viewport_info)
-                camera_control->SetViewport(viewport_info);
-
-            camera_control->SetCamera(&camera, ubo_camera_info ? ubo_camera_info->Data() : nullptr);
-
-            UpdateCamera();
-
-            // Flush StagedBuffer to ensure camera changes are immediately reflected
-            if(ubo_camera_info)
-                ubo_camera_info->Flush();
         }
     }
 

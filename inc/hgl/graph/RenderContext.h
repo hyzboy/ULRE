@@ -2,7 +2,6 @@
 
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/camera/Camera.h>
-#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/StructuredBufferAccessor.h>
@@ -25,7 +24,6 @@ namespace hgl::graph
         const   ViewportInfo *      viewport_info       = nullptr;  ///< 缓存视口
                 World *             world               = nullptr;  ///< 世界指针(不负责释放)
                 ecs::ECSContext *   ecs_context         = nullptr;  ///< ECS 上下文（可选，不负责释放）
-                CameraControl *     camera_control      = nullptr;  ///< 摄像机控制(策略指针,不负责释放)
                 LineRenderManager * line_render_mgr     = nullptr;  ///< 线段渲染管理器
 
                 Camera              camera;                         ///< 摄像机数据(值类型)
@@ -47,7 +45,6 @@ namespace hgl::graph
 
                 CameraInfo *        GetCameraInfo       ()      { return ubo_camera_info ? ubo_camera_info->Data() : nullptr; }
         const   CameraInfo *        GetCameraInfo       ()const { return ubo_camera_info ? ubo_camera_info->Data() : nullptr; }
-                CameraControl *     GetCameraControl    ()const { return camera_control; }
 
                 World *             GetWorld            ()const { return world; }
                 ecs::ECSContext *   GetECSContext       ()const { return ecs_context; }
@@ -61,7 +58,6 @@ namespace hgl::graph
         void SetRenderTarget(IRenderTarget *rt);
         void SetWorld(World *s){ world = s; }
         void SetECSContext(ecs::ECSContext *ctx){ ecs_context = ctx; }
-        void SetCameraControl(CameraControl *cc);
 
     public:
 

@@ -73,7 +73,6 @@ namespace hgl
         const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer ? scene_renderer->GetViewportInfo() : nullptr;}
         graph::Camera *             GetCamera           ()      {return scene_renderer ? scene_renderer->GetCamera() : nullptr;}
         const graph::CameraInfo *   GetCameraInfo       ()const {return scene_renderer ? scene_renderer->GetCameraInfo() : nullptr;}
-        graph::CameraControl *      GetCameraControl    ()      {return scene_renderer ? scene_renderer->GetCameraControl() : nullptr;}
 
         const math::Vector2i *      GetMouseCoord       ()const {return render_framework ? &render_framework->GetMouseCoord() : nullptr;}
 
