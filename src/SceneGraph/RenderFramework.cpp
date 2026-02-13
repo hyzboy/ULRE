@@ -20,6 +20,8 @@
 #include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
 #include<hgl/ecs/RenderBufferCommitSystem.h>
 #include<hgl/ecs/LineRenderSystem.h>
+#include<hgl/ecs/TextRenderSystem.h>
+#include<hgl/ecs/TextRenderSubmitSystem.h>
 #include<hgl/ecs/TransformSystem.h>
 #include<hgl/ecs/InputSystem.h>
 
@@ -201,11 +203,19 @@ bool RenderFramework::Init(uint w,uint h)
 
     if(default_ecs_context)
     {
+        auto text_render_system = default_ecs_context->RegisterTickSystem<ecs::TextRenderSystem>();
         auto render_collect_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveCollectSystem>();
         auto render_batch_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveBatchSystem>();
         auto render_commit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
         auto render_submit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
+        auto text_submit_system = default_ecs_context->RegisterRenderSystem<ecs::TextRenderSubmitSystem>();
         auto line_render_system = default_ecs_context->RegisterRenderSystem<ecs::LineRenderSystem>();
+
+        if (text_render_system)
+        {
+            text_render_system->SetWorld(default_ecs_context);
+            text_render_system->SetRenderFramework(this);
+        }
 
         render_collect_system->SetWorld(default_ecs_context);
         render_collect_system->SetCameraInfo(default_scene_renderer->GetCameraInfo());
@@ -221,6 +231,9 @@ bool RenderFramework::Init(uint w,uint h)
         }
 
         render_submit_system->SetWorld(default_ecs_context);
+
+        if (text_submit_system)
+            text_submit_system->SetWorld(default_ecs_context);
 
         if (line_render_system)
             line_render_system->SetLineRenderManager(default_scene_renderer->GetLineRenderManager());

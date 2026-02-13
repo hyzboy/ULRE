@@ -21,6 +21,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 ${ECS_INCLUDE_PATH}/RenderPrimitiveSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/RenderBufferCommitSystem.h
                 ${ECS_INCLUDE_PATH}/LineRenderSystem.h
+                ${ECS_INCLUDE_PATH}/TextComponent.h
+                ${ECS_INCLUDE_PATH}/TextRenderSystem.h
+                ${ECS_INCLUDE_PATH}/TextRenderSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/RenderItem.h
                 ${ECS_INCLUDE_PATH}/PrimitiveRenderItem.h
                 ${ECS_INCLUDE_PATH}/MaterialPipelineKey.h
@@ -78,6 +81,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/Object.h
                 RenderPrimitiveSubmitSystem.cpp
                 RenderBufferCommitSystem.cpp
                 LineRenderSystem.cpp
+                TextRenderSystem.cpp
+                TextRenderSubmitSystem.cpp
                 CameraComponent.cpp
                 CameraSystem.cpp
                 CameraInputMapping.cpp
@@ -127,6 +132,11 @@ source_group("ECS\\Rendering" FILES
     PrimitiveRenderItem.cpp
     ${ECS_INCLUDE_PATH}/PrimitiveComponent.h
     PrimitiveComponent.cpp
+    ${ECS_INCLUDE_PATH}/TextComponent.h
+    ${ECS_INCLUDE_PATH}/TextRenderSystem.h
+    TextRenderSystem.cpp
+    ${ECS_INCLUDE_PATH}/TextRenderSubmitSystem.h
+    TextRenderSubmitSystem.cpp
     ${ECS_INCLUDE_PATH}/StaticMesh.h
     ${ECS_INCLUDE_PATH}/StaticMeshComponent.h
     StaticMesh.cpp
