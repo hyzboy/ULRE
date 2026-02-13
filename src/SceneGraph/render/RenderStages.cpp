@@ -1,6 +1,6 @@
 #include<hgl/graph/RenderStages.h>
 #include<hgl/ecs/Context.h>
-#include<hgl/graph/RenderContext.h>
+#include<hgl/ecs/CameraSystem.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
@@ -36,8 +36,16 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
-                if(ctx.render_context && ctx.cmd)
-                    ctx.render_context->BindDescriptor(ctx.cmd);
+                if(!ctx.cmd)
+                    return;
+
+                if(ctx.ecs_context)
+                {
+                    auto camera_system = ctx.ecs_context->GetSystem<ecs::CameraSystem>();
+                    if(camera_system)
+                        camera_system->BindDescriptor(ctx.cmd);
+                }
+
             }
         };
 

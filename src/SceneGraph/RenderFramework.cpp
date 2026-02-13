@@ -9,7 +9,6 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
@@ -19,6 +18,8 @@
 #include<hgl/ecs/RenderPrimitiveBatchSystem.h>
 #include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
 #include<hgl/ecs/RenderBufferCommitSystem.h>
+#include<hgl/ecs/RenderTargetSystem.h>
+#include<hgl/ecs/EnvironmentSystem.h>
 #include<hgl/ecs/LineRenderSystem.h>
 #include<hgl/ecs/TextRenderSystem.h>
 #include<hgl/ecs/TextRenderSubmitSystem.h>
@@ -62,7 +63,6 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
-    SAFE_CLEAR(default_world)
     if(default_ecs_context)
     {
         default_ecs_context->Shutdown();
@@ -187,8 +187,6 @@ bool RenderFramework::Init(uint w,uint h)
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
 
-    OnChangeDefaultWorld(new World(this));
-
     // create default ECS context BEFORE creating SceneRenderer
     default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
 
@@ -197,7 +195,9 @@ bool RenderFramework::Init(uint w,uint h)
     if(default_ecs_context)
     {
         auto text_render_system = default_ecs_context->RegisterTickSystem<ecs::TextRenderSystem>();
+        auto environment_system = default_ecs_context->RegisterRenderSystem<ecs::EnvironmentSystem>();
         auto camera_system = default_ecs_context->RegisterTickSystem<ecs::CameraSystem>();
+        auto render_target_system = default_ecs_context->RegisterRenderSystem<ecs::RenderTargetSystem>();
         auto render_collect_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveCollectSystem>();
         auto render_batch_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveBatchSystem>();
         auto render_commit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
@@ -211,10 +211,20 @@ bool RenderFramework::Init(uint w,uint h)
             text_render_system->SetRenderFramework(this);
         }
 
+        if (environment_system)
+            environment_system->SetRenderFramework(this);
+
         if (camera_system)
         {
             camera_system->SetRenderFramework(this);
-            camera_system->SetViewportInfo(default_scene_renderer->GetViewportInfo());
+            IRenderTarget *default_rt = GetSwapchainRenderTarget();
+            camera_system->SetViewportInfo(default_rt ? default_rt->GetViewportInfo() : nullptr);
+        }
+
+        if (render_target_system)
+        {
+            render_target_system->SetRenderFramework(this);
+            render_target_system->SetRenderTarget(GetSwapchainRenderTarget());
         }
 
         const CameraInfo* camera_info = camera_system ? camera_system->GetCameraInfo() : nullptr;
@@ -253,14 +263,6 @@ bool RenderFramework::Init(uint w,uint h)
     return(true);
 }
 
-void RenderFramework::OnChangeDefaultWorld(World *s)
-{
-    if(default_world==s)
-        return;
-
-    default_world=s;
-}
-
 void RenderFramework::CreateDefaultSceneRenderer()
 {
     IRenderTarget *rt = GetSwapchainRenderTarget();
@@ -270,8 +272,6 @@ void RenderFramework::CreateDefaultSceneRenderer()
         default_scene_renderer=new SceneRenderer(this,rt);
 
         this->AddChildDispatcher(default_scene_renderer);
-
-        default_scene_renderer->SetWorld(default_world);
         default_scene_renderer->SetECSContext(default_ecs_context);
     }
     else

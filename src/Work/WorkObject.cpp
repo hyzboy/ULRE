@@ -47,8 +47,6 @@ namespace hgl
         }
 
         render_framework=rf;
-
-        world=rf->GetDefaultWorld();
         scene_renderer=rf->GetDefaultSceneRenderer();
     }
 

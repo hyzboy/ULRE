@@ -114,6 +114,7 @@ namespace hgl
 
             graph::Camera* GetCamera();
             const graph::CameraInfo* GetCameraInfo() const;
+            const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
             void BindDescriptor(graph::RenderCmdBuffer* cmd);
             void SyncCameraUBO();

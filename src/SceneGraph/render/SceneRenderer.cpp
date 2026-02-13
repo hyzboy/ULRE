@@ -3,7 +3,6 @@
 #include<hgl/ecs/Context.h>
 #include<hgl/ecs/CameraSystem.h>
 #include<hgl/ecs/LineRenderSystem.h>
-#include<hgl/graph/World.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
@@ -31,6 +30,19 @@ namespace hgl::graph
 
         auto camera_system = ecs_ctx->GetSystem<ecs::CameraSystem>();
         return camera_system ? camera_system->GetCamera() : nullptr;
+    }
+
+    const ViewportInfo *SceneRenderer::GetViewportInfo() const
+    {
+        auto ecs_ctx = GetECSContext();
+        if (ecs_ctx)
+        {
+            auto camera_system = ecs_ctx->GetSystem<ecs::CameraSystem>();
+            if (camera_system)
+                return camera_system->GetViewportInfo();
+        }
+
+        return render_target ? render_target->GetViewportInfo() : nullptr;
     }
 
     const CameraInfo *SceneRenderer::GetCameraInfo() const
@@ -65,29 +77,10 @@ namespace hgl::graph
         return(true);
     }
 
-    void SceneRenderer::SetWorld(World *sw)
-    {
-        if(!render_context)return;
-
-        World *old_scene = render_context->GetWorld();
-
-        if(old_scene)
-        {
-            RemoveChildDispatcher(old_scene->GetEventDispatcher());
-        }
-
-        render_context->SetWorld(sw);
-
-        AddChildDispatcher(sw->GetEventDispatcher());
-    }
-
     void SceneRenderer::Tick(double delta)
     {
         if(render_context)
             render_context->Tick(delta);
-
-        if(GetWorld())
-            GetWorld()->Tick(delta);
 
         if(GetECSContext())
         {

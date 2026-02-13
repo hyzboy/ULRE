@@ -10,7 +10,6 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/World.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/GeometryCreater.h>
 #include<hgl/ecs/Context.h>
@@ -35,7 +34,6 @@ class BufferManager;
 
 class RenderModule;
 
-class World;
 class SceneRenderer;
 class LineRenderManager; // forward
 
@@ -66,11 +64,8 @@ protected:
 
 protected:  //RenderContext,未来合并成一个RenderContext结构
 
-    World *                 default_world           =nullptr;
     SceneRenderer *         default_scene_renderer  =nullptr;
     ecs::ECSContext *       default_ecs_context     =nullptr;
-
-    void OnChangeDefaultWorld(World *);
 
     void CreateDefaultSceneRenderer();
 
@@ -107,7 +102,6 @@ public:
 
 public:
 
-    World *                 GetDefaultWorld         (){return default_world;}
     ecs::ECSContext *       GetECSContext           (){return default_ecs_context;}
     SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
 
