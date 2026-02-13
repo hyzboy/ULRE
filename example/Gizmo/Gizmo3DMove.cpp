@@ -29,6 +29,7 @@
 #include<hgl/ecs/Entity.h>
 #include<hgl/ecs/TransformComponent.h>
 #include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/InputSystem.h>
 
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/CameraInfo.h>
@@ -265,10 +266,25 @@ void DestroyGizmoMoveECS(GizmoMoveECS *gizmo)
     delete gizmo;
 }
 
+bool GetGizmoMoveECSState(const GizmoMoveECS *gizmo, GizmoMoveECSState &out_state)
+{
+    if(!gizmo)
+        return false;
+
+    out_state.cur_axis = gizmo->cur_axis;
+    out_state.pick_axis = gizmo->pick_axis;
+    out_state.dragging = gizmo->dragging;
+    out_state.cur_dist = gizmo->cur_dist;
+    out_state.pick_dist = gizmo->pick_dist;
+
+    return true;
+}
+
 void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
                         const math::Vector2i &mouse_coord,
                         const graph::CameraInfo *camera_info,
                         const graph::ViewportInfo *viewport_info,
+                        hgl::ecs::InputSystem *input_system,
                         bool left_down,
                         bool left_pressed,
                         bool left_released)
@@ -300,7 +316,11 @@ void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
         }
 
         if(left_released)
+        {
             gizmo->dragging = false;
+            if(input_system)
+                input_system->EndMouseCapture(gizmo);
+        }
 
         return;
     }
@@ -341,6 +361,9 @@ void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
 
     if(left_pressed && gizmo->cur_axis >= 0 && gizmo->cur_axis < 3)
     {
+        if(input_system && !input_system->BeginMouseCapture(gizmo))
+            return;
+
         gizmo->pick_axis = gizmo->cur_axis;
         gizmo->pick_dist = gizmo->cur_dist;
         gizmo->pick_base_pos = gizmo->root_transform->GetLocalPosition();
