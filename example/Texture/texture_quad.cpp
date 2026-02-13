@@ -1,10 +1,20 @@
-﻿// 画一个带纹理的四边形
+﻿// 画一个带纹理的四边形 (ECS)
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/component/PrimitiveComponent.h>
+#include<hgl/graph/module/TextureManager.h>
+
+// ECS headers
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::ecs;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
@@ -28,16 +38,20 @@ class TestApp:public WorkObject
 {
 private:
 
-    MaterialInstance *  material_instance   =nullptr;
-    Pipeline *          pipeline            =nullptr;
+    ECSContext *        ecs_world           = nullptr;
+    Entity *            quad_entity         = nullptr;
+
+    MaterialInstance *  material_instance   = nullptr;
+    Pipeline *          pipeline            = nullptr;
+    Primitive *         prim_quad           = nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        Texture2D * texture =nullptr;
-        Sampler *   sampler =nullptr;
-        Material *  material=nullptr;
+        Texture2D * texture = nullptr;
+        Sampler *   sampler = nullptr;
+        Material *  material= nullptr;
 
         mtl::Material2DCreateConfig cfg(PrimitiveType::Fan,
                                         CoordinateSystem2D::NDC,
@@ -48,22 +62,23 @@ private:
         if(!material)
             return(false);
 
-//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);
 
         if(!pipeline)
             return(false);
 
-        texture=LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        TextureManager *tex_manager = GetTextureManager();
+
+        texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
         sampler=CreateSampler();
 
-        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
-                                        mtl::SamplerName::BaseColor,        ///<采样器名称
-                                        texture,                            ///<纹理
-                                        sampler))                           ///<采样器
+        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
+                                        mtl::SamplerName::BaseColor,
+                                        texture,
+                                        sampler))
             return(false);
 
         material_instance=CreateMaterialInstance(material);
@@ -73,19 +88,37 @@ private:
 
     bool InitVBO()
     {
-        Primitive *render_obj=CreatePrimitive("TextureQuad",VERTEX_COUNT,material_instance,pipeline,
+        prim_quad=CreatePrimitive("TextureQuad",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,   VF_V2F, position_data},
                                         {VAN::TexCoord,   VF_V2F, tex_coord_data}
                                     });
 
-
-        if(!render_obj)
+        if(!prim_quad)
             return(false);
 
-        CreateComponentInfo cci(GetWorldRootNode());
+        return(true);
+    }
 
-        return CreateComponent<PrimitiveComponent>(&cci,render_obj); //创建一个静态网格组件
+    bool InitECS()
+    {
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
+        quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
+        auto quad_transform = quad_entity->AddComponent<TransformComponent>();
+        auto quad_primitive = quad_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+
+        quad_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        quad_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        quad_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        quad_transform->SetMovable(false);
+
+        quad_primitive->SetPrimitive(prim_quad);
+        quad_primitive->SetVisible(true);
+
+        return true;
     }
 
 public:
@@ -98,6 +131,9 @@ public:
             return(false);
 
         if(!InitVBO())
+            return(false);
+
+        if(!InitECS())
             return(false);
 
         return(true);

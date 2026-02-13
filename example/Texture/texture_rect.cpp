@@ -1,11 +1,21 @@
-﻿// 画一个带纹理的矩形，2D模式专用
+﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/component/PrimitiveComponent.h>
+#include<hgl/graph/module/TextureManager.h>
+
+// ECS headers
+#include<hgl/ecs/Context.h>
+#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/TransformComponent.h>
+#include<hgl/ecs/PrimitiveComponent.h>
+
+#include<glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::ecs;
 
 constexpr float position_data[4]=
 {
@@ -25,11 +35,15 @@ class TestApp:public WorkObject
 {
 private:
 
-    Texture2D *         texture             =nullptr;
-    Sampler *           sampler             =nullptr;
-    Material *          material            =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
-    Pipeline *          pipeline            =nullptr;
+    ECSContext *        ecs_world           = nullptr;
+    Entity *            rect_entity         = nullptr;
+
+    Texture2D *         texture             = nullptr;
+    Sampler *           sampler             = nullptr;
+    Material *          material            = nullptr;
+    MaterialInstance *  material_instance   = nullptr;
+    Pipeline *          pipeline            = nullptr;
+    Primitive *         prim_rect           = nullptr;
 
 private:
 
@@ -44,22 +58,23 @@ private:
         if(!material)
             return(false);
 
-//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);
 
         if(!pipeline)
             return(false);
 
-        texture=LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        TextureManager *tex_manager = GetTextureManager();
+
+        texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
         sampler=CreateSampler();
 
-        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
-                                        mtl::SamplerName::BaseColor,        ///<采样器名称
-                                        texture,                            ///<纹理
-                                        sampler))                           ///<采样器
+        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
+                                        mtl::SamplerName::BaseColor,
+                                        texture,
+                                        sampler))
             return(false);
 
         material_instance=CreateMaterialInstance(material);
@@ -69,18 +84,37 @@ private:
 
     bool InitVBO()
     {
-        Primitive *render_obj=CreatePrimitive("TextureRect",1,material_instance,pipeline,
+        prim_rect=CreatePrimitive("TextureRect",1,material_instance,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}
                                     });
 
-        if(!render_obj)
+        if(!prim_rect)
             return(false);
 
-        CreateComponentInfo cci(GetWorldRootNode());
+        return(true);
+    }
 
-        return CreateComponent<PrimitiveComponent>(&cci,render_obj); //创建一个静态网格组件
+    bool InitECS()
+    {
+        ecs_world = GetECSContext();
+        if(!ecs_world)
+            return false;
+
+        rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
+        auto rect_transform = rect_entity->AddComponent<TransformComponent>();
+        auto rect_primitive = rect_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+
+        rect_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+        rect_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+        rect_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+        rect_transform->SetMovable(false);
+
+        rect_primitive->SetPrimitive(prim_rect);
+        rect_primitive->SetVisible(true);
+
+        return true;
     }
 
 public:
@@ -93,6 +127,9 @@ public:
             return(false);
 
         if(!InitVBO())
+            return(false);
+
+        if(!InitECS())
             return(false);
 
         return(true);
