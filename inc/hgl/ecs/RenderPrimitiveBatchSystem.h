@@ -69,6 +69,9 @@ namespace hgl::ecs
         void SetCameraInfo(const graph::CameraInfo* info) { cameraInfo = info; }
         void SetDevice(graph::VulkanDevice* dev) { device = dev; }
 
+        const graph::CameraInfo* GetCameraInfo() const { return cameraInfo; }
+        graph::VulkanDevice* GetDevice() const { return device; }
+
         void SetFrustumCullingEnabled(bool enabled) { frustumCullingEnabled = enabled; }
         void SetDistanceSortingEnabled(bool enabled) { distanceSortingEnabled = enabled; }
         void SetBatchingEnabled(bool enabled) { batchingEnabled = enabled; }
