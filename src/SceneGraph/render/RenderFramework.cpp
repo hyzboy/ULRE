@@ -10,6 +10,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContextHelpers.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/log/Logger.h>
@@ -180,6 +181,16 @@ bool RenderFramework::Init(uint w,uint h)
     if(!buffer_manager)
         return(false);
 
+    render_context = std::make_unique<graph::RenderContext>(
+        device,
+        tex_manager,
+        buffer_manager,
+        material_manager,
+        sampler_manager,
+        rp_manager,
+        geometry_manager,
+        primitive_manager);
+
     rt_manager=new RenderTargetManager(this,tex_manager,rp_manager);
     module_manager->Register(rt_manager);
 
@@ -193,7 +204,11 @@ bool RenderFramework::Init(uint w,uint h)
     {
         graph::AttachGraphicsContext(default_ecs_context, this);
         default_ecs_context->InitializeGraphics(device, GetSwapchainRenderTarget());
+        default_ecs_context->SetRenderContext(render_context.get());
     }
+
+    if (render_context)
+        render_context->SetCurrentRenderTarget(GetSwapchainRenderTarget());
 
     if(default_ecs_context)
     {
@@ -211,22 +226,22 @@ bool RenderFramework::Init(uint w,uint h)
         if (text_render_system)
         {
             text_render_system->SetWorld(default_ecs_context);
-            text_render_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
+            text_render_system->SetRenderContext(default_ecs_context->GetRenderContext());
         }
 
         if (environment_system)
-            environment_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
+            environment_system->SetRenderContext(default_ecs_context->GetRenderContext());
 
         if (camera_system)
         {
-            camera_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
+            camera_system->SetRenderContext(default_ecs_context->GetRenderContext());
             IRenderTarget *default_rt = GetSwapchainRenderTarget();
             camera_system->SetViewportInfo(default_rt ? default_rt->GetViewportInfo() : nullptr);
         }
 
         if (render_target_system)
         {
-            render_target_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
+            render_target_system->SetRenderContext(default_ecs_context->GetRenderContext());
             render_target_system->SetRenderTarget(GetSwapchainRenderTarget());
         }
 
@@ -252,7 +267,7 @@ bool RenderFramework::Init(uint w,uint h)
 
         if (line_render_system)
         {
-            line_render_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
+            line_render_system->SetRenderContext(default_ecs_context->GetRenderContext());
             line_render_system->SetRenderTarget(GetSwapchainRenderTarget());
         }
 
@@ -278,6 +293,9 @@ void RenderFramework::OnResize(uint w,uint h)
         if (render_target_system)
             render_target_system->SetRenderTarget(GetSwapchainRenderTarget());
     }
+
+    if (render_context)
+        render_context->SetCurrentRenderTarget(GetSwapchainRenderTarget());
 }
 
 void RenderFramework::OnActive(bool)

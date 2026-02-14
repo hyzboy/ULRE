@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/FontSource.h>
@@ -30,12 +30,12 @@ namespace hgl::ecs
 {
     namespace
     {
-        graph::TileFont* CreateTileFont(graph::IGraphicsContext* gc,
+        graph::TileFont* CreateTileFont(graph::RenderContext* rc,
                                         graph::FontSource* fs,
                                         int limit_count,
                                         const VkExtent2D* extent)
         {
-            if (!gc || !fs)
+            if (!rc || !fs)
                 return nullptr;
 
             const uint32_t height = hgl_align_pow2(fs->GetCharHeight() + 2, 4);
@@ -51,7 +51,7 @@ namespace hgl::ecs
                     limit_count = 1024;
             }
 
-            auto tm = gc->GetTextureManager();
+            auto tm = rc->GetTextureManager();
             if (!tm)
                 return nullptr;
 
@@ -91,7 +91,10 @@ namespace hgl::ecs
 
     TextRenderSystem::~TextRenderSystem()
     {
-        auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
+        if (!render_context && world)
+            render_context = world->GetRenderContext();
+
+        auto* primitive_manager = render_context ? render_context->GetPrimitiveManager() : nullptr;
 
         for (auto& pair : resources_by_font)
         {
@@ -124,10 +127,10 @@ namespace hgl::ecs
         if (!font_source)
             return nullptr;
 
-        if (!graphics_context && world)
-            graphics_context = world->GetGraphicsContext();
+        if (!render_context && world)
+            render_context = world->GetRenderContext();
 
-        if (!graphics_context)
+        if (!render_context)
             return nullptr;
 
         if (auto* entry = resources_by_font.GetValuePointer(font_source))
@@ -144,16 +147,20 @@ namespace hgl::ecs
                 extent = target->GetExtent();
         }
 
-        resources.tile_font = CreateTileFont(graphics_context, font_source, limit_count, &extent);
+        resources.tile_font = CreateTileFont(render_context, font_source, limit_count, &extent);
         if (!resources.tile_font)
             return nullptr;
 
         graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
-        graph::mtl::MaterialCreateInfo* mci = graph::mtl::CreateText2D(graphics_context->GetDevAttr(), &mtl_cfg);
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return nullptr;
+
+        graph::mtl::MaterialCreateInfo* mci = graph::mtl::CreateText2D(device->GetDevAttr(), &mtl_cfg);
         if (!mci)
             return nullptr;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* material_manager = render_context->GetMaterialManager();
         if (!material_manager)
             return nullptr;
 
@@ -164,7 +171,7 @@ namespace hgl::ecs
         if (!resources.material)
             return nullptr;
 
-        auto* sampler_manager = graphics_context->GetSamplerManager();
+        auto* sampler_manager = render_context->GetSamplerManager();
         if (!sampler_manager)
             return nullptr;
 
@@ -196,19 +203,24 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        if (!graphics_context)
-            graphics_context = world->GetGraphicsContext();
+        if (!render_context)
+            render_context = world->GetRenderContext();
 
-        if (!graphics_context)
+        if (!render_context)
             return;
 
-        auto* device = graphics_context->GetDevice();
+        auto* device = render_context->GetDevice();
         if (!device)
             return;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
-        auto* primitive_manager = graphics_context->GetPrimitiveManager();
-        auto* render_pass = graphics_context->GetDefaultRenderPass();
+        auto* material_manager = render_context->GetMaterialManager();
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        if (!render_target && world)
+            render_target = world->GetRenderTarget();
+
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
 
         if (!material_manager || !primitive_manager || !render_pass)
             return;

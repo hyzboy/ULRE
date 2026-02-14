@@ -2,6 +2,7 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -21,6 +22,7 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
 using namespace hgl;
@@ -100,7 +102,7 @@ public:
         ecs_world = new ECSContext("OffscreenECSWorld");
         if (!ecs_world) return false;
 
-        ecs_world->SetGraphicsContext(owner->GetGraphicsContext());
+        ecs_world->SetRenderContext(owner->GetRenderContext());
         ecs_world->InitializeGraphics(owner->GetDevice(), rt);
 
         auto render_target_system = ecs_world->RegisterRenderSystem<RenderTargetSystem>();
@@ -110,7 +112,7 @@ public:
         ecs_world->RegisterTickSystem<InputSystem>();
         auto camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
 
-        render_target_system->SetGraphicsContext(owner->GetGraphicsContext());
+        render_target_system->SetRenderContext(owner->GetRenderContext());
         render_target_system->SetRenderTarget(rt);
 
         render_collect_system->SetWorld(ecs_world);
@@ -124,7 +126,7 @@ public:
 
         if (camera_system)
         {
-            camera_system->SetGraphicsContext(owner->GetGraphicsContext());
+            camera_system->SetRenderContext(owner->GetRenderContext());
             camera_system->SetViewportInfo(rt->GetViewportInfo());
         }
 
@@ -143,33 +145,46 @@ public:
     {
         if(!owner || !ecs_world) return false;
 
+        auto* render_context = owner->GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
                                           mtl::WithCamera::With,
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::Without);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(owner->GetDevAttr(), &cfg3d);
+        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg3d);
         if (!mci) return false;
 
-        mtl = owner->CreateMaterial("OffscreenPureColor3D", mci);
+        mtl = render_context->CreateMaterial("OffscreenPureColor3D", mci);
         if (!mtl) return false;
 
-        pipeline = owner->CreatePipeline(mtl, InlinePipeline::Solid3D);
+        auto* render_pass = rt ? rt->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(mtl, InlinePipeline::Solid3D) : nullptr;
         if (!pipeline) return false;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = owner->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
+        mi = render_context->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
         if (!mi) return false;
 
-        auto pc = owner->GetGeometryCreater(mtl);
-        if (!pc) return false;
+        auto pc = std::make_unique<GeometryCreater>(device, mtl->GetDefaultVIL());
 
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry) return false;
 
-        owner->Add(geometry);
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!geometry_manager) return false;
+        geometry_manager->Add(geometry);
 
-        primitive = owner->CreatePrimitive(geometry, mi, pipeline);
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager) return false;
+
+        primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
         if (!primitive) return false;
 
         sphere_entity = ecs_world->CreateEntity<Entity>("OffscreenSphere");
@@ -301,18 +316,26 @@ private:
 
     bool CreateRotatingCube()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
                                           mtl::WithCamera::With,
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::With);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreateTextureBlinnPhong(GetDevAttr(), &cfg3d);
+        mtl::MaterialCreateInfo *mci = mtl::CreateTextureBlinnPhong(device->GetDevAttr(), &cfg3d);
         if (!mci) return false;
 
-        cube_mtl = CreateMaterial("OnscreenCube", mci);
+        cube_mtl = render_context->CreateMaterial("OnscreenCube", mci);
         if (!cube_mtl) return false;
 
-        cube_sampler = CreateSampler();
+        cube_sampler = render_context->CreateSampler();
 
         cube_mtl->BindTextureSampler(DescriptorSetType::PerMaterial,
                                      mtl::SamplerName::BaseColor,
@@ -321,14 +344,17 @@ private:
 
         LogTextureInfo("onscreen_bind_basecolor", offscreen && offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
 
-        cube_pipeline = CreatePipeline(cube_mtl, InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        if (!render_target && ecs_world)
+            render_target = ecs_world->GetRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        cube_pipeline = render_pass ? render_pass->CreatePipeline(cube_mtl, InlinePipeline::Solid3D) : nullptr;
         if (!cube_pipeline) return false;
 
-        cube_mi = CreateMaterialInstance(cube_mtl);
+        cube_mi = render_context->CreateMaterialInstance(cube_mtl);
         if (!cube_mi) return false;
 
-        auto pc = GetGeometryCreater(cube_mtl);
-        if (!pc) return false;
+        auto pc = std::make_unique<GeometryCreater>(device, cube_mtl->GetDefaultVIL());
 
         inline_geometry::CubeCreateInfo cci_cube{};
         cci_cube.tex_coord = true;
@@ -337,9 +363,14 @@ private:
         Geometry *geometry = inline_geometry::CreateCube(pc.get(), &cci_cube);
         if (!geometry) return false;
 
-        Add(geometry);
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!geometry_manager) return false;
+        geometry_manager->Add(geometry);
 
-        cube_primitive = CreatePrimitive(geometry, cube_mi, cube_pipeline);
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager) return false;
+
+        cube_primitive = primitive_manager->CreatePrimitive(geometry, cube_mi, cube_pipeline);
         if (!cube_primitive) return false;
 
         cube_entity = ecs_world->CreateEntity<Entity>("RotatingCube");
@@ -371,6 +402,16 @@ public:
         ecs_world = GetECSContext();
         if(!ecs_world)
             return false;
+
+        auto environment_system = ecs_world->GetSystem<EnvironmentSystem>();
+        if (!environment_system)
+            environment_system = ecs_world->RegisterRenderSystem<EnvironmentSystem>();
+
+        if (environment_system)
+        {
+            environment_system->EditSkyInfo();
+            environment_system->SyncSkyUBO();
+        }
 
         if (!CreateOffscreenRT(512, 512))
             return false;

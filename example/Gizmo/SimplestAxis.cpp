@@ -4,6 +4,7 @@
 #include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
@@ -18,6 +19,7 @@
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -39,26 +41,43 @@ private:
 
     bool InitMDP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
-        material_instance=CreateMaterialInstance(mtl::inline_material::VertexColor3D,&cfg);
+        material_instance=render_context->CreateMaterialInstance(mtl::inline_material::VertexColor3D,&cfg);
 
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline;
     }
 
     bool CreateRenderObject()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!device || !geometry_manager)
+            return false;
+
         using namespace inline_geometry;
 
-        auto pc=GetGeometryCreater(material_instance);
+        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
 
         inline_geometry::AxisCreateInfo aci;
 
-        prim_axis=CreateAxis(pc,&aci);
+        prim_axis=CreateAxis(pc.get(),&aci);
+        if (prim_axis)
+            geometry_manager->Add(prim_axis);
 
         return prim_axis;
     }
@@ -68,7 +87,15 @@ private:
         if(!ecs_world)
             return false;
 
-        Primitive *ri=CreatePrimitive(prim_axis,material_instance,pipeline);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance,pipeline);
         if(!ri)
             return false;
 

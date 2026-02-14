@@ -6,13 +6,26 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/RenderPassManager.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKVertexInput.h>
+#include<hgl/vk/VKVertexInputLayout.h>
 
-VK_NAMESPACE_BEGIN
-
-namespace graph
+namespace hgl
 {
+    namespace graph
+    {
+        class VILConfig;
+
+        namespace mtl
+        {
+            class MaterialCreateInfo;
+            struct Material2DCreateConfig;
+            struct Material3DCreateConfig;
+        }
+
     /**
      * RenderContext: 渲染执行上下文
      * 
@@ -42,8 +55,8 @@ namespace graph
      * auto buf_mgr = ctx->GetBufferManager();
      * ```
      */
-    class RenderContext
-    {
+        class RenderContext
+        {
     private:
         // 资源管理器（不直接持有，通过引用管理）
         VulkanDevice* device;
@@ -97,6 +110,8 @@ namespace graph
          */
         Material* CreateMaterial(const AnsiString& name);
 
+        Material* CreateMaterial(const AnsiString& name, const mtl::MaterialCreateInfo* mci);
+
         /**
          * 加载材质（从文件）
          * @param path 材质文件路径
@@ -104,12 +119,45 @@ namespace graph
          */
         Material* LoadMaterial(const OSString& path);
 
+        Material* LoadMaterial(const AnsiString& name, mtl::Material2DCreateConfig* cfg);
+        Material* LoadMaterial(const AnsiString& name, mtl::Material3DCreateConfig* cfg);
+
         /**
          * 创建材质实例
          * @param material 基材质
          * @return 材质实例指针，失败返回 nullptr
          */
         MaterialInstance* CreateMaterialInstance(Material* material);
+
+        MaterialInstance* CreateMaterialInstance(Material* material, const VIL* vil);
+        MaterialInstance* CreateMaterialInstance(Material* material, const VILConfig* vil_cfg);
+        MaterialInstance* CreateMaterialInstance(Material* material, const VIL* vil, const void* data, const uint32 data_size);
+        MaterialInstance* CreateMaterialInstance(Material* material, const VILConfig* vil_cfg, const void* data, const uint32 data_size);
+
+        template<typename T>
+        MaterialInstance* CreateMaterialInstance(Material* material, const VIL* vil, const T* data)
+        {
+            return CreateMaterialInstance(material, vil, data, sizeof(T));
+        }
+
+        template<typename T>
+        MaterialInstance* CreateMaterialInstance(Material* material, const VILConfig* vil_cfg, const T* data)
+        {
+            return CreateMaterialInstance(material, vil_cfg, data, sizeof(T));
+        }
+
+        MaterialInstance* CreateMaterialInstance(const AnsiString& name, const mtl::MaterialCreateInfo* mci, const VILConfig* vil_cfg = nullptr);
+        MaterialInstance* CreateMaterialInstance(const AnsiString& name, const mtl::MaterialCreateInfo* mci, const VILConfig* vil_cfg, const void* data, const uint32 data_size);
+        MaterialInstance* CreateMaterialInstance(const AnsiString& name, mtl::Material2DCreateConfig* cfg, const VILConfig* vil_cfg, const void* data, const uint32 data_size);
+        MaterialInstance* CreateMaterialInstance(const AnsiString& name, mtl::Material2DCreateConfig* cfg, const VILConfig* vil_cfg = nullptr)
+        {
+            return CreateMaterialInstance(name, cfg, vil_cfg, nullptr, 0);
+        }
+        MaterialInstance* CreateMaterialInstance(const AnsiString& name, mtl::Material3DCreateConfig* cfg, const VILConfig* vil_cfg, const void* data, const uint32 data_size);
+        MaterialInstance* CreateMaterialInstance(const AnsiString& name, mtl::Material3DCreateConfig* cfg, const VILConfig* vil_cfg = nullptr)
+        {
+            return CreateMaterialInstance(name, cfg, vil_cfg, nullptr, 0);
+        }
 
         /**
          * 创建 UBO 缓冲区
@@ -127,6 +175,8 @@ namespace graph
          */
         DeviceBuffer* CreateSSBO(const AnsiString& name, VkDeviceSize size);
 
+        DeviceBuffer* CreateINBO(const AnsiString& name, VkDeviceSize size);
+
         /**
          * 创建索引缓冲区
          * @param size 缓冲区大小
@@ -134,6 +184,9 @@ namespace graph
          * @return 索引缓冲区指针，失败返回 nullptr
          */
         IndexBuffer* CreateIBO(VkDeviceSize size, IndexType type = IndexType::U32);
+
+        VAB* CreateVAB(VkFormat format, uint32_t count, const void* data);
+        VAB* CreateVAB(VkFormat format, uint32_t count) { return CreateVAB(format, count, nullptr); }
 
         /**
          * 加载 2D 纹理
@@ -287,8 +340,7 @@ namespace graph
         GeometryManager* GetGeometryManager() const { return geometry_manager; }
         PrimitiveManager* GetPrimitiveManager() const { return primitive_manager; }
 
-    }; // class RenderContext
+        }; // class RenderContext
 
-} // namespace graph
-
-VK_NAMESPACE_END
+    } // namespace graph
+} // namespace hgl

@@ -3,9 +3,11 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/geo/Extruded.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<cmath>
+#include<memory>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -41,35 +43,58 @@ private:
 
     bool InitMDP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-        mtl::MaterialCreateInfo *mci=mtl::CreateGizmo3D(GetDevAttr(),&cfg);
+        mtl::MaterialCreateInfo *mci=mtl::CreateGizmo3D(device->GetDevAttr(),&cfg);
 
         if(!mci)
             return(false);
 
-        material=CreateMaterial("Gizmo3D",mci);
+        material=render_context->CreateMaterial("Gizmo3D",mci);
 
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        material_instance = CreateMaterialInstance(material,(VIL *)nullptr,&color);
+        material_instance = render_context->CreateMaterialInstance(material,(VIL *)nullptr,&color);
 
-        pipeline = CreatePipeline(material_instance, InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline != nullptr;
     }
 
     bool CreateRenderObjects()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!device || !geometry_manager)
+            return false;
+
         using namespace inline_geometry;
 
-        auto pc = GetGeometryCreater(material_instance);
+        auto pc = std::make_unique<GeometryCreater>(device, material_instance->GetVIL());
 
         // 测试1: 矩形挤压成立方体
-        prim_rect_cube = CreateExtrudedRectangle(pc, 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));
+        prim_rect_cube = CreateExtrudedRectangle(pc.get(), 2.0f, 1.5f, 1.0f, math::Vector3f(0, 0, 1));
+        if (prim_rect_cube)
+            geometry_manager->Add(prim_rect_cube);
 
         // 测试2: 圆形挤压成圆柱体
-        prim_circle_cylinder = CreateExtrudedCircle(pc, 0.8f, 1.5f, 16, math::Vector3f(0, 0, 1));
+        prim_circle_cylinder = CreateExtrudedCircle(pc.get(), 0.8f, 1.5f, 16, math::Vector3f(0, 0, 1));
+        if (prim_circle_cylinder)
+            geometry_manager->Add(prim_circle_cylinder);
 
         // 测试3: 三角形挤压
         math::Vector2f triangleVertices[3] =
@@ -88,7 +113,9 @@ private:
         triangleEpci.generateSides = true;
         triangleEpci.clockwiseFront = true;
 
-        prim_triangle = CreateExtrudedPolygon(pc, &triangleEpci);
+        prim_triangle = CreateExtrudedPolygon(pc.get(), &triangleEpci);
+        if (prim_triangle)
+            geometry_manager->Add(prim_triangle);
 
         // 测试4: 五边形挤压
         math::Vector2f pentagonVertices[5];
@@ -110,7 +137,9 @@ private:
         pentagonEpci.generateSides = true;
         pentagonEpci.clockwiseFront = true;
 
-        prim_pentagon = CreateExtrudedPolygon(pc, &pentagonEpci);
+        prim_pentagon = CreateExtrudedPolygon(pc.get(), &pentagonEpci);
+        if (prim_pentagon)
+            geometry_manager->Add(prim_pentagon);
 
         return prim_rect_cube && prim_circle_cylinder && prim_triangle && prim_pentagon;
     }
@@ -139,7 +168,15 @@ private:
         if(!ecs_world || !geometry || !material_instance || !pipeline)
             return false;
 
-        Primitive *mesh = CreatePrimitive(geometry, material_instance, pipeline);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
         if(!mesh)
             return false;
 

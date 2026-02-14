@@ -20,6 +20,7 @@ namespace hgl {
         class IRenderTarget;
         class IGraphicsContext;
         class VulkanDevice;
+        class RenderContext;
     }
 }
 
@@ -108,6 +109,7 @@ namespace hgl
 
             /// Graphics context adapter (Phase 2)
             std::shared_ptr<hgl::graph::IGraphicsContext> graphics_context;
+            hgl::graph::RenderContext* render_context = nullptr;
 
         private:
 
@@ -196,6 +198,11 @@ namespace hgl
             void SetGraphicsContext(const std::shared_ptr<hgl::graph::IGraphicsContext>& ctx) { graphics_context = ctx; }
             hgl::graph::IGraphicsContext* GetGraphicsContext() { return graphics_context.get(); }
             const hgl::graph::IGraphicsContext* GetGraphicsContext() const { return graphics_context.get(); }
+
+            /// Render context adapter (Phase 2)
+            void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }
+            hgl::graph::RenderContext* GetRenderContext() { return render_context; }
+            const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
 
             /// 注册组件实例（由 Entity::AddComponent 调用）
             void RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp);

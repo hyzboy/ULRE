@@ -1,5 +1,6 @@
 ﻿#include <hgl/graph/geo/line/LineRenderManager.h>
 #include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/vk/VKDevice.h>
@@ -150,6 +151,124 @@ namespace hgl::graph
         if(!device)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: VulkanDevice为空 EN: VulkanDevice is null"));
+            delete mci;
+            return nullptr;
+        }
+
+        UBOLineColorPalette *lcp = device->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);
+        if(!lcp)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
+            delete mci;
+            return nullptr;
+        }
+
+        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp);
+        if(!mgr)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 分配LineRenderManager失败 EN: allocation of LineRenderManager failed"));
+            delete lcp;
+            delete mci;
+            return nullptr;
+        }
+
+        MLogInfo(LineRenderManager,OS_TEXT("CN: 成功创建LineRenderManager EN: LineRenderManager created successfully"));
+        return mgr;
+    }
+
+    LineRenderManager* CreateLineRenderManager(RenderContext *rc,IRenderTarget *rt)
+    {
+        if (!rc)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: CreateLineRenderManager失败 RenderContext为空 EN: render context is null"));
+            return nullptr;
+        }
+
+        VulkanDevice *device = rc->GetDevice();
+        if (!device)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: VulkanDevice为空 EN: VulkanDevice is null"));
+            return nullptr;
+        }
+
+        VulkanDevAttr *dev_attr = device->GetDevAttr();
+        if(!dev_attr)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: VulkanDevAttr为空 EN: VulkanDevAttr is null"));
+            return nullptr;
+        }
+
+        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines,
+                                        mtl::WithCamera::With,
+                                        mtl::WithLocalToWorld::Without,
+                                        mtl::WithSky::Without);
+
+        auto *mci = mtl::CreateVertexPattleColor3D(dev_attr, &cfg);
+        if (mci == nullptr)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 创建MaterialCreateInfo失败 EN: failed to create material create info"));
+            return nullptr;
+        }
+
+        Material *mat = rc->CreateMaterial("M_Line3D", mci);
+        if (mat == nullptr)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 创建Material失败 EN: failed to create material"));
+            delete mci;
+            return nullptr;
+        }
+
+        VILConfig vil_config;
+        vil_config.Add(VAN::Color,VF_V1U8);
+
+        auto *mat_mgr = rc->GetMaterialManager();
+        if (!mat_mgr)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 获取MaterialManager失败 EN: material manager is null"));
+            delete mci;
+            return nullptr;
+        }
+
+        MaterialInstance *mi = mat_mgr->CreateMaterialInstance(mat,&vil_config);
+        if (mi == nullptr)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 创建MaterialInstance失败 EN: failed to create material instance"));
+            delete mci;
+            return nullptr;
+        }
+
+        if(!rt)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 渲染目标为空 EN: render target is null"));
+            delete mci;
+            return nullptr;
+        }
+
+        RenderPass *rp = rt->GetRenderPass();
+        if(!rp)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 获取RenderPass失败 EN: failed to get render pass"));
+            delete mci;
+            return nullptr;
+        }
+
+        Pipeline *p = nullptr;
+
+        if(dev_attr->wide_lines)
+        {
+            p = rp->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
+            if(!p)
+                MLogError(LineRenderManager,OS_TEXT("CN: 创建动态线宽管线失败 EN: failed to create dynamic line width pipeline"));
+        }
+        else
+        {
+            p = rp->CreatePipeline(mi,InlinePipeline::Solid3D);
+            if(!p)
+                MLogError(LineRenderManager,OS_TEXT("CN: 创建普通线管线失败 EN: failed to create solid line pipeline"));
+        }
+
+        if(!p)
+        {
             delete mci;
             return nullptr;
         }

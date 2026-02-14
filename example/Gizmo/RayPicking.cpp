@@ -12,12 +12,14 @@
 #include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
+#include<memory>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
@@ -70,6 +72,10 @@ private:
 
     bool InitMaterialAndPipeline()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
@@ -81,26 +87,30 @@ private:
         {
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid=LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_plane_grid=render_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
 
-            mi_plane_grid=CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
+            mi_plane_grid=render_context->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
-            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D);
+            auto* render_target = render_context->GetCurrentRenderTarget();
+            auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+            pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, InlinePipeline::Solid3D) : nullptr;
             if(!pipeline_plane_grid)return(false);
         }
 
         {
             cfg.position_format=VAT_VEC3;
 
-            mtl_line=LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_line=render_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_line)return(false);
 
-            mi_line=CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
+            mi_line=render_context->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
             if(!mi_line)return(false);
 
-            pipeline_line=CreatePipeline(mi_line,InlinePipeline::Solid3D);
+            auto* render_target = render_context->GetCurrentRenderTarget();
+            auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+            pipeline_line = render_pass ? render_pass->CreatePipeline(mi_line, InlinePipeline::Solid3D) : nullptr;
 
             if(!pipeline_line)
                 return(false);
@@ -111,11 +121,20 @@ private:
 
     bool CreateGeometry()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!device || !geometry_manager)
+            return false;
+
         using namespace inline_geometry;
 
         // === 创建平面网格几何体 ===
         {
-            auto pc=GetGeometryCreater(mi_plane_grid);
+            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
 
             struct PlaneGridCreateInfo pgci;
 
@@ -125,15 +144,17 @@ private:
             pgci.lum=128;
             pgci.sub_lum=196;
 
-            geom_plane_grid=CreatePlaneGrid2D(pc,&pgci);
+            geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
 
             if(!geom_plane_grid)
                 return(false);
+
+            geometry_manager->Add(geom_plane_grid);
         }
 
         // === 创建射线线段几何体 ===
         {
-            geom_line=WorkObject::CreateGeometry("RayLine",2,mi_line->GetVIL(),
+            geom_line=render_context->CreateGeometry("RayLine",2,mi_line->GetVIL(),
                                     {
                                         {VAN::Position, VF_V3F,position_data},
                                         {VAN::Luminance,VF_V1UN8,lumiance_data}
@@ -142,7 +163,7 @@ private:
             if(!geom_line)
                 return(false);
 
-            Add(geom_line);
+            geometry_manager->Add(geom_line);
         }
 
         return(true);
@@ -150,6 +171,14 @@ private:
 
     bool InitECS()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if(!ecs_world)
@@ -160,7 +189,7 @@ private:
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
             // 创建Primitive
-            Primitive* prim_plane = CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
             if(!prim_plane)
                 return false;
 
@@ -182,7 +211,7 @@ private:
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
 
             // 创建Primitive
-            prim_line = CreatePrimitive(geom_line, mi_line, pipeline_line);
+            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line, pipeline_line);
             if(!prim_line)
                 return false;
 

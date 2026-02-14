@@ -24,7 +24,7 @@ namespace hgl
     {
         if (world)
         {
-            graphics_context = world->GetGraphicsContext();
+            render_context = world->GetRenderContext();
         }
     }
 
@@ -85,7 +85,7 @@ namespace hgl
         if(!rf)
         {
             render_framework=nullptr;
-            graphics_context=nullptr;
+            render_context=nullptr;
             world.reset();
             return;
         }
@@ -94,7 +94,7 @@ namespace hgl
         world.reset();
         if (rf->GetECSContext())
             world = std::shared_ptr<ecs::ECSContext>(rf->GetECSContext(), [](ecs::ECSContext*){});
-        graphics_context=world?world->GetGraphicsContext():nullptr;
+        render_context=world?world->GetRenderContext():nullptr;
     }
 
     void WorkObject::Tick(double delta)
@@ -113,55 +113,5 @@ namespace hgl
             return;
     }
 
-    graph::Texture2D *WorkObject::LoadTexture2D(const OSString &filename,bool auto_mipmap)
-    {
-        if(filename.IsEmpty())
-            return(nullptr);
-
-        auto tm=GetTextureManager();
-
-        if(!tm)
-        {
-            //hgl::LogError(OS_TEXT("WorkObject::LoadTexture2D,GetTextureManager() is nullptr!"));
-            return(nullptr);
-        }
-
-        return tm->LoadTexture2D(filename,auto_mipmap);
-    }
-
-    graph::TextureCube *WorkObject::LoadTextureCube(const OSString &filename,bool auto_mipmaps)
-    {
-        if(filename.IsEmpty())
-            return(nullptr);
-
-        auto tm=GetTextureManager();
-
-        if(!tm)return(nullptr);
-
-        return tm->LoadTextureCube(filename,auto_mipmaps);
-    }
-
-    graph::Texture2DArray * WorkObject::CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps)
-    {
-        if(name.IsEmpty())
-            return(nullptr);
-
-        auto tm=GetTextureManager();
-
-        if(!tm)return(nullptr);
-
-        return tm->CreateTexture2DArray(name,width,height,layer,fmt,auto_mipmaps);
-    }
-
-    bool WorkObject::LoadTexture2DArray(graph::Texture2DArray *tex_array,const uint32_t layer,const OSString &filename)
-    {
-        if(!tex_array||filename.IsEmpty())
-            return(false);
-
-        auto tm=GetTextureManager();
-
-        if(!tm)return(false);
-
-        return tm->LoadTexture2DArray(tex_array,layer,filename);
-    }
+    // Resource helpers removed. Use RenderContext/RenderAPI directly.
 }//namespcae hgl

@@ -102,17 +102,29 @@ private:
         if(!base_prim)
             return nullptr;
 
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return nullptr;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return nullptr;
+
         Geometry *geometry = base_prim->GetGeometry();
         MaterialInstance *mi = GetGizmoMI3D(color);
         if(!geometry || !mi)
             return nullptr;
 
         if(!gizmo_pipeline)
-            gizmo_pipeline = CreatePipeline(mi, InlinePipeline::Solid3D);
+        {
+            auto* render_target = render_context->GetCurrentRenderTarget();
+            auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+            gizmo_pipeline = render_pass ? render_pass->CreatePipeline(mi, InlinePipeline::Solid3D) : nullptr;
+        }
         if(!gizmo_pipeline)
             return nullptr;
 
-        Primitive *prim = CreatePrimitive(geometry, mi, gizmo_pipeline);
+        Primitive *prim = primitive_manager->CreatePrimitive(geometry, mi, gizmo_pipeline);
         if(prim)
             gizmo_primitives.push_back(prim);
 

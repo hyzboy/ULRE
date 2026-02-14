@@ -65,11 +65,15 @@ private:
 
     bool InitTexture()
     {
-        texture=CreateTexture2DArray(   "freepik icons",
-                                        512,512,            ///<纹理尺寸
-                                        TexCount,           ///<纹理层数
-                                        PF_BC7UN,      ///<纹理格式
-                                        false);             ///<是否自动产生mipmaps
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        texture = render_context->CreateTexture2DArray("freepik icons",
+                                                       512,512,            ///<纹理尺寸
+                                                       TexCount,           ///<纹理层数
+                                                       PF_BC7UN,           ///<纹理格式
+                                                       false);             ///<是否自动产生mipmaps
 
         if(!texture)return(false);
 
@@ -79,7 +83,7 @@ private:
         {
             filename=filesystem::JoinPathWithFilename(OS_TEXT("res/image/icon/freepik"),tex_filename[i]);
 
-            if(!LoadTexture2DArray(texture,i,filename))
+            if(!render_context->LoadTexture2DArray(texture,i,filename))
                 return(false);
         }
 
@@ -88,21 +92,27 @@ private:
 
     bool InitMaterial()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::With);
 
-        material=LoadMaterial("Std2D/RectTexture2DArray",&cfg);
+        material=render_context->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
 
         if(!material)
             return(false);
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
 
         if(!pipeline)
             return(false);
 
-        sampler=CreateSampler();
+        sampler=render_context->CreateSampler();
 
         if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
                                         mtl::SamplerName::BaseColor,
@@ -112,7 +122,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi=CreateMaterialInstance(material);
+            render_obj[i].mi=render_context->CreateMaterialInstance(material);
 
             if(!render_obj[i].mi)
                 return(false);
@@ -125,7 +135,11 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        mesh_rect=CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        mesh_rect=render_context->CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}

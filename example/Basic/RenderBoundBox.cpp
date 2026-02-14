@@ -118,13 +118,17 @@ private:
         if(!md)
             return false;
 
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         Color4f color;
 
         for(size_t i=0;i<COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0f);
 
-            md->mi[i] = CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
+            md->mi[i] = render_context->CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
 
             if(!md->mi[i])
                 return false;
@@ -135,42 +139,64 @@ private:
         if(!md->vil)
             return false;
 
-        md->pipeline = CreatePipeline(md->material,InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        md->pipeline = render_pass ? render_pass->CreatePipeline(md->material, InlinePipeline::Solid3D) : nullptr;
 
         return md->pipeline != nullptr;
     }
 
     bool InitSolidMDP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(GetDevAttr(),&cfg);
+        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(),&cfg);
 
         if(!mci)
             return false;
 
-        solid.material = CreateMaterial("Gizmo3D",mci);
+        solid.material = render_context->CreateMaterial("Gizmo3D",mci);
 
         return InitMaterialInstance(&solid);
     }
 
     bool InitWireMDP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreatePureColor3D(GetDevAttr(),&cfg);
+        mtl::MaterialCreateInfo *mci = mtl::CreatePureColor3D(device->GetDevAttr(),&cfg);
 
         if(!mci)
             return false;
 
-        wire.material = CreateMaterial("PureColorLine3D",mci);
+        wire.material = render_context->CreateMaterial("PureColorLine3D",mci);
 
         return InitMaterialInstance(&wire);
     }
 
     bool InitVDM()
     {
-        mesh_vdm = CreateVDM(solid.vil,HGL_SIZE_1MB);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        mesh_vdm = render_context->CreateVDM(solid.vil, HGL_SIZE_1MB, 0, IndexType::U16);
         return mesh_vdm != nullptr;
     }
 
@@ -179,7 +205,15 @@ private:
         if(!geometry)
             return nullptr;
 
-        Primitive *primitive = CreatePrimitive(geometry,md->mi[color],md->pipeline);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return nullptr;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return nullptr;
+
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color],md->pipeline);
 
         if(!primitive)
             return nullptr;
@@ -313,19 +347,28 @@ private:
 
     bool CreateBoundingBoxMesh()
     {
-        using namespace inline_geometry;
-
-        auto pc = GetGeometryCreater(wire.material);
-        if(!pc)
+        auto* render_context = GetRenderContext();
+        if (!render_context)
             return false;
 
+        auto* device = render_context->GetDevice();
+        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!device || !geometry_manager || !primitive_manager)
+            return false;
+
+        using namespace inline_geometry;
+
+        auto pc = std::make_unique<GeometryCreater>(device, wire.material->GetDefaultVIL());
+
         inline_geometry::BoundingBoxCreateInfo bbci;
-        bbox_geometry = CreateBoundingBox(pc,&bbci);
+        bbox_geometry = CreateBoundingBox(pc.get(),&bbci);
 
         if(!bbox_geometry)
             return false;
 
-        bbox_primitive = CreatePrimitive(bbox_geometry,wire.mi[5],wire.pipeline);
+        geometry_manager->Add(bbox_geometry);
+        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,wire.mi[5],wire.pipeline);
         return bbox_primitive != nullptr;
     }
 

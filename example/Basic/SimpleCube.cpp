@@ -9,6 +9,7 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
 
@@ -22,6 +23,7 @@
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -48,24 +50,34 @@ private:
     {
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(GetDevAttr(), &cfg);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
+        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg);
 
         if(!mci)
             return false;
 
-        material = CreateMaterial("Gizmo3D", mci);
+        material = render_context->CreateMaterial("Gizmo3D", mci);
 
         if(!material)
             return false;
 
         Color4f color = GetColor4f(COLOR::BlenderAxisBlue, 1.0f);
 
-        mi = CreateMaterialInstance(material, (VIL *)nullptr, &color);
+        mi = render_context->CreateMaterialInstance(material, (VIL *)nullptr, &color);
 
         if(!mi)
             return false;
 
-        pipeline = CreatePipeline(material, InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
 
         return pipeline != nullptr;
     }
@@ -74,28 +86,45 @@ private:
     {
         using namespace inline_geometry;
 
-        auto pc = GetGeometryCreater(material);
-
-        if(!pc)
+        auto* render_context = GetRenderContext();
+        if (!render_context)
             return false;
+
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!geometry_manager)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
+        auto pc = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
 
         CubeCreateInfo cci;
         cci.segments_x = 2;
         cci.segments_y = 3;
         cci.segments_z = 4;
 
-        geometry = CreateCube(pc, &cci);
+        geometry = CreateCube(pc.get(), &cci);
 
         if(!geometry)
             return false;
 
-        Add(geometry);
+        geometry_manager->Add(geometry);
         return true;
     }
 
     bool InitPrimitive()
     {
-        primitive = CreatePrimitive(geometry, mi, pipeline);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
         return primitive != nullptr;
     }
 

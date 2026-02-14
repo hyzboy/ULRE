@@ -61,6 +61,10 @@ private:
 
     bool InitMaterial()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::Ortho,
                                         mtl::WithLocalToWorld::Without);
@@ -75,12 +79,14 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        material_instance=CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
+        material_instance=render_context->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
 
         if(!material_instance)
             return(false);
 
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);     //使用swapchain的render target
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid2D) : nullptr;
 
         return pipeline;
     }
@@ -95,7 +101,11 @@ private:
             position_data[i][1]=position_data_float[i][1]*ext->height;
         }
 
-        prim_triangle=CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        prim_triangle=render_context->CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,POSITION_DATA_FORMAT,position_data},
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
