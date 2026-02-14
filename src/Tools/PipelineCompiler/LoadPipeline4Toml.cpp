@@ -1,5 +1,5 @@
-﻿#include<hgl/graph/VKPipelineData.h>
-#include<hgl/graph/VKString.h>
+﻿#include<hgl/graph/pipeline/VKPipelineData.h>
+#include<hgl/vk/VKString.h>
 #include<hgl/io/LoadString.h>
 #include<toml.hpp>
 

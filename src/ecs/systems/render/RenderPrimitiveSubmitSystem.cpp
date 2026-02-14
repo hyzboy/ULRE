@@ -4,7 +4,7 @@
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
-#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
 #include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
 #include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
@@ -18,7 +18,7 @@ namespace hgl::ecs
         // Set system type and properties
         SetSystemType(SystemType::RenderSubmit);
         SetExecutionOrder(ExecutionPhase::RenderSubmit, ExecutionPriority::First);
-        
+
         // Declare dependencies
         AddDependency<RenderPrimitiveBatchSystem>(); // Needs batched data
     }

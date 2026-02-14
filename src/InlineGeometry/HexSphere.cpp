@@ -1,9 +1,9 @@
-// sphere、cylinear、cone、tours code from McNopper,website: https://github.com/McNopper/GLUS
+﻿// sphereãcylinearãconeãtours code from McNopper,website: https://github.com/McNopper/GLUS
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/GeometryCreater.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include <hgl/type/UnorderedMap.h>
 #include <algorithm>
 #include <vector>
@@ -17,7 +17,7 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc||!hsci) return nullptr;
 
-        // 生成基础二十面体
+        // çæåºç¡äºåé¢ä½
         struct Tri { uint a,b,c; };
         std::vector<math::Vector3f> verts;
         std::vector<Tri> tris;
@@ -39,7 +39,7 @@ namespace hgl::graph::inline_geometry
         push(3,9,4); push(3,4,2); push(3,2,6); push(3,6,8); push(3,8,9);
         push(4,9,5); push(2,4,11); push(6,2,10); push(8,6,7); push(9,8,1);
 
-        // 索引缓存中间点
+        // ç´¢å¼ç¼å­ä¸­é´ç?
         struct EdgeKey { uint a,b; bool operator==(const EdgeKey& o)const{return a==o.a&&b==o.b;} };
         struct EdgeHash { size_t operator()(const EdgeKey& k)const { return (size_t(k.a)<<32) ^ k.b; } };
         hgl::UnorderedMap<EdgeKey,uint,EdgeHash> midpoint;
@@ -52,7 +52,7 @@ namespace hgl::graph::inline_geometry
             uint id = (uint)verts.size(); verts.push_back(m); midpoint.Add(key,id); return id;
             };
 
-        // 细分
+        // ç»å
         for(uint s=0;s<hsci->subdivisions;s++)
         {
             std::vector<Tri> ntris; ntris.reserve(tris.size()*4);
@@ -61,7 +61,7 @@ namespace hgl::graph::inline_geometry
                 uint ab = get_mid(t.a,t.b);
                 uint bc = get_mid(t.b,t.c);
                 uint ca = get_mid(t.c,t.a);
-                // 保持顺时针正面（a,b,c 为外观时顺时针），四分三角形
+                // ä¿æé¡ºæ¶éæ­£é¢ï¼a,b,c ä¸ºå¤è§æ¶é¡ºæ¶éï¼ï¼ååä¸è§å½¢
                 ntris.push_back({t.a, ab, ca});
                 ntris.push_back({t.b, bc, ab});
                 ntris.push_back({t.c, ca, bc});
@@ -70,7 +70,7 @@ namespace hgl::graph::inline_geometry
             tris.swap(ntris);
         }
 
-        // 归一化到半径
+        // å½ä¸åå°åå¾
         const float R = hsci->radius;
         for(auto &v:verts) v *= R;
 
@@ -88,7 +88,7 @@ namespace hgl::graph::inline_geometry
         if(!pos.IsValid())
             return nullptr;
 
-        // 写顶点属性：法线=单位方向，切线取经向方向（在极点退化时给固定值）
+        // åé¡¶ç¹å±æ§ï¼æ³çº¿=åä½æ¹åï¼åçº¿åç»åæ¹åï¼å¨æç¹éåæ¶ç»åºå®å¼ï¼
         for(const auto &v:verts)
         {
             pos->Write(v);
@@ -102,7 +102,7 @@ namespace hgl::graph::inline_geometry
             if(uv.IsValid())
             {
                 Vector3f n = glm::normalize(v);
-                // 球面 UV，经度[-pi,pi] -> u in [0,1]，纬度[-pi/2,pi/2] -> v in [0,1]
+                // çé¢ UVï¼ç»åº¦[-pi,pi] -> u in [0,1]ï¼çº¬åº¦[-pi/2,pi/2] -> v in [0,1]
                 float u = (atan2f(n.y, n.x) / (2.0f*std::numbers::pi_v<float>)) + 0.5f;
                 float vtex = (asinf(std::clamp(n.z, -1.0f, 1.0f))/std::numbers::pi_v<float>) + 0.5f;
                 uv->Write(Vector2f(u * hsci->uv_scale.x, vtex * hsci->uv_scale.y));
@@ -111,16 +111,16 @@ namespace hgl::graph::inline_geometry
             if(tan.IsValid())
             {
                 Vector3f n = glm::normalize(v);
-                // 经向切线：沿 +theta（绕Z）方向近似：(-y, x, 0) 并去掉与 n 的投影
+                // ç»ååçº¿ï¼æ²¿ +thetaï¼ç»Zï¼æ¹åè¿ä¼¼ï¼(-y, x, 0) å¹¶å»æä¸ n çæå½?
                 Vector3f tdir(-n.y, n.x, 0.0f);
-                if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // 极点备选
+                if(glm::length(tdir)<1e-6f) tdir = Vector3f(1,0,0); // æç¹å¤é?
                 tdir = (tdir - n * Dot(n, tdir));
                 tdir = glm::normalize(tdir);
                 tan->Write(tdir);
             }
         }
 
-        // 索引：顺时针为正面，直接按 tris 中的 (a,b,c) 顺序写
+        // ç´¢å¼ï¼é¡ºæ¶éä¸ºæ­£é¢ï¼ç´æ¥æ?tris ä¸­ç (a,b,c) é¡ºåºå?
         {
             const IndexType it = pc->GetIndexType();
             if(it==IndexType::U16)

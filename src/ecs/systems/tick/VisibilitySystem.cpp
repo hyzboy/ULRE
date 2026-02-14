@@ -24,7 +24,7 @@ namespace hgl::ecs
     void VisibilitySystem::Initialize()
     {
         System::Initialize();
-        
+
         if (!world)
             return;
 
@@ -34,7 +34,7 @@ namespace hgl::ecs
         // Set storage reference for all existing VisibilityComponents
         std::vector<std::shared_ptr<VisibilityComponent>> components;
         world->GetComponents<VisibilityComponent>(components);
-        
+
         for (auto& comp : components)
         {
             if (comp)

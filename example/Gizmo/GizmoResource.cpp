@@ -1,13 +1,13 @@
-﻿#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/pipeline/VKPipeline.h>
-#include<hgl/graph/VKGeometry.h>
-#include<hgl/graph/VertexDataManager.h>
-#include<hgl/graph/GeometryCreater.h>
+﻿#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/render/RenderFramework.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN

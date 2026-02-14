@@ -8,11 +8,11 @@
 #include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
 #include<hgl/ecs/support/ECSMaterialInstanceAssignmentBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VKVertexInput.h>
-#include<hgl/graph/VKRenderAssign.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKIndirectCommandBuffer.h>
+#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKVertexInput.h>
+#include<hgl/vk/VKRenderAssign.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<iostream>
 
 namespace hgl::ecs

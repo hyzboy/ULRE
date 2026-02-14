@@ -2,8 +2,8 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
-#include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/vk/VKRenderTarget.h>
 
 namespace hgl::ecs
 {

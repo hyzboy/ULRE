@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/graph/VKBuffer.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
-#include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/type/ObjectManager.h>
 
 VK_NAMESPACE_BEGIN

@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
-#include<hgl/graph/TileData.h>
+#include<hgl/graph/tile/TileData.h>
 #include<hgl/type/IndexedList.h>
 #include<hgl/type/ConstStringSet.h>
 #include<vector>

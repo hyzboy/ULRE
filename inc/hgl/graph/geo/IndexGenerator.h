@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/GeometryCreater.h>
-#include<hgl/graph/VertexAttribDataAccess.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/vk/VertexAttribDataAccess.h>
 
 namespace hgl::graph::inline_geometry
 {

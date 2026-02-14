@@ -1,6 +1,6 @@
 ﻿/*
  统一 Gizmo 世界 - 通过 SubWorldComponent 管理三个 Gizmo 子世界
- 
+
  结构：
    Main World
      └─ GizmoECS (root)
@@ -25,21 +25,21 @@ struct GizmoECS
     hgl::ecs::ECSContext* world = nullptr;
     hgl::ecs::Entity* root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
-    
+
     // 三个子 Gizmo 的管理指针（内部实现使用）
     void* move_impl = nullptr;     // GizmoMoveECS*
     void* rotate_impl = nullptr;   // GizmoRotateECS*
     void* scale_impl = nullptr;    // GizmoScaleECS*
-    
+
     // 对应的 SubWorld 和 Entity
     hgl::ecs::Entity* move_entity = nullptr;
     hgl::ecs::Entity* rotate_entity = nullptr;
     hgl::ecs::Entity* scale_entity = nullptr;
-    
+
     hgl::ecs::ECSContext* move_world = nullptr;
     hgl::ecs::ECSContext* rotate_world = nullptr;
     hgl::ecs::ECSContext* scale_world = nullptr;
-    
+
     GizmoMode current_mode = GizmoMode::Move;
 };
 
@@ -114,7 +114,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
     gizmo->root_transform->SetMovable(true);
 
     // Create three child entities with SubWorldComponent for each Gizmo mode
-    
+
     // Move Gizmo
     {
         gizmo->move_entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Move");

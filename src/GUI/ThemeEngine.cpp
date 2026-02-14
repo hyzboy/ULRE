@@ -1,7 +1,7 @@
 ﻿#include<hgl/gui/ThemeEngine.h>
 #include<hgl/gui/ThemeForm.h>
-#include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKDevice.h>
 
 namespace hgl
 {

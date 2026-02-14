@@ -8,7 +8,7 @@ namespace hgl::ecs
 
     /**
      * VisibilityComponent - Controls entity visibility in rendering
-     * 
+     *
      * Simple component that marks whether an entity should be rendered.
      * Automatically updates VisibilityDataStorage when visibility changes.
      */

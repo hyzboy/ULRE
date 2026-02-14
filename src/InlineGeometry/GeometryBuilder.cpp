@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/geo/GeometryBuilder.h>
-#include<hgl/graph/VKGeometry.h>
+#include<hgl/graph/geo/VKGeometry.h>
 
 namespace hgl::graph::inline_geometry
 {
@@ -13,7 +13,7 @@ namespace hgl::graph::inline_geometry
         VertexAttribBuffer *vab;
         const int32_t vertex_offset = pc->GetVertexOffset();
         const uint32_t vertex_count = pc->GetVertexCount();
-        
+
         vab = pc->GetVAB(VAN::Position);
         if(vab)
             accessor_position.Bind(vab, vertex_offset, vertex_count);

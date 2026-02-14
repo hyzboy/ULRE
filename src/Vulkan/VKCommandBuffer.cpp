@@ -1,0 +1,50 @@
+﻿#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDeviceAttribute.h>
+
+VK_NAMESPACE_BEGIN
+VulkanCmdBuffer::VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb)
+{
+    dev_attr=attr;
+    cmd_buf=cb;
+
+    cmd_begin=false;
+}
+
+VulkanCmdBuffer::~VulkanCmdBuffer()
+{
+    vkFreeCommandBuffers(dev_attr->device,dev_attr->cmd_pool,1,&cmd_buf);
+}
+
+bool VulkanCmdBuffer::Begin()
+{
+    CommandBufferBeginInfo cmd_buf_info;
+
+    cmd_buf_info.pInheritanceInfo = nullptr;
+
+    if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)
+        return(false);
+
+    cmd_begin=true;
+    return(true);
+}
+
+#ifdef _DEBUG
+void VulkanCmdBuffer::SetDebugName(const AnsiString &object_name)
+{
+    if(dev_attr->debug_utils)
+        dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name);
+}
+
+void VulkanCmdBuffer::BeginRegion(const AnsiString &region_name,const Color4f &color)
+{
+    if(dev_attr->debug_utils)
+        dev_attr->debug_utils->CmdBegin(cmd_buf,region_name,color);
+}
+
+void VulkanCmdBuffer::EndRegion()
+{
+    if(dev_attr->debug_utils)
+        dev_attr->debug_utils->CmdEnd(cmd_buf);
+}
+#endif
+VK_NAMESPACE_END

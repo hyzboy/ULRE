@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/module/RenderPassManager.h>
-#include<hgl/graph/VKRenderPass.h>
-#include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/vk/VKRenderPass.h>
+#include<hgl/vk/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
 void CreateSubpassDependency(ValueArray<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)

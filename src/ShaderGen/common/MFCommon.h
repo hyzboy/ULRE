@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKRenderAssign.h>
+#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 
 STD_MTL_FUNC_NAMESPACE_BEGIN

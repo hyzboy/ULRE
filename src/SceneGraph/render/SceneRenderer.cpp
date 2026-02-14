@@ -1,13 +1,13 @@
-﻿#include<hgl/graph/SceneRenderer.h>
+﻿#include<hgl/graph/render/SceneRenderer.h>
 #include<iostream>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
-#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
-#include<hgl/graph/RenderStages.h>
+#include<hgl/graph/render/RenderStages.h>
 
 namespace hgl::graph
 {

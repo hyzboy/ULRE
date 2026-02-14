@@ -1,11 +1,11 @@
-﻿#include<hgl/graph/RenderStages.h>
+﻿#include<hgl/graph/render/RenderStages.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
-#include<hgl/graph/VKBufferUpdateQueue.h>
-#include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/ViewportInfo.h>
+#include<hgl/vk/VKBufferUpdateQueue.h>
+#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph

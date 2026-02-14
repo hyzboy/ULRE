@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<vector>
 
 namespace hgl

@@ -14,10 +14,10 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VertexDataManager.h>
-#include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/vk/VertexDataManager.h>
+#include<hgl/vk/VKVertexInputConfig.h>
 
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>

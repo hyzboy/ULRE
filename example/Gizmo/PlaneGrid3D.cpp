@@ -4,7 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
 // ECS headers

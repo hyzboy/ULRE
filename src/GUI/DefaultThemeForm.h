@@ -2,7 +2,7 @@
 #define HGL_GUI_DEFAULT_THEME_FORM_INCLUDE
 
 #include<hgl/gui/ThemeForm.h>
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 
 namespace hgl
 {

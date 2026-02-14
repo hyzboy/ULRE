@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -13,27 +13,27 @@ namespace hgl::ecs
         uint32_t index = UINT32_MAX;      ///< Index in the entity pool
         uint16_t generation = 0;          ///< Generation for detecting stale handles
         uint16_t reserved = 0;            ///< Reserved for future use
-        
+
         EntityID() = default;
-        constexpr EntityID(uint32_t idx, uint16_t gen = 0) 
+        constexpr EntityID(uint32_t idx, uint16_t gen = 0)
             : index(idx), generation(gen) {}
-        
+
         /// Check if this ID is valid
         constexpr bool IsValid() const { return index != UINT32_MAX; }
-        
+
         /// Create invalid ID
         constexpr static EntityID Invalid() { return EntityID(UINT32_MAX, 0); }
-        
-        constexpr bool operator==(const EntityID& other) const 
+
+        constexpr bool operator==(const EntityID& other) const
         {
             return index == other.index && generation == other.generation;
         }
-        
-        constexpr bool operator!=(const EntityID& other) const 
+
+        constexpr bool operator!=(const EntityID& other) const
         {
             return !(*this == other);
         }
-        
+
         constexpr bool operator<(const EntityID& other) const
         {
             if (index != other.index) return index < other.index;

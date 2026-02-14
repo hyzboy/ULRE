@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/type/String.h>

@@ -34,7 +34,7 @@ namespace hgl::graph::inline_geometry
 
         uint verts_per_corner = (edge_segs + 1) * (edge_segs + 1);
         uint verts_per_face = (face_segs + 1) * (face_segs + 1);
-        
+
         // 8 corners + 6 faces
         uint numberVertices = 8 * verts_per_corner + 6 * verts_per_face;
         uint numberIndices = 8 * edge_segs * edge_segs * 6 +  // corners
@@ -110,7 +110,7 @@ namespace hgl::graph::inline_geometry
 
         // Generate flat face vertices
         uint face_base[6];
-        
+
         // Face info: normal, and two edge vectors
         struct FaceInfo {
             Vector3f normal;
@@ -152,7 +152,7 @@ namespace hgl::graph::inline_geometry
                     // Position: origin + (u_ext * t_u) + (v_ext * t_v)
                     Vector3f pos = face.origin + face.u_ext * t_u + face.v_ext * t_v;
 
-                    builder.WriteFullVertex(pos.x, pos.y, pos.z, 
+                    builder.WriteFullVertex(pos.x, pos.y, pos.z,
                                           face.normal.x, face.normal.y, face.normal.z,
                                           face.u_dir.x, face.u_dir.y, face.u_dir.z,
                                           t_u, t_v);

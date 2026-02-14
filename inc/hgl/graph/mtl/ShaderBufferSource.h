@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/vk/VKDescriptorSetType.h>
 
 namespace hgl::graph
 {

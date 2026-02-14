@@ -1,20 +1,17 @@
 ﻿#include<hgl/graph/module/MaterialManager.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKShaderModule.h>
-#include<hgl/graph/VKShaderModuleMap.h>
-#include<hgl/graph/VKMaterialDescriptorManager.h>
-#include<hgl/graph/VKVertexInput.h>
+#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKShaderModule.h>
+#include<hgl/vk/VKShaderModuleMap.h>
+#include<hgl/vk/VKMaterialDescriptorManager.h>
+#include<hgl/vk/VKVertexInput.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-
-#ifdef _DEBUG
-#include"../Vulkan/pipeline/VKPipelineLayoutData.h"
-#endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
 namespace

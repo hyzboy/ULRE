@@ -1,7 +1,7 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/graph/VertexAttrib.h>
-#include<hgl/graph/VKVertexInputAttribute.h>
-#include<hgl/graph/VKRenderAssign.h>
+#include<hgl/vk/VertexAttrib.h>
+#include<hgl/vk/VKVertexInputAttribute.h>
+#include<hgl/vk/VKRenderAssign.h>
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
 #include"ShaderLibrary.h"

@@ -2,9 +2,9 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/ECSComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/pipeline/VKPipeline.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 
 namespace hgl::ecs

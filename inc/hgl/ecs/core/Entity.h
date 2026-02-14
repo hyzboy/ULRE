@@ -39,7 +39,7 @@ namespace hgl
 
             /// Get entity ID
             EntityID GetID() const { return id; }
-            
+
             /// Set entity ID (called by EntityManager)
             void SetID(EntityID entity_id) { id = entity_id; }
 

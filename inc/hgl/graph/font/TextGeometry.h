@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKGeometry.h>
+#include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/type/OrderedSet.h>
 #include<hgl/graph/font/FontSource.h>
 

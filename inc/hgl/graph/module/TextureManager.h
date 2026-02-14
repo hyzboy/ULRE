@@ -5,8 +5,8 @@
 #include<hgl/type/BidirectionalMap.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/RectScope.h>
-#include<hgl/graph/ImageRegion.h>
-#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/data/ImageRegion.h>
+#include<hgl/vk/VKTexture.h>
 
 VK_NAMESPACE_BEGIN
 

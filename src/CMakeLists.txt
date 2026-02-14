@@ -1,4 +1,5 @@
-﻿add_subdirectory(ShaderGen)
+﻿add_subdirectory(Vulkan)
+add_subdirectory(ShaderGen)
 add_subdirectory(SceneGraph)
 add_subdirectory(InlineGeometry)
 add_subdirectory(Work)

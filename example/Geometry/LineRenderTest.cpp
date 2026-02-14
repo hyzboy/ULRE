@@ -1,5 +1,5 @@
 ﻿#include<hgl/WorkManager.h>
-#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>

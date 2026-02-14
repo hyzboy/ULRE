@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/module/GraphModule.h>
-#include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/vk/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 

@@ -1,10 +1,10 @@
 ﻿#ifndef HGL_SHADER_CREATE_INFO_INCLUDE
 #define HGL_SHADER_CREATE_INFO_INCLUDE
 
-#include<hgl/graph/VertexAttrib.h>
-#include<hgl/graph/VK.h>
-#include<hgl/graph/VKInterpolation.h>
-#include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/vk/VertexAttrib.h>
+#include<hgl/vk/VK.h>
+#include<hgl/vk/VKInterpolation.h>
+#include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/type/StringList.h>
 #include<hgl/log/Log.h>

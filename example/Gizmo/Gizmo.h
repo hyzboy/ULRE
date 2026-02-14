@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/CoreType.h>
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<hgl/math/VectorTypes.h>
 
 namespace hgl

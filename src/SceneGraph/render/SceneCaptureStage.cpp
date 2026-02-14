@@ -1,1 +1,1 @@
-#include<hgl/graph/SceneCaptureStage.h>
+﻿#include<hgl/graph/render/SceneCaptureStage.h>

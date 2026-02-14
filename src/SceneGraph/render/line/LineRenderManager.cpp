@@ -1,17 +1,17 @@
 ﻿#include <hgl/graph/geo/line/LineRenderManager.h>
-#include <hgl/graph/VKRenderTarget.h>
-#include <hgl/graph/GeometryCreater.h>
-#include <hgl/graph/VKDevice.h>
-#include <hgl/graph/VKVertexInputLayout.h>
-#include <hgl/graph/VKGeometry.h>
+#include <hgl/vk/VKRenderTarget.h>
+#include <hgl/graph/geo/GeometryCreater.h>
+#include <hgl/vk/VKDevice.h>
+#include <hgl/vk/VKVertexInputLayout.h>
+#include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/graph/module/MaterialManager.h>
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
-#include <hgl/graph/VKMaterial.h>
-#include <hgl/graph/VKVertexInputConfig.h>
+#include <hgl/vk/VKMaterial.h>
+#include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/BufferManager.h>
-#include <hgl/graph/RenderFramework.h>
+#include <hgl/graph/render/RenderFramework.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 
 /**

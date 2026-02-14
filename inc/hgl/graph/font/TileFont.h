@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/TileData.h>
+#include<hgl/graph/tile/TileData.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/type/RefObjectPool.h>
 

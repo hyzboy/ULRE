@@ -1,8 +1,8 @@
 ﻿#include<hgl/graph/mesh/Primitive.h>
-#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
-#include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKIndexBuffer.h>
 
 VK_NAMESPACE_BEGIN
 GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)

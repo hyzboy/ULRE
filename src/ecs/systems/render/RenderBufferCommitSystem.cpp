@@ -1,7 +1,7 @@
 ﻿#include<hgl/ecs/systems/render/RenderBufferCommitSystem.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/graph/VKBufferCommitQueue.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/vk/VKBufferCommitQueue.h>
+#include<hgl/vk/VKDevice.h>
 
 namespace hgl::ecs
 {

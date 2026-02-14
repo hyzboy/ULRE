@@ -3,11 +3,11 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
-#include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VKDescriptorBindingManage.h>
-#include<hgl/graph/StructuredBufferAccessor.h>
-#include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDescriptorBindingManage.h>
+#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/gtx/quaternion.hpp>

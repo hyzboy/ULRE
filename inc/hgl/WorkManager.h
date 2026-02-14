@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/WorkObject.h>
-#include<hgl/graph/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 
 namespace hgl
 {

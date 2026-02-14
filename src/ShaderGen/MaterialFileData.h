@@ -2,11 +2,11 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/StringList.h>
 #include<hgl/type/AccumMemoryManager.h>
-#include<hgl/graph/VK.h>
-#include<hgl/graph/VKVertexInputAttribute.h>
-#include<hgl/graph/VKSamplerType.h>
-#include<hgl/graph/VKPrimitiveType.h>
-#include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/vk/VK.h>
+#include<hgl/vk/VKVertexInputAttribute.h>
+#include<hgl/vk/VKSamplerType.h>
+#include<hgl/vk/VKPrimitiveType.h>
+#include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 
 namespace material_file

@@ -10,10 +10,10 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKRenderAssign.h>
-#include<hgl/graph/VKIndirectCommandBuffer.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKRenderAssign.h>
+#include<hgl/vk/VKIndirectCommandBuffer.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/ecs/support/ECSMaterialInstanceAssignmentBuffer.h>
 #include<algorithm>
@@ -318,7 +318,7 @@ namespace hgl::ecs
         // Set system type and properties
         SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch);
-        
+
         // Declare dependencies
         AddDependency<TransformSystem>();            // Needs transform indices
         AddDependency<CameraSystem>();               // Needs camera for frustum culling

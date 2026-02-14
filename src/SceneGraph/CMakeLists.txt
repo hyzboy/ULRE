@@ -1,53 +1,19 @@
 ﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
-SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/BitmapData.h
-                    ${SG_INCLUDE_PATH}/ImageRegion.h
-                    ${SG_INCLUDE_PATH}/TransformFaceToCamera.h
-                    ${SG_INCLUDE_PATH}/VertexAttrib.h
-                    ${SG_INCLUDE_PATH}/ViewportInfo.h
-                    ${SG_INCLUDE_PATH}/Mesh.h)
+SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/data/BitmapData.h
+                    ${SG_INCLUDE_PATH}/data/ImageRegion.h
+                    ${SG_INCLUDE_PATH}/camera/TransformFaceToCamera.h
+                    ${SG_INCLUDE_PATH}/camera/ViewportInfo.h
+                    ${SG_INCLUDE_PATH}/mesh/Mesh.h)
 
-SET(CM_SG_VULKAN_HEADER     ${SG_INCLUDE_PATH}/VKFormat.h
-                            ${SG_INCLUDE_PATH}/VKString.h
-                            ${SG_INCLUDE_PATH}/VKInterpolation.h
-                            ${SG_INCLUDE_PATH}/VKDescriptorSetType.h
-                            ${SG_INCLUDE_PATH}/VKShaderDescriptor.h
-                            ${SG_INCLUDE_PATH}/VKShaderDescriptorSet.h
-                            ${SG_INCLUDE_PATH}/VKVertexInputAttribute.h
-                            ${SG_INCLUDE_PATH}/VKImageCreateInfo.h
-                            ${SG_INCLUDE_PATH}/VKNamespace.h
-                            ${SG_INCLUDE_PATH}/VKPrimitiveType.h
-                            ${SG_INCLUDE_PATH}/VKRenderbufferInfo.h
-                            ${SG_INCLUDE_PATH}/VKStruct.h
-                            ${SG_INCLUDE_PATH}/VKVertexInputConfig.h
-                            ${SG_INCLUDE_PATH}/VKVertexInput.h
-                            ${SG_INCLUDE_PATH}/VKVertexInputFormat.h
-                            ${SG_INCLUDE_PATH}/VKVertexInputLayout.h
-                            ${SG_INCLUDE_PATH}/VKVertexInputLayoutHash.h
-                            ${SG_INCLUDE_PATH}/VKSamplerType.h
-                            ${SG_INCLUDE_PATH}/VKImageType.h
-)
-
-SET(CM_SG_SOURCE    VertexAttrib.cpp)
-
-SET(CM_SG_VULKAN_SOURCE Vulkan/VKFormat.cpp
-                        Vulkan/VKString.cpp
-                        Vulkan/VKPrimitiveType.cpp
-                        Vulkan/VKShaderStage.cpp
-                        Vulkan/VKShaderDescriptorSet.cpp
-                        Vulkan/VKVertexInput.cpp
-                        Vulkan/VKVertexInputLayout.cpp
-                        Vulkan/VKVertexInputLayoutHash.cpp)
-
-source_group("SceneGraph" FILES ${CM_SG_HEADER} ${CM_SG_SOURCE})
-source_group("SceneGraph\\Vulkan" FILES ${CM_SG_VULKAN_HEADER} ${CM_SG_VULKAN_SOURCE})
+source_group("SceneGraph" FILES ${CM_SG_HEADER})
 
 # ============================================================================
 # 1. Core Framework - 核心框架
 # ============================================================================
 
-SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
-                            RenderFramework.cpp)
+SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/render/RenderFramework.h
+                            render/RenderFramework.cpp)
 
 SOURCE_GROUP("1.Core\\Framework" FILES ${GRAPH_FRAMEWORK_FILES})
 
@@ -81,8 +47,8 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 # 2. Scene Management - 场景管理系统
 # ============================================================================
 
-SET(SCENE_ENVIRONMENT_FILES ${SG_INCLUDE_PATH}/SkyInfo.h
-                            SkyInfo.cpp)
+SET(SCENE_ENVIRONMENT_FILES ${SG_INCLUDE_PATH}/env/SkyInfo.h
+                            env/SkyInfo.cpp)
 
 SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 
@@ -100,11 +66,10 @@ SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 # 4. Rendering System - 渲染系统
 # ============================================================================
 
-SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/SceneRenderer.h
-                            ${SG_INCLUDE_PATH}/RenderStagePipeline.h
-                            ${SG_INCLUDE_PATH}/RenderStages.h
-                            ${SG_INCLUDE_PATH}/SceneCaptureStage.h
-                            ${SG_INCLUDE_PATH}/VKRenderAssign.h
+SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/SceneRenderer.h
+                            ${SG_INCLUDE_PATH}/render/RenderStagePipeline.h
+                            ${SG_INCLUDE_PATH}/render/RenderStages.h
+                            ${SG_INCLUDE_PATH}/render/SceneCaptureStage.h
                             render/SceneRenderer.cpp
                             render/RenderStagePipeline.cpp
                             render/RenderStages.cpp
@@ -121,8 +86,8 @@ SET(RENDERING_LINE_FILES    ${SG_INCLUDE_PATH}/geo/line/SharedLineBackup.h
 
 SOURCE_GROUP("4.Rendering\\Line" FILES ${RENDERING_LINE_FILES})
 
-SET(RENDERING_LIGHTING_FILES ${SG_INCLUDE_PATH}/Light.h
-                             ${SG_INCLUDE_PATH}/ShadowPolicy.h)
+SET(RENDERING_LIGHTING_FILES ${SG_INCLUDE_PATH}/render/lighting/Light.h
+                             ${SG_INCLUDE_PATH}/render/lighting/ShadowPolicy.h)
 
 SOURCE_GROUP("4.Rendering\\Lighting" FILES ${RENDERING_LIGHTING_FILES})
 
@@ -130,12 +95,12 @@ SOURCE_GROUP("4.Rendering\\Lighting" FILES ${RENDERING_LIGHTING_FILES})
 # 5. Geometry & Mesh System - 几何体与网格系统
 # ============================================================================
 
-SET(GEOMETRY_CORE_FILES ${SG_INCLUDE_PATH}/VKGeometry.h
-                        Vulkan/VKGeometry.cpp
-                        Vulkan/VKGeometryData.cpp
-                        Vulkan/VKGeometryData.h
-                        ${SG_INCLUDE_PATH}/GeometryCreater.h
-                        GeometryCreater.cpp)
+SET(GEOMETRY_CORE_FILES ${SG_INCLUDE_PATH}/geo/VKGeometry.h
+                        ${SG_INCLUDE_PATH}/geo/VKGeometryData.h
+                        VKGeometry.cpp
+                        VKGeometryData.cpp
+                        ${SG_INCLUDE_PATH}/geo/GeometryCreater.h
+                        geo/GeometryCreater.cpp)
 
 SOURCE_GROUP("5.Geometry\\Core" FILES ${GEOMETRY_CORE_FILES})
 
@@ -148,27 +113,21 @@ SET(GEOMETRY_MESH_FILES ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
 
 SOURCE_GROUP("5.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
 
-SET(GEOMETRY_VERTEX_DATA_FILES  ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
-                                ${SG_INCLUDE_PATH}/VertexDataManager.h
-                                VertexDataManager.cpp)
-
-SOURCE_GROUP("5.Geometry\\VertexData" FILES ${GEOMETRY_VERTEX_DATA_FILES})
-
 # ============================================================================
 # 6. Texture System - 纹理系统
 # ============================================================================
 
-SET(TEXTURE_LOADER_FILES    ${SG_INCLUDE_PATH}/TextureLoader.h
-                            ${SG_INCLUDE_PATH}/Bitmap2DLoader.h
-                            TextureLoader.cpp
-                            Bitmap2DLoader.cpp)
+SET(TEXTURE_LOADER_FILES    ${SG_INCLUDE_PATH}/texture/TextureLoader.h
+                            ${SG_INCLUDE_PATH}/texture/Bitmap2DLoader.h
+                            texture/TextureLoader.cpp
+                            texture/Bitmap2DLoader.cpp)
 
 SOURCE_GROUP("6.Texture\\Loader" FILES ${TEXTURE_LOADER_FILES})
 
-SET(TEXTURE_TILE_FILES  ${SG_INCLUDE_PATH}/TileData.h
-                        TileData.cpp
-                        Vulkan/VKTileData.cpp
-                        Vulkan/VKTileFont.cpp)
+SET(TEXTURE_TILE_FILES  ${SG_INCLUDE_PATH}/tile/TileData.h
+                        tile/TileData.cpp
+                        VKTileData.cpp
+                        VKTileFont.cpp)
 
 SOURCE_GROUP("6.Texture\\Tile" FILES ${TEXTURE_TILE_FILES})
 
@@ -231,271 +190,53 @@ SET(FONT_ALL_FILES  ${FONT_CORE_FILES}
                     ${FONT_RENDERING_FILES})
 
 # ============================================================================
-# 9. Vulkan Backend - Vulkan后端实现
+# 8. Vulkan - 高层渲染逻辑（几何体、材质、纹理加载等）
 # ============================================================================
 
-# --- 9.1 Device & Instance ---
-SET(VK_DEVICE_INSTANCE_FILES    ${SG_INCLUDE_PATH}/VKInstance.h
-                                Vulkan/VKInstance.cpp)
+# --- 8.1 Geometry Management ---
+SET(VK_GEOMETRY_FILES   ${SG_INCLUDE_PATH}/geo/VKGeometry.h
+                        ${SG_INCLUDE_PATH}/geo/VKGeometryData.h
+                        VKGeometry.cpp
+                        VKGeometryData.cpp)
 
-SOURCE_GROUP("9.Vulkan\\Device\\Instance" FILES ${VK_DEVICE_INSTANCE_FILES})
+SOURCE_GROUP("8.Vulkan\\Geometry" FILES ${VK_GEOMETRY_FILES})
 
-SET(VK_DEVICE_PHYSICAL_FILES    ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
-                                ${SG_INCLUDE_PATH}/VKSurface.h
-                                Vulkan/VKPhysicalDevice.cpp
-                                Vulkan/VKProperties.cpp
-                                Vulkan/DebugOutProperties.h
-                                Vulkan/Debug/VKPhysicalDeviceCapsOutput.cpp
-                                Vulkan/VKSurface.cpp)
+# --- 8.2 Material System ---
+SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterial.h
+                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialParameters.h
+                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialInstance.h
+                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialDescriptorManager.h
+                                    VKMaterial.cpp
+                                    VKMaterialParameters.cpp
+                                    VKMaterialInstance.cpp
+                                    VKMaterialDescriptorManager.cpp)
 
-SOURCE_GROUP("9.Vulkan\\Device\\PhysicalDevice" FILES ${VK_DEVICE_PHYSICAL_FILES})
+SOURCE_GROUP("8.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
 
-SET(VK_DEVICE_LOGICAL_FILES ${SG_INCLUDE_PATH}/VKDevice.h
-                            ${SG_INCLUDE_PATH}/VKDeviceAttribute.h
-                            ${SG_INCLUDE_PATH}/VKDeviceCreater.h
-                            Vulkan/VKDeviceAttribute.cpp
-                            Vulkan/VKDeviceCreater.cpp
-                            Vulkan/VKDevice.cpp)
+# --- 8.3 Render Context ---
+SET(VK_RENDER_CONTEXT_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKRenderContext.h
+                                VKRenderContext.cpp)
 
-SOURCE_GROUP("9.Vulkan\\Device\\Logical" FILES ${VK_DEVICE_LOGICAL_FILES})
+SOURCE_GROUP("8.Vulkan\\RenderContext" FILES ${VK_RENDER_CONTEXT_FILES})
 
-SET(VK_DEVICE_OPERATIONS_FILES  Vulkan/VKDeviceMemory.cpp
-                                Vulkan/VKDeviceBuffer.cpp
-                                Vulkan/VKBufferAccessBase.cpp
-                                Vulkan/VKDeviceStagedBuffer.cpp
-                                Vulkan/VKDeviceImage.cpp
-                                Vulkan/VKDeviceSampler.cpp
-                                Vulkan/VKDeviceMaterial.cpp
-                                Vulkan/VKDeviceFramebuffer.cpp)
+# --- 8.4 Texture Loader ---
+SET(VK_TEXTURE_LOADER_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
+                                ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureType.h
+                                Texture/VKTextureLoader.h
+                                Texture/VKTexture2DLoader.cpp
+                                Texture/VKTexture2DArrayLoader.cpp
+                                Texture/VKTextureCubeLoader.cpp)
 
-SOURCE_GROUP("9.Vulkan\\Device\\Operations" FILES ${VK_DEVICE_OPERATIONS_FILES})
-
-SET(VK_DEVICE_DEBUG_FILES   ${SG_INCLUDE_PATH}/VKDebugOut.h
-                            ${SG_INCLUDE_PATH}/VKDebugUtils.h
-                            Vulkan/Debug/VKDebugOut.cpp
-                            Vulkan/Debug/VKDebugUtils.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Device\\Debug" FILES ${VK_DEVICE_DEBUG_FILES})
-
-IF(WIN32)
-    OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
-
-    IF(FORCE_DISCETE_GPU)
-        SET(VULKAN_RENDER_DEVICE_SOURCE ForceDiscreteGPU.c)
-    ENDIF()
-
-    SET(VK_DEVICE_PLATFORM_FILES   Vulkan/Platform/WinVulkan.cpp)
-ENDIF(WIN32)
-
-IF(UNIX)
-
-    IF(ANDROID)
-        SET(VK_DEVICE_PLATFORM_FILES   Vulkan/platform/AndroidVulkan.cpp)
-    ELSE()
-        IF(APPLE)
-            if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_OSX_SYSROOT MATCHES ".*iPhone.*")
-                message(STATUS "Targeting iOS")
-                set(VK_DEVICE_PLATFORM_FILES Vulkan/platform/iOSVulkan.cpp)
-            elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_OSX_SYSROOT MATCHES ".*MacOSX.*")
-                message(STATUS "Targeting macOS")
-                set(VK_DEVICE_PLATFORM_FILES Vulkan/platform/MacVulkan.cpp)
-            else()
-                message(FATAL_ERROR "Unknown Apple platform")
-            endif()
-        ELSE()
-            find_package(PkgConfig REQUIRED)
-            pkg_check_modules(WAYLAND_CLIENT wayland-client)
-            if(WAYLAND_CLIENT_FOUND)
-                message(STATUS "Targeting Wayland")
-                set(VK_DEVICE_PLATFORM_FILES Vulkan/platform/WaylandVulkan.cpp)
-            else()
-                message(STATUS "Targeting XCB")
-                set(VK_DEVICE_PLATFORM_FILES Vulkan/platform/XCBVulkan.cpp)
-            endif()
-        ENDIF()
-    ENDIF()
-
-ENDIF(UNIX)
-
-SOURCE_GROUP("9.Vulkan\\Device\\Platform" FILES ${VK_DEVICE_PLATFORM_FILES})
-
-# --- 9.2 Memory Management ---
-SET(VK_MEMORY_FILES ${SG_INCLUDE_PATH}/VKMemory.h
-                    ${SG_INCLUDE_PATH}/VKMemoryAllocator.h
-                    ${SG_INCLUDE_PATH}/VKBuffer.h
-                    ${SG_INCLUDE_PATH}/VKBufferAccessBase.h
-                    ${SG_INCLUDE_PATH}/VKIndexBuffer.h
-                    ${SG_INCLUDE_PATH}/VKArrayBuffer.h
-                    ${SG_INCLUDE_PATH}/VKBufferMap.h
-                    ${SG_INCLUDE_PATH}/VKBufferCommitQueue.h
-                    ${SG_INCLUDE_PATH}/VKBufferUpdateQueue.h
-                    ${SG_INCLUDE_PATH}/VKStagedBuffer.h
-                    ${SG_INCLUDE_PATH}/BufferPolicy.h
-                    ${SG_INCLUDE_PATH}/BufferPolicyImpl.h
-                    Vulkan/VKMemory.cpp
-                    Vulkan/VKMemoryAllocator.cpp
-                    Vulkan/VKBuffer.cpp
-                    Vulkan/VKArrayBuffer.cpp
-                    Vulkan/VKBufferCommitQueue.cpp
-                    Vulkan/VKBufferUpdateQueue.cpp
-                    Vulkan/VKStagedBuffer.cpp
-                    Vulkan/BufferPolicyImpl.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Memory" FILES ${VK_MEMORY_FILES})
-
-# --- 9.3 Pipeline ---
-SET(PIPELINE_HEADER_PATH   ${SG_INCLUDE_PATH}/pipeline)
-SET(PIPELINE_SOURCE_PATH   Vulkan/pipeline)
-
-SET(VK_PIPELINE_FILES   ${PIPELINE_HEADER_PATH}/VKPipeline.h
-                        ${PIPELINE_HEADER_PATH}/VKPipelineData.h
-                        ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
-                        ${PIPELINE_HEADER_PATH}/VKInlinePipeline.h
-                        ${SG_INCLUDE_PATH}/VKComputePipeline.h
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineData.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.cpp
-                        ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.h
-                        Vulkan/VKComputePipeline.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Pipeline" FILES ${VK_PIPELINE_FILES})
-
-# --- 9.4 Descriptor Sets ---
-SET(VK_DESCRIPTOR_SETS_FILES    ${SG_INCLUDE_PATH}/VKDescriptorSet.h
-                                Vulkan/VKDescriptorSet.cpp)
-
-SOURCE_GROUP("9.Vulkan\\DescriptorSets" FILES ${VK_DESCRIPTOR_SETS_FILES})
-
-# --- 9.5 Shader ---
-SET(VK_SHADER_FILES ${SG_INCLUDE_PATH}/VKShaderModule.h
-                    ${SG_INCLUDE_PATH}/VKShaderModuleMap.h
-                    Vulkan/VKShaderModuleMap.cpp
-                    Vulkan/VKShaderModule.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Shader" FILES ${VK_SHADER_FILES})
-
-# --- 9.6 Texture ---
-SET(VK_TEXTURE_CORE_FILES   ${SG_INCLUDE_PATH}/VKImageView.h
-                            ${SG_INCLUDE_PATH}/VKTexture.h
-                            ${SG_INCLUDE_PATH}/VKSampler.h
-                            Vulkan/VKSampler.cpp
-                            Vulkan/VKImageView.cpp
-                            Vulkan/VKTexture.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Texture\\Core" FILES ${VK_TEXTURE_CORE_FILES})
-
-SET(VK_TEXTURE_DEVICE_FILES Vulkan/Texture/BufferImageCopy2D.h
-                            Vulkan/Texture/GenMipmaps.cpp
-                            Vulkan/Texture/VKDeviceTexture.cpp
-                            Vulkan/Texture/VKDeviceTexture2D.cpp
-                            Vulkan/Texture/VKDeviceTexture2DArray.cpp
-                            Vulkan/Texture/VKDeviceTextureCube.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Texture\\Device" FILES ${VK_TEXTURE_DEVICE_FILES})
-
-SET(VK_TEXTURE_LOADER_FILES ${SG_INCLUDE_PATH}/VKTextureCreateInfo.h
-                            Vulkan/Texture/VKTextureLoader.h
-                            Vulkan/Texture/VKTexture2DLoader.cpp
-                            Vulkan/Texture/VKTexture2DArrayLoader.cpp
-                            Vulkan/Texture/VKTextureCubeLoader.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Texture\\Loader" FILES ${VK_TEXTURE_LOADER_FILES})
-
-# --- 9.7 Material ---
-SET(VK_MATERIAL_CORE_FILES  ${SG_INCLUDE_PATH}/VKMaterial.h
-                            ${SG_INCLUDE_PATH}/VKMaterialParameters.h
-                            ${SG_INCLUDE_PATH}/VKMaterialInstance.h
-                            ${SG_INCLUDE_PATH}/VKDescriptorBindingManage.h
-                            ${SG_INCLUDE_PATH}/VKDynamicBufferAccess.h
-                            Vulkan/VKDescriptorBindingManage.cpp
-                            Vulkan/VKMaterial.cpp
-                            Vulkan/VKMaterialParameters.cpp
-                            Vulkan/VKMaterialInstance.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Material\\Core" FILES ${VK_MATERIAL_CORE_FILES})
-
-SET(VK_MATERIAL_MANAGER_FILES   ${SG_INCLUDE_PATH}/VKMaterialDescriptorManager.h
-                                Vulkan/VKMaterialDescriptorManager.cpp)
-
-SOURCE_GROUP("9.Vulkan\\Material\\Manager" FILES ${VK_MATERIAL_MANAGER_FILES})
-
-# --- 9.8 Render Pass & Target ---
-SET(VK_RENDER_PASS_FILES    ${SG_INCLUDE_PATH}/VKFramebuffer.h
-                            ${SG_INCLUDE_PATH}/VKRenderPass.h
-                            ${SG_INCLUDE_PATH}/VKSwapchain.h
-                            ${SG_INCLUDE_PATH}/VKSemaphore.h
-                            ${SG_INCLUDE_PATH}/VKFence.h
-                            Vulkan/VKQueue.cpp
-                            Vulkan/VKSemaphore.cpp
-                            Vulkan/VKFence.cpp
-                            Vulkan/VKFramebuffer.cpp
-                            Vulkan/VKRenderPass.cpp
-                            Vulkan/VKSwapchain.cpp)
-
-SOURCE_GROUP("9.Vulkan\\RenderPass" FILES ${VK_RENDER_PASS_FILES})
-
-SET(VK_RENDER_TARGET_FILES  ${SG_INCLUDE_PATH}/VKRenderTarget.h
-                            ${SG_INCLUDE_PATH}/VKRenderTargetData.h
-                            ${SG_INCLUDE_PATH}/VKRenderTargetSingle.h
-                            ${SG_INCLUDE_PATH}/VKRenderTargetMultiFrame.h
-                            ${SG_INCLUDE_PATH}/VKRenderTargetSwapchain.h
-                            Vulkan/VKRenderTarget.cpp
-                            Vulkan/VKRenderTargetData.cpp
-                            Vulkan/VKSwapchainRenderTarget.cpp)
-
-SOURCE_GROUP("9.Vulkan\\RenderTarget" FILES ${VK_RENDER_TARGET_FILES})
-
-SET(VK_RENDER_CONTEXT_FILES ${SG_INCLUDE_PATH}/VKRenderContext.h
-                            ${SG_INCLUDE_PATH}/VKSubpass.h
-                            Vulkan/VKSubpass.cpp
-                            Vulkan/VKRenderContext.cpp)
-
-SOURCE_GROUP("9.Vulkan\\RenderContext" FILES ${VK_RENDER_CONTEXT_FILES})
-
-# --- 9.9 Command Buffer ---
-SET(VK_COMMAND_BUFFER_FILES ${SG_INCLUDE_PATH}/VKCommandBuffer.h
-                            ${SG_INCLUDE_PATH}/VKIndirectCommandBuffer.h
-                            Vulkan/VKIndirectCommandBuffer.cpp
-                            Vulkan/VKCommandBuffer.cpp
-                            Vulkan/VKCommandBufferRender.cpp)
-
-SOURCE_GROUP("9.Vulkan\\CommandBuffer" FILES ${VK_COMMAND_BUFFER_FILES})
+SOURCE_GROUP("8.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
 
 # ============================================================================
 # Combine all files
 # ============================================================================
 
-SET(SCENE_GRAPH_FILES   ${SCENE_CORE_FILES}
-                        ${SCENE_ENVIRONMENT_FILES}
+SET(SCENE_GRAPH_FILES   ${SCENE_ENVIRONMENT_FILES}
                         ${RENDERING_CORE_FILES}
                         ${RENDERING_LINE_FILES}
                         ${RENDERING_LIGHTING_FILES})
-
-SET(VULKAN_ALL_FILES    ${VK_MATERIAL_MANAGER_FILES}
-                        ${VK_DEVICE_INSTANCE_FILES}
-                        ${VK_DEVICE_DEBUG_FILES}
-                        ${VK_MEMORY_FILES}
-                        ${VK_DEVICE_OPERATIONS_FILES}
-                        ${VK_DEVICE_LOGICAL_FILES}
-                        ${VK_TEXTURE_DEVICE_FILES}
-                        ${VK_TEXTURE_LOADER_FILES}
-                        ${VK_DEVICE_PHYSICAL_FILES}
-                        ${VK_DESCRIPTOR_SETS_FILES}
-                        ${VK_SHADER_FILES}
-                        ${VK_TEXTURE_CORE_FILES}
-                        ${VK_PIPELINE_FILES}
-                        ${VK_MATERIAL_CORE_FILES}
-                        ${VK_RENDER_PASS_FILES}
-                        ${VK_RENDER_TARGET_FILES}
-                        ${VK_COMMAND_BUFFER_FILES}
-                        ${GEOMETRY_MESH_FILES}
-                        ${VULKAN_RENDER_DEVICE_SOURCE}
-                        ${GLTF_SOURCE})
 
 # ============================================================================
 # Build Library
@@ -522,13 +263,15 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
 
                                         ${FONT_ALL_FILES}
 
-                                        ${VULKAN_ALL_FILES}
-                                        ${VK_DEVICE_PLATFORM_FILES}
+                                        ${GEOMETRY_MESH_FILES}
+
+                                        ${VK_GEOMETRY_FILES}
+                                        ${VK_SCENEGRAPH_MATERIAL_FILES}
+                                        ${VK_RENDER_CONTEXT_FILES}
+                                        ${VK_TEXTURE_LOADER_FILES}
 
                                         ${CM_SG_HEADER}
                                         ${CM_SG_SOURCE}
                                         ${CM_SG_GEO_FILES}
                                         ${CM_CAMERA_SOURCE}
-                                        ${CM_SG_VULKAN_HEADER}
-                                        ${CM_SG_VULKAN_SOURCE}
 )

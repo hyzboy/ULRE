@@ -1,14 +1,14 @@
 ﻿#pragma once
 
 #include<hgl/type/object/TickObject.h>
-#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
-#include<hgl/graph/SceneRenderer.h>
+#include<hgl/graph/render/SceneRenderer.h>
 #include<hgl/time/Time.h>
 //#include<iostream>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/mesh/Primitive.h>
-#include <hgl/graph/GeometryCreater.h>
+#include <hgl/graph/geo/GeometryCreater.h>
 
 namespace hgl
 {

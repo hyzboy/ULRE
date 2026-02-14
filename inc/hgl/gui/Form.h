@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GUI_FORM_INCLUDE
 #define HGL_GUI_FORM_INCLUDE
 
-#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/gui/Widget.h>
 namespace hgl
 {

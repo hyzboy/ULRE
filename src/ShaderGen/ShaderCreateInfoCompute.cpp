@@ -15,7 +15,7 @@ namespace hgl::graph
         layout_str += ", local_size_z = ";
         layout_str += AnsiString::numberOf(z);
         layout_str += ") in;\n";
-        
+
         // 添加到shader的开头
         if(final_shader.IsEmpty())
             final_shader = layout_str;

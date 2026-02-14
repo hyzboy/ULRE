@@ -9,9 +9,9 @@
 // 5. CameraSystem配置为ViewModel控制模式
 
 #include<hgl/WorkManager.h>
-#include<hgl/graph/VertexDataManager.h>
+#include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<hgl/math/geometry/AABB.h>
@@ -47,11 +47,11 @@ constexpr const COLOR TestColor[]=
     COLOR::SkyBlue,
     COLOR::GrassGreen,
     COLOR::BloodRed,
-    
+
     COLOR::Lavender,
     COLOR::Mint,
     COLOR::Coral,
-    
+
     COLOR::DarkOrange,
     COLOR::DarkTurquoise,
     COLOR::DarkViolet,

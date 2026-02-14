@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<hgl/graph/mesh/Primitive.h>
 
 namespace hgl

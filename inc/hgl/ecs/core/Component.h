@@ -55,8 +55,8 @@ namespace hgl
             void ClearAllChanges() { change_mask = 0; }
 
             /// Set the owner entity by ID
-            void SetOwner(EntityID id, ECSContext* context = nullptr) 
-            { 
+            void SetOwner(EntityID id, ECSContext* context = nullptr)
+            {
                 owner_id = id;
                 owner_context = context;
             }

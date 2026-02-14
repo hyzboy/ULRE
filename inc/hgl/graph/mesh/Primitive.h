@@ -1,12 +1,12 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKGeometry.h>
-#include<hgl/graph/pipeline/VKPipeline.h>
-#include<hgl/graph/VKDescriptorSet.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialParameters.h>
-#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VertexAttrib.h>
+#include<hgl/graph/geo/VKGeometry.h>
+#include<hgl/vk/pipeline/VKPipeline.h>
+#include<hgl/vk/VKDescriptorSet.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialParameters.h>
+#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VertexAttrib.h>
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
