@@ -3,7 +3,7 @@
 #include<hgl/CoreType.h>
 #include<hgl/vk/VK.h>
 #include<hgl/math/VectorTypes.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
 
 namespace hgl
 {
@@ -154,7 +154,7 @@ enum class GizmoShape:uint
     ENUM_CLASS_RANGE(Square,Torus)
 };
 
-bool InitGizmoResource(RenderFramework *);
+bool InitGizmoResource(IGraphicsContext *);
 void FreeGizmoResource();
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);

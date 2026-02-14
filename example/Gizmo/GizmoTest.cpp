@@ -133,7 +133,15 @@ private:
 
     bool InitGizmo()
     {
-        if(!InitGizmoResource(GetRenderFramework()))
+        auto *ecs = GetECSContext();
+        if(!ecs)
+            return false;
+
+        auto *graphics = ecs->GetGraphicsContext();
+        if(!graphics)
+            return false;
+
+        if(!InitGizmoResource(graphics))
             return(false);
 
         if(!ecs_world)
@@ -155,7 +163,15 @@ private:
         if(!fs)
             return false;
 
-        debug_text_render = CreateTextRender(fs, 256);
+        auto *ecs = GetECSContext();
+        if(!ecs)
+            return false;
+
+        auto *graphics = ecs->GetGraphicsContext();
+        if(!graphics)
+            return false;
+
+        debug_text_render = graphics->CreateTextRender(fs, 256);
         if(!debug_text_render)
             return false;
 

@@ -12,6 +12,11 @@
 
 namespace hgl::graph
 {
+    class IGraphicsContext;
+    class RenderContext;
+    class IRenderTarget;
+    class RenderFramework;
+
     constexpr const size_t MAX_LINE_WIDTH = 16;                 ///< CN: 最大支持线宽 EN: Maximum supported line width
 
     using LineColorPalette=Color4f[256];                        ///< CN: 线颜色调色板(256项) EN: Line color palette (256 entries)
@@ -182,4 +187,8 @@ namespace hgl::graph
          */
         uint32 GetLineCount() const {return total_line_count;}
     };
+
+    LineRenderManager *CreateLineRenderManager(IGraphicsContext *gc, IRenderTarget *rt);
+    LineRenderManager *CreateLineRenderManager(RenderContext *rc, IRenderTarget *rt);
+    LineRenderManager *CreateLineRenderManager(RenderFramework *rf, IRenderTarget *rt);
 }

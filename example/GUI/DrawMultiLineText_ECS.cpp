@@ -31,12 +31,7 @@ protected:
         if(str_list.IsEmpty())
             return(false);
 
-        // Get ECS context from render framework
-        auto* framework = GetRenderFramework();
-        if(!framework)
-            return(false);
-
-        ecs_world = framework->GetECSContext();
+        ecs_world = GetECSContext();
         if(!ecs_world)
             return(false);
 

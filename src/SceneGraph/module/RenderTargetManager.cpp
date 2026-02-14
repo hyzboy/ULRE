@@ -3,6 +3,7 @@
 #include <hgl/graph/GraphTypes.h>
 #include<hgl/graph/render/RenderFramework.h>
 #include <hgl/graph/module/GraphModule.h>
+#include <hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -98,6 +99,143 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,const uin
     if(!rp)return(nullptr);
 
     return CreateRT(fbi,rp,fence_count);
+}
+
+RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+                                                               const FramebufferInfo *fbi, const uint32_t fence_count)
+{
+    if(!gc || !ecs_ctx || !fbi)
+        return(nullptr);
+
+    VulkanDevice *device = gc->GetDevice();
+    TextureManager *tex_manager = gc->GetTextureManager();
+    RenderPassManager *rp_manager = gc->GetRenderPassManager();
+
+    if(!device || !tex_manager || !rp_manager)
+        return(nullptr);
+
+    RenderPass *rp = rp_manager->AcquireRenderPass(fbi);
+    if(!rp)
+        return(nullptr);
+
+    const uint32_t color_count = fbi->GetColorCount();
+    const VkExtent2D extent = fbi->GetExtent();
+    const VkFormat depth_format = fbi->GetDepthFormat();
+
+    AutoDeleteObjectArray<Texture2D> color_texture_list(color_count);
+    AutoDeleteArray<ImageView *> color_iv_list(color_count);
+
+    Texture2D **tp = color_texture_list;
+    ImageView **iv = color_iv_list;
+
+    for(const VkFormat &fmt : fbi->GetColorFormatList())
+    {
+        Texture2D *color_texture = tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt, extent));
+        if(!color_texture)
+            return(nullptr);
+
+        *tp++ = color_texture;
+        *iv++ = color_texture->GetImageView();
+    }
+
+    Texture2D *depth_texture = (depth_format != PF_UNDEFINED) ? tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format, extent)) : nullptr;
+
+    // Create framebuffer (RenderTargetManager is a friend of Framebuffer, so we can instantiate directly here).
+    auto create_vk_framebuffer = [](VkDevice vk_device, RenderPass *render_pass, const VkExtent2D &fb_extent,
+                                    VkImageView *attachments, const uint attachment_count) -> VkFramebuffer
+    {
+        FramebufferCreateInfo fb_info;
+
+        fb_info.renderPass = render_pass->GetVkRenderPass();
+        fb_info.attachmentCount = attachment_count;
+        fb_info.pAttachments = attachments;
+        fb_info.width = fb_extent.width;
+        fb_info.height = fb_extent.height;
+        fb_info.layers = 1;
+
+        VkFramebuffer fb = VK_NULL_HANDLE;
+        if(vkCreateFramebuffer(vk_device, &fb_info, nullptr, &fb) != VK_SUCCESS)
+            return VK_NULL_HANDLE;
+
+        return fb;
+    };
+
+    auto create_fbo = [&](RenderPass *render_pass, ImageView **color_list, const uint color_count, ImageView *depth) -> Framebuffer *
+    {
+        if(!render_pass)
+            return nullptr;
+
+        uint att_count = color_count;
+        if(depth)
+            ++att_count;
+
+        AutoDeleteArray<VkImageView> attachments(att_count);
+        VkImageView *ap = attachments;
+
+        if(color_count)
+        {
+            const ValueArray<VkFormat> &cf_list = render_pass->GetColorFormat();
+            const VkFormat *cf = cf_list.GetData();
+            ImageView **iv_list = color_list;
+
+            for(uint i = 0; i < color_count; ++i)
+            {
+                if(*cf != (*iv_list)->GetFormat())
+                    return nullptr;
+
+                *ap = (*iv_list)->GetImageView();
+                ++ap;
+                ++cf;
+                ++iv_list;
+            }
+        }
+
+        VkExtent2D fb_extent;
+
+        if(depth)
+        {
+            if(render_pass->GetDepthFormat() != depth->GetFormat())
+                return nullptr;
+
+            attachments[color_count] = depth->GetImageView();
+            fb_extent.width = depth->GetExtent().width;
+            fb_extent.height = depth->GetExtent().height;
+        }
+        else
+        {
+            fb_extent.width = color_list[0]->GetExtent().width;
+            fb_extent.height = color_list[0]->GetExtent().height;
+        }
+
+        VkFramebuffer fb = create_vk_framebuffer(device->GetDevice(), render_pass, fb_extent, attachments, att_count);
+        if(!fb)
+            return nullptr;
+
+        return new Framebuffer(device->GetDevice(), fb, fb_extent, render_pass, color_count, depth != nullptr);
+    };
+
+    Framebuffer *fb = create_fbo(rp, color_iv_list, color_count, depth_texture ? depth_texture->GetImageView() : nullptr);
+
+    if(fb)
+    {
+        RenderTargetData *rtd = new RenderTargetData{};
+
+        rtd->fbo = fb;
+        rtd->queue = device->CreateQueue(fence_count, false);
+        rtd->render_complete_semaphore = device->CreateGPUSemaphore();
+        rtd->cmd_buf = device->CreateRenderCommandBuffer("");
+
+        rtd->color_count = color_count;
+        rtd->color_textures = new_copy<Texture2D *>(color_texture_list, color_count);
+        rtd->depth_texture = depth_texture;
+
+        color_texture_list.Discard();
+
+        return new RenderTarget(ecs_ctx, rtd);
+    }
+
+    SAFE_CLEAR(depth_texture);
+    return nullptr;
 }
 
 VK_NAMESPACE_END

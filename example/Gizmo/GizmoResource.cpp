@@ -5,9 +5,11 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKRenderPass.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
@@ -20,7 +22,7 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    static RenderFramework *render_framework=nullptr;
+    static IGraphicsContext *graphics_context=nullptr;
     static MaterialManager *gizmo_mtl_manager=nullptr;
 
     struct GizmoResource
@@ -46,8 +48,7 @@ namespace
         void Create(Geometry *p)
         {
             geometry=p;
-            primitive=render_framework->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
-            primitive=render_framework->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
+            primitive=graphics_context ? graphics_context->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline) : nullptr;
         }
 
         void Clear()
@@ -92,9 +93,12 @@ namespace
         if(!gizmo_mtl_manager)
             return(false);
 
-        VulkanDevice *device=render_framework->GetDevice();
-        VulkanDevAttr *dev_attr=device->GetDevAttr();
-        RenderPass *render_pass=render_framework->GetDefaultRenderPass();
+        VulkanDevice *device=graphics_context->GetDevice();
+        VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
+        RenderPass *render_pass=graphics_context->GetDefaultRenderPass();
+
+        if(!device || !dev_attr || !render_pass)
+            return(false);
 
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
@@ -144,14 +148,17 @@ namespace
 
     bool InitGizmoResource3D()
     {
-        if(!render_framework)
+        if(!graphics_context)
             return(false);
 
-        VulkanDevice *device=render_framework->GetDevice();
-        VulkanDevAttr *dev_attr=device->GetDevAttr();
-        RenderPass *render_pass=render_framework->GetDefaultRenderPass();
+        VulkanDevice *device=graphics_context->GetDevice();
+        VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
+        RenderPass *render_pass=graphics_context->GetDefaultRenderPass();
 
-        gizmo_mtl_manager=render_framework->GetMaterialManager();
+        if(!device || !dev_attr || !render_pass)
+            return(false);
+
+        gizmo_mtl_manager=graphics_context->GetMaterialManager();
 
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
@@ -274,14 +281,16 @@ namespace
     }
 }//namespace
 
-bool InitGizmoResource(RenderFramework *rf)
+bool InitGizmoResource(IGraphicsContext *gc)
 {
-    if(!rf)
+    if(!gc)
         return(false);
 
-    render_framework=rf;
+    graphics_context=gc;
 
-    VulkanDevice *device=render_framework->GetDevice();
+    VulkanDevice *device=graphics_context->GetDevice();
+    if(!device)
+        return(false);
 
     if(!InitGizmoResource3D())
         return(false);
@@ -316,7 +325,7 @@ MaterialInstance *GetGizmoMI3D(const GizmoColor &color)
 
 Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape)
 {
-    if(!render_framework)
+    if(!graphics_context)
         return nullptr;
 
     RANGE_CHECK_RETURN_NULLPTR(shape)
