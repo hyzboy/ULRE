@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<compare>
 
 VK_NAMESPACE_BEGIN

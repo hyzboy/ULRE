@@ -81,7 +81,7 @@ class TestApp:public WorkObject
     Pipeline *gizmo_pipeline = nullptr;
     std::vector<Primitive *> gizmo_primitives;
     GizmoECS *gizmo = nullptr;  // 统一的 Gizmo 世界
-    
+
     bool last_left_down = false;
     bool last_key_w = false;
     bool last_key_e = false;
@@ -311,7 +311,7 @@ public:
                 const bool key_1 = input_system->IsKeyDown(hgl::io::KeyboardButton::_1);
                 const bool key_2 = input_system->IsKeyDown(hgl::io::KeyboardButton::_2);
                 const bool key_3 = input_system->IsKeyDown(hgl::io::KeyboardButton::_3);
-                
+
                 if(key_1 && !last_key_w)
                 {
                     SetGizmoMode(gizmo, GizmoMode::Move);
@@ -327,7 +327,7 @@ public:
                     SetGizmoMode(gizmo, GizmoMode::Scale);
                     std::cout << ">>> Switched to Scale mode <<<" << std::endl;
                 }
-                
+
                 last_key_w = key_1;
                 last_key_e = key_2;
                 last_key_r = key_3;

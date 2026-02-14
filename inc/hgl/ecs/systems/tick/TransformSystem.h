@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKDevice.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TransformComponent.h>

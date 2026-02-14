@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<System.h>
 #include<TransformComponent.h>
@@ -8,12 +8,12 @@ namespace hgl::ecs
 {
     /**
      * @brief 示例系统：演示如何使用EntityQuery缓存机制
-     * 
+     *
      * 该系统演示：
      * 1. CreateQuery<>() 创建一个缓存的实体查询
      * 2. 每次需要遍历实体时，直接从缓存获取已匹配的实体
      * 3. 当实体添加/移除组件时，缓存自动标记为脏，下次重建时只扫描必要的实体
-     * 
+     *
      * 所有需要Transform和BoundingBox的实体会被自动跟踪，无需每帧重新扫描所有实体
      */
     class QueryCacheExampleSystem : public System
@@ -28,7 +28,7 @@ namespace hgl::ecs
             // 第一次调用时会立即扫描所有实体
             // 之后每次添加/移除组件时缓存会自动标记为脏
             query = CreateQuery<TransformComponent, BoundingBoxComponent>();
-            
+
             if (!query)
                 return false;
 
@@ -77,7 +77,7 @@ namespace hgl::ecs
 
     /**
      * @brief 高级示例：多种组件查询
-     * 
+     *
      * 演示单个系统管理多个不同的查询，每个查询缓存不同的组件组合
      */
     class MultiQueryCacheSystem : public System
@@ -121,17 +121,17 @@ namespace hgl::ecs
 
     /**
      * @brief 缓存系统性能优势说明
-     * 
+     *
      * 传统方法（无缓存）：
      * - 每帧都遍历所有实体 O(n)
      * - 对于有1000个实体、只有100个有效的情况，浪费900次检查
-     * 
+     *
      * 使用EntityQuery缓存：
      * - 初始：O(n) 扫描所有实体建立缓存
      * - 后续帧：O(1) 直接使用缓存列表，无需扫描
      * - 添加组件：O(1) 标记脏，下次调用Rebuild时O(m) m为脏实体数
      * - 删除组件：O(1) 标记脏，下次调用Rebuild时O(m) m为脏实体数
-     * 
+     *
      * 对于稳定的实体集合，性能提升为 100-1000倍
      */
 }

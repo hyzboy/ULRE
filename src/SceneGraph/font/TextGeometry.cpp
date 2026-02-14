@@ -1,8 +1,8 @@
 ﻿#include<hgl/graph/font/TextGeometry.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
-#include"../Vulkan/VKGeometryData.h"
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/graph/geo/VKGeometryData.h>
 
 namespace hgl::graph
 {

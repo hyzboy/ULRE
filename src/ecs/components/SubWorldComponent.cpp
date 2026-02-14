@@ -178,7 +178,7 @@ namespace hgl::ecs
         // 1. VisibilityDataStorage::IsInvisible() checks parent chain
         // 2. Parent-child relationships via TransformComponent
         // 3. Shared transform storage across contexts
-        
+
         // Ensure owner entity has a VisibilityComponent if not already present
         auto owner_vis = owner_entity->GetComponent<VisibilityComponent>();
         if (!owner_vis)

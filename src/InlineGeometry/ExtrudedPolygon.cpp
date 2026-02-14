@@ -2,8 +2,8 @@
 
 #include "InlineGeometryCommon.h"
 #include<hgl/graph/geo/Extruded.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/GeometryCreater.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include <vector>
 #include <algorithm>
 #include <cmath>

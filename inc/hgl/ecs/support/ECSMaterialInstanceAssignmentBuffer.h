@@ -6,9 +6,9 @@
  */
 
 #pragma once
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<hgl/ecs/core/RenderItem.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialInstance.h>
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 

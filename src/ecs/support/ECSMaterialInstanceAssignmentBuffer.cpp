@@ -3,11 +3,11 @@
  */
 
 #include<hgl/ecs/support/ECSMaterialInstanceAssignmentBuffer.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKRenderAssign.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
 namespace hgl::ecs

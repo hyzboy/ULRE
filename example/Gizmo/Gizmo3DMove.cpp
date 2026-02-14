@@ -33,7 +33,7 @@
 
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>

@@ -19,7 +19,7 @@
 
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -89,23 +89,23 @@ namespace
     }
 
     // 计算面向相机的旋转四元数
-    glm::quat CalculateFacingRotation(const math::Vector3f &gizmo_pos, 
+    glm::quat CalculateFacingRotation(const math::Vector3f &gizmo_pos,
                                        const math::Matrix4f &view_matrix)
     {
         // 从视图矩阵提取相机朝向
         const math::Vector3f camera_forward = math::Vector3f(view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]);
         const math::Vector3f to_camera = glm::normalize(camera_forward);
-        
+
         // 创建朝向相机的旋转
         const math::Vector3f up = math::Vector3f(0.0f, 1.0f, 0.0f);
         const math::Vector3f right = glm::normalize(glm::cross(up, to_camera));
         const math::Vector3f actual_up = glm::cross(to_camera, right);
-        
+
         glm::mat3 rotation_mat;
         rotation_mat[0] = right;
         rotation_mat[1] = actual_up;
         rotation_mat[2] = to_camera;
-        
+
         return glm::quat_cast(rotation_mat);
     }
 
@@ -332,13 +332,13 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
                 {
                     const math::Vector3f hit_point = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
                     const math::Vector3f cur_dir = glm::normalize(hit_point - gizmo->pick_center);
-                    
+
                     // 计算角度 (使用 atan2)
                     const float cos_angle = glm::dot(gizmo->pick_start_dir, cur_dir);
                     const math::Vector3f cross = glm::cross(gizmo->pick_start_dir, cur_dir);
                     const float sin_angle = glm::dot(cross, gizmo->pick_plane_normal);
                     gizmo->cur_angle = std::atan2(sin_angle, cos_angle);
-                    
+
                     // 应用旋转（这里简化为绕单轴旋转，实际应用中可能需要更复杂的逻辑）
                     // TODO: 根据实际需求实现旋转应用
                 }
@@ -397,7 +397,7 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
             return;
 
         gizmo->pick_axis = gizmo->cur_axis;
-        
+
         // 计算初始方向
         const float denom = glm::dot(gizmo->mouse_ray.direction, gizmo->pick_plane_normal);
         if(std::fabs(denom) > 1e-6)
@@ -409,7 +409,7 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
                 gizmo->pick_start_dir = glm::normalize(hit_point - gizmo->pick_center);
             }
         }
-        
+
         gizmo->cur_angle = 0.0f;
         gizmo->pick_angle = 0.0f;
         gizmo->dragging = true;

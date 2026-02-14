@@ -1,8 +1,8 @@
 ﻿#include <hgl/graph/geo/line/LineWidthBatch.h>
-#include <hgl/graph/VKDevice.h>
-#include <hgl/graph/GeometryCreater.h>
+#include <hgl/vk/VKDevice.h>
+#include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/PrimitiveManager.h>
-#include <hgl/graph/VKMaterial.h>
+#include <hgl/vk/VKMaterial.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -37,7 +37,7 @@ void LineWidthBatch::Clear()
     // 所以这里不需要手动清理，但需要解绑
     position.Bind(nullptr);
     color.Bind(nullptr);
-    
+
     SAFE_CLEAR(primitive);
     SAFE_CLEAR(geometry);
 }

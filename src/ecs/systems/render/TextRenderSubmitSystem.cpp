@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/render/TextRenderSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
-#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/vk/VKCommandBuffer.h>
 
 namespace hgl::ecs
 {

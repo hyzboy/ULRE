@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 #include <hgl/math/Vector.h>
-#include <hgl/graph/VKVertexAttribBuffer.h>
-#include <hgl/graph/VKBuffer.h>
-#include <hgl/graph/VKBufferAccessor.h>
+#include <hgl/vk/VKVertexAttribBuffer.h>
+#include <hgl/vk/VKBuffer.h>
+#include <hgl/vk/VKBufferAccessor.h>
 #include <hgl/graph/geo/line/SharedLineBackup.h>
 
 using namespace hgl;
@@ -30,7 +30,7 @@ class LineWidthBatch
 
     Geometry *  geometry    =nullptr;
     Primitive * primitive   =nullptr;
-    
+
     // 使用统一的BufferAccessor，适用于所有buffer类型
     BufferAccessor3f  position;   // 位置数据访问器 / Position data accessor
     BufferAccessor1u8 color;      // 颜色数据访问器 / Color data accessor

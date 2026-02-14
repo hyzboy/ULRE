@@ -1,7 +1,7 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/graph/VKDeviceAttribute.h>
+#include<hgl/vk/VKDeviceAttribute.h>
 #include"common/MFCommon.h"
 #include"common/MFGetPosition.h"
 #include"ShaderLibrary.h"

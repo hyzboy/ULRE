@@ -50,7 +50,7 @@ namespace hgl::ecs
             graph::TextGeometry* geometry = nullptr;           // Owned by system
             graph::Primitive* primitive = nullptr;             // Owned by PrimitiveManager
             graph::MaterialInstance* material_instance = nullptr; // Owned by MaterialManager
-            
+
             uint32_t last_draw_char_count = 0;
             uint32_t last_string_count = 0;
         };

@@ -5,7 +5,7 @@
 #include<hgl/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/color/Color.h>
 

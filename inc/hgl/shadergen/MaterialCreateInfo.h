@@ -5,12 +5,12 @@
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/graph/RenderOptions.h>
-#include<hgl/graph/RenderTargetOutputConfig.h>
+#include<hgl/graph/render/RenderOptions.h>
+#include<hgl/graph/render/RenderTargetOutputConfig.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
-#include<hgl/graph/VKTextureType.h>
-#include<hgl/graph/VKSamplerType.h>
+#include<hgl/vk/VKTextureType.h>
+#include<hgl/vk/VKSamplerType.h>
 
 namespace hgl::graph
 {

@@ -1,8 +1,8 @@
 ﻿#include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKVertexInputAttribute.h>
-#include<hgl/graph/VKSamplerType.h>
+#include<hgl/vk/VKVertexInputAttribute.h>
+#include<hgl/vk/VKSamplerType.h>
 
 #include<hgl/io/TextInputStream.h>
 #include<hgl/filesystem/FileSystem.h>

@@ -18,17 +18,17 @@ namespace hgl::ecs
 {
     /**
      * SubWorldComponent - Hierarchical ECS worlds
-     * 
+     *
      * Allows embedding a complete ECS world as a component.
      * The sub-world shares the parent's TransformDataStorage for seamless
      * cross-context parent-child relationships.
-     * 
+     *
      * Features:
      * - Multi-level nesting support (House → Room → Furniture)
      * - Transform updates cascade from parent World to SubWorld
      * - Visibility inheritance (parent hidden → children hidden)
      * - Automatic cleanup on destruction
-     * 
+     *
      * Usage:
      *   auto house = mainWorld->CreateEntity("House");
      *   auto sub = house->AddComponent<SubWorldComponent>();
@@ -46,7 +46,7 @@ namespace hgl::ecs
         ~SubWorldComponent() override;
 
     public:
-        
+
         /// Initialize sub-world attached to parent context
         /// Shares the parent's TransformDataStorage for seamless parent-child relationships
         bool Initialize(ECSContext* parent_context);

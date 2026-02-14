@@ -1,8 +1,8 @@
 ﻿#include<iostream>
 #include<iomanip>
-#include<hgl/graph/VK.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKInstance.h>
+#include<hgl/vk/VK.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKInstance.h>
 
 using namespace hgl;
 using namespace hgl::graph;

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/graph/module/GraphModule.h>
-#include <hgl/graph/VKSampler.h>
+#include <hgl/vk/VKSampler.h>
 #include <hgl/type/ObjectManager.h>
 
 VK_NAMESPACE_BEGIN

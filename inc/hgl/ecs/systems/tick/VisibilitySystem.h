@@ -9,7 +9,7 @@ namespace hgl::ecs
 
     /**
      * VisibilitySystem - Manages VisibilityDataStorage for fast rendering queries
-     * 
+     *
      * Initializes all VisibilityComponents with storage reference.
      * Components automatically update storage on visibility changes.
      * RenderPrimitiveCollectSystem queries storage for O(1) visibility checks.
@@ -26,7 +26,7 @@ namespace hgl::ecs
 
         void SetWorld(ECSContext* ctx) { world = ctx; }
         VisibilityDataStorage* GetStorage() const { return visibility_storage; }
-        
+
         void Initialize() override;
         void Update(float deltaTime) override;
         void OnDependenciesReady() override;

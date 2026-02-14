@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKShaderModule.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>

@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/GeometryCreater.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/geometry/GeometryUtils.h>
 #include<hgl/math/VectorOperations.h>
 

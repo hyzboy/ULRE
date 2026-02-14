@@ -9,12 +9,12 @@ namespace hgl
             : componentName(name)
         {
         }
-        
+
         Entity* Component::GetOwner() const
         {
             if (!owner_context || !owner_id.IsValid())
                 return nullptr;
-            
+
             return owner_context->GetEntity(owner_id);
         }
     }//namespace ecs

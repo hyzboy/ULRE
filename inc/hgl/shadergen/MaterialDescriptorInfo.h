@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKShaderDescriptorSet.h>
+#include<hgl/vk/VKShaderDescriptorSet.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/type/UnorderedMap.h>
 

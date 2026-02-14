@@ -19,7 +19,7 @@ namespace hgl::ecs
         // Set system type and properties
         SetSystemType(SystemType::RenderCollect);
         SetExecutionOrder(ExecutionPhase::RenderCollect, ExecutionPriority::First);
-        
+
         // Declare dependencies
         AddDependency<TransformSystem>(); // Needs world transforms
         AddDependency<CameraSystem>();    // Needs camera info
@@ -62,7 +62,7 @@ namespace hgl::ecs
             }
 
             EntityID entity_id = primitiveComp->GetOwnerID();
-            
+
             // Fast O(1) lookup from VisibilityDataStorage
             if (visibility_storage && visibility_storage->IsInvisible(entity_id))
             {

@@ -1,7 +1,7 @@
 ﻿#include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
 
 namespace hgl::ecs

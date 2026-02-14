@@ -189,7 +189,7 @@ namespace hgl
             {
                 EntityID id = entity_manager->CreateEntity();
                 Entity* entity = entity_manager->GetEntity(id);
-                
+
                 if constexpr (std::is_same_v<T, Entity>)
                 {
                     entity->SetContext(this);
@@ -344,8 +344,8 @@ namespace hgl
 
         public:
             /// Get entity count
-            size_t GetEntityCount() const 
-            { 
+            size_t GetEntityCount() const
+            {
                 return entity_manager ? entity_manager->GetEntityCount() : 0;
             }
 
@@ -356,7 +356,7 @@ namespace hgl
             bool IsActive() const { return active; }
 
             /// SubWorld Hierarchical Support ///
-            
+
             /// Attach this context as a child to a parent context (for SubWorld support)
             /// Shares the parent's TransformDataStorage for seamless parent-child relationships
             void AttachToParent(ECSContext* parent);

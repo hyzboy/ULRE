@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/GeometryCreater.h>
-#include<hgl/graph/VKBufferAccessor.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/vk/VKBufferAccessor.h>
 
 namespace hgl::graph::inline_geometry
 {

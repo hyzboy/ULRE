@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Frustum.h>
-#include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 
 namespace hgl::graph
 {

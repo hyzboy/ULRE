@@ -3,10 +3,10 @@
 #include<hgl/math/Vector.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/type/String.h>
-#include<hgl/graph/VKBuffer.h>
-#include<hgl/graph/StructuredBufferAccessor.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
-#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
 #include <hgl/graph/geo/line/LineWidthBatch.h>
 

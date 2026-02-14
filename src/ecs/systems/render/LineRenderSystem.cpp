@@ -1,9 +1,9 @@
 ﻿#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
-#include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/VKRenderTarget.h>
+#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/vk/VKRenderTarget.h>
 
 namespace hgl::graph
 {

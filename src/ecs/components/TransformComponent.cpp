@@ -263,7 +263,7 @@ namespace hgl
 
             MarkDirty(ToChangeMask(TransformChange::Parent) | ToChangeMask(TransformChange::WorldMatrix));
         }
-        
+
         Entity* TransformComponent::GetParent() const
         {
             if (!owner_context || !parent_id.IsValid())
@@ -295,13 +295,13 @@ namespace hgl
                 child_ids.erase(it);
             }
         }
-        
+
         void TransformComponent::GetChildEntities(std::vector<Entity*>& out) const
         {
             out.clear();
             if (!owner_context)
                 return;
-                
+
             for (const EntityID& child_id : child_ids)
             {
                 Entity* entity = owner_context->GetEntity(child_id);

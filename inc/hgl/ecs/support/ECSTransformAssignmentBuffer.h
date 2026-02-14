@@ -6,9 +6,9 @@
  */
 
 #pragma once
-#include<hgl/graph/VK.h>
-#include<hgl/graph/VKMemory.h>
-#include<hgl/graph/DeviceBufferRingWriter.h>
+#include<hgl/vk/VK.h>
+#include<hgl/vk/VKMemory.h>
+#include<hgl/vk/DeviceBufferRingWriter.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<vector>

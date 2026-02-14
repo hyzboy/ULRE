@@ -16,9 +16,9 @@ namespace hgl::graph
     protected:
 
         bool ProcLayout() override;
-        
+
         bool IsEmptyOutput()const override{return true;}  // Compute shader没有传统输出
-        
+
         void AddMaterialInstanceOutput() override{};  // Compute shader不需要材质实例输出
 
     public:

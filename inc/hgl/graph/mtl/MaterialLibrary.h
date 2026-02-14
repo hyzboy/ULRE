@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/type/String.h>
 #include<hgl/type/IDName.h>

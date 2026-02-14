@@ -1,13 +1,13 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VKRenderTargetSingle.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
-#include<hgl/graph/GeometryCreater.h>
-#include<hgl/graph/SceneCaptureStage.h>
-#include<hgl/graph/SceneRenderer.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/render/SceneCaptureStage.h>
+#include<hgl/graph/render/SceneRenderer.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
 

@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VertexAttrib.h>
+#include<hgl/vk/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
 const AnsiString MaterialCreateConfig::ToHashString()

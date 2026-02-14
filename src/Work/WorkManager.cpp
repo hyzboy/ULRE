@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include<hgl/WorkManager.h>
-#include<hgl/graph/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 
 namespace hgl
 {

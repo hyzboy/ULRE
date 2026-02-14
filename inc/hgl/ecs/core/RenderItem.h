@@ -13,7 +13,7 @@ namespace hgl
         class MaterialInstance;
         class Pipeline;
     }
-    
+
     namespace ecs
     {
         class Entity;

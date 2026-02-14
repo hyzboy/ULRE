@@ -9,7 +9,7 @@
 // 5. ECS与渲染系统的集成
 
 #include<hgl/WorkManager.h>
-#include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
 // 引入ECS相关头文件

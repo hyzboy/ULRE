@@ -1,7 +1,7 @@
 ﻿#include<hgl/WorkManager.h>
-#include<hgl/graph/VertexDataManager.h>
+#include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
-#include<hgl/graph/GeometryCreater.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
 

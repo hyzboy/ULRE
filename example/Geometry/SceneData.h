@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include<hgl/type/String.h>
-#include<hgl/graph/VK.h>
+#include<hgl/graph/vk/VK.h>
 #include<hgl/io/MiniPack.h>
 
 VK_NAMESPACE_BEGIN

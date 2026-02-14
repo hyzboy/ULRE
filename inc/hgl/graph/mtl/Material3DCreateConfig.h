@@ -2,7 +2,7 @@
 
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
-#include<hgl/graph/VertexAttrib.h>
+#include<hgl/vk/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
 

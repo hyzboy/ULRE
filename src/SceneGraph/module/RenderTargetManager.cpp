@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/module/RenderTargetManager.h>
-#include<hgl/graph/VKRenderTargetSingle.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/vk/VKRenderTargetSingle.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderPassManager.h>
 

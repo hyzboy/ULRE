@@ -3,10 +3,10 @@
 #include<hgl/type/Str.Comp.h>
 #include<hgl/type/String.h>
 #include<hgl/type/ValueArray.h>
-#include<hgl/graph/VertexAttrib.h>
-#include<hgl/graph/VKInterpolation.h>
-#include<hgl/graph/VKSamplerType.h>
-#include<hgl/graph/VKImageType.h>
+#include<hgl/vk/VertexAttrib.h>
+#include<hgl/vk/VKInterpolation.h>
+#include<hgl/vk/VKSamplerType.h>
+#include<hgl/vk/VKImageType.h>
 
 VK_NAMESPACE_BEGIN
 enum class ShaderVariableBaseType:uint8
@@ -80,10 +80,10 @@ struct ShaderVariableType
 
 public:
 
-    // ✅ 使用默认构造函数，使类型成为 trivial
+    // ? 使用默认构造函数，使类型成为 trivial
     constexpr ShaderVariableType() : svt_code(0) {}
 
-    // ✅ 使用默认拷贝构造和赋值
+    // ? 使用默认拷贝构造和赋值
     constexpr ShaderVariableType(const ShaderVariableType &) = default;
     constexpr ShaderVariableType& operator=(const ShaderVariableType &) = default;
 
@@ -112,7 +112,7 @@ public:
 
 using SVType=ShaderVariableType;
 
-// ✅ 工厂函数命名空间
+// ? 工厂函数命名空间
 namespace SVTypeFactory
 {
     constexpr ShaderVariableType Scalar(VABaseType type, uint32 count = 1)
@@ -164,7 +164,7 @@ namespace SVTypeFactory
     }
 }
 
-// ✅ 使用 inline constexpr 定义常量（C++17 特性）
+// ? 使用 inline constexpr 定义常量（C++17 特性）
 inline constexpr SVType SVT_BOOL   = SVTypeFactory::Scalar(VABaseType::Bool,   1);
 inline constexpr SVType SVT_INT    = SVTypeFactory::Scalar(VABaseType::Int,    1);
 inline constexpr SVType SVT_UINT   = SVTypeFactory::Scalar(VABaseType::UInt,   1);

@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/graph/module/RenderPassManager.h>
 
 VK_NAMESPACE_BEGIN

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/vk/VK.h>
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/Size2.h>

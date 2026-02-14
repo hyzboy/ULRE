@@ -33,7 +33,7 @@
 
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -253,8 +253,8 @@ GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::ECSContext *world,
         }
 
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
-        const math::Vector3f center_scale(GIZMO_CENTER_SPHERE_RADIUS * 2.0f, 
-                                          GIZMO_CENTER_SPHERE_RADIUS * 2.0f, 
+        const math::Vector3f center_scale(GIZMO_CENTER_SPHERE_RADIUS * 2.0f,
+                                          GIZMO_CENTER_SPHERE_RADIUS * 2.0f,
                                           GIZMO_CENTER_SPHERE_RADIUS * 2.0f);
         transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(center_scale));
         transform->SetParent(gizmo->root->GetID());
@@ -363,13 +363,13 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
             gizmo->mouse_ray.ClosestPoint(p_ray, p_ls, p1, p2);
 
             const float cur_dist = glm::dot(p_ls - gizmo->pick_center, axis_vector);
-            
+
             // 计算缩放比例
             if(std::fabs(gizmo->pick_dist) > 1e-6)
             {
                 gizmo->cur_scale = cur_dist / gizmo->pick_dist;
                 gizmo->cur_scale = glm::clamp(gizmo->cur_scale, 0.1f, 10.0f);
-                
+
                 // 应用缩放（这里简化为均匀缩放，实际应用中可能需要更复杂的逻辑）
                 // TODO: 根据实际需求实现缩放应用
             }
@@ -424,7 +424,7 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
             return;
 
         gizmo->pick_axis = gizmo->cur_axis;
-        
+
         const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(gizmo->pick_axis));
         const math::Vector3f axis_endpoint = TransformPosition(l2w, axis_vector * axis_length);
 

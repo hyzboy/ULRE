@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<System.h>
 #include<TransformComponent.h>
@@ -9,7 +9,7 @@ namespace hgl::ecs
 {
     /**
      * @brief 示例1：基础参与 - 所有有Transform和BoundingBox的实体都参与
-     * 
+     *
      * 架构流程：
      * 1. System启动：CreateQuery<TransformComponent, BoundingBoxComponent>()
      * 2. Entity添加组件：
@@ -24,10 +24,10 @@ namespace hgl::ecs
         virtual bool Initialize()
         {
             SetSystemType(SystemType::BoundingBox);
-            
+
             // 创建查询：同时需要Transform和BoundingBox
             aabb_query = CreateQuery<TransformComponent, BoundingBoxComponent>();
-            
+
             return aabb_query != nullptr;
         }
 
@@ -60,11 +60,11 @@ namespace hgl::ecs
 
     /**
      * @brief 示例2：条件参与 - 只有距离摄像机足够近的树才更新骨骼动画
-     * 
+     *
      * 场景：有1000棵树，但场景有10000个实体
      * 问题：全部树都有SkeletonComponent，但大部分树距离摄像机很远，不值得更新动画
      * 解决方案：使用WithPredicate()条件过滤
-     * 
+     *
      * 架构流程：
      * 1. System启动：
      *    query = CreateQuery<SkeletonComponent, TransformComponent>()
@@ -86,16 +86,16 @@ namespace hgl::ecs
         float lod_distance = 100.0f;
 
     public:
-        explicit LODSkeletonAnimationSystem(float distance = 100.0f) 
+        explicit LODSkeletonAnimationSystem(float distance = 100.0f)
             : lod_distance(distance) {}
 
         virtual bool Initialize()
         {
             SetSystemType(SystemType::Animation);
-            
+
             // 条件参与：创建查询并添加距离条件
             skeleton_query = CreateQuery<TransformComponent>();
-            
+
             if (!skeleton_query)
                 return false;
 
@@ -106,7 +106,7 @@ namespace hgl::ecs
 
                 auto* entity_transform = entity->GetComponent<TransformComponent>();
                 auto* camera_transform = camera_entity->GetComponent<TransformComponent>();
-                
+
                 if (!entity_transform || !camera_transform)
                     return false;
 
@@ -146,13 +146,13 @@ namespace hgl::ecs
 
     /**
      * @brief 示例3：主动参与 - AI活跃度管理
-     * 
+     *
      * 场景：有500个NPC，但只有30个在玩家附近活跃
      * 问题：
      *   - 复杂的AI计算（寻路、行为树等）不能简单用距离判断
      *   - 需要游戏逻辑动态决定谁参与AI更新
      * 解决方案：System手动管理参与列表，由AI Manager根据业务逻辑控制
-     * 
+     *
      * 架构流程：
      * 1. System启动：CreateQuery<AIComponent>() 初始为空
      * 2. NPC靠近玩家时：
@@ -181,10 +181,10 @@ namespace hgl::ecs
         virtual bool Initialize()
         {
             SetSystemType(SystemType::Unknown);
-            
+
             // 创建查询：被手动管理的AI实体
             active_query = CreateQuery<TransformComponent>();
-            
+
             return active_query != nullptr;
         }
 
@@ -197,7 +197,7 @@ namespace hgl::ecs
 
             // 手动添加到活跃队列
             AddEntityManually(active_query, npc_id);
-            
+
             active_ai_entities.push_back({npc_id, 0.0f});
         }
 
@@ -206,7 +206,7 @@ namespace hgl::ecs
         {
             // 手动移除
             RemoveEntityManually(active_query, npc_id);
-            
+
             auto it = std::find_if(active_ai_entities.begin(), active_ai_entities.end(),
                 [npc_id](const AIEntity& ai) { return ai.id == npc_id; });
             if (it != active_ai_entities.end())
@@ -234,8 +234,8 @@ namespace hgl::ecs
         }
 
         size_t GetActiveNPCCount() const { return active_ai_entities.size(); }
-        size_t GetTotalNPCCount(ECSContext* context) const 
-        { 
+        size_t GetTotalNPCCount(ECSContext* context) const
+        {
             if (!active_query)
                 return 0;
             return active_query->GetEntityCount();
@@ -247,9 +247,9 @@ namespace hgl::ecs
 
     /**
      * @brief 示例4：混合参与模式
-     * 
+     *
      * 实际应用中常常需要混合使用上述三种模式
-     * 
+     *
      * 场景：渲染系统中
      * - 所有Renderable必须进渲染队列（基础参与）
      * - 但只有在视锥体内的才需要提交批绘制（条件参与）

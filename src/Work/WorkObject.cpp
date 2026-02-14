@@ -1,10 +1,10 @@
 ﻿#include<hgl/WorkObject.h>
-#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/module/SwapchainModule.h>
-#include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/GeometryCreater.h>
-#include<hgl/graph/VKRenderTargetSwapchain.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/time/Time.h>

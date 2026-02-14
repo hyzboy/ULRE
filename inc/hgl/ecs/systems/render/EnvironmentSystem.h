@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/graph/StructuredBufferAccessor.h>
-#include<hgl/graph/SkyInfo.h>
+#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/graph/env/SkyInfo.h>
 
 namespace hgl
 {

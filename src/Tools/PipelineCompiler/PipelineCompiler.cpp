@@ -1,6 +1,6 @@
 ﻿#include<hgl/type/String.h>
-#include<hgl/graph/VKPipelineData.h>
-#include<hgl/graph/VKInlinePipeline.h>
+#include<hgl/graph/pipeline/VKPipelineData.h>
+#include<hgl/graph/pipeline/VKInlinePipeline.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<iostream>
 
