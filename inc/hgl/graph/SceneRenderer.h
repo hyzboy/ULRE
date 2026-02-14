@@ -1,8 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VKBuffer.h>
-#include<hgl/type/UnorderedMap.h>
 #include<hgl/graph/RenderStagePipeline.h>
 #include<hgl/io/event/EventDispatcher.h>
 // ECS forward declaration
@@ -10,16 +8,9 @@ namespace hgl::ecs { class ECSContext; }
 
 namespace hgl::graph
 {
-    enum class RenderPath
-    {
-        Ecs,
-        Scene
-    };
-
     class RenderCmdBuffer;  // forward
     class Pipeline;         // fwd for CreatePipeline
     class Material;         // fwd for CreatePipeline
-    class SceneNode;        // fwd for GetWorldRootNode
     enum class InlinePipeline; // fwd for CreatePipeline
     class RenderFramework;
     class Camera;
@@ -42,7 +33,7 @@ namespace hgl::graph
         IRenderTarget * render_target = nullptr;   ///< 当前渲染目标(便捷缓存)
         ecs::ECSContext * ecs_context = nullptr;
 
-        RenderStagePipeline ecs_pipeline;          ///< ECS 渲染阶段管线(逐步迁移)
+        RenderStagePipeline ecs_pipeline;          ///< ECS 渲染阶段管线
 
     protected:
 
@@ -89,7 +80,6 @@ namespace hgl::graph
         const RenderStagePipeline &GetEcsPipeline()const{ return ecs_pipeline; }
         void EnsureEcsPipeline();
 
-        bool BeginRender();
         bool RenderFrame();
         bool Submit();
 

@@ -311,7 +311,6 @@ class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 
-class SceneNode;
 class RenderCollector;
 
 struct CameraInfo;

@@ -86,6 +86,9 @@ namespace hgl::graph
         if (!ecs_context)
             return;
 
+        if (!render_framework && render_target)
+            render_framework = render_target->GetRenderFramework();
+
         auto render_target_system = ecs_context->GetSystem<ecs::RenderTargetSystem>();
         if (!render_target_system)
             return;

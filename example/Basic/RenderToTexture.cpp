@@ -104,7 +104,6 @@ public:
 
         ecs_world = new ECSContext("OffscreenECSWorld");
         renderer->SetECSContext(ecs_world);
-        renderer->SetCameraControl(nullptr);
 
         auto render_collect_system = ecs_world->RegisterTickSystem<RenderPrimitiveCollectSystem>();
         auto render_batch_system = ecs_world->RegisterTickSystem<RenderPrimitiveBatchSystem>();
@@ -305,7 +304,6 @@ private:
         camera->camera_info = const_cast<graph::CameraInfo *>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
 
-        GetSceneRenderer()->SetCameraControl(nullptr);
         return true;
     }
 
