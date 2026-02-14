@@ -155,7 +155,7 @@ public:
         if(!InitECS())
             return(false);
 
-        // SceneRenderer 已在框架层设置了默认 ECSContext
+        // RenderFramework 在初始化时已设置默认 ECSContext
 
          return(true);
      }
@@ -163,7 +163,7 @@ public:
      void Tick(double delta_time) override
      {
          // 更新ECS世界 - 这会更新所有Entity和Component
-        // 框架层 SceneRenderer::Tick 会调用 ECSContext::Update
+        // 框架层 Tick 会调用 ECSContext::Tick
 
          WorkObject::Tick(delta_time);
      }

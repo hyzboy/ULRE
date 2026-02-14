@@ -99,7 +99,7 @@ namespace hgl
 
         virtual bool Init()=0;
 
-        virtual void OnSceneRendererChange(graph::RenderFramework *rf);
+        virtual void OnRenderFrameworkChange(graph::RenderFramework *rf);
 
         virtual void OnResize(const VkExtent2D &){}
 

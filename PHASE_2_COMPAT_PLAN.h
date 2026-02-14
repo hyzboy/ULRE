@@ -40,7 +40,6 @@ VK_NAMESPACE_BEGIN
 namespace graph
 {
     class RenderPass;
-    class SceneRenderer;
     class IRenderTarget;
 }
 
@@ -83,7 +82,6 @@ public:
     class vk::VulkanDevice* GetDevice() const { return device; }
     VkDevice GetVkDevice() const;
     
-    graph::SceneRenderer* GetDefaultSceneRenderer();
     graph::IRenderTarget* GetRenderTarget() { return render_target; }
 
     // 其他访问器 - 指向 ECSContext 或设备

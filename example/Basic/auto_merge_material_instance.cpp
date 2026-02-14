@@ -244,7 +244,7 @@ public:
 
     void Tick(double delta_time) override
     {
-        // ECS世界的更新由框架层的 SceneRenderer::Tick 自动调用
+        // ECS世界的更新由框架层 Tick 自动调用
 
         WorkObject::Tick(delta_time);
     }

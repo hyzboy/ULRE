@@ -162,7 +162,7 @@ public:
         if(!InitECS())
             return(false);
 
-        // SceneRenderer 已在框架层设置了默认 ECSContext
+        // RenderFramework 已在框架层设置默认 ECSContext
         // RenderCollector会自动收集所有PrimitiveComponent并进行批处理
 
         return(true);
@@ -170,7 +170,7 @@ public:
 
     void Tick(double delta_time) override
     {
-        // ECS世界的更新由框架层的 SceneRenderer::Tick 自动调用
+        // ECS世界的更新由框架层 Tick 自动调用
         // 这里可以添加游戏逻辑更新
 
         WorkObject::Tick(delta_time);

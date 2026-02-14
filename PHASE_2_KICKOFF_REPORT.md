@@ -110,7 +110,7 @@ ECSContext 实现
 **步骤：**
 
 1. 编辑 `inc/hgl/graph/render/RenderFramework.h`
-   - 保留最小 API：GetECSContext(), GetDevice(), GetDefaultSceneRenderer()
+  - 保留最小 API：GetECSContext(), GetDevice(), GetDefaultRenderPass()
    - 移除所有资源创建方法（由 GraphicsContext 处理）
    - 标记已弃用的方法
 
@@ -140,10 +140,8 @@ public:
         return ecs_context->GetGPUDevice(); 
     }
     
-    // 已弃用（会返回 nullptr）
-    SceneRenderer* GetDefaultSceneRenderer() { 
-        return nullptr; // Phase 2: 已移除
-    }
+    // 已弃用（已移除）
+    // SceneRenderer 已从框架中删除
 };
 ```
 

@@ -60,7 +60,7 @@ VkBuffer GetDeviceBuffer() const;
 
 ### 3. BufferUpdateQueue
 
-Located in: `inc/hgl/graph/VKBufferUpdateQueue.h`, `src/SceneGraph/Vulkan/VKBufferUpdateQueue.cpp`
+Located in: `inc/hgl/vk/VKBufferUpdateQueue.h`, `src/Vulkan/VKBufferUpdateQueue.cpp`
 
 Manages a queue of dirty buffers that need GPU synchronization.
 
@@ -71,7 +71,7 @@ Manages a queue of dirty buffers that need GPU synchronization.
 
 **Integration:**
 ```cpp
-// In SceneRenderer::RenderFrame()
+// In RenderSystemCore::BeginFrame()
 BufferUpdateQueue *queue = device->GetBufferUpdateQueue();
 if(queue->HasPendingUpdates())
 {

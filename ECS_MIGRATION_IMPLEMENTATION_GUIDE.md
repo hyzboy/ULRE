@@ -700,13 +700,11 @@ TEST_F(RenderSystemCoreTest, BeginFrameAndEndFrame) {
    ```
 
 2. **删除旧文件**
-   ```bash
-   # 删除旧渲染系统（但先保留头文件接口，替换实现为 stub）
-   rm inc/hgl/graph/render/SceneRenderer.h    # ❌ 完全删除
-   rm src/SceneGraph/render/SceneRenderer.cpp
-   rm inc/hgl/graph/render/RenderFramework.h  # ❌ 完全删除
-   rm src/SceneGraph/render/RenderFramework.cpp
-   ```
+    ```bash
+    # 删除旧渲染系统（SceneRenderer 已移除）
+    rm inc/hgl/graph/render/SceneRenderer.h
+    rm src/SceneGraph/render/SceneRenderer.cpp
+    ```
 
 3. **更新 include 路径**
    
@@ -715,9 +713,9 @@ TEST_F(RenderSystemCoreTest, BeginFrameAndEndFrame) {
    // 旧
    #include <hgl/graph/render/RenderFramework.h>
    
-   // 新
-   #include <hgl/ecs/systems/render/RenderSystemCore.h>
-   #include <hgl/ecs/core/Context.h>
+    // 新
+    #include <hgl/ecs/systems/render/RenderSystemCore.h>
+    #include <hgl/ecs/core/Context.h>
    ```
 
 4. **编译并修复 link 错误**
@@ -735,8 +733,7 @@ TEST_F(RenderSystemCoreTest, BeginFrameAndEndFrame) {
 class WorkObject : public TickObject {
 private:
     hgl::graph::RenderFramework* render_framework;
-    hgl::graph::SceneRenderer* scene_renderer;
-    
+
     // ... 这里有 40+ 个由宏生成的方法
     // FUNC_FROM_RENDER_FRAMEWORK(CreateMaterial)
     // FUNC_FROM_RENDER_FRAMEWORK(CreateTexture)

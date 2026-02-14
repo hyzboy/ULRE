@@ -79,7 +79,7 @@ cmake --build . --config Debug 2>&1 | grep -E "error|warning" | head -20
 // 仅包含：
 // - GetECSContext() - 返回实际的 ECSContext
 // - GetDevice() - 返回 VulkanDevice*  
-// - GetDefaultSceneRenderer() - 返回 nullptr（已弃用）
+// - GetDefaultRenderPass() - 返回当前 swapchain 的 RenderPass
 // - 必要的窗口管理方法
 
 // 所有资源创建方法转发到 ECSContext->GetGraphicsContext()

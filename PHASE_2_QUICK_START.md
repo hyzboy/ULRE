@@ -143,8 +143,8 @@ texture = graphics->LoadTexture2D(...);
 **旧代码：**
 ```cpp
 class MyGame : public WorkObject {
-    MyGame(RenderFramework* rf, SceneRenderer* sr) 
-        : WorkObject(rf, sr) {}
+   MyGame(RenderFramework* rf)
+      : WorkObject(rf) {}
 };
 ```
 
