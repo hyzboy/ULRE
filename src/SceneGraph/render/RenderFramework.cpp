@@ -64,13 +64,17 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
+    if(module_manager)
+        module_manager->SetGraphicsContext(nullptr);
+
+    SAFE_CLEAR(module_manager)
+
     if(default_ecs_context)
     {
         default_ecs_context->Shutdown();
         delete default_ecs_context;
         default_ecs_context=nullptr;
     }
-    SAFE_CLEAR(module_manager)
 
     --RENDER_FRAMEWORK_COUNT;
 

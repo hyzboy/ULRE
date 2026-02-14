@@ -35,6 +35,9 @@ namespace hgl::graph
             return false;
 
         ecs_ctx->SetGraphicsContext(ctx);
+
+        if (rf && rf->GetModuleManager())
+            rf->GetModuleManager()->SetGraphicsContext(ctx.get());
         return true;
     }
 }

@@ -15,7 +15,6 @@ namespace hgl::graph
     class IGraphicsContext;
     class RenderContext;
     class IRenderTarget;
-    class RenderFramework;
 
     constexpr const size_t MAX_LINE_WIDTH = 16;                 ///< CN: 最大支持线宽 EN: Maximum supported line width
 
@@ -190,5 +189,4 @@ namespace hgl::graph
 
     LineRenderManager *CreateLineRenderManager(IGraphicsContext *gc, IRenderTarget *rt);
     LineRenderManager *CreateLineRenderManager(RenderContext *rc, IRenderTarget *rt);
-    LineRenderManager *CreateLineRenderManager(RenderFramework *rf, IRenderTarget *rt);
 }

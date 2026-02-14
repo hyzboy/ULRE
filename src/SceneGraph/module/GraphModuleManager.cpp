@@ -1,12 +1,13 @@
 ﻿#include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
 
 VK_NAMESPACE_BEGIN
 
 VulkanDevice *GraphModuleManager::GetDevice()const
 {
-    return render_framework->GetDevice();
+    return graphics_context?graphics_context->GetDevice():render_framework->GetDevice();
 }
 
 bool GraphModuleManager::Register(GraphModule *gm)
@@ -22,7 +23,24 @@ bool GraphModuleManager::Register(GraphModule *gm)
     module_list.Add(gm);
     module_map.Add(type_hash,gm);
 
+    if(graphics_context)
+        gm->SetGraphicsContext(graphics_context);
+
     return(true);
+}
+
+void GraphModuleManager::SetGraphicsContext(IGraphicsContext *gc)
+{
+    graphics_context=gc;
+
+    if(module_list.GetCount()==0)
+        return;
+
+    for(auto **gm=module_list.begin();gm<=module_list.last();++gm)
+    {
+        if(*gm)
+            (*gm)->SetGraphicsContext(gc);
+    }
 }
 
 bool GraphModuleManager::Unregister(GraphModule *gm)

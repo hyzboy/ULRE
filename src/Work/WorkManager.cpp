@@ -135,7 +135,8 @@ namespace hgl
         last_update_time=last_render_time=0;
 
         Window *win=render_framework ? render_framework->GetWindow() : nullptr;
-        graph::VulkanDevice *dev=render_framework ? render_framework->GetDevice() : nullptr;
+        graph::VulkanDevice *dev=render_framework ? render_framework->GetDevice() : wo->GetDevice();
+        const bool has_window=win!=nullptr;
 
         while(!cur_work_object->IsDestroy())
         {
@@ -147,15 +148,22 @@ namespace hgl
             if(cur_work_object->IsTickable())
                 Tick(cur_work_object);
 
-            if(win?win->IsVisible():true)//&&cur_work_object->IsRenderable())
+            if(has_window?win->IsVisible():true)//&&cur_work_object->IsRenderable())
             {
                 Render(cur_work_object);
                 if (dev)
                     dev->WaitIdle();
             }
 
-            if(win && !win->Update())
-                break;
+            if(has_window)
+            {
+                if(!win->Update())
+                    break;
+            }
+            else
+            {
+                SleepSecond(0.001);
+            }
         }
     }
 }//namespcae hgl

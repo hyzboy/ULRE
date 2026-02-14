@@ -13,7 +13,6 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/BufferManager.h>
-#include <hgl/graph/render/RenderFramework.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 
 /**
@@ -294,114 +293,6 @@ namespace hgl::graph
         return mgr;
     }
 
-    LineRenderManager* CreateLineRenderManager(RenderFramework *rf,IRenderTarget *rt)
-    {
-        if (!rf)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: CreateLineRenderManager失败 RenderFramework为空 EN: rf is null"));
-            return(nullptr);
-        }
-
-        // Create PureColor3D material via factory
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines,
-                                        mtl::WithCamera::With,
-                                        mtl::WithLocalToWorld::Without,
-                                        mtl::WithSky::Without);
-
-        auto *mci = mtl::CreateVertexPattleColor3D(rf->GetDevAttr(), &cfg);
-
-        if (mci == nullptr)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 创建MaterialCreateInfo失败 EN: failed to create material create info"));
-            return nullptr;
-        }
-
-        Material *mat = rf->CreateMaterial("M_Line3D", mci);
-
-        if (mat == nullptr)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 创建Material失败 EN: failed to create material"));
-            delete mci;
-            return nullptr;
-        }
-
-        VILConfig vil_config;
-        vil_config.Add(VAN::Color,VF_V1U8);
-
-        MaterialInstance *mi = rf->CreateMaterialInstance(mat,&vil_config);
-
-        if (mi == nullptr)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 创建MaterialInstance失败 EN: failed to create material instance"));
-            delete mat;
-            delete mci;
-            return nullptr;
-        }
-
-        if(!rt)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 渲染目标为空 EN: render target is null"));
-            delete mi; delete mat; delete mci;
-            return nullptr;
-        }
-
-        RenderPass *rp = rt->GetRenderPass();
-        if(!rp)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 获取RenderPass失败 EN: failed to get render pass"));
-            delete mi; delete mat; delete mci;
-            return nullptr;
-        }
-
-        VulkanDevAttr *dev_attr = rf->GetDevAttr();
-        if(!dev_attr)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: VulkanDevAttr为空 EN: VulkanDevAttr is null"));
-            delete mi; delete mat; delete mci;
-            return nullptr;
-        }
-
-        Pipeline *p = nullptr;
-
-        if(dev_attr->wide_lines)
-        {
-            p = rp->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
-            if(!p)
-                MLogError(LineRenderManager,OS_TEXT("CN: 创建动态线宽管线失败 EN: failed to create dynamic line width pipeline"));
-        }
-        else
-        {
-            p = rp->CreatePipeline(mi,InlinePipeline::Solid3D);
-            if(!p)
-                MLogError(LineRenderManager,OS_TEXT("CN: 创建普通线管线失败 EN: failed to create solid line pipeline"));
-        }
-
-        if(!p)
-        {
-            delete mi; delete mat; delete mci;
-            return nullptr;
-        }
-
-        UBOLineColorPalette *lcp = rf->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);
-        if(!lcp)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
-            delete mi; delete mat; delete mci;
-            return nullptr;
-        }
-
-        LineRenderManager *mgr = new LineRenderManager(rf->GetDevice(),mi,p,lcp);
-        if(!mgr)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 分配LineRenderManager失败 EN: allocation of LineRenderManager failed"));
-            delete lcp; delete mi; delete mat; delete mci;
-            return nullptr;
-        }
-
-        MLogInfo(LineRenderManager,OS_TEXT("CN: 成功创建LineRenderManager EN: LineRenderManager created successfully"));
-        return mgr;
-    }
-
     /**
      * CN: 切换渲染目标, 如果成功则重建管线并更新批次。空指针或失败路径记录日志。
      * EN: Switch render target; on success rebuild pipeline and update batches. Logs on error paths.
@@ -465,6 +356,16 @@ namespace hgl::graph
         pipeline=p;
         ubo_color=lcp;
 
+        if(mi_line && ubo_color)
+        {
+            Material *mat = mi_line->GetMaterial();
+            if(mat)
+            {
+                mat->BindUBO(&mtl::SBS_ColorPattle, ubo_color->GetBuffer());
+                mat->Update();
+            }
+        }
+
         shared_backup = new SharedLineBackup();
         if(!shared_backup)
             LogError(OS_TEXT("CN: 分配SharedLineBackup失败 EN: failed to allocate SharedLineBackup"));
@@ -502,115 +403,120 @@ namespace hgl::graph
      */
     void LineRenderManager::SetColor(const int index, const Color4f& c)
     {
-        if (index < 0 || index >= 256)
+        if(!ubo_color)
         {
-            LogWarning(OS_TEXT("CN: SetColor索引越界 index=") + OSString::numberOf(index) + OS_TEXT(" EN: palette index out of range"));
+            LogError(OS_TEXT("CN: 调色板UBO为空 EN: palette UBO is null"));
             return;
         }
 
-        ubo_color->Write(&c,index*sizeof(Color4f),sizeof(Color4f));
-    }
-
-    /**
-     * CN: 添加单条线段; 宽度非法返回false并记录日志。
-     * EN: Add single line; invalid width returns false and logs.
-     */
-    bool LineRenderManager::AddLine(const Vector3f& from, const Vector3f& to, const uint8_t color_index, uint8 width)
-    {
-        if (width == 0 || width > MAX_LINE_WIDTH)
+        if(index < 0 || index >= 256)
         {
-            LogError(OS_TEXT("CN: AddLine失败 非法宽度=") + OSString::numberOf(width) + OS_TEXT(" EN: invalid width"));
-            return(false);
+            LogWarning(OS_TEXT("CN: 调色板索引越界 EN: palette index out of range"));
+            return;
         }
 
+        auto *palette = ubo_color->Data();
+        if(!palette)
+            return;
+
+        (*palette)[index] = c;
+        ubo_color->MarkDirty();
+        ubo_color->Commit();
+    }
+
+    bool LineRenderManager::AddLine(const Vector3f& from, const Vector3f& to, const uint8 color_index, uint8 width)
+    {
+        if(width == 0 || width > MAX_LINE_WIDTH)
+            return false;
+
         if(support_wide_lines)
-            line_groups[width-1].AddLine(from,to,color_index);
+        {
+            line_groups[width - 1].AddLine(from, to, color_index);
+        }
         else
-            line_groups[0].AddLine(from,to,color_index);
+        {
+            line_groups[0].AddLine(from, to, color_index);
+        }
 
         ++total_line_count;
-        return(true);
+        return true;
     }
 
-    /**
-     * CN: 批量添加线段; 宽度非法或列表为空返回false并记录日志。
-     * EN: Bulk add lines; invalid width or empty list returns false and logs.
-     */
-    bool LineRenderManager::AddLine(const uint8 width,const std::vector<LineSegmentDescriptor> &lsi_list)
+    bool LineRenderManager::AddLine(const uint8 width, const std::vector<LineSegmentDescriptor> &list)
     {
-        if(width==0 || width>MAX_LINE_WIDTH)
-        {
-            LogError(OS_TEXT("CN: 批量AddLine失败 非法宽度=") + OSString::numberOf(width) + OS_TEXT(" EN: invalid width"));
-            return(false);
-        }
+        if(width == 0 || width > MAX_LINE_WIDTH)
+            return false;
 
-        if(lsi_list.empty())
-        {
-            LogWarning(OS_TEXT("CN: 批量AddLine失败 列表为空 EN: line list empty"));
-            return(false);
-        }
+        if(list.empty())
+            return true;
 
         if(support_wide_lines)
-            line_groups[width-1].AddLine(lsi_list);
+        {
+            line_groups[width - 1].AddLine(list);
+        }
         else
-            line_groups[0].AddLine(lsi_list);
+        {
+            line_groups[0].AddLine(list);
+        }
 
-        total_line_count += lsi_list.size();
-        return(true);
+        total_line_count += static_cast<uint32>(list.size());
+        return true;
     }
 
-    /**
-     * CN: 清空全部批次线段与计数。
-     * EN: Clear all batches and reset counter.
-     */
     void LineRenderManager::ClearLines()
     {
-        for(auto &lsb : line_groups)
-            lsb.SetCount(0);
+        if(support_wide_lines)
+        {
+            for(size_t i = 0; i < MAX_LINE_WIDTH; ++i)
+            {
+                line_groups[i].Clear();
+                line_groups[i].SetCount(0);
+            }
+        }
+        else
+        {
+            line_groups[0].Clear();
+            line_groups[0].SetCount(0);
+        }
 
         total_line_count = 0;
     }
 
-    /**
-     * CN: 绘制全部线段; 若命令缓冲为空或没有线段时记录日志并返回。
-     * EN: Draw all lines; logs and returns when command buffer null or no lines.
-     */
     bool LineRenderManager::Draw(RenderCmdBuffer *cmd)
     {
-        if (!cmd)
-        {
-            LogError(OS_TEXT("CN: Draw失败 命令缓冲为空 EN: command buffer is null"));
-            return(false);
-        }
+        if(!cmd)
+            return false;
 
-        if(total_line_count==0)
-        {
-//            LogVerbose(OS_TEXT("CN: Draw跳过 没有线段 EN: draw skipped no lines"));
-            return(true);
-        }
+        if(total_line_count == 0)
+            return true;
 
-        mi_line->GetMaterial()->BindUBO(&mtl::SBS_ColorPattle,ubo_color->ubo());
+        if(!pipeline || !mi_line)
+            return false;
+
+        Material *mat = mi_line->GetMaterial();
+        if(mat)
+            cmd->BindDescriptorSets(mat);
 
         cmd->BindPipeline(pipeline);
-        cmd->BindDescriptorSets(mi_line->GetMaterial());
 
         if(support_wide_lines)
         {
-            for(size_t i = 0;i < MAX_LINE_WIDTH;i++)
+            for(uint i = 0; i < MAX_LINE_WIDTH; ++i)
             {
-                if(line_groups[i].GetCount() <= 0)
+                if(line_groups[i].GetCount() == 0)
                     continue;
 
-                cmd->SetLineWidth(i + 1);
+                cmd->SetLineWidth(static_cast<float>(i + 1));
                 line_groups[i].Draw(cmd);
             }
         }
         else
         {
-            line_groups[0].Draw(cmd);
+            if(line_groups[0].GetCount() > 0)
+                line_groups[0].Draw(cmd);
         }
 
-        return(true);
+        return true;
     }
-} // namespace
+} // namespace hgl::graph
 

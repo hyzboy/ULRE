@@ -5,9 +5,13 @@
 
 VK_NAMESPACE_BEGIN
 
+class GraphModule;
+class IGraphicsContext;
+
 class GraphModuleManager
 {
     RenderFramework *render_framework;
+    IGraphicsContext *graphics_context=nullptr;
 
 protected:
 
@@ -23,6 +27,8 @@ public:
 public:
 
     RenderFramework *   GetRenderFramework  ()const{return render_framework;}                                           ///<取得渲染框架
+    IGraphicsContext *  GetGraphicsContext  ()const{return graphics_context;}                                          ///<取得GraphicsContext
+    void                SetGraphicsContext  (IGraphicsContext *gc);                                                    ///<设置GraphicsContext
     VulkanDevice *      GetDevice           ()const;                                                                    ///<取得GPU设备
 
 public:
@@ -50,6 +56,9 @@ public:
             return Get<T>();
 
         T *result=new T(render_framework);
+
+        if(graphics_context)
+            result->SetGraphicsContext(graphics_context);
 
         Register(result);
 
