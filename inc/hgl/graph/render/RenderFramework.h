@@ -105,9 +105,9 @@ public:
     ecs::ECSContext *       GetECSContext           (){return default_ecs_context;}
     SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
 
-    RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}
+    RenderPass *            GetDefaultRenderPass    ()const{return default_scene_renderer->GetRenderPass();}
 
-    LineRenderManager *     GetLineRenderManager    (){return default_scene_renderer?default_scene_renderer->GetLineRenderManager():nullptr;}
+    LineRenderManager *     GetLineRenderManager    ()const{return default_scene_renderer?default_scene_renderer->GetLineRenderManager():nullptr;}
 
 public:
 

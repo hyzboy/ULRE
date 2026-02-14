@@ -3,6 +3,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/graph/render/RenderStagePipeline.h>
 #include<hgl/io/event/EventDispatcher.h>
+#include<hgl/graph/core/GraphicsContext.h>
 // ECS forward declaration
 namespace hgl::ecs { class ECSContext; }
 
@@ -13,6 +14,7 @@ namespace hgl::graph
     class Material;         // fwd for CreatePipeline
     enum class InlinePipeline; // fwd for CreatePipeline
     class RenderFramework;
+    class IGraphicsContext;
     class Camera;
     struct CameraInfo;
 
@@ -30,6 +32,7 @@ namespace hgl::graph
     class SceneRenderer:public SceneEventDispatcher
     {
         RenderFramework * render_framework = nullptr;
+        IGraphicsContext * graphics_context = nullptr;
         IRenderTarget * render_target = nullptr;   ///< 当前渲染目标(便捷缓存)
         ecs::ECSContext * ecs_context = nullptr;
 
@@ -47,6 +50,7 @@ namespace hgl::graph
         const   VkExtent2D &        GetExtent           ()const {return render_target->GetExtent();}
 
                 ecs::ECSContext *   GetECSContext       ()const {return ecs_context;}
+                IGraphicsContext *  GetGraphicsContext  ()const {return graphics_context;}
                 Camera *            GetCamera           ()const;
         const   CameraInfo *        GetCameraInfo       ()const;
                 LineRenderManager * GetLineRenderManager()const;

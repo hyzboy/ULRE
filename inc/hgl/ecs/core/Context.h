@@ -13,7 +13,17 @@
 #include<map>
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 
-namespace hgl { namespace graph { class RenderCmdBuffer; class CameraInfo; } }
+namespace hgl { 
+    namespace graph { 
+        class RenderCmdBuffer; 
+        class CameraInfo; 
+        class IRenderTarget;
+        class IGraphicsContext;
+    }
+    namespace vk {
+        class VulkanDevice;
+    }
+}
 
 namespace hgl
 {
@@ -86,6 +96,20 @@ namespace hgl
             // SubWorld support - hierarchical context
             ECSContext* parent_context = nullptr;       // nullptr if this is a root context
             bool owns_transform_storage = false;         // true if this context created the storage
+            
+            // ========== GPU 设备和资源管理（Phase 1 新增） ==========
+            
+            /// GPU 设备（从 RenderFramework 迁移来）
+            hgl::vk::VulkanDevice* gpu_device = nullptr;
+            
+            /// 用于渲染的目标
+            hgl::graph::IRenderTarget* render_target = nullptr;
+            
+            /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
+            hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
+
+            /// Graphics context adapter (Phase 2)
+            std::shared_ptr<hgl::graph::IGraphicsContext> graphics_context;
 
         private:
 
@@ -109,7 +133,13 @@ namespace hgl
 
         public:
 
-            /// Initialize the world
+            /// Initialize the world (基础初始化，获取 GPU 设备和渲染目标)
+            /// @param device GPU 设备
+            /// @param target 渲染目标
+            /// @return 成功返回 true
+            bool InitializeGraphics(hgl::vk::VulkanDevice* device, hgl::graph::IRenderTarget* target);
+
+            /// Initialize the world (旧接口，保持向后兼容)
             void Initialize();
 
             /// Shut down the world
@@ -152,6 +182,22 @@ namespace hgl
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
+            
+            // ========== GPU 设备和资源接口（Phase 1 新增） ==========
+            
+            /// 获取 GPU 设备
+            hgl::vk::VulkanDevice* GetGPUDevice() { return gpu_device; }
+            
+            /// 获取渲染目标
+            hgl::graph::IRenderTarget* GetRenderTarget() { return render_target; }
+            
+            /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
+            hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
+
+            /// Graphics context adapter (Phase 2)
+            void SetGraphicsContext(const std::shared_ptr<hgl::graph::IGraphicsContext>& ctx) { graphics_context = ctx; }
+            hgl::graph::IGraphicsContext* GetGraphicsContext() { return graphics_context.get(); }
+            const hgl::graph::IGraphicsContext* GetGraphicsContext() const { return graphics_context.get(); }
 
             /// 注册组件实例（由 Entity::AddComponent 调用）
             void RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp);

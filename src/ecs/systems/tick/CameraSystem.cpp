@@ -4,6 +4,7 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
@@ -243,6 +244,15 @@ namespace hgl::ecs
             return;
 
         render_framework = rf;
+        EnsureCameraResources();
+    }
+
+    void CameraSystem::SetGraphicsContext(graph::IGraphicsContext* gc)
+    {
+        if (graphics_context == gc)
+            return;
+
+        graphics_context = gc;
         EnsureCameraResources();
     }
 
@@ -522,14 +532,18 @@ namespace hgl::ecs
 
     void CameraSystem::EnsureCameraResources()
     {
-        if (!render_framework)
+        auto *device = render_framework ? render_framework->GetDevice() : nullptr;
+        if (!device && graphics_context)
+            device = graphics_context->GetDevice();
+
+        if (!device)
             return;
 
         if (!camera_ubo)
         {
             using UBOCameraInfo = graph::StructuredBufferAccessor<graph::CameraInfo>;
-            camera_ubo = render_framework->CreateUBO<UBOCameraInfo>(&graph::mtl::SBS_CameraInfo,
-                                                                    graph::BufferUpdateClass::CriticalPerFrame);
+            camera_ubo = device->CreateUBO<UBOCameraInfo>(&graph::mtl::SBS_CameraInfo,
+                                                          graph::BufferUpdateClass::CriticalPerFrame);
             if (camera_ubo)
                 camera_info = camera_ubo->Data();
         }

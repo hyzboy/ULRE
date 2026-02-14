@@ -7,8 +7,12 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/type/AlignUtil.h>
+#include<hgl/vk/VKFormat.h>
 #include<hgl/color/Color.h>
 
 namespace hgl::graph
@@ -53,6 +57,26 @@ namespace hgl::graph
         mi_fs=nullptr;
     }
 
+    TextRender::TextRender(IGraphicsContext *gc,TileFont *tf)
+    {
+        device = gc ? gc->GetDevice() : nullptr;
+
+        primitive_manager = gc ? gc->GetPrimitiveManager() : nullptr;
+        mtl_manager = gc ? gc->GetMaterialManager() : nullptr;
+        tl_engine = new layout::TextLayout(tf);
+
+        mtl_fs      =nullptr;
+        sampler     =nullptr;
+        pipeline    =nullptr;
+        tile_font   =tf;
+
+        fixed_style.CharColor=GetColor4ub(COLOR::White);
+
+        SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
+
+        mi_fs=nullptr;
+    }
+
     void TextRender::SetFixedStyle(const layout::CharStyle &cs)
     {
         if(!mem_compare(fixed_style,cs))
@@ -84,6 +108,73 @@ namespace hgl::graph
         SAFE_CLEAR(tl_engine);
         SAFE_CLEAR(tile_font);
         // render resource removed
+    }
+
+    namespace
+    {
+        TileFont *CreateTileFont(IGraphicsContext *gc,FontSource *fs,int limit_count,const VkExtent2D *extent)
+        {
+            if(!gc || !fs)
+                return(nullptr);
+
+            const uint32_t height=hgl_align_pow2(fs->GetCharHeight()+2,4);
+
+            if(limit_count<=0)
+            {
+                VkExtent2D ext{1024,1024};
+                if(extent)
+                    ext=*extent;
+
+                limit_count=(ext.width/height)*(ext.height/height);
+                if(limit_count<=0)
+                    limit_count=1024;
+            }
+
+            auto tm=gc->GetTextureManager();
+            if(!tm)
+                return(nullptr);
+
+            TileData *td=tm->CreateTileData(UPF_R8,height,height,limit_count);
+            if(!td)
+                return(nullptr);
+
+            return(new TileFont(td,fs));
+        }
+    }
+
+    TextRender *TextRender::CreateWithGraphicsContext(IGraphicsContext *gc,RenderPass *rp,FontSource *fs,int limit,const VkExtent2D *extent)
+    {
+        if(!gc || !fs || !rp)
+            return(nullptr);
+
+        TileFont *tile_font=CreateTileFont(gc,fs,limit,extent);
+        if(!tile_font)
+            return(nullptr);
+
+        TextRender *text_render=new TextRender(gc,tile_font);
+
+        if(!text_render)
+        {
+            delete tile_font;
+            return(nullptr);
+        }
+
+        auto sampler_mgr = gc->GetSamplerManager();
+        if(!sampler_mgr)
+        {
+            delete tile_font;
+            delete text_render;
+            return(nullptr);
+        }
+
+        if(!text_render->Init(rp,sampler_mgr->CreateSampler()))
+        {
+            delete tile_font;
+            delete text_render;
+            return(nullptr);
+        }
+
+        return text_render;
     }
 
     bool TextRender::InitMaterial(RenderPass *rp)

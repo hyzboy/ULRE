@@ -2,6 +2,11 @@
 
 #include<hgl/graph/module/GraphModule.h>
 
+namespace hgl::ecs
+{
+    class ECSContext;
+}
+
 VK_NAMESPACE_BEGIN
 
 class TextureManager;
@@ -11,6 +16,7 @@ GRAPH_MODULE_CLASS(RenderTargetManager)
 {
     TextureManager *tex_manager;
     RenderPassManager *rp_manager;
+    hgl::ecs::ECSContext *ecs_context=nullptr;
 
 public:
 

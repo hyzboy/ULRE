@@ -1,6 +1,8 @@
 ﻿#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/ecs/core/Context.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/graph/render/RenderFramework.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -8,6 +10,7 @@
 namespace hgl::graph
 {
     LineRenderManager *CreateLineRenderManager(RenderFramework *, IRenderTarget *);
+    LineRenderManager *CreateLineRenderManager(IGraphicsContext *, IRenderTarget *);
 }
 
 namespace hgl::ecs
@@ -49,7 +52,16 @@ namespace hgl::ecs
 
     void LineRenderSystem::EnsureLineManager()
     {
-        if (line_manager || !render_framework || !render_target)
+        if (line_manager || !render_target)
+            return;
+
+        if (context && context->GetGraphicsContext())
+        {
+            line_manager = CreateLineRenderManager(context->GetGraphicsContext(), render_target);
+            return;
+        }
+
+        if (!render_framework)
             return;
 
         line_manager = CreateLineRenderManager(render_framework, render_target);

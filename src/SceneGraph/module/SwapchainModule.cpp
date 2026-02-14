@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/ecs/core/Context.h>
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -212,11 +213,22 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
         ++sc_image;
     }
 
-    sc_render_target=new SwapchainRenderTarget( GetRenderFramework(),
-                                                swapchain,
-                                                device->CreateGPUSemaphore(),
-                                                rtd_list
-                                                );
+    if(ecs_context)
+    {
+        sc_render_target=new SwapchainRenderTarget( ecs_context,
+                                                    swapchain,
+                                                    device->CreateGPUSemaphore(),
+                                                    rtd_list
+                                                    );
+    }
+    else
+    {
+        sc_render_target=new SwapchainRenderTarget( GetRenderFramework(),
+                                                    swapchain,
+                                                    device->CreateGPUSemaphore(),
+                                                    rtd_list
+                                                    );
+    }
 
     return true;
 }
@@ -231,6 +243,7 @@ SwapchainModule::SwapchainModule(RenderFramework *rf,TextureManager *tm,RenderTa
     tex_manager=tm;
     rt_manager=rtm;
     rp_manager=rpm;
+    ecs_context=rf?rf->GetECSContext():nullptr;
 
     auto *dev_attr=GetDevAttr();
 
