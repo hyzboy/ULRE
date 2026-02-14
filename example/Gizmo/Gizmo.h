@@ -3,6 +3,7 @@
 #include<hgl/CoreType.h>
 #include<hgl/vk/VK.h>
 #include<hgl/math/VectorTypes.h>
+#include<hgl/graph/render/RenderFramework.h>
 
 namespace hgl
 {

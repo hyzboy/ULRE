@@ -23,6 +23,5 @@ namespace hgl::graph
     struct CameraInfo;
     struct Camera;
 
-    class SceneRenderer;
     class RenderCollector;
 }

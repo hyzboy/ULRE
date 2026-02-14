@@ -10,8 +10,21 @@ namespace hgl
 
         if(cur_work_object)
         {
-            // Notify change of active work object
-            cur_work_object->OnSceneRendererChange(render_framework,render_framework->GetDefaultSceneRenderer());
+            if (render_framework)
+            {
+                // Notify change of active work object
+                cur_work_object->OnSceneRendererChange(render_framework);
+            }
+
+            if (!render_core)
+            {
+                auto ctx = cur_work_object->GetECSContext();
+                if (ctx)
+                {
+                    render_core = std::make_unique<ecs::RenderSystemCore>(ctx);
+                    render_core->Initialize();
+                }
+            }
         }
         else
         {
@@ -49,6 +62,24 @@ namespace hgl
                 can_render=delta_time>=frame_time;
         }
 
+        if (render_core && wo && wo->GetECSContext())
+        {
+            if (!can_render)
+                return;
+
+            render_core->SetClearColor(wo->GetClearColor());
+
+            if (!render_core->BeginFrame())
+                return;
+
+            last_render_time=cur_time;
+            wo->Render(delta_time);
+            wo->GetECSContext()->Render(render_core->GetRenderCmd(), static_cast<float>(delta_time));
+            render_core->EndFrame();
+            wo->ClearRenderDirty();
+            return;
+        }
+
         if(can_render)
         {
             last_render_time=cur_time;
@@ -60,14 +91,23 @@ namespace hgl
     {
         if(!cur_work_object)return;
 
+        if (!render_framework)
+            return;
+
         VkExtent2D ext={w,h};
 
-        cur_work_object->OnSceneRendererChange(render_framework,render_framework->GetDefaultSceneRenderer());
+        cur_work_object->OnSceneRendererChange(render_framework);
         cur_work_object->OnResize(ext);
     }
 
     void SwapchainWorkManager::Render(WorkObject *wo)
     {
+        if (render_core && wo && wo->GetECSContext())
+        {
+            WorkManager::Render(wo);
+            return;
+        }
+
         if(!swapchain_module->AcquireNextImage())
             return;
 
@@ -94,25 +134,27 @@ namespace hgl
 
         last_update_time=last_render_time=0;
 
-        Window *win=render_framework->GetWindow();
-        graph::VulkanDevice *dev=render_framework->GetDevice();
+        Window *win=render_framework ? render_framework->GetWindow() : nullptr;
+        graph::VulkanDevice *dev=render_framework ? render_framework->GetDevice() : nullptr;
 
         while(!cur_work_object->IsDestroy())
         {
             cur_time=GetTimeSec();
 
-            render_framework->Tick();
+            if (render_framework)
+                render_framework->Tick();
 
             if(cur_work_object->IsTickable())
                 Tick(cur_work_object);
 
-            if(win->IsVisible())//&&cur_work_object->IsRenderable())
+            if(win?win->IsVisible():true)//&&cur_work_object->IsRenderable())
             {
                 Render(cur_work_object);
-                dev->WaitIdle();
+                if (dev)
+                    dev->WaitIdle();
             }
 
-            if(!win->Update())
+            if(win && !win->Update())
                 break;
         }
     }

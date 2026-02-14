@@ -5,6 +5,8 @@
 #include<hgl/vk/VKBufferCommitQueue.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/vk/BufferPolicyImpl.h>
+#include <functional>
+#include <thread>
 
 VK_NAMESPACE_BEGIN
 VulkanDevice::VulkanDevice(VulkanDevAttr *da)
@@ -24,6 +26,27 @@ VulkanDevice::~VulkanDevice()
     delete buffer_update_queue;
     delete buffer_commit_queue;
     delete attr;
+}
+
+void VulkanDevice::WaitIdle() const
+{
+    if (!attr || attr->device == VK_NULL_HANDLE)
+    {
+        GLogError("VulkanDevice::WaitIdle invalid device (attr=%p device=%p)",
+                  (void *)attr,
+                  attr ? (void *)attr->device : nullptr);
+        return;
+    }
+
+    const VkResult res = vkDeviceWaitIdle(attr->device);
+    if (res != VK_SUCCESS)
+    {
+        const auto tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+        GLogError("VulkanDevice::WaitIdle failed res=%d device=%p thread=%llu",
+                  static_cast<int>(res),
+                  (void *)attr->device,
+                  static_cast<unsigned long long>(tid));
+    }
 }
 
 VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)

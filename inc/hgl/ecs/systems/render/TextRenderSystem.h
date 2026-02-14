@@ -10,7 +10,7 @@ namespace hgl
 {
     namespace graph
     {
-        class RenderFramework;
+        class IGraphicsContext;
         class FontSource;
         class TileFont;
         class Material;
@@ -56,7 +56,7 @@ namespace hgl::ecs
         };
 
         ECSContext* world = nullptr;
-        graph::RenderFramework* framework = nullptr;
+        graph::IGraphicsContext* graphics_context = nullptr;
 
         hgl::UnorderedMap<graph::FontSource*, RenderResources> resources_by_font;
 
@@ -68,7 +68,7 @@ namespace hgl::ecs
     public:
 
         void SetWorld(ECSContext* w) { world = w; }
-        void SetRenderFramework(graph::RenderFramework* rf) { framework = rf; }
+        void SetGraphicsContext(graph::IGraphicsContext* gc) { graphics_context = gc; }
 
         void Update(float deltaTime) override;
 

@@ -1,6 +1,8 @@
 #pragma once
 
-#include <hgl/ecs/System.h>
+#include<hgl/ecs/core/System.h>
+#include<hgl/log/log.h>
+#include<hgl/color/Color4f.h>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -43,7 +45,10 @@ class ECSContext;
  *   }
  * @endcode
  */
-class RenderSystemCore {
+class RenderSystemCore
+{
+    OBJECT_LOGGER
+
 public:
     static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
     
@@ -61,9 +66,11 @@ private:
     uint32_t current_frame = 0;
     uint32_t swapchain_image_index = 0;
     bool frame_begun = false;
+
+    hgl::Color4f clear_color{0,0,0,1};
     
     // 渲染命令缓冲区
-    std::unique_ptr<hgl::graph::RenderCmdBuffer> render_cmd;
+    hgl::graph::RenderCmdBuffer* render_cmd = nullptr;
     
 public:
     /**
@@ -139,8 +146,11 @@ public:
      * @endcode
      */
     hgl::graph::RenderCmdBuffer* GetRenderCmd() {
-        return frame_begun ? render_cmd.get() : nullptr;
+        return frame_begun ? render_cmd : nullptr;
     }
+
+    void SetClearColor(const hgl::Color4f &color) { clear_color = color; }
+    const hgl::Color4f &GetClearColor() const { return clear_color; }
     
     /**
      * 获取当前的 Swapchain 图像索引

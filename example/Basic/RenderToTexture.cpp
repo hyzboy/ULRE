@@ -2,14 +2,12 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/render/SceneCaptureStage.h>
-#include<hgl/graph/render/SceneRenderer.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
+#include <memory>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -21,6 +19,8 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
+#include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 
 using namespace hgl;
@@ -50,8 +50,8 @@ class OffscreenSceneECS
 {
 public:
     IRenderTarget *   rt          = nullptr;
-    SceneRenderer *   renderer    = nullptr;
     ECSContext *      ecs_world   = nullptr;
+    std::unique_ptr<hgl::ecs::RenderSystemCore> render_core;
 
     Material *        mtl         = nullptr;
     MaterialInstance* mi          = nullptr;
@@ -71,7 +71,6 @@ public:
             ecs_world->Shutdown();
             delete ecs_world;
         }
-        SAFE_CLEAR(renderer);
         rt = nullptr; // managed by manager
 
         delete primitive;
@@ -98,36 +97,51 @@ public:
 
         LogTextureInfo("offscreen_rt_color0_init", rt->GetColorTexture(0));
 
-        renderer = new SceneRenderer(rf, rt);
-        if(!renderer) return false;
-        renderer->SetClearColor(GetColor4f(COLOR::DarkSlateBlue, 1.0f));
-
         ecs_world = new ECSContext("OffscreenECSWorld");
-        renderer->SetECSContext(ecs_world);
+        if (!ecs_world) return false;
 
+        ecs_world->SetGraphicsContext(owner->GetGraphicsContext());
+        ecs_world->InitializeGraphics(owner->GetDevice(), rt);
+
+        auto render_target_system = ecs_world->RegisterRenderSystem<RenderTargetSystem>();
         auto render_collect_system = ecs_world->RegisterTickSystem<RenderPrimitiveCollectSystem>();
         auto render_batch_system = ecs_world->RegisterTickSystem<RenderPrimitiveBatchSystem>();
         auto render_submit_system = ecs_world->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
-        auto input_system = ecs_world->RegisterTickSystem<InputSystem>();
+        ecs_world->RegisterTickSystem<InputSystem>();
         auto camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
 
+        render_target_system->SetGraphicsContext(owner->GetGraphicsContext());
+        render_target_system->SetRenderTarget(rt);
+
         render_collect_system->SetWorld(ecs_world);
-        render_collect_system->SetCameraInfo(renderer->GetCameraInfo());
 
         render_batch_system->SetWorld(ecs_world);
         render_batch_system->SetDevice(rf->GetDevice());
-        render_batch_system->SetCameraInfo(renderer->GetCameraInfo());
 
         render_submit_system->SetWorld(ecs_world);
 
         ecs_world->Initialize();
+
+        if (camera_system)
+        {
+            camera_system->SetGraphicsContext(owner->GetGraphicsContext());
+            camera_system->SetViewportInfo(rt->GetViewportInfo());
+        }
+
+        const auto *camera_info = camera_system ? camera_system->GetCameraInfo() : nullptr;
+        render_collect_system->SetCameraInfo(camera_info);
+        render_batch_system->SetCameraInfo(camera_info);
+
+        render_core = std::make_unique<hgl::ecs::RenderSystemCore>(ecs_world);
+        if (!render_core || !render_core->Initialize())
+            return false;
 
         return true;
     }
 
     bool BuildSphere(WorkObject *owner)
     {
-        if(!owner || !renderer || !ecs_world) return false;
+        if(!owner || !ecs_world) return false;
 
         mtl::Material3DCreateConfig cfg3d(PrimitiveType::Triangles,
                                           mtl::WithCamera::With,
@@ -140,7 +154,7 @@ public:
         mtl = owner->CreateMaterial("OffscreenPureColor3D", mci);
         if (!mtl) return false;
 
-        pipeline = renderer->CreatePipeline(mtl, InlinePipeline::Solid3D);
+        pipeline = owner->CreatePipeline(mtl, InlinePipeline::Solid3D);
         if (!pipeline) return false;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
@@ -181,20 +195,29 @@ public:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        camera->camera_data = renderer->GetCamera();
-        camera->camera_info = const_cast<graph::CameraInfo *>(renderer->GetCameraInfo());
-        camera->viewport_info = renderer->GetViewportInfo();
+        auto camera_system = ecs_world->GetSystem<CameraSystem>();
+        camera->camera_data = camera_system ? camera_system->GetCamera() : nullptr;
+        camera->camera_info = const_cast<graph::CameraInfo *>(camera_system ? camera_system->GetCameraInfo() : nullptr);
+        camera->viewport_info = camera_system ? camera_system->GetViewportInfo() : nullptr;
 
         return true;
     }
 
     bool RenderOnce()
     {
-        if(!renderer || !ecs_world) return false;
+        if(!render_core || !ecs_world) return false;
 
         LogTextureInfo("offscreen_before_render", rt ? rt->GetColorTexture(0) : nullptr);
-        renderer->Tick(0.0);
-        const bool ok = renderer->RenderSubmitAndWait();
+        ecs_world->Tick(0.0f);
+
+        render_core->SetClearColor(GetColor4f(COLOR::DarkSlateBlue, 1.0f));
+        if (!render_core->BeginFrame())
+            return false;
+
+        ecs_world->Render(render_core->GetRenderCmd(), 0.0f);
+        render_core->EndFrame();
+
+        const bool ok = true;
         LogTextureInfo("offscreen_after_render", rt ? rt->GetColorTexture(0) : nullptr);
         return ok;
     }
@@ -204,7 +227,6 @@ class RenderToTextureApp final: public WorkObject
 {
 private:
     OffscreenSceneECS *      offscreen          = nullptr;
-    SceneCaptureStage *      offscreen_stage    = nullptr;
 
     ECSContext *             ecs_world          = nullptr;
     Entity *                 cube_entity        = nullptr;
@@ -219,50 +241,6 @@ private:
     std::shared_ptr<TransformComponent> cube_transform;
 
     float                    cube_theta          = 0.0f;
-    bool InstallOffscreenStage()
-    {
-        SceneRenderer *renderer = GetSceneRenderer();
-        if(!renderer || !offscreen)
-            return false;
-
-        renderer->EnsureEcsPipeline();
-
-        offscreen_stage = new SceneCaptureStage(
-            [this](RenderStageContext &)->bool
-            {
-                if(!offscreen)
-                    return false;
-
-                if(offscreen->RenderOnce())
-                {
-                    LogTextureInfo("onscreen_after_offscreen_render",
-                                   offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
-                    return true;
-                }
-
-                return false;
-            },
-            true,
-            SceneCaptureStage::CaptureTarget::Texture2D);
-        if(!renderer->GetEcsPipeline().InsertStageBefore(offscreen_stage, "BeginFrame"))
-        {
-            delete offscreen_stage;
-            offscreen_stage = nullptr;
-            return false;
-        }
-
-        return true;
-    }
-
-    void CleanupOffscreenStage()
-    {
-        SceneRenderer *renderer = GetSceneRenderer();
-        if(renderer && offscreen_stage)
-            renderer->GetEcsPipeline().RemoveStage(offscreen_stage);
-
-        delete offscreen_stage;
-        offscreen_stage = nullptr;
-    }
 
 private:
     bool EnsureCameraSystem()
@@ -384,7 +362,6 @@ public:
 
     ~RenderToTextureApp() override
     {
-        CleanupOffscreenStage();
         SAFE_CLEAR(offscreen);
         delete cube_primitive;
     }
@@ -404,14 +381,20 @@ public:
         if (!SetupMainCamera())
             return false;
 
-        if (!InstallOffscreenStage())
-            return false;
-
         return true;
     }
 
     void Render(double delta_time) override
     {
+        if (offscreen)
+        {
+            if (offscreen->RenderOnce())
+            {
+                LogTextureInfo("onscreen_after_offscreen_render",
+                               offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
+            }
+        }
+
         if (cube_transform)
         {
             cube_theta += float(delta_time) * 0.8f;

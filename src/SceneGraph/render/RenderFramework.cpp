@@ -9,7 +9,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/render/SceneRenderer.h>
+#include<hgl/graph/core/GraphicsContextHelpers.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/log/Logger.h>
@@ -69,7 +69,6 @@ RenderFramework::~RenderFramework()
         delete default_ecs_context;
         default_ecs_context=nullptr;
     }
-    SAFE_CLEAR(default_scene_renderer);
     SAFE_CLEAR(module_manager)
 
     --RENDER_FRAMEWORK_COUNT;
@@ -187,10 +186,14 @@ bool RenderFramework::Init(uint w,uint h)
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
 
-    // create default ECS context BEFORE creating SceneRenderer
+    // create default ECS context
     default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
 
-    CreateDefaultSceneRenderer();
+    if (default_ecs_context)
+    {
+        graph::AttachGraphicsContext(default_ecs_context, this);
+        default_ecs_context->InitializeGraphics(device, GetSwapchainRenderTarget());
+    }
 
     if(default_ecs_context)
     {
@@ -208,22 +211,22 @@ bool RenderFramework::Init(uint w,uint h)
         if (text_render_system)
         {
             text_render_system->SetWorld(default_ecs_context);
-            text_render_system->SetRenderFramework(this);
+            text_render_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
         }
 
         if (environment_system)
-            environment_system->SetRenderFramework(this);
+            environment_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
 
         if (camera_system)
         {
-            camera_system->SetRenderFramework(this);
+            camera_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
             IRenderTarget *default_rt = GetSwapchainRenderTarget();
             camera_system->SetViewportInfo(default_rt ? default_rt->GetViewportInfo() : nullptr);
         }
 
         if (render_target_system)
         {
-            render_target_system->SetRenderFramework(this);
+            render_target_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
             render_target_system->SetRenderTarget(GetSwapchainRenderTarget());
         }
 
@@ -249,7 +252,7 @@ bool RenderFramework::Init(uint w,uint h)
 
         if (line_render_system)
         {
-            line_render_system->SetRenderFramework(this);
+            line_render_system->SetGraphicsContext(default_ecs_context->GetGraphicsContext());
             line_render_system->SetRenderTarget(GetSwapchainRenderTarget());
         }
 
@@ -263,31 +266,18 @@ bool RenderFramework::Init(uint w,uint h)
     return(true);
 }
 
-void RenderFramework::CreateDefaultSceneRenderer()
-{
-    IRenderTarget *rt = GetSwapchainRenderTarget();
-
-    if(!default_scene_renderer)
-    {
-        default_scene_renderer=new SceneRenderer(this,rt);
-
-        this->AddChildDispatcher(default_scene_renderer);
-        default_scene_renderer->SetECSContext(default_ecs_context);
-    }
-    else
-    {
-        default_scene_renderer->SetRenderTarget(rt);
-        default_scene_renderer->SetECSContext(default_ecs_context);
-    }
-}
-
 void RenderFramework::OnResize(uint w,uint h)
 {
     VkExtent2D ext(w,h);
 
     sc_module->OnResize(ext);        //其实swapchain_module并不需要传递尺寸数据过去
 
-    CreateDefaultSceneRenderer();
+    if (default_ecs_context)
+    {
+        auto render_target_system = default_ecs_context->GetSystem<ecs::RenderTargetSystem>();
+        if (render_target_system)
+            render_target_system->SetRenderTarget(GetSwapchainRenderTarget());
+    }
 }
 
 void RenderFramework::OnActive(bool)
@@ -300,6 +290,15 @@ void RenderFramework::OnClose()
 
 void RenderFramework::Tick()
 {
+}
+
+LineRenderManager *RenderFramework::GetLineRenderManager() const
+{
+    if (!default_ecs_context)
+        return nullptr;
+
+    auto line_system = default_ecs_context->GetSystem<ecs::LineRenderSystem>();
+    return line_system ? line_system->GetLineRenderManager() : nullptr;
 }
 
 graph::VertexDataManager *RenderFramework::CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type)

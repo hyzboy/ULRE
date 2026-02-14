@@ -7,17 +7,25 @@
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/TextRender.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/time/Time.h>
 //#include<iostream>
 
 namespace hgl
 {
-    WorkObject::WorkObject(graph::RenderFramework *rf,graph::SceneRenderer *r)
+    WorkObject::WorkObject(graph::RenderFramework *rf)
     {
-        if(!r)
-            scene_renderer=rf->GetDefaultSceneRenderer();
+        OnSceneRendererChange(rf);
+    }
 
-        OnSceneRendererChange(rf,scene_renderer);
+    WorkObject::WorkObject(std::shared_ptr<ecs::ECSContext> ctx)
+        : world(std::move(ctx))
+    {
+        if (world)
+        {
+            graphics_context = world->GetGraphicsContext();
+        }
     }
 
     WorkObject::~WorkObject()
@@ -26,60 +34,83 @@ namespace hgl
 
     graph::Camera *WorkObject::GetCamera()
     {
-        return scene_renderer ? scene_renderer->GetCamera() : nullptr;
+        if (world)
+        {
+            auto camera_system = world->GetSystem<ecs::CameraSystem>();
+            return camera_system ? camera_system->GetCamera() : nullptr;
+        }
+
+        return nullptr;
     }
 
     const graph::CameraInfo *WorkObject::GetCameraInfo() const
     {
-        return scene_renderer ? scene_renderer->GetCameraInfo() : nullptr;
+        if (world)
+        {
+            auto camera_system = world->GetSystem<ecs::CameraSystem>();
+            return camera_system ? camera_system->GetCameraInfo() : nullptr;
+        }
+
+        return nullptr;
     }
 
-    void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r)
+    const VkExtent2D *WorkObject::GetExtent()
+    {
+        if (world)
+        {
+            auto target = world->GetRenderTarget();
+            return target ? &target->GetExtent() : nullptr;
+        }
+
+        return nullptr;
+    }
+
+    const graph::ViewportInfo *WorkObject::GetViewportInfo() const
+    {
+        if (world)
+        {
+            auto camera_system = world->GetSystem<ecs::CameraSystem>();
+            if (camera_system)
+                return camera_system->GetViewportInfo();
+
+            auto target = world->GetRenderTarget();
+            return target ? target->GetViewportInfo() : nullptr;
+        }
+
+        return nullptr;
+    }
+
+    void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf)
     {
         if(!rf)
         {
             render_framework=nullptr;
-            ecs_context=nullptr;
             graphics_context=nullptr;
-        }
-
-        if(!rf||!r)
-        {
+            world.reset();
             return;
         }
 
         render_framework=rf;
-        scene_renderer=rf->GetDefaultSceneRenderer();
-        ecs_context=rf->GetECSContext();
-        graphics_context=ecs_context?ecs_context->GetGraphicsContext():nullptr;
+        world.reset();
+        if (rf->GetECSContext())
+            world = std::shared_ptr<ecs::ECSContext>(rf->GetECSContext(), [](ecs::ECSContext*){});
+        graphics_context=world?world->GetGraphicsContext():nullptr;
     }
 
     void WorkObject::Tick(double delta)
     {
-        if(scene_renderer)
-            scene_renderer->Tick(delta);
+        if (world)
+        {
+            world->Tick(static_cast<float>(delta));
+            return;
+        }
+
     }
 
     void WorkObject::Render(double delta_time)
     {
-        if(!scene_renderer)
-        {
-            //std::cerr<<"WorkObject::Render,scene_renderer=nullptr"<<std::endl;
+        if (world)
             return;
-        }
-
-        //std::cout<<"WorkObject::Render begin, render_dirty="<<(render_dirty?"true":"false")<<std::endl;
-
-        if(render_dirty)
-        {
-            scene_renderer->RenderFrame();
-
-            render_dirty=false;
-        }
-
-        scene_renderer->Submit();
-
-        //std::cout<<"WorkObject::Render End"<<std::endl;
     }
 
     graph::Texture2D *WorkObject::LoadTexture2D(const OSString &filename,bool auto_mipmap)

@@ -1,20 +1,24 @@
 ﻿#pragma once
 
 #include<hgl/type/object/TickObject.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/ecs/core/Context.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
-#include<hgl/graph/render/SceneRenderer.h>
+#include<hgl/color/Color4f.h>
 #include<hgl/time/Time.h>
-//#include<iostream>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/vk/VKRenderTarget.h>
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/graph/geo/GeometryCreater.h>
+#include <memory>
 
 namespace hgl
 {
     namespace graph
     {
+        class RenderFramework;
         class CameraControl;
 
         class Texture2D;
@@ -44,38 +48,39 @@ namespace hgl
 
     private:
 
-        graph::RenderFramework *render_framework=nullptr;
-        ecs::ECSContext *ecs_context=nullptr;
+        std::shared_ptr<ecs::ECSContext> world;
+
+        graph::RenderFramework *render_framework=nullptr; // legacy entry (optional)
         graph::IGraphicsContext *graphics_context=nullptr;
 
         bool destroy_flag=false;
         bool render_dirty=true;
+        Color4f clear_color{0,0,0,1};
 
     protected:
 
-        //以下数据均取自RenderFramework
-
-        graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
+        // 以下数据在 ECS 模式下来自 ECSContext/GraphicsContext
 
     public:
 
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
+        ecs::ECSContext *           GetECSContext       (){return world.get();}
         graph::IGraphicsContext *   GetGraphicsContext  (){return graphics_context;}
-        graph::VulkanDevice *       GetDevice           (){return graphics_context?graphics_context->GetDevice():(render_framework ? render_framework->GetDevice() : nullptr);}
+
+        graph::VulkanDevice *       GetDevice           (){return graphics_context?graphics_context->GetDevice():(world ? world->GetGPUDevice() : (render_framework ? render_framework->GetDevice() : nullptr));}
         graph::VulkanDevAttr *      GetDevAttr          (){return graphics_context?graphics_context->GetDevAttr():(render_framework ? render_framework->GetDevAttr() : nullptr);}
         graph::TextureManager *     GetTextureManager   (){return graphics_context?graphics_context->GetTextureManager():(render_framework ? render_framework->GetTextureManager() : nullptr);}
         graph::BufferManager *      GetBufferManager    (){return graphics_context?graphics_context->GetBufferManager():(render_framework ? render_framework->GetBufferManager() : nullptr);}
 
-        const VkExtent2D *          GetExtent           (){return scene_renderer ? &scene_renderer->GetExtent() : nullptr;}
-
-        graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
-        ecs::ECSContext *           GetECSContext       (){return ecs_context ? ecs_context : (render_framework ? render_framework->GetECSContext() : nullptr);}
-
-        const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer ? scene_renderer->GetViewportInfo() : nullptr;}
+        const VkExtent2D *          GetExtent           ();
+        const graph::ViewportInfo * GetViewportInfo     ()const;
         graph::Camera *             GetCamera           ();
         const graph::CameraInfo *   GetCameraInfo       ()const;
 
         const math::Vector2i *      GetMouseCoord       ()const {return render_framework ? &render_framework->GetMouseCoord() : nullptr;}
+
+        void SetClearColor(const Color4f &color) { clear_color = color; }
+        const Color4f &GetClearColor() const { return clear_color; }
 
     public:
 
@@ -84,15 +89,17 @@ namespace hgl
 
         const   bool IsRenderDirty  ()const{return render_dirty;}
                 void MarkRenderDirty(){render_dirty=true;}
+            void ClearRenderDirty(){render_dirty=false;}
 
     public:
 
-        WorkObject(graph::RenderFramework *,graph::SceneRenderer *r=nullptr);
+        explicit WorkObject(std::shared_ptr<ecs::ECSContext> ctx);
+        explicit WorkObject(graph::RenderFramework *);
         virtual ~WorkObject();
 
         virtual bool Init()=0;
 
-        virtual void OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r);
+        virtual void OnSceneRendererChange(graph::RenderFramework *rf);
 
         virtual void OnResize(const VkExtent2D &){}
 

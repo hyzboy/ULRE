@@ -7,8 +7,8 @@ namespace hgl
     namespace graph
     {
         class RenderCmdBuffer;
-        class RenderFramework;
         class IRenderTarget;
+        class IGraphicsContext;
         class LineRenderManager;
     }
 
@@ -19,7 +19,7 @@ namespace hgl
         private:
 
             graph::LineRenderManager *line_manager = nullptr;
-            graph::RenderFramework *render_framework = nullptr;
+            graph::IGraphicsContext *graphics_context = nullptr;
             graph::IRenderTarget *render_target = nullptr;
 
         public:
@@ -27,7 +27,7 @@ namespace hgl
             LineRenderSystem(const std::string &name = "LineRenderSystem");
             ~LineRenderSystem() override;
 
-            void SetRenderFramework(graph::RenderFramework *rf);
+            void SetGraphicsContext(graph::IGraphicsContext *gc) { graphics_context = gc; }
             void SetRenderTarget(graph::IRenderTarget *rt);
 
             void SetLineRenderManager(graph::LineRenderManager *mgr) { line_manager = mgr; }
