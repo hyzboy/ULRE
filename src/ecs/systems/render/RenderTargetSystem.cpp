@@ -3,6 +3,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKRenderTarget.h>
 
 namespace hgl::ecs
@@ -16,6 +17,11 @@ namespace hgl::ecs
     void RenderTargetSystem::SetRenderFramework(graph::RenderFramework *rf)
     {
         render_framework = rf;
+    }
+
+    void RenderTargetSystem::SetGraphicsContext(graph::IGraphicsContext *gc)
+    {
+        graphics_context = gc;
     }
 
     void RenderTargetSystem::SetRenderTarget(graph::IRenderTarget *rt)
@@ -32,6 +38,9 @@ namespace hgl::ecs
         if (!render_framework)
             render_framework = render_target->GetRenderFramework();
 
+        if (!graphics_context && context)
+            graphics_context = context->GetGraphicsContext();
+
         SyncSubsystems();
     }
 
@@ -44,6 +53,7 @@ namespace hgl::ecs
         if (camera_system)
         {
             camera_system->SetRenderFramework(render_framework);
+            camera_system->SetGraphicsContext(graphics_context);
             camera_system->SetViewportInfo(render_target ? render_target->GetViewportInfo() : nullptr);
         }
 

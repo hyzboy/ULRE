@@ -18,6 +18,19 @@ SwapchainRenderTarget::SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,S
     present_complete_semaphore=pcs;
 }
 
+SwapchainRenderTarget::SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtl):MultiFrameRenderTarget(ctx,sc->image_count,rtl)
+{
+    swapchain=sc;
+
+    present_info.waitSemaphoreCount = 0;
+    present_info.pWaitSemaphores    = nullptr;
+    present_info.swapchainCount     = 1;
+    present_info.pResults           = nullptr;
+    present_info.pSwapchains        = &(swapchain->swap_chain);
+
+    present_complete_semaphore=pcs;
+}
+
 SwapchainRenderTarget::~SwapchainRenderTarget()
 {
     delete present_complete_semaphore;

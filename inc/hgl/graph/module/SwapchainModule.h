@@ -2,6 +2,11 @@
 
 #include<hgl/graph/module/GraphModule.h>
 
+namespace hgl::ecs
+{
+    class ECSContext;
+}
+
 VK_NAMESPACE_BEGIN
 
 GRAPH_MODULE_CLASS(SwapchainModule)
@@ -9,6 +14,7 @@ GRAPH_MODULE_CLASS(SwapchainModule)
     TextureManager *        tex_manager =nullptr;
     RenderTargetManager *   rt_manager  =nullptr;
     RenderPassManager *     rp_manager  =nullptr;
+    hgl::ecs::ECSContext *   ecs_context =nullptr;
 
     RenderPass *            sc_render_pass  =nullptr;
 

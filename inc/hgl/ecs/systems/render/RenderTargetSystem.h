@@ -8,6 +8,7 @@ namespace hgl
     {
         class RenderFramework;
         class IRenderTarget;
+        class IGraphicsContext;
     }
 
     namespace ecs
@@ -22,6 +23,7 @@ namespace hgl
         private:
 
             graph::RenderFramework *render_framework = nullptr;
+            graph::IGraphicsContext *graphics_context = nullptr;
             graph::IRenderTarget *render_target = nullptr;
 
         public:
@@ -32,6 +34,7 @@ namespace hgl
         public:
 
             void SetRenderFramework(graph::RenderFramework *rf);
+            void SetGraphicsContext(graph::IGraphicsContext *gc);
             void SetRenderTarget(graph::IRenderTarget *rt);
 
             graph::RenderFramework *GetRenderFramework() const { return render_framework; }

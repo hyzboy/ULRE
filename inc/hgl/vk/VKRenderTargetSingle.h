@@ -24,6 +24,13 @@ protected:
         data->cmd_buf->SetDescriptorBinding(GetDescriptorBinding());
     }
 
+    RenderTarget(hgl::ecs::ECSContext *ctx,RenderTargetData *rtd):IRenderTarget(ctx,rtd->fbo->GetExtent())
+    {
+        data=rtd;
+
+        data->cmd_buf->SetDescriptorBinding(GetDescriptorBinding());
+    }
+
 public:
 
     virtual ~RenderTarget() override

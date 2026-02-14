@@ -321,6 +321,22 @@ graph::VertexDataManager *RenderFramework::CreateVDM(const graph::VIL *vil,const
     return vdm;
 }
 
+SharedPtr<graph::GeometryCreater> RenderFramework::GetGeometryCreater(graph::Material *mtl)
+{
+    if(!mtl)
+        return(nullptr);
+
+    return(new graph::GeometryCreater(GetDevice(),mtl->GetDefaultVIL()));
+}
+
+SharedPtr<graph::GeometryCreater> RenderFramework::GetGeometryCreater(graph::MaterialInstance *mi)
+{
+    if(!mi)
+        return(nullptr);
+
+    return(new graph::GeometryCreater(GetDevice(),mi->GetVIL()));
+}
+
 graph::Geometry *RenderFramework::CreateGeometry( const AnsiString &name,
                                                     const uint32_t vertices_count,
                                                     const graph::VIL *vil,
@@ -361,5 +377,6 @@ graph::Primitive *RenderFramework::CreatePrimitive(   const AnsiString &name,
     // Prefer PrimitiveManager to create and own meshes
     return primitive_manager->CreatePrimitive(geometry,mi,pipeline);
 }
+
 VK_NAMESPACE_END
 

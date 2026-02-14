@@ -78,6 +78,7 @@ namespace hgl::graph
     void SceneRenderer::SetECSContext(ecs::ECSContext *ctx)
     {
         ecs_context = ctx;
+        graphics_context = ctx ? ctx->GetGraphicsContext() : nullptr;
         SyncRenderTargetSystem();
     }
 
@@ -85,6 +86,8 @@ namespace hgl::graph
     {
         if (!ecs_context)
             return;
+
+        graphics_context = ecs_context->GetGraphicsContext();
 
         if (!render_framework && render_target)
             render_framework = render_target->GetRenderFramework();
@@ -94,6 +97,7 @@ namespace hgl::graph
             return;
 
         render_target_system->SetRenderFramework(render_framework);
+        render_target_system->SetGraphicsContext(graphics_context);
         render_target_system->SetRenderTarget(render_target);
     }
 

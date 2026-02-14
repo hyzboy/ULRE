@@ -13,6 +13,11 @@
 #include<hgl/vk/VKDescriptorBindingManage.h>
 //#include<iostream>
 
+namespace hgl::ecs
+{
+    class ECSContext;
+}
+
 VK_NAMESPACE_BEGIN
 
 class RenderFramework;
@@ -22,6 +27,7 @@ using UBOViewportInfo=StructuredBufferAccessor<ViewportInfo>;  ///< 统一使用
 class IRenderTarget
 {
     RenderFramework *render_framework;
+    hgl::ecs::ECSContext *ecs_context;
 
     VkExtent2D extent;
 
@@ -48,6 +54,7 @@ public:
 public:
 
     IRenderTarget(RenderFramework *,const VkExtent2D &);
+    IRenderTarget(hgl::ecs::ECSContext *,const VkExtent2D &);
     virtual ~IRenderTarget();
 
     virtual Framebuffer *       GetFramebuffer  ()=0;

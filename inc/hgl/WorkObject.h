@@ -2,6 +2,7 @@
 
 #include<hgl/type/object/TickObject.h>
 #include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/render/SceneRenderer.h>
 #include<hgl/time/Time.h>
@@ -44,6 +45,8 @@ namespace hgl
     private:
 
         graph::RenderFramework *render_framework=nullptr;
+        ecs::ECSContext *ecs_context=nullptr;
+        graph::IGraphicsContext *graphics_context=nullptr;
 
         bool destroy_flag=false;
         bool render_dirty=true;
@@ -57,15 +60,16 @@ namespace hgl
     public:
 
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
-        graph::VulkanDevice *       GetDevice           (){return render_framework ? render_framework->GetDevice() : nullptr;}
-        graph::VulkanDevAttr *      GetDevAttr          (){return render_framework ? render_framework->GetDevAttr() : nullptr;}
-        graph::TextureManager *     GetTextureManager   (){return render_framework ? render_framework->GetTextureManager() : nullptr;}
-        graph::BufferManager *      GetBufferManager    (){return render_framework ? render_framework->GetBufferManager() : nullptr;}
+        graph::IGraphicsContext *   GetGraphicsContext  (){return graphics_context;}
+        graph::VulkanDevice *       GetDevice           (){return graphics_context?graphics_context->GetDevice():(render_framework ? render_framework->GetDevice() : nullptr);}
+        graph::VulkanDevAttr *      GetDevAttr          (){return graphics_context?graphics_context->GetDevAttr():(render_framework ? render_framework->GetDevAttr() : nullptr);}
+        graph::TextureManager *     GetTextureManager   (){return graphics_context?graphics_context->GetTextureManager():(render_framework ? render_framework->GetTextureManager() : nullptr);}
+        graph::BufferManager *      GetBufferManager    (){return graphics_context?graphics_context->GetBufferManager():(render_framework ? render_framework->GetBufferManager() : nullptr);}
 
         const VkExtent2D *          GetExtent           (){return scene_renderer ? &scene_renderer->GetExtent() : nullptr;}
 
         graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
-        ecs::ECSContext *           GetECSContext       (){return render_framework ? render_framework->GetECSContext() : nullptr;}
+        ecs::ECSContext *           GetECSContext       (){return ecs_context ? ecs_context : (render_framework ? render_framework->GetECSContext() : nullptr);}
 
         const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer ? scene_renderer->GetViewportInfo() : nullptr;}
         graph::Camera *             GetCamera           ();
@@ -130,6 +134,12 @@ namespace hgl
         {
             if(!geometry)return;
 
+            if(graphics_context)
+            {
+                graphics_context->Add(geometry);
+                return;
+            }
+
             if(!render_framework)return;
 
             render_framework->GetGeometryManager()->Add(geometry);
@@ -139,6 +149,9 @@ namespace hgl
         {
             if(!geometry||!pipeline)
                 return nullptr;
+
+            if(graphics_context)
+                return graphics_context->CreatePrimitive(geometry,mi,pipeline);
 
             if(!render_framework)
                 return nullptr;
@@ -156,6 +169,9 @@ namespace hgl
             if(!pc||!pipeline)
                 return nullptr;
 
+            if(graphics_context)
+                return graphics_context->CreatePrimitive(pc,mi,pipeline);
+
             if(!render_framework)
                 return nullptr;
 
@@ -169,22 +185,52 @@ namespace hgl
 
         graph::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr)
         {
+            if(graphics_context)
+                return graphics_context->CreateSampler(sci);
+
             return render_framework?render_framework->GetSamplerManager()->CreateSampler(sci):nullptr;
         }
 
         graph::Sampler *CreateSampler(graph::Texture *tex)
         {
+            if(graphics_context)
+                return graphics_context->CreateSampler(tex);
+
             return render_framework?render_framework->GetSamplerManager()->CreateSampler(tex):nullptr;
         }
 
-        FUNC_FROM_RENDER_FRAMEWORK(graph::Pipeline *,CreatePipeline)
-        FUNC_FROM_RENDER_FRAMEWORK(SharedPtr<graph::GeometryCreater>,GetGeometryCreater)
+        graph::Pipeline *CreatePipeline(graph::Material *mat,const graph::InlinePipeline &ip)
+        {
+            if(graphics_context)
+                return graphics_context->CreatePipeline(mat,ip);
+
+            return render_framework?render_framework->CreatePipeline(mat,ip):nullptr;
+        }
+
+        SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::Material *mtl)
+        {
+            if(graphics_context)
+                return graphics_context->GetGeometryCreater(mtl);
+
+            return render_framework?render_framework->GetGeometryCreater(mtl):nullptr;
+        }
+
+        SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::MaterialInstance *mi)
+        {
+            if(graphics_context)
+                return graphics_context->GetGeometryCreater(mi);
+
+            return render_framework?render_framework->GetGeometryCreater(mi):nullptr;
+        }
 
         graph::Geometry *CreateGeometry(const AnsiString &name,
                                             const uint32_t vertices_count,
                                             const graph::VIL *vil,
                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
         {
+            if(graphics_context)
+                return graphics_context->CreateGeometry(name,vertices_count,vil,vad_list);
+
             return render_framework?render_framework->CreateGeometry(name,vertices_count,vil,vad_list):nullptr;
         }
 
@@ -194,11 +240,17 @@ namespace hgl
                                 graph::Pipeline *pipeline,
                                 const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
         {
+            if(graphics_context)
+                return graphics_context->CreatePrimitive(name,vertices_count,mi,pipeline,vad_list);
+
             return render_framework?render_framework->CreatePrimitive(name,vertices_count,mi,pipeline,vad_list):nullptr;
         }
 
         graph::TextRender *CreateTextRender(graph::FontSource *fs,const int limit=1024)
         {
+            if(graphics_context)
+                return graphics_context->CreateTextRender(fs,limit);
+
             return render_framework?render_framework->CreateTextRender(fs,limit):nullptr;
         }
 

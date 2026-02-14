@@ -39,6 +39,8 @@ namespace hgl
         if(!rf)
         {
             render_framework=nullptr;
+            ecs_context=nullptr;
+            graphics_context=nullptr;
         }
 
         if(!rf||!r)
@@ -48,6 +50,8 @@ namespace hgl
 
         render_framework=rf;
         scene_renderer=rf->GetDefaultSceneRenderer();
+        ecs_context=rf->GetECSContext();
+        graphics_context=ecs_context?ecs_context->GetGraphicsContext():nullptr;
     }
 
     void WorkObject::Tick(double delta)

@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/ecs/core/Context.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -10,6 +11,7 @@ RenderTargetManager::RenderTargetManager(RenderFramework *rf,TextureManager *tm,
 {
     tex_manager=tm;
     rp_manager=rpm;
+    ecs_context=rf?rf->GetECSContext():nullptr;
 }
 
 RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
@@ -59,6 +61,9 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
         rtd->depth_texture              =depth_texture;
 
         color_texture_list.Discard();
+
+        if(ecs_context)
+            return(new RenderTarget(ecs_context,rtd));
 
         return(new RenderTarget(GetRenderFramework(),rtd));
     }

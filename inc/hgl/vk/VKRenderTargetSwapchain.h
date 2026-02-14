@@ -17,6 +17,7 @@ class SwapchainRenderTarget:public MultiFrameRenderTarget
 private:
 
     SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtdl);
+    SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtdl);
 
     friend class SwapchainModule;
     friend class RenderTargetManager;

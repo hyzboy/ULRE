@@ -29,6 +29,14 @@ protected:
         rtd_list=rtl;
     }
 
+    MultiFrameRenderTarget(hgl::ecs::ECSContext *ctx,const uint32_t fn,RenderTargetData *rtl):IRenderTarget(ctx,rtl[0].fbo->GetExtent())
+    {
+        frame_number=fn;
+        current_frame=0;
+
+        rtd_list=rtl;
+    }
+
 public:
 
     virtual ~MultiFrameRenderTarget() override

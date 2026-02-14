@@ -7,6 +7,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
+#include<hgl/log/Log.h>
 #include<algorithm>
 
 namespace hgl
@@ -49,6 +50,19 @@ namespace hgl
 
             // Don't create our own transform storage if we have a parent
             // The TransformComponent will use the shared storage from the parent
+        }
+        
+        bool ECSContext::InitializeGraphics(hgl::vk::VulkanDevice* device, hgl::graph::IRenderTarget* target) {
+            if (!device || !target) {
+                // Phase 1 debug: device or target is null
+                return false;
+            }
+            
+            gpu_device = device;
+            render_target = target;
+            
+            // Phase 1: Initialized with GPU device and render target
+            return true;
         }
 
         void ECSContext::Initialize()
@@ -194,6 +208,11 @@ namespace hgl
         {
             if (!active)
                 return;
+            
+            // (Phase 1) 设置当前渲染命令缓冲区（如果没有由 RenderSystemCore 设置）
+            if (!current_render_cmd && cmd) {
+                current_render_cmd = cmd;
+            }
 
             RunRenderUpdatesFrom(ExecutionPhase::RenderCollect, deltaTime);
 
@@ -222,6 +241,11 @@ namespace hgl
                     if (sub_world)
                         sub_world->RenderSubWorld(cmd, deltaTime);
                 }
+            }
+            
+            // (Phase 1) 清除当前命令缓冲区（如果是我们设置的）
+            if (current_render_cmd == cmd) {
+                current_render_cmd = nullptr;
             }
         }
 
