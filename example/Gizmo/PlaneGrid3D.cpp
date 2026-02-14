@@ -173,7 +173,6 @@ private:
         if(!ecs_world)
             return false;
 
-        GetSceneRenderer()->SetCameraControl(nullptr);
 
         if(!InitScene())
             return false;

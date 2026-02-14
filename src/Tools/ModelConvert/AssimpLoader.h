@@ -6,7 +6,6 @@
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VertexBuffer.h>
-#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/NTB.h>
 //#include<hgl/graph/Material/Material.h>
 #include<hgl/graph/Mesh.h>

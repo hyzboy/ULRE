@@ -271,7 +271,6 @@ public:
         ecs_world = GetECSContext();
         if(!ecs_world) return false;
 
-        GetSceneRenderer()->SetCameraControl(nullptr);
 
         if(!InitECSScene())
             return false;

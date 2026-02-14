@@ -81,12 +81,6 @@ SOURCE_GROUP("1.Core\\Module" FILES ${GRAPH_MODULE_FILES})
 # 2. Scene Management - 场景管理系统
 # ============================================================================
 
-SET(SCENE_CORE_FILES ${SG_INCLUDE_PATH}/TransformState.h
-                     Scene/NodeTransform.cpp
-                     Scene/TransformState.cpp)
-
-SOURCE_GROUP("2.Scene\\Core" FILES ${SCENE_CORE_FILES})
-
 SET(SCENE_ENVIRONMENT_FILES ${SG_INCLUDE_PATH}/SkyInfo.h
                             SkyInfo.cpp)
 
