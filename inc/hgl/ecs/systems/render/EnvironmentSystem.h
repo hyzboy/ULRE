@@ -8,7 +8,7 @@ namespace hgl
 {
     namespace graph
     {
-        class IGraphicsContext;
+        class RenderContext;
     }
 
     namespace ecs
@@ -25,7 +25,7 @@ namespace hgl
         {
         private:
 
-            graph::IGraphicsContext *graphics_context = nullptr;
+            graph::RenderContext *render_context = nullptr;
             UBOSkyInfo *sky_ubo = nullptr;
 
         public:
@@ -33,7 +33,7 @@ namespace hgl
             EnvironmentSystem(const std::string &name = "EnvironmentSystem");
             ~EnvironmentSystem() override;
 
-            void SetGraphicsContext(graph::IGraphicsContext *gc) { graphics_context = gc; }
+            void SetRenderContext(graph::RenderContext *ctx) { render_context = ctx; }
             UBOSkyInfo *GetSkyUBO() const { return sky_ubo; }
 
             graph::SkyInfo *EditSkyInfo();

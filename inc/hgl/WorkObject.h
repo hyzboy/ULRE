@@ -2,8 +2,8 @@
 
 #include<hgl/type/object/TickObject.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/time/Time.h>
@@ -12,6 +12,7 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/mesh/Primitive.h>
 #include <hgl/graph/geo/GeometryCreater.h>
+#include <hgl/graph/render/RenderContext.h>
 #include <memory>
 
 namespace hgl
@@ -20,6 +21,8 @@ namespace hgl
     {
         class RenderFramework;
         class CameraControl;
+        class RenderContext;
+        class VILConfig;
 
         class Texture2D;
         class Texture2DArray;
@@ -32,6 +35,8 @@ namespace hgl
         namespace mtl
         {
             class MaterialCreateInfo;
+            struct Material2DCreateConfig;
+            struct Material3DCreateConfig;
         }
     }
 
@@ -51,7 +56,7 @@ namespace hgl
         std::shared_ptr<ecs::ECSContext> world;
 
         graph::RenderFramework *render_framework=nullptr; // legacy entry (optional)
-        graph::IGraphicsContext *graphics_context=nullptr;
+        graph::RenderContext *render_context=nullptr;
 
         bool destroy_flag=false;
         bool render_dirty=true;
@@ -65,12 +70,33 @@ namespace hgl
 
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
         ecs::ECSContext *           GetECSContext       (){return world.get();}
-        graph::IGraphicsContext *   GetGraphicsContext  (){return graphics_context;}
+        graph::RenderContext *      GetRenderContext    (){return render_context;}
 
-        graph::VulkanDevice *       GetDevice           (){return graphics_context?graphics_context->GetDevice():(world ? world->GetGPUDevice() : (render_framework ? render_framework->GetDevice() : nullptr));}
-        graph::VulkanDevAttr *      GetDevAttr          (){return graphics_context?graphics_context->GetDevAttr():(render_framework ? render_framework->GetDevAttr() : nullptr);}
-        graph::TextureManager *     GetTextureManager   (){return graphics_context?graphics_context->GetTextureManager():(render_framework ? render_framework->GetTextureManager() : nullptr);}
-        graph::BufferManager *      GetBufferManager    (){return graphics_context?graphics_context->GetBufferManager():(render_framework ? render_framework->GetBufferManager() : nullptr);}
+        graph::VulkanDevice *       GetDevice           ()
+        {
+            if (render_context && render_context->GetDevice())
+                return render_context->GetDevice();
+            if (world && world->GetGPUDevice())
+                return world->GetGPUDevice();
+            return render_framework ? render_framework->GetDevice() : nullptr;
+        }
+        graph::VulkanDevAttr *      GetDevAttr          ()
+        {
+            auto *device = GetDevice();
+            return device ? device->GetDevAttr() : nullptr;
+        }
+        graph::TextureManager *     GetTextureManager   ()
+        {
+            if (render_context && render_context->GetTextureManager())
+                return render_context->GetTextureManager();
+            return render_framework ? render_framework->GetTextureManager() : nullptr;
+        }
+        graph::BufferManager *      GetBufferManager    ()
+        {
+            if (render_context && render_context->GetBufferManager())
+                return render_context->GetBufferManager();
+            return render_framework ? render_framework->GetBufferManager() : nullptr;
+        }
 
         const VkExtent2D *          GetExtent           ();
         const graph::ViewportInfo * GetViewportInfo     ()const;
@@ -107,175 +133,8 @@ namespace hgl
 
         virtual void Render(double delta_time);
 
-    #define FUNC_FROM_RENDER_FRAMEWORK(return_type,func_name) template<typename ...ARGS>    \
-        return_type func_name(ARGS...args) \
-        {   \
-            return render_framework?render_framework->func_name(args...):nullptr;   \
-        }
-
-    public: // Material 相关
-
-        FUNC_FROM_RENDER_FRAMEWORK(graph::Material *,CreateMaterial)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::Material *,LoadMaterial)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::MaterialInstance *,CreateMaterialInstance)
-
     public:
 
-        FUNC_FROM_RENDER_FRAMEWORK(graph::VertexDataManager *,CreateVDM)
-
-    public: // Buffer 相关
-
-        FUNC_FROM_RENDER_FRAMEWORK(graph::VAB *,CreateVAB)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::DeviceBuffer *,CreateUBO)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::DeviceBuffer *,CreateSSBO)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::DeviceBuffer *,CreateINBO)
-
-        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO8)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO16)
-        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO32)
-
-    public: // Geometry, Primitive, Sampler 相关
-
-        void Add(graph::Geometry *geometry)
-        {
-            if(!geometry)return;
-
-            if(graphics_context)
-            {
-                graphics_context->Add(geometry);
-                return;
-            }
-
-            if(!render_framework)return;
-
-            render_framework->GetGeometryManager()->Add(geometry);
-        }
-
-        graph::Primitive *CreatePrimitive(graph::Geometry *geometry,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
-        {
-            if(!geometry||!pipeline)
-                return nullptr;
-
-            if(graphics_context)
-                return graphics_context->CreatePrimitive(geometry,mi,pipeline);
-
-            if(!render_framework)
-                return nullptr;
-
-            graph::PrimitiveManager *mm = render_framework->GetPrimitiveManager();
-
-            if(!mm)
-                return nullptr;
-
-            return mm->CreatePrimitive(geometry,mi,pipeline);
-        }
-
-        graph::Primitive *CreatePrimitive(graph::GeometryCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
-        {
-            if(!pc||!pipeline)
-                return nullptr;
-
-            if(graphics_context)
-                return graphics_context->CreatePrimitive(pc,mi,pipeline);
-
-            if(!render_framework)
-                return nullptr;
-
-            graph::PrimitiveManager *mm = render_framework->GetPrimitiveManager();
-
-            if(!mm)
-                return nullptr;
-
-            return mm->CreatePrimitive(pc,mi,pipeline);
-        }
-
-        graph::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr)
-        {
-            if(graphics_context)
-                return graphics_context->CreateSampler(sci);
-
-            return render_framework?render_framework->GetSamplerManager()->CreateSampler(sci):nullptr;
-        }
-
-        graph::Sampler *CreateSampler(graph::Texture *tex)
-        {
-            if(graphics_context)
-                return graphics_context->CreateSampler(tex);
-
-            return render_framework?render_framework->GetSamplerManager()->CreateSampler(tex):nullptr;
-        }
-
-        graph::Pipeline *CreatePipeline(graph::Material *mat,const graph::InlinePipeline &ip)
-        {
-            if(graphics_context)
-                return graphics_context->CreatePipeline(mat,ip);
-
-            return render_framework?render_framework->CreatePipeline(mat,ip):nullptr;
-        }
-
-        graph::Pipeline *CreatePipeline(graph::MaterialInstance *mi,const graph::InlinePipeline &ip)
-        {
-            if(graphics_context)
-                return graphics_context->CreatePipeline(mi,ip);
-
-            return render_framework?render_framework->CreatePipeline(mi,ip):nullptr;
-        }
-
-        SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::Material *mtl)
-        {
-            if(graphics_context)
-                return graphics_context->GetGeometryCreater(mtl);
-
-            return render_framework?render_framework->GetGeometryCreater(mtl):nullptr;
-        }
-
-        SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::MaterialInstance *mi)
-        {
-            if(graphics_context)
-                return graphics_context->GetGeometryCreater(mi);
-
-            return render_framework?render_framework->GetGeometryCreater(mi):nullptr;
-        }
-
-        graph::Geometry *CreateGeometry(const AnsiString &name,
-                                            const uint32_t vertices_count,
-                                            const graph::VIL *vil,
-                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-        {
-            if(graphics_context)
-                return graphics_context->CreateGeometry(name,vertices_count,vil,vad_list);
-
-            return render_framework?render_framework->CreateGeometry(name,vertices_count,vil,vad_list):nullptr;
-        }
-
-        graph::Primitive *CreatePrimitive(const AnsiString &name,
-                                const uint32_t vertices_count,
-                                graph::MaterialInstance *mi,
-                                graph::Pipeline *pipeline,
-                                const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-        {
-            if(graphics_context)
-                return graphics_context->CreatePrimitive(name,vertices_count,mi,pipeline,vad_list);
-
-            return render_framework?render_framework->CreatePrimitive(name,vertices_count,mi,pipeline,vad_list):nullptr;
-        }
-
-        graph::TextRender *CreateTextRender(graph::FontSource *fs,const int limit=1024)
-        {
-            if(graphics_context)
-                return graphics_context->CreateTextRender(fs,limit);
-
-            return render_framework?render_framework->CreateTextRender(fs,limit):nullptr;
-        }
-
-    public: // Texture 相关
-
-        graph::Texture2D *      LoadTexture2D       (const OSString &file_name,bool auto_mipmap=true);
-        graph::TextureCube *    LoadTextureCube     (const OSString &,bool auto_mipmaps=false);
-        graph::Texture2DArray * CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
-        bool                    LoadTexture2DArray  (graph::Texture2DArray *,const uint32_t layer,const OSString &);
-
-    #undef FUNC_FROM_RENDER_FRAMEWORK
+        // Use RenderContext/RenderAPI/GraphicsContext directly for resource creation.
     };//class WorkObject
 }//namespcae hgl

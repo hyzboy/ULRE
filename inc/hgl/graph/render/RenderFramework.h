@@ -13,6 +13,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/ecs/core/Context.h>
+#include <memory>
 
 VK_NAMESPACE_BEGIN
 
@@ -35,6 +36,7 @@ class BufferManager;
 class RenderModule;
 
 class LineRenderManager; // forward
+class RenderContext;     // forward
 
 class RenderFramework:public io::WindowEvent
 {
@@ -64,6 +66,7 @@ protected:
 protected:
 
     ecs::ECSContext *       default_ecs_context     =nullptr;
+    std::unique_ptr<graph::RenderContext> render_context;
 
 protected:  //EventDispatcher
 
@@ -100,6 +103,7 @@ public:
 public:
 
     ecs::ECSContext *       GetECSContext           (){return default_ecs_context;}
+    graph::RenderContext *  GetRenderContext        (){return render_context.get();}
     RenderPass *            GetDefaultRenderPass    ()const
     {
         auto *rt = GetSwapchainRenderTarget();

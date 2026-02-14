@@ -1,7 +1,9 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<memory>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -10,6 +12,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -32,27 +35,44 @@ private:
 
     bool InitMDP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::SkyMinimalCreateConfig cfg;
 
-        mi_sky_sphere=CreateMaterialInstance(mtl::inline_material::SkyMinimal,&cfg);
+        mi_sky_sphere=render_context->CreateMaterialInstance(mtl::inline_material::SkyMinimal,&cfg);
 
-        mtl_pipeline=CreatePipeline(mi_sky_sphere,InlinePipeline::Sky);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        mtl_pipeline = render_pass ? render_pass->CreatePipeline(mi_sky_sphere, InlinePipeline::Sky) : nullptr;
 
         return mtl_pipeline;
     }
 
     bool CreateRenderObject()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!device || !geometry_manager)
+            return false;
+
         using namespace inline_geometry;
 
-        auto pc=GetGeometryCreater(mi_sky_sphere);
+        auto pc = std::make_unique<GeometryCreater>(device, mi_sky_sphere->GetVIL());
 
         struct HexSphereCreateInfo hsci;
 
         hsci.subdivisions=3;
         hsci.radius=256;
 
-        prim_sky_sphere=CreateHexSphere(pc,&hsci);
+        prim_sky_sphere=CreateHexSphere(pc.get(),&hsci);
+        if (prim_sky_sphere)
+            geometry_manager->Add(prim_sky_sphere);
 
         return prim_sky_sphere;
     }
@@ -84,7 +104,15 @@ private:
         if(!prim_sky_sphere || !mi_sky_sphere || !mtl_pipeline)
             return false;
 
-        Primitive *ri=CreatePrimitive(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
         if(!ri)
             return false;
 
@@ -131,6 +159,16 @@ private:
         ecs_world = GetECSContext();
         if(!ecs_world)
             return false;
+
+        auto environment_system = ecs_world->GetSystem<hgl::ecs::EnvironmentSystem>();
+        if (!environment_system)
+            environment_system = ecs_world->RegisterRenderSystem<hgl::ecs::EnvironmentSystem>();
+
+        if (environment_system)
+        {
+            environment_system->EditSkyInfo();
+            environment_system->SyncSkyUBO();
+        }
 
         if(!InitECSScene())
             return false;

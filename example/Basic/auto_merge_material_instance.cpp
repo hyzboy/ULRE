@@ -64,16 +64,24 @@ private:
 
     bool InitMaterial()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         {
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
         #ifndef USE_MATERIAL_FILE
-            mtl::MaterialCreateInfo* mci = mtl::CreatePureColor2D(GetDevAttr(), &cfg);  //走程序内置材质创建函数
-            material = CreateMaterial("PureColor2D", mci);
+            auto* device = render_context->GetDevice();
+            if (!device)
+                return false;
+
+            mtl::MaterialCreateInfo* mci = mtl::CreatePureColor2D(device->GetDevAttr(), &cfg);  //走程序内置材质创建函数
+            material = render_context->CreateMaterial("PureColor2D", mci);
         #else
-            material = LoadMaterial("Std2D/PureColor2D", &cfg);                         //走材质文件加载
+            material = render_context->LoadMaterial("Std2D/PureColor2D", &cfg);                         //走材质文件加载
         #endif//USE_MATERIAL_FILE
 
             if (!material)
@@ -86,7 +94,7 @@ private:
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                triangles[i].mi = CreateMaterialInstance(material);
+                triangles[i].mi = render_context->CreateMaterialInstance(material);
 
                 if (!triangles[i].mi)
                     return false;
@@ -111,7 +119,9 @@ private:
             }
         }
 
-        pipeline = CreatePipeline(material, InlinePipeline::Solid2D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
 
         if (!pipeline)
         {
@@ -126,7 +136,11 @@ private:
 
     bool InitGeometry()
     {
-        geometry = CreateGeometry("Triangle", VERTEX_COUNT, material->GetDefaultVIL(),
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        geometry = render_context->CreateGeometry("Triangle", VERTEX_COUNT, material->GetDefaultVIL(),
                                   {{VAN::Position, VF_V2F, position_data}});
 
         if (!geometry)
@@ -137,13 +151,19 @@ private:
 
         std::cout << "[TestApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
 
-        Add(geometry);
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (geometry_manager)
+            geometry_manager->Add(geometry);
 
         return true;
     }
 
     bool InitECS()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         // === 步骤1: 获取ECS世界 ===
         ecs_world = GetECSContext();
         if (!ecs_world)
@@ -158,7 +178,11 @@ private:
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
             // 为每个三角形创建Primitive（共享Geometry，但使用不同的MaterialInstance）
-            triangles[i].primitive = CreatePrimitive(geometry, triangles[i].mi, pipeline);
+            auto* primitive_manager = render_context->GetPrimitiveManager();
+            if (!primitive_manager)
+                return false;
+
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi, pipeline);
 
             if (!triangles[i].primitive)
             {

@@ -3,6 +3,7 @@
 #include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
@@ -17,6 +18,7 @@
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -38,12 +40,16 @@ private:
 
     bool InitMDP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
 
-        material=LoadMaterial("Std3D/VertexLum3D",&cfg);
+        material=render_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
         if(!material)return(false);
 
         VILConfig vil_config;
@@ -57,18 +63,29 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i]=CreateMaterialInstance(material,&vil_config,&GridColor);
+            material_instance[i]=render_context->CreateMaterialInstance(material,&vil_config,&GridColor);
 
             ce=COLOR((int)ce+1);
         }
 
-        pipeline=CreatePipeline(material_instance[0],InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material_instance[0], InlinePipeline::Solid3D) : nullptr;
 
         return pipeline;
     }
 
     bool CreateRenderObject()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        auto* geometry_manager = render_context->GetGeometryManager();
+        if (!device || !geometry_manager)
+            return false;
+
         using namespace inline_geometry;
 
         struct PlaneGridCreateInfo pgci;
@@ -79,16 +96,26 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        auto pc=GetGeometryCreater(material_instance[0]);
+        auto pc = std::make_unique<GeometryCreater>(device, material_instance[0]->GetVIL());
 
-        geom_plane_grid=CreatePlaneGrid2D(pc,&pgci);
+        geom_plane_grid=CreatePlaneGrid2D(pc.get(),&pgci);
+        if (geom_plane_grid)
+            geometry_manager->Add(geom_plane_grid);
 
         return geom_plane_grid;
     }
 
     bool Add(const char *name,MaterialInstance *mi,const glm::quat &rotation)
     {
-        Primitive *ri=CreatePrimitive(geom_plane_grid,mi,pipeline);
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi,pipeline);
 
         if(!ri)
             return false;

@@ -73,9 +73,12 @@ SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderStagePipeline.h
                             ${SG_INCLUDE_PATH}/render/RenderStages.h
                             ${SG_INCLUDE_PATH}/render/SceneCaptureStage.h
+                            ${SG_INCLUDE_PATH}/render/RenderContext.h
+                            ${SG_INCLUDE_PATH}/render/RenderAPI.h
                             render/RenderStagePipeline.cpp
                             render/RenderStages.cpp
                             render/SceneCaptureStage.cpp
+                            render/RenderContext.cpp
 )
 
 SOURCE_GROUP("4.Rendering\\Core" FILES ${RENDERING_CORE_FILES})

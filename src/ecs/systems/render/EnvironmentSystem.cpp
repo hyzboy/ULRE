@@ -1,6 +1,6 @@
 ﻿#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
 namespace hgl::ecs
@@ -59,10 +59,10 @@ namespace hgl::ecs
         if (sky_ubo)
             return;
 
-        if (!graphics_context && context)
-            graphics_context = context->GetGraphicsContext();
+        if (!render_context && context)
+            render_context = context->GetRenderContext();
 
-        auto *device = graphics_context ? graphics_context->GetDevice() : nullptr;
+        auto *device = render_context ? render_context->GetDevice() : nullptr;
         if (!device && context)
             device = context->GetGPUDevice();
 

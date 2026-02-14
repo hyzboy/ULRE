@@ -13,7 +13,7 @@ namespace hgl::graph
     struct Camera;
     struct CameraInfo;
     class ViewportInfo;
-    class IGraphicsContext;
+    class RenderContext;
     class RenderCmdBuffer;
     class DescriptorBinding;
     template<typename T> class StructuredBufferAccessor;
@@ -92,7 +92,7 @@ namespace hgl
 
             CameraInputMapping input_mapping;
 
-            graph::IGraphicsContext* graphics_context = nullptr;
+            graph::RenderContext* render_context = nullptr;
             const graph::ViewportInfo* viewport_info = nullptr;
             graph::Camera camera_data{};
             graph::CameraInfo* camera_info = nullptr;
@@ -109,7 +109,7 @@ namespace hgl
             CameraInputMapping& GetInputMapping() { return input_mapping; }
             const CameraInputMapping& GetInputMapping() const { return input_mapping; }
 
-            void SetGraphicsContext(graph::IGraphicsContext* gc);
+            void SetRenderContext(graph::RenderContext* ctx);
             void SetViewportInfo(const graph::ViewportInfo* vp);
 
             graph::Camera* GetCamera();

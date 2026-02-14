@@ -52,26 +52,32 @@ private:
 
     bool InitMaterial()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::Without);
 
-        material=LoadMaterial("Std2D/RectTexture2D",&cfg);
+        material=render_context->LoadMaterial("Std2D/RectTexture2D",&cfg);
 
         if(!material)
             return(false);
 
         //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid2D) : nullptr;
 
         if(!pipeline)
             return(false);
 
-        texture=LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        texture=render_context->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
-        sampler=CreateSampler();
+        sampler=render_context->CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
            mtl::SamplerName::BaseColor,        ///<采样器名称
@@ -79,7 +85,7 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        material_instance=CreateMaterialInstance(material);
+        material_instance=render_context->CreateMaterialInstance(material);
 
         return(true);
     }
@@ -93,7 +99,11 @@ private:
                 return false;
         }
 
-        Primitive *primitive = CreatePrimitive("TextureRect", 1, material_instance, pipeline,
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        Primitive *primitive = render_context->CreatePrimitive("TextureRect", 1, material_instance, pipeline,
                                                 {
                                                     {VAN::Position, VF_V4F, position_data},
                                                     {VAN::TexCoord, VF_V4F, tex_coord_data}

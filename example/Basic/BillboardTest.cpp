@@ -4,6 +4,7 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -20,6 +21,7 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
 #include<iostream>
+#include<memory>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -58,12 +60,16 @@ private:
 
     bool InitPlaneGridMP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world = true;
         cfg.position_format = VAT_VEC2;
 
-        mtl_plane_grid = LoadMaterial("Std3D/VertexLum3D", &cfg);
+        mtl_plane_grid = render_context->LoadMaterial("Std3D/VertexLum3D", &cfg);
         if(!mtl_plane_grid)
             return false;
 
@@ -72,13 +78,15 @@ private:
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-        mi_plane_grid = CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
+        mi_plane_grid = render_context->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
         if(!mi_plane_grid)
             return false;
 
         std::cout << "[BillboardECS] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
 
-        pipeline_plane_grid = CreatePipeline(mi_plane_grid, InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, InlinePipeline::Solid3D) : nullptr;
         if(!pipeline_plane_grid)
             return false;
 
@@ -89,17 +97,23 @@ private:
 
     bool InitBillboardMP()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
         cfg.fixed_size = true;
 
-        mi_billboard = CreateMaterialInstance(mtl::inline_material::Billboard2D, &cfg);
+        mi_billboard = render_context->CreateMaterialInstance(mtl::inline_material::Billboard2D, &cfg);
         if(!mi_billboard)
             return false;
 
         std::cout << "[BillboardECS] Billboard MI: " << (void*)mi_billboard
                   << ", Material: " << (void*)mi_billboard->GetMaterial() << std::endl;
 
-        pipeline_billboard = CreatePipeline(mi_billboard, InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline_billboard = render_pass ? render_pass->CreatePipeline(mi_billboard, InlinePipeline::Solid3D) : nullptr;
         if(!pipeline_billboard)
             return false;
 
@@ -110,7 +124,11 @@ private:
 
     bool InitTexture()
     {
-        TextureManager *tex_manager = GetTextureManager();
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        TextureManager *tex_manager = render_context->GetTextureManager();
 
         texture = tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
         if(!texture)
@@ -119,7 +137,7 @@ private:
         std::cout << "[BillboardECS] Texture loaded: " << (void*)texture
                   << " (" << texture->GetWidth() << "x" << texture->GetHeight() << ")" << std::endl;
 
-        sampler = CreateSampler();
+        sampler = render_context->CreateSampler();
 
         std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
 
@@ -141,10 +159,23 @@ private:
 
     bool CreateRenderObject()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        if (!device)
+            return false;
+
+        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!geometry_manager || !primitive_manager)
+            return false;
+
         using namespace inline_geometry;
 
         {
-            auto pc = GetGeometryCreater(mi_plane_grid);
+            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
 
             PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(500, 500);
@@ -152,12 +183,12 @@ private:
             pgci.lum = 128;
             pgci.sub_lum = 192;
 
-            geom_plane_grid = CreatePlaneGrid2D(pc, &pgci);
+            geom_plane_grid = CreatePlaneGrid2D(pc.get(), &pgci);
             if(!geom_plane_grid)
                 return false;
 
-            Add(geom_plane_grid);
-            prim_plane_grid = CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            geometry_manager->Add(geom_plane_grid);
+            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
             if(!prim_plane_grid)
                 return false;
 
@@ -166,14 +197,14 @@ private:
         }
 
         {
-            auto pc = GetGeometryCreater(mi_billboard);
+            auto pc = std::make_unique<GeometryCreater>(device, mi_billboard->GetVIL());
 
             pc->Init("Billboard", 1);
 
             if(!pc->WriteVAB(VAN::Position, VF_V3F, position_data))
                 return false;
 
-            prim_billboard = CreatePrimitive(pc, mi_billboard, pipeline_billboard);
+            prim_billboard = primitive_manager->CreatePrimitive(pc.get(), mi_billboard, pipeline_billboard);
             if(!prim_billboard)
                 return false;
 

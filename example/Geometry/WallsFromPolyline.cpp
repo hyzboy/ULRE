@@ -115,8 +115,18 @@ public:
 
     bool Init() override
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        auto* device = render_context->GetDevice();
+        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* primitive_manager = render_context->GetPrimitiveManager();
+        if (!device || !geometry_manager || !primitive_manager)
+            return false;
+
         mtl::BasicLitMaterialCreateConfig cfg;
-        mtl::MaterialCreateInfo *mci = mtl::CreateBasicLit(GetDevAttr(), &cfg);
+        mtl::MaterialCreateInfo *mci = mtl::CreateBasicLit(device->GetDevAttr(), &cfg);
 
         if(!mci) return false;
 
@@ -126,17 +136,19 @@ public:
         mi_data.fresnel=0.04f;
         mi_data.ibl_intensity=0.0f;
 
-        material = CreateMaterial("Gizmo3D_Walls", mci);
+        material = render_context->CreateMaterial("Gizmo3D_Walls", mci);
         if(!material) return false;
 
-        material_instance = CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
+        material_instance = render_context->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
         if(!material_instance) return false;
 
-        pipeline = CreatePipeline(material, InlinePipeline::Solid3D);
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
         if(!pipeline) return false;
 
         const VIL *vil = material->GetDefaultVIL();
-        mesh_vdm = CreateVDM(vil, HGL_SIZE_1MB);
+        mesh_vdm = render_context->CreateVDM(vil, HGL_SIZE_1MB);
         if(!mesh_vdm) return false;
 
         GeometryCreater *pc = new GeometryCreater(mesh_vdm);
@@ -172,7 +184,8 @@ public:
             Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
             if(geometry)
             {
-                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                geometry_manager->Add(geometry);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -202,7 +215,8 @@ public:
             Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
             if(geometry)
             {
-                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                geometry_manager->Add(geometry);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -231,7 +245,8 @@ public:
             Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
             if(geometry)
             {
-                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                geometry_manager->Add(geometry);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -261,7 +276,8 @@ public:
             Geometry *geometry = CreateWallsFromLines2D(pc, &wci);
             if(geometry)
             {
-                Primitive *primitive = CreatePrimitive(geometry, material_instance, pipeline);
+                geometry_manager->Add(geometry);
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }

@@ -59,6 +59,10 @@ private:
 
     bool InitMaterial()
     {
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
         {
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                             CoordinateSystem2D::NDC,
@@ -68,20 +72,26 @@ private:
 
             vil_config.Add(VAN::Color,VF_V4UN8);
 
-            material_instance=CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
+            material_instance=render_context->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
         }
 
         if(!material_instance)
             return(false);
 
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);     //等同使用swapchain的render target
+        auto* render_target = render_context->GetCurrentRenderTarget();
+        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid2D) : nullptr;
 
         return pipeline;
     }
 
     bool InitVBO()
     {
-        prim_triangle=CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return false;
+
+        prim_triangle=render_context->CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,   VF_V2F,     position_data},
                                         {VAN::Color,      VF_V4UN8,   color_data   }
