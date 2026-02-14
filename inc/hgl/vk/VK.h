@@ -96,17 +96,6 @@ using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
 class DescriptorBinding;
 
-class GraphModule;
-class BufferManager;
-class RenderPassManager;
-class GeometryManager;
-class MaterialManager;
-class PrimitiveManager;
-class RenderTargetManager;
-class TextureManager;
-
-class RenderFramework;
-
 class VulkanInstance;
 class VulkanPhyDevice;
 class VulkanSurface;
@@ -133,9 +122,6 @@ class TextureCube;
 class TextureCubeArray;
 
 class Sampler;
-
-class TileData;
-class TextRender;
 
 class DeviceMemory;
 class DeviceBuffer;
@@ -311,12 +297,6 @@ class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 
-class RenderCollector;
-
-struct CameraInfo;
-struct Camera;
-
-class SceneRenderer;
 
 enum class SharingMode
 {
