@@ -1,40 +1,40 @@
 ﻿#pragma once
 
-#include<hgl/vk/BufferPolicy.h>
+#include<hgl/graph/BufferPolicy.h>
 
 VK_NAMESPACE_BEGIN
 
 class VulkanPhyDevice;  // Forward declaration
 
-// GPUæ¶æç±»å
+// GPU架构类型
 enum class GPUArchType
 {
-    UnifiedMemory,      // ç»ä¸åå­æ¶æ (AMD APU, Intel iGPU, Apple Mç³»å)
-    DiscreteSmallReBAR, // ç¬ç«æ¾å¡ - å°?æ ReBAR (èæ¾å?
-    DiscreteLargeReBAR  // ç¬ç«æ¾å¡ - è¶å¤§ReBAR (æ°æ¾å?
+    UnifiedMemory,      // 统一内存架构 (AMD APU, Intel iGPU, Apple M系列)
+    DiscreteSmallReBAR, // 独立显卡 - 小/无ReBAR (老显卡)
+    DiscreteLargeReBAR  // 独立显卡 - 超大ReBAR (新显卡)
 };
 
-// è®¾å¤å±æ§ç¸å³çç­ç¥è°æ´å å­
+// 设备属性相关的策略调整因子
 struct DevicePolicyAdjustment
 {
-    GPUArchType         arch_type;              // GPUæ¶æç±»å
-    bool                is_amd_apu;             // æ¯å¦æ¯AMD Ryzen APU
-    bool                is_intel_igpu;          // æ¯å¦æ¯Intel iGPU
-    bool                is_apple_m_series;      // æ¯å¦æ¯Apple Mç³»å
-    bool                has_rebar;              // æ¯å¦æ¯æReBAR
-    VkDeviceSize        rebar_size;             // ReBARå¯ç¨å®¹é
-    VkDeviceSize        available_device_mem;   // æ»è®¾å¤åå­?
-
-    DevicePolicyAdjustment()
-        : arch_type(GPUArchType::DiscreteSmallReBAR),
+    GPUArchType         arch_type;              // GPU架构类型
+    bool                is_amd_apu;             // 是否是AMD Ryzen APU
+    bool                is_intel_igpu;          // 是否是Intel iGPU
+    bool                is_apple_m_series;      // 是否是Apple M系列
+    bool                has_rebar;              // 是否支持ReBAR
+    VkDeviceSize        rebar_size;             // ReBAR可用容量
+    VkDeviceSize        available_device_mem;   // 总设备内存
+    
+    DevicePolicyAdjustment() 
+        : arch_type(GPUArchType::DiscreteSmallReBAR), 
           is_amd_apu(false), is_intel_igpu(false), is_apple_m_series(false),
           has_rebar(false), rebar_size(0), available_device_mem(0) {}
 };
 
-// ä»ç©çè®¾å¤è·åç­ç¥è°æ´åæ?
+// 从物理设备获取策略调整参数
 DevicePolicyAdjustment GetDevicePolicyAdjustment(const VulkanPhyDevice *phy_device);
 
-// é¢è®¾ç­ç¥çæå½æ° - åºç¡çæ¬
+// 预设策略生成函数 - 基础版本
 BufferPolicy MakeCameraUBOPolicy();
 BufferPolicy MakeStaticTransformPolicy();
 BufferPolicy MakeMeshVABPolicy();
@@ -44,7 +44,7 @@ BufferPolicy MakeParticlePolicy();
 BufferPolicy MakeDeferredPolicy();
 BufferPolicy MakeManualPolicy();
 
-// è®¾å¤èªéåºç­ç¥çæå½æ°
+// 设备自适应策略生成函数
 BufferPolicy MakeCameraUBOPolicy(const DevicePolicyAdjustment &adjustment);
 BufferPolicy MakeStaticTransformPolicy(const DevicePolicyAdjustment &adjustment);
 BufferPolicy MakeMeshVABPolicy(const DevicePolicyAdjustment &adjustment);
@@ -54,24 +54,24 @@ BufferPolicy MakeParticlePolicy(const DevicePolicyAdjustment &adjustment);
 BufferPolicy MakeDeferredPolicy(const DevicePolicyAdjustment &adjustment);
 BufferPolicy MakeManualPolicy(const DevicePolicyAdjustment &adjustment);
 
-// ç­ç¥åºç¨å½æ°
+// 策略应用函数
 const BufferPolicy *GetPolicyForUpdateClass(BufferUpdateClass update_class);
 const BufferPolicy *GetPolicyForUpdateClass(BufferUpdateClass update_class, const DevicePolicyAdjustment &adjustment);
 void ApplyPolicy(DeviceBuffer *buf, const BufferPolicy *policy);
 
-// ææè®¾å¤ç¼å²ç­ç¥çç»ä¸ç»æä½?
+// 所有设备缓冲策略的统一结构体
 struct AllDeviceBufferPolicies
 {
-    BufferPolicy camera_ubo;            // CriticalPerFrame - ç¸æº/å¸¸æ°buffer
-    BufferPolicy static_transform;      // TransformData - éæåæ¢æ°æ?
-    BufferPolicy mesh_static;           // MeshStatic - éæç½æ ?
-    BufferPolicy mesh_dynamic;          // MeshDynamic - å¨æç½æ ?
-    BufferPolicy texture_tile;          // TextureTile - ç¦ç/æµå¼çº¹ç
-    BufferPolicy particle;              // Particle - ç²å­æ°æ®
-    BufferPolicy deferred;              // Deferred - å¯å»¶è¿æ°æ?
-    BufferPolicy manual;                // Manual - æå¨æ§å¶
-
-    // æ ¹æ®æ´æ°ç±»åè·åå¯¹åºçç­ç?
+    BufferPolicy camera_ubo;            // CriticalPerFrame - 相机/常数buffer
+    BufferPolicy static_transform;      // TransformData - 静态变换数据
+    BufferPolicy mesh_static;           // MeshStatic - 静态网格
+    BufferPolicy mesh_dynamic;          // MeshDynamic - 动态网格
+    BufferPolicy texture_tile;          // TextureTile - 瓦片/流式纹理
+    BufferPolicy particle;              // Particle - 粒子数据
+    BufferPolicy deferred;              // Deferred - 可延迟数据
+    BufferPolicy manual;                // Manual - 手动控制
+    
+    // 根据更新类型获取对应的策略
     const BufferPolicy *GetPolicy(BufferUpdateClass update_class) const
     {
         switch(update_class)
@@ -89,7 +89,7 @@ struct AllDeviceBufferPolicies
     }
 };
 
-// ä»ç©çè®¾å¤çæå®æ´çç¼å²ç­ç¥é?
+// 从物理设备生成完整的缓冲策略集
 AllDeviceBufferPolicies GenerateAllDeviceBufferPolicies(const VulkanPhyDevice *phy_device);
 
 VK_NAMESPACE_END
