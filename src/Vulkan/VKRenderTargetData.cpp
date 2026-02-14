@@ -13,6 +13,7 @@ bool RenderTargetData::Submit(Semaphore *wait_sem)
     if(!queue||!cmd_buf||!render_complete_semaphore)
         return(false);
 
+    // 离屏渲染没有后续等待该信号量的提交，继续 signal 会触发“重复 signal 未等待”的校验错误。
     Semaphore *signal_sem = wait_sem ? render_complete_semaphore : nullptr;
     bool ok = queue->Submit(cmd_buf, wait_sem, signal_sem);
 //    std::cerr << "[RenderTargetData] Submit result=" << ok << std::endl;
