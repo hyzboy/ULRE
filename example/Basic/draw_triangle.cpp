@@ -12,10 +12,10 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
  // 引入ECS相关头文件
- #include<hgl/ecs/Context.h>
- #include<hgl/ecs/Entity.h>
- #include<hgl/ecs/TransformComponent.h>
- #include<hgl/ecs/PrimitiveComponent.h>
+ #include<hgl/ecs/core/Context.h>
+ #include<hgl/ecs/core/Entity.h>
+ #include<hgl/ecs/components/TransformComponent.h>
+ #include<hgl/ecs/components/PrimitiveComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -174,3 +174,4 @@ int os_main(int,os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw triangle use ECS"));
 }
+

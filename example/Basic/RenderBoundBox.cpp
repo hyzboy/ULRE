@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
+﻿// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
 // This example demonstrates rendering multiple geometries with ECS and drawing their bounding boxes
 //
 // 本范例展示了：
@@ -17,12 +17,12 @@
 #include<hgl/math/geometry/AABB.h>
 
 // ECS headers
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
-#include<hgl/ecs/CameraComponent.h>
-#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -533,3 +533,4 @@ int os_main(int,os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("Render Bounding Box (ECS)"),1280,720);
 }
+

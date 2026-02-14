@@ -2,6 +2,7 @@
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -9,7 +10,6 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/color/Color.h>
-#include"TextLayoutEngine.h"
 
 namespace hgl::graph
 {

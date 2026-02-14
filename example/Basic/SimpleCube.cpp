@@ -1,4 +1,4 @@
-// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
+﻿// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
 // This example demonstrates rendering a cube with ECS and driving the camera via ViewModel mode
 //
 // 本范例展示了：
@@ -13,12 +13,12 @@
 #include<hgl/color/Color.h>
 
 // 引入ECS相关头文件
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
-#include<hgl/ecs/CameraComponent.h>
-#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -205,3 +205,4 @@ int os_main(int, os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("Simple Cube (ECS)"), 1280, 720);
 }
+

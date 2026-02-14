@@ -5,10 +5,10 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -144,3 +144,4 @@ int os_main(int,os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),256,256);
 }
+

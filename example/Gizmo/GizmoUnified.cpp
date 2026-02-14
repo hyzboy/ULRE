@@ -10,12 +10,12 @@
 */
 
 #include"Gizmo.h"
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/SubWorldComponent.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/VisibilityComponent.h>
-#include<hgl/ecs/InputSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/SubWorldComponent.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/VisibilityComponent.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -324,3 +324,4 @@ void UpdateGizmoECS(GizmoECS *gizmo,
 }
 
 VK_NAMESPACE_END
+

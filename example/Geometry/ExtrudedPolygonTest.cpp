@@ -8,12 +8,12 @@
 #include<cmath>
 
 // ECS headers
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
-#include<hgl/ecs/CameraComponent.h>
-#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -248,3 +248,4 @@ int os_main(int, os_char **)
 {
     return RunFramework<ExtrudedPolygonTestApp>(OS_TEXT("Extruded Polygon"),1280,720);
 }
+

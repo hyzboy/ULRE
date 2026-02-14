@@ -6,9 +6,9 @@
  */
 
 #include<hgl/ecs/World.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/RenderCollector.h>
 #include<hgl/graph/CameraInfo.h>
 #include<iostream>
@@ -245,3 +245,4 @@ int main()
  *
  * === Example Complete ===
  */
+

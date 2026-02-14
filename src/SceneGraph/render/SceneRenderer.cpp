@@ -1,8 +1,8 @@
 ﻿#include<hgl/graph/SceneRenderer.h>
 #include<iostream>
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/CameraSystem.h>
-#include<hgl/ecs/LineRenderSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
@@ -131,3 +131,4 @@ namespace hgl::graph
         return ok;
      }
  }//namespace hgl::graph
+
