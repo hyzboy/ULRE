@@ -1,10 +1,10 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
-#include<hgl/ecs/LineRenderSystem.h>
-#include<hgl/ecs/CameraSystem.h>
-#include<hgl/ecs/CameraComponent.h>
-#include<hgl/ecs/Entity.h>
+#include<hgl/ecs/systems/render/LineRenderSystem.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/core/Entity.h>
 #include<cmath>
 
 using namespace hgl;
@@ -104,3 +104,4 @@ int os_main(int,os_char **)
 {
     return RunFramework<WireShapeTestApp>(OS_TEXT("Wire Shape Test"),1280,720);
 }
+

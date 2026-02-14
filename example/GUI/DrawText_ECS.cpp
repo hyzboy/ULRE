@@ -1,6 +1,6 @@
-#include<hgl/io/LoadString.h>
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/TextComponent.h>
+﻿#include<hgl/io/LoadString.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/WorkManager.h>
 
@@ -73,3 +73,4 @@ int os_main(int, os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("DrawText_ECS"), 2560, 1440);
 }
+

@@ -1,6 +1,6 @@
-#include<hgl/type/StringViewList.h>
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/TextComponent.h>
+﻿#include<hgl/type/StringViewList.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/WorkManager.h>
 #include<random>
@@ -89,3 +89,4 @@ int os_main(int, os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("DrawMultiLineText_ECS"), WINDOW_WIDTH, WINDOW_HEIGHT);
 }
+

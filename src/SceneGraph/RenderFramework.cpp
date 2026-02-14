@@ -14,18 +14,18 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/log/Logger.h>
 #include<hgl/io/event/MouseEvent.h>
-#include<hgl/ecs/RenderPrimitiveCollectSystem.h>
-#include<hgl/ecs/RenderPrimitiveBatchSystem.h>
-#include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
-#include<hgl/ecs/RenderBufferCommitSystem.h>
-#include<hgl/ecs/RenderTargetSystem.h>
-#include<hgl/ecs/EnvironmentSystem.h>
-#include<hgl/ecs/LineRenderSystem.h>
-#include<hgl/ecs/TextRenderSystem.h>
-#include<hgl/ecs/TextRenderSubmitSystem.h>
-#include<hgl/ecs/TransformSystem.h>
-#include<hgl/ecs/InputSystem.h>
-#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
+#include<hgl/ecs/systems/render/RenderBufferCommitSystem.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LineRenderSystem.h>
+#include<hgl/ecs/systems/render/TextRenderSystem.h>
+#include<hgl/ecs/systems/render/TextRenderSubmitSystem.h>
+#include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -362,3 +362,4 @@ graph::Primitive *RenderFramework::CreatePrimitive(   const AnsiString &name,
     return primitive_manager->CreatePrimitive(geometry,mi,pipeline);
 }
 VK_NAMESPACE_END
+

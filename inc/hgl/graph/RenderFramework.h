@@ -12,7 +12,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/GeometryCreater.h>
-#include<hgl/ecs/Context.h>
+#include<hgl/ecs/core/Context.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -227,3 +227,4 @@ public: // Geometry, Primitive
 };//class RenderFramework
 
 VK_NAMESPACE_END
+

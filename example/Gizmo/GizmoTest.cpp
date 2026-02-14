@@ -7,13 +7,13 @@
 #include<hgl/utf.h>
 
 // ECS headers
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
-#include<hgl/ecs/CameraComponent.h>
-#include<hgl/ecs/CameraSystem.h>
-#include<hgl/ecs/InputSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/io/event/KeyboardEvent.h>
 
 #include<glm/glm.hpp>
@@ -384,3 +384,4 @@ int os_main(int,os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("Gizmo"),1280,720);
 }
+

@@ -1,7 +1,7 @@
-#include<hgl/graph/RenderStages.h>
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/CameraSystem.h>
-#include<hgl/ecs/EnvironmentSystem.h>
+﻿#include<hgl/graph/RenderStages.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/graph/VKBufferUpdateQueue.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
@@ -217,3 +217,4 @@ namespace hgl::graph
         pipeline.AddStage(&end_pass);
     }
 }//namespace hgl::graph
+

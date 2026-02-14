@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/RenderContext.h>
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/ecs/RenderTargetSystem.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
 
 namespace hgl::graph
 {
@@ -49,3 +49,4 @@ namespace hgl::graph
     }
 
 }//namespace hgl::graph
+

@@ -4,12 +4,12 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 
 // ECS headers
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
-#include<hgl/ecs/CameraComponent.h>
-#include<hgl/ecs/CameraSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -164,3 +164,4 @@ int os_main(int,os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("SimplestAtmosphere"),1280,720);
 }
+

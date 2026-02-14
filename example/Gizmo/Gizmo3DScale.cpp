@@ -24,12 +24,12 @@
 #include"Gizmo.h"
 
 // ECS
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
-#include<hgl/ecs/InputSystem.h>
-#include<hgl/ecs/VisibilityComponent.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
+#include<hgl/ecs/components/VisibilityComponent.h>
 
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/CameraInfo.h>
@@ -439,3 +439,4 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
 }
 
 VK_NAMESPACE_END
+

@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKRenderTarget.h>
@@ -12,16 +12,16 @@
 #include<hgl/log/Log.h>
 
 // ECS headers
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
-#include<hgl/ecs/CameraComponent.h>
-#include<hgl/ecs/CameraSystem.h>
-#include<hgl/ecs/RenderPrimitiveCollectSystem.h>
-#include<hgl/ecs/RenderPrimitiveBatchSystem.h>
-#include<hgl/ecs/RenderPrimitiveSubmitSystem.h>
-#include<hgl/ecs/InputSystem.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -434,3 +434,4 @@ int os_main(int, os_char **)
 {
     return RunFramework<RenderToTextureApp>(OS_TEXT("Render To Texture (ECS)"), 1280, 720);
 }
+

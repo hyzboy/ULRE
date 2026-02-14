@@ -4,10 +4,10 @@
 #include<hgl/graph/module/TextureManager.h>
 
 // ECS headers
-#include<hgl/ecs/Context.h>
-#include<hgl/ecs/Entity.h>
-#include<hgl/ecs/TransformComponent.h>
-#include<hgl/ecs/PrimitiveComponent.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -144,3 +144,4 @@ int os_main(int,os_char **)
 {
     return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),256,256);
 }
+
