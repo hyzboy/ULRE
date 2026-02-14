@@ -13,7 +13,7 @@ namespace hgl
             if (render_framework)
             {
                 // Notify change of active work object
-                cur_work_object->OnSceneRendererChange(render_framework);
+                cur_work_object->OnRenderFrameworkChange(render_framework);
             }
 
             if (!render_core)
@@ -96,7 +96,7 @@ namespace hgl
 
         VkExtent2D ext={w,h};
 
-        cur_work_object->OnSceneRendererChange(render_framework);
+        cur_work_object->OnRenderFrameworkChange(render_framework);
         cur_work_object->OnResize(ext);
     }
 

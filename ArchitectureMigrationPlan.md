@@ -45,8 +45,8 @@ class RenderFramework {
     BufferManager* buffer_manager;
     TextureManager* tex_manager;
     
-    // 渲染流程
-    SceneRenderer* default_scene_renderer;
+    // 渲染流程 (ECS-first)
+    // RenderSystemCore drives frame lifecycle
     
     // 应用层 ECS
     ECSContext* default_ecs_context;
@@ -88,36 +88,27 @@ wo->CreateUBO(...);  // 实际上是调用 render_framework->CreateUBO()
 2. WorkObject 调用业务逻辑
 3. 业务逻辑调用 WorkObject::CreateXXX() 创建资源
 4. 资源在 SwapchainWorkManager::Render() 中使用
-5. SceneRenderer::RenderFrame() 执行 ECS 渲染系统
+5. RenderSystemCore::BeginFrame/EndFrame() 执行 ECS 渲染系统
 6. ECS 系统又回过头来查询 RenderFramework 中的资源
 
 问题: ECS 系统是被动的，不是主动驱动的
 ```
 
-#### 🟡 4. **SceneRenderer 的角色模糊**
+#### 🟡 4. **渲染驱动的职责边界**
 ```cpp
-// SceneRenderer 既要：
-class SceneRenderer {
-    // 1. 依赖RenderFramework获取所有资源
-    RenderFramework* render_framework;
-    
-    // 2. 持有自己的渲染目标和管线
-    IRenderTarget* render_target;
-    RenderStagePipeline ecs_pipeline;
-    
-    // 3. 从ECS系统获取数据（相机、光源等）
+// RenderSystemCore 负责帧生命周期与命令提交流程
+class RenderSystemCore {
     ECSContext* ecs_context;
-    
-    // 4. 充当从ECS到渲染的中介
-    bool RenderFrame();
-    bool Submit();
+    IRenderTarget* render_target;
+
+    bool BeginFrame();
+    void EndFrame();
 };
 ```
 
-**职责重叠：**
-- 管理渲染流程（RenderStagePipeline）
-- 访问ECS数据
-- 访问RenderFramework资源
+**职责边界：**
+- RenderSystemCore 负责帧生命周期与提交
+- ECS 系统负责收集与提交渲染命令
 - 管理渲染目标
 
 #### 🟡 5. **新ECS系统与旧架构的不协调**

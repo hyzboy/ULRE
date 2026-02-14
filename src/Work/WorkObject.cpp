@@ -16,7 +16,7 @@ namespace hgl
 {
     WorkObject::WorkObject(graph::RenderFramework *rf)
     {
-        OnSceneRendererChange(rf);
+        OnRenderFrameworkChange(rf);
     }
 
     WorkObject::WorkObject(std::shared_ptr<ecs::ECSContext> ctx)
@@ -80,7 +80,7 @@ namespace hgl
         return nullptr;
     }
 
-    void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf)
+    void WorkObject::OnRenderFrameworkChange(graph::RenderFramework *rf)
     {
         if(!rf)
         {
