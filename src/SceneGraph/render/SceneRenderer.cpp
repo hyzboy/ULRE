@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
@@ -12,14 +13,13 @@ namespace hgl::graph
 {
     SceneRenderer::SceneRenderer(RenderFramework *rf,IRenderTarget *rt)
     {
-        render_target=rt;
-        render_context=new RenderContext(rf,rt);
+        render_framework = rf;
+        render_target = rt;
         clear_color.set(0,0,0,1);
     }
 
     SceneRenderer::~SceneRenderer()
     {
-        SAFE_CLEAR(render_context);
     }
 
     Camera *SceneRenderer::GetCamera() const
@@ -70,27 +70,36 @@ namespace hgl::graph
         //不要做render_target==rt测试，因为真的有机率旧的删掉后，再new出来新的地址一样
 
         render_target=rt;
-
-        if(render_context)
-            render_context->SetRenderTarget(rt);
+        SyncRenderTargetSystem();
 
         return(true);
     }
 
+    void SceneRenderer::SetECSContext(ecs::ECSContext *ctx)
+    {
+        ecs_context = ctx;
+        SyncRenderTargetSystem();
+    }
+
+    void SceneRenderer::SyncRenderTargetSystem()
+    {
+        if (!ecs_context)
+            return;
+
+        auto render_target_system = ecs_context->GetSystem<ecs::RenderTargetSystem>();
+        if (!render_target_system)
+            return;
+
+        render_target_system->SetRenderFramework(render_framework);
+        render_target_system->SetRenderTarget(render_target);
+    }
+
     void SceneRenderer::Tick(double delta)
     {
-        if(render_context)
-            render_context->Tick(delta);
-
         if(GetECSContext())
         {
             GetECSContext()->Tick(static_cast<float>(delta));
             // 渲染系统在 RenderFrame 调用
-
-            // ECS updates camera data after RenderContext::Tick,
-            // so refresh camera UBO once more to sync GPU data.
-            if (render_context)
-                render_context->Tick(0.0);
         }
     }
 
@@ -111,7 +120,6 @@ namespace hgl::graph
         EnsureEcsPipeline();
 
         RenderStageContext ctx{};
-        ctx.render_context = render_context;
         ctx.render_target = render_target;
         ctx.ecs_context = GetECSContext();
         ctx.clear_color = &clear_color;

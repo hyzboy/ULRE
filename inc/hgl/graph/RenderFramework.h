@@ -62,7 +62,7 @@ protected:
 
     SwapchainModule *       sc_module           =nullptr;
 
-protected:  //RenderContext,未来合并成一个RenderContext结构
+protected:
 
     SceneRenderer *         default_scene_renderer  =nullptr;
     ecs::ECSContext *       default_ecs_context     =nullptr;
