@@ -6,7 +6,6 @@ namespace hgl
 {
     namespace graph
     {
-        class RenderFramework;
         class IRenderTarget;
         class IGraphicsContext;
     }
@@ -22,7 +21,6 @@ namespace hgl
         {
         private:
 
-            graph::RenderFramework *render_framework = nullptr;
             graph::IGraphicsContext *graphics_context = nullptr;
             graph::IRenderTarget *render_target = nullptr;
 
@@ -33,11 +31,8 @@ namespace hgl
 
         public:
 
-            void SetRenderFramework(graph::RenderFramework *rf);
             void SetGraphicsContext(graph::IGraphicsContext *gc);
             void SetRenderTarget(graph::IRenderTarget *rt);
-
-            graph::RenderFramework *GetRenderFramework() const { return render_framework; }
             graph::IRenderTarget *GetRenderTarget() const { return render_target; }
 
             void Update(float deltaTime) override;

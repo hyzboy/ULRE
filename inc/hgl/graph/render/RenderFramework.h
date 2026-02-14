@@ -3,6 +3,7 @@
 #include<hgl/platform/Window.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -10,7 +11,6 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/render/SceneRenderer.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/ecs/core/Context.h>
 
@@ -34,7 +34,6 @@ class BufferManager;
 
 class RenderModule;
 
-class SceneRenderer;
 class LineRenderManager; // forward
 
 class RenderFramework:public io::WindowEvent
@@ -64,10 +63,7 @@ protected:
 
 protected:
 
-    SceneRenderer *         default_scene_renderer  =nullptr;
     ecs::ECSContext *       default_ecs_context     =nullptr;
-
-    void CreateDefaultSceneRenderer();
 
 protected:  //EventDispatcher
 
@@ -99,15 +95,18 @@ public:
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
     SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}
+    SwapchainRenderTarget * GetSwapchainRenderTarget() const {return sc_module?sc_module->GetRenderTarget():nullptr;}
 
 public:
 
     ecs::ECSContext *       GetECSContext           (){return default_ecs_context;}
-    SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
+    RenderPass *            GetDefaultRenderPass    ()const
+    {
+        auto *rt = GetSwapchainRenderTarget();
+        return rt ? rt->GetRenderPass() : nullptr;
+    }
 
-    RenderPass *            GetDefaultRenderPass    ()const{return default_scene_renderer->GetRenderPass();}
-
-    LineRenderManager *     GetLineRenderManager    ()const{return default_scene_renderer?default_scene_renderer->GetLineRenderManager():nullptr;}
+    LineRenderManager *     GetLineRenderManager    ()const;
 
 public:
 

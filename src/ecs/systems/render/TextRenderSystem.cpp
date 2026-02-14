@@ -2,11 +2,12 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKMaterial.h>
@@ -18,14 +19,49 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/tile/TileData.h>
+#include<hgl/vk/VKFormat.h>
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>
+#include<hgl/type/AlignUtil.h>
 #include<cmath>
 
 namespace hgl::ecs
 {
     namespace
     {
+        graph::TileFont* CreateTileFont(graph::IGraphicsContext* gc,
+                                        graph::FontSource* fs,
+                                        int limit_count,
+                                        const VkExtent2D* extent)
+        {
+            if (!gc || !fs)
+                return nullptr;
+
+            const uint32_t height = hgl_align_pow2(fs->GetCharHeight() + 2, 4);
+
+            if (limit_count <= 0)
+            {
+                VkExtent2D ext{1024, 1024};
+                if (extent)
+                    ext = *extent;
+
+                limit_count = (ext.width / height) * (ext.height / height);
+                if (limit_count <= 0)
+                    limit_count = 1024;
+            }
+
+            auto tm = gc->GetTextureManager();
+            if (!tm)
+                return nullptr;
+
+            auto* td = tm->CreateTileData(UPF_R8, height, height, limit_count);
+            if (!td)
+                return nullptr;
+
+            return new graph::TileFont(td, fs);
+        }
+
         void BuildDrawStyle(graph::layout::TextDrawStyle& out_style,
                             const graph::layout::ParagraphStyle& para_style,
                             const graph::layout::TEXT_COORD_VEC& start_pos,
@@ -55,8 +91,7 @@ namespace hgl::ecs
 
     TextRenderSystem::~TextRenderSystem()
     {
-        auto* device = framework ? framework->GetDevice() : nullptr;
-        auto* primitive_manager = framework ? framework->GetPrimitiveManager() : nullptr;
+        auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
 
         for (auto& pair : resources_by_font)
         {
@@ -86,7 +121,13 @@ namespace hgl::ecs
     TextRenderSystem::RenderResources* TextRenderSystem::GetOrCreateResources(graph::FontSource* font_source,
                                                                               uint32_t estimate_chars)
     {
-        if (!font_source || !framework)
+        if (!font_source)
+            return nullptr;
+
+        if (!graphics_context && world)
+            graphics_context = world->GetGraphicsContext();
+
+        if (!graphics_context)
             return nullptr;
 
         if (auto* entry = resources_by_font.GetValuePointer(font_source))
@@ -95,16 +136,24 @@ namespace hgl::ecs
         RenderResources resources;
 
         const int limit_count = static_cast<int>((estimate_chars > 0) ? estimate_chars : 256);
-        resources.tile_font = framework->CreateTileFont(font_source, limit_count);
+        VkExtent2D extent{1024, 1024};
+        if (world)
+        {
+            auto* target = world->GetRenderTarget();
+            if (target)
+                extent = target->GetExtent();
+        }
+
+        resources.tile_font = CreateTileFont(graphics_context, font_source, limit_count, &extent);
         if (!resources.tile_font)
             return nullptr;
 
         graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
-        graph::mtl::MaterialCreateInfo* mci = graph::mtl::CreateText2D(framework->GetDevAttr(), &mtl_cfg);
+        graph::mtl::MaterialCreateInfo* mci = graph::mtl::CreateText2D(graphics_context->GetDevAttr(), &mtl_cfg);
         if (!mci)
             return nullptr;
 
-        auto* material_manager = framework->GetMaterialManager();
+        auto* material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
             return nullptr;
 
@@ -115,7 +164,7 @@ namespace hgl::ecs
         if (!resources.material)
             return nullptr;
 
-        auto* sampler_manager = framework->GetSamplerManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
         if (!sampler_manager)
             return nullptr;
 
@@ -144,16 +193,22 @@ namespace hgl::ecs
 
     void TextRenderSystem::Update(float /*deltaTime*/)
     {
-        if (!world || !framework)
+        if (!world)
             return;
 
-        auto* device = framework->GetDevice();
+        if (!graphics_context)
+            graphics_context = world->GetGraphicsContext();
+
+        if (!graphics_context)
+            return;
+
+        auto* device = graphics_context->GetDevice();
         if (!device)
             return;
 
-        auto* material_manager = framework->GetMaterialManager();
-        auto* primitive_manager = framework->GetPrimitiveManager();
-        auto* render_pass = framework->GetDefaultRenderPass();
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* render_pass = graphics_context->GetDefaultRenderPass();
 
         if (!material_manager || !primitive_manager || !render_pass)
             return;

@@ -73,7 +73,7 @@ public:
     const       VkColorSpaceKHR     GetColorSpace       ()const {return attr->surface_format.colorSpace;}
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
-                void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
+                void                WaitIdle            ()const;
 
 #ifdef _DEBUG
                 DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}

@@ -503,7 +503,7 @@ public:
 
     bool Init() override
     {
-        GetSceneRenderer()->SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
+        SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
 
         if(!InitSolidMDP())
             return false;

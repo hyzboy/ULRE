@@ -70,11 +70,9 @@ SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 # 4. Rendering System - 渲染系统
 # ============================================================================
 
-SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/SceneRenderer.h
-                            ${SG_INCLUDE_PATH}/render/RenderStagePipeline.h
+SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderStagePipeline.h
                             ${SG_INCLUDE_PATH}/render/RenderStages.h
                             ${SG_INCLUDE_PATH}/render/SceneCaptureStage.h
-                            render/SceneRenderer.cpp
                             render/RenderStagePipeline.cpp
                             render/RenderStages.cpp
                             render/SceneCaptureStage.cpp

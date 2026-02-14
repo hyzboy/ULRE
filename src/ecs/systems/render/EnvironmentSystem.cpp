@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/systems/render/EnvironmentSystem.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/ecs/core/Context.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
 namespace hgl::ecs
@@ -13,15 +14,6 @@ namespace hgl::ecs
     EnvironmentSystem::~EnvironmentSystem()
     {
         delete sky_ubo;
-    }
-
-    void EnvironmentSystem::SetRenderFramework(graph::RenderFramework *rf)
-    {
-        if (render_framework == rf)
-            return;
-
-        render_framework = rf;
-        EnsureResources();
     }
 
     graph::SkyInfo *EnvironmentSystem::EditSkyInfo()
@@ -64,11 +56,21 @@ namespace hgl::ecs
 
     void EnvironmentSystem::EnsureResources()
     {
-        if (!render_framework || sky_ubo)
+        if (sky_ubo)
             return;
 
-        sky_ubo = render_framework->CreateUBO<UBOSkyInfo>(&graph::mtl::SBS_SkyInfo,
-                                                          graph::BufferUpdateClass::Deferred);
+        if (!graphics_context && context)
+            graphics_context = context->GetGraphicsContext();
+
+        auto *device = graphics_context ? graphics_context->GetDevice() : nullptr;
+        if (!device && context)
+            device = context->GetGPUDevice();
+
+        if (!device)
+            return;
+
+        sky_ubo = device->CreateUBO<UBOSkyInfo>(&graph::mtl::SBS_SkyInfo,
+                                                graph::BufferUpdateClass::Deferred);
         if (sky_ubo)
         {
             sky_ubo->Data()->SetTime(10, 0, 0);

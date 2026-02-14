@@ -2,6 +2,8 @@
 
 #include<hgl/WorkObject.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/ecs/systems/render/RenderSystemCore.h>
+#include <memory>
 
 namespace hgl
 {
@@ -13,6 +15,7 @@ namespace hgl
     protected:
 
         graph::RenderFramework *render_framework;
+        std::unique_ptr<ecs::RenderSystemCore> render_core;
 
         uint fps=60;
         double frame_time=1.0f/double(fps);
@@ -32,9 +35,18 @@ namespace hgl
             rf->AddChildDispatcher(this);
         }
 
+        explicit WorkManager(std::shared_ptr<ecs::ECSContext> ctx)
+        {
+            render_framework=nullptr;
+            render_core = ctx ? std::make_unique<ecs::RenderSystemCore>(ctx.get()) : nullptr;
+            if (render_core)
+                render_core->Initialize();
+        }
+
         virtual ~WorkManager()
         {
-            render_framework->RemoveChildDispatcher(this);
+            if (render_framework)
+                render_framework->RemoveChildDispatcher(this);
             if(cur_work_object)
                 OnChangeWorkObject(cur_work_object, nullptr);
             SAFE_CLEAR(cur_work_object);
@@ -63,6 +75,12 @@ namespace hgl
         SwapchainWorkManager(graph::RenderFramework *rf):WorkManager(rf)
         {
             swapchain_module=rf->GetSwapchainModule();
+        }
+
+        explicit SwapchainWorkManager(std::shared_ptr<ecs::ECSContext> ctx)
+            : WorkManager(std::move(ctx))
+        {
+            swapchain_module=nullptr;
         }
 
         ~SwapchainWorkManager()=default;

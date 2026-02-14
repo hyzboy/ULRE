@@ -3,7 +3,6 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
-#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
@@ -236,15 +235,6 @@ namespace hgl::ecs
     {
         delete camera_desc_binding;
         delete camera_ubo;
-    }
-
-    void CameraSystem::SetRenderFramework(graph::RenderFramework* rf)
-    {
-        if (render_framework == rf)
-            return;
-
-        render_framework = rf;
-        EnsureCameraResources();
     }
 
     void CameraSystem::SetGraphicsContext(graph::IGraphicsContext* gc)
@@ -532,9 +522,12 @@ namespace hgl::ecs
 
     void CameraSystem::EnsureCameraResources()
     {
-        auto *device = render_framework ? render_framework->GetDevice() : nullptr;
-        if (!device && graphics_context)
-            device = graphics_context->GetDevice();
+        if (!graphics_context && context)
+            graphics_context = context->GetGraphicsContext();
+
+        auto *device = graphics_context ? graphics_context->GetDevice() : nullptr;
+        if (!device && context)
+            device = context->GetGPUDevice();
 
         if (!device)
             return;

@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/log/Log.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -88,6 +89,25 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     submit_info.pCommandBuffers     =cmd_buf;
 
     VkFence fence=*fence_list[current_fence];
+
+    if (fence != VK_NULL_HANDLE)
+    {
+        VkResult fence_status = vkGetFenceStatus(device, fence);
+        if (fence_status == VK_NOT_READY)
+        {
+            VkResult wait_res = vkWaitForFences(device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC);
+            if (wait_res != VK_SUCCESS)
+                GLogWarning("DeviceQueue::Submit wait fence failed res=%d fence=%p", static_cast<int>(wait_res), (void *)fence);
+        }
+        else if (fence_status != VK_SUCCESS)
+        {
+            GLogWarning("DeviceQueue::Submit fence status error res=%d fence=%p", static_cast<int>(fence_status), (void *)fence);
+        }
+
+        VkResult reset_res = vkResetFences(device, 1, &fence);
+        if (reset_res != VK_SUCCESS)
+            GLogWarning("DeviceQueue::Submit reset fence failed res=%d fence=%p", static_cast<int>(reset_res), (void *)fence);
+    }
 
     VkResult result=vkQueueSubmit(queue,1,&submit_info,fence);
 

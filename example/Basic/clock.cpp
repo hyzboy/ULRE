@@ -266,7 +266,7 @@ public:
 
     bool Init() override
     {
-        GetSceneRenderer()->SetClearColor(Color4f(0.1f, 0.1f, 0.1f, 1.0f));
+        SetClearColor(Color4f(0.1f, 0.1f, 0.1f, 1.0f));
 
         std::cout << "[ClockApp::Init] === Initializing Clock Application ===" << std::endl;
 
