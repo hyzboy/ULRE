@@ -9,20 +9,25 @@ VK_NAMESPACE_BEGIN
 class TextureManager;
 class RenderTargetManager;
 class RenderPassManager;
+class IGraphicsContext;
 
 class GraphModule
 {
     RenderFramework *render_framework;
+    IGraphicsContext *graphics_context=nullptr;
 
 public:
 
-            RenderFramework *   GetRenderFramework  ()const{return render_framework;}               ///<取得渲染框架
-            VulkanDevice *      GetDevice           ();                                             ///<取得GPU设备
-            VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
-    const   VulkanPhyDevice *   GetPhyDevice        ()const;                                        ///<取得物理设备
-            VulkanDevAttr *     GetDevAttr          ()const;                                        ///<取得设备属性
-            VulkanSurface *     GetSurface          ()const;                                        ///<取得表面
-            VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache
+                RenderFramework *   GetRenderFramework  ()const{return render_framework;}               ///<取得渲染框架
+                IGraphicsContext *  GetGraphicsContext  ()const{return graphics_context;}              ///<取得GraphicsContext
+                void                SetGraphicsContext  (IGraphicsContext *gc){graphics_context=gc;}   ///<设置GraphicsContext
+
+                VulkanDevice *      GetDevice           ();                                             ///<取得GPU设备
+                VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
+            const   VulkanPhyDevice *   GetPhyDevice        ()const;                                        ///<取得物理设备
+                VulkanDevAttr *     GetDevAttr          ()const;                                        ///<取得设备属性
+                VulkanSurface *     GetSurface          ()const;                                        ///<取得表面
+                VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache
 
 public:
 

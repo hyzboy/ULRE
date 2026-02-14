@@ -10,7 +10,7 @@ GRAPH_MODULE_CONSTRUCT(SamplerManager)
 
 Sampler *SamplerManager::CreateSampler(VkSamplerCreateInfo *sci)
 {
-    auto dev = GetRenderFramework()->GetDevice();
+    auto dev = GetDevice();
     Sampler *sampler = dev->CreateSampler(sci);
     if (sampler)
         Add(sampler);
@@ -19,7 +19,7 @@ Sampler *SamplerManager::CreateSampler(VkSamplerCreateInfo *sci)
 
 Sampler *SamplerManager::CreateSampler(Texture *tex)
 {
-    auto dev = GetRenderFramework()->GetDevice();
+    auto dev = GetDevice();
     Sampler *sampler = dev->CreateSampler(tex);
     if (sampler)
         Add(sampler);
