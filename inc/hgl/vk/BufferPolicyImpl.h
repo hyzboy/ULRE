@@ -24,9 +24,9 @@ struct DevicePolicyAdjustment
     bool                has_rebar;              // 是否支持ReBAR
     VkDeviceSize        rebar_size;             // ReBAR可用容量
     VkDeviceSize        available_device_mem;   // 总设备内存
-    
-    DevicePolicyAdjustment() 
-        : arch_type(GPUArchType::DiscreteSmallReBAR), 
+
+    DevicePolicyAdjustment()
+        : arch_type(GPUArchType::DiscreteSmallReBAR),
           is_amd_apu(false), is_intel_igpu(false), is_apple_m_series(false),
           has_rebar(false), rebar_size(0), available_device_mem(0) {}
 };
@@ -70,7 +70,7 @@ struct AllDeviceBufferPolicies
     BufferPolicy particle;              // Particle - 粒子数据
     BufferPolicy deferred;              // Deferred - 可延迟数据
     BufferPolicy manual;                // Manual - 手动控制
-    
+
     // 根据更新类型获取对应的策略
     const BufferPolicy *GetPolicy(BufferUpdateClass update_class) const
     {
