@@ -36,6 +36,7 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
 {
     if(!fbi)return(nullptr);
     if(!rp)return(nullptr);
+    if(!ecs_context)return(nullptr);
 
     const uint32_t color_count=fbi->GetColorCount();
     const VkExtent2D extent=fbi->GetExtent();
@@ -80,10 +81,7 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
 
         color_texture_list.Discard();
 
-        if(ecs_context)
-            return(new RenderTarget(ecs_context,rtd));
-
-        return(new RenderTarget(GetRenderFramework(),rtd));
+        return(new RenderTarget(ecs_context,rtd));
     }
 
     SAFE_CLEAR(depth_texture);

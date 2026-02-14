@@ -195,14 +195,14 @@ bool RenderFramework::Init(uint w,uint h)
         geometry_manager,
         primitive_manager);
 
+    // create default ECS context early so modules can access it
+    default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
+
     rt_manager=new RenderTargetManager(this,tex_manager,rp_manager);
     module_manager->Register(rt_manager);
 
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
-
-    // create default ECS context
-    default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
 
     if (default_ecs_context)
     {
