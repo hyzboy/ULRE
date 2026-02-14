@@ -131,7 +131,7 @@ public:
      *       // 做一些底层 Vulkan 操作
      *   }
      */
-    hgl::vk::VulkanDevice* GetGPUDevice() {
+    hgl::graph::VulkanDevice* GetGPUDevice() {
         if (!world) return nullptr;
         return world->GetGPUDevice();
     }

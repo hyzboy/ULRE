@@ -19,8 +19,6 @@ namespace hgl {
         class CameraInfo; 
         class IRenderTarget;
         class IGraphicsContext;
-    }
-    namespace vk {
         class VulkanDevice;
     }
 }
@@ -100,7 +98,7 @@ namespace hgl
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
             
             /// GPU 设备（从 RenderFramework 迁移来）
-            hgl::vk::VulkanDevice* gpu_device = nullptr;
+            hgl::graph::VulkanDevice* gpu_device = nullptr;
             
             /// 用于渲染的目标
             hgl::graph::IRenderTarget* render_target = nullptr;
@@ -137,7 +135,7 @@ namespace hgl
             /// @param device GPU 设备
             /// @param target 渲染目标
             /// @return 成功返回 true
-            bool InitializeGraphics(hgl::vk::VulkanDevice* device, hgl::graph::IRenderTarget* target);
+            bool InitializeGraphics(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target);
 
             /// Initialize the world (旧接口，保持向后兼容)
             void Initialize();
@@ -186,7 +184,7 @@ namespace hgl
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
             
             /// 获取 GPU 设备
-            hgl::vk::VulkanDevice* GetGPUDevice() { return gpu_device; }
+            hgl::graph::VulkanDevice* GetGPUDevice() { return gpu_device; }
             
             /// 获取渲染目标
             hgl::graph::IRenderTarget* GetRenderTarget() { return render_target; }

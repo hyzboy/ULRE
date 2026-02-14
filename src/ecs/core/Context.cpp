@@ -52,7 +52,7 @@ namespace hgl
             // The TransformComponent will use the shared storage from the parent
         }
         
-        bool ECSContext::InitializeGraphics(hgl::vk::VulkanDevice* device, hgl::graph::IRenderTarget* target) {
+        bool ECSContext::InitializeGraphics(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target) {
             if (!device || !target) {
                 // Phase 1 debug: device or target is null
                 return false;
