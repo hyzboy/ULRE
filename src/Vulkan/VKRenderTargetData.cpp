@@ -13,7 +13,8 @@ bool RenderTargetData::Submit(Semaphore *wait_sem)
     if(!queue||!cmd_buf||!render_complete_semaphore)
         return(false);
 
-    bool ok = queue->Submit(cmd_buf,wait_sem,render_complete_semaphore);
+    Semaphore *signal_sem = wait_sem ? render_complete_semaphore : nullptr;
+    bool ok = queue->Submit(cmd_buf, wait_sem, signal_sem);
 //    std::cerr << "[RenderTargetData] Submit result=" << ok << std::endl;
     return ok;
 }
