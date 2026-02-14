@@ -49,7 +49,7 @@ class TestApp:public WorkObject
 private:
 
     // ECS组件
-    ECSContext *  ecs_world      =nullptr;   // 由 RenderFramework 统一维护
+    ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
     Entity* triangle_entity     =nullptr;
 
     // 传统渲染资源
@@ -165,7 +165,7 @@ public:
         if(!InitECS())
             return(false);
 
-        // RenderFramework 在初始化时已设置默认 ECSContext
+        // 初始化时已设置默认 ECSContext
 
          return(true);
      }

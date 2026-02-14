@@ -6,6 +6,7 @@
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/color/Color.h>
 #include<hgl/log/Log.h>
 #include <memory>
@@ -82,10 +83,16 @@ public:
     bool Init(WorkObject *owner, uint32_t w, uint32_t h)
     {
         if(!owner) return false;
-        auto rf = owner->GetRenderFramework();
-        if (!rf) return false;
+        auto *ecs = owner->GetECSContext();
+        if (!ecs) return false;
 
-        const VulkanDevAttr *dev_attr = rf->GetDevAttr();
+        auto *graphics = ecs->GetGraphicsContext();
+        if (!graphics) return false;
+
+        auto *device = graphics->GetDevice();
+        if (!device) return false;
+
+        const VulkanDevAttr *dev_attr = device->GetDevAttr();
         if (!dev_attr) return false;
 
         const VkFormat color_fmt = dev_attr->surface_format.format;
@@ -94,7 +101,7 @@ public:
         FramebufferInfo fbi(color_fmt, depth_fmt);
         fbi.SetExtent(w, h);
 
-        rt = rf->GetRenderTargetManager()->CreateRT(&fbi);
+        rt = RenderTargetManager::CreateRTFromGraphicsContext(graphics, ecs, &fbi);
         if (!rt) return false;
 
         LogTextureInfo("offscreen_rt_color0_init", rt->GetColorTexture(0));
@@ -118,7 +125,7 @@ public:
         render_collect_system->SetWorld(ecs_world);
 
         render_batch_system->SetWorld(ecs_world);
-        render_batch_system->SetDevice(rf->GetDevice());
+        render_batch_system->SetDevice(device);
 
         render_submit_system->SetWorld(ecs_world);
 

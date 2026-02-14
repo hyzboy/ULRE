@@ -45,7 +45,7 @@ class TestApp:public WorkObject
 private:
 
     // ECS组件
-    ECSContext *  ecs_world      =nullptr;   // 由 RenderFramework 统一维护
+    ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
 
     // 传统渲染资源（共享）
     MaterialInstance *  material_instance   =nullptr;
@@ -172,7 +172,7 @@ public:
         if(!InitECS())
             return(false);
 
-        // RenderFramework 已在框架层设置默认 ECSContext
+        // 已在框架层设置默认 ECSContext
         // RenderCollector会自动收集所有PrimitiveComponent并进行批处理
 
         return(true);

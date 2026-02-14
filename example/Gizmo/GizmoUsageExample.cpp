@@ -85,7 +85,15 @@ private:
 
     bool InitGizmos()
     {
-        if(!InitGizmoResource(GetRenderFramework()))
+        auto *ecs = GetECSContext();
+        if(!ecs)
+            return false;
+
+        auto *graphics = ecs->GetGraphicsContext();
+        if(!graphics)
+            return false;
+
+        if(!InitGizmoResource(graphics))
             return false;
 
         if(!ecs_world)

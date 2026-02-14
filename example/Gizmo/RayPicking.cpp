@@ -49,7 +49,7 @@ class TestApp:public WorkObject
 private:
 
     // ECS组件
-    ECSContext* ecs_world = nullptr;   // 由 RenderFramework 统一维护
+    ECSContext* ecs_world = nullptr;   // 由默认 ECSContext 统一维护
     Entity* plane_grid_entity = nullptr;
     Entity* ray_line_entity = nullptr;
 

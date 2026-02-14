@@ -11,6 +11,7 @@ VK_NAMESPACE_BEGIN
 
 class TextureManager;
 class RenderPassManager;
+class IGraphicsContext;
 
 GRAPH_MODULE_CLASS(RenderTargetManager)
 {
@@ -34,6 +35,10 @@ public:
 
     RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
     RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
+
+    // Create an offscreen render target without RenderFramework (ECS/GraphicsContext path).
+    static RenderTarget *CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+                                                     const FramebufferInfo *fbi, const uint32_t fence_count=1);
 };//class RenderTargetManager
 
 VK_NAMESPACE_END

@@ -22,12 +22,19 @@ public:
 
     bool Init() override
     {
-        // Create LineRenderManager via helper
-        line_mgr = GetRenderFramework()->GetLineRenderManager();
+        auto *ecs = GetECSContext();
+        if (!ecs)
+            return false;
 
+        auto *graphics = ecs->GetGraphicsContext();
+        auto *render_target = ecs->GetRenderTarget();
+        if (!graphics || !render_target)
+            return false;
+
+        line_mgr = CreateLineRenderManager(graphics, render_target);
         if(!line_mgr)
         {
-            LogError("WireShapeTestApp::Init: Failed to get LineRenderManager from RenderFramework\n");
+            LogError("WireShapeTestApp::Init: Failed to create LineRenderManager\n");
             return(false);
         }
 
@@ -39,7 +46,11 @@ public:
             if (!line_system)
                 line_system = ecs_world->RegisterRenderSystem<hgl::ecs::LineRenderSystem>();
             if (line_system)
+            {
                 line_system->SetLineRenderManager(line_mgr);
+                line_system->SetRenderContext(GetRenderContext());
+                line_system->SetRenderTarget(render_target);
+            }
         }
 
         // Setup a larger palette
