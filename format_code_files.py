@@ -142,8 +142,27 @@ class CodeFormatter:
 
     def _read_file(self, file_path: str) -> str:
         """读取文件，自动检测编码"""
-        # 尝试不同的编码，优先使用 utf-8-sig 以自动去除已有的 BOM
-        encodings = ['utf-8-sig', 'utf-8', 'gb2312', 'gbk', 'gb18030', 'cp936', 'latin-1']
+        # 先读取原始字节检查 BOM 标记
+        with open(file_path, 'rb') as f:
+            raw_bytes = f.read()
+
+        # 检查文件是否有 UTF-8 BOM (EF BB BF)
+        if raw_bytes.startswith(b'\xef\xbb\xbf'):
+            try:
+                content = raw_bytes.decode('utf-8-sig')
+                return content
+            except (UnicodeDecodeError, UnicodeError):
+                pass
+
+        # 优先尝试不带 BOM 的 UTF-8（处理 UTF-8 无 BOM 的情况）
+        try:
+            content = raw_bytes.decode('utf-8')
+            return content
+        except (UnicodeDecodeError, UnicodeError):
+            pass
+
+        # 如果 UTF-8 失败，再尝试 GB 系编码
+        encodings = ['gb2312', 'gbk', 'gb18030', 'cp936', 'latin-1']
 
         for encoding in encodings:
             try:
