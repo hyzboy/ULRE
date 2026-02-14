@@ -106,13 +106,11 @@ SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 # 4. Rendering System - 渲染系统
 # ============================================================================
 
-SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/RenderContext.h
-                            ${SG_INCLUDE_PATH}/SceneRenderer.h
+SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/SceneRenderer.h
                             ${SG_INCLUDE_PATH}/RenderStagePipeline.h
                             ${SG_INCLUDE_PATH}/RenderStages.h
                             ${SG_INCLUDE_PATH}/SceneCaptureStage.h
                             ${SG_INCLUDE_PATH}/VKRenderAssign.h
-                            render/RenderContext.cpp
                             render/SceneRenderer.cpp
                             render/RenderStagePipeline.cpp
                             render/RenderStages.cpp
@@ -203,7 +201,7 @@ SET(FONT_TILE_FILES ${SG_INCLUDE_PATH}/font/TileFont.h
 SOURCE_GROUP("7.Font\\TileFont" FILES ${FONT_TILE_FILES})
 
 SET(FONT_LAYOUT_FILES   ${SG_INCLUDE_PATH}/font/TextLayout.h
-                        font/TextLayoutEngine.h
+                        ${SG_INCLUDE_PATH}/font/TextLayoutEngine.h
                         font/TextLayout.cpp)
 
 SOURCE_GROUP("7.Font\\Layout" FILES ${FONT_LAYOUT_FILES})

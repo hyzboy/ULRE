@@ -8,7 +8,6 @@ namespace hgl::ecs { class ECSContext; }
 
 namespace hgl::graph
 {
-    class RenderContext;
     class RenderCmdBuffer;
     class IRenderTarget;
     class RenderTask;
@@ -16,7 +15,6 @@ namespace hgl::graph
 
     struct RenderStageContext
     {
-        RenderContext *     render_context      = nullptr;
         RenderCmdBuffer *   cmd                 = nullptr;
         IRenderTarget *     render_target       = nullptr;
         RenderTask *        render_task         = nullptr;

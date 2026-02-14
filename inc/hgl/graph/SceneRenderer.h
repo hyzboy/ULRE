@@ -3,7 +3,6 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/type/UnorderedMap.h>
-#include<hgl/graph/RenderContext.h>
 #include<hgl/graph/RenderStagePipeline.h>
 #include<hgl/io/event/EventDispatcher.h>
 // ECS forward declaration
@@ -17,12 +16,12 @@ namespace hgl::graph
         Scene
     };
 
-    class RenderContext;    // forward
     class RenderCmdBuffer;  // forward
     class Pipeline;         // fwd for CreatePipeline
     class Material;         // fwd for CreatePipeline
     class SceneNode;        // fwd for GetWorldRootNode
     enum class InlinePipeline; // fwd for CreatePipeline
+    class RenderFramework;
     class Camera;
     struct CameraInfo;
 
@@ -32,10 +31,6 @@ namespace hgl::graph
 
         using hgl::io::EventDispatcher::EventDispatcher;
         virtual ~SceneEventDispatcher() = default;
-
-    public:
-
-        virtual RenderContext *GetRenderContext()const=0;
     };
 
     /**
@@ -43,8 +38,9 @@ namespace hgl::graph
     */
     class SceneRenderer:public SceneEventDispatcher
     {
+        RenderFramework * render_framework = nullptr;
         IRenderTarget * render_target = nullptr;   ///< 当前渲染目标(便捷缓存)
-        RenderContext * render_context = nullptr;  ///< 渲染上下文
+        ecs::ECSContext * ecs_context = nullptr;
 
         RenderStagePipeline ecs_pipeline;          ///< ECS 渲染阶段管线(逐步迁移)
 
@@ -57,13 +53,12 @@ namespace hgl::graph
 
                 RenderPass *        GetRenderPass       ()      {return render_target->GetRenderPass();}
         const   ViewportInfo *      GetViewportInfo     ()const;
-        const   VkExtent2D &        GetExtent           ()const {return render_context->GetExtent();}
+        const   VkExtent2D &        GetExtent           ()const {return render_target->GetExtent();}
 
-                ecs::ECSContext *   GetECSContext       ()const {return render_context?render_context->GetECSContext():nullptr;}
+                ecs::ECSContext *   GetECSContext       ()const {return ecs_context;}
                 Camera *            GetCamera           ()const;
         const   CameraInfo *        GetCameraInfo       ()const;
                 LineRenderManager * GetLineRenderManager()const;
-                RenderContext *     GetRenderContext    ()const override {return render_context;}
 
                 // 便捷方法：基于当前RenderPass创建内置管线
                 Pipeline *          CreatePipeline      (Material *mtl,const InlinePipeline &ip)
@@ -85,7 +80,7 @@ namespace hgl::graph
         virtual ~SceneRenderer();
 
         bool SetRenderTarget(IRenderTarget *);
-        void SetECSContext(ecs::ECSContext *ctx){ if(render_context) render_context->SetECSContext(ctx); }
+        void SetECSContext(ecs::ECSContext *ctx);
         void SetClearColor(const Color4f &c){clear_color=c;}
 
         void Tick(double);
@@ -97,5 +92,9 @@ namespace hgl::graph
         bool BeginRender();
         bool RenderFrame();
         bool Submit();
+
+    private:
+
+        void SyncRenderTargetSystem();
     };//class SceneRenderer
 }//namespace hgl::graph
