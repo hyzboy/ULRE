@@ -5,7 +5,6 @@ SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/BitmapData.h
                     ${SG_INCLUDE_PATH}/TransformFaceToCamera.h
                     ${SG_INCLUDE_PATH}/VertexAttrib.h
                     ${SG_INCLUDE_PATH}/ViewportInfo.h
-                    ${SG_INCLUDE_PATH}/RealityCamera.h
                     ${SG_INCLUDE_PATH}/Mesh.h)
 
 SET(CM_SG_VULKAN_HEADER     ${SG_INCLUDE_PATH}/VKFormat.h
@@ -98,6 +97,7 @@ SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 # ============================================================================
 
 SET(CAMERA_FILES    ${SG_INCLUDE_PATH}/camera/Camera.h
+                    ${SG_INCLUDE_PATH}/camera/RealityCamera.h
                     camera/Camera.cpp)
 
 SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
