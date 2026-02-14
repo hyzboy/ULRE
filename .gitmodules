@@ -43,3 +43,6 @@
 [submodule "3rdpty/inja"]
 	path = 3rdpty/inja
 	url = https://github.com/pantor/inja.git
+[submodule "3rdpty/iwyu"]
+	path = 3rdpty/iwyu
+	url = https://github.com/include-what-you-use/include-what-you-use.git
