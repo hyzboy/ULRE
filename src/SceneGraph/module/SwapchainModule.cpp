@@ -3,13 +3,28 @@
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKDeviceAttribute.h>
-#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include <hgl/vk/VKNamespace.h>
+#include <hgl/vk/VKRenderbufferInfo.h>
+#include <hgl/vk/VKRenderTargetData.h>
+#include <hgl/vk/VKTexture.h>
+#include <hgl/vk/VKTextureCreateInfo.h>
+#include <hgl/vk/VKRenderTargetSwapchain.h>
+#include <cstdint>
+#include <vulkan/vulkan_core.h>
+#include <hgl/Macro.h>
+#include <hgl/type/Smart.h>
+#include <hgl/type/String.h>
+#include <hgl/graph/GraphTypes.h>
+#include <hgl/graph/module/GraphModule.h>
+#include <hgl/vk/VK.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKSurface.h>
+
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -35,28 +50,28 @@ namespace
         if(surface_caps.maxImageCount<3)
             image_count=surface_caps.maxImageCount;
         else
-        if(surface_caps.maxImageCount>3)
-            image_count=3;
-        else
-            image_count=surface_caps.minImageCount;
+            if(surface_caps.maxImageCount>3)
+                image_count=3;
+            else
+                image_count=surface_caps.minImageCount;
 
-        swapchain_ci.sType                  =VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swapchain_ci.pNext                  =nullptr;
-        swapchain_ci.flags                  =0;
-        swapchain_ci.surface                =dev_attr->surface->GetSurface();
-        swapchain_ci.minImageCount          =image_count;
-        swapchain_ci.imageFormat            =dev_attr->surface_format.format;
-        swapchain_ci.imageColorSpace        =dev_attr->surface_format.colorSpace;
-        swapchain_ci.imageExtent            =surface_caps.currentExtent;
-        swapchain_ci.imageArrayLayers       =1;
-        swapchain_ci.imageUsage             =VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        swapchain_ci.queueFamilyIndexCount  =0;
-        swapchain_ci.pQueueFamilyIndices    =nullptr;
-        swapchain_ci.preTransform           =dev_attr->surface->GetPreTransform();
-        swapchain_ci.compositeAlpha         =dev_attr->surface->GetCompositeAlpha();
-        swapchain_ci.presentMode            =VK_PRESENT_MODE_FIFO_KHR;
-        swapchain_ci.clipped                =VK_TRUE;
-        swapchain_ci.oldSwapchain           =VK_NULL_HANDLE;
+        swapchain_ci.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        swapchain_ci.pNext=nullptr;
+        swapchain_ci.flags=0;
+        swapchain_ci.surface=dev_attr->surface->GetSurface();
+        swapchain_ci.minImageCount=image_count;
+        swapchain_ci.imageFormat=dev_attr->surface_format.format;
+        swapchain_ci.imageColorSpace=dev_attr->surface_format.colorSpace;
+        swapchain_ci.imageExtent=surface_caps.currentExtent;
+        swapchain_ci.imageArrayLayers=1;
+        swapchain_ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        swapchain_ci.queueFamilyIndexCount=0;
+        swapchain_ci.pQueueFamilyIndices=nullptr;
+        swapchain_ci.preTransform=dev_attr->surface->GetPreTransform();
+        swapchain_ci.compositeAlpha=dev_attr->surface->GetCompositeAlpha();
+        swapchain_ci.presentMode=VK_PRESENT_MODE_FIFO_KHR;
+        swapchain_ci.clipped=VK_TRUE;
+        swapchain_ci.oldSwapchain=VK_NULL_HANDLE;
 
         if(surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
             swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -64,7 +79,7 @@ namespace
         if(surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-        swapchain_ci.imageSharingMode = VkSharingMode(SharingMode::Exclusive);
+        swapchain_ci.imageSharingMode=VkSharingMode(SharingMode::Exclusive);
 
         VkSwapchainKHR swap_chain;
         VkResult result;
@@ -116,9 +131,9 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
         if(!swapchain->sc_image[i].depth)
             return(false);
 
-        swapchain->sc_image[i].fbo=rt_manager->CreateFBO(   sc_render_pass,
-                                                            swapchain->sc_image[i].color->GetImageView(),
-                                                            swapchain->sc_image[i].depth->GetImageView());
+        swapchain->sc_image[i].fbo=rt_manager->CreateFBO(sc_render_pass,
+                                                         swapchain->sc_image[i].color->GetImageView(),
+                                                         swapchain->sc_image[i].depth->GetImageView());
 
         AnsiString num_string=AnsiString::numberOf(i);
 
@@ -149,11 +164,11 @@ Swapchain *SwapchainModule::CreateSwapchain()
 
     const auto &surface_caps=dev_attr->surface->GetCapabilities();
 
-    swapchain->device           =dev_attr->device;
-    swapchain->extent           =surface_caps.currentExtent;
-    swapchain->transform        =surface_caps.currentTransform;
-    swapchain->surface_format   =dev_attr->surface_format;
-    swapchain->depth_format     =dev_attr->physical_device->GetDepthFormat();
+    swapchain->device=dev_attr->device;
+    swapchain->extent=surface_caps.currentExtent;
+    swapchain->transform=surface_caps.currentTransform;
+    swapchain->surface_format=dev_attr->surface_format;
+    swapchain->depth_format=dev_attr->physical_device->GetDepthFormat();
 
     swapchain->swap_chain=CreateVulkanSwapChain(dev_attr);
 
@@ -198,16 +213,16 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
-        rtd->fbo                        =sc_image->fbo;
-        rtd->queue                      =device->CreateQueue(swapchain->image_count,false);
-        rtd->render_complete_semaphore  =device->CreateGPUSemaphore();
+        rtd->fbo=sc_image->fbo;
+        rtd->queue=device->CreateQueue(swapchain->image_count,false);
+        rtd->render_complete_semaphore=device->CreateGPUSemaphore();
 
-        rtd->cmd_buf                    =sc_image->cmd_buf;
+        rtd->cmd_buf=sc_image->cmd_buf;
 
-        rtd->color_count                =1;
-        rtd->color_textures             =new Texture2D*[1];
-        rtd->color_textures[0]          =sc_image->color;
-        rtd->depth_texture              =sc_image->depth;
+        rtd->color_count=1;
+        rtd->color_textures=new Texture2D*[1];
+        rtd->color_textures[0]=sc_image->color;
+        rtd->depth_texture=sc_image->depth;
 
         ++rtd;
         ++sc_image;
@@ -215,19 +230,19 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     if(ecs_context)
     {
-        sc_render_target=new SwapchainRenderTarget( ecs_context,
-                                                    swapchain,
-                                                    device->CreateGPUSemaphore(),
-                                                    rtd_list
-                                                    );
+        sc_render_target=new SwapchainRenderTarget(ecs_context,
+                                                   swapchain,
+                                                   device->CreateGPUSemaphore(),
+                                                   rtd_list
+        );
     }
     else
     {
-        sc_render_target=new SwapchainRenderTarget( GetRenderFramework(),
-                                                    swapchain,
-                                                    device->CreateGPUSemaphore(),
-                                                    rtd_list
-                                                    );
+        sc_render_target=new SwapchainRenderTarget(GetRenderFramework(),
+                                                   swapchain,
+                                                   device->CreateGPUSemaphore(),
+                                                   rtd_list
+        );
     }
 
     return true;
@@ -251,12 +266,12 @@ SwapchainModule::SwapchainModule(RenderFramework *rf,TextureManager *tm,RenderTa
 
     sc_render_pass=rp_manager->AcquireRenderPass(&rbi);
 
-    #ifdef _DEBUG
+#ifdef _DEBUG
     {
         if(dev_attr->debug_utils)
             dev_attr->debug_utils->SetRenderPass(sc_render_pass->GetVkRenderPass(),"SwapchainRenderPass");
     }
-    #endif//_DEBUG
+#endif//_DEBUG
 
     if(!CreateSwapchainRenderTarget())
         return;
@@ -266,7 +281,7 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(sc_render_target)
 
-    VulkanSurface *surface=GetSurface();
+        VulkanSurface *surface=GetSurface();
 
     surface->RefreshCaps();
 
@@ -286,21 +301,21 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 //    sc_render_target->WaitFence();
 //}
 
-        bool                    SwapchainModule::GetSwapchainSize(VkExtent2D *ext)const
-        {
-            if(!ext||!sc_render_target)
-                return(false);
+bool                    SwapchainModule::GetSwapchainSize(VkExtent2D *ext)const
+{
+    if(!ext||!sc_render_target)
+        return(false);
 
-            *ext=sc_render_target->GetExtent();
-            return(true);
-        }
+    *ext=sc_render_target->GetExtent();
+    return(true);
+}
 
-        bool SwapchainModule::AcquireNextImage()const
-        {
-            if(!sc_render_target)
-                return(false);
+bool SwapchainModule::AcquireNextImage()const
+{
+    if(!sc_render_target)
+        return(false);
 
-            return sc_render_target->NextFrame();
-        }
+    return sc_render_target->NextFrame();
+}
 
 VK_NAMESPACE_END

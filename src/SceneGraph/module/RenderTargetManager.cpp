@@ -1,9 +1,26 @@
-﻿#include<hgl/graph/module/RenderTargetManager.h>
+﻿#include <cstdint>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/vk/VKRenderTargetSingle.h>
-#include<hgl/vk/VKDevice.h>
-#include<hgl/graph/module/TextureManager.h>
+#include <hgl/graph/GraphTypes.h>
+#include<hgl/graph/render/RenderFramework.h>
+#include <hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/RenderPassManager.h>
+#include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/module/TextureManager.h>
+#include <hgl/Macro.h>
+#include <hgl/type/MemoryAlloc.h>
+#include <hgl/type/Smart.h>
+#include<hgl/vk/VKDevice.h>
+#include <hgl/vk/VKFormat.h>
+#include <hgl/vk/VKFramebuffer.h>
+#include <hgl/vk/VKImageView.h>
+#include <hgl/vk/VKNamespace.h>
+#include <hgl/vk/VKRenderbufferInfo.h>
+#include <hgl/vk/VKRenderPass.h>
+#include <hgl/vk/VKRenderTargetData.h>
+#include<hgl/vk/VKRenderTargetSingle.h>
+#include <hgl/vk/VKTexture.h>
+#include <hgl/vk/VKTextureCreateInfo.h>
+#include <vulkan/vulkan_core.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -50,15 +67,15 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
 
         VulkanDevice *dev=GetDevice();
 
-        rtd->fbo                        =fb;
-        rtd->queue                      =dev->CreateQueue(fence_count,false);
-        rtd->render_complete_semaphore  =dev->CreateGPUSemaphore();
+        rtd->fbo=fb;
+        rtd->queue=dev->CreateQueue(fence_count,false);
+        rtd->render_complete_semaphore=dev->CreateGPUSemaphore();
 
-        rtd->cmd_buf                    =dev->CreateRenderCommandBuffer("");
+        rtd->cmd_buf=dev->CreateRenderCommandBuffer("");
 
-        rtd->color_count                =color_count;
-        rtd->color_textures             =new_copy<Texture2D *>(color_texture_list,color_count);
-        rtd->depth_texture              =depth_texture;
+        rtd->color_count=color_count;
+        rtd->color_textures=new_copy<Texture2D *>(color_texture_list,color_count);
+        rtd->depth_texture=depth_texture;
 
         color_texture_list.Discard();
 

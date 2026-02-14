@@ -7,7 +7,7 @@
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
-#include"VKGeometryData.h"
+#include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/io/MiniPack.h>
 
 DEFINE_LOGGER_MODULE(LoadGeometry)

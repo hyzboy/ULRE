@@ -6,12 +6,10 @@
 #include <vulkan/vulkan.h>
 
 namespace hgl {
-    namespace vk {
-        class VulkanDevice;
-        class RenderCmdBuffer;
-    }
     namespace graph {
         class IRenderTarget;
+        class VulkanDevice;
+        class RenderCmdBuffer;
     }
 }
 
@@ -51,7 +49,7 @@ public:
     
 private:
     ECSContext* world;
-    hgl::vk::VulkanDevice* gpu_device;
+    hgl::graph::VulkanDevice* gpu_device;
     hgl::graph::IRenderTarget* render_target;
     
     // Vulkan 同步原语
@@ -65,7 +63,7 @@ private:
     bool frame_begun = false;
     
     // 渲染命令缓冲区
-    std::unique_ptr<hgl::vk::RenderCmdBuffer> render_cmd;
+    std::unique_ptr<hgl::graph::RenderCmdBuffer> render_cmd;
     
 public:
     /**
@@ -140,7 +138,7 @@ public:
      *   }
      * @endcode
      */
-    hgl::vk::RenderCmdBuffer* GetRenderCmd() {
+    hgl::graph::RenderCmdBuffer* GetRenderCmd() {
         return frame_begun ? render_cmd.get() : nullptr;
     }
     
@@ -154,7 +152,7 @@ public:
     /**
      * 获取 Vulkan 设备
      */
-    hgl::vk::VulkanDevice* GetGPUDevice() { return gpu_device; }
+    hgl::graph::VulkanDevice* GetGPUDevice() { return gpu_device; }
     
     /**
      * 获取当前帧号（从 0 开始）

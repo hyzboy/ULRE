@@ -207,6 +207,14 @@ namespace hgl
             return render_framework?render_framework->CreatePipeline(mat,ip):nullptr;
         }
 
+        graph::Pipeline *CreatePipeline(graph::MaterialInstance *mi,const graph::InlinePipeline &ip)
+        {
+            if(graphics_context)
+                return graphics_context->CreatePipeline(mi,ip);
+
+            return render_framework?render_framework->CreatePipeline(mi,ip):nullptr;
+        }
+
         SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::Material *mtl)
         {
             if(graphics_context)

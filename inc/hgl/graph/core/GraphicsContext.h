@@ -39,7 +39,7 @@ namespace hgl::graph
     class SamplerManager;
     class RenderPassManager;
     class RenderTargetManager;
-    enum class IndexType;
+    enum IndexType;
     enum class InlinePipeline;
 
     namespace mtl
@@ -107,11 +107,11 @@ namespace hgl::graph
         virtual class IndexBuffer *CreateIBO32(const void *indices,uint32_t count)=0;
 
         // Geometry & Primitive
-        virtual VertexDataManager *CreateVDM(const class VIL *vil,VkDeviceSize vertices,VkDeviceSize indices=0,IndexType type=IndexType::U16)=0;
+        virtual VertexDataManager *CreateVDM(const VIL *vil,VkDeviceSize vertices,VkDeviceSize indices=0,IndexType type=IndexType::U16)=0;
         virtual SharedPtr<GeometryCreater> GetGeometryCreater(Material *mat)=0;
         virtual SharedPtr<GeometryCreater> GetGeometryCreater(MaterialInstance *mi)=0;
 
-        virtual Geometry *CreateGeometry(const AnsiString &name,uint32_t vertex_count,const class VIL *vil,
+        virtual Geometry *CreateGeometry(const AnsiString &name,uint32_t vertex_count,const VIL *vil,
                                          const std::initializer_list<class VertexAttribDataPtr> &vad_list)=0;
         virtual Primitive *CreatePrimitive(const AnsiString &name,uint32_t vertex_count,MaterialInstance *mi,
                                            Pipeline *p,const std::initializer_list<class VertexAttribDataPtr> &vad_list)=0;
@@ -120,6 +120,7 @@ namespace hgl::graph
 
         // Pipeline
         virtual Pipeline *CreatePipeline(Material *mat,const InlinePipeline &ip)=0;
+        virtual Pipeline *CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip)=0;
         virtual RenderPass *GetDefaultRenderPass()=0;
 
         // Texture
