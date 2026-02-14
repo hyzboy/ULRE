@@ -1,6 +1,9 @@
 ﻿#pragma once
 
-#include<hgl/graph/BufferPolicy.h>
+#include "VKBuffer.h"
+#include "VKNamespace.h"
+#include<hgl/vk/BufferPolicy.h>
+#include <vulkan/vulkan_core.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -27,8 +30,9 @@ struct DevicePolicyAdjustment
 
     DevicePolicyAdjustment()
         : arch_type(GPUArchType::DiscreteSmallReBAR),
-          is_amd_apu(false), is_intel_igpu(false), is_apple_m_series(false),
-          has_rebar(false), rebar_size(0), available_device_mem(0) {}
+        is_amd_apu(false),is_intel_igpu(false),is_apple_m_series(false),
+        has_rebar(false),rebar_size(0),available_device_mem(0)
+    {}
 };
 
 // 从物理设备获取策略调整参数
@@ -56,8 +60,8 @@ BufferPolicy MakeManualPolicy(const DevicePolicyAdjustment &adjustment);
 
 // 策略应用函数
 const BufferPolicy *GetPolicyForUpdateClass(BufferUpdateClass update_class);
-const BufferPolicy *GetPolicyForUpdateClass(BufferUpdateClass update_class, const DevicePolicyAdjustment &adjustment);
-void ApplyPolicy(DeviceBuffer *buf, const BufferPolicy *policy);
+const BufferPolicy *GetPolicyForUpdateClass(BufferUpdateClass update_class,const DevicePolicyAdjustment &adjustment);
+void ApplyPolicy(DeviceBuffer *buf,const BufferPolicy *policy);
 
 // 所有设备缓冲策略的统一结构体
 struct AllDeviceBufferPolicies
@@ -76,15 +80,15 @@ struct AllDeviceBufferPolicies
     {
         switch(update_class)
         {
-            case BufferUpdateClass::CriticalPerFrame:   return &camera_ubo;
-            case BufferUpdateClass::TransformData:      return &static_transform;
-            case BufferUpdateClass::MeshStatic:         return &mesh_static;
-            case BufferUpdateClass::MeshDynamic:        return &mesh_dynamic;
-            case BufferUpdateClass::TextureTile:        return &texture_tile;
-            case BufferUpdateClass::Particle:           return &particle;
-            case BufferUpdateClass::Deferred:           return &deferred;
-            case BufferUpdateClass::Manual:             return &manual;
-            default:                                    return &manual;
+        case BufferUpdateClass::CriticalPerFrame:   return &camera_ubo;
+        case BufferUpdateClass::TransformData:      return &static_transform;
+        case BufferUpdateClass::MeshStatic:         return &mesh_static;
+        case BufferUpdateClass::MeshDynamic:        return &mesh_dynamic;
+        case BufferUpdateClass::TextureTile:        return &texture_tile;
+        case BufferUpdateClass::Particle:           return &particle;
+        case BufferUpdateClass::Deferred:           return &deferred;
+        case BufferUpdateClass::Manual:             return &manual;
+        default:                                    return &manual;
         }
     }
 };
