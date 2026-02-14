@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /**
  * Graph-level forward declarations that are not part of Vulkan-specific headers.
