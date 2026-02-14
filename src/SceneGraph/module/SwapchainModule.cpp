@@ -199,6 +199,9 @@ namespace
 
 bool SwapchainModule::CreateSwapchainRenderTarget()
 {
+    if(!ecs_context)
+        return(false);
+
     Swapchain *swapchain=CreateSwapchain();
 
     if(!swapchain)
@@ -228,22 +231,11 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
         ++sc_image;
     }
 
-    if(ecs_context)
-    {
-        sc_render_target=new SwapchainRenderTarget(ecs_context,
-                                                   swapchain,
-                                                   device->CreateGPUSemaphore(),
-                                                   rtd_list
-        );
-    }
-    else
-    {
-        sc_render_target=new SwapchainRenderTarget(GetRenderFramework(),
-                                                   swapchain,
-                                                   device->CreateGPUSemaphore(),
-                                                   rtd_list
-        );
-    }
+    sc_render_target=new SwapchainRenderTarget(ecs_context,
+                                               swapchain,
+                                               device->CreateGPUSemaphore(),
+                                               rtd_list
+    );
 
     return true;
 }

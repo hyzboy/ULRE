@@ -24,6 +24,26 @@ VkDevice IRenderTarget::GetVkDevice()const
     return device ? device->GetDevice() : nullptr;
 }
 
+ViewportInfo *IRenderTarget::GetViewportInfo()
+{
+    if(!ubo_vp_info)
+    {
+        VulkanDevice *device = GetDevice();
+        if(device)
+        {
+            ubo_vp_info = device->CreateUBO<UBOViewportInfo>(&mtl::SBS_ViewportInfo, BufferUpdateClass::CriticalPerFrame);
+            if(ubo_vp_info)
+            {
+                desc_binding.AddUBO(ubo_vp_info);
+                ubo_vp_info->Data()->Set(extent.width, extent.height);
+                ubo_vp_info->ImmediateUpdate();
+            }
+        }
+    }
+
+    return ubo_vp_info ? ubo_vp_info->Data() : nullptr;
+}
+
 IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext):desc_binding(DescriptorSetType::RenderTarget)
 {
     render_framework=rf;
@@ -72,7 +92,10 @@ void IRenderTarget::OnResize(const VkExtent2D &ext)
     extent=ext;
 
     if(!ubo_vp_info)
+    {
+        GetViewportInfo();
         return;
+    }
 
     ubo_vp_info->Data()->Set(ext.width,ext.height);
 

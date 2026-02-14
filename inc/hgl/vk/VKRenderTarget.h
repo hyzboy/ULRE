@@ -84,11 +84,7 @@ public: // Command Buffer
     virtual uint32_t            GetFrameCount       ()const{return 1;}
 
 public:
-
-    virtual ViewportInfo *      GetViewportInfo     ()
-    {
-        return ubo_vp_info->Data();
-    }
+    virtual ViewportInfo *      GetViewportInfo     ();
 };//class IRenderTarget
 
 VK_NAMESPACE_END
