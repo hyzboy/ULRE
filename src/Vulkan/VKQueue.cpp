@@ -1,7 +1,9 @@
 ﻿#include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
+#include<cstdint>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -23,6 +25,10 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 
 DeviceQueue::~DeviceQueue()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+        owner->UntrackObject(VK_OBJECT_TYPE_QUEUE, (uint64_t)(uintptr_t)queue);
+
     SAFE_CLEAR_OBJECT_ARRAY_OBJECT(fence_list,fence_count)
 }
 

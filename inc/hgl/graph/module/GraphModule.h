@@ -13,18 +13,20 @@ class IGraphicsContext;
 
 class GraphModule
 {
-    RenderFramework *render_framework;
     IGraphicsContext *graphics_context=nullptr;
 
 public:
 
-                RenderFramework *   GetRenderFramework  ()const{return render_framework;}               ///<取得渲染框架
                 IGraphicsContext *  GetGraphicsContext  ()const{return graphics_context;}              ///<取得GraphicsContext
-                void                SetGraphicsContext  (IGraphicsContext *gc){graphics_context=gc;}   ///<设置GraphicsContext
+                void                SetGraphicsContext  (IGraphicsContext *gc)
+                {
+                    graphics_context=gc;
+                    OnGraphicsContextChanged(gc);
+                }   ///<设置GraphicsContext
 
                 VulkanDevice *      GetDevice           ();                                             ///<取得GPU设备
                 VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
-            const   VulkanPhyDevice *   GetPhyDevice        ()const;                                        ///<取得物理设备
+        const   VulkanPhyDevice *   GetPhyDevice        ()const;                                        ///<取得物理设备
                 VulkanDevAttr *     GetDevAttr          ()const;                                        ///<取得设备属性
                 VulkanSurface *     GetSurface          ()const;                                        ///<取得表面
                 VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache
@@ -33,9 +35,20 @@ public:
 
     virtual void OnResize(const VkExtent2D &){};                                                    ///<窗口大小改变
 
+    /**
+     * @brief 清理模块资源 - 在销毁前调用，用于释放模块持有的GPU资源
+     * @warning GraphModuleManager会在销毁时自动调用此方法
+     * 各个子模块应在此方法中清理残留的GPU资源（缓冲区、纹理等）
+     */
+    virtual void Release(){}
+
+protected:
+
+    virtual void OnGraphicsContextChanged(IGraphicsContext *){}
+
 public:
 
-    GraphModule(RenderFramework *rf){render_framework=rf;}
+    GraphModule(IGraphicsContext *gc):graphics_context(gc){}
     virtual ~GraphModule()=default;
 
     virtual const size_t GetTypeHash()const noexcept=0;
@@ -60,7 +73,7 @@ public:
 
 public:
 
-    GraphModuleInherit(RenderFramework *rf,const AnsiString &name):BASE(rf)
+    GraphModuleInherit(IGraphicsContext *gc,const AnsiString &name):BASE(gc)
     {
         manager_name=name;
     }
@@ -70,6 +83,6 @@ public:
 
 #define GRAPH_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name,GraphModule>
 
-#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(RenderFramework *rf):GraphModuleInherit<class_name,GraphModule>(rf,#class_name)
+#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(IGraphicsContext *gc):GraphModuleInherit<class_name,GraphModule>(gc,#class_name)
 
 VK_NAMESPACE_END

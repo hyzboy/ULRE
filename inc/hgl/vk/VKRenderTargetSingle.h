@@ -17,13 +17,6 @@ protected:
     friend class SwapchainModule;
     friend class RenderTargetManager;
 
-    RenderTarget(RenderFramework *rf,RenderTargetData *rtd):IRenderTarget(rf,rtd->fbo->GetExtent())
-    {
-        data=rtd;
-
-        data->cmd_buf->SetDescriptorBinding(GetDescriptorBinding());
-    }
-
     RenderTarget(hgl::ecs::ECSContext *ctx,RenderTargetData *rtd):IRenderTarget(ctx,rtd->fbo->GetExtent())
     {
         data=rtd;

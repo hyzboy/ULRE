@@ -1,4 +1,5 @@
 ﻿#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKQueue.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKBuffer.h>

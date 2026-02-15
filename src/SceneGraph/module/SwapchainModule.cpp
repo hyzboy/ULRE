@@ -3,7 +3,6 @@
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
-#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKDeviceAttribute.h>
@@ -189,10 +188,7 @@ namespace
     {
         void Clear() override
         {
-            delete render_complete_semaphore;
-            delete queue;
-
-            delete[] color_textures;
+            RenderTargetData::Clear();
         }
     };//
 }//namespace
@@ -217,8 +213,8 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
         rtd->fbo=sc_image->fbo;
-        rtd->queue=device->CreateQueue(swapchain->image_count,false);
-        rtd->render_complete_semaphore=device->CreateGPUSemaphore();
+        rtd->queue=device->CreateQueue("SwapchainImage", swapchain->image_count, false);
+        rtd->render_complete_semaphore=device->CreateGPUSemaphore("SwapchainImage:RenderComplete");
 
         rtd->cmd_buf=sc_image->cmd_buf;
 
@@ -233,7 +229,7 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     sc_render_target=new SwapchainRenderTarget(ecs_context,
                                                swapchain,
-                                               device->CreateGPUSemaphore(),
+                                               device->CreateGPUSemaphore("Swapchain:ImageAcquired"),
                                                rtd_list
     );
 
@@ -245,12 +241,13 @@ SwapchainModule::~SwapchainModule()
     SAFE_CLEAR(sc_render_target);
 }
 
-SwapchainModule::SwapchainModule(RenderFramework *rf,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm):GraphModuleInherit<SwapchainModule,GraphModule>(rf,"SwapchainModule")
+SwapchainModule::SwapchainModule(IGraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
+    :GraphModuleInherit<SwapchainModule,GraphModule>(gc,"SwapchainModule")
 {
     tex_manager=tm;
     rt_manager=rtm;
     rp_manager=rpm;
-    ecs_context=rf?rf->GetECSContext():nullptr;
+    ecs_context=ecs_ctx;
 
     auto *dev_attr=GetDevAttr();
 

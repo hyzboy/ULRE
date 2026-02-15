@@ -64,17 +64,36 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
+    // 1. Disable graphics context before cleanup
     if(module_manager)
         module_manager->SetGraphicsContext(nullptr);
 
-    SAFE_CLEAR(module_manager)
-
+    // 2. Shutdown ECS context FIRST so systems can clean up their buffers
+    // while BufferManager is still alive
     if(default_ecs_context)
     {
         default_ecs_context->Shutdown();
         delete default_ecs_context;
         default_ecs_context=nullptr;
     }
+
+    // 3. Clear modules (GraphModuleManager destructor automatically calls Release() on all modules)
+    // This ensures all GPU resources in each module are cleaned up before module deletion
+    SAFE_CLEAR(module_manager)
+
+    // 4. Release render context
+    render_context.reset();
+
+    // 5. Wait for GPU to complete all operations before destroying device/window
+    if(device)
+    {
+        device->WaitIdle();
+    }
+
+    // 6. Cleanup GPU resources
+    SAFE_CLEAR(device);
+    SAFE_CLEAR(inst);
+    SAFE_CLEAR(win);
 
     --RENDER_FRAMEWORK_COUNT;
 
@@ -155,7 +174,7 @@ bool RenderFramework::Init(uint w,uint h)
 
     win->AddChildDispatcher(this);
 
-    module_manager=new GraphModuleManager(this);
+    module_manager=new GraphModuleManager();
 
     rp_manager=module_manager->GetOrCreate<RenderPassManager>();
     if(!rp_manager)
@@ -198,30 +217,35 @@ bool RenderFramework::Init(uint w,uint h)
     // create default ECS context early so modules can access it
     default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
 
-    rt_manager=new RenderTargetManager(this,tex_manager,rp_manager);
-    module_manager->Register(rt_manager);
-
-    sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
-    module_manager->Register(sc_module);
+    std::shared_ptr<graph::GraphicsModule> graphics_ctx;
 
     if (default_ecs_context)
     {
-        auto graphics_ctx = std::make_shared<graph::GraphicsModule>(device,
-                                                                     rp_manager,
-                                                                     tex_manager,
-                                                                     material_manager,
-                                                                     buffer_manager,
-                                                                     sampler_manager,
-                                                                     geometry_manager,
-                                                                     primitive_manager);
+        graphics_ctx = std::make_shared<graph::GraphicsModule>(device,
+                                                               rp_manager,
+                                                               tex_manager,
+                                                               material_manager,
+                                                               buffer_manager,
+                                                               sampler_manager,
+                                                               geometry_manager,
+                                                               primitive_manager);
 
         graphics_ctx->SetLegacyRenderFramework(this);
-        graphics_ctx->SetDefaultRenderPass(GetDefaultRenderPass());
-
         default_ecs_context->SetGraphicsContext(graphics_ctx);
 
         if(module_manager)
             module_manager->SetGraphicsContext(graphics_ctx.get());
+    }
+
+    rt_manager=new RenderTargetManager(graphics_ctx.get(),default_ecs_context,tex_manager,rp_manager);
+    module_manager->Register(rt_manager);
+
+    sc_module=new SwapchainModule(graphics_ctx.get(),default_ecs_context,tex_manager,rt_manager,rp_manager);
+    module_manager->Register(sc_module);
+
+    if (graphics_ctx)
+    {
+        graphics_ctx->SetDefaultRenderPass(GetDefaultRenderPass());
 
         default_ecs_context->InitializeGraphics(device, GetSwapchainRenderTarget());
         default_ecs_context->SetRenderContext(render_context.get());

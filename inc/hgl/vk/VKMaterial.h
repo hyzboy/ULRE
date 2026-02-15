@@ -19,6 +19,8 @@ namespace mtl
     class MaterialCreateInfo;
 }
 
+class MaterialParameters;
+
 using ShaderStageCreateInfoList=ValueArray<VkPipelineShaderStageCreateInfo>;
 
 /**

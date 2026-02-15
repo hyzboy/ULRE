@@ -1,13 +1,12 @@
 ﻿#include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
-#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
 
 VK_NAMESPACE_BEGIN
 
 VulkanDevice *GraphModuleManager::GetDevice()const
 {
-    return graphics_context?graphics_context->GetDevice():render_framework->GetDevice();
+    return graphics_context?graphics_context->GetDevice():nullptr;
 }
 
 bool GraphModuleManager::Register(GraphModule *gm)
@@ -62,13 +61,33 @@ bool GraphModuleManager::Unregister(GraphModule *gm)
 
 GraphModuleManager::~GraphModuleManager()
 {
-    GraphModule **gm=module_list.last();
-    GraphModule **begin=module_list.begin();
-
-    while(gm>=begin)
+    // 阶段1: 反向调用所有模块的Release()方法，让它们清理资源
+    // 释放顺序应与创建顺序相反，避免依赖先被销毁
     {
-        delete *gm;
-        --gm;
+        GraphModule **gm = module_list.last();
+        GraphModule **begin = module_list.begin();
+
+        while (gm >= begin)
+        {
+            if (*gm)
+            {
+                (*gm)->Release();
+            }
+            --gm;
+        }
+    }
+
+    // 阶段2: 删除所有模块
+    // 此时GPU资源已经被Release()清理过了
+    {
+        GraphModule **gm = module_list.last();
+        GraphModule **begin = module_list.begin();
+
+        while (gm >= begin)
+        {
+            delete *gm;
+            --gm;
+        }
     }
 
     module_list.Clear();

@@ -1,4 +1,5 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 
 VK_NAMESPACE_BEGIN
@@ -12,6 +13,10 @@ VulkanCmdBuffer::VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb)
 
 VulkanCmdBuffer::~VulkanCmdBuffer()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(dev_attr->device);
+    if (owner)
+        owner->UntrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cmd_buf);
+
     vkFreeCommandBuffers(dev_attr->device,dev_attr->cmd_pool,1,&cmd_buf);
 }
 

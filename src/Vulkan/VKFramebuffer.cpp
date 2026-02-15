@@ -1,5 +1,6 @@
 ﻿#include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKDevice.h>
+#include<cstdint>
 #include<hgl/vk/VKImageView.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKTexture.h>
@@ -25,6 +26,10 @@ Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,const VkExtent2D &ext,Ren
 
 Framebuffer::~Framebuffer()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+        owner->UntrackObject(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64_t)(uintptr_t)frame_buffer);
+
     vkDestroyFramebuffer(device,frame_buffer,nullptr);
 }
 VK_NAMESPACE_END

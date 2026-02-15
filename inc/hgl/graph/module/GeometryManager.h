@@ -17,7 +17,7 @@ private:
 
     AutoIdObjectManager<GeometryID,Geometry> rm_geometry;              ///<图元合集
 
-    GeometryManager(RenderFramework *);
+    GeometryManager(IGraphicsContext *);
     virtual ~GeometryManager()=default;
 
     friend class GraphModuleManager;
@@ -27,6 +27,12 @@ public:
     GeometryID  Add         (Geometry *        p   ){return rm_geometry.Add(p);}
     Geometry *  GetGeometry (const GeometryID &id  ){return rm_geometry.Get(id);}
     void        Release     (Geometry *        p   ){rm_geometry.Release(p);}
+
+    void Release() override
+    {
+        if (rm_geometry.GetCount() > 0)
+            rm_geometry.Clear();
+    }
 };//class GeometryManager
 
 VK_NAMESPACE_END

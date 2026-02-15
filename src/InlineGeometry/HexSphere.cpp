@@ -2,8 +2,10 @@
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/geo/InlineGeometry.h>
+#include <hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include <hgl/graph/geo/VKGeometry.h>
 #include <hgl/type/UnorderedMap.h>
 #include <algorithm>
 #include <vector>

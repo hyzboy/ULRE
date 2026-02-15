@@ -202,32 +202,20 @@ namespace hgl::ecs
         if (!transform_buffer)
         {
 #if defined(HGL_L2W_USE_SSBO)
-            transform_buffer = device->CreateSSBO(sizeof(math::Matrix4f) * transform_buffer_max_count,
+            transform_buffer = device->CreateSSBO("ECS:LocalToWorld",
+                                                  sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                   nullptr,
                                                   transform_policy,
                                                   graph::SharingMode::Exclusive,
                                                   graph::BufferUpdateClass::TransformData);
 #else
-            transform_buffer = device->CreateUBO(sizeof(math::Matrix4f) * transform_buffer_max_count,
+            transform_buffer = device->CreateUBO("ECS:LocalToWorld",
+                                                 sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                  nullptr,
                                                  transform_policy,
                                                  graph::SharingMode::Exclusive,
                                                  graph::BufferUpdateClass::TransformData);
 #endif
-
-        #ifdef _DEBUG
-            graph::DebugUtils* du = device->GetDebugUtils();
-            if (du)
-            {
-#if defined(HGL_L2W_USE_SSBO)
-                du->SetBuffer(transform_buffer->GetBuffer(), "ECS:SSBO:Buffer:LocalToWorld");
-                du->SetDeviceMemory(transform_buffer->GetVkMemory(), "ECS:SSBO:Memory:LocalToWorld");
-#else
-                du->SetBuffer(transform_buffer->GetBuffer(), "ECS:UBO:Buffer:LocalToWorld");
-                du->SetDeviceMemory(transform_buffer->GetVkMemory(), "ECS:UBO:Memory:LocalToWorld");
-#endif
-            }
-        #endif//_DEBUG
         }
 
         ring_writer.SetBuffer(transform_buffer);

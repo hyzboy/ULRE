@@ -34,7 +34,7 @@ private:
 
 public:
 
-    TextureManager(RenderFramework *rf);
+    TextureManager(IGraphicsContext *gc);
     virtual ~TextureManager();
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;
@@ -42,6 +42,14 @@ public:
 public:     //Buffer
 
     DeviceBuffer *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);
+
+protected:
+
+    void OnGraphicsContextChanged(IGraphicsContext *gc) override;
+
+private:
+
+    void EnsureTransferResources();
 
 private:     //Image
 
@@ -108,6 +116,22 @@ public:
 
         Release(tex);
         delete tex;
+    }
+
+    void Release() override
+    {
+        // 清理所有纹理集合
+        if (texture_set.GetCount() > 0)
+            texture_set.Clear();
+        
+        if (image_set.GetCount() > 0)
+            image_set.Clear();
+        
+        if (texture_by_id.GetCount() > 0)
+            texture_by_id.Clear();
+        
+        if (texture_by_filename.GetCount() > 0)
+            texture_by_filename.Clear();
     }
 
 public: // Load

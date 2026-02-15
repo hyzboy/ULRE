@@ -1,6 +1,9 @@
 ﻿#include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKPhysicalDevice.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
+#include<cstdint>
 
 VK_NAMESPACE_BEGIN
 void CreateSubpassDependency(ValueArray<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)
@@ -294,6 +297,9 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
     rp=CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
 
     RenderPassList.Add(key,rp);
+
+    if (rp)
+        GetDevice()->TrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)rp->GetVkRenderPass(), ObjectNameBuilder(key).Append(ObjectTypeTag::RenderPass));
 
     return rp;
 }

@@ -20,13 +20,12 @@ namespace hgl::ecs
 
 VK_NAMESPACE_BEGIN
 
-class RenderFramework;
+class VulkanDevice; // Forward declaration
 
 using UBOViewportInfo=StructuredBufferAccessor<ViewportInfo>;  ///< 统一使用 StructuredBufferAccessor
 
 class IRenderTarget
 {
-    RenderFramework *render_framework;
     hgl::ecs::ECSContext *ecs_context;
 
     VkExtent2D extent;
@@ -37,7 +36,6 @@ class IRenderTarget
 
 public:
 
-    RenderFramework *   GetRenderFramework  ()const{return render_framework;}
     VulkanDevice *      GetDevice           ()const;
     VkDevice            GetVkDevice         ()const;
     DescriptorBinding * GetDescriptorBinding(){return &desc_binding;}
@@ -53,7 +51,6 @@ public:
 
 public:
 
-    IRenderTarget(RenderFramework *,const VkExtent2D &);
     IRenderTarget(hgl::ecs::ECSContext *,const VkExtent2D &);
     virtual ~IRenderTarget();
 

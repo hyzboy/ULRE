@@ -13,6 +13,13 @@ namespace hgl::ecs
         // No dependencies - Transform is fundamental
     }
 
+    TransformSystem::~TransformSystem()
+    {
+        // Don't delete transform_buffer - it's managed by BufferManager!
+        // Just clear the pointer and let BufferManager clean up during module destruction
+        transform_buffer = nullptr;
+    }
+
     void TransformSystem::Update(float deltaTime)
     {
         (void)deltaTime;

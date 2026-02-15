@@ -40,7 +40,7 @@ namespace hgl::ecs
     public:
 
         TransformSystem(const std::string& name = "TransformSystem");
-        ~TransformSystem() override = default;
+        ~TransformSystem() override;
 
     public:
 
