@@ -9,7 +9,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/core/GraphicsContextHelpers.h>
+#include<hgl/graph/core/GraphicsModule.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
@@ -206,7 +206,23 @@ bool RenderFramework::Init(uint w,uint h)
 
     if (default_ecs_context)
     {
-        graph::AttachGraphicsContext(default_ecs_context, this);
+        auto graphics_ctx = std::make_shared<graph::GraphicsModule>(device,
+                                                                     rp_manager,
+                                                                     tex_manager,
+                                                                     material_manager,
+                                                                     buffer_manager,
+                                                                     sampler_manager,
+                                                                     geometry_manager,
+                                                                     primitive_manager);
+
+        graphics_ctx->SetLegacyRenderFramework(this);
+        graphics_ctx->SetDefaultRenderPass(GetDefaultRenderPass());
+
+        default_ecs_context->SetGraphicsContext(graphics_ctx);
+
+        if(module_manager)
+            module_manager->SetGraphicsContext(graphics_ctx.get());
+
         default_ecs_context->InitializeGraphics(device, GetSwapchainRenderTarget());
         default_ecs_context->SetRenderContext(render_context.get());
     }
