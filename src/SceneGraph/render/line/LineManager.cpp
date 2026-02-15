@@ -1,6 +1,5 @@
 ﻿#include<hgl/graph/render/line/LineManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/PrimitiveCreater.h>
@@ -10,19 +9,6 @@ namespace hgl::graph
 {
     LineManager::LineManager(IGraphicsContext* gc)
         : graphics_context(gc)
-        , render_framework(nullptr)
-        , line_material(nullptr)
-        , material_instance(nullptr)
-        , pipeline(nullptr)
-        , primitive(nullptr)
-        , mesh(nullptr)
-        , need_update(false)
-    {
-    }
-
-    LineManager::LineManager(RenderFramework* rf)
-        : graphics_context(nullptr)
-        , render_framework(rf)
         , line_material(nullptr)
         , material_instance(nullptr)
         , pipeline(nullptr)
@@ -39,9 +25,9 @@ namespace hgl::graph
 
     bool LineManager::Init()
     {
-        if (!graphics_context && !render_framework)
+        if (!graphics_context)
         {
-            LOG_ERROR("GraphicsContext and RenderFramework are null");
+            LOG_ERROR("GraphicsContext is null");
             return false;
         }
 
@@ -54,7 +40,7 @@ namespace hgl::graph
         mtl::Line3DMaterialCreateConfig cfg;
 
         // 创建Line3D材质
-        auto *dev_attr = graphics_context ? graphics_context->GetDevAttr() : render_framework->GetDevAttr();
+        auto *dev_attr = graphics_context->GetDevAttr();
         auto* mci = mtl::CreateLine3D(dev_attr, &cfg);
         if (!mci)
         {
@@ -62,8 +48,7 @@ namespace hgl::graph
             return false;
         }
 
-        line_material = graphics_context ? graphics_context->CreateMaterial(mci)
-                          : render_framework->CreateMaterial("LineManager_Line3D", mci);
+        line_material = graphics_context->CreateMaterial(mci);
         if (!line_material)
         {
             LOG_ERROR("Failed to create Line3D material");
@@ -71,8 +56,7 @@ namespace hgl::graph
         }
 
         // 创建材质实例
-        material_instance = graphics_context ? graphics_context->CreateMaterialInstance(line_material)
-                             : render_framework->CreateMaterialInstance(line_material);
+        material_instance = graphics_context->CreateMaterialInstance(line_material);
         if (!material_instance)
         {
             LOG_ERROR("Failed to create material instance");
@@ -80,8 +64,7 @@ namespace hgl::graph
         }
 
         // 创建渲染管线
-        pipeline = graphics_context ? graphics_context->CreatePipeline(line_material, InlinePipeline::Solid3D)
-                        : render_framework->CreatePipeline(line_material, InlinePipeline::Solid3D);
+        pipeline = graphics_context->CreatePipeline(line_material, InlinePipeline::Solid3D);
         if (!pipeline)
         {
             LOG_ERROR("Failed to create pipeline");
@@ -144,7 +127,7 @@ namespace hgl::graph
             return false;
         }
 
-        auto *device = graphics_context ? graphics_context->GetDevice() : render_framework->GetDevice();
+        auto *device = graphics_context->GetDevice();
         PrimitiveCreater pc(device, vil);
 
         // 初始化图元创建器 - 每条线对应一个点（几何着色器会将点转换为线）
