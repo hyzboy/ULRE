@@ -11,7 +11,7 @@ GRAPH_MODULE_CLASS(RenderPassManager)
 
 private:
 
-    RenderPassManager(RenderFramework *);
+    RenderPassManager(IGraphicsContext *);
     ~RenderPassManager();
 
     friend class GraphModuleManager;
@@ -26,6 +26,12 @@ private:
 public:
 
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
+
+    void Release() override
+    {
+        if (RenderPassList.GetCount() > 0)
+            RenderPassList.Clear();
+    }
 };//class RenderPassManager
 
 VK_NAMESPACE_END

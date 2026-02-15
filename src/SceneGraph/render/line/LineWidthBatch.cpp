@@ -1,5 +1,6 @@
 ﻿#include <hgl/graph/geo/line/LineWidthBatch.h>
 #include <hgl/vk/VKDevice.h>
+#include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/vk/VKMaterial.h>

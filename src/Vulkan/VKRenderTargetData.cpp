@@ -3,6 +3,8 @@
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKTexture.h>
+#include<hgl/vk/VKQueue.h>
+#include<hgl/vk/VKCommandBuffer.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -63,8 +65,17 @@ void RenderTargetData::Clear()
     SAFE_CLEAR(queue);
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
-    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(color_textures,color_count);
-    SAFE_CLEAR(depth_texture);
+    
+    // Textures are managed by TextureManager, so just clear the pointers
+    // Do NOT delete the textures themselves to avoid double deletion
+    if(color_textures)
+    {
+        delete[] color_textures;
+        color_textures = nullptr;
+    }
+    color_count = 0;
+    
+    depth_texture = nullptr;
 }
 
 VK_NAMESPACE_END

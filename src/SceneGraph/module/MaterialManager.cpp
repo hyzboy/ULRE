@@ -1,8 +1,10 @@
 ﻿#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
@@ -12,6 +14,7 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<cstdint>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -68,11 +71,56 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
             DebugUtils *du=device->GetDebugUtils();
 
             if(du)
-                du->SetShaderModule(*sm,"Shader:"+sm_name+AnsiString(":")+GetShaderStageName((VkShaderStageFlagBits)sci->GetShaderStage()));
+            {
+                AnsiString shader_name = "Shader:" + sm_name + AnsiString(":") + GetShaderStageName((VkShaderStageFlagBits)sci->GetShaderStage());
+                du->SetShaderModule(*sm, shader_name);
+            }
         }
     #endif//_DEBUG
 
     return sm;
+}
+
+PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
+{
+    VulkanDevice *device = GetDevice();
+    if(!device) return nullptr;
+
+    PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager);
+    
+    if(pld)
+    {
+        #ifdef _DEBUG
+            DebugUtils *du = device->GetDebugUtils();
+            if(du)
+                du->SetPipelineLayout(pld->pipeline_layout, "PipelineLayout:" + mtl_name);
+        #endif//_DEBUG
+    }
+    
+    return pld;
+}
+
+MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const PipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
+{
+    VulkanDevice *device = GetDevice();
+    if(!device) return nullptr;
+
+    MaterialParameters *mp = device->CreateMP(desc_manager, pld, desc_set_type);
+    
+    if(mp)
+    {
+        #ifdef _DEBUG
+            DebugUtils *du = device->GetDebugUtils();
+            if(du)
+            {
+                AnsiString debug_name = mtl_name + AnsiString(":") + GetDescriptorSetTypeName(desc_set_type);
+                du->SetDescriptorSet(mp->GetVkDescriptorSet(), "DescSet:" + debug_name);
+                du->SetDescriptorSetLayout(pld->layouts[static_cast<int>(desc_set_type)], "DescSetLayout:" + debug_name);
+            }
+        #endif//_DEBUG
+    }
+    
+    return mp;
 }
 
 Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
@@ -130,14 +178,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
             mtl->desc_manager=new MaterialDescriptorManager(mtl_name,mdi.Get());
     }
 
-    mtl->pipeline_layout_data=device->CreatePipelineLayoutData(mtl->desc_manager);
-
-    #ifdef _DEBUG
-        DebugUtils *du=device->GetDebugUtils();
-
-        if(du)
-            du->SetPipelineLayout(mtl->GetPipelineLayout(),"PipelineLayout:"+mtl->GetName());
-    #endif//_DEBUG
+    mtl->pipeline_layout_data=CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);
 
     if(mtl->desc_manager)
     {
@@ -145,18 +186,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         {
             if(mtl->desc_manager->hasSet((DescriptorSetType)dst))
             {
-                mtl->mp_array[dst]=device->CreateMP(mtl->desc_manager,mtl->pipeline_layout_data,(DescriptorSetType)dst);
-
-            #ifdef _DEBUG
-                AnsiString debug_name=mtl->GetName()+AnsiString(":")+GetDescriptorSetTypeName((DescriptorSetType)dst);
-
-                if(du)
-                {
-                    du->SetDescriptorSet(mtl->mp_array[dst]->GetVkDescriptorSet(),"DescSet:"+debug_name);
-
-                    du->SetDescriptorSetLayout(mtl->pipeline_layout_data->layouts[dst],"DescSetLayout:"+debug_name);
-                }
-            #endif//_DEBUG
+                mtl->mp_array[dst]=CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, (DescriptorSetType)dst);
             }
         }
     }
@@ -172,6 +202,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     Add(mtl);
 
     material_by_name.Add(mtl_name,mtl);
+    device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)(Material*)mtl, ObjectNameBuilder(mtl_name).Append(ObjectTypeTag::Material));
     return mtl.Finish();
 }
 
@@ -211,7 +242,13 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
     MaterialInstance *mi=mtl->CreateMI();
 
     if(mi)
+    {
         Add(mi);
+        VulkanDevice *device = GetDevice();
+        if(device)
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+                              ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
+    }
 
     return mi;
 }
@@ -223,7 +260,13 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     MaterialInstance *mi=mtl->CreateMI(vil);
 
     if(mi)
+    {
         Add(mi);
+        VulkanDevice *device = GetDevice();
+        if(device)
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+                              ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
+    }
 
     return mi;
 }
@@ -235,7 +278,13 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     MaterialInstance *mi=mtl->CreateMI(vil_cfg);
 
     if(mi)
+    {
         Add(mi);
+        VulkanDevice *device = GetDevice();
+        if(device)
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+                              ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
+    }
 
     return mi;
 }
@@ -250,6 +299,10 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         return nullptr;
 
     Add(mi);
+    VulkanDevice *device = GetDevice();
+    if(device)
+        device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+                          ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
 
     if(mi_data&&mi_bytes>0)
         mi->WriteMIData(mi_data,mi_bytes);
@@ -267,6 +320,10 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         return nullptr;
 
     Add(mi);
+    VulkanDevice *device = GetDevice();
+    if(device)
+        device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+                          ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
 
     if(mi_data&&mi_bytes>0)
         mi->WriteMIData(mi_data,mi_bytes);

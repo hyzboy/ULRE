@@ -11,26 +11,39 @@ const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat form
 
 GRAPH_MODULE_CONSTRUCT(TextureManager)
 {
-    auto dev=GetDevice();
-    auto phy_device=GetPhyDevice();
-
-    texture_cmd_buf=dev->CreateTextureCommandBuffer(phy_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
-
-    if(!texture_cmd_buf)
-        return;
-
-    texture_queue=dev->CreateQueue();
-
-    if(!texture_queue)
-        return;
-
-    texture_serial=0;
+    EnsureTransferResources();
 }
 
 TextureManager::~TextureManager()
 {
     SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
+}
+
+void TextureManager::OnGraphicsContextChanged(IGraphicsContext *)
+{
+    EnsureTransferResources();
+}
+
+void TextureManager::EnsureTransferResources()
+{
+    if(texture_cmd_buf && texture_queue)
+        return;
+
+    auto dev=GetDevice();
+    auto phy_device=GetPhyDevice();
+
+    if(!dev || !phy_device)
+        return;
+
+    if(!texture_cmd_buf)
+        texture_cmd_buf=dev->CreateTextureCommandBuffer("TextureManager");
+
+    if(!texture_queue)
+        texture_queue=dev->CreateQueue("TextureManager");
+
+    if(texture_cmd_buf && texture_queue)
+        texture_serial=0;
 }
 
 const TextureID TextureManager::Add(Texture *tex)
@@ -46,6 +59,13 @@ const TextureID TextureManager::Add(Texture *tex)
 
     texture_set.Add(tex);
     texture_by_id.Add(tex->GetID(),tex);
+
+    VulkanDevice *dev = GetDevice();
+    if (dev)
+    {
+        AnsiString name = "Texture_" + AnsiString::numberOf(static_cast<int>(tex->GetID()));
+        dev->TrackTexture(tex, name);
+    }
 
     return tex->GetID();
 }

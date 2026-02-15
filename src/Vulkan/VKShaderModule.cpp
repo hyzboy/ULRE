@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/vk/VKDevice.h>
+#include<cstdint>
 
 VK_NAMESPACE_BEGIN
 struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
@@ -38,6 +39,10 @@ ShaderModule::ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *sci)
 
 ShaderModule::~ShaderModule()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+        owner->UntrackObject(VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)(uintptr_t)stage_create_info->module);
+
     vkDestroyShaderModule(device,stage_create_info->module,nullptr);
     //这里不用删除stage_create_info，材质中会删除的
 }

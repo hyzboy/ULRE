@@ -12,14 +12,18 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKSwapchain.h>
-#include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKArrayBuffer.h>
 #include<hgl/vk/VKDescriptorSetType.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
 #include<typeinfo>
 #include<type_traits>
 #include<utility>
+#include<unordered_map>
+#include<source_location>
+#include<ostream>
+#include<string>
 
 VK_NAMESPACE_BEGIN
 class TileData;
@@ -34,6 +38,11 @@ class BufferCommitQueue;
 class StagedBuffer;
 class ComputePipeline;
 class Material;
+class Texture;
+class Fence;
+class DeviceQueue;
+class Semaphore;
+class MaterialParameters;
 
 struct CopyBufferToImageInfo;
 
@@ -44,6 +53,35 @@ class VulkanDevice
     VulkanDevAttr *attr;
     BufferUpdateQueue *buffer_update_queue;
     BufferCommitQueue *buffer_commit_queue;
+
+    struct ObjectDebugRecord
+    {
+        AnsiString name;
+        std::string file;
+        std::string function;
+        uint32_t line = 0;
+    };
+
+    struct ObjectKey
+    {
+        VkObjectType type = VK_OBJECT_TYPE_UNKNOWN;
+        uint64_t handle = 0;
+
+        bool operator==(const ObjectKey &other) const
+        {
+            return type == other.type && handle == other.handle;
+        }
+    };
+
+    struct ObjectKeyHash
+    {
+        size_t operator()(const ObjectKey &key) const
+        {
+            return std::hash<uint64_t>{}(key.handle) ^ (static_cast<size_t>(key.type) << 1);
+        }
+    };
+
+    std::unordered_map<ObjectKey, ObjectDebugRecord, ObjectKeyHash> tracked_objects;
 
 private:
 
@@ -78,6 +116,18 @@ public:
 #ifdef _DEBUG
                 DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}
 #endif//_DEBUG
+
+                static VulkanDevice *FromDevice         (VkDevice device);
+
+                void                TrackObject         (VkObjectType type, uint64_t handle, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+                void                TrackObjectWithoutLocation(VkObjectType type, uint64_t handle, const ObjectNameBuilder &name);
+                void                UntrackObject       (VkObjectType type, uint64_t handle);
+                size_t              GetTrackedObjectCount()const{return tracked_objects.size();}
+                void                DumpTrackedObjects  ()const;
+
+                void                TrackBuffer         (DeviceBuffer *buf, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+                void                UntrackBuffer       (DeviceBuffer *buf);
+                void                TrackTexture        (Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public:
 
@@ -249,6 +299,57 @@ public: //Buffer相关
 
 #undef CREATE_BUFFER_OBJECT
 
+    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    {
+        DeviceBuffer *buf = CreateUBO(size, data, policy, sm, update_class);
+        TrackBuffer(buf, name, loc);
+        return buf;
+    }
+
+    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    {
+        return CreateUBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
+    }
+
+    DeviceBuffer *CreateUBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    {
+        return CreateUBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
+    }
+
+    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    {
+        DeviceBuffer *buf = CreateSSBO(size, data, policy, sm, update_class);
+        TrackBuffer(buf, name, loc);
+        return buf;
+    }
+
+    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    {
+        return CreateSSBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
+    }
+
+    DeviceBuffer *CreateSSBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    {
+        return CreateSSBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
+    }
+
+    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, BufferAllocPolicy policy, SharingMode sm, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())
+    {
+        DeviceBuffer *buf = CreateINBO(size, data, policy, sm, update_class);
+        TrackBuffer(buf, name, loc);
+        return buf;
+    }
+
+    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    {
+        return CreateINBO(name, size, data, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
+    }
+
+    DeviceBuffer *CreateINBO(const AnsiString &name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    {
+        return CreateINBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
+    }
+
     VulkanArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
     VulkanArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
 
@@ -279,15 +380,15 @@ public: //shader & material
 
 public: //Command Buffer 相关
 
-    RenderCmdBuffer * CreateRenderCommandBuffer(const AnsiString &);
-    TextureCmdBuffer *CreateTextureCommandBuffer(const AnsiString &);
+    RenderCmdBuffer * CreateRenderCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    TextureCmdBuffer *CreateTextureCommandBuffer(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public:
 
     Fence *      CreateFence(bool);
-    Semaphore *  CreateGPUSemaphore();
+    Semaphore *  CreateGPUSemaphore(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
-    DeviceQueue *CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
+    DeviceQueue *CreateQueue(const ObjectNameBuilder &name, const uint32_t fence_count=1, const bool create_signaled=false, const std::source_location &loc = std::source_location::current());
 
 public: // Compute Pipeline相关
 

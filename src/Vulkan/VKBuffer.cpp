@@ -1,9 +1,13 @@
 ﻿#include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
+#include<hgl/vk/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 DeviceBuffer::~DeviceBuffer()
 {
+    if (owner_device)
+        owner_device->UntrackBuffer(this);
+
     if(auto_commit_proxy)
     {
         delete auto_commit_proxy;

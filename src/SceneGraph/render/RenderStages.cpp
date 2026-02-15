@@ -4,6 +4,7 @@
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>

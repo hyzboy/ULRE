@@ -2,6 +2,7 @@
 #include<hgl/vk/VKMemory.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
+#include<cstdint>
 VK_NAMESPACE_BEGIN
 DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
 {
@@ -39,6 +40,10 @@ DeviceMemory::DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirem
 
 DeviceMemory::~DeviceMemory()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+        owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)memory);
+
     if(is_mapped)
     {
         vkUnmapMemory(device,memory);

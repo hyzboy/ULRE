@@ -1,5 +1,5 @@
-﻿#include<hgl/vk/VKRenderTarget.h>
-#include<hgl/graph/render/RenderFramework.h>
+﻿#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKRenderTarget.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/vk/VKBuffer.h>
 
@@ -9,9 +9,6 @@ VK_NAMESPACE_BEGIN
 
 VulkanDevice *IRenderTarget::GetDevice  ()const
 {
-    if(render_framework)
-        return render_framework->GetDevice();
-
     if(ecs_context)
         return ecs_context->GetGPUDevice();
 
@@ -44,28 +41,8 @@ ViewportInfo *IRenderTarget::GetViewportInfo()
     return ubo_vp_info ? ubo_vp_info->Data() : nullptr;
 }
 
-IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext):desc_binding(DescriptorSetType::RenderTarget)
-{
-    render_framework=rf;
-    ecs_context=nullptr;
-
-    VulkanDevice *device=GetDevice();
-    if(device)
-    {
-        ubo_vp_info=device->CreateUBO<UBOViewportInfo>(&mtl::SBS_ViewportInfo,BufferUpdateClass::CriticalPerFrame);
-        desc_binding.AddUBO(ubo_vp_info);
-        OnResize(ext);
-    }
-    else
-    {
-        ubo_vp_info=nullptr;
-        extent=ext;
-    }
-}
-
 IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext):desc_binding(DescriptorSetType::RenderTarget)
 {
-    render_framework=nullptr;
     ecs_context=ctx;
 
     VulkanDevice *device=GetDevice();

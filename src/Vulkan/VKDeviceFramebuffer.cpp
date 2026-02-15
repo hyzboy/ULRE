@@ -2,6 +2,7 @@
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKImageView.h>
 #include<hgl/vk/VKFramebuffer.h>
+#include<hgl/vk/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExtent2D &extent,VkImageView *attachments,const uint attachmentCount)
@@ -77,6 +78,13 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_lis
 
     if(!fbo)
         return(nullptr);
+
+    VulkanDevice *dev = GetDevice();
+    if (dev)
+    {
+        AnsiString name = "Framebuffer_" + AnsiString::numberOf((uint64_t)(uintptr_t)fbo);
+        dev->TrackObject(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64_t)(uintptr_t)fbo, ObjectNameBuilder(name).Append(ObjectTypeTag::Framebuffer));
+    }
 
     return(new Framebuffer(GetVkDevice(),fbo,extent,rp,color_count,depth));
 }

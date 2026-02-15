@@ -35,10 +35,15 @@ private:
 
 private:
 
-    MaterialManager(RenderFramework *);
+    MaterialManager(IGraphicsContext *);
     ~MaterialManager()=default;
 
     friend class GraphModuleManager;
+
+private: // Helper methods with integrated DebugUtils
+
+    class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
+    class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
 
 public: //Add
 
@@ -54,6 +59,19 @@ public: //Release
 
     void Release(Material *         mtl ){rm_material.Release(mtl);}
     void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
+
+public: // Override Release from GraphModule - cleanup all resources
+
+    void Release() override
+    {
+        // 清理所有材质实例
+        if (rm_material_instance.GetCount() > 0)
+            rm_material_instance.Clear();
+        
+        // 清理所有材质
+        if (rm_material.GetCount() > 0)
+            rm_material.Clear();
+    }
 
 public: //Shader
 

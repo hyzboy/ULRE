@@ -1,10 +1,13 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/type/ObjectManager.h>
+#include<hgl/log/Log.h>
+#include<source_location>
 
 VK_NAMESPACE_BEGIN
 
@@ -16,11 +19,11 @@ private:
 
     AutoIdObjectManager<BufferID, DeviceBuffer> rm_buffers;                 ///<缓冲区合集
 
-    void AddBuffer(const AnsiString &buf_name, DeviceBuffer *buf);
+    void AddBuffer(const AnsiString &buf_name, DeviceBuffer *buf, const std::source_location &loc);
 
 private:
 
-    BufferManager(RenderFramework *);
+    BufferManager(IGraphicsContext *);
     ~BufferManager() = default;
 
     friend class GraphModuleManager;
@@ -31,6 +34,36 @@ public: //Add/Get/Release
     DeviceBuffer *  Get(const BufferID &id) { return rm_buffers.Get(id); }
     void            Release(DeviceBuffer *buf) { rm_buffers.Release(buf); }
 
+    /**
+     * @brief 清理所有残留的缓冲区，防止销毁设备时出现资源泄漏
+     * 此方法由GraphModuleManager自动调用，用于清理模块持有的所有GPU资源
+     * @warning 必须在销毁设备之前调用
+     */
+    void            ClearAllBuffers() { rm_buffers.Clear(); }
+
+public:
+
+    void Release() override
+    {
+        // 清理所有残留的缓冲区
+        // 如果Release()被调用时还有缓冲区未清理，说明有资源泄漏
+        VulkanDevice *device = GetDevice();
+        const int buffer_count = rm_buffers.GetCount();
+
+        if (device && device->GetTrackedObjectCount() > 0)
+        {
+            GLogWarning("[BufferManager::Release] WARNING: Found tracked Vulkan objects still alive before cleanup.");
+            device->DumpTrackedObjects();
+        }
+
+        if (buffer_count > 0)
+        {
+            GLogWarning("[BufferManager::Release] WARNING: Found %d undestroyed buffers, cleaning up...", buffer_count);
+            ClearAllBuffers();
+            GLogWarning("[BufferManager::Release] Cleanup complete");
+        }
+    }
+
 public: // VAB/VAO
 
     VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, SharingMode sm = SharingMode::Exclusive);
@@ -38,8 +71,8 @@ public: // VAB/VAO
 
 public: // Buffer creation methods
 
-    #define BUFFER_MANAGER_CREATE_FUNC(name)  DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive);   \
-                                              DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive) { return Create##name(buf_name, size, nullptr, sm); }
+    #define BUFFER_MANAGER_CREATE_FUNC(name)  DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());   \
+                                              DeviceBuffer *Create##name(const AnsiString &buf_name, VkDeviceSize size, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return Create##name(buf_name, size, nullptr, sm, loc); }
 
     BUFFER_MANAGER_CREATE_FUNC(UBO)
     BUFFER_MANAGER_CREATE_FUNC(SSBO)

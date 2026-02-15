@@ -1,5 +1,6 @@
 ﻿#include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKDevice.h>
+#include<cstdint>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/VKMaterial.h>
@@ -19,6 +20,9 @@ RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,
 RenderPass::~RenderPass()
 {
     pipeline_list.Clear();
+
+    if (device)
+        device->UntrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)render_pass);
 
     vkDestroyRenderPass(*device,render_pass,nullptr);
 }
@@ -53,7 +57,12 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
         return(nullptr);
     }
 
-    return(new Pipeline(name,*device,graphicsPipeline,vil,pd));
+    Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
+
+    if (device)
+        device->TrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)graphicsPipeline, ObjectNameBuilder(name).Append(ObjectTypeTag::Pipeline));
+
+    return pipeline;
 }
 
 Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)

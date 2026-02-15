@@ -1,8 +1,14 @@
 ﻿#include<hgl/vk/VKImageView.h>
+#include<hgl/vk/VKDevice.h>
+#include<cstdint>
 
 VK_NAMESPACE_BEGIN
 ImageView::~ImageView()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+        owner->UntrackObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)(uintptr_t)image_view);
+
     delete ivci;
     vkDestroyImageView(device,image_view,nullptr);
 }

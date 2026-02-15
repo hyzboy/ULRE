@@ -10,7 +10,6 @@ class IGraphicsContext;
 
 class GraphModuleManager
 {
-    RenderFramework *render_framework;
     IGraphicsContext *graphics_context=nullptr;
 
 protected:
@@ -20,13 +19,12 @@ protected:
 
 public:
 
-    GraphModuleManager(RenderFramework *rf){render_framework=rf;}
+    GraphModuleManager()=default;
 
     virtual ~GraphModuleManager();
 
 public:
 
-    RenderFramework *   GetRenderFramework  ()const{return render_framework;}                                           ///<取得渲染框架
     IGraphicsContext *  GetGraphicsContext  ()const{return graphics_context;}                                          ///<取得GraphicsContext
     void                SetGraphicsContext  (IGraphicsContext *gc);                                                    ///<设置GraphicsContext
     VulkanDevice *      GetDevice           ()const;                                                                    ///<取得GPU设备
@@ -55,7 +53,7 @@ public:
         if(Contains<T>())
             return Get<T>();
 
-        T *result=new T(render_framework);
+        T *result=new T(graphics_context);
 
         if(graphics_context)
             result->SetGraphicsContext(graphics_context);

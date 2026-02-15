@@ -1,4 +1,6 @@
 ﻿#include "InlineGeometryCommon.h"
+#include <hgl/math/geometry/BoundingVolumes.h>
+#include <hgl/graph/geo/VKGeometry.h>
 
 namespace hgl::graph::inline_geometry
 {

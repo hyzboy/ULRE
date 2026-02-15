@@ -273,6 +273,20 @@ namespace hgl
                                      IndexType type = IndexType::U16);
 
         /**
+         * 创建顶点数据管理器（顶点和索引用相同大小）
+         * @param vil    顶点输入配置
+         * @param number 顶点和索引共用大小
+         * @param type   索引类型
+         * @return 顶点数据管理器指针，失败返回 nullptr
+         */
+        VertexDataManager* CreateVDM(const VertexInputLayout* vil,
+                                     VkDeviceSize number,
+                                     IndexType type = IndexType::U16)
+        {
+            return CreateVDM(vil, number, number, type);
+        }
+
+        /**
          * 创建几何体
          * @param name      几何体名称
          * @param vert_count 顶点数量

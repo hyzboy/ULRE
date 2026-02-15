@@ -21,7 +21,7 @@ GRAPH_MODULE_CLASS(RenderTargetManager)
 
 public:
 
-    RenderTargetManager(RenderFramework *,TextureManager *tm,RenderPassManager *rpm);
+    RenderTargetManager(IGraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm);
     virtual ~RenderTargetManager()=default;
 
 public: //FrameBuffer相关
@@ -33,12 +33,21 @@ public: //FrameBuffer相关
 
 public:
 
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
+    RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
+    RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,const uint32_t fence_count=1);
 
     // Create an offscreen render target without RenderFramework (ECS/GraphicsContext path).
     static RenderTarget *CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
                                                      const FramebufferInfo *fbi, const uint32_t fence_count=1);
+    static RenderTarget *CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+                                                     const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count=1);
+
+    void Release() override
+    {
+        // RenderTargetManager 通常不直接管理资源的所有权，而是通过关联的管理器
+        // 这里的 Release() 是为了遵循统一的 Release() 模式
+        // 具体的资源清理由相关的 TextureManager, RenderPassManager 等完成
+    }
 };//class RenderTargetManager
 
 VK_NAMESPACE_END
