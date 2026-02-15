@@ -13,8 +13,6 @@
 namespace hgl::graph
 {
     class IGraphicsContext;
-    class RenderFramework;
-
     /**
      * 线条信息结构
      */
@@ -38,8 +36,7 @@ namespace hgl::graph
     private:
         ValueArray<LineInfo> lines;                    // 存储所有线条信息
 
-        IGraphicsContext*   graphics_context;    // GraphicsContext (preferred)
-        RenderFramework*    render_framework;    // 渲染框架 (legacy)
+        IGraphicsContext*   graphics_context;    // GraphicsContext
         Material*           line_material;       // Line3D材质
         MaterialInstance*   material_instance;   // 材质实例
         Pipeline*           pipeline;            // 渲染管线
@@ -58,7 +55,6 @@ namespace hgl::graph
     public:
 
         LineManager(IGraphicsContext* gc);
-        LineManager(RenderFramework* rf);
         ~LineManager();
 
         bool Init();                             // 初始化
