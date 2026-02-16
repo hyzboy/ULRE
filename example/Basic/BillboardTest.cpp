@@ -68,12 +68,16 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world = true;
         cfg.position_format = VAT_VEC2;
 
-        mtl_plane_grid = graphics_context->LoadMaterial("Std3D/VertexLum3D", &cfg);
+        mtl_plane_grid = material_manager->LoadMaterial("Std3D/VertexLum3D", &cfg);
         if(!mtl_plane_grid)
             return false;
 
@@ -82,7 +86,7 @@ private:
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-        mi_plane_grid = graphics_context->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
+        mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
         if(!mi_plane_grid)
             return false;
 
@@ -109,10 +113,14 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
         cfg.fixed_size = true;
 
-        mi_billboard = graphics_context->CreateMaterialInstance(mtl::inline_material::Billboard2D, &cfg);
+        mi_billboard = material_manager->CreateMaterialInstance(mtl::inline_material::Billboard2D, &cfg);
         if(!mi_billboard)
             return false;
 
@@ -141,6 +149,8 @@ private:
             return false;
 
         TextureManager *tex_manager = graphics_context->GetTextureManager();
+        if (!tex_manager)
+            return false;
 
         texture = tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
         if(!texture)
@@ -149,7 +159,11 @@ private:
         std::cout << "[BillboardECS] Texture loaded: " << (void*)texture
                   << " (" << texture->GetWidth() << "x" << texture->GetHeight() << ")" << std::endl;
 
-        sampler = graphics_context->CreateSampler();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
+        if (!sampler_manager)
+            return false;
+
+        sampler = sampler_manager->CreateSampler();
 
         std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
 
@@ -179,7 +193,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* device = render_context->GetDevice();
+        auto* device = graphics_context->GetDevice();
         if (!device)
             return false;
 

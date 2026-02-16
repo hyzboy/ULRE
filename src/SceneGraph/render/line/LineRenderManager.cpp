@@ -14,6 +14,7 @@
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/mtl/UBOCommon.h>
+#include <hgl/vk/StructuredBufferAccessor.h>
 
 /**
  * \file LineRenderManager.cpp
@@ -73,7 +74,15 @@ namespace hgl::graph
             return nullptr;
         }
 
-        Material *mat = gc->CreateMaterial(mci);
+        auto *mat_mgr = gc->GetMaterialManager();
+        if (!mat_mgr)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 获取MaterialManager失败 EN: material manager is null"));
+            delete mci;
+            return nullptr;
+        }
+
+        Material *mat = mat_mgr->CreateMaterial("M_Line3D", mci);
 
         if (mat == nullptr)
         {
@@ -84,14 +93,6 @@ namespace hgl::graph
 
         VILConfig vil_config;
         vil_config.Add(VAN::Color,VF_V1U8);
-
-        auto *mat_mgr = gc->GetMaterialManager();
-        if (!mat_mgr)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 获取MaterialManager失败 EN: material manager is null"));
-            delete mci;
-            return nullptr;
-        }
 
         MaterialInstance *mi = mat_mgr->CreateMaterialInstance(mat,&vil_config);
 
@@ -154,10 +155,24 @@ namespace hgl::graph
             return nullptr;
         }
 
-        UBOLineColorPalette *lcp = gc->CreateUBOAccessor<LineColorPalette>(
-            "LineColorPaletteUBO",
-            &mtl::SBS_ColorPattle,
-            BufferUpdateClass::Default);
+        auto *buffer_manager = gc->GetBufferManager();
+        if (!buffer_manager)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 获取BufferManager失败 EN: buffer manager is null"));
+            delete mci;
+            return nullptr;
+        }
+
+        auto *buf = buffer_manager->CreateUBO("LineColorPaletteUBO", StructuredBufferAccessor<LineColorPalette>::GetSize());
+        if (!buf)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
+            delete mci;
+            return nullptr;
+        }
+        buf->SetUpdateClass(BufferUpdateClass::Default);
+
+        UBOLineColorPalette *lcp = StructuredBufferAccessor<LineColorPalette>::Create(buf, &mtl::SBS_ColorPattle, false);
         if(!lcp)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
@@ -165,7 +180,7 @@ namespace hgl::graph
             return nullptr;
         }
 
-        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp,mat_mgr,gc->GetBufferManager());
+        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp,mat_mgr,buffer_manager);
         if(!mgr)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 分配LineRenderManager失败 EN: allocation of LineRenderManager failed"));
@@ -186,7 +201,14 @@ namespace hgl::graph
             return nullptr;
         }
 
-        VulkanDevice *device = rc->GetDevice();
+        auto *graphics_context = rc->GetGraphicsContext();
+        if (!graphics_context)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: GraphicsContext为空 EN: graphics context is null"));
+            return nullptr;
+        }
+
+        VulkanDevice *device = graphics_context->GetDevice();
         if (!device)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: VulkanDevice为空 EN: VulkanDevice is null"));
@@ -212,15 +234,15 @@ namespace hgl::graph
             return nullptr;
         }
 
-        auto *graphics_context = rc->GetGraphicsContext();
-        if (!graphics_context)
+        auto *mat_mgr = graphics_context->GetMaterialManager();
+        if (!mat_mgr)
         {
-            MLogError(LineRenderManager,OS_TEXT("CN: GraphicsContext为空 EN: graphics context is null"));
+            MLogError(LineRenderManager,OS_TEXT("CN: 获取MaterialManager失败 EN: material manager is null"));
             delete mci;
             return nullptr;
         }
 
-        Material *mat = graphics_context->CreateMaterial("M_Line3D", mci);
+        Material *mat = mat_mgr->CreateMaterial("M_Line3D", mci);
         if (mat == nullptr)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建Material失败 EN: failed to create material"));
@@ -230,14 +252,6 @@ namespace hgl::graph
 
         VILConfig vil_config;
         vil_config.Add(VAN::Color,VF_V1U8);
-
-        auto *mat_mgr = graphics_context->GetMaterialManager();
-        if (!mat_mgr)
-        {
-            MLogError(LineRenderManager,OS_TEXT("CN: 获取MaterialManager失败 EN: material manager is null"));
-            delete mci;
-            return nullptr;
-        }
 
         MaterialInstance *mi = mat_mgr->CreateMaterialInstance(mat,&vil_config);
         if (mi == nullptr)
@@ -283,10 +297,24 @@ namespace hgl::graph
             return nullptr;
         }
 
-        UBOLineColorPalette *lcp = graphics_context->CreateUBOAccessor<LineColorPalette>(
-            "LineColorPaletteUBO",
-            &mtl::SBS_ColorPattle,
-            BufferUpdateClass::Default);
+        auto *buffer_manager = graphics_context->GetBufferManager();
+        if (!buffer_manager)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 获取BufferManager失败 EN: buffer manager is null"));
+            delete mci;
+            return nullptr;
+        }
+
+        auto *buf = buffer_manager->CreateUBO("LineColorPaletteUBO", StructuredBufferAccessor<LineColorPalette>::GetSize());
+        if (!buf)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
+            delete mci;
+            return nullptr;
+        }
+        buf->SetUpdateClass(BufferUpdateClass::Default);
+
+        UBOLineColorPalette *lcp = StructuredBufferAccessor<LineColorPalette>::Create(buf, &mtl::SBS_ColorPattle, false);
         if(!lcp)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
@@ -294,7 +322,7 @@ namespace hgl::graph
             return nullptr;
         }
 
-        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp,mat_mgr,graphics_context->GetBufferManager());
+        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp,mat_mgr,buffer_manager);
         if(!mgr)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 分配LineRenderManager失败 EN: allocation of LineRenderManager failed"));

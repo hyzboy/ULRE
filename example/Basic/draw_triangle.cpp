@@ -10,6 +10,7 @@
 #include<hgl/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
@@ -69,6 +70,10 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::Ortho,
                                         mtl::WithLocalToWorld::Without);
@@ -83,7 +88,7 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        material_instance=graphics_context->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
+        material_instance=material_manager->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
 
         if(!material_instance)
             return(false);
@@ -113,11 +118,25 @@ private:
         if (!graphics_context)
             return false;
 
-        prim_triangle=graphics_context->CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
-                                    {
-                                        {VAN::Position,POSITION_DATA_FORMAT,position_data},
-                                        {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
-                                    });
+        auto* device = graphics_context->GetDevice();
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+            return false;
+
+        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
+        pc.Init("Triangle", VERTEX_COUNT);
+        if (!pc.WriteVAB(VAN::Position, POSITION_DATA_FORMAT, position_data) ||
+            !pc.WriteVAB(VAN::Color, COLOR_DATA_FORMAT, color_data))
+            return false;
+
+        auto* geometry = pc.Create();
+        if (!geometry)
+            return false;
+        geometry_manager->Add(geometry);
+
+        prim_triangle = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
 
         if(!prim_triangle)
             return(false);

@@ -9,6 +9,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/graph/pipeline/VKPipeline.h>
+#include<hgl/vk/VKRenderPass.h>
 
 namespace hgl::graph
 {
@@ -40,6 +41,7 @@ namespace hgl::graph
         Material*           line_material;       // Line3D材质
         MaterialInstance*   material_instance;   // 材质实例
         Pipeline*           pipeline;            // 渲染管线
+        RenderPass*         render_pass;         // 渲染通道
 
         Primitive*          primitive;           // 图元对象
         Mesh*               mesh;                // 网格对象
@@ -54,10 +56,12 @@ namespace hgl::graph
 
     public:
 
-        LineManager(IGraphicsContext* gc);
+        LineManager(IGraphicsContext* gc, RenderPass* rp=nullptr);
         ~LineManager();
 
         bool Init();                             // 初始化
+
+        void SetRenderPass(RenderPass* rp) { render_pass = rp; }
 
         /**
          * 添加一条线段

@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/render/RenderFramework.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/time/Time.h>
@@ -74,8 +75,11 @@ namespace hgl
 
         graph::VulkanDevice *       GetDevice           ()
         {
-            if (render_context && render_context->GetDevice())
-                return render_context->GetDevice();
+            if (render_context)
+            {
+                if (auto *gc = render_context->GetGraphicsContext())
+                    return gc->GetDevice();
+            }
             if (world && world->GetGPUDevice())
                 return world->GetGPUDevice();
             return render_framework ? render_framework->GetDevice() : nullptr;
@@ -87,14 +91,20 @@ namespace hgl
         }
         graph::TextureManager *     GetTextureManager   ()
         {
-            if (render_context && render_context->GetTextureManager())
-                return render_context->GetTextureManager();
+            if (render_context)
+            {
+                if (auto *gc = render_context->GetGraphicsContext())
+                    return gc->GetTextureManager();
+            }
             return render_framework ? render_framework->GetTextureManager() : nullptr;
         }
         graph::BufferManager *      GetBufferManager    ()
         {
-            if (render_context && render_context->GetBufferManager())
-                return render_context->GetBufferManager();
+            if (render_context)
+            {
+                if (auto *gc = render_context->GetGraphicsContext())
+                    return gc->GetBufferManager();
+            }
             return render_framework ? render_framework->GetBufferManager() : nullptr;
         }
 

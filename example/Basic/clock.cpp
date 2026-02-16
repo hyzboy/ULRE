@@ -15,6 +15,7 @@
 #include<hgl/color/Color.h>
 #include<ctime>
 #include<chrono>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<cmath>
 
 // 引入ECS相关头文件
@@ -95,20 +96,24 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         {
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
         #ifndef USE_MATERIAL_FILE
-            auto* device = render_context->GetDevice();
+            auto* device = graphics_context->GetDevice();
             if (!device)
                 return false;
 
             mtl::MaterialCreateInfo* mci = mtl::CreatePureColor2D(device->GetDevAttr(), &cfg);
-            material = graphics_context->CreateMaterial("PureColor2D", mci);
+            material = material_manager->CreateMaterial("PureColor2D", mci);
         #else
-            material = graphics_context->LoadMaterial("Std2D/PureColor2D", &cfg);
+            material = material_manager->LoadMaterial("Std2D/PureColor2D", &cfg);
         #endif//USE_MATERIAL_FILE
 
             if (!material)
@@ -121,7 +126,7 @@ private:
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = graphics_context->CreateMaterialInstance(material);
+            mi_tick = material_manager->CreateMaterialInstance(material);
             if(mi_tick)
                 mi_tick->WriteMIData(tick_color);
 
@@ -134,7 +139,7 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = graphics_context->CreateMaterialInstance(material);
+                hands[i].mi = material_manager->CreateMaterialInstance(material);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);
@@ -166,8 +171,18 @@ private:
         if (!graphics_context)
             return false;
 
-        geometry = graphics_context->CreateGeometry("TriangleForClock", VERTEX_COUNT, material->GetDefaultVIL(),
-                                  {{VAN::Position, VF_V2F, position_data}});
+        auto* device = graphics_context->GetDevice();
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        if (!device || !buffer_manager || !geometry_manager)
+            return false;
+
+        GeometryCreater pc(device, material->GetDefaultVIL(), buffer_manager);
+        pc.Init("TriangleForClock", VERTEX_COUNT);
+        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
+            return false;
+
+        geometry = pc.Create();
 
         if (!geometry)
         {
@@ -177,9 +192,7 @@ private:
 
         std::cout << "[ClockApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        if (geometry_manager)
-            geometry_manager->Add(geometry);
+        geometry_manager->Add(geometry);
 
         return true;
     }

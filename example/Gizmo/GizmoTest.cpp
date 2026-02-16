@@ -124,7 +124,11 @@ private:
         if(!gizmo_pipeline)
             return nullptr;
 
-        Primitive *prim = graphics_context->CreatePrimitive(geometry, mi, gizmo_pipeline);
+        auto *primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return nullptr;
+
+        Primitive *prim = primitive_manager->CreatePrimitive(geometry, mi, gizmo_pipeline);
         if(prim)
             gizmo_primitives.push_back(prim);
 
@@ -141,7 +145,13 @@ private:
         if(!graphics)
             return false;
 
-        if(!InitGizmoResource(graphics))
+        auto *render_context = GetRenderContext();
+        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
+        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        if(!render_pass)
+            return false;
+
+        if(!InitGizmoResource(graphics, render_pass))
             return(false);
 
         if(!ecs_world)
@@ -171,7 +181,13 @@ private:
         if(!graphics)
             return false;
 
-        debug_text_render = graphics->CreateTextRender(fs, 256);
+        auto *render_context = GetRenderContext();
+        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
+        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        if(!render_pass)
+            return false;
+
+        debug_text_render = graph::TextRender::CreateWithGraphicsContext(graphics, render_pass, fs, 256, nullptr);
         if(!debug_text_render)
             return false;
 

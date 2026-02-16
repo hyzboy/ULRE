@@ -7,13 +7,14 @@
 
 namespace hgl::graph
 {
-    LineManager::LineManager(IGraphicsContext* gc)
+    LineManager::LineManager(IGraphicsContext* gc, RenderPass* rp)
         : graphics_context(gc)
         , line_material(nullptr)
         , material_instance(nullptr)
         , pipeline(nullptr)
         , primitive(nullptr)
         , mesh(nullptr)
+        , render_pass(rp)
         , need_update(false)
     {
     }
@@ -48,7 +49,14 @@ namespace hgl::graph
             return false;
         }
 
-        line_material = graphics_context->CreateMaterial(mci);
+        auto *material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+        {
+            LOG_ERROR("Failed to get MaterialManager");
+            return false;
+        }
+
+        line_material = material_manager->CreateMaterial("Line3D", mci);
         if (!line_material)
         {
             LOG_ERROR("Failed to create Line3D material");
@@ -56,15 +64,21 @@ namespace hgl::graph
         }
 
         // 创建材质实例
-        material_instance = graphics_context->CreateMaterialInstance(line_material);
+        material_instance = material_manager->CreateMaterialInstance(line_material);
         if (!material_instance)
         {
             LOG_ERROR("Failed to create material instance");
             return false;
         }
 
+        if (!render_pass)
+        {
+            LOG_ERROR("RenderPass is null");
+            return false;
+        }
+
         // 创建渲染管线
-        pipeline = graphics_context->CreatePipeline(line_material, InlinePipeline::Solid3D);
+        pipeline = render_pass->CreatePipeline(line_material, InlinePipeline::Solid3D);
         if (!pipeline)
         {
             LOG_ERROR("Failed to create pipeline");

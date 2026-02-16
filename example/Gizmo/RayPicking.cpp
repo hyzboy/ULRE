@@ -80,6 +80,10 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
@@ -91,10 +95,10 @@ private:
         {
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid=graphics_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_plane_grid=material_manager->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
 
-            mi_plane_grid=graphics_context->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
+            mi_plane_grid=material_manager->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
             auto* render_target = render_context->GetCurrentRenderTarget();
@@ -106,10 +110,10 @@ private:
         {
             cfg.position_format=VAT_VEC3;
 
-            mtl_line=graphics_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_line=material_manager->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_line)return(false);
 
-            mi_line=graphics_context->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
+            mi_line=material_manager->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
             if(!mi_line)return(false);
 
             auto* render_target = render_context->GetCurrentRenderTarget();
@@ -133,7 +137,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* device = render_context->GetDevice();
+        auto* device = graphics_context->GetDevice();
         auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
@@ -162,11 +166,22 @@ private:
 
         // === 创建射线线段几何体 ===
         {
-            geom_line=graphics_context->CreateGeometry("RayLine",2,mi_line->GetVIL(),
-                                    {
-                                        {VAN::Position, VF_V3F,position_data},
-                                        {VAN::Luminance,VF_V1UN8,lumiance_data}
-                                    });
+            auto* device = graphics_context->GetDevice();
+            auto* buffer_manager = graphics_context->GetBufferManager();
+            auto* geometry_manager = graphics_context->GetGeometryManager();
+            if (!device || !buffer_manager || !geometry_manager)
+                return false;
+
+            GeometryCreater pc(device, mi_line->GetVIL(), buffer_manager);
+            pc.Init("RayLine", 2);
+            if (!pc.WriteVAB(VAN::Position, VF_V3F, position_data) ||
+                !pc.WriteVAB(VAN::Luminance, VF_V1UN8, lumiance_data))
+                return false;
+
+            geom_line = pc.Create();
+            if (!geom_line)
+                return false;
+            geometry_manager->Add(geom_line);
 
             if(!geom_line)
                 return(false);
@@ -197,7 +212,11 @@ private:
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
             // 创建Primitive
-            Primitive* prim_plane = graphics_context->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            if (!primitive_manager)
+                return false;
+
+            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
             if(!prim_plane)
                 return false;
 
@@ -219,7 +238,11 @@ private:
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
 
             // 创建Primitive
-            prim_line = graphics_context->CreatePrimitive(geom_line, mi_line, pipeline_line);
+            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            if (!primitive_manager)
+                return false;
+
+            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line, pipeline_line);
             if(!prim_line)
                 return false;
 

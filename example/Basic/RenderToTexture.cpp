@@ -81,19 +81,23 @@ public:
 
         if (render_context)
         {
+            auto *graphics_context = render_context->GetGraphicsContext();
+            if (!graphics_context && ecs_world)
+                graphics_context = ecs_world->GetGraphicsContext();
+
             if (primitive)
             {
-                if (auto *primitive_manager = render_context->GetPrimitiveManager())
+                if (auto *primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr)
                     primitive_manager->Release(primitive);
             }
 
             if (geometry)
             {
-                if (auto *geometry_manager = render_context->GetGeometryManager())
+                if (auto *geometry_manager = graphics_context ? graphics_context->GetGeometryManager() : nullptr)
                     geometry_manager->Release(geometry);
             }
 
-            if (auto *material_manager = render_context->GetMaterialManager())
+            if (auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr)
             {
                 if (mi)
                     material_manager->Destroy(mi);
@@ -192,9 +196,13 @@ public:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         this->render_context = render_context;
 
-        auto* device = render_context->GetDevice();
+        auto* device = graphics_context->GetDevice();
         if (!device)
             return false;
 
@@ -206,7 +214,7 @@ public:
         mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg3d);
         if (!mci) return false;
 
-        mtl = graphics_context->CreateMaterial("OffscreenPureColor3D", mci);
+        mtl = material_manager->CreateMaterial("OffscreenPureColor3D", mci);
         if (!mtl) return false;
 
         auto* render_pass = rt ? rt->GetRenderPass() : nullptr;
@@ -214,7 +222,7 @@ public:
         if (!pipeline) return false;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = graphics_context->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
+        mi = material_manager->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
         if (!mi) return false;
 
         auto pc = std::make_unique<GeometryCreater>(device, mtl->GetDefaultVIL());
@@ -369,7 +377,12 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* device = render_context->GetDevice();
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
+        if (!material_manager || !sampler_manager)
+            return false;
+
+        auto* device = graphics_context->GetDevice();
         if (!device)
             return false;
 
@@ -381,10 +394,10 @@ private:
         mtl::MaterialCreateInfo *mci = mtl::CreateTextureBlinnPhong(device->GetDevAttr(), &cfg3d);
         if (!mci) return false;
 
-        cube_mtl = graphics_context->CreateMaterial("OnscreenCube", mci);
+        cube_mtl = material_manager->CreateMaterial("OnscreenCube", mci);
         if (!cube_mtl) return false;
 
-        cube_sampler = graphics_context->CreateSampler();
+        cube_sampler = sampler_manager->CreateSampler();
 
         cube_mtl->BindTextureSampler(DescriptorSetType::PerMaterial,
                                      mtl::SamplerName::BaseColor,
@@ -400,7 +413,7 @@ private:
         cube_pipeline = render_pass ? render_pass->CreatePipeline(cube_mtl, InlinePipeline::Solid3D) : nullptr;
         if (!cube_pipeline) return false;
 
-        cube_mi = graphics_context->CreateMaterialInstance(cube_mtl);
+        cube_mi = material_manager->CreateMaterialInstance(cube_mtl);
         if (!cube_mi) return false;
 
         auto pc = std::make_unique<GeometryCreater>(device, cube_mtl->GetDefaultVIL());

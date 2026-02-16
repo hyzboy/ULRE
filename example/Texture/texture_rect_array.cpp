@@ -2,6 +2,7 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/graph/module/TextureManager.h>
 
@@ -73,11 +74,15 @@ private:
         if (!graphics_context)
             return false;
 
-        texture = graphics_context->CreateTexture2DArray("freepik icons",
-                                                       512,512,            ///<纹理尺寸
-                                                       TexCount,           ///<纹理层数
-                                                       PF_BC7UN,           ///<纹理格式
-                                                       false);             ///<是否自动产生mipmaps
+        auto* tex_manager = graphics_context->GetTextureManager();
+        if (!tex_manager)
+            return false;
+
+        texture = tex_manager->CreateTexture2DArray("freepik icons",
+                                512,512,            ///<纹理尺寸
+                                TexCount,           ///<纹理层数
+                                PF_BC7UN,           ///<纹理格式
+                                false);             ///<是否自动产生mipmaps
 
         if(!texture)return(false);
 
@@ -87,7 +92,7 @@ private:
         {
             filename=filesystem::JoinPathWithFilename(OS_TEXT("res/image/icon/freepik"),tex_filename[i]);
 
-            if(!graphics_context->LoadTexture2DArray(texture,i,filename))
+            if(!tex_manager->LoadTexture2DArray(texture,i,filename))
                 return(false);
         }
 
@@ -104,11 +109,16 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
+        if (!material_manager || !sampler_manager)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::With);
 
-        material=graphics_context->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
+        material=material_manager->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
 
         if(!material)
             return(false);
@@ -120,7 +130,7 @@ private:
         if(!pipeline)
             return(false);
 
-        sampler=graphics_context->CreateSampler();
+        sampler=sampler_manager->CreateSampler();
 
         if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
                                         mtl::SamplerName::BaseColor,
@@ -130,7 +140,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi=graphics_context->CreateMaterialInstance(material);
+            render_obj[i].mi=material_manager->CreateMaterialInstance(material);
 
             if(!render_obj[i].mi)
                 return(false);
@@ -151,11 +161,25 @@ private:
         if (!graphics_context)
             return false;
 
-        mesh_rect=graphics_context->CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
-                                    {
-                                        {VAN::Position,VF_V4F,position_data},
-                                        {VAN::TexCoord,VF_V4F,tex_coord_data}
-                                    });
+        auto* device = graphics_context->GetDevice();
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+            return false;
+
+        GeometryCreater pc(device, render_obj[0].mi->GetVIL(), buffer_manager);
+        pc.Init("TextureRect", 1);
+        if (!pc.WriteVAB(VAN::Position, VF_V4F, position_data) ||
+            !pc.WriteVAB(VAN::TexCoord, VF_V4F, tex_coord_data))
+            return false;
+
+        auto* geometry = pc.Create();
+        if (!geometry)
+            return false;
+        geometry_manager->Add(geometry);
+
+        mesh_rect = primitive_manager->CreatePrimitive(geometry, render_obj[0].mi, pipeline);
 
         if(!mesh_rect)
             return(false);

@@ -2,6 +2,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/StructuredBufferAccessor.h>
 
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -18,23 +19,25 @@ namespace
         if (!ctx)
             return nullptr;
 
-        if (auto *rc = ctx->GetRenderContext())
+        auto *gc = ctx->GetGraphicsContext();
+        if (!gc)
         {
-            if (auto *gc = rc->GetGraphicsContext())
-            {
-                return gc->CreateUBOAccessor<hgl::graph::ViewportInfo>(
-                    "ViewportInfoUBO",
-                    &hgl::graph::mtl::SBS_ViewportInfo,
-                    hgl::graph::BufferUpdateClass::CriticalPerFrame);
-            }
+            if (auto *rc = ctx->GetRenderContext())
+                gc = rc->GetGraphicsContext();
         }
 
-        if (auto *gc = ctx->GetGraphicsContext())
+        if (gc)
         {
-            return gc->CreateUBOAccessor<hgl::graph::ViewportInfo>(
-                "ViewportInfoUBO",
-                &hgl::graph::mtl::SBS_ViewportInfo,
-                hgl::graph::BufferUpdateClass::CriticalPerFrame);
+            auto *buffer_manager = gc->GetBufferManager();
+            if (!buffer_manager)
+                return nullptr;
+
+            auto *buf = buffer_manager->CreateUBO("ViewportInfoUBO", hgl::graph::StructuredBufferAccessor<hgl::graph::ViewportInfo>::GetSize());
+            if (!buf)
+                return nullptr;
+
+            buf->SetUpdateClass(hgl::graph::BufferUpdateClass::CriticalPerFrame);
+            return hgl::graph::StructuredBufferAccessor<hgl::graph::ViewportInfo>::Create(buf, &hgl::graph::mtl::SBS_ViewportInfo, false);
         }
 
         return nullptr;
@@ -46,7 +49,10 @@ namespace
             return nullptr;
 
         if (auto *rc = ctx->GetRenderContext())
-            return rc->GetBufferManager();
+        {
+            if (auto *gc = rc->GetGraphicsContext())
+                return gc->GetBufferManager();
+        }
 
         if (auto *gc = ctx->GetGraphicsContext())
             return gc->GetBufferManager();

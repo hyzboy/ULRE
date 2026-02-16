@@ -49,11 +49,15 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
-        material_instance=graphics_context->CreateMaterialInstance(mtl::inline_material::VertexColor3D,&cfg);
+        material_instance=material_manager->CreateMaterialInstance(mtl::inline_material::VertexColor3D,&cfg);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
@@ -72,7 +76,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* device = render_context->GetDevice();
+        auto* device = graphics_context->GetDevice();
         auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
@@ -103,7 +107,11 @@ private:
         if (!graphics_context)
             return false;
 
-        Primitive *ri=graphics_context->CreatePrimitive(prim_axis,material_instance,pipeline);
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        Primitive *ri=primitive_manager->CreatePrimitive(prim_axis,material_instance,pipeline);
         if(!ri)
             return false;
 

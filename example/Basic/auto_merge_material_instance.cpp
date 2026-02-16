@@ -14,6 +14,9 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
 
+// 引入几何创建器
+#include<hgl/graph/geo/GeometryCreater.h>
+
 // 引入ECS相关头文件
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -72,20 +75,24 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         {
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
         #ifndef USE_MATERIAL_FILE
-            auto* device = render_context->GetDevice();
+            auto* device = graphics_context->GetDevice();
             if (!device)
                 return false;
 
             mtl::MaterialCreateInfo* mci = mtl::CreatePureColor2D(device->GetDevAttr(), &cfg);  //走程序内置材质创建函数
-            material = graphics_context->CreateMaterial("PureColor2D", mci);
+            material = material_manager->CreateMaterial("PureColor2D", mci);
         #else
-            material = graphics_context->LoadMaterial("Std2D/PureColor2D", &cfg);                         //走材质文件加载
+            material = material_manager->LoadMaterial("Std2D/PureColor2D", &cfg);                         //走材质文件加载
         #endif//USE_MATERIAL_FILE
 
             if (!material)
@@ -98,7 +105,7 @@ private:
             // 为每个三角形创建不同颜色的MaterialInstance
             for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
             {
-                triangles[i].mi = graphics_context->CreateMaterialInstance(material);
+                triangles[i].mi = material_manager->CreateMaterialInstance(material);
 
                 if (!triangles[i].mi)
                     return false;
@@ -148,8 +155,18 @@ private:
         if (!graphics_context)
             return false;
 
-        geometry = graphics_context->CreateGeometry("Triangle", VERTEX_COUNT, material->GetDefaultVIL(),
-                                  {{VAN::Position, VF_V2F, position_data}});
+        auto* device = graphics_context->GetDevice();
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        if (!device || !buffer_manager || !geometry_manager)
+            return false;
+
+        GeometryCreater pc(device, material->GetDefaultVIL(), buffer_manager);
+        pc.Init("Triangle", VERTEX_COUNT);
+        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data))
+            return false;
+
+        geometry = pc.Create();
 
         if (!geometry)
         {
@@ -159,9 +176,7 @@ private:
 
         std::cout << "[TestApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
 
-        auto* geometry_manager = graphics_context->GetGeometryManager();
-        if (geometry_manager)
-            geometry_manager->Add(geometry);
+        geometry_manager->Add(geometry);
 
         return true;
     }
@@ -190,7 +205,11 @@ private:
         for (uint i = 0; i < DRAW_OBJECT_COUNT; i++)
         {
             // 为每个三角形创建Primitive（共享Geometry，但使用不同的MaterialInstance）
-            triangles[i].primitive = graphics_context->CreatePrimitive(geometry, triangles[i].mi, pipeline);
+            auto* primitive_manager = graphics_context->GetPrimitiveManager();
+            if (!primitive_manager)
+                return false;
+
+            triangles[i].primitive = primitive_manager->CreatePrimitive(geometry, triangles[i].mi, pipeline);
 
             if (!triangles[i].primitive)
             {

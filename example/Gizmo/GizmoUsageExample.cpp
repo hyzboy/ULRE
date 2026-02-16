@@ -93,7 +93,13 @@ private:
         if(!graphics)
             return false;
 
-        if(!InitGizmoResource(graphics))
+        auto *render_context = GetRenderContext();
+        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
+        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        if(!render_pass)
+            return false;
+
+        if(!InitGizmoResource(graphics, render_pass))
             return false;
 
         if(!ecs_world)
