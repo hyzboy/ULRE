@@ -76,6 +76,10 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
@@ -87,10 +91,10 @@ private:
         {
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid=render_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_plane_grid=graphics_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
 
-            mi_plane_grid=render_context->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
+            mi_plane_grid=graphics_context->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
             auto* render_target = render_context->GetCurrentRenderTarget();
@@ -102,10 +106,10 @@ private:
         {
             cfg.position_format=VAT_VEC3;
 
-            mtl_line=render_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_line=graphics_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_line)return(false);
 
-            mi_line=render_context->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
+            mi_line=graphics_context->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
             if(!mi_line)return(false);
 
             auto* render_target = render_context->GetCurrentRenderTarget();
@@ -125,8 +129,12 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         auto* device = render_context->GetDevice();
-        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -154,7 +162,7 @@ private:
 
         // === 创建射线线段几何体 ===
         {
-            geom_line=render_context->CreateGeometry("RayLine",2,mi_line->GetVIL(),
+            geom_line=graphics_context->CreateGeometry("RayLine",2,mi_line->GetVIL(),
                                     {
                                         {VAN::Position, VF_V3F,position_data},
                                         {VAN::Luminance,VF_V1UN8,lumiance_data}
@@ -175,8 +183,8 @@ private:
         if (!render_context)
             return false;
 
-        auto* primitive_manager = render_context->GetPrimitiveManager();
-        if (!primitive_manager)
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
         // === 步骤1: 获取ECS世界 ===
@@ -189,7 +197,7 @@ private:
             plane_grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
 
             // 创建Primitive
-            Primitive* prim_plane = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+            Primitive* prim_plane = graphics_context->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
             if(!prim_plane)
                 return false;
 
@@ -211,7 +219,7 @@ private:
             ray_line_entity = ecs_world->CreateEntity<Entity>("RayLine");
 
             // 创建Primitive
-            prim_line = primitive_manager->CreatePrimitive(geom_line, mi_line, pipeline_line);
+            prim_line = graphics_context->CreatePrimitive(geom_line, mi_line, pipeline_line);
             if(!prim_line)
                 return false;
 

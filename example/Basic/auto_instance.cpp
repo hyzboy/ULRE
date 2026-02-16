@@ -63,6 +63,10 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         {
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                             CoordinateSystem2D::NDC,
@@ -72,7 +76,7 @@ private:
 
             vil_config.Add(VAN::Color,VF_V4UN8);
 
-            material_instance=render_context->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
+            material_instance=graphics_context->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
         }
 
         if(!material_instance)
@@ -91,7 +95,11 @@ private:
         if (!render_context)
             return false;
 
-        prim_triangle=render_context->CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        prim_triangle=graphics_context->CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,   VF_V2F,     position_data},
                                         {VAN::Color,      VF_V4UN8,   color_data   }

@@ -246,6 +246,9 @@ bool RenderFramework::Init(uint w,uint h)
     {
         graphics_ctx->SetDefaultRenderPass(GetDefaultRenderPass());
 
+        if (render_context)
+            render_context->SetGraphicsContext(graphics_ctx.get());
+
         default_ecs_context->InitializeGraphics(device, GetSwapchainRenderTarget());
         default_ecs_context->SetRenderContext(render_context.get());
     }
@@ -360,66 +363,6 @@ LineRenderManager *RenderFramework::GetLineRenderManager() const
 
     auto line_system = default_ecs_context->GetSystem<ecs::LineRenderSystem>();
     return line_system ? line_system->GetLineRenderManager() : nullptr;
-}
-
-graph::VertexDataManager *RenderFramework::CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type)
-{
-    if(!vil||vertices_number<=0||indices_number<=0||!device->IsSupport(type))
-        return(nullptr);
-
-    auto *vdm=new VertexDataManager(buffer_manager,vil);
-
-    if(!vdm)
-        return(nullptr);
-
-    if(!vdm->Init(vertices_number,indices_number,type))
-    {
-        delete vdm;
-        return nullptr;
-    }
-
-    return vdm;
-}
-
-graph::Geometry *RenderFramework::CreateGeometry( const AnsiString &name,
-                                                    const uint32_t vertices_count,
-                                                    const graph::VIL *vil,
-                                                    const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-{
-    auto *pc=new graph::GeometryCreater(GetDevice(),vil,buffer_manager);
-
-    pc->Init(name,vertices_count);
-
-    for(const auto &vad:vad_list)
-    {
-        if(!pc->WriteVAB(vad.name,vad.format,vad.data))
-        {
-            delete pc;
-            return(nullptr);
-        }
-    }
-
-    auto *geometry=pc->Create();
-
-    if(geometry)
-        geometry_manager->Add(geometry);
-
-    return geometry;
-}
-
-graph::Primitive *RenderFramework::CreatePrimitive(   const AnsiString &name,
-                                            const uint32_t vertices_count,
-                                            graph::MaterialInstance *mi,
-                                            graph::Pipeline *pipeline,
-                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-{
-    auto *geometry=this->CreateGeometry(name,vertices_count,mi->GetVIL(),vad_list);
-
-    if(!geometry)
-        return(nullptr);
-
-    // Prefer PrimitiveManager to create and own meshes
-    return primitive_manager->CreatePrimitive(geometry,mi,pipeline);
 }
 
 VK_NAMESPACE_END

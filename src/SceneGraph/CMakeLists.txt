@@ -72,7 +72,6 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderStagePipeline.h
                             ${SG_INCLUDE_PATH}/render/RenderStages.h
                             ${SG_INCLUDE_PATH}/render/SceneCaptureStage.h
                             ${SG_INCLUDE_PATH}/render/RenderContext.h
-                            ${SG_INCLUDE_PATH}/render/RenderAPI.h
                             render/RenderStagePipeline.cpp
                             render/RenderStages.cpp
                             render/SceneCaptureStage.cpp

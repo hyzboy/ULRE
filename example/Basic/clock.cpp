@@ -91,6 +91,10 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         {
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                             CoordinateSystem2D::NDC,
@@ -102,9 +106,9 @@ private:
                 return false;
 
             mtl::MaterialCreateInfo* mci = mtl::CreatePureColor2D(device->GetDevAttr(), &cfg);
-            material = render_context->CreateMaterial("PureColor2D", mci);
+            material = graphics_context->CreateMaterial("PureColor2D", mci);
         #else
-            material = render_context->LoadMaterial("Std2D/PureColor2D", &cfg);
+            material = graphics_context->LoadMaterial("Std2D/PureColor2D", &cfg);
         #endif//USE_MATERIAL_FILE
 
             if (!material)
@@ -117,7 +121,7 @@ private:
             // 刻度颜色（白色）
             Color4f tick_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-            mi_tick = render_context->CreateMaterialInstance(material);
+            mi_tick = graphics_context->CreateMaterialInstance(material);
             if(mi_tick)
                 mi_tick->WriteMIData(tick_color);
 
@@ -130,7 +134,7 @@ private:
 
             for (uint i = 0; i < 3; i++)
             {
-                hands[i].mi = render_context->CreateMaterialInstance(material);
+                hands[i].mi = graphics_context->CreateMaterialInstance(material);
                 if (!hands[i].mi)
                     return false;
                 hands[i].mi->WriteMIData(hand_colors[i]);
@@ -158,7 +162,11 @@ private:
         if (!render_context)
             return false;
 
-        geometry = render_context->CreateGeometry("TriangleForClock", VERTEX_COUNT, material->GetDefaultVIL(),
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        geometry = graphics_context->CreateGeometry("TriangleForClock", VERTEX_COUNT, material->GetDefaultVIL(),
                                   {{VAN::Position, VF_V2F, position_data}});
 
         if (!geometry)
@@ -169,7 +177,7 @@ private:
 
         std::cout << "[ClockApp::InitGeometry] Created geometry: " << (void*)geometry << std::endl;
 
-        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
         if (geometry_manager)
             geometry_manager->Add(geometry);
 
@@ -185,7 +193,14 @@ private:
             return false;
         }
 
-        auto* primitive_manager = render_context->GetPrimitiveManager();
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+        {
+            std::cout << "[ClockApp::InitECS] ERROR: Missing GraphicsContext!" << std::endl;
+            return false;
+        }
+
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
         if (!primitive_manager)
         {
             std::cout << "[ClockApp::InitECS] ERROR: Missing PrimitiveManager!" << std::endl;

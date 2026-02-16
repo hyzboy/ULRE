@@ -127,6 +127,12 @@ namespace hgl
             if (!active)
                 return;
 
+            // Release render-frame cache resources while managers are still alive.
+            render_frame_cache.renderItems.clear();
+            render_frame_cache.materialBatches.clear();
+            render_frame_cache.cameraInfo = nullptr;
+            render_frame_cache.renderableCount = 0;
+
             // Destroy all entities
             if (entity_manager)
             {

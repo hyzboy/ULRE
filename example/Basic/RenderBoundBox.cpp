@@ -122,13 +122,17 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         Color4f color;
 
         for(size_t i=0;i<COLOR_COUNT;i++)
         {
             color = GetColor4f(TestColor[i],1.0f);
 
-            md->mi[i] = render_context->CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
+            md->mi[i] = graphics_context->CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
 
             if(!md->mi[i])
                 return false;
@@ -163,7 +167,7 @@ private:
         if(!mci)
             return false;
 
-        solid.material = render_context->CreateMaterial("Gizmo3D",mci);
+        solid.material = graphics_context->CreateMaterial("Gizmo3D",mci);
 
         return InitMaterialInstance(&solid);
     }
@@ -172,6 +176,10 @@ private:
     {
         auto* render_context = GetRenderContext();
         if (!render_context)
+            return false;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
         auto* device = render_context->GetDevice();
@@ -185,7 +193,7 @@ private:
         if(!mci)
             return false;
 
-        wire.material = render_context->CreateMaterial("PureColorLine3D",mci);
+        wire.material = graphics_context->CreateMaterial("PureColorLine3D",mci);
 
         return InitMaterialInstance(&wire);
     }
@@ -196,7 +204,11 @@ private:
         if (!render_context)
             return false;
 
-        mesh_vdm = render_context->CreateVDM(solid.vil, HGL_SIZE_1MB, 0, IndexType::U16);
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        mesh_vdm = graphics_context->CreateVDM(solid.vil, HGL_SIZE_1MB, 0, IndexType::U16);
         return mesh_vdm != nullptr;
     }
 
@@ -209,11 +221,11 @@ private:
         if (!render_context)
             return nullptr;
 
-        auto* primitive_manager = render_context->GetPrimitiveManager();
-        if (!primitive_manager)
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
             return nullptr;
 
-        Primitive *primitive = primitive_manager->CreatePrimitive(geometry,md->mi[color],md->pipeline);
+        Primitive *primitive = graphics_context->CreatePrimitive(geometry,md->mi[color],md->pipeline);
 
         if(!primitive)
             return nullptr;
@@ -351,10 +363,13 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         auto* device = render_context->GetDevice();
-        auto* geometry_manager = render_context->GetGeometryManager();
-        auto* primitive_manager = render_context->GetPrimitiveManager();
-        if (!device || !geometry_manager || !primitive_manager)
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        if (!device || !geometry_manager)
             return false;
 
         using namespace inline_geometry;
@@ -368,7 +383,7 @@ private:
             return false;
 
         geometry_manager->Add(bbox_geometry);
-        bbox_primitive = primitive_manager->CreatePrimitive(bbox_geometry,wire.mi[5],wire.pipeline);
+        bbox_primitive = graphics_context->CreatePrimitive(bbox_geometry,wire.mi[5],wire.pipeline);
         return bbox_primitive != nullptr;
     }
 

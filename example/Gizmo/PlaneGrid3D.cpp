@@ -44,12 +44,16 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
 
-        material=render_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
+        material=graphics_context->LoadMaterial("Std3D/VertexLum3D",&cfg);
         if(!material)return(false);
 
         VILConfig vil_config;
@@ -63,7 +67,7 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i]=render_context->CreateMaterialInstance(material,&vil_config,&GridColor);
+            material_instance[i]=graphics_context->CreateMaterialInstance(material,&vil_config,&GridColor);
 
             ce=COLOR((int)ce+1);
         }
@@ -81,8 +85,12 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         auto* device = render_context->GetDevice();
-        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
 
@@ -111,11 +119,11 @@ private:
         if (!render_context)
             return false;
 
-        auto* primitive_manager = render_context->GetPrimitiveManager();
-        if (!primitive_manager)
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
             return false;
 
-        Primitive *ri=primitive_manager->CreatePrimitive(geom_plane_grid,mi,pipeline);
+        Primitive *ri=graphics_context->CreatePrimitive(geom_plane_grid,mi,pipeline);
 
         if(!ri)
             return false;

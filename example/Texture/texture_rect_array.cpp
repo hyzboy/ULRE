@@ -69,7 +69,11 @@ private:
         if (!render_context)
             return false;
 
-        texture = render_context->CreateTexture2DArray("freepik icons",
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        texture = graphics_context->CreateTexture2DArray("freepik icons",
                                                        512,512,            ///<纹理尺寸
                                                        TexCount,           ///<纹理层数
                                                        PF_BC7UN,           ///<纹理格式
@@ -83,7 +87,7 @@ private:
         {
             filename=filesystem::JoinPathWithFilename(OS_TEXT("res/image/icon/freepik"),tex_filename[i]);
 
-            if(!render_context->LoadTexture2DArray(texture,i,filename))
+            if(!graphics_context->LoadTexture2DArray(texture,i,filename))
                 return(false);
         }
 
@@ -96,11 +100,15 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::With);
 
-        material=render_context->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
+        material=graphics_context->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
 
         if(!material)
             return(false);
@@ -112,7 +120,7 @@ private:
         if(!pipeline)
             return(false);
 
-        sampler=render_context->CreateSampler();
+        sampler=graphics_context->CreateSampler();
 
         if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
                                         mtl::SamplerName::BaseColor,
@@ -122,7 +130,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi=render_context->CreateMaterialInstance(material);
+            render_obj[i].mi=graphics_context->CreateMaterialInstance(material);
 
             if(!render_obj[i].mi)
                 return(false);
@@ -139,7 +147,11 @@ private:
         if (!render_context)
             return false;
 
-        mesh_rect=render_context->CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        mesh_rect=graphics_context->CreatePrimitive( "TextureRect",1,render_obj[0].mi,pipeline,
                                     {
                                         {VAN::Position,VF_V4F,position_data},
                                         {VAN::TexCoord,VF_V4F,tex_coord_data}

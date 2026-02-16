@@ -13,6 +13,9 @@
 
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKRenderPass.h>
+#include <hgl/vk/StructuredBufferAccessor.h>
+#include <hgl/graph/module/BufferManager.h>
+#include <hgl/graph/mtl/ShaderBufferSource.h>
 
 namespace hgl::graph
 {
@@ -45,7 +48,11 @@ namespace hgl::graph
     namespace mtl
     {
         class MaterialCreateInfo;
+        struct Material2DCreateConfig;
+        struct Material3DCreateConfig;
     }
+
+    class VILConfig;
 
     /**
      * GraphicsContext - 图形资源统一访问接口
@@ -82,9 +89,25 @@ namespace hgl::graph
         virtual PrimitiveManager *GetPrimitiveManager()=0;
 
         // Material
+        virtual Material *CreateMaterial(const AnsiString &name)=0;
+        virtual Material *CreateMaterial(const AnsiString &name,const mtl::MaterialCreateInfo *mci)=0;
         virtual Material *CreateMaterial(const mtl::MaterialCreateInfo *mci)=0;
+
+        virtual Material *LoadMaterial(const OSString &path)=0;
         virtual Material *LoadMaterial(const AnsiString &name)=0;
+        virtual Material *LoadMaterial(const AnsiString &name,mtl::Material2DCreateConfig *cfg)=0;
+        virtual Material *LoadMaterial(const AnsiString &name,mtl::Material3DCreateConfig *cfg)=0;
+
         virtual MaterialInstance *CreateMaterialInstance(Material *mat)=0;
+        virtual MaterialInstance *CreateMaterialInstance(Material *mat,const VIL *vil)=0;
+        virtual MaterialInstance *CreateMaterialInstance(Material *mat,const VILConfig *vil_cfg)=0;
+        virtual MaterialInstance *CreateMaterialInstance(Material *mat,const VIL *vil,const void *data,const uint32 data_size)=0;
+        virtual MaterialInstance *CreateMaterialInstance(Material *mat,const VILConfig *vil_cfg,const void *data,const uint32 data_size)=0;
+
+        virtual MaterialInstance *CreateMaterialInstance(const AnsiString &name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)=0;
+        virtual MaterialInstance *CreateMaterialInstance(const AnsiString &name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg,const void *data,const uint32 data_size)=0;
+        virtual MaterialInstance *CreateMaterialInstance(const AnsiString &name,mtl::Material2DCreateConfig *cfg,const VILConfig *vil_cfg,const void *data,const uint32 data_size)=0;
+        virtual MaterialInstance *CreateMaterialInstance(const AnsiString &name,mtl::Material3DCreateConfig *cfg,const VILConfig *vil_cfg,const void *data,const uint32 data_size)=0;
 
         // Buffer
         virtual class VKBuffer *CreateVAB(const void *data=nullptr,VkDeviceSize size=0)=0;
@@ -92,19 +115,33 @@ namespace hgl::graph
         virtual class DeviceBuffer *CreateSSBO(VkDeviceSize size)=0;
         virtual class DeviceBuffer *CreateINBO(VkDeviceSize size)=0;
 
-        template<typename T>
-        T *CreateUBO() { return GetDevice()->CreateUBO<T>(); }
+        virtual class DeviceBuffer *CreateUBO(const AnsiString &name,VkDeviceSize size)=0;
+        virtual class DeviceBuffer *CreateSSBO(const AnsiString &name,VkDeviceSize size)=0;
+        virtual class DeviceBuffer *CreateINBO(const AnsiString &name,VkDeviceSize size)=0;
 
         template<typename T>
-        T *CreateSSBO() { return GetDevice()->CreateSSBO<T>(); }
+        StructuredBufferAccessor<T>* CreateUBOAccessor(const AnsiString& name,
+                                                       const ShaderBufferDesc* desc,
+                                                       BufferUpdateClass update_class = BufferUpdateClass::Default)
+        {
+            auto* buffer_manager = GetBufferManager();
+            if (!buffer_manager)
+                return nullptr;
 
-        template<typename T>
-        T *CreateINBO() { return GetDevice()->CreateINBO<T>(); }
+            DeviceBuffer* buf = buffer_manager->CreateUBO(name, StructuredBufferAccessor<T>::GetSize());
+            if (!buf)
+                return nullptr;
+
+            buf->SetUpdateClass(update_class);
+            return StructuredBufferAccessor<T>::Create(buf, desc, false);
+        }
+
 
         virtual class IndexBuffer *CreateIBO(const void *indices,uint32_t count)=0;
         virtual class IndexBuffer *CreateIBO8(const void *indices,uint32_t count)=0;
         virtual class IndexBuffer *CreateIBO16(const void *indices,uint32_t count)=0;
         virtual class IndexBuffer *CreateIBO32(const void *indices,uint32_t count)=0;
+        virtual class IndexBuffer *CreateIBO(VkDeviceSize size,IndexType type)=0;
 
         // Geometry & Primitive
         virtual VertexDataManager *CreateVDM(const VIL *vil,VkDeviceSize vertices,VkDeviceSize indices=0,IndexType type=IndexType::U16)=0;
@@ -112,7 +149,7 @@ namespace hgl::graph
         virtual SharedPtr<GeometryCreater> GetGeometryCreater(MaterialInstance *mi)=0;
 
         virtual Geometry *CreateGeometry(const AnsiString &name,uint32_t vertex_count,const VIL *vil,
-                                         const std::initializer_list<class VertexAttribDataPtr> &vad_list)=0;
+                 const std::initializer_list<class VertexAttribDataPtr> &vad_list)=0;
         virtual Primitive *CreatePrimitive(const AnsiString &name,uint32_t vertex_count,MaterialInstance *mi,
                                            Pipeline *p,const std::initializer_list<class VertexAttribDataPtr> &vad_list)=0;
         virtual Primitive *CreatePrimitive(Geometry *geo,MaterialInstance *mi,Pipeline *p)=0;
@@ -139,6 +176,18 @@ namespace hgl::graph
 
         // Geometry Management
         virtual void                    Add(Geometry *geometry)=0;
+
+        template<typename T>
+        MaterialInstance *CreateMaterialInstance(Material *mat,const VIL *vil,const T *data)
+        {
+            return CreateMaterialInstance(mat, vil, data, sizeof(T));
+        }
+
+        template<typename T>
+        MaterialInstance *CreateMaterialInstance(Material *mat,const VILConfig *vil_cfg,const T *data)
+        {
+            return CreateMaterialInstance(mat, vil_cfg, data, sizeof(T));
+        }
 
     }; // class IGraphicsContext
 

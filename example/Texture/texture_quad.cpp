@@ -53,6 +53,10 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         Texture2D * texture = nullptr;
         Sampler *   sampler = nullptr;
         Material *  material= nullptr;
@@ -61,7 +65,7 @@ private:
                                         CoordinateSystem2D::NDC,
                                         mtl::WithLocalToWorld::Without);
 
-        material=render_context->LoadMaterial("Std2D/PureTexture2D",&cfg);
+        material=graphics_context->LoadMaterial("Std2D/PureTexture2D",&cfg);
 
         if(!material)
             return(false);
@@ -73,13 +77,13 @@ private:
         if(!pipeline)
             return(false);
 
-        TextureManager *tex_manager = render_context->GetTextureManager();
+        TextureManager *tex_manager = graphics_context->GetTextureManager();
 
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
-        sampler=render_context->CreateSampler();
+        sampler=graphics_context->CreateSampler();
 
         if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
                                         mtl::SamplerName::BaseColor,
@@ -87,7 +91,7 @@ private:
                                         sampler))
             return(false);
 
-        material_instance=render_context->CreateMaterialInstance(material);
+        material_instance=graphics_context->CreateMaterialInstance(material);
 
         return(true);
     }
@@ -98,7 +102,11 @@ private:
         if (!render_context)
             return false;
 
-        prim_quad=render_context->CreatePrimitive("TextureQuad",VERTEX_COUNT,material_instance,pipeline,
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        prim_quad=graphics_context->CreatePrimitive("TextureQuad",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,   VF_V2F, position_data},
                                         {VAN::TexCoord,   VF_V2F, tex_coord_data}

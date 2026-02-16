@@ -15,6 +15,8 @@ namespace hgl::graph
     class IGraphicsContext;
     class RenderContext;
     class IRenderTarget;
+    class BufferManager;
+    class MaterialManager;
 
     constexpr const size_t MAX_LINE_WIDTH = 16;                 ///< CN: 最大支持线宽 EN: Maximum supported line width
 
@@ -111,6 +113,8 @@ namespace hgl::graph
         MaterialInstance *  mi_line   = nullptr;         ///< CN: 线材质实例 EN: Line material instance
         Pipeline *          pipeline  = nullptr;         ///< CN: 当前渲染管线 EN: Active graphics pipeline
         SharedLineBackup *  shared_backup = nullptr;     ///< CN: 批次间共享缓冲备份 EN: Shared backup buffer among batches
+        MaterialManager *   material_manager = nullptr;  ///< CN: 材质管理器 EN: Material manager
+        BufferManager *     buffer_manager = nullptr;    ///< CN: 缓冲区管理器 EN: Buffer manager
 
     public:
 
@@ -122,7 +126,7 @@ namespace hgl::graph
          * \param p   CN: 初始管线 EN: Initial pipeline
          * \param lcp CN: 颜色调色板UBO实例 EN: Color palette UBO instance
          */
-        LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp);
+        LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp,MaterialManager *mm,BufferManager *bm);
 
         /**
          * CN: 析构函数 - 释放共享备份对象, 其它资源由外部管理器负责。

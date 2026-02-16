@@ -60,6 +60,26 @@ public: //Release
     void Release(Material *         mtl ){rm_material.Release(mtl);}
     void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
 
+    void Destroy(Material *mtl)
+    {
+        if (!mtl)
+            return;
+
+        const AnsiString &name = mtl->GetName();
+        if (!name.IsEmpty())
+            material_by_name.DeleteByKey(name);
+
+        rm_material.Release(mtl, true);
+    }
+
+    void Destroy(MaterialInstance *mi)
+    {
+        if (!mi)
+            return;
+
+        rm_material_instance.Release(mi, true);
+    }
+
 public: // Override Release from GraphModule - cleanup all resources
 
     void Release() override
@@ -71,6 +91,18 @@ public: // Override Release from GraphModule - cleanup all resources
         // 清理所有材质
         if (rm_material.GetCount() > 0)
             rm_material.Clear();
+
+        if (material_by_name.GetCount() > 0)
+            material_by_name.Clear();
+
+        for (auto &stage_map : shader_module_by_name)
+        {
+            for (auto &kv : stage_map)
+            {
+                delete kv.second;
+            }
+            stage_map.Clear();
+        }
     }
 
 public: //Shader

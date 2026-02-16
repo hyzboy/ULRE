@@ -4,9 +4,13 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKMemory.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<glm/gtc/quaternion.hpp>
@@ -246,9 +250,24 @@ namespace hgl::ecs
 
         if (camera_ubo)
         {
+            graph::DeviceBuffer *buf = camera_ubo->ubo();
             delete camera_ubo;
             camera_ubo = nullptr;
             camera_info = nullptr;
+
+            if (camera_ubo_managed && buf)
+            {
+                graph::BufferManager *buffer_manager = render_context ? render_context->GetBufferManager() : nullptr;
+                if (!buffer_manager && context)
+                {
+                    if (auto *gc = context->GetGraphicsContext())
+                        buffer_manager = gc->GetBufferManager();
+                }
+
+                if (buffer_manager)
+                    buffer_manager->Release(buf);
+            }
+            camera_ubo_managed = false;
         }
     }
 
@@ -540,20 +559,25 @@ namespace hgl::ecs
         if (!render_context && context)
             render_context = context->GetRenderContext();
 
-        // Get device from render_context for compatibility, but prefer BufferManager approach
-        auto *device = render_context ? render_context->GetDevice() : nullptr;
-        if (!device && context)
-            device = context->GetGPUDevice();
+        auto *graphics_context = context ? context->GetGraphicsContext() : nullptr;
+        if (!graphics_context && render_context)
+            graphics_context = render_context->GetGraphicsContext();
 
-        if (!device)
+        if (!render_context && !graphics_context)
             return;
 
         if (!camera_ubo)
         {
-            using UBOCameraInfo = graph::StructuredBufferAccessor<graph::CameraInfo>;
-            camera_ubo = device->CreateUBO<UBOCameraInfo>(graph::ObjectNameBuilder("CameraUBO"),
-                                                          &graph::mtl::SBS_CameraInfo,
-                                                          graph::BufferUpdateClass::CriticalPerFrame);
+            if (graphics_context)
+            {
+                camera_ubo = graphics_context->CreateUBOAccessor<graph::CameraInfo>(
+                    "CameraUBO",
+                    &graph::mtl::SBS_CameraInfo,
+                    graph::BufferUpdateClass::CriticalPerFrame);
+            }
+
+            if (camera_ubo)
+                camera_ubo_managed = true;
             if (camera_ubo)
                 camera_info = camera_ubo->Data();
         }

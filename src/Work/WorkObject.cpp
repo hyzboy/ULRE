@@ -113,5 +113,5 @@ namespace hgl
             return;
     }
 
-    // Resource helpers removed. Use RenderContext/RenderAPI directly.
+    // Resource helpers removed. Use RenderContext/GraphicsContext directly.
 }//namespcae hgl
