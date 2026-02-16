@@ -64,22 +64,21 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
-    // 1. Disable graphics context before cleanup
-    if(module_manager)
-        module_manager->SetGraphicsContext(nullptr);
-
-    // 2. Shutdown ECS context FIRST so systems can clean up their buffers
+    // 1. Shutdown ECS context FIRST so systems can clean up their buffers
     // while BufferManager is still alive
     if(default_ecs_context)
-    {
         default_ecs_context->Shutdown();
+
+    // 2. Clear modules (GraphModuleManager destructor automatically calls Release() on all modules)
+    // This ensures all GPU resources in each module are cleaned up before module deletion
+    SAFE_CLEAR(module_manager)
+
+    // 3. Destroy ECS context after modules are cleaned up
+    if(default_ecs_context)
+    {
         delete default_ecs_context;
         default_ecs_context=nullptr;
     }
-
-    // 3. Clear modules (GraphModuleManager destructor automatically calls Release() on all modules)
-    // This ensures all GPU resources in each module are cleaned up before module deletion
-    SAFE_CLEAR(module_manager)
 
     // 4. Release render context
     render_context.reset();
