@@ -104,6 +104,8 @@ namespace hgl
             CameraSystem(ECSContext* ctx = nullptr);
             ~CameraSystem() override;
 
+            void Shutdown() override;
+
             void Update(float deltaTime) override;
 
             CameraInputMapping& GetInputMapping() { return input_mapping; }

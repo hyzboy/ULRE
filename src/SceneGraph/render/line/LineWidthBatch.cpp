@@ -49,7 +49,7 @@ bool LineWidthBatch::RebuildMesh()
 
     AnsiString name = "Line3D(Width:" + AnsiString::numberOf(line_width) + ")";
 
-    geometry = CreateGeometry(device,mtl_inst->GetVIL(),name,max_count * 2);
+    geometry = CreateGeometry(device,mtl_inst->GetVIL(),name,max_count * 2, 0, IndexType::AUTO, nullptr);
 
     if(!geometry)
         return(false);

@@ -9,11 +9,12 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::ecs
 {
-    ECSMaterialInstanceAssignmentBuffer::ECSMaterialInstanceAssignmentBuffer(graph::VulkanDevice* dev, graph::Material* mtl)
-        : device(dev)
+    ECSMaterialInstanceAssignmentBuffer::ECSMaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl)
+        : buffer_manager(bm)
         , material(mtl)
         , material_instance_data_bytes(0)
         , material_instance_buffer(nullptr)
@@ -52,8 +53,20 @@ namespace hgl::ecs
 
     void ECSMaterialInstanceAssignmentBuffer::Clear()
     {
-        SAFE_CLEAR(material_instance_buffer);
-        SAFE_CLEAR(material_instance_vab);
+        if (buffer_manager)
+        {
+            if (material_instance_buffer)
+                buffer_manager->Release(material_instance_buffer);
+            if (material_instance_vab)
+                buffer_manager->Release(material_instance_vab);
+            material_instance_buffer = nullptr;
+            material_instance_vab = nullptr;
+        }
+        else
+        {
+            SAFE_CLEAR(material_instance_buffer);
+            SAFE_CLEAR(material_instance_vab);
+        }
 
         mi_set.Clear();
         node_count = 0;
@@ -81,28 +94,32 @@ namespace hgl::ecs
         else if (item_count > mi_set.GetAllocCount())
         {
             mi_set.Reserve(power_to_2(item_count));
-            SAFE_CLEAR(material_instance_buffer);
+            if (buffer_manager)
+            {
+                buffer_manager->Release(material_instance_buffer);
+                material_instance_buffer = nullptr;
+            }
+            else
+            {
+                SAFE_CLEAR(material_instance_buffer);
+            }
         }
 
         // 创建或重用 Material Instance UBO
-        if (!material_instance_buffer)
+        if (!material_instance_buffer && buffer_manager)
         {
             const size_t buffer_size = material_instance_data_bytes * mi_set.GetAllocCount();
 
 #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
-            material_instance_buffer = device->CreateSSBO("ECS:MaterialInstanceData",
-                                                          buffer_size,
-                                                          nullptr,
-                                                          graph::BufferAllocPolicy::Auto,
-                                                          graph::SharingMode::Exclusive,
-                                                          graph::BufferUpdateClass::Deferred);
+            material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceData",
+                                                                  buffer_size,
+                                                                  nullptr,
+                                                                  graph::SharingMode::Exclusive);
 #else
-            material_instance_buffer = device->CreateUBO("ECS:MaterialInstanceData",
-                                                         buffer_size,
-                                                         nullptr,
-                                                         graph::BufferAllocPolicy::Auto,
-                                                         graph::SharingMode::Exclusive,
-                                                         graph::BufferUpdateClass::Deferred);
+            material_instance_buffer = buffer_manager->CreateUBO("ECS:MaterialInstanceData",
+                                                                 buffer_size,
+                                                                 nullptr,
+                                                                 graph::SharingMode::Exclusive);
 #endif
         }
 
@@ -212,22 +229,34 @@ namespace hgl::ecs
             else if (node_count < item_count)
             {
                 node_count = power_to_2(item_count);
-                SAFE_CLEAR(material_instance_vab);
+                if (buffer_manager)
+                {
+                    buffer_manager->Release(material_instance_vab);
+                    material_instance_vab = nullptr;
+                }
+                else
+                {
+                    SAFE_CLEAR(material_instance_vab);
+                }
             }
 
             if (!material_instance_vab)
             {
-                material_instance_vab = device->CreateVAB(VK_FORMAT_R16_UINT, node_count);
-                material_instance_vab_buffer = material_instance_vab->GetBuffer();
-
-            #ifdef _DEBUG
-                graph::DebugUtils* du = device->GetDebugUtils();
-                if (du)
+                if (buffer_manager)
                 {
-                    du->SetBuffer(material_instance_vab->GetBuffer(), "ECS:VAB:Buffer:MaterialInstanceID");
-                    du->SetDeviceMemory(material_instance_vab->GetVkMemory(), "ECS:VAB:Memory:MaterialInstanceID");
+                    material_instance_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, node_count);
+                    material_instance_vab_buffer = material_instance_vab ? material_instance_vab->GetBuffer() : nullptr;
+
+                #ifdef _DEBUG
+                    auto device = buffer_manager->GetDevice();
+                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
+                    if (du && material_instance_vab)
+                    {
+                        du->SetBuffer(material_instance_vab->GetBuffer(), "ECS:VAB:Buffer:MaterialInstanceID");
+                        du->SetDeviceMemory(material_instance_vab->GetVkMemory(), "ECS:VAB:Memory:MaterialInstanceID");
+                    }
+                #endif//_DEBUG
                 }
-            #endif//_DEBUG
             }
         }
 

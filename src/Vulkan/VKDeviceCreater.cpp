@@ -128,7 +128,12 @@ namespace
         VkCommandPool cmd_pool;
 
         if(vkCreateCommandPool(device,&cmd_pool_info,nullptr,&cmd_pool)==VK_SUCCESS)
+        {
+            VulkanDevice *owner = VulkanDevice::FromDevice(device);
+            if (owner)
+                owner->TrackObject(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)(uintptr_t)cmd_pool, "CommandPool");
             return cmd_pool;
+        }
 
         return(VK_NULL_HANDLE);
     }

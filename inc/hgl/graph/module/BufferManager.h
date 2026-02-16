@@ -19,6 +19,8 @@ private:
 
     AutoIdObjectManager<BufferID, DeviceBuffer> rm_buffers;                 ///<缓冲区合集
 
+    // TODO: Split into specialized sub-managers (UBO/SSBO/VBO/IBO) while keeping BufferManager as the single entry point.
+
     void AddBuffer(const AnsiString &buf_name, DeviceBuffer *buf, const std::source_location &loc);
 
 private:
@@ -32,7 +34,7 @@ public: //Add/Get/Release
 
     BufferID        Add(DeviceBuffer *buf) { return rm_buffers.Add(buf); }
     DeviceBuffer *  Get(const BufferID &id) { return rm_buffers.Get(id); }
-    void            Release(DeviceBuffer *buf) { rm_buffers.Release(buf); }
+    void            Release(DeviceBuffer *buf) { rm_buffers.Release(buf, true); }
 
     /**
      * @brief 清理所有残留的缓冲区，防止销毁设备时出现资源泄漏
@@ -66,8 +68,9 @@ public:
 
 public: // VAB/VAO
 
-    VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, SharingMode sm = SharingMode::Exclusive);
-    VAB *CreateVAB(VkFormat format, uint32_t count, SharingMode sm = SharingMode::Exclusive) { return CreateVAB(format, count, nullptr, sm); }
+    VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
+    VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateVAB(format, count, data, BufferAllocPolicy::Auto, sm, loc); }
+    VAB *CreateVAB(VkFormat format, uint32_t count, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateVAB(format, count, nullptr, BufferAllocPolicy::Auto, sm, loc); }
 
 public: // Buffer creation methods
 
@@ -82,15 +85,16 @@ public: // Buffer creation methods
 
 public: // Index Buffer creation
 
-    IndexBuffer *CreateIBO(IndexType index_type, uint32_t count, const void *data, SharingMode sm = SharingMode::Exclusive);
-    IndexBuffer *CreateIBO8(uint32_t count, const uint8 *data, SharingMode sm = SharingMode::Exclusive) { return CreateIBO(IndexType::U8, count, (void *)data, sm); }
-    IndexBuffer *CreateIBO16(uint32_t count, const uint16 *data, SharingMode sm = SharingMode::Exclusive) { return CreateIBO(IndexType::U16, count, (void *)data, sm); }
-    IndexBuffer *CreateIBO32(uint32_t count, const uint32 *data, SharingMode sm = SharingMode::Exclusive) { return CreateIBO(IndexType::U32, count, (void *)data, sm); }
+    IndexBuffer *CreateIBO(IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
+    IndexBuffer *CreateIBO(IndexType index_type, uint32_t count, const void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(index_type, count, data, BufferAllocPolicy::Auto, sm, loc); }
+    IndexBuffer *CreateIBO8(uint32_t count, const uint8 *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(IndexType::U8, count, (void *)data, sm, loc); }
+    IndexBuffer *CreateIBO16(uint32_t count, const uint16 *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(IndexType::U16, count, (void *)data, sm, loc); }
+    IndexBuffer *CreateIBO32(uint32_t count, const uint32 *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(IndexType::U32, count, (void *)data, sm, loc); }
 
-    IndexBuffer *CreateIBO(IndexType index_type, uint32_t count, SharingMode sm = SharingMode::Exclusive) { return CreateIBO(index_type, count, nullptr, sm); }
-    IndexBuffer *CreateIBO8(uint32_t count, SharingMode sm = SharingMode::Exclusive) { return CreateIBO(IndexType::U8, count, nullptr, sm); }
-    IndexBuffer *CreateIBO16(uint32_t count, SharingMode sm = SharingMode::Exclusive) { return CreateIBO(IndexType::U16, count, nullptr, sm); }
-    IndexBuffer *CreateIBO32(uint32_t count, SharingMode sm = SharingMode::Exclusive) { return CreateIBO(IndexType::U32, count, nullptr, sm); }
+    IndexBuffer *CreateIBO(IndexType index_type, uint32_t count, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(index_type, count, nullptr, sm, loc); }
+    IndexBuffer *CreateIBO8(uint32_t count, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(IndexType::U8, count, nullptr, sm, loc); }
+    IndexBuffer *CreateIBO16(uint32_t count, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(IndexType::U16, count, nullptr, sm, loc); }
+    IndexBuffer *CreateIBO32(uint32_t count, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(IndexType::U32, count, nullptr, sm, loc); }
 
 };//class BufferManager
 

@@ -3,6 +3,7 @@
 #include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/graph/module/BufferManager.h>
 
 DEFINE_LOGGER_MODULE(VertexDataManager)
 
@@ -10,7 +11,27 @@ namespace hgl::graph
 {
     VertexDataManager::VertexDataManager(VulkanDevice *dev,const VIL *_vil)
     {
+        buffer_manager=nullptr;
         device=dev;
+
+        vil=_vil;
+        vi_count=_vil->GetVertexAttribCount();
+        vif_list=_vil->GetVIFList();     //来自于Material，不会被释放，所以指针有效
+
+        vab_max_size=0;
+        vab_cur_size=0;
+        vab=zero_new<VAB *>(vi_count);
+
+        ibo_cur_size=0;
+        ibo=nullptr;
+
+        LogVerbose(OS_TEXT("VertexDataManager constructed: vi_count=") + OSString::numberOf(vi_count) + OS_TEXT(", vif_list=") + OSString::numberOf((uintptr_t)vif_list));
+    }
+
+    VertexDataManager::VertexDataManager(BufferManager *bm,const VIL *_vil)
+    {
+        buffer_manager=bm;
+        device=bm?bm->GetDevice():nullptr;
 
         vil=_vil;
         vi_count=_vil->GetVertexAttribCount();
@@ -30,8 +51,27 @@ namespace hgl::graph
     {
         LogVerbose(OS_TEXT("VertexDataManager destroying: vab_cur_size=") + OSString::numberOf(vab_cur_size) + OS_TEXT(", ibo_cur_size=") + OSString::numberOf(ibo_cur_size));
 
-        SAFE_CLEAR_OBJECT_ARRAY_OBJECT(vab,vi_count);
-        SAFE_CLEAR(ibo);
+        if (buffer_manager)
+        {
+            for (uint i=0;i<vi_count;i++)
+            {
+                if (vab[i])
+                    buffer_manager->Release(vab[i]);
+            }
+            if (ibo)
+                buffer_manager->Release(ibo);
+
+            if (vab)
+            {
+                delete[] vab;
+                vab = nullptr;
+            }
+        }
+        else
+        {
+            SAFE_CLEAR_OBJECT_ARRAY_OBJECT(vab,vi_count);
+            SAFE_CLEAR(ibo);
+        }
 
         LogVerbose(OS_TEXT("VertexDataManager destroyed."));
     }
@@ -68,7 +108,10 @@ namespace hgl::graph
         {
             LogVerbose(OS_TEXT("Creating VAB[") + OSString::numberOf(i) + OS_TEXT("] format=") + OSString::numberOf((int)vif_list[i].format) + OS_TEXT(", size=") + OSString::numberOf(vab_max_size));
 
-            vab[i]=device->CreateVAB(vif_list[i].format,vab_max_size);
+            if (buffer_manager)
+                vab[i]=buffer_manager->CreateVAB(vif_list[i].format,vab_max_size);
+            else
+                vab[i]=device->CreateVAB(vif_list[i].format,vab_max_size);
             if(!vab[i])
             {
                 LogError(OS_TEXT("CreateVAB failed for index=") + OSString::numberOf(i));
@@ -76,7 +119,13 @@ namespace hgl::graph
                 // cleanup any created VABs
                 for(uint j=0;j<i;j++)
                 {
-                    if(vab[j]){ SAFE_CLEAR(vab[j]); }
+                    if (vab[j])
+                    {
+                        if (buffer_manager)
+                            buffer_manager->Release(vab[j]);
+                        else
+                            SAFE_CLEAR(vab[j]);
+                    }
                 }
 
                 return(false);
@@ -90,14 +139,22 @@ namespace hgl::graph
 
         if(ibo_size>0)
         {
-            ibo=device->CreateIBO(index_type,ibo_size);
+            if (buffer_manager)
+                ibo=buffer_manager->CreateIBO(index_type,ibo_size,nullptr);
+            else
+                ibo=device->CreateIBO(index_type,ibo_size);
             if(!ibo)
             {
                 LogError(OS_TEXT("CreateIBO failed: size=") + OSString::numberOf(ibo_size));
 
                 // cleanup VABs
                 for(uint i=0;i<vi_count;i++)
-                    SAFE_CLEAR(vab[i]);
+                {
+                    if (buffer_manager)
+                        buffer_manager->Release(vab[i]);
+                    else
+                        SAFE_CLEAR(vab[i]);
+                }
 
                 return(false);
             }

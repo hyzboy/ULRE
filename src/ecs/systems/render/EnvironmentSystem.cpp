@@ -69,7 +69,8 @@ namespace hgl::ecs
         if (!device)
             return;
 
-        sky_ubo = device->CreateUBO<UBOSkyInfo>(&graph::mtl::SBS_SkyInfo,
+        sky_ubo = device->CreateUBO<UBOSkyInfo>(graph::ObjectNameBuilder("SkyUBO"),
+                                                &graph::mtl::SBS_SkyInfo,
                                                 graph::BufferUpdateClass::Deferred);
         if (sky_ubo)
         {

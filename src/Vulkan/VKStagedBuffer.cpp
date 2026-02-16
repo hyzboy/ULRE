@@ -1,4 +1,5 @@
 ﻿#include<hgl/vk/VKStagedBuffer.h>
+#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/log/Log.h>
@@ -26,6 +27,15 @@ StagedBuffer::StagedBuffer(VkDevice dev, BufferUpdateQueue *queue,
 
 StagedBuffer::~StagedBuffer()
 {
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+    {
+        if (staging_buffer)
+            owner->UntrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer);
+        if (staging_memory)
+            owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory));
+    }
+
     if (staging_buffer)
         vkDestroyBuffer(device, staging_buffer, nullptr);
 

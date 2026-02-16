@@ -94,6 +94,7 @@ namespace
             return(false);
 
         VulkanDevice *device=graphics_context->GetDevice();
+        auto *buffer_manager = graphics_context->GetBufferManager();
         VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
         RenderPass *render_pass=graphics_context->GetDefaultRenderPass();
 
@@ -129,7 +130,7 @@ namespace
             return(false);
 
         {
-            gizmo_line.vdm=new VertexDataManager(device,gizmo_line.mtl->GetDefaultVIL());
+            gizmo_line.vdm=new VertexDataManager(buffer_manager,gizmo_line.mtl->GetDefaultVIL());
 
             if(!gizmo_line.vdm)
                 return(false);
@@ -152,6 +153,7 @@ namespace
             return(false);
 
         VulkanDevice *device=graphics_context->GetDevice();
+        auto *buffer_manager = graphics_context->GetBufferManager();
         VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
         RenderPass *render_pass=graphics_context->GetDefaultRenderPass();
 
@@ -188,7 +190,7 @@ namespace
             return(false);
 
         {
-            gizmo_triangle.vdm=new VertexDataManager(device,gizmo_triangle.mtl->GetDefaultVIL());
+            gizmo_triangle.vdm=new VertexDataManager(buffer_manager,gizmo_triangle.mtl->GetDefaultVIL());
 
             if(!gizmo_triangle.vdm)
                 return(false);

@@ -154,7 +154,8 @@ namespace hgl::graph
             return nullptr;
         }
 
-        UBOLineColorPalette *lcp = device->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);
+        UBOLineColorPalette *lcp = device->CreateUBO<UBOLineColorPalette>(ObjectNameBuilder("LineColorPaletteUBO"),
+                                         &mtl::SBS_ColorPattle);
         if(!lcp)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
@@ -272,7 +273,8 @@ namespace hgl::graph
             return nullptr;
         }
 
-        UBOLineColorPalette *lcp = device->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);
+        UBOLineColorPalette *lcp = device->CreateUBO<UBOLineColorPalette>(ObjectNameBuilder("LineColorPaletteUBO"),
+                                         &mtl::SBS_ColorPattle);
         if(!lcp)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
@@ -393,6 +395,7 @@ namespace hgl::graph
      */
     LineRenderManager::~LineRenderManager()
     {
+        delete ubo_color;
         delete shared_backup;
         shared_backup = nullptr;
     }

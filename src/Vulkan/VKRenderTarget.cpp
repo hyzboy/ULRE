@@ -28,7 +28,9 @@ ViewportInfo *IRenderTarget::GetViewportInfo()
         VulkanDevice *device = GetDevice();
         if(device)
         {
-            ubo_vp_info = device->CreateUBO<UBOViewportInfo>(&mtl::SBS_ViewportInfo, BufferUpdateClass::CriticalPerFrame);
+            ubo_vp_info = device->CreateUBO<UBOViewportInfo>(ObjectNameBuilder("ViewportInfoUBO"),
+                                                           &mtl::SBS_ViewportInfo,
+                                                           BufferUpdateClass::CriticalPerFrame);
             if(ubo_vp_info)
             {
                 desc_binding.AddUBO(ubo_vp_info);
@@ -48,7 +50,9 @@ IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext):de
     VulkanDevice *device=GetDevice();
     if(device)
     {
-        ubo_vp_info=device->CreateUBO<UBOViewportInfo>(&mtl::SBS_ViewportInfo,BufferUpdateClass::CriticalPerFrame);
+        ubo_vp_info=device->CreateUBO<UBOViewportInfo>(ObjectNameBuilder("ViewportInfoUBO"),
+                                   &mtl::SBS_ViewportInfo,
+                                   BufferUpdateClass::CriticalPerFrame);
         desc_binding.AddUBO(ubo_vp_info);
         OnResize(ext);
     }

@@ -5,6 +5,8 @@
 #include<hgl/vk/VKMemory.h>
 
 VK_NAMESPACE_BEGIN
+
+class BufferManager;
 /*
     1.截止2024.4.27，根据vulkan.gpuinfo.org统计，只有9%的设备maxVertexInputAttributes为16，不存在低于16的设备。
          9.0%的设备为28 - 31
@@ -72,5 +74,7 @@ public:
 
 GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc);
 GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
+GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc);
+GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
 GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc);
 VK_NAMESPACE_END

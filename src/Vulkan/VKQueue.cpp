@@ -25,9 +25,10 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 
 DeviceQueue::~DeviceQueue()
 {
-    VulkanDevice *owner = VulkanDevice::FromDevice(device);
-    if (owner)
-        owner->UntrackObject(VK_OBJECT_TYPE_QUEUE, (uint64_t)(uintptr_t)queue);
+    // Note: VkQueue is retrieved via vkGetDeviceQueue and is implicitly destroyed 
+    // when VkDevice is destroyed. Multiple DeviceQueue instances may share the same
+    // VkQueue handle, so we should NOT untrack it here.
+    // The VulkanDevice will handle cleanup of the actual queue.
 
     SAFE_CLEAR_OBJECT_ARRAY_OBJECT(fence_list,fence_count)
 }

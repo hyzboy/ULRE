@@ -7,11 +7,16 @@
 
 VK_NAMESPACE_BEGIN
 
+class BufferManager;
+
 class VertexDataManager
 {
     OBJECT_LOGGER
 
     VulkanDevice *device;
+    BufferManager *buffer_manager;
+
+    // TODO: Migrate VAB/IBO allocations to BufferManager while keeping pooled behavior.
 
 protected:
 
@@ -34,9 +39,11 @@ protected:
 public:
 
     VertexDataManager(VulkanDevice *dev,const VIL *_vil);
+    VertexDataManager(BufferManager *bm,const VIL *_vil);
     ~VertexDataManager();
 
           VulkanDevice *GetDevice       ()const{return device;}                                     ///<取得GPU设备
+          BufferManager *GetBufferManager()const{return buffer_manager;}                             ///<取得BufferManager
 
     const VIL *         GetVIL          ()const{return vil;}                                         ///<取得顶点输入格式列表
 

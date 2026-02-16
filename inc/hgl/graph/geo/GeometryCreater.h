@@ -8,6 +8,7 @@
 #include<hgl/vk/VKMemory.h>
 
 VK_NAMESPACE_BEGIN
+class BufferManager;
 /**
  * 可绘制原始图形创建器
  */
@@ -16,6 +17,7 @@ class GeometryCreater
 protected:
 
     VulkanDevice *      device;
+    BufferManager *     buffer_manager;
     VertexDataManager * vdm;
 
     const VIL *         vil;
@@ -43,7 +45,7 @@ protected:
 
 public:
 
-    GeometryCreater(VulkanDevice *,const VIL *);
+    GeometryCreater(VulkanDevice *,const VIL *,BufferManager *bm=nullptr);
     GeometryCreater(VertexDataManager *);
     virtual ~GeometryCreater();
 
@@ -129,5 +131,6 @@ Geometry *CreateGeometry(         VulkanDevice *  device,
                             const   AnsiString &    name,
                             const   uint32_t        vertex_count,
                             const   uint32_t        index_count = 0,
-                                    IndexType       it          = IndexType::AUTO);
+                                    IndexType       it          = IndexType::AUTO,
+                                    BufferManager * bm          = nullptr);
 VK_NAMESPACE_END

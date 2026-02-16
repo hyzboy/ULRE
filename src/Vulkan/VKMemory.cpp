@@ -4,7 +4,7 @@
 #include<hgl/log/Log.h>
 #include<cstdint>
 VK_NAMESPACE_BEGIN
-DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
+DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties, const std::source_location &loc)
 {
     const int index=attr->physical_device->GetMemoryType(req.memoryTypeBits,properties);
 
@@ -18,7 +18,9 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_
     if(vkAllocateMemory(attr->device,&alloc_info,nullptr,&memory)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new DeviceMemory(attr->device,memory,req,index,properties,attr->physical_device->GetLimits().nonCoherentAtomSize));
+    DeviceMemory *result = new DeviceMemory(attr->device,memory,req,index,properties,attr->physical_device->GetLimits().nonCoherentAtomSize);
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)memory, "DeviceMemory", loc);
+    return result;
 }
 
 DeviceMemory::DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p,const VkDeviceSize cas)
@@ -40,6 +42,10 @@ DeviceMemory::DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirem
 
 DeviceMemory::~DeviceMemory()
 {
+    std::cout << "[DeviceMemory::~DeviceMemory] this=" << this 
+              << " VkDeviceMemory=0x" << std::hex << (uint64_t)(uintptr_t)memory << std::dec
+              << " size=" << req.size << std::endl;
+    
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
         owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)memory);

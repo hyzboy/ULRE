@@ -13,6 +13,11 @@
 #include<hgl/ecs/support/TransformDataStorage.h>
 #include<vector>
 
+namespace hgl::graph
+{
+    class BufferManager;
+}
+
 namespace hgl::ecs
 {
     /**
@@ -36,7 +41,7 @@ namespace hgl::ecs
 
     private:
         uint32_t MaxTransformCount;             ///<单个SSBO最大支持的变换数量
-        graph::VulkanDevice* device;            ///<Vulkan设备
+        graph::BufferManager* buffer_manager;   ///<BufferManager用于创建缓冲区
 
     private:    // LocalToWorld矩阵数据
         uint32_t transform_buffer_max_count;    ///<LocalToWorld矩阵最大数量
@@ -73,7 +78,7 @@ namespace hgl::ecs
         void Clear();
 
     public:
-        ECSTransformAssignmentBuffer(graph::VulkanDevice* dev, const Mode m = Mode::MovableOnly);
+        ECSTransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly);
         ~ECSTransformAssignmentBuffer() { Clear(); }
 
         /**

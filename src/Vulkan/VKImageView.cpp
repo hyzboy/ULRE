@@ -59,6 +59,10 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
         return(nullptr);
     }
 
-    return(new ImageView(device,img_view,iv_createinfo,ext));
+    ImageView *result = new ImageView(device,img_view,iv_createinfo,ext);
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+        owner->TrackObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)(uintptr_t)img_view, "ImageView");
+    return result;
 }
 VK_NAMESPACE_END

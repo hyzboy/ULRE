@@ -7,6 +7,9 @@
 VK_NAMESPACE_BEGIN
 Texture::~Texture()
 {
+    if (manager)
+        manager->Release(this);
+
     if(!data)return;
 
     if(data->image)

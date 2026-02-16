@@ -8,6 +8,8 @@
 #include<hgl/graph/data/ImageRegion.h>
 #include<hgl/vk/VKTexture.h>
 
+#include<vector>
+
 VK_NAMESPACE_BEGIN
 
 GRAPH_MODULE_CLASS(TextureManager)
@@ -120,16 +122,27 @@ public:
 
     void Release() override
     {
-        // 清理所有纹理集合
+        // Delete using a stable snapshot so destructor-side unregister is safe.
         if (texture_set.GetCount() > 0)
+        {
+            std::vector<Texture *> to_delete;
+            to_delete.reserve(static_cast<size_t>(texture_set.GetCount()));
+
+            for (auto *tex : texture_set)
+                to_delete.push_back(tex);
+
+            for (auto *tex : to_delete)
+                delete tex;
+
             texture_set.Clear();
-        
+        }
+
         if (image_set.GetCount() > 0)
             image_set.Clear();
-        
+
         if (texture_by_id.GetCount() > 0)
             texture_by_id.Clear();
-        
+
         if (texture_by_filename.GetCount() > 0)
             texture_by_filename.Clear();
     }

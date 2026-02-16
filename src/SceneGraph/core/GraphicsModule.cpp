@@ -153,7 +153,7 @@ namespace hgl::graph
         if(!vil||vertices<=0||indices<=0||!device||!device->IsSupport(type))
             return nullptr;
 
-        auto *vdm=new VertexDataManager(device,vil);
+        auto *vdm=new VertexDataManager(buffer_manager,vil);
         if(!vdm)
             return nullptr;
 
@@ -171,7 +171,7 @@ namespace hgl::graph
         if(!mat||!device)
             return nullptr;
 
-        return new GeometryCreater(device,mat->GetDefaultVIL());
+        return new GeometryCreater(device,mat->GetDefaultVIL(),buffer_manager);
     }
 
     SharedPtr<GeometryCreater> GraphicsModule::GetGeometryCreater(MaterialInstance *mi)
@@ -179,7 +179,7 @@ namespace hgl::graph
         if(!mi||!device)
             return nullptr;
 
-        return new GeometryCreater(device,mi->GetVIL());
+        return new GeometryCreater(device,mi->GetVIL(),buffer_manager);
     }
 
     Geometry *GraphicsModule::CreateGeometry(const AnsiString &name,uint32_t vertex_count,const VIL *vil,
@@ -188,7 +188,7 @@ namespace hgl::graph
         if(!geometry_manager||!device||!vil)
             return nullptr;
 
-        auto *pc=new GeometryCreater(device,vil);
+        auto *pc=new GeometryCreater(device,vil,buffer_manager);
         pc->Init(name,vertex_count);
 
         for(const auto &vad:vad_list)

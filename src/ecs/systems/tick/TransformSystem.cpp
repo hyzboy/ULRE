@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
+#include<hgl/graph/render/RenderContext.h>
 
 namespace hgl::ecs
 {
@@ -15,10 +16,13 @@ namespace hgl::ecs
 
     TransformSystem::~TransformSystem()
     {
-        // Don't delete transform_buffer - it's managed by BufferManager!
-        // Just clear the pointer and let BufferManager clean up during module destruction
-        transform_buffer = nullptr;
+        std::cout << "[TransformSystem] Destructor called, clearing transform_buffer..." << std::endl;
+        // Clean up transform_buffer when system is destroyed
+        // This is created by this system in EnsureTransformBuffer(), so this system owns it
+        SAFE_CLEAR(transform_buffer);
+        std::cout << "[TransformSystem] Destructor complete" << std::endl;
     }
+
 
     void TransformSystem::Update(float deltaTime)
     {
@@ -137,11 +141,22 @@ namespace hgl::ecs
 
     void TransformSystem::EnsureTransformBuffer()
     {
-        if (!transform_buffer && device)
-        {
-            transform_buffer = new ECSTransformAssignmentBuffer(device, ECSTransformAssignmentBuffer::Mode::MovableOnly);
-            static_dirty = true;
-        }
+        if (transform_buffer)
+            return;
+
+        if (!world)
+            return;
+
+        auto render_ctx = world->GetRenderContext();
+        if (!render_ctx)
+            return;
+
+        auto buffer_manager = render_ctx->GetBufferManager();
+        if (!buffer_manager)
+            return;
+
+        transform_buffer = new ECSTransformAssignmentBuffer(buffer_manager, ECSTransformAssignmentBuffer::Mode::MovableOnly);
+        static_dirty = true;
     }
 
     uint32_t TransformSystem::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const

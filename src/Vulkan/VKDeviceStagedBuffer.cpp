@@ -6,7 +6,7 @@
 
 VK_NAMESPACE_BEGIN
 
-DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage)
+DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const std::source_location &loc)
 {
     uint32_t properties = 0;
 
@@ -32,7 +32,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         if (index >= 0)
         {
             // Found ideal memory type, use existing CreateMemory
-            return CreateMemory(req, properties);
+            return CreateMemory(req, properties, loc);
         }
 
         // Fallback to just HOST_VISIBLE + HOST_COHERENT for discrete GPU
@@ -57,7 +57,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
             if (index >= 0)
             {
                 // ReBAR is available, use it
-                return CreateMemory(req, properties);
+                return CreateMemory(req, properties, loc);
             }
         }
 
@@ -71,10 +71,10 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         break;
     }
 
-    return CreateMemory(req, properties);
+    return CreateMemory(req, properties, loc);
 }
 
-StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data, SharingMode sharing_mode)
+StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data, SharingMode sharing_mode, const std::source_location &loc)
 {
     if (size <= 0)
         return nullptr;
@@ -101,6 +101,9 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
         vkDestroyBuffer(attr->device, staging_buffer, nullptr);
         return nullptr;
     }
+
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer, ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::Buffer), loc);
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory), ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::Memory), loc);
 
     // Create device buffer (GPU optimal)
     BufferCreateInfo device_info;

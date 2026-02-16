@@ -3,6 +3,7 @@
 #include<hgl/vk/VKImageView.h>
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKSurface.h>
+#include<hgl/vk/VKDevice.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -32,7 +33,12 @@ VulkanDevAttr::~VulkanDevAttr()
         vkDestroyDescriptorPool(device,desc_pool,nullptr);
 
     if(cmd_pool)
+    {
+        VulkanDevice *owner = VulkanDevice::FromDevice(device);
+        if (owner)
+            owner->UntrackObject(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)(uintptr_t)cmd_pool);
         vkDestroyCommandPool(device,cmd_pool,nullptr);
+    }
 
     if(device)
         vkDestroyDevice(device,nullptr);
