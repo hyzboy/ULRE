@@ -120,12 +120,16 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
-        swapchain->sc_image[i].color=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]));
+        num_string=AnsiString("SwapchainColor[")+AnsiString::numberOf(i)+"]";
+        U8String color_name = ToU8String(num_string);
+        swapchain->sc_image[i].color=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i],color_name));
 
         if(!swapchain->sc_image[i].color)
             return(false);
 
-        swapchain->sc_image[i].depth=tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent));
+        num_string=AnsiString("SwapchainDepth[")+AnsiString::numberOf(i)+"]";
+        U8String depth_name = ToU8String(num_string);
+        swapchain->sc_image[i].depth=tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent,depth_name));
 
         if(!swapchain->sc_image[i].depth)
             return(false);

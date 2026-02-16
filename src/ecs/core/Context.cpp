@@ -124,14 +124,15 @@ namespace hgl
 
         void ECSContext::Shutdown()
         {
-            if (!active)
-                return;
-
-            // Release render-frame cache resources while managers are still alive.
+            // Always release render-frame cache resources to drop GPU allocations
+            // even if the context never reached active state.
             render_frame_cache.renderItems.clear();
             render_frame_cache.materialBatches.clear();
             render_frame_cache.cameraInfo = nullptr;
             render_frame_cache.renderableCount = 0;
+
+            if (!active)
+                return;
 
             // Destroy all entities
             if (entity_manager)

@@ -1,13 +1,13 @@
 ﻿#include<hgl/vk/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-DeviceMemory *VulkanDevice::CreateMemory(VkImage image,const uint32_t flag, const std::source_location &loc)
+DeviceMemory *VulkanDevice::CreateMemory(VkImage image,const uint32_t flag, const ObjectNameBuilder &name, const std::source_location &loc)
 {
-    VkMemoryRequirements memReqs{};
+    VkMemoryRequirements memReqs;
 
     vkGetImageMemoryRequirements(attr->device,image,&memReqs);
 
-    DeviceMemory *mem=CreateMemory(memReqs,flag,loc);
+    DeviceMemory *mem=CreateMemory(memReqs,flag,name,loc);
 
     if(!mem)return(nullptr);
 

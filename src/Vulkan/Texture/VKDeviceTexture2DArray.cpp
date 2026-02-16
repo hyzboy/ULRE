@@ -44,7 +44,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
             return(nullptr);
         }
 
-        tci->memory=GetDevice()->CreateMemory(tci->image);
+        tci->memory=GetDevice()->CreateMemory(tci->image, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2DArrayMemory" : (const char*)tci->name.c_str()));
     }
 
     if(!tci->image_view)

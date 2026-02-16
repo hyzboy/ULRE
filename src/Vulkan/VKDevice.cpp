@@ -13,6 +13,7 @@
 #include <utility>
 #include <cstdint>
 #include <unordered_map>
+#include <string>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -360,7 +361,7 @@ TextureCmdBuffer *VulkanDevice::CreateTextureCommandBuffer(const ObjectNameBuild
  * 创建栅栏
  * @param create_signaled 是否创建初始信号
  */
-Fence *VulkanDevice::CreateFence(bool create_signaled)
+Fence *VulkanDevice::CreateFence(const ObjectNameBuilder &name, bool create_signaled, const std::source_location &loc)
 {
     FenceCreateInfo fenceInfo(create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0);
 
@@ -369,8 +370,13 @@ Fence *VulkanDevice::CreateFence(bool create_signaled)
     if(vkCreateFence(attr->device, &fenceInfo, nullptr, &fence)!=VK_SUCCESS)
         return(nullptr);
 
-    TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, "Fence");
+    TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, name.Append(ObjectTypeTag::Fence), loc);
     return(new Fence(attr->device,fence));
+}
+
+Fence *VulkanDevice::CreateFence(bool create_signaled, const std::source_location &loc)
+{
+    return CreateFence(ObjectNameBuilder("Fence"), create_signaled, loc);
 }
 
 Semaphore *VulkanDevice::CreateGPUSemaphore(const ObjectNameBuilder &name, const std::source_location &loc)
@@ -394,8 +400,15 @@ DeviceQueue *VulkanDevice::CreateQueue(const ObjectNameBuilder &name, const uint
 
     Fence **fence_list=new Fence *[fence_count];
 
+    const std::string base_name = name.ToString().c_str();
     for(uint32_t i=0;i<fence_count;i++)
-        fence_list[i]=CreateFence(create_signaled);
+    {
+        std::string fence_name = base_name;
+        fence_name += ":Fence[";
+        fence_name += std::to_string(i);
+        fence_name += "]";
+        fence_list[i] = CreateFence(ObjectNameBuilder(fence_name.c_str()), create_signaled, loc);
+    }
 
     DeviceQueue *result = new DeviceQueue(attr->device, attr->graphics_queue, fence_list, fence_count);
     // Note: We don't track VkQueue because it's retrieved via vkGetDeviceQueue and 

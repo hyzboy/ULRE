@@ -67,6 +67,7 @@ namespace hgl
                 return;
 
             delete tf;
+            form_list.DeleteByKey(f);
         }
 
         bool ThemeEngine::Resize(Form *f,const uint32_t w,const uint32_t h,const VkFormat format)

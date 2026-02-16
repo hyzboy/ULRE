@@ -16,15 +16,17 @@ protected:
     T *tex;
 
     bool auto_mipmaps;
+    OSString filename;
 
 public:
 
-    VkTextureLoader(TextureManager *tm,const bool am)
+    VkTextureLoader(TextureManager *tm,const bool am,const OSString &fn=OSString())
     {
         tex_manager=tm;
         buf=nullptr;
         tex=nullptr;
         auto_mipmaps=am;
+        filename=fn;
     }
 
     virtual ~VkTextureLoader()
@@ -64,7 +66,8 @@ public:
 
     T *CreateTexture(const TextureFileHeader &tex_file_header,const VkFormat &tex_format,const uint32 top_mipmap_bytes)
     {
-        TextureCreateInfo *tci=new TextureCreateInfo(tex_format);
+        U8String texture_name = filename.IsEmpty() ? U8String((const u8char*)u8"Texture") : to_u8(filename.c_str(), filename.Length());
+        TextureCreateInfo *tci=new TextureCreateInfo(tex_format, texture_name);
 
         VkExtent3D extent;
 

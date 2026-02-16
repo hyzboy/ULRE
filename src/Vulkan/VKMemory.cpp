@@ -3,9 +3,11 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
 #include<cstdint>
+#include<cassert>
 VK_NAMESPACE_BEGIN
-DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties, const std::source_location &loc)
+DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc)
 {
+    assert(name.base_name[0] != '\0' && "ERROR: CreateMemory called with empty name! Check the call stack to find where.");
     const int index=attr->physical_device->GetMemoryType(req.memoryTypeBits,properties);
 
     if(index<0)
@@ -19,7 +21,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_
         return(nullptr);
 
     DeviceMemory *result = new DeviceMemory(attr->device,memory,req,index,properties,attr->physical_device->GetLimits().nonCoherentAtomSize);
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)memory, "DeviceMemory", loc);
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)memory, name, loc);
     return result;
 }
 

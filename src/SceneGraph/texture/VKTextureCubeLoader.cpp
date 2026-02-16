@@ -19,7 +19,7 @@ TextureCube *CreateTextureCubeFromFile(TextureManager *tm,const OSString &filena
     if(!tm||filename.IsEmpty())
         return(nullptr);
 
-    VkTextureLoader<TextureCube,TextureCubeLoader> loader(tm,auto_mipmaps);
+    VkTextureLoader<TextureCube,TextureCubeLoader> loader(tm,auto_mipmaps,filename);
 
     if(!loader.Load(filename))
         return(nullptr);

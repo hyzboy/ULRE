@@ -14,8 +14,20 @@ namespace hgl
             return(true);
         }
 
+        DefaultThemeEngine::~DefaultThemeEngine()
+        {
+            Clear();
+        }
+
         void DefaultThemeEngine::Clear()
         {
+            for(auto &pair:form_list)
+            {
+                if(pair.second)
+                    delete pair.second;
+            }
+
+            form_list.Clear();
         }
 
         ThemeForm *DefaultThemeEngine::CreateForm(Form *f,RenderTarget *rt,RenderCmdBuffer *rc)

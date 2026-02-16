@@ -48,18 +48,22 @@ RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const Frameb
     Texture2D **tp=color_texture_list;
     ImageView **iv=color_iv_list;
 
+    uint32_t color_index=0;
     for(const VkFormat &fmt:fbi->GetColorFormatList())
     {
-        Texture2D *color_texture=tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt,extent));
+        U8String tex_name = ToU8String(name + ":Color[" + AnsiString::numberOf(color_index) + "]");
+        Texture2D *color_texture=tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt,extent,tex_name));
 
         if(!color_texture)
             return(nullptr);
 
         *tp++=color_texture;
         *iv++=color_texture->GetImageView();
+        color_index++;
     }
 
-    Texture2D *depth_texture=(depth_format!=PF_UNDEFINED)?tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format,extent)):nullptr;
+    U8String depth_name = ToU8String(name + ":Depth");
+    Texture2D *depth_texture=(depth_format!=PF_UNDEFINED)?tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format,extent,depth_name)):nullptr;
 
     Framebuffer *fb=CreateFBO(rp,color_iv_list,color_count,depth_texture?depth_texture->GetImageView():nullptr);
 
@@ -139,17 +143,21 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(IGraphicsContext 
     Texture2D **tp = color_texture_list;
     ImageView **iv = color_iv_list;
 
+    uint32_t color_index = 0;
     for(const VkFormat &fmt : fbi->GetColorFormatList())
     {
-        Texture2D *color_texture = tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt, extent));
+        U8String tex_name = ToU8String(name + ":Color[" + AnsiString::numberOf(color_index) + "]");
+        Texture2D *color_texture = tex_manager->CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt, extent, tex_name));
         if(!color_texture)
             return(nullptr);
 
         *tp++ = color_texture;
         *iv++ = color_texture->GetImageView();
+        color_index++;
     }
 
-    Texture2D *depth_texture = (depth_format != PF_UNDEFINED) ? tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format, extent)) : nullptr;
+    U8String depth_name = ToU8String(name + ":Depth");
+    Texture2D *depth_texture = (depth_format != PF_UNDEFINED) ? tex_manager->CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format, extent, depth_name)) : nullptr;
 
     // Create framebuffer (RenderTargetManager is a friend of Framebuffer, so we can instantiate directly here).
     auto create_vk_framebuffer = [](VkDevice vk_device, RenderPass *render_pass, const VkExtent2D &fb_extent,
