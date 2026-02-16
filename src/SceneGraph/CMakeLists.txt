@@ -13,8 +13,6 @@ source_group("SceneGraph" FILES ${CM_SG_HEADER})
 # ============================================================================
 
 SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/render/RenderFramework.h
-                            ${SG_INCLUDE_PATH}/core/GraphicsModule.h
-                            core/GraphicsModule.cpp
                             render/RenderFramework.cpp)
 
 SOURCE_GROUP("1.Core\\Framework" FILES ${GRAPH_FRAMEWORK_FILES})

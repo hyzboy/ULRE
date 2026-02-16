@@ -4,6 +4,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -38,7 +39,7 @@ class RenderModule;
 class LineRenderManager; // forward
 class RenderContext;     // forward
 
-class RenderFramework:public io::WindowEvent
+class RenderFramework : public io::WindowEvent, public graph::IGraphicsContext
 {
     OSString                app_name;
 
@@ -77,24 +78,24 @@ protected:  //EventDispatcher
 public:
 
             Window *            GetWindow           ()const{return win;}
-            VulkanDevice *      GetDevice           ()const{return device;}
-            VkDevice            GetVkDevice         ()const{return device->GetDevice();}
-    const   VulkanPhyDevice *   GetPhyDevice        ()const{return device->GetPhyDevice();}
-            VulkanDevAttr *     GetDevAttr          ()const{return device->GetDevAttr();}
+            VulkanDevice *      GetDevice           ()const override{return device;}
+            VkDevice            GetVkDevice         ()const override{return device->GetDevice();}
+            VulkanPhyDevice *   GetPhyDevice        ()const override{return const_cast<VulkanPhyDevice*>(device->GetPhyDevice());}
+            VulkanDevAttr *     GetDevAttr          ()const override{return device->GetDevAttr();}
             VulkanSurface *     GetSurface          ()const{return device->GetDevAttr()->surface;}
 
 public:
 
     GraphModuleManager *    GetModuleManager        (){return module_manager;}
 
-    RenderPassManager *     GetRenderPassManager    (){return rp_manager;}
-    TextureManager *        GetTextureManager       (){return tex_manager;}
+    RenderPassManager *     GetRenderPassManager    ()override{return rp_manager;}
+    TextureManager *        GetTextureManager       ()override{return tex_manager;}
     RenderTargetManager *   GetRenderTargetManager  (){return rt_manager;}
-    MaterialManager *       GetMaterialManager      (){return material_manager;}
-    BufferManager *         GetBufferManager        (){return buffer_manager;}
-    SamplerManager *        GetSamplerManager       (){return sampler_manager;}
-    GeometryManager *       GetGeometryManager      (){return geometry_manager;}
-    PrimitiveManager *      GetPrimitiveManager     (){return primitive_manager;}
+    MaterialManager *       GetMaterialManager      ()override{return material_manager;}
+    BufferManager *         GetBufferManager        ()override{return buffer_manager;}
+    SamplerManager *        GetSamplerManager       ()override{return sampler_manager;}
+    GeometryManager *       GetGeometryManager      ()override{return geometry_manager;}
+    PrimitiveManager *      GetPrimitiveManager     ()override{return primitive_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
     SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}

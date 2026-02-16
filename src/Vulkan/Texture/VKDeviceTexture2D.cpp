@@ -55,7 +55,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
             return(nullptr);
         }
 
-        tci->memory=GetDevice()->CreateMemory(tci->image);
+        tci->memory=GetDevice()->CreateMemory(tci->image, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ObjectNameBuilder(tci->name.IsEmpty() ? "Texture2DMemory" : (const char*)tci->name.c_str()));
     }
 
     if(!tci->image_view)

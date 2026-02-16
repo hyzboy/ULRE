@@ -9,7 +9,6 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/graph/core/GraphicsModule.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
@@ -208,42 +207,34 @@ bool RenderFramework::Init(uint w,uint h)
     // create default ECS context early so modules can access it
     default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
 
-    std::shared_ptr<graph::GraphicsModule> graphics_ctx;
+    // RenderFramework now implements IGraphicsContext directly
+    graph::IGraphicsContext* graphics_ctx = this;
 
     if (default_ecs_context)
     {
-        graphics_ctx = std::make_shared<graph::GraphicsModule>(device,
-                                                               rp_manager,
-                                                               tex_manager,
-                                                               material_manager,
-                                                               buffer_manager,
-                                                               sampler_manager,
-                                                               geometry_manager,
-                                                               primitive_manager);
-
         default_ecs_context->SetGraphicsContext(graphics_ctx);
 
         if(module_manager)
-            module_manager->SetGraphicsContext(graphics_ctx.get());
+            module_manager->SetGraphicsContext(graphics_ctx);
     }
 
-    rt_manager=new RenderTargetManager(graphics_ctx.get(),default_ecs_context,tex_manager,rp_manager);
+    rt_manager=new RenderTargetManager(graphics_ctx,default_ecs_context,tex_manager,rp_manager);
     module_manager->Register(rt_manager);
 
-    sc_module=new SwapchainModule(graphics_ctx.get(),default_ecs_context,tex_manager,rt_manager,rp_manager);
+    sc_module=new SwapchainModule(graphics_ctx,default_ecs_context,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
 
-    if (graphics_ctx)
+    if (render_context)
     {
-        if (render_context)
-            render_context->SetGraphicsContext(graphics_ctx.get());
+        render_context->SetGraphicsContext(graphics_ctx);
+        render_context->SetCurrentRenderTarget(GetSwapchainRenderTarget());
+    }
 
+    if (default_ecs_context)
+    {
         default_ecs_context->InitializeGraphics(device, GetSwapchainRenderTarget());
         default_ecs_context->SetRenderContext(render_context.get());
     }
-
-    if (render_context)
-        render_context->SetCurrentRenderTarget(GetSwapchainRenderTarget());
 
     if(default_ecs_context)
     {

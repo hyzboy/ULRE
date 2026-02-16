@@ -3,11 +3,13 @@
 #include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKPhysicalDevice.h>
+#include<cassert>
 
 VK_NAMESPACE_BEGIN
 
-DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const std::source_location &loc)
+DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc)
 {
+    assert(name.base_name[0] != '\0' && "ERROR: CreateMemory(MemoryUsage) called with empty name! Check the call stack to find where.");
     uint32_t properties = 0;
 
     switch(usage)
@@ -32,7 +34,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         if (index >= 0)
         {
             // Found ideal memory type, use existing CreateMemory
-            return CreateMemory(req, properties, loc);
+            return CreateMemory(req, properties, name, loc);
         }
 
         // Fallback to just HOST_VISIBLE + HOST_COHERENT for discrete GPU
@@ -57,7 +59,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
             if (index >= 0)
             {
                 // ReBAR is available, use it
-                return CreateMemory(req, properties, loc);
+                return CreateMemory(req, properties, name, loc);
             }
         }
 
@@ -71,7 +73,7 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
         break;
     }
 
-    return CreateMemory(req, properties, loc);
+    return CreateMemory(req, properties, name, loc);
 }
 
 StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data, SharingMode sharing_mode, const std::source_location &loc)
@@ -91,10 +93,12 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
     if (vkCreateBuffer(attr->device, &staging_info, nullptr, &staging_buffer) != VK_SUCCESS)
         return nullptr;
 
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer, ObjectNameBuilder("StagingBuffer_Staging").AppendCallerType(typeid(*this)), loc);
+
     VkMemoryRequirements staging_mem_reqs;
     vkGetBufferMemoryRequirements(attr->device, staging_buffer, &staging_mem_reqs);
 
-    DeviceMemory *staging_memory = CreateMemory(staging_mem_reqs, MemoryUsage::CPUToGPU);
+    DeviceMemory *staging_memory = CreateMemory(staging_mem_reqs, MemoryUsage::CPUToGPU, ObjectNameBuilder("StagingMemory"));
     if (!staging_memory || !staging_memory->BindBuffer(staging_buffer))
     {
         delete staging_memory;
@@ -121,10 +125,12 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
         return nullptr;
     }
 
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)device_buffer, ObjectNameBuilder("StagingBuffer_Device").AppendCallerType(typeid(*this)), loc);
+
     VkMemoryRequirements device_mem_reqs;
     vkGetBufferMemoryRequirements(attr->device, device_buffer, &device_mem_reqs);
 
-    DeviceMemory *device_memory = CreateMemory(device_mem_reqs, MemoryUsage::GPUOnly);
+    DeviceMemory *device_memory = CreateMemory(device_mem_reqs, MemoryUsage::GPUOnly, ObjectNameBuilder("DeviceMemory"));
     if (!device_memory || !device_memory->BindBuffer(device_buffer))
     {
         delete device_memory;

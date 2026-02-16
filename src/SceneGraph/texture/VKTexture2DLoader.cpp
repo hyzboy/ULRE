@@ -19,7 +19,7 @@ Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,b
     if(!tm||filename.IsEmpty())
         return(nullptr);
 
-    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps);
+    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps,filename);
 
     if(!loader.Load(filename))
         return(nullptr);

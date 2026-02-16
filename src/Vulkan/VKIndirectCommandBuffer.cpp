@@ -3,16 +3,16 @@
 
 VK_NAMESPACE_BEGIN
 
-bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,SharingMode sharing_mode)
+bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,const ObjectNameBuilder &name,SharingMode sharing_mode)
 {
     const uint32_t size=cmd_count*cmd_size;
 
     if(size<=0)return(false);
 
-    return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode);
+    return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,name);
 }
 
-bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,StagedBuffer **staged_out,SharingMode sharing_mode)
+bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,StagedBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sharing_mode)
 {
     if(staged_out)
         *staged_out=nullptr;
@@ -52,7 +52,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     else if(policy==BufferAllocPolicy::Readback)
         mem_usage=MemoryUsage::GPUToCPU;
 
-    return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,mem_usage);
+    return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,mem_usage,name);
 }
 
 IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,SharingMode sm)
@@ -65,7 +65,7 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndirectCommand),policy,&staged,sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndirectCommand),policy,&staged,VK_NAME_FROM("IndirectDrawBuffer:Memory"),sm))
         return(nullptr);
 
     if(staged)
@@ -84,7 +84,7 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndexedIndirectCommand),policy,&staged,sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndexedIndirectCommand),policy,&staged,VK_NAME_FROM("IndirectDrawIndexedBuffer:Memory"),sm))
         return(nullptr);
 
     if(staged)
@@ -103,7 +103,7 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),policy,&staged,sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),policy,&staged,VK_NAME_FROM("IndirectDispatchBuffer:Memory"),sm))
         return(nullptr);
 
     if(staged)

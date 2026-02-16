@@ -73,40 +73,46 @@ public:
     {
         render_core.reset();
 
+        // Cleanup resources that depend on graphics_context BEFORE deleting ecs_world
+        if (render_context || ecs_world)
+        {
+            auto *graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
+            if (!graphics_context && ecs_world)
+                graphics_context = ecs_world->GetGraphicsContext();
+
+            if (graphics_context)
+            {
+                if (primitive)
+                {
+                    if (auto *primitive_manager = graphics_context->GetPrimitiveManager())
+                        primitive_manager->Release(primitive);
+                }
+
+                if (geometry)
+                {
+                    if (auto *geometry_manager = graphics_context->GetGeometryManager())
+                        geometry_manager->Release(geometry);
+                }
+
+                if (auto *material_manager = graphics_context->GetMaterialManager())
+                {
+                    if (mi)
+                        material_manager->Destroy(mi);
+                    if (mtl)
+                        material_manager->Destroy(mtl);
+                }
+            }
+        }
+
+        // Delete RT before deleting ecs_world to ensure proper cleanup order
+        delete rt;
+
+        // Delete ecs_world last (it holds a pointer to rt, but Shutdown() doesn't access it)
         if(ecs_world)
         {
             ecs_world->Shutdown();
             delete ecs_world;
         }
-
-        if (render_context)
-        {
-            auto *graphics_context = render_context->GetGraphicsContext();
-            if (!graphics_context && ecs_world)
-                graphics_context = ecs_world->GetGraphicsContext();
-
-            if (primitive)
-            {
-                if (auto *primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr)
-                    primitive_manager->Release(primitive);
-            }
-
-            if (geometry)
-            {
-                if (auto *geometry_manager = graphics_context ? graphics_context->GetGeometryManager() : nullptr)
-                    geometry_manager->Release(geometry);
-            }
-
-            if (auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr)
-            {
-                if (mi)
-                    material_manager->Destroy(mi);
-                if (mtl)
-                    material_manager->Destroy(mtl);
-            }
-        }
-
-        delete rt;
 
         primitive = nullptr;
         geometry = nullptr;

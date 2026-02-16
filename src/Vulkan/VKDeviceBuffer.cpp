@@ -68,13 +68,14 @@ const VkDeviceSize VulkanDevice::GetSSBOAlign  (){return attr->physical_device->
 const VkDeviceSize VulkanDevice::GetUBORange   (){return attr->physical_device->GetUBORange();}
 const VkDeviceSize VulkanDevice::GetSSBORange  (){return attr->physical_device->GetSSBORange();}
 
-bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode, const std::source_location &loc)
+bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,const ObjectNameBuilder &name, const std::source_location &loc)
 {
-    return CreateBuffer(buf,buf_usage,range,size,data,sharing_mode,MemoryUsage::CPUOnly,loc);
+    return CreateBuffer(buf,buf_usage,range,size,data,sharing_mode,MemoryUsage::CPUOnly,name,loc);
 }
 
-bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,MemoryUsage mem_usage, const std::source_location &loc)
+bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,MemoryUsage mem_usage,const ObjectNameBuilder &name, const std::source_location &loc)
 {
+    assert(name.base_name[0] != '\0' && "ERROR: CreateBuffer called with empty name! Check the call stack to find where.");
     if(size<=0)return(false);
 
     BufferCreateInfo buf_info;
@@ -87,6 +88,8 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
 
     if(vkCreateBuffer(attr->device,&buf_info,nullptr,&buf->buffer)!=VK_SUCCESS)
         return(false);
+
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->buffer, name, loc);
 
     VkMemoryRequirements mem_reqs;
 
@@ -115,7 +118,7 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
     }
 #endif//_DEBUG
 
-    DeviceMemory *dm=CreateMemory(mem_reqs,mem_usage,loc);
+    DeviceMemory *dm=CreateMemory(mem_reqs,mem_usage,name,loc);
 
     if(dm&&dm->BindBuffer(buf->buffer))
     {
@@ -182,7 +185,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
         mem_usage=MemoryUsage::GPUToCPU;
 
     DeviceBufferData buf;
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,loc))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
         return(nullptr);
 
     VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count);
@@ -268,7 +271,7 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
         mem_usage=MemoryUsage::GPUToCPU;
 
     DeviceBufferData buf;
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,loc))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("IBO:Memory"),loc))
         return(nullptr);
 
     IndexBuffer *ibo = new IndexBuffer(this,attr->device,buf,index_type,count);
@@ -329,13 +332,6 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
 
     DeviceBufferData buf;
 
-    if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,loc))
-        return(nullptr);
-
-    DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf);
-    ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
-    dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
-    
     // Generate meaningful name based on buffer usage
     const char* buffer_type = "Buffer";
     if(buf_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) buffer_type = "UniformBuffer";
@@ -345,6 +341,15 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
     else if(buf_usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) buffer_type = "IndirectBuffer";
     else if(buf_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) buffer_type = "TransferSrcBuffer";
     else if(buf_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) buffer_type = "TransferDstBuffer";
+    
+    AnsiString memory_name = AnsiString(buffer_type) + ":Memory";
+    
+    if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,ObjectNameBuilder(memory_name.c_str()),loc))
+        return(nullptr);
+
+    DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf);
+    ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
+    dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
     
     TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
     return dev_buf;

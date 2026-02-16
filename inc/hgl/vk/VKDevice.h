@@ -141,18 +141,18 @@ public:
 
 public: //内存相关
 
-    DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties, const std::source_location &loc = std::source_location::current());
-    DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, const std::source_location &loc = std::source_location::current());
-    DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const std::source_location &loc = std::source_location::current());
+    DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, const ObjectNameBuilder &name = ObjectNameBuilder("ImageMemory"), const std::source_location &loc = std::source_location::current());
+    DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
     BufferUpdateQueue * GetBufferUpdateQueue() { return buffer_update_queue; }
     BufferCommitQueue * GetBufferCommitQueue() { return buffer_commit_queue; }
 
 private: //Buffer相关
 
-    bool            CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode, const std::source_location &loc = std::source_location::current());
-    bool            CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,SharingMode sharing_mode, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf,buf_usage,size,size,data,sharing_mode,loc);}
-    bool            CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,MemoryUsage mem_usage, const std::source_location &loc = std::source_location::current());
+    bool            CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
+    bool            CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,SharingMode sharing_mode,const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current()){return CreateBuffer(buf,buf_usage,size,size,data,sharing_mode,name,loc);}
+    bool            CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode,MemoryUsage mem_usage,const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public: //Buffer相关
 
@@ -364,8 +364,8 @@ public: //Buffer相关
 
 public: //间接绘制
 
-    bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,SharingMode sm=SharingMode::Exclusive);
-    bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,StagedBuffer **staged_out,SharingMode sm=SharingMode::Exclusive);
+    bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,StagedBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
 
     IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);
     IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive);
@@ -394,7 +394,8 @@ public: //Command Buffer 相关
 
 public:
 
-    Fence *      CreateFence(bool);
+    Fence *      CreateFence(const ObjectNameBuilder &name, bool create_signaled = false, const std::source_location &loc = std::source_location::current());
+    Fence *      CreateFence(bool create_signaled, const std::source_location &loc = std::source_location::current());
     Semaphore *  CreateGPUSemaphore(const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
     DeviceQueue *CreateQueue(const ObjectNameBuilder &name, const uint32_t fence_count=1, const bool create_signaled=false, const std::source_location &loc = std::source_location::current());

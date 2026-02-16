@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VK.h>
 VK_NAMESPACE_BEGIN
@@ -6,26 +6,28 @@ struct TextureCreateInfo
 {
     VkImageViewType     type;
 
-    VkExtent3D          extent;         //如为arrays,depth等同于layers
+    VkExtent3D          extent;         // For arrays, depth is treated as layers
 
     VkFormat            format;
     uint32_t            usage;
     uint32_t            mipmap_zero_total_bytes;
-    uint32_t            origin_mipmaps; //原始mipmaps，0/1
-    uint32_t            target_mipmaps; //目标mipmaps，如果和origin_mipmaps不相等，则证明希望自动生成mipmaps
+    uint32_t            origin_mipmaps; // Original mipmap count (0/1)
+    uint32_t            target_mipmaps; // Target mipmap count; if not equal to origin_mipmaps, ensures no auto-generation of mipmaps
     VkImageAspectFlags  aspect;
     ImageTiling         tiling;
 
     VkImageLayout       image_layout;
 
-    VkImage             image;          //如果没有IMAGE，则创建。（交换链等会直接提供image，所以存在外部传入现像)
-    DeviceMemory *      memory;         //同时需分配内存并绑定
+    VkImage             image;          // If no IMAGE, create one; otherwise directly provide image (can be from external source)
+    DeviceMemory *      memory;         // Bind memory at the same time
 
-    ImageView *         image_view;     //如果没有imageview，则创建
+    ImageView *         image_view;     // If no imageview, create one
 
-    void *              pixels;         //如果没有buffer但有pixels，则根据pixels和以上条件创建buffer
+    void *              pixels;         // If buffer or pixels data exists, use pixels data; otherwise read from buffer
     VkDeviceSize        total_bytes;
-    DeviceBuffer *      buffer;         //如果pixels也没有，则代表不会立即写入图像数据
+    DeviceBuffer *      buffer;         // If pixels is also missing, write image data from this buffer
+
+    U8String            name;           // Texture name for debugging/tracing
 
 public:
 
@@ -34,7 +36,7 @@ public:
         mem_zero(*this);
     }
 
-    TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img):TextureCreateInfo()
+    TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img,const U8String &n=U8String((const u8char*)u8"Texture")):TextureCreateInfo()
     {
         aspect=aspect_bit;
 
@@ -44,15 +46,17 @@ public:
 
         format=fmt;
         image=img;
+        name=n;
     }
 
-    TextureCreateInfo(const uint32_t aspect_bit,const uint32_t u,const ImageTiling it,const VkImageLayout il):TextureCreateInfo()
+    TextureCreateInfo(const uint32_t aspect_bit,const uint32_t u,const ImageTiling it,const VkImageLayout il,const U8String &n=U8String((const u8char*)u8"Texture")):TextureCreateInfo()
     {
         aspect=aspect_bit;
 
         usage=u;
         tiling=it;
         image_layout=il;
+        name=n;
     }
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkFormat &fmt,const uint32_t u,const ImageTiling it,const VkImageLayout il):TextureCreateInfo()
@@ -79,8 +83,8 @@ public:
         extent.depth=1;
     }
 
-    TextureCreateInfo(const uint32_t aspect_bit,const VkFormat &fmt,const VkExtent2D &ext,const uint32_t u,const ImageTiling it,const VkImageLayout il)
-        :TextureCreateInfo(aspect_bit,u,it,il)
+    TextureCreateInfo(const uint32_t aspect_bit,const VkFormat &fmt,const VkExtent2D &ext,const uint32_t u,const ImageTiling it,const VkImageLayout il,const U8String &n=U8String((const u8char*)u8"Texture"))
+        :TextureCreateInfo(aspect_bit,u,it,il,n)
     {
         format=fmt;
         extent.width=ext.width;
@@ -97,7 +101,7 @@ public:
                             ImageTiling::Optimal,
                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL){}
 
-    TextureCreateInfo(const VkFormat fmt):TextureCreateInfo()
+    TextureCreateInfo(const VkFormat fmt,const U8String &n=U8String((const u8char*)u8"Texture")):TextureCreateInfo()
     {
         if(IsDepthStencilFormat(fmt))
             aspect=VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -116,6 +120,7 @@ public:
 
         format=fmt;
         usage=VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT;
+        name=n;
     }
 
     TextureCreateInfo(const uint32_t aspect_bits,const VkFormat fmt,const VkExtent2D &ext):TextureCreateInfo(fmt)
@@ -203,18 +208,20 @@ struct ColorAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
 
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL){}
 
-    ColorAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext):ColorAttachmentTextureCreateInfo()
+    ColorAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext,const U8String &n=U8String((const u8char*)u8"ColorAttachment")):ColorAttachmentTextureCreateInfo()
     {
         format=fmt;
         extent=ext;
+        name=n;
     }
 
-    ColorAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext):ColorAttachmentTextureCreateInfo()
+    ColorAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n=U8String((const u8char*)u8"ColorAttachment")):ColorAttachmentTextureCreateInfo()
     {
         format=fmt;
         extent.width=ext.width;
         extent.height=ext.height;
         extent.depth=1;
+        name=n;
     }
 };
 
@@ -230,18 +237,20 @@ struct DepthAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
 
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL){}
 
-    DepthAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext):DepthAttachmentTextureCreateInfo()
+    DepthAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext,const U8String &n=U8String((const u8char*)u8"DepthAttachment")):DepthAttachmentTextureCreateInfo()
     {
         format=fmt;
         extent=ext;
+        name=n;
     }
 
-    DepthAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext):DepthAttachmentTextureCreateInfo()
+    DepthAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n=U8String((const u8char*)u8"DepthAttachment")):DepthAttachmentTextureCreateInfo()
     {
         format=fmt;
         extent.width=ext.width;
         extent.height=ext.height;
         extent.depth=1;
+        name=n;
     }
 };
 
@@ -257,36 +266,39 @@ struct DepthStencilAttachmentTextureCreateInfo:public AttachmentTextureCreateInf
 
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL){}
 
-    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext):DepthStencilAttachmentTextureCreateInfo()
+    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext,const U8String &n=U8String((const u8char*)u8"DepthStencilAttachment")):DepthStencilAttachmentTextureCreateInfo()
     {
         format=fmt;
         extent=ext;
+        name=n;
     }
 
-    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext):DepthStencilAttachmentTextureCreateInfo()
+    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n=U8String((const u8char*)u8"DepthStencilAttachment")):DepthStencilAttachmentTextureCreateInfo()
     {
         format=fmt;
         extent.width=ext.width;
         extent.height=ext.height;
         extent.depth=1;
+        name=n;
     }
 };
 
 struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
 {
-    SwapchainColorTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,VkImage img)
-        :TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,ext,fmt,img){}
+    SwapchainColorTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,VkImage img,const U8String &n=U8String((const u8char*)u8"SwapchainColor"))
+        :TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,ext,fmt,img,n){}
 };//struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
 
 struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 {
-    SwapchainDepthTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext)
+    SwapchainDepthTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n=U8String((const u8char*)u8"SwapchainDepth"))
         :TextureCreateInfo( VK_IMAGE_ASPECT_DEPTH_BIT,
                             fmt,
                             ext,
                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                             ImageTiling::Optimal,
-                            VK_IMAGE_LAYOUT_UNDEFINED){}
+                            VK_IMAGE_LAYOUT_UNDEFINED,
+                            n){}
 };//struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
 
 struct TextureData

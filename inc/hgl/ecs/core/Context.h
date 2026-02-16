@@ -107,8 +107,8 @@ namespace hgl
             /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
-            /// Graphics context adapter (Phase 2)
-            std::shared_ptr<hgl::graph::IGraphicsContext> graphics_context;
+            /// Graphics context adapter (Phase 2) - now raw pointer
+            hgl::graph::IGraphicsContext* graphics_context = nullptr;
             hgl::graph::RenderContext* render_context = nullptr;
 
         private:
@@ -195,9 +195,9 @@ namespace hgl
             hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
 
             /// Graphics context adapter (Phase 2)
-            void SetGraphicsContext(const std::shared_ptr<hgl::graph::IGraphicsContext>& ctx) { graphics_context = ctx; }
-            hgl::graph::IGraphicsContext* GetGraphicsContext() { return graphics_context.get(); }
-            const hgl::graph::IGraphicsContext* GetGraphicsContext() const { return graphics_context.get(); }
+            void SetGraphicsContext(hgl::graph::IGraphicsContext* ctx) { graphics_context = ctx; }
+            hgl::graph::IGraphicsContext* GetGraphicsContext() { return graphics_context; }
+            const hgl::graph::IGraphicsContext* GetGraphicsContext() const { return graphics_context; }
 
             /// Render context adapter (Phase 2)
             void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }

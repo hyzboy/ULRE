@@ -62,6 +62,7 @@ void RenderTargetData::EndRender()
 void RenderTargetData::Clear()
 {
     std::cerr << "[RenderTargetData] Clear" << std::endl;
+    SAFE_CLEAR(cmd_buf);
     SAFE_CLEAR(queue);
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
