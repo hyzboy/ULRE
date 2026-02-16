@@ -10,6 +10,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
@@ -248,13 +249,13 @@ namespace hgl::ecs
             if (batch.key.material && batch.key.material->hasMI())
             {
                 if (!batch.mi_buffer && !batch.items.empty())
-                    batch.mi_buffer = new ECSMaterialInstanceAssignmentBuffer(batch.device, batch.key.material);
+                    batch.mi_buffer = new ECSMaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
 
                 if (batch.mi_buffer && !batch.items.empty())
                     batch.mi_buffer->WriteItems(batch.items);
             }
 
-            if (batch.device && !batch.items.empty())
+            if (batch.buffer_manager && !batch.items.empty())
             {
                 const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
                 uint32_t new_node_count = 1;
@@ -266,12 +267,17 @@ namespace hgl::ecs
                     batch.transform_vab_node_count = new_node_count;
 
                     if (batch.transform_vab)
-                        delete batch.transform_vab;
+                    {
+                        if (batch.buffer_manager)
+                            batch.buffer_manager->Release(batch.transform_vab);
+                        else
+                            delete batch.transform_vab;
+                    }
 
-                    batch.transform_vab = batch.device->CreateVAB(graph::Assign::TransformID::VAB_FMT,
-                                                                  batch.transform_vab_node_count,
-                                                                  nullptr,
-                                                                  graph::BufferAllocPolicy::Auto);
+                    batch.transform_vab = batch.buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT,
+                                                                          batch.transform_vab_node_count,
+                                                                          nullptr,
+                                                                          graph::BufferAllocPolicy::Auto);
                     batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetBuffer() : VK_NULL_HANDLE;
                 }
 
@@ -544,7 +550,9 @@ namespace hgl::ecs
 
             if (it == cache.materialBatches.end())
             {
-                auto batch = std::make_unique<MaterialBatch>(key, device);
+                auto render_ctx = world ? world->GetRenderContext() : nullptr;
+                auto buffer_manager = render_ctx ? render_ctx->GetBufferManager() : nullptr;
+                auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = cameraInfo;
                 batch->transform_buffer = shared_transform_buffer;
                 batch->AddItem(item);
@@ -552,6 +560,9 @@ namespace hgl::ecs
             }
             else
             {
+                auto render_ctx = world ? world->GetRenderContext() : nullptr;
+                auto buffer_manager = render_ctx ? render_ctx->GetBufferManager() : nullptr;
+                it->second->buffer_manager = buffer_manager;
                 it->second->transform_buffer = shared_transform_buffer;
                 it->second->AddItem(item);
             }

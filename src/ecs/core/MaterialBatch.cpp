@@ -2,15 +2,17 @@
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
 
 namespace hgl::ecs
 {
-    MaterialBatch::MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev)
+    MaterialBatch::MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev, graph::BufferManager* bm)
         : key(k)
         , static_count(0)
         , cameraInfo(nullptr)
         , device(dev)
+        , buffer_manager(bm)
         , draw_batches_count(0)
         , renderer(nullptr)
     {
@@ -28,7 +30,12 @@ namespace hgl::ecs
         if (icb_draw)
             delete icb_draw;
         if (transform_vab)
-            delete transform_vab;
+        {
+            if (buffer_manager)
+                buffer_manager->Release(transform_vab);
+            else
+                delete transform_vab;
+        }
         if (mi_buffer)
             delete mi_buffer;
         if (renderer)

@@ -12,6 +12,11 @@
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 
+namespace hgl::graph
+{
+    class BufferManager;
+}
+
 namespace hgl::ecs
 {
     /**
@@ -79,8 +84,8 @@ namespace hgl::ecs
     class ECSMaterialInstanceAssignmentBuffer
     {
     private:
-        graph::VulkanDevice* device;        ///<Vulkan设备
-        graph::Material* material;          ///<所属材质
+        graph::BufferManager* buffer_manager;   ///<缓冲区管理器
+        graph::Material* material;              ///<所属材质
 
     private:    // 材质实例数据
         MaterialInstanceSet mi_set;         ///<材质实例集合（去重）
@@ -99,7 +104,7 @@ namespace hgl::ecs
         void Clear();
 
     public:
-        ECSMaterialInstanceAssignmentBuffer(graph::VulkanDevice* dev, graph::Material* mtl);
+        ECSMaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl);
         ~ECSMaterialInstanceAssignmentBuffer() { Clear(); }
 
         /**

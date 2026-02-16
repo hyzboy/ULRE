@@ -10,6 +10,7 @@ namespace hgl
     namespace graph
     {
         class CameraInfo;
+        class BufferManager;
         class VulkanDevice;
         class IndirectDrawBuffer;
         class IndirectDrawIndexedBuffer;
@@ -44,6 +45,7 @@ namespace hgl::ecs
         uint32_t                                static_count            = 0;                ///<静态项数量
         const graph::CameraInfo *               cameraInfo              = nullptr;          ///<相机信息
         graph::VulkanDevice *                   device                  = nullptr;          ///<设备指针
+        graph::BufferManager *                  buffer_manager          = nullptr;          ///<缓冲区管理器
 
         graph::IndirectDrawBuffer *             icb_draw                = nullptr;          ///<间接绘制命令缓冲（无索引）
         graph::IndirectDrawIndexedBuffer *      icb_draw_indexed        = nullptr;          ///<间接绘制命令缓冲（有索引）
@@ -62,7 +64,7 @@ namespace hgl::ecs
 
     public:
 
-        MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev = nullptr);
+        MaterialBatch(const MaterialPipelineKey& k, graph::VulkanDevice* dev = nullptr, graph::BufferManager* bm = nullptr);
         ~MaterialBatch();
 
         void Clear()

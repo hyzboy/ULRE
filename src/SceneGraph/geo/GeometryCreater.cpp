@@ -6,11 +6,13 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
+#include<hgl/graph/module/BufferManager.h>
 
 VK_NAMESPACE_BEGIN
-GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v)
+GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *bm)
 {
     device          =dev;
+    buffer_manager  =bm;
     vdm             =nullptr;
     vil             =v;
 
@@ -21,7 +23,7 @@ GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v)
 }
 
 GeometryCreater::GeometryCreater(VertexDataManager *_vdm)
-    :GeometryCreater(_vdm->GetDevice(),_vdm->GetVIL())
+    :GeometryCreater(_vdm->GetDevice(),_vdm->GetVIL(),_vdm->GetBufferManager())
 {
     vdm=_vdm;
 
@@ -85,7 +87,12 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
         index_type=vdm->GetIndexType();
     }
     else
-        geometry_data=CreateGeometryData(device,vil,vertices_number,buffer_policy);
+    {
+        if (buffer_manager)
+            geometry_data=CreateGeometryData(buffer_manager,vil,vertices_number,buffer_policy);
+        else
+            geometry_data=CreateGeometryData(device,vil,vertices_number,buffer_policy);
+    }
 
     if(!geometry_data)return(false);
 
@@ -228,7 +235,7 @@ Geometry *GeometryCreater::Create()
 // -----------------------------------------------------------------------------
 //  新增：直接创建 Geometry 的便捷函数
 // -----------------------------------------------------------------------------
-Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it)
+Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm)
 {
     if(!device || !vil || name.IsEmpty() || vertex_count==0)
         return nullptr;
@@ -253,8 +260,9 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
         }
     }
 
-    // 创建 GeometryData（使用 device 分配私有缓冲）
-    GeometryData *pd = CreateGeometryData(device, vil, vertex_count);
+// 创建 GeometryData（使用 device 分配私有缓冲）
+    GeometryData *pd = bm ? CreateGeometryData(bm, vil, vertex_count)
+                          : CreateGeometryData(device, vil, vertex_count);
 
     if(!pd)
         return nullptr;

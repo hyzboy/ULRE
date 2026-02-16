@@ -4,6 +4,7 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VertexDataManager.h>
+#include<hgl/graph/module/BufferManager.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -178,6 +179,60 @@ namespace
     };//class GeometryDataPrivateBuffer:public GeometryData
 
     /**
+    * 使用BufferManager创建VAB/IBO,并在析构时通过BufferManager释放
+    */
+    class GeometryDataPrivateBufferBM:public GeometryData
+    {
+        BufferManager *buffer_manager;
+        BufferAllocPolicy policy;
+
+    public:
+
+        int32_t  GetVertexOffset ()const override{return 0;}
+        uint32_t GetFirstIndex   ()const override{return 0;}
+
+        VertexDataManager * GetVDM()const override{return nullptr;}                           ///<取得顶点数据管理器
+
+    public:
+
+        GeometryDataPrivateBufferBM(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy p):GeometryData(_vil,vc)
+        {
+            buffer_manager=bm;
+            policy=p;
+        }
+
+        ~GeometryDataPrivateBufferBM() override
+        {
+            VAB **vab=vab_list;
+
+            for(uint i=0;i<vil->GetVertexAttribCount();i++)
+            {
+                if(*vab && buffer_manager)
+                    buffer_manager->Release(*vab);
+
+                ++vab;
+            }
+
+            if(ibo && buffer_manager)
+                buffer_manager->Release(ibo);
+        }
+
+        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
+        {
+            if(!buffer_manager)return(nullptr);
+
+            return buffer_manager->CreateIBO(it,ic,nullptr,policy);
+        }
+
+        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
+        {
+            if(!buffer_manager)return(nullptr);
+
+            return buffer_manager->CreateVAB(format,vertex_count,data,policy);
+        }
+    };//class GeometryDataPrivateBufferBM:public GeometryData
+
+    /**
     * 使用VertexDataBuffer分配VAB/IBO，在本类析构时归还数据
     */
     class GeometryDataVDM:public GeometryData
@@ -248,6 +303,7 @@ GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_
     if(!_vil)return(nullptr);
     if(vc<=0)return(nullptr);
 
+    // TODO: Route VAB/IBO creation through BufferManager while keeping GeometryData API stable.
     return(new GeometryDataPrivateBuffer(dev,_vil,vc,BufferAllocPolicy::GPUOnly));
 }
 
@@ -257,7 +313,26 @@ GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_
     if(!_vil)return(nullptr);
     if(vc<=0)return(nullptr);
 
+    // TODO: Route VAB/IBO creation through BufferManager while keeping GeometryData API stable.
     return(new GeometryDataPrivateBuffer(dev,_vil,vc,policy));
+}
+
+GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc)
+{
+    if(!bm)return(nullptr);
+    if(!_vil)return(nullptr);
+    if(vc<=0)return(nullptr);
+
+    return(new GeometryDataPrivateBufferBM(bm,_vil,vc,BufferAllocPolicy::GPUOnly));
+}
+
+GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy)
+{
+    if(!bm)return(nullptr);
+    if(!_vil)return(nullptr);
+    if(vc<=0)return(nullptr);
+
+    return(new GeometryDataPrivateBufferBM(bm,_vil,vc,policy));
 }
 
 GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc)

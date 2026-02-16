@@ -240,7 +240,7 @@ namespace hgl::graph
         if (!device->IsSupport(type))
             return nullptr;
 
-        auto* vdm = new VertexDataManager(device, vil);
+        auto* vdm = new VertexDataManager(buffer_manager, vil);
         if (!vdm)
             return nullptr;
 
@@ -261,7 +261,7 @@ namespace hgl::graph
         if (!device || !geometry_manager)
             return nullptr;
 
-        auto* pc = new GeometryCreater(device, vil);
+        auto* pc = new GeometryCreater(device, vil, buffer_manager);
         pc->Init(name, vert_count);
 
         for (const auto& vad : vad_list)

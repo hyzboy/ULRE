@@ -39,12 +39,7 @@ public:
 
     //void EndRender();
 
-    void Release() override
-    {
-        // SwapchainModule 通常在析构函数中处理其资源清理
-        // Release() 提供了在销毁前的额外清理机会
-    }
-;
+    void Release() override;
 
 public:
 

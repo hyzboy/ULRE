@@ -241,6 +241,11 @@ SwapchainModule::~SwapchainModule()
     SAFE_CLEAR(sc_render_target);
 }
 
+void SwapchainModule::Release()
+{
+    SAFE_CLEAR(sc_render_target);
+}
+
 SwapchainModule::SwapchainModule(IGraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
     :GraphModuleInherit<SwapchainModule,GraphModule>(gc,"SwapchainModule")
 {

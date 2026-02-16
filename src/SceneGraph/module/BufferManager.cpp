@@ -17,18 +17,21 @@ GRAPH_MODULE_CONSTRUCT(BufferManager)
 {
 }
 
-VAB *BufferManager::CreateVAB(VkFormat format, uint32_t count, const void *data, SharingMode sharing_mode)
+VAB *BufferManager::CreateVAB(VkFormat format, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, const std::source_location &loc)
 {
     VulkanDevice *device = GetDevice();
-    VAB *vb = device->CreateVAB(format, count, data, sharing_mode);
+    if (!device)
+        return nullptr;
+
+    VAB *vb = device->CreateVAB(format, count, data, policy, sharing_mode, BufferUpdateClass::Default, loc);
 
     if (!vb)
-        return(nullptr);
+        return nullptr;
 
     rm_buffers.Add(vb);
 
     AnsiString name = "VAB_" + AnsiString::numberOf(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(vb)));
-    device->TrackBuffer(vb, name);
+    device->TrackBuffer(vb, name, loc);
 
     return vb;
 }
@@ -49,14 +52,19 @@ BUFFER_MANAGER_CREATE_BUFFER(INBO)
 
 #undef BUFFER_MANAGER_CREATE_BUFFER
 
-IndexBuffer *BufferManager::CreateIBO(IndexType index_type, uint32_t count, const void *data, SharingMode sharing_mode)
+IndexBuffer *BufferManager::CreateIBO(IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, const std::source_location &loc)
 {
     VulkanDevice *device = GetDevice();
-    IndexBuffer *buf = device->CreateIBO(index_type, count, data, sharing_mode);
+    if (!device)
+        return nullptr;
 
-    if (!buf) return(nullptr);
+    IndexBuffer *buf = device->CreateIBO(index_type, count, data, policy, sharing_mode, BufferUpdateClass::Default, loc);
+
+    if (!buf)
+        return nullptr;
+
     rm_buffers.Add(buf);
-    return(buf);
+    return buf;
 }
 
 VK_NAMESPACE_END

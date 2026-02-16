@@ -368,7 +368,7 @@ graph::VertexDataManager *RenderFramework::CreateVDM(const graph::VIL *vil,const
     if(!vil||vertices_number<=0||indices_number<=0||!device->IsSupport(type))
         return(nullptr);
 
-    auto *vdm=new VertexDataManager(device,vil);
+    auto *vdm=new VertexDataManager(buffer_manager,vil);
 
     if(!vdm)
         return(nullptr);
@@ -387,7 +387,7 @@ graph::Geometry *RenderFramework::CreateGeometry( const AnsiString &name,
                                                     const graph::VIL *vil,
                                                     const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
 {
-    auto *pc=new graph::GeometryCreater(GetDevice(),vil);
+    auto *pc=new graph::GeometryCreater(GetDevice(),vil,buffer_manager);
 
     pc->Init(name,vertices_count);
 

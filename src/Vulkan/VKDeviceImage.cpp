@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKImageCreateInfo.h>
+#include<hgl/vk/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 VkImage TextureManager::CreateImage(VkImageCreateInfo *ici)
@@ -13,6 +14,9 @@ VkImage TextureManager::CreateImage(VkImageCreateInfo *ici)
     if(vkCreateImage(GetVkDevice(),ici, nullptr, &image)!=VK_SUCCESS)
         return(nullptr);
 
+    VulkanDevice *owner = VulkanDevice::FromDevice(GetVkDevice());
+    if (owner)
+        owner->TrackObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)(uintptr_t)image, "Image");
     return image;
 }
 

@@ -197,7 +197,7 @@ public:
         if(!mtl)
             return(nullptr);
 
-        return(new graph::GeometryCreater(GetDevice(),mtl->GetDefaultVIL()));
+        return(new graph::GeometryCreater(GetDevice(),mtl->GetDefaultVIL(),buffer_manager));
     }
 
     SharedPtr<graph::GeometryCreater> GetGeometryCreater(graph::MaterialInstance *mi)
@@ -205,7 +205,7 @@ public:
         if(!mi)
             return(nullptr);
 
-        return(new graph::GeometryCreater(GetDevice(),mi->GetVIL()));
+        return(new graph::GeometryCreater(GetDevice(),mi->GetVIL(),buffer_manager));
     }
 
     graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type=IndexType::U16);

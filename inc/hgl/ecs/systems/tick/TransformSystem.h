@@ -26,7 +26,6 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         bool updateMovable = true;
-        graph::VulkanDevice* device = nullptr;
         ECSTransformAssignmentBuffer* transform_buffer = nullptr;
         uint32_t last_static_count = 0;
         uint32_t last_dynamic_count = 0;
@@ -45,7 +44,7 @@ namespace hgl::ecs
     public:
 
         void SetWorld(ECSContext* w) { world = w; }
-        void SetDevice(graph::VulkanDevice* dev) { device = dev; }
+        void SetDevice(graph::VulkanDevice* dev) {}  ///<Deprecated: BufferManager is now obtained from ECSContext's RenderContext
         ECSTransformAssignmentBuffer* GetTransformBuffer() const { return transform_buffer; }
         void SetUpdateMovable(bool enabled) { updateMovable = enabled; }
         bool IsUpdateMovableEnabled() const { return updateMovable; }

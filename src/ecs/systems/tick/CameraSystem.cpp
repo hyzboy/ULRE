@@ -233,8 +233,23 @@ namespace hgl::ecs
 
     CameraSystem::~CameraSystem()
     {
-        delete camera_desc_binding;
-        delete camera_ubo;
+        Shutdown();
+    }
+
+    void CameraSystem::Shutdown()
+    {
+        if (camera_desc_binding)
+        {
+            delete camera_desc_binding;
+            camera_desc_binding = nullptr;
+        }
+
+        if (camera_ubo)
+        {
+            delete camera_ubo;
+            camera_ubo = nullptr;
+            camera_info = nullptr;
+        }
     }
 
     void CameraSystem::SetRenderContext(graph::RenderContext* ctx)
@@ -525,6 +540,7 @@ namespace hgl::ecs
         if (!render_context && context)
             render_context = context->GetRenderContext();
 
+        // Get device from render_context for compatibility, but prefer BufferManager approach
         auto *device = render_context ? render_context->GetDevice() : nullptr;
         if (!device && context)
             device = context->GetGPUDevice();
@@ -535,7 +551,8 @@ namespace hgl::ecs
         if (!camera_ubo)
         {
             using UBOCameraInfo = graph::StructuredBufferAccessor<graph::CameraInfo>;
-            camera_ubo = device->CreateUBO<UBOCameraInfo>(&graph::mtl::SBS_CameraInfo,
+            camera_ubo = device->CreateUBO<UBOCameraInfo>(graph::ObjectNameBuilder("CameraUBO"),
+                                                          &graph::mtl::SBS_CameraInfo,
                                                           graph::BufferUpdateClass::CriticalPerFrame);
             if (camera_ubo)
                 camera_info = camera_ubo->Data();

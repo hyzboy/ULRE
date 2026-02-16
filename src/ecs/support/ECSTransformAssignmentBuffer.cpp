@@ -9,6 +9,7 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<algorithm>
 #include<limits>
@@ -18,8 +19,8 @@ namespace hgl::ecs
 {
     std::vector<ECSTransformAssignmentBuffer*> ECSTransformAssignmentBuffer::all_instances;
 
-    ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::VulkanDevice* dev, const Mode m)
-        : device(dev)
+    ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::BufferManager* bm, const Mode m)
+        : buffer_manager(bm)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
         , transform_policy(graph::BufferAllocPolicy::Auto)
@@ -31,9 +32,19 @@ namespace hgl::ecs
         , ring_writer(nullptr, sizeof(math::Matrix4f), HGL_L2W_RING_FRAMES)
     {
 #if defined(HGL_L2W_USE_SSBO)
-        MaxTransformCount = dev->GetSSBORange() / sizeof(math::Matrix4f);
+        if (buffer_manager)
+        {
+            auto device = buffer_manager->GetDevice();
+            if (device)
+                MaxTransformCount = device->GetSSBORange() / sizeof(math::Matrix4f);
+        }
 #else
-        MaxTransformCount = dev->GetUBORange() / sizeof(math::Matrix4f);
+        if (buffer_manager)
+        {
+            auto device = buffer_manager->GetDevice();
+            if (device)
+                MaxTransformCount = device->GetUBORange() / sizeof(math::Matrix4f);
+        }
 #endif
         all_instances.push_back(this);
     }
@@ -168,8 +179,20 @@ namespace hgl::ecs
 
     void ECSTransformAssignmentBuffer::Clear()
     {
-        SAFE_CLEAR(transform_buffer);
-        SAFE_CLEAR(transform_vab);
+        if (buffer_manager)
+        {
+            if (transform_buffer)
+                buffer_manager->Release(transform_buffer);
+            if (transform_vab)
+                buffer_manager->Release(transform_vab);
+            transform_buffer = nullptr;
+            transform_vab = nullptr;
+        }
+        else
+        {
+            SAFE_CLEAR(transform_buffer);
+            SAFE_CLEAR(transform_vab);
+        }
 
         transform_buffer_max_count = 0;
         node_count = 0;
@@ -187,34 +210,46 @@ namespace hgl::ecs
         else if (required_count > transform_buffer_max_count)
         {
             transform_buffer_max_count = hgl::power_to_2(required_count);
-            SAFE_CLEAR(transform_buffer);
+            if (buffer_manager)
+            {
+                buffer_manager->Release(transform_buffer);
+                transform_buffer = nullptr;
+            }
+            else
+            {
+                SAFE_CLEAR(transform_buffer);
+            }
         }
 
         // Recreate if policy changed
         if (transform_buffer && transform_policy != policy)
         {
-            SAFE_CLEAR(transform_buffer);
+            if (buffer_manager)
+            {
+                buffer_manager->Release(transform_buffer);
+                transform_buffer = nullptr;
+            }
+            else
+            {
+                SAFE_CLEAR(transform_buffer);
+            }
         }
 
         transform_policy = policy;
 
         // 创建或重用 Transform UBO
-        if (!transform_buffer)
+        if (!transform_buffer && buffer_manager)
         {
 #if defined(HGL_L2W_USE_SSBO)
-            transform_buffer = device->CreateSSBO("ECS:LocalToWorld",
-                                                  sizeof(math::Matrix4f) * transform_buffer_max_count,
-                                                  nullptr,
-                                                  transform_policy,
-                                                  graph::SharingMode::Exclusive,
-                                                  graph::BufferUpdateClass::TransformData);
+            transform_buffer = buffer_manager->CreateSSBO("ECS:LocalToWorld",
+                                                          sizeof(math::Matrix4f) * transform_buffer_max_count,
+                                                          nullptr,
+                                                          graph::SharingMode::Exclusive);
 #else
-            transform_buffer = device->CreateUBO("ECS:LocalToWorld",
-                                                 sizeof(math::Matrix4f) * transform_buffer_max_count,
-                                                 nullptr,
-                                                 transform_policy,
-                                                 graph::SharingMode::Exclusive,
-                                                 graph::BufferUpdateClass::TransformData);
+            transform_buffer = buffer_manager->CreateUBO("ECS:LocalToWorld",
+                                                         sizeof(math::Matrix4f) * transform_buffer_max_count,
+                                                         nullptr,
+                                                         graph::SharingMode::Exclusive);
 #endif
         }
 
@@ -433,23 +468,35 @@ namespace hgl::ecs
             else if (node_count < item_count)
             {
                 node_count = power_to_2(item_count);
-                SAFE_CLEAR(transform_vab);
+                if (buffer_manager)
+                {
+                    buffer_manager->Release(transform_vab);
+                    transform_vab = nullptr;
+                }
+                else
+                {
+                    SAFE_CLEAR(transform_vab);
+                }
             }
 
             if (!transform_vab)
             {
                 graph::BufferAllocPolicy vab_policy = static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto;
-                transform_vab = device->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
-                transform_vab_buffer = transform_vab->GetBuffer();
-
-            #ifdef _DEBUG
-                graph::DebugUtils* du = device->GetDebugUtils();
-                if (du)
+                if (buffer_manager)
                 {
-                    du->SetBuffer(transform_vab->GetBuffer(), "ECS:VAB:Buffer:TransformID");
-                    du->SetDeviceMemory(transform_vab->GetVkMemory(), "ECS:VAB:Memory:TransformID");
+                    transform_vab = buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
+                    transform_vab_buffer = transform_vab ? transform_vab->GetBuffer() : nullptr;
+
+                #ifdef _DEBUG
+                    auto device = buffer_manager->GetDevice();
+                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
+                    if (du && transform_vab)
+                    {
+                        du->SetBuffer(transform_vab->GetBuffer(), "ECS:VAB:Buffer:TransformID");
+                        du->SetDeviceMemory(transform_vab->GetVkMemory(), "ECS:VAB:Memory:TransformID");
+                    }
+                #endif//_DEBUG
                 }
-            #endif//_DEBUG
             }
         }
 
