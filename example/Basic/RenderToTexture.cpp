@@ -56,6 +56,8 @@ public:
     ECSContext *      ecs_world   = nullptr;
     std::unique_ptr<hgl::ecs::RenderSystemCore> render_core;
 
+    RenderContext *   render_context = nullptr;
+
     Material *        mtl         = nullptr;
     MaterialInstance* mi          = nullptr;
     Pipeline *        pipeline    = nullptr;
@@ -69,15 +71,45 @@ public:
 public:
     ~OffscreenSceneECS()
     {
+        render_core.reset();
+
         if(ecs_world)
         {
             ecs_world->Shutdown();
             delete ecs_world;
         }
-        rt = nullptr; // managed by manager
 
-        delete primitive;
-        delete geometry;
+        if (render_context)
+        {
+            if (primitive)
+            {
+                if (auto *primitive_manager = render_context->GetPrimitiveManager())
+                    primitive_manager->Release(primitive);
+            }
+
+            if (geometry)
+            {
+                if (auto *geometry_manager = render_context->GetGeometryManager())
+                    geometry_manager->Release(geometry);
+            }
+
+            if (auto *material_manager = render_context->GetMaterialManager())
+            {
+                if (mi)
+                    material_manager->Destroy(mi);
+                if (mtl)
+                    material_manager->Destroy(mtl);
+            }
+        }
+
+        delete rt;
+
+        primitive = nullptr;
+        geometry = nullptr;
+        mi = nullptr;
+        mtl = nullptr;
+        pipeline = nullptr;
+        rt = nullptr;
     }
 
     bool Init(WorkObject *owner, uint32_t w, uint32_t h)
@@ -156,6 +188,12 @@ public:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        this->render_context = render_context;
+
         auto* device = render_context->GetDevice();
         if (!device)
             return false;
@@ -168,7 +206,7 @@ public:
         mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg3d);
         if (!mci) return false;
 
-        mtl = render_context->CreateMaterial("OffscreenPureColor3D", mci);
+        mtl = graphics_context->CreateMaterial("OffscreenPureColor3D", mci);
         if (!mtl) return false;
 
         auto* render_pass = rt ? rt->GetRenderPass() : nullptr;
@@ -176,7 +214,7 @@ public:
         if (!pipeline) return false;
 
         Color4f sphere_color = GetColor4f(COLOR::SkyBlue, 1.0f);
-        mi = render_context->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
+        mi = graphics_context->CreateMaterialInstance(mtl, (VIL*)nullptr, &sphere_color);
         if (!mi) return false;
 
         auto pc = std::make_unique<GeometryCreater>(device, mtl->GetDefaultVIL());
@@ -184,11 +222,11 @@ public:
         geometry = inline_geometry::CreateSphere(pc.get(), 64);
         if (!geometry) return false;
 
-        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!geometry_manager) return false;
         geometry_manager->Add(geometry);
 
-        auto* primitive_manager = render_context->GetPrimitiveManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
         if (!primitive_manager) return false;
 
         primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
@@ -327,6 +365,10 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         auto* device = render_context->GetDevice();
         if (!device)
             return false;
@@ -339,10 +381,10 @@ private:
         mtl::MaterialCreateInfo *mci = mtl::CreateTextureBlinnPhong(device->GetDevAttr(), &cfg3d);
         if (!mci) return false;
 
-        cube_mtl = render_context->CreateMaterial("OnscreenCube", mci);
+        cube_mtl = graphics_context->CreateMaterial("OnscreenCube", mci);
         if (!cube_mtl) return false;
 
-        cube_sampler = render_context->CreateSampler();
+        cube_sampler = graphics_context->CreateSampler();
 
         cube_mtl->BindTextureSampler(DescriptorSetType::PerMaterial,
                                      mtl::SamplerName::BaseColor,
@@ -358,7 +400,7 @@ private:
         cube_pipeline = render_pass ? render_pass->CreatePipeline(cube_mtl, InlinePipeline::Solid3D) : nullptr;
         if (!cube_pipeline) return false;
 
-        cube_mi = render_context->CreateMaterialInstance(cube_mtl);
+        cube_mi = graphics_context->CreateMaterialInstance(cube_mtl);
         if (!cube_mi) return false;
 
         auto pc = std::make_unique<GeometryCreater>(device, cube_mtl->GetDefaultVIL());
@@ -370,11 +412,11 @@ private:
         Geometry *geometry = inline_geometry::CreateCube(pc.get(), &cci_cube);
         if (!geometry) return false;
 
-        auto* geometry_manager = render_context->GetGeometryManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!geometry_manager) return false;
         geometry_manager->Add(geometry);
 
-        auto* primitive_manager = render_context->GetPrimitiveManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
         if (!primitive_manager) return false;
 
         cube_primitive = primitive_manager->CreatePrimitive(geometry, cube_mi, cube_pipeline);
@@ -401,7 +443,37 @@ public:
     ~RenderToTextureApp() override
     {
         SAFE_CLEAR(offscreen);
-        delete cube_primitive;
+
+        if (auto *render_context = GetRenderContext())
+        {
+            auto *graphics_context = render_context->GetGraphicsContext();
+
+            if (cube_primitive)
+            {
+                if (auto *primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr)
+                    primitive_manager->Release(cube_primitive);
+            }
+
+            if (auto *material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr)
+            {
+                if (cube_mi)
+                    material_manager->Destroy(cube_mi);
+                if (cube_mtl)
+                    material_manager->Destroy(cube_mtl);
+            }
+
+            if (cube_sampler)
+            {
+                if (auto *sampler_manager = graphics_context ? graphics_context->GetSamplerManager() : nullptr)
+                    sampler_manager->Release(cube_sampler);
+            }
+        }
+
+        cube_primitive = nullptr;
+        cube_mi = nullptr;
+        cube_mtl = nullptr;
+        cube_sampler = nullptr;
+        cube_pipeline = nullptr;
     }
 
     bool Init() override

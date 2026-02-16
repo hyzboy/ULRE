@@ -135,6 +135,6 @@ namespace hgl
 
     public:
 
-        // Use RenderContext/RenderAPI/GraphicsContext directly for resource creation.
+        // Use RenderContext/GraphicsContext directly for resource creation.
     };//class WorkObject
 }//namespcae hgl

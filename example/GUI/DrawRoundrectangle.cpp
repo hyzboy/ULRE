@@ -56,11 +56,15 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::Without);
 
-        material=render_context->LoadMaterial("Std2D/RectTexture2D",&cfg);
+        material=graphics_context->LoadMaterial("Std2D/RectTexture2D",&cfg);
 
         if(!material)
             return(false);
@@ -73,11 +77,11 @@ private:
         if(!pipeline)
             return(false);
 
-        texture=render_context->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        texture=graphics_context->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
-        sampler=render_context->CreateSampler();
+        sampler=graphics_context->CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
            mtl::SamplerName::BaseColor,        ///<采样器名称
@@ -85,7 +89,7 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        material_instance=render_context->CreateMaterialInstance(material);
+        material_instance=graphics_context->CreateMaterialInstance(material);
 
         return(true);
     }
@@ -103,7 +107,11 @@ private:
         if (!render_context)
             return false;
 
-        Primitive *primitive = render_context->CreatePrimitive("TextureRect", 1, material_instance, pipeline,
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        Primitive *primitive = graphics_context->CreatePrimitive("TextureRect", 1, material_instance, pipeline,
                                                 {
                                                     {VAN::Position, VF_V4F, position_data},
                                                     {VAN::TexCoord, VF_V4F, tex_coord_data}

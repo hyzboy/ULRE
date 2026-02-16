@@ -143,6 +143,21 @@ private:
     }
 
 public:
+    static StructuredBufferAccessor *Create(DeviceBuffer *buf, bool take_ownership = false)
+    {
+        return buf ? new StructuredBufferAccessor(buf, take_ownership) : nullptr;
+    }
+
+    static StructuredBufferAccessor *Create(DeviceBuffer *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
+    {
+        return buf ? new StructuredBufferAccessor(buf, dst, name, take_ownership) : nullptr;
+    }
+
+    static StructuredBufferAccessor *Create(DeviceBuffer *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
+    {
+        return buf ? new StructuredBufferAccessor(buf, desc, take_ownership) : nullptr;
+    }
+
     /**
      * CN: 析构函数 - 自动 Unmap 和可选的 buffer 删除
      * EN: Destructor - auto unmap and optional buffer cleanup

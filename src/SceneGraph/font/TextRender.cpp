@@ -296,46 +296,4 @@ namespace hgl::graph
         delete tr;
     }
 
-    TextRender *RenderFramework::CreateTextRender(FontSource *font_source,const int limit)
-    {
-        if(!font_source)
-            return(nullptr);
-
-        TileFont *tile_font=CreateTileFont(font_source,limit);
-
-        RenderPass *rp=GetDefaultRenderPass();
-
-        if(!rp)
-            return(nullptr);
-
-        TextRender *text_render=new TextRender(this,tile_font);
-
-        if(!text_render)
-        {
-            delete tile_font;
-            return(nullptr);
-        }
-
-        if(!text_render->Init(rp,sampler_manager->CreateSampler()))
-        {
-            delete tile_font;
-            delete text_render;
-            return(nullptr);
-        }
-
-        return text_render;
-    }
-
-    TextRender *RenderFramework::CreateTextRender(const OSString &latin_font,const OSString &cjk_font,const int font_size,const int limit_count)
-    {
-        FontSource *fs=CreateCJKFontSource(latin_font,cjk_font,font_size);
-
-        TextRender *tr=CreateTextRender(fs,limit_count);
-
-        if(tr)
-            return tr;
-
-        delete fs;
-        return(nullptr);
-    }
 }//namespace hgl::graph

@@ -147,15 +147,17 @@ namespace hgl::graph
         }
 
         VulkanDevice *device = gc->GetDevice();
-        if(!device)
+        if (!device)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: VulkanDevice为空 EN: VulkanDevice is null"));
             delete mci;
             return nullptr;
         }
 
-        UBOLineColorPalette *lcp = device->CreateUBO<UBOLineColorPalette>(ObjectNameBuilder("LineColorPaletteUBO"),
-                                         &mtl::SBS_ColorPattle);
+        UBOLineColorPalette *lcp = gc->CreateUBOAccessor<LineColorPalette>(
+            "LineColorPaletteUBO",
+            &mtl::SBS_ColorPattle,
+            BufferUpdateClass::Default);
         if(!lcp)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
@@ -163,7 +165,7 @@ namespace hgl::graph
             return nullptr;
         }
 
-        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp);
+        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp,mat_mgr,gc->GetBufferManager());
         if(!mgr)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 分配LineRenderManager失败 EN: allocation of LineRenderManager failed"));
@@ -210,7 +212,15 @@ namespace hgl::graph
             return nullptr;
         }
 
-        Material *mat = rc->CreateMaterial("M_Line3D", mci);
+        auto *graphics_context = rc->GetGraphicsContext();
+        if (!graphics_context)
+        {
+            MLogError(LineRenderManager,OS_TEXT("CN: GraphicsContext为空 EN: graphics context is null"));
+            delete mci;
+            return nullptr;
+        }
+
+        Material *mat = graphics_context->CreateMaterial("M_Line3D", mci);
         if (mat == nullptr)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建Material失败 EN: failed to create material"));
@@ -221,7 +231,7 @@ namespace hgl::graph
         VILConfig vil_config;
         vil_config.Add(VAN::Color,VF_V1U8);
 
-        auto *mat_mgr = rc->GetMaterialManager();
+        auto *mat_mgr = graphics_context->GetMaterialManager();
         if (!mat_mgr)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 获取MaterialManager失败 EN: material manager is null"));
@@ -273,8 +283,10 @@ namespace hgl::graph
             return nullptr;
         }
 
-        UBOLineColorPalette *lcp = device->CreateUBO<UBOLineColorPalette>(ObjectNameBuilder("LineColorPaletteUBO"),
-                                         &mtl::SBS_ColorPattle);
+        UBOLineColorPalette *lcp = graphics_context->CreateUBOAccessor<LineColorPalette>(
+            "LineColorPaletteUBO",
+            &mtl::SBS_ColorPattle,
+            BufferUpdateClass::Default);
         if(!lcp)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 创建颜色调色板UBO失败 EN: failed to create palette UBO"));
@@ -282,7 +294,7 @@ namespace hgl::graph
             return nullptr;
         }
 
-        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp);
+        LineRenderManager *mgr = new LineRenderManager(device,mi,p,lcp,mat_mgr,graphics_context->GetBufferManager());
         if(!mgr)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: 分配LineRenderManager失败 EN: allocation of LineRenderManager failed"));
@@ -349,7 +361,7 @@ namespace hgl::graph
      * CN: 构造 - 初始化批次, 分配共享备份, 根据宽线支持性设定批次数量。
      * EN: Constructor - Initialize batches, allocate shared backup, configure depending on wide line support.
      */
-    LineRenderManager::LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp)
+    LineRenderManager::LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp,MaterialManager *mm,BufferManager *bm)
     {
         support_wide_lines = dev && dev->GetDevAttr() ? dev->GetDevAttr()->wide_lines : false;
 
@@ -357,6 +369,8 @@ namespace hgl::graph
         mi_line = mi;
         pipeline=p;
         ubo_color=lcp;
+        material_manager = mm;
+        buffer_manager = bm;
 
         if(mi_line && ubo_color)
         {
@@ -395,7 +409,21 @@ namespace hgl::graph
      */
     LineRenderManager::~LineRenderManager()
     {
-        delete ubo_color;
+        if (material_manager && mi_line)
+        {
+            Material *mat = mi_line->GetMaterial();
+            material_manager->Destroy(mi_line);
+            if (mat)
+                material_manager->Destroy(mat);
+        }
+
+        if (ubo_color)
+        {
+            DeviceBuffer *buf = ubo_color->ubo();
+            delete ubo_color;
+            if (buffer_manager && buf)
+                buffer_manager->Release(buf);
+        }
         delete shared_backup;
         shared_backup = nullptr;
     }

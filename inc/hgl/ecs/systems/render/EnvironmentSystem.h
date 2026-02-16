@@ -27,6 +27,7 @@ namespace hgl
 
             graph::RenderContext *render_context = nullptr;
             UBOSkyInfo *sky_ubo = nullptr;
+            bool sky_ubo_managed = false;
 
         public:
 

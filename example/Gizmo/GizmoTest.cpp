@@ -106,8 +106,8 @@ private:
         if (!render_context)
             return nullptr;
 
-        auto* primitive_manager = render_context->GetPrimitiveManager();
-        if (!primitive_manager)
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
             return nullptr;
 
         Geometry *geometry = base_prim->GetGeometry();
@@ -124,7 +124,7 @@ private:
         if(!gizmo_pipeline)
             return nullptr;
 
-        Primitive *prim = primitive_manager->CreatePrimitive(geometry, mi, gizmo_pipeline);
+        Primitive *prim = graphics_context->CreatePrimitive(geometry, mi, gizmo_pipeline);
         if(prim)
             gizmo_primitives.push_back(prim);
 

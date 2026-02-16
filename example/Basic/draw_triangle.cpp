@@ -65,6 +65,10 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::Ortho,
                                         mtl::WithLocalToWorld::Without);
@@ -79,7 +83,7 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        material_instance=render_context->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
+        material_instance=graphics_context->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
 
         if(!material_instance)
             return(false);
@@ -105,7 +109,11 @@ private:
         if (!render_context)
             return false;
 
-        prim_triangle=render_context->CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        prim_triangle=graphics_context->CreatePrimitive("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,POSITION_DATA_FORMAT,position_data},
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}

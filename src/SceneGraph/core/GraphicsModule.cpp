@@ -15,8 +15,12 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/TextureManager.h>
 #include <hgl/graph/mtl/Material2DCreateConfig.h>
+#include <hgl/graph/mtl/Material3DCreateConfig.h>
+#include <hgl/graph/mtl/MaterialLibrary.h>
 #include <hgl/graph/render/RenderFramework.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/Charset.h>
+#include <hgl/utf.h>
 #include <hgl/type/Smart.h>
 #include <hgl/type/String.h>
 #include <hgl/vk/pipeline/VKInlinePipeline.h>
@@ -78,6 +82,47 @@ namespace hgl::graph
         return material_manager->CreateMaterial(name,mci);
     }
 
+    Material *GraphicsModule::CreateMaterial(const AnsiString &name)
+    {
+        if (!material_manager || !device)
+            return nullptr;
+
+        mtl::Material2DCreateConfig cfg2d;
+        AutoDelete<mtl::MaterialCreateInfo> mci = mtl::CreateMaterialCreateInfo(device->GetDevAttr(), name, &cfg2d);
+
+        if (!mci)
+        {
+            mtl::Material3DCreateConfig cfg3d;
+            mci = mtl::CreateMaterialCreateInfo(device->GetDevAttr(), name, &cfg3d);
+        }
+
+        if (!mci)
+            return nullptr;
+
+        return material_manager->CreateMaterial(name, mci);
+    }
+
+    Material *GraphicsModule::CreateMaterial(const AnsiString &name,const mtl::MaterialCreateInfo *mci)
+    {
+        return material_manager?material_manager->CreateMaterial(name,mci):nullptr;
+    }
+
+    Material *GraphicsModule::LoadMaterial(const OSString &path)
+    {
+        if (!material_manager)
+            return nullptr;
+
+        const AnsiString mtl_name = ToAnsiString(UTF8CharSet, path);
+
+        mtl::Material2DCreateConfig cfg2d;
+        Material* mtl = material_manager->LoadMaterial(mtl_name, &cfg2d);
+        if (mtl)
+            return mtl;
+
+        mtl::Material3DCreateConfig cfg3d;
+        return material_manager->LoadMaterial(mtl_name, &cfg3d);
+    }
+
     Material *GraphicsModule::LoadMaterial(const AnsiString &name)
     {
         if(!material_manager)
@@ -87,9 +132,59 @@ namespace hgl::graph
         return material_manager->LoadMaterial(name,&cfg);
     }
 
+    Material *GraphicsModule::LoadMaterial(const AnsiString &name,mtl::Material2DCreateConfig *cfg)
+    {
+        return material_manager?material_manager->LoadMaterial(name,cfg):nullptr;
+    }
+
+    Material *GraphicsModule::LoadMaterial(const AnsiString &name,mtl::Material3DCreateConfig *cfg)
+    {
+        return material_manager?material_manager->LoadMaterial(name,cfg):nullptr;
+    }
+
     MaterialInstance *GraphicsModule::CreateMaterialInstance(Material *mat)
     {
         return material_manager?material_manager->CreateMaterialInstance(mat):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(Material *mat,const VIL *vil)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(mat,vil):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(Material *mat,const VILConfig *vil_cfg)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(mat,vil_cfg):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(Material *mat,const VIL *vil,const void *data,const uint32 data_size)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(mat,vil,data,data_size):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(Material *mat,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(mat,vil_cfg,data,data_size):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(const AnsiString &name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(name,mci,vil_cfg):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(const AnsiString &name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(name,mci,vil_cfg,data,data_size):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(const AnsiString &name,mtl::Material2DCreateConfig *cfg,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(name,cfg,vil_cfg,data,data_size):nullptr;
+    }
+
+    MaterialInstance *GraphicsModule::CreateMaterialInstance(const AnsiString &name,mtl::Material3DCreateConfig *cfg,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+    {
+        return material_manager?material_manager->CreateMaterialInstance(name,cfg,vil_cfg,data,data_size):nullptr;
     }
 
     VKBuffer *GraphicsModule::CreateVAB(const void *data,VkDeviceSize size)
@@ -101,6 +196,7 @@ namespace hgl::graph
         return reinterpret_cast<VKBuffer *>(vab);
     }
 
+
     DeviceBuffer *GraphicsModule::CreateUBO(VkDeviceSize size)
     {
         if(!buffer_manager)
@@ -108,6 +204,11 @@ namespace hgl::graph
 
         AnsiString name="auto_ubo_"_str+AnsiString::numberOf(++auto_buffer_id);
         return buffer_manager->CreateUBO(name,size);
+    }
+
+    DeviceBuffer *GraphicsModule::CreateUBO(const AnsiString &name,VkDeviceSize size)
+    {
+        return buffer_manager?buffer_manager->CreateUBO(name,size):nullptr;
     }
 
     DeviceBuffer *GraphicsModule::CreateSSBO(VkDeviceSize size)
@@ -119,6 +220,11 @@ namespace hgl::graph
         return buffer_manager->CreateSSBO(name,size);
     }
 
+    DeviceBuffer *GraphicsModule::CreateSSBO(const AnsiString &name,VkDeviceSize size)
+    {
+        return buffer_manager?buffer_manager->CreateSSBO(name,size):nullptr;
+    }
+
     DeviceBuffer *GraphicsModule::CreateINBO(VkDeviceSize size)
     {
         if(!buffer_manager)
@@ -126,6 +232,11 @@ namespace hgl::graph
 
         AnsiString name="auto_inbo_"_str+AnsiString::numberOf(++auto_buffer_id);
         return buffer_manager->CreateINBO(name,size);
+    }
+
+    DeviceBuffer *GraphicsModule::CreateINBO(const AnsiString &name,VkDeviceSize size)
+    {
+        return buffer_manager?buffer_manager->CreateINBO(name,size):nullptr;
     }
 
     IndexBuffer *GraphicsModule::CreateIBO(const void *indices,uint32_t count)
@@ -148,6 +259,36 @@ namespace hgl::graph
         return buffer_manager?buffer_manager->CreateIBO32(count,static_cast<const uint32 *>(indices)):nullptr;
     }
 
+    namespace
+    {
+        uint32_t IndexStride(IndexType type)
+        {
+            switch (type)
+            {
+                case IndexType::U8:  return 1;
+                case IndexType::U16: return 2;
+                case IndexType::U32: return 4;
+                default:             return 0;
+            }
+        }
+    }
+
+    IndexBuffer *GraphicsModule::CreateIBO(VkDeviceSize size,IndexType type)
+    {
+        if(!buffer_manager)
+            return nullptr;
+
+        const uint32_t stride = IndexStride(type);
+        if (stride == 0)
+            return nullptr;
+
+        const uint32_t count = static_cast<uint32_t>(size / stride);
+        if (count == 0)
+            return nullptr;
+
+        return buffer_manager->CreateIBO(type, count, nullptr);
+    }
+
     VertexDataManager *GraphicsModule::CreateVDM(const VIL *vil,VkDeviceSize vertices,VkDeviceSize indices,IndexType type)
     {
         if(!vil||vertices<=0||indices<=0||!device||!device->IsSupport(type))
@@ -165,6 +306,7 @@ namespace hgl::graph
 
         return vdm;
     }
+
 
     SharedPtr<GeometryCreater> GraphicsModule::GetGeometryCreater(Material *mat)
     {
@@ -206,6 +348,7 @@ namespace hgl::graph
 
         return geometry;
     }
+
 
     Primitive *GraphicsModule::CreatePrimitive(const AnsiString &name,uint32_t vertex_count,MaterialInstance *mi,
                                                Pipeline *p,const std::initializer_list<VertexAttribDataPtr> &vad_list)

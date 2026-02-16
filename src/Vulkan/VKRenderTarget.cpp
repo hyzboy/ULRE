@@ -3,9 +3,57 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/vk/VKBuffer.h>
 
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/render/RenderContext.h>
+
 #include<hgl/graph/mtl/UBOCommon.h>     //未来UBO统合看能不能不引用
 
 VK_NAMESPACE_BEGIN
+
+namespace
+{
+    hgl::graph::UBOViewportInfo *CreateViewportUBO(hgl::ecs::ECSContext *ctx)
+    {
+        if (!ctx)
+            return nullptr;
+
+        if (auto *rc = ctx->GetRenderContext())
+        {
+            if (auto *gc = rc->GetGraphicsContext())
+            {
+                return gc->CreateUBOAccessor<hgl::graph::ViewportInfo>(
+                    "ViewportInfoUBO",
+                    &hgl::graph::mtl::SBS_ViewportInfo,
+                    hgl::graph::BufferUpdateClass::CriticalPerFrame);
+            }
+        }
+
+        if (auto *gc = ctx->GetGraphicsContext())
+        {
+            return gc->CreateUBOAccessor<hgl::graph::ViewportInfo>(
+                "ViewportInfoUBO",
+                &hgl::graph::mtl::SBS_ViewportInfo,
+                hgl::graph::BufferUpdateClass::CriticalPerFrame);
+        }
+
+        return nullptr;
+    }
+
+    hgl::graph::BufferManager *GetBufferManager(hgl::ecs::ECSContext *ctx)
+    {
+        if (!ctx)
+            return nullptr;
+
+        if (auto *rc = ctx->GetRenderContext())
+            return rc->GetBufferManager();
+
+        if (auto *gc = ctx->GetGraphicsContext())
+            return gc->GetBufferManager();
+
+        return nullptr;
+    }
+}
 
 VulkanDevice *IRenderTarget::GetDevice  ()const
 {
@@ -25,18 +73,14 @@ ViewportInfo *IRenderTarget::GetViewportInfo()
 {
     if(!ubo_vp_info)
     {
-        VulkanDevice *device = GetDevice();
-        if(device)
+        ubo_vp_info = CreateViewportUBO(ecs_context);
+        ubo_vp_info_managed = (ubo_vp_info != nullptr);
+
+        if(ubo_vp_info)
         {
-            ubo_vp_info = device->CreateUBO<UBOViewportInfo>(ObjectNameBuilder("ViewportInfoUBO"),
-                                                           &mtl::SBS_ViewportInfo,
-                                                           BufferUpdateClass::CriticalPerFrame);
-            if(ubo_vp_info)
-            {
-                desc_binding.AddUBO(ubo_vp_info);
-                ubo_vp_info->Data()->Set(extent.width, extent.height);
-                ubo_vp_info->ImmediateUpdate();
-            }
+            desc_binding.AddUBO(ubo_vp_info);
+            ubo_vp_info->Data()->Set(extent.width, extent.height);
+            ubo_vp_info->ImmediateUpdate();
         }
     }
 
@@ -47,25 +91,35 @@ IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext):de
 {
     ecs_context=ctx;
 
-    VulkanDevice *device=GetDevice();
-    if(device)
+    ubo_vp_info = CreateViewportUBO(ecs_context);
+    ubo_vp_info_managed = (ubo_vp_info != nullptr);
+
+    if(ubo_vp_info)
     {
-        ubo_vp_info=device->CreateUBO<UBOViewportInfo>(ObjectNameBuilder("ViewportInfoUBO"),
-                                   &mtl::SBS_ViewportInfo,
-                                   BufferUpdateClass::CriticalPerFrame);
         desc_binding.AddUBO(ubo_vp_info);
         OnResize(ext);
     }
     else
     {
-        ubo_vp_info=nullptr;
         extent=ext;
     }
 }
 
 IRenderTarget::~IRenderTarget()
 {
-    SAFE_CLEAR(ubo_vp_info);
+    if (ubo_vp_info)
+    {
+        DeviceBuffer *buf = ubo_vp_info->ubo();
+        delete ubo_vp_info;
+        ubo_vp_info = nullptr;
+
+        if (ubo_vp_info_managed && buf)
+        {
+            if (auto *buffer_manager = GetBufferManager(ecs_context))
+                buffer_manager->Release(buf);
+        }
+    }
+    ubo_vp_info_managed = false;
 }
 
 void IRenderTarget::OnResize(const VkExtent2D &ext)

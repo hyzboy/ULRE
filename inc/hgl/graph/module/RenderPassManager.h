@@ -30,7 +30,14 @@ public:
     void Release() override
     {
         if (RenderPassList.GetCount() > 0)
+        {
+            for (auto &kv : RenderPassList)
+            {
+                delete kv.second;
+            }
+
             RenderPassList.Clear();
+        }
     }
 };//class RenderPassManager
 

@@ -97,6 +97,7 @@ namespace hgl
             graph::Camera camera_data{};
             graph::CameraInfo* camera_info = nullptr;
             graph::StructuredBufferAccessor<graph::CameraInfo>* camera_ubo = nullptr;
+            bool camera_ubo_managed = false;
             graph::DescriptorBinding* camera_desc_binding = nullptr;
 
         public:

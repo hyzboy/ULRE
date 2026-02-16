@@ -64,12 +64,16 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world = true;
         cfg.position_format = VAT_VEC2;
 
-        mtl_plane_grid = render_context->LoadMaterial("Std3D/VertexLum3D", &cfg);
+        mtl_plane_grid = graphics_context->LoadMaterial("Std3D/VertexLum3D", &cfg);
         if(!mtl_plane_grid)
             return false;
 
@@ -78,7 +82,7 @@ private:
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
-        mi_plane_grid = render_context->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
+        mi_plane_grid = graphics_context->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
         if(!mi_plane_grid)
             return false;
 
@@ -101,10 +105,14 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
         cfg.fixed_size = true;
 
-        mi_billboard = render_context->CreateMaterialInstance(mtl::inline_material::Billboard2D, &cfg);
+        mi_billboard = graphics_context->CreateMaterialInstance(mtl::inline_material::Billboard2D, &cfg);
         if(!mi_billboard)
             return false;
 
@@ -128,7 +136,11 @@ private:
         if (!render_context)
             return false;
 
-        TextureManager *tex_manager = render_context->GetTextureManager();
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
+        TextureManager *tex_manager = graphics_context->GetTextureManager();
 
         texture = tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
         if(!texture)
@@ -137,7 +149,7 @@ private:
         std::cout << "[BillboardECS] Texture loaded: " << (void*)texture
                   << " (" << texture->GetWidth() << "x" << texture->GetHeight() << ")" << std::endl;
 
-        sampler = render_context->CreateSampler();
+        sampler = graphics_context->CreateSampler();
 
         std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
 
@@ -163,12 +175,16 @@ private:
         if (!render_context)
             return false;
 
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return false;
+
         auto* device = render_context->GetDevice();
         if (!device)
             return false;
 
-        auto* geometry_manager = render_context->GetGeometryManager();
-        auto* primitive_manager = render_context->GetPrimitiveManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
         if (!geometry_manager || !primitive_manager)
             return false;
 
