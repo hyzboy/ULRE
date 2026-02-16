@@ -11,6 +11,8 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
@@ -551,7 +553,10 @@ namespace hgl::ecs
             if (it == cache.materialBatches.end())
             {
                 auto render_ctx = world ? world->GetRenderContext() : nullptr;
-                auto buffer_manager = render_ctx ? render_ctx->GetBufferManager() : nullptr;
+                auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
+                if (!graphics_context && world)
+                    graphics_context = world->GetGraphicsContext();
+                auto buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = cameraInfo;
                 batch->transform_buffer = shared_transform_buffer;
@@ -561,7 +566,10 @@ namespace hgl::ecs
             else
             {
                 auto render_ctx = world ? world->GetRenderContext() : nullptr;
-                auto buffer_manager = render_ctx ? render_ctx->GetBufferManager() : nullptr;
+                auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
+                if (!graphics_context && world)
+                    graphics_context = world->GetGraphicsContext();
+                auto buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
                 it->second->buffer_manager = buffer_manager;
                 it->second->transform_buffer = shared_transform_buffer;
                 it->second->AddItem(item);

@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
 #include<hgl/graph/render/RenderContext.h>
+#include<hgl/graph/core/GraphicsContext.h>
 
 namespace hgl::ecs
 {
@@ -148,10 +149,14 @@ namespace hgl::ecs
             return;
 
         auto render_ctx = world->GetRenderContext();
-        if (!render_ctx)
+        auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
+        if (!graphics_context)
+            graphics_context = world->GetGraphicsContext();
+
+        if (!graphics_context)
             return;
 
-        auto buffer_manager = render_ctx->GetBufferManager();
+        auto buffer_manager = graphics_context->GetBufferManager();
         if (!buffer_manager)
             return;
 

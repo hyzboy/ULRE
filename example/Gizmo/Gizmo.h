@@ -24,6 +24,7 @@ struct GizmoRotateECS;
 struct GizmoScaleECS;
 
 // 统一 Gizmo 世界（推荐使用）
+class RenderPass;
 struct GizmoECS;
 
 enum class GizmoMode : int
@@ -154,7 +155,7 @@ enum class GizmoShape:uint
     ENUM_CLASS_RANGE(Square,Torus)
 };
 
-bool InitGizmoResource(IGraphicsContext *);
+bool InitGizmoResource(IGraphicsContext *, RenderPass *);
 void FreeGizmoResource();
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);

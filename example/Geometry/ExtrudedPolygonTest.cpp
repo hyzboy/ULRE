@@ -51,7 +51,11 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* device = render_context->GetDevice();
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
+        auto* device = graphics_context->GetDevice();
         if (!device)
             return false;
 
@@ -62,11 +66,11 @@ private:
         if(!mci)
             return(false);
 
-        material=graphics_context->CreateMaterial("Gizmo3D",mci);
+        material=material_manager->CreateMaterial("Gizmo3D",mci);
 
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 
-        material_instance = graphics_context->CreateMaterialInstance(material,(VIL *)nullptr,&color);
+        material_instance = material_manager->CreateMaterialInstance(material,(VIL *)nullptr,&color);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
@@ -85,7 +89,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* device = render_context->GetDevice();
+        auto* device = graphics_context->GetDevice();
         auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!device || !geometry_manager)
             return false;
@@ -184,7 +188,11 @@ private:
         if (!graphics_context)
             return false;
 
-        Primitive *mesh = graphics_context->CreatePrimitive(geometry, material_instance, pipeline);
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!primitive_manager)
+            return false;
+
+        Primitive *mesh = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
         if(!mesh)
             return false;
 

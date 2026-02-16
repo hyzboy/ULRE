@@ -257,7 +257,12 @@ namespace hgl::ecs
 
             if (camera_ubo_managed && buf)
             {
-                graph::BufferManager *buffer_manager = render_context ? render_context->GetBufferManager() : nullptr;
+                graph::BufferManager *buffer_manager = nullptr;
+                if (render_context)
+                {
+                    if (auto *gc = render_context->GetGraphicsContext())
+                        buffer_manager = gc->GetBufferManager();
+                }
                 if (!buffer_manager && context)
                 {
                     if (auto *gc = context->GetGraphicsContext())
@@ -570,10 +575,16 @@ namespace hgl::ecs
         {
             if (graphics_context)
             {
-                camera_ubo = graphics_context->CreateUBOAccessor<graph::CameraInfo>(
-                    "CameraUBO",
-                    &graph::mtl::SBS_CameraInfo,
-                    graph::BufferUpdateClass::CriticalPerFrame);
+                auto *buffer_manager = graphics_context->GetBufferManager();
+                if (buffer_manager)
+                {
+                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::StructuredBufferAccessor<graph::CameraInfo>::GetSize());
+                    if (buf)
+                    {
+                        buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
+                        camera_ubo = graph::StructuredBufferAccessor<graph::CameraInfo>::Create(buf, &graph::mtl::SBS_CameraInfo, false);
+                    }
+                }
             }
 
             if (camera_ubo)

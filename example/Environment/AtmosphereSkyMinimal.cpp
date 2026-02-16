@@ -43,9 +43,13 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
         mtl::SkyMinimalCreateConfig cfg;
 
-        mi_sky_sphere=graphics_context->CreateMaterialInstance(mtl::inline_material::SkyMinimal,&cfg);
+        mi_sky_sphere=material_manager->CreateMaterialInstance(mtl::inline_material::SkyMinimal,&cfg);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
@@ -64,7 +68,7 @@ private:
         if (!graphics_context)
             return false;
 
-        auto* device = render_context->GetDevice();
+        auto* device = graphics_context->GetDevice();
         auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!device || !geometry_manager)
             return false;

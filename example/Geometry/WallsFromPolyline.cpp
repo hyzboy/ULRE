@@ -119,10 +119,15 @@ public:
         if (!render_context)
             return false;
 
-        auto* device = render_context->GetDevice();
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context)
             return false;
+
+        auto* material_manager = graphics_context->GetMaterialManager();
+        if (!material_manager)
+            return false;
+
+        auto* device = graphics_context->GetDevice();
 
         auto* geometry_manager = graphics_context->GetGeometryManager();
         if (!device || !geometry_manager)
@@ -139,10 +144,10 @@ public:
         mi_data.fresnel=0.04f;
         mi_data.ibl_intensity=0.0f;
 
-        material = graphics_context->CreateMaterial("Gizmo3D_Walls", mci);
+        material = material_manager->CreateMaterial("Gizmo3D_Walls", mci);
         if(!material) return false;
 
-        material_instance = graphics_context->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
+        material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
         if(!material_instance) return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
@@ -151,7 +156,15 @@ public:
         if(!pipeline) return false;
 
         const VIL *vil = material->GetDefaultVIL();
-        mesh_vdm = graphics_context->CreateVDM(vil, HGL_SIZE_1MB);
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        if (!buffer_manager)
+            return false;
+
+        mesh_vdm = new VertexDataManager(buffer_manager, vil);
+        if (!mesh_vdm)
+            return false;
+        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
+            return false;
         if(!mesh_vdm) return false;
 
         GeometryCreater *pc = new GeometryCreater(mesh_vdm);
@@ -188,7 +201,11 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                Primitive *primitive = graphics_context->CreatePrimitive(geometry, material_instance, pipeline);
+                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                if (!primitive_manager)
+                    return false;
+
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -219,7 +236,11 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                Primitive *primitive = graphics_context->CreatePrimitive(geometry, material_instance, pipeline);
+                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                if (!primitive_manager)
+                    return false;
+
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -249,7 +270,11 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                Primitive *primitive = graphics_context->CreatePrimitive(geometry, material_instance, pipeline);
+                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                if (!primitive_manager)
+                    return false;
+
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }
@@ -280,7 +305,11 @@ public:
             if(geometry)
             {
                 geometry_manager->Add(geometry);
-                Primitive *primitive = graphics_context->CreatePrimitive(geometry, material_instance, pipeline);
+                auto* primitive_manager = graphics_context->GetPrimitiveManager();
+                if (!primitive_manager)
+                    return false;
+
+                Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
                 if(primitive) wall_meshes.push_back(primitive);
             }
         }

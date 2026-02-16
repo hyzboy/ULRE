@@ -5,6 +5,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/StructuredBufferAccessor.h>
 
 namespace hgl::ecs
 {
@@ -24,7 +25,12 @@ namespace hgl::ecs
 
             if (sky_ubo_managed && buf)
             {
-                graph::BufferManager *buffer_manager = render_context ? render_context->GetBufferManager() : nullptr;
+                graph::BufferManager *buffer_manager = nullptr;
+                if (render_context)
+                {
+                    if (auto *gc = render_context->GetGraphicsContext())
+                        buffer_manager = gc->GetBufferManager();
+                }
                 if (!buffer_manager && context)
                 {
                     if (auto *gc = context->GetGraphicsContext())
@@ -93,10 +99,16 @@ namespace hgl::ecs
 
         if (graphics_context)
         {
-            sky_ubo = graphics_context->CreateUBOAccessor<graph::SkyInfo>(
-                "SkyUBO",
-                &graph::mtl::SBS_SkyInfo,
-                graph::BufferUpdateClass::Deferred);
+            auto *buffer_manager = graphics_context->GetBufferManager();
+            if (buffer_manager)
+            {
+                auto *buf = buffer_manager->CreateUBO("SkyUBO", graph::StructuredBufferAccessor<graph::SkyInfo>::GetSize());
+                if (buf)
+                {
+                    buf->SetUpdateClass(graph::BufferUpdateClass::Deferred);
+                    sky_ubo = graph::StructuredBufferAccessor<graph::SkyInfo>::Create(buf, &graph::mtl::SBS_SkyInfo, false);
+                }
+            }
         }
 
         if (sky_ubo)

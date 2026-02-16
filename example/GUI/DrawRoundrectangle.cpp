@@ -3,6 +3,7 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/math/Math.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -60,11 +61,17 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* texture_manager = graphics_context->GetTextureManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
+        if (!material_manager || !texture_manager || !sampler_manager)
+            return false;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::Without);
 
-        material=graphics_context->LoadMaterial("Std2D/RectTexture2D",&cfg);
+        material=material_manager->LoadMaterial("Std2D/RectTexture2D",&cfg);
 
         if(!material)
             return(false);
@@ -77,11 +84,11 @@ private:
         if(!pipeline)
             return(false);
 
-        texture=graphics_context->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        texture=texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
         if(!texture)return(false);
 
-        sampler=graphics_context->CreateSampler();
+        sampler=sampler_manager->CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
            mtl::SamplerName::BaseColor,        ///<采样器名称
@@ -89,7 +96,7 @@ private:
            sampler))                           ///<采样器
             return(false);
 
-        material_instance=graphics_context->CreateMaterialInstance(material);
+        material_instance=material_manager->CreateMaterialInstance(material);
 
         return(true);
     }
@@ -111,11 +118,25 @@ private:
         if (!graphics_context)
             return false;
 
-        Primitive *primitive = graphics_context->CreatePrimitive("TextureRect", 1, material_instance, pipeline,
-                                                {
-                                                    {VAN::Position, VF_V4F, position_data},
-                                                    {VAN::TexCoord, VF_V4F, tex_coord_data}
-                                                });
+        auto* device = graphics_context->GetDevice();
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        auto* geometry_manager = graphics_context->GetGeometryManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        if (!device || !buffer_manager || !geometry_manager || !primitive_manager)
+            return false;
+
+        GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
+        pc.Init("TextureRect", 1);
+        if (!pc.WriteVAB(VAN::Position, VF_V4F, position_data) ||
+            !pc.WriteVAB(VAN::TexCoord, VF_V4F, tex_coord_data))
+            return false;
+
+        auto* geometry = pc.Create();
+        if (!geometry)
+            return false;
+        geometry_manager->Add(geometry);
+
+        Primitive *primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
 
         if(!primitive)
             return false;

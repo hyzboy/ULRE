@@ -10,6 +10,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
@@ -23,6 +24,7 @@ VK_NAMESPACE_BEGIN
 namespace
 {
     static IGraphicsContext *graphics_context=nullptr;
+    static RenderPass *gizmo_render_pass=nullptr;
     static MaterialManager *gizmo_mtl_manager=nullptr;
 
     struct GizmoResource
@@ -48,7 +50,15 @@ namespace
         void Create(Geometry *p)
         {
             geometry=p;
-            primitive=graphics_context ? graphics_context->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline) : nullptr;
+            if (graphics_context)
+            {
+                auto *primitive_manager = graphics_context->GetPrimitiveManager();
+                primitive = primitive_manager ? primitive_manager->CreatePrimitive(geometry,gizmo_triangle.mi[0],gizmo_triangle.pipeline) : nullptr;
+            }
+            else
+            {
+                primitive = nullptr;
+            }
         }
 
         void Clear()
@@ -96,7 +106,7 @@ namespace
         VulkanDevice *device=graphics_context->GetDevice();
         auto *buffer_manager = graphics_context->GetBufferManager();
         VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
-        RenderPass *render_pass=graphics_context->GetDefaultRenderPass();
+        RenderPass *render_pass=gizmo_render_pass;
 
         if(!device || !dev_attr || !render_pass)
             return(false);
@@ -155,7 +165,7 @@ namespace
         VulkanDevice *device=graphics_context->GetDevice();
         auto *buffer_manager = graphics_context->GetBufferManager();
         VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
-        RenderPass *render_pass=graphics_context->GetDefaultRenderPass();
+        RenderPass *render_pass=gizmo_render_pass;
 
         if(!device || !dev_attr || !render_pass)
             return(false);
@@ -283,12 +293,13 @@ namespace
     }
 }//namespace
 
-bool InitGizmoResource(IGraphicsContext *gc)
+bool InitGizmoResource(IGraphicsContext *gc, RenderPass *rp)
 {
     if(!gc)
         return(false);
 
     graphics_context=gc;
+    gizmo_render_pass=rp;
 
     VulkanDevice *device=graphics_context->GetDevice();
     if(!device)

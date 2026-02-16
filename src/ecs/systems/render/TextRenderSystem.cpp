@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/font/TileFont.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/font/TextLayoutEngine.h>
@@ -38,6 +39,10 @@ namespace hgl::ecs
             if (!rc || !fs)
                 return nullptr;
 
+            auto* gc = rc->GetGraphicsContext();
+            if (!gc)
+                return nullptr;
+
             const uint32_t height = hgl_align_pow2(fs->GetCharHeight() + 2, 4);
 
             if (limit_count <= 0)
@@ -51,7 +56,7 @@ namespace hgl::ecs
                     limit_count = 1024;
             }
 
-            auto tm = rc->GetTextureManager();
+            auto tm = gc->GetTextureManager();
             if (!tm)
                 return nullptr;
 
@@ -94,7 +99,8 @@ namespace hgl::ecs
         if (!render_context && world)
             render_context = world->GetRenderContext();
 
-        auto* primitive_manager = render_context ? render_context->GetPrimitiveManager() : nullptr;
+        auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
+        auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
 
         for (auto& pair : resources_by_font)
         {
@@ -130,7 +136,11 @@ namespace hgl::ecs
         if (!render_context && world)
             render_context = world->GetRenderContext();
 
-        if (!render_context)
+        auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
+        if (!graphics_context && world)
+            graphics_context = world->GetGraphicsContext();
+
+        if (!render_context || !graphics_context)
             return nullptr;
 
         if (auto* entry = resources_by_font.GetValuePointer(font_source))
@@ -152,7 +162,7 @@ namespace hgl::ecs
             return nullptr;
 
         graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
-        auto* device = render_context->GetDevice();
+        auto* device = graphics_context->GetDevice();
         if (!device)
             return nullptr;
 
@@ -160,7 +170,7 @@ namespace hgl::ecs
         if (!mci)
             return nullptr;
 
-        auto* material_manager = render_context->GetMaterialManager();
+        auto* material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
             return nullptr;
 
@@ -171,7 +181,7 @@ namespace hgl::ecs
         if (!resources.material)
             return nullptr;
 
-        auto* sampler_manager = render_context->GetSamplerManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
         if (!sampler_manager)
             return nullptr;
 
@@ -209,12 +219,16 @@ namespace hgl::ecs
         if (!render_context)
             return;
 
-        auto* device = render_context->GetDevice();
+        auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
+        if (!graphics_context && world)
+            graphics_context = world->GetGraphicsContext();
+
+        auto* device = graphics_context ? graphics_context->GetDevice() : nullptr;
         if (!device)
             return;
 
-        auto* material_manager = render_context->GetMaterialManager();
-        auto* primitive_manager = render_context->GetPrimitiveManager();
+        auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
+        auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         if (!render_target && world)

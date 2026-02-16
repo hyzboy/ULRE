@@ -3,26 +3,6 @@
 
 namespace hgl::graph
 {
-    RenderContext::RenderContext(VulkanDevice* dev,
-                                 TextureManager* tex_mgr,
-                                 BufferManager* buf_mgr,
-                                 MaterialManager* mat_mgr,
-                                 SamplerManager* samp_mgr,
-                                 RenderPassManager* rp_mgr,
-                                 GeometryManager* geo_mgr,
-                                 PrimitiveManager* prim_mgr)
-        : device(dev)
-        , texture_manager(tex_mgr)
-        , buffer_manager(buf_mgr)
-        , material_manager(mat_mgr)
-        , sampler_manager(samp_mgr)
-        , render_pass_manager(rp_mgr)
-        , geometry_manager(geo_mgr)
-        , primitive_manager(prim_mgr)
-    {
-    }
-
-
     Pipeline* RenderContext::CreatePipeline(Material* material,
                                             const VertexInputLayout* vil,
                                             const PipelineData* pd,

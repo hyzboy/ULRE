@@ -203,15 +203,7 @@ bool RenderFramework::Init(uint w,uint h)
     if(!buffer_manager)
         return(false);
 
-    render_context = std::make_unique<graph::RenderContext>(
-        device,
-        tex_manager,
-        buffer_manager,
-        material_manager,
-        sampler_manager,
-        rp_manager,
-        geometry_manager,
-        primitive_manager);
+    render_context = std::make_unique<graph::RenderContext>();
 
     // create default ECS context early so modules can access it
     default_ecs_context = new ecs::ECSContext("DefaultECSWorld");
@@ -229,7 +221,6 @@ bool RenderFramework::Init(uint w,uint h)
                                                                geometry_manager,
                                                                primitive_manager);
 
-        graphics_ctx->SetLegacyRenderFramework(this);
         default_ecs_context->SetGraphicsContext(graphics_ctx);
 
         if(module_manager)
@@ -244,8 +235,6 @@ bool RenderFramework::Init(uint w,uint h)
 
     if (graphics_ctx)
     {
-        graphics_ctx->SetDefaultRenderPass(GetDefaultRenderPass());
-
         if (render_context)
             render_context->SetGraphicsContext(graphics_ctx.get());
 
