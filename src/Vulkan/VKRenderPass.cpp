@@ -17,6 +17,12 @@ RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,VkRenderPass rp,con
     depth_format=df;
 
     vkGetRenderAreaGranularity(*device,render_pass,&granularity);
+
+    std::cout << "[RenderPass::RenderPass] Created RenderPass '" << name << "' with VkRenderPass=0x" << std::hex << (uintptr_t)render_pass 
+              << std::dec << ", color attachment count=" << color_formats.GetCount() 
+              << ", depth format=" << depth_format 
+              << ", granularity=(" << granularity.width << "x" << granularity.height << ")" 
+        <<std::endl;
 }
 
 RenderPass::~RenderPass()
