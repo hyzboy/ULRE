@@ -111,6 +111,10 @@ namespace hgl
             hgl::graph::GraphicsContext* graphics_context = nullptr;
             hgl::graph::RenderContext* render_context = nullptr;
 
+            /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
+            /// Used by systems when creating GPU resources for better leak tracking
+            std::string resource_name_prefix;
+
         private:
 
             void SortTickSystems();
@@ -203,6 +207,11 @@ namespace hgl
             void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }
             hgl::graph::RenderContext* GetRenderContext() { return render_context; }
             const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
+
+            /// Resource naming prefix for hierarchical GPU resource tracking
+            /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
+            void SetResourceNamePrefix(const std::string& prefix) { resource_name_prefix = prefix; }
+            const std::string& GetResourceNamePrefix() const { return resource_name_prefix; }
 
             /// 注册组件实例（由 Entity::AddComponent 调用）
             void RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp);

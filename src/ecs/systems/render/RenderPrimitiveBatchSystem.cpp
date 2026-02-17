@@ -32,7 +32,8 @@ namespace hgl::ecs
         void ReallocICB(graph::VulkanDevice* device,
                         const std::vector<RenderItem*>& list,
                         graph::IndirectDrawBuffer*& icb_draw_out,
-                        graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out)
+                        graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out,
+                        const ECSContext* context = nullptr)  // 新增参数获取上下文
         {
             if (!device || list.empty())
             {
@@ -54,8 +55,25 @@ namespace hgl::ecs
             if (icb_draw_indexed_out)
                 delete icb_draw_indexed_out;
 
-            icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count,VK_NAME_FROM("RenderPrimitiveBatch:IndirectDrawBuffer"));
-            icb_draw_indexed_out = device->CreateIndirectDrawIndexedBuffer(icb_new_count,VK_NAME_FROM("RenderPrimitiveBatch:IndirectDrawIndexedBuffer"));
+            // 构建带有上下文信息的名字
+            ObjectNameBuilder draw_name;
+            ObjectNameBuilder indexed_name;
+            
+            if (context && !context->GetResourceNamePrefix().empty())
+            {
+                // 从上下文获取前缀并追加类型信息
+                draw_name << context->GetResourceNamePrefix() << ":IndirectDrawBuffer";
+                indexed_name << context->GetResourceNamePrefix() << ":IndirectDrawIndexedBuffer";
+            }
+            else
+            {
+                // 默认名字（没有上下文或没有前缀）
+                draw_name = VK_NAME_FROM("IndirectDrawBuffer:Default");
+                indexed_name = VK_NAME_FROM("IndirectDrawIndexedBuffer:Default");
+            }
+
+            icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
+            icb_draw_indexed_out = device->CreateIndirectDrawIndexedBuffer(icb_new_count, indexed_name);
         }
 
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
@@ -87,7 +105,8 @@ namespace hgl::ecs
                           uint32_t& batch_count,
                           graph::IndirectDrawBuffer*& icb_draw_out,
                           graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out,
-                          const uint32_t base_instance)
+                          const uint32_t base_instance,
+                          const ECSContext* context = nullptr)  // 新增参数
         {
             const size_t count = list.size();
             if (count == 0)
@@ -104,7 +123,7 @@ namespace hgl::ecs
                 return;
             }
 
-            ReallocICB(device, list, icb_draw_out, icb_draw_indexed_out);
+            ReallocICB(device, list, icb_draw_out, icb_draw_indexed_out, context);  // 传递 context
 
             if (!icb_draw_out || !icb_draw_indexed_out)
             {
@@ -198,7 +217,7 @@ namespace hgl::ecs
             icb_draw_indexed_out->Unmap();
         }
 
-        void FinalizeBatch(MaterialBatch& batch)
+        void FinalizeBatch(MaterialBatch& batch, const ECSContext* context = nullptr)  // 新增参数
         {
             std::vector<RenderItem*> static_items;
             std::vector<RenderItem*> movable_items;
@@ -220,6 +239,7 @@ namespace hgl::ecs
             std::sort(static_items.begin(), static_items.end(),
                 [](const RenderItem* a, const RenderItem* b) {
                     return a->Compare(*b) < 0;
+                });
                 });
 
             std::sort(movable_items.begin(), movable_items.end(),
@@ -247,7 +267,8 @@ namespace hgl::ecs
                          batch.draw_batches_count,
                          batch.icb_draw,
                          batch.icb_draw_indexed,
-                         0);
+                         0,
+                         context);  // 新增参数
 
             if (batch.key.material && batch.key.material->hasMI())
             {
@@ -585,7 +606,7 @@ namespace hgl::ecs
         for (auto& pair : cache.materialBatches)
         {
             if (pair.second)
-                FinalizeBatch(*pair.second);
+                FinalizeBatch(*pair.second, world);  // 传递 world 作为 context
         }
     }
 }//namespace hgl::ecs

@@ -155,6 +155,10 @@ public:
         ecs_world = new ECSContext("OffscreenECSWorld");
         if (!ecs_world) return false;
 
+        // 设置资源命名前缀：从最高层应用开始追踪
+        // 这样创建的资源会被标记为来自 RenderToTexture:OffscreenRT
+        ecs_world->SetResourceNamePrefix("RenderToTexture:OffscreenRT");
+
         ecs_world->SetRenderContext(owner->GetRenderContext());
         ecs_world->InitializeGraphics(owner->GetDevice(), rt);
 
@@ -504,6 +508,10 @@ public:
         ecs_world = GetECSContext();
         if(!ecs_world)
             return false;
+
+        // 设置资源命名前缀：从最高层应用开始追踪
+        // 主场景的资源会被标记为来自 RenderToTexture:MainScene
+        ecs_world->SetResourceNamePrefix("RenderToTexture:MainScene");
 
         auto environment_system = ecs_world->GetSystem<EnvironmentSystem>();
         if (!environment_system)
