@@ -2,6 +2,7 @@
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/UnorderedMap.h>
+#include<iostream>
 
 namespace hgl::graph{
 
@@ -12,7 +13,10 @@ GRAPH_MODULE_CLASS(RenderPassManager)
 private:
 
     RenderPassManager(GraphicsContext *);
-    ~RenderPassManager();
+    ~RenderPassManager()
+    {
+        Release();
+    }
 
     friend class GraphModuleManager;
 
@@ -28,18 +32,7 @@ public:
 
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 
-    void Release() override
-    {
-        if (RenderPassList.GetCount() > 0)
-        {
-            for (auto &kv : RenderPassList)
-            {
-                delete kv.second;
-            }
-
-            RenderPassList.Clear();
-        }
-    }
+    void Release() override;
 };//class RenderPassManager
 
 }//namespace hgl::graph

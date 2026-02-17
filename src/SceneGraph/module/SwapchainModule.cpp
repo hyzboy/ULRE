@@ -296,9 +296,12 @@ void SwapchainModule::Release()
     // 2. Swapchain wrapper object (vk_swapchain)
     // 3. SwapchainRenderTarget object
     
+    std::cout << "[DEBUG] SwapchainModule::Release() - Starting, sc_render_pass=0x" << std::hex << (uintptr_t)sc_render_pass << std::dec << std::endl;
+    
     // 1. Clean up new architecture resources (swapchain_data)
     if (swapchain_data)
     {
+        std::cout << "[DEBUG] SwapchainModule::Release() - Clearing swapchain_data" << std::endl;
         // SwapchainData::Clear() deletes shared queue and all frame semaphores/fences
         swapchain_data->Clear();
         
@@ -310,6 +313,7 @@ void SwapchainModule::Release()
     // 2. Clean up Swapchain wrapper (this also deletes sc_image array)
     if (vk_swapchain)
     {
+        std::cout << "[DEBUG] SwapchainModule::Release() - Deleting vk_swapchain" << std::endl;
         delete vk_swapchain;
         vk_swapchain = nullptr;
     }
@@ -317,6 +321,7 @@ void SwapchainModule::Release()
     // 3. Clean up legacy architecture resources (sc_render_target)
     if (sc_render_target)
     {
+        std::cout << "[DEBUG] SwapchainModule::Release() - Releasing sc_render_target" << std::endl;
         // Release frame resources (clears references, doesn't delete owned objects)
         sc_render_target->ReleaseFrameResources();
         
@@ -327,6 +332,10 @@ void SwapchainModule::Release()
         // Its destructor will only delete the rtd_list array and clear references
         SAFE_CLEAR(sc_render_target);
     }
+    
+    std::cout << "[DEBUG] SwapchainModule::Release() - NOT releasing sc_render_pass (it's managed by RenderPassManager), sc_render_pass=0x" << std::hex << (uintptr_t)sc_render_pass << std::dec << std::endl;
+    // NOTE: sc_render_pass is NOT deleted here because it's managed by RenderPassManager
+    // It's only held as a reference. RenderPassManager::Release() will delete it.
 }
 
 SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)

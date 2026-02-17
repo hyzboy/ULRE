@@ -193,17 +193,20 @@ GRAPH_MODULE_CONSTRUCT(RenderPassManager)
 {
 }
 
-RenderPassManager::~RenderPassManager()
+void RenderPassManager::Release()
 {
-    std::cout << "[DEBUG] ~RenderPassManager() - RenderPassList.size()=" << RenderPassList.GetCount() << std::endl;
-    for(auto& kv : RenderPassList)
+    std::cout << "[DEBUG] RenderPassManager::Release() - RenderPassList.GetCount()=" << RenderPassList.GetCount() << std::endl;
+    if (RenderPassList.GetCount() > 0)
     {
-        std::cout << "[DEBUG] Deleting RenderPass: " << kv.first.c_str() << std::endl;
-        delete kv.second;
-    }
+        for (auto &kv : RenderPassList)
+        {
+            std::cout << "[DEBUG] RenderPassManager::Release() - Deleting RenderPass: " << kv.first.c_str() << std::endl;
+            delete kv.second;
+        }
 
-    RenderPassList.Clear();
-    std::cout << "[DEBUG] ~RenderPassManager() complete" << std::endl;
+        RenderPassList.Clear();
+    }
+    std::cout << "[DEBUG] RenderPassManager::Release() - Complete" << std::endl;
 }
 
 namespace
@@ -276,7 +279,12 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
     RenderPass *rp=nullptr;
 
     if(RenderPassList.Get(key,rp))
+    {
+        std::cout << "[RenderPassManager::AcquireRenderPass] Found cached RenderPass '" << key 
+                  << "' (VkRenderPass=0x" << std::hex << (uintptr_t)rp->GetVkRenderPass() << std::dec 
+                  << ", RenderPass*=0x" << (uintptr_t)rp << ")" << std::endl;
         return rp;
+    }
 
     ValueArray<VkAttachmentReference> color_ref_list;
     VkAttachmentReference depth_ref;
@@ -303,11 +311,15 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
 
     rp=CreateRenderPass(key,atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
 
-    RenderPassList.Add(key,rp);
+    std::cout << "[RenderPassManager::AcquireRenderPass] Before adding to list, RenderPassList.size()=" << RenderPassList.GetCount() << std::endl;
+    
+    bool add_success = RenderPassList.Add(key,rp);
+    
+    std::cout << "[RenderPassManager::AcquireRenderPass] After Add(), add_success=" << add_success << " RenderPassList.size()=" << RenderPassList.GetCount() << std::endl;
 
     if (rp)
     {
-        std::cout << "[RenderPassManager::AcquireRenderPass] Created/Cached RenderPass '" << key 
+        std::cout << "[RenderPassManager::AcquireRenderPass] Created new RenderPass '" << key 
                   << "' (VkRenderPass=0x" << std::hex << (uintptr_t)rp->GetVkRenderPass() << std::dec 
                   << ", RenderPass*=0x" << (uintptr_t)rp << ")" << std::endl;
         GetDevice()->TrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)rp->GetVkRenderPass(), ObjectNameBuilder(key).Append(ObjectTypeTag::VKRenderPass));
