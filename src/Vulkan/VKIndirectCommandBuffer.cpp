@@ -55,17 +55,18 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,mem_usage,name);
 }
 
-IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,SharingMode sm)
+// 新版本：带名字追踪
+IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
 {
-    return CreateIndirectDrawBuffer(cmd_count,BufferAllocPolicy::Auto,sm);
+    return CreateIndirectDrawBuffer(cmd_count,BufferAllocPolicy::Auto,name,sm);
 }
 
-IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
+IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
 {
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndirectCommand),policy,&staged,VK_NAME_FROM("IndirectDrawBuffer:Memory"),sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndirectCommand),policy,&staged,name,sm))
         return(nullptr);
 
     if(staged)
@@ -74,17 +75,29 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
     return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count));
 }
 
-IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm)
+// 旧版本：保持兼容性（默认使用硬编码名字）
+IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,SharingMode sm)
 {
-    return CreateIndirectDrawIndexedBuffer(cmd_count,BufferAllocPolicy::Auto,sm);
+    return CreateIndirectDrawBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM("IndirectDrawBuffer:Default"),sm);
 }
 
-IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
+IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
+{
+    return CreateIndirectDrawBuffer(cmd_count,policy,VK_NAME_FROM("IndirectDrawBuffer:Default"),sm);
+}
+
+// 新版本：带名字追踪
+IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
+{
+    return CreateIndirectDrawIndexedBuffer(cmd_count,BufferAllocPolicy::Auto,name,sm);
+}
+
+IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
 {
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndexedIndirectCommand),policy,&staged,VK_NAME_FROM("IndirectDrawIndexedBuffer:Memory"),sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndexedIndirectCommand),policy,&staged,name,sm))
         return(nullptr);
 
     if(staged)
@@ -93,23 +106,46 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
     return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count));
 }
 
-IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,SharingMode sm)
+// 旧版本：保持兼容性
+IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm)
 {
-    return CreateIndirectDispatchBuffer(cmd_count,BufferAllocPolicy::Auto,sm);
+    return CreateIndirectDrawIndexedBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM("IndirectDrawIndexedBuffer:Default"),sm);
 }
 
-IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
+IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
+{
+    return CreateIndirectDrawIndexedBuffer(cmd_count,policy,VK_NAME_FROM("IndirectDrawIndexedBuffer:Default"),sm);
+}
+
+// 新版本：带名字追踪
+IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
+{
+    return CreateIndirectDispatchBuffer(cmd_count,BufferAllocPolicy::Auto,name,sm);
+}
+
+IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
 {
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
-    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),policy,&staged,VK_NAME_FROM("IndirectDispatchBuffer:Memory"),sm))
+    if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),policy,&staged,name,sm))
         return(nullptr);
 
     if(staged)
         return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count,staged));
 
     return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count));
+}
+
+// 旧版本：保持兼容性
+IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,SharingMode sm)
+{
+    return CreateIndirectDispatchBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM("IndirectDispatchBuffer:Default"),sm);
+}
+
+IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
+{
+    return CreateIndirectDispatchBuffer(cmd_count,policy,VK_NAME_FROM("IndirectDispatchBuffer:Default"),sm);
 }
 
 }//namespace hgl::graph

@@ -367,6 +367,15 @@ public: //间接绘制
     bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
     bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,StagedBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
 
+    // 带名字追踪的间接绘制缓冲创建（推荐用于上层系统）
+    IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectDrawIndexedBuffer * CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectDrawIndexedBuffer * CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+    IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm=SharingMode::Exclusive);
+
+    // 旧版本（不带名字）保持兼容性
     IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);
     IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive);
     IndirectDrawIndexedBuffer * CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);

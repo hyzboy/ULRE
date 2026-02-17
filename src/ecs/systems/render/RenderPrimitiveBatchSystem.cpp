@@ -14,6 +14,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
@@ -53,8 +54,8 @@ namespace hgl::ecs
             if (icb_draw_indexed_out)
                 delete icb_draw_indexed_out;
 
-            icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count);
-            icb_draw_indexed_out = device->CreateIndirectDrawIndexedBuffer(icb_new_count);
+            icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count,VK_NAME_FROM("RenderPrimitiveBatch:IndirectDrawBuffer"));
+            icb_draw_indexed_out = device->CreateIndirectDrawIndexedBuffer(icb_new_count,VK_NAME_FROM("RenderPrimitiveBatch:IndirectDrawIndexedBuffer"));
         }
 
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
