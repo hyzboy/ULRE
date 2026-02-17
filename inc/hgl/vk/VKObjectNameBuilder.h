@@ -10,7 +10,7 @@
 namespace hgl::graph{
 
 /**
- * 对象类型标签，用于层级命名
+ * 对象类型标签，用于层级命名和泄露追踪
  */
 enum class ObjectTypeTag : uint8_t
 {
@@ -43,6 +43,24 @@ enum class ObjectTypeTag : uint8_t
     Material,
     MaterialInstance,
     Mesh,
+    
+    // ECS and system types
+    IndirectDrawBuffer,
+    IndirectDrawIndexedBuffer,
+    IndirectDispatchBuffer,
+    VertexBuffer,
+    IndexBuffer,
+    UniformBuffer,
+    StorageBuffer,
+    TextureBuffer,
+    ReadbackBuffer,
+    
+    // High-level types
+    RenderSystem,
+    BatchSystem,
+    CommandRecorder,
+    FrameResource,
+    SwapchainFrame,
 };
 
 /**
@@ -147,6 +165,20 @@ struct ObjectNameBuilder
             case ObjectTypeTag::Material:               return "Material";
             case ObjectTypeTag::MaterialInstance:       return "MaterialInstance";
             case ObjectTypeTag::Mesh:                   return "Mesh";
+            case ObjectTypeTag::IndirectDrawBuffer:     return "IndirectDrawBuf";
+            case ObjectTypeTag::IndirectDrawIndexedBuffer: return "IndirectDrawIdxBuf";
+            case ObjectTypeTag::IndirectDispatchBuffer: return "IndirectDispatchBuf";
+            case ObjectTypeTag::VertexBuffer:           return "VertexBuf";
+            case ObjectTypeTag::IndexBuffer:            return "IndexBuf";
+            case ObjectTypeTag::UniformBuffer:          return "UniformBuf";
+            case ObjectTypeTag::StorageBuffer:          return "StorageBuf";
+            case ObjectTypeTag::TextureBuffer:          return "TextureBuf";
+            case ObjectTypeTag::ReadbackBuffer:         return "ReadbackBuf";
+            case ObjectTypeTag::RenderSystem:           return "RenderSys";
+            case ObjectTypeTag::BatchSystem:            return "BatchSys";
+            case ObjectTypeTag::CommandRecorder:        return "CmdRecorder";
+            case ObjectTypeTag::FrameResource:          return "FrameRes";
+            case ObjectTypeTag::SwapchainFrame:         return "SwapchainFrame";
             default:                                    return "";
         }
     }
