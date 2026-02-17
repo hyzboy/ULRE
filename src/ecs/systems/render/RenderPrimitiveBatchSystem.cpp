@@ -575,19 +575,8 @@ namespace hgl::ecs
         }
         else
         {
-            // Fallback: use source location for tracking
-            const auto loc = std::source_location::current();
-            const char* filename = loc.file_name();
-            const char* basename = filename;
-            for (const char* p = filename; *p; ++p)
-                if (*p == '\\' || *p == '/') basename = p + 1;
-
-            char draw_buf[64], indexed_buf[64];
-            snprintf(draw_buf, sizeof(draw_buf), "ICB_Draw@%s:%u", basename, loc.line());
-            snprintf(indexed_buf, sizeof(indexed_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
-
-            draw_name = graph::ObjectNameBuilder(draw_buf);
-            indexed_name = graph::ObjectNameBuilder(indexed_buf);
+            draw_name = graph::ObjectNameBuilder("RPBS_IndirectDrawBuffer");
+            indexed_name = graph::ObjectNameBuilder("RPBS_IndirectDrawIndexedBuffer");
         }
 
         return {draw_name, indexed_name};

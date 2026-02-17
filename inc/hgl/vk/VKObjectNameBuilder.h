@@ -10,6 +10,10 @@
 
 namespace hgl::graph{
 
+// 对象名字缓冲区大小常量
+constexpr size_t OBJECT_NAME_BUFFER_SIZE = 128;
+constexpr size_t OBJECT_NAME_MAX_DEPTH = 16;
+
 // ObjectTypeTag 定义已移到 hgl::core::ObjectTypeTag
 // 为了向后兼容，这里引用它
 using ObjectTypeTag = hgl::core::ObjectTypeTag;
@@ -21,9 +25,9 @@ using ObjectTypeTag = hgl::core::ObjectTypeTag;
  */
 struct ObjectNameBuilder
 {
-    char base_name[32];         // 基础名字（定长，避免动态分配）
-    ObjectTypeTag tags[16];     // 类型标签数组（最多16层）
-    size_t type_hashes[16];     // 调用者类型哈希码（用于堆栈追踪）
+    char base_name[OBJECT_NAME_BUFFER_SIZE];         // 基础名字（定长，避免动态分配）
+    ObjectTypeTag tags[OBJECT_NAME_MAX_DEPTH];     // 类型标签数组
+    size_t type_hashes[OBJECT_NAME_MAX_DEPTH];     // 调用者类型哈希码（用于堆栈追踪）
     uint8_t depth;              // 当前层级深度
 
     // 构造函数：从C字符串创建
@@ -54,7 +58,7 @@ struct ObjectNameBuilder
     ObjectNameBuilder Append(ObjectTypeTag tag) const
     {
         ObjectNameBuilder result = *this;
-        if (result.depth < 16)
+        if (result.depth < OBJECT_NAME_MAX_DEPTH)
         {
             result.tags[result.depth] = tag;
             result.depth++;
@@ -67,7 +71,7 @@ struct ObjectNameBuilder
     ObjectNameBuilder AppendType() const
     {
         ObjectNameBuilder result = *this;
-        if (result.depth < 16)
+        if (result.depth < OBJECT_NAME_MAX_DEPTH)
         {
             result.type_hashes[result.depth] = typeid(T).hash_code();
             result.depth++;
@@ -79,7 +83,7 @@ struct ObjectNameBuilder
     ObjectNameBuilder AppendCallerType(const std::type_info& ti) const
     {
         ObjectNameBuilder result = *this;
-        if (result.depth < 16)
+        if (result.depth < OBJECT_NAME_MAX_DEPTH)
         {
             result.type_hashes[result.depth] = ti.hash_code();
             result.depth++;
