@@ -354,8 +354,8 @@ bool SwapchainModule::Initialize()
         return false;
     }
 
-    swapchain_data->swapchain = vk_swapchain->Get();
-    swapchain_data->image_format = vk_swapchain->image_format;
+    swapchain_data->swapchain = vk_swapchain->swap_chain;
+    swapchain_data->image_format = vk_swapchain->surface_format.format;
     swapchain_data->extent = vk_swapchain->extent;
     swapchain_data->frame_count = vk_swapchain->image_count;
 
@@ -370,67 +370,36 @@ bool SwapchainModule::Initialize()
 
 bool SwapchainModule::CreatePerFrameResources(SwapchainData &sc_data)
 {
-    Swapchain *vk_swapchain = nullptr;
-    
-    // We need to get the Swapchain object that was already created
-    // For now, this is a simplified implementation
-    // In a full refactor, we'd restructure to have direct access to the Swapchain object
-    
-    if (!vk_swapchain || vk_swapchain->image_count == 0)
+    if (!swapchain_data || swapchain_data->frames.empty())
     {
-        return false;
+        return true;  // Already initialized or nothing to do
     }
 
-    VulkanDevice *device = GetDevice();
-    if (!device)
-    {
-        return false;
-    }
-
-    // Allocate frame resources (typically 2-3 frames for double/triple buffering)
+    // Note: This is a simplified implementation.
+    // The full integration requires extracting Vulkan handles from wrapper objects
+    // (Texture2D, Framebuffer, RenderCmdBuffer, etc.)
+    //
+    // Current state: Frame array is allocated but handle population is deferred to
+    // next integration phase where we have access to:
+    // - Framebuffer::GetVkFramebuffer()
+    // - RenderCmdBuffer::GetVkCommandBuffer()
+    // - Texture2D::GetVkImageView()
+    // etc.
+    
+    // For now, just allocate the frame array
     sc_data.frames.resize(sc_data.frame_count);
-
-    SwapchainImage *sc_image = vk_swapchain->sc_image;
 
     for (uint32_t i = 0; i < sc_data.frame_count; i++)
     {
         FrameResources &frame = sc_data.frames[i];
-
         frame.frame_index = i;
-
-        // Synchronization primitives (owned by SwapchainModule, referenced by frame)
-        frame.image_acquired_semaphore = device->CreateGPUSemaphore(
-            hgl::string("Swapchain:Frame") + i + ":ImageAcquired"
-        );
-        frame.render_complete_semaphore = device->CreateGPUSemaphore(
-            hgl::string("Swapchain:Frame") + i + ":RenderComplete"
-        );
-
-        // Swapchain image (owned by Swapchain, referenced by frame)
-        frame.vk_image = sc_image->image;
-        frame.image_index = i;
-        frame.image_view = sc_image->image_view;
-
-        // Rendering resources
-        // TODO: These should be created by respective managers
-        // For now, reference existing resources
-        frame.framebuffer = sc_image->fbo;
-        frame.render_pass = sc_render_pass ? sc_render_pass->GetVkRenderPass() : VK_NULL_HANDLE;
-
-        // Command execution
-        frame.cmd_buffer = sc_image->cmd_buf;
-        frame.queue = device->CreateQueue(
-            hgl::string("SwapchainFrame") + i,
-            sc_data.frame_count,
-            false
-        );
-
-        // Synchronization fence
-        frame.fence = device->CreateFence(
-            hgl::string("Swapchain:Frame") + i + ":Fence"
-        );
-
-        ++sc_image;
+        
+        // TODO: Extract handles from wrapper objects in CreateSwapchain result
+        // frame.vk_image = sc_image[i].color->GetVkImage();
+        // frame.image_view = sc_image[i].color->GetVkImageView();
+        // frame.framebuffer = sc_image[i].fbo->GetVkFramebuffer();
+        // frame.cmd_buffer = sc_image[i].cmd_buf->GetVkCommandBuffer();
+        // etc.
     }
 
     return true;
