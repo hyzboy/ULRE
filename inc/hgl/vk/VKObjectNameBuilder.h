@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VKNamespace.h>
 #include<hgl/type/String.h>
+#include<hgl/core/ObjectType.h>
 #include<cstdint>
 #include<cstring>
 #include<typeinfo>
@@ -9,59 +10,9 @@
 
 namespace hgl::graph{
 
-/**
- * 对象类型标签，用于层级命名和泄露追踪
- */
-enum class ObjectTypeTag : uint8_t
-{
-    None = 0,
-    
-    // Vulkan resources
-    Queue,
-    Semaphore,
-    Fence,
-    RenderCommandBuffer,
-    TextureCommandBuffer,
-    ComputeCommandBuffer,
-    Buffer,
-    Memory,
-    Image,
-    ImageView,
-    Sampler,
-    Framebuffer,
-    RenderPass,
-    Pipeline,
-    PipelineLayout,
-    DescriptorSet,
-    DescriptorSetLayout,
-    ShaderModule,
-    Swapchain,
-    
-    // Custom types (for logging)
-    RenderTarget,
-    Texture,
-    Material,
-    MaterialInstance,
-    Mesh,
-    
-    // ECS and system types
-    IndirectDrawBuffer,
-    IndirectDrawIndexedBuffer,
-    IndirectDispatchBuffer,
-    VertexBuffer,
-    IndexBuffer,
-    UniformBuffer,
-    StorageBuffer,
-    TextureBuffer,
-    ReadbackBuffer,
-    
-    // High-level types
-    RenderSystem,
-    BatchSystem,
-    CommandRecorder,
-    FrameResource,
-    SwapchainFrame,
-};
+// ObjectTypeTag 定义已移到 hgl::core::ObjectTypeTag
+// 为了向后兼容，这里引用它
+using ObjectTypeTag = hgl::core::ObjectTypeTag;
 
 /**
  * 对象名字构建器
@@ -136,51 +87,10 @@ struct ObjectNameBuilder
         return result;
     }
 
-    // 获取类型标签的字符串表示
+    // 获取类型标签的字符串表示（已移到 hgl::core::GetTagString）
     static const char* GetTagString(ObjectTypeTag tag)
     {
-        switch (tag)
-        {
-            case ObjectTypeTag::Queue:                  return "Queue";
-            case ObjectTypeTag::Semaphore:              return "Semaphore";
-            case ObjectTypeTag::Fence:                  return "Fence";
-            case ObjectTypeTag::RenderCommandBuffer:    return "RenderCmdBuf";
-            case ObjectTypeTag::TextureCommandBuffer:   return "TextureCmdBuf";
-            case ObjectTypeTag::ComputeCommandBuffer:   return "ComputeCmdBuf";
-            case ObjectTypeTag::Buffer:                 return "Buffer";
-            case ObjectTypeTag::Memory:                 return "Memory";
-            case ObjectTypeTag::Image:                  return "Image";
-            case ObjectTypeTag::ImageView:              return "ImageView";
-            case ObjectTypeTag::Sampler:                return "Sampler";
-            case ObjectTypeTag::Framebuffer:            return "Framebuffer";
-            case ObjectTypeTag::RenderPass:             return "RenderPass";
-            case ObjectTypeTag::Pipeline:               return "Pipeline";
-            case ObjectTypeTag::PipelineLayout:         return "PipelineLayout";
-            case ObjectTypeTag::DescriptorSet:          return "DescriptorSet";
-            case ObjectTypeTag::DescriptorSetLayout:    return "DescriptorSetLayout";
-            case ObjectTypeTag::ShaderModule:           return "ShaderModule";
-            case ObjectTypeTag::Swapchain:              return "Swapchain";
-            case ObjectTypeTag::RenderTarget:           return "RT";
-            case ObjectTypeTag::Texture:                return "Texture";
-            case ObjectTypeTag::Material:               return "Material";
-            case ObjectTypeTag::MaterialInstance:       return "MaterialInstance";
-            case ObjectTypeTag::Mesh:                   return "Mesh";
-            case ObjectTypeTag::IndirectDrawBuffer:     return "IndirectDrawBuf";
-            case ObjectTypeTag::IndirectDrawIndexedBuffer: return "IndirectDrawIdxBuf";
-            case ObjectTypeTag::IndirectDispatchBuffer: return "IndirectDispatchBuf";
-            case ObjectTypeTag::VertexBuffer:           return "VertexBuf";
-            case ObjectTypeTag::IndexBuffer:            return "IndexBuf";
-            case ObjectTypeTag::UniformBuffer:          return "UniformBuf";
-            case ObjectTypeTag::StorageBuffer:          return "StorageBuf";
-            case ObjectTypeTag::TextureBuffer:          return "TextureBuf";
-            case ObjectTypeTag::ReadbackBuffer:         return "ReadbackBuf";
-            case ObjectTypeTag::RenderSystem:           return "RenderSys";
-            case ObjectTypeTag::BatchSystem:            return "BatchSys";
-            case ObjectTypeTag::CommandRecorder:        return "CmdRecorder";
-            case ObjectTypeTag::FrameResource:          return "FrameRes";
-            case ObjectTypeTag::SwapchainFrame:         return "SwapchainFrame";
-            default:                                    return "";
-        }
+        return hgl::core::GetTagString(tag);
     }
 
     // 生成完整的层级名字（只在需要输出时调用）

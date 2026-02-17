@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/vk/VKObjectNameBuilder.h>
+#include<hgl/core/ObjectType.h>
 #include<cstdint>
 #include<atomic>
 #include<vector>
@@ -42,13 +42,13 @@ namespace hgl::utils
     {
         uint64_t object_id;                         // 唯一对象ID
         uint64_t timestamp;                         // 纳秒级时间戳
-        hgl::graph::ObjectTypeTag object_type;      // 对象类型
+        hgl::core::ObjectTypeTag object_type;       // 对象类型
         char object_name[32];                       // 对象名称
         uint32_t stack_depth;                       // 栈深度
         SourceLocation stack[64];                   // 调用栈（最多64层）
         
         AllocationEvent()
-            : object_id(0), timestamp(0), object_type(hgl::graph::ObjectTypeTag::None),
+            : object_id(0), timestamp(0), object_type(hgl::core::ObjectTypeTag::None),
               stack_depth(0)
         {
             std::memset(object_name, 0, sizeof(object_name));
@@ -131,7 +131,7 @@ namespace hgl::utils
          */
         uint64_t record_allocation(
             const char* object_name,
-            hgl::graph::ObjectTypeTag object_type
+            hgl::core::ObjectTypeTag object_type
         ) noexcept
         {
             uint64_t object_id = id_generator.allocate();
