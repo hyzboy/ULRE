@@ -248,25 +248,61 @@ SwapchainModule::~SwapchainModule()
 {
     // 删除SwapchainRenderTarget对象
     SAFE_CLEAR(sc_render_target);
+    
+    // Delete swapchain_data and its resources
+    if (swapchain_data)
+    {
+        // Destroy frame resources (deletes wrapper objects owned by SwapchainModule)
+        DestroyPerFrameResources(*swapchain_data);
+        
+        // Clear swapchain reference and delete container
+        delete swapchain_data;
+        swapchain_data = nullptr;
+    }
+    
+    // Delete Swapchain wrapper object (also deletes sc_image array)
+    if (vk_swapchain)
+    {
+        delete vk_swapchain;
+        vk_swapchain = nullptr;
+    }
 }
 
 void SwapchainModule::Release()
 {
     // SwapchainModule is responsible for cleaning up resources it created:
-    // 1. Swapchain object
-    // 2. present_complete_semaphore
-    //
-    // These must be released BEFORE the SwapchainRenderTarget is deleted
+    // 1. SwapchainData and its frame resources (DeviceQueue, Semaphore, Fence)
+    // 2. Swapchain wrapper object (vk_swapchain)
+    // 3. SwapchainRenderTarget object
     
+    // 1. Clean up new architecture resources (swapchain_data)
+    if (swapchain_data)
+    {
+        // Destroy frame resources (deletes wrapper objects owned by SwapchainModule)
+        DestroyPerFrameResources(*swapchain_data);
+        
+        // Delete swapchain data container
+        delete swapchain_data;
+        swapchain_data = nullptr;
+    }
+    
+    // 2. Clean up Swapchain wrapper (this also deletes sc_image array)
+    if (vk_swapchain)
+    {
+        delete vk_swapchain;
+        vk_swapchain = nullptr;
+    }
+    
+    // 3. Clean up legacy architecture resources (sc_render_target)
     if (sc_render_target)
     {
-        // 1. Release frame resources (clears references, doesn't delete owned objects)
+        // Release frame resources (clears references, doesn't delete owned objects)
         sc_render_target->ReleaseFrameResources();
         
-        // 2. Release swapchain-specific resources (Swapchain and Semaphore)
+        // Release swapchain-specific resources (Swapchain and Semaphore)
         sc_render_target->ReleaseSwapchainResources();
         
-        // 3. Now safe to delete the render target object
+        // Now safe to delete the render target object
         // Its destructor will only delete the rtd_list array and clear references
         SAFE_CLEAR(sc_render_target);
     }
@@ -299,10 +335,24 @@ SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_c
 
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
+    // Clean up legacy architecture resources
     SAFE_CLEAR(sc_render_target)
 
-        VulkanSurface *surface=GetSurface();
+    // Clean up new architecture resources
+    if (swapchain_data)
+    {
+        DestroyPerFrameResources(*swapchain_data);
+        delete swapchain_data;
+        swapchain_data = nullptr;
+    }
+    
+    if (vk_swapchain)
+    {
+        delete vk_swapchain;
+        vk_swapchain = nullptr;
+    }
 
+    VulkanSurface *surface=GetSurface();
     surface->RefreshCaps();
 
     CreateSwapchainRenderTarget();
@@ -350,7 +400,15 @@ bool SwapchainModule::Initialize()
     }
 
     // Create the raw Vulkan swapchain
-    Swapchain *vk_swapchain = CreateSwapchain();
+    // Note: We keep vk_swapchain alive to maintain sc_image array validity
+    // It will be deleted in Release()/~() when no longer needed
+    if (vk_swapchain)
+    {
+        delete vk_swapchain;  // Clean up previous swapchain if it exists
+        vk_swapchain = nullptr;
+    }
+    
+    vk_swapchain = CreateSwapchain();
     if (!vk_swapchain)
     {
         return false;

@@ -23,6 +23,7 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 
     // New architecture: SwapchainData owns swapchain and frame resources
     SwapchainData *         swapchain_data      =nullptr;
+    hgl::vk::Swapchain *    vk_swapchain        =nullptr;  ///< Keep swapchain alive to maintain sc_image validity
 
     // Legacy support (will be deprecated)
     RenderPass *            sc_render_pass      =nullptr;
