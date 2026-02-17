@@ -56,20 +56,23 @@ namespace hgl::ecs
                 delete icb_draw_indexed_out;
 
             // 构建带有上下文信息的名字
-            ObjectNameBuilder draw_name;
-            ObjectNameBuilder indexed_name;
+            graph::ObjectNameBuilder draw_name;
+            graph::ObjectNameBuilder indexed_name;
             
             if (context && !context->GetResourceNamePrefix().empty())
             {
                 // 从上下文获取前缀并追加类型信息
-                draw_name << context->GetResourceNamePrefix() << ":IndirectDrawBuffer";
-                indexed_name << context->GetResourceNamePrefix() << ":IndirectDrawIndexedBuffer";
+                std::string draw_str = context->GetResourceNamePrefix() + ":IndirectDrawBuffer";
+                std::string indexed_str = context->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
+                
+                draw_name = graph::ObjectNameBuilder(draw_str.c_str());
+                indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
             }
             else
             {
                 // 默认名字（没有上下文或没有前缀）
-                draw_name = VK_NAME_FROM("IndirectDrawBuffer:Default");
-                indexed_name = VK_NAME_FROM("IndirectDrawIndexedBuffer:Default");
+                draw_name = graph::ObjectNameBuilder("IndirectDrawBuffer:Default");
+                indexed_name = graph::ObjectNameBuilder("IndirectDrawIndexedBuffer:Default");
             }
 
             icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
@@ -239,7 +242,6 @@ namespace hgl::ecs
             std::sort(static_items.begin(), static_items.end(),
                 [](const RenderItem* a, const RenderItem* b) {
                     return a->Compare(*b) < 0;
-                });
                 });
 
             std::sort(movable_items.begin(), movable_items.end(),
