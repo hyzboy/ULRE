@@ -79,35 +79,7 @@ namespace hgl::ecs
         if (batch.icb_draw_indexed)
             delete batch.icb_draw_indexed;
 
-        // 构建带有上下文信息的名字
-        graph::ObjectNameBuilder draw_name;
-        graph::ObjectNameBuilder indexed_name;
-
-        if (world && !world->GetResourceNamePrefix().empty())
-        {
-            // 从上下文获取前缀并追加类型信息
-            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectDrawBuffer";
-            std::string indexed_str = world->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
-
-            draw_name = graph::ObjectNameBuilder(draw_str.c_str());
-            indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
-        }
-        else
-        {
-            // 默认名字：使用调用者位置追踪（当world为空时）
-            const auto loc = std::source_location::current();
-            const char* filename = loc.file_name();
-            const char* basename = filename;
-            for (const char* p = filename; *p; ++p)
-                if (*p == '\\' || *p == '/') basename = p + 1;
-
-            char draw_buf[64], indexed_buf[64];
-            snprintf(draw_buf, sizeof(draw_buf), "ICB_Draw@%s:%u", basename, loc.line());
-            snprintf(indexed_buf, sizeof(indexed_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
-
-            draw_name = graph::ObjectNameBuilder(draw_buf);
-            indexed_name = graph::ObjectNameBuilder(indexed_buf);
-        }
+        auto [draw_name, indexed_name] = BuildICBNames();
 
         batch.icb_draw = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
         batch.icb_draw_indexed = device->CreateIndirectDrawIndexedBuffer(icb_new_count, indexed_name);
@@ -226,11 +198,21 @@ namespace hgl::ecs
 
     void RenderPrimitiveBatchSystem::FinalizeBatch(MaterialBatch& batch)
     {
+        SortBatchItems(batch);
+        BuildBatches(batch, 0);
+        UpdateMaterialInstanceBuffer(batch);
+        EnsureTransformVAB(batch);
+        WriteTransformIndices(batch);
+    }
+
+    void RenderPrimitiveBatchSystem::SortBatchItems(MaterialBatch& batch)
+    {
         std::vector<RenderItem*> static_items;
         std::vector<RenderItem*> movable_items;
         static_items.reserve(batch.items.size());
         movable_items.reserve(batch.items.size());
 
+        // Separate items by mobility
         for (auto *item : batch.items)
         {
             if (!item)
@@ -243,6 +225,7 @@ namespace hgl::ecs
                 movable_items.push_back(item);
         }
 
+        // Sort both groups
         std::sort(static_items.begin(), static_items.end(),
             [](const RenderItem* a, const RenderItem* b) {
                 return a->Compare(*b) < 0;
@@ -253,6 +236,7 @@ namespace hgl::ecs
                 return a->Compare(*b) < 0;
             });
 
+        // Rebuild items list: static first, then movable
         batch.items.clear();
         batch.items.reserve(static_items.size() + movable_items.size());
         for (auto *item : static_items)
@@ -260,84 +244,93 @@ namespace hgl::ecs
         for (auto *item : movable_items)
             batch.items.push_back(item);
 
+        // Update indices
         for (size_t i = 0; i < batch.items.size(); ++i)
         {
             batch.items[i]->index = i;
         }
 
         batch.static_count = static_cast<uint32_t>(static_items.size());
+    }
 
-        BuildBatches(batch, 0);
+    void RenderPrimitiveBatchSystem::UpdateMaterialInstanceBuffer(MaterialBatch& batch)
+    {
+        if (!batch.key.material || !batch.key.material->hasMI())
+            return;
 
-        if (batch.key.material && batch.key.material->hasMI())
+        if (!batch.mi_buffer && !batch.items.empty())
+            batch.mi_buffer = new ECSMaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
+
+        if (batch.mi_buffer && !batch.items.empty())
+            batch.mi_buffer->WriteItems(batch.items);
+    }
+
+    void RenderPrimitiveBatchSystem::EnsureTransformVAB(MaterialBatch& batch)
+    {
+        if (!batch.buffer_manager || batch.items.empty())
+            return;
+
+        const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
+        uint32_t new_node_count = 1;
+        while (new_node_count < item_count)
+            new_node_count <<= 1;
+
+        if (!batch.transform_vab || batch.transform_vab_node_count < item_count)
         {
-            if (!batch.mi_buffer && !batch.items.empty())
-                batch.mi_buffer = new ECSMaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
-
-            if (batch.mi_buffer && !batch.items.empty())
-                batch.mi_buffer->WriteItems(batch.items);
-        }
-
-        if (batch.buffer_manager && !batch.items.empty())
-        {
-            const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
-            uint32_t new_node_count = 1;
-            while (new_node_count < item_count)
-                new_node_count <<= 1;
-
-            if (!batch.transform_vab || batch.transform_vab_node_count < item_count)
-            {
-                batch.transform_vab_node_count = new_node_count;
-
-                if (batch.transform_vab)
-                {
-                    if (batch.buffer_manager)
-                        batch.buffer_manager->Release(batch.transform_vab);
-                    else
-                        delete batch.transform_vab;
-                }
-
-                batch.transform_vab = batch.buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT,
-                                                                        batch.transform_vab_node_count,
-                                                                        nullptr,
-                                                                        graph::BufferAllocPolicy::Auto);
-                batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetBuffer() : VK_NULL_HANDLE;
-            }
+            batch.transform_vab_node_count = new_node_count;
 
             if (batch.transform_vab)
             {
-                graph::Assign::TransformID::ValueType* transform_ptr =
-                    (graph::Assign::TransformID::ValueType*)(batch.transform_vab->Map(0, item_count));
-                const uint32_t max_transform_id =
-                    std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
-                bool warned_overflow = false;
-
-                for (size_t i = 0; i < batch.items.size(); ++i)
-                {
-                    RenderItem* item = batch.items[i];
-                    const uint32_t idx = item ? item->transform_index : 0;
-
-                    if (idx > max_transform_id)
-                    {
-                        if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
-                        {
-                            std::cout << "[ECS::RenderPrimitiveBatchSystem] WARNING: TransformID overflow ("
-                                        << idx << ")" << std::endl;
-                            warned_overflow = true;
-                        }
-                        *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
-                    }
-                    else
-                    {
-                        *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
-                    }
-
-                    ++transform_ptr;
-                }
-
-                batch.transform_vab->Unmap();
+                if (batch.buffer_manager)
+                    batch.buffer_manager->Release(batch.transform_vab);
+                else
+                    delete batch.transform_vab;
             }
+
+            batch.transform_vab = batch.buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT,
+                                                                    batch.transform_vab_node_count,
+                                                                    nullptr,
+                                                                    graph::BufferAllocPolicy::Auto);
+            batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetBuffer() : VK_NULL_HANDLE;
         }
+    }
+
+    void RenderPrimitiveBatchSystem::WriteTransformIndices(MaterialBatch& batch)
+    {
+        if (!batch.transform_vab || batch.items.empty())
+            return;
+
+        const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
+        graph::Assign::TransformID::ValueType* transform_ptr =
+            (graph::Assign::TransformID::ValueType*)(batch.transform_vab->Map(0, item_count));
+        const uint32_t max_transform_id =
+            std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+        bool warned_overflow = false;
+
+        for (size_t i = 0; i < batch.items.size(); ++i)
+        {
+            RenderItem* item = batch.items[i];
+            const uint32_t idx = item ? item->transform_index : 0;
+
+            if (idx > max_transform_id)
+            {
+                if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
+                {
+                    std::cout << "[ECS::RenderPrimitiveBatchSystem] WARNING: TransformID overflow ("
+                                << idx << ")" << std::endl;
+                    warned_overflow = true;
+                }
+                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
+            }
+            else
+            {
+                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
+            }
+
+            ++transform_ptr;
+        }
+
+        batch.transform_vab->Unmap();
     }
 
     RenderPrimitiveBatchSystem::RenderPrimitiveBatchSystem(const std::string& name)
@@ -426,43 +419,13 @@ namespace hgl::ecs
             if (bbox)
             {
                 if (bbox->HasWorldAABB())
-                {
-                    const auto& world_aabb = bbox->GetWorldAABB();
-                    const glm::vec3 world_center = world_aabb.GetCenter();
-                    const glm::vec3 world_extents = world_aabb.GetExtent();
-                    const float radius = glm::length(world_extents);
-
-                    item->isVisible = (frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE);
-                }
+                    item->isVisible = TestFrustumWithWorldAABB(item, bbox.get());
                 else
-                {
-                    const glm::vec3 local_center = bbox->GetCenter();
-                    const glm::vec3 local_extents = bbox->GetExtents();
-                    const float radius = glm::length(local_extents);
-
-                    const glm::mat4 worldMat = item->GetWorldMatrix();
-                    const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
-
-                    item->isVisible = (frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE);
-                }
+                    item->isVisible = TestFrustumWithLocalAABB(item, bbox.get());
             }
             else
             {
-                auto primitiveComp = item->GetPrimitiveComponent();
-                if (!primitiveComp)
-                    continue;
-
-                auto transform = item->GetTransform();
-                if (!transform)
-                    continue;
-
-                glm::vec3 worldPos = transform->GetWorldPosition();
-                float boundingRadius = primitiveComp->GetBoundingRadius();
-
-                if (boundingRadius <= 0.0f)
-                    item->isVisible = true;
-                else
-                    item->isVisible = (frustum.SphereIn(worldPos, boundingRadius) != math::Frustum::Scope::OUTSIDE);
+                item->isVisible = TestFrustumWithBoundingSphere(item);
             }
         }
 
@@ -481,6 +444,47 @@ namespace hgl::ecs
 
         if (events.onCullingComplete)
             events.onCullingComplete(stats.visibleEntities, stats.culledEntities);
+    }
+
+    bool RenderPrimitiveBatchSystem::TestFrustumWithWorldAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
+    {
+        const auto& world_aabb = bbox->GetWorldAABB();
+        const glm::vec3 world_center = world_aabb.GetCenter();
+        const glm::vec3 world_extents = world_aabb.GetExtent();
+        const float radius = glm::length(world_extents);
+
+        return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
+    }
+
+    bool RenderPrimitiveBatchSystem::TestFrustumWithLocalAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
+    {
+        const glm::vec3 local_center = bbox->GetCenter();
+        const glm::vec3 local_extents = bbox->GetExtents();
+        const float radius = glm::length(local_extents);
+
+        const glm::mat4 worldMat = item->GetWorldMatrix();
+        const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
+
+        return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
+    }
+
+    bool RenderPrimitiveBatchSystem::TestFrustumWithBoundingSphere(PrimitiveRenderItem* item)
+    {
+        auto primitiveComp = item->GetPrimitiveComponent();
+        if (!primitiveComp)
+            return false;
+
+        auto transform = item->GetTransform();
+        if (!transform)
+            return false;
+
+        glm::vec3 worldPos = transform->GetWorldPosition();
+        float boundingRadius = primitiveComp->GetBoundingRadius();
+
+        if (boundingRadius <= 0.0f)
+            return true;
+
+        return frustum.SphereIn(worldPos, boundingRadius) != math::Frustum::Scope::OUTSIDE;
     }
 
     void RenderPrimitiveBatchSystem::SortByDistance()
@@ -545,6 +549,50 @@ namespace hgl::ecs
         }
     }
 
+    graph::BufferManager* RenderPrimitiveBatchSystem::GetBufferManager() const
+    {
+        auto render_ctx = world ? world->GetRenderContext() : nullptr;
+        auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
+        if (!graphics_context && world)
+            graphics_context = world->GetGraphicsContext();
+        return graphics_context ? graphics_context->GetBufferManager() : nullptr;
+    }
+
+    std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder> 
+    RenderPrimitiveBatchSystem::BuildICBNames() const
+    {
+        graph::ObjectNameBuilder draw_name;
+        graph::ObjectNameBuilder indexed_name;
+
+        if (world && !world->GetResourceNamePrefix().empty())
+        {
+            // Use context prefix for hierarchical naming
+            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectDrawBuffer";
+            std::string indexed_str = world->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
+
+            draw_name = graph::ObjectNameBuilder(draw_str.c_str());
+            indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
+        }
+        else
+        {
+            // Fallback: use source location for tracking
+            const auto loc = std::source_location::current();
+            const char* filename = loc.file_name();
+            const char* basename = filename;
+            for (const char* p = filename; *p; ++p)
+                if (*p == '\\' || *p == '/') basename = p + 1;
+
+            char draw_buf[64], indexed_buf[64];
+            snprintf(draw_buf, sizeof(draw_buf), "ICB_Draw@%s:%u", basename, loc.line());
+            snprintf(indexed_buf, sizeof(indexed_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
+
+            draw_name = graph::ObjectNameBuilder(draw_buf);
+            indexed_name = graph::ObjectNameBuilder(indexed_buf);
+        }
+
+        return {draw_name, indexed_name};
+    }
+
     void RenderPrimitiveBatchSystem::BuildMaterialBatches()
     {
         auto& cache = world->GetRenderFrameCache();
@@ -554,6 +602,8 @@ namespace hgl::ecs
         {
             shared_transform_buffer = transform_system->GetTransformBuffer();
         }
+
+        auto buffer_manager = GetBufferManager();
 
         for (auto& itemPtr : cache.renderItems)
         {
@@ -572,11 +622,6 @@ namespace hgl::ecs
 
             if (it == cache.materialBatches.end())
             {
-                auto render_ctx = world ? world->GetRenderContext() : nullptr;
-                auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
-                if (!graphics_context && world)
-                    graphics_context = world->GetGraphicsContext();
-                auto buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = cameraInfo;
                 batch->transform_buffer = shared_transform_buffer;
@@ -585,11 +630,6 @@ namespace hgl::ecs
             }
             else
             {
-                auto render_ctx = world ? world->GetRenderContext() : nullptr;
-                auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
-                if (!graphics_context && world)
-                    graphics_context = world->GetGraphicsContext();
-                auto buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
                 it->second->buffer_manager = buffer_manager;
                 it->second->transform_buffer = shared_transform_buffer;
                 it->second->AddItem(item);

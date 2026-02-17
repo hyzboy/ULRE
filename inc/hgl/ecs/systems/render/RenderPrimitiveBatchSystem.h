@@ -4,6 +4,7 @@
 #include<hgl/math/geometry/Frustum.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
+#include<hgl/vk/VKObjectNameBuilder.h>
 #include<functional>
 #include<cstddef>
 
@@ -13,6 +14,7 @@ namespace hgl
     {
         class CameraInfo;
         class VulkanDevice;
+        class BufferManager;
     }
 }
 
@@ -20,6 +22,8 @@ namespace hgl::ecs
 {
     class ECSContext;
     class TransformSystem;
+    class PrimitiveRenderItem;
+    class BoundingBoxComponent;
 
     /**
      * RenderPrimitiveBatchSystem
@@ -85,10 +89,20 @@ namespace hgl::ecs
     private:
 
         void PerformFrustumCulling();
+        
+        // Frustum culling strategies
+        bool TestFrustumWithWorldAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox);
+        bool TestFrustumWithLocalAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox);
+        bool TestFrustumWithBoundingSphere(PrimitiveRenderItem* item);
+        
         void SortByDistance();
         void AssignTransformIndices(TransformSystem* transform_system);
         void BuildMaterialBatches();
         void FinalizeBatches();
+        
+        // Utility functions
+        graph::BufferManager* GetBufferManager() const;
+        std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder> BuildICBNames() const;
 
         // Helper functions for batching
         void ReallocICB(MaterialBatch& batch);
@@ -96,6 +110,12 @@ namespace hgl::ecs
         void BuildBatches(MaterialBatch& batch, const uint32_t base_instance);
 
         void FinalizeBatch(MaterialBatch& batch);
+        
+        // FinalizeBatch sub-functions
+        void SortBatchItems(MaterialBatch& batch);
+        void UpdateMaterialInstanceBuffer(MaterialBatch& batch);
+        void EnsureTransformVAB(MaterialBatch& batch);
+        void WriteTransformIndices(MaterialBatch& batch);
     };
 }//namespace hgl::ecs
 
