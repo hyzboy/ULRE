@@ -32,67 +32,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        void ReallocICB(graph::VulkanDevice* device,
-                        const std::vector<RenderItem*>& list,
-                        graph::IndirectDrawBuffer*& icb_draw_out,
-                        graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out,
-                        const ECSContext* context = nullptr)  // 新增参数获取上下文
-        {
-            HGL_CAPTURE_SCOPE();
-            if (!device || list.empty())
-            {
-                std::cout << "[ECS::RenderPrimitiveBatchSystem] Cannot allocate ICB - Device: "
-                          << (void*)device << ", Items: " << list.size() << std::endl;
-                return;
-            }
-
-            uint32_t icb_new_count = 1;
-            while (icb_new_count < list.size())
-                icb_new_count <<= 1;
-
-            if (icb_draw_out && icb_new_count <= icb_draw_out->GetMaxCount())
-                return;
-
-            if (icb_draw_out)
-                delete icb_draw_out;
-
-            if (icb_draw_indexed_out)
-                delete icb_draw_indexed_out;
-
-            // 构建带有上下文信息的名字
-            graph::ObjectNameBuilder draw_name;
-            graph::ObjectNameBuilder indexed_name;
-            
-            if (context && !context->GetResourceNamePrefix().empty())
-            {
-                // 从上下文获取前缀并追加类型信息
-                std::string draw_str = context->GetResourceNamePrefix() + ":IndirectDrawBuffer";
-                std::string indexed_str = context->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
-                
-                draw_name = graph::ObjectNameBuilder(draw_str.c_str());
-                indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
-            }
-            else
-            {
-                // 默认名字：使用调用者位置追踪（当context为空时）
-                const auto loc = std::source_location::current();
-                const char* filename = loc.file_name();
-                const char* basename = filename;
-                for (const char* p = filename; *p; ++p)
-                    if (*p == '\\' || *p == '/') basename = p + 1;
-                
-                char draw_buf[64], indexed_buf[64];
-                snprintf(draw_buf, sizeof(draw_buf), "ICB_Draw@%s:%u", basename, loc.line());
-                snprintf(indexed_buf, sizeof(indexed_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
-                
-                draw_name = graph::ObjectNameBuilder(draw_buf);
-                indexed_name = graph::ObjectNameBuilder(indexed_buf);
-            }
-
-            icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
-            icb_draw_indexed_out = device->CreateIndirectDrawIndexedBuffer(icb_new_count, indexed_name);
-        }
-
         void WriteICB(VkDrawIndirectCommand* draw_cmd, DrawBatch* batch)
         {
             if (!draw_cmd || !batch || !batch->geom_draw_range)
@@ -115,245 +54,288 @@ namespace hgl::ecs
             indexed_draw_cmd->vertexOffset = batch->geom_draw_range->vertex_offset;
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
+    }//anonymous namespace
 
-        void BuildBatches(graph::VulkanDevice* device,
-                          const std::vector<RenderItem*>& list,
-                          DrawBatchArray& batches,
-                          uint32_t& batch_count,
-                          graph::IndirectDrawBuffer*& icb_draw_out,
-                          graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out,
-                          const uint32_t base_instance,
-                          const ECSContext* context = nullptr)  // 新增参数
+    void RenderPrimitiveBatchSystem::ReallocICB(MaterialBatch& batch)
+    {
+        HGL_CAPTURE_SCOPE();
+        if (!device || batch.items.empty())
         {
-            const size_t count = list.size();
-            if (count == 0)
-            {
-                batch_count = 0;
-                batches.clear();
-                return;
-            }
-
-            if (!device)
-            {
-                batch_count = 0;
-                batches.clear();
-                return;
-            }
-
-            ReallocICB(device, list, icb_draw_out, icb_draw_indexed_out, context);  // 传递 context
-
-            if (!icb_draw_out || !icb_draw_indexed_out)
-            {
-                batch_count = 0;
-                batches.clear();
-                return;
-            }
-
-            VkDrawIndirectCommand* draw_cmd = icb_draw_out->MapCmd();
-            VkDrawIndexedIndirectCommand* indexed_draw_cmd = icb_draw_indexed_out->MapCmd();
-
-            if (!draw_cmd || !indexed_draw_cmd)
-            {
-                icb_draw_out->Unmap();
-                icb_draw_indexed_out->Unmap();
-                batch_count = 0;
-                batches.clear();
-                return;
-            }
-
-            batches.clear();
-            batches.resize(count);
-
-            DrawBatch* batch = batches.data();
-            RenderItem* item = list[0];
-            graph::Primitive* primitive = item ? item->GetPrimitive() : nullptr;
-
-            if (!primitive)
-            {
-                icb_draw_out->Unmap();
-                icb_draw_indexed_out->Unmap();
-                batch_count = 0;
-                batches.clear();
-                return;
-            }
-
-            batch_count = 1;
-            batch->first_instance = base_instance;
-            batch->instance_count = 1;
-            batch->Set(primitive);
-
-            const graph::GeometryDataBuffer* current_data_buffer = batch->geom_data_buffer;
-            const graph::GeometryDrawRange* current_draw_range = batch->geom_draw_range;
-
-            for (size_t i = 1; i < count; i++)
-            {
-                item = list[i];
-                primitive = item ? item->GetPrimitive() : nullptr;
-
-                if (!primitive)
-                    continue;
-
-                const graph::GeometryDataBuffer* item_data_buf = primitive->GetDataBuffer();
-                const graph::GeometryDrawRange* item_draw_range = primitive->GetRenderData();
-
-                if (*current_data_buffer == *item_data_buf &&
-                    *current_draw_range == *item_draw_range)
-                {
-                    ++batch->instance_count;
-                    continue;
-                }
-
-                if (batch->geom_data_buffer && batch->geom_data_buffer->vdm)
-                {
-                    if (batch->geom_data_buffer->ibo)
-                        WriteICB(indexed_draw_cmd++, batch);
-                    else
-                        WriteICB(draw_cmd++, batch);
-                }
-
-                ++batch_count;
-                ++batch;
-
-                batch->first_instance = base_instance + static_cast<uint32_t>(i);
-                batch->instance_count = 1;
-                batch->Set(primitive);
-
-                current_data_buffer = batch->geom_data_buffer;
-                current_draw_range = batch->geom_draw_range;
-            }
-
-            if (batch->geom_data_buffer && batch->geom_data_buffer->vdm)
-            {
-                if (batch->geom_data_buffer->ibo)
-                    WriteICB(indexed_draw_cmd, batch);
-                else
-                    WriteICB(draw_cmd, batch);
-            }
-
-            icb_draw_out->Unmap();
-            icb_draw_indexed_out->Unmap();
+            std::cout << "[ECS::RenderPrimitiveBatchSystem] Cannot allocate ICB - Device: "
+                        << (void*)device << ", Items: " << batch.items.size() << std::endl;
+            return;
         }
 
-        void FinalizeBatch(MaterialBatch& batch, const ECSContext* context = nullptr)  // 新增参数
+        uint32_t icb_new_count = 1;
+        while (icb_new_count < batch.items.size())
+            icb_new_count <<= 1;
+
+        if (batch.icb_draw && icb_new_count <= batch.icb_draw->GetMaxCount())
+            return;
+
+        if (batch.icb_draw)
+            delete batch.icb_draw;
+
+        if (batch.icb_draw_indexed)
+            delete batch.icb_draw_indexed;
+
+        // 构建带有上下文信息的名字
+        graph::ObjectNameBuilder draw_name;
+        graph::ObjectNameBuilder indexed_name;
+
+        if (world && !world->GetResourceNamePrefix().empty())
         {
-            std::vector<RenderItem*> static_items;
-            std::vector<RenderItem*> movable_items;
-            static_items.reserve(batch.items.size());
-            movable_items.reserve(batch.items.size());
+            // 从上下文获取前缀并追加类型信息
+            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectDrawBuffer";
+            std::string indexed_str = world->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
 
-            for (auto *item : batch.items)
+            draw_name = graph::ObjectNameBuilder(draw_str.c_str());
+            indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
+        }
+        else
+        {
+            // 默认名字：使用调用者位置追踪（当world为空时）
+            const auto loc = std::source_location::current();
+            const char* filename = loc.file_name();
+            const char* basename = filename;
+            for (const char* p = filename; *p; ++p)
+                if (*p == '\\' || *p == '/') basename = p + 1;
+
+            char draw_buf[64], indexed_buf[64];
+            snprintf(draw_buf, sizeof(draw_buf), "ICB_Draw@%s:%u", basename, loc.line());
+            snprintf(indexed_buf, sizeof(indexed_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
+
+            draw_name = graph::ObjectNameBuilder(draw_buf);
+            indexed_name = graph::ObjectNameBuilder(indexed_buf);
+        }
+
+        batch.icb_draw = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);
+        batch.icb_draw_indexed = device->CreateIndirectDrawIndexedBuffer(icb_new_count, indexed_name);
+    }
+
+    void RenderPrimitiveBatchSystem::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
+    {
+        const size_t count = batch.items.size();
+        if (count == 0)
+        {
+            batch.draw_batches_count = 0;
+            batch.draw_batches.clear();
+            return;
+        }
+
+        if (!device)
+        {
+            batch.draw_batches_count = 0;
+            batch.draw_batches.clear();
+            return;
+        }
+
+        ReallocICB(batch);
+
+        if (!batch.icb_draw || !batch.icb_draw_indexed)
+        {
+            batch.draw_batches_count = 0;
+            batch.draw_batches.clear();
+            return;
+        }
+
+        VkDrawIndirectCommand* draw_cmd = batch.icb_draw->MapCmd();
+        VkDrawIndexedIndirectCommand* indexed_draw_cmd = batch.icb_draw_indexed->MapCmd();
+
+        if (!draw_cmd || !indexed_draw_cmd)
+        {
+            batch.icb_draw->Unmap();
+            batch.icb_draw_indexed->Unmap();
+            batch.draw_batches_count = 0;
+            batch.draw_batches.clear();
+            return;
+        }
+
+        batch.draw_batches.clear();
+        batch.draw_batches.resize(count);
+
+        DrawBatch* draw_batch = batch.draw_batches.data();
+        RenderItem* item = batch.items[0];
+        graph::Primitive* primitive = item ? item->GetPrimitive() : nullptr;
+
+        if (!primitive)
+        {
+            batch.icb_draw->Unmap();
+            batch.icb_draw_indexed->Unmap();
+            batch.draw_batches_count = 0;
+            batch.draw_batches.clear();
+            return;
+        }
+
+        batch.draw_batches_count = 1;
+        draw_batch->first_instance = base_instance;
+        draw_batch->instance_count = 1;
+        draw_batch->Set(primitive);
+
+        const graph::GeometryDataBuffer* current_data_buffer = draw_batch->geom_data_buffer;
+        const graph::GeometryDrawRange* current_draw_range = draw_batch->geom_draw_range;
+
+        for (size_t i = 1; i < count; i++)
+        {
+            item = batch.items[i];
+            primitive = item ? item->GetPrimitive() : nullptr;
+
+            if (!primitive)
+                continue;
+
+            const graph::GeometryDataBuffer* item_data_buf = primitive->GetDataBuffer();
+            const graph::GeometryDrawRange* item_draw_range = primitive->GetRenderData();
+
+            if (*current_data_buffer == *item_data_buf &&
+                *current_draw_range == *item_draw_range)
             {
-                if (!item)
-                    continue;
+                ++draw_batch->instance_count;
+                continue;
+            }
 
-                auto transform = item->GetTransform();
-                if (transform && !transform->IsMovable())
-                    static_items.push_back(item);
+            if (draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
+            {
+                if (draw_batch->geom_data_buffer->ibo)
+                    WriteICB(indexed_draw_cmd++, draw_batch);
                 else
-                    movable_items.push_back(item);
+                    WriteICB(draw_cmd++, draw_batch);
             }
 
-            std::sort(static_items.begin(), static_items.end(),
-                [](const RenderItem* a, const RenderItem* b) {
-                    return a->Compare(*b) < 0;
-                });
+            ++batch.draw_batches_count;
+            ++draw_batch;
 
-            std::sort(movable_items.begin(), movable_items.end(),
-                [](const RenderItem* a, const RenderItem* b) {
-                    return a->Compare(*b) < 0;
-                });
+            draw_batch->first_instance = base_instance + static_cast<uint32_t>(i);
+            draw_batch->instance_count = 1;
+            draw_batch->Set(primitive);
 
-            batch.items.clear();
-            batch.items.reserve(static_items.size() + movable_items.size());
-            for (auto *item : static_items)
-                batch.items.push_back(item);
-            for (auto *item : movable_items)
-                batch.items.push_back(item);
+            current_data_buffer = draw_batch->geom_data_buffer;
+            current_draw_range = draw_batch->geom_draw_range;
+        }
 
-            for (size_t i = 0; i < batch.items.size(); ++i)
+        if (draw_batch->geom_data_buffer && draw_batch->geom_data_buffer->vdm)
+        {
+            if (draw_batch->geom_data_buffer->ibo)
+                WriteICB(indexed_draw_cmd, draw_batch);
+            else
+                WriteICB(draw_cmd, draw_batch);
+        }
+
+        batch.icb_draw->Unmap();
+        batch.icb_draw_indexed->Unmap();
+    }
+
+    void RenderPrimitiveBatchSystem::FinalizeBatch(MaterialBatch& batch)
+    {
+        std::vector<RenderItem*> static_items;
+        std::vector<RenderItem*> movable_items;
+        static_items.reserve(batch.items.size());
+        movable_items.reserve(batch.items.size());
+
+        for (auto *item : batch.items)
+        {
+            if (!item)
+                continue;
+
+            auto transform = item->GetTransform();
+            if (transform && !transform->IsMovable())
+                static_items.push_back(item);
+            else
+                movable_items.push_back(item);
+        }
+
+        std::sort(static_items.begin(), static_items.end(),
+            [](const RenderItem* a, const RenderItem* b) {
+                return a->Compare(*b) < 0;
+            });
+
+        std::sort(movable_items.begin(), movable_items.end(),
+            [](const RenderItem* a, const RenderItem* b) {
+                return a->Compare(*b) < 0;
+            });
+
+        batch.items.clear();
+        batch.items.reserve(static_items.size() + movable_items.size());
+        for (auto *item : static_items)
+            batch.items.push_back(item);
+        for (auto *item : movable_items)
+            batch.items.push_back(item);
+
+        for (size_t i = 0; i < batch.items.size(); ++i)
+        {
+            batch.items[i]->index = i;
+        }
+
+        batch.static_count = static_cast<uint32_t>(static_items.size());
+
+        BuildBatches(batch, 0);
+
+        if (batch.key.material && batch.key.material->hasMI())
+        {
+            if (!batch.mi_buffer && !batch.items.empty())
+                batch.mi_buffer = new ECSMaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
+
+            if (batch.mi_buffer && !batch.items.empty())
+                batch.mi_buffer->WriteItems(batch.items);
+        }
+
+        if (batch.buffer_manager && !batch.items.empty())
+        {
+            const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
+            uint32_t new_node_count = 1;
+            while (new_node_count < item_count)
+                new_node_count <<= 1;
+
+            if (!batch.transform_vab || batch.transform_vab_node_count < item_count)
             {
-                batch.items[i]->index = i;
-            }
-
-            batch.static_count = static_cast<uint32_t>(static_items.size());
-
-            BuildBatches(batch.device,
-                         batch.items,
-                         batch.draw_batches,
-                         batch.draw_batches_count,
-                         batch.icb_draw,
-                         batch.icb_draw_indexed,
-                         0,
-                         context);  // 新增参数
-
-            if (batch.key.material && batch.key.material->hasMI())
-            {
-                if (!batch.mi_buffer && !batch.items.empty())
-                    batch.mi_buffer = new ECSMaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
-
-                if (batch.mi_buffer && !batch.items.empty())
-                    batch.mi_buffer->WriteItems(batch.items);
-            }
-
-            if (batch.buffer_manager && !batch.items.empty())
-            {
-                const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
-                uint32_t new_node_count = 1;
-                while (new_node_count < item_count)
-                    new_node_count <<= 1;
-
-                if (!batch.transform_vab || batch.transform_vab_node_count < item_count)
-                {
-                    batch.transform_vab_node_count = new_node_count;
-
-                    if (batch.transform_vab)
-                    {
-                        if (batch.buffer_manager)
-                            batch.buffer_manager->Release(batch.transform_vab);
-                        else
-                            delete batch.transform_vab;
-                    }
-
-                    batch.transform_vab = batch.buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT,
-                                                                          batch.transform_vab_node_count,
-                                                                          nullptr,
-                                                                          graph::BufferAllocPolicy::Auto);
-                    batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetBuffer() : VK_NULL_HANDLE;
-                }
+                batch.transform_vab_node_count = new_node_count;
 
                 if (batch.transform_vab)
                 {
-                    graph::Assign::TransformID::ValueType* transform_ptr =
-                        (graph::Assign::TransformID::ValueType*)(batch.transform_vab->Map(0, item_count));
-                    const uint32_t max_transform_id =
-                        std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
-                    bool warned_overflow = false;
+                    if (batch.buffer_manager)
+                        batch.buffer_manager->Release(batch.transform_vab);
+                    else
+                        delete batch.transform_vab;
+                }
 
-                    for (size_t i = 0; i < batch.items.size(); ++i)
+                batch.transform_vab = batch.buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT,
+                                                                        batch.transform_vab_node_count,
+                                                                        nullptr,
+                                                                        graph::BufferAllocPolicy::Auto);
+                batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetBuffer() : VK_NULL_HANDLE;
+            }
+
+            if (batch.transform_vab)
+            {
+                graph::Assign::TransformID::ValueType* transform_ptr =
+                    (graph::Assign::TransformID::ValueType*)(batch.transform_vab->Map(0, item_count));
+                const uint32_t max_transform_id =
+                    std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+                bool warned_overflow = false;
+
+                for (size_t i = 0; i < batch.items.size(); ++i)
+                {
+                    RenderItem* item = batch.items[i];
+                    const uint32_t idx = item ? item->transform_index : 0;
+
+                    if (idx > max_transform_id)
                     {
-                        RenderItem* item = batch.items[i];
-                        const uint32_t idx = item ? item->transform_index : 0;
-
-                        if (idx > max_transform_id)
+                        if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
                         {
-                            if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
-                            {
-                                std::cout << "[ECS::RenderPrimitiveBatchSystem] WARNING: TransformID overflow ("
-                                          << idx << ")" << std::endl;
-                                warned_overflow = true;
-                            }
-                            *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
+                            std::cout << "[ECS::RenderPrimitiveBatchSystem] WARNING: TransformID overflow ("
+                                        << idx << ")" << std::endl;
+                            warned_overflow = true;
                         }
-                        else
-                        {
-                            *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
-                        }
-
-                        ++transform_ptr;
+                        *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
+                    }
+                    else
+                    {
+                        *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
                     }
 
-                    batch.transform_vab->Unmap();
+                    ++transform_ptr;
                 }
+
+                batch.transform_vab->Unmap();
             }
         }
     }
@@ -622,7 +604,7 @@ namespace hgl::ecs
         for (auto& pair : cache.materialBatches)
         {
             if (pair.second)
-                FinalizeBatch(*pair.second, world);  // 传递 world 作为 context
+                FinalizeBatch(*pair.second);
         }
     }
 }//namespace hgl::ecs

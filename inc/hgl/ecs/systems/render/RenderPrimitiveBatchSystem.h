@@ -2,6 +2,8 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/math/geometry/Frustum.h>
+#include<hgl/ecs/core/MaterialBatch.h>
+#include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
 #include<functional>
 #include<cstddef>
 
@@ -87,6 +89,13 @@ namespace hgl::ecs
         void AssignTransformIndices(TransformSystem* transform_system);
         void BuildMaterialBatches();
         void FinalizeBatches();
+
+        // Helper functions for batching
+        void ReallocICB(MaterialBatch& batch);
+
+        void BuildBatches(MaterialBatch& batch, const uint32_t base_instance);
+
+        void FinalizeBatch(MaterialBatch& batch);
     };
 }//namespace hgl::ecs
 
