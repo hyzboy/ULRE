@@ -10,7 +10,6 @@
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
-#include<map>
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 
 namespace hgl { 
@@ -34,7 +33,7 @@ namespace hgl
         struct RenderFrameCache
         {
             std::vector<std::unique_ptr<PrimitiveRenderItem>> renderItems;
-            std::map<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
+            hgl::UnorderedMap<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
             const graph::CameraInfo* cameraInfo = nullptr;
             uint32_t renderableCount = 0;
 

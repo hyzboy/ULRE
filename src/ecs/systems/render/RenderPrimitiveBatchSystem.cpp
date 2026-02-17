@@ -385,7 +385,7 @@ namespace hgl::ecs
 
             const auto end = std::chrono::high_resolution_clock::now();
             stats.batchingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
-            stats.batchCount = cache.materialBatches.size();
+            stats.batchCount = cache.materialBatches.GetCount();
 
             if (events.onBatchesBuilt)
                 events.onBatchesBuilt(stats.batchCount);
@@ -607,9 +607,9 @@ namespace hgl::ecs
                 continue;
 
             MaterialPipelineKey key(material, pipeline);
-            auto it = cache.materialBatches.find(key);
+            auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
-            if (it == cache.materialBatches.end())
+            if (!batch_ptr)
             {
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = cameraInfo;
@@ -619,9 +619,9 @@ namespace hgl::ecs
             }
             else
             {
-                it->second->buffer_manager = buffer_manager;
-                it->second->transform_buffer = shared_transform_buffer;
-                it->second->AddItem(item);
+                (*batch_ptr)->buffer_manager = buffer_manager;
+                (*batch_ptr)->transform_buffer = shared_transform_buffer;
+                (*batch_ptr)->AddItem(item);
             }
         }
     }

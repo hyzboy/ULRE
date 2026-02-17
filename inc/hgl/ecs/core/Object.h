@@ -61,7 +61,7 @@ namespace hgl
             virtual void OnCreate() {}
 
             /// Called every frame for updates
-            virtual void OnUpdate(float deltaTime) {}
+            virtual void OnUpdate(float) {}
 
             /// Called when object is destroyed
             virtual void OnDestroy() {}

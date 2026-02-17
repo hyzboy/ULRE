@@ -32,10 +32,10 @@ namespace hgl::ecs
 
         if (cache.renderableCount == 0)
         {
-            if (!cache.materialBatches.empty())
+            if (!cache.materialBatches.IsEmpty())
             {
                 GLogWarning("[RenderPrimitiveSubmitSystem] No renderables but material batches exist (%zu)",
-                            cache.materialBatches.size());
+                            cache.materialBatches.GetCount());
             }
             return;
         }

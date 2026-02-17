@@ -134,8 +134,8 @@ namespace hgl
             {
                 // 即使未激活，也要清空materialBatches以释放GPU资源
                 std::cout << "[DEBUG] ECSContext::Shutdown() (inactive) - releasing " 
-                          << render_frame_cache.materialBatches.size() << " material batches" << std::endl;
-                render_frame_cache.materialBatches.clear();
+                          << render_frame_cache.materialBatches.GetCount() << " material batches" << std::endl;
+                render_frame_cache.materialBatches.Clear();
                 return;
             }
 
@@ -172,8 +172,8 @@ namespace hgl
 
             // Finally, clear materialBatches after all systems/entities are destroyed
             std::cout << "[DEBUG] ECSContext::Shutdown() - releasing " 
-                      << render_frame_cache.materialBatches.size() << " material batches" << std::endl;
-            render_frame_cache.materialBatches.clear();
+                      << render_frame_cache.materialBatches.GetCount() << " material batches" << std::endl;
+            render_frame_cache.materialBatches.Clear();
             std::cout << "[DEBUG] ECSContext::Shutdown() - material batches cleared" << std::endl;
 
             active = false;

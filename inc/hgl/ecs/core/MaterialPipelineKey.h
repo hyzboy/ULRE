@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <functional>
+
 namespace hgl
 {
     namespace graph
@@ -36,3 +38,19 @@ namespace hgl::ecs
         }
     };
 }//namespace hgl::ecs
+
+// Hash specialization for std::hash (required for unordered containers)
+namespace std
+{
+    template<>
+    struct hash<hgl::ecs::MaterialPipelineKey>
+    {
+        size_t operator()(const hgl::ecs::MaterialPipelineKey& key) const noexcept
+        {
+            size_t h1 = std::hash<hgl::graph::Material*>{}(key.material);
+            size_t h2 = std::hash<hgl::graph::Pipeline*>{}(key.pipeline);
+            // Combine hashes using XOR and bit shift
+            return h1 ^ (h2 << 1);
+        }
+    };
+}//namespace std
