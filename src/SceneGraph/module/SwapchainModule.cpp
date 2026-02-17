@@ -397,34 +397,40 @@ bool SwapchainModule::Initialize()
         }
 
         // Create or get queue (DeviceQueue has operator VkQueue())
+        // Note: We extract the handle and immediately delete the wrapper as we own the raw handle
         if (device)
         {
             DeviceQueue *queue_ptr = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
             if (queue_ptr)
             {
                 frame.queue = (VkQueue)(*queue_ptr);
+                delete queue_ptr;  // Wrapper object is temporary, delete after extraction
             }
         }
 
         // Create synchronization primitives (Semaphore and Fence have operator overloads)
+        // Note: We extract handles and immediately delete wrappers as we own the raw handles
         if (device)
         {
             Semaphore *sem_acquired = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
             if (sem_acquired)
             {
                 frame.image_acquired_semaphore = (VkSemaphore)(*sem_acquired);
+                delete sem_acquired;  // Wrapper object is temporary, delete after extraction
             }
 
             Semaphore *sem_complete = device->CreateGPUSemaphore("Swapchain:RenderComplete");
             if (sem_complete)
             {
                 frame.render_complete_semaphore = (VkSemaphore)(*sem_complete);
+                delete sem_complete;  // Wrapper object is temporary, delete after extraction
             }
 
             Fence *fence_ptr = device->CreateFence("Swapchain:Fence");
             if (fence_ptr)
             {
                 frame.fence = (VkFence)(*fence_ptr);
+                delete fence_ptr;  // Wrapper object is temporary, delete after extraction
             }
         }
 
