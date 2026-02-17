@@ -396,42 +396,18 @@ bool SwapchainModule::Initialize()
             frame.cmd_buffer = (VkCommandBuffer)(*sc_image->cmd_buf);
         }
 
-        // Create or get queue (DeviceQueue has operator VkQueue())
-        // Note: We extract the handle and immediately delete the wrapper as we own the raw handle
+        // Create or get queue (DeviceQueue wrapper managed by SwapchainModule)
         if (device)
         {
-            DeviceQueue *queue_ptr = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
-            if (queue_ptr)
-            {
-                frame.queue = (VkQueue)(*queue_ptr);
-                delete queue_ptr;  // Wrapper object is temporary, delete after extraction
-            }
+            frame.queue = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
         }
 
-        // Create synchronization primitives (Semaphore and Fence have operator overloads)
-        // Note: We extract handles and immediately delete wrappers as we own the raw handles
+        // Create synchronization primitives (Semaphore and Fence managed by SwapchainModule)
         if (device)
         {
-            Semaphore *sem_acquired = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
-            if (sem_acquired)
-            {
-                frame.image_acquired_semaphore = (VkSemaphore)(*sem_acquired);
-                delete sem_acquired;  // Wrapper object is temporary, delete after extraction
-            }
-
-            Semaphore *sem_complete = device->CreateGPUSemaphore("Swapchain:RenderComplete");
-            if (sem_complete)
-            {
-                frame.render_complete_semaphore = (VkSemaphore)(*sem_complete);
-                delete sem_complete;  // Wrapper object is temporary, delete after extraction
-            }
-
-            Fence *fence_ptr = device->CreateFence("Swapchain:Fence");
-            if (fence_ptr)
-            {
-                frame.fence = (VkFence)(*fence_ptr);
-                delete fence_ptr;  // Wrapper object is temporary, delete after extraction
-            }
+            frame.image_acquired_semaphore = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
+            frame.render_complete_semaphore = device->CreateGPUSemaphore("Swapchain:RenderComplete");
+            frame.fence = device->CreateFence("Swapchain:Fence");
         }
 
         frame.image_index = i;
@@ -445,8 +421,11 @@ bool SwapchainModule::Initialize()
 bool SwapchainModule::CreatePerFrameResources(SwapchainData &sc_data)
 {
     // Frame resources are now populated directly in Initialize()
-    // This method is kept for API compatibility but the actual work
-    // is done during Initialize() when we have access to the Swapchain object
+    // where we have access to the Swapchain object and can properly create
+    // DeviceQueue, Semaphore, and Fence wrapper objects for each frame.
+    //
+    // This method is kept for API compatibility but the actual resource
+    // creation is done during Initialize().
     
     if (sc_data.frames.empty())
     {
@@ -466,16 +445,14 @@ bool SwapchainModule::DestroyPerFrameResources(SwapchainData &sc_data)
 
     for (auto &frame : sc_data.frames)
     {
-        // Note: Frame resources are REFERENCES only, not owned by FrameResources
-        // Actual deletion happens via the respective managers:
-        // - Semaphores: destroyed by Device
-        // - Fences: destroyed by Device
-        // - Framebuffer/RenderPass: destroyed by managers
-        // - CommandBuffer: destroyed by CommandPool
-        // - ImageView: destroyed by TextureManager
-        // - Queue: destroyed by Device
+        // FrameResources::Clear() handles deletion of wrapper objects owned by SwapchainModule:
+        // - DeviceQueue*
+        // - Semaphore* (both image_acquired and render_complete)
+        // - Fence*
+        //
+        // Other resources (VkImage, VkImageView, VkFramebuffer, VkRenderPass, VkCommandBuffer)
+        // are owned by their respective managers and will be deleted by them.
 
-        // Just clear the references
         frame.Clear();
     }
 
