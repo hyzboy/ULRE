@@ -2,6 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/graph/module/RenderPassManager.h>
+#include<hgl/utils/ObjectTracker.h>
 
 namespace hgl::graph{
 const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat format) const
@@ -11,6 +12,7 @@ const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat form
 
 GRAPH_MODULE_CONSTRUCT(TextureManager)
 {
+    HGL_CAPTURE_SCOPE();
     EnsureTransferResources();
 }
 
@@ -22,11 +24,14 @@ TextureManager::~TextureManager()
 
 void TextureManager::OnGraphicsContextChanged(GraphicsContext *)
 {
+    HGL_CAPTURE_SCOPE();
     EnsureTransferResources();
 }
 
 void TextureManager::EnsureTransferResources()
 {
+    HGL_CAPTURE_SCOPE();
+
     if(texture_cmd_buf && texture_queue)
         return;
 

@@ -15,6 +15,7 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/vk/StructuredBufferAccessor.h>
+#include <hgl/utils/ObjectTracker.h>
 
 /**
  * \file LineRenderManager.cpp
@@ -54,6 +55,8 @@ namespace hgl::graph
      */
     LineRenderManager* CreateLineRenderManager(GraphicsContext *gc,IRenderTarget *rt)
     {
+        HGL_CAPTURE_SCOPE();
+        
         if (!gc)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: CreateLineRenderManager失败 GraphicsContext为空 EN: graphics context is null"));
@@ -195,6 +198,8 @@ namespace hgl::graph
 
     LineRenderManager* CreateLineRenderManager(RenderContext *rc,IRenderTarget *rt)
     {
+        HGL_CAPTURE_SCOPE();
+        
         if (!rc)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: CreateLineRenderManager失败 RenderContext为空 EN: render context is null"));

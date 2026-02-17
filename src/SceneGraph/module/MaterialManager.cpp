@@ -14,6 +14,7 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/utils/ObjectTracker.h>
 #include<cstdint>
 
 namespace hgl::graph{
@@ -125,6 +126,8 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
 
 Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(!mci)
         return(nullptr);
 
@@ -214,6 +217,8 @@ namespace mtl
 
 Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)
 {
+    HGL_CAPTURE_SCOPE();
+
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(GetDevAttr(),mtl_name,cfg);
 
     //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
@@ -225,6 +230,8 @@ Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material
 
 Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
 {
+    HGL_CAPTURE_SCOPE();
+
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(GetDevAttr(),mtl_name,cfg);
 
     //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
@@ -237,6 +244,8 @@ Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(!mtl)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI();
@@ -255,6 +264,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(!mtl)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil);
@@ -273,6 +284,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(!mtl)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil_cfg);
@@ -291,6 +304,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const uint32 mi_bytes)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(!mtl)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil);
@@ -312,6 +327,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const uint32 mi_bytes)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(!mtl)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil_cfg);
@@ -333,6 +350,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
 {
+    HGL_CAPTURE_SCOPE();
+
     Material *mtl=this->CreateMaterial(mtl_name,mci);
 
     if(!mtl)
@@ -343,6 +362,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *mci, const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
+    HGL_CAPTURE_SCOPE();
+
     Material *mtl=this->CreateMaterial(mtl_name,mci);
 
     if(!mtl)
@@ -353,6 +374,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
+    HGL_CAPTURE_SCOPE();
+
     mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
 
     if(!mci)
@@ -363,6 +386,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
+    HGL_CAPTURE_SCOPE();
+
     mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
 
     if(!mci)

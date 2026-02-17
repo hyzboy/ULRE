@@ -13,6 +13,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/utils/ObjectTracker.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/vk/VKRenderAssign.h>
@@ -35,6 +36,7 @@ namespace hgl::ecs
                         graph::IndirectDrawIndexedBuffer*& icb_draw_indexed_out,
                         const ECSContext* context = nullptr)  // 新增参数获取上下文
         {
+            HGL_CAPTURE_SCOPE();
             if (!device || list.empty())
             {
                 std::cout << "[ECS::RenderPrimitiveBatchSystem] Cannot allocate ICB - Device: "

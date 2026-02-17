@@ -27,6 +27,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKFence.h>
 #include<hgl/vk/VKSurface.h>
+#include<hgl/utils/ObjectTracker.h>
 
 
 namespace hgl::graph{
@@ -108,6 +109,8 @@ namespace
 
 bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr)!=VK_SUCCESS)
         return(false);
 
@@ -162,6 +165,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 
 Swapchain *SwapchainModule::CreateSwapchain()
 {
+    HGL_CAPTURE_SCOPE();
     auto *dev_attr=GetDevAttr();
 
     if(!dev_attr)
@@ -196,6 +200,16 @@ namespace
     {
         void Clear() override
         {
+            // SwapchainImage owns fbo, color_textures, depth_texture, cmd_buf
+            // We only reference them, so nullify before calling base Clear()
+            fbo = nullptr;
+            color_textures = nullptr;  // array pointer is nullified, but not deleted
+            color_count = 0;
+            depth_texture = nullptr;
+            cmd_buf = nullptr;
+            
+            // Now call base Clear() to delete queue and render_complete_semaphore
+            // (which we do own)
             RenderTargetData::Clear();
         }
     };//
@@ -240,6 +254,10 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
                                                device->CreateGPUSemaphore("Swapchain:ImageAcquired"),
                                                rtd_list
     );
+
+    // 更新 ECSContext 的 render_target 指针，避免悬空指针
+    if (ecs_context)
+        ecs_context->SetRenderTarget(sc_render_target);
 
     return true;
 }
@@ -311,6 +329,7 @@ void SwapchainModule::Release()
 SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
     :GraphModuleInherit<SwapchainModule,GraphModule>(gc,"SwapchainModule")
 {
+    HGL_CAPTURE_SCOPE();
     tex_manager=tm;
     rt_manager=rtm;
     rp_manager=rpm;
@@ -335,7 +354,16 @@ SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_c
 
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
+    // 先置空 ECSContext 的 render_target，避免短暂的悬空指针
+    if (ecs_context)
+        ecs_context->SetRenderTarget(nullptr);
+
     // Clean up legacy architecture resources
+    if (sc_render_target)
+    {
+        sc_render_target->ReleaseFrameResources();        // Clean all RenderTargetData (fbo, queue, semaphore, etc.)
+        sc_render_target->ReleaseSwapchainResources();    // Clean swapchain and present_complete_semaphore
+    }
     SAFE_CLEAR(sc_render_target)
 
     // Clean up new architecture resources
@@ -356,7 +384,7 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     VulkanSurface *surface=GetSurface();
     surface->RefreshCaps();
 
-    CreateSwapchainRenderTarget();
+    CreateSwapchainRenderTarget();  // 这里会重新设置 ecs_context->render_target
 }
 //
 //RenderCmdBuffer *SwapchainModule::BeginRender()

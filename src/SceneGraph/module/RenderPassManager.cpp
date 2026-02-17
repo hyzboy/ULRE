@@ -3,6 +3,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
+#include<hgl/utils/ObjectTracker.h>
 #include<cstdint>
 
 namespace hgl::graph{
@@ -253,6 +254,8 @@ RenderPass *RenderPassManager::CreateRenderPass(const ValueArray<VkAttachmentDes
 
 RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
 {
+    HGL_CAPTURE_SCOPE();
+
     {
         const auto *phy_dev=GetPhyDevice();
 

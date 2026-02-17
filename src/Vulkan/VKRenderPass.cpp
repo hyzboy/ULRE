@@ -5,6 +5,7 @@
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/utils/ObjectTracker.h>
 namespace hgl::graph{
 RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
 {
@@ -29,6 +30,8 @@ RenderPass::~RenderPass()
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
+    HGL_CAPTURE_SCOPE();
+
     //以后要做一个缓冲，以Material为基准创建一个pipeline，其它MaterialInstance的pipeline全部以它为基础，这样可以提升性能。
 
     VkPipeline graphicsPipeline;

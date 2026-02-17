@@ -192,6 +192,9 @@ namespace hgl
             /// 获取 GPU 设备
             hgl::graph::VulkanDevice* GetGPUDevice() { return gpu_device; }
             
+            /// 设置渲染目标（用于窗口 resize 等场景重建 render target）
+            void SetRenderTarget(hgl::graph::IRenderTarget* target) { render_target = target; }
+            
             /// 获取渲染目标
             hgl::graph::IRenderTarget* GetRenderTarget() { return render_target; }
             

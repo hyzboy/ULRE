@@ -108,6 +108,7 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
     record.file = loc.file_name();
     record.function = loc.function_name();
     record.line = loc.line();
+    record.stack_depth = hgl::utils::get_current_allocation_stack(record.stack, 64);
 
 #ifdef _DEBUG
     // 详细日志：记录对象创建 - 在 move 之前输出
@@ -161,6 +162,7 @@ void VulkanDevice::TrackObjectWithoutLocation(VkObjectType type, uint64_t handle
     record.file = "";
     record.function = "";
     record.line = 0;
+    record.stack_depth = hgl::utils::get_current_allocation_stack(record.stack, 64);
 
     tracked_objects.emplace(key, std::move(record));
 }
@@ -251,6 +253,44 @@ void VulkanDevice::DumpTrackedObjects() const
                       << " in " << record.function.c_str() << "()";
         }
         std::cout << "\n";
+
+        if (record.stack_depth > 0)
+        {
+            std::cout << "  Stack:\n";
+            for (uint32_t i = 0; i < record.stack_depth; ++i)
+            {
+                const auto &frame = record.stack[i];
+                
+                // 提取相对路径 (去掉工作区前缀)
+                const char* file_display = frame.file;
+                const char* workspace_prefix = "d:\\\\ULRE\\\\";
+                const char* workspace_prefix_lower = "D:\\\\ULRE\\\\";
+                
+                if (std::strncmp(frame.file, workspace_prefix, strlen(workspace_prefix)) == 0)
+                    file_display = frame.file + strlen(workspace_prefix);
+                else if (std::strncmp(frame.file, workspace_prefix_lower, strlen(workspace_prefix_lower)) == 0)
+                    file_display = frame.file + strlen(workspace_prefix_lower);
+                
+                // 简化函数名 (提取核心函数名)
+                std::string func_name = frame.function;
+                
+                // 去掉返回类型前缀 (查找最后一个空格后的内容)
+                size_t last_space = func_name.rfind(' ');
+                if (last_space != std::string::npos)
+                    func_name = func_name.substr(last_space + 1);
+                
+                // 去掉调用约定 __cdecl __stdcall 等
+                const char* conventions[] = {"__cdecl ", "__stdcall ", "__fastcall ", "__vectorcall "};
+                for (const char* conv : conventions) {
+                    size_t pos = func_name.find(conv);
+                    if (pos != std::string::npos)
+                        func_name.erase(pos, strlen(conv));
+                }
+                
+                std::cout << "    #" << i << " " << file_display << ":" << frame.line
+                          << " -> " << func_name << "()\n";
+            }
+        }
     }
 
     std::cout << "========== [END LEAK DETECTION] ==========\n";
@@ -371,7 +411,10 @@ Fence *VulkanDevice::CreateFence(const ObjectNameBuilder &name, bool create_sign
         return(nullptr);
 
     TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, name.Append(ObjectTypeTag::VKFence), loc);
-    return(new Fence(attr->device,fence));
+    
+    // 创建Fence对象并传入追踪信息
+    std::string fence_name = name.Append(ObjectTypeTag::VKFence).ToString().c_str();
+    return(new Fence(attr->device, fence, fence_name, loc));
 }
 
 Fence *VulkanDevice::CreateFence(bool create_signaled, const std::source_location &loc)

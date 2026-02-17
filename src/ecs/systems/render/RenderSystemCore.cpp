@@ -44,6 +44,11 @@ bool RenderSystemCore::Initialize() {
 }
 
 bool RenderSystemCore::BeginFrame() {
+    // 每次BeginFrame时重新获取render_target，因为窗口resize时可能被重建
+    if (world) {
+        render_target = world->GetRenderTarget();
+    }
+    
     if (!render_target) {
         LogError("RenderSystemCore::BeginFrame: render_target is null");
         return false;
@@ -130,6 +135,17 @@ bool RenderSystemCore::BeginFrame() {
 void RenderSystemCore::EndFrame() {
     if (!frame_begun) {
         LogWarning("RenderSystemCore::EndFrame: frame not begun");
+        return;
+    }
+
+    // 重新获取render_target以防resize时被重建
+    if (world) {
+        render_target = world->GetRenderTarget();
+    }
+
+    if (!render_target) {
+        LogError("RenderSystemCore::EndFrame: render_target is null");
+        frame_begun = false;
         return;
     }
 

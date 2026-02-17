@@ -17,6 +17,7 @@
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
+#include<hgl/utils/ObjectTracker.h>
 #include<typeinfo>
 #include<type_traits>
 #include<utility>
@@ -60,6 +61,8 @@ class VulkanDevice
         std::string file;
         std::string function;
         uint32_t line = 0;
+        uint32_t stack_depth = 0;
+        hgl::utils::SourceLocation stack[64];
     };
 
     struct ObjectKey

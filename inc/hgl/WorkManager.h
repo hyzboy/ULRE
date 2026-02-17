@@ -3,6 +3,7 @@
 #include<hgl/WorkObject.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
+#include<hgl/utils/ObjectTracker.h>
 #include <memory>
 
 namespace hgl
@@ -92,10 +93,15 @@ namespace hgl
 
     template<typename WO> int RunFramework(const OSString &title,uint width=1280,uint height=720)
     {
+        hgl::utils::initialize_object_tracker();
+
         AppFramework app(title);
 
         if(!app.Init(width,height))
+        {
+            hgl::utils::shutdown_object_tracker();
             return(-1);
+        }
 
         SwapchainWorkManager wm(&app);
 
@@ -104,10 +110,13 @@ namespace hgl
         if(!wo->Init())
         {
             delete wo;
+            hgl::utils::shutdown_object_tracker();
             return(-2);
         }
 
         wm.Run(wo);
+
+        hgl::utils::shutdown_object_tracker();
 
         return 0;
     }

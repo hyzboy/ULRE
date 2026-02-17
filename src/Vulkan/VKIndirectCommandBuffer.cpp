@@ -1,10 +1,13 @@
 ﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/utils/ObjectTracker.h>
 
 namespace hgl::graph{
 
 bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,const ObjectNameBuilder &name,SharingMode sharing_mode)
 {
+    HGL_CAPTURE_SCOPE();
+
     const uint32_t size=cmd_count*cmd_size;
 
     if(size<=0)return(false);
@@ -14,6 +17,8 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 
 bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,StagedBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sharing_mode)
 {
+    HGL_CAPTURE_SCOPE();
+
     if(staged_out)
         *staged_out=nullptr;
 
@@ -63,6 +68,7 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
 
 IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
 {
+    HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
@@ -94,6 +100,7 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
 
 IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,const ObjectNameBuilder &name,SharingMode sm)
 {
+    HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
     StagedBuffer *staged=nullptr;
 
