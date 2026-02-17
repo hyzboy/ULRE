@@ -11,12 +11,16 @@
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/MaterialManager.h>
 
  // 引入ECS相关头文件
  #include<hgl/ecs/core/Context.h>
  #include<hgl/ecs/core/Entity.h>
  #include<hgl/ecs/components/TransformComponent.h>
  #include<hgl/ecs/components/PrimitiveComponent.h>
+ #include<hgl/utils/ObjectTracker.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -52,6 +56,7 @@ private:
     // ECS组件
     ECSContext *  ecs_world      =nullptr;   // 由默认 ECSContext 统一维护
     Entity* triangle_entity     =nullptr;
+    uint64_t entity_id          =0;          // 对象追踪ID
 
     // 传统渲染资源
     MaterialInstance *  material_instance   =nullptr;
@@ -146,6 +151,8 @@ private:
 
     bool InitECS()
     {
+        HGL_CAPTURE_SCOPE();  // 记录此函数调用的栈信息
+        
         // === 步骤1: 创建ECS世界 ===
         // World是ECS架构的顶层容器，管理所有Entity和System
         ecs_world = GetECSContext();
@@ -155,10 +162,12 @@ private:
         // === 步骤2: 创建Entity ===
         // Entity是游戏对象的容器，本身不包含数据，只是Component的集合
         triangle_entity = ecs_world->CreateEntity<Entity>("TriangleEntity");
+        entity_id = HGL_TRACK_ALLOCATION("TriangleEntity", hgl::core::ObjectTypeTag::RenderSystem);
 
         // === 步骤3: 添加TransformComponent ===
         // TransformComponent管理空间变换（位置、旋转、缩放）
         // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
+        HGL_TRACK_ALLOCATION("TriangleTransform", hgl::core::ObjectTypeTag::FrameResource);
         auto transform = triangle_entity->AddComponent<TransformComponent>();
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
@@ -170,6 +179,7 @@ private:
         // === 步骤4: 添加ECS PrimitiveComponent ===
         // 新的ECS PrimitiveComponent用于管理渲染图元
         // 注意：需要明确使用hgl::ecs命名空间，因为有两个PrimitiveComponent
+        HGL_TRACK_ALLOCATION("TrianglePrimitive", hgl::core::ObjectTypeTag::FrameResource);
         auto ecs_primitive = triangle_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         ecs_primitive->SetPrimitive(prim_triangle);
         ecs_primitive->SetVisible(true);
@@ -183,6 +193,8 @@ public:
 
     bool Init() override
     {
+        HGL_CAPTURE_SCOPE();  // 记录应用初始化的调用栈
+        
         if(!InitMaterial())
             return(false);
 
