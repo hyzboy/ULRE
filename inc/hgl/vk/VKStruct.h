@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKNamespace.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<typename T,VkStructureType ST> struct vkstruct:public T
 {
 public:
@@ -158,4 +158,4 @@ public:
         pName               ="main";
     }
 };
-VK_NAMESPACE_END
+}//namespace hgl::graph

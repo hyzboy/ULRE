@@ -4,7 +4,7 @@
 #include<hgl/type/StringList.h>
 #include<hgl/type/StrChar.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     using namespace hgl::filesystem;
@@ -99,4 +99,4 @@ void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysica
 
     SaveMemoryToFile(fullname,data,size);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

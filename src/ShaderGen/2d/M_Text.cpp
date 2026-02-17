@@ -4,7 +4,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/mtl/SamplerName.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char mi_codes[]="uint TextColor;";      //材质实例代码
@@ -105,4 +105,4 @@ MaterialCreateInfo *CreateText2D(const VulkanDevAttr *dev_attr,const Text2DMater
 
     return mt2d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKStruct.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct ImageCreateInfo:public vkstruct_flag<VkImageCreateInfo,VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO>
 {
 public:
@@ -182,4 +182,4 @@ public:
 
     ~ImageCubeArrayCreateInfo()=default;
 };//
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -6,9 +6,9 @@
 
 using namespace hgl;
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
     void SetDefault(VkPipelineColorBlendAttachmentState *cba);
-VK_NAMESPACE_END
+}//namespace hgl::graph
 
 namespace
 {

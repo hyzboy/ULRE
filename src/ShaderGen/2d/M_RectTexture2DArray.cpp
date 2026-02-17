@@ -5,7 +5,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/mtl/SamplerName.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char mi_codes[]="uvec4 id;";          //材质实例代码
@@ -109,4 +109,4 @@ MaterialCreateInfo *CreateRectTexture2DArray(const VulkanDevAttr *dev_attr,mtl::
 
     return mvc2d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

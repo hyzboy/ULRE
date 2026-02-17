@@ -4,7 +4,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<cstdint>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 Texture::~Texture()
 {
     if (manager)
@@ -30,4 +30,4 @@ Texture::~Texture()
             vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
     }
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

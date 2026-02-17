@@ -6,7 +6,7 @@
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/RenderPassManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace ManagerExtensions
 {
@@ -187,4 +187,4 @@ bool ValidateFrameResources(const FrameResources &frame)
 
 } // namespace ManagerExtensions
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

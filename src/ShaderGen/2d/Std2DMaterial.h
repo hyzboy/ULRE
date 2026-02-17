@@ -3,7 +3,7 @@
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 class Std2DMaterial:public StdMaterial
 {
@@ -21,4 +21,4 @@ public:
     virtual ~Std2DMaterial()=default;
 };//class Std2DMaterial
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

@@ -2,7 +2,7 @@
 #include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/log/Log.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 BufferUpdateQueue::BufferUpdateQueue(VkDevice dev)
 {
@@ -79,4 +79,4 @@ void BufferUpdateQueue::Clear()
     pending_updates.Clear();
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

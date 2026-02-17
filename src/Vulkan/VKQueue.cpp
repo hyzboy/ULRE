@@ -5,7 +5,7 @@
 #include<hgl/log/Log.h>
 #include<cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -132,4 +132,4 @@ bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore 
 
     return Submit(&vk_cmd,1,wait_sem,complete_sem);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

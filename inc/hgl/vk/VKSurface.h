@@ -3,7 +3,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/type/ValueArray.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 constexpr const uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
@@ -61,4 +61,4 @@ public:
     void RefreshCaps();
 };//class VulkanSurface
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

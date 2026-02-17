@@ -2,7 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 Pipeline::~Pipeline()
 {
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
@@ -12,4 +12,4 @@ Pipeline::~Pipeline()
     delete data;
     vkDestroyPipeline(device,pipeline,nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

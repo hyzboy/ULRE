@@ -12,7 +12,7 @@
 
 DEFINE_LOGGER_MODULE(LoadGeometry)
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
 #pragma pack(push,1)
@@ -434,4 +434,4 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
 
     return geometry;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

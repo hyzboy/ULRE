@@ -5,7 +5,7 @@
 #include<hgl/type/BlockAllocator.h>
 #include<hgl/log/Logger.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class BufferManager;
 
@@ -69,4 +69,4 @@ public:
 };//class VertexDataManager
 
 using VDM=VertexDataManager;
-VK_NAMESPACE_END
+}//namespace hgl::graph

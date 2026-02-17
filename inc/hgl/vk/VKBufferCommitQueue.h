@@ -6,7 +6,7 @@
 #include<string>
 #include<unordered_map>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class BufferAccessBase;
 struct AllDeviceBufferPolicies;
@@ -143,4 +143,4 @@ private:
     void ResetGroupFrameBudgets();
 };
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

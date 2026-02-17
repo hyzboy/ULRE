@@ -5,7 +5,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKDevice.h>
 #include"CopyBufferToImage.h"
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
 Texture2DArray *TextureManager::CreateTexture2DArray(TextureData *tex_data)
@@ -248,4 +248,4 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,const void *data,c
     delete buf;
     return(result);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -2,7 +2,7 @@
 
 #include<hgl/graph/mtl/StdMaterial.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace func
 {
     constexpr const char *GetPosition2DRect[size_t(CoordinateSystem2D::RANGE_SIZE)]=
@@ -65,4 +65,4 @@ vec4 GetPosition2D()
 )"
     };
 }//namespace func
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

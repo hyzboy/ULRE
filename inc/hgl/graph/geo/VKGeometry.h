@@ -5,7 +5,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/log/Log.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 // forward declare GeometryData to avoid including heavy headers
 class GeometryData;
@@ -63,4 +63,4 @@ public:
 
     VertexDataManager *     GetVDM          ()const;                        ///<取得顶点数据管理器
 };//class Geometry
-VK_NAMESPACE_END
+}//namespace hgl::graph

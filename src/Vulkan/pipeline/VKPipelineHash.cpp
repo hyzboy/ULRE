@@ -3,7 +3,7 @@
 #include<hgl/io/MemoryOutputStream.h>
 #include<hgl/io/DataOutputStream.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 const bool CountHash(PipelineHashCode *hash_code,const PipelineData *pd)
 {
@@ -18,4 +18,4 @@ const bool CountHash(PipelineHashCode *hash_code,const PipelineData *pd)
     return hgl::util::hash::Hash(PipelineHash, mos.GetData(), mos.Tell(), hash_code->code);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

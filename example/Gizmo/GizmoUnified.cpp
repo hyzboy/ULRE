@@ -18,7 +18,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 struct GizmoECS
 {
@@ -323,5 +323,5 @@ void UpdateGizmoECS(GizmoECS *gizmo,
     }
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

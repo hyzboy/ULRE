@@ -2,7 +2,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
         VulkanDevice *      GraphModule::GetDevice          ()      {return graphics_context?graphics_context->GetDevice():nullptr;}
         VkDevice            GraphModule::GetVkDevice        ()const {return graphics_context?graphics_context->GetVkDevice():VK_NULL_HANDLE;}
@@ -20,4 +20,4 @@ const   VulkanPhyDevice *   GraphModule::GetPhyDevice       ()const {return grap
                         return attr?attr->pipeline_cache:VK_NULL_HANDLE;
                 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

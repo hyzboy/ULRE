@@ -3,7 +3,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKBuffer.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VKMemoryAllocator::VKMemoryAllocator(VulkanDevice *d,const uint32_t flags,const VkDeviceSize r)
 {
     device=d;
@@ -53,4 +53,4 @@ bool VKMemoryAllocator::Write(const void *source,const uint64 offset,const uint6
 
     return gpu_buffer->Write(source,offset,size);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

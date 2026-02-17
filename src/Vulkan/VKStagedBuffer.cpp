@@ -5,7 +5,7 @@
 #include<hgl/log/Log.h>
 #include<string.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 StagedBuffer::StagedBuffer(VkDevice dev, BufferUpdateQueue *queue,
                            VkBuffer staging_buf, DeviceMemory *staging_mem,
@@ -150,4 +150,4 @@ void StagedBuffer::ClearDirty()
     dirty_size = 0;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -6,7 +6,7 @@
 #include"common/MFCommon.h"
 #include"ShaderLibrary.h"
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 void ShaderCreateInfoVertex::AddMaterialInstanceOutput()
 {
@@ -103,7 +103,7 @@ void ShaderCreateInfoVertex::AddAssignTransform()
                 VK_VERTEX_INPUT_RATE_INSTANCE,
                 VertexInputGroup::TransformID);
 
-    AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
+    AddFunction(hgl::graph::mtl::func::MF_GetLocalToWorld_ByAssign);
 }
 
 void ShaderCreateInfoVertex::AddAssignMaterialInstance()
@@ -180,4 +180,4 @@ void ShaderCreateInfoVertex::GetOutputStrcutString(AnsiString &str)
 {
     vsdi.GetOutput().ToString(str);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

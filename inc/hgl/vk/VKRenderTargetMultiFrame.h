@@ -3,7 +3,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetData.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
 * 多帧渲染目标
@@ -109,4 +109,4 @@ public:
     }
 };//class MultiFrameRenderTarget
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

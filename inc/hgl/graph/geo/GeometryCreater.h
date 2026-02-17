@@ -7,7 +7,7 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKMemory.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class BufferManager;
 /**
  * 可绘制原始图形创建器
@@ -133,4 +133,4 @@ Geometry *CreateGeometry(         VulkanDevice *  device,
                             const   uint32_t        index_count = 0,
                                     IndexType       it          = IndexType::AUTO,
                                     BufferManager * bm          = nullptr);
-VK_NAMESPACE_END
+}//namespace hgl::graph

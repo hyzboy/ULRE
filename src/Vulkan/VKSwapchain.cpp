@@ -5,7 +5,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 SwapchainImage::~SwapchainImage()
 {
     // cmd_buf is owned by DeviceQueue, not SwapchainImage
@@ -31,4 +31,4 @@ Swapchain::~Swapchain()
 
     image_count=0;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

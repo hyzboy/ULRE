@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSampler.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 Sampler *VulkanDevice::CreateSampler(VkSamplerCreateInfo *sci)
 {
     static VkSamplerCreateInfo default_sampler_create_info=
@@ -77,4 +77,4 @@ Sampler *VulkanDevice::CreateSampler(Texture *tex)
 
     return(new Sampler(attr->device,sampler));
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

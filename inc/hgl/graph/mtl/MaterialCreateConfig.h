@@ -6,7 +6,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/graph/mtl/SamplerName.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 class MaterialCreateInfo;
 
 /**
@@ -69,4 +69,4 @@ public:
 
     virtual const AnsiString ToHashString();
 };//struct MaterialCreateConfig
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

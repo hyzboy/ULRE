@@ -27,7 +27,7 @@
 #include<vector>
 #include<cmath>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 struct GizmoRotateECS
 {
@@ -416,5 +416,5 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
     }
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

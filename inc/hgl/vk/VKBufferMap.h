@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VertexAttribDataAccess.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<typename T> class VKBufferMap
 {
 protected:
@@ -98,4 +98,4 @@ public:
         return(true);
     }
 };//class VKBufferMap
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -31,7 +31,7 @@ inline bool operator==(const VkWriteDescriptorSet& lhs, const VkWriteDescriptorS
            lhs.pTexelBufferView == rhs.pTexelBufferView;
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class DeviceBuffer;
 
 class DescriptorSet
@@ -84,4 +84,4 @@ public:
     bool BindInputAttachment(const int binding,ImageView *);
     void Update();
 };//class DescriptorSet
-VK_NAMESPACE_END
+}//namespace hgl::graph

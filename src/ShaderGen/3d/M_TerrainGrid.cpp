@@ -2,7 +2,7 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     // Vertex: generate grid from gl_VertexID, sample height and normal via texelFetch
@@ -107,4 +107,4 @@ MaterialCreateInfo *CreateTerrainGrid(const VulkanDevAttr *dev_attr, const Terra
     MaterialTerrainGrid m(cfg);
     return m.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

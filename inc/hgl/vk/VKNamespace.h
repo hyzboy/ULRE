@@ -13,9 +13,3 @@
     #define HGL_VULKAN_AVAILABLE 0
 #endif
 
-#define VK_NAMESPACE        hgl::graph
-
-#define VK_NAMESPACE_USING  using namespace VK_NAMESPACE;
-
-#define VK_NAMESPACE_BEGIN  namespace hgl::graph{
-#define VK_NAMESPACE_END    }

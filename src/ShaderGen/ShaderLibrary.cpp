@@ -5,7 +5,7 @@
 #include<hgl/filesystem/Filename.h>
 #include<hgl/filesystem/Filesystem.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 namespace
 {
@@ -45,4 +45,4 @@ const AnsiString *LoadShader(const AnsiString &shader_name)
     return shader_library.GetValuePointer(shader_name);
 }
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

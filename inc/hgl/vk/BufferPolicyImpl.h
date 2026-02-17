@@ -5,7 +5,7 @@
 #include<hgl/vk/BufferPolicy.h>
 #include <vulkan/vulkan_core.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class VulkanPhyDevice;  // Forward declaration
 
@@ -96,4 +96,4 @@ struct AllDeviceBufferPolicies
 // 从物理设备生成完整的缓冲策略集
 AllDeviceBufferPolicies GenerateAllDeviceBufferPolicies(const VulkanPhyDevice *phy_device);
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

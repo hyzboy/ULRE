@@ -4,7 +4,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include"BufferImageCopy2D.h"
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
 TextureCube *TextureManager::CreateTextureCube(TextureData *tex_data)
@@ -221,4 +221,4 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf
 //    delete buf;
 //    return(result);
 //}
-VK_NAMESPACE_END
+}//namespace hgl::graph

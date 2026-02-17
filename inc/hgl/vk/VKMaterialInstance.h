@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VKMaterial.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
 * <summary>
@@ -77,4 +77,4 @@ public:
         template<typename T>
             void    WriteMIData (const T &data){WriteMIData(&data,sizeof(T));}  ///<写入材质实例数据
 };//class MaterialInstance
-VK_NAMESPACE_END
+}//namespace hgl::graph

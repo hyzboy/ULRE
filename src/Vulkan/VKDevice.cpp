@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <string>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     std::unordered_map<VkDevice, VulkanDevice *> g_device_map;
@@ -442,4 +442,4 @@ ComputePipeline *VulkanDevice::CreateComputePipeline(const AnsiString &name, VkS
     return new ComputePipeline(name, attr->device, pipeline, pipeline_layout);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

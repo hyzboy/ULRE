@@ -2,7 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VulkanCmdBuffer::VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb)
 {
     dev_attr=attr;
@@ -52,4 +52,4 @@ void VulkanCmdBuffer::EndRegion()
         dev_attr->debug_utils->CmdEnd(cmd_buf);
 }
 #endif
-VK_NAMESPACE_END
+}//namespace hgl::graph

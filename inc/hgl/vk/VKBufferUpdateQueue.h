@@ -4,7 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/ValueArray.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class StagedBuffer;
 
@@ -68,5 +68,5 @@ public:
     void Clear();
 };//class BufferUpdateQueue
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_BUFFER_UPDATE_QUEUE_INCLUDE

@@ -2,7 +2,7 @@
 #include<hgl/vk/VKString.h>
 #include<toml.hpp>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace
 {
@@ -191,4 +191,4 @@ std::string SavePipelineToToml(const PipelineData *data)
     return toml::format(result);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

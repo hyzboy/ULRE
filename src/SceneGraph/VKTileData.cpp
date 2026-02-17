@@ -45,7 +45,7 @@ namespace
     }//void AnalyseSize
 }//namespace
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 TileData *TextureManager::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
 {
     if(!CheckVulkanFormat(format))
@@ -81,4 +81,4 @@ TileData *TextureManager::CreateTileData(const VkFormat format,const uint width,
 
     return(new TileData(this,tex,width,height));
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

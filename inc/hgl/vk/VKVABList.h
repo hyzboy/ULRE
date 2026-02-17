@@ -2,7 +2,7 @@
 
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class RenderCmdBuffer;  // Forward declaration
 
 class VABList
@@ -92,4 +92,4 @@ public:
         return Add(mdb->vab_list,mdb->vab_offset,mdb->vab_count);
     }
 };//class VABList
-VK_NAMESPACE_END
+}//namespace hgl::graph

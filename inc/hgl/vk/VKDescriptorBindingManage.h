@@ -5,7 +5,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class DeviceBuffer;
 class Texture;
@@ -137,4 +137,4 @@ public:
     bool Bind(Material *);
 };//class DescriptorBinding
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_SAMPLER_INCLUDE
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class Device;
 
 class Sampler
@@ -27,5 +27,5 @@ public:
     operator VkSampler(){return sampler;}
     operator const VkSampler()const{return sampler;}
 };//class Sampler
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_SAMPLER_INCLUDE

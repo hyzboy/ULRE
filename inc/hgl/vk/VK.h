@@ -70,7 +70,7 @@ inline bool operator==(const VkPipelineShaderStageCreateInfo& lhs, const VkPipel
            strcmp(lhs.pName, rhs.pName) == 0;
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 #ifndef VK_DESCRIPTOR_TYPE_BEGIN_RANGE
 constexpr size_t VK_DESCRIPTOR_TYPE_BEGIN_RANGE=VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -356,4 +356,4 @@ inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d,const uint32 depth=1)
     e3d.depth   =depth;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

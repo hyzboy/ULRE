@@ -3,7 +3,7 @@
 #include<hgl/vk/VKNamespace.h>
 #include<hgl/type/EnumUtil.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
 * 光照剔除模式
@@ -42,4 +42,4 @@ enum class LightingCullingMode
     ENUM_CLASS_RANGE(None,Cluster)
 };//enum class LightingCullingMode
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

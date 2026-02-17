@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 enum class ResourceType
 {
@@ -81,4 +81,4 @@ struct RenderResourceID
 
     uint32 id;                              ///<资源ID
 };
-VK_NAMESPACE_END
+}//namespace hgl::graph

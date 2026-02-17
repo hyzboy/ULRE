@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_SUBPASS_INCLUDE
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
  * 渲染流程中一次具体的操作，即便整个Renderpass只有一次渲染，也需要创建subpass
  */
@@ -28,5 +28,5 @@ public:
     const VkSubpassDescription *GetDescription  ()const{return desc;}
     const VkSubpassDependency * GetDependency   ()const{return dependency;}
 };//class Subpass
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_SUBPASS_INCLUDE

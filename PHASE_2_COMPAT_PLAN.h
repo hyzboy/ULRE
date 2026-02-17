@@ -35,7 +35,7 @@
 #include <hgl/vk/VKDevice.h>
 #include <hgl/ecs/core/Context.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace graph
 {
@@ -100,6 +100,6 @@ public:
     // 新代码应该通过 Graphics/Material/Buffer managers 的直接 API 使用这些功能
 };
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 
 #endif // _HGL_RENDER_FRAMEWORK_COMPAT_H

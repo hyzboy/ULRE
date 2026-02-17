@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/graph/mtl/StdMaterial.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 // 注意：走的几何Shader，输出是三角形条
 
@@ -25,4 +25,4 @@ const vec2 BillboardVertex[4]=vec2[]
 );
 )";
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

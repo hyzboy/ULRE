@@ -4,7 +4,7 @@
 #include<hgl/type/UnorderedMap.h>
 #include<vector>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct VAConfig
 {
     VkFormat format;
@@ -65,4 +65,4 @@ public:
         return 0;
     }
 };//class VILConfig:public Map<AnsiString,VAConfig>
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -2,7 +2,7 @@
 #define HGL_GRAPH_DYNAMIC_BUFFER_ACCESS_INCLUDE
 
 #include<hgl/vk/VKArrayBuffer.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<typename T> class DynamicBufferAccess
 {
     uchar *pointer;
@@ -75,5 +75,5 @@ public:
         return(true);
     }
 };//template<typename T> class DynamicBufferAccess
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_DYNAMIC_BUFFER_ACCESS_INCLUDE

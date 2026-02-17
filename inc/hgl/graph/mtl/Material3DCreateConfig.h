@@ -4,7 +4,7 @@
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/vk/VertexAttrib.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 struct Material3DCreateConfig:public MaterialCreateConfig
 {
@@ -137,4 +137,4 @@ DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,BasicLitMaterialCreateConfig);
  * @return 材质创建信息
  */
 MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg);
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

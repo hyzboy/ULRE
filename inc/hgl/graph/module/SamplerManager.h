@@ -4,7 +4,7 @@
 #include <hgl/vk/VKSampler.h>
 #include <hgl/type/ObjectManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 using SamplerID = int;
 
@@ -33,4 +33,4 @@ public:
     Sampler *CreateSampler(Texture *tex);
 };
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

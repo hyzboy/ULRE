@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 struct RenderTargetData
 {
@@ -35,4 +35,4 @@ public:
     virtual void Clear();
 };//struct RenderTargetData
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

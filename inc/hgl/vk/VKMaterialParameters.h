@@ -8,7 +8,7 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKArrayBuffer.h>
 #include<hgl/log/Log.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class MaterialParameters
 {
     OBJECT_LOGGER
@@ -61,5 +61,5 @@ public:
 
     void Update();
 };//class MaterialParameters
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_MATERIAL_PARAMETERS_INCLUDE

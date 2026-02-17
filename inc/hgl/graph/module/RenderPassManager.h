@@ -3,7 +3,7 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/UnorderedMap.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 GRAPH_MODULE_CLASS(RenderPassManager)
 {
@@ -41,4 +41,4 @@ public:
     }
 };//class RenderPassManager
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

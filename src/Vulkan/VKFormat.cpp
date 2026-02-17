@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKFormat.h>
 #include<hgl/type/StrChar.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     //enum class ColorDataTypeEnum:uint8
@@ -338,4 +338,4 @@ const VulkanColorSpace *GetVulkanColorSpace(const VkColorSpaceKHR &cs)
 
     return nullptr;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

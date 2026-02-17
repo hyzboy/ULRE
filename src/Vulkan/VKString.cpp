@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKString.h>
 #include<hgl/type/StrChar.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class IVulkanEnumStringList
 {
@@ -392,4 +392,4 @@ const VkCullModeFlags String2VkCullMode(const char *str)
     return VkCullModeFlagBitsESL.to(str,VK_CULL_MODE_BACK_BIT);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

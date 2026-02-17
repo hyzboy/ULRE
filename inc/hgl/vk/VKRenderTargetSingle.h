@@ -3,7 +3,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetData.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
  * 单帧渲染目标
@@ -82,4 +82,4 @@ public:
     }
 };//class RenderTarget
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

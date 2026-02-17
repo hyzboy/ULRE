@@ -7,7 +7,7 @@
 #include<typeinfo>
 #include<cassert>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
  * 对象类型标签，用于层级命名
@@ -205,4 +205,4 @@ struct ObjectNameBuilder
 #define VK_NAME_WITH_TYPE(obj_name, caller_type) \
     ObjectNameBuilder(obj_name).AppendCallerType(typeid(caller_type))
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

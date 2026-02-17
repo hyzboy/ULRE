@@ -8,7 +8,7 @@
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
 #include<iostream>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class VulkanCmdBuffer
 {
 protected:
@@ -330,4 +330,4 @@ public:
                                 1, &imageMemoryBarrier);
     }
 };//class TextureCmdBuffer:public VulkanCmdBuffer
-VK_NAMESPACE_END
+}//namespace hgl::graph

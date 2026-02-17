@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKSurface.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
 
 VulkanSurface::VulkanSurface(const VulkanPhyDevice *phy_dev,VkSurfaceKHR sface)
@@ -120,4 +120,4 @@ void VulkanSurface::RefreshCaps()
     }
 
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

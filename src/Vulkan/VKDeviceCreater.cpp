@@ -12,7 +12,7 @@
 #include<iostream>
 #include<iomanip>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
 
 void SetShaderCompilerVersion(const VulkanPhyDevice *);
@@ -512,4 +512,4 @@ VulkanDevice *VulkanDeviceCreater::Create()
 
     return device;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

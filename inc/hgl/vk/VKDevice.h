@@ -25,7 +25,7 @@
 #include<ostream>
 #include<string>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class TileData;
 class TileFont;
 class FontDataSource;
@@ -417,4 +417,4 @@ public:
 
     TileFont *CreateTileFont(FontDataSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class VulkanDevice
-VK_NAMESPACE_END
+}//namespace hgl::graph

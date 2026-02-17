@@ -3,7 +3,7 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/Size2.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
 * 渲染模块基类
@@ -24,4 +24,4 @@ public:
 
 #define RENDER_MODULE_CONSTRUCT(class_name) class_name::class_name(VulkanDevice *dev):GraphModuleInherit<class_name,RenderModule>(dev,#class_name)
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

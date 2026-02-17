@@ -4,7 +4,7 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 using namespace hgl;
 
@@ -17,4 +17,4 @@ public:
 
     bool Add(const ShaderModule *sm);
 };//class ShaderModuleMap:public Map<VkShaderStageFlagBits,const ShaderModule *>
-VK_NAMESPACE_END
+}//namespace hgl::graph

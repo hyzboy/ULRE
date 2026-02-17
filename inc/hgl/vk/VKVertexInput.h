@@ -4,7 +4,7 @@
 #include<hgl/type/OrderedSet.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class VILConfig;
 
 class VertexInputConfig
@@ -51,4 +51,4 @@ public:
 
 VertexInput *GetVertexInput(const VIAArray &);
 void ReleaseVertexInput(VertexInput *);
-VK_NAMESPACE_END
+}//namespace hgl::graph

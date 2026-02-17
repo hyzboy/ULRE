@@ -6,7 +6,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysicalDeviceProperties &pdp);
 
 VulkanDevAttr::VulkanDevAttr(VulkanInstance *inst,const VulkanPhyDevice *pd,VulkanSurface *s)
@@ -52,4 +52,4 @@ int VulkanDevAttr::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags propert
     return physical_device->GetMemoryType(typeBits,properties);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

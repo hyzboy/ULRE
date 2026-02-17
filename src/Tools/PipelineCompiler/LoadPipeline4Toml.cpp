@@ -3,7 +3,7 @@
 #include<hgl/io/LoadString.h>
 #include<toml.hpp>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace
 {
@@ -245,4 +245,4 @@ bool LoadPipelineFromTomlFile(PipelineData *pd,const OSString &filename)
     return LoadPipelineFromToml(pd,toml_string);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -4,7 +4,7 @@
 #include<hgl/type/EnumUtil.h>
 #include<hgl/type/StrChar.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 enum class TextureType:uint8
 {
     Error,
@@ -99,4 +99,4 @@ inline const VkImageViewType GetTextureImageViewType(const TextureType st)
     return TextureImageViewType[static_cast<int>(st)];
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

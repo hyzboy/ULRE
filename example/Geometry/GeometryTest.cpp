@@ -25,9 +25,9 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename);
-VK_NAMESPACE_END
+}//namespace hgl::graph
 
 constexpr const COLOR TestColor[] =
 {

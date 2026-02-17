@@ -2,7 +2,7 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char mi_codes[] = R"(
@@ -122,4 +122,4 @@ MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMateri
 
     return m.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

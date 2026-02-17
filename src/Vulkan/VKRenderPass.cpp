@@ -5,7 +5,7 @@
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
 {
     device=dev;
@@ -116,4 +116,4 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeli
 
     return CreatePipeline(mi,pd,prim_restart);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

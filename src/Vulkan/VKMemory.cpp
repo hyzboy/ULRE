@@ -4,7 +4,7 @@
 #include<hgl/log/Log.h>
 #include<cstdint>
 #include<cassert>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties, const ObjectNameBuilder &name, const std::source_location &loc)
 {
     assert(name.base_name[0] != '\0' && "ERROR: CreateMemory called with empty name! Check the call stack to find where.");
@@ -254,4 +254,4 @@ bool DeviceMemory::BindImage(VkImage image)
 
     return(vkBindImageMemory(device,image,memory,0)==VK_SUCCESS);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

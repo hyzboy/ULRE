@@ -13,7 +13,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char vs_main[]=R"(
@@ -74,4 +74,4 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const VulkanDevAttr *dev_attr,cons
 
     return mvc3d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

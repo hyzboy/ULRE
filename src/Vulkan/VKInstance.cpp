@@ -4,7 +4,7 @@
 #include<hgl/vk/VKDebugOut.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VulkanDevice *CreateRenderDevice(VkInstance,const VulkanPhyDevice *,Window *);
 
 void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
@@ -104,4 +104,4 @@ const VulkanPhyDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
 
     return(nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

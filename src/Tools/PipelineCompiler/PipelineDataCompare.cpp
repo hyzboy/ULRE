@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/pipeline/VKPipelineData.h>
 
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace
 {
@@ -81,4 +81,4 @@ bool Compare(const PipelineData *pd1,const PipelineData *pd2)
     return(true);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

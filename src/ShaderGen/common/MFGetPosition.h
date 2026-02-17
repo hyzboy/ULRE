@@ -2,7 +2,7 @@
 
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/data/CoordinateSystem.h>
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace func
 {
     constexpr const char *GetPosition2D[size_t(CoordinateSystem2D::RANGE_SIZE)]=
@@ -33,4 +33,4 @@ namespace func
     constexpr const char *GetPosition3DCameraBy2D   ="vec4 GetPosition3D(){return camera.vp*vec4(Position,0,1);}";
     constexpr const char *GetPosition3DL2WCameraBy2D="vec4 GetPosition3D(){return camera.vp*GetLocalToWorld()*vec4(Position,0,1);}";
 }//namespace func
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

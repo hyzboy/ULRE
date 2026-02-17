@@ -2,7 +2,7 @@
 #include<hgl/vk/VKNamespace.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 inline void debug_out_vk_version(const uint32_t version)
 {
@@ -49,4 +49,4 @@ inline void debug_out(const char *front,const hgl::ValueArray<VkExtensionPropert
         ++ep;
     }
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

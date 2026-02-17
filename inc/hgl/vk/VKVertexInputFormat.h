@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKNamespace.h>
 #include<hgl/vk/VertexAttrib.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct VertexInputFormat
 {
     VkFormat    format;
@@ -15,4 +15,4 @@ struct VertexInputFormat
 };//struct VertexInputFormat
 
 using VIF=VertexInputFormat;
-VK_NAMESPACE_END
+}//namespace hgl::graph

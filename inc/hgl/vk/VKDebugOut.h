@@ -3,7 +3,7 @@
 
 #include<hgl/vk/VK.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 const char *GetVkDebugReportObjectTypename(VkDebugReportObjectTypeEXT objType);
 
@@ -37,5 +37,5 @@ public:
     virtual bool Init(VkInstance);
 };//class VKDebugOut
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_DEBUG_OUT_INCLUDE

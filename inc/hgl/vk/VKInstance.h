@@ -7,7 +7,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDebugOut.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
     #define VK_BOOL1BIT(name)   bool name:1;
     struct CreateInstanceLayerInfo
     {
@@ -107,5 +107,5 @@ VK_NAMESPACE_BEGIN
     const   bool                            CheckInstanceExtensionSupport(const AnsiString &);
 
     VulkanInstance *CreateInstance(const U8String &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE

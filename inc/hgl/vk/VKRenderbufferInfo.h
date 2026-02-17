@@ -2,7 +2,7 @@
 #include<hgl/type/ValueArray.h>
 #include<hgl/vk/VKFormat.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class RenderbufferInfo
 {
 protected:
@@ -222,4 +222,4 @@ public:
 };//class FramebufferInfo:public RenderbufferFormatInfo
 
 using FBOInfo=FramebufferInfo;
-VK_NAMESPACE_END
+}//namespace hgl::graph

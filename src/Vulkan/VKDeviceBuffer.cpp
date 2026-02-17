@@ -7,7 +7,7 @@
 #include<hgl/log/Log.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 static BufferAllocPolicy ResolvePolicy(VulkanDevice *device, BufferAllocPolicy policy)
 {
     if(policy!=BufferAllocPolicy::Auto)
@@ -395,4 +395,4 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
 {
     return CreateBuffer(buf_usage,range,size,data,BufferAllocPolicy::Auto,sharing_mode,update_class,loc);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

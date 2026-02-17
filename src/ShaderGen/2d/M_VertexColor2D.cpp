@@ -1,7 +1,7 @@
 ﻿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char vs_main[]=R"(
@@ -61,4 +61,4 @@ MaterialCreateInfo *CreateVertexColor2D(const VulkanDevAttr *dev_attr,const Mate
     return mvc2d.Create(dev_attr);
 }
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

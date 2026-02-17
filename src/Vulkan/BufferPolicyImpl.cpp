@@ -3,7 +3,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<cstring>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 DevicePolicyAdjustment GetDevicePolicyAdjustment(const VulkanPhyDevice *phy_device)
 {
@@ -595,4 +595,4 @@ AllDeviceBufferPolicies GenerateAllDeviceBufferPolicies(const VulkanPhyDevice *p
     return policies;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct TextureCreateInfo
 {
     VkImageViewType     type;
@@ -331,4 +331,4 @@ public:
             image_layout=tci->image_layout;
     }
 };//struct TextureData
-VK_NAMESPACE_END
+}//namespace hgl::graph

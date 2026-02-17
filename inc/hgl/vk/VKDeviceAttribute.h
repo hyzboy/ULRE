@@ -7,7 +7,7 @@
 #include<hgl/vk/VKDebugUtils.h>
 #endif//_DEBUG
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct VulkanDevAttr
 {
     VulkanInstance *                    instance        =nullptr;
@@ -52,4 +52,4 @@ public:
         return instance->GetDeviceProc<T>(device,name);
     }
 };//class VulkanDevAttr
-VK_NAMESPACE_END
+}//namespace hgl::graph

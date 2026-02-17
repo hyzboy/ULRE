@@ -8,7 +8,7 @@
 
 using namespace hgl;
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 PipelineData::~PipelineData()
 {
     if(file_data)
@@ -221,4 +221,4 @@ PipelineData *LoadPipelineFromFile(const OSString &filename)
 
     return pd;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

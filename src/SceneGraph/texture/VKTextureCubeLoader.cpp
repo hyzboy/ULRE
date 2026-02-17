@@ -1,7 +1,7 @@
 ﻿#include"VKTextureLoader.h"
 #include<hgl/io/FileInputStream.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<> void VkTextureLoader<TextureCube,TextureCubeLoader>::OnExtent(VkExtent3D &extent)
 {
     extent.width    =file_header.width;
@@ -26,4 +26,4 @@ TextureCube *CreateTextureCubeFromFile(TextureManager *tm,const OSString &filena
 
     return loader.CreateTexture(loader.GetFileHeader(),loader.GetTextureFormat(),loader.GetZeroMipmapBytes());
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

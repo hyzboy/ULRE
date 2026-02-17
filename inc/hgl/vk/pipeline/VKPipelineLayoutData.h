@@ -4,7 +4,7 @@
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/type/UnorderedMap.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct PipelineLayoutData
 {
     VkDevice device;
@@ -21,4 +21,4 @@ public:
 
     ~PipelineLayoutData();
 };//class PipelineLayoutData
-VK_NAMESPACE_END
+}//namespace hgl::graph

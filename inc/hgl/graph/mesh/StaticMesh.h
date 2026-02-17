@@ -5,7 +5,7 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/graph/mesh/Primitive.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 using GeometryPtrSet        =OrderedSet<Geometry *>;
 using MaterialInstanceSet   =OrderedSet<MaterialInstance *>;
@@ -65,4 +65,4 @@ private:
 
     void                        RebuildResourceSets ();
 };//class StaticMesh
-VK_NAMESPACE_END
+}//namespace hgl::graph

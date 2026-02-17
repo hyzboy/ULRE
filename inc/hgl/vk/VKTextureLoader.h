@@ -3,7 +3,7 @@
 
 #include<hgl/graph/texture/TextureLoader.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<typename T,typename L>
 class VkTextureLoader:public L
 {
@@ -93,5 +93,5 @@ public:
             buf=nullptr;
     }
 };//class VkTextureLoader:public L
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_TEXTURE_LOADER_INCLUDE

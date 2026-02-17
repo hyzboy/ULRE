@@ -5,7 +5,7 @@
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKShaderDescriptor.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct ShaderDescriptorSet
 {
     DescriptorSetType set_type;
@@ -27,4 +27,4 @@ public:
 };
 
 using ShaderDescriptorSetArray=ShaderDescriptorSet[DESCRIPTOR_SET_TYPE_COUNT];
-VK_NAMESPACE_END
+}//namespace hgl::graph

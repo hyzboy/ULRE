@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKVertexInputLayoutHash.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
 * 计算指定配置下需要的流数量
 */
@@ -23,4 +23,4 @@ const uint GetVertexInputStreamCount(const VertexInputLayoutHash &vil_hash)
 
     return count;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

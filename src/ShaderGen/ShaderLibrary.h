@@ -3,10 +3,10 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 //void SetGlobalDefine(const AnsiString &,const AnsiString &);
 
 const AnsiString *LoadShader(const AnsiString &);
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

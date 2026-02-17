@@ -6,7 +6,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/type/Smart.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,const VkExtent2D &ext,RenderPass *rp,uint32_t cc,bool depth)
 {
@@ -32,4 +32,4 @@ Framebuffer::~Framebuffer()
 
     vkDestroyFramebuffer(device,frame_buffer,nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

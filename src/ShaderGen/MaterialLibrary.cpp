@@ -4,7 +4,7 @@
 
 #include<memory>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 namespace
 {
@@ -63,4 +63,4 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const
     return mf->Create(dev_attr,cfg);
 }
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

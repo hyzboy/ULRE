@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKShaderDescriptorSet.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class MaterialDescriptorManager
 {
     AnsiString mtl_name;
@@ -48,4 +48,4 @@ public:
 
     const bool hasSet(const DescriptorSetType &type)const{return dsl_ci[size_t(type)].bindingCount>0;}
 };//class MaterialDescriptorManager
-VK_NAMESPACE_END
+}//namespace hgl::graph

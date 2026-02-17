@@ -1,6 +1,6 @@
 ﻿#include <hgl/graph/mesh/StaticMesh.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 StaticMesh::StaticMesh()
 {
@@ -136,4 +136,4 @@ void StaticMesh::RebuildResourceSets()
     }
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

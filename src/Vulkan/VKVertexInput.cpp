@@ -3,7 +3,7 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/type/ObjectManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
 {
     via_array.Clone(&viaa);
@@ -250,4 +250,4 @@ void ReleaseVertexInput(VertexInput *vi)
 
     vertex_input_manager.Release(vi);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

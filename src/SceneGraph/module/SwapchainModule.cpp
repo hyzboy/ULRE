@@ -29,7 +29,7 @@
 #include<hgl/vk/VKSurface.h>
 
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     //VkExtent2D SwapchainExtentClamp(const VkSurfaceCapabilitiesKHR &surface_caps,const VkExtent2D &acquire_extent)
@@ -252,10 +252,10 @@ SwapchainModule::~SwapchainModule()
     // Delete swapchain_data and its resources
     if (swapchain_data)
     {
-        // Destroy frame resources (deletes wrapper objects owned by SwapchainModule)
-        DestroyPerFrameResources(*swapchain_data);
+        // SwapchainData::Clear() deletes shared queue and all frame semaphores/fences
+        swapchain_data->Clear();
         
-        // Clear swapchain reference and delete container
+        // Delete the container
         delete swapchain_data;
         swapchain_data = nullptr;
     }
@@ -271,15 +271,15 @@ SwapchainModule::~SwapchainModule()
 void SwapchainModule::Release()
 {
     // SwapchainModule is responsible for cleaning up resources it created:
-    // 1. SwapchainData and its frame resources (DeviceQueue, Semaphore, Fence)
+    // 1. SwapchainData and its frame resources (Semaphore, Fence, shared queue)
     // 2. Swapchain wrapper object (vk_swapchain)
     // 3. SwapchainRenderTarget object
     
     // 1. Clean up new architecture resources (swapchain_data)
     if (swapchain_data)
     {
-        // Destroy frame resources (deletes wrapper objects owned by SwapchainModule)
-        DestroyPerFrameResources(*swapchain_data);
+        // SwapchainData::Clear() deletes shared queue and all frame semaphores/fences
+        swapchain_data->Clear();
         
         // Delete swapchain data container
         delete swapchain_data;
@@ -341,7 +341,8 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     // Clean up new architecture resources
     if (swapchain_data)
     {
-        DestroyPerFrameResources(*swapchain_data);
+        // SwapchainData::Clear() deletes shared queue and all frame semaphores/fences
+        swapchain_data->Clear();
         delete swapchain_data;
         swapchain_data = nullptr;
     }
@@ -426,6 +427,12 @@ bool SwapchainModule::Initialize()
     VulkanDevice *device = GetDevice();
     SwapchainImage *sc_image = vk_swapchain->sc_image;
 
+    // Create a shared queue for all frames
+    if (device)
+    {
+        swapchain_data->shared_queue = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
+    }
+
     for (uint32_t i = 0; i < vk_swapchain->image_count; i++)
     {
         FrameResources &frame = swapchain_data->frames[i];
@@ -454,13 +461,10 @@ bool SwapchainModule::Initialize()
             frame.cmd_buffer = (VkCommandBuffer)(*sc_image->cmd_buf);
         }
 
-        // Create or get queue (DeviceQueue wrapper managed by SwapchainModule)
-        if (device)
-        {
-            frame.queue = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
-        }
+        // Point to shared queue (created once above, not per-frame)
+        frame.queue = swapchain_data->shared_queue;
 
-        // Create synchronization primitives (Semaphore and Fence managed by SwapchainModule)
+        // Create per-frame synchronization primitives (Semaphore and Fence managed by SwapchainModule)
         if (device)
         {
             frame.image_acquired_semaphore = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
@@ -503,11 +507,11 @@ bool SwapchainModule::DestroyPerFrameResources(SwapchainData &sc_data)
 
     for (auto &frame : sc_data.frames)
     {
-        // FrameResources::Clear() handles deletion of wrapper objects owned by SwapchainModule:
-        // - DeviceQueue*
-        // - Semaphore* (both image_acquired and render_complete)
-        // - Fence*
+        // FrameResources::Clear() handles deletion of per-frame wrapper objects:
+        // - Semaphore* (image_acquired and render_complete) - per-frame, deleted here
+        // - Fence* - per-frame, deleted here
         //
+        // The shared queue is handled by SwapchainData::Clear(), not here.
         // Other resources (VkImage, VkImageView, VkFramebuffer, VkRenderPass, VkCommandBuffer)
         // are owned by their respective managers and will be deleted by them.
 
@@ -538,4 +542,4 @@ FrameResources *SwapchainModule::GetFrame(uint32_t index) const
     return &const_cast<SwapchainData *>(swapchain_data)->GetFrame(index);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

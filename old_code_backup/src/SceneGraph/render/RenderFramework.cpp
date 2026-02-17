@@ -27,7 +27,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 bool InitShaderCompiler();
 void CloseShaderCompiler();
@@ -361,5 +361,5 @@ graph::Primitive *RenderFramework::CreatePrimitive(   const AnsiString &name,
     // Prefer PrimitiveManager to create and own meshes
     return primitive_manager->CreatePrimitive(geometry,mi,pipeline);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

@@ -4,7 +4,7 @@
 #include<hgl/graph/GraphTypes.h>
 #include<hgl/type/TypeInfo.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class TextureManager;
 class RenderTargetManager;
@@ -85,4 +85,4 @@ public:
 
 #define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(GraphicsContext *gc):GraphModuleInherit<class_name,GraphModule>(gc,#class_name)
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

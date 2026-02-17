@@ -1,10 +1,9 @@
-﻿#ifndef HGL_GRAPH_VULKAN_COMPUTE_PIPELINE_INCLUDE
-#define HGL_GRAPH_VULKAN_COMPUTE_PIPELINE_INCLUDE
+﻿#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class Material;
 
@@ -40,5 +39,4 @@ public:
     VkPipelineLayout GetPipelineLayout() const { return pipeline_layout; }
 };//class ComputePipeline
 
-VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_COMPUTE_PIPELINE_INCLUDE
+}//namespace hgl::graph

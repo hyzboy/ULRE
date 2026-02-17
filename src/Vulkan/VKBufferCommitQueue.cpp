@@ -4,7 +4,7 @@
 #include<hgl/vk/BufferPolicyImpl.h>
 #include<algorithm>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 BufferCommitQueue::BufferCommitQueue(const AllDeviceBufferPolicies *policies)
     : device_policies(policies)
@@ -364,4 +364,4 @@ void BufferCommitQueue::Clear()
     pending_buffers.Clear();
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -12,7 +12,7 @@ namespace hgl::io
     class DataOutputStream;
 }//namespace hgl::io
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 struct VulkanDevAttr;
 
@@ -156,4 +156,4 @@ public:
  * @param filename 文件名(注意不包含扩展名)
  */
 const PipelineData *GetPipelineData(const OSString &filename);
-VK_NAMESPACE_END
+}//namespace hgl::graph

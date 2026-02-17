@@ -2,7 +2,7 @@
 #include<hgl/vk/VKInstance.h>
 #include"DebugOutProperties.h"
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace
 {
@@ -122,4 +122,4 @@ const bool CheckInstanceExtensionSupport(const AnsiString &name)
 
     return(false);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

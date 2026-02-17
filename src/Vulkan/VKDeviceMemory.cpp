@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 DeviceMemory *VulkanDevice::CreateMemory(VkImage image,const uint32_t flag, const ObjectNameBuilder &name, const std::source_location &loc)
 {
     VkMemoryRequirements memReqs;
@@ -19,4 +19,4 @@ DeviceMemory *VulkanDevice::CreateMemory(VkImage image,const uint32_t flag, cons
 
     return(mem);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

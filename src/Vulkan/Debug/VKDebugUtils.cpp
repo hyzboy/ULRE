@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKDebugUtils.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 DebugUtils *CreateDebugUtils(VkDevice device)
 {
     DebugUtilsFunction duf;
@@ -81,4 +81,4 @@ void DebugUtils::CmdInsert(VkCommandBuffer cmd_buf,const char *name,const Color4
 
     duf.CmdInsert(cmd_buf,&label);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

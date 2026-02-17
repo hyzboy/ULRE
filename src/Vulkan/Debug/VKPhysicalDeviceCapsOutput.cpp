@@ -5,7 +5,7 @@
 #include<iostream>
 #include<iomanip>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     void DebugOut(const VkPhysicalDeviceFeatures &features)
@@ -411,4 +411,4 @@ void OutputPhysicalDeviceCaps(const VulkanPhyDevice *pd)
     if(pdp.apiVersion>=VK_MAKE_VERSION(1,3,0))DebugOut(pd->GetFeatures13());
     if(pdp.apiVersion>=VK_MAKE_VERSION(1,4,0))DebugOut(pd->GetFeatures14());
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

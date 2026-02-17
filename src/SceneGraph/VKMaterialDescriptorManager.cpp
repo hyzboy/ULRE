@@ -3,7 +3,7 @@
 #include<hgl/type/EnumUtil.h>
 #include<vector>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDescriptor *sd)
 {
     dslb->binding           =sd->binding;
@@ -137,4 +137,4 @@ const int MaterialDescriptorManager::GetBinding(const DescriptorSetType &set_typ
 
     return(binding_map[size_t(set_type)][size_t(desc_type)].Get(name,result)?result:-1);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -1,7 +1,7 @@
 ﻿#include "Std3DMaterial.h"
 #include <hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     // Vertex shader: pass through position and output local direction
@@ -109,4 +109,4 @@ MaterialCreateInfo *CreateSkyMinimal(const VulkanDevAttr *dev_attr, const SkyMin
     MaterialSkyMinimal m(cfg);
     return m.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

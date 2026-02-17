@@ -11,7 +11,7 @@
 
 DEFINE_LOGGER_MODULE(LoadScene)
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     using namespace scene_file;
@@ -366,4 +366,4 @@ SceneData *LoadScene(const OSString &filename)
     return scene;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

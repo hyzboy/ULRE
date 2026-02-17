@@ -4,7 +4,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/mtl/SamplerName.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char vs_main[]=R"(
@@ -93,4 +93,4 @@ MaterialCreateInfo *CreateRectTexture2D(const VulkanDevAttr *dev_attr,mtl::Mater
 
     return mvc2d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

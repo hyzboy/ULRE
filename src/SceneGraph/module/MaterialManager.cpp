@@ -16,7 +16,7 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
@@ -371,4 +371,4 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
     return CreateMaterialInstance(mtl_name,mci,vil_cfg,data,data_size);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

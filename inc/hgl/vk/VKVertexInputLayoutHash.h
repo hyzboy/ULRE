@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKNamespace.h>
 #include<hgl/CoreType.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
  * 顶点输入流配置
  */
@@ -28,4 +28,4 @@ union VertexInputLayoutHash
 * 计算指定配置下需要的流数量
 */
 const uint GetVertexInputStreamCount(const VertexInputLayoutHash &);
-VK_NAMESPACE_END
+}//namespace hgl::graph

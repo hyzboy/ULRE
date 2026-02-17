@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKBufferAccessBase.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 void BufferAccessBase::SetBuffer(DeviceBuffer *buf, bool take_ownership)
 {
@@ -25,4 +25,4 @@ void BufferAccessBase::SetBuffer(DeviceBuffer *buf, bool take_ownership)
     RegisterAutoCommit();
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

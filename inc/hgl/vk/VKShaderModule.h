@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
  * Shader模块<br>
@@ -43,4 +43,4 @@ public:
 
     operator VkShaderModule                                 ()const{return stage_create_info->module;}
 };//class ShaderModule
-VK_NAMESPACE_END
+}//namespace hgl::graph

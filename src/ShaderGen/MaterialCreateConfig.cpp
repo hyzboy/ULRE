@@ -2,7 +2,7 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VertexAttrib.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 const AnsiString MaterialCreateConfig::ToHashString()
 {
     AnsiString hash;
@@ -69,4 +69,4 @@ const AnsiString Material3DCreateConfig::ToHashString()
 
     return hash;
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

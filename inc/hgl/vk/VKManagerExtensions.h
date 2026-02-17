@@ -4,7 +4,7 @@
 #include<hgl/vk/VKFrameData.h>
 #include<vulkan/vulkan.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 // Forward declarations
 class TextureManager;
@@ -155,6 +155,6 @@ namespace ManagerExtensions
 
 } // namespace ManagerExtensions
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 
 #endif // __VK_MANAGER_EXTENSIONS_H__

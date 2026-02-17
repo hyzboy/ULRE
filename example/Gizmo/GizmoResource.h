@@ -3,7 +3,7 @@
 #include"Gizmo.h"
 #include<hgl/color/Color.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class GeometryCreater;
 
@@ -36,4 +36,4 @@ constexpr const float GIZMO_TWO_AXIS_OFFSET     =5.0F;                          
 
 Primitive *GetGizmoMesh(const GizmoShape &gs,const GizmoColor &);
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

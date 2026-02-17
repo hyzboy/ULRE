@@ -3,7 +3,7 @@
 
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     const char VkDebugReportObjectTypename[][32]=
@@ -242,4 +242,4 @@ VkBool32 VKDebugOut::OnDebugReport(VkDebugReportFlagsEXT msgFlags,VkDebugReportO
 {
     return DefaultVulkanDebugReport(msgFlags,objType,srcObject,location,msgCode,pLayerPrefix,pMsg);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -13,7 +13,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include"GizmoResource.h"
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 //bool InitGizmoScaleMesh();
 //void ClearGizmoScaleMesh();
@@ -346,4 +346,4 @@ Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape)
     return gizmo_mesh[size_t(shape)].primitive;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

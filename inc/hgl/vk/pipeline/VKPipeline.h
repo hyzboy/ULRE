@@ -1,11 +1,11 @@
-﻿#ifndef HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
-#define HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
+﻿#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/io/DataOutputStream.h>
-VK_NAMESPACE_BEGIN
+
+namespace hgl::graph{
 class Pipeline
 {
     VkDevice device;
@@ -51,5 +51,4 @@ public:
     const bool IsAlphaTest()const{return data->alpha_test>0;}
     const bool IsAlphaBlend()const{return data->alpha_blend;}
 };//class GraphicsPipeline
-VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
+}//namespace hgl::graph

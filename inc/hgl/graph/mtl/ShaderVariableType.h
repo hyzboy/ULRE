@@ -8,7 +8,7 @@
 #include<hgl/vk/VKSamplerType.h>
 #include<hgl/vk/VKImageType.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 enum class ShaderVariableBaseType:uint8
 {
     Scalar=0,
@@ -420,4 +420,4 @@ public:
 
 using SVArray=ShaderVariableArray;
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

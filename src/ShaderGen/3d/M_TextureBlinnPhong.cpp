@@ -2,7 +2,7 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     // Vertex: pass through position, compute normal, forward TexCoord
@@ -106,4 +106,4 @@ MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const
     MaterialTextureBlinnPhong m(cfg);
     return m.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

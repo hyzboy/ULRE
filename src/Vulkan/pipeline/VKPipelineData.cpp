@@ -3,7 +3,7 @@
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/type/MemoryUtil.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void SetDefault(VkPipelineColorBlendAttachmentState *cba)
 {
     cba->colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -245,7 +245,7 @@ PipelineData::PipelineData()
     tessellation              =zero_new<VkPipelineTessellationStateCreateInfo>();
     rasterization             =zero_new<VkPipelineRasterizationStateCreateInfo>();
     multi_sample              =zero_new<VkPipelineMultisampleStateCreateInfo>();
-    sample_mask               =zero_new<VkSampleMask>(VK_NAMESPACE::MAX_SAMPLE_MASK_COUNT);
+    sample_mask               =zero_new<VkSampleMask>(hgl::graph::MAX_SAMPLE_MASK_COUNT);
     multi_sample->pSampleMask =nullptr;
 
     depth_stencil             =zero_new<VkPipelineDepthStencilStateCreateInfo>();
@@ -471,4 +471,4 @@ bool PipelineData::SetAlphaBlend(uint index,VkBlendOp op,VkBlendFactor src,VkBle
 
     return(true);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

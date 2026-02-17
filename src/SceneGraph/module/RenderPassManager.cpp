@@ -5,7 +5,7 @@
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void CreateSubpassDependency(ValueArray<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)
 {
     if(count<=0)return;
@@ -303,4 +303,4 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
 
     return rp;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

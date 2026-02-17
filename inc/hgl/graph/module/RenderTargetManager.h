@@ -7,7 +7,7 @@ namespace hgl::ecs
     class ECSContext;
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class TextureManager;
 class RenderPassManager;
@@ -50,4 +50,4 @@ public:
     }
 };//class RenderTargetManager
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

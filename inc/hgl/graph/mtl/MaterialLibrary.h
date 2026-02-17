@@ -5,7 +5,7 @@
 #include<hgl/type/String.h>
 #include<hgl/type/IDName.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 HGL_DEFINE_ANSI_IDNAME(MaterialName)
 
@@ -40,7 +40,7 @@ public:
 
     RegisterMaterialFactoryClass()
     {
-        STD_MTL_NAMESPACE::RegisterMaterialFactory(new T);
+        hgl::graph::mtl::RegisterMaterialFactory(new T);
     }
 };//class RegisterMaterialFactoryClass
 
@@ -95,5 +95,5 @@ inline MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_att
     return CreateMaterialCreateInfo(dev_attr,mtl_id_name,cfg);
 }
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl
 

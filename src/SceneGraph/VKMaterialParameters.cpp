@@ -3,7 +3,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKDescriptorSet.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
 {
     desc_manager=mdm;
@@ -170,4 +170,4 @@ void MaterialParameters::Update()
 {
     descriptor_set->Update();
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

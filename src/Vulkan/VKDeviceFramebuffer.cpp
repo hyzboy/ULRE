@@ -4,7 +4,7 @@
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExtent2D &extent,VkImageView *attachments,const uint attachmentCount)
 {
     FramebufferCreateInfo fb_info;
@@ -121,4 +121,4 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView *iv)
     else
         return nullptr;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

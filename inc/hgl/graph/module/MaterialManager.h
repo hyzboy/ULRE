@@ -8,7 +8,7 @@
 #include<hgl/type/ObjectManager.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace mtl
 {
@@ -154,4 +154,4 @@ public: //MaterialInstance
 
 };//class MaterialManager
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

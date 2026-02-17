@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 StdMaterial::StdMaterial(const MaterialCreateConfig *mcc)
 {
@@ -36,4 +36,4 @@ MaterialCreateInfo *StdMaterial::Create(const VulkanDevAttr *dev_attr)
     return(mci);
 }
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

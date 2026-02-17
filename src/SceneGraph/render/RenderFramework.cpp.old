@@ -27,7 +27,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 bool InitShaderCompiler();
 void CloseShaderCompiler();
@@ -345,5 +345,5 @@ LineRenderManager *RenderFramework::GetLineRenderManager() const
     return line_system ? line_system->GetLineRenderManager() : nullptr;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

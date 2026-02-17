@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/mtl/ShaderVariableType.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace
 {
@@ -369,4 +369,4 @@ const bool ShaderVariableType::From(const VAType &vat,const uint16 count)
 
     return(false);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

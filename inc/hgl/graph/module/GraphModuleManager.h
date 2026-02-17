@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/UnorderedMap.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class GraphModule;
 class GraphicsContext;
@@ -64,4 +64,4 @@ public:
     }
 };//class GraphModuleManager
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -4,7 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VertexAttrib.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 // 旧的单一Assign VertexInput定义(已废弃)
 // constexpr VkFormat ASSIGN_VAB_FMT = VK_FORMAT_R16G16_UINT;  // RG16UI格式
@@ -36,4 +36,4 @@ namespace Assign
     }//namespace MaterialInstance
 }//namespace Assign
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

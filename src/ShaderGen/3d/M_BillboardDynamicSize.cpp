@@ -2,7 +2,7 @@
 #include"S_BillboardVertex.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char vs_main[]=R"(
@@ -98,4 +98,4 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const VulkanDevAttr *dev_attr,mtl::
 
     return mtl_billbard_2d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

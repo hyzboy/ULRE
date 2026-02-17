@@ -3,7 +3,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKSwapchain.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
  * 渲染控制上下文
  */
@@ -32,5 +32,5 @@ public:
     void RequestPresentMode(const VkPresentModeKHR present_mode);
     void RequestImageFormat(const VkFormat format);
 };//class RenderContextSwapchain:public RenderContext
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_VULKAN_RENDER_CONTEXT_INCLUDE

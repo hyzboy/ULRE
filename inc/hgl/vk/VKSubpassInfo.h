@@ -3,7 +3,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/type/List.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct SubpassInfo
 {
     ValueArray<uint32_t> input_attachments;
@@ -21,5 +21,5 @@ struct SubpassInfo
         VkResolveModeFlagBits   mode;
     }depth_stencil;
 };//struct SubpassInfo
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_VULKAN_SUBPASS_INFO_INCLUDE

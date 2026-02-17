@@ -5,7 +5,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include"CopyBufferToImage.h"
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 DeviceBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size,const void *data)
 {
     if(size<=0)
@@ -107,4 +107,4 @@ bool TextureManager::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_
 
     return(true);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

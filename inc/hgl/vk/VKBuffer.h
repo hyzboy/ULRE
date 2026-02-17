@@ -9,7 +9,7 @@
 
 #include<string>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class VulkanDevice;
 class RawBufferAccessor;
 struct DeviceBufferData;
@@ -256,4 +256,4 @@ public:
             }
 };//class DeviceBuffer
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -4,7 +4,7 @@
 #include<hgl/vk/VKFence.h>
 #include<hgl/time/TimeConst.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class DeviceQueue
 {
 protected:
@@ -45,4 +45,4 @@ public:
     bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,Semaphore *wait_sem,Semaphore *complete_sem);
     bool Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem);
 };//class DeviceQueue
-VK_NAMESPACE_END
+}//namespace hgl::graph

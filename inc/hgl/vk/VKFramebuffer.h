@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
 
 #include<hgl/vk/VKRenderPass.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class Framebuffer
 {
     VkDevice device;
@@ -37,5 +37,5 @@ public:
 };//class Framebuffer
 
 using FBO=Framebuffer;
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE

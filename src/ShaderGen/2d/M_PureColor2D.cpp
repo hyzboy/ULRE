@@ -2,7 +2,7 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/math/Vector.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char mi_codes[]="vec4 Color;";          //材质实例代码
@@ -70,4 +70,4 @@ MaterialCreateInfo *CreatePureColor2D(const VulkanDevAttr *dev_attr,Material2DCr
 
     return mpc2d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

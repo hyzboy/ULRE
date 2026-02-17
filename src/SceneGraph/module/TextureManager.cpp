@@ -3,7 +3,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/graph/module/RenderPassManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat format) const
 {
     return GetPhyDevice()->GetFormatProperties(format);
@@ -180,4 +180,4 @@ TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_
     return tex;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

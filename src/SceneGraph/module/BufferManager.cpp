@@ -2,7 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include <cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 void BufferManager::AddBuffer(const AnsiString &buf_name, DeviceBuffer *buf, const std::source_location &loc)
 {
@@ -67,4 +67,4 @@ IndexBuffer *BufferManager::CreateIBO(IndexType index_type, uint32_t count, cons
     return buf;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

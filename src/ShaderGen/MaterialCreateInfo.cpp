@@ -9,7 +9,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
 {
     config=mc;
@@ -417,4 +417,4 @@ bool MaterialCreateInfo::CreateShader()
 
     return(true);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

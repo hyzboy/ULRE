@@ -4,7 +4,7 @@
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/type/ManagedArray.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 using VkFormatList=ValueArray<VkFormat>;
 
@@ -69,4 +69,4 @@ public:
     Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
 };//class RenderPass
-VK_NAMESPACE_END
+}//namespace hgl::graph

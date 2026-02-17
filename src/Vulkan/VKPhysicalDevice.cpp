@@ -3,7 +3,7 @@
 #include<hgl/vk/BufferPolicyImpl.h>
 #include"DebugOutProperties.h"
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     void debug_queue_family_properties_out(const char *front,const ValueArray<VkQueueFamilyProperties> &qfp_list)
@@ -322,4 +322,4 @@ VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
 
     return result;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

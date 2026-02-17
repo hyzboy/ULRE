@@ -3,7 +3,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKBufferMap.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class IndexBuffer:public DeviceBuffer
 {
     IndexType   index_type;
@@ -54,4 +54,4 @@ public:
     bool    Write   (const void *ptr,uint32_t size)                 override {return DeviceBuffer::Write(ptr,0,size*stride);}
 };//class IndexBuffer:public DeviceBuffer
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

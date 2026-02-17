@@ -1,6 +1,6 @@
 ﻿#include"Std3DMaterial.h"
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 MaterialCreateInfo *CreateBillboard2DDynamic(const VulkanDevAttr *,mtl::BillboardMaterialCreateConfig *cfg);
 MaterialCreateInfo *CreateBillboard2DFixedSize(const VulkanDevAttr *,mtl::BillboardMaterialCreateConfig *cfg);
@@ -13,4 +13,4 @@ MaterialCreateInfo *CreateBillboard2D(const VulkanDevAttr *dev_attr,mtl::Billboa
         return CreateBillboard2DDynamic(dev_attr,cfg);
 }
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

@@ -8,7 +8,7 @@
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/graph/module/BufferManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 GeometryCreater::GeometryCreater(VulkanDevice *dev,const VIL *v,BufferManager *bm)
 {
     device          =dev;
@@ -313,4 +313,4 @@ Geometry* GeometryCreater::CreateWithAABB(const math::Vector3f& min_bounds, cons
     return p;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

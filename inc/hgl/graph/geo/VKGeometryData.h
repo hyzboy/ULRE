@@ -4,7 +4,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMemory.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class BufferManager;
 /*
@@ -77,4 +77,4 @@ GeometryData *CreateGeometryData(VulkanDevice *dev,const VIL *_vil,const uint32_
 GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc);
 GeometryData *CreateGeometryData(BufferManager *bm,const VIL *_vil,const uint32_t vc,BufferAllocPolicy policy);
 GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc);
-VK_NAMESPACE_END
+}//namespace hgl::graph

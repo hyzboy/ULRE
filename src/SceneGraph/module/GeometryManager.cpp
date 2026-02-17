@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/module/GeometryManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 GRAPH_MODULE_CONSTRUCT(GeometryManager){}
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

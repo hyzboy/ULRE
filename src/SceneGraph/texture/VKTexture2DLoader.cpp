@@ -1,7 +1,7 @@
 ﻿#include"VKTextureLoader.h"
 #include<hgl/io/FileInputStream.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<> void VkTextureLoader<Texture2D,Texture2DLoader>::OnExtent(VkExtent3D &extent)
 {
     extent.width    =file_header.width;
@@ -26,4 +26,4 @@ Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,b
 
     return loader.CreateTexture(loader.GetFileHeader(),loader.GetTextureFormat(),loader.GetZeroMipmapBytes());
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -14,7 +14,7 @@ namespace hgl
     }
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 struct CameraInfo;
 class ViewportInfo;
@@ -161,4 +161,4 @@ void FreeGizmoResource();
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);
 Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

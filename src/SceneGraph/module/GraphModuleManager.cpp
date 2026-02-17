@@ -2,7 +2,7 @@
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/core/GraphicsContext.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 VulkanDevice *GraphModuleManager::GetDevice()const
 {
@@ -93,4 +93,4 @@ GraphModuleManager::~GraphModuleManager()
     module_list.Clear();
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -3,7 +3,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/graph/module/TextureManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 //template<> void VkTextureLoader<Texture2DArray,Texture2DArrayLoader>::OnExtent(VkExtent3D &extent)
 //{
 //    extent.width    =file_header.width;
@@ -39,4 +39,4 @@ bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *ta,const uint
 
     return tm->ChangeTexture2DArray(ta,buf,scope,layer,1);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

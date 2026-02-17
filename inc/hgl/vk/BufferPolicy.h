@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<string>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 enum class BufferCommitPolicy
 {
@@ -118,4 +118,4 @@ struct BufferPolicy
     std::string         devNotes;                                                   // 开发备注
 };//struct BufferPolicy
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

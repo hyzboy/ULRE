@@ -2,7 +2,7 @@
 #include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 const char *GetUBOCodes(const AccumMemoryManager::Block *block);
 
@@ -123,4 +123,4 @@ MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const Ans
 
     return mtl.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

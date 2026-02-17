@@ -2,7 +2,7 @@
 
 #include<hgl/graph/mtl/StdMaterial.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace func
 {
     //@link http://www.opengl-tutorial.org/intermediate-tutorials/billboards-particles/billboards/
@@ -42,4 +42,4 @@ bool FrustumCheck(vec4 pos, float radius)
 }
 )";
 }//namespace func
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

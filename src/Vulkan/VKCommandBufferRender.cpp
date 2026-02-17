@@ -8,7 +8,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
 {
     cv_count=0;
@@ -302,4 +302,4 @@ void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const Geom
 //                     0,                 //vertex offset
 //                     0);                //first instance
 //}
-VK_NAMESPACE_END
+}//namespace hgl::graph

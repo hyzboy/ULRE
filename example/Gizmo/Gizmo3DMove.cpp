@@ -41,7 +41,7 @@
 #include<vector>
 #include<cmath>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 struct GizmoMoveECS
 {
@@ -392,5 +392,5 @@ void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
     }
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

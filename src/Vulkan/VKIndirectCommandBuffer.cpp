@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,const ObjectNameBuilder &name,SharingMode sharing_mode)
 {
@@ -112,4 +112,4 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
     return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count));
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

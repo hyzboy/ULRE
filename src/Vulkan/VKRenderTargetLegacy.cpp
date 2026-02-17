@@ -4,7 +4,7 @@
 #include<hgl/vk/VKSwapchainData.h>
 #include<hgl/Macro.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace
 {
@@ -87,4 +87,4 @@ void *RenderTargetLegacy::GetLegacyFrameData(SwapchainData &swapchain_data)
     return FrameResourcesToRenderTargetData(current_frame);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

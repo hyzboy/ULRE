@@ -1,7 +1,7 @@
 ﻿#include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char mi_codes[]="vec4 Color;";          //材质实例代码
@@ -76,4 +76,4 @@ MaterialCreateInfo *CreateVertexLuminance3D(const VulkanDevAttr *dev_attr,Materi
 
     return mvc3d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

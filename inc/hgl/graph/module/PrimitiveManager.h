@@ -4,7 +4,7 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/type/ObjectManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 using PrimitiveID = int;
 
@@ -43,4 +43,4 @@ public: // Create
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p);
 };
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

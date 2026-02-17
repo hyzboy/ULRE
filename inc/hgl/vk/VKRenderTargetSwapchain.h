@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VKRenderTargetMultiFrame.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
 * 交换链专用渲染目标
@@ -38,4 +38,4 @@ public:
     void ReleaseSwapchainResources();
 };//class SwapchainRenderTarget:public MultiFrameRenderTarget
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

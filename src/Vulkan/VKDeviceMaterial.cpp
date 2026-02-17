@@ -7,7 +7,7 @@
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 PipelineLayoutData *CreatePipelineLayoutData(VkDevice device,const MaterialDescriptorManager *desc_manager);
 
@@ -54,4 +54,4 @@ MaterialParameters *VulkanDevice::CreateMP(const MaterialDescriptorManager *desc
 
     return(new MaterialParameters(desc_manager,desc_set_type,ds));
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

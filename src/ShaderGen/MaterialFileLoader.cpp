@@ -12,7 +12,7 @@
 
 #include"MaterialFileData.h"
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 namespace
 {
@@ -814,4 +814,4 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
 
     return mfd;
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

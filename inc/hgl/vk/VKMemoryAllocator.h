@@ -4,7 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/MemoryAllocator.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class VKMemoryAllocator:public AbstractMemoryAllocator
 {
     VulkanDevice *device;
@@ -38,5 +38,5 @@ public:
 
     bool Write(const void *source,const uint64 offset,const uint64 size) override;
 };//class VKMemoryAllocator:public AbstractMemoryAllocator
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_MEMORY_ALLOCATOR_INCLUDE

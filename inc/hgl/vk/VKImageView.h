@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_IMAGE_VIEW_INCLUDE
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class ImageView
 {
 protected:
@@ -61,5 +61,5 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
     CREATE_IMAGE_VIEW(2DArray,2D_ARRAY);
     CREATE_IMAGE_VIEW(CubeArray,CUBE_ARRAY);
 #undef CREATE_IMAGE_VIEW
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_IMAGE_VIEW_INCLUDE

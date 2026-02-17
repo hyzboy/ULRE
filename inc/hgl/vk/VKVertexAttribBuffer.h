@@ -3,7 +3,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKBufferMap.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class VertexAttribBuffer:public DeviceBuffer
 {
     VkFormat format;                    ///<数据格式
@@ -65,4 +65,4 @@ public:
     }
 };//class VABMap
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

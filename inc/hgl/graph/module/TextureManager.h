@@ -10,7 +10,7 @@
 
 #include<vector>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 GRAPH_MODULE_CLASS(TextureManager)
 {
@@ -160,4 +160,4 @@ public: //TileData
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
 
 };//class TextureManager
-VK_NAMESPACE_END
+}//namespace hgl::graph

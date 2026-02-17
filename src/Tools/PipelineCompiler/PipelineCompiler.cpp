@@ -4,7 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
     bool LoadFromFile(const OSString &filename,PipelineData *pd);
     bool SaveToFile(const OSString &filename,PipelineData *pd);
@@ -46,7 +46,7 @@ VK_NAMESPACE_BEGIN
 
     #undef SAVE_PIPELINE_TO_FILE
     }
-VK_NAMESPACE_END
+}//namespace hgl::graph
 
 int os_main(int argc,os_char **argv)
 {

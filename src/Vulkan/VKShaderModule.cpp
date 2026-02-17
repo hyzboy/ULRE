@@ -3,7 +3,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
 {
 public:
@@ -46,4 +46,4 @@ ShaderModule::~ShaderModule()
     vkDestroyShaderModule(device,stage_create_info->module,nullptr);
     //这里不用删除stage_create_info，材质中会删除的
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

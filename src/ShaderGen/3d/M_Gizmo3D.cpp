@@ -1,7 +1,7 @@
 ﻿#include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     // Gizmo3D材质其实就是纯色的blinnphong材质，但不需要外部传入太阳光方向、高光系数等数据。
@@ -101,4 +101,4 @@ MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreate
 
     return mg3d.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

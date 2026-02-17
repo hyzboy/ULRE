@@ -4,7 +4,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKSampler.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 namespace
 {
     struct WriteDescriptorSet:public vkstruct<VkWriteDescriptorSet,VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET>
@@ -258,4 +258,4 @@ void DescriptorSet::Update()
 
     Clear();
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

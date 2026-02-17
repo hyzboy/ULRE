@@ -2,7 +2,7 @@
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/type/UnorderedMap.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 PipelineData *LoadPipelineFromFile(const OSString &filename);
 
 namespace
@@ -92,4 +92,4 @@ const PipelineData *GetPipelineData(const InlinePipeline &ip)
     inline_pipeline_data.Get(ip, pd);
     return pd;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

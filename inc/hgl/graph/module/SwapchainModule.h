@@ -9,7 +9,7 @@ namespace hgl::ecs
     class ECSContext;
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 // Forward declarations
 struct SwapchainData;
@@ -23,7 +23,7 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 
     // New architecture: SwapchainData owns swapchain and frame resources
     SwapchainData *         swapchain_data      =nullptr;
-    hgl::vk::Swapchain *    vk_swapchain        =nullptr;  ///< Keep swapchain alive to maintain sc_image validity
+    Swapchain *             vk_swapchain        =nullptr;  ///< Keep swapchain alive to maintain sc_image validity
 
     // Legacy support (will be deprecated)
     RenderPass *            sc_render_pass      =nullptr;
@@ -68,4 +68,4 @@ public:
     bool                    AcquireNextImage()const;
 };//class SwapchainModule:public GraphModule
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKNamespace.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 enum class Interpolation:uint8
 {
     Smooth,
@@ -24,4 +24,4 @@ inline const char *GetInterpolationName(const Interpolation &i)
 
     return InterpolationName[(size_t)i];
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

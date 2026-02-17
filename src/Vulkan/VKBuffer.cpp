@@ -2,7 +2,7 @@
 #include<hgl/vk/VKBufferAccessBase.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 DeviceBuffer::~DeviceBuffer()
 {
     if (owner_device)
@@ -26,4 +26,4 @@ DeviceBuffer::~DeviceBuffer()
     if(buf.memory)delete buf.memory;
     if(buf.buffer)vkDestroyBuffer(device,buf.buffer,nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

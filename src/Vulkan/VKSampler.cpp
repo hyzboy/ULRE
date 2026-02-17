@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKSampler.h>
 #include<hgl/vk/VKDevice.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 Sampler::~Sampler()
 {
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
@@ -9,4 +9,4 @@ Sampler::~Sampler()
 
     vkDestroySampler(device,sampler,nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

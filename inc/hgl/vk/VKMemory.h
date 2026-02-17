@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_MEMORY_INCLUDE
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
  * Memory usage patterns for Vulkan buffers
@@ -82,5 +82,5 @@ public:
     void    Flush       (VkDeviceSize,VkDeviceSize);
     void    Flush       (VkDeviceSize size){Flush(0,size);}
 };//class DeviceMemory
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_MEMORY_INCLUDE

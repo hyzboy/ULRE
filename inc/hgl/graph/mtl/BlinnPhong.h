@@ -3,7 +3,7 @@
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/math/Vector.h>
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace blinnphong
 {
     struct SunLight
@@ -26,4 +26,4 @@ namespace blinnphong
 )"
     };
 }//namespace blinnphong
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

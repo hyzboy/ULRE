@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKVertexInputFormat.h>
 #include<hgl/type/String.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
 * 顶点输入布局<br>
 * 本对象用于传递给Material,用于已经确定好顶点格式的情况下，依然可修改部分设定(如instance)。
@@ -119,4 +119,4 @@ public:
 };//class VertexInputLayout
 
 using VIL=VertexInputLayout;
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -2,7 +2,7 @@
 #define HGL_VULKAN_GRAPH_FENCE_INCLUDE
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class Fence
 {
     VkDevice device;
@@ -24,5 +24,5 @@ public:
 
     operator VkFence(){return fence;}
 };//class Fence
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_VULKAN_GRAPH_FENCE_INCLUDE

@@ -5,7 +5,7 @@
 #include<hgl/graph/data/CoordinateSystem.h>
 #include<hgl/vk/VertexAttrib.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 struct Material2DCreateConfig:public MaterialCreateConfig
 {
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
@@ -84,4 +84,4 @@ DEFINE_MATERIAL_FACTORY_CLASS(Text2D,const Text2DMaterialCreateConfig)
  */
 MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

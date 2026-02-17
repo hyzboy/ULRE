@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 GRAPH_MODULE_CONSTRUCT(PrimitiveManager)
 {
@@ -12,7 +12,7 @@ Primitive *PrimitiveManager::CreatePrimitive(Geometry *r, MaterialInstance *mi, 
     if(!p||!mi||!r)
         return(nullptr);
 
-    Primitive *ri=VK_NAMESPACE::DirectCreatePrimitive(r,mi,p);
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(r,mi,p);
 
     if(ri)
         Add(ri);
@@ -30,7 +30,7 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstan
     if(!geometry)
         return(nullptr);
 
-    Primitive *ri=VK_NAMESPACE::DirectCreatePrimitive(geometry,mi,p);
+    Primitive *ri=hgl::graph::DirectCreatePrimitive(geometry,mi,p);
 
     if(ri)
     {
@@ -43,4 +43,4 @@ Primitive *PrimitiveManager::CreatePrimitive(GeometryCreater *pc, MaterialInstan
     return(nullptr);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

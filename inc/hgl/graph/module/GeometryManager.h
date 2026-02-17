@@ -4,7 +4,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/type/ObjectManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class RenderFramework;
 class Geometry;
@@ -35,4 +35,4 @@ public:
     }
 };//class GeometryManager
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

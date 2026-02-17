@@ -2,7 +2,7 @@
 #include<hgl/vk/VKImageCreateInfo.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VkImage TextureManager::CreateImage(VkImageCreateInfo *ici)
 {
     if(!ici)return(VK_NULL_HANDLE);
@@ -26,4 +26,4 @@ void TextureManager::DestroyImage(VkImage img)
 
     vkDestroyImage(GetVkDevice(),img,nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

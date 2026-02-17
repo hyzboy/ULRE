@@ -22,7 +22,7 @@
 #include <hgl/vk/VKTextureCreateInfo.h>
 #include <vulkan/vulkan_core.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm)
     :GraphModuleInherit<RenderTargetManager,GraphModule>(gc,"RenderTargetManager")
@@ -261,4 +261,4 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
     return nullptr;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

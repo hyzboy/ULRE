@@ -7,7 +7,7 @@
 #include<hgl/graph/data/BitmapData.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKTextureCreateInfo.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 BitmapData *LoadBitmapFromFile(const OSString &filename);
 
@@ -118,5 +118,5 @@ public:
 //    uint32_t width,height,count;
 //};//class TextureCubeArray:public Texture
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_TEXTURE_INCLUDE

@@ -5,7 +5,7 @@
 #include<hgl/color/Color4f.h>
 #include<hgl/vk/VKTexture.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct DebugUtilsFunction
 {
     PFN_vkSetDebugUtilsObjectNameEXT    SetName;
@@ -109,5 +109,5 @@ public:
     void CmdEnd      (VkCommandBuffer cmd_buf){duf.CmdEnd(cmd_buf);}
     void CmdInsert   (VkCommandBuffer cmd_buf,const char *,const Color4f &color=Color4f(1,1,1,1));
 };//class DebugUtils
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_DEBUG_UTILS_INCLUDE

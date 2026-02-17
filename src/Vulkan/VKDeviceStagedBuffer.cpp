@@ -5,7 +5,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<cassert>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc)
 {
@@ -161,4 +161,4 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
     return staged_buffer;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

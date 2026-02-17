@@ -26,7 +26,7 @@ inline bool operator==(const VkQueueFamilyProperties& lhs, const VkQueueFamilyPr
            lhs.minImageTransferGranularity.depth == rhs.minImageTransferGranularity.depth;
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 // Forward declaration
 struct AllDeviceBufferPolicies;
@@ -257,4 +257,4 @@ public: // Vulkan API
         return vkCreateDevice(physical_device,create_info,nullptr,device);
     }
 };//class VulkanPhyDevice
-VK_NAMESPACE_END
+}//namespace hgl::graph

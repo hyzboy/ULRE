@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<compare>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
 * 网格绘制范围数据
 * 用于描述渲染时可绘制的顶点/索引范围，以及缓冲区中数据容量
@@ -50,4 +50,4 @@ public:
 
     bool operator==(const GeometryDrawRange &other) const = default;
 };
-VK_NAMESPACE_END
+}//namespace hgl::graph

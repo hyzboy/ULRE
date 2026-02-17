@@ -18,7 +18,7 @@ namespace hgl::ecs
     class ECSContext;
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class VulkanDevice; // Forward declaration
 
@@ -85,4 +85,4 @@ public:
     virtual ViewportInfo *      GetViewportInfo     ();
 };//class IRenderTarget
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -6,7 +6,7 @@
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/module/BufferManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 GeometryData::GeometryData(const VIL *_vil,const uint32_t vc)
 {
@@ -342,4 +342,4 @@ GeometryData *CreateGeometryData(VertexDataManager *vdm,const uint32_t vc)
 
     return(new GeometryDataVDM(vdm,vc));
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

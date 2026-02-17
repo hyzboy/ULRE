@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/vk/VKShaderDescriptor.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits)
 {
     UBODescriptor *ubo=new UBODescriptor;
@@ -27,4 +27,4 @@ SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_
 
     return ssbo;
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

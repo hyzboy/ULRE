@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_SEMAPHORE_INCLUDE
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class Semaphore
 {
     VkDevice device;
@@ -26,5 +26,5 @@ public:
 
     operator const VkSemaphore *()const{return &sem;}
 };//class Semaphore
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_SEMAPHORE_INCLUDE

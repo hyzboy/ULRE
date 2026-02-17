@@ -9,7 +9,7 @@
 #include<hgl/log/Log.h>
 #include<source_location>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 using BufferID = int;
 
@@ -98,4 +98,4 @@ public: // Index Buffer creation
 
 };//class BufferManager
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

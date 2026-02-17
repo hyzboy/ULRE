@@ -4,7 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKMemory.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class BufferUpdateQueue;
 class DeviceMemory;
@@ -83,5 +83,5 @@ public:
     void ClearDirty();
 };//class StagedBuffer
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_STAGED_BUFFER_INCLUDE

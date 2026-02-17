@@ -4,7 +4,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKIndexBuffer.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 GeometryDataBuffer::GeometryDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
 {
     vab_count=c;
@@ -194,4 +194,4 @@ bool Primitive::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t
     return true;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

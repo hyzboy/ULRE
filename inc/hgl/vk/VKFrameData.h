@@ -5,7 +5,7 @@
 #include<vector>
 #include<hgl/vk/VKNamespace.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 // Forward declarations for wrapper classes
 class DeviceQueue;
@@ -59,24 +59,27 @@ struct FrameResources
     std::vector<VkImageView> texture_views;      ///< References to texture views used in rendering
     
     /**
-     * @brief Clear all resource references and delete owned objects
+     * @brief Clear all resource references
      * 
-     * This method clears all pointers and DELETES the wrapper objects owned by SwapchainModule:
-     * - DeviceQueue*: deletes the queue wrapper
-     * - Semaphore*: deletes the semaphore wrappers
-     * - Fence*: deletes the fence wrapper
+     * This method clears all pointers and DELETES the owned objects:
+     * - Semaphore*: deletes the semaphore wrappers (per-frame)
+     * - Fence*: deletes the fence wrapper (per-frame)
+     * 
+     * NOTE: DeviceQueue is NOT deleted here because it's shared across all frames
+     * and managed by SwapchainData. The SwapchainData::Clear() method handles queue deletion.
      * 
      * Called when:
-     * - Preparing frame for reuse
-     * - During SwapchainModule::DestroyPerFrameResources()
+     * - Clearing individual frame references
+     * - During SwapchainModule cleanup (via SwapchainData::Clear())
      */
     void Clear()
     {
-        // Delete wrapper objects owned by SwapchainModule
-        if (queue) { delete queue; queue = nullptr; }
+        // Delete per-frame wrapper objects (not shared)
         if (image_acquired_semaphore) { delete image_acquired_semaphore; image_acquired_semaphore = nullptr; }
         if (render_complete_semaphore) { delete render_complete_semaphore; render_complete_semaphore = nullptr; }
         if (fence) { delete fence; fence = nullptr; }
+        
+        // NOTE: queue is NOT deleted here - it's shared and managed by SwapchainData
         
         // Clear other handles (owned by other managers)
         vk_image = VK_NULL_HANDLE;
@@ -95,6 +98,6 @@ struct FrameResources
  */
 using FrameData = FrameResources;
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 
 #endif // __VK_FRAME_DATA_H__

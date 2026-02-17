@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKShaderDescriptorSet.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
 * 添加一个描述符
 */
@@ -26,4 +26,4 @@ ShaderDescriptor *ShaderDescriptorSet::AddDescriptor(uint32_t ssb,ShaderDescript
         return(new_sd);
     }
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

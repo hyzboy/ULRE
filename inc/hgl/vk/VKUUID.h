@@ -2,7 +2,7 @@
 #include<hgl/type/String.h>
 #include<hgl/vk/VKNamespace.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<typename T>
 inline hgl::String<T> VkUUID2String(const hgl::uint8 *pipelineCacheUUID)
 {
@@ -16,4 +16,4 @@ inline hgl::String<T> VkUUID2String(const hgl::uint8 *pipelineCacheUUID)
 
     return uuid_string;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

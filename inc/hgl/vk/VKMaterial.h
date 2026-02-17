@@ -12,7 +12,7 @@ namespace hgl
     class ActiveMemoryBlockManager;
 }
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace mtl
 {
@@ -123,4 +123,4 @@ public:
 };//class Material
 
 using MaterialSet=std::unordered_set<Material *>;
-VK_NAMESPACE_END
+}//namespace hgl::graph

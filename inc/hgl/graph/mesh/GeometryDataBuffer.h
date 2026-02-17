@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
 * 原始图元数据缓冲区<Br>
 * 提供在渲染之前的数据绑定信息
@@ -101,4 +101,4 @@ public:
 
     bool Update(const Geometry *,const VIL *);
 };//struct GeometryDataBuffer
-VK_NAMESPACE_END
+}//namespace hgl::graph

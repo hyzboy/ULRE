@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKShaderModule.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 bool ShaderModuleMap::Add(const ShaderModule *sm)
 {
     if(!sm)return(false);
@@ -12,4 +12,4 @@ bool ShaderModuleMap::Add(const ShaderModule *sm)
 
     return UnorderedMap<VkShaderStageFlagBits,const ShaderModule *>::Add(stage,sm);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

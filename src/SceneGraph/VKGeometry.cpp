@@ -10,7 +10,7 @@
 #include<hgl/vk/VKDeviceAttribute.h>
 #endif//_DEBUG
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 //bool Primitive::Set(const int stage_input_binding,VIL *vil,VkDeviceSize offset)
 //{
@@ -103,4 +103,4 @@ VertexDataManager *Geometry::GetVDM()const
 {
     return geometry_data->GetVDM();
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

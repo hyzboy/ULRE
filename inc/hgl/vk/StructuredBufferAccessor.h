@@ -4,7 +4,7 @@
 
 #include<type_traits>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
  * 结构化缓冲区访问器
@@ -398,4 +398,4 @@ public:
     }
 };
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -10,7 +10,7 @@
 
 #include<hgl/graph/mtl/UBOCommon.h>     //未来UBO统合看能不能不引用
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace
 {
@@ -143,4 +143,4 @@ void IRenderTarget::OnResize(const VkExtent2D &ext)
     ubo_vp_info->ImmediateUpdate();  // 立即同步到 GPU / Immediate sync to GPU
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -4,7 +4,7 @@
 #include<hgl/type/StrChar.h>
 #include<hgl/type/EnumUtil.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
 * <summary>
@@ -104,4 +104,4 @@ inline const DescriptorSetType GetDescriptorSetType(const char *str)
     return(DescriptorSetType::Unknow);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

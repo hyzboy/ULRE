@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<hgl/vk/VKTexture.h>
 #include<hgl/type/RectScope.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct BufferImageCopy:public VkBufferImageCopy
 {
 public:
@@ -89,4 +89,4 @@ public:
         imageExtent.depth   =1;
     }
 };//
-VK_NAMESPACE_END
+}//namespace hgl::graph

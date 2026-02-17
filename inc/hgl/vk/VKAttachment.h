@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_VULKAN_ATTACHMENT_INCLUDE
 #define HGL_VULKAN_ATTACHMENT_INCLUDE
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct Attachment
 {
     VkFormat                format          =VK_FORMAT_UNDEFINED;
@@ -9,5 +9,5 @@ struct Attachment
     VkImageUsageFlags       usage           =VK_IMAGE_USAGE_SAMPLED_BIT;
     VkImageLayout           initial_layout  =VK_IMAGE_LAYOUT_UNDEFINED;
 };//struct Attachment
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_VULKAN_ATTACHMENT_INCLUDE

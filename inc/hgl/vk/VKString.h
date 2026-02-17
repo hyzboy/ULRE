@@ -3,7 +3,7 @@
 #include<hgl/vk/VKNamespace.h>
 #include<vulkan/vulkan.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 // the following enum are to support
 
@@ -23,4 +23,4 @@ template<typename E> const E String2VkEnum(const char *);
 const char *VkCullMode2String(const VkCullModeFlags &);
 const VkCullModeFlags String2VkCullMode(const char *);
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -7,7 +7,7 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 bool RenderTargetData::Submit(Semaphore *wait_sem)
 {
@@ -82,4 +82,4 @@ void RenderTargetData::Clear()
     depth_texture = nullptr;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

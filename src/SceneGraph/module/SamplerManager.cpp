@@ -2,7 +2,7 @@
 #include <hgl/vk/VKDevice.h>
 #include <cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 GRAPH_MODULE_CONSTRUCT(SamplerManager)
 {
@@ -36,4 +36,4 @@ Sampler *SamplerManager::CreateSampler(Texture *tex)
     return sampler;
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -2,7 +2,7 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 MaterialInstance *Material::CreateMI(const VIL *vil)
 {
     int mi_id=-1;
@@ -53,4 +53,4 @@ MaterialInstance::MaterialInstance(Material *mtl,const VIL *v,const int id)
 
     mi_id=id;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

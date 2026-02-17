@@ -2,7 +2,7 @@
 #define HGL_GRAPH_BUFFER_DATA_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
     /**
         * 缓冲区数据管理类
         */
@@ -169,5 +169,5 @@ VK_NAMESPACE_BEGIN
 
     //inline VertexBufferData *EB16(const uint16 &count){return CreateVertexBufferData(GL_UNSIGNED_SHORT, 2,1,count);}
     //inline VertexBufferData *EB32(const uint32 &count){return CreateVertexBufferData(GL_UNSIGNED_INT,   4,1,count);}
-VK_NAMESPACE_END
+}//namespace hgl::graph
 #endif//HGL_GRAPH_VULKAN_BUFFER_DATA_INCLUDE

@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32 layer_count)
 {
     ImageSubresourceRange subresourceRange(aspect_mask,1,layer_count);
@@ -67,4 +67,4 @@ void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspe
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         subresourceRange);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

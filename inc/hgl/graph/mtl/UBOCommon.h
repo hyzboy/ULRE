@@ -4,12 +4,12 @@
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 struct UBODescriptor;
 struct SSBODescriptor;
-VK_NAMESPACE_END
+}//namespace hgl::graph
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 
 UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
 SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
@@ -149,4 +149,4 @@ constexpr const ShaderBufferSource SBS_SkyInfo=
 )"
 };
 
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

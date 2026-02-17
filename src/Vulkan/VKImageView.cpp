@@ -2,7 +2,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 ImageView::~ImageView()
 {
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
@@ -65,4 +65,4 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
         owner->TrackObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)(uintptr_t)img_view, "ImageView");
     return result;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

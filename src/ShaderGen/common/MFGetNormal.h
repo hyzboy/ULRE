@@ -2,7 +2,7 @@
 
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/data/CoordinateSystem.h>
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace func
 {
     constexpr const char *GetNormalMatrix=R"(
@@ -26,4 +26,4 @@ vec3 GetNormal()
 }
 )";
 }//namespace func
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

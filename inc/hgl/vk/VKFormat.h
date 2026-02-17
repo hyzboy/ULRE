@@ -2,7 +2,7 @@
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKNamespace.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 #define PF_UNDEFINED   VK_FORMAT_UNDEFINED
 
@@ -582,4 +582,4 @@ struct VulkanColorSpace
 
 const VulkanColorSpace *GetVulkanColorSpace(const VkColorSpaceKHR &cs);
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

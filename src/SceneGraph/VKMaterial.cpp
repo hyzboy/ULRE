@@ -6,7 +6,7 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 void ReleaseVertexInput(VertexInput *vi);
 
@@ -127,4 +127,4 @@ void Material::Update()
             mp->Update();
     }
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -6,7 +6,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKTextureCreateInfo.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 template<typename T,typename TL> class VkTextureLoader:public TL
 {
 protected:
@@ -105,4 +105,4 @@ public:
         return result;
     }
 };//class VkTextureLoader
-VK_NAMESPACE_END
+}//namespace hgl::graph

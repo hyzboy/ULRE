@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKDevice.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 class VulkanSurface;
 
 struct VulkanHardwareRequirement
@@ -330,4 +330,4 @@ inline VulkanDevice *CreateRenderDeviceHDR(VulkanInstance *vi,
 {
     return CreateRenderDevice(vi,win,req,&PreferHDR,&PreferLinear,&PreferDepth);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

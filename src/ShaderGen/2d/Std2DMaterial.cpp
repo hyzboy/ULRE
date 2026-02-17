@@ -5,7 +5,7 @@
 #include"common/MFGetPosition.h"
 #include"common/MFRectPrimitive.h"
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
@@ -48,4 +48,4 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 
     return(true);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

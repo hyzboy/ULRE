@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKSemaphore.h>
 #include<hgl/vk/VKDevice.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 Semaphore::~Semaphore()
 {
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
@@ -9,4 +9,4 @@ Semaphore::~Semaphore()
 
     vkDestroySemaphore(device,sem,nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -14,7 +14,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/ecs/core/Context.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace mtl
 {
@@ -226,5 +226,5 @@ public: // Geometry, Primitive
     Primitive *CreatePrimitive(GeometryCreater *pc, MaterialInstance *mi, Pipeline *p){return primitive_manager->CreatePrimitive(pc,mi,p);}
 };//class RenderFramework
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

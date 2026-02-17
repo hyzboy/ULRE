@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 struct SwapchainImage
 {
@@ -38,4 +38,4 @@ public:
 
     virtual ~Swapchain();
 };//struct Swapchain
-VK_NAMESPACE_END
+}//namespace hgl::graph

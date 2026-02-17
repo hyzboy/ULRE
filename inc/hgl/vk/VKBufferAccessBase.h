@@ -4,7 +4,7 @@
 #include<hgl/vk/VKBufferCommitQueue.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 class VulkanDevice;
 
@@ -171,5 +171,5 @@ public:
     }
 };//class RawBufferAccessor
 
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

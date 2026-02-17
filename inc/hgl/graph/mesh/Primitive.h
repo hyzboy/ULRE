@@ -10,7 +10,7 @@
 #include<hgl/graph/mesh/GeometryDataBuffer.h>
 #include<hgl/graph/mesh/GeometryDrawRange.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 /**
 * 图元(渲染中的最小渲染单位，一个几何体配一个材质)
 */
@@ -83,4 +83,4 @@ public:
 };//class Primitive
 
 Primitive *DirectCreatePrimitive(Geometry *,MaterialInstance *,Pipeline *);
-VK_NAMESPACE_END
+}//namespace hgl::graph

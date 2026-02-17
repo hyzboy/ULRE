@@ -4,7 +4,7 @@
 #include<iostream>
  //#include<iostream>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 SwapchainRenderTarget::SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtl):MultiFrameRenderTarget(ctx,sc->image_count,rtl)
 {
     swapchain=sc;
@@ -72,4 +72,4 @@ void SwapchainRenderTarget::ReleaseSwapchainResources()
     SAFE_CLEAR(present_complete_semaphore);
     SAFE_CLEAR(swapchain);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

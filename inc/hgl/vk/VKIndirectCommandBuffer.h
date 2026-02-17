@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VKBuffer.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 template<typename T>
 class IndirectCommandBuffer:public DeviceBuffer
@@ -98,4 +98,4 @@ public:
         vkCmdDispatchIndirect(cmd_buf,buf.buffer,offset);
     }
 };//class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectCommand>
-VK_NAMESPACE_END
+}//namespace hgl::graph

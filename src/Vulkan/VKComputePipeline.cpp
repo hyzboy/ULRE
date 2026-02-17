@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/pipeline/VKComputePipeline.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 ComputePipeline::~ComputePipeline()
 {
@@ -8,4 +8,4 @@ ComputePipeline::~ComputePipeline()
         vkDestroyPipeline(device, pipeline, nullptr);
 }
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

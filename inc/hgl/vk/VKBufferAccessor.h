@@ -5,7 +5,7 @@
 #include<hgl/vk/VertexAttribDataAccess.h>
 #include<hgl/vk/VKBufferAccessBase.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 /**
  * åå§ç±»åæ°æ®è®¿é®å¨ï¼ååç´ ç±»åï¼
@@ -476,4 +476,4 @@ using RawAccessorU32   = BufferAccessor<RawDataAccess<uint32>>;
 using RawAccessorI32   = BufferAccessor<RawDataAccess<int32>>;
 using RawAccessorFloat = BufferAccessor<RawDataAccess<float>>;
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

@@ -3,7 +3,7 @@
 #include<hgl/graph/vk/VK.h>
 #include<hgl/io/MiniPack.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 namespace scene_file
 {
@@ -78,4 +78,4 @@ namespace scene_file
         hgl::io::minipack::MiniPackMemory *mpm = nullptr; // owned
     };
 }//namespace scene_file
-VK_NAMESPACE_END
+}//namespace hgl::graph

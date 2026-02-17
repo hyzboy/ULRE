@@ -5,7 +5,7 @@
 #include"common/MFGetPosition.h"
 #include"common/MFGetNormal.h"
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     vsc->AddInput(cfg->position_format,VAN::Position);
@@ -63,4 +63,4 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 
     return(true);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

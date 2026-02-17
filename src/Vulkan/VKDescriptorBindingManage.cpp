@@ -2,7 +2,7 @@
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKMaterialInstance.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 void DescriptorBinding::BindUBO(MaterialParameters *mp,const BindingMap &binding_map,bool dynamic)
 {
     if (binding_map.GetCount() <= 0)return;
@@ -41,4 +41,4 @@ bool DescriptorBinding::Bind(Material *mtl)
     mp->Update();
     return(true);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

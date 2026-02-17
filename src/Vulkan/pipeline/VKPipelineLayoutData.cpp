@@ -3,7 +3,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager)
 {
     PipelineLayoutData *pld=new PipelineLayoutData();  // 使用 new 而不是 hgl_zero_new（因为有析构函数）
@@ -76,5 +76,5 @@ PipelineLayoutData::~PipelineLayoutData()
         if(layouts[i])
             vkDestroyDescriptorSetLayout(device,layouts[i],nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph
 

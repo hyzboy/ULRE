@@ -1,7 +1,7 @@
 ﻿#include<hgl/vk/VKFence.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 Fence::~Fence()
 {
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
@@ -10,4 +10,4 @@ Fence::~Fence()
 
     vkDestroyFence(device,fence,nullptr);
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

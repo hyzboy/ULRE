@@ -2,7 +2,7 @@
 #include"S_BillboardVertex.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
-STD_MTL_NAMESPACE_BEGIN
+namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char mi_codes[]="uvec2 BillboardSize;";         //材质实例代码
@@ -110,4 +110,4 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const VulkanDevAttr *dev_attr,mtl
 
     return mtl_billbard_2d_fixed_size.Create(dev_attr);
 }
-STD_MTL_NAMESPACE_END
+}//namespace hgl::graph::mtl

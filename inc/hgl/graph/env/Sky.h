@@ -3,8 +3,8 @@
 #include<hgl/vk/VK.h>
 
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 
 
 
-VK_NAMESPACE_END
+}//namespace hgl::graph

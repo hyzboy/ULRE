@@ -1,6 +1,6 @@
 ﻿#include<hgl/vk/VKVertexInputLayout.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 VertexInputLayout::VertexInputLayout(const uint32_t c)
 {
     count=c;
@@ -32,4 +32,4 @@ const int VertexInputLayout::GetIndex(const AnsiString &name)const
 
     return -1;
 }
-VK_NAMESPACE_END
+}//namespace hgl::graph

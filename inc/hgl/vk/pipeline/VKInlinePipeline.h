@@ -3,7 +3,7 @@
 #include<hgl/type/EnumUtil.h>
 #include<hgl/vk/VKNamespace.h>
 
-VK_NAMESPACE_BEGIN
+namespace hgl::graph{
 enum class InlinePipeline
 {
     Solid3D=0,
@@ -25,4 +25,4 @@ struct PipelineData;
  * 获取内置管线数据
  */
 const PipelineData *GetPipelineData(const InlinePipeline &);
-VK_NAMESPACE_END
+}//namespace hgl::graph
