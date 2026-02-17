@@ -21,6 +21,7 @@ namespace hgl
             renderItems.clear();
             renderableCount = 0;
 
+            // 清空批次内容，保留对象以供重用
             for (auto& pair : materialBatches)
             {
                 if (pair.second)
@@ -124,18 +125,40 @@ namespace hgl
 
         void ECSContext::Shutdown()
         {
-            // Always release render-frame cache resources to drop GPU allocations
-            // even if the context never reached active state.
-            std::cout << "[DEBUG] ECSContext::Shutdown() - materialBatches.size()=" 
-                      << render_frame_cache.materialBatches.size() << std::endl;
+            // Release render-frame items first  (only clears renderItems, keeps materialBatches for reuse)
             render_frame_cache.renderItems.clear();
-            render_frame_cache.materialBatches.clear();
-            std::cout << "[DEBUG] ECSContext::Shutdown() - materialBatches cleared" << std::endl;
             render_frame_cache.cameraInfo = nullptr;
             render_frame_cache.renderableCount = 0;
 
             if (!active)
+            {
+                // 即使未激活，也要清空materialBatches以释放GPU资源
+                std::cout << "[DEBUG] ECSContext::Shutdown() (inactive) - releasing " 
+                          << render_frame_cache.materialBatches.size() << " material batches" << std::endl;
+                render_frame_cache.materialBatches.clear();
                 return;
+            }
+
+            // Destroy all systems FIRST(before clearing materialBatches)
+            SortTickSystems();
+            SortRenderSystems();
+
+            for (auto& entry : tick_system_order)
+            {
+                if (entry.system)
+                    entry.system->Shutdown();
+            }
+            tick_system_order.clear();
+
+            for (auto& entry : render_system_order)
+            {
+                if (entry.system)
+                    entry.system->Shutdown();
+            }
+            render_system_order.clear();
+
+            tick_systems.Clear();
+            render_systems.Clear();
 
             // Destroy all entities
             if (entity_manager)
@@ -147,25 +170,11 @@ namespace hgl
             static_transforms.clear();
             movable_transforms.clear();
 
-            // Shutdown all systems
-            SortTickSystems();
-            SortRenderSystems();
-
-            for (auto& entry : tick_system_order)
-            {
-                if (entry.system)
-                    entry.system->Shutdown();
-            }
-            tick_systems.Clear();
-            tick_system_order.clear();
-
-            for (auto& entry : render_system_order)
-            {
-                if (entry.system)
-                    entry.system->Shutdown();
-            }
-            render_systems.Clear();
-            render_system_order.clear();
+            // Finally, clear materialBatches after all systems/entities are destroyed
+            std::cout << "[DEBUG] ECSContext::Shutdown() - releasing " 
+                      << render_frame_cache.materialBatches.size() << " material batches" << std::endl;
+            render_frame_cache.materialBatches.clear();
+            std::cout << "[DEBUG] ECSContext::Shutdown() - material batches cleared" << std::endl;
 
             active = false;
             OnDestroy();
