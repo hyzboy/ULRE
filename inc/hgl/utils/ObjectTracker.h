@@ -1,5 +1,8 @@
 #pragma once
 
+// ObjectTracker 简化版本 - header only实现
+// 所有功能都在头文件中，避免链接问题
+
 #include<hgl/core/ObjectType.h>
 #include<cstdint>
 #include<atomic>
@@ -83,23 +86,23 @@ namespace hgl::utils
     public:
         ScopeCapture(const std::source_location& loc = std::source_location::current()) noexcept
         {
-            push_location(loc);
+            if (g_object_tracker)
+            {
+                AllocationTracker<1000000>::allocation_stack.push_back(SourceLocation(loc));
+            }
         }
         
         ~ScopeCapture() noexcept
         {
-            pop_location();
+            if (g_object_tracker && !AllocationTracker<1000000>::allocation_stack.empty())
+            {
+                AllocationTracker<1000000>::allocation_stack.pop_back();
+            }
         }
         
         // 禁用拷贝
         ScopeCapture(const ScopeCapture&) = delete;
         ScopeCapture& operator=(const ScopeCapture&) = delete;
-        
-    private:
-        static void push_location(const std::source_location& loc) noexcept;
-        static void pop_location() noexcept;
-        
-        friend class AllocationTracker;
     };
 
     /**
@@ -115,8 +118,9 @@ namespace hgl::utils
         std::atomic<size_t> write_pos{0};
         std::mutex lock;
         
-        static ObjectIdGenerator id_generator;
-        static thread_local std::vector<SourceLocation> allocation_stack;
+        // 使用 inline static 在头文件中初始化
+        inline static ObjectIdGenerator id_generator;
+        inline static thread_local std::vector<SourceLocation> allocation_stack;
         
     public:
         AllocationTracker()
@@ -250,8 +254,8 @@ namespace hgl::utils
         }
     };
 
-    // 全局实例（用户需要自行初始化）
-    extern AllocationTracker<1000000>* g_object_tracker;
+    // 全局实例（嵌入在头文件中以支持template）
+    inline AllocationTracker<1000000>* g_object_tracker = nullptr;
 
     /**
      * 初始化全局对象追踪器
