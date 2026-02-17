@@ -285,7 +285,7 @@ public:
     {
         if(!render_core || !ecs_world) return false;
 
-        LogTextureInfo("offscreen_before_render", rt ? rt->GetColorTexture(0) : nullptr);
+//        LogTextureInfo("offscreen_before_render", rt ? rt->GetColorTexture(0) : nullptr);
         ecs_world->Tick(0.0f);
 
         render_core->SetClearColor(GetColor4f(COLOR::DarkSlateBlue, 1.0f));
@@ -296,7 +296,7 @@ public:
         render_core->EndFrame();
 
         const bool ok = true;
-        LogTextureInfo("offscreen_after_render", rt ? rt->GetColorTexture(0) : nullptr);
+//        LogTextureInfo("offscreen_after_render", rt ? rt->GetColorTexture(0) : nullptr);
         return ok;
     }
 };
@@ -533,8 +533,8 @@ public:
         {
             if (offscreen->RenderOnce())
             {
-                LogTextureInfo("onscreen_after_offscreen_render",
-                               offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
+                //LogTextureInfo("onscreen_after_offscreen_render",
+                //               offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
             }
         }
 
