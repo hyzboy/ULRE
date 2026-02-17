@@ -7,9 +7,10 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/utils/ObjectTracker.h>
 namespace hgl::graph{
-RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
+RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
 {
     device=dev;
+    name=n;
     pipeline_cache=dev->GetPipelineCache();
     render_pass=rp;
     color_formats=cf;
@@ -20,14 +21,27 @@ RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,
 
 RenderPass::~RenderPass()
 {
-    std::cout << "[DEBUG] ~RenderPass() - pipeline_list.GetCount()=" << pipeline_list.GetCount() << std::endl;
+    std::cout << "[RenderPass::~RenderPass] Destroying RenderPass with " << pipeline_list.GetCount() 
+              << " pipelines (VkRenderPass=0x" << std::hex << (uintptr_t)render_pass << std::dec 
+              << ", RenderPass*=0x" << (uintptr_t)this << ")" << std::endl;
+    
+    // 列出所有要被销毁的管道
+    for (size_t i = 0; i < pipeline_list.GetCount(); i++)
+    {
+        Pipeline* p = pipeline_list[i];
+        if (p)
+            std::cout << "  [RenderPass::~RenderPass] Clearing Pipeline [" << i << "]: '" << p->GetName() << "'" << std::endl;
+    }
+    
+    std::cout << "[RenderPass::~RenderPass] Clearing pipeline_list..." << std::endl;
     pipeline_list.Clear();
-    std::cout << "[DEBUG] ~RenderPass() - pipelines cleared" << std::endl;
+    std::cout << "[RenderPass::~RenderPass] Pipelines cleared, now destroying VkRenderPass" << std::endl;
 
     if (device)
         device->UntrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)render_pass);
 
     vkDestroyRenderPass(*device,render_pass,nullptr);
+    std::cout << "[RenderPass::~RenderPass] RenderPass destroyed" << std::endl;
 }
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
@@ -63,6 +77,10 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     }
 
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
+
+    std::cout << "[RenderPass::CreatePipeline] Created Pipeline '" << name << "' in RenderPass '" << this->name 
+              << "' (VkPipeline=0x" << std::hex << (uintptr_t)graphicsPipeline << std::dec << ", Pipeline*=0x" 
+              << (uintptr_t)pipeline << ")" << std::endl;
 
     if (device)
         device->TrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)graphicsPipeline, ObjectNameBuilder(name).Append(ObjectTypeTag::VKPipeline));

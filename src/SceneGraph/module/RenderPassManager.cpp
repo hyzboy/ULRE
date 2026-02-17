@@ -229,7 +229,8 @@ namespace
     }
 }
 
-RenderPass *RenderPassManager::CreateRenderPass(const ValueArray<VkAttachmentDescription> &desc_list,
+RenderPass *RenderPassManager::CreateRenderPass(const AnsiString &name,
+                                                const ValueArray<VkAttachmentDescription> &desc_list,
                                                 const ValueArray<VkSubpassDescription> &subpass,
                                                 const ValueArray<VkSubpassDependency> &dependency,
                                                 const RenderbufferInfo *rbi)
@@ -252,7 +253,7 @@ RenderPass *RenderPassManager::CreateRenderPass(const ValueArray<VkAttachmentDes
     if(vkCreateRenderPass(GetVkDevice(),&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(GetDevice(),render_pass,rbi->GetColorFormatList(),depth_format));
+    return(new RenderPass(GetDevice(),name,render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
 RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
@@ -300,12 +301,21 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
 
     CreateSubpassDependency(subpass_dependency_list,subpass_count);
 
-    rp=CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
+    rp=CreateRenderPass(key,atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
 
     RenderPassList.Add(key,rp);
 
     if (rp)
+    {
+        std::cout << "[RenderPassManager::AcquireRenderPass] Created/Cached RenderPass '" << key 
+                  << "' (VkRenderPass=0x" << std::hex << (uintptr_t)rp->GetVkRenderPass() << std::dec 
+                  << ", RenderPass*=0x" << (uintptr_t)rp << ")" << std::endl;
         GetDevice()->TrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)rp->GetVkRenderPass(), ObjectNameBuilder(key).Append(ObjectTypeTag::VKRenderPass));
+    }
+    else
+    {
+        std::cout << "[RenderPassManager::AcquireRenderPass] FAILED to create RenderPass '" << key << "'" << std::endl;
+    }
 
     return rp;
 }

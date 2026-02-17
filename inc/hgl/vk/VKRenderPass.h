@@ -18,6 +18,7 @@ class RenderPass
     VulkanDevice *  device;
     VkPipelineCache pipeline_cache;
     VkRenderPass    render_pass;
+    AnsiString      name;               ///< RenderPass名称，用于调试
 
     VkFormatList    color_formats;
     VkFormat        depth_format;
@@ -34,7 +35,7 @@ private:
 
     friend class RenderPassManager;
 
-    RenderPass(VulkanDevice *,VkRenderPass rp,const VkFormatList &cf,VkFormat df);
+    RenderPass(VulkanDevice *,const AnsiString &name,VkRenderPass rp,const VkFormatList &cf,VkFormat df);
 
 public:
 
@@ -42,6 +43,7 @@ public:
 
     operator const VkRenderPass()const{return render_pass;}
 
+    const AnsiString &      GetName         ()const{return name;}
     const VkRenderPass      GetVkRenderPass ()const{return render_pass;}
     const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
 

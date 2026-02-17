@@ -102,7 +102,15 @@ private:
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid2D) : nullptr;
 
-        return pipeline;
+        if (pipeline)
+            std::cout << "[TestApp::InitMaterial] Created Pipeline in RenderPass (render_pass*=0x" << std::hex << (uintptr_t)render_pass 
+                      << ", VkPipeline=0x" << (VkPipeline)(*pipeline) << std::dec 
+                      << ", Pipeline*=0x" << (uintptr_t)pipeline << ")" << std::endl;
+        else
+            std::cout << "[TestApp::InitMaterial] FAILED to create Pipeline (render_target=0x" << std::hex << (uintptr_t)render_target 
+                      << ", render_pass=0x" << (uintptr_t)render_pass << std::dec << ")" << std::endl;
+
+        return pipeline != nullptr;
     }
 
     bool InitVBO()

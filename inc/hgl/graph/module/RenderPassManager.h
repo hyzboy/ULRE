@@ -18,7 +18,8 @@ private:
 
 private:
 
-    RenderPass *    CreateRenderPass(   const ValueArray<VkAttachmentDescription> &desc_list,
+    RenderPass *    CreateRenderPass(   const AnsiString &name,
+                                        const ValueArray<VkAttachmentDescription> &desc_list,
                                         const ValueArray<VkSubpassDescription> &subpass,
                                         const ValueArray<VkSubpassDependency> &dependency,
                                         const RenderbufferInfo *);
