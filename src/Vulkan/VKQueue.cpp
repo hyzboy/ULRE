@@ -25,12 +25,14 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 
 DeviceQueue::~DeviceQueue()
 {
+    std::cout << "[DEBUG] DeviceQueue::~DeviceQueue() - fence_count=" << fence_count << std::endl;
     // Note: VkQueue is retrieved via vkGetDeviceQueue and is implicitly destroyed 
     // when VkDevice is destroyed. Multiple DeviceQueue instances may share the same
     // VkQueue handle, so we should NOT untrack it here.
     // The VulkanDevice will handle cleanup of the actual queue.
 
     SAFE_CLEAR_OBJECT_ARRAY_OBJECT(fence_list,fence_count)
+    std::cout << "[DEBUG] DeviceQueue::~DeviceQueue() - Complete" << std::endl;
 }
 
 bool DeviceQueue::WaitQueue()
