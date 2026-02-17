@@ -13,6 +13,9 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 
 // 引入几何创建器
 #include<hgl/graph/geo/GeometryCreater.h>

@@ -8,6 +8,10 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/color/Color.h>
 
 // ECS headers

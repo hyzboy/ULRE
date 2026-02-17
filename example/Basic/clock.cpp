@@ -16,6 +16,9 @@
 #include<ctime>
 #include<chrono>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<cmath>
 
 // 引入ECS相关头文件
