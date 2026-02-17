@@ -376,6 +376,10 @@ namespace hgl::graph
             return; // keep old pipeline
         }
 
+        // 删除旧Pipeline
+        if(pipeline)
+            delete pipeline;
+        
         pipeline = new_pipeline;
         LogInfo(OS_TEXT("CN: 渲染目标切换并重建Pipeline成功 EN: render target switched and pipeline rebuilt"));
 
@@ -457,6 +461,14 @@ namespace hgl::graph
             if (buffer_manager && buf)
                 buffer_manager->Release(buf);
         }
+        
+        // 释放Pipeline
+        if (pipeline)
+        {
+            delete pipeline;
+            pipeline = nullptr;
+        }
+        
         delete shared_backup;
         shared_backup = nullptr;
     }
