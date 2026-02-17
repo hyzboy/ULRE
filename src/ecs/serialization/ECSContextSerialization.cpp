@@ -341,7 +341,7 @@ namespace hgl::ecs
             entity_manager->GetAllEntityPointers(entities);
 
         hgl::UnorderedMap<EntityID, int32_t> entity_index;
-        entity_index.SetMaxCount(entities.size());
+        entity_index.Reserve(entities.size());
         for (size_t i = 0; i < entities.size(); ++i)
         {
             if (entities[i])
@@ -437,7 +437,7 @@ namespace hgl::ecs
             entity_manager->GetAllEntityPointers(entities);
 
         hgl::UnorderedMap<EntityID, int32_t> entity_index;
-        entity_index.SetMaxCount(entities.size());
+        entity_index.Reserve(entities.size());
         for (size_t i = 0; i < entities.size(); ++i)
         {
             if (entities[i])

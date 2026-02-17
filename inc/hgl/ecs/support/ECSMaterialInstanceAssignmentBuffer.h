@@ -38,7 +38,7 @@ namespace hgl::ecs
         void Reserve(size_t count)
         {
             instances.reserve(count);
-            index_map.SetMaxCount(count);
+            index_map.Reserve(count);
         }
 
         void Add(graph::MaterialInstance* mi)

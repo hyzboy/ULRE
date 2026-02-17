@@ -373,7 +373,7 @@ namespace hgl
             }
 
             hgl::UnorderedMap<size_t, size_t> index_map;
-            index_map.SetMaxCount(order_list.size());
+            index_map.Reserve(order_list.size());
 
             for (size_t i = 0; i < order_list.size(); ++i)
             {
