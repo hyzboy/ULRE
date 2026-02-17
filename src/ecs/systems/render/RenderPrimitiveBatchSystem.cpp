@@ -1,4 +1,6 @@
 ﻿#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<source_location>
+#include<cstdio>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/BoundingBoxComponent.h>
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
@@ -72,9 +74,19 @@ namespace hgl::ecs
             }
             else
             {
-                // 默认名字（没有上下文或没有前缀）
-                draw_name = graph::ObjectNameBuilder("IndirectDrawBuffer:Default");
-                indexed_name = graph::ObjectNameBuilder("IndirectDrawIndexedBuffer:Default");
+                // 默认名字：使用调用者位置追踪（当context为空时）
+                const auto loc = std::source_location::current();
+                const char* filename = loc.file_name();
+                const char* basename = filename;
+                for (const char* p = filename; *p; ++p)
+                    if (*p == '\\' || *p == '/') basename = p + 1;
+                
+                char draw_buf[64], indexed_buf[64];
+                snprintf(draw_buf, sizeof(draw_buf), "ICB_Draw@%s:%u", basename, loc.line());
+                snprintf(indexed_buf, sizeof(indexed_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
+                
+                draw_name = graph::ObjectNameBuilder(draw_buf);
+                indexed_name = graph::ObjectNameBuilder(indexed_buf);
             }
 
             icb_draw_out = device->CreateIndirectDrawBuffer(icb_new_count, draw_name);

@@ -69,9 +69,11 @@ namespace hgl::graph
 
     void GraphicsContext::Shutdown()
     {
+        std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
         // GraphModuleManager destructor will call Release() on all modules automatically
         // This ensures proper cleanup order
         SAFE_CLEAR(module_manager)
+        std::cout << "[DEBUG] GraphicsContext::Shutdown() - GraphModuleManager deleted" << std::endl;
 
         // Clear all manager pointers (they're owned by module_manager)
         rp_manager = nullptr;

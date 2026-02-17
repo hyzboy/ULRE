@@ -1,6 +1,8 @@
 ﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/utils/ObjectTracker.h>
+#include<source_location>
+#include<cstdio>
 
 namespace hgl::graph{
 
@@ -81,15 +83,32 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
     return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count));
 }
 
-// 旧版本：保持兼容性（默认使用硬编码名字）
+// 旧版本：保持兼容性（使用调用位置作为名字）
 IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,SharingMode sm)
 {
-    return CreateIndirectDrawBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM("IndirectDrawBuffer:Default"),sm);
+    const auto loc = std::source_location::current();
+    // 提取文件名（去掉路径）
+    const char* filename = loc.file_name();
+    const char* basename = filename;
+    for (const char* p = filename; *p; ++p)
+        if (*p == '\\' || *p == '/') basename = p + 1;
+    
+    char name_buf[64];
+    snprintf(name_buf, sizeof(name_buf), "ICB_Draw@%s:%u", basename, loc.line());
+    return CreateIndirectDrawBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM(name_buf),sm);
 }
 
 IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
 {
-    return CreateIndirectDrawBuffer(cmd_count,policy,VK_NAME_FROM("IndirectDrawBuffer:Default"),sm);
+    const auto loc = std::source_location::current();
+    const char* filename = loc.file_name();
+    const char* basename = filename;
+    for (const char* p = filename; *p; ++p)
+        if (*p == '\\' || *p == '/') basename = p + 1;
+    
+    char name_buf[64];
+    snprintf(name_buf, sizeof(name_buf), "ICB_Draw@%s:%u", basename, loc.line());
+    return CreateIndirectDrawBuffer(cmd_count,policy,VK_NAME_FROM(name_buf),sm);
 }
 
 // 新版本：带名字追踪
@@ -113,15 +132,31 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
     return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count));
 }
 
-// 旧版本：保持兼容性
+// 旧版本：保持兼容性（使用调用位置作为名字）
 IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm)
 {
-    return CreateIndirectDrawIndexedBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM("IndirectDrawIndexedBuffer:Default"),sm);
+    const auto loc = std::source_location::current();
+    const char* filename = loc.file_name();
+    const char* basename = filename;
+    for (const char* p = filename; *p; ++p)
+        if (*p == '\\' || *p == '/') basename = p + 1;
+    
+    char name_buf[64];
+    snprintf(name_buf, sizeof(name_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
+    return CreateIndirectDrawIndexedBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM(name_buf),sm);
 }
 
 IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
 {
-    return CreateIndirectDrawIndexedBuffer(cmd_count,policy,VK_NAME_FROM("IndirectDrawIndexedBuffer:Default"),sm);
+    const auto loc = std::source_location::current();
+    const char* filename = loc.file_name();
+    const char* basename = filename;
+    for (const char* p = filename; *p; ++p)
+        if (*p == '\\' || *p == '/') basename = p + 1;
+    
+    char name_buf[64];
+    snprintf(name_buf, sizeof(name_buf), "ICB_DrawIdx@%s:%u", basename, loc.line());
+    return CreateIndirectDrawIndexedBuffer(cmd_count,policy,VK_NAME_FROM(name_buf),sm);
 }
 
 // 新版本：带名字追踪
@@ -144,15 +179,31 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
     return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count));
 }
 
-// 旧版本：保持兼容性
+// 旧版本：保持兼容性（使用调用位置作为名字）
 IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,SharingMode sm)
 {
-    return CreateIndirectDispatchBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM("IndirectDispatchBuffer:Default"),sm);
+    const auto loc = std::source_location::current();
+    const char* filename = loc.file_name();
+    const char* basename = filename;
+    for (const char* p = filename; *p; ++p)
+        if (*p == '\\' || *p == '/') basename = p + 1;
+    
+    char name_buf[64];
+    snprintf(name_buf, sizeof(name_buf), "ICB_Dispatch@%s:%u", basename, loc.line());
+    return CreateIndirectDispatchBuffer(cmd_count,BufferAllocPolicy::Auto,VK_NAME_FROM(name_buf),sm);
 }
 
 IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,BufferAllocPolicy policy,SharingMode sm)
 {
-    return CreateIndirectDispatchBuffer(cmd_count,policy,VK_NAME_FROM("IndirectDispatchBuffer:Default"),sm);
+    const auto loc = std::source_location::current();
+    const char* filename = loc.file_name();
+    const char* basename = filename;
+    for (const char* p = filename; *p; ++p)
+        if (*p == '\\' || *p == '/') basename = p + 1;
+    
+    char name_buf[64];
+    snprintf(name_buf, sizeof(name_buf), "ICB_Dispatch@%s:%u", basename, loc.line());
+    return CreateIndirectDispatchBuffer(cmd_count,policy,VK_NAME_FROM(name_buf),sm);
 }
 
 }//namespace hgl::graph

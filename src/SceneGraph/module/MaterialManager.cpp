@@ -205,7 +205,8 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     Add(mtl);
 
     material_by_name.Add(mtl_name,mtl);
-    device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)(Material*)mtl, ObjectNameBuilder(mtl_name).Append(ObjectTypeTag::Material));
+    // Material is a C++ object managed by MaterialManager, not a Vulkan object
+    // No need to track with ObjectTracker
     return mtl.Finish();
 }
 
@@ -337,10 +338,8 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         return nullptr;
 
     Add(mi);
-    VulkanDevice *device = GetDevice();
-    if(device)
-        device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
-                          ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
+    // MaterialInstance is a C++ object managed by MaterialManager, not a Vulkan object
+    // No need to track with ObjectTracker
 
     if(mi_data&&mi_bytes>0)
         mi->WriteMIData(mi_data,mi_bytes);

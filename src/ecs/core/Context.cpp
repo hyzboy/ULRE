@@ -126,8 +126,11 @@ namespace hgl
         {
             // Always release render-frame cache resources to drop GPU allocations
             // even if the context never reached active state.
+            std::cout << "[DEBUG] ECSContext::Shutdown() - materialBatches.size()=" 
+                      << render_frame_cache.materialBatches.size() << std::endl;
             render_frame_cache.renderItems.clear();
             render_frame_cache.materialBatches.clear();
+            std::cout << "[DEBUG] ECSContext::Shutdown() - materialBatches cleared" << std::endl;
             render_frame_cache.cameraInfo = nullptr;
             render_frame_cache.renderableCount = 0;
 

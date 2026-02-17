@@ -95,29 +95,38 @@ namespace hgl
     {
         hgl::utils::initialize_object_tracker();
 
-        AppFramework app(title);
+        int result = 0;
 
-        if(!app.Init(width,height))
+        // Use explicit scope to ensure AppFramework/WorkObject destructors are called
+        // BEFORE shutdown_object_tracker() checks for leaks
         {
-            hgl::utils::shutdown_object_tracker();
-            return(-1);
-        }
+            AppFramework app(title);
 
-        SwapchainWorkManager wm(&app);
+            if(!app.Init(width,height))
+            {
+                result = -1;
+            }
+            else
+            {
+                SwapchainWorkManager wm(&app);
 
-        WO *wo=new WO(&app);
+                WO *wo=new WO(&app);
 
-        if(!wo->Init())
-        {
-            delete wo;
-            hgl::utils::shutdown_object_tracker();
-            return(-2);
-        }
+                if(!wo->Init())
+                {
+                    delete wo;
+                    result = -2;
+                }
+                else
+                {
+                    wm.Run(wo);
+                }
+            }
+        } // AppFramework destructor called here (cleanup happens)
 
-        wm.Run(wo);
-
+        // Now check for leaks AFTER all destructors have run
         hgl::utils::shutdown_object_tracker();
 
-        return 0;
+        return result;
     }
 }//namespcae hgl

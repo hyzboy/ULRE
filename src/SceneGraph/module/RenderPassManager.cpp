@@ -195,12 +195,15 @@ GRAPH_MODULE_CONSTRUCT(RenderPassManager)
 
 RenderPassManager::~RenderPassManager()
 {
+    std::cout << "[DEBUG] ~RenderPassManager() - RenderPassList.size()=" << RenderPassList.GetCount() << std::endl;
     for(auto& kv : RenderPassList)
     {
+        std::cout << "[DEBUG] Deleting RenderPass: " << kv.first.c_str() << std::endl;
         delete kv.second;
     }
 
     RenderPassList.Clear();
+    std::cout << "[DEBUG] ~RenderPassManager() complete" << std::endl;
 }
 
 namespace

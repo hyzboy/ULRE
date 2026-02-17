@@ -20,7 +20,9 @@ RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,
 
 RenderPass::~RenderPass()
 {
+    std::cout << "[DEBUG] ~RenderPass() - pipeline_list.GetCount()=" << pipeline_list.GetCount() << std::endl;
     pipeline_list.Clear();
+    std::cout << "[DEBUG] ~RenderPass() - pipelines cleared" << std::endl;
 
     if (device)
         device->UntrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)render_pass);

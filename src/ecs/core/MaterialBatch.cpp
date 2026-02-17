@@ -25,6 +25,8 @@ namespace hgl::ecs
 
     MaterialBatch::~MaterialBatch()
     {
+        std::cout << "[DEBUG] MaterialBatch::~MaterialBatch() - icb_draw=" << (void*)icb_draw 
+                  << ", icb_draw_indexed=" << (void*)icb_draw_indexed << std::endl;
         if (icb_draw_indexed)
             delete icb_draw_indexed;
         if (icb_draw)

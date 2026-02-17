@@ -145,6 +145,10 @@ public:
 
         if (texture_by_filename.GetCount() > 0)
             texture_by_filename.Clear();
+
+        // Clean up texture transfer resources (queue holds fences that need cleanup)
+        SAFE_CLEAR(texture_queue);
+        SAFE_CLEAR(texture_cmd_buf);
     }
 
 public: // Load

@@ -208,8 +208,11 @@ namespace
             depth_texture = nullptr;
             cmd_buf = nullptr;
             
-            // Now call base Clear() to delete queue and render_complete_semaphore
-            // (which we do own)
+            // Delete queue (SwapchainRenderTargetData owns this queue, created in CreateSwapchainRenderTarget)
+            // Each queue contains fence_count Fences that will be deleted by ~DeviceQueue()
+            SAFE_CLEAR(queue);
+            
+            // Now call base Clear() to delete render_complete_semaphore
             RenderTargetData::Clear();
         }
     };//
