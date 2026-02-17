@@ -231,7 +231,7 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
             return nullptr;
         {
             AnsiString name = "Framebuffer_" + AnsiString::numberOf((uint64_t)(uintptr_t)fb);
-            device->TrackObject(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64_t)(uintptr_t)fb, ObjectNameBuilder(name).Append(ObjectTypeTag::Framebuffer));
+            device->TrackObject(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64_t)(uintptr_t)fb, ObjectNameBuilder(name).Append(ObjectTypeTag::VKFramebuffer));
         }
         return new Framebuffer(device->GetDevice(), fb, fb_extent, render_pass, color_count, depth != nullptr);
     };

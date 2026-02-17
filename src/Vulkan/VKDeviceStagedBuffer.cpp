@@ -106,8 +106,8 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
         return nullptr;
     }
 
-    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer, ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::Buffer), loc);
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory), ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::Memory), loc);
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer, ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::VKBuffer), loc);
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory), ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::VKMemory), loc);
 
     // Create device buffer (GPU optimal)
     BufferCreateInfo device_info;

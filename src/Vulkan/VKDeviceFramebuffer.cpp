@@ -83,7 +83,7 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_lis
     if (dev)
     {
         AnsiString name = "Framebuffer_" + AnsiString::numberOf((uint64_t)(uintptr_t)fbo);
-        dev->TrackObject(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64_t)(uintptr_t)fbo, ObjectNameBuilder(name).Append(ObjectTypeTag::Framebuffer));
+        dev->TrackObject(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64_t)(uintptr_t)fbo, ObjectNameBuilder(name).Append(ObjectTypeTag::VKFramebuffer));
     }
 
     return(new Framebuffer(GetVkDevice(),fbo,extent,rp,color_count,depth));

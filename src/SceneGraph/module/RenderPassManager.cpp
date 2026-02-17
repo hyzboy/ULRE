@@ -299,7 +299,7 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
     RenderPassList.Add(key,rp);
 
     if (rp)
-        GetDevice()->TrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)rp->GetVkRenderPass(), ObjectNameBuilder(key).Append(ObjectTypeTag::RenderPass));
+        GetDevice()->TrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)rp->GetVkRenderPass(), ObjectNameBuilder(key).Append(ObjectTypeTag::VKRenderPass));
 
     return rp;
 }

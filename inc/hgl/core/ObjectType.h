@@ -16,26 +16,26 @@ enum class ObjectTypeTag : uint8_t
 {
     None = 0,
     
-    // Vulkan resources
-    Queue,
-    Semaphore,
-    Fence,
-    RenderCommandBuffer,
-    TextureCommandBuffer,
-    ComputeCommandBuffer,
-    Buffer,
-    Memory,
-    Image,
-    ImageView,
-    Sampler,
-    Framebuffer,
-    RenderPass,
-    Pipeline,
-    PipelineLayout,
-    DescriptorSet,
-    DescriptorSetLayout,
-    ShaderModule,
-    Swapchain,
+    // Vulkan resources (with VK prefix to avoid conflicts with other APIs)
+    VKQueue,
+    VKSemaphore,
+    VKFence,
+    VKRenderCommandBuffer,
+    VKTextureCommandBuffer,
+    VKComputeCommandBuffer,
+    VKBuffer,
+    VKMemory,
+    VKImage,
+    VKImageView,
+    VKSampler,
+    VKFramebuffer,
+    VKRenderPass,
+    VKPipeline,
+    VKPipelineLayout,
+    VKDescriptorSet,
+    VKDescriptorSetLayout,
+    VKShaderModule,
+    VKSwapchain,
     
     // Custom types (for logging)
     RenderTarget,
@@ -70,25 +70,25 @@ inline const char* GetTagString(ObjectTypeTag tag)
 {
     switch (tag)
     {
-        case ObjectTypeTag::Queue:                  return "Queue";
-        case ObjectTypeTag::Semaphore:              return "Semaphore";
-        case ObjectTypeTag::Fence:                  return "Fence";
-        case ObjectTypeTag::RenderCommandBuffer:    return "RenderCmdBuf";
-        case ObjectTypeTag::TextureCommandBuffer:   return "TextureCmdBuf";
-        case ObjectTypeTag::ComputeCommandBuffer:   return "ComputeCmdBuf";
-        case ObjectTypeTag::Buffer:                 return "Buffer";
-        case ObjectTypeTag::Memory:                 return "Memory";
-        case ObjectTypeTag::Image:                  return "Image";
-        case ObjectTypeTag::ImageView:              return "ImageView";
-        case ObjectTypeTag::Sampler:                return "Sampler";
-        case ObjectTypeTag::Framebuffer:            return "Framebuffer";
-        case ObjectTypeTag::RenderPass:             return "RenderPass";
-        case ObjectTypeTag::Pipeline:               return "Pipeline";
-        case ObjectTypeTag::PipelineLayout:         return "PipelineLayout";
-        case ObjectTypeTag::DescriptorSet:          return "DescriptorSet";
-        case ObjectTypeTag::DescriptorSetLayout:    return "DescriptorSetLayout";
-        case ObjectTypeTag::ShaderModule:           return "ShaderModule";
-        case ObjectTypeTag::Swapchain:              return "Swapchain";
+        case ObjectTypeTag::VKQueue:                  return "VKQueue";
+        case ObjectTypeTag::VKSemaphore:              return "VKSemaphore";
+        case ObjectTypeTag::VKFence:                  return "VKFence";
+        case ObjectTypeTag::VKRenderCommandBuffer:    return "VKRenderCmdBuf";
+        case ObjectTypeTag::VKTextureCommandBuffer:   return "VKTextureCmdBuf";
+        case ObjectTypeTag::VKComputeCommandBuffer:   return "VKComputeCmdBuf";
+        case ObjectTypeTag::VKBuffer:                 return "VKBuffer";
+        case ObjectTypeTag::VKMemory:                 return "VKMemory";
+        case ObjectTypeTag::VKImage:                  return "VKImage";
+        case ObjectTypeTag::VKImageView:              return "VKImageView";
+        case ObjectTypeTag::VKSampler:                return "VKSampler";
+        case ObjectTypeTag::VKFramebuffer:            return "VKFramebuffer";
+        case ObjectTypeTag::VKRenderPass:             return "VKRenderPass";
+        case ObjectTypeTag::VKPipeline:               return "VKPipeline";
+        case ObjectTypeTag::VKPipelineLayout:         return "VKPipelineLayout";
+        case ObjectTypeTag::VKDescriptorSet:          return "VKDescriptorSet";
+        case ObjectTypeTag::VKDescriptorSetLayout:    return "VKDescriptorSetLayout";
+        case ObjectTypeTag::VKShaderModule:           return "VKShaderModule";
+        case ObjectTypeTag::VKSwapchain:              return "VKSwapchain";
         case ObjectTypeTag::RenderTarget:           return "RT";
         case ObjectTypeTag::Texture:                return "Texture";
         case ObjectTypeTag::Material:               return "Material";

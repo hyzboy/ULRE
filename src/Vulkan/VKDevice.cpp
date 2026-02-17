@@ -262,8 +262,8 @@ void VulkanDevice::TrackBuffer(DeviceBuffer *buf, const ObjectNameBuilder &name,
     if (!buf)
         return;
 
-    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->GetBuffer(), name.Append(ObjectTypeTag::Buffer), loc);
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory(), name.Append(ObjectTypeTag::Memory), loc);
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->GetBuffer(), name.Append(ObjectTypeTag::VKBuffer), loc);
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
 }
 
 void VulkanDevice::UntrackBuffer(DeviceBuffer *buf)
@@ -281,9 +281,9 @@ void VulkanDevice::TrackTexture(Texture *tex, const ObjectNameBuilder &name, con
     if (!tex)
         return;
 
-    TrackObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)(uintptr_t)tex->GetImage(), name.Append(ObjectTypeTag::Image), loc);
-    TrackObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)(uintptr_t)tex->GetVulkanImageView(), name.Append(ObjectTypeTag::ImageView), loc);
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)tex->GetDeviceMemory(), name.Append(ObjectTypeTag::Memory), loc);
+    TrackObject(VK_OBJECT_TYPE_IMAGE, (uint64_t)(uintptr_t)tex->GetImage(), name.Append(ObjectTypeTag::VKImage), loc);
+    TrackObject(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)(uintptr_t)tex->GetVulkanImageView(), name.Append(ObjectTypeTag::VKImageView), loc);
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)tex->GetDeviceMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
 }
 
 void VulkanDevice::WaitIdle() const
@@ -341,7 +341,7 @@ RenderCmdBuffer *VulkanDevice::CreateRenderCommandBuffer(const ObjectNameBuilder
 
     RenderCmdBuffer *result = new RenderCmdBuffer(attr,cb);
     if (result)
-        TrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cb, name.Append(ObjectTypeTag::RenderCommandBuffer), loc);
+        TrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cb, name.Append(ObjectTypeTag::VKRenderCommandBuffer), loc);
     return result;
 }
 
@@ -353,7 +353,7 @@ TextureCmdBuffer *VulkanDevice::CreateTextureCommandBuffer(const ObjectNameBuild
 
     TextureCmdBuffer *result = new TextureCmdBuffer(attr,cb);
     if (result)
-        TrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cb, name.Append(ObjectTypeTag::TextureCommandBuffer), loc);
+        TrackObject(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)(uintptr_t)cb, name.Append(ObjectTypeTag::VKTextureCommandBuffer), loc);
     return result;
 }
 
@@ -370,7 +370,7 @@ Fence *VulkanDevice::CreateFence(const ObjectNameBuilder &name, bool create_sign
     if(vkCreateFence(attr->device, &fenceInfo, nullptr, &fence)!=VK_SUCCESS)
         return(nullptr);
 
-    TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, name.Append(ObjectTypeTag::Fence), loc);
+    TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, name.Append(ObjectTypeTag::VKFence), loc);
     return(new Fence(attr->device,fence));
 }
 
@@ -390,7 +390,7 @@ Semaphore *VulkanDevice::CreateGPUSemaphore(const ObjectNameBuilder &name, const
 
     Semaphore *result = new Semaphore(attr->device, sem);
     if (result)
-        TrackObject(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)(uintptr_t)sem, name.Append(ObjectTypeTag::Semaphore), loc);
+        TrackObject(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)(uintptr_t)sem, name.Append(ObjectTypeTag::VKSemaphore), loc);
     return result;
 }
 
