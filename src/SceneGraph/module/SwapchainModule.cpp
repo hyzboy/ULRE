@@ -24,6 +24,8 @@
 #include <hgl/graph/module/GraphModule.h>
 #include <hgl/vk/VK.h>
 #include<hgl/vk/VKSemaphore.h>
+#include<hgl/vk/VKQueue.h>
+#include<hgl/vk/VKFence.h>
 #include<hgl/vk/VKSurface.h>
 
 
@@ -394,18 +396,36 @@ bool SwapchainModule::Initialize()
             frame.cmd_buffer = (VkCommandBuffer)(*sc_image->cmd_buf);
         }
 
-        // Create or get queue (existing pattern from CreateSwapchainRenderTarget)
-        if (device && !frame.queue)
-        {
-            frame.queue = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
-        }
-
-        // Create synchronization primitives
+        // Create or get queue (DeviceQueue has operator VkQueue())
         if (device)
         {
-            frame.image_acquired_semaphore = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
-            frame.render_complete_semaphore = device->CreateGPUSemaphore("Swapchain:RenderComplete");
-            frame.fence = device->CreateFence("Swapchain:Fence");
+            DeviceQueue *queue_ptr = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
+            if (queue_ptr)
+            {
+                frame.queue = (VkQueue)(*queue_ptr);
+            }
+        }
+
+        // Create synchronization primitives (Semaphore and Fence have operator overloads)
+        if (device)
+        {
+            Semaphore *sem_acquired = device->CreateGPUSemaphore("Swapchain:ImageAcquired");
+            if (sem_acquired)
+            {
+                frame.image_acquired_semaphore = (VkSemaphore)(*sem_acquired);
+            }
+
+            Semaphore *sem_complete = device->CreateGPUSemaphore("Swapchain:RenderComplete");
+            if (sem_complete)
+            {
+                frame.render_complete_semaphore = (VkSemaphore)(*sem_complete);
+            }
+
+            Fence *fence_ptr = device->CreateFence("Swapchain:Fence");
+            if (fence_ptr)
+            {
+                frame.fence = (VkFence)(*fence_ptr);
+            }
         }
 
         frame.image_index = i;
