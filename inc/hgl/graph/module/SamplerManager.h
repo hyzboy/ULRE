@@ -13,7 +13,7 @@ GRAPH_MODULE_CLASS(SamplerManager)
 private:
     AutoIdObjectManager<SamplerID, Sampler> rm_samplers; ///<采样器合集
 
-    SamplerManager(IGraphicsContext *);
+    SamplerManager(GraphicsContext *);
     ~SamplerManager() = default;
 
     friend class GraphModuleManager;

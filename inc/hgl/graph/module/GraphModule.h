@@ -9,16 +9,16 @@ VK_NAMESPACE_BEGIN
 class TextureManager;
 class RenderTargetManager;
 class RenderPassManager;
-class IGraphicsContext;
+class GraphicsContext;
 
 class GraphModule
 {
-    IGraphicsContext *graphics_context=nullptr;
+    GraphicsContext *graphics_context=nullptr;
 
 public:
 
-                IGraphicsContext *  GetGraphicsContext  ()const{return graphics_context;}              ///<取得GraphicsContext
-                void                SetGraphicsContext  (IGraphicsContext *gc)
+                GraphicsContext *   GetGraphicsContext  ()const{return graphics_context;}              ///<取得GraphicsContext
+                void                SetGraphicsContext  (GraphicsContext *gc)
                 {
                     graphics_context=gc;
                     OnGraphicsContextChanged(gc);
@@ -44,11 +44,11 @@ public:
 
 protected:
 
-    virtual void OnGraphicsContextChanged(IGraphicsContext *){}
+    virtual void OnGraphicsContextChanged(GraphicsContext *)    {}
 
 public:
 
-    GraphModule(IGraphicsContext *gc):graphics_context(gc){}
+    GraphModule(GraphicsContext *gc):graphics_context(gc){}
     virtual ~GraphModule()=default;
 
     virtual const size_t GetTypeHash()const noexcept=0;
@@ -73,7 +73,7 @@ public:
 
 public:
 
-    GraphModuleInherit(IGraphicsContext *gc,const AnsiString &name):BASE(gc)
+    GraphModuleInherit(GraphicsContext *gc,const AnsiString &name):BASE(gc)
     {
         manager_name=name;
     }
@@ -83,6 +83,6 @@ public:
 
 #define GRAPH_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name,GraphModule>
 
-#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(IGraphicsContext *gc):GraphModuleInherit<class_name,GraphModule>(gc,#class_name)
+#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(GraphicsContext *gc):GraphModuleInherit<class_name,GraphModule>(gc,#class_name)
 
 VK_NAMESPACE_END

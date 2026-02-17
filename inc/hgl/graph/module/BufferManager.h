@@ -25,7 +25,7 @@ private:
 
 private:
 
-    BufferManager(IGraphicsContext *);
+    BufferManager(GraphicsContext *);
     ~BufferManager() = default;
 
     friend class GraphModuleManager;

@@ -13,7 +13,11 @@ source_group("SceneGraph" FILES ${CM_SG_HEADER})
 # ============================================================================
 
 SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/render/RenderFramework.h
-                            render/RenderFramework.cpp)
+                            ${ROOT_INCLUDE_PATH}/hgl/platform/AppFramework.h
+                            ${SG_INCLUDE_PATH}/core/GraphicsContext.h
+                            ${SG_INCLUDE_PATH}/core/VulkanGraphicsContext.h
+                            ../platform/AppFramework.cpp
+                            render/GraphicsContext.cpp)
 
 SOURCE_GROUP("1.Core\\Framework" FILES ${GRAPH_FRAMEWORK_FILES})
 

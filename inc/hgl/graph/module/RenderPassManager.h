@@ -11,7 +11,7 @@ GRAPH_MODULE_CLASS(RenderPassManager)
 
 private:
 
-    RenderPassManager(IGraphicsContext *);
+    RenderPassManager(GraphicsContext *);
     ~RenderPassManager();
 
     friend class GraphModuleManager;

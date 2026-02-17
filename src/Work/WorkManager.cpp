@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include<hgl/WorkManager.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/time/Time.h>
 
 namespace hgl
 {
@@ -10,10 +11,10 @@ namespace hgl
 
         if(cur_work_object)
         {
-            if (render_framework)
+            if (app_framework)
             {
                 // Notify change of active work object
-                cur_work_object->OnRenderFrameworkChange(render_framework);
+                cur_work_object->OnAppFrameworkChange(app_framework);
             }
 
             if (!render_core)
@@ -91,12 +92,12 @@ namespace hgl
     {
         if(!cur_work_object)return;
 
-        if (!render_framework)
+        if (!app_framework)
             return;
 
         VkExtent2D ext={w,h};
 
-        cur_work_object->OnRenderFrameworkChange(render_framework);
+        cur_work_object->OnAppFrameworkChange(app_framework);
         cur_work_object->OnResize(ext);
     }
 
@@ -134,16 +135,16 @@ namespace hgl
 
         last_update_time=last_render_time=0;
 
-        Window *win=render_framework ? render_framework->GetWindow() : nullptr;
-        graph::VulkanDevice *dev=render_framework ? render_framework->GetDevice() : wo->GetDevice();
+        Window *win=app_framework ? app_framework->GetWindow() : nullptr;
+        graph::VulkanDevice *dev=app_framework ? app_framework->GetDevice() : wo->GetDevice();
         const bool has_window=win!=nullptr;
 
         while(!cur_work_object->IsDestroy())
         {
             cur_time=GetTimeSec();
 
-            if (render_framework)
-                render_framework->Tick();
+            if (app_framework)
+                app_framework->Tick();
 
             if(cur_work_object->IsTickable())
                 Tick(cur_work_object);

@@ -24,7 +24,7 @@
 
 VK_NAMESPACE_BEGIN
 
-RenderTargetManager::RenderTargetManager(IGraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm)
+RenderTargetManager::RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm)
     :GraphModuleInherit<RenderTargetManager,GraphModule>(gc,"RenderTargetManager")
 {
     tex_manager=tm;
@@ -103,7 +103,7 @@ RenderTarget *RenderTargetManager::CreateRT(const AnsiString &name, const Frameb
     return CreateRT(name, fbi,rp,fence_count);
 }
 
-RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
                                                                const FramebufferInfo *fbi, const uint32_t fence_count)
 {
     // Generate a default name from the extent
@@ -116,7 +116,7 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(IGraphicsContext 
     return CreateRTFromGraphicsContext(gc, ecs_ctx, auto_name, fbi, fence_count);
 }
 
-RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
                                                                const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count)
 {
     if(!gc || !ecs_ctx || !fbi)

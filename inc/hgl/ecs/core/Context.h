@@ -18,7 +18,7 @@ namespace hgl {
         class RenderCmdBuffer; 
         class CameraInfo; 
         class IRenderTarget;
-        class IGraphicsContext;
+        class GraphicsContext;  // 图形资源管理器（原IGraphicsContext）
         class VulkanDevice;
         class RenderContext;
     }
@@ -108,7 +108,7 @@ namespace hgl
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
             /// Graphics context adapter (Phase 2) - now raw pointer
-            hgl::graph::IGraphicsContext* graphics_context = nullptr;
+            hgl::graph::GraphicsContext* graphics_context = nullptr;
             hgl::graph::RenderContext* render_context = nullptr;
 
         private:
@@ -195,9 +195,9 @@ namespace hgl
             hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
 
             /// Graphics context adapter (Phase 2)
-            void SetGraphicsContext(hgl::graph::IGraphicsContext* ctx) { graphics_context = ctx; }
-            hgl::graph::IGraphicsContext* GetGraphicsContext() { return graphics_context; }
-            const hgl::graph::IGraphicsContext* GetGraphicsContext() const { return graphics_context; }
+            void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { graphics_context = ctx; }
+            hgl::graph::GraphicsContext* GetGraphicsContext() { return graphics_context; }
+            const hgl::graph::GraphicsContext* GetGraphicsContext() const { return graphics_context; }
 
             /// Render context adapter (Phase 2)
             void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }

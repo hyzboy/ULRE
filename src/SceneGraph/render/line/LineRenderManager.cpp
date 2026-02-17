@@ -52,7 +52,7 @@ namespace hgl::graph
      * \param rt CN: 渲染目标 EN: render target
      * \return CN: 创建成功的管理器或nullptr EN: created manager or nullptr
      */
-    LineRenderManager* CreateLineRenderManager(IGraphicsContext *gc,IRenderTarget *rt)
+    LineRenderManager* CreateLineRenderManager(GraphicsContext *gc,IRenderTarget *rt)
     {
         if (!gc)
         {

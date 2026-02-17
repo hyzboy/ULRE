@@ -35,7 +35,7 @@ private:
 
 private:
 
-    MaterialManager(IGraphicsContext *);
+    MaterialManager(GraphicsContext *);
     ~MaterialManager()=default;
 
     friend class GraphModuleManager;

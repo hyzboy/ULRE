@@ -36,7 +36,7 @@ private:
 
 public:
 
-    TextureManager(IGraphicsContext *gc);
+    TextureManager(GraphicsContext *gc);
     virtual ~TextureManager();
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;
@@ -47,7 +47,7 @@ public:     //Buffer
 
 protected:
 
-    void OnGraphicsContextChanged(IGraphicsContext *gc) override;
+    void OnGraphicsContextChanged(GraphicsContext *gc) override;
 
 private:
 

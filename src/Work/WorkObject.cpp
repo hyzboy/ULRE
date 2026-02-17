@@ -1,5 +1,5 @@
 ﻿#include<hgl/WorkObject.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/platform/AppFramework.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -14,9 +14,9 @@
 
 namespace hgl
 {
-    WorkObject::WorkObject(graph::RenderFramework *rf)
+    WorkObject::WorkObject(AppFramework *af)
     {
-        OnRenderFrameworkChange(rf);
+        OnAppFrameworkChange(af);
     }
 
     WorkObject::WorkObject(std::shared_ptr<ecs::ECSContext> ctx)
@@ -80,20 +80,20 @@ namespace hgl
         return nullptr;
     }
 
-    void WorkObject::OnRenderFrameworkChange(graph::RenderFramework *rf)
+    void WorkObject::OnAppFrameworkChange(AppFramework *af)
     {
-        if(!rf)
+        if(!af)
         {
-            render_framework=nullptr;
+            app_framework=nullptr;
             render_context=nullptr;
             world.reset();
             return;
         }
 
-        render_framework=rf;
+        app_framework=af;
         world.reset();
-        if (rf->GetECSContext())
-            world = std::shared_ptr<ecs::ECSContext>(rf->GetECSContext(), [](ecs::ECSContext*){});
+        if (af->GetECSContext())
+            world = std::shared_ptr<ecs::ECSContext>(af->GetECSContext(), [](ecs::ECSContext*){});
         render_context=world?world->GetRenderContext():nullptr;
     }
 

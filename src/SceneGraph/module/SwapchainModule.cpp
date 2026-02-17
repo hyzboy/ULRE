@@ -13,6 +13,8 @@
 #include <hgl/vk/VKTexture.h>
 #include <hgl/vk/VKTextureCreateInfo.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
+#include <hgl/vk/VKFrameData.h>
+#include <hgl/vk/VKSwapchainData.h>
 #include <cstdint>
 #include <vulkan/vulkan_core.h>
 #include <hgl/Macro.h>
@@ -242,15 +244,33 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
 SwapchainModule::~SwapchainModule()
 {
+    // 删除SwapchainRenderTarget对象
     SAFE_CLEAR(sc_render_target);
 }
 
 void SwapchainModule::Release()
 {
-    SAFE_CLEAR(sc_render_target);
+    // SwapchainModule is responsible for cleaning up resources it created:
+    // 1. Swapchain object
+    // 2. present_complete_semaphore
+    //
+    // These must be released BEFORE the SwapchainRenderTarget is deleted
+    
+    if (sc_render_target)
+    {
+        // 1. Release frame resources (clears references, doesn't delete owned objects)
+        sc_render_target->ReleaseFrameResources();
+        
+        // 2. Release swapchain-specific resources (Swapchain and Semaphore)
+        sc_render_target->ReleaseSwapchainResources();
+        
+        // 3. Now safe to delete the render target object
+        // Its destructor will only delete the rtd_list array and clear references
+        SAFE_CLEAR(sc_render_target);
+    }
 }
 
-SwapchainModule::SwapchainModule(IGraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
+SwapchainModule::SwapchainModule(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm)
     :GraphModuleInherit<SwapchainModule,GraphModule>(gc,"SwapchainModule")
 {
     tex_manager=tm;
@@ -314,6 +334,153 @@ bool SwapchainModule::AcquireNextImage()const
         return(false);
 
     return sc_render_target->NextFrame();
+}
+
+// ============================================
+// NEW ARCHITECTURE METHODS
+// ============================================
+
+bool SwapchainModule::Initialize()
+{
+    if (!swapchain_data)
+    {
+        swapchain_data = new SwapchainData();
+    }
+
+    // Create the raw Vulkan swapchain
+    Swapchain *vk_swapchain = CreateSwapchain();
+    if (!vk_swapchain)
+    {
+        return false;
+    }
+
+    swapchain_data->swapchain = vk_swapchain->Get();
+    swapchain_data->image_format = vk_swapchain->image_format;
+    swapchain_data->extent = vk_swapchain->extent;
+    swapchain_data->frame_count = vk_swapchain->image_count;
+
+    // Create per-frame resources
+    if (!CreatePerFrameResources(*swapchain_data))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool SwapchainModule::CreatePerFrameResources(SwapchainData &sc_data)
+{
+    Swapchain *vk_swapchain = nullptr;
+    
+    // We need to get the Swapchain object that was already created
+    // For now, this is a simplified implementation
+    // In a full refactor, we'd restructure to have direct access to the Swapchain object
+    
+    if (!vk_swapchain || vk_swapchain->image_count == 0)
+    {
+        return false;
+    }
+
+    VulkanDevice *device = GetDevice();
+    if (!device)
+    {
+        return false;
+    }
+
+    // Allocate frame resources (typically 2-3 frames for double/triple buffering)
+    sc_data.frames.resize(sc_data.frame_count);
+
+    SwapchainImage *sc_image = vk_swapchain->sc_image;
+
+    for (uint32_t i = 0; i < sc_data.frame_count; i++)
+    {
+        FrameResources &frame = sc_data.frames[i];
+
+        frame.frame_index = i;
+
+        // Synchronization primitives (owned by SwapchainModule, referenced by frame)
+        frame.image_acquired_semaphore = device->CreateGPUSemaphore(
+            hgl::string("Swapchain:Frame") + i + ":ImageAcquired"
+        );
+        frame.render_complete_semaphore = device->CreateGPUSemaphore(
+            hgl::string("Swapchain:Frame") + i + ":RenderComplete"
+        );
+
+        // Swapchain image (owned by Swapchain, referenced by frame)
+        frame.vk_image = sc_image->image;
+        frame.image_index = i;
+        frame.image_view = sc_image->image_view;
+
+        // Rendering resources
+        // TODO: These should be created by respective managers
+        // For now, reference existing resources
+        frame.framebuffer = sc_image->fbo;
+        frame.render_pass = sc_render_pass ? sc_render_pass->GetVkRenderPass() : VK_NULL_HANDLE;
+
+        // Command execution
+        frame.cmd_buffer = sc_image->cmd_buf;
+        frame.queue = device->CreateQueue(
+            hgl::string("SwapchainFrame") + i,
+            sc_data.frame_count,
+            false
+        );
+
+        // Synchronization fence
+        frame.fence = device->CreateFence(
+            hgl::string("Swapchain:Frame") + i + ":Fence"
+        );
+
+        ++sc_image;
+    }
+
+    return true;
+}
+
+bool SwapchainModule::DestroyPerFrameResources(SwapchainData &sc_data)
+{
+    VulkanDevice *device = GetDevice();
+    if (!device)
+    {
+        return false;
+    }
+
+    for (auto &frame : sc_data.frames)
+    {
+        // Note: Frame resources are REFERENCES only, not owned by FrameResources
+        // Actual deletion happens via the respective managers:
+        // - Semaphores: destroyed by Device
+        // - Fences: destroyed by Device
+        // - Framebuffer/RenderPass: destroyed by managers
+        // - CommandBuffer: destroyed by CommandPool
+        // - ImageView: destroyed by TextureManager
+        // - Queue: destroyed by Device
+
+        // Just clear the references
+        frame.Clear();
+    }
+
+    sc_data.frames.clear();
+    return true;
+}
+
+FrameResources *SwapchainModule::GetCurrentFrame() const
+{
+    if (!swapchain_data || swapchain_data->frames.empty())
+    {
+        return nullptr;
+    }
+
+    return &const_cast<SwapchainData *>(swapchain_data)->GetCurrentFrame();
+}
+
+FrameResources *SwapchainModule::GetFrame(uint32_t index) const
+{
+    if (!swapchain_data || index >= swapchain_data->frame_count)
+    {
+        return nullptr;
+    }
+
+    return &const_cast<SwapchainData *>(swapchain_data)->GetFrame(index);
 }
 
 VK_NAMESPACE_END

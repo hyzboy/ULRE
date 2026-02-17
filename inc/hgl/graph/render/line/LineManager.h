@@ -13,7 +13,7 @@
 
 namespace hgl::graph
 {
-    class IGraphicsContext;
+    class GraphicsContext;
     /**
      * 线条信息结构
      */
@@ -37,7 +37,7 @@ namespace hgl::graph
     private:
         ValueArray<LineInfo> lines;                    // 存储所有线条信息
 
-        IGraphicsContext*   graphics_context;    // GraphicsContext
+        GraphicsContext*    graphics_context;    // GraphicsContext
         Material*           line_material;       // Line3D材质
         MaterialInstance*   material_instance;   // 材质实例
         Pipeline*           pipeline;            // 渲染管线
@@ -56,7 +56,7 @@ namespace hgl::graph
 
     public:
 
-        LineManager(IGraphicsContext* gc, RenderPass* rp=nullptr);
+        LineManager(GraphicsContext* gc, RenderPass* rp=nullptr);
         ~LineManager();
 
         bool Init();                             // 初始化

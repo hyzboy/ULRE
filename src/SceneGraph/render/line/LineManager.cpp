@@ -7,7 +7,7 @@
 
 namespace hgl::graph
 {
-    LineManager::LineManager(IGraphicsContext* gc, RenderPass* rp)
+    LineManager::LineManager(GraphicsContext* gc, RenderPass* rp)
         : graphics_context(gc)
         , line_material(nullptr)
         , material_instance(nullptr)

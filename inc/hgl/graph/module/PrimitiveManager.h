@@ -20,7 +20,7 @@ private:
 
     AutoIdObjectManager<PrimitiveID, Primitive> rm_primitive_set;    ///<渲染实例集合集
 
-    PrimitiveManager(IGraphicsContext *);
+    PrimitiveManager(GraphicsContext *);
     ~PrimitiveManager() = default;
 
     friend class GraphModuleManager;

@@ -30,6 +30,12 @@ public:
     bool NextFrame  ()override;                             ///<获取下一帧的索引
 
     bool Submit     ()override;                             ///<提交当前帧的渲染，交推送到前台
+
+    /**
+     * Release swapchain-owned resources (Swapchain and present_complete_semaphore)
+     * Must be called by SwapchainModule before destroying this object
+     */
+    void ReleaseSwapchainResources();
 };//class SwapchainRenderTarget:public MultiFrameRenderTarget
 
 VK_NAMESPACE_END

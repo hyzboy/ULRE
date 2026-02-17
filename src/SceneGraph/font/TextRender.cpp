@@ -6,11 +6,13 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/platform/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/SamplerManager.h>
+#include<hgl/vk/VKRenderPass.h>
 #include<hgl/type/AlignUtil.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/color/Color.h>
@@ -37,27 +39,12 @@ namespace hgl::graph
         }
     }//namespace
 
-    TextRender::TextRender(RenderFramework *rf,TileFont *tf)
+    TextRender::TextRender(AppFramework *af,TileFont *tf)
+        : TextRender(af ? af->GetGraphicsContext() : nullptr, tf)
     {
-        device=rf->GetDevice();
-
-        primitive_manager=rf->GetPrimitiveManager();
-        mtl_manager=rf->GetMaterialManager();
-        tl_engine=new layout::TextLayout(tf);
-
-        mtl_fs      =nullptr;
-        sampler     =nullptr;
-        pipeline    =nullptr;
-        tile_font   =tf;
-
-        fixed_style.CharColor=GetColor4ub(COLOR::White);
-
-        SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
-
-        mi_fs=nullptr;
     }
 
-    TextRender::TextRender(IGraphicsContext *gc,TileFont *tf)
+    TextRender::TextRender(GraphicsContext *gc,TileFont *tf)
     {
         device = gc ? gc->GetDevice() : nullptr;
 
@@ -112,7 +99,7 @@ namespace hgl::graph
 
     namespace
     {
-        TileFont *CreateTileFont(IGraphicsContext *gc,FontSource *fs,int limit_count,const VkExtent2D *extent)
+        TileFont *CreateTileFont(GraphicsContext *gc,FontSource *fs,int limit_count,const VkExtent2D *extent)
         {
             if(!gc || !fs)
                 return(nullptr);
@@ -142,7 +129,7 @@ namespace hgl::graph
         }
     }
 
-    TextRender *TextRender::CreateWithGraphicsContext(IGraphicsContext *gc,RenderPass *rp,FontSource *fs,int limit,const VkExtent2D *extent)
+    TextRender *TextRender::CreateWithGraphicsContext(GraphicsContext *gc,RenderPass *rp,FontSource *fs,int limit,const VkExtent2D *extent)
     {
         if(!gc || !fs || !rp)
             return(nullptr);

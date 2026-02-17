@@ -10,7 +10,7 @@ namespace hgl
     namespace graph
     {
         class VILConfig;
-        class IGraphicsContext;
+        class GraphicsContext;
 
         namespace mtl
         {
@@ -49,7 +49,7 @@ namespace hgl
         class RenderContext
         {
     private:
-        IGraphicsContext* graphics_context = nullptr;
+        GraphicsContext* graphics_context = nullptr;
 
         // 当前渲染状态
         RenderCmdBuffer* current_render_cmd_buf = nullptr;
@@ -108,8 +108,8 @@ namespace hgl
         RenderCmdBuffer* GetCurrentRenderCmdBuffer() const;
 
     public:
-        void SetGraphicsContext(IGraphicsContext* ctx) { graphics_context = ctx; }
-        IGraphicsContext* GetGraphicsContext() const { return graphics_context; }
+        void SetGraphicsContext(GraphicsContext* ctx) { graphics_context = ctx; }
+        GraphicsContext* GetGraphicsContext() const { return graphics_context; }
 
         }; // class RenderContext
 

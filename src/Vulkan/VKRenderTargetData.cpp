@@ -62,10 +62,13 @@ void RenderTargetData::EndRender()
 void RenderTargetData::Clear()
 {
     std::cerr << "[RenderTargetData] Clear" << std::endl;
-    SAFE_CLEAR(cmd_buf);
-    SAFE_CLEAR(queue);
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
+    
+    // cmd_buf and queue will be cleared separately or by their owners
+    // DO NOT delete them here as they may still be referenced
+    cmd_buf = nullptr;
+    queue = nullptr;
     
     // Textures are managed by TextureManager, so just clear the pointers
     // Do NOT delete the textures themselves to avoid double deletion

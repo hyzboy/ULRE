@@ -11,7 +11,7 @@ VK_NAMESPACE_BEGIN
 
 class TextureManager;
 class RenderPassManager;
-class IGraphicsContext;
+class GraphicsContext;
 
 GRAPH_MODULE_CLASS(RenderTargetManager)
 {
@@ -21,7 +21,7 @@ GRAPH_MODULE_CLASS(RenderTargetManager)
 
 public:
 
-    RenderTargetManager(IGraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm);
+    RenderTargetManager(GraphicsContext *gc,hgl::ecs::ECSContext *ecs_ctx,TextureManager *tm,RenderPassManager *rpm);
     virtual ~RenderTargetManager()=default;
 
 public: //FrameBuffer相关
@@ -37,9 +37,9 @@ public:
     RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,const uint32_t fence_count=1);
 
     // Create an offscreen render target without RenderFramework (ECS/GraphicsContext path).
-    static RenderTarget *CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+    static RenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
                                                      const FramebufferInfo *fbi, const uint32_t fence_count=1);
-    static RenderTarget *CreateRTFromGraphicsContext(IGraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
+    static RenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
                                                      const AnsiString &name, const FramebufferInfo *fbi, const uint32_t fence_count=1);
 
     void Release() override

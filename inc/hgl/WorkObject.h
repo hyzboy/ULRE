@@ -2,26 +2,17 @@
 
 #include<hgl/type/object/TickObject.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/graph/render/RenderFramework.h>
+#include<hgl/platform/AppFramework.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/color/Color4f.h>
-#include<hgl/time/Time.h>
-#include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include <hgl/graph/module/SamplerManager.h>
-#include <hgl/graph/mesh/Primitive.h>
-#include <hgl/graph/geo/GeometryCreater.h>
-#include <hgl/graph/render/RenderContext.h>
 #include <memory>
 
 namespace hgl
 {
     namespace graph
     {
-        class RenderFramework;
-        class CameraControl;
         class RenderContext;
         class VILConfig;
 
@@ -56,7 +47,7 @@ namespace hgl
 
         std::shared_ptr<ecs::ECSContext> world;
 
-        graph::RenderFramework *render_framework=nullptr; // legacy entry (optional)
+        AppFramework *app_framework=nullptr; // Application framework (optional)
         graph::RenderContext *render_context=nullptr;
 
         bool destroy_flag=false;
@@ -69,7 +60,7 @@ namespace hgl
 
     public:
 
-        graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
+        AppFramework *              GetAppFramework     (){return app_framework;}
         ecs::ECSContext *           GetECSContext       (){return world.get();}
         graph::RenderContext *      GetRenderContext    (){return render_context;}
 
@@ -82,7 +73,7 @@ namespace hgl
             }
             if (world && world->GetGPUDevice())
                 return world->GetGPUDevice();
-            return render_framework ? render_framework->GetDevice() : nullptr;
+            return app_framework ? app_framework->GetDevice() : nullptr;
         }
         graph::VulkanDevAttr *      GetDevAttr          ()
         {
@@ -96,7 +87,12 @@ namespace hgl
                 if (auto *gc = render_context->GetGraphicsContext())
                     return gc->GetTextureManager();
             }
-            return render_framework ? render_framework->GetTextureManager() : nullptr;
+            if (app_framework)
+            {
+                if (auto *gc = app_framework->GetGraphicsContext())
+                    return gc->GetTextureManager();
+            }
+            return nullptr;
         }
         graph::BufferManager *      GetBufferManager    ()
         {
@@ -105,7 +101,12 @@ namespace hgl
                 if (auto *gc = render_context->GetGraphicsContext())
                     return gc->GetBufferManager();
             }
-            return render_framework ? render_framework->GetBufferManager() : nullptr;
+            if (app_framework)
+            {
+                if (auto *gc = app_framework->GetGraphicsContext())
+                    return gc->GetBufferManager();
+            }
+            return nullptr;
         }
 
         const VkExtent2D *          GetExtent           ();
@@ -113,7 +114,7 @@ namespace hgl
         graph::Camera *             GetCamera           ();
         const graph::CameraInfo *   GetCameraInfo       ()const;
 
-        const math::Vector2i *      GetMouseCoord       ()const {return render_framework ? &render_framework->GetMouseCoord() : nullptr;}
+        const math::Vector2i *      GetMouseCoord       ()const {return app_framework ? &app_framework->GetMouseCoord() : nullptr;}
 
         void SetClearColor(const Color4f &color) { clear_color = color; }
         const Color4f &GetClearColor() const { return clear_color; }
@@ -130,12 +131,12 @@ namespace hgl
     public:
 
         explicit WorkObject(std::shared_ptr<ecs::ECSContext> ctx);
-        explicit WorkObject(graph::RenderFramework *);
+        explicit WorkObject(AppFramework *);
         virtual ~WorkObject();
 
         virtual bool Init()=0;
 
-        virtual void OnRenderFrameworkChange(graph::RenderFramework *rf);
+        virtual void OnAppFrameworkChange(AppFramework *af);
 
         virtual void OnResize(const VkExtent2D &){}
 

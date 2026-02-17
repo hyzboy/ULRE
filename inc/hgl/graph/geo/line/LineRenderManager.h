@@ -12,7 +12,7 @@
 
 namespace hgl::graph
 {
-    class IGraphicsContext;
+    class GraphicsContext;
     class RenderContext;
     class IRenderTarget;
     class BufferManager;
@@ -191,6 +191,6 @@ namespace hgl::graph
         uint32 GetLineCount() const {return total_line_count;}
     };
 
-    LineRenderManager *CreateLineRenderManager(IGraphicsContext *gc, IRenderTarget *rt);
+    LineRenderManager *CreateLineRenderManager(GraphicsContext *gc, IRenderTarget *rt);
     LineRenderManager *CreateLineRenderManager(RenderContext *rc, IRenderTarget *rt);
 }

@@ -14,7 +14,7 @@ namespace hgl
     {
     protected:
 
-        graph::RenderFramework *render_framework;
+        AppFramework *app_framework;
         std::unique_ptr<ecs::RenderSystemCore> render_core;
 
         uint fps=60;
@@ -28,16 +28,16 @@ namespace hgl
 
     public:
 
-        WorkManager(graph::RenderFramework *rf)
+        WorkManager(AppFramework *af)
         {
-            render_framework=rf;
+            app_framework=af;
 
-            rf->AddChildDispatcher(this);
+            af->AddChildDispatcher(this);
         }
 
         explicit WorkManager(std::shared_ptr<ecs::ECSContext> ctx)
         {
-            render_framework=nullptr;
+            app_framework=nullptr;
             render_core = ctx ? std::make_unique<ecs::RenderSystemCore>(ctx.get()) : nullptr;
             if (render_core)
                 render_core->Initialize();
@@ -45,8 +45,8 @@ namespace hgl
 
         virtual ~WorkManager()
         {
-            if (render_framework)
-                render_framework->RemoveChildDispatcher(this);
+            if (app_framework)
+                app_framework->RemoveChildDispatcher(this);
             if(cur_work_object)
                 OnChangeWorkObject(cur_work_object, nullptr);
             SAFE_CLEAR(cur_work_object);
@@ -72,9 +72,9 @@ namespace hgl
 
     public:
 
-        SwapchainWorkManager(graph::RenderFramework *rf):WorkManager(rf)
+        SwapchainWorkManager(AppFramework *af):WorkManager(af)
         {
-            swapchain_module=rf->GetSwapchainModule();
+            swapchain_module=af->GetSwapchainModule();
         }
 
         explicit SwapchainWorkManager(std::shared_ptr<ecs::ECSContext> ctx)
@@ -92,14 +92,14 @@ namespace hgl
 
     template<typename WO> int RunFramework(const OSString &title,uint width=1280,uint height=720)
     {
-        graph::RenderFramework rf(title);
+        AppFramework app(title);
 
-        if(!rf.Init(width,height))
+        if(!app.Init(width,height))
             return(-1);
 
-        SwapchainWorkManager wm(&rf);
+        SwapchainWorkManager wm(&app);
 
-        WO *wo=new WO(&rf);
+        WO *wo=new WO(&app);
 
         if(!wo->Init())
         {

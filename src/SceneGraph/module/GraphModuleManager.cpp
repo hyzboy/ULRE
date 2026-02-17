@@ -28,7 +28,7 @@ bool GraphModuleManager::Register(GraphModule *gm)
     return(true);
 }
 
-void GraphModuleManager::SetGraphicsContext(IGraphicsContext *gc)
+void GraphModuleManager::SetGraphicsContext(GraphicsContext *gc)
 {
     graphics_context=gc;
 

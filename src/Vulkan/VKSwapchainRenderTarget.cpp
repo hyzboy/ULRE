@@ -20,8 +20,8 @@ SwapchainRenderTarget::SwapchainRenderTarget(hgl::ecs::ECSContext *ctx,Swapchain
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
 {
-    delete present_complete_semaphore;
-    delete swapchain;
+    // Do NOT delete present_complete_semaphore or swapchain here
+    // They are deleted by SwapchainModule in ReleaseSwapchainResources()
 }
 
 bool SwapchainRenderTarget::NextFrame()
@@ -63,5 +63,13 @@ bool SwapchainRenderTarget::Submit()
     }
 
     return(true);
+}
+
+void SwapchainRenderTarget::ReleaseSwapchainResources()
+{
+    // SwapchainModule is responsible for cleaning up Swapchain and present_complete_semaphore
+    // Delete them here (called by SwapchainModule::Release())
+    SAFE_CLEAR(present_complete_semaphore);
+    SAFE_CLEAR(swapchain);
 }
 VK_NAMESPACE_END

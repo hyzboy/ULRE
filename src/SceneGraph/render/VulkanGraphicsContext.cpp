@@ -1,0 +1,108 @@
+#include <hgl/graph/core/GraphicsContext.h>
+#include <hgl/vk/VKDevice.h>
+#include <hgl/graph/module/GraphModuleManager.h>
+#include <hgl/graph/module/RenderPassManager.h>
+#include <hgl/graph/module/TextureManager.h>
+#include <hgl/graph/module/RenderTargetManager.h>
+#include <hgl/graph/module/MaterialManager.h>
+#include <hgl/graph/module/BufferManager.h>
+#include <hgl/graph/module/SamplerManager.h>
+#include <hgl/graph/module/GeometryManager.h>
+#include <hgl/graph/module/PrimitiveManager.h>
+
+namespace hgl::graph
+{
+    GraphicsContext::GraphicsContext(VulkanDevice *dev)
+        : device(dev)
+    {
+    }
+
+    GraphicsContext::~GraphicsContext()
+    {
+        Shutdown();
+    }
+
+    bool GraphicsContext::Initialize()
+    {
+        if (!device)
+            return false;
+
+        // Create module manager
+        module_manager = new GraphModuleManager();
+        if (!module_manager)
+            return false;
+
+        // Initialize all managers through module system
+        rp_manager = module_manager->GetOrCreate<RenderPassManager>();
+        if (!rp_manager)
+            return false;
+
+        tex_manager = module_manager->GetOrCreate<TextureManager>();
+        if (!tex_manager)
+            return false;
+
+        sampler_manager = module_manager->GetOrCreate<SamplerManager>();
+        if (!sampler_manager)
+            return false;
+
+        geometry_manager = module_manager->GetOrCreate<GeometryManager>();
+        if (!geometry_manager)
+            return false;
+
+        primitive_manager = module_manager->GetOrCreate<PrimitiveManager>();
+        if (!primitive_manager)
+            return false;
+
+        material_manager = module_manager->GetOrCreate<MaterialManager>();
+        if (!material_manager)
+            return false;
+
+        buffer_manager = module_manager->GetOrCreate<BufferManager>();
+        if (!buffer_manager)
+            return false;
+
+        // Set graphics context for module manager
+        module_manager->SetGraphicsContext(this);
+
+        return true;
+    }
+
+    void GraphicsContext::Shutdown()
+    {
+        // GraphModuleManager destructor will call Release() on all modules automatically
+        // This ensures proper cleanup order
+        SAFE_CLEAR(module_manager)
+
+        // Clear all manager pointers (they're owned by module_manager)
+        rp_manager = nullptr;
+        tex_manager = nullptr;
+        rt_manager = nullptr;
+        material_manager = nullptr;
+        buffer_manager = nullptr;
+        sampler_manager = nullptr;
+        geometry_manager = nullptr;
+        primitive_manager = nullptr;
+    }
+
+    void GraphicsContext::OnResize(const VkExtent2D &extent)
+    {
+        if (module_manager)
+            module_manager->OnResize(extent);
+    }
+
+    VulkanDevAttr *GraphicsContext::GetDevAttr() const
+    {
+        return device ? device->GetDevAttr() : nullptr;
+    }
+
+    VulkanPhyDevice *GraphicsContext::GetPhyDevice() const
+    {
+        return device ? const_cast<VulkanPhyDevice *>(device->GetPhyDevice()) : nullptr;
+    }
+
+    VkDevice GraphicsContext::GetVkDevice() const
+    {
+        return device ? device->GetDevice() : VK_NULL_HANDLE;
+    }
+
+} // namespace hgl::graph

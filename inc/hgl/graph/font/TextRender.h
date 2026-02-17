@@ -5,15 +5,19 @@
 #include<hgl/type/OrderedSet.h>
 #include<hgl/type/String.h>
 
+namespace hgl
+{
+    class AppFramework;
+}
+
 namespace hgl::graph
 {
     class FontDataSource;
     class FontSource;
-    class IGraphicsContext;
+    class GraphicsContext;
     class RenderPass;
     class TileFont;
     class TextGeometry;
-    class RenderFramework;
     class MaterialManager;
     class PrimitiveManager;
 
@@ -70,10 +74,10 @@ namespace hgl::graph
 
     private:
 
-        friend class RenderFramework;
+        friend class AppFramework;
 
-        TextRender(IGraphicsContext *,TileFont *);
-        TextRender(RenderFramework *,TileFont *);
+        TextRender(GraphicsContext *,TileFont *);
+        TextRender(AppFramework *,TileFont *);
 
         bool InitTextLayoutEngine();
         bool InitMaterial(RenderPass *);
@@ -85,7 +89,7 @@ namespace hgl::graph
 
     public:
 
-        static TextRender *CreateWithGraphicsContext(IGraphicsContext *gc,RenderPass *rp,FontSource *fs,int limit=1024,const VkExtent2D *extent=nullptr);
+        static TextRender *CreateWithGraphicsContext(GraphicsContext *gc,RenderPass *rp,FontSource *fs,int limit=1024,const VkExtent2D *extent=nullptr);
 
         TextGeometry *Begin(const TextGeometryType &tpt=TextGeometryType::FixedStyle,int limit=2048);                   ///<创建一个文本绘制几何体
 

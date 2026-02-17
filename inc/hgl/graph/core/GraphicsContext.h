@@ -1,93 +1,119 @@
 ﻿#pragma once
 
 /**
- * GraphicsContext - 图形系统统一接口
+ * GraphicsContext - 图形系统资源管理
  *
- * Phase 2: 用来替代旧的 RenderFramework 过度集中化设计
+ * 用来替代旧的 RenderFramework 过度集中化设计
  *
- * 设计原则：
- * - 单一职责：只提供图形资源访问接口
- * - 依赖注入：所有模块都通过构造函数注入
- * - 非法人模式：ECSContext 持有真实实现，GraphicsContext 是接口
+ * 职责：
+ * - 聚合所有图形资源管理器（Manager）
+ * - 提供统一的资源访问入口
+ * - 管理模块生命周期
+ *
+ * 使用方式：
+ * ```cpp
+ * auto* graphics = app->GetGraphicsContext();
+ * auto* material = graphics->GetMaterialManager()->Create(...);
+ * auto* buffer = graphics->GetBufferManager()->CreateUBO(...);
+ * ```
  */
 
 #include <hgl/vk/VKDevice.h>
-#include <hgl/vk/VKRenderPass.h>
-#include <hgl/vk/StructuredBufferAccessor.h>
-#include <hgl/graph/module/BufferManager.h>
-#include <hgl/graph/mtl/ShaderBufferSource.h>
 
 namespace hgl::graph
 {
     // Forward declarations
-    class Material;
-    class MaterialInstance;
-    class Texture;
-    class Texture2D;
-    class TextureCube;
-    class Texture2DArray;
-    class Sampler;
-    class GeometryCreater;
-    class Pipeline;
-    class VertexDataManager;
-    class Geometry;
-    class Primitive;
-    class TextRender;
-    class FontSource;
+    class GraphModuleManager;
+    class RenderPassManager;
+    class TextureManager;
+    class RenderTargetManager;
     class MaterialManager;
     class BufferManager;
-    class TextureManager;
+    class SamplerManager;
     class GeometryManager;
     class PrimitiveManager;
-    class SamplerManager;
-    class RenderPassManager;
-    class RenderTargetManager;
-    enum IndexType;
-    enum class InlinePipeline;
-
-    namespace mtl
-    {
-        class MaterialCreateInfo;
-        struct Material2DCreateConfig;
-        struct Material3DCreateConfig;
-    }
-
-    class VILConfig;
 
     /**
-     * GraphicsContext - 图形资源统一访问接口
+     * GraphicsContext - Vulkan图形资源管理器聚合类
      *
-     * 这个接口将 RenderFramework 的职责分解为专门的模块，
-     * 每个模块都有明确的责任。
+     * 聚合所有图形资源Manager，提供统一访问入口。
+     * 解耦应用框架与图形资源管理。
      *
-     * 使用方式：
-     * ```cpp
-     * auto* graphics = ecs_context->GetGraphicsContext();
-     * auto* material = graphics->CreateMaterial(...);
-     * auto* buffer = graphics->CreateUBO(...);
-     * ```
+     * 所有权：
+     * - 拥有所有管理器（通过GraphModuleManager）
+     * - 引用VulkanDevice（不拥有）
+     *
+     * 生命周期：
+     * - 由AppFramework在初始化时创建
+     * - 传递给ECSContext和其他系统使用
+     * - 在VulkanDevice销毁前销毁
      */
-    class IGraphicsContext
+    class GraphicsContext
     {
+    private:
+        VulkanDevice *device = nullptr;
+
+        GraphModuleManager *module_manager = nullptr;
+
+        RenderPassManager *rp_manager = nullptr;
+        TextureManager *tex_manager = nullptr;
+        RenderTargetManager *rt_manager = nullptr;
+        MaterialManager *material_manager = nullptr;
+        BufferManager *buffer_manager = nullptr;
+        SamplerManager *sampler_manager = nullptr;
+        GeometryManager *geometry_manager = nullptr;
+        PrimitiveManager *primitive_manager = nullptr;
+
     public:
+        explicit GraphicsContext(VulkanDevice *dev);
+        ~GraphicsContext();
 
-        virtual ~IGraphicsContext()=default;
+        // Disable copy
+        GraphicsContext(const GraphicsContext &) = delete;
+        GraphicsContext &operator=(const GraphicsContext &) = delete;
 
-        // Device access
-        virtual class VulkanDevice *GetDevice() const=0;
-        virtual class VulkanDevAttr *GetDevAttr() const=0;
-        virtual class VulkanPhyDevice *GetPhyDevice() const=0;
-        virtual VkDevice                     GetVkDevice() const=0;
+    public:
+        /**
+         * 初始化所有图形模块
+         * 必须在构造后、使用前调用
+         * @return true 成功, false 失败
+         */
+        bool Initialize();
 
-        // Module managers
-        virtual RenderPassManager *GetRenderPassManager()=0;
-        virtual TextureManager *GetTextureManager()=0;
-        virtual MaterialManager *GetMaterialManager()=0;
-        virtual BufferManager *GetBufferManager()=0;
-        virtual SamplerManager *GetSamplerManager()=0;
-        virtual GeometryManager *GetGeometryManager()=0;
-        virtual PrimitiveManager *GetPrimitiveManager()=0;
+        /**
+         * 关闭所有模块
+         * 在销毁前调用以确保正确的清理顺序
+         */
+        void Shutdown();
 
-    }; // class IGraphicsContext
+        /**
+         * 通知所有模块窗口尺寸改变
+         * @param extent 新的窗口尺寸
+         */
+        void OnResize(const VkExtent2D &extent);
+
+    public:
+        // Device访问
+        VulkanDevice *GetDevice() const { return device; }
+        VulkanDevAttr *GetDevAttr() const;
+        VulkanPhyDevice *GetPhyDevice() const;
+        VkDevice GetVkDevice() const;
+
+        // 模块管理器访问
+        RenderPassManager *GetRenderPassManager() { return rp_manager; }
+        TextureManager *GetTextureManager() { return tex_manager; }
+        MaterialManager *GetMaterialManager() { return material_manager; }
+        BufferManager *GetBufferManager() { return buffer_manager; }
+        SamplerManager *GetSamplerManager() { return sampler_manager; }
+        GeometryManager *GetGeometryManager() { return geometry_manager; }
+        PrimitiveManager *GetPrimitiveManager() { return primitive_manager; }
+
+        // 扩展访问（不常用）
+        GraphModuleManager *GetModuleManager() { return module_manager; }
+        RenderTargetManager *GetRenderTargetManager() { return rt_manager; }
+    };
+
+    // 向后兼容别名
+    using IGraphicsContext = GraphicsContext;
 
 } // namespace hgl::graph

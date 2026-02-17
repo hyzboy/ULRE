@@ -20,7 +20,7 @@ TextureManager::~TextureManager()
     SAFE_CLEAR(texture_cmd_buf);
 }
 
-void TextureManager::OnGraphicsContextChanged(IGraphicsContext *)
+void TextureManager::OnGraphicsContextChanged(GraphicsContext *)
 {
     EnsureTransferResources();
 }

@@ -23,7 +23,7 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    static IGraphicsContext *graphics_context=nullptr;
+    static GraphicsContext *graphics_context=nullptr;
     static RenderPass *gizmo_render_pass=nullptr;
     static MaterialManager *gizmo_mtl_manager=nullptr;
 
@@ -293,7 +293,7 @@ namespace
     }
 }//namespace
 
-bool InitGizmoResource(IGraphicsContext *gc, RenderPass *rp)
+bool InitGizmoResource(GraphicsContext *gc, RenderPass *rp)
 {
     if(!gc)
         return(false);

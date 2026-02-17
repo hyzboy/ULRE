@@ -17,7 +17,7 @@ private:
 
     AutoIdObjectManager<GeometryID,Geometry> rm_geometry;              ///<图元合集
 
-    GeometryManager(IGraphicsContext *);
+    GeometryManager(GraphicsContext *);
     virtual ~GeometryManager()=default;
 
     friend class GraphModuleManager;

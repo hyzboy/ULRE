@@ -155,7 +155,7 @@ enum class GizmoShape:uint
     ENUM_CLASS_RANGE(Square,Torus)
 };
 
-bool InitGizmoResource(IGraphicsContext *, RenderPass *);
+bool InitGizmoResource(GraphicsContext *, RenderPass *);
 void FreeGizmoResource();
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);

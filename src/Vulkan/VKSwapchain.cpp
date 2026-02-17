@@ -8,12 +8,16 @@
 VK_NAMESPACE_BEGIN
 SwapchainImage::~SwapchainImage()
 {
-    delete cmd_buf;
+    // cmd_buf is owned by DeviceQueue, not SwapchainImage
+    // Do not delete it here
 }
 
 Swapchain::~Swapchain()
 {
-    SAFE_CLEAR_ARRAY(sc_image);
+    // Delete SwapchainImage array
+    // Note: SwapchainImage destructor does NOT delete cmd_buf (owned by queue)
+    delete[] sc_image;
+    sc_image = nullptr;
 
     if(swap_chain)
     {

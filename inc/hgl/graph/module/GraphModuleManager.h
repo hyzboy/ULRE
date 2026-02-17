@@ -6,11 +6,11 @@
 VK_NAMESPACE_BEGIN
 
 class GraphModule;
-class IGraphicsContext;
+class GraphicsContext;
 
 class GraphModuleManager
 {
-    IGraphicsContext *graphics_context=nullptr;
+    GraphicsContext *graphics_context=nullptr;
 
 protected:
 
@@ -25,8 +25,8 @@ public:
 
 public:
 
-    IGraphicsContext *  GetGraphicsContext  ()const{return graphics_context;}                                          ///<取得GraphicsContext
-    void                SetGraphicsContext  (IGraphicsContext *gc);                                                    ///<设置GraphicsContext
+    GraphicsContext *   GetGraphicsContext  ()const{return graphics_context;}                                          ///<取得GraphicsContext
+    void                SetGraphicsContext  (GraphicsContext *gc);                                                    ///<设置GraphicsContext
     VulkanDevice *      GetDevice           ()const;                                                                    ///<取得GPU设备
 
 public:

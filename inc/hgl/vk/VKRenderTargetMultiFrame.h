@@ -33,12 +33,27 @@ public:
 
     virtual ~MultiFrameRenderTarget() override
     {
-        for(uint32_t i=0;i<frame_number;i++)
-            rtd_list[i].Clear();
-
+        // Don't call Clear() on destruction because:
+        // 1. Each RenderTargetData contains GPU resources (framebuffers, semaphores, etc)
+        //    that are managed by their respective managers
+        // 2. Those managers may have already been destroyed/cleaned
+        // 3. MultiFrameRenderTarget::Release() should be called BEFORE destruction
+        //    to properly clean up these resources
+        //
+        // Only delete the array structure itself; resource cleanup was handled in Release()
         delete[] rtd_list;
     }
-
+    /**
+     * Release GPU resources for all frames
+     * Must be called before destruction to safely clean up frame data
+     */
+    void ReleaseFrameResources()
+    {
+        if (!rtd_list) return;
+        
+        for (uint32_t i = 0; i < frame_number; i++)
+            rtd_list[i].Clear();
+    }
     virtual bool NextFrame()
     {
         ++current_frame;
