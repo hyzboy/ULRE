@@ -21,4 +21,5 @@ CreateProject(05b_BillboardECS                  BillboardECS.cpp)
 CreateProject(06_SimpleCube                     SimpleCube.cpp)
 CreateProject(07_RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(08_RenderToTexture                RenderToTexture.cpp)
+CreateProject(09_RecursiveCube                  RecursiveCube.cpp)
 
