@@ -103,6 +103,7 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
         if(!ibo)
         {
             delete geometry_data;
+            geometry_data=nullptr;
             return(false);
         }
 

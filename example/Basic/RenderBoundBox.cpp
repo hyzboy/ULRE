@@ -13,6 +13,10 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/MaterialManager.h>
+
 #include<hgl/color/Color.h>
 #include<hgl/math/geometry/AABB.h>
 
@@ -231,7 +235,7 @@ private:
         mesh_vdm = new VertexDataManager(buffer_manager, solid.vil);
         if (!mesh_vdm)
             return false;
-        if (!mesh_vdm->Init(HGL_SIZE_1MB, 0, IndexType::U16))
+        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
             return false;
         return mesh_vdm != nullptr;
     }
@@ -271,15 +275,64 @@ private:
     {
         using namespace inline_geometry;
 
-        GeometryCreater *prim_creater = new GeometryCreater(mesh_vdm);
+        auto create_geometry = [this](const char *label, auto &&creator) -> Geometry *
+        {
+            std::cout << "[RenderBoundBox] CreateGeometry START: " << label << std::endl;
 
-        if(!prim_creater)
-            return false;
+            auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
+            if (!pc)
+            {
+                std::cout << "[RenderBoundBox] CreateGeometry FAIL: GeometryCreater null (" << label << ")" << std::endl;
+                return nullptr;
+            }
 
-        rm_floor = CreateRenderMesh(CreatePlaneSqaure(prim_creater),&solid,0);
+            Geometry *geom = creator(pc.get());
+            if (!geom)
+            {
+                std::cout << "[RenderBoundBox] CreateGeometry FAIL: returned null (" << label << ")" << std::endl;
+                return nullptr;
+            }
 
-        CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1);
-        CreateRenderMesh(CreateDome(prim_creater,64),&solid,2);
+            std::cout << "[RenderBoundBox] CreateGeometry OK: " << label << " geom=" << (void *)geom << std::endl;
+            return geom;
+        };
+
+        {
+            auto geom = create_geometry("Plane", [](GeometryCreater *pc)
+            {
+                return CreatePlaneSqaure(pc);
+            });
+            if (!geom)
+                return false;
+
+            rm_floor = CreateRenderMesh(geom, &solid, 0);
+            if (!rm_floor)
+                return false;
+        }
+
+        {
+            auto geom = create_geometry("Sphere", [](GeometryCreater *pc)
+            {
+                return CreateSphere(pc, 64);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 1))
+                return false;
+        }
+
+        {
+            auto geom = create_geometry("Dome", [](GeometryCreater *pc)
+            {
+                return CreateDome(pc, 64);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 2))
+                return false;
+        }
 
         {
             ConeCreateInfo cci;
@@ -287,7 +340,15 @@ private:
             cci.halfExtend  =1;
             cci.numberSlices=64;
             cci.numberStacks=4;
-            CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,3);
+            auto geom = create_geometry("Cone", [&](GeometryCreater *pc)
+            {
+                return CreateCone(pc, &cci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 3))
+                return false;
         }
 
         {
@@ -295,7 +356,15 @@ private:
             cci.halfExtend  =1.25f;
             cci.numberSlices=16;
             cci.radius      =1.25f;
-            CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,4);
+            auto geom = create_geometry("Cylinder", [&](GeometryCreater *pc)
+            {
+                return CreateCylinder(pc, &cci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 4))
+                return false;
         }
 
         {
@@ -304,7 +373,15 @@ private:
             tci.outerRadius=2.1f;
             tci.numberSlices=128;
             tci.numberStacks=16;
-            CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,5);
+            auto geom = create_geometry("Torus", [&](GeometryCreater *pc)
+            {
+                return CreateTorus(pc, &tci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 5))
+                return false;
         }
 
         {
@@ -313,24 +390,56 @@ private:
             hcci.innerRadius   =0.8f;
             hcci.outerRadius   =1.25f;
             hcci.numberSlices  =64;
-            CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,6);
+            auto geom = create_geometry("HollowCylinder", [&](GeometryCreater *pc)
+            {
+                return CreateHollowCylinder(pc, &hcci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 6))
+                return false;
         }
 
         {
             HexSphereCreateInfo hsci;
             hsci.subdivisions=3;
-            CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,7);
+            auto geom = create_geometry("HexSphere", [&](GeometryCreater *pc)
+            {
+                return CreateHexSphere(pc, &hsci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 7))
+                return false;
         }
 
         {
             CapsuleCreateInfo cci;
-            CreateRenderMesh(CreateCapsule(prim_creater,&cci),&solid,8);
+            auto geom = create_geometry("Capsule", [&](GeometryCreater *pc)
+            {
+                return CreateCapsule(pc, &cci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 8))
+                return false;
         }
 
         {
             TaperedCapsuleCreateInfo tcci;
             tcci.topRadius=0.1f;
-            CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,9);
+            auto geom = create_geometry("TaperedCapsule", [&](GeometryCreater *pc)
+            {
+                return CreateTaperedCapsule(pc, &tcci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 9))
+                return false;
         }
 
         {
@@ -338,7 +447,15 @@ private:
             cci.segments_x = 2;
             cci.segments_y = 2;
             cci.segments_z = 2;
-            CreateRenderMesh(CreateCube(prim_creater,&cci),&solid,10);
+            auto geom = create_geometry("Cube", [&](GeometryCreater *pc)
+            {
+                return CreateCube(pc, &cci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 10))
+                return false;
         }
 
         {
@@ -347,7 +464,15 @@ private:
             fci.top_radius = 0.5f;
             fci.height = 2.0f;
             fci.numberSlices = 32;
-            CreateRenderMesh(CreateFrustum(prim_creater,&fci),&solid,11);
+            auto geom = create_geometry("Frustum", [&](GeometryCreater *pc)
+            {
+                return CreateFrustum(pc, &fci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 11))
+                return false;
         }
 
         {
@@ -358,7 +483,15 @@ private:
             aci.head_length = 0.5f;
             aci.numberSlices = 16;
             aci.cross_section = ArrowCrossSection::Circular;
-            CreateRenderMesh(CreateArrow(prim_creater,&aci),&solid,12);
+            auto geom = create_geometry("Arrow", [&](GeometryCreater *pc)
+            {
+                return CreateArrow(pc, &aci);
+            });
+            if (!geom)
+                return false;
+
+            if (!CreateRenderMesh(geom, &solid, 12))
+                return false;
         }
 
         // 可以运行，但是生成的模型不对劲，有BUG
@@ -378,10 +511,16 @@ private:
             peci.bend_radius = 1.0f;
             peci.pipe_segments = 16;
             peci.bend_segments = 16;
-            CreateRenderMesh(CreatePipeElbow(prim_creater,&peci),&solid,14);
-        }
+            auto geom = create_geometry("PipeElbow", [&](GeometryCreater *pc)
+            {
+                return CreatePipeElbow(pc, &peci);
+            });
+            if (!geom)
+                return false;
 
-        delete prim_creater;
+            if (!CreateRenderMesh(geom, &solid, 14))
+                return false;
+        }
         return true;
     }
 
