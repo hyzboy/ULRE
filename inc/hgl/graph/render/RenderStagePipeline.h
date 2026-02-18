@@ -11,7 +11,7 @@ namespace hgl::graph
     class RenderCmdBuffer;
     class IRenderTarget;
     class RenderTask;
-    class LineRenderManager;
+    class LineRenderService;
 
     struct RenderStageContext
     {
@@ -19,7 +19,7 @@ namespace hgl::graph
         IRenderTarget *     render_target       = nullptr;
         RenderTask *        render_task         = nullptr;
         ecs::ECSContext *   ecs_context         = nullptr;
-        LineRenderManager * line_render_manager = nullptr;
+        LineRenderService * line_render_service = nullptr;
         const hgl::Color4f *clear_color         = nullptr;
         bool                render_result       = false;
     };

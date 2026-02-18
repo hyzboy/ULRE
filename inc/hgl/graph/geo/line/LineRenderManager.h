@@ -56,25 +56,25 @@ namespace hgl::graph
      *  5) Pipeline rebuild: SetRenderTarget creates a new Pipeline for the new RenderPass and updates each batch to use it.
      *  6) Statistics: total_line_count tracks the number of stored lines; ClearLines resets all batches and the counter.
      *
-     * CN: 使用方法示例 (伪代码)
-     *  RenderFramework *rf = ...;
-     *  IRenderTarget  *rt = ...;
-     *  LineRenderManager *lm = rf->GetLineRenderManager();
-     *  lm->SetColor(0, Color4f(1,0,0,1));    // 设置调色板颜色
-     *  lm->AddLine(p0, p1, 0, 2);             // 添加一条线 宽度=2 颜色索引=0
-     *  lm->AddLine(p2, p3, 1, 1);             // 添加另一条线
-     *  lm->Draw(cmd);                         // 在录制的命令缓冲中绘制
-     *  lm->ClearLines();                      // 清空以便下一帧重填
+    * CN: 使用方法示例 (伪代码)
+    *  ecs::ECSContext *ecs = ...;
+    *  LineRenderService svc;
+    *  svc.Init(ecs);
+    *  svc.SetColor(0, Color4f(1,0,0,1));     // 设置调色板颜色
+    *  svc.AddLine(p0, p1, 0, 2);              // 添加一条线 宽度=2 颜色索引=0
+    *  svc.AddLine(p2, p3, 1, 1);              // 添加另一条线
+    *  svc.Draw(cmd);                          // 在录制的命令缓冲中绘制
+    *  svc.ClearLines();                       // 清空以便下一帧重填
      *
-     * EN: Usage example (pseudo)
-     *  RenderFramework *rf = ...;
-     *  IRenderTarget  *rt = ...;
-     *  LineRenderManager *lm = rf->GetLineRenderManager();
-     *  lm->SetColor(0, Color4f(1,0,0,1));     // Set palette color
-     *  lm->AddLine(p0, p1, 0, 2);             // Add a line width=2 color index=0
-     *  lm->AddLine(p2, p3, 1, 1);             // Add another line
-     *  lm->Draw(cmd);                         // Record draw commands
-     *  lm->ClearLines();                      // Reset for next frame
+    * EN: Usage example (pseudo)
+    *  ecs::ECSContext *ecs = ...;
+    *  LineRenderService svc;
+    *  svc.Init(ecs);
+    *  svc.SetColor(0, Color4f(1,0,0,1));     // Set palette color
+    *  svc.AddLine(p0, p1, 0, 2);             // Add a line width=2 color index=0
+    *  svc.AddLine(p2, p3, 1, 1);             // Add another line
+    *  svc.Draw(cmd);                         // Record draw commands
+    *  svc.ClearLines();                      // Reset for next frame
      *
      * CN: 注意事项
      *  - 非线程安全: 多线程添加需外部同步。

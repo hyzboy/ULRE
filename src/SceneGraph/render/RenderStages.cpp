@@ -2,12 +2,13 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/camera/ViewportInfo.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/graph/geo/line/LineRenderService.h>
 #include<hgl/utils/ObjectTracker.h>
 #include<hgl/log/Log.h>
 
@@ -198,9 +199,16 @@ namespace hgl::graph
             void Execute(RenderStageContext &ctx) override
             {
                 StageScope scope(GetName());
-                if(ctx.line_render_manager && ctx.cmd)
+                if (!ctx.line_render_service && ctx.ecs_context)
                 {
-                    ctx.line_render_manager->Draw(ctx.cmd);
+                    auto line_system = ctx.ecs_context->GetSystem<ecs::LineRenderSystem>();
+                    if (line_system)
+                        ctx.line_render_service = line_system->GetLineRenderService();
+                }
+
+                if(ctx.line_render_service && ctx.cmd)
+                {
+                    ctx.line_render_service->Draw(ctx.cmd);
                     ctx.render_result = true;
                 }
             }

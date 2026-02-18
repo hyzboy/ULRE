@@ -9,7 +9,7 @@ namespace hgl
         class RenderCmdBuffer;
         class IRenderTarget;
         class RenderContext;
-        class LineRenderManager;
+        class LineRenderService;
     }
 
     namespace ecs
@@ -17,8 +17,7 @@ namespace hgl
         class LineRenderSystem : public System
         {
         private:
-
-            graph::LineRenderManager *line_manager = nullptr;
+            graph::LineRenderService *line_service = nullptr;
             graph::RenderContext *render_context = nullptr;
             graph::IRenderTarget *render_target = nullptr;
 
@@ -27,17 +26,14 @@ namespace hgl
             LineRenderSystem(const std::string &name = "LineRenderSystem");
             ~LineRenderSystem() override;
 
-            void SetRenderContext(graph::RenderContext *ctx) { render_context = ctx; }
+            void SetRenderContext(graph::RenderContext *ctx);
             void SetRenderTarget(graph::IRenderTarget *rt);
 
-            void SetLineRenderManager(graph::LineRenderManager *mgr) { line_manager = mgr; }
-            graph::LineRenderManager *GetLineRenderManager() const { return line_manager; }
+            void SetLineRenderService(graph::LineRenderService *svc);
+            graph::LineRenderService *GetLineRenderService() const { return line_service; }
 
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
 
-        private:
-
-            void EnsureLineManager();
         };
     }//namespace ecs
 }//namespace hgl

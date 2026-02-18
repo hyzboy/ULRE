@@ -1,15 +1,10 @@
 ﻿#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/graph/geo/line/LineRenderService.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
-
-namespace hgl::graph
-{
-    LineRenderManager *CreateLineRenderManager(RenderContext *, IRenderTarget *);
-}
 
 namespace hgl::ecs
 {
@@ -23,7 +18,26 @@ namespace hgl::ecs
 
     LineRenderSystem::~LineRenderSystem()
     {
-        delete line_manager;
+    }
+
+    void LineRenderSystem::SetLineRenderService(graph::LineRenderService *svc)
+    {
+        line_service = svc;
+        if (!line_service)
+            return;
+
+        if (render_context)
+            line_service->SetRenderContext(render_context);
+
+        if (render_target)
+            line_service->SetRenderTarget(render_target);
+    }
+
+    void LineRenderSystem::SetRenderContext(graph::RenderContext *ctx)
+    {
+        render_context = ctx;
+        if (line_service)
+            line_service->SetRenderContext(ctx);
     }
 
     void LineRenderSystem::SetRenderTarget(graph::IRenderTarget *rt)
@@ -32,34 +46,16 @@ namespace hgl::ecs
             return;
 
         render_target = rt;
-
-        if (line_manager)
-            line_manager->SetRenderTarget(rt);
-        else
-            EnsureLineManager();
-    }
-
-    void LineRenderSystem::EnsureLineManager()
-    {
-        if (line_manager || !render_target)
-            return;
-
-        if (!render_context && context)
-            render_context = context->GetRenderContext();
-
-        if (!render_context)
-            return;
-
-        line_manager = CreateLineRenderManager(render_context, render_target);
+        if (line_service)
+            line_service->SetRenderTarget(rt);
     }
 
     void LineRenderSystem::Render(graph::RenderCmdBuffer *cmd, float /*deltaTime*/)
     {
-        EnsureLineManager();
-        if (!cmd || !line_manager)
+        if (!cmd || !line_service)
             return;
 
-        line_manager->Draw(cmd);
+        line_service->Draw(cmd);
     }
 }//namespace hgl::ecs
 

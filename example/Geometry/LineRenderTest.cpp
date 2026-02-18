@@ -1,6 +1,6 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/graph/geo/line/LineRenderService.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/CameraComponent.h>
@@ -12,7 +12,7 @@ using namespace hgl::graph;
 
 class WireShapeTestApp:public WorkObject
 {
-    LineRenderManager *line_mgr = nullptr;
+    LineRenderService line_service;
     hgl::ecs::ECSContext *ecs_world = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
@@ -26,42 +26,28 @@ public:
         if (!ecs)
             return false;
 
-        auto *graphics = ecs->GetGraphicsContext();
         auto *render_target = ecs->GetRenderTarget();
-        if (!graphics || !render_target)
+        if (!render_target)
             return false;
 
-        line_mgr = CreateLineRenderManager(graphics, render_target);
-        if(!line_mgr)
+        if (!line_service.Init(ecs))
         {
-            LogError("WireShapeTestApp::Init: Failed to create LineRenderManager\n");
+            LogError("WireShapeTestApp::Init: Failed to init LineRenderService\n");
             return(false);
         }
 
         // Ensure ECS line render system is registered and wired
-        auto ecs_world = GetECSContext();
-        if (ecs_world)
-        {
-            auto line_system = ecs_world->GetSystem<hgl::ecs::LineRenderSystem>();
-            if (!line_system)
-                line_system = ecs_world->RegisterRenderSystem<hgl::ecs::LineRenderSystem>();
-            if (line_system)
-            {
-                line_system->SetLineRenderManager(line_mgr);
-                line_system->SetRenderContext(GetRenderContext());
-                line_system->SetRenderTarget(render_target);
-            }
-        }
+        RegisterLineRenderService(ecs, &line_service);
 
         // Setup a larger palette
-        line_mgr->SetColor(0,Color4f(1,0,0,1)); // red
-        line_mgr->SetColor(1,Color4f(0,1,0,1)); // green
-        line_mgr->SetColor(2,Color4f(0,0,1,1)); // blue
-        line_mgr->SetColor(3,Color4f(1,1,0,1)); // yellow
-        line_mgr->SetColor(4,Color4f(0,1,1,1)); // cyan
-        line_mgr->SetColor(5,Color4f(1,0,1,1)); // magenta
-        line_mgr->SetColor(6,Color4f(1,1,1,1)); // white
-        line_mgr->SetColor(7,Color4f(0.5f,0.5f,0.5f,1)); // gray
+        line_service.SetColor(0,Color4f(1,0,0,1)); // red
+        line_service.SetColor(1,Color4f(0,1,0,1)); // green
+        line_service.SetColor(2,Color4f(0,0,1,1)); // blue
+        line_service.SetColor(3,Color4f(1,1,0,1)); // yellow
+        line_service.SetColor(4,Color4f(0,1,1,1)); // cyan
+        line_service.SetColor(5,Color4f(1,0,1,1)); // magenta
+        line_service.SetColor(6,Color4f(1,1,1,1)); // white
+        line_service.SetColor(7,Color4f(0.5f,0.5f,0.5f,1)); // gray
 
         // Create concentric layers for widths 1..6; each layer is a ring of radial spokes
         const int spokes = 24;            // number of spokes per layer
@@ -84,7 +70,7 @@ public:
                 math::Vector3f from(std::cos(angle) * inner_radius, std::sin(angle) * inner_radius, z);
                 math::Vector3f to  (std::cos(angle) * radius,       std::sin(angle) * radius,       z);
 
-                line_mgr->AddLine(from, to, color_index, w);
+                line_service.AddLine(from, to, color_index, w);
             }
         }
 
