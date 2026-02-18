@@ -16,13 +16,13 @@
 
 ### 预期目标
 - [ ] 强化 ECSContext，添加 GPU 设备和资源管理
-- [ ] 创建 RenderSystemCore（替代旧 RenderFramework）
+- [ ] 创建 RenderSystemCore（替代旧集中式入口）
 - [ ] 轻量化 WorkObject
 - [ ] 编写单元测试
 
 ### 实际完成
 - [x] 强化 ECSContext，添加 GPU 设备和资源管理
-- [x] 创建 RenderSystemCore（替代旧 RenderFramework）
+- [x] 创建 RenderSystemCore（替代旧集中式入口）
 - [x] 轻量化 WorkObject 设计文档
 - [x] 编译验证通过
 - [x] 示例应用程序
@@ -316,12 +316,9 @@ cmake --build build --config Debug
 ### 需要完成的任务
 
 1. **删除旧代码（2-3 天）**
-   ```
-   ✂️ inc/hgl/graph/render/SceneRenderer.h
-   ✂️ src/SceneGraph/render/SceneRenderer.cpp
-   ✂️ inc/hgl/graph/render/RenderFramework.h
-   ✂️ src/SceneGraph/render/RenderFramework.cpp
-   ```
+  ```
+  ✂️ 旧集中式入口相关文件
+  ```
 
 2. **更新应用层**
    - 迁移所有 WorkObject 子类到新 API

@@ -89,7 +89,7 @@ switch (action) {
 }
 ```
 
-**RenderFramework.cpp:**
+**旧渲染入口实现:**
 - Unchanged - only uses Move action which doesn't require button information
 
 ## Benefits
@@ -112,4 +112,4 @@ switch (action) {
 ## Files Modified
 
 - `src/ecs/InputSystem.cpp`
-- `src/SceneGraph/RenderFramework.cpp`
+- `src/SceneGraph/render entry implementation`

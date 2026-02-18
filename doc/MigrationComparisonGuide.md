@@ -15,7 +15,7 @@
          │ (什么依赖?)
          ▼
 ┌──────────────────────┐
-│  RenderFramework     │ ◄─── 不透明的中心
+│  旧集中式入口         │ ◄─── 不透明的中心
 │  (超级工厂)          │
 │  持有一切...         │
 └─────────────────────┘
@@ -90,13 +90,13 @@ auto ubo = api->CreateUBO<CameraData>("camera");
 ```
 ❌ Before (困难):
 class WorkObjectTest {
-    // 如何 Mock RenderFramework？
-    // RenderFramework 持有所有 Manager，太重
+    // 如何 Mock 旧集中式入口？
+    // 旧集中式入口持有所有 Manager，太重
     // 无法独立测试 WorkObject
     
     void TestCreateMaterial() {
         // 无法进行真实的单元测试
-        // 必须初始化整个 RenderFramework
+        // 必须初始化整个旧集中式入口
     }
 };
 
@@ -125,9 +125,9 @@ class WorkObjectTest {
 ```
 ❌ Before (复杂):
 // 要添加新的 XxxManager，需要：
-1. 修改 RenderFramework（添加成员)
-2. 修改 RenderFramework::Init() (初始化)
-3. 修改 RenderFramework::GetXxxManager() (getter)
+1. 修改旧集中式入口（添加成员)
+2. 修改旧集中式入口的初始化流程
+3. 修改旧集中式入口的 GetXxxManager() (getter)
 4. 修改所有 WorkObject 子类? (如果使用宏)
 5. 修改工厂方法
 
@@ -204,7 +204,7 @@ class MyScene : public WorkObject {
     void Setup() {
         auto mtl = CreateMaterial("diffuse");
         // 问：mtl 来自哪里？
-        // 答：RenderFramework，但看不出来...
+        // 答：旧集中式入口，但看不出来...
     }
 };
 
@@ -305,15 +305,13 @@ auto tex_mgr = ctx->GetTextureManager();
 ```
 直接受影响：
 ✅ WorkObject       - 添加新接口
-✅ RenderFramework  - 添加 RenderContext
-✅ SceneRenderer    - 移除 RenderFramework 依赖
+✅ 旧集中式入口   - 移除并替换为 RenderContext
 ✅ ECSContext       - 集成 RenderContext
 
-间接受影响：
-⚠️  所有 Managers   - 无变化（通过适配器）
-⚠️  应用代码       - 迁移到新 API（逐步）
-⚠️  测试代码       - 更容易编写
-
+直接受影响：
+✅ WorkObject       - 添加新接口
+✅ 旧集中式入口     - 移除并替换为 RenderContext
+✅ ECSContext       - 集成 RenderContext
 不受影响：
 ✓ Vulkan 底层      - 保持不变
 ✓ 内存管理         - 保持不变
@@ -345,7 +343,7 @@ RenderFrameSystem   ~400 行
 
 | # | 问题 | Before | After | 效果 |
 |---|-----|--------|-------|------|
-| 1 | 中心化 | RenderFramework 持所有 | RenderContext 分离接口 | ⬇️⬇️⬇️ 耦合度 |
+| 1 | 中心化 | 旧集中式入口持所有 | RenderContext 分离接口 | ⬇️⬇️⬇️ 耦合度 |
 | 2 | API 隐晦 | 宏生成方法 | 显式接口 | ⬆️⬆️⬆️ 可读性 |
 | 3 | 类型不安全 | 手动 sizeof | 模板化 | ⬆️⬆️⬆️ 类型安全 |
 | 4 | 测试困难 | 需要完整框架 | 支持 Mock 注入 | ⬇️⬇️⬇️ 测试成本 |

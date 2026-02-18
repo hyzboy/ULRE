@@ -44,22 +44,22 @@ private:
     
     // ========== 新增：GPU 设备和资源管理 ==========
     
-    /// GPU 设备（从 RenderFramework 迁移来）
+    /// GPU 设备（从旧集中式入口迁移来）
     hgl::vk::VulkanDevice* gpu_device = nullptr;
     
     /// 用于渲染的目标
     hgl::graph::IRenderTarget* render_target = nullptr;
     
-    /// 材质缓存（从 RenderFramework.material_manager 迁移）
+    /// 材质缓存（从旧集中式入口的 material_manager 迁移）
     std::unordered_map<std::string, std::shared_ptr<Material>> material_cache;
     
-    /// 纹理缓存（从 RenderFramework.texture_manager 迁移）
+    /// 纹理缓存（从旧集中式入口的 texture_manager 迁移）
     std::unordered_map<std::string, std::shared_ptr<Texture>> texture_cache;
     
-    /// Sampler 缓存（从 RenderFramework.sampler_manager 迁移）
+    /// Sampler 缓存（从旧集中式入口的 sampler_manager 迁移）
     std::unordered_map<std::string, std::shared_ptr<Sampler>> sampler_cache;
     
-    /// 缓冲区管理器（从 RenderFramework 迁移）
+    /// 缓冲区管理器（从旧集中式入口迁移）
     std::unique_ptr<hgl::vk::BufferManager> buffer_manager;
     
     /// 当前渲染 Pass 的命令缓冲区
@@ -265,7 +265,7 @@ bool ECSContext::Initialize(hgl::vk::VulkanDevice* device, hgl::graph::IRenderTa
     gpu_device = device;
     render_target = target;
     
-    // 初始化缓冲区管理器（从 RenderFramework 迁移）
+    // 初始化缓冲区管理器（从旧集中式入口迁移）
     buffer_manager = std::make_unique<hgl::vk::BufferManager>(device);
     
     // 初始化其他资源管理器...
@@ -279,7 +279,7 @@ hgl::vk::DeviceBuffer* ECSContext::CreateUBO(const std::string& name, VkDeviceSi
         return nullptr;
     }
     
-    // 使用标准的缓冲区创建流程（从 RenderFramework 迁移）
+    // 使用标准的缓冲区创建流程（从旧集中式入口迁移）
     BufferPolicy policy{
         BufferPriority::NORMAL,
         BufferUpdateRate::PER_FRAME,
@@ -346,7 +346,7 @@ ctest --test-dir build --verbose -R ecs
 
 ---
 
-### 1.3 创建 RenderSystemCore（替代旧 RenderFramework）
+### 1.3 创建 RenderSystemCore（替代旧集中式入口）
 
 **文件创建：** `inc/hgl/ecs/systems/render/RenderSystemCore.h`
 
@@ -364,7 +364,7 @@ namespace hgl::ecs {
  * 渲染系统核心
  * 
  * 职责：
- * - 替代旧的 RenderFramework
+ * - 替代旧的集中式入口
  * - 协调所有渲染系统的执行
  * - 管理 Vulkan 同步原语（Fence、Semaphore）
  * - 管理 Swapchain 和帧循环
@@ -701,17 +701,14 @@ TEST_F(RenderSystemCoreTest, BeginFrameAndEndFrame) {
 
 2. **删除旧文件**
     ```bash
-    # 删除旧渲染系统（SceneRenderer 已移除）
-    rm inc/hgl/graph/render/SceneRenderer.h
-    rm src/SceneGraph/render/SceneRenderer.cpp
+    # 删除旧渲染入口相关文件
     ```
 
 3. **更新 include 路径**
    
    在所有使用旧代码的地方，替换为新的 include：
    ```cpp
-   // 旧
-   #include <hgl/graph/render/RenderFramework.h>
+    // 旧（legacy 入口相关头文件）
    
     // 新
     #include <hgl/ecs/systems/render/RenderSystemCore.h>
@@ -732,7 +729,7 @@ TEST_F(RenderSystemCoreTest, BeginFrameAndEndFrame) {
 // 旧 WorkObject：包含宏魔法
 class WorkObject : public TickObject {
 private:
-    hgl::graph::RenderFramework* render_framework;
+    void* legacy_entry;
 
     // ... 这里有 40+ 个由宏生成的方法
     // FUNC_FROM_RENDER_FRAMEWORK(CreateMaterial)
@@ -933,7 +930,7 @@ public:
 | 行数 | 200+ | 150 |
 | 成员变量 | 10+ | 2 |
 | 方法数 | 40+ (宏生成) | 10 |
-| 依赖项 | RenderFramework, SceneRenderer | ECSContext |
+| 依赖项 | 旧集中式入口 | ECSContext |
 | 复杂度 | 高 | 低 |
 | 可测试性 | 困难 | 容易 |
 
@@ -1028,7 +1025,7 @@ cmake --build build --config Debug 2>&1 | grep -i error
 
 ## ✅ Phase 2 完成标志
 
-- [x] SceneRenderer 和 RenderFramework 文件已删除
+- [x] 旧渲染入口相关文件已删除
 - [x] 所有 include 路径已更新
 - [x] WorkObject 已轻量化
 - [x] 应用层代码已适配
@@ -1181,13 +1178,13 @@ while (running) {
 
 ## 🆘 故障排除
 
-### 编译错误："undefined reference to RenderFramework"
+### 编译错误:"undefined reference to legacy entry"
 
-**原因：** 仍有代码使用旧的 RenderFramework  
+**原因：** 仍有代码使用旧的集中式入口  
 **解决：**
 ```bash
 # 找出所有引用
-grep -r "RenderFramework" src/ inc/ --include="*.cpp" --include="*.h"
+grep -r "legacy" src/ inc/ --include="*.cpp" --include="*.h"
 
 # 逐个替换为新 API
 ```

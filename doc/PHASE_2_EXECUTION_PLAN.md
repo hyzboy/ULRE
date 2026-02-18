@@ -2,7 +2,7 @@
 
 **启动时间：** 2026-02-14  
 **预计周期：** 2-3 周  
-**目标：** 完全删除 RenderFramework/SceneRenderer，整合 RenderSystemCore
+**目标：** 完全删除旧集中式入口，整合 RenderSystemCore
 
 ---
 
@@ -11,10 +11,7 @@
 ### 需要删除的文件 (4 个)
 
 ```
-✂️ inc/hgl/graph/render/SceneRenderer.h          (89 行)
-✂️ src/SceneGraph/render/SceneRenderer.cpp       (175 行)
-✂️ inc/hgl/graph/render/RenderFramework.h        (231 行)
-✂️ src/SceneGraph/render/RenderFramework.cpp     (~300 行)
+✂️ 旧集中式入口相关文件
 ```
 
 **总计：~795 行旧代码** 
@@ -26,8 +23,8 @@
 | 文件 | 行数 | 变更点 |
 |------|------|--------|
 | `src/Work/WorkObject.cpp` | 133 | 替换为 ECSContext |
-| `src/Vulkan/VKRenderTarget.cpp` | ~200 | 移除 RenderFramework 依赖 |
-| `src/Vulkan/VKSwapchainRenderTarget.cpp` | ~180 | 移除 RenderFramework 依赖 |
+| `src/Vulkan/VKRenderTarget.cpp` | ~200 | 移除旧集中式入口依赖 |
+| `src/Vulkan/VKSwapchainRenderTarget.cpp` | ~180 | 移除旧集中式入口依赖 |
 | `src/SceneGraph/module/SwapchainModule.cpp` | ~300 | 迁移到 ECSContext |
 | `src/SceneGraph/module/RenderTargetManager.cpp` | ~150 | 迁移到 ECSContext |
 | `src/SceneGraph/render/line/LineManager.cpp` | ~100 | 迁移接口 |
@@ -54,10 +51,7 @@ git log --oneline -n 5  # 确认在正确的分支
 mkdir -p d:\ULRE\old_code_backup\inc\hgl\graph\render
 mkdir -p d:\ULRE\old_code_backup\src\SceneGraph\render
 
-cp d:\ULRE\inc\hgl\graph\render\RenderFramework.h d:\ULRE\old_code_backup\inc\hgl\graph\render\
-cp d:\ULRE\inc\hgl\graph\render\SceneRenderer.h d:\ULRE\old_code_backup\inc\hgl\graph\render\
-cp d:\ULRE\src\SceneGraph\render\RenderFramework.cpp d:\ULRE\old_code_backup\src\SceneGraph\render\
-cp d:\ULRE\src\SceneGraph\render\SceneRenderer.cpp d:\ULRE\old_code_backup\src\SceneGraph\render\
+cp d:\ULRE\old_code_backup\README.txt d:\ULRE\old_code_backup\
 ```
 
 **任务 1.3：编译基准测试**
@@ -70,19 +64,12 @@ cmake --build . --config Debug 2>&1 | grep -E "error|warning" | head -20
 
 ### 阶段 2: 创建兼容性层（第 1-2 天）
 
-**任务 2.1：简化 RenderFramework.h**
+**任务 2.1：移除旧集中式入口**
 
 保留最小的兼容性接口：
 
 ```cpp
-// inc/hgl/graph/render/RenderFramework.h (新版本)
-// 仅包含：
-// - GetECSContext() - 返回实际的 ECSContext
-// - GetDevice() - 返回 VulkanDevice*  
-// - GetDefaultRenderPass() - 返回当前 swapchain 的 RenderPass
-// - 必要的窗口管理方法
-
-// 所有资源创建方法转发到 ECSContext->GetGraphicsContext()
+// 旧集中式入口相关接口全部移除
 ```
 
 **任务 2.2：创建 GraphicsModule 适配器**
@@ -134,8 +121,8 @@ public:
 // src/Vulkan/VKRenderTarget.cpp
 
 // 旧方式：
-// IRenderTarget::IRenderTarget(RenderFramework *rf, ...) 
-//     : render_framework(rf) {}
+// IRenderTarget::IRenderTarget(legacy_entry, ...) 
+//     : legacy_entry(legacy_entry) {}
 
 // 新方式：
 IRenderTarget::IRenderTarget(ecs::ECSContext* ctx, ...) 
@@ -222,7 +209,7 @@ target (Phase 2):   ≥ 59 FPS (< 2% 降低)
 **任务 6.3：提交和合并**
 
 ```bash
-git commit -m "Phase 2: Complete ECS migration, remove RenderFramework"
+git commit -m "Phase 2: Complete ECS migration, remove legacy entry"
 git push origin phase-2-ecs-integration
 # 创建 PR 请求代码审查
 ```
@@ -253,8 +240,8 @@ git push origin phase-2-ecs-integration
 ```cpp
 class MyGame : public WorkObject {
 public:
-    MyGame(RenderFramework* rf, SceneRenderer* sr) 
-        : WorkObject(rf, sr) {}
+    MyGame(legacy_entry_t entry)
+        : WorkObject(entry) {}
 };
 ```
 
@@ -321,9 +308,8 @@ int main() {
 ### 删除旧文件
 
 - [ ] 备份旧代码到 old_code_backup/
-- [ ] 删除 sc SceneRenderer.h/cpp
-- [ ] 删除 RenderFramework.h/cpp
-- [ ] Git commit: "Phase 2: Remove obsolete RenderFramework/SceneRenderer"
+- [ ] 删除旧集中式入口相关文件
+- [ ] Git commit: "Phase 2: Remove obsolete legacy entry"
 
 ### 创建兼容性层
 
@@ -334,7 +320,7 @@ int main() {
 ### 迁移关键文件
 
 - [ ] WorkObject.cpp - 迁移到使用 ECSContext
-- [ ] VKRenderTarget.cpp - 移除 RenderFramework 依赖
+- [ ] VKRenderTarget.cpp - 移除旧集中式入口依赖
 - [ ] SwapchainModule.cpp - 使用 ECSContext
 - [ ] 其他 10+ 个模块 - 清理包含和依赖
 

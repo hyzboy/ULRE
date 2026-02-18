@@ -4,11 +4,11 @@
 
 | 方面 | 描述 |
 |-----|------|
-| **问题** | RenderFramework 过度中心化，WorkObject 通过宏隐晦地依赖它；ECS 系统与旧架构不协调 |
+| **问题** | 旧的集中式渲染入口过度中心化，WorkObject 通过宏隐晦地依赖它；ECS 系统与旧架构不协调 |
 | **目标** | 解耦渲染框架，让 ECS 成为主驱动，提供清晰的 API 层次 |
 | **方案** | 四阶段迁移：RenderContext → ECS 驱动 → API 简化 → 安全替换 |
 | **时间** | 6-8 周（可并行） |
-| **风险** | 低（保留兼容层） |
+| **风险** | 低（不保留兼容层） |
 | **收益** | 代码清晰度 ↑↑↑，可测试性 ↑↑↑，可维护性 ↑↑↑ |
 
 ---
@@ -25,12 +25,12 @@
       │
       ▼
 ┌──────────────────────┐
-│ RenderFramework      │
+│ 旧集中式入口          │
 │ （超级工厂）         │
 │ - 持有所有 Manager   │
 │ - 持有 Device        │
 │ - 持有 ECSContext    │
-│ - 持有 SceneRenderer │
+│ - 持有旧渲染入口      │
 └──────────────────────┘
       │
       ├──▶ MaterialManager
@@ -91,7 +91,7 @@ API 层  ├──◀▶ RenderContext ◀── 标准层
 **做什么：**
 - 创建 RenderContext 抽象层
 - 分离资源访问接口
-- RenderFramework 返回 RenderContext
+- RenderContext 完成接入
 
 **文件变更：**
 ```
@@ -99,8 +99,7 @@ API 层  ├──◀▶ RenderContext ◀── 标准层
   inc/hgl/graph/render/RenderContext.h (325行)
 
 修改:
-  inc/hgl/graph/render/RenderFramework.h
-  src/SceneGraph/render/RenderFramework.cpp
+  inc/hgl/WorkObject.h
 ```
 
 **关键类：**
@@ -122,7 +121,7 @@ class RenderContext {
 
 **验证方法：**
 - ✅ 编译成功
-- ✅ RenderFramework::GetRenderContext() 返回有效指针
+- ✅ RenderContext 返回有效指针
 - ✅ 所有 Manager 通过 RenderContext 可访问
 
 ---
@@ -132,7 +131,7 @@ class RenderContext {
 **做什么：**
 - 创建 RenderFrameSystem 主驱动
 - ECSContext 集成 RenderContext
-- SceneRenderer 改为查询接口
+- RenderStagePipeline 接入 ECS
 
 **文件变更：**
 ```
@@ -142,8 +141,6 @@ class RenderContext {
 
 修改:
   inc/hgl/ecs/core/Context.h (添加 RenderContext 成员)
-  inc/hgl/graph/render/SceneRenderer.h (删除 RenderFramework 依赖)
-  src/SceneGraph/render/SceneRenderer.cpp
 ```
 
 **关键系统：**
@@ -245,19 +242,11 @@ auto ubo = api->CreateUBO<CameraData>("camera");     // 类型安全
 ```
 修改:
   inc/hgl/WorkObject.h (删除宏，添加新方法)
-  inc/hgl/graph/render/RenderFramework.h (deprecated 标记)
   应用代码文件（实际迁移）
 ```
 
-**Deprecated 标记示例：**
+**WorkObject 更新示例：**
 ```cpp
-class RenderFramework {
-    [[deprecated("使用 GetRenderContext()->CreateMaterial() 代替")]]
-    Material* CreateMaterial(const AnsiString& n) {
-        return default_render_context->CreateMaterial(n);
-    }
-};
-
 class WorkObject {
     // 删除宏生成的方法
     // 添加新方法
@@ -299,8 +288,8 @@ class WorkObject {
 | 方面 | Before | After |
 |-----|--------|-------|
 | 追踪依赖难度 | 困难 | 简单 |
-| 添加新 Manager | 困难（影响 RenderFramework） | 简单（仅影响 RenderContext） |
-| 单元测试难度 | 困难（Mock RenderFramework） | 简单（注入 Mock RenderContext） |
+| 添加新 Manager | 困难（影响旧集中式入口） | 简单（仅影响 RenderContext） |
+| 单元测试难度 | 困难（Mock 旧集中式入口） | 简单（注入 Mock RenderContext） |
 | 新人学习曲线 | 陡峭 | 平缓 |
 | 代码审查效率 | 低 | 高 |
 
@@ -320,19 +309,9 @@ After:   ██████████  95%  (清晰分层)
 **等级:** 🟡 中等  
 **原因:** API 变更  
 **缓解:**
-- 保留兼容层 6 个月
-- 标记为 deprecated，给警告
+- 不保留兼容层，集中清理旧入口
 - 提供自动迁移工具（如果可能）
 - 逐步过渡，不是一蹴而就
-
-**工作:**
-```cpp
-// 兼容层保留旧 API
-class RenderFramework {
-    [[deprecated("")]]
-    Material* CreateMaterial(...) { return ...; }
-};
-```
 
 ### 风险 2: 性能回退
 
@@ -420,14 +399,6 @@ MigrationQuickStart.md                        (快速指南)
 ### 修改文件
 
 ```
-📝 兼容层
-inc/hgl/graph/render/RenderFramework.h
-src/SceneGraph/render/RenderFramework.cpp
-
-📝 简化接口
-inc/hgl/graph/render/SceneRenderer.h
-src/SceneGraph/render/SceneRenderer.cpp
-
 📝 ECS 集成
 inc/hgl/ecs/core/Context.h
 src/ecs/core/Context.cpp
@@ -492,7 +463,7 @@ tests/RenderFrameSystemTest.cpp
 □ 依赖方向清晰（一个方向）
 □ API 透明度 > 90%（非 deprecated）
 □ 新代码推荐使用 RenderAPI
-□ 容易添加新的资源类型（无需修改 RenderFramework）
+□ 容易添加新的资源类型（无需修改集中式入口）
 □ 后端可替换（能注入不同的 Manager）
 ```
 

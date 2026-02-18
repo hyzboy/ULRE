@@ -1,16 +1,20 @@
 # ULRE 渲染架构迁移改进方案
 
+## ✅ 状态更新（2026-02）
+
+- 旧的集中式渲染入口已移除。
+- 当前以 RenderContext + ECS 为渲染主驱动。
+- 线渲染统一通过 LineRenderService 接入。
+
 ## 📋 问题分析
 
 ### 当前架构的病态关系图
 
 ```
                     ┌─────────────────────────────────────┐
-                    │    RenderFramework (超级工厂)        │
-                    │  - 持有所有Manager                  │
-                    │  - 持有VulkanDevice                 │
-                    │  - 持有ECSContext                   │
-                    │  - 充当中央调度器                    │
+                    │    RenderContext + ECS (核心)       │
+                    │  - 资源访问与渲染上下文             │
+                    │  - ECS 驱动渲染流程                 │
                     └─────────────┬───────────────────────┘
                                   │ (强依赖)
                 ┌─────────────────┼──────────────────┐
@@ -35,36 +39,14 @@
 
 ### 关键问题
 
-#### 🔴 1. **RenderFramework 过度集中化（上帝对象）**
+#### 🔴 1. **旧的集中式渲染入口过度集中化（已移除）**
 ```cpp
-// 问题：RenderFramework 持有太多单一责任
-class RenderFramework {
-    // 资源创建
-    VulkanDevice* device;
-    MaterialManager* material_manager;
-    BufferManager* buffer_manager;
-    TextureManager* tex_manager;
-    
-    // 渲染流程 (ECS-first)
-    // RenderSystemCore drives frame lifecycle
-    
-    // 应用层 ECS
-    ECSContext* default_ecs_context;
-    
-    // 窗口事件
-    Window* win;
-    VulkanInstance* inst;
-    
-    // ... 过多职责导致：
-    // - 难以测试
-    // - 难以扩展
-    // - 难以分离关注点
-};
+// 旧结构已移除，转为 RenderContext + ECS 分责
 ```
 
 #### 🔴 2. **WorkObject 通过宏隐藏依赖**
 ```cpp
-// 问题：不透明的API，隐藏了对RenderFramework的强依赖
+// 问题：不透明的API，隐藏了强依赖
 #define FUNC_FROM_RENDER_FRAMEWORK(return_type, func_name) \
     template<typename ...ARGS> \
     return_type func_name(ARGS...args) { \
@@ -72,8 +54,8 @@ class RenderFramework {
     }
 
 // 使用：应用代码看不到真实的依赖
-WorkObject* wo = new MyWorkObject(render_framework);
-wo->CreateUBO(...);  // 实际上是调用 render_framework->CreateUBO()
+WorkObject* wo = new MyWorkObject(/* explicit deps */);
+wo->CreateUBO(...);
 ```
 
 **后果：**
@@ -89,7 +71,7 @@ wo->CreateUBO(...);  // 实际上是调用 render_framework->CreateUBO()
 3. 业务逻辑调用 WorkObject::CreateXXX() 创建资源
 4. 资源在 SwapchainWorkManager::Render() 中使用
 5. RenderSystemCore::BeginFrame/EndFrame() 执行 ECS 渲染系统
-6. ECS 系统又回过头来查询 RenderFramework 中的资源
+6. ECS 系统又回过头来查询旧的集中式资源入口
 
 问题: ECS 系统是被动的，不是主动驱动的
 ```
@@ -116,7 +98,7 @@ class RenderSystemCore {
 // ECS系统是独立的
 class RenderPrimitiveCollectSystem : public System {
     void Update(float deltaTime) {
-        // 但最终渲染还是要经过 RenderFramework -> SceneRenderer
+        // 但最终渲染仍依赖旧的集中式入口
     }
 };
 
@@ -129,17 +111,14 @@ class RenderPrimitiveCollectSystem : public System {
 #### 🟡 6. **资源创建的切身之痛**
 ```cpp
 // 哪个对象负责创建资源？
-RenderFramework rf;
-WorkObject wo(&rf);  // 业务代码
+RenderContext* ctx = ...;
+WorkObject wo(/* explicit deps */);  // 业务代码
 
-// 选项 A: 通过 WorkObject
-wo->CreateUBO(...);  // 实际上是 rf->CreateUBO()
+// 选项 A: 通过 WorkObject（显式依赖）
+wo->CreateUBO(...);
 
-// 选项 B: 直接通过 RenderFramework
-rf->CreateUBO(...);
-
-// 选项 C: 通过 BufferManager
-rf->GetBufferManager()->CreateUBO(...);
+// 选项 B: 直接通过 RenderContext
+ctx->CreateUBO(...);
 
 // 问题: API 不一致，新手不知道用哪个
 ```
@@ -148,7 +127,7 @@ rf->GetBufferManager()->CreateUBO(...);
 
 ## 🎯 改进方案（分阶段迁移）
 
-### 第一阶段：引入 RenderContext 模式（解耦RenderFramework）
+### 第一阶段：引入 RenderContext 模式（解耦集中式入口）
 
 **目标：**
 - 分离资源创建与渲染驱动
@@ -164,7 +143,7 @@ namespace hgl::graph {
  * RenderContext: 渲染执行上下文
  * 职责：
  * - 提供统一的资源访问接口
- * - 抽象 RenderFramework/Managers 的细节
+ * - 抽象 Managers 的细节
  * - 支持多场景多渲染目标
  */
 class RenderContext {
@@ -184,7 +163,7 @@ private:
     IRenderTarget* current_render_target;
 
 public:
-    // 显式依赖注入（而不是从 RenderFramework 获取）
+    // 显式依赖注入（而不是从集中式入口获取）
     RenderContext(VulkanDevice* dev,
                   TextureManager* tex_mgr,
                   BufferManager* buf_mgr,
@@ -241,60 +220,22 @@ public:
     BufferManager* GetBufferManager() const { return buf_manager; }
     TextureManager* GetTextureManager() const { return tex_manager; }
     
-    // 仅在必要时才暴露（逐步减少）
-    [[deprecated("使用特定的访问方法而不是直接获取Manager")]]
-    RenderFramework* GetRenderFramework() const { return nullptr; }
 };//class RenderContext
 
 } // namespace hgl::graph
 ```
 
-#### Step 1.2: 改进 RenderFramework 提供 RenderContext
+#### Step 1.2: WorkObject 使用 RenderContext（已完成）
 ```cpp
-// 修改 inc/hgl/graph/render/RenderFramework.h
-class RenderFramework {
-private:
-    std::unique_ptr<RenderContext> default_render_context;
-
-public:
-    /// 获取渲染上下文（推荐用法）
-    RenderContext* GetRenderContext() const { 
-        return default_render_context.get(); 
-    }
-    
-    // 保留旧 API 用于向后兼容（标记为 deprecated）
-    [[deprecated("使用 GetRenderContext() 替代")]]
-    Material* CreateMaterial(const AnsiString& name) {
-        return default_render_context->CreateMaterial(name);
-    }
-    
-    // ... 其他旧方法
-};
-```
-
-#### Step 1.3: 改进 WorkObject 使用 RenderContext
-```cpp
-// 修改 inc/hgl/WorkObject.h
+// WorkObject 使用显式依赖，不再通过集中式入口
 class WorkObject : public TickObject {
 protected:
-    graph::RenderFramework* render_framework;
-    graph::RenderContext* render_context;  // 新增
-    graph::SceneRenderer* scene_renderer;
+    graph::RenderContext* render_context;
 
 public:
-    // 新的访问模式（不再使用宏）
     graph::RenderContext* GetRenderContext() { 
         return render_context; 
     }
-    
-    // 向后兼容（逐步弃用）
-    [[deprecated("使用 GetRenderContext()->CreateMaterial()")]]
-    Material* CreateMaterial(const AnsiString& name) {
-        return render_context ? render_context->CreateMaterial(name) : nullptr;
-    }
-    
-    // 删除宏生成的方法
-    // #undef FUNC_FROM_RENDER_FRAMEWORK
 };
 ```
 
@@ -304,12 +245,12 @@ public:
 
 **目标：**
 - ECS 系统主动驱动渲染
-- SceneRenderer 成为 ECS 的"执行器"
+- RenderStagePipeline 成为 ECS 的"执行器"
 - 明确的数据流向
 
 #### Step 2.1: ECS 系统注册到 RenderContext
 ```cpp
-// 在 RenderFramework 或 ECSContext 中
+// 在 ECSContext 中
 class ECSContext {
 private:
     RenderContext* render_context;
@@ -385,31 +326,9 @@ public:
 } // namespace hgl::ecs
 ```
 
-#### Step 2.3: SceneRenderer 转变为"执行器"
+#### Step 2.3: RenderStagePipeline 成为"执行器"
 ```cpp
-// 修改 inc/hgl/graph/render/SceneRenderer.h
-class SceneRenderer {
-    // 不再是中心，而是 ECS 的一个"查询接口"
-    ECSContext* ecs_context;
-    RenderContext* render_context;
-    
-    // 不再持有 RenderFramework
-    // RenderFramework* render_framework;  // 删除！
-
-public:
-    // 新的职责：提供查询接口
-    Camera* GetCamera() const {
-        // 从 ECS 查询
-        auto sys = ecs_context->GetSystem<CameraSystem>();
-        return sys ? sys->GetCamera() : nullptr;
-    }
-    
-    // ... 其他查询方法
-    
-    // 渲染流程由 ECS 驱动
-    // 不再有 RenderFrame() / Submit()
-    // 这些现在由 RenderFrameSystem 负责
-};
+// 旧渲染入口已移除，渲染由 ECS + RenderStagePipeline 驱动
 ```
 
 ---
@@ -489,18 +408,15 @@ public:
 // 新的 WorkObject 实现
 class WorkObject : public TickObject {
 protected:
-    graph::RenderFramework* render_framework;
     graph::RenderContext* render_context;
     std::unique_ptr<graph::RenderAPI> render_api;
-    
     ecs::ECSContext* ecs_context;
 
 public:
-    WorkObject(graph::RenderFramework* rf, graph::SceneRenderer* sr = nullptr)
-        : render_framework(rf)
-        , render_context(rf->GetRenderContext())
+    WorkObject(graph::RenderContext* ctx, ecs::ECSContext* ecs)
+        : render_context(ctx)
         , render_api(std::make_unique<RenderAPI>(render_context))
-        , ecs_context(rf->GetECSContext())
+        , ecs_context(ecs)
     {
     }
 
@@ -519,10 +435,6 @@ public:
     graph::RenderContext* GetRenderContext() { 
         return render_context; 
     }
-
-    // 不再使用宏，删除：
-    // #define FUNC_FROM_RENDER_FRAMEWORK ...
-    // #undef  FUNC_FROM_RENDER_FRAMEWORK
 };
 
 // 使用示例（新代码）
@@ -551,26 +463,8 @@ class MyWorkObject : public WorkObject {
 - 新代码使用新架构
 - 逐步迁移，最终清理
 
-#### Step 4.1: 兼容层（防止破坏现有代码）
-```cpp
-// 在 RenderFramework 中保留兼容方法（标记为 deprecated）
-class RenderFramework {
-public:
-    [[deprecated("使用 GetRenderContext()->CreateMaterial() 替代")]]
-    Material* CreateMaterial(const AnsiString& n) {
-        return default_render_context->CreateMaterial(n);
-    }
-    
-    // 提供迁移指南
-    [[nodiscard]]
-    static const char* GetMigrationGuide() {
-        return "迁移指南:\n"
-               "1. 获取 RenderContext: auto ctx = rf->GetRenderContext();\n"
-               "2. 使用新 API: ctx->CreateMaterial(...);\n"
-               "详见文档: https://...";
-    }
-};
-```
+#### Step 4.1: 兼容层（已移除）
+不再保留兼容层，所有代码直接使用 RenderContext/RenderAPI。
 
 #### Step 4.2: 迁移检查清单
 ```cpp
@@ -596,8 +490,7 @@ public:
 - ...
 
 ### 最终：清理
-- [ ] 删除 FUNC_FROM_RENDER_FRAMEWORK 宏
-- [ ] 从 RenderFramework 删除过期方法
+- [ ] 删除旧宏与隐式依赖入口
 - [ ] 更新文档和教程
 ```
 
@@ -610,14 +503,14 @@ public:
 │ Phase 1: 引入 RenderContext (1-2 周)                     │
 │ ✓ 创建 RenderContext 类                                 │
 │ ✓ 分离资源访问接口                                      │
-│ ✓ RenderFramework 返回 RenderContext                    │
+│ ✓ RenderContext 完成接入                                │
 └─────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────┐
 │ Phase 2: ECS 驱动渲染 (2-3 周)                           │
 │ ✓ 创建 RenderFrameSystem                                │
 │ ✓ ECSContext 集成 RenderContext                         │
-│ ✓ SceneRenderer 改为查询接口                            │
+│ ✓ RenderStagePipeline 接入 ECS                          │
 │ ✓ 修改 ECS 系统使用 RenderContext                       │
 └─────────────────────────────────────────────────────────┘
                             ↓
@@ -645,13 +538,12 @@ public:
 
 ### Before（现状）
 ```
-WorkObject        RenderFramework          ECSContext
+WorkObject        RenderContext            ECSContext
     │                  │                        │
     ├──── 强依赖 ──────┼──── 强依赖 ──────────┤
     │                  │                        │
     └──── 宏隐藏 ──────┘ (不透明)              │
-                       │ (RenderFramework      │
-                       │  管理                  │
+                       │ (集中式入口           │
                        │  RenderPass)          │
                        │                        │
 众多Manager ◄── 查询 ──┘                       │
@@ -681,13 +573,9 @@ WorkObject
                    ├─ TransformSystem
                    └─ ... 其他系统
 
-RenderFramework (启动器，不是中心)
+RenderContext (入口，不再集中化)
     │
-    ├─ 创建 VulkanDevice
-    ├─ 创建 Managers
-    ├─ 创建 RenderContext
-    ├─ 创建 ECSContext
-    └─ 注入依赖
+    └─ 显式注入 ECS 与资源依赖
 ```
 
 优点：
@@ -706,7 +594,7 @@ RenderFramework (启动器，不是中心)
 □ RenderContext 是否清晰分离了职责？
 □ RenderAPI 是否提供了足够的便捷方法？
 □ 所有 Manager 访问都通过 RenderContext 吗？
-□ ECS 系统完全不依赖 RenderFramework 吗？
+□ ECS 系统完全不依赖集中式入口吗？
 □ 是否有循环依赖？
 □ 过期 API 是否都有迁移文档？
 ```
@@ -782,14 +670,11 @@ ctx->CreateUBO<MyData>("ubo");
   inc/hgl/ecs/systems/render/RenderFrameSystem.h
 
 修改:
-  inc/hgl/graph/render/RenderFramework.h (兼容层)
-  inc/hgl/graph/render/SceneRenderer.h (简化)
   inc/hgl/WorkObject.h (新 API)
   inc/hgl/ecs/core/Context.h (集成RenderContext)
 
 逐步弃用:
-  inc/hgl/WorkObject.h 中的宏
-  RenderFramework 中的 Create* 方法
+    inc/hgl/WorkObject.h 中的宏
 ```
 
 ---
@@ -799,7 +684,7 @@ ctx->CreateUBO<MyData>("ubo");
 迁移成功的标志：
 1. ✅ 新应用代码完全使用 RenderAPI / RenderContext
 2. ✅ ECS 系统是渲染的主驱动（不被 WorkObject 驱动）
-3. ✅ RenderFramework 仅作为启动器，不是中心
+3. ✅ 不存在集中式入口或隐式依赖
 4. ✅ 没有循环依赖
 5. ✅ 单元测试覆盖率 > 80%
 6. ✅ 编译时警告接近 0（deprecated 相关）

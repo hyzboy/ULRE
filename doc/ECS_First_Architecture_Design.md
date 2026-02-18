@@ -2,13 +2,11 @@
 
 ## 🎯 核心观点
 
-**旧体系（SceneRenderer/RenderFramework）已过时，应完全删除，从 ECS-First 原则重新设计。**
+**旧的集中式渲染入口已过时，应完全删除，从 ECS-First 原则重新设计。**
 
 ```
 删除：
-  ✂️ SceneRenderer      - 完全删除（不再需要）
-  ✂️ RenderFramework    - 完全删除（用新设计替代）
-  ✂️ 所有旧的中心协调器 - 删除
+  ✂️ 旧的集中式渲染入口与协调器 - 完全删除
 
 保留：
   ✅ WorkObject/WorkManager  - 应用层框架（但需适配新系统）
@@ -174,16 +172,12 @@ public:
 
 ```
 完全删除：
-  ✂️ inc/hgl/graph/render/SceneRenderer.h
-  ✂️ src/SceneGraph/render/SceneRenderer.cpp
-  ✂️ inc/hgl/graph/render/RenderFramework.h
-  ✂️ src/SceneGraph/render/RenderFramework.cpp
-  ✂️ inc/hgl/WorkManager.h （旧版本）
-  ✂️ 所有使用旧 RenderFramework 的代码
+  ✂️ 旧的集中式渲染入口相关文件
+  ✂️ 旧版本 WorkManager 相关文件
+  ✂️ 所有使用旧集中式入口的代码
 
 部分删除：
-  🔨 VKRenderContext（如果是旧的）
-  🔨 SceneRenderer 相关的所有文件
+  🔨 旧的渲染上下文适配层（若仍保留）
 ```
 
 ### 要保留和改进的文件
@@ -274,7 +268,7 @@ public:
 
 ### Module 2: 渲染系统的新设计
 
-**替代旧的 RenderFramework 协调逻辑**
+**替代旧的集中式协调逻辑**
 
 ```cpp
 // inc/hgl/ecs/systems/render/RenderSystemCore.h
@@ -282,7 +276,7 @@ public:
 namespace hgl::ecs {
 
 /**
- * 渲染系统核心：替代旧 RenderFramework
+ * 渲染系统核心：替代旧集中式入口
  * 
  * 职责：
  * - 管理 Vulkan 设备和队列
@@ -305,7 +299,7 @@ public:
     RenderSystemCore(ECSContext* ctx, VulkanDevice* device)
         : world(ctx), gpu_device(device) {}
     
-    // 初始化所有渲染系统（从 RenderFramework 的初始化逻辑迁移）
+    // 初始化所有渲染系统（从旧集中式入口的初始化逻辑迁移）
     void Initialize(IRenderTarget* rt);
     
     // 执行一帧的渲染（从旧的 RenderFrame 逻辑提取）
@@ -323,7 +317,7 @@ public:
 
 **迁移路径：**
 ```
-旧 RenderFramework::RenderFrame()
+旧集中式入口 RenderFrame()
   ├─ 同步处理
   ├─ 获取 swapchain 图像
   ├─ 创建命令缓冲区
@@ -419,11 +413,10 @@ class MyGame : public WorkObject {
 **对比：**
 ```
 旧 WorkObject:
-  ├─ RenderFramework* rf
-  ├─ SceneRenderer* sr
-  ├─ CreateMaterial() {rf->CreateMaterial()}
-  ├─ CreateUBO() {rf->CreateUBO()}
-  ├─ CreateTexture() {rf->CreateTexture()}
+  ├─ 旧集中式入口依赖
+  ├─ CreateMaterial() {legacy->CreateMaterial()}
+  ├─ CreateUBO() {legacy->CreateUBO()}
+  ├─ CreateTexture() {legacy->CreateTexture()}
   └─ ... 30+ 个委托方法
 
 新 WorkObject:
@@ -445,8 +438,8 @@ class MyGame : public WorkObject {
   ├─ 添加资源管理（Material/Texture）
   └─ 完善 System 执行框架
 
-□ 创建 RenderSystemCore（替代旧 RenderFramework）
-  ├─ 移植旧 RenderFramework 的初始化逻辑
+□ 创建 RenderSystemCore（替代旧集中式入口）
+  ├─ 移植旧集中式入口的初始化逻辑
   ├─ 移植旧的渲染循环逻辑
   └─ 集成所有渲染 System
 
@@ -456,8 +449,7 @@ class MyGame : public WorkObject {
 ### Step 2: 删除旧体系，保留接口（2-3 天）
 
 ```
-□ 删除 SceneRenderer.h/cpp
-□ 删除 RenderFramework.h/cpp
+□ 删除旧集中式入口相关文件
 □ 更新所有 include（#include改为新路径）
 □ 编译检查
 ```
@@ -501,13 +493,12 @@ framework duplication 框架重复 unified ECS 统一 ECS
 
 ```
 旧架构代码行数：
-  RenderFramework      ~400 行
-  SceneRenderer        ~300 行
+  旧集中式入口         ~700 行
   WorkObject 宏        ~100 行
   小计                 ~800 行
 
 新架构代码行数：
-  RenderSystemCore     ~200 行（替代 RenderFramework）
+  RenderSystemCore     ~200 行（替代旧集中式入口）
   轻量 WorkObject      ~150 行（替代旧的 WorkObject）
   ECS 强化             ~300 行（添加到 ECSContext）
   小计                 ~650 行

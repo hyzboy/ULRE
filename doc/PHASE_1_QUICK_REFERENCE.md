@@ -5,7 +5,7 @@
 | 项目 | 完成度 | 说明 |
 |-----|-------|------|
 | ECSContext 强化 | ✅ 100% | GPU 设备、渲染目标接口已添加 |
-| RenderSystemCore | ✅ 100% | 替代 RenderFramework 的新系统核心 |
+| RenderSystemCore | ✅ 100% | 替代旧集中式入口的新系统核心 |
 | WorkObject 轻量化 | ✅ 100% | 从 40 个方法降至 10 个 |
 | 编译验证 | ✅ 100% | 成功编译，无 error |
 | 文档示例 | ✅ 100% | 完整的 API 文档和示例代码 |
@@ -97,8 +97,7 @@ class MyGame : public WorkObject {
 
 ```
 ├─ 删除旧代码
-│  ├─ SceneRenderer.h/cpp
-│  └─ RenderFramework.h/cpp
+│  └─ 旧集中式入口相关文件
 │
 ├─ 迁移应用层
 │  ├─ 更新 WorkObject 子类
@@ -128,7 +127,7 @@ class MyGame : public WorkObject {
 **原来：** WorkObject 是超级工厂，什么都管  
 **现在：** WorkObject 只创建实体，ECS 负责其余
 
-**原来：** RenderFramework 中心协调  
+**原来：** 旧集中式入口中心协调  
 **现在：** RenderSystemCore 专注帧管理，ECS 驱动渲染
 
 **原来：** 复杂的资源管理  

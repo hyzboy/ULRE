@@ -216,8 +216,7 @@ class MyScene : public WorkObject {
 ### 步骤 1: 更新包含文件
 
 ```cpp
-// 旧
-#include<hgl/graph/render/RenderFramework.h>
+// 旧（legacy 入口相关头文件）
 #include<hgl/WorkObject.h>
 
 // 新（添加）
@@ -299,7 +298,7 @@ class Scene : public WorkObject {
 
 ```cpp
 // 检查清单
-□ 将 GetRenderFramework() 改为 GetRenderAPI()
+□ 将旧入口访问改为 GetRenderAPI()
 □ 将方法调用改为 api->MethodName()
 □ 强类型模板化 CreateUBO/CreateSSBO
 ```
@@ -350,9 +349,9 @@ class Scene : public WorkObject {
 
 ### 问题 2: WorkObject 中 GetRenderAPI() 返回 nullptr
 
-**原因:** RenderFramework 未正确初始化 RenderContext
+**原因:** 旧入口未正确初始化 RenderContext
 
-**解决:** 检查 RenderFramework 的 Init 方法是否完整
+**解决:** 检查初始化流程是否完整
 
 ### 问题 3: 类型不匹配 "cannot convert DeviceBuffer* to T*"
 

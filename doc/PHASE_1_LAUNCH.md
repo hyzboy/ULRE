@@ -33,7 +33,7 @@
    - Frame 管理接口定义
    - Vulkan 同步原语管理
    - 详细文档注释
-   - **影响：** 替代 RenderFramework 的核心系统
+   - **影响：** 替代旧集中式入口的核心系统
 
 4. **`src/ecs/systems/render/RenderSystemCore.cpp`** (新建)
    - Frame 循环完整实现
@@ -125,7 +125,7 @@ RenderCmdBuffer* GetRenderCmd()  // 获取命令缓冲区
 - 完整错误处理
 
 **优势：**
-- ✅ 从 400 行 RenderFramework 提取精华
+- ✅ 从旧集中式入口提取精华
 - ✅ Frame 管理逻辑清晰
 - ✅ 易于集成和测试
 
@@ -274,8 +274,7 @@ cat example/Phase1_Demo.cpp | head -50
 **下一步（2-3 周）：**
 
 1. **删除旧代码**
-   - 移除 SceneRenderer
-   - 移除 RenderFramework
+   - 移除旧渲染入口相关文件
    - 更新所有 include
 
 2. **迁移应用层**
