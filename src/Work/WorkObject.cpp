@@ -1,5 +1,5 @@
 ﻿#include<hgl/WorkObject.h>
-#include<hgl/platform/AppFramework.h>
+#include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKMaterialInstance.h>
@@ -14,14 +14,18 @@
 
 namespace hgl
 {
-    WorkObject::WorkObject(AppFramework *af)
-    {
-        OnAppFrameworkChange(af);
-    }
-
     WorkObject::WorkObject(std::shared_ptr<ecs::ECSContext> ctx)
         : world(std::move(ctx))
     {
+        if (world)
+        {
+            render_context = world->GetRenderContext();
+        }
+    }
+
+    void WorkObject::_InitializeWithECSContext_INTERNAL_DO_NOT_CALL(std::shared_ptr<ecs::ECSContext> ctx)
+    {
+        world = std::move(ctx);
         if (world)
         {
             render_context = world->GetRenderContext();
@@ -80,21 +84,13 @@ namespace hgl
         return nullptr;
     }
 
-    void WorkObject::OnAppFrameworkChange(AppFramework *af)
+    const math::Vector2i *WorkObject::GetMouseCoord() const
     {
-        if(!af)
-        {
-            app_framework=nullptr;
-            render_context=nullptr;
-            world.reset();
-            return;
-        }
+        if (!world)
+            return nullptr;
 
-        app_framework=af;
-        world.reset();
-        if (af->GetECSContext())
-            world = std::shared_ptr<ecs::ECSContext>(af->GetECSContext(), [](ecs::ECSContext*){});
-        render_context=world?world->GetRenderContext():nullptr;
+        auto input_system = world->GetSystem<ecs::InputSystem>();
+        return input_system ? &input_system->GetMouseCoord() : nullptr;
     }
 
     void WorkObject::Tick(double delta)

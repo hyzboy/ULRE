@@ -19,6 +19,9 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<memory>
 
 // 引入ECS相关头文件
@@ -302,9 +305,6 @@ private:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     ~TestApp()
     {
         SAFE_CLEAR(geom_plane_grid);

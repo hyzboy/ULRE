@@ -6,7 +6,6 @@
 
 namespace hgl::graph{
 
-class RenderFramework;
 class Geometry;
 
 using GeometryID=int;

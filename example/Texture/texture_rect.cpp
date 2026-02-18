@@ -4,6 +4,10 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/SamplerManager.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -155,9 +159,6 @@ private:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     bool Init() override
     {
         if(!InitMaterial())

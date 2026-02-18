@@ -160,9 +160,6 @@ private:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     bool Init() override
     {
         ecs_world = GetECSContext();

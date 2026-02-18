@@ -4,6 +4,7 @@
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/graph/font/TextGeometry.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/utf.h>
 
 // ECS headers
@@ -301,7 +302,6 @@ private:
     }
 
 public:
-
     bool Init() override
     {
         if(!InitECS())
@@ -309,9 +309,6 @@ public:
 
         return(true);
     }
-
-    using WorkObject::WorkObject;
-
     ~TestApp()
     {
         if(ecs_world && debug_text_entity)

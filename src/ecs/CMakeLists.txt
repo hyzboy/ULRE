@@ -9,6 +9,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/core/System.h
                 ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
                 ${ECS_INCLUDE_PATH}/core/Context.h
+                ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
                 ${ECS_INCLUDE_PATH}/core/ECSComponentRecords.h
                 ${ECS_INCLUDE_PATH}/core/MaterialBatch.h
                 ${ECS_INCLUDE_PATH}/core/MaterialPipelineKey.h
@@ -68,6 +69,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 core/System.cpp
                 core/SystemProfiler.cpp
                 core/Context.cpp
+                core/DefaultSystems.cpp
                 core/MaterialBatch.cpp
                 core/RenderItem.cpp
                 core/PrimitiveRenderItem.cpp

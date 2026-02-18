@@ -5,6 +5,10 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/filesystem/Filename.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/SamplerManager.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -216,10 +220,7 @@ private:
         return true;
     }
 
-public:
-
-    using WorkObject::WorkObject;
-
+public:    explicit TestApp(std::shared_ptr<ecs::ECSContext> ctx) : WorkObject(std::move(ctx)) {}
     bool Init() override
     {
         if(!InitTexture())

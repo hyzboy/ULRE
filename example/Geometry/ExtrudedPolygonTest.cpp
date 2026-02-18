@@ -5,6 +5,9 @@
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/GeometryManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/color/Color.h>
 #include<cmath>
 #include<memory>
@@ -271,8 +274,6 @@ private:
     }
 
 public:
-    using WorkObject::WorkObject;
-
     ~ExtrudedPolygonTestApp()
     {
         SAFE_CLEAR(prim_rect_cube);

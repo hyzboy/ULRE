@@ -380,9 +380,6 @@ private:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     ~BillboardECSApp()
     {
         SAFE_CLEAR(geom_plane_grid);

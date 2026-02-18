@@ -17,9 +17,6 @@ class WireShapeTestApp:public WorkObject
     hgl::ecs::Entity *camera_entity = nullptr;
 
 public:
-
-    using WorkObject::WorkObject;
-
     bool Init() override
     {
         auto *ecs = GetECSContext();

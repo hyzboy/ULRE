@@ -109,7 +109,7 @@ namespace hgl
             
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
             
-            /// GPU 设备（从 RenderFramework 迁移来）
+            /// GPU 设备（从旧集中式入口迁移来）
             hgl::graph::VulkanDevice* gpu_device = nullptr;
             
             /// 用于渲染的目标

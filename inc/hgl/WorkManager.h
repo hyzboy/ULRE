@@ -2,6 +2,7 @@
 
 #include<hgl/WorkObject.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
+#include<hgl/platform/AppFramework.h>
 #include<hgl/utils/ObjectTracker.h>
 #include <memory>
 
@@ -80,7 +81,12 @@ namespace hgl
             {
                 WorkManager wm(&app);
 
-                WO *wo=new WO(&app);
+                std::shared_ptr<ecs::ECSContext> world;
+                if (app.GetECSContext())
+                    world = std::shared_ptr<ecs::ECSContext>(app.GetECSContext(), [](ecs::ECSContext*){});
+
+                WO *wo=new WO();
+                wo->_InitializeWithECSContext_INTERNAL_DO_NOT_CALL(world);
 
                 if(!wo->Init())
                 {

@@ -12,8 +12,7 @@ source_group("SceneGraph" FILES ${CM_SG_HEADER})
 # 1. Core Framework - 核心框架
 # ============================================================================
 
-SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/render/RenderFramework.h
-                            ${ROOT_INCLUDE_PATH}/hgl/platform/AppFramework.h
+SET(GRAPH_FRAMEWORK_FILES   ${ROOT_INCLUDE_PATH}/hgl/platform/AppFramework.h
                             ${SG_INCLUDE_PATH}/core/GraphicsContext.h
                             ${SG_INCLUDE_PATH}/core/VulkanGraphicsContext.h
                             ../platform/AppFramework.cpp

@@ -68,9 +68,6 @@ protected:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     bool Init() override
     {
         if(!InitTextRenderable())

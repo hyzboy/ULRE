@@ -3,7 +3,7 @@
 /**
  * GraphicsContext - 图形系统资源管理
  *
- * 用来替代旧的 RenderFramework 过度集中化设计
+ * 用来替代旧的集中式渲染入口过度集中化设计
  *
  * 职责：
  * - 聚合所有图形资源管理器（Manager）

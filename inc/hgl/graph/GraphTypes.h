@@ -15,7 +15,6 @@ namespace hgl::graph
     class RenderTargetManager;
     class TextureManager;
 
-    class RenderFramework;
 
     class TileData;
     class TextRender;

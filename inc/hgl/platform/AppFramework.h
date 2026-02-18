@@ -41,7 +41,9 @@ namespace hgl
      * AppFramework app("MyApp");
      * app.Init(1280, 720);
      * WorkManager wm(&app);
-     * wm.Run(my_work_object);
+    * auto world = std::shared_ptr<ecs::ECSContext>(app.GetECSContext(), [](ecs::ECSContext*){});
+    * MyWorkObject *wo = new MyWorkObject(world);
+    * wm.Run(wo);
      * ```
      */
     class AppFramework : public io::WindowEvent

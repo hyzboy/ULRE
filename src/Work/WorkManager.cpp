@@ -8,19 +8,7 @@ namespace hgl
     {
         cur_work_object = new_work;
 
-        if(cur_work_object)
-        {
-            if (app_framework)
-            {
-                // Notify change of active work object
-                cur_work_object->OnAppFrameworkChange(app_framework);
-            }
-
-        }
-        else
-        {
-
-        }
+        (void)app_framework;
     }
 
     void WorkManager::Tick(WorkObject *wo)

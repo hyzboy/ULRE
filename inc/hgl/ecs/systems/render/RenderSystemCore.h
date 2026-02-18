@@ -20,7 +20,7 @@ namespace hgl::ecs {
 class ECSContext;
 
 /**
- * 渲染系统核心 - 替代旧的 RenderFramework
+ * 渲染系统核心 - 替代旧的集中式入口
  * 
  * 职责：
  * - 管理 Vulkan 设备和队列

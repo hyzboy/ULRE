@@ -153,7 +153,6 @@ private:
     }
 
 public:
-
     bool Init() override
     {
         if(!InitECS())
@@ -164,9 +163,6 @@ public:
 
         return true;
     }
-
-    using WorkObject::WorkObject;
-
     ~GizmoExampleApp()
     {
         if(gizmo)

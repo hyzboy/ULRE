@@ -197,8 +197,6 @@ private:
 
 public:
 
-    using WorkObject::WorkObject;
-
     bool Init() override
     {
         HGL_CAPTURE_SCOPE();  // 记录应用初始化的调用栈

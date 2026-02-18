@@ -465,8 +465,6 @@ private:
     }
 
 public:
-    using WorkObject::WorkObject;
-
     ~RenderToTextureApp() override
     {
         SAFE_CLEAR(offscreen);

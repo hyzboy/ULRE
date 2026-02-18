@@ -199,9 +199,6 @@ private:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     bool Init() override
     {
         if(!InitMDP())

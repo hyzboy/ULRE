@@ -36,7 +36,7 @@ public:
     RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
     RenderTarget *CreateRT(const AnsiString &name, const FramebufferInfo *fbi,const uint32_t fence_count=1);
 
-    // Create an offscreen render target without RenderFramework (ECS/GraphicsContext path).
+    // Create an offscreen render target without legacy entry (ECS/GraphicsContext path).
     static RenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,
                                                      const FramebufferInfo *fbi, const uint32_t fence_count=1);
     static RenderTarget *CreateRTFromGraphicsContext(GraphicsContext *gc, hgl::ecs::ECSContext *ecs_ctx,

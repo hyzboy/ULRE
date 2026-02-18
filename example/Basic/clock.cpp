@@ -322,9 +322,6 @@ private:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     bool Init() override
     {
         SetClearColor(Color4f(0.1f, 0.1f, 0.1f, 1.0f));

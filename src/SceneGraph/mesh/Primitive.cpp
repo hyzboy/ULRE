@@ -72,7 +72,7 @@ bool Primitive::UpdateGeometry()
 }
 
 Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p)
-//用Direct这个前缀是为了区别于MeshManager/WorkObject/RenderFramework的::CreateMesh()
+//用Direct这个前缀是为了区别于MeshManager/WorkObject等路径上的CreateMesh()
 {
     if(!geom||!mi||!p)return(nullptr);
 

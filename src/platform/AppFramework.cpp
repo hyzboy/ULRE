@@ -7,6 +7,7 @@
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/graph/module/RenderTargetManager.h>
 #include <hgl/graph/render/RenderContext.h>
+#include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/log/Logger.h>
 #include <hgl/io/event/MouseEvent.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
@@ -250,73 +251,9 @@ namespace hgl
         // Register ECS systems
         if (default_ecs_context)
         {
-            auto text_render_system = default_ecs_context->RegisterTickSystem<ecs::TextRenderSystem>();
-            auto environment_system = default_ecs_context->RegisterRenderSystem<ecs::EnvironmentSystem>();
-            auto camera_system = default_ecs_context->RegisterTickSystem<ecs::CameraSystem>();
-            auto render_target_system = default_ecs_context->RegisterRenderSystem<ecs::RenderTargetSystem>();
-            auto render_collect_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveCollectSystem>();
-            auto render_batch_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveBatchSystem>();
-            auto render_commit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
-            auto render_submit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
-            auto swapchain_next_image_system = default_ecs_context->RegisterRenderSystem<ecs::SwapchainNextImageSystem>();
-            auto swapchain_submit_system = default_ecs_context->RegisterRenderSystem<ecs::SwapchainSubmitSystem>();
-            auto text_submit_system = default_ecs_context->RegisterRenderSystem<ecs::TextRenderSubmitSystem>();
-            auto line_render_system = default_ecs_context->RegisterRenderSystem<ecs::LineRenderSystem>();
-
-            (void)swapchain_next_image_system;
-            (void)swapchain_submit_system;
-
-            if (text_render_system)
-            {
-                text_render_system->SetWorld(default_ecs_context);
-                text_render_system->SetRenderContext(default_ecs_context->GetRenderContext());
-            }
-
-            if (environment_system)
-                environment_system->SetRenderContext(default_ecs_context->GetRenderContext());
-
-            if (camera_system)
-            {
-                camera_system->SetRenderContext(default_ecs_context->GetRenderContext());
-                graph::IRenderTarget *default_rt = GetSwapchainRenderTarget();
-                camera_system->SetViewportInfo(default_rt ? default_rt->GetViewportInfo() : nullptr);
-            }
-
-            if (render_target_system)
-            {
-                render_target_system->SetRenderContext(default_ecs_context->GetRenderContext());
-                render_target_system->SetRenderTarget(GetSwapchainRenderTarget());
-            }
-
-            const graph::CameraInfo *camera_info = camera_system ? camera_system->GetCameraInfo() : nullptr;
-
-            render_collect_system->SetWorld(default_ecs_context);
-            render_collect_system->SetCameraInfo(camera_info);
-
-            render_batch_system->SetWorld(default_ecs_context);
-            render_batch_system->SetDevice(device);
-            render_batch_system->SetCameraInfo(camera_info);
-
-            if (render_commit_system)
-            {
-                render_commit_system->SetWorld(default_ecs_context);
-                render_commit_system->SetDevice(device);
-            }
-
-            render_submit_system->SetWorld(default_ecs_context);
-
-            if (text_submit_system)
-                text_submit_system->SetWorld(default_ecs_context);
-
-            if (line_render_system)
-            {
-                line_render_system->SetRenderContext(default_ecs_context->GetRenderContext());
-                line_render_system->SetRenderTarget(GetSwapchainRenderTarget());
-            }
-
-            auto input_system = default_ecs_context->RegisterTickSystem<ecs::InputSystem>();
-
-            AddChildDispatcher(input_system->GetEventDispatcher());
+            auto systems = ecs::RegisterDefaultEcsSystems(default_ecs_context, GetSwapchainRenderTarget());
+            if (systems.input_system)
+                AddChildDispatcher(systems.input_system->GetEventDispatcher());
 
             default_ecs_context->Initialize();
         }

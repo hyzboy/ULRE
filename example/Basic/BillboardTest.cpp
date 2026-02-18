@@ -327,9 +327,6 @@ private:
     }
 
 public:
-
-    using WorkObject::WorkObject;
-
     ~TestApp()
     {
         SAFE_CLEAR(geom_plane_grid);

@@ -68,7 +68,7 @@ namespace hgl::ecs
      * 
      * 使用示例:
      * ```cpp
-     * // 在 RenderFramework::Init() 中
+    * // 在应用初始化中
      * auto render_frame_sys = ecs_context->RegisterRenderSystem<RenderFrameSystem>();
      * render_frame_sys->SetRenderTarget(swapchain_target);
      * render_frame_sys->SetRenderContext(render_context);
