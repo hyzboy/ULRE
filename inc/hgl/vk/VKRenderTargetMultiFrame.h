@@ -92,7 +92,7 @@ public: // Command Buffer
     virtual bool        Submit                      (Semaphore *wait_sem)override{return rtd_list[current_frame].Submit(wait_sem);}
 
     bool                WaitQueue                   ()override{return rtd_list[current_frame].queue->WaitQueue();}
-    bool                WaitFence                   ()override{return rtd_list[current_frame].queue->WaitFence();}
+    bool                WaitFence                   ()override{return rtd_list[current_frame].queue->WaitLastSubmitFence();}
 
 public:
 

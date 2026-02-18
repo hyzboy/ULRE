@@ -271,12 +271,16 @@ SwapchainModule::~SwapchainModule()
     SAFE_CLEAR(sc_render_target);
     
     // Delete swapchain_data and its resources
+            if (auto *device = GetDevice())
+                device->WaitIdle();
     if (swapchain_data)
     {
         // SwapchainData::Clear() deletes shared queue and all frame semaphores/fences
         swapchain_data->Clear();
         
         // Delete the container
+            if (auto *device = GetDevice())
+                device->WaitIdle();
         delete swapchain_data;
         swapchain_data = nullptr;
     }
@@ -369,6 +373,9 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     // 先置空 ECSContext 的 render_target，避免短暂的悬空指针
     if (ecs_context)
         ecs_context->SetRenderTarget(nullptr);
+
+    if (auto *device = GetDevice())
+        device->WaitIdle();
 
     // Clean up legacy architecture resources
     if (sc_render_target)

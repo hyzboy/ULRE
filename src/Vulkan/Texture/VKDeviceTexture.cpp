@@ -103,7 +103,7 @@ bool TextureManager::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_
 
     texture_queue->Submit(cmd_bufs,count,nullptr,nullptr);
 //    texture_queue->WaitQueue();
-    texture_queue->WaitFence();
+    texture_queue->WaitLastSubmitFence();
 
     return(true);
 }

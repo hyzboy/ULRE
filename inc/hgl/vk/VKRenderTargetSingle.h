@@ -61,7 +61,7 @@ public: // Command Buffer
     }
 
     bool                WaitQueue           ()override{return data->queue->WaitQueue();}
-    bool                WaitFence           ()override{return data->queue->WaitFence();}
+    bool                WaitFence           ()override{return data->queue->WaitLastSubmitFence();}
 
 public:
 

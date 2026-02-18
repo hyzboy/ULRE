@@ -73,11 +73,6 @@ namespace hgl
         }
     }
 
-    void SwapchainWorkManager::Render(WorkObject *wo)
-    {
-        WorkManager::Render(wo);
-    }
-
     void WorkManager::Run(WorkObject *wo)
     {
         if(!wo)return;

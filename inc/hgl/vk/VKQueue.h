@@ -13,6 +13,8 @@ protected:
     VkQueue queue;
 
     uint32_t current_fence;
+    uint32_t last_submitted_fence;
+    bool has_last_submit;
     Fence **fence_list;
     uint32_t fence_count;
 
@@ -41,6 +43,11 @@ public:
     * 等待Queue命令执行完成的fence信号
     */
     bool WaitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
+
+    /**
+    * 等待上一条提交使用的fence信号
+    */
+    bool WaitLastSubmitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
 
     bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,Semaphore *wait_sem,Semaphore *complete_sem);
     bool Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem);

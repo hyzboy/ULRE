@@ -324,6 +324,8 @@ namespace hgl
             if (!active)
                 return;
 
+            GLogInfo("[ECS RENDER] ===== Frame Start =====");
+
             if (!render_core)
             {
                 render_core = std::make_unique<RenderSystemCore>(this);
@@ -334,28 +336,42 @@ namespace hgl
                 }
             }
 
+            if (auto *rt = GetRenderTarget())
+            {
+                GLogInfo("[ECS RENDER] Calling WaitFence");
+                if (!rt->WaitFence())
+                {
+                    GLogWarning("[ECS RENDER] WaitFence FAILED");
+                    return;
+                }
+            }
+
+            GLogInfo("[ECS RENDER] Calling BeginFrame");
             if (!render_core->BeginFrame())
+            {
+                GLogWarning("[ECS RENDER] BeginFrame FAILED");
                 return;
+            }
 
             render_core->SetClearColor(clear_color);
 
             if (pre_render)
                 pre_render(deltaTime);
 
+            GLogInfo("[ECS RENDER] Calling Render(cmd)");
             Render(render_core->GetRenderCmd(), deltaTime);
+            
+            GLogInfo("[ECS RENDER] Calling EndFrame");
             render_core->EndFrame();
-
-            if (auto *rt = GetRenderTarget())
-            {
-                rt->WaitQueue();
-                rt->WaitFence();
-            }
 
             if (wait_idle_enabled)
             {
+                GLogInfo("[ECS RENDER] Calling WaitIdle");
                 if (auto *device = GetGPUDevice())
                     device->WaitIdle();
             }
+            
+            GLogInfo("[ECS RENDER] ===== Frame End =====");
         }
 
         void ECSContext::RenderPreBeginFrame(float deltaTime)

@@ -1,12 +1,12 @@
 ﻿#pragma once
 
+#include<hgl/vk/VK.h>
 #include<hgl/ecs/core/Object.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/System.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/SystemProfiler.h>
-#include<hgl/vk/VKNamespace.h>
 #include<memory>
 #include<functional>
 #include<vector>

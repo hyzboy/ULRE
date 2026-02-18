@@ -4,6 +4,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
 #include<cstdint>
+#include<chrono>
 
 namespace hgl::graph{
 namespace
@@ -17,6 +18,8 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
     queue=q;
 
     current_fence=0;
+    last_submitted_fence=0;
+    has_last_submit=false;
     fence_list=fl;
     fence_count=fc;
 
@@ -37,7 +40,14 @@ DeviceQueue::~DeviceQueue()
 
 bool DeviceQueue::WaitQueue()
 {
+    auto start = std::chrono::high_resolution_clock::now();
+    GLogInfo("[FENCE] WaitQueue START queue=%p", (void*)queue);
+    
     VkResult result=vkQueueWaitIdle(queue);
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    GLogInfo("[FENCE] WaitQueue END result=%d time=%lldms", static_cast<int>(result), duration);
 
     if(result!=VK_SUCCESS)
         return(false);
@@ -47,14 +57,29 @@ bool DeviceQueue::WaitQueue()
 
 bool DeviceQueue::WaitFence(const bool wait_all,uint64_t time_out)
 {
-    VkResult result;
-    VkFence fence=*fence_list[current_fence];
+    return WaitLastSubmitFence(wait_all, time_out);
+}
 
-    result=vkWaitForFences(device,1,&fence,wait_all,time_out);
-    result=vkResetFences(device,1,&fence);
+bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
+{
+    if(!has_last_submit)
+        return(true);
 
-    if(++current_fence==fence_count)
-        current_fence=0;
+    VkFence fence=*fence_list[last_submitted_fence];
+    auto start = std::chrono::high_resolution_clock::now();
+    GLogInfo("[FENCE] WaitLastSubmit START fence=%p last_fence=%u", (void*)fence, last_submitted_fence);
+
+    VkResult result=vkWaitForFences(device,1,&fence,wait_all,time_out);
+
+    auto after_wait = std::chrono::high_resolution_clock::now();
+    auto wait_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_wait - start).count();
+    GLogInfo("[FENCE] WaitLastSubmit END result=%d time=%lldms", static_cast<int>(result), wait_duration);
+
+    if(result!=VK_SUCCESS)
+    {
+        GLogWarning("[FENCE] WaitLastSubmit FAILED res=%d fence=%p", static_cast<int>(result), (void*)fence);
+        return(false);
+    }
 
     return(true);
 }
@@ -98,29 +123,34 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     submit_info.pCommandBuffers     =cmd_buf;
 
     VkFence fence=*fence_list[current_fence];
+    auto submit_start = std::chrono::high_resolution_clock::now();
+    GLogInfo("[FENCE] Submit START fence=%p current_fence=%u", (void*)fence, current_fence);
 
     if (fence != VK_NULL_HANDLE)
     {
-        VkResult fence_status = vkGetFenceStatus(device, fence);
-        if (fence_status == VK_NOT_READY)
-        {
-            VkResult wait_res = vkWaitForFences(device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC);
-            if (wait_res != VK_SUCCESS)
-                GLogWarning("DeviceQueue::Submit wait fence failed res=%d fence=%p", static_cast<int>(wait_res), (void *)fence);
-        }
-        else if (fence_status != VK_SUCCESS)
-        {
-            GLogWarning("DeviceQueue::Submit fence status error res=%d fence=%p", static_cast<int>(fence_status), (void *)fence);
-        }
-
         VkResult reset_res = vkResetFences(device, 1, &fence);
+        GLogInfo("[FENCE] Submit reset fence result=%d", static_cast<int>(reset_res));
         if (reset_res != VK_SUCCESS)
-            GLogWarning("DeviceQueue::Submit reset fence failed res=%d fence=%p", static_cast<int>(reset_res), (void *)fence);
+        {
+            GLogWarning("[FENCE] Submit reset fence FAILED res=%d fence=%p", static_cast<int>(reset_res), (void *)fence);
+        }
     }
 
     VkResult result=vkQueueSubmit(queue,1,&submit_info,fence);
+    auto submit_end = std::chrono::high_resolution_clock::now();
+    auto submit_duration = std::chrono::duration_cast<std::chrono::milliseconds>(submit_end - submit_start).count();
+    GLogInfo("[FENCE] Submit END result=%d time=%lldms", static_cast<int>(result), submit_duration);
 
-    //不在这里立即等待fence完成，是因为有可能queue submit需要久一点工作时间，我们这个时间可以去干别的。等在AcquireNextImage时再去等待fence，而且是另一帧的fence。这样有利于异步处理
+    if(result==VK_SUCCESS)
+    {
+        last_submitted_fence=current_fence;
+        has_last_submit=true;
+
+        if(++current_fence==fence_count)
+            current_fence=0;
+    }
+
+    //不在这里立即等待fence完成。等待操作放在下一帧开始前，确保上一帧完成后再复用该fence。
 
     return(result==VK_SUCCESS);
 }

@@ -61,24 +61,6 @@ namespace hgl
         virtual void OnChangeWorkObject(WorkObject *old_work,WorkObject *new_work);
     };//class WorkManager
 
-    class SwapchainWorkManager:public WorkManager
-    {
-    public:
-
-        SwapchainWorkManager(AppFramework *af):WorkManager(af)
-        {
-        }
-
-        explicit SwapchainWorkManager(std::shared_ptr<ecs::ECSContext> ctx)
-            : WorkManager(std::move(ctx))
-        {
-        }
-
-        ~SwapchainWorkManager()=default;
-
-        void Render(WorkObject *wo) override;
-    };
-
     template<typename WO> int RunFramework(const OSString &title,uint width=1280,uint height=720)
     {
         hgl::utils::initialize_object_tracker();
@@ -96,7 +78,7 @@ namespace hgl
             }
             else
             {
-                SwapchainWorkManager wm(&app);
+                WorkManager wm(&app);
 
                 WO *wo=new WO(&app);
 
