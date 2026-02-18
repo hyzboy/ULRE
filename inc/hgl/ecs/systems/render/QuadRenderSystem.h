@@ -61,11 +61,13 @@ namespace hgl::ecs
     public:
 
         void Update(float deltaTime) override;
+        void Shutdown() override;
 
     private:
 
         // Helper methods for quad-specific operations
         bool EnsureSharedResources();
         bool EnsureQuadMaterial(QuadComponent* quad);
+        void ReleaseSharedResources();
     };
 }//namespace hgl::ecs

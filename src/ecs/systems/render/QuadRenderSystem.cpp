@@ -4,6 +4,7 @@
 #include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
+#include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/SamplerName.h>
 #include<hgl/graph/render/RenderContext.h>
@@ -64,6 +65,12 @@ namespace hgl::ecs
             if (!EnsureQuadMaterial(quad.get()))
                 continue;
         }
+    }
+
+    void QuadRenderSystem::Shutdown()
+    {
+        ReleaseSharedResources();
+        System::Shutdown();
     }
 
     bool QuadRenderSystem::EnsureSharedResources()
@@ -172,5 +179,41 @@ namespace hgl::ecs
         quad->SetTextureObjects(texture, shared_sampler);
         quad->SetAppliedTexturePath(texture_path);
         return true;
+    }
+
+    void QuadRenderSystem::ReleaseSharedResources()
+    {
+        if (!world)
+            return;
+
+        auto* graphics_context = world->GetGraphicsContext();
+        if (!graphics_context)
+            return;
+
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
+        auto* material_manager = graphics_context->GetMaterialManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
+
+        graph::Geometry* geometry = nullptr;
+        if (shared_primitive)
+            geometry = shared_primitive->GetGeometry();
+
+        if (shared_primitive && primitive_manager)
+            primitive_manager->Release(shared_primitive);
+
+        if (geometry)
+            delete geometry;
+
+        if (shared_material_instance && material_manager)
+            material_manager->Destroy(shared_material_instance);
+
+        if (shared_sampler && sampler_manager)
+            sampler_manager->Release(shared_sampler);
+
+        shared_primitive = nullptr;
+        shared_material_instance = nullptr;
+        shared_pipeline = nullptr;
+        shared_render_pass = nullptr;
+        shared_sampler = nullptr;
     }
 }//namespace hgl::ecs
