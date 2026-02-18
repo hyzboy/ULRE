@@ -64,6 +64,9 @@ namespace hgl
     AppFramework::~AppFramework()
     {
         std::cout << "\n[DEBUG] ================ AppFramework Destructor Start ================" << std::endl;
+        if (device)
+            device->WaitIdle();
+
         // 1. Shutdown ECS context FIRST so systems can clean up their buffers
         // while managers are still alive
         std::cout << "[DEBUG] Step 1: Calling ECSContext::Shutdown()" << std::endl;

@@ -69,6 +69,9 @@ namespace hgl::graph
 
     void GraphicsContext::Shutdown()
     {
+        if (device)
+            device->WaitIdle();
+
         std::cout << "[DEBUG] GraphicsContext::Shutdown() - Deleting GraphModuleManager" << std::endl;
         // GraphModuleManager destructor will call Release() on all modules automatically
         // This ensures proper cleanup order

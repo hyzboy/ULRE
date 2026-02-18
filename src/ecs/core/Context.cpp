@@ -131,6 +131,9 @@ namespace hgl
 
         void ECSContext::Shutdown()
         {
+            if (auto *device = GetGPUDevice())
+                device->WaitIdle();
+
             // Release render-frame items first  (only clears renderItems, keeps materialBatches for reuse)
             render_frame_cache.renderItems.clear();
             render_frame_cache.cameraInfo = nullptr;
