@@ -6,11 +6,14 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/SystemProfiler.h>
+#include<hgl/vk/VKNamespace.h>
 #include<memory>
+#include<functional>
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<hgl/ecs/core/MaterialPipelineKey.h>
+#include<hgl/color/Color4f.h>
 
 namespace hgl { 
     namespace graph { 
@@ -27,6 +30,7 @@ namespace hgl
 {
     namespace ecs
     {
+    class RenderSystemCore;
         class MaterialBatch;
         class PrimitiveRenderItem;
 
@@ -106,6 +110,10 @@ namespace hgl
             /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
+            std::unique_ptr<RenderSystemCore> render_core;
+            bool wait_idle_enabled = false;
+            hgl::Color4f clear_color{0,0,0,1};
+
             /// Graphics context adapter (Phase 2) - now raw pointer
             hgl::graph::GraphicsContext* graphics_context = nullptr;
             hgl::graph::RenderContext* render_context = nullptr;
@@ -127,6 +135,7 @@ namespace hgl
             void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime);
+            void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
 
         public:
@@ -154,14 +163,29 @@ namespace hgl
             /// Run all render systems
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
 
+            /// Run a full render frame (Begin/Render/End/Sync)
+            void Render(float deltaTime);
+
+            /// Run a full render frame with a pre-render callback
+            void Render(float deltaTime, const std::function<void(float)> &pre_render);
+
+            /// Handle render target resize
+            void OnResize(const VkExtent2D &extent);
+
             /// Run pre-begin-frame render updates (no command buffer)
             void RenderPreBeginFrame(float deltaTime);
+
+            /// Run swapchain image acquisition updates (no command buffer)
+            void RenderSwapchainNextImage(float deltaTime);
 
             /// Run begin-frame render updates (frame index available)
             void RenderBeginFrame(float deltaTime);
 
             /// Run post-begin-frame render updates (no command buffer)
             void RenderPostBeginFrame(float deltaTime);
+
+            /// Run frame submit updates (no command buffer)
+            void RenderSubmit(float deltaTime);
 
             /// Clear all entities and component registries
             void ClearEntities();
@@ -185,6 +209,12 @@ namespace hgl
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }
+
+            void SetClearColor(const hgl::Color4f &color) { clear_color = color; }
+            const hgl::Color4f &GetClearColor() const { return clear_color; }
+
+            void SetWaitIdleEnabled(bool enabled) { wait_idle_enabled = enabled; }
+            bool IsWaitIdleEnabled() const { return wait_idle_enabled; }
             
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
             

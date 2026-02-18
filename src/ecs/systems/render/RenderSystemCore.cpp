@@ -8,6 +8,8 @@
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
+#include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
+#include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::ecs {
@@ -59,13 +61,30 @@ bool RenderSystemCore::BeginFrame() {
         return false;
     }
     
-    if (auto swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget*>(render_target))
+    bool swapchain_ok = true;
+    bool swapchain_system_present = false;
+    if (world)
     {
-        if (!swapchain_rt->NextFrame())
+        world->RenderSwapchainNextImage(0.0f);
+        if (auto swapchain_system = world->GetSystem<SwapchainNextImageSystem>())
         {
-            LogWarning("RenderSystemCore::BeginFrame: Swapchain NextFrame failed");
-            return false;
+            swapchain_system_present = true;
+            swapchain_ok = swapchain_system->WasSuccessful();
         }
+    }
+
+    if (!swapchain_system_present)
+    {
+        if (auto swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget*>(render_target))
+        {
+            swapchain_ok = swapchain_rt->NextFrame();
+        }
+    }
+
+    if (!swapchain_ok)
+    {
+        LogWarning("RenderSystemCore::BeginFrame: Swapchain NextFrame failed");
+        return false;
     }
 
     if (world)
@@ -153,7 +172,25 @@ void RenderSystemCore::EndFrame() {
         render_cmd->EndRenderPass();
 
     render_target->EndRender();
-    if (!render_target->Submit())
+
+    bool submit_ok = false;
+    bool submit_system_present = false;
+    if (world)
+    {
+        world->RenderSubmit(0.0f);
+        if (auto submit_system = world->GetSystem<SwapchainSubmitSystem>())
+        {
+            submit_system_present = true;
+            submit_ok = submit_system->WasSuccessful();
+        }
+    }
+
+    if (!submit_system_present)
+    {
+        submit_ok = render_target->Submit();
+    }
+
+    if (!submit_ok)
         LogError("RenderSystemCore::EndFrame: Submit failed");
     
     // 推进到下一帧

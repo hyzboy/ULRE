@@ -8,11 +8,32 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/utils/ObjectTracker.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph
 {
     namespace
     {
+        class StageScope
+        {
+        private:
+            const char *name = nullptr;
+
+        public:
+            explicit StageScope(const char *stage_name)
+                : name(stage_name)
+            {
+                HGL_CAPTURE_SCOPE();
+                GLogDebug("[RenderStage] Begin: %s", name ? name : "(null)");
+            }
+
+            ~StageScope()
+            {
+                GLogDebug("[RenderStage] End: %s", name ? name : "(null)");
+            }
+        };
+
         class StageEcsPreBeginFrame : public RenderStage
         {
         public:
@@ -21,6 +42,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if (ctx.ecs_context)
                     ctx.ecs_context->RenderPreBeginFrame(0.0f);
             }
@@ -35,6 +57,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if(!ctx.render_target)
                     return;
 
@@ -71,6 +94,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if(!ctx.cmd)
                     return;
 
@@ -92,6 +116,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if(!ctx.render_target || !ctx.cmd)
                     return;
 
@@ -125,6 +150,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if(!ctx.cmd)
                     return;
 
@@ -143,6 +169,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if(ctx.ecs_context && ctx.cmd)
                     ctx.ecs_context->Render(ctx.cmd, 0.0f);
             }
@@ -156,6 +183,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if (ctx.ecs_context)
                     ctx.ecs_context->RenderPostBeginFrame(0.0f);
             }
@@ -169,6 +197,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if(ctx.line_render_manager && ctx.cmd)
                 {
                     ctx.line_render_manager->Draw(ctx.cmd);
@@ -185,6 +214,7 @@ namespace hgl::graph
 
             void Execute(RenderStageContext &ctx) override
             {
+                StageScope scope(GetName());
                 if(!ctx.cmd || !ctx.render_target)
                     return;
 
@@ -192,12 +222,16 @@ namespace hgl::graph
                 ctx.render_target->EndRender();
             }
         };
+
     }
 
     void BuildEcsPipeline(RenderStagePipeline &pipeline)
     {
         if(!pipeline.GetStages().empty())
             return;
+
+        // RenderStages only cover a single RT/FBO pass and can be replayed
+        // for multi-pass or deferred rendering workflows. Frame submit is handled elsewhere.
 
         static StageEcsPreBeginFrame ecs_pre_begin_frame;
         static StageBeginFrame begin_frame;
@@ -207,7 +241,6 @@ namespace hgl::graph
         static StageBeginRenderPass begin_pass;
         static StageEcsRender ecs_render;
         static StageEndRenderPass end_pass;
-
         pipeline.AddStage(&ecs_pre_begin_frame);
         pipeline.AddStage(&begin_frame);
         pipeline.AddStage(&ecs_post_begin_frame);

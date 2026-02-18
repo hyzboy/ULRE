@@ -24,9 +24,10 @@ namespace hgl
             TickCamera,          // Camera setup
 
             // ===== Pre-Render Phase =====
-            RenderPreBeginFrame, // Pre-BeginFrame updates (no render target frame index)
-            RenderBeginFrame,    // BeginFrame updates (frame index available)
-            RenderPostBeginFrame,// Post-BeginFrame updates (frame index available)
+            RenderSwapchainNextImage, // Acquire swapchain image (no command buffer)
+            RenderPreBeginFrame,      // Pre-BeginFrame updates (no render target frame index)
+            RenderBeginFrame,         // BeginFrame updates (frame index available)
+            RenderPostBeginFrame,     // Post-BeginFrame updates (frame index available)
 
             // ===== Render Collection Phase (may have multiple collectors) =====
             RenderCollect,       // Collect render data - can have multiple
@@ -35,10 +36,13 @@ namespace hgl
             RenderBatch,         // Batch render data
 
             // ===== Render Submit Phase =====
-            RenderSubmit,        // Submit draw calls - can have multiple
+            RenderDrawSubmit,    // Submit draw calls - can have multiple
 
             // ===== Post-Render Phase =====
-            RenderPostProcess    // Line rendering, post-effects, etc
+            RenderPostProcess,   // Line rendering, post-effects, etc
+
+            // ===== Frame Submit Phase =====
+            RenderSubmit         // Submit frame to swapchain/present
         };
 
         /**

@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include<hgl/WorkManager.h>
-#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/time/Time.h>
 
 namespace hgl
@@ -17,15 +16,6 @@ namespace hgl
                 cur_work_object->OnAppFrameworkChange(app_framework);
             }
 
-            if (!render_core)
-            {
-                auto ctx = cur_work_object->GetECSContext();
-                if (ctx)
-                {
-                    render_core = std::make_unique<ecs::RenderSystemCore>(ctx);
-                    render_core->Initialize();
-                }
-            }
         }
         else
         {
@@ -63,20 +53,15 @@ namespace hgl
                 can_render=delta_time>=frame_time;
         }
 
-        if (render_core && wo && wo->GetECSContext())
+        if (wo && wo->GetECSContext())
         {
             if (!can_render)
                 return;
 
-            render_core->SetClearColor(wo->GetClearColor());
-
-            if (!render_core->BeginFrame())
-                return;
-
             last_render_time=cur_time;
-            wo->Render(delta_time);
-            wo->GetECSContext()->Render(render_core->GetRenderCmd(), static_cast<float>(delta_time));
-            render_core->EndFrame();
+            wo->GetECSContext()->SetClearColor(wo->GetClearColor());
+            wo->GetECSContext()->Render(static_cast<float>(delta_time),
+                                        [wo](float dt){ wo->Render(static_cast<double>(dt)); });
             wo->ClearRenderDirty();
             return;
         }
@@ -88,40 +73,9 @@ namespace hgl
         }
     }
 
-    void SwapchainWorkManager::OnResize(uint w,uint h)
-    {
-        if(!cur_work_object)return;
-
-        if (!app_framework)
-            return;
-
-        VkExtent2D ext={w,h};
-
-        cur_work_object->OnAppFrameworkChange(app_framework);
-        cur_work_object->OnResize(ext);
-    }
-
     void SwapchainWorkManager::Render(WorkObject *wo)
     {
-        if (render_core && wo && wo->GetECSContext())
-        {
-            WorkManager::Render(wo);
-            return;
-        }
-
-        if(!swapchain_module->AcquireNextImage())
-            return;
-
-        graph::SwapchainRenderTarget *rt=swapchain_module->GetRenderTarget();
-
-        wo->MarkRenderDirty();      //临时的，未来会被更好的机制替代
         WorkManager::Render(wo);
-
-        if(!rt)
-            return;
-
-        rt->WaitQueue();
-        rt->WaitFence();
     }
 
     void WorkManager::Run(WorkObject *wo)
@@ -152,8 +106,6 @@ namespace hgl
             if(has_window?win->IsVisible():true)//&&cur_work_object->IsRenderable())
             {
                 Render(cur_work_object);
-                if (dev)
-                    dev->WaitIdle();
             }
 
             if(has_window)

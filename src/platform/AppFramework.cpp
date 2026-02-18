@@ -18,6 +18,8 @@
 #include <hgl/ecs/systems/render/LineRenderSystem.h>
 #include <hgl/ecs/systems/render/TextRenderSystem.h>
 #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h>
+#include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
+#include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -253,8 +255,13 @@ namespace hgl
             auto render_batch_system = default_ecs_context->RegisterTickSystem<ecs::RenderPrimitiveBatchSystem>();
             auto render_commit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
             auto render_submit_system = default_ecs_context->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
+            auto swapchain_next_image_system = default_ecs_context->RegisterRenderSystem<ecs::SwapchainNextImageSystem>();
+            auto swapchain_submit_system = default_ecs_context->RegisterRenderSystem<ecs::SwapchainSubmitSystem>();
             auto text_submit_system = default_ecs_context->RegisterRenderSystem<ecs::TextRenderSubmitSystem>();
             auto line_render_system = default_ecs_context->RegisterRenderSystem<ecs::LineRenderSystem>();
+
+            (void)swapchain_next_image_system;
+            (void)swapchain_submit_system;
 
             if (text_render_system)
             {
@@ -326,9 +333,10 @@ namespace hgl
 
         if (default_ecs_context)
         {
-            auto render_target_system = default_ecs_context->GetSystem<ecs::RenderTargetSystem>();
-            if (render_target_system)
-                render_target_system->SetRenderTarget(GetSwapchainRenderTarget());
+            // Update render target first
+            default_ecs_context->SetRenderTarget(GetSwapchainRenderTarget());
+            // Then notify all dependent systems via OnResize
+            default_ecs_context->OnResize(ext);
         }
 
         if (render_context)

@@ -3,11 +3,17 @@
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
+#include<hgl/ecs/systems/render/RenderSystemCore.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
+#include<hgl/ecs/systems/render/LineRenderSystem.h>
+#include<hgl/vk/VKRenderTarget.h>
 #include<hgl/log/Log.h>
+#include<hgl/utils/ObjectTracker.h>
 #include<algorithm>
 
 namespace hgl
@@ -233,7 +239,7 @@ namespace hgl
                 current_render_cmd = cmd;
             }
 
-            RunRenderUpdatesFrom(ExecutionPhase::RenderCollect, deltaTime);
+            RunRenderUpdatesRange(ExecutionPhase::RenderCollect, ExecutionPhase::RenderPostProcess, deltaTime);
 
             if (auto transform_system = GetSystem<TransformSystem>())
             {
@@ -248,7 +254,16 @@ namespace hgl
                 if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect))
                     continue;
 
-                entry.system->Render(cmd, deltaTime);
+                if (entry.phase > static_cast<int>(ExecutionPhase::RenderPostProcess))
+                    continue;
+
+                if (entry.system)
+                {
+                    HGL_CAPTURE_SCOPE();
+                    GLogDebug("[ECS] Render Begin: %s", entry.system->GetName().c_str());
+                    entry.system->Render(cmd, deltaTime);
+                    GLogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
+                }
             }
 
             // Render sub-worlds attached via SubWorldComponent
@@ -268,12 +283,95 @@ namespace hgl
             }
         }
 
+        void ECSContext::OnResize(const VkExtent2D &extent)
+        {
+            HGL_CAPTURE_SCOPE();
+
+            if (!active)
+                return;
+
+            // Log resize event
+            GLogInfo("[ECSContext] OnResize: %s %ux%u", 
+                     GetName().c_str(), extent.width, extent.height);
+
+            // Notify RenderTargetSystem to sync viewport and dependent systems
+            auto render_target_system = GetSystem<RenderTargetSystem>();
+            if (render_target_system)
+            {
+                // RenderTargetSystem will sync CameraSystem viewport and LineRenderSystem render target
+                render_target_system->SetRenderTarget(render_target);
+            }
+            else
+            {
+                // Fallback: directly update CameraSystem and LineRenderSystem if no RenderTargetSystem
+                auto camera_system = GetSystem<CameraSystem>();
+                if (camera_system && render_target)
+                    camera_system->SetViewportInfo(render_target->GetViewportInfo());
+
+                auto line_system = GetSystem<LineRenderSystem>();
+                if (line_system && render_target)
+                    line_system->SetRenderTarget(render_target);
+            }
+        }
+
+        void ECSContext::Render(float deltaTime)
+        {
+            Render(deltaTime, nullptr);
+        }
+
+        void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)
+        {
+            if (!active)
+                return;
+
+            if (!render_core)
+            {
+                render_core = std::make_unique<RenderSystemCore>(this);
+                if (!render_core->Initialize())
+                {
+                    render_core.reset();
+                    return;
+                }
+            }
+
+            if (!render_core->BeginFrame())
+                return;
+
+            render_core->SetClearColor(clear_color);
+
+            if (pre_render)
+                pre_render(deltaTime);
+
+            Render(render_core->GetRenderCmd(), deltaTime);
+            render_core->EndFrame();
+
+            if (auto *rt = GetRenderTarget())
+            {
+                rt->WaitQueue();
+                rt->WaitFence();
+            }
+
+            if (wait_idle_enabled)
+            {
+                if (auto *device = GetGPUDevice())
+                    device->WaitIdle();
+            }
+        }
+
         void ECSContext::RenderPreBeginFrame(float deltaTime)
         {
             if (!active)
                 return;
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderPreBeginFrame, deltaTime);
+        }
+
+        void ECSContext::RenderSwapchainNextImage(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderSwapchainNextImage, deltaTime);
         }
 
         void ECSContext::RenderBeginFrame(float deltaTime)
@@ -290,6 +388,14 @@ namespace hgl
                 return;
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame, deltaTime);
+        }
+
+        void ECSContext::RenderSubmit(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderSubmit, deltaTime);
         }
 
         void ECSContext::RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime)
@@ -326,16 +432,40 @@ namespace hgl
             }
         }
 
+        void ECSContext::RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
+        {
+            SortRenderSystems();
+
+            const int min_phase = static_cast<int>(minPhase);
+            const int max_phase = static_cast<int>(maxPhase);
+
+            for (auto& entry : render_system_order)
+            {
+                if (!entry.system)
+                    continue;
+
+                if (entry.phase < min_phase || entry.phase > max_phase)
+                    continue;
+
+                RunSystemUpdate(entry.system.get(), deltaTime);
+            }
+        }
+
         void ECSContext::RunSystemUpdate(System *system, float deltaTime)
         {
             if (!system)
                 return;
+
+            HGL_CAPTURE_SCOPE();
+            GLogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
 
             if (system_profiling_enabled)
                 profiler.Begin(system);
             system->Update(deltaTime);
             if (system_profiling_enabled)
                 profiler.End(system);
+
+            GLogDebug("[ECS] Update End: %s", system->GetName().c_str());
         }
 
         void ECSContext::ClearEntities()

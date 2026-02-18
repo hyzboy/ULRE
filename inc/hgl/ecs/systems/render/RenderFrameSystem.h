@@ -19,7 +19,7 @@ namespace hgl::ecs
      * 职责:
      * - 作为整个渲染流程的主驱动和协调器
      * - 管理每帧的渲染命令缓冲区
-     * - 协调 RenderCollect、RenderBatch、RenderSubmit、RenderCommit 等子系统
+    * - 协调 RenderCollect、RenderBatch、RenderDrawSubmit、RenderSubmit 等子系统
      * - 处理渲染目标的帧同步
      * 
      * 执行流程:
@@ -31,12 +31,13 @@ namespace hgl::ecs
      *                    ↓
      * ┌──────────────────────────────────────────┐
      * │ ECSContext::Render(cmd, deltaTime)       │
-     * │  ├─ RenderPreBeginFrame                  │
-     * │  │   (同步父/子世界等准备工作)           │
-     * │  ├─ RenderBeginFrame                     │
-     * │  │   (开始新帧: RenderFrameSystem)       │
-     * │  │   └─ 获取swapchain图像               │
-     * │  │   └─ 创建帧命令缓冲区                │
+    * │  ├─ RenderSwapchainNextImage             │
+    * │  │   (获取 swapchain 图像)               │
+    * │  ├─ RenderPreBeginFrame                  │
+    * │  │   (同步父/子世界等准备工作)           │
+    * │  ├─ RenderBeginFrame                     │
+    * │  │   (开始新帧: RenderFrameSystem)       │
+    * │  │   └─ 创建帧命令缓冲区                │
      * │  ├─ RenderPostBeginFrame                 │
      * │  │   (帧初始化完成)                      │
      * │  ├─ RenderCollect                        │
@@ -45,17 +46,17 @@ namespace hgl::ecs
      * │  ├─ RenderBatch                          │
      * │  │   └─ RenderPrimitiveBatchSystem       │
      * │  │       (批处理优化)                    │
-     * │  ├─ RenderSubmit                         │
-     * │  │   ├─ RenderPrimitiveSubmitSystem      │
-     * │  │   │   (发送绘制命令)                  │
-     * │  │   └─ TextRenderSubmitSystem           │
-     * │  │       (发送文本绘制命令)              │
-     * │  ├─ RenderCommit                         │
-     * │  │   └─ RenderBufferCommitSystem         │
-     * │  │       (提交GPU数据)                   │
-     * │  └─ RenderEndFrame                       │
-     * │      (提交命令缓冲区: RenderFrameSystem) │
-     * │      └─ Present (swapchain)              │
+    * │  ├─ RenderDrawSubmit                     │
+    * │  │   ├─ RenderPrimitiveSubmitSystem      │
+    * │  │   │   (发送绘制命令)                  │
+    * │  │   └─ TextRenderSubmitSystem           │
+    * │  │       (发送文本绘制命令)              │
+    * │  ├─ RenderPostProcess                    │
+    * │  │   └─ LineRenderSystem                 │
+    * └──────────────────────────────────────────┘
+    *
+    * RenderSubmit 是帧驱动层的最终提交步骤，
+    * 不在单次 RT/FBO 的 RenderStage 流程内执行。
      * └──────────────────────────────────────────┘
      * ```
      * 
