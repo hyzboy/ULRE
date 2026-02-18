@@ -1,18 +1,23 @@
-// Billboard ECS Example - Refactored with BillboardComponent
+// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
 //
-// This example demonstrates rendering a billboard using the ECS architecture.
-// It showcases the integration of BillboardComponent into the existing ECS system.
+// This example demonstrates the new decoupled architecture:
+// - QuadComponent: Handles quad geometry and rendering
+// - FacingTransformComponent: Handles camera-facing rotation
+// - BillboardComponent: Convenience wrapper that combines both
+//
+// The architecture allows for flexible reuse:
+// - Use just QuadComponent for static sprites
+// - Use just FacingTransformComponent for other entities that need rotation
+// - Use BillboardComponent for the classic billboard use case
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
-#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -21,9 +26,12 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/BillboardComponent.h>
+#include<hgl/ecs/components/QuadComponent.h>
+#include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/BillboardRenderSystem.h>
+#include<hgl/ecs/systems/render/QuadRenderSystem.h>
+#include<hgl/ecs/systems/transform/FacingTransformSystem.h>
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
@@ -34,7 +42,6 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
-static float position_data[3] = { 0, 0, 0 };
 static Color4f white_color(1, 1, 1, 1);
 
 class BillboardECSApp : public WorkObject
@@ -55,14 +62,7 @@ private:
     Geometry* geom_plane_grid = nullptr;
     Primitive* prim_plane_grid = nullptr;
 
-    // Billboard resources
-    MaterialInstance* mi_billboard = nullptr;
-    Pipeline* pipeline_billboard = nullptr;
-    Primitive* prim_billboard = nullptr;
-
-    // Textures
-    Texture2D* texture = nullptr;
-    Sampler* sampler = nullptr;
+    // Billboard resources are managed by BillboardRenderSystem
 
 private:
 
@@ -111,83 +111,6 @@ private:
     }
 
     /**
-     * Initialize billboard material and resources
-     */
-    bool InitBillboardResources()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context) return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) return false;
-
-        auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager) return false;
-
-        // Create billboard material with fixed size config
-        mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
-        cfg.fixed_size = true;
-
-        mi_billboard = material_manager->CreateMaterialInstance(mtl::inline_material::Billboard2D, &cfg);
-        if (!mi_billboard) return false;
-
-        std::cout << "[BillboardECS] Billboard MI: " << (void*)mi_billboard
-                  << ", Material: " << (void*)mi_billboard->GetMaterial() << std::endl;
-
-        // Create pipeline
-        auto* render_target = render_context->GetCurrentRenderTarget();
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        pipeline_billboard = render_pass ? render_pass->CreatePipeline(mi_billboard, InlinePipeline::Solid3D) : nullptr;
-        if (!pipeline_billboard) return false;
-
-        std::cout << "[BillboardECS] Billboard pipeline: " << (void*)pipeline_billboard << std::endl;
-
-        return true;
-    }
-
-    /**
-     * Load and bind texture for billboard
-     */
-    bool InitTexture()
-    {
-        auto* render_context = GetRenderContext();
-        if (!render_context) return false;
-
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) return false;
-
-        TextureManager* tex_manager = graphics_context->GetTextureManager();
-        if (!tex_manager) return false;
-
-        texture = tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
-        if (!texture) return false;
-
-        std::cout << "[BillboardECS] Texture loaded: " << (void*)texture
-                  << " (" << texture->GetWidth() << "x" << texture->GetHeight() << ")" << std::endl;
-
-        auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!sampler_manager) return false;
-
-        sampler = sampler_manager->CreateSampler();
-        std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
-
-        // Bind texture to material
-        const bool bind_ok = mi_billboard->GetMaterial()->BindTextureSampler(DescriptorSetType::PerMaterial,
-                                                                              mtl::SamplerName::BaseColor,
-                                                                              texture,
-                                                                              sampler);
-        std::cout << "[BillboardECS] BindTextureSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED") << std::endl;
-        if (!bind_ok) return false;
-
-        // Write material instance data (texture size for billboard calculation)
-        math::Vector2u texture_size(texture->GetWidth(), texture->GetHeight());
-        mi_billboard->WriteMIData(texture_size);
-        std::cout << "[BillboardECS] Billboard MI data written (texture size)." << std::endl;
-
-        return true;
-    }
-
-    /**
      * Create render geometry and primitives
      */
     bool CreateGeometryAndPrimitives()
@@ -228,21 +151,6 @@ private:
                       << ", primitive: " << (void*)prim_plane_grid << std::endl;
         }
 
-        // Create billboard geometry (single point)
-        {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_billboard->GetVIL());
-
-            pc->Init("Billboard", 1);
-
-            if (!pc->WriteVAB(VAN::Position, VF_V3F, position_data))
-                return false;
-
-            prim_billboard = primitive_manager->CreatePrimitive(pc.get(), mi_billboard, pipeline_billboard);
-            if (!prim_billboard) return false;
-
-            std::cout << "[BillboardECS] Billboard primitive: " << (void*)prim_billboard << std::endl;
-        }
-
         return true;
     }
 
@@ -268,38 +176,52 @@ private:
     }
 
     /**
-     * Ensure billboard render system is registered
-     * NOTE: Using RegisterTickSystem because RegisterRenderSystem may not work correctly
-     * if called after ECSContext is already active. Tick systems execute reliably.
+     * Ensure render systems are registered
+     * - QuadRenderSystem: Handles texture loading and material creation
+     * - FacingTransformSystem: Handles camera-facing rotation
      */
-    bool EnsureBillboardRenderSystem()
+    bool EnsureRenderSystems()
     {
         if (!ecs_world) return false;
 
-        auto billboard_system = ecs_world->GetSystem<BillboardRenderSystem>();
-        if (!billboard_system)
+        // Register QuadRenderSystem (handles texture loading and material creation)
+        auto quad_system = ecs_world->GetSystem<QuadRenderSystem>();
+        if (!quad_system)
         {
-            std::cout << "[BillboardECS] Creating BillboardRenderSystem..." << std::endl;
-            // Use RegisterTickSystem instead of RegisterRenderSystem for reliability
-            billboard_system = ecs_world->RegisterTickSystem<BillboardRenderSystem>();
-            billboard_system->SetWorld(ecs_world);
-            billboard_system->SetCameraInfo(GetCameraInfo());
+            std::cout << "[BillboardECS] Creating QuadRenderSystem..." << std::endl;
+            quad_system = ecs_world->RegisterTickSystem<QuadRenderSystem>();
+            quad_system->SetWorld(ecs_world);
 
-            std::cout << "[BillboardECS] BillboardRenderSystem created at " << (void*)billboard_system.get() << std::endl;
+            std::cout << "[BillboardECS] QuadRenderSystem created at " << (void*)quad_system.get() << std::endl;
 
             if (ecs_world->IsActive())
             {
-                billboard_system->OnDependenciesReady();
-                billboard_system->Initialize();
-                std::cout << "[BillboardECS] BillboardRenderSystem initialized and started" << std::endl;
+                quad_system->OnDependenciesReady();
+                quad_system->Initialize();
+                std::cout << "[BillboardECS] QuadRenderSystem initialized and started" << std::endl;
             }
         }
-        else
+
+        // Register FacingTransformSystem (handles camera-facing rotation)
+        auto facing_system = ecs_world->GetSystem<FacingTransformSystem>();
+        if (!facing_system)
         {
-            std::cout << "[BillboardECS] BillboardRenderSystem already exists at " << (void*)billboard_system.get() << std::endl;
+            std::cout << "[BillboardECS] Creating FacingTransformSystem..." << std::endl;
+            facing_system = ecs_world->RegisterTickSystem<FacingTransformSystem>();
+            facing_system->SetWorld(ecs_world);
+            facing_system->SetCameraInfo(GetCameraInfo());
+
+            std::cout << "[BillboardECS] FacingTransformSystem created at " << (void*)facing_system.get() << std::endl;
+
+            if (ecs_world->IsActive())
+            {
+                facing_system->OnDependenciesReady();
+                facing_system->Initialize();
+                std::cout << "[BillboardECS] FacingTransformSystem initialized and started" << std::endl;
+            }
         }
 
-        return billboard_system != nullptr;
+        return quad_system && facing_system;
     }
 
     /**
@@ -315,7 +237,7 @@ private:
         std::cout << "[BillboardECS] Initial entity count: " << ecs_world->GetEntityCount() << std::endl;
 
         if (!EnsureCameraSystem()) return false;
-        if (!EnsureBillboardRenderSystem()) return false;
+        if (!EnsureRenderSystems()) return false;
 
         std::cout << "\n[BillboardECS] Creating PlaneGrid entity..." << std::endl;
         // Create plane grid entity
@@ -339,6 +261,10 @@ private:
 
         std::cout << "\n[BillboardECS] Creating Billboard entity..." << std::endl;
         // Create billboard entity with BillboardComponent
+        // Note: BillboardComponent now acts as a convenience wrapper.
+        // When attached, it automatically creates:
+        // - QuadComponent (for quad rendering)
+        // - FacingTransformComponent (for camera-facing rotation)
         {
             billboard_entity = ecs_world->CreateEntity<Entity>("Billboard");
             std::cout << "  -> Billboard entity created at " << (void*)billboard_entity << std::endl;
@@ -352,9 +278,7 @@ private:
 
             auto billboard = billboard_entity->AddComponent<BillboardComponent>();
             std::cout << "  -> BillboardComponent added at " << (void*)billboard.get() << std::endl;
-            
-            billboard->SetPrimitive(prim_billboard);
-            std::cout << "  -> Primitive set to " << (void*)prim_billboard << std::endl;
+            std::cout << "     (automatically created QuadComponent and FacingTransformComponent)" << std::endl;
             
             billboard->SetVisible(true);
             std::cout << "  -> SetVisible(true)" << std::endl;
@@ -367,7 +291,62 @@ private:
             
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             std::cout << "  -> SetFrontFace(CLOCKWISE)" << std::endl;
+
+            billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
+            std::cout << "  -> SetTexture(lena.Tex2D)" << std::endl;
         }
+
+        // ADVANCED: Example of using QuadComponent directly (without facing transform)
+        //
+        // This shows the flexibility of the decoupled architecture:
+        // If you only need a static sprite (no camera-facing rotation),
+        // you can use just QuadComponent.
+        //
+        // This is commented out by default, but you can uncomment to test:
+        /*
+        std::cout << "\n[BillboardECS] Creating Static Quad entity..." << std::endl;
+        {
+            auto quad_entity = ecs_world->CreateEntity<Entity>("StaticQuad");
+            std::cout << "  -> StaticQuad entity created" << std::endl;
+
+            auto quad_transform = quad_entity->AddComponent<TransformComponent>();
+            quad_transform->SetLocalPosition(glm::vec3(2.0f, 0.0f, 0.0f));
+            quad_transform->SetLocalScale(glm::vec3(2.0f, 2.0f, 1.0f));
+
+            auto quad = quad_entity->AddComponent<QuadComponent>();
+            quad->SetVisible(true);
+            quad->SetPixelSize(128, 128);
+            quad->SetTexturePath(OS_TEXT("res/image/sprite.Tex2D"));
+            std::cout << "  -> QuadComponent added (no rotation, static)" << std::endl;
+        }
+        */
+
+        // ADVANCED: Example of using FacingTransformComponent with a custom target
+        //
+        // This shows using FacingTransformComponent independently:
+        // Any entity can face towards a specific position.
+        //
+        // This is commented out by default, but you can uncomment to test:
+        /*
+        std::cout << "\n[BillboardECS] Creating Look-At-Target entity..." << std::endl;
+        {
+            auto target_entity = ecs_world->CreateEntity<Entity>("LookAtTarget");
+            std::cout << "  -> LookAtTarget entity created" << std::endl;
+
+            auto target_transform = target_entity->AddComponent<TransformComponent>();
+            target_transform->SetLocalPosition(glm::vec3(-2.0f, 0.0f, 0.0f));
+
+            auto quad = target_entity->AddComponent<QuadComponent>();
+            quad->SetVisible(true);
+            quad->SetPixelSize(128, 128);
+            quad->SetTexturePath(OS_TEXT("res/image/marker.Tex2D"));
+
+            auto facing = target_entity->AddComponent<FacingTransformComponent>();
+            facing->SetFacingMode(FacingMode::LookAtTarget);
+            facing->SetTargetPosition(glm::vec3(2.0f, 0.0f, 0.0f));  // Look at the static quad
+            std::cout << "  -> FacingTransformComponent added (looks at static quad)" << std::endl;
+        }
+        */
 
         std::cout << "\n[BillboardECS] Final entity count: " << ecs_world->GetEntityCount() << std::endl;
         std::cout << "[BillboardECS] === ECS INITIALIZATION COMPLETE ===\n" << std::endl;
@@ -417,8 +396,6 @@ public:
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
         if (!InitPlaneGridResources()) return false;
-        if (!InitBillboardResources()) return false;
-        if (!InitTexture()) return false;
         if (!CreateGeometryAndPrimitives()) return false;
         if (!InitializeECS()) return false;
         if (!InitializeCamera()) return false;

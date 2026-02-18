@@ -22,6 +22,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
                 ${ECS_INCLUDE_PATH}/components/StaticMeshComponent.h
                 ${ECS_INCLUDE_PATH}/components/CameraComponent.h
+                ${ECS_INCLUDE_PATH}/components/QuadComponent.h
+                ${ECS_INCLUDE_PATH}/components/FacingTransformComponent.h
                 ${ECS_INCLUDE_PATH}/components/TextComponent.h
                 ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
                 ${ECS_INCLUDE_PATH}/components/SubWorldComponent.h
@@ -36,7 +38,6 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
 
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
-                ${ECS_INCLUDE_PATH}/systems/render/BillboardRenderSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
@@ -45,8 +46,11 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/systems/render/LineRenderSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/TextRenderSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/QuadRenderSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
+
+                ${ECS_INCLUDE_PATH}/systems/transform/FacingTransformSystem.h
 
                 ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
                 ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
@@ -75,6 +79,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 components/BillboardComponent.cpp
                 components/StaticMeshComponent.cpp
                 components/CameraComponent.cpp
+                components/QuadComponent.cpp
+                components/FacingTransformComponent.cpp
                 components/StaticMesh.cpp
                 components/SubWorldComponent.cpp
 
@@ -87,7 +93,6 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
 
                 systems/render/RenderPrimitiveCollectSystem.cpp
                 systems/render/RenderPrimitiveBatchSystem.cpp
-                systems/render/BillboardRenderSystem.cpp
                 systems/render/RenderPrimitiveSubmitSystem.cpp
                 systems/render/RenderBufferCommitSystem.cpp
                 systems/render/RenderSystemCore.cpp
@@ -96,8 +101,11 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 systems/render/LineRenderSystem.cpp
                 systems/render/TextRenderSystem.cpp
                 systems/render/TextRenderSubmitSystem.cpp
+                systems/render/QuadRenderSystem.cpp
                 systems/render/SwapchainNextImageSystem.cpp
                 systems/render/SwapchainSubmitSystem.cpp
+
+                systems/transform/FacingTransformSystem.cpp
 
                 support/VisibilityDataStorage.cpp
                 support/ECSTransformAssignmentBuffer.cpp
@@ -143,6 +151,8 @@ source_group("ECS\\Components" FILES
     ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
     ${ECS_INCLUDE_PATH}/components/StaticMeshComponent.h
     ${ECS_INCLUDE_PATH}/components/CameraComponent.h
+    ${ECS_INCLUDE_PATH}/components/QuadComponent.h
+    ${ECS_INCLUDE_PATH}/components/FacingTransformComponent.h
     ${ECS_INCLUDE_PATH}/components/TextComponent.h
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
     ${ECS_INCLUDE_PATH}/components/SubWorldComponent.h
@@ -154,6 +164,8 @@ source_group("ECS\\Components" FILES
     components/BillboardComponent.cpp
     components/StaticMeshComponent.cpp
     components/CameraComponent.cpp
+    components/QuadComponent.cpp
+    components/FacingTransformComponent.cpp
     components/StaticMesh.cpp
     components/SubWorldComponent.cpp
 )
@@ -176,7 +188,6 @@ source_group("ECS\\Systems\\Tick" FILES
 source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
-    ${ECS_INCLUDE_PATH}/systems/render/BillboardRenderSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
@@ -185,11 +196,11 @@ source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/LineRenderSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/TextRenderSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/QuadRenderSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
     systems/render/RenderPrimitiveCollectSystem.cpp
     systems/render/RenderPrimitiveBatchSystem.cpp
-    systems/render/BillboardRenderSystem.cpp
     systems/render/RenderPrimitiveSubmitSystem.cpp
     systems/render/RenderBufferCommitSystem.cpp
     systems/render/RenderSystemCore.cpp
@@ -198,8 +209,14 @@ source_group("ECS\\Systems\\Render" FILES
     systems/render/LineRenderSystem.cpp
     systems/render/TextRenderSystem.cpp
     systems/render/TextRenderSubmitSystem.cpp
+    systems/render/QuadRenderSystem.cpp
     systems/render/SwapchainNextImageSystem.cpp
     systems/render/SwapchainSubmitSystem.cpp
+)
+
+source_group("ECS\\Systems\\Transform" FILES
+    ${ECS_INCLUDE_PATH}/systems/transform/FacingTransformSystem.h
+    systems/transform/FacingTransformSystem.cpp
 )
 
 source_group("ECS\\Support" FILES
