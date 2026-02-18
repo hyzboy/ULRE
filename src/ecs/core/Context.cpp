@@ -5,6 +5,8 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
+#include<hgl/ecs/components/RenderableComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
@@ -74,6 +76,9 @@ namespace hgl
 
         void ECSContext::Initialize()
         {
+            RegisterComponentQueryBase<RenderableComponent>();
+            RegisterComponentQueryBase<PrimitiveComponent>();
+
             // Ensure TransformSystem is registered and bound to this world
             {
                 auto transform_system = GetSystem<TransformSystem>();
@@ -715,25 +720,56 @@ namespace hgl
             if(!comp)
                 return;
 
+            RegisterComponentInstanceInternal(type_hash, comp);
+
+            for (const auto& entry : component_query_bases)
+            {
+                if (entry.key == type_hash)
+                    continue;
+
+                if (entry.matches && entry.matches(comp.get()))
+                    RegisterComponentInstanceInternal(entry.key, comp);
+            }
+        }
+
+        void ECSContext::UnregisterComponentInstance(size_t type_hash, Component* comp_ptr)
+        {
+            (void)type_hash;
+            if (!comp_ptr)
+                return;
+
+            for (auto& pair : component_registry)
+            {
+                auto& vec = pair.second;
+                vec.erase(std::remove_if(vec.begin(), vec.end(), [comp_ptr](const std::weak_ptr<Component>& w){
+                    auto sp = w.lock();
+                    return !sp || sp.get()==comp_ptr;
+                }), vec.end());
+            }
+        }
+
+        void ECSContext::RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp)
+        {
+            if (!comp)
+                return;
+
             auto* vec = component_registry.GetValuePointer(type_hash);
             if (!vec)
             {
                 component_registry.Add(type_hash, std::vector<std::weak_ptr<Component>>{});
                 vec = component_registry.GetValuePointer(type_hash);
             }
+
+            for (const auto& weak_comp : *vec)
+            {
+                if (auto existing = weak_comp.lock())
+                {
+                    if (existing.get() == comp.get())
+                        return;
+                }
+            }
+
             vec->push_back(comp);
-        }
-
-        void ECSContext::UnregisterComponentInstance(size_t type_hash, Component* comp_ptr)
-        {
-            auto* vec = component_registry.GetValuePointer(type_hash);
-            if (!vec)
-                return;
-
-            vec->erase(std::remove_if(vec->begin(), vec->end(), [comp_ptr](const std::weak_ptr<Component>& w){
-                auto sp = w.lock();
-                return !sp || sp.get()==comp_ptr;
-            }), vec->end());
         }
 
         void ECSContext::RegisterTransformComponent(const std::shared_ptr<TransformComponent>& comp, bool isMovable)

@@ -76,10 +76,24 @@ DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req, Memory
     return CreateMemory(req, properties, name, loc);
 }
 
-StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data, SharingMode sharing_mode, const std::source_location &loc)
+StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, VkBufferUsageFlags usage, VkDeviceSize size, const void *data, SharingMode sharing_mode, const std::source_location &loc)
 {
     if (size <= 0)
         return nullptr;
+
+    auto make_child_name = [](const ObjectNameBuilder &parent, const char *suffix) -> ObjectNameBuilder
+    {
+        if (!suffix || suffix[0] == '\0')
+            return parent;
+
+        if (parent.base_name[0] == '\0')
+            return ObjectNameBuilder(suffix);
+
+        AnsiString full(parent.base_name);
+        full += ".";
+        full += suffix;
+        return ObjectNameBuilder(full);
+    };
 
     // Create staging buffer (CPU accessible)
     BufferCreateInfo staging_info;
@@ -93,12 +107,11 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
     if (vkCreateBuffer(attr->device, &staging_info, nullptr, &staging_buffer) != VK_SUCCESS)
         return nullptr;
 
-    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer, ObjectNameBuilder("StagingBuffer_Staging").AppendCallerType(typeid(*this)), loc);
-
     VkMemoryRequirements staging_mem_reqs;
     vkGetBufferMemoryRequirements(attr->device, staging_buffer, &staging_mem_reqs);
 
-    DeviceMemory *staging_memory = CreateMemory(staging_mem_reqs, MemoryUsage::CPUToGPU, ObjectNameBuilder("StagingMemory"));
+    ObjectNameBuilder staging_memory_name = make_child_name(name, "StagingMemory");
+    DeviceMemory *staging_memory = CreateMemory(staging_mem_reqs, MemoryUsage::CPUToGPU, staging_memory_name);
     if (!staging_memory || !staging_memory->BindBuffer(staging_buffer))
     {
         delete staging_memory;
@@ -106,8 +119,6 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
         return nullptr;
     }
 
-    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer, ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::VKBuffer), loc);
-    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory), ObjectNameBuilder("StagingBuffer").Append(ObjectTypeTag::VKMemory), loc);
 
     // Create device buffer (GPU optimal)
     BufferCreateInfo device_info;
@@ -125,12 +136,11 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
         return nullptr;
     }
 
-    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)device_buffer, ObjectNameBuilder("StagingBuffer_Device").AppendCallerType(typeid(*this)), loc);
-
     VkMemoryRequirements device_mem_reqs;
     vkGetBufferMemoryRequirements(attr->device, device_buffer, &device_mem_reqs);
 
-    DeviceMemory *device_memory = CreateMemory(device_mem_reqs, MemoryUsage::GPUOnly, ObjectNameBuilder("DeviceMemory"));
+    ObjectNameBuilder device_memory_name = make_child_name(name, "DeviceMemory");
+    DeviceMemory *device_memory = CreateMemory(device_mem_reqs, MemoryUsage::GPUOnly, device_memory_name);
     if (!device_memory || !device_memory->BindBuffer(device_buffer))
     {
         delete device_memory;
@@ -139,6 +149,19 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
         vkDestroyBuffer(attr->device, staging_buffer, nullptr);
         return nullptr;
     }
+
+    ObjectNameBuilder staging_buffer_name = make_child_name(name, "StagingBuffer");
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer,
+                staging_buffer_name, loc);
+
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*staging_memory),
+                staging_memory_name, loc);
+    ObjectNameBuilder device_buffer_name = make_child_name(name, "DeviceBuffer");
+    TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)device_buffer,
+                device_buffer_name, loc);
+
+    TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)static_cast<VkDeviceMemory>(*device_memory),
+                device_memory_name, loc);
 
     // Create StagedBuffer wrapper
     StagedBuffer *staged_buffer = new StagedBuffer(
@@ -159,6 +182,11 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDevic
     }
 
     return staged_buffer;
+}
+
+StagedBuffer *VulkanDevice::CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data, SharingMode sharing_mode, const std::source_location &loc)
+{
+    return CreateStagedBuffer(ObjectNameBuilder("StagedBuffer"), usage, size, data, sharing_mode, loc);
 }
 
 }//namespace hgl::graph

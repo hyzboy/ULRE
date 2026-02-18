@@ -19,6 +19,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/components/BoundingBoxComponent.h
                 ${ECS_INCLUDE_PATH}/components/VisibilityComponent.h
                 ${ECS_INCLUDE_PATH}/components/PrimitiveComponent.h
+                ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
                 ${ECS_INCLUDE_PATH}/components/StaticMeshComponent.h
                 ${ECS_INCLUDE_PATH}/components/CameraComponent.h
                 ${ECS_INCLUDE_PATH}/components/TextComponent.h
@@ -35,6 +36,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
 
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/BillboardRenderSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
@@ -70,6 +72,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 components/BoundingBoxComponent.cpp
                 components/VisibilityComponent.cpp
                 components/PrimitiveComponent.cpp
+                components/BillboardComponent.cpp
                 components/StaticMeshComponent.cpp
                 components/CameraComponent.cpp
                 components/StaticMesh.cpp
@@ -84,6 +87,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
 
                 systems/render/RenderPrimitiveCollectSystem.cpp
                 systems/render/RenderPrimitiveBatchSystem.cpp
+                systems/render/BillboardRenderSystem.cpp
                 systems/render/RenderPrimitiveSubmitSystem.cpp
                 systems/render/RenderBufferCommitSystem.cpp
                 systems/render/RenderSystemCore.cpp
@@ -136,6 +140,7 @@ source_group("ECS\\Components" FILES
     ${ECS_INCLUDE_PATH}/components/BoundingBoxComponent.h
     ${ECS_INCLUDE_PATH}/components/VisibilityComponent.h
     ${ECS_INCLUDE_PATH}/components/PrimitiveComponent.h
+    ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
     ${ECS_INCLUDE_PATH}/components/StaticMeshComponent.h
     ${ECS_INCLUDE_PATH}/components/CameraComponent.h
     ${ECS_INCLUDE_PATH}/components/TextComponent.h
@@ -146,6 +151,7 @@ source_group("ECS\\Components" FILES
     components/BoundingBoxComponent.cpp
     components/VisibilityComponent.cpp
     components/PrimitiveComponent.cpp
+    components/BillboardComponent.cpp
     components/StaticMeshComponent.cpp
     components/CameraComponent.cpp
     components/StaticMesh.cpp
@@ -170,6 +176,7 @@ source_group("ECS\\Systems\\Tick" FILES
 source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/BillboardRenderSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
@@ -182,6 +189,7 @@ source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
     systems/render/RenderPrimitiveCollectSystem.cpp
     systems/render/RenderPrimitiveBatchSystem.cpp
+    systems/render/BillboardRenderSystem.cpp
     systems/render/RenderPrimitiveSubmitSystem.cpp
     systems/render/RenderBufferCommitSystem.cpp
     systems/render/RenderSystemCore.cpp

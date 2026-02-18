@@ -183,6 +183,7 @@ public: //Buffer相关
                                  BufferUpdateClass update_class = BufferUpdateClass::Default,
                                  const std::source_location &loc = std::source_location::current());
 
+    StagedBuffer *  CreateStagedBuffer(const ObjectNameBuilder &name, VkBufferUsageFlags usage, VkDeviceSize size, const void *data = nullptr, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
     StagedBuffer *  CreateStagedBuffer(VkBufferUsageFlags usage, VkDeviceSize size, const void *data = nullptr, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
 
     VAB *           CreateVAB   (VkFormat format, uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive,BufferUpdateClass update_class=BufferUpdateClass::Default, const std::source_location &loc = std::source_location::current());

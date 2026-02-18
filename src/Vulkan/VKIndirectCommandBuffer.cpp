@@ -35,7 +35,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,nullptr,sharing_mode);
+        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, size, nullptr, sharing_mode);
         if(!staged)
             return(false);
 

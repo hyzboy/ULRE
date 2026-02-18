@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
@@ -50,15 +51,51 @@ namespace hgl::ecs
         size_t skipped_no_transform = 0;
         size_t added = 0;
 
+        size_t billboard_total = 0;
+        size_t billboard_visible = 0;
+        size_t billboard_invisible = 0;
+        size_t billboard_can_render = 0;
+        size_t billboard_added = 0;
+        size_t billboard_missing_owner = 0;
+        size_t billboard_missing_transform = 0;
+
         const glm::vec3 camera_pos = glm::vec3(cameraInfo->pos);
 
         for (const auto& primitiveComp : primitives)
         {
-            if (!primitiveComp || !primitiveComp->IsVisible() || !primitiveComp->CanRender())
-            {
-                if (primitiveComp && !primitiveComp->IsVisible())
-                    ++skipped_invisible;
+            if (!primitiveComp)
                 continue;
+
+            BillboardComponent* billboard = dynamic_cast<BillboardComponent*>(primitiveComp.get());
+            const bool is_billboard = (billboard != nullptr);
+            if (is_billboard)
+            {
+                ++billboard_total;
+                std::cout << "[RenderPrimitiveCollect] Billboard candidate: entity="
+                          << (primitiveComp->GetOwner() ? primitiveComp->GetOwner()->GetName() : "(null)")
+                          << " visible=" << (primitiveComp->IsVisible() ? "YES" : "NO")
+                          << " canRender=" << (primitiveComp->CanRender() ? "YES" : "NO")
+                          << " primitive=" << (void*)primitiveComp->GetPrimitive()
+                          << " material=" << (void*)primitiveComp->GetMaterialInstance()
+                          << " pipeline=" << (void*)primitiveComp->GetPipeline()
+                          << std::endl;
+            }
+
+            if (!primitiveComp->IsVisible() || !primitiveComp->CanRender())
+            {
+                if (!primitiveComp->IsVisible())
+                {
+                    ++skipped_invisible;
+                    if (is_billboard)
+                        ++billboard_invisible;
+                }
+                continue;
+            }
+
+            if (is_billboard)
+            {
+                ++billboard_visible;
+                ++billboard_can_render;
             }
 
             EntityID entity_id = primitiveComp->GetOwnerID();
@@ -74,6 +111,8 @@ namespace hgl::ecs
             if (!entity)
             {
                 ++skipped_no_owner;
+                if (is_billboard)
+                    ++billboard_missing_owner;
                 continue;
             }
 
@@ -81,6 +120,8 @@ namespace hgl::ecs
             if (!transform)
             {
                 ++skipped_no_transform;
+                if (is_billboard)
+                    ++billboard_missing_transform;
                 continue;
             }
 
@@ -96,6 +137,27 @@ namespace hgl::ecs
             cache.renderItems.push_back(std::move(item));
             cache.renderableCount++;
             ++added;
+
+            if (is_billboard)
+            {
+                ++billboard_added;
+                std::cout << "[RenderPrimitiveCollect] Billboard added: entity=" << entity->GetName()
+                          << " worldPos=(" << worldPos.x << ", " << worldPos.y << ", " << worldPos.z << ")"
+                          << " distance=" << glm::length(toCamera)
+                          << std::endl;
+            }
+        }
+
+        if (billboard_total > 0)
+        {
+            std::cout << "[RenderPrimitiveCollect] Billboard summary: total=" << billboard_total
+                      << " visible=" << billboard_visible
+                      << " invisible=" << billboard_invisible
+                      << " canRender=" << billboard_can_render
+                      << " added=" << billboard_added
+                      << " noOwner=" << billboard_missing_owner
+                      << " noTransform=" << billboard_missing_transform
+                      << std::endl;
         }
 
         //if (cache.renderableCount == 0)

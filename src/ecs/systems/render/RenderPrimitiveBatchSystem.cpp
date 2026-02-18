@@ -6,6 +6,7 @@
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
@@ -356,6 +357,31 @@ namespace hgl::ecs
         if (cache.renderItems.empty())
             return;
 
+        size_t billboard_items_total = 0;
+        size_t billboard_items_visible = 0;
+        for (const auto& itemPtr : cache.renderItems)
+        {
+            if (!itemPtr)
+                continue;
+
+            auto prim_comp = itemPtr->GetPrimitiveComponent();
+            if (!prim_comp)
+                continue;
+
+            if (dynamic_cast<BillboardComponent*>(prim_comp.get()) != nullptr)
+            {
+                ++billboard_items_total;
+                if (itemPtr->isVisible)
+                    ++billboard_items_visible;
+            }
+        }
+
+        if (billboard_items_total > 0)
+        {
+            std::cout << "[RenderPrimitiveBatch] Billboard items pre-cull: total=" << billboard_items_total
+                      << " visible=" << billboard_items_visible << std::endl;
+        }
+
         stats = Statistics{};
         stats.totalEntities = cache.renderItems.size();
 
@@ -364,6 +390,26 @@ namespace hgl::ecs
 
         if (distanceSortingEnabled)
             SortByDistance();
+
+        if (billboard_items_total > 0)
+        {
+            size_t billboard_visible_after = 0;
+            for (const auto& itemPtr : cache.renderItems)
+            {
+                if (!itemPtr || !itemPtr->isVisible)
+                    continue;
+
+                auto prim_comp = itemPtr->GetPrimitiveComponent();
+                if (!prim_comp)
+                    continue;
+
+                if (dynamic_cast<BillboardComponent*>(prim_comp.get()) != nullptr)
+                    ++billboard_visible_after;
+            }
+
+            std::cout << "[RenderPrimitiveBatch] Billboard items post-cull: visible=" << billboard_visible_after
+                      << " culled=" << (billboard_items_total - billboard_visible_after) << std::endl;
+        }
 
         TransformSystem* transform_system = nullptr;
         if (auto system = world->GetSystem<TransformSystem>())
@@ -391,6 +437,44 @@ namespace hgl::ecs
                 events.onBatchesBuilt(stats.batchCount);
             if (events.onBatchingComplete)
                 events.onBatchingComplete();
+
+            if (billboard_items_total > 0)
+            {
+                size_t billboard_batches = 0;
+                for (const auto& pair : cache.materialBatches)
+                {
+                    const auto& batch_ptr = pair.second;
+                    if (!batch_ptr)
+                        continue;
+
+                    size_t billboard_in_batch = 0;
+                    for (const auto& item : batch_ptr->items)
+                    {
+                        auto prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
+                        if (!prim_item)
+                            continue;
+
+                        auto prim_comp = prim_item->GetPrimitiveComponent();
+                        if (!prim_comp)
+                            continue;
+
+                        if (dynamic_cast<BillboardComponent*>(prim_comp.get()) != nullptr)
+                            ++billboard_in_batch;
+                    }
+
+                    if (billboard_in_batch > 0)
+                    {
+                        ++billboard_batches;
+                        std::cout << "[RenderPrimitiveBatch] Billboard batch: items=" << billboard_in_batch
+                                  << " totalItems=" << batch_ptr->items.size()
+                                  << " material=" << (void*)pair.first.material
+                                  << " pipeline=" << (void*)pair.first.pipeline
+                                  << std::endl;
+                    }
+                }
+
+                std::cout << "[RenderPrimitiveBatch] Billboard batch count: " << billboard_batches << std::endl;
+            }
         }
     }
 

@@ -84,6 +84,14 @@ namespace hgl
             // 组件注册表：按类型hash存储弱引用，便于系统快速查询
             hgl::UnorderedMap<size_t, std::vector<std::weak_ptr<Component>>> component_registry;
 
+            struct ComponentQueryBase
+            {
+                size_t key = 0;
+                std::function<bool(Component*)> matches;
+            };
+
+            std::vector<ComponentQueryBase> component_query_bases;
+
             // TransformComponent 分离列表
             std::vector<std::weak_ptr<TransformComponent>> static_transforms;
             std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
@@ -137,6 +145,7 @@ namespace hgl
             void RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
+            void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
 
         public:
 
@@ -474,6 +483,42 @@ namespace hgl
                     if(auto comp = weak_comp.lock())
                     {
                         out.push_back(std::static_pointer_cast<T>(comp));
+                    }
+                }
+            }
+
+            /// Register a base type for component queries (supports derived components automatically).
+            template<typename T>
+            void RegisterComponentQueryBase()
+            {
+                const size_t key = typeid(T).hash_code();
+
+                for (const auto& entry : component_query_bases)
+                {
+                    if (entry.key == key)
+                        return;
+                }
+
+                ComponentQueryBase entry;
+                entry.key = key;
+                entry.matches = [](Component* comp) { return dynamic_cast<T*>(comp) != nullptr; };
+                component_query_bases.push_back(entry);
+
+                if (!component_registry.GetValuePointer(key))
+                {
+                    component_registry.Add(key, std::vector<std::weak_ptr<Component>>{});
+                }
+
+                // Backfill existing components into the new base list.
+                for (const auto& pair : component_registry)
+                {
+                    for (const auto& weak_comp : pair.second)
+                    {
+                        if (auto comp = weak_comp.lock())
+                        {
+                            if (entry.matches(comp.get()))
+                                RegisterComponentInstanceInternal(key, comp);
+                        }
                     }
                 }
             }
