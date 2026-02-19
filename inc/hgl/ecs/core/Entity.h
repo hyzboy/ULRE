@@ -31,6 +31,7 @@ namespace hgl
             void UnregisterFromContext(size_t type_hash, Component* comp_ptr);
             void NotifyComponentAdded(const std::type_index& component_type);
             void NotifyComponentRemoved(const std::type_index& component_type);
+            void ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type);
 
         public:
 
@@ -54,11 +55,7 @@ namespace hgl
             std::shared_ptr<T> AddComponent(Args&&... args)
             {
                 auto component = std::make_shared<T>(std::forward<Args>(args)...);
-                components[typeid(T).hash_code()] = component;
-                component->SetOwner(id, context);
-                RegisterToContext(typeid(T).hash_code(), component);
-                component->OnAttach();
-                NotifyComponentAdded(std::type_index(typeid(T)));  // Notify systems
+                ReplaceComponent(typeid(T).hash_code(), component, std::type_index(typeid(T)));
                 return component;
             }
 
@@ -94,10 +91,10 @@ namespace hgl
                 if (!component)
                     return;
 
+                NotifyComponentRemoved(std::type_index(typeid(T)));  // Notify systems
                 UnregisterFromContext(type_hash, component->get());
                 (*component)->OnDetach();
                 components.DeleteByKey(type_hash);
-                NotifyComponentRemoved(std::type_index(typeid(T)));  // Notify systems
             }
 
         public:
@@ -113,6 +110,9 @@ namespace hgl
 
             /// Attach a pre-constructed component instance (for deserialization)
             void AddComponentInstance(const std::shared_ptr<Component>& component);
+
+            /// Detach all components from this entity
+            void DetachAllComponents(bool notify_systems = true);
         };
     }//namespace ecs
 }//namespace hgl

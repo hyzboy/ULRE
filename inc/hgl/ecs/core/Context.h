@@ -12,6 +12,7 @@
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
+#include<type_traits>
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/color/Color4f.h>
 
@@ -288,23 +289,20 @@ namespace hgl
             template<typename T = Entity, typename... Args>
             T* CreateEntity(Args&&... args)
             {
-                EntityID id = entity_manager->CreateEntity();
-                Entity* entity = entity_manager->GetEntity(id);
+                static_assert(std::is_base_of_v<Entity, T>, "T must derive from hgl::ecs::Entity");
 
-                if constexpr (std::is_same_v<T, Entity>)
-                {
-                    entity->SetContext(this);
-                    entity->OnCreate();
-                    return (T*)entity;
-                }
-                else
-                {
-                    // For derived types, this won't work correctly
-                    // Derived entity types should be created with EntityManager directly
-                    ((T*)entity)->SetContext(this);
-                    ((T*)entity)->OnCreate();
-                    return (T*)entity;
-                }
+                if (!entity_manager)
+                    return nullptr;
+
+                auto instance = std::make_unique<T>(std::forward<Args>(args)...);
+                EntityID id = entity_manager->CreateEntity(std::move(instance));
+                Entity* entity = entity_manager->GetEntity(id);
+                if (!entity)
+                    return nullptr;
+
+                entity->SetContext(this);
+                entity->OnCreate();
+                return static_cast<T*>(entity);
             }
 
             /// Get entity by ID

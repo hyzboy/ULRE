@@ -12,13 +12,7 @@ namespace hgl
 
         Entity::~Entity()
         {
-            // Detach all components before destruction
-            for (auto& pair : components)
-            {
-                UnregisterFromContext(pair.first, pair.second.get());
-                pair.second->OnDetach();
-            }
-            components.Clear();
+            DetachAllComponents(false);
         }
 
         void Entity::RegisterToContext(size_t type_hash, const std::shared_ptr<Component>& comp)
@@ -49,6 +43,26 @@ namespace hgl
             }
         }
 
+        void Entity::ReplaceComponent(size_t type_hash, const std::shared_ptr<Component>& component, const std::type_index& component_type)
+        {
+            if (!component)
+                return;
+
+            auto *existing = components.GetValuePointer(type_hash);
+            if (existing && *existing)
+            {
+                NotifyComponentRemoved(component_type);
+                UnregisterFromContext(type_hash, existing->get());
+                (*existing)->OnDetach();
+            }
+
+            components[type_hash] = component;
+            component->SetOwner(id, context);
+            RegisterToContext(type_hash, component);
+            component->OnAttach();
+            NotifyComponentAdded(component_type);
+        }
+
         void Entity::OnUpdate(float deltaTime)
         {
             // Update all components
@@ -74,11 +88,23 @@ namespace hgl
                 return;
 
             const size_t type_hash = typeid(*component).hash_code();
-            components[type_hash] = component;
-            component->SetOwner(id, context);
-            RegisterToContext(type_hash, component);
-            component->OnAttach();
-            NotifyComponentAdded(std::type_index(typeid(*component)));
+            ReplaceComponent(type_hash, component, std::type_index(typeid(*component)));
+        }
+
+        void Entity::DetachAllComponents(bool notify_systems)
+        {
+            for (auto& pair : components)
+            {
+                if (!pair.second)
+                    continue;
+
+                if (notify_systems)
+                    NotifyComponentRemoved(std::type_index(typeid(*pair.second)));
+
+                UnregisterFromContext(pair.first, pair.second.get());
+                pair.second->OnDetach();
+            }
+            components.Clear();
         }
     }//namespace ecs
 }//namespace hgl

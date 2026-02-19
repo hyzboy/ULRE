@@ -18,6 +18,14 @@ namespace hgl::ecs
 
     EntityID EntityManager::CreateEntity(const std::string& name)
     {
+        return CreateEntity(std::make_unique<Entity>(name));
+    }
+
+    EntityID EntityManager::CreateEntity(std::unique_ptr<Entity> entity)
+    {
+        if (!entity)
+            entity = std::make_unique<Entity>("Entity");
+
         uint32_t index;
         uint16_t generation = 0;
 
@@ -45,7 +53,7 @@ namespace hgl::ecs
 
         EntityID id(index, generation);
         EntitySlot& slot = slots[index];
-        slot.entity = std::make_unique<Entity>(name);
+        slot.entity = std::move(entity);
         slot.entity->SetID(id);
         slot.alive = true;
         slot.generation = generation;
@@ -66,6 +74,7 @@ namespace hgl::ecs
         EntitySlot& slot = slots[id.index];
         if (slot.entity)
         {
+            slot.entity->DetachAllComponents(true);
             slot.entity->OnDestroy();
         }
         slot.entity.reset();
@@ -156,6 +165,7 @@ namespace hgl::ecs
         {
             if (slot.entity)
             {
+                slot.entity->DetachAllComponents(true);
                 slot.entity->OnDestroy();
             }
             slot.entity.reset();

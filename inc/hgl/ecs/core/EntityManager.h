@@ -33,6 +33,9 @@ namespace hgl::ecs
         /// Create new entity with given name
         EntityID CreateEntity(const std::string& name = "Entity");
 
+        /// Create new entity from a pre-constructed instance
+        EntityID CreateEntity(std::unique_ptr<Entity> entity);
+
         /// Destroy entity by ID
         void DestroyEntity(EntityID id);
 
