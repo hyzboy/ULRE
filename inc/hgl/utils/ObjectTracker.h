@@ -1,6 +1,30 @@
-#pragma once
+﻿#pragma once
 
 // ObjectTracker 完整的 header-only 实现
+
+#include<cstdint>
+#include<source_location>
+
+#if !defined(__cpp_lib_source_location)
+namespace std
+{
+    struct source_location
+    {
+        static constexpr source_location current() noexcept { return source_location(); }
+        constexpr const char* file_name() const noexcept { return ""; }
+        constexpr const char* function_name() const noexcept { return ""; }
+        constexpr uint_least32_t line() const noexcept { return 0; }
+        constexpr uint_least32_t column() const noexcept { return 0; }
+    };
+}
+#endif
+
+// Set to 1 to enable ObjectTracker.
+#ifndef HGL_ENABLE_OBJECT_TRACKER
+#define HGL_ENABLE_OBJECT_TRACKER 0
+#endif
+
+#if HGL_ENABLE_OBJECT_TRACKER
 
 #include<hgl/core/ObjectType.h>
 #include<cstdint>
@@ -79,7 +103,7 @@ namespace hgl::utils
     /**
      * 本地内存分配追踪器 - 环形缓冲模式
      */
-    template<size_t CAPACITY = 1000000>
+    template<size_t CAPACITY = 1000>
     class AllocationTracker
     {
     private:
@@ -260,4 +284,60 @@ namespace hgl::utils
 
 #define HGL_CAPTURE_SCOPE() \
     hgl::utils::ScopeCapture __scope_capture__
+
+#else // HGL_ENABLE_OBJECT_TRACKER
+
+namespace hgl::utils
+{
+    /**
+     * 对象ID生成器 - 原子自增，无锁
+     */
+    class ObjectIdGenerator
+    {
+    private:
+        std::atomic<uint64_t> next_id{1};
+        
+    public:
+        ObjectIdGenerator() = default;
+        ~ObjectIdGenerator() = default;
+        
+        uint64_t allocate() noexcept
+        {
+            return next_id.fetch_add(1, std::memory_order_relaxed);
+        }
+    };
+
+    struct SourceLocation
+    {
+        const char* file = nullptr;
+        uint32_t line = 0;
+        uint32_t column = 0;
+        const char* function = nullptr;
+
+        SourceLocation() = default;
+
+        SourceLocation(const std::source_location& loc)
+            : file(loc.file_name())
+            , line(loc.line())
+            , column(loc.column())
+            , function(loc.function_name())
+        {
+        }
+    };
+
+    class ScopeCapture
+    {
+    public:
+        ScopeCapture(...) noexcept {}
+    };
+
+    inline void initialize_object_tracker() {}
+    inline void shutdown_object_tracker() {}
+    inline uint32_t get_current_allocation_stack(SourceLocation*, uint32_t) noexcept { return 0; }
+}
+
+#define HGL_TRACK_ALLOCATION(name, type) 0
+#define HGL_CAPTURE_SCOPE()
+
+#endif // HGL_ENABLE_OBJECT_TRACKER
 
