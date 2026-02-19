@@ -37,6 +37,15 @@ namespace
         {
             pd=new PipelineData(1);
             pd->CloseCullFace();
+            pd->SetDepthTest(true);
+            pd->SetDepthWrite(false);
+            pd->SetDepthCompareOp(VK_COMPARE_OP_ALWAYS);
+            inline_pipeline_data.Add(InlinePipeline::GizmoOverlay3D,pd);
+        }
+
+        {
+            pd=new PipelineData(1);
+            pd->CloseCullFace();
             pd->SetDepthTest(false);
             pd->SetDepthWrite(false);
             pd->SetDepthCompareOp(VK_COMPARE_OP_ALWAYS);

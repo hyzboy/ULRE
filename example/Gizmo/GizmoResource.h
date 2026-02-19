@@ -34,6 +34,8 @@ constexpr const float GIZMO_CYLINDER_OFFSET     =GIZMO_CYLINDER_HALF_LENGTH+GIZM
 
 constexpr const float GIZMO_TWO_AXIS_OFFSET     =5.0F;                                                                  ///<二轴调节点偏移量(方片或圆)
 
+constexpr const float GIZMO_FIXED_PIXEL_DIAMETER=320.0f;                                                                ///<Gizmo目标像素直径(固定屏幕尺寸)
+
 Primitive *GetGizmoMesh(const GizmoShape &gs,const GizmoColor &);
 
 }//namespace hgl::graph

@@ -92,6 +92,59 @@ namespace
         return math::Vector3f(v.x, v.y, v.z);
     }
 
+    float ComputeWorldUnitsPerPixel(const graph::CameraInfo *camera_info,
+                                    const graph::ViewportInfo *viewport_info,
+                                    const math::Vector3f &world_pos)
+    {
+        if(!camera_info || !viewport_info)
+            return 0.0f;
+
+        const float vp_height = float(viewport_info->GetViewportHeight() > 0 ? viewport_info->GetViewportHeight() : 1u);
+        const float proj_11 = std::fabs(camera_info->projection[1][1]);
+        if(proj_11 <= 1e-6f)
+            return 0.0f;
+
+        const bool is_ortho = std::fabs(camera_info->projection[3][3] - 1.0f) < 1e-6f;
+
+        if(is_ortho)
+        {
+            const float world_height = 2.0f / proj_11;
+            return world_height / vp_height;
+        }
+
+        const float tan_half_fovy = 1.0f / proj_11;
+        math::Vector3f to_obj = world_pos - camera_info->pos;
+
+        float depth = std::fabs(glm::dot(to_obj, camera_info->view_line));
+        if(depth <= 1e-4f)
+            depth = glm::length(to_obj);
+        if(depth <= 1e-4f)
+            depth = 1.0f;
+
+        const float world_height = 2.0f * depth * tan_half_fovy;
+        return world_height / vp_height;
+    }
+
+    void UpdateFixedPixelScale(GizmoMoveECS *gizmo,
+                               const graph::CameraInfo *camera_info,
+                               const graph::ViewportInfo *viewport_info)
+    {
+        if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
+            return;
+
+        const math::Vector3f world_pos = gizmo->root_transform->GetWorldPosition();
+        const float world_per_pixel = ComputeWorldUnitsPerPixel(camera_info, viewport_info, world_pos);
+        if(world_per_pixel <= 0.0f)
+            return;
+
+        const float target_world_diameter = GIZMO_FIXED_PIXEL_DIAMETER * world_per_pixel;
+        float scale = target_world_diameter / (GIZMO_ARROW_LENGTH * 2.0f);
+        if(scale < 0.01f)
+            scale = 0.01f;
+
+        gizmo->root_transform->SetLocalScale(glm::vec3(scale));
+    }
+
     void ApplyAxisMaterials(GizmoMoveECS *gizmo)
     {
         if(!gizmo)
@@ -337,6 +390,8 @@ void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
 {
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;
+
+    UpdateFixedPixelScale(gizmo, camera_info, viewport_info);
 
     gizmo->mouse_ray.SetFromViewportPoint(mouse_coord, camera_info, viewport_info->GetViewport());
 

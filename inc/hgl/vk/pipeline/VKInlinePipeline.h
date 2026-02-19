@@ -9,6 +9,8 @@ enum class InlinePipeline
     Solid3D=0,
     Alpha3D,
 
+    GizmoOverlay3D,
+
     Solid2D,
     Alpha2D,
 

@@ -90,6 +90,59 @@ namespace
         return glm::normalize(math::Vector3f(v.x, v.y, v.z));
     }
 
+    float ComputeWorldUnitsPerPixel(const graph::CameraInfo *camera_info,
+                                    const graph::ViewportInfo *viewport_info,
+                                    const math::Vector3f &world_pos)
+    {
+        if(!camera_info || !viewport_info)
+            return 0.0f;
+
+        const float vp_height = float(viewport_info->GetViewportHeight() > 0 ? viewport_info->GetViewportHeight() : 1u);
+        const float proj_11 = std::fabs(camera_info->projection[1][1]);
+        if(proj_11 <= 1e-6f)
+            return 0.0f;
+
+        const bool is_ortho = std::fabs(camera_info->projection[3][3] - 1.0f) < 1e-6f;
+
+        if(is_ortho)
+        {
+            const float world_height = 2.0f / proj_11;
+            return world_height / vp_height;
+        }
+
+        const float tan_half_fovy = 1.0f / proj_11;
+        math::Vector3f to_obj = world_pos - camera_info->pos;
+
+        float depth = std::fabs(glm::dot(to_obj, camera_info->view_line));
+        if(depth <= 1e-4f)
+            depth = glm::length(to_obj);
+        if(depth <= 1e-4f)
+            depth = 1.0f;
+
+        const float world_height = 2.0f * depth * tan_half_fovy;
+        return world_height / vp_height;
+    }
+
+    void UpdateFixedPixelScale(GizmoRotateECS *gizmo,
+                               const graph::CameraInfo *camera_info,
+                               const graph::ViewportInfo *viewport_info)
+    {
+        if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
+            return;
+
+        const math::Vector3f world_pos = gizmo->root_transform->GetWorldPosition();
+        const float world_per_pixel = ComputeWorldUnitsPerPixel(camera_info, viewport_info, world_pos);
+        if(world_per_pixel <= 0.0f)
+            return;
+
+        const float target_world_diameter = GIZMO_FIXED_PIXEL_DIAMETER * world_per_pixel;
+        float scale = target_world_diameter / (GIZMO_ARROW_LENGTH * 2.0f);
+        if(scale < 0.01f)
+            scale = 0.01f;
+
+        gizmo->root_transform->SetLocalScale(glm::vec3(scale));
+    }
+
     // 计算面向相机的旋转四元数
     glm::quat CalculateFacingRotation(const math::Vector3f &gizmo_pos,
                                        const math::Matrix4f &view_matrix)
@@ -332,6 +385,8 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;
 
+    UpdateFixedPixelScale(gizmo, camera_info, viewport_info);
+
     // 更新白色圆环朝向相机
     if(gizmo->white_torus_transform)
     {
@@ -380,6 +435,8 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
 
     const math::Matrix4f l2w = gizmo->root_transform->GetWorldMatrix();
     const math::Vector3f center = TransformPosition(l2w, math::Vector3f(0.0f, 0.0f, 0.0f));
+    const glm::vec3 gizmo_scale = gizmo->root_transform->GetLocalScale();
+    const float scale_factor = std::max(0.01f, std::fabs(gizmo_scale.x));
 
     gizmo->cur_axis = -1;
 
@@ -395,9 +452,10 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
             {
                 const math::Vector3f hit_point = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
                 const float dist_to_center = glm::distance(hit_point, center);
-                const float white_radius = 13.0f;
+                const float white_radius = 13.0f * scale_factor;
+                const float white_hover_threshold = WHITE_TORUS_HOVER_THRESHOLD * scale_factor;
 
-                if(std::fabs(dist_to_center - white_radius) < WHITE_TORUS_HOVER_THRESHOLD)
+                if(std::fabs(dist_to_center - white_radius) < white_hover_threshold)
                 {
                     gizmo->cur_axis = 3;
                     gizmo->pick_center = center;
@@ -425,10 +483,11 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
             {
                 const math::Vector3f hit_point = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
                 const float dist_to_center = glm::distance(hit_point, center);
-                const float torus_radius = GIZMO_ARROW_LENGTH;
+                const float torus_radius = GIZMO_ARROW_LENGTH * scale_factor;
+                const float torus_hover_threshold = TORUS_HOVER_THRESHOLD * scale_factor;
 
                 // 检查是否在圆环附近
-                if(std::fabs(dist_to_center - torus_radius) < TORUS_HOVER_THRESHOLD)
+                if(std::fabs(dist_to_center - torus_radius) < torus_hover_threshold)
                 {
                     gizmo->cur_axis = i;
                     gizmo->pick_center = center;

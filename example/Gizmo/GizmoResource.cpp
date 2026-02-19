@@ -191,7 +191,7 @@ namespace
         }
 
         {
-            gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::Solid3D);
+            gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::GizmoOverlay3D);
             if(!gizmo_triangle.pipeline)
                 return(false);
         }
