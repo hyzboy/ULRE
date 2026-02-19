@@ -59,8 +59,8 @@ namespace hgl::ecs
         // Register required systems for sub-world rendering
         auto camera_system = sub_world->RegisterTickSystem<CameraSystem>(sub_world.get());
         auto bbox_system = sub_world->RegisterTickSystem<BoundingBoxUpdateSystem>();
-        auto render_collect_system = sub_world->RegisterTickSystem<RenderPrimitiveCollectSystem>();
-        auto render_batch_system = sub_world->RegisterTickSystem<RenderPrimitiveBatchSystem>();
+        auto render_collect_system = sub_world->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
+        auto render_batch_system = sub_world->RegisterRenderSystem<RenderPrimitiveBatchSystem>();
         auto render_commit_system = sub_world->RegisterRenderSystem<RenderBufferCommitSystem>();
         auto render_submit_system = sub_world->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
 

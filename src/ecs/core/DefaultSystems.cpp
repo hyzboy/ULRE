@@ -27,12 +27,12 @@ namespace hgl::ecs
         auto *rc = ctx->GetRenderContext();
         auto *device = ctx->GetGPUDevice();
 
-        auto text_render_system = ctx->RegisterTickSystem<ecs::TextRenderSystem>();
+        auto text_render_system = ctx->RegisterRenderSystem<ecs::TextRenderSystem>();
         auto environment_system = ctx->RegisterRenderSystem<ecs::EnvironmentSystem>();
         auto camera_system = ctx->RegisterTickSystem<ecs::CameraSystem>();
         auto render_target_system = ctx->RegisterRenderSystem<ecs::RenderTargetSystem>();
-        auto render_collect_system = ctx->RegisterTickSystem<ecs::RenderPrimitiveCollectSystem>();
-        auto render_batch_system = ctx->RegisterTickSystem<ecs::RenderPrimitiveBatchSystem>();
+        auto render_collect_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveCollectSystem>();
+        auto render_batch_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchSystem>();
         auto render_commit_system = ctx->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
         auto render_submit_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
         auto swapchain_next_image_system = ctx->RegisterRenderSystem<ecs::SwapchainNextImageSystem>();

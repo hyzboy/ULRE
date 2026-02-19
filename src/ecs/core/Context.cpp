@@ -638,21 +638,52 @@ namespace hgl
 
         void ECSContext::AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system, int priority)
         {
-            auto& sys_map = is_render ? render_systems : tick_systems;
-            auto& order_list = is_render ? render_system_order : tick_system_order;
-            auto& dirty_flag = is_render ? render_order_dirty : tick_order_dirty;
+            if (!system)
+                return;
+
+            // Set the context for the system so it can access entities and create queries
+            system->SetContext(this);
+
+            const int effective_phase = static_cast<int>(system->GetExecutionPhase());
+            const bool phase_is_render = effective_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage);
+            const bool effective_is_render = phase_is_render;
+
+            if (effective_is_render != is_render)
+            {
+                GLogWarning("[ECS] System '%s' registration corrected by phase (%s -> %s)",
+                            system->GetName().c_str(),
+                            is_render ? "render" : "tick",
+                            effective_is_render ? "render" : "tick");
+            }
+
+            auto& sys_map = effective_is_render ? render_systems : tick_systems;
+            auto& order_list = effective_is_render ? render_system_order : tick_system_order;
+            auto& dirty_flag = effective_is_render ? render_order_dirty : tick_order_dirty;
+
+            auto& other_sys_map = effective_is_render ? tick_systems : render_systems;
+            auto& other_order_list = effective_is_render ? tick_system_order : render_system_order;
+            auto& other_dirty_flag = effective_is_render ? tick_order_dirty : render_order_dirty;
+            auto& deps = effective_is_render ? render_dependencies : tick_dependencies;
+            auto& other_deps = effective_is_render ? tick_dependencies : render_dependencies;
+
+            // Keep system only in one category map/order/dependency graph
+            other_sys_map.DeleteByKey(key);
+            other_order_list.erase(std::remove_if(other_order_list.begin(), other_order_list.end(),
+                                  [key](const OrderedSystem& entry) { return entry.key == key; }),
+                                  other_order_list.end());
+            other_deps.DeleteByKey(key);
+            for (auto& pair : other_deps)
+            {
+                auto& list = pair.second;
+                list.erase(std::remove(list.begin(), list.end(), key), list.end());
+            }
+            other_dirty_flag = true;
 
             sys_map[key] = system;
 
-            // Set the context for the system so it can access entities and create queries
-            if (system)
-            {
-                system->SetContext(this);
-            }
-
-            // Extract phase and priority from system
-            int effective_phase = static_cast<int>(system->GetExecutionPhase());
-            int effective_priority = static_cast<int>(system->GetExecutionPriority());
+            const int effective_priority = (priority == kUnspecifiedSystemPriority)
+                                         ? static_cast<int>(system->GetExecutionPriority())
+                                         : priority;
 
             if (auto *entry = FindOrderedSystem(order_list, key))
             {
@@ -673,15 +704,14 @@ namespace hgl
                 dirty_flag = true;
             }
 
+            deps.DeleteByKey(key);
+
             // Automatically register dependencies declared by the system
-            if (system)
+            const auto& deps_decl = system->GetDependencies();
+            for (const auto& dep_type : deps_decl)
             {
-                const auto& deps = system->GetDependencies();
-                for (const auto& dep_type : deps)
-                {
-                    size_t dep_key = dep_type.hash_code();
-                    AddSystemDependency(is_render, key, dep_key);
-                }
+                size_t dep_key = dep_type.hash_code();
+                AddSystemDependency(effective_is_render, key, dep_key);
             }
         }
 

@@ -13,6 +13,7 @@
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
+#include<limits>
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/color/Color4f.h>
 
@@ -55,6 +56,7 @@ namespace hgl
         class ECSContext : public Object
         {
         private:
+            static constexpr int kUnspecifiedSystemPriority = (std::numeric_limits<int>::min)();
 
             std::unique_ptr<EntityManager> entity_manager;
 
@@ -360,7 +362,7 @@ namespace hgl
             {
                 auto system = std::make_shared<T>(std::forward<Args>(args)...);
                 const size_t key = typeid(T).hash_code();
-                AddOrUpdateSystem(is_render, key, system, 0);
+                AddOrUpdateSystem(is_render, key, system, kUnspecifiedSystemPriority);
                 return system;
             }
 
