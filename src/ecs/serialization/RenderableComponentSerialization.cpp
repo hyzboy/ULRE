@@ -1,6 +1,6 @@
 ﻿#include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/core/ECSComponentRecords.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 
 namespace hgl::ecs
 {

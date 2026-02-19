@@ -4,7 +4,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
+#include<hgl/ecs/support/PipelineMaterialRenderer.h>
 
 namespace hgl::ecs
 {
@@ -20,7 +20,7 @@ namespace hgl::ecs
         if (key.material && key.pipeline)
         {
             // Create ECS renderer
-            renderer = new ECSPipelineMaterialRenderer(key.material, key.pipeline);
+            renderer = new PipelineMaterialRenderer(key.material, key.pipeline);
         }
     }
 

@@ -1,6 +1,6 @@
 ﻿#include<hgl/ecs/components/BoundingBoxComponent.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/core/ECSComponentRecords.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 #include<array>
 
 namespace hgl

@@ -1,12 +1,12 @@
 ﻿/**
- * ECSPipelineMaterialRenderer.cpp - ECS Pipeline材质渲染器实现
+ * PipelineMaterialRenderer.cpp - ECS Pipeline材质渲染器实现
  *
  * 参照 PipelineMaterialRenderer 实现，但使用 ECS 版本的 Assignment Buffers
  */
 
-#include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
-#include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
-#include<hgl/ecs/support/ECSMaterialInstanceAssignmentBuffer.h>
+#include<hgl/ecs/support/PipelineMaterialRenderer.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
+#include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
@@ -17,7 +17,7 @@
 
 namespace hgl::ecs
 {
-    ECSPipelineMaterialRenderer::ECSPipelineMaterialRenderer(graph::Material* m, graph::Pipeline* p)
+    PipelineMaterialRenderer::PipelineMaterialRenderer(graph::Material* m, graph::Pipeline* p)
         : material(m)
         , pipeline(p)
         , cmd_buf(nullptr)
@@ -30,14 +30,14 @@ namespace hgl::ecs
     {
     }
 
-    ECSPipelineMaterialRenderer::~ECSPipelineMaterialRenderer()
+    PipelineMaterialRenderer::~PipelineMaterialRenderer()
     {
         SAFE_CLEAR(vab_list);
     }
 
-    bool ECSPipelineMaterialRenderer::BindVAB(const DrawBatch* batch,
+    bool PipelineMaterialRenderer::BindVAB(const DrawBatch* batch,
                                                VkBuffer transform_vab,
-                                               ECSMaterialInstanceAssignmentBuffer* mi_buffer)
+                                               MaterialInstanceAssignmentBuffer* mi_buffer)
     {
         // Log GeometryDataBuffer details
         //if (batch->geom_data_buffer)
@@ -45,7 +45,7 @@ namespace hgl::ecs
         //    // Log each VAB
         //    for (uint32_t i = 0; i < batch->geom_data_buffer->vab_count; i++)
         //    {
-        //        std::cout << "[ECSPipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer="
+        //        std::cout << "[PipelineMaterialRenderer::BindVAB]   VAB[" << i << "]: buffer="
         //                  << batch->geom_data_buffer->vab_list[i]
         //                  << ", offset=" << batch->geom_data_buffer->vab_offset[i] << std::endl;
         //    }
@@ -56,7 +56,7 @@ namespace hgl::ecs
         // 添加几何数据的VAB
         if (!vab_list->Add(batch->geom_data_buffer))
         {
-            std::cout << "[ECSPipelineMaterialRenderer::BindVAB] ERROR: Failed to add geometry data buffer to VABList!" << std::endl;
+            std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add geometry data buffer to VABList!" << std::endl;
             return false;
         }
 
@@ -65,7 +65,7 @@ namespace hgl::ecs
         {
             if (!vab_list->Add(transform_vab, 0))
             {
-                std::cout << "[ECSPipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS transform VAB!" << std::endl;
+                std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS transform VAB!" << std::endl;
                 return false;
             }
         }
@@ -77,13 +77,13 @@ namespace hgl::ecs
 
             if (mi_vab == VK_NULL_HANDLE)
             {
-                std::cout << "[ECSPipelineMaterialRenderer::BindVAB] WARNING: MI VAB is null!" << std::endl;
+                std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: MI VAB is null!" << std::endl;
             }
             else
             {
                 if (!vab_list->Add(mi_vab, 0))
                 {
-                    std::cout << "[ECSPipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS MI VAB!" << std::endl;
+                    std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS MI VAB!" << std::endl;
                     return false;
                 }
             }
@@ -91,7 +91,7 @@ namespace hgl::ecs
 
         if (!vab_list->IsFull())
         {
-            std::cout << "[ECSPipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
+            std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: VABList not full ("
                       << vab_list->GetWriteCount() << "/"
                       << material->GetVertexInput()->GetCount()
                       << "), padding with VK_NULL_HANDLE" << std::endl;
@@ -107,7 +107,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void ECSPipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
+    void PipelineMaterialRenderer::ProcIndirectRender(graph::IndirectDrawBuffer* icb_draw,
                                                          graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
         // 提交累积的间接绘制命令
@@ -125,17 +125,17 @@ namespace hgl::ecs
         indirect_draw_count = 0;
     }
 
-    bool ECSPipelineMaterialRenderer::Draw( DrawBatch* batch,
-                                            ECSTransformAssignmentBuffer* transform_buffer,
-                                            ECSMaterialInstanceAssignmentBuffer* mi_buffer,
+    bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
+                                            TransformAssignmentBuffer* transform_buffer,
+                                            MaterialInstanceAssignmentBuffer* mi_buffer,
                                             VkBuffer transform_vab,
                                             graph::IndirectDrawBuffer* icb_draw,
                                             graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
         // if (batch->geom_data_buffer)
         // {
-        //     std::cout << "[ECSPipelineMaterialRenderer::Draw]   DataBuffer.vdm: " << (void*)batch->geom_data_buffer->vdm << std::endl;
-        //     std::cout << "[ECSPipelineMaterialRenderer::Draw]   DataBuffer.ibo: " << batch->geom_data_buffer->ibo << std::endl;
+        //     std::cout << "[PipelineMaterialRenderer::Draw]   DataBuffer.vdm: " << (void*)batch->geom_data_buffer->vdm << std::endl;
+        //     std::cout << "[PipelineMaterialRenderer::Draw]   DataBuffer.ibo: " << batch->geom_data_buffer->ibo << std::endl;
         // }
 
         // 检查是否需要切换几何数据缓冲
@@ -157,7 +157,7 @@ namespace hgl::ecs
             // 绑定新的顶点数组缓冲
             if (!BindVAB(batch, transform_vab, mi_buffer))
             {
-                std::cout << "[ECSPipelineMaterialRenderer::Draw] ERROR: BindVAB failed!" << std::endl;
+                std::cout << "[PipelineMaterialRenderer::Draw] ERROR: BindVAB failed!" << std::endl;
                 return false;
             }
 
@@ -168,12 +168,12 @@ namespace hgl::ecs
             }
             // else
             // {
-            //     std::cout << "[ECSPipelineMaterialRenderer::Draw] No IBO to bind" << std::endl;
+            //     std::cout << "[PipelineMaterialRenderer::Draw] No IBO to bind" << std::endl;
             // }
         }
         // else
         // {
-        //     std::cout << "[ECSPipelineMaterialRenderer::Draw] Using cached buffer (no switch)" << std::endl;
+        //     std::cout << "[PipelineMaterialRenderer::Draw] Using cached buffer (no switch)" << std::endl;
         // }
 
         // 提交绘制命令
@@ -197,11 +197,11 @@ namespace hgl::ecs
         return true;
     }
 
-    void ECSPipelineMaterialRenderer::Render(graph::RenderCmdBuffer* rcb,
+    void PipelineMaterialRenderer::Render(graph::RenderCmdBuffer* rcb,
                                               const DrawBatchArray& batches,
                                               uint32_t batch_count,
-                                              ECSTransformAssignmentBuffer* transform_buffer,
-                                              ECSMaterialInstanceAssignmentBuffer* mi_buffer,
+                                              TransformAssignmentBuffer* transform_buffer,
+                                              MaterialInstanceAssignmentBuffer* mi_buffer,
                                               VkBuffer transform_vab,
                                               graph::IndirectDrawBuffer* icb_draw,
                                               graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
@@ -209,13 +209,13 @@ namespace hgl::ecs
         // 前置条件检查
         if (!rcb)
         {
-            std::cout << "[ECSPipelineMaterialRenderer::Render] ERROR: No render command buffer!" << std::endl;
+            std::cout << "[PipelineMaterialRenderer::Render] ERROR: No render command buffer!" << std::endl;
             return;
         }
 
         if (batch_count <= 0)
         {
-            std::cout << "[ECSPipelineMaterialRenderer::Render] WARNING: No batches to render!" << std::endl;
+            std::cout << "[PipelineMaterialRenderer::Render] WARNING: No batches to render!" << std::endl;
             return;
         }
 

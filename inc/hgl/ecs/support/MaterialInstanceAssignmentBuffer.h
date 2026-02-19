@@ -1,5 +1,5 @@
 ﻿/**
- * ECSMaterialInstanceAssignmentBuffer.h - ECS材质实例数据管理
+ * MaterialInstanceAssignmentBuffer.h - ECS材质实例数据管理
  *
  * 针对 ECS 架构的 RenderItem 和 MaterialBatch 设计
  * 与 SceneGraph 的 MaterialInstanceAssignmentBuffer 功能相同，但适配 ECS 数据结构
@@ -81,7 +81,7 @@ namespace hgl::ecs
      * - 生成材质实例索引分发数据（VAB）
      * - 为每个实例分配MI索引
      */
-    class ECSMaterialInstanceAssignmentBuffer
+    class MaterialInstanceAssignmentBuffer
     {
     private:
         graph::BufferManager* buffer_manager;   ///<缓冲区管理器
@@ -104,8 +104,8 @@ namespace hgl::ecs
         void Clear();
 
     public:
-        ECSMaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl);
-        ~ECSMaterialInstanceAssignmentBuffer() { Clear(); }
+        MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl);
+        ~MaterialInstanceAssignmentBuffer() { Clear(); }
 
         /**
          * 获取MaterialInstance VAB缓冲（用于绑定到管线）

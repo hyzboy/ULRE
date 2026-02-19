@@ -1,9 +1,9 @@
 ﻿/**
- * ECSTransformAssignmentBuffer.cpp - ECS Transform 分配缓冲实现
+ * TransformAssignmentBuffer.cpp - ECS Transform 分配缓冲实现
  */
 
 #include<hgl/graph/render/RenderOptions.h>
-#include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderAssign.h>
@@ -17,9 +17,9 @@
 
 namespace hgl::ecs
 {
-    std::vector<ECSTransformAssignmentBuffer*> ECSTransformAssignmentBuffer::all_instances;
+    std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
 
-    ECSTransformAssignmentBuffer::ECSTransformAssignmentBuffer(graph::BufferManager* bm, const Mode m)
+    TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m)
         : buffer_manager(bm)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
@@ -49,17 +49,17 @@ namespace hgl::ecs
         all_instances.push_back(this);
     }
 
-    void ECSTransformAssignmentBuffer::BindTransform(graph::Material* mtl) const
+    void TransformAssignmentBuffer::BindTransform(graph::Material* mtl) const
     {
         if (!mtl)
         {
-            std::cout << "[ECSTransformAssignmentBuffer::BindTransform] WARNING: Material is null" << std::endl;
+            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: Material is null" << std::endl;
             return;
         }
 
         if (!transform_buffer)
         {
-            std::cout << "[ECSTransformAssignmentBuffer::BindTransform] WARNING: Transform buffer not created" << std::endl;
+            std::cout << "[TransformAssignmentBuffer::BindTransform] WARNING: Transform buffer not created" << std::endl;
             return;
         }
 
@@ -72,23 +72,23 @@ namespace hgl::ecs
     #endif
     }
 
-    void ECSTransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
+    void TransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
     {
         const uint32_t total_count = ring_writer.GetTotalCount(static_count, dynamic_count);
         StatTransform(total_count, policy);
     }
 
-    uint32_t ECSTransformAssignmentBuffer::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
+    uint32_t TransformAssignmentBuffer::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
     {
         return ring_writer.GetBaseIndex(static_count, dynamic_count);
     }
 
-    uint32_t ECSTransformAssignmentBuffer::GetTotalCount(const uint32_t static_count,const uint32_t dynamic_count) const
+    uint32_t TransformAssignmentBuffer::GetTotalCount(const uint32_t static_count,const uint32_t dynamic_count) const
     {
         return ring_writer.GetTotalCount(static_count, dynamic_count);
     }
 
-    void ECSTransformAssignmentBuffer::WriteStaticFromStorage(const TransformDataStorage& storage,const uint32_t static_count)
+    void TransformAssignmentBuffer::WriteStaticFromStorage(const TransformDataStorage& storage,const uint32_t static_count)
     {
         if (!transform_buffer || static_count == 0)
             return;
@@ -111,7 +111,7 @@ namespace hgl::ecs
         transform_buffer->Unmap();
     }
 
-    void ECSTransformAssignmentBuffer::WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count)
+    void TransformAssignmentBuffer::WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count)
     {
         if (!transform_buffer || dynamic_count == 0)
             return;
@@ -133,7 +133,7 @@ namespace hgl::ecs
         ring_writer.Unmap();
     }
 
-    void ECSTransformAssignmentBuffer::WriteStaticFromHandles(const TransformDataStorage& storage,
+    void TransformAssignmentBuffer::WriteStaticFromHandles(const TransformDataStorage& storage,
                                                               const std::vector<TransformDataStorage::HandleID>& handles)
     {
         const uint32_t write_count = static_cast<uint32_t>(handles.size());
@@ -155,7 +155,7 @@ namespace hgl::ecs
         transform_buffer->Unmap();
     }
 
-    void ECSTransformAssignmentBuffer::WriteDynamicFromHandles(const TransformDataStorage& storage,
+    void TransformAssignmentBuffer::WriteDynamicFromHandles(const TransformDataStorage& storage,
                                                                const uint32_t static_count,
                                                                const std::vector<TransformDataStorage::HandleID>& handles)
     {
@@ -177,7 +177,7 @@ namespace hgl::ecs
         ring_writer.Unmap();
     }
 
-    void ECSTransformAssignmentBuffer::Clear()
+    void TransformAssignmentBuffer::Clear()
     {
         if (buffer_manager)
         {
@@ -200,7 +200,7 @@ namespace hgl::ecs
         pending_updates.clear();
     }
 
-    void ECSTransformAssignmentBuffer::StatTransform(const size_t required_count,graph::BufferAllocPolicy policy)
+    void TransformAssignmentBuffer::StatTransform(const size_t required_count,graph::BufferAllocPolicy policy)
     {
         // 检查是否需要重新分配缓冲
         if (!transform_buffer)
@@ -291,13 +291,13 @@ namespace hgl::ecs
         return true;
     }
 
-    void ECSTransformAssignmentBuffer::UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last)
+    void TransformAssignmentBuffer::UpdateTransformData(const std::vector<RenderItem*>& items, const int first, const int last)
     {
         (void)items;
         QueueUpdateRange(first,last);
     }
 
-    void ECSTransformAssignmentBuffer::QueueUpdateRange(const int first,const int last)
+    void TransformAssignmentBuffer::QueueUpdateRange(const int first,const int last)
     {
         if (first > last)
             return;
@@ -319,7 +319,7 @@ namespace hgl::ecs
         pending_updates.push_back(range);
     }
 
-    void ECSTransformAssignmentBuffer::WriteRange(const std::vector<RenderItem*>& items,const int first,const int last)
+    void TransformAssignmentBuffer::WriteRange(const std::vector<RenderItem*>& items,const int first,const int last)
     {
         if (!transform_buffer || items.empty() || first > last)
             return;
@@ -350,13 +350,13 @@ namespace hgl::ecs
         transform_buffer->Unmap();
     }
 
-    void ECSTransformAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
+    void TransformAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
     {
         const size_t item_count = items.size();
 
         if (item_count == 0)
         {
-            std::cout << "[ECSTransformAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
+            std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
             return;
         }
 
@@ -407,7 +407,7 @@ namespace hgl::ecs
         if (sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t)
          && total_count > max_transform_id + 1)
         {
-            std::cout << "[ECSTransformAssignmentBuffer::WriteItems] WARNING: Transform count exceeds R16 limit ("
+            std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: Transform count exceeds R16 limit ("
                       << total_count << ")" << std::endl;
         }
 
@@ -522,7 +522,7 @@ namespace hgl::ecs
                 {
                     if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
                     {
-                        std::cout << "[ECSTransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
+                        std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
                                   << idx << ")" << std::endl;
                         warned_overflow = true;
                     }
@@ -537,7 +537,7 @@ namespace hgl::ecs
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个，避免刷屏
                 // {
-                //     std::cout << "[ECSTransformAssignmentBuffer::WriteItems]   Item[" << i
+                //     std::cout << "[TransformAssignmentBuffer::WriteItems]   Item[" << i
                 //               << "] -> transform_index=" << item->transform_index << std::endl;
                 // }
             }
@@ -546,7 +546,7 @@ namespace hgl::ecs
         }
     }
 
-    void ECSTransformAssignmentBuffer::FlushPendingUpdates()
+    void TransformAssignmentBuffer::FlushPendingUpdates()
     {
         if (pending_updates.empty() || !last_items)
             return;
@@ -559,7 +559,7 @@ namespace hgl::ecs
         pending_updates.clear();
     }
 
-    void ECSTransformAssignmentBuffer::FlushAllPendingUpdates()
+    void TransformAssignmentBuffer::FlushAllPendingUpdates()
     {
         for (auto *inst : all_instances)
         {
@@ -568,7 +568,7 @@ namespace hgl::ecs
         }
     }
 
-    void ECSTransformAssignmentBuffer::AdvanceFrame()
+    void TransformAssignmentBuffer::AdvanceFrame()
     {
         for (auto *inst : all_instances)
         {
@@ -577,7 +577,7 @@ namespace hgl::ecs
         }
     }
 
-    void ECSTransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
+    void TransformAssignmentBuffer::SetFrameIndex(const uint32_t index)
     {
         for (auto *inst : all_instances)
         {

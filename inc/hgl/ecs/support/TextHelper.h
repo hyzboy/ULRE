@@ -8,11 +8,11 @@ namespace hgl::ecs
     class ECSContext;
 
     /**
-     * ECSTextHelper - 简化的ECS文本提交API
+     * TextHelper - 简化的ECS文本提交API
      *
      * 用户只需提交文本内容和排版参数，无需管理TextRender/TextGeometry/Primitive
      */
-    class ECSTextHelper
+    class TextHelper
     {
     public:
 

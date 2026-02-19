@@ -5,7 +5,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
-#include<hgl/ecs/core/ECSComponentRecords.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 
 #include<cereal/archives/json.hpp>
 #include<cereal/archives/binary.hpp>

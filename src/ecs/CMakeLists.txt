@@ -10,7 +10,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
                 ${ECS_INCLUDE_PATH}/core/Context.h
                 ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
-                ${ECS_INCLUDE_PATH}/core/ECSComponentRecords.h
+                ${ECS_INCLUDE_PATH}/core/ComponentRecords.h
                 ${ECS_INCLUDE_PATH}/core/MaterialBatch.h
                 ${ECS_INCLUDE_PATH}/core/MaterialPipelineKey.h
                 ${ECS_INCLUDE_PATH}/core/RenderItem.h
@@ -57,10 +57,10 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
                 ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
                 ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
-                ${ECS_INCLUDE_PATH}/support/ECSPipelineMaterialRenderer.h
-                ${ECS_INCLUDE_PATH}/support/ECSTransformAssignmentBuffer.h
-                ${ECS_INCLUDE_PATH}/support/ECSMaterialInstanceAssignmentBuffer.h
-                ${ECS_INCLUDE_PATH}/support/ECSTextHelper.h
+                ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
+                ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
+                ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
+                ${ECS_INCLUDE_PATH}/support/TextHelper.h
 
                 core/Object.cpp
                 core/Component.cpp
@@ -111,11 +111,11 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 systems/transform/FacingTransformSystem.cpp
 
                 support/VisibilityDataStorage.cpp
-                support/ECSTransformAssignmentBuffer.cpp
-                support/ECSMaterialInstanceAssignmentBuffer.cpp
-                support/ECSPipelineMaterialRenderer.cpp
+                support/TransformAssignmentBuffer.cpp
+                support/MaterialInstanceAssignmentBuffer.cpp
+                support/PipelineMaterialRenderer.cpp
 
-                serialization/ECSContextSerialization.cpp
+                serialization/ContextSerialization.cpp
                 serialization/RenderableComponentSerialization.cpp)
 
 source_group("ECS\\Core" FILES
@@ -226,18 +226,18 @@ source_group("ECS\\Support" FILES
     ${ECS_INCLUDE_PATH}/support/TransformDataStorage.h
     ${ECS_INCLUDE_PATH}/support/VisibilityDataStorage.h
     ${ECS_INCLUDE_PATH}/support/BoundingBoxDataStorage.h
-    ${ECS_INCLUDE_PATH}/support/ECSPipelineMaterialRenderer.h
-    ${ECS_INCLUDE_PATH}/support/ECSTransformAssignmentBuffer.h
-    ${ECS_INCLUDE_PATH}/support/ECSMaterialInstanceAssignmentBuffer.h
-    ${ECS_INCLUDE_PATH}/support/ECSTextHelper.h
+    ${ECS_INCLUDE_PATH}/support/PipelineMaterialRenderer.h
+    ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
+    ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
+    ${ECS_INCLUDE_PATH}/support/TextHelper.h
     support/VisibilityDataStorage.cpp
-    support/ECSTransformAssignmentBuffer.cpp
-    support/ECSMaterialInstanceAssignmentBuffer.cpp
-    support/ECSPipelineMaterialRenderer.cpp
+    support/TransformAssignmentBuffer.cpp
+    support/MaterialInstanceAssignmentBuffer.cpp
+    support/PipelineMaterialRenderer.cpp
 )
 
 source_group("ECS\\Serialization" FILES
-    serialization/ECSContextSerialization.cpp
+    serialization/ContextSerialization.cpp
     serialization/RenderableComponentSerialization.cpp
 )
 

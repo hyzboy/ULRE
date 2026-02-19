@@ -22,7 +22,7 @@
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
-#include<hgl/ecs/support/ECSMaterialInstanceAssignmentBuffer.h>
+#include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<algorithm>
 #include<iostream>
 #include<limits>
@@ -259,7 +259,7 @@ namespace hgl::ecs
             return;
 
         if (!batch.mi_buffer && !batch.items.empty())
-            batch.mi_buffer = new ECSMaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
+            batch.mi_buffer = new MaterialInstanceAssignmentBuffer(batch.buffer_manager, batch.key.material);
 
         if (batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer->WriteItems(batch.items);
@@ -586,7 +586,7 @@ namespace hgl::ecs
     {
         auto& cache = world->GetRenderFrameCache();
 
-        ECSTransformAssignmentBuffer* shared_transform_buffer = nullptr;
+        TransformAssignmentBuffer* shared_transform_buffer = nullptr;
         if (auto transform_system = world->GetSystem<TransformSystem>())
         {
             shared_transform_buffer = transform_system->GetTransformBuffer();

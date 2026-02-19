@@ -1,5 +1,5 @@
 ﻿#include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 
@@ -160,7 +160,7 @@ namespace hgl::ecs
         if (!buffer_manager)
             return;
 
-        transform_buffer = new ECSTransformAssignmentBuffer(buffer_manager, ECSTransformAssignmentBuffer::Mode::MovableOnly);
+        transform_buffer = new TransformAssignmentBuffer(buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly);
         static_dirty = true;
     }
 

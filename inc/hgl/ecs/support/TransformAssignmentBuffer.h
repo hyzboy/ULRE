@@ -1,5 +1,5 @@
 ﻿/**
- * ECSTransformAssignmentBuffer.h - ECS渲染项Transform数据管理
+ * TransformAssignmentBuffer.h - ECS渲染项Transform数据管理
  *
  * 针对 ECS 架构的 RenderItem 和 MaterialBatch 设计
  * 与 SceneGraph 的 TransformAssignmentBuffer 功能相同，但适配 ECS 数据结构
@@ -29,7 +29,7 @@ namespace hgl::ecs
      * - 为每个实例分配唯一的 transform_index
      * - 支持动态更新变换矩阵
      */
-    class ECSTransformAssignmentBuffer
+    class TransformAssignmentBuffer
     {
     public:
 
@@ -62,7 +62,7 @@ namespace hgl::ecs
         uint32_t last_static_count=0;
         uint32_t last_dynamic_count=0;
 
-        static std::vector<ECSTransformAssignmentBuffer*> all_instances;
+        static std::vector<TransformAssignmentBuffer*> all_instances;
         graph::DeviceBufferRingWriter ring_writer;
 
         void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
@@ -78,8 +78,8 @@ namespace hgl::ecs
         void Clear();
 
     public:
-        ECSTransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly);
-        ~ECSTransformAssignmentBuffer() { Clear(); }
+        TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly);
+        ~TransformAssignmentBuffer() { Clear(); }
 
         /**
          * 获取Transform VAB缓冲（用于绑定到管线）

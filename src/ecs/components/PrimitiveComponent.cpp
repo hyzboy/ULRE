@@ -1,6 +1,6 @@
 ﻿#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/core/ECSComponentRecords.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>

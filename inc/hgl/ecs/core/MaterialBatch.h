@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/MaterialPipelineKey.h>
-#include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
+#include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<hgl/vk/VK.h>
 #include<vector>
 
@@ -18,9 +18,9 @@ namespace hgl
 
     namespace ecs
     {
-        class ECSTransformAssignmentBuffer;
-        class ECSMaterialInstanceAssignmentBuffer;
-        class ECSPipelineMaterialRenderer;
+        class TransformAssignmentBuffer;
+        class MaterialInstanceAssignmentBuffer;
+        class PipelineMaterialRenderer;
     }
 }
 
@@ -54,13 +54,13 @@ namespace hgl::ecs
         VkBuffer                                transform_vab_buffer    = VK_NULL_HANDLE;   ///<Transform索引VAB缓冲
         uint32_t                                transform_vab_node_count= 0;                ///<Transform VAB容量
 
-        ECSTransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
-        ECSMaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
+        TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
+        MaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
 
         DrawBatchArray                          draw_batches;                               ///<绘制批次数组
         uint32_t                                draw_batches_count      = 0;                ///<有效批次数量
 
-        ECSPipelineMaterialRenderer *           renderer                = nullptr;          ///<ECS渲染器实例
+        PipelineMaterialRenderer *           renderer                = nullptr;          ///<ECS渲染器实例
 
     public:
 

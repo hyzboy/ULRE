@@ -1,8 +1,8 @@
 ﻿/**
- * ECSMaterialInstanceAssignmentBuffer.cpp - ECS 材质实例分配缓冲实现
+ * MaterialInstanceAssignmentBuffer.cpp - ECS 材质实例分配缓冲实现
  */
 
-#include<hgl/ecs/support/ECSMaterialInstanceAssignmentBuffer.h>
+#include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterial.h>
@@ -13,7 +13,7 @@
 
 namespace hgl::ecs
 {
-    ECSMaterialInstanceAssignmentBuffer::ECSMaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl)
+    MaterialInstanceAssignmentBuffer::MaterialInstanceAssignmentBuffer(graph::BufferManager* bm, graph::Material* mtl)
         : buffer_manager(bm)
         , material(mtl)
         , material_instance_data_bytes(0)
@@ -28,17 +28,17 @@ namespace hgl::ecs
         }
     }
 
-    void ECSMaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::Material* mtl) const
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::Material* mtl) const
     {
         if (!mtl)
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: Material is null" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: Material is null" << std::endl;
             return;
         }
 
         if (!material_instance_buffer)
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: MI buffer not created" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::BindMaterialInstance] WARNING: MI buffer not created" << std::endl;
             return;
         }
 
@@ -51,7 +51,7 @@ namespace hgl::ecs
     #endif
     }
 
-    void ECSMaterialInstanceAssignmentBuffer::Clear()
+    void MaterialInstanceAssignmentBuffer::Clear()
     {
         if (buffer_manager)
         {
@@ -73,7 +73,7 @@ namespace hgl::ecs
         material_instance_vab_buffer = nullptr;
     }
 
-    void ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance(const std::vector<RenderItem*>& items)
+    void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const std::vector<RenderItem*>& items)
     {
         const size_t item_count = items.size();
 
@@ -82,7 +82,7 @@ namespace hgl::ecs
         // 如果材质没有MI数据，直接返回
         if (material_instance_data_bytes <= 0)
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] Material has no MI data, skipping" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] Material has no MI data, skipping" << std::endl;
             return;
         }
 
@@ -144,7 +144,7 @@ namespace hgl::ecs
         // 检查是否超出材质支持的最大数量
         if (material && unique_mi_count > material->GetMIMaxCount())
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI count ("
+            std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI count ("
                       << unique_mi_count << ") exceeds material max count ("
                       << material->GetMIMaxCount() << ")" << std::endl;
         }
@@ -177,17 +177,17 @@ namespace hgl::ecs
         }
     }
 
-    void ECSMaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData(RenderItem* item)
+    void MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData(RenderItem* item)
     {
         if (!item)
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: Item is null" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: Item is null" << std::endl;
             return;
         }
 
         if (!material_instance_vab)
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: MI VAB not created" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: MI VAB not created" << std::endl;
             return;
         }
 
@@ -200,13 +200,13 @@ namespace hgl::ecs
         material_instance_vab->Unmap();
     }
 
-    void ECSMaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
+    void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
     {
         const size_t item_count = items.size();
 
         if (item_count == 0)
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No items to write" << std::endl;
             return;
         }
 
@@ -216,7 +216,7 @@ namespace hgl::ecs
         // 如果没有MI数据，就不需要创建VAB
         if (material_instance_data_bytes <= 0)
         {
-            std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems] No MI data, skipping VAB creation" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] No MI data, skipping VAB creation" << std::endl;
             return;
         }
 
@@ -282,7 +282,7 @@ namespace hgl::ecs
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
                 // {
-                //     std::cout << "[ECSMaterialInstanceAssignmentBuffer::WriteItems]   Item[" << i
+                //     std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems]   Item[" << i
                 //               << "] -> MI_index=" << mi_index
                 //               << ", MI=" << (void*)mi << std::endl;
                 // }

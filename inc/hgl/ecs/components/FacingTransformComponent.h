@@ -2,7 +2,7 @@
 
 #include<hgl/ecs/core/Component.h>
 #include<hgl/ecs/components/TransformComponent.h>
-#include<hgl/ecs/core/ECSComponentRecords.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/type/UnorderedMap.h>
 #include<glm/glm.hpp>
 

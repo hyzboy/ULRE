@@ -9,7 +9,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
-#include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
@@ -711,7 +711,7 @@ namespace hgl
         void ECSContext::SetFrameIndex(const uint32_t index)
         {
             frame_index = index;
-            ECSTransformAssignmentBuffer::SetFrameIndex(index);
+            TransformAssignmentBuffer::SetFrameIndex(index);
         }
 
         void ECSContext::RegisterComponentInstance(size_t type_hash, const std::shared_ptr<Component>& comp)

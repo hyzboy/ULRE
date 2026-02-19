@@ -1,12 +1,12 @@
 ﻿/**
- * ECSPipelineMaterialRenderer.h - ECS Pipeline材质渲染器
+ * PipelineMaterialRenderer.h - ECS Pipeline材质渲染器
  *
  * 参照 PipelineMaterialRenderer 设计，但支持 ECS 版本的 Assignment Buffers
  * 职责：
  * - 执行ECS渲染命令
  * - 管理渲染状态（VAB绑定、IBO绑定等）
  * - 处理直接绘制和间接绘制
- * - 与 ECSTransformAssignmentBuffer 和 ECSMaterialInstanceAssignmentBuffer 配合
+ * - 与 TransformAssignmentBuffer 和 MaterialInstanceAssignmentBuffer 配合
  */
 
 #pragma once
@@ -30,8 +30,8 @@ namespace hgl
 
     namespace ecs
     {
-        class ECSTransformAssignmentBuffer;
-        class ECSMaterialInstanceAssignmentBuffer;
+        class TransformAssignmentBuffer;
+        class MaterialInstanceAssignmentBuffer;
     }
 }
 
@@ -62,7 +62,7 @@ namespace hgl::ecs
      *
      * 与 PipelineMaterialRenderer 功能相同，但接受 ECS 版本的 Assignment Buffers
      */
-    class ECSPipelineMaterialRenderer
+    class PipelineMaterialRenderer
     {
     private:
         // === 核心标识 ===
@@ -91,7 +91,7 @@ namespace hgl::ecs
          */
         bool BindVAB(const DrawBatch* batch,
                      VkBuffer transform_vab,
-                     ECSMaterialInstanceAssignmentBuffer* mi_buffer);
+                     MaterialInstanceAssignmentBuffer* mi_buffer);
 
         /**
          * 处理间接渲染
@@ -111,15 +111,15 @@ namespace hgl::ecs
          * @return 绘制是否成功
          */
         bool Draw(DrawBatch* batch,
-                  ECSTransformAssignmentBuffer* transform_buffer,
-                  ECSMaterialInstanceAssignmentBuffer* mi_buffer,
+                  TransformAssignmentBuffer* transform_buffer,
+                  MaterialInstanceAssignmentBuffer* mi_buffer,
                   VkBuffer transform_vab,
                   graph::IndirectDrawBuffer* icb_draw,
                   graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
 
     public:
-        ECSPipelineMaterialRenderer(graph::Material* m, graph::Pipeline* p);
-        ~ECSPipelineMaterialRenderer();
+        PipelineMaterialRenderer(graph::Material* m, graph::Pipeline* p);
+        ~PipelineMaterialRenderer();
 
         /**
          * 执行渲染
@@ -134,8 +134,8 @@ namespace hgl::ecs
         void Render(graph::RenderCmdBuffer* rcb,
                     const DrawBatchArray& batches,
                     uint32_t batch_count,
-                    ECSTransformAssignmentBuffer* transform_buffer,
-                    ECSMaterialInstanceAssignmentBuffer* mi_buffer,
+                    TransformAssignmentBuffer* transform_buffer,
+                    MaterialInstanceAssignmentBuffer* mi_buffer,
                     VkBuffer transform_vab,
                     graph::IndirectDrawBuffer* icb_draw,
                     graph::IndirectDrawIndexedBuffer* icb_draw_indexed);

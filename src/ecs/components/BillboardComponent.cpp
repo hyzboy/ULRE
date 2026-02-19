@@ -1,8 +1,8 @@
-#include<hgl/ecs/components/BillboardComponent.h>
+﻿#include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/core/ECSComponentRecords.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 
 namespace hgl::ecs
 {

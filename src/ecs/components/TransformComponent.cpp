@@ -1,6 +1,6 @@
 ﻿#include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/core/ECSComponentRecords.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 #include<algorithm>
 #include<array>
 

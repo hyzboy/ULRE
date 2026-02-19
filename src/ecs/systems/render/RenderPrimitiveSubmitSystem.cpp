@@ -6,8 +6,8 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
-#include<hgl/ecs/support/ECSPipelineMaterialRenderer.h>
-#include<hgl/ecs/support/ECSTransformAssignmentBuffer.h>
+#include<hgl/ecs/support/PipelineMaterialRenderer.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<iostream>
 
 namespace hgl::ecs

@@ -11,7 +11,7 @@
 
 namespace hgl::ecs
 {
-    class ECSTransformAssignmentBuffer;
+    class TransformAssignmentBuffer;
     class RenderPrimitiveSystem;
     /**
      * TransformSystem
@@ -26,7 +26,7 @@ namespace hgl::ecs
 
         ECSContext* world = nullptr;
         bool updateMovable = true;
-        ECSTransformAssignmentBuffer* transform_buffer = nullptr;
+        TransformAssignmentBuffer* transform_buffer = nullptr;
         uint32_t last_static_count = 0;
         uint32_t last_dynamic_count = 0;
         bool static_dirty = true;
@@ -45,7 +45,7 @@ namespace hgl::ecs
 
         void SetWorld(ECSContext* w) { world = w; }
         void SetDevice(graph::VulkanDevice* dev) {}  ///<Deprecated: BufferManager is now obtained from ECSContext's RenderContext
-        ECSTransformAssignmentBuffer* GetTransformBuffer() const { return transform_buffer; }
+        TransformAssignmentBuffer* GetTransformBuffer() const { return transform_buffer; }
         void SetUpdateMovable(bool enabled) { updateMovable = enabled; }
         bool IsUpdateMovableEnabled() const { return updateMovable; }
 

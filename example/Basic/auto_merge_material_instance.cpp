@@ -7,7 +7,7 @@
 // 2. 每个实体使用不同的MaterialInstance（不同颜色）
 // 3. 所有实体共享同一个Geometry（顶点数据）
 // 4. RenderCollector自动合并相同Material的不同MaterialInstance进行批量渲染
-// 5. ECSMaterialInstanceAssignmentBuffer自动去重和索引管理
+// 5. MaterialInstanceAssignmentBuffer自动去重和索引管理
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -258,7 +258,7 @@ private:
         std::cout << "[TestApp::InitECS] Created " << DRAW_OBJECT_COUNT << " entities" << std::endl;
         std::cout << "[TestApp::InitECS] Each entity uses a different MaterialInstance (different color)" << std::endl;
         std::cout << "[TestApp::InitECS] RenderCollector will automatically merge them into batches" << std::endl;
-        std::cout << "[TestApp::InitECS] ECSMaterialInstanceAssignmentBuffer will deduplicate MIs" << std::endl;
+        std::cout << "[TestApp::InitECS] MaterialInstanceAssignmentBuffer will deduplicate MIs" << std::endl;
 
         return true;
     }
