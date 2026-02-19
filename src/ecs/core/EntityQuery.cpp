@@ -102,6 +102,24 @@ namespace hgl::ecs
         return true;
     }
 
+    size_t EntityQuery::RemoveInvalidEntities()
+    {
+        if (!context || cached_entities.empty())
+            return 0;
+
+        const size_t old_size = cached_entities.size();
+
+        cached_entities.erase(
+            std::remove_if(cached_entities.begin(), cached_entities.end(),
+                           [this](const EntityID& id)
+                           {
+                               return context->GetEntity(id) == nullptr;
+                           }),
+            cached_entities.end());
+
+        return old_size - cached_entities.size();
+    }
+
     void SystemCache::OnComponentAdded(EntityID entity_id, const std::type_index& component_type, const Entity* entity)
     {
         // Reactive mode: try to add entity to queries that need this component
@@ -132,6 +150,14 @@ namespace hgl::ecs
         }
     }
 
+    void SystemCache::OnEntityDestroyed(EntityID entity_id)
+    {
+        for (auto& query : queries)
+        {
+            query->TryRemoveEntity(entity_id);
+        }
+    }
+
     void SystemCache::AddEntityManually(EntityQuery* query, EntityID entity_id, const Entity* entity)
     {
         if (!query)
@@ -148,6 +174,16 @@ namespace hgl::ecs
 
         // Manual mode: directly remove from specified query
         query->TryRemoveEntity(entity_id);
+    }
+
+    size_t SystemCache::RemoveInvalidEntities()
+    {
+        size_t removed = 0;
+        for (auto& query : queries)
+        {
+            removed += query->RemoveInvalidEntities();
+        }
+        return removed;
     }
 }
 

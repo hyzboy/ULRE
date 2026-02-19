@@ -907,6 +907,37 @@ namespace hgl
                 }
             }
         }
+
+        void ECSContext::NotifyEntityDestroyed(EntityID entity_id)
+        {
+            // Notify all tick systems - remove entity from all queries
+            for (auto& [key, system] : tick_systems)
+            {
+                if (system && system->GetCache())
+                {
+                    system->GetCache()->OnEntityDestroyed(entity_id);
+                    const size_t removed = system->GetCache()->RemoveInvalidEntities();
+                    if (removed > 0)
+                    {
+                        GLogWarning("[ECS] Pruned %zu stale query entries in tick system %s", removed, system->GetName().c_str());
+                    }
+                }
+            }
+
+            // Notify all render systems - remove entity from all queries
+            for (auto& [key, system] : render_systems)
+            {
+                if (system && system->GetCache())
+                {
+                    system->GetCache()->OnEntityDestroyed(entity_id);
+                    const size_t removed = system->GetCache()->RemoveInvalidEntities();
+                    if (removed > 0)
+                    {
+                        GLogWarning("[ECS] Pruned %zu stale query entries in render system %s", removed, system->GetName().c_str());
+                    }
+                }
+            }
+        }
     }//namespace ecs
 }//namespace hgl
 

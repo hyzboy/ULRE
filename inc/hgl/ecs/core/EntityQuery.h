@@ -70,6 +70,10 @@ namespace hgl::ecs
         /// Returns true if entity was removed
         bool TryRemoveEntity(EntityID id);
 
+        /// Remove stale cached entries that are no longer valid in context
+        /// Returns number of removed entries
+        size_t RemoveInvalidEntities();
+
         /// Get cached entities
         const std::vector<EntityID>& GetEntities() const
         {
@@ -151,6 +155,10 @@ namespace hgl::ecs
         /// Will try to remove entity from affected queries
         void OnComponentRemoved(EntityID entity_id, const std::type_index& component_type);
 
+        /// Reactive: Notify that an entity is being destroyed
+        /// Ensures entity is removed from all query caches
+        void OnEntityDestroyed(EntityID entity_id);
+
         /// Manual: Explicitly add entity to a query (for custom logic)
         void AddEntityManually(EntityQuery* query, EntityID entity_id, const Entity* entity);
 
@@ -159,6 +167,10 @@ namespace hgl::ecs
 
         /// Get number of queries
         size_t GetQueryCount() const { return queries.size(); }
+
+        /// Remove stale entity IDs from all query caches
+        /// Returns number of removed entries
+        size_t RemoveInvalidEntities();
 
     private:
         template<typename FirstComponent>

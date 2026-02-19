@@ -267,6 +267,10 @@ namespace hgl
             /// Notify all systems that an entity lost a component (for cache invalidation)
             void NotifyComponentRemoved(EntityID entity_id, const std::type_index& component_type);
 
+            /// Notify all systems that an entity is being destroyed
+            /// Used to remove residual query cache entries (e.g. manual participation)
+            void NotifyEntityDestroyed(EntityID entity_id);
+
             /// Register a transform component (called by TransformComponent::OnAttach)
             void RegisterTransformComponent(const std::shared_ptr<TransformComponent>& comp, bool isMovable);
 
