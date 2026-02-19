@@ -53,7 +53,7 @@ public:
 
     // New Architecture Methods
     bool Initialize();                                                      ///< Initialize swapchain with new architecture
-    
+
     FrameResources *        GetCurrentFrame()  const;                      ///< Get current frame resources
     FrameResources *        GetFrame(uint32_t index) const;                ///< Get frame resources by index
     SwapchainData *         GetSwapchainData() const {return swapchain_data;}  ///< Get swapchain data container

@@ -1,27 +1,27 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/color/Color4f.h>
 
-namespace hgl { 
-    namespace graph { 
+namespace hgl {
+    namespace graph {
         class RenderCmdBuffer;
         class IRenderTarget;
         class RenderContext;
-    } 
+    }
 }
 
 namespace hgl::ecs
 {
     /**
      * RenderFrameSystem: 渲染帧驱动系统
-     * 
+     *
      * 职责:
      * - 作为整个渲染流程的主驱动和协调器
      * - 管理每帧的渲染命令缓冲区
     * - 协调 RenderCollect、RenderBatch、RenderDrawSubmit、RenderSubmit 等子系统
      * - 处理渲染目标的帧同步
-     * 
+     *
      * 执行流程:
      * ```
      * ┌──────────────────────────────────────────┐
@@ -59,13 +59,13 @@ namespace hgl::ecs
     * 不在单次 RT/FBO 的 RenderStage 流程内执行。
      * └──────────────────────────────────────────┘
      * ```
-     * 
+     *
      * 设计原则:
      * 1. 单一职责: 只管理帧级别的命令缓冲区和渲染目标
      * 2. 通过钩子: 具体绘制工作由子系统完成
      * 3. 显式协调: 清晰的依赖和执行顺序
      * 4. 可插拔: 子系统可以独立添加/禁用
-     * 
+     *
      * 使用示例:
      * ```cpp
     * // 在应用初始化中
@@ -73,7 +73,7 @@ namespace hgl::ecs
      * render_frame_sys->SetRenderTarget(swapchain_target);
      * render_frame_sys->SetRenderContext(render_context);
      * render_frame_sys->SetClearColor(Color4f(0,0,0,1));
-     * 
+     *
      * // 执行流程
      * ecs_context->Render(nullptr, delta_time);  // RenderFrameSystem 被调用
      * ```

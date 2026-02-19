@@ -15,10 +15,10 @@
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/color/Color4f.h>
 
-namespace hgl { 
-    namespace graph { 
-        class RenderCmdBuffer; 
-        class CameraInfo; 
+namespace hgl {
+    namespace graph {
+        class RenderCmdBuffer;
+        class CameraInfo;
         class IRenderTarget;
         class GraphicsContext;  // 图形资源管理器（原IGraphicsContext）
         class VulkanDevice;
@@ -106,15 +106,15 @@ namespace hgl
             // SubWorld support - hierarchical context
             ECSContext* parent_context = nullptr;       // nullptr if this is a root context
             bool owns_transform_storage = false;         // true if this context created the storage
-            
+
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
-            
+
             /// GPU 设备（从旧集中式入口迁移来）
             hgl::graph::VulkanDevice* gpu_device = nullptr;
-            
+
             /// 用于渲染的目标
             hgl::graph::IRenderTarget* render_target = nullptr;
-            
+
             /// 当前渲染 Pass 的命令缓冲区（在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* current_render_cmd = nullptr;
 
@@ -224,18 +224,18 @@ namespace hgl
 
             void SetWaitIdleEnabled(bool enabled) { wait_idle_enabled = enabled; }
             bool IsWaitIdleEnabled() const { return wait_idle_enabled; }
-            
+
             // ========== GPU 设备和资源接口（Phase 1 新增） ==========
-            
+
             /// 获取 GPU 设备
             hgl::graph::VulkanDevice* GetGPUDevice() { return gpu_device; }
-            
+
             /// 设置渲染目标（用于窗口 resize 等场景重建 render target）
             void SetRenderTarget(hgl::graph::IRenderTarget* target) { render_target = target; }
-            
+
             /// 获取渲染目标
             hgl::graph::IRenderTarget* GetRenderTarget() { return render_target; }
-            
+
             /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
 

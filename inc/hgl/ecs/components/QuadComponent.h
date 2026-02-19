@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<glm/glm.hpp>

@@ -1,4 +1,4 @@
-#include <hgl/ecs/systems/render/RenderSystemCore.h>
+﻿#include <hgl/ecs/systems/render/RenderSystemCore.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/graph/CameraInfo.h>
@@ -15,7 +15,7 @@
 namespace hgl::ecs {
 
 RenderSystemCore::RenderSystemCore(ECSContext* ctx)
-    : world(ctx), gpu_device(nullptr), render_target(nullptr), 
+    : world(ctx), gpu_device(nullptr), render_target(nullptr),
       current_frame(0), swapchain_image_index(0), frame_begun(false) {
     if (!world) {
         LogError("RenderSystemCore: ECSContext is null");
@@ -32,10 +32,10 @@ bool RenderSystemCore::Initialize() {
         LogError("RenderSystemCore::Initialize: ECSContext is null");
         return false;
     }
-    
+
     gpu_device = world->GetGPUDevice();
     render_target = world->GetRenderTarget();
-    
+
     if (!gpu_device || !render_target) {
         LogError("RenderSystemCore::Initialize: gpu_device or render_target is null");
         return false;
@@ -50,17 +50,17 @@ bool RenderSystemCore::BeginFrame() {
     if (world) {
         render_target = world->GetRenderTarget();
     }
-    
+
     if (!render_target) {
         LogError("RenderSystemCore::BeginFrame: render_target is null");
         return false;
     }
-    
+
     if (frame_begun) {
         LogWarning("RenderSystemCore::BeginFrame: frame already begun");
         return false;
     }
-    
+
     bool swapchain_ok = true;
     bool swapchain_system_present = false;
     if (world)
@@ -146,7 +146,7 @@ bool RenderSystemCore::BeginFrame() {
     render_cmd->BeginRenderPass();
 
     swapchain_image_index = render_target->GetCurrentFrameIndex();
-    
+
     frame_begun = true;
     return true;
 }
@@ -192,7 +192,7 @@ void RenderSystemCore::EndFrame() {
 
     if (!submit_ok)
         LogError("RenderSystemCore::EndFrame: Submit failed");
-    
+
     // 推进到下一帧
     current_frame++;
     render_cmd = nullptr;

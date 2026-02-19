@@ -558,7 +558,7 @@ namespace hgl::ecs
         return graphics_context ? graphics_context->GetBufferManager() : nullptr;
     }
 
-    std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder> 
+    std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder>
     RenderPrimitiveBatchSystem::BuildICBNames() const
     {
         graph::ObjectNameBuilder draw_name;

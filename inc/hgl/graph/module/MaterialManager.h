@@ -87,7 +87,7 @@ public: // Override Release from GraphModule - cleanup all resources
         // 清理所有材质实例
         if (rm_material_instance.GetCount() > 0)
             rm_material_instance.Clear();
-        
+
         // 清理所有材质
         if (rm_material.GetCount() > 0)
             rm_material.Clear();

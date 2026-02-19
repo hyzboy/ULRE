@@ -31,7 +31,7 @@ namespace hgl::ecs
      *     facing->SetFacingMode(FacingMode::LookAtCamera);
      *     // FacingTransformSystem will automatically update rotation each frame
      */
-    
+
     enum class FacingMode : uint8_t
     {
         LookAtCamera = 0,    ///< Face towards the camera (full rotation)

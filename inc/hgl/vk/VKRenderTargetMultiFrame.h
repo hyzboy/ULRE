@@ -50,7 +50,7 @@ public:
     void ReleaseFrameResources()
     {
         if (!rtd_list) return;
-        
+
         for (uint32_t i = 0; i < frame_number; i++)
             rtd_list[i].Clear();
     }

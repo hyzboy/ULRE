@@ -88,7 +88,7 @@ PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const Ansi
     if(!device) return nullptr;
 
     PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager);
-    
+
     if(pld)
     {
         #ifdef _DEBUG
@@ -97,7 +97,7 @@ PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const Ansi
                 du->SetPipelineLayout(pld->pipeline_layout, "PipelineLayout:" + mtl_name);
         #endif//_DEBUG
     }
-    
+
     return pld;
 }
 
@@ -107,7 +107,7 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     if(!device) return nullptr;
 
     MaterialParameters *mp = device->CreateMP(desc_manager, pld, desc_set_type);
-    
+
     if(mp)
     {
         #ifdef _DEBUG
@@ -120,7 +120,7 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
             }
         #endif//_DEBUG
     }
-    
+
     return mp;
 }
 
@@ -256,7 +256,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
         Add(mi);
         VulkanDevice *device = GetDevice();
         if(device)
-            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
                               ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
     }
 
@@ -276,7 +276,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         Add(mi);
         VulkanDevice *device = GetDevice();
         if(device)
-            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
                               ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
     }
 
@@ -296,7 +296,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         Add(mi);
         VulkanDevice *device = GetDevice();
         if(device)
-            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+            device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
                               ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
     }
 
@@ -317,7 +317,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     Add(mi);
     VulkanDevice *device = GetDevice();
     if(device)
-        device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi, 
+        device->TrackObject(VK_OBJECT_TYPE_UNKNOWN, (uint64_t)(uintptr_t)mi,
                           ObjectNameBuilder(mtl->GetName()).Append(ObjectTypeTag::MaterialInstance));
 
     if(mi_data&&mi_bytes>0)

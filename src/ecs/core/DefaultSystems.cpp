@@ -1,4 +1,4 @@
-#include <hgl/ecs/core/DefaultSystems.h>
+﻿#include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>

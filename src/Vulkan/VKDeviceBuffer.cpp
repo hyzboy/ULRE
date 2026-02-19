@@ -319,7 +319,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
             DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,staged);
             ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
         dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
-        
+
         TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
         return dev_buf;
     }
@@ -341,16 +341,16 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
     else if(buf_usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) buffer_type = "IndirectBuffer";
     else if(buf_usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) buffer_type = "TransferSrcBuffer";
     else if(buf_usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) buffer_type = "TransferDstBuffer";
-    
+
     AnsiString memory_name = AnsiString(buffer_type) + ":Memory";
-    
+
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,ObjectNameBuilder(memory_name.c_str()),loc))
         return(nullptr);
 
     DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf);
     ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
     dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
-    
+
     TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
     return dev_buf;
 }

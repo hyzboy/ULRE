@@ -130,7 +130,7 @@ namespace hgl
     public:
 
         explicit WorkObject(std::shared_ptr<ecs::ECSContext> ctx);
-        
+
         virtual ~WorkObject()=default;
 
         // 内部初始化函数，仅由AppFramework/WorkManager调用

@@ -1,4 +1,4 @@
-#include<hgl/vk/VKManagerExtensions.h>
+﻿#include<hgl/vk/VKManagerExtensions.h>
 #include<hgl/vk/VKImageView.h>
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/vk/VKRenderPass.h>
@@ -29,7 +29,7 @@ ImageView *TextureManager_CreateSwapchainImageView(
     // 1. Create a VkImageView for the swapchain image
     // 2. Register it with TextureManager for ownership tracking
     // 3. Return the ImageView pointer
-    
+
     // For now, return null to indicate not yet implemented
     return nullptr;
 }
@@ -67,7 +67,7 @@ Framebuffer *RenderTargetManager_CreateFramebuffer(
     // 1. Call RenderTargetManager::CreateFBO() with proper parameters
     // 2. Register returned Framebuffer with RenderTargetManager
     // 3. Return the Framebuffer pointer
-    
+
     return nullptr;
 }
 
@@ -103,7 +103,7 @@ RenderPass *RenderPassManager_AcquireSwapchainRenderPass(
     // 1. Create or retrieve a RenderPass for swapchain rendering
     // 2. Handle color_format and depth_format specifications
     // 3. Return the RenderPass (which is reference-counted/cached)
-    
+
     return nullptr;
 }
 

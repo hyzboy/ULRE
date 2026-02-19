@@ -29,18 +29,18 @@ bool SwapchainRenderTarget::NextFrame()
 {
     auto start = std::chrono::high_resolution_clock::now();
     LogInfo("[SWAPCHAIN] NextFrame START current_frame=%u semaphore=%p", current_frame, (void*)present_complete_semaphore);
-    
+
     VkResult result = vkAcquireNextImageKHR(GetVkDevice(),
                                  swapchain->swap_chain,
                                  UINT64_MAX,
                                  *present_complete_semaphore,
                                  VK_NULL_HANDLE,
                                  &current_frame);
-    
+
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     LogInfo("[SWAPCHAIN] NextFrame END result=%d new_frame=%u time=%lldms", static_cast<int>(result), current_frame, duration);
-    
+
     return (result == VK_SUCCESS);
 }
 
@@ -48,7 +48,7 @@ bool SwapchainRenderTarget::Submit()
 {
     auto submit_start = std::chrono::high_resolution_clock::now();
     LogInfo("[SWAPCHAIN] Submit START frame=%u", current_frame);
-    
+
     RenderTargetData *rtd=rtd_list+current_frame;
 
     if(!rtd->Submit(present_complete_semaphore))
@@ -69,7 +69,7 @@ bool SwapchainRenderTarget::Submit()
     VkResult result=queue->Present(&present_info);
     auto present_end = std::chrono::high_resolution_clock::now();
     auto present_duration = std::chrono::duration_cast<std::chrono::milliseconds>(present_end - present_start).count();
-    
+
     LogInfo("[SWAPCHAIN] Present result=%d time=%lldms", static_cast<int>(result), present_duration);
 
     if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR)))
@@ -80,7 +80,7 @@ bool SwapchainRenderTarget::Submit()
             return false;
         }
     }
-    
+
     auto submit_end = std::chrono::high_resolution_clock::now();
     auto submit_duration = std::chrono::duration_cast<std::chrono::milliseconds>(submit_end - submit_start).count();
     LogInfo("[SWAPCHAIN] Submit END total_time=%lldms", submit_duration);

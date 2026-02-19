@@ -80,9 +80,9 @@ VulkanDevice::~VulkanDevice()
 
     // 在设备销毁前，输出所有未销毁的对象以检测泄漏
     LogInfo("\n=== VulkanDevice Destructor Called ===");
-    
+
     DumpTrackedObjects();
-    
+
     LogInfo("=== End VulkanDevice Destructor ===");
 
     delete buffer_update_queue;
@@ -167,7 +167,7 @@ void VulkanDevice::UntrackObject(VkObjectType type, uint64_t handle)
 
     ObjectKey key{type, handle};
     auto it = tracked_objects.find(key);
-    
+
 #ifdef _DEBUG
     if (it == tracked_objects.end())
     {
@@ -210,7 +210,7 @@ void VulkanDevice::DumpTrackedObjects() const
         else if (tc.first == VK_OBJECT_TYPE_PIPELINE_LAYOUT) type_name = "VkPipelineLayout";
         else if (tc.first == VK_OBJECT_TYPE_DESCRIPTOR_SET) type_name = "VkDescriptorSet";
         else if (tc.first == VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT) type_name = "VkDescriptorSetLayout";
-        
+
         GLogWarning("  %s: %d", type_name, tc.second);
     }
 
@@ -219,8 +219,8 @@ void VulkanDevice::DumpTrackedObjects() const
     {
         const ObjectKey &key = entry.first;
         const ObjectDebugRecord &record = entry.second;
-        
-        GLogWarning("[LEAK] Type: 0x%x Handle: 0x%llx Name: %s", 
+
+        GLogWarning("[LEAK] Type: 0x%x Handle: 0x%llx Name: %s",
                     (unsigned int)key.type,
                     (unsigned long long)key.handle,
                     record.name.c_str());
@@ -342,7 +342,7 @@ Fence *VulkanDevice::CreateFence(const ObjectNameBuilder &name, bool create_sign
         return(nullptr);
 
     TrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence, name.Append(ObjectTypeTag::VKFence), loc);
-    
+
     // 创建Fence对象并传入追踪信息
     std::string fence_name = name.Append(ObjectTypeTag::VKFence).ToString().c_str();
     return(new Fence(attr->device, fence, fence_name, loc));
@@ -385,7 +385,7 @@ DeviceQueue *VulkanDevice::CreateQueue(const ObjectNameBuilder &name, const uint
     }
 
     DeviceQueue *result = new DeviceQueue(attr->device, attr->graphics_queue, fence_list, fence_count);
-    // Note: We don't track VkQueue because it's retrieved via vkGetDeviceQueue and 
+    // Note: We don't track VkQueue because it's retrieved via vkGetDeviceQueue and
     // is implicitly destroyed when VkDevice is destroyed. Multiple DeviceQueue C++ wrappers
     // may share the same VkQueue handle.
     return result;

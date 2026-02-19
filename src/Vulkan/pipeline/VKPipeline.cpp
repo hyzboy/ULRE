@@ -8,7 +8,7 @@ Pipeline::~Pipeline()
 {
     GLogDebug("[Pipeline::~Pipeline] Destroying Pipeline '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
               name.c_str(), (unsigned long long)(uintptr_t)pipeline, (unsigned long long)(uintptr_t)this);
-    
+
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
     {

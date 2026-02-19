@@ -103,11 +103,11 @@ private:
         pipeline = render_pass ? render_pass->CreatePipeline(material_instance, InlinePipeline::Solid2D) : nullptr;
 
         if (pipeline)
-            std::cout << "[TestApp::InitMaterial] Created Pipeline in RenderPass (render_pass*=0x" << std::hex << (uintptr_t)render_pass 
-                      << ", VkPipeline=0x" << (VkPipeline)(*pipeline) << std::dec 
+            std::cout << "[TestApp::InitMaterial] Created Pipeline in RenderPass (render_pass*=0x" << std::hex << (uintptr_t)render_pass
+                      << ", VkPipeline=0x" << (VkPipeline)(*pipeline) << std::dec
                       << ", Pipeline*=0x" << (uintptr_t)pipeline << ")" << std::endl;
         else
-            std::cout << "[TestApp::InitMaterial] FAILED to create Pipeline (render_target=0x" << std::hex << (uintptr_t)render_target 
+            std::cout << "[TestApp::InitMaterial] FAILED to create Pipeline (render_target=0x" << std::hex << (uintptr_t)render_target
                       << ", render_pass=0x" << (uintptr_t)render_pass << std::dec << ")" << std::endl;
 
         return pipeline != nullptr;
@@ -160,7 +160,7 @@ private:
     bool InitECS()
     {
         HGL_CAPTURE_SCOPE();  // 记录此函数调用的栈信息
-        
+
         // === 步骤1: 创建ECS世界 ===
         // World是ECS架构的顶层容器，管理所有Entity和System
         ecs_world = GetECSContext();
@@ -200,7 +200,7 @@ public:
     bool Init() override
     {
         HGL_CAPTURE_SCOPE();  // 记录应用初始化的调用栈
-        
+
         if(!InitMaterial())
             return(false);
 

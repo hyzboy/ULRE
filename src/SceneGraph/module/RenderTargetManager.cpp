@@ -109,10 +109,10 @@ RenderTarget *RenderTargetManager::CreateRTFromGraphicsContext(GraphicsContext *
     // Generate a default name from the extent
     if(!fbi)
         return(nullptr);
-    
+
     const VkExtent2D extent = fbi->GetExtent();
     const AnsiString auto_name = "RT_" + AnsiString::numberOf(extent.width) + "x" + AnsiString::numberOf(extent.height);
-    
+
     return CreateRTFromGraphicsContext(gc, ecs_ctx, auto_name, fbi, fence_count);
 }
 

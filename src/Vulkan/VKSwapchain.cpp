@@ -12,7 +12,7 @@ SwapchainImage::~SwapchainImage()
     SAFE_CLEAR(fbo);
     SAFE_CLEAR(depth);
     SAFE_CLEAR(color);
-    
+
     // cmd_buf is shared with RenderTargetData, but SwapchainImage owns it
     // RenderTargetData::cmd_buf should be set to nullptr before SwapchainImage destruction
     SAFE_CLEAR(cmd_buf);

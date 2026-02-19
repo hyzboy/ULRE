@@ -1,4 +1,4 @@
-#ifndef __VK_SWAPCHAIN_DATA_H__
+﻿#ifndef __VK_SWAPCHAIN_DATA_H__
 #define __VK_SWAPCHAIN_DATA_H__
 
 #include<vulkan/vulkan.h>
@@ -10,30 +10,30 @@ namespace hgl::graph
     /**
      * @struct SwapchainData
      * @brief Container for swapchain and its associated frame resources
-     * 
+     *
      * This structure aggregates all data related to a swapchain and its frames.
      * It is owned by SwapchainModule and should not be accessed directly by other code.
-     * 
+     *
      * Resource Ownership:
      * - VkSwapchain: owned by SwapchainModule (created via vkCreateSwapchainKHR)
      * - FrameResources: data container (no ownership, only contains references)
      * - VkSemaphore*: owned by SwapchainModule (created via vkCreateSemaphore)
      * - VkFence*: owned by SwapchainModule/Device (created via vkCreateFence)
-     * 
+     *
      * Typical frame count: 2-3 (double/triple buffering)
      */
     struct SwapchainData
     {
         VkSwapchainKHR swapchain = VK_NULL_HANDLE;   ///< Vulkan swapchain handle
         std::vector<FrameResources> frames;           ///< Per-frame resources (typically 2-3 frames)
-        
+
         uint32_t frame_count = 0;                     ///< Number of frames (2 or 3)
         uint32_t current_frame_index = 0;             ///< Current frame being rendered
-        
+
         // Swapchain properties
         VkExtent2D extent = {0, 0};                   ///< Swapchain image extent
         VkFormat image_format = VK_FORMAT_UNDEFINED;  ///< Swapchain image format
-        
+
         /**
          * @brief Get the current frame resources
          * @return Reference to current FrameResources
@@ -74,7 +74,7 @@ namespace hgl::graph
 
         /**
          * @brief Advance to next frame in the swapchain chain
-         * 
+         *
          * Should be called after presenting each frame. Wraps around from
          * frame_count-1 back to 0.
          */

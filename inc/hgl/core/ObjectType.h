@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 
@@ -15,7 +15,7 @@ namespace hgl::core
 enum class ObjectTypeTag : uint8_t
 {
     None = 0,
-    
+
     // Vulkan resources (with VK prefix to avoid conflicts with other APIs)
     VKQueue,
     VKSemaphore,
@@ -36,14 +36,14 @@ enum class ObjectTypeTag : uint8_t
     VKDescriptorSetLayout,
     VKShaderModule,
     VKSwapchain,
-    
+
     // Custom types (for logging)
     RenderTarget,
     Texture,
     Material,
     MaterialInstance,
     Mesh,
-    
+
     // ECS and system types
     IndirectDrawBuffer,
     IndirectDrawIndexedBuffer,
@@ -54,7 +54,7 @@ enum class ObjectTypeTag : uint8_t
     StorageBuffer,
     TextureBuffer,
     ReadbackBuffer,
-    
+
     // High-level types
     RenderSystem,
     BatchSystem,

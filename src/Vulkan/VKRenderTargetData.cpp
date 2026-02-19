@@ -64,12 +64,12 @@ void RenderTargetData::Clear()
     LogDebug("[RenderTargetData] Clear");
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
-    
+
     // cmd_buf and queue will be cleared separately or by their owners
     // DO NOT delete them here as they may still be referenced
     cmd_buf = nullptr;
     queue = nullptr;
-    
+
     // Textures are managed by TextureManager, so just clear the pointers
     // Do NOT delete the textures themselves to avoid double deletion
     if(color_textures)
@@ -78,7 +78,7 @@ void RenderTargetData::Clear()
         color_textures = nullptr;
     }
     color_count = 0;
-    
+
     depth_texture = nullptr;
 }
 

@@ -62,7 +62,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
     // First, get basic properties to detect the API version
     vkGetPhysicalDeviceProperties(physical_device,&properties);
-    
+
     // Extract Vulkan version from apiVersion: version = VK_VERSION_MAJOR(apiVersion).VK_VERSION_MINOR(apiVersion)
     const uint32_t api_version = properties.apiVersion;
     const uint32_t version_major = VK_API_VERSION_MAJOR(api_version);

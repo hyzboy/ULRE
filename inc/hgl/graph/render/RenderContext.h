@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -21,26 +21,26 @@ namespace hgl
 
     /**
      * RenderContext: 渲染执行上下文
-     * 
+     *
      * 职责:
     * - 管理渲染命令缓冲区和渲染目标
     * - 提供帧/Pass相关的渲染状态
      * - 支持多场景、多渲染目标
-     * 
+     *
      * 特点:
      * - 显式依赖注入（消除隐晦的全局依赖）
      * - 职责清晰分离
      * - 易于测试和扩展
      * - API 透明而非通过宏隐藏
-     * 
+     *
      * 使用示例:
      * ```cpp
      * RenderContext* ctx = gpu_framework->GetRenderContext();
-     * 
+     *
       * // 渲染状态
       * ctx->SetCurrentRenderTarget(rt);
       * ctx->SetCurrentRenderCmdBuffer(cmd);
-     * 
+     *
       * // 资源访问
       * auto graphics = ctx->GetGraphicsContext();
       * auto mat_mgr = graphics ? graphics->GetMaterialManager() : nullptr;

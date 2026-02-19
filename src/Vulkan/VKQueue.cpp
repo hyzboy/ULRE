@@ -29,7 +29,7 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 DeviceQueue::~DeviceQueue()
 {
     LogDebug("[DEBUG] DeviceQueue::~DeviceQueue() - fence_count=%u", fence_count);
-    // Note: VkQueue is retrieved via vkGetDeviceQueue and is implicitly destroyed 
+    // Note: VkQueue is retrieved via vkGetDeviceQueue and is implicitly destroyed
     // when VkDevice is destroyed. Multiple DeviceQueue instances may share the same
     // VkQueue handle, so we should NOT untrack it here.
     // The VulkanDevice will handle cleanup of the actual queue.
@@ -42,9 +42,9 @@ bool DeviceQueue::WaitQueue()
 {
     auto start = std::chrono::high_resolution_clock::now();
     LogInfo("[FENCE] WaitQueue START queue=%p", (void*)queue);
-    
+
     VkResult result=vkQueueWaitIdle(queue);
-    
+
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     LogInfo("[FENCE] WaitQueue END result=%d time=%lldms", static_cast<int>(result), duration);

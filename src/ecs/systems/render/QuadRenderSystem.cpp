@@ -1,4 +1,4 @@
-#include<hgl/ecs/systems/render/QuadRenderSystem.h>
+﻿#include<hgl/ecs/systems/render/QuadRenderSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/QuadComponent.h>

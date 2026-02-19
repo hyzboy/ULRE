@@ -89,17 +89,17 @@ namespace hgl::ecs
     private:
 
         void PerformFrustumCulling();
-        
+
         // Frustum culling strategies
         bool TestFrustumWithWorldAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox);
         bool TestFrustumWithLocalAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox);
         bool TestFrustumWithBoundingSphere(PrimitiveRenderItem* item);
-        
+
         void SortByDistance();
         void AssignTransformIndices(TransformSystem* transform_system);
         void BuildMaterialBatches();
         void FinalizeBatches();
-        
+
         // Utility functions
         graph::BufferManager* GetBufferManager() const;
         std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder> BuildICBNames() const;
@@ -110,7 +110,7 @@ namespace hgl::ecs
         void BuildBatches(MaterialBatch& batch, const uint32_t base_instance);
 
         void FinalizeBatch(MaterialBatch& batch);
-        
+
         // FinalizeBatch sub-functions
         void SortBatchItems(MaterialBatch& batch);
         void UpdateMaterialInstanceBuffer(MaterialBatch& batch);

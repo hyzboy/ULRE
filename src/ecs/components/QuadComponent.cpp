@@ -1,4 +1,4 @@
-#include<hgl/ecs/components/QuadComponent.h>
+﻿#include<hgl/ecs/components/QuadComponent.h>
 
 namespace hgl::ecs
 {

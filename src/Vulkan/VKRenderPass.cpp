@@ -20,7 +20,7 @@ RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,VkRenderPass rp,con
     vkGetRenderAreaGranularity(*device,render_pass,&granularity);
 
     LogInfo("[RenderPass::RenderPass] Created RenderPass '%s' with VkRenderPass=0x%llx, color attachment count=%u, depth format=%u, granularity=(%ux%u)",
-             name.c_str(), (unsigned long long)(uintptr_t)render_pass, color_formats.GetCount(), depth_format, 
+             name.c_str(), (unsigned long long)(uintptr_t)render_pass, color_formats.GetCount(), depth_format,
              granularity.width, granularity.height);
 }
 
@@ -28,7 +28,7 @@ RenderPass::~RenderPass()
 {
     LogInfo("[RenderPass::~RenderPass] Destroying RenderPass with %u pipelines (VkRenderPass=0x%llx, RenderPass*=0x%llx)",
              (unsigned int)pipeline_list.GetCount(), (unsigned long long)(uintptr_t)render_pass, (unsigned long long)(uintptr_t)this);
-    
+
     // 列出所有要被销毁的管道
     for (size_t i = 0; i < pipeline_list.GetCount(); i++)
     {
@@ -36,7 +36,7 @@ RenderPass::~RenderPass()
         if (p)
             LogInfo("  [RenderPass::~RenderPass] Clearing Pipeline [%zu]: '%s'", i, p->GetName().c_str());
     }
-    
+
     LogDebug("[RenderPass::~RenderPass] Clearing pipeline_list...");
     pipeline_list.Clear();
     LogDebug("[RenderPass::~RenderPass] Pipelines cleared, now destroying VkRenderPass");

@@ -8,7 +8,7 @@ Fence::~Fence()
 {
     // 记录销毁位置以支持追踪
     HGL_OBJECT_DESTROY_LOCATION();
-    
+
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
         owner->UntrackObject(VK_OBJECT_TYPE_FENCE, (uint64_t)(uintptr_t)fence);

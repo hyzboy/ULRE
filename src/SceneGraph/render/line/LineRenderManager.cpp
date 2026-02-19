@@ -56,7 +56,7 @@ namespace hgl::graph
     LineRenderManager* CreateLineRenderManager(GraphicsContext *gc,IRenderTarget *rt)
     {
         HGL_CAPTURE_SCOPE();
-        
+
         if (!gc)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: CreateLineRenderManager失败 GraphicsContext为空 EN: graphics context is null"));
@@ -199,7 +199,7 @@ namespace hgl::graph
     LineRenderManager* CreateLineRenderManager(RenderContext *rc,IRenderTarget *rt)
     {
         HGL_CAPTURE_SCOPE();
-        
+
         if (!rc)
         {
             MLogError(LineRenderManager,OS_TEXT("CN: CreateLineRenderManager失败 RenderContext为空 EN: render context is null"));
@@ -377,7 +377,7 @@ namespace hgl::graph
         }
 
         //注：pipeline都是由RenderPass自己管理释放的，不同手动释放
-        
+
         pipeline = new_pipeline;
         LogInfo(OS_TEXT("CN: 渲染目标切换并重建Pipeline成功 EN: render target switched and pipeline rebuilt"));
 

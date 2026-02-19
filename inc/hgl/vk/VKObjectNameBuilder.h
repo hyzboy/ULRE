@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/vk/VKNamespace.h>
 #include<hgl/type/String.h>
@@ -101,11 +101,11 @@ struct ObjectNameBuilder
     AnsiString ToString() const
     {
         AnsiString result(base_name);
-        
+
         for (uint8_t i = 0; i < depth; ++i)
         {
             result += " <- ";
-            
+
             // 输出类型哈希码（供符号查询使用）
             if (type_hashes[i] != 0)
             {
@@ -113,7 +113,7 @@ struct ObjectNameBuilder
                 snprintf(hash_buf, sizeof(hash_buf), "0x%llx", (unsigned long long)type_hashes[i]);
                 result += hash_buf;
             }
-            
+
             // 输出标签（如果有）
             if (tags[i] != ObjectTypeTag::None)
             {
@@ -121,7 +121,7 @@ struct ObjectNameBuilder
                 result += GetTagString(tags[i]);
             }
         }
-        
+
         return result;
     }
 

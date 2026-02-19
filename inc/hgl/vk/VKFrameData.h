@@ -1,4 +1,4 @@
-#ifndef __VK_FRAME_DATA_H__
+﻿#ifndef __VK_FRAME_DATA_H__
 #define __VK_FRAME_DATA_H__
 
 #include<vulkan/vulkan.h>
@@ -15,10 +15,10 @@ class Fence;
 /**
  * @struct FrameResources
  * @brief Data container for a single frame's resources
- * 
+ *
  * This structure contains references to resources. Some are owned by various managers,
  * while DeviceQueue, Semaphore, and Fence are owned by SwapchainModule.
- * 
+ *
  * Resource Ownership Model:
  * - VkImageView: owned by TextureManager
  * - VkFramebuffer: owned by RenderTargetManager
@@ -28,44 +28,44 @@ class Fence;
  * - Semaphore*: owned by SwapchainModule (for synchronization)
  * - Fence*: owned by SwapchainModule (for GPU-CPU sync)
  * - VkImage: owned by Swapchain
- * 
+ *
  * Cleanup is managed by SwapchainModule::DestroyPerFrameResources()
  */
 struct FrameResources
 {
     uint32_t frame_index = 0;                    ///< Current frame index (0-2 for triple buffering)
-    
+
     // Semaphores for synchronization (owned by SwapchainModule)
     Semaphore *image_acquired_semaphore = nullptr;      ///< Signal when swapchain image is ready
     Semaphore *render_complete_semaphore = nullptr;     ///< Signal when rendering is complete
-    
+
     // Swapchain image info (owned by Swapchain)
     VkImage vk_image = VK_NULL_HANDLE;           ///< Swapchain image
     uint32_t image_index = ~0u;                  ///< Index of swapchain image
     VkImageView image_view = VK_NULL_HANDLE;     ///< ImageView for rendering (owned by TextureManager)
-    
+
     // Rendering resources (owned by respective managers)
     VkFramebuffer framebuffer = VK_NULL_HANDLE;  ///< Owned by RenderTargetManager
     VkRenderPass render_pass = VK_NULL_HANDLE;   ///< Owned by RenderPassManager
-    
+
     // Command execution (owned by SwapchainModule)
     VkCommandBuffer cmd_buffer = VK_NULL_HANDLE; ///< Command buffer from CommandPool
     DeviceQueue *queue = nullptr;                ///< Graphics queue wrapper (owned by SwapchainModule)
-    
+
     // Synchronization fence (owned by SwapchainModule)
     Fence *fence = nullptr;                      ///< GPU-CPU synchronization fence
-    
+
     // Additional resource references
     std::vector<VkImageView> texture_views;      ///< References to texture views used in rendering
-    
+
     /**
      * @brief Clear all resource references
-     * 
+     *
     * This method clears all pointers and DELETES the owned objects:
     * - DeviceQueue*: deletes the per-frame queue wrapper
     * - Semaphore*: deletes the semaphore wrappers (per-frame)
     * - Fence*: deletes the fence wrapper (per-frame)
-     * 
+     *
      * Called when:
      * - Clearing individual frame references
      * - During SwapchainModule cleanup (via SwapchainData::Clear())
@@ -77,7 +77,7 @@ struct FrameResources
         if (image_acquired_semaphore) { delete image_acquired_semaphore; image_acquired_semaphore = nullptr; }
         if (render_complete_semaphore) { delete render_complete_semaphore; render_complete_semaphore = nullptr; }
         if (fence) { delete fence; fence = nullptr; }
-        
+
         // Clear other handles (owned by other managers)
         vk_image = VK_NULL_HANDLE;
         image_index = ~0u;

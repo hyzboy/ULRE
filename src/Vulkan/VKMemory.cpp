@@ -46,7 +46,7 @@ DeviceMemory::~DeviceMemory()
 {
     LogDebug("[DeviceMemory::~DeviceMemory] this=0x%llx VkDeviceMemory=0x%llx size=%zu",
               (unsigned long long)(uintptr_t)this, (unsigned long long)(uintptr_t)memory, req.size);
-    
+
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
         owner->UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)memory);

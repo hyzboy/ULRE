@@ -279,16 +279,16 @@ private:
             auto billboard = billboard_entity->AddComponent<BillboardComponent>();
             std::cout << "  -> BillboardComponent added at " << (void*)billboard.get() << std::endl;
             std::cout << "     (automatically created QuadComponent and FacingTransformComponent)" << std::endl;
-            
+
             billboard->SetVisible(true);
             std::cout << "  -> SetVisible(true)" << std::endl;
-            
+
             billboard->SetFixedPixelSize(true);
             std::cout << "  -> SetFixedPixelSize(true)" << std::endl;
-            
+
             billboard->SetPixelSize(256, 256);
             std::cout << "  -> SetPixelSize(256, 256)" << std::endl;
-            
+
             billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
             std::cout << "  -> SetFrontFace(CLOCKWISE)" << std::endl;
 
@@ -389,7 +389,7 @@ public:
     bool Init() override
     {
         std::cout << "\n\n===== BILLBOARD ECS APP INITIALIZATION START =====\n" << std::endl;
-        
+
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
         if (!InitPlaneGridResources()) return false;
@@ -406,7 +406,7 @@ public:
     {
         static int frame_count = 0;
         frame_count++;
-        
+
         if (frame_count <= 3)
         {
             std::cout << "\n[BillboardECS] Frame " << frame_count << " starting..." << std::endl;
@@ -415,9 +415,9 @@ public:
                 std::cout << "  -> Entity count: " << ecs_world->GetEntityCount() << std::endl;
             }
         }
-        
+
         WorkObject::Tick(delta_time);
-        
+
         if (frame_count <= 3)
         {
             std::cout << "[BillboardECS] Frame " << frame_count << " end" << std::endl;

@@ -60,16 +60,16 @@ namespace hgl
             // Don't create our own transform storage if we have a parent
             // The TransformComponent will use the shared storage from the parent
         }
-        
+
         bool ECSContext::InitializeGraphics(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target) {
             if (!device || !target) {
                 // Phase 1 debug: device or target is null
                 return false;
             }
-            
+
             gpu_device = device;
             render_target = target;
-            
+
             // Phase 1: Initialized with GPU device and render target
             return true;
         }
@@ -147,7 +147,7 @@ namespace hgl
             if (!active)
             {
                 // 即使未激活，也要清空materialBatches以释放GPU资源
-                std::cout << "[DEBUG] ECSContext::Shutdown() (inactive) - releasing " 
+                std::cout << "[DEBUG] ECSContext::Shutdown() (inactive) - releasing "
                           << render_frame_cache.materialBatches.GetCount() << " material batches" << std::endl;
                 render_frame_cache.materialBatches.Clear();
                 return;
@@ -185,7 +185,7 @@ namespace hgl
             movable_transforms.clear();
 
             // Finally, clear materialBatches after all systems/entities are destroyed
-            std::cout << "[DEBUG] ECSContext::Shutdown() - releasing " 
+            std::cout << "[DEBUG] ECSContext::Shutdown() - releasing "
                       << render_frame_cache.materialBatches.GetCount() << " material batches" << std::endl;
             render_frame_cache.materialBatches.Clear();
             std::cout << "[DEBUG] ECSContext::Shutdown() - material batches cleared" << std::endl;
@@ -241,7 +241,7 @@ namespace hgl
         {
             if (!active)
                 return;
-            
+
             // (Phase 1) 设置当前渲染命令缓冲区（如果没有由 RenderSystemCore 设置）
             if (!current_render_cmd && cmd) {
                 current_render_cmd = cmd;
@@ -284,7 +284,7 @@ namespace hgl
                         sub_world->RenderSubWorld(cmd, deltaTime);
                 }
             }
-            
+
             // (Phase 1) 清除当前命令缓冲区（如果是我们设置的）
             if (current_render_cmd == cmd) {
                 current_render_cmd = nullptr;
@@ -299,7 +299,7 @@ namespace hgl
                 return;
 
             // Log resize event
-            GLogInfo("[ECSContext] OnResize: %s %ux%u", 
+            GLogInfo("[ECSContext] OnResize: %s %ux%u",
                      GetName().c_str(), extent.width, extent.height);
 
             // Notify RenderTargetSystem to sync viewport and dependent systems
@@ -367,7 +367,7 @@ namespace hgl
 
             GLogInfo("[ECS RENDER] Calling Render(cmd)");
             Render(render_core->GetRenderCmd(), deltaTime);
-            
+
             GLogInfo("[ECS RENDER] Calling EndFrame");
             render_core->EndFrame();
 
@@ -377,7 +377,7 @@ namespace hgl
                 if (auto *device = GetGPUDevice())
                     device->WaitIdle();
             }
-            
+
             GLogInfo("[ECS RENDER] ===== Frame End =====");
         }
 
