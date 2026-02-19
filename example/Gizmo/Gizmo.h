@@ -30,9 +30,13 @@ struct GizmoECS;
 
 enum class GizmoMode : int
 {
-    Move = 1,
-    Rotate = 2,
-    Scale = 3
+    MoveWorld = 1,
+    MoveLocal = 2,
+    Rotate = 3,
+    ScaleLocal = 4,
+
+    Move = MoveWorld,
+    Scale = ScaleLocal
 };
 
 struct GizmoMoveECSState

@@ -36,6 +36,7 @@ struct GizmoRotateECS
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
 
     MaterialInstance *pick_mi = nullptr;
+    MaterialInstance *white_mi = nullptr;
 
     struct Axis
     {
@@ -70,6 +71,7 @@ namespace
 {
     const math::Vector3f one_scale(1.0f, 1.0f, 1.0f);
     constexpr float TORUS_HOVER_THRESHOLD = 0.5f;
+    constexpr float WHITE_TORUS_HOVER_THRESHOLD = 1.0f;
 
     Primitive *GetGizmoPrimitive(const GizmoShape &shape)
     {
@@ -126,6 +128,12 @@ namespace
 
             if(gizmo->axis[i].torus)
                 gizmo->axis[i].torus->SetOverrideMaterial(mi);
+        }
+
+        if(gizmo->white_torus)
+        {
+            MaterialInstance *white_mi = (gizmo->cur_axis == 3) ? gizmo->pick_mi : gizmo->white_mi;
+            gizmo->white_torus->SetOverrideMaterial(white_mi);
         }
     }
 
@@ -193,6 +201,7 @@ GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
     auto *gizmo = new GizmoRotateECS;
     gizmo->world = world;
     gizmo->pick_mi = GetGizmoMI3D(GizmoColor::Yellow);
+    gizmo->white_mi = GetGizmoMI3D(GizmoColor::White);
 
     gizmo->root = world->CreateEntity<hgl::ecs::Entity>(name ? name : "GizmoRotate");
     if(!gizmo->root)
@@ -236,7 +245,7 @@ GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
 
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         prim_comp->SetPrimitive(torus);
-        prim_comp->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::White));
+        prim_comp->SetOverrideMaterial(gizmo->white_mi);
 
         gizmo->white_torus = prim_comp;
         gizmo->entity_ids.push_back(entity->GetID());
@@ -335,7 +344,7 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
 
     if(gizmo->dragging)
     {
-        if(gizmo->pick_axis >= 0 && gizmo->pick_axis < 3)
+        if(gizmo->pick_axis >= 0 && gizmo->pick_axis <= 3)
         {
             // 计算鼠标射线与旋转平面的交点
             const float denom = glm::dot(gizmo->mouse_ray.direction, gizmo->pick_plane_normal);
@@ -374,9 +383,36 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
 
     gizmo->cur_axis = -1;
 
+    // 检测鼠标悬停在白色圆环上（屏幕朝向环）
+    if(gizmo->white_torus_transform)
+    {
+        const math::Vector3f white_plane_normal = glm::normalize(math::Vector3f(camera_info->view[0][2], camera_info->view[1][2], camera_info->view[2][2]));
+        const float denom = glm::dot(gizmo->mouse_ray.direction, white_plane_normal);
+        if(std::fabs(denom) > 1e-6f)
+        {
+            const float t = glm::dot(center - gizmo->mouse_ray.origin, white_plane_normal) / denom;
+            if(t >= 0.0f)
+            {
+                const math::Vector3f hit_point = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
+                const float dist_to_center = glm::distance(hit_point, center);
+                const float white_radius = 13.0f;
+
+                if(std::fabs(dist_to_center - white_radius) < WHITE_TORUS_HOVER_THRESHOLD)
+                {
+                    gizmo->cur_axis = 3;
+                    gizmo->pick_center = center;
+                    gizmo->pick_plane_normal = white_plane_normal;
+                }
+            }
+        }
+    }
+
     // 检测鼠标悬停在哪个轴的圆环上
     for(int i=0;i<3;i++)
     {
+        if(gizmo->cur_axis == 3)
+            break;
+
         const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(i));
         const math::Vector3f plane_normal = TransformDirection(l2w, axis_vector);
 
@@ -405,7 +441,7 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
 
     ApplyAxisMaterials(gizmo);
 
-    if(left_pressed && gizmo->cur_axis >= 0 && gizmo->cur_axis < 3)
+    if(left_pressed && gizmo->cur_axis >= 0 && gizmo->cur_axis <= 3)
     {
         if(input_system && !input_system->BeginMouseCapture(gizmo))
             return;

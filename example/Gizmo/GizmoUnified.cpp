@@ -48,10 +48,12 @@ struct GizmoECS
 
     float last_rotate_angle = 0.0f;
     float last_scale_value = 1.0f;
+    float last_move_dist = 0.0f;
     int last_rotate_axis = -1;
     int last_scale_axis = -1;
+    int last_move_axis = -1;
 
-    GizmoMode current_mode = GizmoMode::Move;
+    GizmoMode current_mode = GizmoMode::MoveWorld;
 };
 
 // Forward declare the internal gizmo functions
@@ -69,6 +71,7 @@ extern void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
                                 bool left_released);
 extern bool GetGizmoMovePosition(const GizmoMoveECS *gizmo, math::Vector3f &out_position);
 extern void SetGizmoMovePosition(GizmoMoveECS *gizmo, const math::Vector3f &position);
+extern void SetGizmoMoveRotation(GizmoMoveECS *gizmo, const glm::quat &rotation);
 
 extern GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
                                             const char *name,
@@ -99,20 +102,28 @@ extern void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
                                 bool left_released);
 extern bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_state);
 extern void SetGizmoScalePosition(GizmoScaleECS *gizmo, const math::Vector3f &position);
+extern void SetGizmoScaleRotation(GizmoScaleECS *gizmo, const glm::quat &rotation);
 
 extern void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible);
 extern void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible);
 extern void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible);
 
-static void SyncAllSubGizmoPositions(GizmoECS *gizmo)
+static void SyncAllSubGizmoTransforms(GizmoECS *gizmo)
 {
     if(!gizmo || !gizmo->root_transform)
         return;
 
     const math::Vector3f root_pos = gizmo->root_transform->GetLocalPosition();
+    const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
+
     SetGizmoMovePosition((GizmoMoveECS*)gizmo->move_impl, root_pos);
+    SetGizmoMoveRotation((GizmoMoveECS*)gizmo->move_impl,
+                         gizmo->current_mode == GizmoMode::MoveLocal ? root_rot : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+
     SetGizmoRotatePosition((GizmoRotateECS*)gizmo->rotate_impl, root_pos);
+
     SetGizmoScalePosition((GizmoScaleECS*)gizmo->scale_impl, root_pos);
+    SetGizmoScaleRotation((GizmoScaleECS*)gizmo->scale_impl, root_rot);
 }
 
 
@@ -246,8 +257,8 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
     }
 
     // Initialize with Move mode active
-    SetGizmoMode(gizmo, GizmoMode::Move);
-    SyncAllSubGizmoPositions(gizmo);
+    SetGizmoMode(gizmo, GizmoMode::MoveWorld);
+    SyncAllSubGizmoTransforms(gizmo);
     std::cout << "[GizmoECS] Create done" << std::endl;
 
     return gizmo;
@@ -300,29 +311,33 @@ void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     std::cout << "[GizmoECS] Set mode=" << static_cast<int>(mode) << std::endl;
 
     // Set visibility based on mode
-    SetGizmoMoveVisible((GizmoMoveECS*)gizmo->move_impl, mode == GizmoMode::Move);
+    const bool move_active = (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal);
+
+    SetGizmoMoveVisible((GizmoMoveECS*)gizmo->move_impl, move_active);
     SetGizmoRotateVisible((GizmoRotateECS*)gizmo->rotate_impl, mode == GizmoMode::Rotate);
-    SetGizmoScaleVisible((GizmoScaleECS*)gizmo->scale_impl, mode == GizmoMode::Scale);
+    SetGizmoScaleVisible((GizmoScaleECS*)gizmo->scale_impl, mode == GizmoMode::ScaleLocal);
 
     // Pause non-active sub-worlds to avoid concurrent rendering/update artifacts
     if (gizmo->move_subworld)
-        gizmo->move_subworld->SetPaused(mode != GizmoMode::Move);
+        gizmo->move_subworld->SetPaused(!move_active);
     if (gizmo->rotate_subworld)
         gizmo->rotate_subworld->SetPaused(mode != GizmoMode::Rotate);
     if (gizmo->scale_subworld)
-        gizmo->scale_subworld->SetPaused(mode != GizmoMode::Scale);
+        gizmo->scale_subworld->SetPaused(mode != GizmoMode::ScaleLocal);
 
     gizmo->last_rotate_angle = 0.0f;
     gizmo->last_scale_value = 1.0f;
+    gizmo->last_move_dist = 0.0f;
     gizmo->last_rotate_axis = -1;
     gizmo->last_scale_axis = -1;
+    gizmo->last_move_axis = -1;
 
-    SyncAllSubGizmoPositions(gizmo);
+    SyncAllSubGizmoTransforms(gizmo);
 }
 
 GizmoMode GetGizmoMode(const GizmoECS *gizmo)
 {
-    return gizmo ? gizmo->current_mode : GizmoMode::Move;
+    return gizmo ? gizmo->current_mode : GizmoMode::MoveWorld;
 }
 
 void SetGizmoVisible(GizmoECS *gizmo, bool visible)
@@ -363,15 +378,49 @@ void UpdateGizmoECS(GizmoECS *gizmo,
     // Update only the active mode
     switch (gizmo->current_mode)
     {
-    case GizmoMode::Move:
+    case GizmoMode::MoveWorld:
+    case GizmoMode::MoveLocal:
+    {
         UpdateGizmoMoveECS((GizmoMoveECS*)gizmo->move_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
         if(gizmo->root_transform)
         {
-            math::Vector3f move_pos;
-            if(GetGizmoMovePosition((GizmoMoveECS*)gizmo->move_impl, move_pos))
-                gizmo->root_transform->SetLocalPosition(glm::vec3(move_pos));
+            GizmoMoveECSState state;
+            if(GetGizmoMoveECSState((GizmoMoveECS*)gizmo->move_impl, state))
+            {
+                if(state.dragging && state.pick_axis >= 0 && state.pick_axis < 3)
+                {
+                    if(gizmo->last_move_axis != state.pick_axis)
+                    {
+                        gizmo->last_move_axis = state.pick_axis;
+                        gizmo->last_move_dist = state.cur_dist;
+                    }
+
+                    const float delta = state.cur_dist - gizmo->last_move_dist;
+                    if(std::fabs(delta) > 1e-6f)
+                    {
+                        math::Vector3f axis = math::GetAxisVector(math::AXIS(state.pick_axis));
+                        if(gizmo->current_mode == GizmoMode::MoveLocal)
+                        {
+                            const glm::quat rot = gizmo->root_transform->GetLocalRotation();
+                            axis = glm::normalize(math::Vector3f(rot * glm::vec3(axis)));
+                        }
+
+                        glm::vec3 pos = gizmo->root_transform->GetLocalPosition();
+                        pos += glm::vec3(axis) * delta;
+                        gizmo->root_transform->SetLocalPosition(pos);
+                    }
+
+                    gizmo->last_move_dist = state.cur_dist;
+                }
+                else
+                {
+                    gizmo->last_move_axis = -1;
+                    gizmo->last_move_dist = 0.0f;
+                }
+            }
         }
         break;
+    }
     case GizmoMode::Rotate:
     {
         UpdateGizmoRotateECS((GizmoRotateECS*)gizmo->rotate_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
@@ -380,7 +429,7 @@ void UpdateGizmoECS(GizmoECS *gizmo,
             GizmoRotateECSState state;
             if(GetGizmoRotateECSState((GizmoRotateECS*)gizmo->rotate_impl, state))
             {
-                if(state.dragging && state.pick_axis >= 0 && state.pick_axis < 3)
+                if(state.dragging && state.pick_axis >= 0 && state.pick_axis <= 3)
                 {
                     if(gizmo->last_rotate_axis != state.pick_axis)
                     {
@@ -391,7 +440,20 @@ void UpdateGizmoECS(GizmoECS *gizmo,
                     const float delta = state.cur_angle - gizmo->last_rotate_angle;
                     if(std::fabs(delta) > 1e-6f)
                     {
-                        const math::Vector3f axis = math::GetAxisVector(math::AXIS(state.pick_axis));
+                        math::Vector3f axis;
+                        if(state.pick_axis < 3)
+                        {
+                            axis = math::GetAxisVector(math::AXIS(state.pick_axis));
+                        }
+                        else if(camera_info)
+                        {
+                            axis = glm::normalize(math::Vector3f(camera_info->view[0][2], camera_info->view[1][2], camera_info->view[2][2]));
+                        }
+                        else
+                        {
+                            axis = math::AxisVector::Z;
+                        }
+
                         const glm::quat dq = glm::angleAxis(delta, glm::vec3(axis));
                         const glm::quat cur = gizmo->root_transform->GetLocalRotation();
                         gizmo->root_transform->SetLocalRotation(glm::normalize(dq * cur));
@@ -408,7 +470,7 @@ void UpdateGizmoECS(GizmoECS *gizmo,
         }
         break;
     }
-    case GizmoMode::Scale:
+    case GizmoMode::ScaleLocal:
     {
         UpdateGizmoScaleECS((GizmoScaleECS*)gizmo->scale_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
         if(gizmo->root_transform)
@@ -450,7 +512,7 @@ void UpdateGizmoECS(GizmoECS *gizmo,
     }
     }
 
-    SyncAllSubGizmoPositions(gizmo);
+    SyncAllSubGizmoTransforms(gizmo);
 }
 
 }//namespace hgl::graph

@@ -63,6 +63,7 @@ private:
     bool last_key_w = false;
     bool last_key_e = false;
     bool last_key_r = false;
+    bool last_key_t = false;
     std::string debug_cache;
 
     bool InitSceneResources()
@@ -282,12 +283,14 @@ private:
 
         GizmoMode mode = GetGizmoMode(gizmo);
         std::string text = "mode=";
-        if(mode == GizmoMode::Move)
-            text += "Move(1)";
+        if(mode == GizmoMode::MoveWorld)
+            text += "MoveWorld(1)";
+        else if(mode == GizmoMode::MoveLocal)
+            text += "MoveLocal(2)";
         else if(mode == GizmoMode::Rotate)
-            text += "Rotate(2)";
-        else if(mode == GizmoMode::Scale)
-            text += "Scale(3)";
+            text += "Rotate(3)";
+        else if(mode == GizmoMode::ScaleLocal)
+            text += "ScaleLocal(4)";
 
         text += " left=";
         text += input_system->IsMouseButtonDown(hgl::io::MouseButton::Left) ? "1" : "0";
@@ -327,7 +330,7 @@ public:
             return false;
 
         std::cout << "Gizmo Example Started." << std::endl;
-        std::cout << "Press W for Move, E for Rotate, R for Scale" << std::endl;
+        std::cout << "Press 1 MoveWorld, 2 MoveLocal, 3 Rotate, 4 ScaleLocal" << std::endl;
 
         return true;
     }
@@ -362,30 +365,37 @@ public:
         const bool left_released = !left_down && last_left_down;
         last_left_down = left_down;
 
-        // 切换 Gizmo 模式（按键 1/2/3）
+        // 切换 Gizmo 模式（按键 1/2/3/4）
         const bool key_1 = input_system->IsKeyDown(hgl::io::KeyboardButton::_1);
         const bool key_2 = input_system->IsKeyDown(hgl::io::KeyboardButton::_2);
         const bool key_3 = input_system->IsKeyDown(hgl::io::KeyboardButton::_3);
+        const bool key_4 = input_system->IsKeyDown(hgl::io::KeyboardButton::_4);
 
         if(key_1 && !last_key_w)
         {
-            SetGizmoMode(gizmo, GizmoMode::Move);
-            std::cout << "Switched to Move mode" << std::endl;
+            SetGizmoMode(gizmo, GizmoMode::MoveWorld);
+            std::cout << "Switched to MoveWorld mode" << std::endl;
         }
         else if(key_2 && !last_key_e)
+        {
+            SetGizmoMode(gizmo, GizmoMode::MoveLocal);
+            std::cout << "Switched to MoveLocal mode" << std::endl;
+        }
+        else if(key_3 && !last_key_r)
         {
             SetGizmoMode(gizmo, GizmoMode::Rotate);
             std::cout << "Switched to Rotate mode" << std::endl;
         }
-        else if(key_3 && !last_key_r)
+        else if(key_4 && !last_key_t)
         {
-            SetGizmoMode(gizmo, GizmoMode::Scale);
-            std::cout << "Switched to Scale mode" << std::endl;
+            SetGizmoMode(gizmo, GizmoMode::ScaleLocal);
+            std::cout << "Switched to ScaleLocal mode" << std::endl;
         }
 
         last_key_w = key_1;
         last_key_e = key_2;
         last_key_r = key_3;
+        last_key_t = key_4;
 
         // 更新统一的 Gizmo（内部会根据当前模式处理）
         UpdateGizmoECS(gizmo,

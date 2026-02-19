@@ -291,6 +291,14 @@ void SetGizmoMovePosition(GizmoMoveECS *gizmo, const math::Vector3f &position)
     gizmo->root_transform->SetLocalPosition(glm::vec3(position));
 }
 
+void SetGizmoMoveRotation(GizmoMoveECS *gizmo, const glm::quat &rotation)
+{
+    if(!gizmo || !gizmo->root_transform)
+        return;
+
+    gizmo->root_transform->SetLocalRotation(rotation);
+}
+
 void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible)
 {
     if(!gizmo || !gizmo->world)
