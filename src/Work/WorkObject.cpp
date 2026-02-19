@@ -1,4 +1,4 @@
-﻿#include<hgl/WorkObject.h>
+﻿#include<hgl/framework/WorkObject.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/vk/VKRenderTarget.h>

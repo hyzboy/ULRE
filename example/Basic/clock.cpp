@@ -9,7 +9,7 @@
 // 4. TransformSystem自动管理Static和Movable transform的更新
 // 5. ECS中static/movable数据完全分离，提高缓存效率
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>

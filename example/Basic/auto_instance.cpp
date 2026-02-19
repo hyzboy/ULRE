@@ -8,7 +8,7 @@
 // 4. RenderCollector自动合并相同材质和管线的对象进行Instance渲染
 // 5. ECS与渲染系统的集成
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>

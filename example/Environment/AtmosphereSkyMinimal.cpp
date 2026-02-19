@@ -1,4 +1,4 @@
-﻿#include<hgl/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>

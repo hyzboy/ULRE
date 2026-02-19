@@ -1,7 +1,7 @@
 ﻿// ExtrudedPolygonTest.cpp
 // 测试2D多边形挤压为3D多边形功能
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/Extruded.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>

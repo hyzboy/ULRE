@@ -1,6 +1,6 @@
 ﻿// PlaneGrid3D
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>

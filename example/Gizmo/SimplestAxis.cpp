@@ -1,7 +1,7 @@
 ﻿// SimplestAxis
 // 直接从0,0,0向三个方向画一条直线，用于确认坐标轴方向
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>

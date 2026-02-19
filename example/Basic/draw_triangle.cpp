@@ -7,7 +7,7 @@
 // 3. 使用PrimitiveComponent管理渲染图元
 // 4. ECS与传统渲染系统的集成
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>

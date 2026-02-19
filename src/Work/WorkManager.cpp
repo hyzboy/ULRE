@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/time/Time.h>
 
 namespace hgl

@@ -1,4 +1,4 @@
-﻿#include<hgl/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include"Gizmo.h"
 #include"GizmoResource.h"
 #include<hgl/math/VectorTypes.h>

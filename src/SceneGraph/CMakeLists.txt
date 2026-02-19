@@ -12,13 +12,10 @@ source_group("SceneGraph" FILES ${CM_SG_HEADER})
 # 1. Core Framework - 核心框架
 # ============================================================================
 
-SET(GRAPH_FRAMEWORK_FILES   ${ROOT_INCLUDE_PATH}/hgl/platform/AppFramework.h
-                            ${SG_INCLUDE_PATH}/core/GraphicsContext.h
-                            ${SG_INCLUDE_PATH}/core/VulkanGraphicsContext.h
-                            ../platform/AppFramework.cpp
+SET(GRAPHICS_CONTEXT_FILES   ${SG_INCLUDE_PATH}/core/GraphicsContext.h
                             render/GraphicsContext.cpp)
 
-SOURCE_GROUP("1.Core\\Framework" FILES ${GRAPH_FRAMEWORK_FILES})
+SOURCE_GROUP("1.Core\\GraphicsContext" FILES ${GRAPHICS_CONTEXT_FILES})
 
 SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/GraphModuleManager.h
@@ -255,7 +252,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
                                         ${CAMERA_FILES}
 
                                         ${GRAPH_MODULE_FILES}
-                                        ${GRAPH_FRAMEWORK_FILES}
+                                        ${GRAPHICS_CONTEXT_FILES}
 
                                         ${TEXTURE_LOADER_FILES}
                                         ${TEXTURE_TILE_FILES}

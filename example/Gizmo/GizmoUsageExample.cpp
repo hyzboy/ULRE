@@ -5,7 +5,7 @@
  按键 W/E/R 切换模式
 */
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include"Gizmo.h"
 #include"GizmoResource.h"
 #include<hgl/math/VectorTypes.h>

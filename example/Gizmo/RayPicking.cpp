@@ -9,7 +9,7 @@
 // 4. 动态更新顶点数据以显示实时射线
 // 5. 使用新的 ECS Camera 系统替代旧的 CameraControl
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>

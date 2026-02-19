@@ -7,7 +7,7 @@
 // 3. 使用PrimitiveComponent管理渲染图元
 // 4. CameraSystem配置为ViewModel控制模式
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>

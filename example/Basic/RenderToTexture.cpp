@@ -1,4 +1,4 @@
-﻿#include<hgl/WorkManager.h>
+﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>

@@ -4,7 +4,7 @@
 // Each chain moves outward along a face normal by the parent cube size,
 // then places a child cube with 0.9x scale. Repeats for 10 layers.
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>

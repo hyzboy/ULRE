@@ -2,7 +2,7 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 
 using namespace hgl;
 using namespace hgl::ecs;

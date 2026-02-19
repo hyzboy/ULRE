@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-#include<hgl/WorkObject.h>
+#include<hgl/framework/WorkObject.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
-#include<hgl/platform/AppFramework.h>
+#include<hgl/framework/AppFramework.h>
 #include<hgl/object/ObjectTracker.h>
 #include <memory>
 

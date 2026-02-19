@@ -1,4 +1,4 @@
-// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
+﻿// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
 //
 // This example demonstrates the new decoupled architecture:
 // - QuadComponent: Handles quad geometry and rendering
@@ -10,7 +10,7 @@
 // - Use just FacingTransformComponent for other entities that need rotation
 // - Use BillboardComponent for the classic billboard use case
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>

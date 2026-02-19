@@ -9,7 +9,7 @@
 // 4. RenderCollector自动合并相同Material的不同MaterialInstance进行批量渲染
 // 5. ECSMaterialInstanceAssignmentBuffer自动去重和索引管理
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>

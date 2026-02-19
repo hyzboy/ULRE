@@ -8,7 +8,7 @@
 // 4. 使用AABB生成包围盒实体
 // 5. CameraSystem配置为ViewModel控制模式
 
-#include<hgl/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
