@@ -105,7 +105,7 @@ namespace hgl::ecs
 
         //if (cache.renderableCount == 0)
         //{
-        //    GLogInfo("[RenderPrimitiveCollectSystem] No renderables: total=%zu visible=%zu no_owner=%zu no_transform=%zu",
+        //    LogInfo("[RenderPrimitiveCollectSystem] No renderables: total=%zu visible=%zu no_owner=%zu no_transform=%zu",
         //             primitives.size(),
         //             added,
         //             skipped_no_owner,

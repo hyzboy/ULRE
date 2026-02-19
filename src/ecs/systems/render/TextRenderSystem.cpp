@@ -26,6 +26,7 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
 #include<cmath>
+#include<memory>
 
 namespace hgl::ecs
 {
@@ -101,6 +102,8 @@ namespace hgl::ecs
 
         auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
+        auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
+        auto* sampler_manager = graphics_context ? graphics_context->GetSamplerManager() : nullptr;
 
         for (auto& pair : resources_by_font)
         {
@@ -116,6 +119,24 @@ namespace hgl::ecs
             {
                 primitive_manager->Release(res.primitive);
                 res.primitive = nullptr;
+            }
+
+            if (res.material_instance && material_manager)
+            {
+                material_manager->Release(res.material_instance);
+                res.material_instance = nullptr;
+            }
+
+            if (res.material && material_manager)
+            {
+                material_manager->Release(res.material);
+                res.material = nullptr;
+            }
+
+            if (res.sampler && sampler_manager)
+            {
+                sampler_manager->Release(res.sampler);
+                res.sampler = nullptr;
             }
 
             if (res.tile_font)
@@ -147,6 +168,30 @@ namespace hgl::ecs
             return entry;
 
         RenderResources resources;
+        graph::MaterialManager* material_manager = nullptr;
+        graph::SamplerManager* sampler_manager = nullptr;
+
+        struct BuildGuard
+        {
+            graph::MaterialManager* material_manager = nullptr;
+            graph::SamplerManager* sampler_manager = nullptr;
+            graph::Material* material = nullptr;
+            graph::Sampler* sampler = nullptr;
+            std::unique_ptr<graph::TileFont> tile_font;
+            bool committed = false;
+
+            ~BuildGuard()
+            {
+                if (committed)
+                    return;
+
+                if (sampler && sampler_manager)
+                    sampler_manager->Release(sampler);
+
+                if (material && material_manager)
+                    material_manager->Release(material);
+            }
+        } guard;
 
         const int limit_count = static_cast<int>((estimate_chars > 0) ? estimate_chars : 256);
         VkExtent2D extent{1024, 1024};
@@ -157,8 +202,8 @@ namespace hgl::ecs
                 extent = target->GetExtent();
         }
 
-        resources.tile_font = CreateTileFont(render_context, font_source, limit_count, &extent);
-        if (!resources.tile_font)
+        guard.tile_font.reset(CreateTileFont(render_context, font_source, limit_count, &extent));
+        if (!guard.tile_font)
             return nullptr;
 
         graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
@@ -170,30 +215,39 @@ namespace hgl::ecs
         if (!mci)
             return nullptr;
 
-        auto* material_manager = graphics_context->GetMaterialManager();
+        material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
             return nullptr;
+
+        guard.material_manager = material_manager;
 
         static uint32_t material_id = 0;
         AnsiString material_name;
         hgl::Sprintf(material_name, "Text2D_ECS_%u", material_id++);
-        resources.material = material_manager->CreateMaterial(material_name, mci);
-        if (!resources.material)
+        guard.material = material_manager->CreateMaterial(material_name, mci);
+        if (!guard.material)
             return nullptr;
 
-        auto* sampler_manager = graphics_context->GetSamplerManager();
+        sampler_manager = graphics_context->GetSamplerManager();
         if (!sampler_manager)
             return nullptr;
 
-        resources.sampler = sampler_manager->CreateSampler();
-        if (!resources.sampler)
+        guard.sampler_manager = sampler_manager;
+
+        guard.sampler = sampler_manager->CreateSampler();
+        if (!guard.sampler)
             return nullptr;
 
-        if (!resources.material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
+        if (!guard.material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
                                                     graph::mtl::SamplerName::Text,
-                                                    resources.tile_font->GetTexture(),
-                                                    resources.sampler))
+                                                    guard.tile_font->GetTexture(),
+                                                    guard.sampler))
             return nullptr;
+
+        resources.tile_font = guard.tile_font.release();
+        resources.material = guard.material;
+        resources.sampler = guard.sampler;
+        guard.committed = true;
 
         resources_by_font.Add(font_source, resources);
         return resources_by_font.GetValuePointer(font_source);

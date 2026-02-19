@@ -7,6 +7,7 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/SystemProfiler.h>
+#include<hgl/log/Log.h>
 #include<memory>
 #include<functional>
 #include<vector>
@@ -56,6 +57,8 @@ namespace hgl
         class ECSContext : public Object
         {
         private:
+            OBJECT_LOGGER
+
             static constexpr int kUnspecifiedSystemPriority = (std::numeric_limits<int>::min)();
 
             std::unique_ptr<EntityManager> entity_manager;
@@ -349,7 +352,7 @@ namespace hgl
             }
 
             /// Get all alive entity pointers (const version)
-            void GetAllEntities(std::vector<Entity*>& out_entities) const
+            void GetAllEntities(std::vector<const Entity*>& out_entities) const
             {
                 if (entity_manager)
                     entity_manager->GetAllEntityPointers(out_entities);

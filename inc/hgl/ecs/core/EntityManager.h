@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/EntityHandle.h>
+#include<hgl/log/Log.h>
 #include<vector>
 #include<memory>
 #include<string>
@@ -14,6 +15,8 @@ namespace hgl::ecs
     class EntityManager
     {
     private:
+        OBJECT_LOGGER
+
         struct EntitySlot
         {
             std::unique_ptr<Entity> entity;
@@ -54,7 +57,7 @@ namespace hgl::ecs
 
         /// Get all alive entity pointers
         void GetAllEntityPointers(std::vector<Entity*>& out_entities);
-        void GetAllEntityPointers(std::vector<Entity*>& out_entities) const;
+        void GetAllEntityPointers(std::vector<const Entity*>& out_entities) const;
 
         /// Clear all entities
         void Clear();

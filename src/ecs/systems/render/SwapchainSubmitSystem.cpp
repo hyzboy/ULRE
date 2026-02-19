@@ -23,10 +23,10 @@ namespace hgl::ecs
         if (!render_target)
             return;
 
-        last_submit_ok = render_target->Submit();
+            last_submit_ok = render_target->Submit();
         if (!last_submit_ok)
         {
-            GLogWarning("SwapchainSubmitSystem: RenderTarget submit failed");
+                LogWarning("SwapchainSubmitSystem: RenderTarget submit failed");
         }
     }
 }//namespace hgl::ecs

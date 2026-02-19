@@ -28,9 +28,9 @@ namespace hgl::ecs
             return;
 
         last_acquire_ok = swapchain_rt->NextFrame();
-        if (!last_acquire_ok)
-        {
-            GLogWarning("SwapchainNextImageSystem: Swapchain NextFrame failed");
+            if (!last_acquire_ok)
+            {
+                LogWarning("SwapchainNextImageSystem: Swapchain NextFrame failed");
         }
     }
 }//namespace hgl::ecs

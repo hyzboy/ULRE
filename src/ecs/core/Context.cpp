@@ -147,8 +147,8 @@ namespace hgl
             if (!active)
             {
                 // 即使未激活，也要清空materialBatches以释放GPU资源
-                std::cout << "[DEBUG] ECSContext::Shutdown() (inactive) - releasing "
-                          << render_frame_cache.materialBatches.GetCount() << " material batches" << std::endl;
+                LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
+                         render_frame_cache.materialBatches.GetCount());
                 render_frame_cache.materialBatches.Clear();
                 return;
             }
@@ -185,10 +185,10 @@ namespace hgl
             movable_transforms.clear();
 
             // Finally, clear materialBatches after all systems/entities are destroyed
-            std::cout << "[DEBUG] ECSContext::Shutdown() - releasing "
-                      << render_frame_cache.materialBatches.GetCount() << " material batches" << std::endl;
+            LogDebug("[ECSContext] Shutdown - releasing %zu material batches",
+                     render_frame_cache.materialBatches.GetCount());
             render_frame_cache.materialBatches.Clear();
-            std::cout << "[DEBUG] ECSContext::Shutdown() - material batches cleared" << std::endl;
+            LogDebug("[ECSContext] Shutdown - material batches cleared");
 
             active = false;
             OnDestroy();
@@ -268,9 +268,9 @@ namespace hgl
                 if (entry.system)
                 {
                     HGL_CAPTURE_SCOPE();
-                    GLogDebug("[ECS] Render Begin: %s", entry.system->GetName().c_str());
+                    LogDebug("[ECS] Render Begin: %s", entry.system->GetName().c_str());
                     entry.system->Render(cmd, deltaTime);
-                    GLogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
+                    LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
                 }
             }
 
@@ -299,8 +299,8 @@ namespace hgl
                 return;
 
             // Log resize event
-            GLogInfo("[ECSContext] OnResize: %s %ux%u",
-                     GetName().c_str(), extent.width, extent.height);
+                LogInfo("[ECSContext] OnResize: %s %ux%u",
+                    GetName().c_str(), extent.width, extent.height);
 
             // Notify RenderTargetSystem to sync viewport and dependent systems
             auto render_target_system = GetSystem<RenderTargetSystem>();
@@ -331,7 +331,7 @@ namespace hgl
             if (!active)
                 return;
 
-            GLogInfo("[ECS RENDER] ===== Frame Start =====");
+            LogInfo("[ECS RENDER] ===== Frame Start =====");
 
             if (!render_core)
             {
@@ -345,18 +345,18 @@ namespace hgl
 
             if (auto *rt = GetRenderTarget())
             {
-                GLogInfo("[ECS RENDER] Calling WaitFence");
+                LogInfo("[ECS RENDER] Calling WaitFence");
                 if (!rt->WaitFence())
                 {
-                    GLogWarning("[ECS RENDER] WaitFence FAILED");
+                    LogWarning("[ECS RENDER] WaitFence FAILED");
                     return;
                 }
             }
 
-            GLogInfo("[ECS RENDER] Calling BeginFrame");
+            LogInfo("[ECS RENDER] Calling BeginFrame");
             if (!render_core->BeginFrame())
             {
-                GLogWarning("[ECS RENDER] BeginFrame FAILED");
+                LogWarning("[ECS RENDER] BeginFrame FAILED");
                 return;
             }
 
@@ -365,20 +365,20 @@ namespace hgl
             if (pre_render)
                 pre_render(deltaTime);
 
-            GLogInfo("[ECS RENDER] Calling Render(cmd)");
+            LogInfo("[ECS RENDER] Calling Render(cmd)");
             Render(render_core->GetRenderCmd(), deltaTime);
 
-            GLogInfo("[ECS RENDER] Calling EndFrame");
+            LogInfo("[ECS RENDER] Calling EndFrame");
             render_core->EndFrame();
 
             if (wait_idle_enabled)
             {
-                GLogInfo("[ECS RENDER] Calling WaitIdle");
+                LogInfo("[ECS RENDER] Calling WaitIdle");
                 if (auto *device = GetGPUDevice())
                     device->WaitIdle();
             }
 
-            GLogInfo("[ECS RENDER] ===== Frame End =====");
+            LogInfo("[ECS RENDER] ===== Frame End =====");
         }
 
         void ECSContext::RenderPreBeginFrame(float deltaTime)
@@ -480,7 +480,7 @@ namespace hgl
                 return;
 
             HGL_CAPTURE_SCOPE();
-            GLogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
+            LogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
 
             if (system_profiling_enabled)
                 profiler.Begin(system);
@@ -488,7 +488,7 @@ namespace hgl
             if (system_profiling_enabled)
                 profiler.End(system);
 
-            GLogDebug("[ECS] Update End: %s", system->GetName().c_str());
+            LogDebug("[ECS] Update End: %s", system->GetName().c_str());
         }
 
         void ECSContext::ClearEntities()
@@ -549,9 +549,10 @@ namespace hgl
                     if (!dependency_index)
                     {
                     #ifdef _DEBUG
-                        std::cout << "[ECSContext::SortSystemList] WARNING: " << label
-                                  << " dependency missing for key " << dependent_key
-                                  << " -> " << dependency_key << std::endl;
+                        LogWarning("[ECSContext::SortSystemList] %s dependency missing for key %zu -> %zu",
+                                   label,
+                                   dependent_key,
+                                   dependency_key);
                     #endif
                         continue;
                     }
@@ -614,8 +615,8 @@ namespace hgl
                         return a.insertion_order < b.insertion_order;
                     });
 
-                std::cout << "[ECSContext::SortSystemList] WARNING: " << label
-                          << " system dependencies contain a cycle. Falling back to phase/priority order." << std::endl;
+                LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/priority order.",
+                           label);
             }
             else
             {
@@ -650,34 +651,16 @@ namespace hgl
 
             if (effective_is_render != is_render)
             {
-                GLogWarning("[ECS] System '%s' registration corrected by phase (%s -> %s)",
-                            system->GetName().c_str(),
-                            is_render ? "render" : "tick",
-                            effective_is_render ? "render" : "tick");
+                LogWarning("[ECS] System '%s' registration corrected by phase (%s -> %s)",
+                           system->GetName().c_str(),
+                           is_render ? "render" : "tick",
+                           effective_is_render ? "render" : "tick");
             }
 
             auto& sys_map = effective_is_render ? render_systems : tick_systems;
             auto& order_list = effective_is_render ? render_system_order : tick_system_order;
             auto& dirty_flag = effective_is_render ? render_order_dirty : tick_order_dirty;
-
-            auto& other_sys_map = effective_is_render ? tick_systems : render_systems;
-            auto& other_order_list = effective_is_render ? tick_system_order : render_system_order;
-            auto& other_dirty_flag = effective_is_render ? tick_order_dirty : render_order_dirty;
             auto& deps = effective_is_render ? render_dependencies : tick_dependencies;
-            auto& other_deps = effective_is_render ? tick_dependencies : render_dependencies;
-
-            // Keep system only in one category map/order/dependency graph
-            other_sys_map.DeleteByKey(key);
-            other_order_list.erase(std::remove_if(other_order_list.begin(), other_order_list.end(),
-                                  [key](const OrderedSystem& entry) { return entry.key == key; }),
-                                  other_order_list.end());
-            other_deps.DeleteByKey(key);
-            for (auto& pair : other_deps)
-            {
-                auto& list = pair.second;
-                list.erase(std::remove(list.begin(), list.end(), key), list.end());
-            }
-            other_dirty_flag = true;
 
             sys_map[key] = system;
 
@@ -949,7 +932,7 @@ namespace hgl
                     const size_t removed = system->GetCache()->RemoveInvalidEntities();
                     if (removed > 0)
                     {
-                        GLogWarning("[ECS] Pruned %zu stale query entries in tick system %s", removed, system->GetName().c_str());
+                        LogWarning("[ECS] Pruned %zu stale query entries in tick system %s", removed, system->GetName().c_str());
                     }
                 }
             }
@@ -963,7 +946,7 @@ namespace hgl
                     const size_t removed = system->GetCache()->RemoveInvalidEntities();
                     if (removed > 0)
                     {
-                        GLogWarning("[ECS] Pruned %zu stale query entries in render system %s", removed, system->GetName().c_str());
+                        LogWarning("[ECS] Pruned %zu stale query entries in render system %s", removed, system->GetName().c_str());
                     }
                 }
             }

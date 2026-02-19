@@ -8,7 +8,6 @@
 #include<hgl/log/Log.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
-#include<iostream>
 
 namespace hgl::ecs
 {
@@ -34,8 +33,8 @@ namespace hgl::ecs
         {
             if (!cache.materialBatches.IsEmpty())
             {
-                GLogWarning("[RenderPrimitiveSubmitSystem] No renderables but material batches exist (%zu)",
-                            cache.materialBatches.GetCount());
+                LogWarning("[RenderPrimitiveSubmitSystem] No renderables but material batches exist (%zu)",
+                           cache.materialBatches.GetCount());
             }
             return;
         }
@@ -49,13 +48,13 @@ namespace hgl::ecs
             const auto& key = batch->key;
             if (!key.material || !key.pipeline)
             {
-                std::cerr << "[RenderPrimitiveSubmitSystem::Render] ERROR: Missing material or pipeline" << std::endl;
+                LogError("[RenderPrimitiveSubmitSystem::Render] Missing material or pipeline");
                 continue;
             }
 
             if (batch->draw_batches_count == 0)
             {
-                std::cerr << "[RenderPrimitiveSubmitSystem::Render] ERROR: No batches to render" << std::endl;
+                LogError("[RenderPrimitiveSubmitSystem::Render] No batches to render");
                 continue;
             }
 
@@ -89,8 +88,9 @@ namespace hgl::ecs
                 const uint32_t total_count = transform_buffer->GetTotalCount(static_count, dynamic_count);
                 if (total_count > 0 && max_transform_index >= total_count)
                 {
-                    std::cerr << "[RenderPrimitiveSubmitSystem::Render] WARNING: Transform index out of range ("
-                              << max_transform_index << " >= " << total_count << ")" << std::endl;
+                    LogWarning("[RenderPrimitiveSubmitSystem::Render] Transform index out of range (%u >= %u)",
+                               max_transform_index,
+                               total_count);
                 }
             }
         #endif

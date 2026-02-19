@@ -2,7 +2,6 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
 #include<algorithm>
-#include<iostream>
 
 namespace hgl::ecs
 {
@@ -67,7 +66,7 @@ namespace hgl::ecs
         if (!IsValidID(id))
         {
             #ifdef _DEBUG
-            std::cerr << "[EntityManager] WARNING: Attempting to destroy invalid entity ID" << std::endl;
+            LogWarning("[EntityManager] Attempting to destroy invalid entity ID");
             #endif
             return;
         }
@@ -150,7 +149,7 @@ namespace hgl::ecs
         }
     }
 
-    void EntityManager::GetAllEntityPointers(std::vector<Entity*>& out_entities) const
+    void EntityManager::GetAllEntityPointers(std::vector<const Entity*>& out_entities) const
     {
         out_entities.clear();
 

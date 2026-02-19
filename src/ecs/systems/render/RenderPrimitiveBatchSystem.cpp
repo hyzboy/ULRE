@@ -23,8 +23,8 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
+#include<hgl/log/Log.h>
 #include<algorithm>
-#include<iostream>
 #include<limits>
 #include<chrono>
 
@@ -61,8 +61,9 @@ namespace hgl::ecs
         HGL_CAPTURE_SCOPE();
         if (!device || batch.items.empty())
         {
-            std::cout << "[ECS::RenderPrimitiveBatchSystem] Cannot allocate ICB - Device: "
-                        << (void*)device << ", Items: " << batch.items.size() << std::endl;
+            LogWarning("[ECS::RenderPrimitiveBatchSystem] Cannot allocate ICB - Device: %p, Items: %zu",
+                       (void*)device,
+                       batch.items.size());
             return;
         }
 
@@ -316,8 +317,7 @@ namespace hgl::ecs
             {
                 if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
                 {
-                    std::cout << "[ECS::RenderPrimitiveBatchSystem] WARNING: TransformID overflow ("
-                                << idx << ")" << std::endl;
+                    LogWarning("[ECS::RenderPrimitiveBatchSystem] TransformID overflow (%u)", idx);
                     warned_overflow = true;
                 }
                 *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);

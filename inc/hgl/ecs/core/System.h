@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/Object.h>
 #include<hgl/ecs/core/EntityQuery.h>
+#include<hgl/log/Log.h>
 #include<vector>
 #include<typeindex>
 #include<memory>
@@ -85,6 +86,8 @@ namespace hgl
         class System : public Object
         {
         protected:
+
+            OBJECT_LOGGER
 
             bool initialized = false;
             SystemType systemType = SystemType::Unknown;
