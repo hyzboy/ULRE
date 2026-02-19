@@ -129,7 +129,7 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
     }
 
 #ifdef _DEBUG
-    if (attr && attr->debug_utils)
+    if (attr && attr->debug_utils,type!=VK_OBJECT_TYPE_UNKNOWN)
     {
         attr->debug_utils->SetName(type, handle, name.ToString().c_str());
     }
