@@ -4,20 +4,20 @@
 #include<hgl/vk/VK.h>
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 
 namespace hgl
 {
     namespace ecs
     {
         class ECSContext;
+        class World;
         class InputSystem;
     }
 }
 
 namespace hgl::graph{
-
-struct CameraInfo;
-class ViewportInfo;
 
 struct GizmoMoveECS;
 struct GizmoRotateECS;
@@ -61,7 +61,7 @@ struct GizmoScaleECSState
     float pick_scale = 1.0f;
 };
 
-GizmoMoveECS *CreateGizmoMoveECS(::hgl::ecs::ECSContext *world,
+GizmoMoveECS *CreateGizmoMoveECS(::hgl::ecs::World *world,
                                  const char *name,
                                  const math::Vector3f &position);
 void DestroyGizmoMoveECS(GizmoMoveECS *gizmo);
@@ -75,7 +75,7 @@ void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
                         bool left_pressed,
                         bool left_released);
 
-GizmoRotateECS *CreateGizmoRotateECS(::hgl::ecs::ECSContext *world,
+GizmoRotateECS *CreateGizmoRotateECS(::hgl::ecs::World *world,
                                       const char *name,
                                       const math::Vector3f &position);
 void DestroyGizmoRotateECS(GizmoRotateECS *gizmo);
@@ -89,7 +89,7 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
                           bool left_pressed,
                           bool left_released);
 
-GizmoScaleECS *CreateGizmoScaleECS(::hgl::ecs::ECSContext *world,
+GizmoScaleECS *CreateGizmoScaleECS(::hgl::ecs::World *world,
                                     const char *name,
                                     const math::Vector3f &position);
 void DestroyGizmoScaleECS(GizmoScaleECS *gizmo);

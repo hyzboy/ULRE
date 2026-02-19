@@ -24,7 +24,7 @@
 #include"Gizmo.h"
 
 // ECS
-#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
@@ -45,7 +45,7 @@ namespace hgl::graph{
 
 struct GizmoMoveECS
 {
-    hgl::ecs::ECSContext *world = nullptr;
+    hgl::ecs::World *world = nullptr;
     hgl::ecs::Entity *root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
 
@@ -182,7 +182,7 @@ namespace
     }
 }
 
-GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::ECSContext *world,
+GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::World *world,
                                  const char *name,
                                  const math::Vector3f &position)
 {

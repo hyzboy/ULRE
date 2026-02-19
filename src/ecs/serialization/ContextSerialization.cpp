@@ -23,6 +23,7 @@
 #include <hgl/type/UnorderedMap.h>
 #include<variant>
 #include<vector>
+#include<unordered_set>
 
 namespace hgl::ecs
 {
@@ -332,6 +333,58 @@ namespace hgl::ecs
 
             return true;
         }
+
+        bool ApplyLoadedWorld(ECSContext* context,
+                              const SerializableWorldRecord& world,
+                              bool clear_existing,
+                              std::vector<EntityID>* out_created_ids)
+        {
+            if (!context)
+                return false;
+
+            if (clear_existing)
+                context->ClearEntities();
+
+            std::vector<Entity*> entities;
+            entities.reserve(world.entities.size());
+
+            std::vector<EntityID> created_ids;
+            created_ids.reserve(world.entities.size());
+
+            for (const auto& record : world.entities)
+            {
+                Entity* entity = context->CreateEntity<Entity>();
+                if (entity)
+                {
+                    entity->SetName(record.name);
+                    created_ids.push_back(entity->GetID());
+                }
+                entities.push_back(entity);
+            }
+
+            std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>> pending_parents;
+
+            for (size_t i = 0; i < world.entities.size(); ++i)
+            {
+                Entity* entity = entities[i];
+                if (!entity)
+                    continue;
+
+                const auto& entity_record = world.entities[i];
+                for (const auto& serializable_comp : entity_record.components)
+                {
+                    ComponentRecord comp_record = FromSerializable(serializable_comp);
+                    ApplyComponentRecord(comp_record, entity, pending_parents);
+                }
+            }
+
+            FixupParents(pending_parents, entities);
+
+            if (out_created_ids)
+                *out_created_ids = std::move(created_ids);
+
+            return true;
+        }
     }
 
     bool ECSContext::SaveToJson(const std::string& path) const
@@ -384,36 +437,32 @@ namespace hgl::ecs
         if (!LoadWorld(world, path, false))
             return false;
 
-        ClearEntities();
+        if (!ApplyLoadedWorld(this, world, true, nullptr))
+            return false;
 
-        std::vector<Entity*> entities;
-        entities.reserve(world.entities.size());
-
-        for (const auto& record : world.entities)
+        for (auto& entry : tick_systems)
         {
-            Entity* entity = CreateEntity<Entity>();
-            if (entity)
-                entity->SetName(record.name);
-            entities.push_back(entity);
+            if (entry.second && entry.second->GetCache())
+                entry.second->GetCache()->RebuildAll();
         }
 
-        std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>> pending_parents;
-
-        for (size_t i = 0; i < world.entities.size(); ++i)
+        for (auto& entry : render_systems)
         {
-            Entity* entity = entities[i];
-            if (!entity)
-                continue;
-
-            const auto& entity_record = world.entities[i];
-            for (const auto& serializable_comp : entity_record.components)
-            {
-                ComponentRecord comp_record = FromSerializable(serializable_comp);
-                ApplyComponentRecord(comp_record, entity, pending_parents);
-            }
+            if (entry.second && entry.second->GetCache())
+                entry.second->GetCache()->RebuildAll();
         }
 
-        FixupParents(pending_parents, entities);
+        return true;
+    }
+
+    bool ECSContext::ImportFromJson(const std::string& path, std::vector<EntityID>* out_created_ids)
+    {
+        SerializableWorldRecord world;
+        if (!LoadWorld(world, path, false))
+            return false;
+
+        if (!ApplyLoadedWorld(this, world, false, out_created_ids))
+            return false;
 
         for (auto& entry : tick_systems)
         {
@@ -480,36 +529,8 @@ namespace hgl::ecs
         if (!LoadWorld(world, path, true))
             return false;
 
-        ClearEntities();
-
-        std::vector<Entity*> entities;
-        entities.reserve(world.entities.size());
-
-        for (const auto& record : world.entities)
-        {
-            Entity* entity = CreateEntity<Entity>();
-            if (entity)
-                entity->SetName(record.name);
-            entities.push_back(entity);
-        }
-
-        std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>> pending_parents;
-
-        for (size_t i = 0; i < world.entities.size(); ++i)
-        {
-            Entity* entity = entities[i];
-            if (!entity)
-                continue;
-
-            const auto& entity_record = world.entities[i];
-            for (const auto& serializable_comp : entity_record.components)
-            {
-                ComponentRecord comp_record = FromSerializable(serializable_comp);
-                ApplyComponentRecord(comp_record, entity, pending_parents);
-            }
-        }
-
-        FixupParents(pending_parents, entities);
+        if (!ApplyLoadedWorld(this, world, true, nullptr))
+            return false;
 
         for (auto& entry : tick_systems)
         {
@@ -524,6 +545,91 @@ namespace hgl::ecs
         }
 
         return true;
+    }
+
+    bool ECSContext::ImportFromBinary(const std::string& path, std::vector<EntityID>* out_created_ids)
+    {
+        SerializableWorldRecord world;
+        if (!LoadWorld(world, path, true))
+            return false;
+
+        if (!ApplyLoadedWorld(this, world, false, out_created_ids))
+            return false;
+
+        for (auto& entry : tick_systems)
+        {
+            if (entry.second && entry.second->GetCache())
+                entry.second->GetCache()->RebuildAll();
+        }
+
+        for (auto& entry : render_systems)
+        {
+            if (entry.second && entry.second->GetCache())
+                entry.second->GetCache()->RebuildAll();
+        }
+
+        return true;
+    }
+
+    bool ECSContext::InstantiateAssetAsChildren(const std::string& path,
+                                                EntityID parent_id,
+                                                bool binary,
+                                                AssetInstance* out_instance)
+    {
+        if (!parent_id.IsValid())
+            return false;
+
+        Entity* parent_entity = GetEntity(parent_id);
+        if (!parent_entity)
+            return false;
+
+        std::vector<EntityID> created_ids;
+        const bool ok = binary
+                      ? ImportFromBinary(path, &created_ids)
+                      : ImportFromJson(path, &created_ids);
+
+        if (!ok)
+            return false;
+
+        std::unordered_set<EntityID> imported_set;
+        imported_set.reserve(created_ids.size());
+        for (const auto& id : created_ids)
+        {
+            if (id.IsValid())
+                imported_set.insert(id);
+        }
+
+        for (const auto& id : created_ids)
+        {
+            if (!id.IsValid())
+                continue;
+
+            Entity* entity = GetEntity(id);
+            if (!entity)
+                continue;
+
+            auto transform = entity->GetComponent<TransformComponent>();
+            if (!transform)
+                continue;
+
+            const EntityID current_parent = transform->GetParentID();
+            if (!current_parent.IsValid() || imported_set.find(current_parent) == imported_set.end())
+                transform->SetParent(parent_id);
+        }
+
+        if (out_instance)
+            out_instance->entity_ids = std::move(created_ids);
+
+        return true;
+    }
+
+    void ECSContext::DestroyAssetInstance(const AssetInstance& instance)
+    {
+        for (const auto& id : instance.entity_ids)
+        {
+            if (id.IsValid())
+                DestroyEntity(id);
+        }
     }
 }
 

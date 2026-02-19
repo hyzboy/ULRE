@@ -49,18 +49,6 @@ namespace hgl
             Shutdown();
         }
 
-        void ECSContext::AttachToParent(ECSContext* parent)
-        {
-            if (!parent)
-                return;
-
-            parent_context = parent;
-            owns_transform_storage = false;
-
-            // Don't create our own transform storage if we have a parent
-            // The TransformComponent will use the shared storage from the parent
-        }
-
         bool ECSContext::InitializeGraphics(hgl::graph::VulkanDevice* device, hgl::graph::IRenderTarget* target) {
             if (!device || !target) {
                 // Phase 1 debug: device or target is null
@@ -221,6 +209,7 @@ namespace hgl
             }
 
             // Update sub-worlds attached via SubWorldComponent
+            if (sub_world_auto_update)
             {
                 std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
                 GetComponents(sub_worlds);
@@ -275,6 +264,7 @@ namespace hgl
             }
 
             // Render sub-worlds attached via SubWorldComponent
+            if (sub_world_auto_update)
             {
                 std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
                 GetComponents(sub_worlds);

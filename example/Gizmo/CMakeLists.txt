@@ -33,3 +33,5 @@ CreateProject(05_GizmoUsageExample GizmoUsageExample.cpp
                                 Gizmo3DRotate.cpp
                                 GizmoUnified.cpp
 )
+
+CreateProject(06_PrefabAssetInstanceExample PrefabAssetInstanceExample.cpp)

@@ -123,6 +123,12 @@ namespace hgl::ecs
 #endif
         }
 
+    if (!material_instance_buffer)
+    {
+        std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI buffer allocation failed" << std::endl;
+        return;
+    }
+
         // 收集所有唯一的材质实例
         mi_set.Reserve(item_count);
 
@@ -213,6 +219,12 @@ namespace hgl::ecs
         // 1. 收集并写入材质实例数据
         StatMaterialInstance(items);
 
+        if (!material_instance_buffer)
+        {
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI buffer unavailable, skip write" << std::endl;
+            return;
+        }
+
         // 如果没有MI数据，就不需要创建VAB
         if (material_instance_data_bytes <= 0)
         {
@@ -258,11 +270,23 @@ namespace hgl::ecs
                 #endif//_DEBUG
                 }
             }
+
+            if (!material_instance_vab)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI VAB allocation failed" << std::endl;
+                return;
+            }
         }
 
         // 3. 生成材质实例索引列表
         {
-            uint16* mi_ptr = (uint16*)(material_instance_vab->DeviceBuffer::Map());
+            uint16* mi_ptr = (uint16*)(material_instance_vab->Map(0, item_count));
+
+            if (!mi_ptr)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI VAB map failed" << std::endl;
+                return;
+            }
 
             for (size_t i = 0; i < item_count; i++)
             {

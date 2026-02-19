@@ -10,7 +10,7 @@
 #include"Gizmo.h"
 
 // ECS
-#include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
@@ -31,7 +31,7 @@ namespace hgl::graph{
 
 struct GizmoRotateECS
 {
-    hgl::ecs::ECSContext *world = nullptr;
+    hgl::ecs::World *world = nullptr;
     hgl::ecs::Entity *root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
 
@@ -92,21 +92,27 @@ namespace
     glm::quat CalculateFacingRotation(const math::Vector3f &gizmo_pos,
                                        const math::Matrix4f &view_matrix)
     {
-        // 从视图矩阵提取相机朝向
-        const math::Vector3f camera_forward = math::Vector3f(view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]);
-        const math::Vector3f to_camera = glm::normalize(camera_forward);
+        (void)gizmo_pos;
 
-        // 创建朝向相机的旋转
-        const math::Vector3f up = math::Vector3f(0.0f, 1.0f, 0.0f);
-        const math::Vector3f right = glm::normalize(glm::cross(up, to_camera));
-        const math::Vector3f actual_up = glm::cross(to_camera, right);
+        const math::Vector3f to_camera = glm::normalize(math::Vector3f(view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]));
+        const math::Vector3f from_axis = math::AxisVector::X;
 
-        glm::mat3 rotation_mat;
-        rotation_mat[0] = right;
-        rotation_mat[1] = actual_up;
-        rotation_mat[2] = to_camera;
+        const float cos_theta = glm::dot(from_axis, to_camera);
 
-        return glm::quat_cast(rotation_mat);
+        if (cos_theta < -0.9999f)
+        {
+            const math::Vector3f ortho_axis = glm::normalize(glm::cross(math::AxisVector::Y, from_axis));
+            return glm::angleAxis(glm::radians(180.0f), ortho_axis);
+        }
+
+        const math::Vector3f rotation_axis = glm::cross(from_axis, to_camera);
+        const float s = std::sqrt((1.0f + cos_theta) * 2.0f);
+        const float inv_s = 1.0f / s;
+
+        return glm::normalize(glm::quat(s * 0.5f,
+                                        rotation_axis.x * inv_s,
+                                        rotation_axis.y * inv_s,
+                                        rotation_axis.z * inv_s));
     }
 
     void ApplyAxisMaterials(GizmoRotateECS *gizmo)
@@ -177,7 +183,7 @@ namespace
     }
 }
 
-GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::ECSContext *world,
+GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
                                       const char *name,
                                       const math::Vector3f &position)
 {

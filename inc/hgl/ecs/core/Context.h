@@ -103,15 +103,12 @@ namespace hgl
             std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
 
             bool active = false;
+            bool sub_world_auto_update = true;
 
             RenderFrameCache render_frame_cache;
             SystemProfiler profiler;
             bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
-
-            // SubWorld support - hierarchical context
-            ECSContext* parent_context = nullptr;       // nullptr if this is a root context
-            bool owns_transform_storage = false;         // true if this context created the storage
 
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
 
@@ -154,6 +151,11 @@ namespace hgl
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
 
         public:
+
+            struct AssetInstance
+            {
+                std::vector<EntityID> entity_ids;
+            };
 
             ECSContext(const std::string& name = "World");
             ~ECSContext() override;
@@ -211,11 +213,29 @@ namespace hgl
             /// Deserialize world from JSON (IDs remapped)
             bool LoadFromJson(const std::string& path);
 
+            /// Import entities from JSON and append into current world (without clearing existing entities)
+            /// Optional out_created_ids receives newly created entity IDs in import order.
+            bool ImportFromJson(const std::string& path, std::vector<EntityID>* out_created_ids = nullptr);
+
             /// Serialize world to binary
             bool SaveToBinary(const std::string& path) const;
 
             /// Deserialize world from binary (IDs remapped)
             bool LoadFromBinary(const std::string& path);
+
+            /// Import entities from binary and append into current world (without clearing existing entities)
+            /// Optional out_created_ids receives newly created entity IDs in import order.
+            bool ImportFromBinary(const std::string& path, std::vector<EntityID>* out_created_ids = nullptr);
+
+            /// Instantiate an asset file into current world and parent imported roots to parent_id.
+            /// Works for static mesh groups and prefab/blueprint-like compositions.
+            bool InstantiateAssetAsChildren(const std::string& path,
+                                            EntityID parent_id,
+                                            bool binary,
+                                            AssetInstance* out_instance = nullptr);
+
+            /// Destroy all entities created by a previous asset instance handle.
+            void DestroyAssetInstance(const AssetInstance& instance);
 
             void SetSystemProfilingEnabled(bool enabled) { system_profiling_enabled = enabled; }
             bool IsSystemProfilingEnabled() const { return system_profiling_enabled; }
@@ -463,17 +483,10 @@ namespace hgl
             /// Check if world is active
             bool IsActive() const { return active; }
 
-            /// SubWorld Hierarchical Support ///
-
-            /// Attach this context as a child to a parent context (for SubWorld support)
-            /// Shares the parent's TransformDataStorage for seamless parent-child relationships
-            void AttachToParent(ECSContext* parent);
-
-            /// Get parent context (nullptr if root)
-            ECSContext* GetParentContext() const { return parent_context; }
-
-            /// Check if this context owns its transform storage
-            bool OwnsTransformStorage() const { return owns_transform_storage; }
+            /// Enable/disable auto-updating SubWorldComponent trees inside ECSContext::Tick/Render.
+            /// When using World as the scheduler, this should be disabled and driven by World instead.
+            void SetSubWorldAutoUpdate(bool value) { sub_world_auto_update = value; }
+            bool IsSubWorldAutoUpdateEnabled() const { return sub_world_auto_update; }
 
             /// 获取指定类型的组件列表（自动清理已失效的弱引用）
             template<typename T>

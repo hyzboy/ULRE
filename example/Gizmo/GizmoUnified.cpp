@@ -11,6 +11,7 @@
 
 #include"Gizmo.h"
 #include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
@@ -36,15 +37,19 @@ struct GizmoECS
     hgl::ecs::Entity* rotate_entity = nullptr;
     hgl::ecs::Entity* scale_entity = nullptr;
 
-    hgl::ecs::ECSContext* move_world = nullptr;
-    hgl::ecs::ECSContext* rotate_world = nullptr;
-    hgl::ecs::ECSContext* scale_world = nullptr;
+    std::shared_ptr<hgl::ecs::SubWorldComponent> move_subworld;
+    std::shared_ptr<hgl::ecs::SubWorldComponent> rotate_subworld;
+    std::shared_ptr<hgl::ecs::SubWorldComponent> scale_subworld;
+
+    hgl::ecs::World* move_world = nullptr;
+    hgl::ecs::World* rotate_world = nullptr;
+    hgl::ecs::World* scale_world = nullptr;
 
     GizmoMode current_mode = GizmoMode::Move;
 };
 
 // Forward declare the internal gizmo functions
-extern GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::ECSContext *world,
+extern GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::World *world,
                                         const char *name,
                                         const math::Vector3f &position);
 extern void DestroyGizmoMoveECS(GizmoMoveECS *gizmo);
@@ -57,7 +62,7 @@ extern void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
                                 bool left_pressed,
                                 bool left_released);
 
-extern GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::ECSContext *world,
+extern GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
                                             const char *name,
                                             const math::Vector3f &position);
 extern void DestroyGizmoRotateECS(GizmoRotateECS *gizmo);
@@ -70,7 +75,7 @@ extern void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
                                     bool left_pressed,
                                     bool left_released);
 
-extern GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::ECSContext *world,
+extern GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::World *world,
                                             const char *name,
                                             const math::Vector3f &position);
 extern void DestroyGizmoScaleECS(GizmoScaleECS *gizmo);
@@ -130,6 +135,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         move_transform->SetParent(gizmo->root->GetID());
 
         auto sub_world = gizmo->move_entity->AddComponent<hgl::ecs::SubWorldComponent>();
+        gizmo->move_subworld = sub_world;
         gizmo->move_world = sub_world->GetSubWorld();
 
         if (!gizmo->move_world)
@@ -163,6 +169,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         rotate_transform->SetParent(gizmo->root->GetID());
 
         auto sub_world = gizmo->rotate_entity->AddComponent<hgl::ecs::SubWorldComponent>();
+        gizmo->rotate_subworld = sub_world;
         gizmo->rotate_world = sub_world->GetSubWorld();
 
         if (!gizmo->rotate_world)
@@ -196,6 +203,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         scale_transform->SetParent(gizmo->root->GetID());
 
         auto sub_world = gizmo->scale_entity->AddComponent<hgl::ecs::SubWorldComponent>();
+        gizmo->scale_subworld = sub_world;
         gizmo->scale_world = sub_world->GetSubWorld();
 
         if (!gizmo->scale_world)
@@ -271,6 +279,14 @@ void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     SetGizmoMoveVisible((GizmoMoveECS*)gizmo->move_impl, mode == GizmoMode::Move);
     SetGizmoRotateVisible((GizmoRotateECS*)gizmo->rotate_impl, mode == GizmoMode::Rotate);
     SetGizmoScaleVisible((GizmoScaleECS*)gizmo->scale_impl, mode == GizmoMode::Scale);
+
+    // Pause non-active sub-worlds to avoid concurrent rendering/update artifacts
+    if (gizmo->move_subworld)
+        gizmo->move_subworld->SetPaused(mode != GizmoMode::Move);
+    if (gizmo->rotate_subworld)
+        gizmo->rotate_subworld->SetPaused(mode != GizmoMode::Rotate);
+    if (gizmo->scale_subworld)
+        gizmo->scale_subworld->SetPaused(mode != GizmoMode::Scale);
 }
 
 GizmoMode GetGizmoMode(const GizmoECS *gizmo)
