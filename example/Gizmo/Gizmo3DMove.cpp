@@ -274,6 +274,23 @@ bool GetGizmoMoveECSState(const GizmoMoveECS *gizmo, GizmoMoveECSState &out_stat
     return true;
 }
 
+bool GetGizmoMovePosition(const GizmoMoveECS *gizmo, math::Vector3f &out_position)
+{
+    if(!gizmo || !gizmo->root_transform)
+        return false;
+
+    out_position = gizmo->root_transform->GetLocalPosition();
+    return true;
+}
+
+void SetGizmoMovePosition(GizmoMoveECS *gizmo, const math::Vector3f &position)
+{
+    if(!gizmo || !gizmo->root_transform)
+        return;
+
+    gizmo->root_transform->SetLocalPosition(glm::vec3(position));
+}
+
 void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible)
 {
     if(!gizmo || !gizmo->world)

@@ -13,6 +13,7 @@ namespace hgl
     {
         class ECSContext;
         class World;
+        class Entity;
         class InputSystem;
     }
 }
@@ -114,6 +115,7 @@ void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode);
 GizmoMode GetGizmoMode(const GizmoECS *gizmo);
 
 void SetGizmoVisible(GizmoECS *gizmo, bool visible);
+hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo);
 
 void UpdateGizmoECS(GizmoECS *gizmo,
                     const math::Vector2i &mouse_coord,

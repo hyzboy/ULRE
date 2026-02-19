@@ -306,6 +306,14 @@ bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_s
     return true;
 }
 
+void SetGizmoScalePosition(GizmoScaleECS *gizmo, const math::Vector3f &position)
+{
+    if(!gizmo || !gizmo->root_transform)
+        return;
+
+    gizmo->root_transform->SetLocalPosition(glm::vec3(position));
+}
+
 void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible)
 {
     if(!gizmo || !gizmo->world)
