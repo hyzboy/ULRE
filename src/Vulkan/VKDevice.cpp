@@ -7,7 +7,8 @@
 #include<hgl/vk/VKBufferCommitQueue.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
 #include<hgl/vk/BufferPolicyImpl.h>
-#include<iostream>
+#include<hgl/vk/VKObjectName.h>
+#include<hgl/log/Log.h>
 #include <functional>
 #include <thread>
 #include <utility>
@@ -78,15 +79,11 @@ VulkanDevice::~VulkanDevice()
         g_device_map.erase(attr->device);
 
     // 在设备销毁前，输出所有未销毁的对象以检测泄漏
-    std::cout.flush();
-    std::cerr.flush();
-    std::cout << "\n=== VulkanDevice Destructor Called ===\n";
-    std::cout.flush();
+    LogInfo("\n=== VulkanDevice Destructor Called ===");
     
     DumpTrackedObjects();
     
-    std::cout << "=== End VulkanDevice Destructor ===\n";
-    std::cout.flush();
+    LogInfo("=== End VulkanDevice Destructor ===");
 
     delete buffer_update_queue;
     delete buffer_commit_queue;
@@ -98,6 +95,7 @@ VulkanDevice *VulkanDevice::FromDevice(VkDevice device)
     auto it = g_device_map.find(device);
     return it == g_device_map.end() ? nullptr : it->second;
 }
+
 void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectNameBuilder &name, const std::source_location &loc)
 {
     if (!handle)
@@ -111,13 +109,8 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
     record.stack_depth = hgl::utils::get_current_allocation_stack(record.stack, 64);
 
 #ifdef _DEBUG
-    // 详细日志：记录对象创建 - 在 move 之前输出
-    std::cout << "[CREATE] Type:" << static_cast<uint32_t>(type)
-              << " Handle:0x" << std::hex << static_cast<unsigned long long>(handle) << std::dec
-              << " Name:" << record.name.c_str()
-              << " at " << record.file.c_str()
-              << ":" << record.function.c_str()
-              << ":" << record.line << std::endl;
+    // 详细日志：记录对象创建
+    GLogDebug("[CREATE] Object tracked");
 #endif//_DEBUG
 
     ObjectKey key{type, handle};
@@ -176,23 +169,9 @@ void VulkanDevice::UntrackObject(VkObjectType type, uint64_t handle)
     auto it = tracked_objects.find(key);
     
 #ifdef _DEBUG
-    if (it != tracked_objects.end())
+    if (it == tracked_objects.end())
     {
-        const ObjectDebugRecord &record = it->second;
-        // 详细日志：记录对象销毁 - 直接输出到 stdout（在删除前输出）
-        std::cout << "[DESTROY] Type:" << static_cast<uint32_t>(type)
-                  << " Handle:0x" << std::hex << static_cast<unsigned long long>(handle) << std::dec
-                  << " Name:" << record.name.c_str()
-                  << " (previously tracked at " << record.file.c_str()
-                  << ":" << record.function.c_str()
-                  << ":" << record.line << ")" << std::endl;
-    }
-    else
-    {
-        // 对象没有被追踪
-        std::cerr << "[DESTROY-WARNING] Type:" << static_cast<uint32_t>(type)
-                  << " Handle:0x" << std::hex << static_cast<unsigned long long>(handle) << std::dec
-                  << " (NOT TRACKED - possible double destroy or missing TrackObject)" << std::endl;
+        LogWarning("[DESTROY-WARNING] Object not tracked - possible double destroy");
     }
 #endif//_DEBUG
 
@@ -203,11 +182,11 @@ void VulkanDevice::DumpTrackedObjects() const
 {
     if (tracked_objects.empty())
     {
-        std::cout << "========== [VULKAN LEAK DETECTION] No live objects at device destruction ==========\n";
+        GLogInfo("No live objects at device destruction");
         return;
     }
 
-    std::cout << "========== [VULKAN LEAK DETECTION] Live objects at device destruction: " << tracked_objects.size() << " ==========\n";
+    GLogWarning("%lu objects still alive at device destruction", (unsigned long)tracked_objects.size());
 
     // 按类型分类统计
     std::map<VkObjectType, int> type_counts;
@@ -217,7 +196,6 @@ void VulkanDevice::DumpTrackedObjects() const
     }
 
     // 输出各类型统计
-    std::cout << "--- Object Type Summary ---\n";
     for (const auto &tc : type_counts)
     {
         const char *type_name = "UNKNOWN";
@@ -233,68 +211,21 @@ void VulkanDevice::DumpTrackedObjects() const
         else if (tc.first == VK_OBJECT_TYPE_DESCRIPTOR_SET) type_name = "VkDescriptorSet";
         else if (tc.first == VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT) type_name = "VkDescriptorSetLayout";
         
-        std::cout << "  " << type_name << ": " << tc.second << "\n";
+        GLogWarning("  %s: %d", type_name, tc.second);
     }
 
-    std::cout << "--- Detailed Leak Information ---\n";
+    // 输出详细泄漏信息
     for (const auto &entry : tracked_objects)
     {
         const ObjectKey &key = entry.first;
         const ObjectDebugRecord &record = entry.second;
-
-        std::cout << "[LEAK] Type=0x" << std::hex << static_cast<uint32_t>(key.type) << std::dec
-                  << " Handle=0x" << std::hex << static_cast<unsigned long long>(key.handle) << std::dec
-                  << " Name=" << record.name.c_str();
         
-        if (!record.file.empty())
-        {
-            std::cout << " Created at " << record.file.c_str()
-                      << ":" << record.line
-                      << " in " << record.function.c_str() << "()";
-        }
-        std::cout << "\n";
-
-        if (record.stack_depth > 0)
-        {
-            std::cout << "  Stack:\n";
-            for (uint32_t i = 0; i < record.stack_depth; ++i)
-            {
-                const auto &frame = record.stack[i];
-                
-                // 提取相对路径 (去掉工作区前缀)
-                const char* file_display = frame.file;
-                const char* workspace_prefix = "d:\\\\ULRE\\\\";
-                const char* workspace_prefix_lower = "D:\\\\ULRE\\\\";
-                
-                if (std::strncmp(frame.file, workspace_prefix, strlen(workspace_prefix)) == 0)
-                    file_display = frame.file + strlen(workspace_prefix);
-                else if (std::strncmp(frame.file, workspace_prefix_lower, strlen(workspace_prefix_lower)) == 0)
-                    file_display = frame.file + strlen(workspace_prefix_lower);
-                
-                // 简化函数名 (提取核心函数名)
-                std::string func_name = frame.function;
-                
-                // 去掉返回类型前缀 (查找最后一个空格后的内容)
-                size_t last_space = func_name.rfind(' ');
-                if (last_space != std::string::npos)
-                    func_name = func_name.substr(last_space + 1);
-                
-                // 去掉调用约定 __cdecl __stdcall 等
-                const char* conventions[] = {"__cdecl ", "__stdcall ", "__fastcall ", "__vectorcall "};
-                for (const char* conv : conventions) {
-                    size_t pos = func_name.find(conv);
-                    if (pos != std::string::npos)
-                        func_name.erase(pos, strlen(conv));
-                }
-                
-                std::cout << "    #" << i << " " << file_display << ":" << frame.line
-                          << " -> " << func_name << "()\n";
-            }
-        }
+        GLogWarning("[LEAK] Type: 0x%x Handle: 0x%llx Name: %s", 
+                    (unsigned int)key.type,
+                    (unsigned long long)key.handle,
+                    record.name.c_str());
     }
 
-    std::cout << "========== [END LEAK DETECTION] ==========\n";
-    std::cout.flush();  // 确保输出被立即刷新
 }
 
 void VulkanDevice::TrackBuffer(DeviceBuffer *buf, const ObjectNameBuilder &name, const std::source_location &loc)

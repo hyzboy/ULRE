@@ -3,6 +3,7 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/vk/VKFrameData.h>
 #include<hgl/vk/VKSwapchainData.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -16,6 +17,8 @@ struct SwapchainData;
 
 GRAPH_MODULE_CLASS(SwapchainModule)
 {
+    OBJECT_LOGGER
+
     TextureManager *        tex_manager         =nullptr;
     RenderTargetManager *   rt_manager          =nullptr;
     RenderPassManager *     rp_manager          =nullptr;

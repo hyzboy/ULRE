@@ -149,7 +149,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
 
     if(stride==0)
     {
-        std::cerr<<"format["<<format<<"] stride length is 0,please use \"VulkanDevice::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
+        LogError("format[",format,u"] stride length is 0, please use CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode) function");
         return(nullptr);
     }
 
@@ -425,7 +425,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
 
     if(stride==0)
     {
-        std::cerr<<"format["<<format<<"] stride length is 0,please use \"VulkanDevice::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
+        LogError("format[",format,u"] stride length is 0, please use CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode) function");
         return(nullptr);
     }
 

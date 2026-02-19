@@ -6,9 +6,31 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<iostream>
 
 namespace hgl::graph{
+bool RenderCmdBuffer::BindVAB(const VABList *vab_list)
+{
+    if(!vab_list)
+    {
+        LogError("VABList is null");
+        return(false);
+    }
+
+    if(!vab_list->IsFull())
+    {
+        LogError("VABList is not full");
+        return(false);
+    }
+
+    vkCmdBindVertexBuffers(cmd_buf,
+                           0,                           //first binding
+                           vab_list->GetWriteCount(),   //binding count (use actual count, not capacity)
+                           vab_list->GetVABList(),      //buffers
+                           vab_list->GetVABOffset());   //buffer offsets
+
+    return(true);
+}
+
 RenderCmdBuffer::RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
 {
     cv_count=0;
@@ -142,12 +164,11 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
 
 void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
 {
-    //std::cerr << "[RenderCmdBuffer::BindIBO] === ENTRY ===" << std::endl;
-    //std::cerr << "[RenderCmdBuffer::BindIBO] IBO: " << ibo << std::endl;
+    //LogVerbose(u"BindIBO entry");
 
     if(!ibo)
     {
-        std::cerr << "[RenderCmdBuffer::BindIBO] ERROR: Null IBO!" << std::endl;
+        LogError("Null IBO");
         return;
     }
 
@@ -165,20 +186,17 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
 
 bool RenderCmdBuffer::BindDataBuffer(const GeometryDataBuffer *geom_data_buffer)
 {
-    //std::cerr << "[RenderCmdBuffer::BindDataBuffer] === ENTRY ===" << std::endl;
-    //std::cerr << "[RenderCmdBuffer::BindDataBuffer] GeomDataBuffer: " << geom_data_buffer << std::endl;
+    //LogVerbose(u"BindDataBuffer entry");
 
     if(!geom_data_buffer)
     {
-        std::cerr << "[RenderCmdBuffer::BindDataBuffer] ERROR: Null geometry data buffer!" << std::endl;
+        LogError("Null geometry data buffer");
         return(false);
     }
 
-//    std::cerr << "[RenderCmdBuffer::BindDataBuffer] VAB count: " << geom_data_buffer->vab_count << std::endl;
-
     if(geom_data_buffer->vab_count<=0)
     {
-        std::cerr << "[RenderCmdBuffer::BindDataBuffer] ERROR: No VABs to bind!" << std::endl;
+        LogError("No VABs to bind");
         return(false);
     }
 
@@ -240,15 +258,11 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
 
 void RenderCmdBuffer::Draw(const GeometryDataBuffer *geom_data_buffer,const GeometryDrawRange *geom_draw_range,const uint32_t instance_count,const uint32_t first_instance)
 {
-    //std::cerr << "[RenderCmdBuffer::Draw] === ENTRY ===" << std::endl;
-    //std::cerr << "[RenderCmdBuffer::Draw] GeomDataBuffer: " << geom_data_buffer << std::endl;
-    //std::cerr << "[RenderCmdBuffer::Draw] GeomDrawRange: " << geom_draw_range << std::endl;
-    //std::cerr << "[RenderCmdBuffer::Draw] Instance count: " << instance_count << std::endl;
-    //std::cerr << "[RenderCmdBuffer::Draw] First instance: " << first_instance << std::endl;
+    //LogVerbose(u"Draw entry");
 
     if(!geom_data_buffer||!geom_draw_range)
     {
-        std::cerr << "[RenderCmdBuffer::Draw] ERROR: Null parameter!" << std::endl;
+        LogError("Null parameter in Draw");
         return;
     }
 

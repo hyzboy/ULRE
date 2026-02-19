@@ -2,7 +2,7 @@
 #include<hgl/vk/VKSurfaceExtensionName.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKDebugOut.h>
-#include<iostream>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 VulkanDevice *CreateRenderDevice(VkInstance,const VulkanPhyDevice *,Window *);
@@ -55,9 +55,9 @@ VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out,CreateIn
     VkResult inst_result = vkCreateInstance(&inst_info, nullptr, &inst);
     if (inst_result != VK_SUCCESS)
     {
-        std::cout << "[VK][ERROR] vkCreateInstance failed, result=" << inst_result
-                  << " ext_count=" << inst_info.enabledExtensionCount
-                  << " layer_count=" << inst_info.enabledLayerCount << std::endl;
+        GLogError("vkCreateInstance failed, result=",inst_result,
+                  " ext_count=",inst_info.enabledExtensionCount,
+                  " layer_count=",inst_info.enabledLayerCount);
         return nullptr;
     }
 

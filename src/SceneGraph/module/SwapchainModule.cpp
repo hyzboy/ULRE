@@ -92,7 +92,7 @@ namespace
 
         if(result!=VK_SUCCESS)
         {
-            std::cout << "[VK][ERROR] vkCreateSwapchainKHR failed, result=" << result << std::endl;
+            GLogError("vkCreateSwapchainKHR failed, result=",result);
             return(VK_NULL_HANDLE);
         }
 
@@ -112,7 +112,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
     VkResult sc_result = vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr);
     if(sc_result!=VK_SUCCESS)
     {
-        std::cout << "[VK][ERROR] vkGetSwapchainImagesKHR(count) failed, result=" << sc_result << std::endl;
+        LogError("vkGetSwapchainImagesKHR(count) failed, result=",sc_result);
         return(false);
     }
 
@@ -121,7 +121,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
     sc_result = vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),sc_images);
     if(sc_result!=VK_SUCCESS)
     {
-        std::cout << "[VK][ERROR] vkGetSwapchainImagesKHR(list) failed, result=" << sc_result << std::endl;
+        LogError("vkGetSwapchainImagesKHR(list) failed, result=",sc_result);
         return(false);
     }
 
@@ -176,7 +176,7 @@ Swapchain *SwapchainModule::CreateSwapchain()
 
     if(!dev_attr)
     {
-        std::cout << "[VK][ERROR] CreateSwapchain failed: dev_attr is null" << std::endl;
+        LogError("dev_attr is null");
         return(nullptr);
     }
 
@@ -197,11 +197,11 @@ Swapchain *SwapchainModule::CreateSwapchain()
         if(CreateSwapchainFBO(swapchain))
             return swapchain;
 
-        std::cout << "[VK][ERROR] CreateSwapchainFBO failed" << std::endl;
+        LogError("CreateSwapchainFBO failed");
     }
     else
     {
-        std::cout << "[VK][ERROR] CreateVulkanSwapChain returned null" << std::endl;
+        LogError("CreateVulkanSwapChain returned null");
     }
 
     delete swapchain;
@@ -315,12 +315,12 @@ void SwapchainModule::Release()
     // 2. Swapchain wrapper object (vk_swapchain)
     // 3. SwapchainRenderTarget object
     
-    std::cout << "[DEBUG] SwapchainModule::Release() - Starting, sc_render_pass=0x" << std::hex << (uintptr_t)sc_render_pass << std::dec << std::endl;
+    LogDebug("SwapchainModule::Release() - Starting, sc_render_pass="+ToHexString<char>((uintptr_t)sc_render_pass));
     
     // 1. Clean up new architecture resources (swapchain_data)
     if (swapchain_data)
     {
-        std::cout << "[DEBUG] SwapchainModule::Release() - Clearing swapchain_data" << std::endl;
+        LogDebug("SwapchainModule::Release() - Clearing swapchain_data");
         // SwapchainData::Clear() deletes shared queue and all frame semaphores/fences
         swapchain_data->Clear();
         
@@ -332,7 +332,7 @@ void SwapchainModule::Release()
     // 2. Clean up Swapchain wrapper (this also deletes sc_image array)
     if (vk_swapchain)
     {
-        std::cout << "[DEBUG] SwapchainModule::Release() - Deleting vk_swapchain" << std::endl;
+        LogDebug("SwapchainModule::Release() - Deleting vk_swapchain");
         delete vk_swapchain;
         vk_swapchain = nullptr;
     }
@@ -340,7 +340,7 @@ void SwapchainModule::Release()
     // 3. Clean up legacy architecture resources (sc_render_target)
     if (sc_render_target)
     {
-        std::cout << "[DEBUG] SwapchainModule::Release() - Releasing sc_render_target" << std::endl;
+        LogDebug("SwapchainModule::Release() - Releasing sc_render_target");
         // Release frame resources (clears references, doesn't delete owned objects)
         sc_render_target->ReleaseFrameResources();
         
@@ -352,7 +352,7 @@ void SwapchainModule::Release()
         SAFE_CLEAR(sc_render_target);
     }
     
-    std::cout << "[DEBUG] SwapchainModule::Release() - NOT releasing sc_render_pass (it's managed by RenderPassManager), sc_render_pass=0x" << std::hex << (uintptr_t)sc_render_pass << std::dec << std::endl;
+    LogDebug("SwapchainModule::Release() - NOT releasing sc_render_pass (it's managed by RenderPassManager), sc_render_pass="+ToHexString<char>((uintptr_t)sc_render_pass));
     // NOTE: sc_render_pass is NOT deleted here because it's managed by RenderPassManager
     // It's only held as a reference. RenderPassManager::Release() will delete it.
 }
@@ -434,7 +434,7 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 //    sc_render_target->WaitFence();
 //}
 
-bool                    SwapchainModule::GetSwapchainSize(VkExtent2D *ext)const
+bool SwapchainModule::GetSwapchainSize(VkExtent2D *ext)const
 {
     if(!ext||!sc_render_target)
         return(false);

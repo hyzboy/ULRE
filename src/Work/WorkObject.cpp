@@ -32,10 +32,6 @@ namespace hgl
         }
     }
 
-    WorkObject::~WorkObject()
-    {
-    }
-
     graph::Camera *WorkObject::GetCamera()
     {
         if (world)

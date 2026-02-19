@@ -19,3 +19,5 @@
 src/ecs/test_ecs
 /.vscode
 CMakeFiles
+/build_new
+/build_test

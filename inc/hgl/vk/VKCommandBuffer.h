@@ -7,10 +7,14 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/type/MemoryUtil.h>
-#include<iostream>
+#include<hgl/log/Log.h>
 namespace hgl::graph{
 class VulkanCmdBuffer
 {
+public:
+
+    OBJECT_LOGGER
+
 protected:
 
     const VulkanDevAttr *dev_attr;
@@ -58,6 +62,8 @@ using DescriptorBindingPtrArray=DescriptorBindingPtr[size_t(DescriptorSetType::R
 
 class RenderCmdBuffer:public VulkanCmdBuffer
 {
+private:
+
     uint32_t cv_count;
     VkClearValue *clear_values;
     VkRect2D render_area;
@@ -202,28 +208,7 @@ public:
         vkCmdBindVertexBuffers(cmd_buf,first,count,vab,offsets);
     }
 
-    bool BindVAB(const VABList *vab_list)
-    {
-        if(!vab_list)
-        {
-            std::cerr<<"[RenderCmdBuffer::BindVAB] ERROR: VABList is null!"<<std::endl;
-            return(false);
-        }
-
-        if(!vab_list->IsFull())
-        {
-            std::cerr<<"[RenderCmdBuffer::BindVAB] ERROR: VABList is not full!"<<std::endl;
-            return(false);
-        }
-
-        vkCmdBindVertexBuffers(cmd_buf,
-                               0,                           //first binding
-                               vab_list->GetWriteCount(),   //binding count (use actual count, not capacity)
-                               vab_list->GetVABList(),      //buffers
-                               vab_list->GetVABOffset());   //buffer offsets
-
-        return(true);
-    }
+    bool BindVAB(const VABList *vab_list);
 
     void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
 
