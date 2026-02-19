@@ -15,7 +15,7 @@
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/log/Log.h>
-#include<hgl/utils/ObjectTracker.h>
+#include<hgl/object/ObjectTracker.h>
 #include<algorithm>
 
 namespace hgl

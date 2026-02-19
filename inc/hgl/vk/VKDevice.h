@@ -17,7 +17,7 @@
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
-#include<hgl/utils/ObjectTracker.h>
+#include<hgl/object/ObjectTracker.h>
 #include<typeinfo>
 #include<type_traits>
 #include<utility>

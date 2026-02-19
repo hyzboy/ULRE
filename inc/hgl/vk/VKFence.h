@@ -2,7 +2,7 @@
 #define HGL_VULKAN_GRAPH_FENCE_INCLUDE
 
 #include<hgl/vk/VK.h>
-#include<hgl/utils/ObjectBase.h>
+#include<hgl/object/ObjectBase.h>
 #include<source_location>
 
 namespace hgl::graph{

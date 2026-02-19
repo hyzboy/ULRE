@@ -15,7 +15,7 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/vk/StructuredBufferAccessor.h>
-#include <hgl/utils/ObjectTracker.h>
+#include <hgl/object/ObjectTracker.h>
 
 /**
  * \file LineRenderManager.cpp

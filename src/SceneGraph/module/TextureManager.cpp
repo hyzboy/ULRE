@@ -3,7 +3,7 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/graph/module/RenderPassManager.h>
-#include<hgl/utils/ObjectTracker.h>
+#include<hgl/object/ObjectTracker.h>
 
 namespace hgl::graph{
 const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat format) const

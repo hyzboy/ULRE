@@ -14,7 +14,7 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/utils/ObjectTracker.h>
+#include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 
 namespace hgl::graph{

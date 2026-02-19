@@ -20,7 +20,7 @@
  #include<hgl/ecs/core/Entity.h>
  #include<hgl/ecs/components/TransformComponent.h>
  #include<hgl/ecs/components/PrimitiveComponent.h>
- #include<hgl/utils/ObjectTracker.h>
+ #include<hgl/object/ObjectTracker.h>
 
 using namespace hgl;
 using namespace hgl::graph;
