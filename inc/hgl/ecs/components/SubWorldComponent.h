@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/Component.h>
 #include<memory>
+#include<hgl/log/Log.h>
 
 namespace hgl::ecs
 {
@@ -37,6 +38,8 @@ namespace hgl::ecs
      */
     class SubWorldComponent : public Component
     {
+        OBJECT_LOGGER
+
     private:
         std::shared_ptr<ECSContext> sub_world;
         Entity* owner_entity = nullptr;

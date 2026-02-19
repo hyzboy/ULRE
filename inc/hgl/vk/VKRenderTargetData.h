@@ -1,11 +1,14 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
 struct RenderTargetData
 {
+    OBJECT_LOGGER
+
     Framebuffer *       fbo;
     DeviceQueue *       queue;
     Semaphore *         render_complete_semaphore;

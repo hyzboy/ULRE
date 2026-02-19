@@ -109,7 +109,7 @@ namespace hgl::ecs
         if (!update_logged)
         {
             update_logged = true;
-            GLogInfo(OS_TEXT("SubWorldComponent UpdateSubWorld active"));
+            LogInfo(OS_TEXT("SubWorldComponent UpdateSubWorld active"));
         }
 
         sub_world->Tick(delta_time);
@@ -124,7 +124,7 @@ namespace hgl::ecs
         if (!render_logged)
         {
             render_logged = true;
-            GLogInfo(OS_TEXT("SubWorldComponent RenderSubWorld active"));
+            LogInfo(OS_TEXT("SubWorldComponent RenderSubWorld active"));
         }
 
         sub_world->Render(cmd, delta_time);

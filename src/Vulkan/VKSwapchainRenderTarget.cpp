@@ -2,7 +2,6 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSemaphore.h>
 #include<hgl/log/Log.h>
-#include<iostream>
 #include<chrono>
  //#include<iostream>
 
@@ -29,7 +28,7 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
 bool SwapchainRenderTarget::NextFrame()
 {
     auto start = std::chrono::high_resolution_clock::now();
-    GLogInfo("[SWAPCHAIN] NextFrame START current_frame=%u semaphore=%p", current_frame, (void*)present_complete_semaphore);
+    LogInfo("[SWAPCHAIN] NextFrame START current_frame=%u semaphore=%p", current_frame, (void*)present_complete_semaphore);
     
     VkResult result = vkAcquireNextImageKHR(GetVkDevice(),
                                  swapchain->swap_chain,
@@ -40,7 +39,7 @@ bool SwapchainRenderTarget::NextFrame()
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    GLogInfo("[SWAPCHAIN] NextFrame END result=%d new_frame=%u time=%lldms", static_cast<int>(result), current_frame, duration);
+    LogInfo("[SWAPCHAIN] NextFrame END result=%d new_frame=%u time=%lldms", static_cast<int>(result), current_frame, duration);
     
     return (result == VK_SUCCESS);
 }
@@ -48,13 +47,13 @@ bool SwapchainRenderTarget::NextFrame()
 bool SwapchainRenderTarget::Submit()
 {
     auto submit_start = std::chrono::high_resolution_clock::now();
-    GLogInfo("[SWAPCHAIN] Submit START frame=%u", current_frame);
+    LogInfo("[SWAPCHAIN] Submit START frame=%u", current_frame);
     
     RenderTargetData *rtd=rtd_list+current_frame;
 
     if(!rtd->Submit(present_complete_semaphore))
     {
-        GLogWarning("[SWAPCHAIN] Submit RenderTargetData::Submit FAILED");
+        LogWarning("[SWAPCHAIN] Submit RenderTargetData::Submit FAILED");
         return(false);
     }
 
@@ -71,20 +70,20 @@ bool SwapchainRenderTarget::Submit()
     auto present_end = std::chrono::high_resolution_clock::now();
     auto present_duration = std::chrono::duration_cast<std::chrono::milliseconds>(present_end - present_start).count();
     
-    GLogInfo("[SWAPCHAIN] Present result=%d time=%lldms", static_cast<int>(result), present_duration);
+    LogInfo("[SWAPCHAIN] Present result=%d time=%lldms", static_cast<int>(result), present_duration);
 
     if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR)))
     {
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            GLogWarning("[SWAPCHAIN] Submit OUT_OF_DATE");
+            LogWarning("[SWAPCHAIN] Submit OUT_OF_DATE");
             return false;
         }
     }
     
     auto submit_end = std::chrono::high_resolution_clock::now();
     auto submit_duration = std::chrono::duration_cast<std::chrono::milliseconds>(submit_end - submit_start).count();
-    GLogInfo("[SWAPCHAIN] Submit END total_time=%lldms", submit_duration);
+    LogInfo("[SWAPCHAIN] Submit END total_time=%lldms", submit_duration);
 
     return(true);
 }

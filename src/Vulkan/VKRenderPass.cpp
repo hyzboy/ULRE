@@ -6,6 +6,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/object/ObjectTracker.h>
+#include<hgl/log/Log.h>
 namespace hgl::graph{
 RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
 {
@@ -18,36 +19,33 @@ RenderPass::RenderPass(VulkanDevice *dev,const AnsiString &n,VkRenderPass rp,con
 
     vkGetRenderAreaGranularity(*device,render_pass,&granularity);
 
-    std::cout << "[RenderPass::RenderPass] Created RenderPass '" << name << "' with VkRenderPass=0x" << std::hex << (uintptr_t)render_pass 
-              << std::dec << ", color attachment count=" << color_formats.GetCount() 
-              << ", depth format=" << depth_format 
-              << ", granularity=(" << granularity.width << "x" << granularity.height << ")" 
-        <<std::endl;
+    LogInfo("[RenderPass::RenderPass] Created RenderPass '%s' with VkRenderPass=0x%llx, color attachment count=%u, depth format=%u, granularity=(%ux%u)",
+             name.c_str(), (unsigned long long)(uintptr_t)render_pass, color_formats.GetCount(), depth_format, 
+             granularity.width, granularity.height);
 }
 
 RenderPass::~RenderPass()
 {
-    std::cout << "[RenderPass::~RenderPass] Destroying RenderPass with " << pipeline_list.GetCount() 
-              << " pipelines (VkRenderPass=0x" << std::hex << (uintptr_t)render_pass << std::dec 
-              << ", RenderPass*=0x" << (uintptr_t)this << ")" << std::endl;
+    LogInfo("[RenderPass::~RenderPass] Destroying RenderPass with %u pipelines (VkRenderPass=0x%llx, RenderPass*=0x%llx)",
+             (unsigned int)pipeline_list.GetCount(), (unsigned long long)(uintptr_t)render_pass, (unsigned long long)(uintptr_t)this);
     
     // 列出所有要被销毁的管道
     for (size_t i = 0; i < pipeline_list.GetCount(); i++)
     {
         Pipeline* p = pipeline_list[i];
         if (p)
-            std::cout << "  [RenderPass::~RenderPass] Clearing Pipeline [" << i << "]: '" << p->GetName() << "'" << std::endl;
+            LogInfo("  [RenderPass::~RenderPass] Clearing Pipeline [%zu]: '%s'", i, p->GetName().c_str());
     }
     
-    std::cout << "[RenderPass::~RenderPass] Clearing pipeline_list..." << std::endl;
+    LogDebug("[RenderPass::~RenderPass] Clearing pipeline_list...");
     pipeline_list.Clear();
-    std::cout << "[RenderPass::~RenderPass] Pipelines cleared, now destroying VkRenderPass" << std::endl;
+    LogDebug("[RenderPass::~RenderPass] Pipelines cleared, now destroying VkRenderPass");
 
     if (device)
         device->UntrackObject(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)(uintptr_t)render_pass);
 
     vkDestroyRenderPass(*device,render_pass,nullptr);
-    std::cout << "[RenderPass::~RenderPass] RenderPass destroyed" << std::endl;
+    LogInfo("[RenderPass::~RenderPass] RenderPass destroyed");
 }
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
@@ -84,9 +82,8 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
 
     Pipeline *pipeline = new Pipeline(name,*device,graphicsPipeline,vil,pd);
 
-    std::cout << "[RenderPass::CreatePipeline] Created Pipeline '" << name << "' in RenderPass '" << this->name 
-              << "' (VkPipeline=0x" << std::hex << (uintptr_t)graphicsPipeline << std::dec << ", Pipeline*=0x" 
-              << (uintptr_t)pipeline << ")" << std::endl;
+    LogInfo("[RenderPass::CreatePipeline] Created Pipeline '%s' in RenderPass '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
+             name.c_str(), this->name.c_str(), (unsigned long long)(uintptr_t)graphicsPipeline, (unsigned long long)(uintptr_t)pipeline);
 
     if (device)
         device->TrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)graphicsPipeline, ObjectNameBuilder(name).Append(ObjectTypeTag::VKPipeline));

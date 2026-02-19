@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKInstance.h>
 #include<hgl/vk/BufferPolicyImpl.h>
+#include<hgl/log/Log.h>
 #include"DebugOutProperties.h"
 
 namespace hgl::graph{
@@ -27,21 +28,16 @@ namespace
 
         for(int i=0;i<count;i++)
         {
-            std::cout<<front<<" Queue Family ["<<i<<"] count: "<<p->queueCount
-                <<", timestampValidBits: "<<p->timestampValidBits
-                <<", minImageTransferGranularity [" <<p->minImageTransferGranularity.width<<","
-                                                    <<p->minImageTransferGranularity.height<<","
-                                                    <<p->minImageTransferGranularity.depth<<"], queueFlags[";
-
+            AnsiString flags;
             uint32_t bits=p->queueFlags;
 
-            for(uint i=0;i<7;i++)
+            for(uint j=0;j<7;j++)
             {
                 if(bits&1)
                 {
-                    std::cout<<queue_bit_name[i];
+                    if(!flags.IsEmpty()) flags += ",";
+                    flags += queue_bit_name[j];
                     bits>>=1;
-                    if(bits>0)std::cout<<",";
                 }
                 else
                 {
@@ -49,7 +45,10 @@ namespace
                 }
             }
 
-            std::cout<<"]"<<std::endl;
+            GLogInfo("%s Queue Family [%d] count: %u, timestampValidBits: %u, minImageTransferGranularity [%u,%u,%u], queueFlags[%s]",
+                     front, i, p->queueCount, p->timestampValidBits,
+                     p->minImageTransferGranularity.width, p->minImageTransferGranularity.height, p->minImageTransferGranularity.depth,
+                     flags.c_str());
 
             ++p;
         }
@@ -60,6 +59,14 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 {
     instance=inst;
     physical_device=pd;
+
+    // First, get basic properties to detect the API version
+    vkGetPhysicalDeviceProperties(physical_device,&properties);
+    
+    // Extract Vulkan version from apiVersion: version = VK_VERSION_MAJOR(apiVersion).VK_VERSION_MINOR(apiVersion)
+    const uint32_t api_version = properties.apiVersion;
+    const uint32_t version_major = VK_API_VERSION_MAJOR(api_version);
+    const uint32_t version_minor = VK_API_VERSION_MINOR(api_version);
 
     {
         mem_zero(features11);
@@ -74,19 +81,41 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
             VkPhysicalDeviceFeatures2 features2;
 
             features2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-            features2.pNext=&features11;
+            features2.pNext=nullptr;
 
-            features11.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-            features11.pNext=&features12;
+            // Build feature chain based on device's supported API version
+            void** ppNext=&features2.pNext;
 
-            features12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features12.pNext=&features13;
+            if(version_major > 1 || version_minor >= 1)
+            {
+                features11.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+                features11.pNext=nullptr;
+                *ppNext=&features11;
+                ppNext=&features11.pNext;
+            }
 
-            features13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features13.pNext=&features14;
+            if(version_major > 1 || version_minor >= 2)
+            {
+                features12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                features12.pNext=nullptr;
+                *ppNext=&features12;
+                ppNext=&features12.pNext;
+            }
 
-            features14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-            features14.pNext=nullptr;
+            if(version_major > 1 || version_minor >= 3)
+            {
+                features13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                features13.pNext=nullptr;
+                *ppNext=&features13;
+                ppNext=&features13.pNext;
+            }
+
+            if(version_major > 1 || version_minor >= 4)
+            {
+                features14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+                features14.pNext=nullptr;
+                *ppNext=&features14;
+            }
 
             func(physical_device,&features2);
 
@@ -111,27 +140,45 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
             VkPhysicalDeviceProperties2 properties2;
 
             properties2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
-            properties2.pNext=&properties11;
+            properties2.pNext=nullptr;
 
-            properties11.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
-            properties11.pNext=&properties12;
+            // Build properties chain based on device's supported API version
+            void** ppNext=&properties2.pNext;
 
-            properties12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
-            properties12.pNext=&properties13;
+            if(version_major > 1 || version_minor >= 1)
+            {
+                properties11.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+                properties11.pNext=nullptr;
+                *ppNext=&properties11;
+                ppNext=&properties11.pNext;
+            }
 
-            properties13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-            properties13.pNext=&properties14;
+            if(version_major > 1 || version_minor >= 2)
+            {
+                properties12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+                properties12.pNext=nullptr;
+                *ppNext=&properties12;
+                ppNext=&properties12.pNext;
+            }
 
-            properties14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
-            properties14.pNext=nullptr;
+            if(version_major > 1 || version_minor >= 3)
+            {
+                properties13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+                properties13.pNext=nullptr;
+                *ppNext=&properties13;
+                ppNext=&properties13.pNext;
+            }
+
+            if(version_major > 1 || version_minor >= 4)
+            {
+                properties14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
+                properties14.pNext=nullptr;
+                *ppNext=&properties14;
+            }
 
             func(physical_device,&properties2);
 
             mem_copy(properties,properties2.properties);
-        }
-        else
-        {
-            vkGetPhysicalDeviceProperties(physical_device,&properties);
         }
     }
 
@@ -161,7 +208,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         }
     }
 
-    std::string debug_front="PhysicalDevice["+std::string(properties.deviceName)+"]";
+    std::string debug_front="PhysicalDevice["+std::string(properties.deviceName)+" v"+std::to_string(version_major)+"."+std::to_string(version_minor)+"]";
 
     {
         uint32_t property_count;
@@ -170,6 +217,10 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
         layer_properties.Resize(property_count);
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
+
+        // Log Vulkan API version support
+        GLogInfo("%s supported Vulkan API version: %d.%d",
+                 debug_front.c_str(), version_major, version_minor);
 
         debug_out(debug_front.c_str(),layer_properties);
     }

@@ -2,6 +2,7 @@
 #define HGL_GRAPH_VULKAN_MEMORY_INCLUDE
 
 #include<hgl/vk/VK.h>
+#include<hgl/log/Log.h>
 namespace hgl::graph{
 
 /**
@@ -30,6 +31,8 @@ enum class BufferAllocPolicy
 
 class DeviceMemory
 {
+    OBJECT_LOGGER
+
     VkDevice                device;
     VkDeviceMemory          memory;
     VkMemoryRequirements    req;

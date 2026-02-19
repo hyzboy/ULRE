@@ -5,7 +5,7 @@
 #include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<iostream>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
@@ -61,7 +61,7 @@ void RenderTargetData::EndRender()
 
 void RenderTargetData::Clear()
 {
-    std::cerr << "[RenderTargetData] Clear" << std::endl;
+    LogDebug("[RenderTargetData] Clear");
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
     

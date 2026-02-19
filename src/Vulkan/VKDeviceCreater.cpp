@@ -9,8 +9,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
 
-#include<iostream>
-#include<iomanip>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
@@ -25,12 +24,12 @@ void LogSurfaceFormat(const VkSurfaceFormatKHR &sf)
     const VulkanFormat *    vf=GetVulkanFormat(sf.format);
     const VulkanColorSpace *cs=GetVulkanColorSpace(sf.colorSpace);
 
-    std::cout<<std::setw(10)<<vf->name<<", "<<cs->name<<std::endl;
+    GLogDebug("%-10s, %s", vf->name, cs->name);
 }
 
 void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
 {
-    std::cout<<"Current physics device support "<<surface_formats_list.GetCount()<<" surface format"<<std::endl;
+    GLogDebug("Current physics device support %u surface format", surface_formats_list.GetCount());
 
     for(auto &sf:surface_formats_list)
         LogSurfaceFormat(sf);

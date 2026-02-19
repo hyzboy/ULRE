@@ -1,28 +1,28 @@
 ﻿#include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
-#include<iostream>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 Pipeline::~Pipeline()
 {
-    std::cout << "[Pipeline::~Pipeline] Destroying Pipeline '" << name << "' (VkPipeline=0x" << std::hex 
-              << (uintptr_t)pipeline << std::dec << ", Pipeline*=0x" << (uintptr_t)this << ")" << std::endl;
+    GLogDebug("[Pipeline::~Pipeline] Destroying Pipeline '%s' (VkPipeline=0x%llx, Pipeline*=0x%llx)",
+              name.c_str(), (unsigned long long)(uintptr_t)pipeline, (unsigned long long)(uintptr_t)this);
     
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
     {
-        std::cout << "[Pipeline::~Pipeline]   UntrackObject called for Pipeline '" << name << "'" << std::endl;
+        GLogDebug("[Pipeline::~Pipeline]   UntrackObject called for Pipeline '%s'", name.c_str());
         owner->UntrackObject(VK_OBJECT_TYPE_PIPELINE, (uint64_t)(uintptr_t)pipeline);
     }
     else
     {
-        std::cout << "[Pipeline::~Pipeline]   WARNING: VulkanDevice owner is NULL for Pipeline '" << name << "'" << std::endl;
+        GLogWarning("[Pipeline::~Pipeline]   WARNING: VulkanDevice owner is NULL for Pipeline '%s'", name.c_str());
     }
 
     delete data;
-    std::cout << "[Pipeline::~Pipeline]   Calling vkDestroyPipeline for '" << name << "'" << std::endl;
+    GLogDebug("[Pipeline::~Pipeline]   Calling vkDestroyPipeline for '%s'", name.c_str());
     vkDestroyPipeline(device,pipeline,nullptr);
-    std::cout << "[Pipeline::~Pipeline]   Destroyed Pipeline '" << name << "'" << std::endl;
+    GLogDebug("[Pipeline::~Pipeline]   Destroyed Pipeline '%s'", name.c_str());
 }
 }//namespace hgl::graph

@@ -3,10 +3,13 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKFence.h>
 #include<hgl/time/TimeConst.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 class DeviceQueue
 {
+    OBJECT_LOGGER
+
 protected:
 
     VkDevice device;

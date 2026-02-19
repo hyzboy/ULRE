@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/type/ManagedArray.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
@@ -15,6 +16,8 @@ using VkFormatList=ValueArray<VkFormat>;
  */
 class RenderPass
 {
+    OBJECT_LOGGER
+
     VulkanDevice *  device;
     VkPipelineCache pipeline_cache;
     VkRenderPass    render_pass;

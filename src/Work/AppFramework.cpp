@@ -64,23 +64,23 @@ namespace hgl
 
     AppFramework::~AppFramework()
     {
-        std::cout << "\n[DEBUG] ================ AppFramework Destructor Start ================" << std::endl;
+        GLogDebug("================ AppFramework Destructor Start ================");
         if (device)
             device->WaitIdle();
 
         // 1. Shutdown ECS context FIRST so systems can clean up their buffers
         // while managers are still alive
-        std::cout << "[DEBUG] Step 1: Calling ECSContext::Shutdown()" << std::endl;
+        GLogDebug("Step 1: Calling ECSContext::Shutdown()");
         if (default_ecs_context)
             default_ecs_context->Shutdown();
-        std::cout << "[DEBUG] Step 1 complete" << std::endl;
+        GLogDebug("Step 1 complete");
 
         // 2. GraphicsContext shutdown - calls Release() on all modules (including sc_module)
         // GraphicsContext owns all modules through GraphModuleManager
-        std::cout << "[DEBUG] Step 2: Calling GraphicsContext::Shutdown()" << std::endl;
+        GLogDebug("Step 2: Calling GraphicsContext::Shutdown()");
         if (graphics_context)
             graphics_context->Shutdown();
-        std::cout << "[DEBUG] Step 2 complete" << std::endl;
+        GLogDebug("Step 2 complete");
 
         // 3. Release render context
         render_context.reset();
@@ -88,19 +88,19 @@ namespace hgl
         // 4. Clear graphics context (owns all managers and modules)
         // GraphModuleManager destructor automatically calls Release() on all modules
         // and then deletes them, so don't directly manage sc_module
-        std::cout << "[DEBUG] Step 4: Deleting GraphicsContext" << std::endl;
+        GLogDebug("Step 4: Deleting GraphicsContext");
         SAFE_CLEAR(graphics_context);
-        std::cout << "[DEBUG] Step 4 complete" << std::endl;
+        GLogDebug("Step 4 complete");
         sc_module = nullptr;  // sc_module was deleted by GraphModuleManager, just null the pointer
 
         // 5. Destroy ECS context after graphics resources are cleaned up
-        std::cout << "[DEBUG] Step 5: Deleting ECSContext" << std::endl;
+        GLogDebug("Step 5: Deleting ECSContext");
         if (default_ecs_context)
         {
             delete default_ecs_context;
             default_ecs_context = nullptr;
         }
-        std::cout << "[DEBUG] Step 5 complete" << std::endl;
+        GLogDebug("Step 5 complete");
 
         // 6. Wait for GPU to complete all operations before destroying device/window
         if (device)
@@ -109,12 +109,12 @@ namespace hgl
         }
 
         // 7. Cleanup GPU resources
-        std::cout << "[DEBUG] Step 7: Deleting VulkanDevice (will check for leaks)" << std::endl;
+        GLogDebug("Step 7: Deleting VulkanDevice (will check for leaks)");
         SAFE_CLEAR(device);
-        std::cout << "[DEBUG] Step 7 complete" << std::endl;
+        GLogDebug("Step 7 complete");
         SAFE_CLEAR(inst);
         SAFE_CLEAR(win);
-        std::cout << "[DEBUG] ================ AppFramework Destructor End ================\n" << std::endl;
+        GLogDebug("================ AppFramework Destructor End ================");
 
         --APP_FRAMEWORK_COUNT;
 

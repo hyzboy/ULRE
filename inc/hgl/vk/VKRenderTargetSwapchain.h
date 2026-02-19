@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKRenderTargetMultiFrame.h>
+#include<hgl/log/Log.h>
 
 namespace hgl::graph{
 
@@ -9,6 +10,8 @@ namespace hgl::graph{
 */
 class SwapchainRenderTarget:public MultiFrameRenderTarget
 {
+    OBJECT_LOGGER
+
     Swapchain *swapchain;
     PresentInfo present_info;
 

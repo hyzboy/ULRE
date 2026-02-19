@@ -44,9 +44,8 @@ DeviceMemory::DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirem
 
 DeviceMemory::~DeviceMemory()
 {
-    std::cout << "[DeviceMemory::~DeviceMemory] this=" << this 
-              << " VkDeviceMemory=0x" << std::hex << (uint64_t)(uintptr_t)memory << std::dec
-              << " size=" << req.size << std::endl;
+    LogDebug("[DeviceMemory::~DeviceMemory] this=0x%llx VkDeviceMemory=0x%llx size=%zu",
+              (unsigned long long)(uintptr_t)this, (unsigned long long)(uintptr_t)memory, req.size);
     
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
@@ -174,7 +173,7 @@ void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
     {
         if(offset < mapped_offset || offset >= mapped_offset + mapped_size)
         {
-            GLogWarning("[DeviceMemory::Flush] whole-size offset out of mapped range memory=%p vkMemory=%p offset=%llu mappedOffset=%llu mappedSize=%llu",
+            LogWarning("[DeviceMemory::Flush] whole-size offset out of mapped range memory=%p vkMemory=%p offset=%llu mappedOffset=%llu mappedSize=%llu",
                         (void *)this,
                         (void *)memory,
                         static_cast<unsigned long long>(offset),
@@ -188,7 +187,7 @@ void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
         const VkDeviceSize mapped_end = mapped_offset + mapped_size;
         if(offset < mapped_offset || offset + aligned_size > mapped_end)
         {
-            GLogWarning("[DeviceMemory::Flush] range exceeds mapped region memory=%p vkMemory=%p offset=%llu size=%llu aligned=%llu mappedOffset=%llu mappedSize=%llu",
+            LogWarning("[DeviceMemory::Flush] range exceeds mapped region memory=%p vkMemory=%p offset=%llu size=%llu aligned=%llu mappedOffset=%llu mappedSize=%llu",
                         (void *)this,
                         (void *)memory,
                         static_cast<unsigned long long>(offset),
@@ -202,7 +201,7 @@ void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
 
     if(size != VK_WHOLE_SIZE && aligned_size > 0 && offset + aligned_size > req.size)
     {
-        GLogWarning("[DeviceMemory::Flush] range overflow memory=%p vkMemory=%p offset=%llu size=%llu aligned=%llu memSize=%llu atomSize=%llu",
+        LogWarning("[DeviceMemory::Flush] range overflow memory=%p vkMemory=%p offset=%llu size=%llu aligned=%llu memSize=%llu atomSize=%llu",
                     (void *)this,
                     (void *)memory,
                     static_cast<unsigned long long>(offset),

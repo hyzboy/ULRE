@@ -28,26 +28,26 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 
 DeviceQueue::~DeviceQueue()
 {
-    std::cout << "[DEBUG] DeviceQueue::~DeviceQueue() - fence_count=" << fence_count << std::endl;
+    LogDebug("[DEBUG] DeviceQueue::~DeviceQueue() - fence_count=%u", fence_count);
     // Note: VkQueue is retrieved via vkGetDeviceQueue and is implicitly destroyed 
     // when VkDevice is destroyed. Multiple DeviceQueue instances may share the same
     // VkQueue handle, so we should NOT untrack it here.
     // The VulkanDevice will handle cleanup of the actual queue.
 
     SAFE_CLEAR_OBJECT_ARRAY_OBJECT(fence_list,fence_count)
-    std::cout << "[DEBUG] DeviceQueue::~DeviceQueue() - Complete" << std::endl;
+    LogDebug("[DEBUG] DeviceQueue::~DeviceQueue() - Complete");
 }
 
 bool DeviceQueue::WaitQueue()
 {
     auto start = std::chrono::high_resolution_clock::now();
-    GLogInfo("[FENCE] WaitQueue START queue=%p", (void*)queue);
+    LogInfo("[FENCE] WaitQueue START queue=%p", (void*)queue);
     
     VkResult result=vkQueueWaitIdle(queue);
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    GLogInfo("[FENCE] WaitQueue END result=%d time=%lldms", static_cast<int>(result), duration);
+    LogInfo("[FENCE] WaitQueue END result=%d time=%lldms", static_cast<int>(result), duration);
 
     if(result!=VK_SUCCESS)
         return(false);
@@ -67,17 +67,17 @@ bool DeviceQueue::WaitLastSubmitFence(const bool wait_all,uint64_t time_out)
 
     VkFence fence=*fence_list[last_submitted_fence];
     auto start = std::chrono::high_resolution_clock::now();
-    GLogInfo("[FENCE] WaitLastSubmit START fence=%p last_fence=%u", (void*)fence, last_submitted_fence);
+    LogInfo("[FENCE] WaitLastSubmit START fence=%p last_fence=%u", (void*)fence, last_submitted_fence);
 
     VkResult result=vkWaitForFences(device,1,&fence,wait_all,time_out);
 
     auto after_wait = std::chrono::high_resolution_clock::now();
     auto wait_duration = std::chrono::duration_cast<std::chrono::milliseconds>(after_wait - start).count();
-    GLogInfo("[FENCE] WaitLastSubmit END result=%d time=%lldms", static_cast<int>(result), wait_duration);
+    LogInfo("[FENCE] WaitLastSubmit END result=%d time=%lldms", static_cast<int>(result), wait_duration);
 
     if(result!=VK_SUCCESS)
     {
-        GLogWarning("[FENCE] WaitLastSubmit FAILED res=%d fence=%p", static_cast<int>(result), (void*)fence);
+        LogWarning("[FENCE] WaitLastSubmit FAILED res=%d fence=%p", static_cast<int>(result), (void*)fence);
         return(false);
     }
 
@@ -124,12 +124,12 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
 
     VkFence fence=*fence_list[current_fence];
     auto submit_start = std::chrono::high_resolution_clock::now();
-    GLogInfo("[FENCE] Submit START fence=%p current_fence=%u", (void*)fence, current_fence);
+    LogInfo("[FENCE] Submit START fence=%p current_fence=%u", (void*)fence, current_fence);
 
     if (fence != VK_NULL_HANDLE)
     {
         VkResult reset_res = vkResetFences(device, 1, &fence);
-        GLogInfo("[FENCE] Submit reset fence result=%d", static_cast<int>(reset_res));
+        LogInfo("[FENCE] Submit reset fence result=%d", static_cast<int>(reset_res));
         if (reset_res != VK_SUCCESS)
         {
             GLogWarning("[FENCE] Submit reset fence FAILED res=%d fence=%p", static_cast<int>(reset_res), (void *)fence);
@@ -139,7 +139,7 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     VkResult result=vkQueueSubmit(queue,1,&submit_info,fence);
     auto submit_end = std::chrono::high_resolution_clock::now();
     auto submit_duration = std::chrono::duration_cast<std::chrono::milliseconds>(submit_end - submit_start).count();
-    GLogInfo("[FENCE] Submit END result=%d time=%lldms", static_cast<int>(result), submit_duration);
+    LogInfo("[FENCE] Submit END result=%d time=%lldms", static_cast<int>(result), submit_duration);
 
     if(result==VK_SUCCESS)
     {

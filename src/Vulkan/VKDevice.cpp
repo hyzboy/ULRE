@@ -110,7 +110,7 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
 
 #ifdef _DEBUG
     // 详细日志：记录对象创建
-    GLogDebug("[CREATE] Object tracked");
+    LogDebug("[CREATE] Object tracked");
 #endif//_DEBUG
 
     ObjectKey key{type, handle};
