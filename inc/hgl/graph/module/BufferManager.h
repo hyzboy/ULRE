@@ -69,6 +69,7 @@ public:
 public: // VAB/VAO
 
     VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
+    VAB *CreateVAB(const ObjectNameBuilder &name, VkFormat format, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
     VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateVAB(format, count, data, BufferAllocPolicy::Auto, sm, loc); }
     VAB *CreateVAB(VkFormat format, uint32_t count, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateVAB(format, count, nullptr, BufferAllocPolicy::Auto, sm, loc); }
 

@@ -306,19 +306,18 @@ namespace hgl
             auto render_target_system = GetSystem<RenderTargetSystem>();
             if (render_target_system)
             {
-                // RenderTargetSystem will sync CameraSystem viewport and LineRenderSystem render target
+                // RenderTargetSystem will sync CameraSystem viewport
                 render_target_system->SetRenderTarget(render_target);
             }
             else
             {
-                // Fallback: directly update CameraSystem and LineRenderSystem if no RenderTargetSystem
+                // Fallback: directly update CameraSystem if no RenderTargetSystem
                 auto camera_system = GetSystem<CameraSystem>();
                 if (camera_system && render_target)
                     camera_system->SetViewportInfo(render_target->GetViewportInfo());
 
-                auto line_system = GetSystem<LineRenderSystem>();
-                if (line_system && render_target)
-                    line_system->SetRenderTarget(render_target);
+                // CN: LineRenderSystem 会在 Render 时延迟初始化
+                // EN: LineRenderSystem lazy-inits on first Render
             }
         }
 

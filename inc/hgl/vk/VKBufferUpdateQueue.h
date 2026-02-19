@@ -52,6 +52,11 @@ public:
     void AddUpdate(StagedBuffer *buffer, VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 
     /**
+     * Remove all pending updates for a buffer
+     */
+    void Remove(StagedBuffer *buffer);
+
+    /**
      * Check if there are pending updates
      */
     bool HasPendingUpdates() const { return pending_updates.GetCount() > 0; }

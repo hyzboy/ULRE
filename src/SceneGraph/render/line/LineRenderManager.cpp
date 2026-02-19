@@ -425,13 +425,15 @@ namespace hgl::graph
         {
             for(uint i = 0;i < MAX_LINE_WIDTH;i++)
             {
-                line_groups[i].Init(i + 1,device,mi,pipeline,shared_backup);
+                AnsiString batch_name = "LineRenderManager:LineWidth" + AnsiString::numberOf(i + 1);
+                line_groups[i].Init(i + 1,device,mi,pipeline,shared_backup,batch_name);
             }
             LogInfo(OS_TEXT("CN: 初始化宽线批次数量=") + OSString::numberOf(MAX_LINE_WIDTH) + OS_TEXT(" EN: initialized wide line batches"));
         }
         else
         {
-            line_groups[0].Init(0,device,mi,pipeline,shared_backup);
+            AnsiString batch_name = "LineRenderManager:LineWidthUnified";
+            line_groups[0].Init(0,device,mi,pipeline,shared_backup,batch_name);
             LogInfo(OS_TEXT("CN: 设备不支持宽线 使用单一批次 EN: wide line unsupported; using single batch"));
         }
 
@@ -444,6 +446,17 @@ namespace hgl::graph
      */
     LineRenderManager::~LineRenderManager()
     {
+        // CN: 清理所有批次中的几何体和原始体 EN: Clear all batches' geometry and primitives
+        if(support_wide_lines)
+        {
+            for(size_t i=0;i<MAX_LINE_WIDTH;i++)
+                line_groups[i].Clear();
+        }
+        else
+        {
+            line_groups[0].Clear();
+        }
+
         if (material_manager && mi_line)
         {
             Material *mat = mi_line->GetMaterial();

@@ -53,12 +53,8 @@ namespace hgl::ecs
             camera_system->SetViewportInfo(render_target ? render_target->GetViewportInfo() : nullptr);
         }
 
-        auto line_system = context->GetSystem<LineRenderSystem>();
-        if (line_system)
-        {
-            line_system->SetRenderContext(render_context);
-            line_system->SetRenderTarget(render_target);
-        }
+        // CN: LineRenderSystem 会在 Render 时延迟初始化，自动获取 RenderTarget 信息
+        // EN: LineRenderSystem will lazy-init on first Render, automatically get RenderTarget info
     }
 }//namespace hgl::ecs
 

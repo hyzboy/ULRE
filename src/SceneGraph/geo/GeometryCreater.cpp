@@ -147,7 +147,8 @@ const int GeometryCreater::InitVAB(const AnsiString &name,const VkFormat format,
 
     if(!vab)
     {
-        vab=geometry_data->InitVAB(vab_index,data);
+        AnsiString vab_name = geometry_name + ":" + name;
+        vab=geometry_data->InitVAB(vab_index,data,vab_name);
 
         if(!vab)
             return(-1);
@@ -268,8 +269,8 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
     if(!pd)
         return nullptr;
 
-    // 创建所有 VAB（内容为空）
-    if(!pd->CreateAllVAB())
+    // 创建所有 VAB（内容为空）并传递 geometry 名字以追踪来源
+    if(!pd->CreateAllVAB(name))
     {
         delete pd;
         return nullptr;

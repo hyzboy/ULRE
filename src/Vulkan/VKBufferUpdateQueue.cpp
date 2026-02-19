@@ -48,6 +48,18 @@ void BufferUpdateQueue::AddUpdate(StagedBuffer *buffer, VkDeviceSize offset, VkD
     //         pending_updates.GetCount());
 }
 
+void BufferUpdateQueue::Remove(StagedBuffer *buffer)
+{
+    if (!buffer || pending_updates.GetCount() == 0)
+        return;
+
+    for (int i = pending_updates.GetCount() - 1; i >= 0; --i)
+    {
+        if (pending_updates[i].buffer == buffer)
+            pending_updates.Delete(i);
+    }
+}
+
 void BufferUpdateQueue::FlushAll(VkCommandBuffer cmd)
 {
     if (!cmd || pending_updates.GetCount() == 0)

@@ -23,6 +23,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
                 ${ECS_INCLUDE_PATH}/components/StaticMeshComponent.h
                 ${ECS_INCLUDE_PATH}/components/CameraComponent.h
+                ${ECS_INCLUDE_PATH}/components/LinesComponent.h
                 ${ECS_INCLUDE_PATH}/components/QuadComponent.h
                 ${ECS_INCLUDE_PATH}/components/FacingTransformComponent.h
                 ${ECS_INCLUDE_PATH}/components/TextComponent.h

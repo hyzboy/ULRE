@@ -27,6 +27,9 @@ StagedBuffer::StagedBuffer(VkDevice dev, BufferUpdateQueue *queue,
 
 StagedBuffer::~StagedBuffer()
 {
+    if (update_queue)
+        update_queue->Remove(this);
+
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
     {

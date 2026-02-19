@@ -32,7 +32,7 @@ protected:
 
     VAB **          vab_list;
 
-    virtual VAB * CreateVAB(const int vab_index,const VkFormat format,const void *data)=0;
+    virtual VAB * CreateVAB(const int vab_index,const VkFormat format,const void *data,const AnsiString &name)=0;
 
 protected:
 
@@ -51,12 +51,12 @@ public:
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
 
-            bool            CreateAllVAB    ();     //根据VIL创建所有VAB
+            bool            CreateAllVAB(const AnsiString &geometry_name="Geometry");     //根据VIL创建所有VAB
 
             VAB *           GetVAB          (const int index)const;
             VAB *           GetVAB          (const AnsiString &name)const;
 
-            VAB *           InitVAB         (const int vab_index,const void *data);
+            VAB *           InitVAB         (const int vab_index,const void *data,const AnsiString &name="VAB");
             VABMap *        GetVABMap       (const int vab_index);
 
             IndexBuffer *   InitIBO         (const int index_count,IndexType it);

@@ -84,10 +84,8 @@ SOURCE_GROUP("4.Rendering\\Core" FILES ${RENDERING_CORE_FILES})
 SET(RENDERING_LINE_FILES    ${SG_INCLUDE_PATH}/geo/line/SharedLineBackup.h
                             ${SG_INCLUDE_PATH}/geo/line/LineWidthBatch.h
                             ${SG_INCLUDE_PATH}/geo/line/LineRenderManager.h
-                            ${SG_INCLUDE_PATH}/geo/line/LineRenderService.h
                             render/line/LineWidthBatch.cpp
-                            render/line/LineRenderManager.cpp
-                            render/line/LineRenderService.cpp)
+                            render/line/LineRenderManager.cpp)
 
 SOURCE_GROUP("4.Rendering\\Line" FILES ${RENDERING_LINE_FILES})
 

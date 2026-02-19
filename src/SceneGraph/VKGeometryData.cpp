@@ -37,7 +37,7 @@ const int GeometryData::GetVABIndex(const AnsiString &name) const
     return vil->GetIndex(name);
 }
 
-bool GeometryData::CreateAllVAB()
+bool GeometryData::CreateAllVAB(const AnsiString &geometry_name)
 {
     const uint32_t count=vil->GetVertexAttribCount();
 
@@ -49,7 +49,8 @@ bool GeometryData::CreateAllVAB()
 
         vif=vil->GetConfig(i);
 
-        vab_list[i]=CreateVAB(i,vif->format,nullptr);
+        AnsiString vab_name = geometry_name + ":" + vif->name;
+        vab_list[i]=CreateVAB(i,vif->format,nullptr,vab_name);
 
         if(!vab_list[i])
             return(false);
@@ -77,7 +78,7 @@ VAB *GeometryData::GetVAB(const AnsiString &name)const
     return vab_list[index];
 }
 
-VAB *GeometryData::InitVAB(const int vab_index,const void *data)
+VAB *GeometryData::InitVAB(const int vab_index,const void *data,const AnsiString &name)
 {
     if(!vil)return(nullptr);
 
@@ -90,7 +91,7 @@ VAB *GeometryData::InitVAB(const int vab_index,const void *data)
 
     if(!vab_list[vab_index])
     {
-        vab_list[vab_index]=CreateVAB(vab_index,vif->format,data);
+        vab_list[vab_index]=CreateVAB(vab_index,vif->format,data,name);
 
         if(!vab_list[vab_index])
             return(nullptr);
@@ -170,11 +171,11 @@ namespace
             return device->CreateIBO(it,ic,nullptr,policy);
         }
 
-        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
+        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data,const AnsiString &name) override
         {
             if(!device)return(nullptr);
 
-            return device->CreateVAB(format,vertex_count,data,policy);
+            return device->CreateVAB(ObjectNameBuilder(name),format,vertex_count,data,policy);
         }
     };//class GeometryDataPrivateBuffer:public GeometryData
 
@@ -224,11 +225,11 @@ namespace
             return buffer_manager->CreateIBO(it,ic,nullptr,policy);
         }
 
-        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
+        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data,const AnsiString &name) override
         {
             if(!buffer_manager)return(nullptr);
 
-            return buffer_manager->CreateVAB(format,vertex_count,data,policy);
+            return buffer_manager->CreateVAB(ObjectNameBuilder(name),format,vertex_count,data,policy);
         }
     };//class GeometryDataPrivateBufferBM:public GeometryData
 
@@ -283,7 +284,7 @@ namespace
             return vdm->GetIBO();
         }
 
-        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
+        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data,const AnsiString &name) override
         {
             VAB *vab=vdm->GetVAB(vab_index);
 

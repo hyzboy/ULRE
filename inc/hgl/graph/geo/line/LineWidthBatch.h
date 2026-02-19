@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <hgl/math/Vector.h>
+#include <hgl/type/String.h>
 #include <hgl/vk/VKVertexAttribBuffer.h>
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKBufferAccessor.h>
@@ -24,6 +25,7 @@ class LineWidthBatch
     Pipeline *          pipeline=nullptr;
 
     uint32      line_width  =0;
+    AnsiString  batch_name  ="";    // CN: 批次名称 EN: batch name for resource tracking
 
     uint32      max_count   =0;     // 当前缓冲区可容纳的最大线段数量
     uint32      count       =0;     // 当前线段数量
@@ -42,7 +44,7 @@ public:
     ~LineWidthBatch();
 
 
-    void Init(const uint w,VulkanDevice *,MaterialInstance *,Pipeline *p,SharedLineBackup *sb);
+    void Init(const uint w,VulkanDevice *,MaterialInstance *,Pipeline *p,SharedLineBackup *sb,const AnsiString &name="");
 
     void Clear();
     bool RebuildMesh();

@@ -8,7 +8,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/camera/ViewportInfo.h>
-#include<hgl/graph/geo/line/LineRenderService.h>
+#include<hgl/graph/geo/line/LineRenderManager.h>
 #include<hgl/utils/ObjectTracker.h>
 #include<hgl/log/Log.h>
 
@@ -199,18 +199,9 @@ namespace hgl::graph
             void Execute(RenderStageContext &ctx) override
             {
                 StageScope scope(GetName());
-                if (!ctx.line_render_service && ctx.ecs_context)
-                {
-                    auto line_system = ctx.ecs_context->GetSystem<ecs::LineRenderSystem>();
-                    if (line_system)
-                        ctx.line_render_service = line_system->GetLineRenderService();
-                }
-
-                if(ctx.line_render_service && ctx.cmd)
-                {
-                    ctx.line_render_service->Draw(ctx.cmd);
-                    ctx.render_result = true;
-                }
+                // CN: LineRenderSystem 会在 EcsRender 阶段处理所有 LinesComponent 的渲染
+                // EN: LineRenderSystem handles all LinesComponent rendering in EcsRender phase
+                (void)ctx;  // Unused
             }
         };
 

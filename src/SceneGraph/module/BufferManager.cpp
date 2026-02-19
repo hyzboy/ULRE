@@ -36,6 +36,22 @@ VAB *BufferManager::CreateVAB(VkFormat format, uint32_t count, const void *data,
     return vb;
 }
 
+VAB *BufferManager::CreateVAB(const ObjectNameBuilder &name, VkFormat format, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, const std::source_location &loc)
+{
+    VulkanDevice *device = GetDevice();
+    if (!device)
+        return nullptr;
+
+    VAB *vb = device->CreateVAB(name, format, count, data, policy, sharing_mode, BufferUpdateClass::Default, loc);
+
+    if (!vb)
+        return nullptr;
+
+    rm_buffers.Add(vb);
+
+    return vb;
+}
+
 #define BUFFER_MANAGER_CREATE_BUFFER(name)    DeviceBuffer *BufferManager::Create##name(const AnsiString &buf_name, VkDeviceSize size, void *data, SharingMode sharing_mode, const std::source_location &loc) \
                                               {   \
                                                   VulkanDevice *device = GetDevice(); \

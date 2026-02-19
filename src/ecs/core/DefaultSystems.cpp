@@ -91,11 +91,8 @@ namespace hgl::ecs
         if (text_submit_system)
             text_submit_system->SetWorld(ctx);
 
-        if (line_render_system)
-        {
-            line_render_system->SetRenderContext(rc);
-            line_render_system->SetRenderTarget(default_rt);
-        }
+        // CN: LineRenderSystem 会在 Render 时延迟初始化，自动获取 context 中的信息
+        // EN: LineRenderSystem will lazy-init on first Render, automatically get context info
 
         systems.input_system = ctx->RegisterTickSystem<ecs::InputSystem>();
         systems.camera_system = camera_system;

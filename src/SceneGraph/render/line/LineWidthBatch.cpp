@@ -17,7 +17,7 @@ LineWidthBatch::~LineWidthBatch()
     Clear();
 }
 
-void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,SharedLineBackup *sb)
+void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,SharedLineBackup *sb,const AnsiString &name)
 {
     device = dev;
     mtl_inst = mi;
@@ -25,6 +25,7 @@ void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pi
     pipeline = p;
 
     line_width = w;
+    batch_name = name.IsEmpty() ? ("Line3D_Width" + AnsiString::numberOf(w)) : name;
 
     max_count = 0;
     count = 0;
@@ -47,9 +48,9 @@ bool LineWidthBatch::RebuildMesh()
 {
     Clear();
 
-    AnsiString name = "Line3D(Width:" + AnsiString::numberOf(line_width) + ")";
+    AnsiString geom_name = batch_name + ":Geometry";
 
-    geometry = CreateGeometry(device,mtl_inst->GetVIL(),name,max_count * 2, 0, IndexType::AUTO, nullptr);
+    geometry = CreateGeometry(device,mtl_inst->GetVIL(),geom_name,max_count * 2, 0, IndexType::AUTO, nullptr);
 
     if(!geometry)
         return(false);
