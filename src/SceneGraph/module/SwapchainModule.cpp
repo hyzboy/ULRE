@@ -92,9 +92,7 @@ namespace
 
         if(result!=VK_SUCCESS)
         {
-            //LogError(OS_TEXT("vkCreateSwapchainKHR failed, result = ")+OSString(result));
-//            os_err<<"vkCreateSwapchainKHR failed, result="<<result<<std::endl;
-
+            std::cout << "[VK][ERROR] vkCreateSwapchainKHR failed, result=" << result << std::endl;
             return(VK_NULL_HANDLE);
         }
 
@@ -111,13 +109,21 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 {
     HGL_CAPTURE_SCOPE();
 
-    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr)!=VK_SUCCESS)
+    VkResult sc_result = vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr);
+    if(sc_result!=VK_SUCCESS)
+    {
+        std::cout << "[VK][ERROR] vkGetSwapchainImagesKHR(count) failed, result=" << sc_result << std::endl;
         return(false);
+    }
 
     AutoDeleteArray<VkImage> sc_images(swapchain->image_count);
 
-    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),sc_images)!=VK_SUCCESS)
+    sc_result = vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),sc_images);
+    if(sc_result!=VK_SUCCESS)
+    {
+        std::cout << "[VK][ERROR] vkGetSwapchainImagesKHR(list) failed, result=" << sc_result << std::endl;
         return(false);
+    }
 
     swapchain->sc_image=new SwapchainImage[swapchain->image_count]();  // 使用 new[] 而不是 hgl_zero_new（因为有析构函数）
 
@@ -169,7 +175,10 @@ Swapchain *SwapchainModule::CreateSwapchain()
     auto *dev_attr=GetDevAttr();
 
     if(!dev_attr)
+    {
+        std::cout << "[VK][ERROR] CreateSwapchain failed: dev_attr is null" << std::endl;
         return(nullptr);
+    }
 
     Swapchain *swapchain=new Swapchain;
 
@@ -187,6 +196,12 @@ Swapchain *SwapchainModule::CreateSwapchain()
     {
         if(CreateSwapchainFBO(swapchain))
             return swapchain;
+
+        std::cout << "[VK][ERROR] CreateSwapchainFBO failed" << std::endl;
+    }
+    else
+    {
+        std::cout << "[VK][ERROR] CreateVulkanSwapChain returned null" << std::endl;
     }
 
     delete swapchain;
@@ -474,12 +489,6 @@ bool SwapchainModule::Initialize()
     VulkanDevice *device = GetDevice();
     SwapchainImage *sc_image = vk_swapchain->sc_image;
 
-    // Create a shared queue for all frames
-    if (device)
-    {
-        swapchain_data->shared_queue = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
-    }
-
     for (uint32_t i = 0; i < vk_swapchain->image_count; i++)
     {
         FrameResources &frame = swapchain_data->frames[i];
@@ -508,8 +517,11 @@ bool SwapchainModule::Initialize()
             frame.cmd_buffer = (VkCommandBuffer)(*sc_image->cmd_buf);
         }
 
-        // Point to shared queue (created once above, not per-frame)
-        frame.queue = swapchain_data->shared_queue;
+        // Create per-frame queue (DeviceQueue wrapper managed by SwapchainModule)
+        if (device)
+        {
+            frame.queue = device->CreateQueue("SwapchainFrame", vk_swapchain->image_count, false);
+        }
 
         // Create per-frame synchronization primitives (Semaphore and Fence managed by SwapchainModule)
         if (device)
@@ -555,10 +567,10 @@ bool SwapchainModule::DestroyPerFrameResources(SwapchainData &sc_data)
     for (auto &frame : sc_data.frames)
     {
         // FrameResources::Clear() handles deletion of per-frame wrapper objects:
-        // - Semaphore* (image_acquired and render_complete) - per-frame, deleted here
-        // - Fence* - per-frame, deleted here
+        // - DeviceQueue*
+        // - Semaphore* (image_acquired and render_complete)
+        // - Fence*
         //
-        // The shared queue is handled by SwapchainData::Clear(), not here.
         // Other resources (VkImage, VkImageView, VkFramebuffer, VkRenderPass, VkCommandBuffer)
         // are owned by their respective managers and will be deleted by them.
 

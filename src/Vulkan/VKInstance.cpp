@@ -52,8 +52,14 @@ VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out,CreateIn
 
     VkInstance inst;
 
-    if(vkCreateInstance(&inst_info,nullptr,&inst)!=VK_SUCCESS)
-        return(nullptr);
+    VkResult inst_result = vkCreateInstance(&inst_info, nullptr, &inst);
+    if (inst_result != VK_SUCCESS)
+    {
+        std::cout << "[VK][ERROR] vkCreateInstance failed, result=" << inst_result
+                  << " ext_count=" << inst_info.enabledExtensionCount
+                  << " layer_count=" << inst_info.enabledLayerCount << std::endl;
+        return nullptr;
+    }
 
 #ifdef _DEBUG
     if(!out)

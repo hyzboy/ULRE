@@ -30,9 +30,6 @@ namespace hgl::graph
         uint32_t frame_count = 0;                     ///< Number of frames (2 or 3)
         uint32_t current_frame_index = 0;             ///< Current frame being rendered
         
-        // Shared resources (all frames share these)
-        DeviceQueue *shared_queue = nullptr;         ///< Shared graphics queue for all frames
-        
         // Swapchain properties
         VkExtent2D extent = {0, 0};                   ///< Swapchain image extent
         VkFormat image_format = VK_FORMAT_UNDEFINED;  ///< Swapchain image format
@@ -87,32 +84,16 @@ namespace hgl::graph
         }
 
         /**
-         * @brief Clear all frame resources and delete shared resources
-         * 
-         * Called during swapchain destruction. Clears all frame references
-         * and deletes the shared queue.
+         * @brief Clear all frame resources
+         *
+         * Called during swapchain destruction. Clears all frame references.
          */
         void Clear()
         {
-            // Clear frame resources (deletes semaphores and fences, but NOT queue since it's shared)
             for (auto& frame : frames)
             {
                 frame.Clear();
             }
-            
-            // Delete shared queue (owned by SwapchainData)
-            if (shared_queue)
-            {
-                delete shared_queue;
-                shared_queue = nullptr;
-                
-                // Clear frame.queue pointers since the shared queue is now deleted
-                for (auto& frame : frames)
-                {
-                    frame.queue = nullptr;
-                }
-            }
-            
             swapchain = VK_NULL_HANDLE;
             current_frame_index = 0;
         }

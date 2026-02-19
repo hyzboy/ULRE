@@ -24,7 +24,7 @@ class Fence;
  * - VkFramebuffer: owned by RenderTargetManager
  * - VkRenderPass: owned by RenderPassManager
  * - VkCommandBuffer: owned by CommandPool (Device)
- * - DeviceQueue*: owned by SwapchainModule (for queue operations)
+ * - DeviceQueue*: owned by SwapchainModule (per-frame)
  * - Semaphore*: owned by SwapchainModule (for synchronization)
  * - Fence*: owned by SwapchainModule (for GPU-CPU sync)
  * - VkImage: owned by Swapchain
@@ -61,12 +61,10 @@ struct FrameResources
     /**
      * @brief Clear all resource references
      * 
-     * This method clears all pointers and DELETES the owned objects:
-     * - Semaphore*: deletes the semaphore wrappers (per-frame)
-     * - Fence*: deletes the fence wrapper (per-frame)
-     * 
-     * NOTE: DeviceQueue is NOT deleted here because it's shared across all frames
-     * and managed by SwapchainData. The SwapchainData::Clear() method handles queue deletion.
+    * This method clears all pointers and DELETES the owned objects:
+    * - DeviceQueue*: deletes the per-frame queue wrapper
+    * - Semaphore*: deletes the semaphore wrappers (per-frame)
+    * - Fence*: deletes the fence wrapper (per-frame)
      * 
      * Called when:
      * - Clearing individual frame references
@@ -74,12 +72,11 @@ struct FrameResources
      */
     void Clear()
     {
-        // Delete per-frame wrapper objects (not shared)
+        // Delete per-frame wrapper objects
+        if (queue) { delete queue; queue = nullptr; }
         if (image_acquired_semaphore) { delete image_acquired_semaphore; image_acquired_semaphore = nullptr; }
         if (render_complete_semaphore) { delete render_complete_semaphore; render_complete_semaphore = nullptr; }
         if (fence) { delete fence; fence = nullptr; }
-        
-        // NOTE: queue is NOT deleted here - it's shared and managed by SwapchainData
         
         // Clear other handles (owned by other managers)
         vk_image = VK_NULL_HANDLE;
