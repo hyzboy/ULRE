@@ -83,6 +83,10 @@ struct GizmoScaleECSState
     bool dragging = false;
     float cur_scale = 1.0f;
     float pick_scale = 1.0f;
+    float cur_scale_u = 1.0f;
+    float cur_scale_v = 1.0f;
+    float pick_scale_u = 1.0f;
+    float pick_scale_v = 1.0f;
 };
 
 GizmoMoveECS *CreateGizmoMoveECS(::hgl::ecs::World *world,
@@ -146,6 +150,8 @@ hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo);
 bool BindGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity);
 hgl::ecs::Entity *GetGizmoTargetEntity(const GizmoECS *gizmo);
 void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback);
+void SetGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled);
+bool IsGizmoAllowNegativeScale(const GizmoECS *gizmo);
 
 class GizmoSystem : public hgl::ecs::System
 {
@@ -186,11 +192,15 @@ public:
 
     void SetChangedCallback(GizmoChangedCallback callback);
 
+    void SetAllowNegativeScale(bool enabled);
+    bool IsAllowNegativeScale() const { return allow_negative_scale; }
+
     GizmoECS *GetGizmo() const { return gizmo; }
 
 private:
     bool EnsureGizmo();
     bool resource_registered = false;
+    bool allow_negative_scale = true;
 };
 
 void UpdateGizmoECS(GizmoECS *gizmo,

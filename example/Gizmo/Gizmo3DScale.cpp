@@ -74,9 +74,16 @@ struct GizmoScaleECS
     math::Vector3f pick_plane_normal = math::Vector3f(0.0f, 0.0f, 1.0f);
     math::Vector3f pick_plane_u = math::Vector3f(1.0f, 0.0f, 0.0f);
     math::Vector3f pick_plane_v = math::Vector3f(0.0f, 1.0f, 0.0f);
-    float pick_plane_metric = 1.0f;
+    float pick_plane_u_dist = 0.0f;
+    float pick_plane_v_dist = 0.0f;
+    float pick_plane_u_ref = 1.0f;
+    float pick_plane_v_ref = 1.0f;
     math::Vector3f pick_base_scale = math::Vector3f(1.0f, 1.0f, 1.0f);
     float pick_dist = 0.0f;
+    float cur_scale_u = 1.0f;
+    float cur_scale_v = 1.0f;
+    float pick_scale_u = 1.0f;
+    float pick_scale_v = 1.0f;
 
     bool dragging = false;
 
@@ -105,6 +112,19 @@ namespace
         const glm::vec4 v = mat * glm::vec4(dir, 0.0f);
         return glm::normalize(math::Vector3f(v.x, v.y, v.z));
     }
+
+    float ClampSignedScaleRatio(float value)
+    {
+        const float clamped = glm::clamp(value, -10.0f, 10.0f);
+
+        if (std::fabs(clamped) < 0.05f)
+            return (clamped < 0.0f) ? -0.05f : 0.05f;
+
+        return clamped;
+    }
+
+    constexpr float PLANE_SCALE_SENSITIVITY = 0.35f;
+    constexpr float PLANE_SCALE_MIN_REF = 4.0f;
 
     void ApplyAxisMaterials(GizmoScaleECS *gizmo)
     {
@@ -320,6 +340,10 @@ bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_s
     out_state.dragging = gizmo->dragging;
     out_state.cur_scale = gizmo->cur_scale;
     out_state.pick_scale = gizmo->pick_scale;
+    out_state.cur_scale_u = gizmo->cur_scale_u;
+    out_state.cur_scale_v = gizmo->cur_scale_v;
+    out_state.pick_scale_u = gizmo->pick_scale_u;
+    out_state.pick_scale_v = gizmo->pick_scale_v;
 
     return true;
 }
@@ -404,7 +428,9 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
             if(std::fabs(gizmo->pick_dist) > 1e-6)
             {
                 gizmo->cur_scale = cur_dist / gizmo->pick_dist;
-                gizmo->cur_scale = glm::clamp(gizmo->cur_scale, 0.1f, 10.0f);
+                gizmo->cur_scale = ClampSignedScaleRatio(gizmo->cur_scale);
+                    gizmo->cur_scale_u = gizmo->cur_scale;
+                    gizmo->cur_scale_v = gizmo->cur_scale;
 
                 // 应用缩放（这里简化为均匀缩放，实际应用中可能需要更复杂的逻辑）
                 // TODO: 根据实际需求实现缩放应用
@@ -421,15 +447,16 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
                     const math::Vector3f hit_point = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
                     const math::Vector3f delta = hit_point - gizmo->pick_plane_center;
 
-                    const float du = std::fabs(glm::dot(delta, gizmo->pick_plane_u));
-                    const float dv = std::fabs(glm::dot(delta, gizmo->pick_plane_v));
-                    const float metric = (du + dv) * 0.5f;
+                    const float du = glm::dot(delta, gizmo->pick_plane_u);
+                    const float dv = glm::dot(delta, gizmo->pick_plane_v);
 
-                    if(gizmo->pick_plane_metric > 1e-6f)
-                    {
-                        gizmo->cur_scale = metric / gizmo->pick_plane_metric;
-                        gizmo->cur_scale = glm::clamp(gizmo->cur_scale, 0.1f, 10.0f);
-                    }
+                    if(gizmo->pick_plane_u_ref > 1e-6f)
+                        gizmo->cur_scale_u = ClampSignedScaleRatio(1.0f + ((du - gizmo->pick_plane_u_dist) / gizmo->pick_plane_u_ref) * PLANE_SCALE_SENSITIVITY);
+
+                    if(gizmo->pick_plane_v_ref > 1e-6f)
+                        gizmo->cur_scale_v = ClampSignedScaleRatio(1.0f + ((dv - gizmo->pick_plane_v_dist) / gizmo->pick_plane_v_ref) * PLANE_SCALE_SENSITIVITY);
+
+                    gizmo->cur_scale = (gizmo->cur_scale_u + gizmo->cur_scale_v) * 0.5f;
                 }
             }
         }
@@ -564,23 +591,40 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
                     const math::Vector3f hit = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
                     const math::Vector3f rel = hit - gizmo->pick_plane_center;
 
-                    const float du = std::fabs(glm::dot(rel, gizmo->pick_plane_u));
-                    const float dv = std::fabs(glm::dot(rel, gizmo->pick_plane_v));
-                    gizmo->pick_plane_metric = std::max((du + dv) * 0.5f, 1e-4f);
+                    const float du = glm::dot(rel, gizmo->pick_plane_u);
+                    const float dv = glm::dot(rel, gizmo->pick_plane_v);
+
+                    gizmo->pick_plane_u_dist = du;
+                    gizmo->pick_plane_v_dist = dv;
+                    gizmo->pick_plane_u_ref = std::max(std::fabs(du), PLANE_SCALE_MIN_REF);
+                    gizmo->pick_plane_v_ref = std::max(std::fabs(dv), PLANE_SCALE_MIN_REF);
                 }
                 else
                 {
-                    gizmo->pick_plane_metric = 1.0f;
+                    gizmo->pick_plane_u_dist = 0.0f;
+                    gizmo->pick_plane_v_dist = 0.0f;
+                    gizmo->pick_plane_u_ref = 1.0f;
+                    gizmo->pick_plane_v_ref = 1.0f;
                 }
             }
             else
             {
-                gizmo->pick_plane_metric = 1.0f;
+                gizmo->pick_plane_u_dist = 0.0f;
+                gizmo->pick_plane_v_dist = 0.0f;
+                gizmo->pick_plane_u_ref = 1.0f;
+                gizmo->pick_plane_v_ref = 1.0f;
             }
+
+            gizmo->pick_scale_u = gizmo->cur_scale_u;
+            gizmo->pick_scale_v = gizmo->cur_scale_v;
         }
 
         gizmo->cur_scale = 1.0f;
         gizmo->pick_scale = 1.0f;
+        gizmo->cur_scale_u = 1.0f;
+        gizmo->cur_scale_v = 1.0f;
+        gizmo->pick_scale_u = 1.0f;
+        gizmo->pick_scale_v = 1.0f;
         gizmo->dragging = true;
     }
 }

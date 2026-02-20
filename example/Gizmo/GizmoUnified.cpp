@@ -66,16 +66,21 @@ struct GizmoECS
 
     float last_rotate_angle = 0.0f;
     float last_scale_value = 1.0f;
+    float last_scale_value_u = 1.0f;
+    float last_scale_value_v = 1.0f;
     float last_move_dist = 0.0f;
     int last_rotate_axis = -1;
     int last_scale_axis = -1;
     int last_move_axis = -1;
 
     GizmoMode current_mode = GizmoMode::MoveWorld;
+    bool allow_negative_scale = true;
 
     hgl::ecs::Entity* target_entity = nullptr;
     GizmoChangedCallback on_changed;
 };
+
+static void SyncAllSubGizmoTransforms(GizmoECS *gizmo);
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
 {
@@ -105,6 +110,47 @@ static bool IsTransformChanged(const math::Vector3f &prev_pos,
         return true;
 
     return false;
+}
+
+static void NormalizeScaleByPolicy(glm::vec3 &scale, bool allow_negative_scale)
+{
+    if (!allow_negative_scale)
+        scale = glm::abs(scale);
+
+    auto clamp_component = [](float value)
+    {
+        if (std::fabs(value) < 0.05f)
+            return (value < 0.0f) ? -0.05f : 0.05f;
+        return value;
+    };
+
+    scale.x = clamp_component(scale.x);
+    scale.y = clamp_component(scale.y);
+    scale.z = clamp_component(scale.z);
+}
+
+static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
+{
+    if (!gizmo || !gizmo->root_transform)
+        return;
+
+    glm::vec3 scale = gizmo->root_transform->GetLocalScale();
+    const glm::vec3 original_scale = scale;
+    NormalizeScaleByPolicy(scale, gizmo->allow_negative_scale);
+
+    if (glm::length(scale - original_scale) > 1e-6f)
+    {
+        gizmo->root_transform->SetLocalScale(scale);
+
+        if (gizmo->target_entity)
+        {
+            auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
+            if (target_transform)
+                target_transform->SetLocalScale(scale);
+        }
+
+        SyncAllSubGizmoTransforms(gizmo);
+    }
 }
 
 // Forward declare the internal gizmo functions
@@ -421,6 +467,8 @@ void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
 
     gizmo->last_rotate_angle = 0.0f;
     gizmo->last_scale_value = 1.0f;
+    gizmo->last_scale_value_u = 1.0f;
+    gizmo->last_scale_value_v = 1.0f;
     gizmo->last_move_dist = 0.0f;
     gizmo->last_rotate_axis = -1;
     gizmo->last_scale_axis = -1;
@@ -490,6 +538,20 @@ void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback)
         return;
 
     gizmo->on_changed = std::move(callback);
+}
+
+void SetGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled)
+{
+    if (!gizmo)
+        return;
+
+    gizmo->allow_negative_scale = enabled;
+    ApplyScalePolicyToTargetIfNeeded(gizmo);
+}
+
+bool IsGizmoAllowNegativeScale(const GizmoECS *gizmo)
+{
+    return gizmo ? gizmo->allow_negative_scale : true;
 }
 
 void UpdateGizmoECS(GizmoECS *gizmo,
@@ -604,6 +666,8 @@ void UpdateGizmoECS(GizmoECS *gizmo,
                     {
                         gizmo->last_scale_axis = state.pick_axis;
                         gizmo->last_scale_value = state.cur_scale;
+                        gizmo->last_scale_value_u = state.cur_scale_u;
+                        gizmo->last_scale_value_v = state.cur_scale_v;
                     }
 
                     float base = gizmo->last_scale_value;
@@ -611,16 +675,32 @@ void UpdateGizmoECS(GizmoECS *gizmo,
                         base = 1.0f;
 
                     const float ratio = state.cur_scale / base;
-                    if(std::fabs(ratio - 1.0f) > 1e-6f)
+                    if(state.pick_axis < 3)
                     {
-                        glm::vec3 cur = gizmo->root_transform->GetLocalScale();
-
-                        if(state.pick_axis < 3)
+                        if(std::fabs(ratio - 1.0f) > 1e-6f)
                         {
+                            glm::vec3 cur = gizmo->root_transform->GetLocalScale();
                             cur[state.pick_axis] *= ratio;
+                            NormalizeScaleByPolicy(cur, gizmo->allow_negative_scale);
+                            gizmo->root_transform->SetLocalScale(cur);
                         }
-                        else if(state.pick_axis < 6)
+                    }
+                    else if(state.pick_axis < 6)
+                    {
+                        float base_u = gizmo->last_scale_value_u;
+                        float base_v = gizmo->last_scale_value_v;
+
+                        if(std::fabs(base_u) < 1e-6f)
+                            base_u = 1.0f;
+                        if(std::fabs(base_v) < 1e-6f)
+                            base_v = 1.0f;
+
+                        const float ratio_u = state.cur_scale_u / base_u;
+                        const float ratio_v = state.cur_scale_v / base_v;
+
+                        if(std::fabs(ratio_u - 1.0f) > 1e-6f || std::fabs(ratio_v - 1.0f) > 1e-6f)
                         {
+                            glm::vec3 cur = gizmo->root_transform->GetLocalScale();
                             static const int plane_axes[3][2] =
                             {
                                 {1, 2}, // YZ
@@ -629,20 +709,24 @@ void UpdateGizmoECS(GizmoECS *gizmo,
                             };
 
                             const int plane_index = state.pick_axis - 3;
-                            cur[plane_axes[plane_index][0]] *= ratio;
-                            cur[plane_axes[plane_index][1]] *= ratio;
-                        }
+                            cur[plane_axes[plane_index][0]] *= ratio_u;
+                            cur[plane_axes[plane_index][1]] *= ratio_v;
 
-                        cur = glm::max(cur, glm::vec3(0.05f));
-                        gizmo->root_transform->SetLocalScale(cur);
+                            NormalizeScaleByPolicy(cur, gizmo->allow_negative_scale);
+                            gizmo->root_transform->SetLocalScale(cur);
+                        }
                     }
 
                     gizmo->last_scale_value = state.cur_scale;
+                    gizmo->last_scale_value_u = state.cur_scale_u;
+                    gizmo->last_scale_value_v = state.cur_scale_v;
                 }
                 else
                 {
                     gizmo->last_scale_axis = -1;
                     gizmo->last_scale_value = 1.0f;
+                    gizmo->last_scale_value_u = 1.0f;
+                    gizmo->last_scale_value_v = 1.0f;
                 }
             }
         }
@@ -807,6 +891,8 @@ bool GizmoSystem::EnsureGizmo()
     if (target_entity)
         BindGizmoTargetEntity(gizmo, target_entity);
 
+    SetGizmoAllowNegativeScale(gizmo, allow_negative_scale);
+
     if (changed_callback)
         SetGizmoChangedCallback(gizmo, changed_callback);
 
@@ -836,6 +922,13 @@ void GizmoSystem::SetChangedCallback(GizmoChangedCallback callback)
     changed_callback = std::move(callback);
     if (gizmo)
         SetGizmoChangedCallback(gizmo, changed_callback);
+}
+
+void GizmoSystem::SetAllowNegativeScale(bool enabled)
+{
+    allow_negative_scale = enabled;
+    if (gizmo)
+        SetGizmoAllowNegativeScale(gizmo, enabled);
 }
 
 void GizmoSystem::Update(float)
