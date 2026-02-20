@@ -113,15 +113,17 @@ namespace
 
         for(int i=0;i<3;i++)
         {
-            const bool selected = (gizmo->cur_axis == i || gizmo->cur_axis == (i + 3));
-            MaterialInstance *mi = selected ? gizmo->pick_mi : gizmo->axis[i].mi;
+            const bool axis_selected = (gizmo->cur_axis == i);
+            const bool plane_selected = (gizmo->cur_axis == (i + 3));
+            MaterialInstance *axis_mi = axis_selected ? gizmo->pick_mi : gizmo->axis[i].mi;
+            MaterialInstance *plane_mi = plane_selected ? gizmo->pick_mi : gizmo->axis[i].mi;
 
             if(gizmo->axis[i].cylinder)
-                gizmo->axis[i].cylinder->SetOverrideMaterial(mi);
+                gizmo->axis[i].cylinder->SetOverrideMaterial(axis_mi);
             if(gizmo->axis[i].cone)
-                gizmo->axis[i].cone->SetOverrideMaterial(mi);
+                gizmo->axis[i].cone->SetOverrideMaterial(axis_mi);
             if(gizmo->axis[i].plane)
-                gizmo->axis[i].plane->SetOverrideMaterial(mi);
+                gizmo->axis[i].plane->SetOverrideMaterial(plane_mi);
         }
     }
 
