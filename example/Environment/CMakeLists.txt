@@ -13,4 +13,13 @@ endmacro()
 
 CreateProject(01_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
 
+CreateProject(02_AtmosphereSkySunGizmo          AtmosphereSkySunGizmo.cpp
+                                            ../Gizmo/Gizmo.h
+                                            ../Gizmo/GizmoResource.h
+                                            ../Gizmo/GizmoResource.cpp
+                                            ../Gizmo/Gizmo3DMove.cpp
+                                            ../Gizmo/Gizmo3DScale.cpp
+                                            ../Gizmo/Gizmo3DRotate.cpp
+                                            ../Gizmo/GizmoUnified.cpp)
+
 
