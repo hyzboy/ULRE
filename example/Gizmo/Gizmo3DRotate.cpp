@@ -297,6 +297,14 @@ void SetRotateGizmoPosition(RotateGizmoImpl *gizmo, const math::Vector3f &positi
     gizmo->root_transform->SetLocalPosition(glm::vec3(position));
 }
 
+void SetRotateGizmoRotation(RotateGizmoImpl *gizmo, const glm::quat &rotation)
+{
+    if(!gizmo || !gizmo->root_transform)
+        return;
+
+    gizmo->root_transform->SetLocalRotation(rotation);
+}
+
 void SetRotateGizmoVisible(RotateGizmoImpl *gizmo, bool visible)
 {
     if(!gizmo || !gizmo->world)
@@ -339,12 +347,18 @@ void UpdateRotateGizmoImpl(RotateGizmoImpl *gizmo,
     gizmo->root_transform->SetFixedPixelSizingContext(camera_info, viewport_info);
     gizmo->root_transform->UpdateIfDirty();
 
-    // 更新白色圆环朝向相机
+    // 更新白色圆环朝向相机（补偿父节点的旋转，使其在世界空间中朝向相机）
     if(gizmo->white_torus_transform)
     {
         const math::Vector3f gizmo_pos = gizmo->root_transform->GetWorldPosition();
         const glm::quat facing_rotation = CalculateFacingRotation(gizmo_pos, camera_info->view);
-        gizmo->white_torus_transform->SetLocalRotation(facing_rotation);
+        
+        // 获取父节点的世界旋转并取逆，以补偿继承的旋转
+        const glm::quat parent_world_rot = gizmo->root_transform->GetWorldRotation();
+        const glm::quat parent_inv = glm::inverse(parent_world_rot);
+        
+        // 设置本地旋转 = 父节点逆旋转 * 期望的世界旋转
+        gizmo->white_torus_transform->SetLocalRotation(parent_inv * facing_rotation);
     }
 
     gizmo->mouse_ray.SetFromViewportPoint(mouse_coord, camera_info, viewport_info->GetViewport());

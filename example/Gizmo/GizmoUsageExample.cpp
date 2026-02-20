@@ -280,10 +280,12 @@ private:
             text += "MoveWorld(1)";
         else if(mode == GizmoMode::MoveLocal)
             text += "MoveLocal(2)";
-        else if(mode == GizmoMode::Rotate)
-            text += "Rotate(3)";
+        else if(mode == GizmoMode::RotateWorld)
+            text += "RotateWorld(3)";
+        else if(mode == GizmoMode::RotateLocal)
+            text += "RotateLocal(4)";
         else if(mode == GizmoMode::ScaleLocal)
-            text += "ScaleLocal(4)";
+            text += "ScaleLocal(5)";
 
         text += " left=";
         text += input_system->IsMouseButtonDown(hgl::io::MouseButton::Left) ? "1" : "0";
@@ -335,7 +337,7 @@ public:
             return false;
 
         std::cout << "Gizmo Example Started." << std::endl;
-        std::cout << "Press 1 MoveWorld, 2 MoveLocal, 3 Rotate, 4 ScaleLocal" << std::endl;
+        std::cout << "Press 1 MoveWorld, 2 MoveLocal, 3 RotateWorld, 4 RotateLocal, 5 ScaleLocal" << std::endl;
 
         return true;
     }

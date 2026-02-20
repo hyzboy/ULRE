@@ -118,6 +118,7 @@ RotateGizmoImpl *CreateRotateGizmoImpl(::hgl::ecs::World *world,
 void DestroyRotateGizmoImpl(RotateGizmoImpl *gizmo);
 bool GetRotateGizmoInteractionState(const RotateGizmoImpl *gizmo, RotateGizmoInteractionState &out_state);
 void SetRotateGizmoPosition(RotateGizmoImpl *gizmo, const math::Vector3f &position);
+void SetRotateGizmoRotation(RotateGizmoImpl *gizmo, const glm::quat &rotation);
 void UpdateRotateGizmoImpl(RotateGizmoImpl *gizmo,
                            const math::Vector2i &mouse_coord,
                            const CameraInfo *camera_info,

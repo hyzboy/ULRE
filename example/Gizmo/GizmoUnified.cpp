@@ -191,6 +191,8 @@ static void SyncAllSubGizmoTransforms(GizmoECS *gizmo)
                          gizmo->current_mode == GizmoMode::MoveLocal ? root_rot : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
     SetRotateGizmoPosition((RotateGizmoImpl*)gizmo->rotate_impl, root_pos);
+    SetRotateGizmoRotation((RotateGizmoImpl*)gizmo->rotate_impl,
+                          gizmo->current_mode == GizmoMode::RotateLocal ? root_rot : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
     SetScaleGizmoPosition((ScaleGizmoImpl*)gizmo->scale_impl, root_pos);
     SetScaleGizmoRotation((ScaleGizmoImpl*)gizmo->scale_impl, root_rot);
@@ -209,7 +211,8 @@ static bool IsCurrentModeDragging(const GizmoECS *gizmo)
             MoveGizmoInteractionState state;
             return GetMoveGizmoInteractionState((const MoveGizmoImpl*)gizmo->move_impl, state) && state.dragging;
         }
-    case GizmoMode::Rotate:
+    case GizmoMode::RotateWorld:
+    case GizmoMode::RotateLocal:
         {
             RotateGizmoInteractionState state;
             return GetRotateGizmoInteractionState((const RotateGizmoImpl*)gizmo->rotate_impl, state) && state.dragging;
@@ -424,16 +427,17 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
 
     // Set visibility based on mode
     const bool move_active = (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal);
+    const bool rotate_active = (mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal);
 
     SetMoveGizmoVisible((MoveGizmoImpl*)gizmo->move_impl, move_active);
-    SetRotateGizmoVisible((RotateGizmoImpl*)gizmo->rotate_impl, mode == GizmoMode::Rotate);
+    SetRotateGizmoVisible((RotateGizmoImpl*)gizmo->rotate_impl, rotate_active);
     SetScaleGizmoVisible((ScaleGizmoImpl*)gizmo->scale_impl, mode == GizmoMode::ScaleLocal);
 
     // Pause non-active sub-worlds to avoid concurrent rendering/update artifacts
     if (gizmo->move_subworld)
         gizmo->move_subworld->SetPaused(!move_active);
     if (gizmo->rotate_subworld)
-        gizmo->rotate_subworld->SetPaused(mode != GizmoMode::Rotate);
+        gizmo->rotate_subworld->SetPaused(!rotate_active);
     if (gizmo->scale_subworld)
         gizmo->scale_subworld->SetPaused(mode != GizmoMode::ScaleLocal);
 
@@ -575,7 +579,8 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
         }
         break;
     }
-    case GizmoMode::Rotate:
+    case GizmoMode::RotateWorld:
+    case GizmoMode::RotateLocal:
     {
         UpdateRotateGizmoImpl((RotateGizmoImpl*)gizmo->rotate_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
         if(gizmo->root_transform)
@@ -597,7 +602,15 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                         math::Vector3f axis;
                         if(state.pick_axis < 3)
                         {
+                            // Get base axis in world space
                             axis = math::GetAxisVector(math::AXIS(state.pick_axis));
+                            
+                            // For local rotation, transform axis to local space
+                            if(gizmo->current_mode == GizmoMode::RotateLocal)
+                            {
+                                const glm::quat cur_rotation = gizmo->root_transform->GetLocalRotation();
+                                axis = glm::vec3(cur_rotation * glm::vec4(axis, 0.0f));
+                            }
                         }
                         else if(camera_info)
                         {
@@ -985,20 +998,24 @@ void TransformGizmoSystem::Update(float)
         const bool key_2 = input_system->IsKeyDown(hgl::io::KeyboardButton::_2);
         const bool key_3 = input_system->IsKeyDown(hgl::io::KeyboardButton::_3);
         const bool key_4 = input_system->IsKeyDown(hgl::io::KeyboardButton::_4);
+        const bool key_5 = input_system->IsKeyDown(hgl::io::KeyboardButton::_5);
 
         if (key_1 && !last_key_1)
             SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
         else if (key_2 && !last_key_2)
             SetTransformGizmoMode(gizmo, GizmoMode::MoveLocal);
         else if (key_3 && !last_key_3)
-            SetTransformGizmoMode(gizmo, GizmoMode::Rotate);
+            SetTransformGizmoMode(gizmo, GizmoMode::RotateWorld);
         else if (key_4 && !last_key_4)
+            SetTransformGizmoMode(gizmo, GizmoMode::RotateLocal);
+        else if (key_5 && !last_key_5)
             SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
 
         last_key_1 = key_1;
         last_key_2 = key_2;
         last_key_3 = key_3;
         last_key_4 = key_4;
+        last_key_5 = key_5;
     }
 
     UpdateTransformGizmo(gizmo,
@@ -1071,12 +1088,12 @@ bool SunDirectionControlSystem::EnsureGizmo()
     if (!context || !proxy_transform)
         return false;
 
-    gizmo = CreateDefaultTransformGizmo(context, "SunDirectionGizmo", gizmo_position, GizmoMode::Rotate);
+    gizmo = CreateDefaultTransformGizmo(context, "SunDirectionGizmo", gizmo_position, GizmoMode::RotateWorld);
     if (!gizmo)
         return false;
 
     BindTransformGizmoTargetEntity(gizmo, proxy_entity);
-    SetTransformGizmoMode(gizmo, GizmoMode::Rotate);
+    SetTransformGizmoMode(gizmo, GizmoMode::RotateWorld);
     SetTransformGizmoAllowNegativeScale(gizmo, false);
     return true;
 }
@@ -1190,8 +1207,8 @@ void SunDirectionControlSystem::Update(float)
     const bool left_released = !left_down && last_left_down;
     last_left_down = left_down;
 
-    if (GetTransformGizmoMode(gizmo) != GizmoMode::Rotate)
-        SetTransformGizmoMode(gizmo, GizmoMode::Rotate);
+    if (GetTransformGizmoMode(gizmo) != GizmoMode::RotateWorld && GetTransformGizmoMode(gizmo) != GizmoMode::RotateLocal)
+        SetTransformGizmoMode(gizmo, GizmoMode::RotateWorld);
 
     UpdateTransformGizmo(gizmo,
                    mouse_coord,

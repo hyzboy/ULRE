@@ -35,10 +35,12 @@ enum class GizmoMode : int
 {
     MoveWorld = 1,
     MoveLocal = 2,
-    Rotate = 3,
-    ScaleLocal = 4,
+    RotateWorld = 3,
+    RotateLocal = 4,
+    ScaleLocal = 5,
 
     Move = MoveWorld,
+    Rotate = RotateWorld,
     Scale = ScaleLocal
 };
 
@@ -74,6 +76,7 @@ private:
     bool last_key_2 = false;
     bool last_key_3 = false;
     bool last_key_4 = false;
+    bool last_key_5 = false;
 
 public:
     TransformGizmoSystem();
