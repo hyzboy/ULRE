@@ -1,3 +1,10 @@
+/*
+ SunDirectionControlSystem 使用示例
+
+ 展示如何使用 SunDirectionControlSystem 控制太阳方向
+ 通过旋转 Gizmo 实时调整天空光照的太阳方向
+*/
+
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -16,7 +23,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 
-#include"../Gizmo/Gizmo.h"
+#include"../Gizmo/SunDirectionControlSystem.h"
 
 using namespace hgl;
 using namespace hgl::graph;

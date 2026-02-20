@@ -16,8 +16,14 @@ CreateProject(03_RayPicking RayPicking.cpp)
 
 CreateProject(05_GizmoUsageExample GizmoUsageExample.cpp
                                 Gizmo.h
+                                GizmoTypes.h
+                                GizmoInternal.h
                                 GizmoResource.h
                                 GizmoResource.cpp
+                                TransformGizmoSystem.h
+                                TransformGizmoSystem.cpp
+                                SunDirectionControlSystem.h
+                                SunDirectionControlSystem.cpp
                                 Gizmo3DMove.cpp
                                 Gizmo3DScale.cpp
                                 Gizmo3DRotate.cpp

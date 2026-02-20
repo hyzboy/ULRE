@@ -1,13 +1,13 @@
 ﻿/*
- Gizmo ECS 使用示例
+ TransformGizmoSystem 使用示例
 
- 展示如何同时使用 Move, Rotate, Scale 三种 Gizmo
- 按键 W/E/R 切换模式
+ 展示如何使用 TransformGizmoSystem 控制物体变换
+ 支持 5 种模式：MoveWorld, MoveLocal, RotateWorld, RotateLocal, ScaleLocal
+ 按键 1/2/3/4/5 切换对应模式
 */
 
 #include<hgl/framework/WorkManager.h>
-#include"Gizmo.h"
-#include"GizmoResource.h"
+#include"TransformGizmoSystem.h"
 #include<hgl/math/VectorTypes.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>

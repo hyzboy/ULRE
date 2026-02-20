@@ -4,6 +4,16 @@
 
 namespace hgl::graph{
 
+// Global resident state for gizmo system
+struct GizmoSystemResidentState
+{
+    bool resources_ready = false;
+    bool standby = false;
+    uint32_t active_system_count = 0;
+};
+
+extern GizmoSystemResidentState g_gizmo_resident_state;
+
 using TransformGizmo = GizmoECS;
 
 TransformGizmo *CreateTransformGizmo(::hgl::ecs::ECSContext *world,
@@ -156,5 +166,10 @@ bool IsGizmoSystemResourcesResident();
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);
 Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);
+
+// 辅助函数
+hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo);
+glm::quat DirectionToRotation(const math::Vector3f &dir);
+math::Vector3f RotationToDirection(const glm::quat &rot);
 
 }//namespace hgl::graph

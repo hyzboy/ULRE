@@ -183,3 +183,82 @@ DestroyGizmoScaleECS(gizmo_scale);
 ## 参考
 - Blender 4.x Gizmo 系统
 - 原 `GizmoTest.cpp` 33-75 行的 TransformBillboard 实现
+---
+
+## 最新更新：头文件模块化 (2026-02-20)
+
+### 文件结构重组
+
+为了减少编译依赖和提高代码可维护性，将 `TransformGizmoSystem` 和 `SunDirectionControlSystem` 拆分到独立文件：
+
+#### 新增文件
+
+1. **GizmoTypes.h** - 公共类型定义
+   - `GizmoMode` 枚举（MoveWorld, MoveLocal, RotateWorld, RotateLocal, ScaleLocal）
+   - `GizmoTransformChange` 结构体
+   - `GizmoChangedCallback` 回调类型
+   - `GizmoECS` 前向声明
+
+2. **TransformGizmoSystem.h / .cpp** - 通用变换 Gizmo 系统
+   - 独立可用，只需包含此头文件即可使用
+   - 支持 5 种变换模式切换
+   - 按键 1/2/3/4/5 快速切换模式
+
+3. **SunDirectionControlSystem.h / .cpp** - 太阳方向控制系统
+   - 独立可用，专门用于环境光照控制
+   - 自动与 `EnvironmentSystem` 集成
+
+#### 使用方式
+
+**方式一：使用 TransformGizmoSystem（推荐）**
+```cpp
+#include"TransformGizmoSystem.h"
+
+// 创建系统
+auto gizmo_system = ecs_world->RegisterTickSystem<TransformGizmoSystem>();
+
+// 设置目标实体
+gizmo_system->SetTargetEntity(cube_entity);
+
+// 设置变换回调
+gizmo_system->SetChangedCallback([](const GizmoTransformChange &change) {
+    std::cout << "Position changed from " << change.previous_position 
+              << " to " << change.current_position << std::endl;
+});
+
+// 可选：自定义配置
+gizmo_system->SetDefaultMode(GizmoMode::RotateLocal);
+gizmo_system->SetModeSwitchEnabled(true);
+gizmo_system->SetAllowNegativeScale(false);
+```
+
+**方式二：使用 SunDirectionControlSystem**
+```cpp
+#include"SunDirectionControlSystem.h"
+
+// 创建系统
+auto sun_gizmo = ecs_world->RegisterTickSystem<SunDirectionControlSystem>();
+
+// 设置环境系统（可选，默认自动查找）
+sun_gizmo->SetEnvironmentSystem(environment_system.get());
+
+// 设置 Gizmo 位置
+sun_gizmo->SetGizmoPosition(math::Vector3f(0.0f, 0.0f, 0.0f));
+```
+
+**方式三：包含全部功能**
+```cpp
+#include"Gizmo.h"  // 便捷头文件，包含所有 Gizmo 系统
+```
+
+#### 优势
+
+- **减少编译依赖**：开发者只需包含所需的系统头文件
+- **清晰的模块边界**：每个系统职责明确
+- **更快的编译速度**：避免不必要的头文件包含
+- **更好的代码组织**：类型定义、系统实现分离
+
+### 示例更新
+
+- **GizmoUsageExample.cpp** - 展示 `TransformGizmoSystem` 的完整用法
+- **AtmosphereSkySunGizmo.cpp** - 展示 `SunDirectionControlSystem` 控制天空光照

@@ -1,4 +1,4 @@
-/*
+﻿/*
  统一 Gizmo 架构 - 通过 SubWorldComponent 管理三个 Gizmo 子世界
 
  结构：
@@ -31,17 +31,8 @@
 
 namespace hgl::graph{
 
-namespace
-{
-    struct GizmoSystemResidentState
-    {
-        bool resources_ready = false;
-        bool standby = false;
-        uint32_t active_system_count = 0;
-    };
-
-    GizmoSystemResidentState g_gizmo_resident_state;
-}
+// Global resident state definition - declared in GizmoInternal.h
+GizmoSystemResidentState g_gizmo_resident_state;
 
 struct GizmoECS
 {
@@ -476,7 +467,7 @@ void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
     }
 }
 
-static hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo)
+hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo)
 {
     return gizmo ? gizmo->root : nullptr;
 }
@@ -803,447 +794,33 @@ bool IsGizmoSystemResourcesResident()
     return g_gizmo_resident_state.resources_ready;
 }
 
-namespace
+glm::quat DirectionToRotation(const math::Vector3f &dir)
 {
-    glm::quat DirectionToRotation(const math::Vector3f &dir)
+    const float len2 = glm::dot(dir, dir);
+    const math::Vector3f forward = (len2 > 1e-8f) ? glm::normalize(dir) : math::AxisVector::Z;
+
+    const math::Vector3f world_up = math::AxisVector::Y;
+    math::Vector3f right = glm::cross(world_up, forward);
+    if (glm::dot(right, right) < 1e-8f)
     {
-        const float len2 = glm::dot(dir, dir);
-        const math::Vector3f forward = (len2 > 1e-8f) ? glm::normalize(dir) : math::AxisVector::Z;
-
-        const math::Vector3f world_up = math::AxisVector::Y;
-        math::Vector3f right = glm::cross(world_up, forward);
-        if (glm::dot(right, right) < 1e-8f)
-        {
-            const math::Vector3f fallback_up = math::AxisVector::X;
-            right = glm::cross(fallback_up, forward);
-        }
-
-        right = glm::normalize(right);
-        const math::Vector3f up = glm::normalize(glm::cross(forward, right));
-
-        glm::mat3 basis(1.0f);
-        basis[0] = right;
-        basis[1] = up;
-        basis[2] = forward;
-        return glm::normalize(glm::quat_cast(basis));
+        const math::Vector3f fallback_up = math::AxisVector::X;
+        right = glm::cross(fallback_up, forward);
     }
 
-    math::Vector3f RotationToDirection(const glm::quat &rot)
-    {
-        const math::Vector3f forward = glm::normalize(rot * math::AxisVector::Z);
-        return forward;
-    }
+    right = glm::normalize(right);
+    const math::Vector3f up = glm::normalize(glm::cross(forward, right));
+
+    glm::mat3 basis(1.0f);
+    basis[0] = right;
+    basis[1] = up;
+    basis[2] = forward;
+    return glm::normalize(glm::quat_cast(basis));
 }
 
-TransformGizmoSystem::TransformGizmoSystem()
-    : hgl::ecs::System("TransformGizmoSystem")
+math::Vector3f RotationToDirection(const glm::quat &rot)
 {
-    SetExecutionOrder(hgl::ecs::ExecutionPhase::TickCamera, hgl::ecs::ExecutionPriority::Last);
-    AddDependency<hgl::ecs::InputSystem>();
-    AddDependency<hgl::ecs::CameraSystem>();
-}
-
-TransformGizmoSystem::~TransformGizmoSystem()
-{
-    Shutdown();
-}
-
-void TransformGizmoSystem::Initialize()
-{
-    if (!resource_registered)
-    {
-        ++g_gizmo_resident_state.active_system_count;
-        resource_registered = true;
-    }
-
-    EnsureGizmoSystemResources(context);
-    EnsureGizmo();
-}
-
-void TransformGizmoSystem::Shutdown()
-{
-    if (gizmo)
-    {
-        DestroyTransformGizmo(gizmo);
-        gizmo = nullptr;
-    }
-
-    if (resource_registered)
-    {
-        if (g_gizmo_resident_state.active_system_count > 0)
-            --g_gizmo_resident_state.active_system_count;
-
-        resource_registered = false;
-    }
-
-    if (g_gizmo_resident_state.active_system_count == 0 && g_gizmo_resident_state.resources_ready)
-    {
-        g_gizmo_resident_state.standby = true;
-    }
-}
-
-bool TransformGizmoSystem::EnsureGizmo()
-{
-    if (gizmo)
-        return true;
-
-    if (!context)
-        return false;
-
-    if (!EnsureGizmoSystemResources(context))
-        return false;
-
-    math::Vector3f create_pos = initial_position;
-    if (target_entity)
-    {
-        auto target_transform = target_entity->GetComponent<hgl::ecs::TransformComponent>();
-        if (target_transform)
-            create_pos = target_transform->GetLocalPosition();
-    }
-
-    gizmo = CreateDefaultTransformGizmo(context, "Gizmo", create_pos, default_mode);
-    if (!gizmo)
-        return false;
-
-    if (target_entity)
-        BindTransformGizmoTargetEntity(gizmo, target_entity);
-
-    SetTransformGizmoAllowNegativeScale(gizmo, allow_negative_scale);
-
-    if (changed_callback)
-        SetTransformGizmoChangedCallback(gizmo, changed_callback);
-
-    return true;
-}
-
-bool TransformGizmoSystem::SetTargetEntity(hgl::ecs::Entity *entity)
-{
-    target_entity = entity;
-
-    if (!gizmo)
-        return true;
-
-    return BindTransformGizmoTargetEntity(gizmo, target_entity);
-}
-
-bool TransformGizmoSystem::SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformComponent> &transform)
-{
-    if (!transform)
-        return SetTargetEntity(nullptr);
-
-    return SetTargetEntity(transform->GetOwner());
-}
-
-void TransformGizmoSystem::SetChangedCallback(GizmoChangedCallback callback)
-{
-    changed_callback = std::move(callback);
-    if (gizmo)
-        SetTransformGizmoChangedCallback(gizmo, changed_callback);
-}
-
-void TransformGizmoSystem::SetAllowNegativeScale(bool enabled)
-{
-    allow_negative_scale = enabled;
-    if (gizmo)
-        SetTransformGizmoAllowNegativeScale(gizmo, enabled);
-}
-
-GizmoMode TransformGizmoSystem::GetCurrentMode() const
-{
-    if(!gizmo)
-        return default_mode;
-
-    return GetTransformGizmoMode(gizmo);
-}
-
-void TransformGizmoSystem::Update(float)
-{
-    if (!context)
-        return;
-
-    if (!IsGizmoSystemResourcesResident())
-    {
-        if (gizmo)
-        {
-            DestroyTransformGizmo(gizmo);
-            gizmo = nullptr;
-        }
-
-        if (!EnsureGizmoSystemResources(context))
-            return;
-    }
-
-    if (!EnsureGizmo())
-        return;
-
-    auto input_system = context->GetSystem<hgl::ecs::InputSystem>();
-    auto camera_system = context->GetSystem<hgl::ecs::CameraSystem>();
-    if (!input_system || !camera_system)
-        return;
-
-    const CameraInfo *camera_info = camera_system->GetCameraInfo();
-    const ViewportInfo *viewport_info = camera_system->GetViewportInfo();
-    if (!camera_info || !viewport_info)
-        return;
-
-    const math::Vector2i mouse_coord = input_system->GetMouseCoord();
-    const bool left_down = input_system->IsMouseButtonDown(hgl::io::MouseButton::Left);
-    const bool left_pressed = left_down && !last_left_down;
-    const bool left_released = !left_down && last_left_down;
-    last_left_down = left_down;
-
-    if (mode_switch_enabled)
-    {
-        const bool key_1 = input_system->IsKeyDown(hgl::io::KeyboardButton::_1);
-        const bool key_2 = input_system->IsKeyDown(hgl::io::KeyboardButton::_2);
-        const bool key_3 = input_system->IsKeyDown(hgl::io::KeyboardButton::_3);
-        const bool key_4 = input_system->IsKeyDown(hgl::io::KeyboardButton::_4);
-        const bool key_5 = input_system->IsKeyDown(hgl::io::KeyboardButton::_5);
-
-        if (key_1 && !last_key_1)
-            SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
-        else if (key_2 && !last_key_2)
-            SetTransformGizmoMode(gizmo, GizmoMode::MoveLocal);
-        else if (key_3 && !last_key_3)
-            SetTransformGizmoMode(gizmo, GizmoMode::RotateWorld);
-        else if (key_4 && !last_key_4)
-            SetTransformGizmoMode(gizmo, GizmoMode::RotateLocal);
-        else if (key_5 && !last_key_5)
-            SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
-
-        last_key_1 = key_1;
-        last_key_2 = key_2;
-        last_key_3 = key_3;
-        last_key_4 = key_4;
-        last_key_5 = key_5;
-    }
-
-    UpdateTransformGizmo(gizmo,
-                   mouse_coord,
-                   camera_info,
-                   viewport_info,
-                   input_system.get(),
-                   left_down,
-                   left_pressed,
-                   left_released);
-}
-
-SunDirectionControlSystem::SunDirectionControlSystem()
-    : hgl::ecs::System("SunDirectionControlSystem")
-{
-    SetExecutionOrder(hgl::ecs::ExecutionPhase::TickCamera, hgl::ecs::ExecutionPriority::Last);
-    AddDependency<hgl::ecs::InputSystem>();
-    AddDependency<hgl::ecs::CameraSystem>();
-}
-
-SunDirectionControlSystem::~SunDirectionControlSystem()
-{
-    Shutdown();
-}
-
-bool SunDirectionControlSystem::EnsureEnvironment()
-{
-    if (!context)
-        return false;
-
-    if (environment_system)
-        return true;
-
-    if (!auto_find_environment)
-        return false;
-
-    auto env_sp = context->GetSystem<hgl::ecs::EnvironmentSystem>();
-    environment_system = env_sp.get();
-    return environment_system != nullptr;
-}
-
-bool SunDirectionControlSystem::EnsureProxyEntity()
-{
-    if (!context)
-        return false;
-
-    if (proxy_entity && proxy_transform)
-        return true;
-
-    proxy_entity = context->CreateEntity<hgl::ecs::Entity>("SunDirectionGizmoProxy");
-    if (!proxy_entity)
-        return false;
-
-    proxy_transform = proxy_entity->AddComponent<hgl::ecs::TransformComponent>();
-    if (!proxy_transform)
-        return false;
-
-    proxy_transform->SetMovable(true);
-    proxy_transform->SetLocalTRS(glm::vec3(gizmo_position),
-                                 glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                 glm::vec3(1.0f));
-    return true;
-}
-
-bool SunDirectionControlSystem::EnsureGizmo()
-{
-    if (gizmo)
-        return true;
-
-    if (!context || !proxy_transform)
-        return false;
-
-    gizmo = CreateDefaultTransformGizmo(context, "SunDirectionGizmo", gizmo_position, GizmoMode::RotateWorld);
-    if (!gizmo)
-        return false;
-
-    BindTransformGizmoTargetEntity(gizmo, proxy_entity);
-    SetTransformGizmoMode(gizmo, GizmoMode::RotateWorld);
-    SetTransformGizmoAllowNegativeScale(gizmo, false);
-    return true;
-}
-
-void SunDirectionControlSystem::Initialize()
-{
-    if (!resource_registered)
-    {
-        ++g_gizmo_resident_state.active_system_count;
-        resource_registered = true;
-    }
-
-    if (!EnsureGizmoSystemResources(context))
-        return;
-
-    if (!EnsureEnvironment())
-        return;
-
-    if (!EnsureProxyEntity())
-        return;
-
-    if (!EnsureGizmo())
-        return;
-
-    if (environment_system)
-    {
-        if (const auto *sky = environment_system->GetSkyInfo())
-        {
-            const math::Vector3f sun_dir(sky->sun_direction.x,
-                                         sky->sun_direction.y,
-                                         sky->sun_direction.z);
-
-            proxy_transform->SetLocalPosition(glm::vec3(gizmo_position));
-            proxy_transform->SetLocalRotation(DirectionToRotation(sun_dir));
-        }
-    }
-}
-
-void SunDirectionControlSystem::Shutdown()
-{
-    if (gizmo)
-    {
-        DestroyTransformGizmo(gizmo);
-        gizmo = nullptr;
-    }
-
-    if (context && proxy_entity)
-    {
-        context->DestroyEntity(proxy_entity->GetID());
-    }
-
-    proxy_transform.reset();
-    proxy_entity = nullptr;
-
-    if (resource_registered)
-    {
-        if (g_gizmo_resident_state.active_system_count > 0)
-            --g_gizmo_resident_state.active_system_count;
-        resource_registered = false;
-    }
-
-    if (g_gizmo_resident_state.active_system_count == 0 && g_gizmo_resident_state.resources_ready)
-        g_gizmo_resident_state.standby = true;
-}
-
-void SunDirectionControlSystem::SetGizmoVisible(bool visible)
-{
-    if (gizmo)
-        hgl::graph::SetTransformGizmoVisible(gizmo, visible);
-}
-
-void SunDirectionControlSystem::Update(float)
-{
-    if (!context)
-        return;
-
-    if (!IsGizmoSystemResourcesResident())
-    {
-        if (gizmo)
-        {
-            DestroyTransformGizmo(gizmo);
-            gizmo = nullptr;
-        }
-
-        if (!EnsureGizmoSystemResources(context))
-            return;
-    }
-
-    if (!EnsureEnvironment())
-        return;
-
-    if (!EnsureProxyEntity())
-        return;
-
-    if (!EnsureGizmo())
-        return;
-
-    auto input_system = context->GetSystem<hgl::ecs::InputSystem>();
-    auto camera_system = context->GetSystem<hgl::ecs::CameraSystem>();
-    if (!input_system || !camera_system)
-        return;
-
-    const CameraInfo *camera_info = camera_system->GetCameraInfo();
-    const ViewportInfo *viewport_info = camera_system->GetViewportInfo();
-    if (!camera_info || !viewport_info)
-        return;
-
-    const math::Vector2i mouse_coord = input_system->GetMouseCoord();
-    const bool left_down = input_system->IsMouseButtonDown(hgl::io::MouseButton::Left);
-    const bool left_pressed = left_down && !last_left_down;
-    const bool left_released = !left_down && last_left_down;
-    last_left_down = left_down;
-
-    if (GetTransformGizmoMode(gizmo) != GizmoMode::RotateWorld && GetTransformGizmoMode(gizmo) != GizmoMode::RotateLocal)
-        SetTransformGizmoMode(gizmo, GizmoMode::RotateWorld);
-
-    UpdateTransformGizmo(gizmo,
-                   mouse_coord,
-                   camera_info,
-                   viewport_info,
-                   input_system.get(),
-                   left_down,
-                   left_pressed,
-                   left_released);
-
-    if (environment_system)
-    {
-        auto *sky = environment_system->EditSkyInfo();
-        if (sky)
-        {
-            if (proxy_transform)
-                proxy_transform->SetLocalPosition(glm::vec3(gizmo_position));
-
-            math::Vector3f dir(0.0f, 0.0f, 1.0f);
-            if (auto *gizmo_root = GetGizmoRootEntity(gizmo))
-            {
-                auto gizmo_root_transform = gizmo_root->GetComponent<hgl::ecs::TransformComponent>();
-                if (gizmo_root_transform)
-                {
-                    dir = RotationToDirection(gizmo_root_transform->GetLocalRotation());
-
-                    if (proxy_transform)
-                        proxy_transform->SetLocalRotation(gizmo_root_transform->GetLocalRotation());
-                }
-            }
-
-            sky->sun_direction = math::Vector4f(dir.x, dir.y, dir.z, 0.0f);
-            environment_system->MarkSkyDirty();
-        }
-    }
+    const math::Vector3f forward = glm::normalize(rot * math::AxisVector::Z);
+    return forward;
 }
 
 }//namespace hgl::graph
