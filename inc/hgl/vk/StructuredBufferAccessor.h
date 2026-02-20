@@ -301,11 +301,11 @@ public:
         if(!dirty || !buffer || !mapped_data)
             return false;
 
-        // æ¾å¼ Flush å½åæ°æ®å?GPU
+        // 显式 Flush 当前数据到 GPU
         // Explicitly flush current data to GPU
         buffer->Write(mapped_data, sizeof(T));
 
-        // å¯¹äº StagedBufferï¼éè¦æ è®°ä¸º dirty å¹¶æ£€æ¥æäº?
+        // 对于 StagedBuffer，标记为脏状态以触发暂存缓冲区提交
         // For StagedBuffer, mark as dirty to trigger staged buffer submission
         buffer->Flush(aligned_size);
 

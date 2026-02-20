@@ -53,8 +53,10 @@ namespace hgl
             case VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL: return "PerformanceConfigurationINTEL";
             case VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR: return "DeferredOperationKHR";
             case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV: return "IndirectCommandsLayoutNV";
-            case VK_OBJECT_TYPE_CUDA_MODULE_NV: return "CudaModuleNV";
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+            case VK_OBJECT_TYPE_CUDA_MODULE_NV:return "CudaModuleNV";
             case VK_OBJECT_TYPE_CUDA_FUNCTION_NV: return "CudaFunctionNV";
+#endif//
             case VK_OBJECT_TYPE_BUFFER_COLLECTION_FUCHSIA: return "BufferCollectionFUCHSIA";
             case VK_OBJECT_TYPE_MICROMAP_EXT: return "MicromapEXT";
             case VK_OBJECT_TYPE_OPTICAL_FLOW_SESSION_NV: return "OpticalFlowSessionNV";

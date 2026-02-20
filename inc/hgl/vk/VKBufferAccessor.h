@@ -8,17 +8,17 @@
 namespace hgl::graph{
 
 /**
- * åå§ç±»åæ°æ®è®¿é®å¨ï¼ååç´ ç±»åï¼
- * CN: ç¨äºåéé VBO å?IndexBuffer çè½»éçº§åè£å?
+ * 原始类型数据访问器（单元素类型）
+ * CN: 用于单通道 VBO 和 IndexBuffer 的轻量级包装器
  * EN: Lightweight wrapper for single-channel VBO and IndexBuffer
  *
- * æä¾ä¸?VertexAttribDataAccess å¼å®¹çæ¥å£ï¼ä½ç´æ¥è¿ååå§æé?
+ * 提供与 VertexAttribDataAccess 兼容的接口，但直接返回原始指针
  */
 template<typename T>
 class RawDataAccess
 {
 public:
-    using value_type = T;  // ç±»åå«åï¼ç¨äºæ¨¡æ¿åç¼ç¨
+    using value_type = T;  // 类型别名，用于模板元编程
 
 private:
     T *data;
@@ -89,7 +89,7 @@ public:
         return true;
     }
 
-    // ç´æ¥è®¿é®æé
+    // 直接访问指针
     T* Get() { return data; }
     const T* Get() const { return data; }
     operator T*() { return data; }
@@ -102,13 +102,13 @@ public:
 
 
 /**
- * ç»ä¸ç?Buffer è®¿é®å?(èå°è£çæ?
+ * 统一的 Buffer 访问器（薄封装版本）
  *
- * CN: æ ¸å¿è®¾è®¡çå¿µï¼?
- * 1. ç»ä¸è®¿é®æ¥å£ - ä¸ç®¡åºå±æ?CPUOnlyãReBARãStagedBuffer è¿æ¯ RingBuffer
- * 2. èªå¨ Map/Unmap - RAII ç®¡çï¼èªå¨çå½å¨æ?
- * 3. Dirtyè¿½è¸ª - åå¥èªå¨æ è®°ï¼Commitæ¶æä¸ä¼ 
- * 4. é¶ä¸­é´å± - ç´æ¥æä½ VABï¼ä¸åéè¦?VABMap
+ * CN: 核心设计理念：
+ * 1. 统一访问接口 - 不管底层是 CPUOnly、ReBAR、StagedBuffer 还是 RingBuffer
+ * 2. 自动 Map/Unmap - RAII 管理，自动生命周期
+ * 3. Dirty 追踪 - 写入自动标记，Commit 时才上传
+ * 4. 零中间层 - 直接操作 VAB，不再需要 VABMap
  *
  * EN: Core design principles:
  * 1. Unified access interface - regardless of CPUOnly, ReBAR, StagedBuffer or RingBuffer
@@ -116,26 +116,26 @@ public:
  * 3. Dirty tracking - writes auto-mark, upload only on Commit
  * 4. Zero intermediate layers - direct VAB access, no VABMap needed
  *
- * ä½¿ç¨ç¤ºä¾ / Usage:
+ * 使用示例 / Usage:
  * ```cpp
  * BufferAccessor<VB3f> positions(vab);
- * positions->Write(vec);      // èªå¨æ è®° dirty
- * positions.Commit();         // æé flush å?GPU
+ * positions->Write(vec);      // 自动标记 dirty
+ * positions.Commit();         // 按需 flush 到 GPU
  * ```
  */
 template<typename DataAccessType>
 class BufferAccessor:public BufferAccessBase
 {
 private:
-    uint32_t buffer_total_count;        ///< æ»åç´ æ°é?/ Total element count
-    uint32_t buffer_stride;             ///< ååç´ å­èæ° / Stride in bytes
-    DataAccessType *data_access;        ///< æ°æ®è®¿é®å?/ Data accessor
-    void *mapped_pointer;               ///< æ å°æé / Mapped pointer
-    int32_t element_offset;             ///< é¡¶ç¹åç§»(åä½:åç´ ) / Element offset
-    uint32_t element_count;             ///< è®¿é®åç´ æ°é / Element count
+     uint32_t buffer_total_count;        ///< 总元素数量 / Total element count
+     uint32_t buffer_stride;             ///< 单元素字节数 / Stride in bytes
+     DataAccessType *data_access;        ///< 数据访问器 / Data accessor
+     void *mapped_pointer;               ///< 映射指针 / Mapped pointer
+     int32_t element_offset;             ///< 元素偏移(单位:元素) / Element offset
+     uint32_t element_count;             ///< 访问元素数量 / Element count
 
     /**
-     * CN: åé¨ Map æä½
+     * CN: 内部 Map 操作
      * EN: Internal map operation
      */
     void MapInternal()
@@ -168,7 +168,7 @@ private:
     }
 
     /**
-     * CN: åé¨ Unmap æä½
+     * CN: 内部 Unmap 操作
      * EN: Internal unmap operation
      */
     void UnmapInternal()
@@ -188,12 +188,12 @@ private:
 
 public:
 
-    /**
-     * CN: æé å½æ?
-     * EN: Constructor
-     * \param vab Bufferæé / Buffer pointer
-     * \param take_ownership æ¯å¦è·åæææ / Take ownership
-     */
+     /**
+      * CN: 构造函数
+      * EN: Constructor
+      * \param vab Buffer 指针 / Buffer pointer
+      * \param take_ownership 是否获取所有权 / Take ownership
+      */
     BufferAccessor(VAB *vab = nullptr, bool take_ownership = false)
         : BufferAccessBase()
         , buffer_total_count(vab ? vab->GetCount() : 0)
@@ -237,7 +237,7 @@ public:
     }
 
     /**
-     * CN: ææå½æ° - èªå¨ Unmap
+     * CN: 析构函数 - 自动 Unmap
      * EN: Destructor - Auto unmap
      */
     ~BufferAccessor()
@@ -245,16 +245,16 @@ public:
         UnmapInternal();
     }
 
-    // ç¦æ­¢æ·è´ / Disable copy
+    // 禁止拷贝 / Disable copy
     BufferAccessor(const BufferAccessor&) = delete;
     BufferAccessor& operator=(const BufferAccessor&) = delete;
 
-    /**
-     * CN: ç»å®å°æ°ç?buffer
-     * EN: Bind to new buffer
-     * \param vab Bufferæé / Buffer pointer
-     * \param take_ownership æ¯å¦è·åæææ / Take ownership
-     */
+     /**
+      * CN: 绑定到新的 buffer
+      * EN: Bind to new buffer
+      * \param vab Buffer 指针 / Buffer pointer
+      * \param take_ownership 是否获取所有权 / Take ownership
+      */
     void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0, bool take_ownership = false)
     {
         UnmapInternal();
@@ -269,35 +269,35 @@ public:
     }
 
     /**
-     * CN: æ£æ¥æ¯å¦ææ?
+     * CN: 检查是否有效
      * EN: Check if valid
      */
     bool IsValid() const { return buffer && data_access; }
     operator bool() const { return IsValid(); }
 
     /**
-     * CN: è·ååºå± buffer
+     * CN: 获取底层 buffer
      * EN: Get underlying buffer
      */
     VAB* GetBuffer() { return static_cast<VAB*>(buffer); }
     const VAB* GetBuffer() const { return static_cast<const VAB*>(buffer); }
 
     /**
-     * CN: è·åæ°æ®è®¿é®å?
+     * CN: 获取数据访问器
      * EN: Get data accessor
      */
     DataAccessType* Get() { return data_access; }
     const DataAccessType* Get() const { return data_access; }
 
     /**
-     * CN: ç®­å¤´æä½ç¬?- ç´æ¥è®¿é®æ°æ®è®¿é®å?
+     * CN: 箭头操作符 - 直接访问数据访问器
      * EN: Arrow operator - direct data accessor access
      */
     DataAccessType* operator->() { return data_access; }
     const DataAccessType* operator->() const { return data_access; }
 
     /**
-     * CN: éå¼è½¬æ¢ä¸ºåå§æé?(éè¿ DataAccessType çoperator T*())
+     * CN: 隐式转换为原始指针（通过 DataAccessType 的 operator T*()）
      * EN: Implicit conversion to raw pointer (via DataAccessType's operator T*())
      */
     template<typename T = DataAccessType>
@@ -313,32 +313,32 @@ public:
     }
 
     /**
-     * CN: æ è®°ä¸?dirty
+     * CN: 标记为 dirty
      * EN: Mark as dirty
      */
     void MarkDirty() { dirty = true; }
 
     /**
-     * CN: æ£æ¥æ¯å?dirty
+     * CN: 检查是否 dirty
      * EN: Check if dirty
      */
     bool IsDirty() const { return dirty; }
 
-    /**
-     * CN: æäº¤ä¿®æ¹å?GPU
-     *     å¯¹äº StagedBuffer: Unmap è§¦å flush
-     *     å¯¹äº ReBAR/CPUOnly: æ æä½?å·²ç»åæ­¥)
-     * EN: Commit changes to GPU
-     *     For StagedBuffer: Unmap triggers flush
-     *     For ReBAR/CPUOnly: No-op (already synced)
-     * \return æ¯å¦æ§è¡äºæäº?/ Whether committed
-     */
+     /**
+      * CN: 提交修改到 GPU
+      *     对于 StagedBuffer: Unmap 触发 flush
+      *     对于 ReBAR/CPUOnly: 无操作（已经同步）
+      * EN: Commit changes to GPU
+      *     For StagedBuffer: Unmap triggers flush
+      *     For ReBAR/CPUOnly: No-op (already synced)
+      * \return 是否执行了提交 / Whether committed
+      */
     bool Commit()
     {
         if(!dirty || !buffer)
             return false;
 
-        // Unmap + Remap è§¦å flush (å¯¹äº StagedBuffer)
+        // Unmap + Remap 触发 flush（对于 StagedBuffer）
         UnmapInternal();
         MapInternal();
 
@@ -357,7 +357,7 @@ public:
     }
 
     /**
-     * CN: åè£ Write æ¹æ³ï¼èªå¨æ è®?dirty
+     * CN: 包装 Write 方法，自动标记 dirty
      * EN: Wrapped Write method, auto-mark dirty
      */
     template<typename T>
@@ -373,7 +373,7 @@ public:
     }
 
     /**
-     * CN: æ¹éåå¥ (ä½¿ç¨åºå± buffer ç?Write)
+     * CN: 批量写入（使用底层 buffer 的 Write）
      * EN: Bulk write (using underlying buffer Write)
      */
     bool WriteBulk(const void *data, uint32_t element_count)
@@ -402,7 +402,7 @@ public:
     }
 
     /**
-     * CN: æ¹éè¯»å
+     * CN: 批量读取
      * EN: Bulk read
      */
     bool ReadBulk(void *dst, uint32_t element_count)
@@ -418,7 +418,7 @@ public:
     }
 
     /**
-     * CN: Seek å°æå®ä½ç½?
+     * CN: Seek 到指定位置
      * EN: Seek to position
      */
     bool Seek(size_t offset)
@@ -429,7 +429,7 @@ public:
     }
 
     /**
-     * CN: éç½®å°å¼å§ä½ç½?
+     * CN: 重置到开始位置
      * EN: Reset to beginning
      */
     void Begin()
@@ -439,7 +439,7 @@ public:
     }
 };
 
-// å¸¸ç¨ç±»åå®ä¹ / Common type definitions
+// 常用类型定义 / Common type definitions
 using BufferAccessor1u8  = BufferAccessor<VB1u8>;
 using BufferAccessor1i8  = BufferAccessor<VB1i8>;
 using BufferAccessor2u8  = BufferAccessor<VB2u8>;
@@ -450,8 +450,8 @@ using BufferAccessor2i   = BufferAccessor<VB2i>;
 using BufferAccessor3i   = BufferAccessor<VB3i>;
 using BufferAccessor4i   = BufferAccessor<VB4i>;
 
-// ååå¼å®¹å«å / Backward compatibility aliases
-// æ¨èéæ­¥è¿ç§»å?BufferAccessorï¼ä½æ§ä»£ç å¯ä»¥ç»§ç»­ä½¿ç¨è¿äºå«å?
+// 向后兼容别名 / Backward compatibility aliases
+// 推荐逐步迁移到 BufferAccessor，但旧代码可以继续使用这些别名
 using StagedVB1u8  = BufferAccessor1u8;
 using StagedVB1i8  = BufferAccessor1i8;
 using StagedVB2u8  = BufferAccessor2u8;
@@ -462,12 +462,12 @@ using StagedVB2i   = BufferAccessor2i;
 using StagedVB3i   = BufferAccessor3i;
 using StagedVB4i   = BufferAccessor4i;
 
-// IndexBuffer è®¿é®å¨ï¼ä½¿ç¨ BufferAccessor + RawDataAccessï¼?
+// IndexBuffer 访问器（使用 BufferAccessor + RawDataAccess）
 using IndexAccessorU8  = BufferAccessor<RawDataAccess<uint8>>;
 using IndexAccessorU16 = BufferAccessor<RawDataAccess<uint16>>;
 using IndexAccessorU32 = BufferAccessor<RawDataAccess<uint32>>;
 
-// åééåå§ç±»åè®¿é®å¨ï¼ç¨äºåéé VBOï¼?
+// 单通道原始类型访问器（用于单通道 VBO）
 using RawAccessorU8    = BufferAccessor<RawDataAccess<uint8>>;
 using RawAccessorI8    = BufferAccessor<RawDataAccess<int8>>;
 using RawAccessorU16   = BufferAccessor<RawDataAccess<uint16>>;

@@ -9,8 +9,6 @@ using namespace hgl;
 using namespace hgl::graph;
 
 constexpr const size_t LINE_COUNT_INCREMENT =       1024;
-constexpr const size_t POSITION_COMPONENT_COUNT =   6;
-constexpr const size_t COLOR_COMPONENT_COUNT =      2;
 
 LineWidthBatch::~LineWidthBatch()
 {
