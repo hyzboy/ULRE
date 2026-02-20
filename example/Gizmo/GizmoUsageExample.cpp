@@ -114,8 +114,8 @@ private:
             inline_geometry::PlaneGridCreateInfo pgci;
             pgci.grid_size.Set(64, 64);
             pgci.sub_count.Set(8, 8);
-            pgci.lum = 160;
-            pgci.sub_lum = 220;
+            pgci.lum = 80;
+            pgci.sub_lum = 128;
 
             grid_geometry = inline_geometry::CreatePlaneGrid2D(pc.get(), &pgci);
             if(!grid_geometry)
@@ -224,9 +224,21 @@ private:
         return camera_system != nullptr;
     }
 
+    hgl::ecs::CameraSystem *GetCameraSystem() const
+    {
+        if(!ecs_world)
+            return nullptr;
+
+        return ecs_world->GetSystem<hgl::ecs::CameraSystem>().get();
+    }
+
     bool InitCamera()
     {
         if(!EnsureCameraSystem())
+            return false;
+
+        auto *camera_system = GetCameraSystem();
+        if(!camera_system)
             return false;
 
         camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
@@ -240,9 +252,9 @@ private:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        camera->camera_data = GetCamera();
-        camera->camera_info = const_cast<hgl::graph::CameraInfo *>(GetCameraInfo());
-        camera->viewport_info = GetViewportInfo();
+        camera->camera_data = camera_system->GetCamera();
+        camera->camera_info = const_cast<hgl::graph::CameraInfo *>(camera_system->GetCameraInfo());
+        camera->viewport_info = camera_system->GetViewportInfo();
 
         return true;
     }
@@ -355,6 +367,15 @@ public:
         if(!ecs_world)
             return;
 
+        auto *camera_system = GetCameraSystem();
+        if(!camera_system)
+            return;
+
+        const auto *camera_info = camera_system->GetCameraInfo();
+        const auto *viewport_info = camera_system->GetViewportInfo();
+        if(!camera_info || !viewport_info)
+            return;
+
         auto input_system = ecs_world->GetSystem<hgl::ecs::InputSystem>();
         if(!input_system)
             return;
@@ -400,8 +421,8 @@ public:
         // 更新统一的 Gizmo（内部会根据当前模式处理）
         UpdateGizmoECS(gizmo,
                        mouse_coord,
-                       GetCameraInfo(),
-                       GetViewportInfo(),
+                       camera_info,
+                       viewport_info,
                        input_system.get(),
                        left_down,
                        left_pressed,

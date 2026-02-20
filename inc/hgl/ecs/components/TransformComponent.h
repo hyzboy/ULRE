@@ -12,6 +12,12 @@
 #include<vector>
 #include<cstdint>
 
+namespace hgl::graph
+{
+    struct CameraInfo;
+    class ViewportInfo;
+}
+
 namespace hgl
 {
     namespace ecs
@@ -39,6 +45,14 @@ namespace hgl
 
             // Optimization settings
             bool movable;  // true = movable, false = static
+
+            // Fixed pixel-size mode (for gizmo/billboard-like controls)
+            bool fixed_pixel_sizing_enabled;
+            float fixed_pixel_diameter;
+            float fixed_pixel_reference_world_diameter;
+            float fixed_pixel_min_scale;
+            const hgl::graph::CameraInfo* fixed_pixel_camera_info;
+            const hgl::graph::ViewportInfo* fixed_pixel_viewport_info;
 
         public:
 
@@ -89,6 +103,29 @@ namespace hgl
 
             glm::vec3 GetWorldScale();
             void SetWorldScale(const glm::vec3& scale);
+
+        public:
+
+            // Pixel-constant sizing helpers (useful for editor gizmos/billboards)
+            float ComputeWorldUnitsPerPixel(const hgl::graph::CameraInfo* camera_info,
+                                            const hgl::graph::ViewportInfo* viewport_info);
+            float ComputeFixedPixelUniformScale(const hgl::graph::CameraInfo* camera_info,
+                                                const hgl::graph::ViewportInfo* viewport_info,
+                                                float pixel_diameter,
+                                                float reference_world_diameter);
+            bool ApplyFixedPixelUniformScale(const hgl::graph::CameraInfo* camera_info,
+                                             const hgl::graph::ViewportInfo* viewport_info,
+                                             float pixel_diameter,
+                                             float reference_world_diameter,
+                                             float min_scale = 0.01f);
+
+            void SetFixedPixelSizingEnabled(bool enabled);
+            bool IsFixedPixelSizingEnabled() const { return fixed_pixel_sizing_enabled; }
+            void SetFixedPixelSizingParameters(float pixel_diameter,
+                                               float reference_world_diameter,
+                                               float min_scale = 0.01f);
+            void SetFixedPixelSizingContext(const hgl::graph::CameraInfo* camera_info,
+                                            const hgl::graph::ViewportInfo* viewport_info);
 
         public:
 

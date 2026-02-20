@@ -178,7 +178,7 @@ namespace
             cfg.local_to_world=true;
             cfg.material_instance=true;
 
-            mtl::MaterialCreateInfo *mci=CreateGizmo3D(dev_attr,&cfg);
+            mtl::MaterialCreateInfo *mci=CreatePureColor3D(dev_attr,&cfg);
 
             if(!mci)
                 return(false);

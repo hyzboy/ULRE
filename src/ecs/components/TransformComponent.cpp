@@ -1,8 +1,11 @@
 ﻿#include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/ComponentRecords.h>
+#include<hgl/graph/CameraInfo.h>
+#include<hgl/graph/camera/ViewportInfo.h>
 #include<algorithm>
 #include<array>
+#include<cmath>
 
 namespace hgl
 {
@@ -45,6 +48,12 @@ namespace hgl
             , cachedWorldMatrix(1.0f)
             , matrixDirty(true)
             , movable(true)
+            , fixed_pixel_sizing_enabled(false)
+            , fixed_pixel_diameter(160.0f)
+            , fixed_pixel_reference_world_diameter(1.0f)
+            , fixed_pixel_min_scale(0.01f)
+            , fixed_pixel_camera_info(nullptr)
+            , fixed_pixel_viewport_info(nullptr)
         {
             // Allocate storage in the shared SOA storage by default
             storageHandle = GetSharedStorage()->Allocate();
@@ -230,6 +239,117 @@ namespace hgl
             MarkDirty(ToChangeMask(TransformChange::Scale));
         }
 
+        float TransformComponent::ComputeWorldUnitsPerPixel(const hgl::graph::CameraInfo* camera_info,
+                                                            const hgl::graph::ViewportInfo* viewport_info)
+        {
+            if (!camera_info || !viewport_info)
+                return 0.0f;
+
+            const float viewport_height = float(viewport_info->GetViewportHeight() > 0 ? viewport_info->GetViewportHeight() : 1u);
+            const float proj_11 = std::fabs(camera_info->projection[1][1]);
+            if (proj_11 <= 1e-6f)
+                return 0.0f;
+
+            const bool is_ortho = std::fabs(camera_info->projection[3][3] - 1.0f) < 1e-6f;
+
+            if (is_ortho)
+            {
+                const float world_height = 2.0f / proj_11;
+                return world_height / viewport_height;
+            }
+
+            const float tan_half_fovy = 1.0f / proj_11;
+            const glm::vec3 world_pos = GetWorldPosition();
+            glm::vec3 to_object = world_pos - camera_info->pos;
+
+            float depth = std::fabs(glm::dot(to_object, camera_info->view_line));
+            if (depth <= 1e-4f)
+                depth = glm::length(to_object);
+            if (depth <= 1e-4f)
+                depth = 1.0f;
+
+            const float world_height = 2.0f * depth * tan_half_fovy;
+            return world_height / viewport_height;
+        }
+
+        float TransformComponent::ComputeFixedPixelUniformScale(const hgl::graph::CameraInfo* camera_info,
+                                                                const hgl::graph::ViewportInfo* viewport_info,
+                                                                float pixel_diameter,
+                                                                float reference_world_diameter)
+        {
+            if (pixel_diameter <= 0.0f || reference_world_diameter <= 1e-6f)
+                return 0.0f;
+
+            const float world_per_pixel = ComputeWorldUnitsPerPixel(camera_info, viewport_info);
+            if (world_per_pixel <= 0.0f)
+                return 0.0f;
+
+            const float target_world_diameter = pixel_diameter * world_per_pixel;
+            return target_world_diameter / reference_world_diameter;
+        }
+
+        bool TransformComponent::ApplyFixedPixelUniformScale(const hgl::graph::CameraInfo* camera_info,
+                                                             const hgl::graph::ViewportInfo* viewport_info,
+                                                             float pixel_diameter,
+                                                             float reference_world_diameter,
+                                                             float min_scale)
+        {
+            float scale = ComputeFixedPixelUniformScale(camera_info,
+                                                        viewport_info,
+                                                        pixel_diameter,
+                                                        reference_world_diameter);
+            if (scale <= 0.0f)
+                return false;
+
+            if (scale < min_scale)
+                scale = min_scale;
+
+            const glm::vec3 current_scale = GetLocalScale();
+            if (std::fabs(current_scale.x - scale) > 1e-5f ||
+                std::fabs(current_scale.y - scale) > 1e-5f ||
+                std::fabs(current_scale.z - scale) > 1e-5f)
+            {
+                SetLocalScale(glm::vec3(scale));
+            }
+
+            return true;
+        }
+
+        void TransformComponent::SetFixedPixelSizingEnabled(bool enabled)
+        {
+            fixed_pixel_sizing_enabled = enabled;
+        }
+
+        void TransformComponent::SetFixedPixelSizingParameters(float pixel_diameter,
+                                                               float reference_world_diameter,
+                                                               float min_scale)
+        {
+            if (pixel_diameter > 0.0f)
+                fixed_pixel_diameter = pixel_diameter;
+
+            if (reference_world_diameter > 1e-6f)
+                fixed_pixel_reference_world_diameter = reference_world_diameter;
+
+            if (min_scale > 0.0f)
+                fixed_pixel_min_scale = min_scale;
+        }
+
+        void TransformComponent::SetFixedPixelSizingContext(const hgl::graph::CameraInfo* camera_info,
+                                                            const hgl::graph::ViewportInfo* viewport_info)
+        {
+            fixed_pixel_camera_info = camera_info;
+            fixed_pixel_viewport_info = viewport_info;
+
+            if (fixed_pixel_sizing_enabled && fixed_pixel_camera_info && fixed_pixel_viewport_info)
+            {
+                ApplyFixedPixelUniformScale(fixed_pixel_camera_info,
+                                            fixed_pixel_viewport_info,
+                                            fixed_pixel_diameter,
+                                            fixed_pixel_reference_world_diameter,
+                                            fixed_pixel_min_scale);
+            }
+        }
+
         void TransformComponent::SetParent(EntityID parent)
         {
             // Remove from old parent
@@ -322,6 +442,15 @@ namespace hgl
         void TransformComponent::OnUpdate(float deltaTime)
         {
             (void)deltaTime;
+
+            if (fixed_pixel_sizing_enabled && fixed_pixel_camera_info && fixed_pixel_viewport_info)
+            {
+                ApplyFixedPixelUniformScale(fixed_pixel_camera_info,
+                                            fixed_pixel_viewport_info,
+                                            fixed_pixel_diameter,
+                                            fixed_pixel_reference_world_diameter,
+                                            fixed_pixel_min_scale);
+            }
         }
 
         void TransformComponent::OnAttach()

@@ -384,40 +384,9 @@ void UpdateGizmoECS(GizmoECS *gizmo,
         UpdateGizmoMoveECS((GizmoMoveECS*)gizmo->move_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
         if(gizmo->root_transform)
         {
-            GizmoMoveECSState state;
-            if(GetGizmoMoveECSState((GizmoMoveECS*)gizmo->move_impl, state))
-            {
-                if(state.dragging && state.pick_axis >= 0 && state.pick_axis < 3)
-                {
-                    if(gizmo->last_move_axis != state.pick_axis)
-                    {
-                        gizmo->last_move_axis = state.pick_axis;
-                        gizmo->last_move_dist = state.cur_dist;
-                    }
-
-                    const float delta = state.cur_dist - gizmo->last_move_dist;
-                    if(std::fabs(delta) > 1e-6f)
-                    {
-                        math::Vector3f axis = math::GetAxisVector(math::AXIS(state.pick_axis));
-                        if(gizmo->current_mode == GizmoMode::MoveLocal)
-                        {
-                            const glm::quat rot = gizmo->root_transform->GetLocalRotation();
-                            axis = glm::normalize(math::Vector3f(rot * glm::vec3(axis)));
-                        }
-
-                        glm::vec3 pos = gizmo->root_transform->GetLocalPosition();
-                        pos += glm::vec3(axis) * delta;
-                        gizmo->root_transform->SetLocalPosition(pos);
-                    }
-
-                    gizmo->last_move_dist = state.cur_dist;
-                }
-                else
-                {
-                    gizmo->last_move_axis = -1;
-                    gizmo->last_move_dist = 0.0f;
-                }
-            }
+            math::Vector3f move_pos;
+            if(GetGizmoMovePosition((GizmoMoveECS*)gizmo->move_impl, move_pos))
+                gizmo->root_transform->SetLocalPosition(glm::vec3(move_pos));
         }
         break;
     }
@@ -478,7 +447,7 @@ void UpdateGizmoECS(GizmoECS *gizmo,
             GizmoScaleECSState state;
             if(GetGizmoScaleECSState((GizmoScaleECS*)gizmo->scale_impl, state))
             {
-                if(state.dragging && state.pick_axis >= 0 && state.pick_axis < 3)
+                if(state.dragging && state.pick_axis >= 0)
                 {
                     if(gizmo->last_scale_axis != state.pick_axis)
                     {
@@ -494,7 +463,25 @@ void UpdateGizmoECS(GizmoECS *gizmo,
                     if(std::fabs(ratio - 1.0f) > 1e-6f)
                     {
                         glm::vec3 cur = gizmo->root_transform->GetLocalScale();
-                        cur[state.pick_axis] *= ratio;
+
+                        if(state.pick_axis < 3)
+                        {
+                            cur[state.pick_axis] *= ratio;
+                        }
+                        else if(state.pick_axis < 6)
+                        {
+                            static const int plane_axes[3][2] =
+                            {
+                                {1, 2}, // YZ
+                                {0, 2}, // XZ
+                                {0, 1}  // XY
+                            };
+
+                            const int plane_index = state.pick_axis - 3;
+                            cur[plane_axes[plane_index][0]] *= ratio;
+                            cur[plane_axes[plane_index][1]] *= ratio;
+                        }
+
                         cur = glm::max(cur, glm::vec3(0.05f));
                         gizmo->root_transform->SetLocalScale(cur);
                     }

@@ -90,59 +90,6 @@ namespace
         return glm::normalize(math::Vector3f(v.x, v.y, v.z));
     }
 
-    float ComputeWorldUnitsPerPixel(const graph::CameraInfo *camera_info,
-                                    const graph::ViewportInfo *viewport_info,
-                                    const math::Vector3f &world_pos)
-    {
-        if(!camera_info || !viewport_info)
-            return 0.0f;
-
-        const float vp_height = float(viewport_info->GetViewportHeight() > 0 ? viewport_info->GetViewportHeight() : 1u);
-        const float proj_11 = std::fabs(camera_info->projection[1][1]);
-        if(proj_11 <= 1e-6f)
-            return 0.0f;
-
-        const bool is_ortho = std::fabs(camera_info->projection[3][3] - 1.0f) < 1e-6f;
-
-        if(is_ortho)
-        {
-            const float world_height = 2.0f / proj_11;
-            return world_height / vp_height;
-        }
-
-        const float tan_half_fovy = 1.0f / proj_11;
-        math::Vector3f to_obj = world_pos - camera_info->pos;
-
-        float depth = std::fabs(glm::dot(to_obj, camera_info->view_line));
-        if(depth <= 1e-4f)
-            depth = glm::length(to_obj);
-        if(depth <= 1e-4f)
-            depth = 1.0f;
-
-        const float world_height = 2.0f * depth * tan_half_fovy;
-        return world_height / vp_height;
-    }
-
-    void UpdateFixedPixelScale(GizmoRotateECS *gizmo,
-                               const graph::CameraInfo *camera_info,
-                               const graph::ViewportInfo *viewport_info)
-    {
-        if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
-            return;
-
-        const math::Vector3f world_pos = gizmo->root_transform->GetWorldPosition();
-        const float world_per_pixel = ComputeWorldUnitsPerPixel(camera_info, viewport_info, world_pos);
-        if(world_per_pixel <= 0.0f)
-            return;
-
-        const float target_world_diameter = GIZMO_FIXED_PIXEL_DIAMETER * world_per_pixel;
-        float scale = target_world_diameter / (GIZMO_ARROW_LENGTH * 2.0f);
-        if(scale < 0.01f)
-            scale = 0.01f;
-
-        gizmo->root_transform->SetLocalScale(glm::vec3(scale));
-    }
-
     // 计算面向相机的旋转四元数
     glm::quat CalculateFacingRotation(const math::Vector3f &gizmo_pos,
                                        const math::Matrix4f &view_matrix)
@@ -266,6 +213,10 @@ GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
     gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>();
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     gizmo->root_transform->SetMovable(true);
+    gizmo->root_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+                                                         GIZMO_ARROW_LENGTH * 2.0f,
+                                                         0.01f);
+    gizmo->root_transform->SetFixedPixelSizingEnabled(true);
     gizmo->entity_ids.push_back(gizmo->root->GetID());
 
     Primitive *torus = GetGizmoPrimitive(GizmoShape::Torus);
@@ -385,7 +336,8 @@ void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;
 
-    UpdateFixedPixelScale(gizmo, camera_info, viewport_info);
+    gizmo->root_transform->SetFixedPixelSizingContext(camera_info, viewport_info);
+    gizmo->root_transform->UpdateIfDirty();
 
     // 更新白色圆环朝向相机
     if(gizmo->white_torus_transform)

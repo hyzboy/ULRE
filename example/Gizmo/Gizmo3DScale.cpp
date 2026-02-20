@@ -70,6 +70,11 @@ struct GizmoScaleECS
 
     math::Matrix4f pick_l2w = math::Identity4f;
     math::Vector3f pick_center = math::Vector3f(0.0f, 0.0f, 0.0f);
+    math::Vector3f pick_plane_center = math::Vector3f(0.0f, 0.0f, 0.0f);
+    math::Vector3f pick_plane_normal = math::Vector3f(0.0f, 0.0f, 1.0f);
+    math::Vector3f pick_plane_u = math::Vector3f(1.0f, 0.0f, 0.0f);
+    math::Vector3f pick_plane_v = math::Vector3f(0.0f, 1.0f, 0.0f);
+    float pick_plane_metric = 1.0f;
     math::Vector3f pick_base_scale = math::Vector3f(1.0f, 1.0f, 1.0f);
     float pick_dist = 0.0f;
 
@@ -95,57 +100,10 @@ namespace
         return math::Vector3f(v.x, v.y, v.z);
     }
 
-    float ComputeWorldUnitsPerPixel(const graph::CameraInfo *camera_info,
-                                    const graph::ViewportInfo *viewport_info,
-                                    const math::Vector3f &world_pos)
+    math::Vector3f TransformDirection(const math::Matrix4f &mat, const math::Vector3f &dir)
     {
-        if(!camera_info || !viewport_info)
-            return 0.0f;
-
-        const float vp_height = float(viewport_info->GetViewportHeight() > 0 ? viewport_info->GetViewportHeight() : 1u);
-        const float proj_11 = std::fabs(camera_info->projection[1][1]);
-        if(proj_11 <= 1e-6f)
-            return 0.0f;
-
-        const bool is_ortho = std::fabs(camera_info->projection[3][3] - 1.0f) < 1e-6f;
-
-        if(is_ortho)
-        {
-            const float world_height = 2.0f / proj_11;
-            return world_height / vp_height;
-        }
-
-        const float tan_half_fovy = 1.0f / proj_11;
-        math::Vector3f to_obj = world_pos - camera_info->pos;
-
-        float depth = std::fabs(glm::dot(to_obj, camera_info->view_line));
-        if(depth <= 1e-4f)
-            depth = glm::length(to_obj);
-        if(depth <= 1e-4f)
-            depth = 1.0f;
-
-        const float world_height = 2.0f * depth * tan_half_fovy;
-        return world_height / vp_height;
-    }
-
-    void UpdateFixedPixelScale(GizmoScaleECS *gizmo,
-                               const graph::CameraInfo *camera_info,
-                               const graph::ViewportInfo *viewport_info)
-    {
-        if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
-            return;
-
-        const math::Vector3f world_pos = gizmo->root_transform->GetWorldPosition();
-        const float world_per_pixel = ComputeWorldUnitsPerPixel(camera_info, viewport_info, world_pos);
-        if(world_per_pixel <= 0.0f)
-            return;
-
-        const float target_world_diameter = GIZMO_FIXED_PIXEL_DIAMETER * world_per_pixel;
-        float scale = target_world_diameter / (GIZMO_ARROW_LENGTH * 2.0f);
-        if(scale < 0.01f)
-            scale = 0.01f;
-
-        gizmo->root_transform->SetLocalScale(glm::vec3(scale));
+        const glm::vec4 v = mat * glm::vec4(dir, 0.0f);
+        return glm::normalize(math::Vector3f(v.x, v.y, v.z));
     }
 
     void ApplyAxisMaterials(GizmoScaleECS *gizmo)
@@ -155,7 +113,8 @@ namespace
 
         for(int i=0;i<3;i++)
         {
-            MaterialInstance *mi = (gizmo->cur_axis == i) ? gizmo->pick_mi : gizmo->axis[i].mi;
+            const bool selected = (gizmo->cur_axis == i || gizmo->cur_axis == (i + 3));
+            MaterialInstance *mi = selected ? gizmo->pick_mi : gizmo->axis[i].mi;
 
             if(gizmo->axis[i].cylinder)
                 gizmo->axis[i].cylinder->SetOverrideMaterial(mi);
@@ -283,6 +242,10 @@ GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::World *world,
     gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>();
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     gizmo->root_transform->SetMovable(true);
+    gizmo->root_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+                                                         GIZMO_ARROW_LENGTH * 2.0f,
+                                                         0.01f);
+    gizmo->root_transform->SetFixedPixelSizingEnabled(true);
     gizmo->entity_ids.push_back(gizmo->root->GetID());
 
     Primitive *center_cube = GetGizmoPrimitive(GizmoShape::Cube);
@@ -414,7 +377,7 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;
 
-    UpdateFixedPixelScale(gizmo, camera_info, viewport_info);
+    gizmo->root_transform->SetFixedPixelSizingContext(camera_info, viewport_info);
 
     gizmo->mouse_ray.SetFromViewportPoint(mouse_coord, camera_info, viewport_info->GetViewport());
 
@@ -445,6 +408,29 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
                 // TODO: 根据实际需求实现缩放应用
             }
         }
+        else if(gizmo->pick_axis >= 3 && gizmo->pick_axis < 6)
+        {
+            const float denom = glm::dot(gizmo->mouse_ray.direction, gizmo->pick_plane_normal);
+            if(std::fabs(denom) > 1e-6f)
+            {
+                const float t = glm::dot(gizmo->pick_plane_center - gizmo->mouse_ray.origin, gizmo->pick_plane_normal) / denom;
+                if(t >= 0.0f)
+                {
+                    const math::Vector3f hit_point = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
+                    const math::Vector3f delta = hit_point - gizmo->pick_plane_center;
+
+                    const float du = std::fabs(glm::dot(delta, gizmo->pick_plane_u));
+                    const float dv = std::fabs(glm::dot(delta, gizmo->pick_plane_v));
+                    const float metric = (du + dv) * 0.5f;
+
+                    if(gizmo->pick_plane_metric > 1e-6f)
+                    {
+                        gizmo->cur_scale = metric / gizmo->pick_plane_metric;
+                        gizmo->cur_scale = glm::clamp(gizmo->cur_scale, 0.1f, 10.0f);
+                    }
+                }
+            }
+        }
 
         if(left_released)
         {
@@ -458,13 +444,72 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
 
     const math::Matrix4f l2w = gizmo->root_transform->GetWorldMatrix();
     const math::Vector3f center = TransformPosition(l2w, math::Vector3f(0.0f, 0.0f, 0.0f));
+    const glm::vec3 gizmo_scale = gizmo->root_transform->GetLocalScale();
+    const float scale_factor = std::max(0.01f, std::fabs(gizmo_scale.x));
 
     const float axis_sphere_radius = glm::length(math::AxisVector::X * (GIZMO_CENTER_SPHERE_RADIUS / 2.0f));
     const float axis_length = glm::length(math::AxisVector::X * GIZMO_ARROW_LENGTH);
 
     gizmo->cur_axis = -1;
 
-    for(int i=0;i<3;i++)
+    // 先检测双轴平面方片（优先级高于轴）
+    {
+        struct PlaneMapping
+        {
+            int u_axis;
+            int v_axis;
+            int n_axis;
+        };
+
+        constexpr PlaneMapping mapping[3] =
+        {
+            {1, 2, 0}, // YZ plane (X normal)
+            {0, 2, 1}, // XZ plane (Y normal)
+            {0, 1, 2}  // XY plane (Z normal)
+        };
+
+        const float half_extent = 1.0f * scale_factor;
+        const float plane_offset = GIZMO_TWO_AXIS_OFFSET * scale_factor;
+
+        for(int i=0;i<3;i++)
+        {
+            const auto &m = mapping[i];
+
+            const math::Vector3f u_dir = TransformDirection(l2w, math::GetAxisVector(math::AXIS(m.u_axis)));
+            const math::Vector3f v_dir = TransformDirection(l2w, math::GetAxisVector(math::AXIS(m.v_axis)));
+            const math::Vector3f n_dir = TransformDirection(l2w, math::GetAxisVector(math::AXIS(m.n_axis)));
+
+            const math::Vector3f plane_center = center + u_dir * plane_offset + v_dir * plane_offset;
+
+            const float denom = glm::dot(gizmo->mouse_ray.direction, n_dir);
+            if(std::fabs(denom) <= 1e-6f)
+                continue;
+
+            const float t = glm::dot(plane_center - gizmo->mouse_ray.origin, n_dir) / denom;
+            if(t < 0.0f)
+                continue;
+
+            const math::Vector3f hit = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
+            const math::Vector3f rel = hit - plane_center;
+
+            const float du = glm::dot(rel, u_dir);
+            const float dv = glm::dot(rel, v_dir);
+
+            if(std::fabs(du) <= half_extent && std::fabs(dv) <= half_extent)
+            {
+                gizmo->cur_axis = i + 3;
+                gizmo->pick_center = center;
+                gizmo->pick_l2w = l2w;
+                gizmo->pick_plane_center = plane_center;
+                gizmo->pick_plane_normal = n_dir;
+                gizmo->pick_plane_u = u_dir;
+                gizmo->pick_plane_v = v_dir;
+                break;
+            }
+        }
+    }
+
+    for(int i=0;i<3 && gizmo->cur_axis < 0;i++)
     {
         const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(i));
         const math::Vector3f axis_endpoint = TransformPosition(l2w, axis_vector * axis_length);
@@ -489,20 +534,49 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
 
     ApplyAxisMaterials(gizmo);
 
-    if(left_pressed && gizmo->cur_axis >= 0 && gizmo->cur_axis < 3)
+    if(left_pressed && gizmo->cur_axis >= 0)
     {
         if(input_system && !input_system->BeginMouseCapture(gizmo))
             return;
 
         gizmo->pick_axis = gizmo->cur_axis;
 
-        const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(gizmo->pick_axis));
-        const math::Vector3f axis_endpoint = TransformPosition(l2w, axis_vector * axis_length);
+        if(gizmo->pick_axis < 3)
+        {
+            const math::Vector3f axis_vector = math::GetAxisVector(math::AXIS(gizmo->pick_axis));
+            const math::Vector3f axis_endpoint = TransformPosition(l2w, axis_vector * axis_length);
 
-        math::Vector3f p_ray, p_ls;
-        gizmo->mouse_ray.ClosestPoint(p_ray, p_ls, center, axis_endpoint);
+            math::Vector3f p_ray, p_ls;
+            gizmo->mouse_ray.ClosestPoint(p_ray, p_ls, center, axis_endpoint);
 
-        gizmo->pick_dist = glm::dot(p_ls - center, axis_vector);
+            gizmo->pick_dist = glm::dot(p_ls - center, axis_vector);
+        }
+        else
+        {
+            const float denom = glm::dot(gizmo->mouse_ray.direction, gizmo->pick_plane_normal);
+            if(std::fabs(denom) > 1e-6f)
+            {
+                const float t = glm::dot(gizmo->pick_plane_center - gizmo->mouse_ray.origin, gizmo->pick_plane_normal) / denom;
+                if(t >= 0.0f)
+                {
+                    const math::Vector3f hit = gizmo->mouse_ray.origin + gizmo->mouse_ray.direction * t;
+                    const math::Vector3f rel = hit - gizmo->pick_plane_center;
+
+                    const float du = std::fabs(glm::dot(rel, gizmo->pick_plane_u));
+                    const float dv = std::fabs(glm::dot(rel, gizmo->pick_plane_v));
+                    gizmo->pick_plane_metric = std::max((du + dv) * 0.5f, 1e-4f);
+                }
+                else
+                {
+                    gizmo->pick_plane_metric = 1.0f;
+                }
+            }
+            else
+            {
+                gizmo->pick_plane_metric = 1.0f;
+            }
+        }
+
         gizmo->cur_scale = 1.0f;
         gizmo->pick_scale = 1.0f;
         gizmo->dragging = true;
