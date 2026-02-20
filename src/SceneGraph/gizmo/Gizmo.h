@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include"GizmoTypes.h"
+#include<hgl/graph/gizmo/GizmoTypes.h>
 #include<hgl/vk/VK.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/CameraInfo.h>
@@ -32,6 +32,3 @@ class RenderPass;
 /// ============= Unified Gizmo Interface (Recommended for external users) =============
 /// 外部开发者建议只使用以下 Unified/System API。
 /// Move/Rotate/Scale 与资源层细节已转入内部头（GizmoInternal.h）。
-
-#include"TransformGizmoSystem.h"
-#include"SunDirectionControlSystem.h"

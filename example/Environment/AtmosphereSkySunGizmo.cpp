@@ -23,7 +23,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 
-#include"../Gizmo/SunDirectionControlSystem.h"
+#include<hgl/graph/gizmo/SunDirectionControlSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;

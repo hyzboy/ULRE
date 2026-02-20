@@ -1,4 +1,4 @@
-#include"SunDirectionControlSystem.h"
+#include<hgl/graph/gizmo/SunDirectionControlSystem.h>
 #include"Gizmo.h"
 #include"GizmoInternal.h"
 #include"GizmoResource.h"

@@ -1,4 +1,4 @@
-#include"TransformGizmoSystem.h"
+#include<hgl/graph/gizmo/TransformGizmoSystem.h>
 #include"Gizmo.h"
 #include"GizmoInternal.h"
 #include"GizmoResource.h"

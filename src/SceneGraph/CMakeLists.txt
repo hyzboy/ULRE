@@ -92,7 +92,30 @@ SET(RENDERING_LIGHTING_FILES ${SG_INCLUDE_PATH}/render/lighting/Light.h
 SOURCE_GROUP("4.Rendering\\Lighting" FILES ${RENDERING_LIGHTING_FILES})
 
 # ============================================================================
-# 5. Geometry & Mesh System - 几何体与网格系统
+# 5. Gizmo System - Gizmo交互系统
+# ============================================================================
+
+SET(GIZMO_PUBLIC_HEADERS    ${SG_INCLUDE_PATH}/gizmo/GizmoTypes.h
+                            ${SG_INCLUDE_PATH}/gizmo/TransformGizmoSystem.h
+                            ${SG_INCLUDE_PATH}/gizmo/SunDirectionControlSystem.h)
+
+SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
+                            gizmo/GizmoInternal.h
+                            gizmo/GizmoResource.h
+                            gizmo/GizmoResource.cpp
+                            gizmo/GizmoUnified.cpp
+                            gizmo/TransformGizmoSystem.cpp
+                            gizmo/SunDirectionControlSystem.cpp
+                            gizmo/Gizmo3DMove.cpp
+                            gizmo/Gizmo3DRotate.cpp
+                            gizmo/Gizmo3DScale.cpp)
+
+SET(GIZMO_ALL_FILES ${GIZMO_PUBLIC_HEADERS} ${GIZMO_INTERNAL_FILES})
+
+SOURCE_GROUP("5.Gizmo" FILES ${GIZMO_ALL_FILES})
+
+# ============================================================================
+# 6. Geometry & Mesh System - 几何体与网格系统
 # ============================================================================
 
 SET(GEOMETRY_CORE_FILES ${SG_INCLUDE_PATH}/geo/VKGeometry.h
@@ -111,10 +134,10 @@ SET(GEOMETRY_MESH_FILES ${SG_INCLUDE_PATH}/mesh/GeometryDataBuffer.h
                         mesh/Primitive.cpp
                         mesh/StaticMesh.cpp)
 
-SOURCE_GROUP("5.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
+SOURCE_GROUP("6.Geometry\\Mesh" FILES ${GEOMETRY_MESH_FILES})
 
 # ============================================================================
-# 6. Texture System - 纹理系统
+# 7. Texture System - 纹理系统
 # ============================================================================
 
 SET(TEXTURE_LOADER_FILES    ${SG_INCLUDE_PATH}/texture/TextureLoader.h
@@ -129,16 +152,16 @@ SET(TEXTURE_TILE_FILES  ${SG_INCLUDE_PATH}/tile/TileData.h
                         VKTileData.cpp
                         VKTileFont.cpp)
 
-SOURCE_GROUP("6.Texture\\Tile" FILES ${TEXTURE_TILE_FILES})
+SOURCE_GROUP("7.Texture\\Tile" FILES ${TEXTURE_TILE_FILES})
 
 # ============================================================================
-# 7. Font System - 字体系统
+# 8. Font System - 字体系统
 # ============================================================================
 
 SET(FONT_CORE_FILES ${SG_INCLUDE_PATH}/font/Font.h
                     font/Font.cpp)
 
-SOURCE_GROUP("7.Font\\Core" FILES ${FONT_CORE_FILES})
+SOURCE_GROUP("8.Font\\Core" FILES ${FONT_CORE_FILES})
 
 SET(FONT_DATA_SOURCE_FILES  ${SG_INCLUDE_PATH}/font/FontSource.h
                             font/FontDataSource.cpp
@@ -146,31 +169,31 @@ SET(FONT_DATA_SOURCE_FILES  ${SG_INCLUDE_PATH}/font/FontSource.h
                             font/FontDataSourceManage.cpp
                             font/FontSource.cpp)
 
-SOURCE_GROUP("7.Font\\DataSource" FILES ${FONT_DATA_SOURCE_FILES})
+SOURCE_GROUP("8.Font\\DataSource" FILES ${FONT_DATA_SOURCE_FILES})
 
 SET(FONT_TILE_FILES ${SG_INCLUDE_PATH}/font/TileFont.h
                     font/TileFont.cpp)
 
-SOURCE_GROUP("7.Font\\TileFont" FILES ${FONT_TILE_FILES})
+SOURCE_GROUP("8.Font\\TileFont" FILES ${FONT_TILE_FILES})
 
 SET(FONT_LAYOUT_FILES   ${SG_INCLUDE_PATH}/font/TextLayout.h
                         ${SG_INCLUDE_PATH}/font/TextLayoutEngine.h
                         font/TextLayout.cpp)
 
-SOURCE_GROUP("7.Font\\Layout" FILES ${FONT_LAYOUT_FILES})
+SOURCE_GROUP("8.Font\\Layout" FILES ${FONT_LAYOUT_FILES})
 
 SET(FONT_RENDERING_FILES    ${SG_INCLUDE_PATH}/font/TextGeometry.h
                             ${SG_INCLUDE_PATH}/font/TextRender.h
                             font/TextRender.cpp
                             font/TextGeometry.cpp)
 
-SOURCE_GROUP("7.Font\\Rendering" FILES ${FONT_RENDERING_FILES})
+SOURCE_GROUP("8.Font\\Rendering" FILES ${FONT_RENDERING_FILES})
 
 IF(WIN32)
     SET(FONT_PLATFORM_FILES font/FontDataSourceWin.cpp
                             font/FontDataSourceWin.h)
 
-    SOURCE_GROUP("7.Font\\Platform\\Windows" FILES ${FONT_PLATFORM_FILES})
+    SOURCE_GROUP("8.Font\\Platform\\Windows" FILES ${FONT_PLATFORM_FILES})
 ELSE()
     # Find FreeType for non-Windows platforms
     find_package(PkgConfig REQUIRED)
@@ -179,7 +202,7 @@ ELSE()
     SET(FONT_PLATFORM_FILES font/FontDataSourceFreeType.cpp
                             font/FontDataSourceFreeType.h)
 
-    SOURCE_GROUP("7.Font\\Platform\\FreeType" FILES ${FONT_PLATFORM_FILES})
+    SOURCE_GROUP("8.Font\\Platform\\FreeType" FILES ${FONT_PLATFORM_FILES})
 ENDIF(WIN32)
 
 SET(FONT_ALL_FILES  ${FONT_CORE_FILES}
@@ -190,7 +213,7 @@ SET(FONT_ALL_FILES  ${FONT_CORE_FILES}
                     ${FONT_RENDERING_FILES})
 
 # ============================================================================
-# 8. Vulkan - 高层渲染逻辑（几何体、材质、纹理加载等）
+# 9. Vulkan - 高层渲染逻辑（几何体、材质、纹理加载等）
 # ============================================================================
 
 # --- 8.1 Geometry Management ---
@@ -199,7 +222,7 @@ SET(VK_GEOMETRY_FILES   ${SG_INCLUDE_PATH}/geo/VKGeometry.h
                         VKGeometry.cpp
                         VKGeometryData.cpp)
 
-SOURCE_GROUP("8.Vulkan\\Geometry" FILES ${VK_GEOMETRY_FILES})
+SOURCE_GROUP("9.Vulkan\\Geometry" FILES ${VK_GEOMETRY_FILES})
 
 # --- 8.2 Material System ---
 SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterial.h
@@ -211,13 +234,13 @@ SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterial.h
                                     VKMaterialInstance.cpp
                                     VKMaterialDescriptorManager.cpp)
 
-SOURCE_GROUP("8.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
+SOURCE_GROUP("9.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
 
 # --- 8.3 Render Context ---
 SET(VK_RENDER_CONTEXT_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKRenderContext.h
                                 VKRenderContext.cpp)
 
-SOURCE_GROUP("8.Vulkan\\RenderContext" FILES ${VK_RENDER_CONTEXT_FILES})
+SOURCE_GROUP("9.Vulkan\\RenderContext" FILES ${VK_RENDER_CONTEXT_FILES})
 
 # --- 8.4 Texture Loader ---
 SET(VK_TEXTURE_LOADER_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
@@ -227,7 +250,7 @@ SET(VK_TEXTURE_LOADER_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
                                 Texture/VKTexture2DArrayLoader.cpp
                                 Texture/VKTextureCubeLoader.cpp)
 
-SOURCE_GROUP("8.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
+SOURCE_GROUP("9.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
 
 # ============================================================================
 # Combine all files
@@ -236,7 +259,8 @@ SOURCE_GROUP("8.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
 SET(SCENE_GRAPH_FILES   ${SCENE_ENVIRONMENT_FILES}
                         ${RENDERING_CORE_FILES}
                         ${RENDERING_LINE_FILES}
-                        ${RENDERING_LIGHTING_FILES})
+                        ${RENDERING_LIGHTING_FILES}
+                        ${GIZMO_ALL_FILES})
 
 # ============================================================================
 # Build Library

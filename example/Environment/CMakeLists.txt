@@ -13,19 +13,6 @@ endmacro()
 
 CreateProject(01_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
 
-CreateProject(02_AtmosphereSkySunGizmo          AtmosphereSkySunGizmo.cpp
-                                            ../Gizmo/Gizmo.h
-                                            ../Gizmo/GizmoTypes.h
-                                            ../Gizmo/GizmoInternal.h
-                                            ../Gizmo/GizmoResource.h
-                                            ../Gizmo/GizmoResource.cpp
-                                            ../Gizmo/TransformGizmoSystem.h
-                                            ../Gizmo/TransformGizmoSystem.cpp
-                                            ../Gizmo/SunDirectionControlSystem.h
-                                            ../Gizmo/SunDirectionControlSystem.cpp
-                                            ../Gizmo/Gizmo3DMove.cpp
-                                            ../Gizmo/Gizmo3DScale.cpp
-                                            ../Gizmo/Gizmo3DRotate.cpp
-                                            ../Gizmo/GizmoUnified.cpp)
+CreateProject(02_AtmosphereSkySunGizmo          AtmosphereSkySunGizmo.cpp)
 
 
