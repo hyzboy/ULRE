@@ -14,6 +14,8 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
@@ -241,6 +243,28 @@ namespace hgl
             if (auto transform_system = GetSystem<TransformSystem>())
             {
                 transform_system->SubmitTransformUpdates();
+            }
+
+            if (cmd)
+            {
+                if (auto *device = GetGPUDevice())
+                {
+                    auto *update_queue = device->GetBufferUpdateQueue();
+                    if (update_queue && update_queue->HasPendingUpdates())
+                    {
+                        update_queue->FlushAll(cmd->operator VkCommandBuffer());
+
+                        VkMemoryBarrier barrier{};
+                        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                        barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
+
+                        vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
+                                             VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                             VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                             0, 1, &barrier, 0, nullptr, 0, nullptr);
+                    }
+                }
             }
 
             for (auto& entry : render_system_order)
