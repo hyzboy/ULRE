@@ -1,5 +1,4 @@
-﻿#ifndef HGL_SHADER_CREATE_INFO_INCLUDE
-#define HGL_SHADER_CREATE_INFO_INCLUDE
+﻿#pragma once
 
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VK.h>
@@ -119,4 +118,3 @@ public:
     const size_t GetSPVSize()const;
 };//class ShaderCreateInfo
 }}//namespace hgl::graph
-#endif//HGL_SHADER_CREATE_INFO_INCLUDE

@@ -3,6 +3,7 @@
 #include<hgl/ecs/components/TextComponent.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/framework/WorkManager.h>
+#include<hgl/color/Color.h>
 #include<random>
 
 using namespace hgl;
@@ -44,6 +45,7 @@ protected:
         std::default_random_engine dre;
         std::uniform_int_distribution<int> rand_x(0, WINDOW_WIDTH - FONT_SIZE);
         std::uniform_int_distribution<int> rand_y(0, WINDOW_HEIGHT - FONT_SIZE);
+        std::uniform_int_distribution<int> rand_color(64,255);
 
         // Create one entity per text string
         for (auto str : str_list)
@@ -55,11 +57,19 @@ protected:
             auto text_comp = entity->AddComponent<TextComponent>();
             if(!text_comp)
                 continue;
+            
+            hgl::graph::layout::CharStyle cs;
+
+            cs.CharColor.r=rand_color(dre);
+            cs.CharColor.g=rand_color(dre);
+            cs.CharColor.b=rand_color(dre);
+            cs.CharColor.a=255;
 
             // Set text, font, and random position
             text_comp->SetText(U16String(str.c_str(), str.Length()));
             text_comp->SetFontSource(fs);
             text_comp->SetStartPosition({rand_x(dre), rand_y(dre)});
+            text_comp->SetCharStyle(cs);
 
             // TextRenderSystem will batch by FontSource automatically!
         }

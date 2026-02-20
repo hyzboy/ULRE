@@ -7,9 +7,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-VK_NAMESPACE_USING;
-
-
 VulkanInstance *InitVulkanInstance()
 {
     #ifdef _DEBUG
