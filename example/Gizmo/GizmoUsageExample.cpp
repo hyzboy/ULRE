@@ -26,7 +26,6 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
-#include<hgl/io/event/KeyboardEvent.h>
 
 #include<glm/glm.hpp>
 #include<iostream>
@@ -253,23 +252,6 @@ private:
 
     bool InitGizmos()
     {
-        auto *ecs = GetECSContext();
-        if(!ecs)
-            return false;
-
-        auto *graphics = ecs->GetGraphicsContext();
-        if(!graphics)
-            return false;
-
-        auto *render_context = GetRenderContext();
-        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
-        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
-        if(!render_pass)
-            return false;
-
-        if(!InitGizmoResource(graphics, render_pass))
-            return false;
-
         if(!ecs_world)
             return false;
 
@@ -369,8 +351,6 @@ public:
         SAFE_CLEAR(cube_geometry)
         SAFE_CLEAR(grid_primitive)
         SAFE_CLEAR(grid_geometry)
-
-        FreeGizmoResource();
     }
 
     void Tick(double delta) override

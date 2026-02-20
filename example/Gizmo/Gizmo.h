@@ -190,6 +190,7 @@ public:
 
 private:
     bool EnsureGizmo();
+    bool resource_registered = false;
 };
 
 void UpdateGizmoECS(GizmoECS *gizmo,
@@ -234,6 +235,9 @@ enum class GizmoShape:uint
 
 bool InitGizmoResource(GraphicsContext *, RenderPass *);
 void FreeGizmoResource();
+bool EnsureGizmoSystemResources(::hgl::ecs::ECSContext *world);
+void ForceReleaseGizmoSystemResources();
+bool IsGizmoSystemResourcesResident();
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &);
 Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);

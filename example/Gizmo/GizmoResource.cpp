@@ -325,8 +325,22 @@ void FreeGizmoResource()
     SAFE_CLEAR(gizmo_triangle.prim_creater);
     SAFE_CLEAR(gizmo_triangle.vdm);
 
+    gizmo_triangle.pipeline = nullptr;
+    gizmo_triangle.mtl = nullptr;
+    for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
+        gizmo_triangle.mi[i] = nullptr;
+
     SAFE_CLEAR(gizmo_line.prim_creater);
     SAFE_CLEAR(gizmo_line.vdm);
+
+    gizmo_line.pipeline = nullptr;
+    gizmo_line.mtl = nullptr;
+    for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
+        gizmo_line.mi[i] = nullptr;
+
+    gizmo_mtl_manager = nullptr;
+    gizmo_render_pass = nullptr;
+    graphics_context = nullptr;
 }
 
 MaterialInstance *GetGizmoMI3D(const GizmoColor &color)

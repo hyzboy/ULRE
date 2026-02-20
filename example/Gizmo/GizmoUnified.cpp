@@ -18,6 +18,8 @@
 #include<hgl/ecs/components/VisibilityComponent.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/graph/render/RenderContext.h>
+#include<hgl/vk/VKRenderTarget.h>
 #include<hgl/io/event/KeyboardEvent.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/geometric.hpp>
@@ -25,6 +27,18 @@
 #include<utility>
 
 namespace hgl::graph{
+
+namespace
+{
+    struct GizmoSystemResidentState
+    {
+        bool resources_ready = false;
+        bool standby = false;
+        uint32_t active_system_count = 0;
+    };
+
+    GizmoSystemResidentState g_gizmo_resident_state;
+}
 
 struct GizmoECS
 {
@@ -678,6 +692,48 @@ void UpdateGizmoECS(GizmoECS *gizmo,
     }
 }
 
+bool EnsureGizmoSystemResources(hgl::ecs::ECSContext *world)
+{
+    if (g_gizmo_resident_state.resources_ready)
+    {
+        g_gizmo_resident_state.standby = false;
+        return true;
+    }
+
+    if (!world)
+        return false;
+
+    auto *graphics = world->GetGraphicsContext();
+    auto *render_context = world->GetRenderContext();
+    auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
+    auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+
+    if (!graphics || !render_pass)
+        return false;
+
+    if (!InitGizmoResource(graphics, render_pass))
+        return false;
+
+    g_gizmo_resident_state.resources_ready = true;
+    g_gizmo_resident_state.standby = false;
+    return true;
+}
+
+void ForceReleaseGizmoSystemResources()
+{
+    if (!g_gizmo_resident_state.resources_ready)
+        return;
+
+    FreeGizmoResource();
+    g_gizmo_resident_state.resources_ready = false;
+    g_gizmo_resident_state.standby = false;
+}
+
+bool IsGizmoSystemResourcesResident()
+{
+    return g_gizmo_resident_state.resources_ready;
+}
+
 GizmoSystem::GizmoSystem()
     : hgl::ecs::System("GizmoSystem")
 {
@@ -693,6 +749,13 @@ GizmoSystem::~GizmoSystem()
 
 void GizmoSystem::Initialize()
 {
+    if (!resource_registered)
+    {
+        ++g_gizmo_resident_state.active_system_count;
+        resource_registered = true;
+    }
+
+    EnsureGizmoSystemResources(context);
     EnsureGizmo();
 }
 
@@ -703,6 +766,19 @@ void GizmoSystem::Shutdown()
         DestroyGizmoECS(gizmo);
         gizmo = nullptr;
     }
+
+    if (resource_registered)
+    {
+        if (g_gizmo_resident_state.active_system_count > 0)
+            --g_gizmo_resident_state.active_system_count;
+
+        resource_registered = false;
+    }
+
+    if (g_gizmo_resident_state.active_system_count == 0 && g_gizmo_resident_state.resources_ready)
+    {
+        g_gizmo_resident_state.standby = true;
+    }
 }
 
 bool GizmoSystem::EnsureGizmo()
@@ -711,6 +787,9 @@ bool GizmoSystem::EnsureGizmo()
         return true;
 
     if (!context)
+        return false;
+
+    if (!EnsureGizmoSystemResources(context))
         return false;
 
     math::Vector3f create_pos = initial_position;
@@ -761,7 +840,22 @@ void GizmoSystem::SetChangedCallback(GizmoChangedCallback callback)
 
 void GizmoSystem::Update(float)
 {
-    if (!EnsureGizmo() || !context)
+    if (!context)
+        return;
+
+    if (!IsGizmoSystemResourcesResident())
+    {
+        if (gizmo)
+        {
+            DestroyGizmoECS(gizmo);
+            gizmo = nullptr;
+        }
+
+        if (!EnsureGizmoSystemResources(context))
+            return;
+    }
+
+    if (!EnsureGizmo())
         return;
 
     auto input_system = context->GetSystem<hgl::ecs::InputSystem>();
