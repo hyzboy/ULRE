@@ -30,6 +30,7 @@
 
 #include<glm/glm.hpp>
 #include<iostream>
+#include<memory>
 #include<string>
 
 using namespace hgl;
@@ -45,7 +46,7 @@ private:
     hgl::ecs::Entity *plane_entity = nullptr;
     hgl::ecs::Entity *cube_entity = nullptr;
 
-    GizmoECS *gizmo = nullptr;
+    std::shared_ptr<GizmoSystem> gizmo_system;
 
     Material *grid_material = nullptr;
     MaterialInstance *grid_mi = nullptr;
@@ -59,11 +60,6 @@ private:
     Geometry *cube_geometry = nullptr;
     Primitive *cube_primitive = nullptr;
 
-    bool last_left_down = false;
-    bool last_key_w = false;
-    bool last_key_e = false;
-    bool last_key_r = false;
-    bool last_key_t = false;
     std::string debug_cache;
 
     bool InitSceneResources()
@@ -171,7 +167,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if(!ecs_world || !grid_primitive || !cube_primitive || !gizmo)
+        if(!ecs_world || !grid_primitive || !cube_primitive || !gizmo_system)
             return false;
 
         plane_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("PlaneGrid");
@@ -193,10 +189,6 @@ private:
         auto cube_transform = cube_entity->AddComponent<hgl::ecs::TransformComponent>();
         cube_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
         cube_transform->SetMovable(true);
-
-        auto *gizmo_root = GetGizmoRootEntity(gizmo);
-        if(gizmo_root)
-            cube_transform->SetParent(gizmo_root->GetID());
 
         auto cube_primitive_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
         cube_primitive_comp->SetPrimitive(cube_primitive);
@@ -281,16 +273,27 @@ private:
         if(!ecs_world)
             return false;
 
-        gizmo = CreateGizmoECS(ecs_world, "Gizmo", GizmoPosition);
-        if(!gizmo)
+        gizmo_system = ecs_world->GetSystem<GizmoSystem>();
+        if(!gizmo_system)
+            gizmo_system = ecs_world->RegisterTickSystem<GizmoSystem>();
+
+        if(!gizmo_system)
             return false;
+
+        gizmo_system->SetDefaultMode(GizmoMode::MoveWorld);
+        gizmo_system->SetModeSwitchEnabled(true);
+        gizmo_system->SetInitialPosition(GizmoPosition);
 
         return true;
     }
 
     void UpdateDebug(hgl::ecs::InputSystem *input_system)
     {
-        if(!input_system || !gizmo)
+        if(!input_system || !gizmo_system)
+            return;
+
+        auto *gizmo = gizmo_system->GetGizmo();
+        if(!gizmo)
             return;
 
         GizmoMode mode = GetGizmoMode(gizmo);
@@ -329,6 +332,18 @@ private:
         if(!InitSceneEntities())
             return false;
 
+        if(!gizmo_system || !gizmo_system->SetTargetEntity(cube_entity))
+            return false;
+
+        gizmo_system->SetChangedCallback([](const GizmoTransformChange &change)
+                                         {
+                                             std::cout << "gizmo changed mode=" << static_cast<int>(change.mode)
+                                                       << " pos=(" << change.current_position.x << ", "
+                                                       << change.current_position.y << ", "
+                                                       << change.current_position.z << ")"
+                                                       << std::endl;
+                                         });
+
         if(!InitCamera())
             return false;
 
@@ -348,11 +363,7 @@ public:
     }
     ~GizmoExampleApp()
     {
-        if(gizmo)
-        {
-            DestroyGizmoECS(gizmo);
-            gizmo = nullptr;
-        }
+        gizmo_system.reset();
 
         SAFE_CLEAR(cube_primitive)
         SAFE_CLEAR(cube_geometry)
@@ -367,66 +378,9 @@ public:
         if(!ecs_world)
             return;
 
-        auto *camera_system = GetCameraSystem();
-        if(!camera_system)
-            return;
-
-        const auto *camera_info = camera_system->GetCameraInfo();
-        const auto *viewport_info = camera_system->GetViewportInfo();
-        if(!camera_info || !viewport_info)
-            return;
-
         auto input_system = ecs_world->GetSystem<hgl::ecs::InputSystem>();
         if(!input_system)
             return;
-
-        const math::Vector2i &mouse_coord = input_system->GetMouseCoord();
-        const bool left_down = input_system->IsMouseButtonDown(hgl::io::MouseButton::Left);
-        const bool left_pressed = left_down && !last_left_down;
-        const bool left_released = !left_down && last_left_down;
-        last_left_down = left_down;
-
-        // 切换 Gizmo 模式（按键 1/2/3/4）
-        const bool key_1 = input_system->IsKeyDown(hgl::io::KeyboardButton::_1);
-        const bool key_2 = input_system->IsKeyDown(hgl::io::KeyboardButton::_2);
-        const bool key_3 = input_system->IsKeyDown(hgl::io::KeyboardButton::_3);
-        const bool key_4 = input_system->IsKeyDown(hgl::io::KeyboardButton::_4);
-
-        if(key_1 && !last_key_w)
-        {
-            SetGizmoMode(gizmo, GizmoMode::MoveWorld);
-            std::cout << "Switched to MoveWorld mode" << std::endl;
-        }
-        else if(key_2 && !last_key_e)
-        {
-            SetGizmoMode(gizmo, GizmoMode::MoveLocal);
-            std::cout << "Switched to MoveLocal mode" << std::endl;
-        }
-        else if(key_3 && !last_key_r)
-        {
-            SetGizmoMode(gizmo, GizmoMode::Rotate);
-            std::cout << "Switched to Rotate mode" << std::endl;
-        }
-        else if(key_4 && !last_key_t)
-        {
-            SetGizmoMode(gizmo, GizmoMode::ScaleLocal);
-            std::cout << "Switched to ScaleLocal mode" << std::endl;
-        }
-
-        last_key_w = key_1;
-        last_key_e = key_2;
-        last_key_r = key_3;
-        last_key_t = key_4;
-
-        // 更新统一的 Gizmo（内部会根据当前模式处理）
-        UpdateGizmoECS(gizmo,
-                       mouse_coord,
-                       camera_info,
-                       viewport_info,
-                       input_system.get(),
-                       left_down,
-                       left_pressed,
-                       left_released);
 
         UpdateDebug(input_system.get());
         WorkObject::Tick(delta);

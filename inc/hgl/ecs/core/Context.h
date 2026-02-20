@@ -144,6 +144,8 @@ namespace hgl
             OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);
             void AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system, int priority);
             void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
+            bool SetSystemEnabledByKey(size_t key, bool enabled);
+            bool RemoveSystemByKey(size_t key);
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
@@ -454,6 +456,18 @@ namespace hgl
                 }
 
                 return false;
+            }
+
+            template<typename T>
+            bool SetSystemEnabled(bool enabled)
+            {
+                return SetSystemEnabledByKey(typeid(T).hash_code(), enabled);
+            }
+
+            template<typename T>
+            bool RemoveSystem()
+            {
+                return RemoveSystemByKey(typeid(T).hash_code());
             }
 
              /// Get a system by type

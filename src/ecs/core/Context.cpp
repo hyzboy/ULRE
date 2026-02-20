@@ -468,6 +468,8 @@ namespace hgl
         {
             if (!system)
                 return;
+            if (!system->IsEnabled())
+                return;
 
             HGL_CAPTURE_SCOPE();
             LogDebug("[ECS] Update Begin: %s", system->GetName().c_str());
@@ -686,6 +688,11 @@ namespace hgl
                 size_t dep_key = dep_type.hash_code();
                 AddSystemDependency(effective_is_render, key, dep_key);
             }
+            if (active)
+            {
+                system->OnDependenciesReady();
+                system->Initialize();
+            }
         }
 
         void ECSContext::AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key)
@@ -709,6 +716,68 @@ namespace hgl
                 list->push_back(dependency_key);
                 order_dirty = true;
             }
+        }
+        bool ECSContext::SetSystemEnabledByKey(size_t key, bool enabled)
+        {
+            if (auto *system = tick_systems.GetValuePointer(key))
+            {
+                if (*system)
+                    (*system)->SetEnabled(enabled);
+                return true;
+            }
+
+            if (auto *system = render_systems.GetValuePointer(key))
+            {
+                if (*system)
+                    (*system)->SetEnabled(enabled);
+                return true;
+            }
+
+            return false;
+        }
+
+        bool ECSContext::RemoveSystemByKey(size_t key)
+        {
+            auto remove_from = [&](auto &sys_map,
+                                   auto &order_list,
+                                   auto &deps,
+                                   bool &order_dirty) -> bool
+            {
+                auto *holder = sys_map.GetValuePointer(key);
+                if (!holder)
+                    return false;
+
+                if (*holder)
+                    (*holder)->Shutdown();
+
+                sys_map.DeleteByKey(key);
+                deps.DeleteByKey(key);
+
+                for (auto &pair : deps)
+                {
+                    auto &vec = pair.second;
+                    vec.erase(std::remove(vec.begin(), vec.end(), key), vec.end());
+                }
+
+                order_list.erase(std::remove_if(order_list.begin(),
+                                                order_list.end(),
+                                                [key](const OrderedSystem &entry)
+                                                {
+                                                    return entry.key == key;
+                                                }),
+                                 order_list.end());
+
+                order_dirty = true;
+                return true;
+            };
+
+            if (remove_from(tick_systems, tick_system_order, tick_dependencies, tick_order_dirty))
+                return true;
+
+            if (remove_from(render_systems, render_system_order, render_dependencies, render_order_dirty))
+                return true;
+
+            return false;
         }
 
         void ECSContext::SetFrameIndex(const uint32_t index)

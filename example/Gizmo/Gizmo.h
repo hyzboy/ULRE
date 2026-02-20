@@ -6,6 +6,10 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/camera/ViewportInfo.h>
+#include<hgl/ecs/core/System.h>
+#include<glm/gtc/quaternion.hpp>
+#include<functional>
+#include<memory>
 
 namespace hgl
 {
@@ -15,6 +19,8 @@ namespace hgl
         class World;
         class Entity;
         class InputSystem;
+        class CameraSystem;
+        class TransformComponent;
     }
 }
 
@@ -38,6 +44,19 @@ enum class GizmoMode : int
     Move = MoveWorld,
     Scale = ScaleLocal
 };
+
+struct GizmoTransformChange
+{
+    math::Vector3f previous_position;
+    math::Vector3f current_position;
+    glm::quat previous_rotation;
+    glm::quat current_rotation;
+    math::Vector3f previous_scale;
+    math::Vector3f current_scale;
+    GizmoMode mode = GizmoMode::MoveWorld;
+};
+
+using GizmoChangedCallback = std::function<void(const GizmoTransformChange&)>;
 
 struct GizmoMoveECSState
 {
@@ -113,6 +132,10 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
 GizmoECS *CreateGizmoECS(::hgl::ecs::ECSContext *world,
                          const char *name,
                          const math::Vector3f &position);
+GizmoECS *CreateDefaultGizmo(::hgl::ecs::ECSContext *world,
+                             const char *name,
+                             const math::Vector3f &position,
+                             GizmoMode default_mode = GizmoMode::MoveWorld);
 void DestroyGizmoECS(GizmoECS *gizmo);
 
 void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode);
@@ -120,6 +143,54 @@ GizmoMode GetGizmoMode(const GizmoECS *gizmo);
 
 void SetGizmoVisible(GizmoECS *gizmo, bool visible);
 hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo);
+bool BindGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity);
+hgl::ecs::Entity *GetGizmoTargetEntity(const GizmoECS *gizmo);
+void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback);
+
+class GizmoSystem : public hgl::ecs::System
+{
+private:
+    GizmoECS *gizmo = nullptr;
+    hgl::ecs::Entity *target_entity = nullptr;
+    math::Vector3f initial_position = math::Vector3f(0.0f);
+    GizmoMode default_mode = GizmoMode::MoveWorld;
+    GizmoChangedCallback changed_callback;
+
+    bool mode_switch_enabled = true;
+    bool last_left_down = false;
+    bool last_key_1 = false;
+    bool last_key_2 = false;
+    bool last_key_3 = false;
+    bool last_key_4 = false;
+
+public:
+    GizmoSystem();
+    ~GizmoSystem() override;
+
+    void Initialize() override;
+    void Shutdown() override;
+    void Update(float deltaTime) override;
+
+    bool SetTargetEntity(hgl::ecs::Entity *entity);
+    bool SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformComponent> &transform);
+    hgl::ecs::Entity *GetTargetEntity() const { return target_entity; }
+
+    void SetModeSwitchEnabled(bool enabled) { mode_switch_enabled = enabled; }
+    bool IsModeSwitchEnabled() const { return mode_switch_enabled; }
+
+    void SetDefaultMode(GizmoMode mode) { default_mode = mode; }
+    GizmoMode GetDefaultMode() const { return default_mode; }
+
+    void SetInitialPosition(const math::Vector3f &position) { initial_position = position; }
+    const math::Vector3f &GetInitialPosition() const { return initial_position; }
+
+    void SetChangedCallback(GizmoChangedCallback callback);
+
+    GizmoECS *GetGizmo() const { return gizmo; }
+
+private:
+    bool EnsureGizmo();
+};
 
 void UpdateGizmoECS(GizmoECS *gizmo,
                     const math::Vector2i &mouse_coord,

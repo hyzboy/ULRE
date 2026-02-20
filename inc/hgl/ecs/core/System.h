@@ -96,6 +96,7 @@ namespace hgl
             std::vector<std::type_index> dependencies; // Type IDs of systems this depends on
             std::unique_ptr<SystemCache> cache_manager;  // Component query cache
             class ECSContext* context = nullptr;  // Owning context
+            bool enabled = true;
 
         public:
 
@@ -118,6 +119,9 @@ namespace hgl
 
             /// Get if system is initialized
             bool IsInitialized() const { return initialized; }
+
+            void SetEnabled(bool value) { enabled = value; }
+            bool IsEnabled() const { return enabled; }
 
             /// Get system type
             SystemType GetSystemType() const { return systemType; }
