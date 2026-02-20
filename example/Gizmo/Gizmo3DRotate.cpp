@@ -29,7 +29,7 @@
 
 namespace hgl::graph{
 
-struct GizmoRotateECS
+struct RotateGizmoImpl
 {
     hgl::ecs::World *world = nullptr;
     hgl::ecs::Entity *root = nullptr;
@@ -117,7 +117,7 @@ namespace
                                         rotation_axis.z * inv_s));
     }
 
-    void ApplyAxisMaterials(GizmoRotateECS *gizmo)
+    void ApplyAxisMaterials(RotateGizmoImpl *gizmo)
     {
         if(!gizmo)
             return;
@@ -137,7 +137,7 @@ namespace
         }
     }
 
-    bool CreateAxisEntities(GizmoRotateECS *gizmo, Primitive *torus)
+    bool CreateAxisEntities(RotateGizmoImpl *gizmo, Primitive *torus)
     {
         if(!gizmo || !gizmo->world || !gizmo->root)
             return false;
@@ -191,14 +191,14 @@ namespace
     }
 }
 
-GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
-                                      const char *name,
-                                      const math::Vector3f &position)
+RotateGizmoImpl *CreateRotateGizmoImpl(hgl::ecs::World *world,
+                                       const char *name,
+                                       const math::Vector3f &position)
 {
     if(!world)
         return nullptr;
 
-    auto *gizmo = new GizmoRotateECS;
+    auto *gizmo = new RotateGizmoImpl;
     gizmo->world = world;
     gizmo->pick_mi = GetGizmoMI3D(GizmoColor::Yellow);
     gizmo->white_mi = GetGizmoMI3D(GizmoColor::White);
@@ -223,13 +223,13 @@ GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
 
     if(!torus)
     {
-        DestroyGizmoRotateECS(gizmo);
+        DestroyRotateGizmoImpl(gizmo);
         return nullptr;
     }
 
     if(!CreateAxisEntities(gizmo, torus))
     {
-        DestroyGizmoRotateECS(gizmo);
+        DestroyRotateGizmoImpl(gizmo);
         return nullptr;
     }
 
@@ -238,7 +238,7 @@ GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
         auto entity = world->CreateEntity<hgl::ecs::Entity>("GizmoRotate_WhiteTorus");
         if(!entity)
         {
-            DestroyGizmoRotateECS(gizmo);
+            DestroyRotateGizmoImpl(gizmo);
             return nullptr;
         }
 
@@ -258,7 +258,7 @@ GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
     return gizmo;
 }
 
-void DestroyGizmoRotateECS(GizmoRotateECS *gizmo)
+void DestroyRotateGizmoImpl(RotateGizmoImpl *gizmo)
 {
     if(!gizmo)
         return;
@@ -275,7 +275,7 @@ void DestroyGizmoRotateECS(GizmoRotateECS *gizmo)
     delete gizmo;
 }
 
-bool GetGizmoRotateECSState(const GizmoRotateECS *gizmo, GizmoRotateECSState &out_state)
+bool GetRotateGizmoInteractionState(const RotateGizmoImpl *gizmo, RotateGizmoInteractionState &out_state)
 {
     if(!gizmo)
         return false;
@@ -289,7 +289,7 @@ bool GetGizmoRotateECSState(const GizmoRotateECS *gizmo, GizmoRotateECSState &ou
     return true;
 }
 
-void SetGizmoRotatePosition(GizmoRotateECS *gizmo, const math::Vector3f &position)
+void SetRotateGizmoPosition(RotateGizmoImpl *gizmo, const math::Vector3f &position)
 {
     if(!gizmo || !gizmo->root_transform)
         return;
@@ -297,7 +297,7 @@ void SetGizmoRotatePosition(GizmoRotateECS *gizmo, const math::Vector3f &positio
     gizmo->root_transform->SetLocalPosition(glm::vec3(position));
 }
 
-void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible)
+void SetRotateGizmoVisible(RotateGizmoImpl *gizmo, bool visible)
 {
     if(!gizmo || !gizmo->world)
         return;
@@ -324,14 +324,14 @@ void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible)
     }
 }
 
-void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
-                          const math::Vector2i &mouse_coord,
-                          const graph::CameraInfo *camera_info,
-                          const graph::ViewportInfo *viewport_info,
-                          hgl::ecs::InputSystem *input_system,
-                          bool left_down,
-                          bool left_pressed,
-                          bool left_released)
+void UpdateRotateGizmoImpl(RotateGizmoImpl *gizmo,
+                           const math::Vector2i &mouse_coord,
+                           const graph::CameraInfo *camera_info,
+                           const graph::ViewportInfo *viewport_info,
+                           hgl::ecs::InputSystem *input_system,
+                           bool left_down,
+                           bool left_pressed,
+                           bool left_released)
 {
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;

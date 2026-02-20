@@ -6,11 +6,20 @@
      └─ GizmoECS (root)
         ├─ Move (SubWorld)
         ├─ Rotate (SubWorld)
+
+GizmoMode TransformGizmoSystem::GetCurrentMode() const
+{
+    if(!gizmo)
+        return default_mode;
+
+    return GetTransformGizmoMode(gizmo);
+}
         └─ Scale (SubWorld)
 */
 
 #include"Gizmo.h"
 #include"GizmoInternal.h"
+#include"GizmoResource.h"
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
@@ -49,9 +58,9 @@ struct GizmoECS
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
 
     // 三个子 Gizmo 的管理指针（内部实现使用）
-    void* move_impl = nullptr;     // GizmoMoveECS*
-    void* rotate_impl = nullptr;   // GizmoRotateECS*
-    void* scale_impl = nullptr;    // GizmoScaleECS*
+    void* move_impl = nullptr;     // MoveGizmoImpl*
+    void* rotate_impl = nullptr;   // RotateGizmoImpl*
+    void* scale_impl = nullptr;    // ScaleGizmoImpl*
 
     // 对应的 SubWorld 和 Entity
     hgl::ecs::Entity* move_entity = nullptr;
@@ -185,14 +194,14 @@ static void SyncAllSubGizmoTransforms(GizmoECS *gizmo)
     const math::Vector3f root_pos = gizmo->root_transform->GetLocalPosition();
     const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
 
-    SetGizmoMovePosition((GizmoMoveECS*)gizmo->move_impl, root_pos);
-    SetGizmoMoveRotation((GizmoMoveECS*)gizmo->move_impl,
+    SetMoveGizmoPosition((MoveGizmoImpl*)gizmo->move_impl, root_pos);
+    SetMoveGizmoRotation((MoveGizmoImpl*)gizmo->move_impl,
                          gizmo->current_mode == GizmoMode::MoveLocal ? root_rot : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 
-    SetGizmoRotatePosition((GizmoRotateECS*)gizmo->rotate_impl, root_pos);
+    SetRotateGizmoPosition((RotateGizmoImpl*)gizmo->rotate_impl, root_pos);
 
-    SetGizmoScalePosition((GizmoScaleECS*)gizmo->scale_impl, root_pos);
-    SetGizmoScaleRotation((GizmoScaleECS*)gizmo->scale_impl, root_rot);
+    SetScaleGizmoPosition((ScaleGizmoImpl*)gizmo->scale_impl, root_pos);
+    SetScaleGizmoRotation((ScaleGizmoImpl*)gizmo->scale_impl, root_rot);
 }
 
 static bool IsCurrentModeDragging(const GizmoECS *gizmo)
@@ -205,18 +214,18 @@ static bool IsCurrentModeDragging(const GizmoECS *gizmo)
     case GizmoMode::MoveWorld:
     case GizmoMode::MoveLocal:
         {
-            GizmoMoveECSState state;
-            return GetGizmoMoveECSState((const GizmoMoveECS*)gizmo->move_impl, state) && state.dragging;
+            MoveGizmoInteractionState state;
+            return GetMoveGizmoInteractionState((const MoveGizmoImpl*)gizmo->move_impl, state) && state.dragging;
         }
     case GizmoMode::Rotate:
         {
-            GizmoRotateECSState state;
-            return GetGizmoRotateECSState((const GizmoRotateECS*)gizmo->rotate_impl, state) && state.dragging;
+            RotateGizmoInteractionState state;
+            return GetRotateGizmoInteractionState((const RotateGizmoImpl*)gizmo->rotate_impl, state) && state.dragging;
         }
     case GizmoMode::ScaleLocal:
         {
-            GizmoScaleECSState state;
-            return GetGizmoScaleECSState((const GizmoScaleECS*)gizmo->scale_impl, state) && state.dragging;
+            ScaleGizmoInteractionState state;
+            return GetScaleGizmoInteractionState((const ScaleGizmoImpl*)gizmo->scale_impl, state) && state.dragging;
         }
     }
 
@@ -276,7 +285,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        gizmo->move_impl = (void*)CreateGizmoMoveECS(gizmo->move_world, "GizmoMove", math::Vector3f(0, 0, 0));
+        gizmo->move_impl = (void*)CreateMoveGizmoImpl(gizmo->move_world, "GizmoMove", math::Vector3f(0, 0, 0));
         if (!gizmo->move_impl)
         {
             std::cout << "[GizmoECS] Create move gizmo failed" << std::endl;
@@ -310,7 +319,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        gizmo->rotate_impl = (void*)CreateGizmoRotateECS(gizmo->rotate_world, "GizmoRotate", math::Vector3f(0, 0, 0));
+        gizmo->rotate_impl = (void*)CreateRotateGizmoImpl(gizmo->rotate_world, "GizmoRotate", math::Vector3f(0, 0, 0));
         if (!gizmo->rotate_impl)
         {
             std::cout << "[GizmoECS] Create rotate gizmo failed" << std::endl;
@@ -344,7 +353,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        gizmo->scale_impl = (void*)CreateGizmoScaleECS(gizmo->scale_world, "GizmoScale", math::Vector3f(0, 0, 0));
+        gizmo->scale_impl = (void*)CreateScaleGizmoImpl(gizmo->scale_world, "GizmoScale", math::Vector3f(0, 0, 0));
         if (!gizmo->scale_impl)
         {
             std::cout << "[GizmoECS] Create scale gizmo failed" << std::endl;
@@ -384,17 +393,17 @@ void DestroyGizmoECS(GizmoECS *gizmo)
 
     if (gizmo->move_impl)
     {
-        DestroyGizmoMoveECS((GizmoMoveECS*)gizmo->move_impl);
+        DestroyMoveGizmoImpl((MoveGizmoImpl*)gizmo->move_impl);
     }
 
     if (gizmo->rotate_impl)
     {
-        DestroyGizmoRotateECS((GizmoRotateECS*)gizmo->rotate_impl);
+        DestroyRotateGizmoImpl((RotateGizmoImpl*)gizmo->rotate_impl);
     }
 
     if (gizmo->scale_impl)
     {
-        DestroyGizmoScaleECS((GizmoScaleECS*)gizmo->scale_impl);
+        DestroyScaleGizmoImpl((ScaleGizmoImpl*)gizmo->scale_impl);
     }
 
     if (gizmo->world)
@@ -424,9 +433,9 @@ void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     // Set visibility based on mode
     const bool move_active = (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal);
 
-    SetGizmoMoveVisible((GizmoMoveECS*)gizmo->move_impl, move_active);
-    SetGizmoRotateVisible((GizmoRotateECS*)gizmo->rotate_impl, mode == GizmoMode::Rotate);
-    SetGizmoScaleVisible((GizmoScaleECS*)gizmo->scale_impl, mode == GizmoMode::ScaleLocal);
+    SetMoveGizmoVisible((MoveGizmoImpl*)gizmo->move_impl, move_active);
+    SetRotateGizmoVisible((RotateGizmoImpl*)gizmo->rotate_impl, mode == GizmoMode::Rotate);
+    SetScaleGizmoVisible((ScaleGizmoImpl*)gizmo->scale_impl, mode == GizmoMode::ScaleLocal);
 
     // Pause non-active sub-worlds to avoid concurrent rendering/update artifacts
     if (gizmo->move_subworld)
@@ -565,22 +574,22 @@ void UpdateGizmoECS(GizmoECS *gizmo,
     case GizmoMode::MoveWorld:
     case GizmoMode::MoveLocal:
     {
-        UpdateGizmoMoveECS((GizmoMoveECS*)gizmo->move_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
+        UpdateMoveGizmoImpl((MoveGizmoImpl*)gizmo->move_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
         if(gizmo->root_transform)
         {
             math::Vector3f move_pos;
-            if(GetGizmoMovePosition((GizmoMoveECS*)gizmo->move_impl, move_pos))
+            if(GetMoveGizmoPosition((MoveGizmoImpl*)gizmo->move_impl, move_pos))
                 gizmo->root_transform->SetLocalPosition(glm::vec3(move_pos));
         }
         break;
     }
     case GizmoMode::Rotate:
     {
-        UpdateGizmoRotateECS((GizmoRotateECS*)gizmo->rotate_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
+        UpdateRotateGizmoImpl((RotateGizmoImpl*)gizmo->rotate_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
         if(gizmo->root_transform)
         {
-            GizmoRotateECSState state;
-            if(GetGizmoRotateECSState((GizmoRotateECS*)gizmo->rotate_impl, state))
+            RotateGizmoInteractionState state;
+            if(GetRotateGizmoInteractionState((RotateGizmoImpl*)gizmo->rotate_impl, state))
             {
                 if(state.dragging && state.pick_axis >= 0 && state.pick_axis <= 3)
                 {
@@ -625,11 +634,11 @@ void UpdateGizmoECS(GizmoECS *gizmo,
     }
     case GizmoMode::ScaleLocal:
     {
-        UpdateGizmoScaleECS((GizmoScaleECS*)gizmo->scale_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
+        UpdateScaleGizmoImpl((ScaleGizmoImpl*)gizmo->scale_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
         if(gizmo->root_transform)
         {
-            GizmoScaleECSState state;
-            if(GetGizmoScaleECSState((GizmoScaleECS*)gizmo->scale_impl, state))
+            ScaleGizmoInteractionState state;
+            if(GetScaleGizmoInteractionState((ScaleGizmoImpl*)gizmo->scale_impl, state))
             {
                 if(state.dragging && state.pick_axis >= 0)
                 {

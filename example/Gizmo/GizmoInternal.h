@@ -4,11 +4,67 @@
 
 namespace hgl::graph{
 
-struct GizmoMoveECS;
-struct GizmoRotateECS;
-struct GizmoScaleECS;
+using TransformGizmo = GizmoECS;
 
-struct GizmoMoveECSState
+TransformGizmo *CreateTransformGizmo(::hgl::ecs::ECSContext *world,
+                                     const char *name,
+                                     const math::Vector3f &position);
+TransformGizmo *CreateDefaultTransformGizmo(::hgl::ecs::ECSContext *world,
+                                            const char *name,
+                                            const math::Vector3f &position,
+                                            GizmoMode default_mode = GizmoMode::MoveWorld);
+void DestroyTransformGizmo(TransformGizmo *gizmo);
+
+void SetTransformGizmoMode(TransformGizmo *gizmo, GizmoMode mode);
+GizmoMode GetTransformGizmoMode(const TransformGizmo *gizmo);
+
+void SetTransformGizmoVisible(TransformGizmo *gizmo, bool visible);
+bool BindTransformGizmoTargetEntity(TransformGizmo *gizmo, hgl::ecs::Entity *target_entity);
+hgl::ecs::Entity *GetTransformGizmoTargetEntity(const TransformGizmo *gizmo);
+void SetTransformGizmoChangedCallback(TransformGizmo *gizmo, GizmoChangedCallback callback);
+void SetTransformGizmoAllowNegativeScale(TransformGizmo *gizmo, bool enabled);
+bool IsTransformGizmoAllowNegativeScale(const TransformGizmo *gizmo);
+void UpdateTransformGizmo(TransformGizmo *gizmo,
+                          const math::Vector2i &mouse_coord,
+                          const CameraInfo *camera_info,
+                          const ViewportInfo *viewport_info,
+                          ::hgl::ecs::InputSystem *input_system,
+                          bool left_down,
+                          bool left_pressed,
+                          bool left_released);
+
+enum class GizmoColor:uint
+{
+    Black=0,
+    White,
+
+    Red,
+    Green,
+    Blue,
+
+    Yellow,
+
+    ENUM_CLASS_RANGE(Black,Yellow)
+};
+
+enum class GizmoShape:uint
+{
+    Square=0,
+    Circle,
+    Cube,
+    Sphere,
+    Cone,
+    Cylinder,
+    Torus,
+
+    ENUM_CLASS_RANGE(Square,Torus)
+};
+
+struct MoveGizmoImpl;
+struct RotateGizmoImpl;
+struct ScaleGizmoImpl;
+
+struct MoveGizmoInteractionState
 {
     int cur_axis = -1;
     int pick_axis = -1;
@@ -17,7 +73,7 @@ struct GizmoMoveECSState
     float pick_dist = 0.0f;
 };
 
-struct GizmoRotateECSState
+struct RotateGizmoInteractionState
 {
     int cur_axis = -1;
     int pick_axis = -1;
@@ -26,7 +82,7 @@ struct GizmoRotateECSState
     float pick_angle = 0.0f;
 };
 
-struct GizmoScaleECSState
+struct ScaleGizmoInteractionState
 {
     int cur_axis = -1;
     int pick_axis = -1;
@@ -39,46 +95,15 @@ struct GizmoScaleECSState
     float pick_scale_v = 1.0f;
 };
 
-GizmoMoveECS *CreateGizmoMoveECS(::hgl::ecs::World *world,
-                                 const char *name,
-                                 const math::Vector3f &position);
-void DestroyGizmoMoveECS(GizmoMoveECS *gizmo);
-bool GetGizmoMoveECSState(const GizmoMoveECS *gizmo, GizmoMoveECSState &out_state);
-bool GetGizmoMovePosition(const GizmoMoveECS *gizmo, math::Vector3f &out_position);
-void SetGizmoMovePosition(GizmoMoveECS *gizmo, const math::Vector3f &position);
-void SetGizmoMoveRotation(GizmoMoveECS *gizmo, const glm::quat &rotation);
-void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
-                        const math::Vector2i &mouse_coord,
-                        const CameraInfo *camera_info,
-                        const ViewportInfo *viewport_info,
-                        ::hgl::ecs::InputSystem *input_system,
-                        bool left_down,
-                        bool left_pressed,
-                        bool left_released);
-
-GizmoRotateECS *CreateGizmoRotateECS(::hgl::ecs::World *world,
-                                     const char *name,
-                                     const math::Vector3f &position);
-void DestroyGizmoRotateECS(GizmoRotateECS *gizmo);
-bool GetGizmoRotateECSState(const GizmoRotateECS *gizmo, GizmoRotateECSState &out_state);
-void SetGizmoRotatePosition(GizmoRotateECS *gizmo, const math::Vector3f &position);
-void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
-                          const math::Vector2i &mouse_coord,
-                          const CameraInfo *camera_info,
-                          const ViewportInfo *viewport_info,
-                          ::hgl::ecs::InputSystem *input_system,
-                          bool left_down,
-                          bool left_pressed,
-                          bool left_released);
-
-GizmoScaleECS *CreateGizmoScaleECS(::hgl::ecs::World *world,
+MoveGizmoImpl *CreateMoveGizmoImpl(::hgl::ecs::World *world,
                                    const char *name,
                                    const math::Vector3f &position);
-void DestroyGizmoScaleECS(GizmoScaleECS *gizmo);
-bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_state);
-void SetGizmoScalePosition(GizmoScaleECS *gizmo, const math::Vector3f &position);
-void SetGizmoScaleRotation(GizmoScaleECS *gizmo, const glm::quat &rotation);
-void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
+void DestroyMoveGizmoImpl(MoveGizmoImpl *gizmo);
+bool GetMoveGizmoInteractionState(const MoveGizmoImpl *gizmo, MoveGizmoInteractionState &out_state);
+bool GetMoveGizmoPosition(const MoveGizmoImpl *gizmo, math::Vector3f &out_position);
+void SetMoveGizmoPosition(MoveGizmoImpl *gizmo, const math::Vector3f &position);
+void SetMoveGizmoRotation(MoveGizmoImpl *gizmo, const glm::quat &rotation);
+void UpdateMoveGizmoImpl(MoveGizmoImpl *gizmo,
                          const math::Vector2i &mouse_coord,
                          const CameraInfo *camera_info,
                          const ViewportInfo *viewport_info,
@@ -87,8 +112,48 @@ void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
                          bool left_pressed,
                          bool left_released);
 
-void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible);
-void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible);
-void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible);
+RotateGizmoImpl *CreateRotateGizmoImpl(::hgl::ecs::World *world,
+                                       const char *name,
+                                       const math::Vector3f &position);
+void DestroyRotateGizmoImpl(RotateGizmoImpl *gizmo);
+bool GetRotateGizmoInteractionState(const RotateGizmoImpl *gizmo, RotateGizmoInteractionState &out_state);
+void SetRotateGizmoPosition(RotateGizmoImpl *gizmo, const math::Vector3f &position);
+void UpdateRotateGizmoImpl(RotateGizmoImpl *gizmo,
+                           const math::Vector2i &mouse_coord,
+                           const CameraInfo *camera_info,
+                           const ViewportInfo *viewport_info,
+                           ::hgl::ecs::InputSystem *input_system,
+                           bool left_down,
+                           bool left_pressed,
+                           bool left_released);
+
+ScaleGizmoImpl *CreateScaleGizmoImpl(::hgl::ecs::World *world,
+                                     const char *name,
+                                     const math::Vector3f &position);
+void DestroyScaleGizmoImpl(ScaleGizmoImpl *gizmo);
+bool GetScaleGizmoInteractionState(const ScaleGizmoImpl *gizmo, ScaleGizmoInteractionState &out_state);
+void SetScaleGizmoPosition(ScaleGizmoImpl *gizmo, const math::Vector3f &position);
+void SetScaleGizmoRotation(ScaleGizmoImpl *gizmo, const glm::quat &rotation);
+void UpdateScaleGizmoImpl(ScaleGizmoImpl *gizmo,
+                          const math::Vector2i &mouse_coord,
+                          const CameraInfo *camera_info,
+                          const ViewportInfo *viewport_info,
+                          ::hgl::ecs::InputSystem *input_system,
+                          bool left_down,
+                          bool left_pressed,
+                          bool left_released);
+
+void SetMoveGizmoVisible(MoveGizmoImpl *gizmo, bool visible);
+void SetRotateGizmoVisible(RotateGizmoImpl *gizmo, bool visible);
+void SetScaleGizmoVisible(ScaleGizmoImpl *gizmo, bool visible);
+
+bool InitGizmoResource(GraphicsContext *, RenderPass *);
+void FreeGizmoResource();
+bool EnsureGizmoSystemResources(::hgl::ecs::ECSContext *world);
+void ForceReleaseGizmoSystemResources();
+bool IsGizmoSystemResourcesResident();
+
+MaterialInstance *GetGizmoMI3D(const GizmoColor &);
+Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);
 
 }//namespace hgl::graph

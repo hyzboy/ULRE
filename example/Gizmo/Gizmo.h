@@ -30,7 +30,6 @@ namespace hgl::graph{
 // 统一 Gizmo 世界（推荐使用）
 class RenderPass;
 struct GizmoECS;
-using TransformGizmo = GizmoECS;
 
 enum class GizmoMode : int
 {
@@ -58,26 +57,7 @@ using GizmoChangedCallback = std::function<void(const GizmoTransformChange&)>;
 
 /// ============= Unified Gizmo Interface (Recommended for external users) =============
 /// 外部开发者建议只使用以下 Unified/System API。
-/// Move/Rotate/Scale 低层实现细节已转入内部头（GizmoInternal.h）。
-
-TransformGizmo *CreateTransformGizmo(::hgl::ecs::ECSContext *world,
-                                     const char *name,
-                                     const math::Vector3f &position);
-TransformGizmo *CreateDefaultTransformGizmo(::hgl::ecs::ECSContext *world,
-                                            const char *name,
-                                            const math::Vector3f &position,
-                                            GizmoMode default_mode = GizmoMode::MoveWorld);
-void DestroyTransformGizmo(TransformGizmo *gizmo);
-
-void SetTransformGizmoMode(TransformGizmo *gizmo, GizmoMode mode);
-GizmoMode GetTransformGizmoMode(const TransformGizmo *gizmo);
-
-void SetTransformGizmoVisible(TransformGizmo *gizmo, bool visible);
-bool BindTransformGizmoTargetEntity(TransformGizmo *gizmo, hgl::ecs::Entity *target_entity);
-hgl::ecs::Entity *GetTransformGizmoTargetEntity(const TransformGizmo *gizmo);
-void SetTransformGizmoChangedCallback(TransformGizmo *gizmo, GizmoChangedCallback callback);
-void SetTransformGizmoAllowNegativeScale(TransformGizmo *gizmo, bool enabled);
-bool IsTransformGizmoAllowNegativeScale(const TransformGizmo *gizmo);
+/// Move/Rotate/Scale 与资源层细节已转入内部头（GizmoInternal.h）。
 
 class TransformGizmoSystem : public hgl::ecs::System
 {
@@ -112,6 +92,7 @@ public:
 
     void SetDefaultMode(GizmoMode mode) { default_mode = mode; }
     GizmoMode GetDefaultMode() const { return default_mode; }
+    GizmoMode GetCurrentMode() const;
 
     void SetInitialPosition(const math::Vector3f &position) { initial_position = position; }
     const math::Vector3f &GetInitialPosition() const { return initial_position; }
@@ -120,8 +101,6 @@ public:
 
     void SetAllowNegativeScale(bool enabled);
     bool IsAllowNegativeScale() const { return allow_negative_scale; }
-
-    GizmoECS *GetGizmo() const { return gizmo; }
 
 private:
     bool EnsureGizmo();
@@ -169,50 +148,5 @@ private:
     bool EnsureProxyEntity();
     bool EnsureGizmo();
 };
-
-void UpdateTransformGizmo(TransformGizmo *gizmo,
-                         const math::Vector2i &mouse_coord,
-                         const CameraInfo *camera_info,
-                         const ViewportInfo *viewport_info,
-                         ::hgl::ecs::InputSystem *input_system,
-                         bool left_down,
-                         bool left_pressed,
-                         bool left_released);
-
-enum class GizmoColor:uint
-{
-    Black=0,
-    White,
-
-    Red,
-    Green,
-    Blue,
-
-    Yellow,
-
-    ENUM_CLASS_RANGE(Black,Yellow)
-};
-
-enum class GizmoShape:uint
-{
-    Square=0,   //方块
-    Circle,     //圆
-    Cube,       //立方体
-    Sphere,     //球
-    Cone,       //圆锥
-    Cylinder,   //圆柱
-    Torus,      //圆环
-
-    ENUM_CLASS_RANGE(Square,Torus)
-};
-
-bool InitGizmoResource(GraphicsContext *, RenderPass *);
-void FreeGizmoResource();
-bool EnsureGizmoSystemResources(::hgl::ecs::ECSContext *world);
-void ForceReleaseGizmoSystemResources();
-bool IsGizmoSystemResourcesResident();
-
-MaterialInstance *GetGizmoMI3D(const GizmoColor &);
-Primitive *GetGizmoMeshPrimitive(const GizmoShape &shape);
 
 }//namespace hgl::graph

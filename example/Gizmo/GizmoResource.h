@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include"Gizmo.h"
+#include"GizmoInternal.h"
 #include<hgl/color/Color.h>
 
 namespace hgl::graph{

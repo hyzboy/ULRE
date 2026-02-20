@@ -43,7 +43,7 @@
 
 namespace hgl::graph{
 
-struct GizmoScaleECS
+struct ScaleGizmoImpl
 {
     hgl::ecs::World *world = nullptr;
     hgl::ecs::Entity *root = nullptr;
@@ -126,7 +126,7 @@ namespace
     constexpr float PLANE_SCALE_SENSITIVITY = 0.35f;
     constexpr float PLANE_SCALE_MIN_REF = 4.0f;
 
-    void ApplyAxisMaterials(GizmoScaleECS *gizmo)
+    void ApplyAxisMaterials(ScaleGizmoImpl *gizmo)
     {
         if(!gizmo)
             return;
@@ -147,7 +147,7 @@ namespace
         }
     }
 
-    bool CreateAxisEntities(GizmoScaleECS *gizmo, Primitive *cylinder, Primitive *cube, Primitive *square)
+    bool CreateAxisEntities(ScaleGizmoImpl *gizmo, Primitive *cylinder, Primitive *cube, Primitive *square)
     {
         if(!gizmo || !gizmo->world || !gizmo->root)
             return false;
@@ -243,14 +243,14 @@ namespace
     }
 }
 
-GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::World *world,
-                                    const char *name,
-                                    const math::Vector3f &position)
+ScaleGizmoImpl *CreateScaleGizmoImpl(hgl::ecs::World *world,
+                                     const char *name,
+                                     const math::Vector3f &position)
 {
     if(!world)
         return nullptr;
 
-    auto *gizmo = new GizmoScaleECS;
+    auto *gizmo = new ScaleGizmoImpl;
     gizmo->world = world;
     gizmo->pick_mi = GetGizmoMI3D(GizmoColor::Yellow);
 
@@ -277,7 +277,7 @@ GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::World *world,
 
     if(!center_cube || !cylinder || !cube || !square)
     {
-        DestroyGizmoScaleECS(gizmo);
+        DestroyScaleGizmoImpl(gizmo);
         return nullptr;
     }
 
@@ -286,7 +286,7 @@ GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::World *world,
         auto entity = world->CreateEntity<hgl::ecs::Entity>("GizmoScale_CenterCube");
         if(!entity)
         {
-            DestroyGizmoScaleECS(gizmo);
+            DestroyScaleGizmoImpl(gizmo);
             return nullptr;
         }
 
@@ -306,14 +306,14 @@ GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::World *world,
 
     if(!CreateAxisEntities(gizmo, cylinder, cube, square))
     {
-        DestroyGizmoScaleECS(gizmo);
+        DestroyScaleGizmoImpl(gizmo);
         return nullptr;
     }
 
     return gizmo;
 }
 
-void DestroyGizmoScaleECS(GizmoScaleECS *gizmo)
+void DestroyScaleGizmoImpl(ScaleGizmoImpl *gizmo)
 {
     if(!gizmo)
         return;
@@ -330,7 +330,7 @@ void DestroyGizmoScaleECS(GizmoScaleECS *gizmo)
     delete gizmo;
 }
 
-bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_state)
+bool GetScaleGizmoInteractionState(const ScaleGizmoImpl *gizmo, ScaleGizmoInteractionState &out_state)
 {
     if(!gizmo)
         return false;
@@ -348,7 +348,7 @@ bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_s
     return true;
 }
 
-void SetGizmoScalePosition(GizmoScaleECS *gizmo, const math::Vector3f &position)
+void SetScaleGizmoPosition(ScaleGizmoImpl *gizmo, const math::Vector3f &position)
 {
     if(!gizmo || !gizmo->root_transform)
         return;
@@ -356,7 +356,7 @@ void SetGizmoScalePosition(GizmoScaleECS *gizmo, const math::Vector3f &position)
     gizmo->root_transform->SetLocalPosition(glm::vec3(position));
 }
 
-void SetGizmoScaleRotation(GizmoScaleECS *gizmo, const glm::quat &rotation)
+void SetScaleGizmoRotation(ScaleGizmoImpl *gizmo, const glm::quat &rotation)
 {
     if(!gizmo || !gizmo->root_transform)
         return;
@@ -364,7 +364,7 @@ void SetGizmoScaleRotation(GizmoScaleECS *gizmo, const glm::quat &rotation)
     gizmo->root_transform->SetLocalRotation(rotation);
 }
 
-void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible)
+void SetScaleGizmoVisible(ScaleGizmoImpl *gizmo, bool visible)
 {
     if(!gizmo || !gizmo->world)
         return;
@@ -391,14 +391,14 @@ void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible)
     }
 }
 
-void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
-                         const math::Vector2i &mouse_coord,
-                         const graph::CameraInfo *camera_info,
-                         const graph::ViewportInfo *viewport_info,
-                         hgl::ecs::InputSystem *input_system,
-                         bool left_down,
-                         bool left_pressed,
-                         bool left_released)
+void UpdateScaleGizmoImpl(ScaleGizmoImpl *gizmo,
+                          const math::Vector2i &mouse_coord,
+                          const graph::CameraInfo *camera_info,
+                          const graph::ViewportInfo *viewport_info,
+                          hgl::ecs::InputSystem *input_system,
+                          bool left_down,
+                          bool left_pressed,
+                          bool left_released)
 {
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;

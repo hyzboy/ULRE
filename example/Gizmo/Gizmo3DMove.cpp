@@ -43,7 +43,7 @@
 
 namespace hgl::graph{
 
-struct GizmoMoveECS
+struct MoveGizmoImpl
 {
     hgl::ecs::World *world = nullptr;
     hgl::ecs::Entity *root = nullptr;
@@ -106,7 +106,7 @@ namespace
         return glm::normalize(math::Vector3f(v.x, v.y, v.z));
     }
 
-    void ApplyAxisMaterials(GizmoMoveECS *gizmo)
+    void ApplyAxisMaterials(MoveGizmoImpl *gizmo)
     {
         if(!gizmo)
             return;
@@ -127,7 +127,7 @@ namespace
         }
     }
 
-    bool CreateAxisEntities(GizmoMoveECS *gizmo, Primitive *cylinder, Primitive *cone, Primitive *square)
+    bool CreateAxisEntities(MoveGizmoImpl *gizmo, Primitive *cylinder, Primitive *cone, Primitive *square)
     {
         if(!gizmo || !gizmo->world || !gizmo->root)
             return false;
@@ -220,14 +220,14 @@ namespace
     }
 }
 
-GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::World *world,
-                                 const char *name,
-                                 const math::Vector3f &position)
+MoveGizmoImpl *CreateMoveGizmoImpl(hgl::ecs::World *world,
+                                   const char *name,
+                                   const math::Vector3f &position)
 {
     if(!world)
         return nullptr;
 
-    auto *gizmo = new GizmoMoveECS;
+    auto *gizmo = new MoveGizmoImpl;
     gizmo->world = world;
     gizmo->pick_mi = GetGizmoMI3D(GizmoColor::Yellow);
 
@@ -254,7 +254,7 @@ GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::World *world,
 
     if(!sphere || !cylinder || !cone || !square)
     {
-        DestroyGizmoMoveECS(gizmo);
+        DestroyMoveGizmoImpl(gizmo);
         return nullptr;
     }
 
@@ -262,7 +262,7 @@ GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::World *world,
         auto entity = world->CreateEntity<hgl::ecs::Entity>("GizmoMove_Sphere");
         if(!entity)
         {
-            DestroyGizmoMoveECS(gizmo);
+            DestroyMoveGizmoImpl(gizmo);
             return nullptr;
         }
 
@@ -279,14 +279,14 @@ GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::World *world,
 
     if(!CreateAxisEntities(gizmo, cylinder, cone, square))
     {
-        DestroyGizmoMoveECS(gizmo);
+        DestroyMoveGizmoImpl(gizmo);
         return nullptr;
     }
 
     return gizmo;
 }
 
-void DestroyGizmoMoveECS(GizmoMoveECS *gizmo)
+void DestroyMoveGizmoImpl(MoveGizmoImpl *gizmo)
 {
     if(!gizmo)
         return;
@@ -303,7 +303,7 @@ void DestroyGizmoMoveECS(GizmoMoveECS *gizmo)
     delete gizmo;
 }
 
-bool GetGizmoMoveECSState(const GizmoMoveECS *gizmo, GizmoMoveECSState &out_state)
+bool GetMoveGizmoInteractionState(const MoveGizmoImpl *gizmo, MoveGizmoInteractionState &out_state)
 {
     if(!gizmo)
         return false;
@@ -317,7 +317,7 @@ bool GetGizmoMoveECSState(const GizmoMoveECS *gizmo, GizmoMoveECSState &out_stat
     return true;
 }
 
-bool GetGizmoMovePosition(const GizmoMoveECS *gizmo, math::Vector3f &out_position)
+bool GetMoveGizmoPosition(const MoveGizmoImpl *gizmo, math::Vector3f &out_position)
 {
     if(!gizmo || !gizmo->root_transform)
         return false;
@@ -326,7 +326,7 @@ bool GetGizmoMovePosition(const GizmoMoveECS *gizmo, math::Vector3f &out_positio
     return true;
 }
 
-void SetGizmoMovePosition(GizmoMoveECS *gizmo, const math::Vector3f &position)
+void SetMoveGizmoPosition(MoveGizmoImpl *gizmo, const math::Vector3f &position)
 {
     if(!gizmo || !gizmo->root_transform)
         return;
@@ -334,7 +334,7 @@ void SetGizmoMovePosition(GizmoMoveECS *gizmo, const math::Vector3f &position)
     gizmo->root_transform->SetLocalPosition(glm::vec3(position));
 }
 
-void SetGizmoMoveRotation(GizmoMoveECS *gizmo, const glm::quat &rotation)
+void SetMoveGizmoRotation(MoveGizmoImpl *gizmo, const glm::quat &rotation)
 {
     if(!gizmo || !gizmo->root_transform)
         return;
@@ -342,7 +342,7 @@ void SetGizmoMoveRotation(GizmoMoveECS *gizmo, const glm::quat &rotation)
     gizmo->root_transform->SetLocalRotation(rotation);
 }
 
-void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible)
+void SetMoveGizmoVisible(MoveGizmoImpl *gizmo, bool visible)
 {
     if(!gizmo || !gizmo->world)
         return;
@@ -369,14 +369,14 @@ void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible)
     }
 }
 
-void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
-                        const math::Vector2i &mouse_coord,
-                        const graph::CameraInfo *camera_info,
-                        const graph::ViewportInfo *viewport_info,
-                        hgl::ecs::InputSystem *input_system,
-                        bool left_down,
-                        bool left_pressed,
-                        bool left_released)
+void UpdateMoveGizmoImpl(MoveGizmoImpl *gizmo,
+                         const math::Vector2i &mouse_coord,
+                         const graph::CameraInfo *camera_info,
+                         const graph::ViewportInfo *viewport_info,
+                         hgl::ecs::InputSystem *input_system,
+                         bool left_down,
+                         bool left_pressed,
+                         bool left_released)
 {
     if(!gizmo || !gizmo->root_transform || !camera_info || !viewport_info)
         return;

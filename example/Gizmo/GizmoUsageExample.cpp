@@ -274,11 +274,7 @@ private:
         if(!input_system || !gizmo_system)
             return;
 
-        auto *gizmo = gizmo_system->GetGizmo();
-        if(!gizmo)
-            return;
-
-        GizmoMode mode = GetTransformGizmoMode(gizmo);
+        GizmoMode mode = gizmo_system->GetCurrentMode();
         std::string text = "mode=";
         if(mode == GizmoMode::MoveWorld)
             text += "MoveWorld(1)";
