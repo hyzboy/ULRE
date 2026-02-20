@@ -29,7 +29,7 @@ private:
     hgl::ecs::Entity *camera_entity = nullptr;
 
     std::shared_ptr<hgl::ecs::EnvironmentSystem> environment_system;
-    std::shared_ptr<hgl::graph::SunDirectionGizmoSystem> sun_gizmo_system;
+    std::shared_ptr<hgl::graph::SunDirectionControlSystem> sun_gizmo_system;
 
     Pipeline *mtl_pipeline = nullptr;
     Geometry *prim_sky_sphere = nullptr;
@@ -188,9 +188,9 @@ private:
             environment_system->SyncSkyUBO();
         }
 
-        sun_gizmo_system = ecs_world->GetSystem<hgl::graph::SunDirectionGizmoSystem>();
+        sun_gizmo_system = ecs_world->GetSystem<hgl::graph::SunDirectionControlSystem>();
         if (!sun_gizmo_system)
-            sun_gizmo_system = ecs_world->RegisterTickSystem<hgl::graph::SunDirectionGizmoSystem>();
+            sun_gizmo_system = ecs_world->RegisterTickSystem<hgl::graph::SunDirectionControlSystem>();
 
         if (!sun_gizmo_system)
             return false;

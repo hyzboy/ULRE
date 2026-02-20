@@ -7,7 +7,7 @@
 */
 
 #include"GizmoResource.h"
-#include"Gizmo.h"
+#include"GizmoInternal.h"
 
 // ECS
 #include<hgl/ecs/core/World.h>

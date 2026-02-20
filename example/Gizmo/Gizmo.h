@@ -27,13 +27,10 @@ namespace hgl
 
 namespace hgl::graph{
 
-struct GizmoMoveECS;
-struct GizmoRotateECS;
-struct GizmoScaleECS;
-
 // 统一 Gizmo 世界（推荐使用）
 class RenderPass;
 struct GizmoECS;
+using TransformGizmo = GizmoECS;
 
 enum class GizmoMode : int
 {
@@ -59,102 +56,30 @@ struct GizmoTransformChange
 
 using GizmoChangedCallback = std::function<void(const GizmoTransformChange&)>;
 
-struct GizmoMoveECSState
-{
-    int cur_axis = -1;
-    int pick_axis = -1;
-    bool dragging = false;
-    float cur_dist = 0.0f;
-    float pick_dist = 0.0f;
-};
+/// ============= Unified Gizmo Interface (Recommended for external users) =============
+/// 外部开发者建议只使用以下 Unified/System API。
+/// Move/Rotate/Scale 低层实现细节已转入内部头（GizmoInternal.h）。
 
-struct GizmoRotateECSState
-{
-    int cur_axis = -1;
-    int pick_axis = -1;
-    bool dragging = false;
-    float cur_angle = 0.0f;
-    float pick_angle = 0.0f;
-};
+TransformGizmo *CreateTransformGizmo(::hgl::ecs::ECSContext *world,
+                                     const char *name,
+                                     const math::Vector3f &position);
+TransformGizmo *CreateDefaultTransformGizmo(::hgl::ecs::ECSContext *world,
+                                            const char *name,
+                                            const math::Vector3f &position,
+                                            GizmoMode default_mode = GizmoMode::MoveWorld);
+void DestroyTransformGizmo(TransformGizmo *gizmo);
 
-struct GizmoScaleECSState
-{
-    int cur_axis = -1;
-    int pick_axis = -1;
-    bool dragging = false;
-    float cur_scale = 1.0f;
-    float pick_scale = 1.0f;
-    float cur_scale_u = 1.0f;
-    float cur_scale_v = 1.0f;
-    float pick_scale_u = 1.0f;
-    float pick_scale_v = 1.0f;
-};
+void SetTransformGizmoMode(TransformGizmo *gizmo, GizmoMode mode);
+GizmoMode GetTransformGizmoMode(const TransformGizmo *gizmo);
 
-GizmoMoveECS *CreateGizmoMoveECS(::hgl::ecs::World *world,
-                                 const char *name,
-                                 const math::Vector3f &position);
-void DestroyGizmoMoveECS(GizmoMoveECS *gizmo);
-bool GetGizmoMoveECSState(const GizmoMoveECS *gizmo, GizmoMoveECSState &out_state);
-void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
-                        const math::Vector2i &mouse_coord,
-                        const CameraInfo *camera_info,
-                        const ViewportInfo *viewport_info,
-                        ::hgl::ecs::InputSystem *input_system,
-                        bool left_down,
-                        bool left_pressed,
-                        bool left_released);
+void SetTransformGizmoVisible(TransformGizmo *gizmo, bool visible);
+bool BindTransformGizmoTargetEntity(TransformGizmo *gizmo, hgl::ecs::Entity *target_entity);
+hgl::ecs::Entity *GetTransformGizmoTargetEntity(const TransformGizmo *gizmo);
+void SetTransformGizmoChangedCallback(TransformGizmo *gizmo, GizmoChangedCallback callback);
+void SetTransformGizmoAllowNegativeScale(TransformGizmo *gizmo, bool enabled);
+bool IsTransformGizmoAllowNegativeScale(const TransformGizmo *gizmo);
 
-GizmoRotateECS *CreateGizmoRotateECS(::hgl::ecs::World *world,
-                                      const char *name,
-                                      const math::Vector3f &position);
-void DestroyGizmoRotateECS(GizmoRotateECS *gizmo);
-bool GetGizmoRotateECSState(const GizmoRotateECS *gizmo, GizmoRotateECSState &out_state);
-void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
-                          const math::Vector2i &mouse_coord,
-                          const CameraInfo *camera_info,
-                          const ViewportInfo *viewport_info,
-                          ::hgl::ecs::InputSystem *input_system,
-                          bool left_down,
-                          bool left_pressed,
-                          bool left_released);
-
-GizmoScaleECS *CreateGizmoScaleECS(::hgl::ecs::World *world,
-                                    const char *name,
-                                    const math::Vector3f &position);
-void DestroyGizmoScaleECS(GizmoScaleECS *gizmo);
-bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_state);
-void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
-                         const math::Vector2i &mouse_coord,
-                         const CameraInfo *camera_info,
-                         const ViewportInfo *viewport_info,
-                         ::hgl::ecs::InputSystem *input_system,
-                         bool left_down,
-                         bool left_pressed,
-                         bool left_released);
-
-/// ============= Unified Gizmo Interface (Recommended) =============
-
-GizmoECS *CreateGizmoECS(::hgl::ecs::ECSContext *world,
-                         const char *name,
-                         const math::Vector3f &position);
-GizmoECS *CreateDefaultGizmo(::hgl::ecs::ECSContext *world,
-                             const char *name,
-                             const math::Vector3f &position,
-                             GizmoMode default_mode = GizmoMode::MoveWorld);
-void DestroyGizmoECS(GizmoECS *gizmo);
-
-void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode);
-GizmoMode GetGizmoMode(const GizmoECS *gizmo);
-
-void SetGizmoVisible(GizmoECS *gizmo, bool visible);
-hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo);
-bool BindGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity);
-hgl::ecs::Entity *GetGizmoTargetEntity(const GizmoECS *gizmo);
-void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback);
-void SetGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled);
-bool IsGizmoAllowNegativeScale(const GizmoECS *gizmo);
-
-class GizmoSystem : public hgl::ecs::System
+class TransformGizmoSystem : public hgl::ecs::System
 {
 private:
     GizmoECS *gizmo = nullptr;
@@ -171,8 +96,8 @@ private:
     bool last_key_4 = false;
 
 public:
-    GizmoSystem();
-    ~GizmoSystem() override;
+    TransformGizmoSystem();
+    ~TransformGizmoSystem() override;
 
     void Initialize() override;
     void Shutdown() override;
@@ -204,7 +129,7 @@ private:
     bool allow_negative_scale = true;
 };
 
-class SunDirectionGizmoSystem : public hgl::ecs::System
+class SunDirectionControlSystem : public hgl::ecs::System
 {
 private:
     GizmoECS *gizmo = nullptr;
@@ -219,8 +144,8 @@ private:
     bool resource_registered = false;
 
 public:
-    SunDirectionGizmoSystem();
-    ~SunDirectionGizmoSystem() override;
+    SunDirectionControlSystem();
+    ~SunDirectionControlSystem() override;
 
     void Initialize() override;
     void Shutdown() override;
@@ -245,18 +170,14 @@ private:
     bool EnsureGizmo();
 };
 
-void UpdateGizmoECS(GizmoECS *gizmo,
-                    const math::Vector2i &mouse_coord,
-                    const CameraInfo *camera_info,
-                    const ViewportInfo *viewport_info,
-                    ::hgl::ecs::InputSystem *input_system,
-                    bool left_down,
-                    bool left_pressed,
-                    bool left_released);
-
-void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible);
-void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible);
-void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible);
+void UpdateTransformGizmo(TransformGizmo *gizmo,
+                         const math::Vector2i &mouse_coord,
+                         const CameraInfo *camera_info,
+                         const ViewportInfo *viewport_info,
+                         ::hgl::ecs::InputSystem *input_system,
+                         bool left_down,
+                         bool left_pressed,
+                         bool left_released);
 
 enum class GizmoColor:uint
 {

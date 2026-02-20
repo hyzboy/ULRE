@@ -45,7 +45,7 @@ private:
     hgl::ecs::Entity *plane_entity = nullptr;
     hgl::ecs::Entity *cube_entity = nullptr;
 
-    std::shared_ptr<GizmoSystem> gizmo_system;
+    std::shared_ptr<TransformGizmoSystem> gizmo_system;
 
     Material *grid_material = nullptr;
     MaterialInstance *grid_mi = nullptr;
@@ -255,9 +255,9 @@ private:
         if(!ecs_world)
             return false;
 
-        gizmo_system = ecs_world->GetSystem<GizmoSystem>();
+        gizmo_system = ecs_world->GetSystem<TransformGizmoSystem>();
         if(!gizmo_system)
-            gizmo_system = ecs_world->RegisterTickSystem<GizmoSystem>();
+            gizmo_system = ecs_world->RegisterTickSystem<TransformGizmoSystem>();
 
         if(!gizmo_system)
             return false;
@@ -278,7 +278,7 @@ private:
         if(!gizmo)
             return;
 
-        GizmoMode mode = GetGizmoMode(gizmo);
+        GizmoMode mode = GetTransformGizmoMode(gizmo);
         std::string text = "mode=";
         if(mode == GizmoMode::MoveWorld)
             text += "MoveWorld(1)";

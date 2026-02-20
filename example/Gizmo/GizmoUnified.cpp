@@ -10,6 +10,7 @@
 */
 
 #include"Gizmo.h"
+#include"GizmoInternal.h"
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
@@ -80,6 +81,28 @@ struct GizmoECS
     hgl::ecs::Entity* target_entity = nullptr;
     GizmoChangedCallback on_changed;
 };
+
+// Legacy internal entry points (implementation body kept unchanged).
+GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
+                         const char *name,
+                         const math::Vector3f &position);
+void DestroyGizmoECS(GizmoECS *gizmo);
+void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode);
+GizmoMode GetGizmoMode(const GizmoECS *gizmo);
+void SetGizmoVisible(GizmoECS *gizmo, bool visible);
+bool BindGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity);
+hgl::ecs::Entity *GetGizmoTargetEntity(const GizmoECS *gizmo);
+void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback);
+void SetGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled);
+bool IsGizmoAllowNegativeScale(const GizmoECS *gizmo);
+void UpdateGizmoECS(GizmoECS *gizmo,
+                    const math::Vector2i &mouse_coord,
+                    const CameraInfo *camera_info,
+                    const ViewportInfo *viewport_info,
+                    hgl::ecs::InputSystem *input_system,
+                    bool left_down,
+                    bool left_pressed,
+                    bool left_released);
 
 static void SyncAllSubGizmoTransforms(GizmoECS *gizmo);
 
@@ -153,59 +176,6 @@ static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
         SyncAllSubGizmoTransforms(gizmo);
     }
 }
-
-// Forward declare the internal gizmo functions
-extern GizmoMoveECS *CreateGizmoMoveECS(hgl::ecs::World *world,
-                                        const char *name,
-                                        const math::Vector3f &position);
-extern void DestroyGizmoMoveECS(GizmoMoveECS *gizmo);
-extern void UpdateGizmoMoveECS(GizmoMoveECS *gizmo,
-                                const math::Vector2i &mouse_coord,
-                                const CameraInfo *camera_info,
-                                const ViewportInfo *viewport_info,
-                                hgl::ecs::InputSystem *input_system,
-                                bool left_down,
-                                bool left_pressed,
-                                bool left_released);
-extern bool GetGizmoMoveECSState(const GizmoMoveECS *gizmo, GizmoMoveECSState &out_state);
-extern bool GetGizmoMovePosition(const GizmoMoveECS *gizmo, math::Vector3f &out_position);
-extern void SetGizmoMovePosition(GizmoMoveECS *gizmo, const math::Vector3f &position);
-extern void SetGizmoMoveRotation(GizmoMoveECS *gizmo, const glm::quat &rotation);
-
-extern GizmoRotateECS *CreateGizmoRotateECS(hgl::ecs::World *world,
-                                            const char *name,
-                                            const math::Vector3f &position);
-extern void DestroyGizmoRotateECS(GizmoRotateECS *gizmo);
-extern void UpdateGizmoRotateECS(GizmoRotateECS *gizmo,
-                                    const math::Vector2i &mouse_coord,
-                                    const CameraInfo *camera_info,
-                                    const ViewportInfo *viewport_info,
-                                    hgl::ecs::InputSystem *input_system,
-                                    bool left_down,
-                                    bool left_pressed,
-                                    bool left_released);
-extern bool GetGizmoRotateECSState(const GizmoRotateECS *gizmo, GizmoRotateECSState &out_state);
-extern void SetGizmoRotatePosition(GizmoRotateECS *gizmo, const math::Vector3f &position);
-
-extern GizmoScaleECS *CreateGizmoScaleECS(hgl::ecs::World *world,
-                                            const char *name,
-                                            const math::Vector3f &position);
-extern void DestroyGizmoScaleECS(GizmoScaleECS *gizmo);
-extern void UpdateGizmoScaleECS(GizmoScaleECS *gizmo,
-                                const math::Vector2i &mouse_coord,
-                                const CameraInfo *camera_info,
-                                const ViewportInfo *viewport_info,
-                                hgl::ecs::InputSystem *input_system,
-                                bool left_down,
-                                bool left_pressed,
-                                bool left_released);
-extern bool GetGizmoScaleECSState(const GizmoScaleECS *gizmo, GizmoScaleECSState &out_state);
-extern void SetGizmoScalePosition(GizmoScaleECS *gizmo, const math::Vector3f &position);
-extern void SetGizmoScaleRotation(GizmoScaleECS *gizmo, const glm::quat &rotation);
-
-extern void SetGizmoMoveVisible(GizmoMoveECS *gizmo, bool visible);
-extern void SetGizmoRotateVisible(GizmoRotateECS *gizmo, bool visible);
-extern void SetGizmoScaleVisible(GizmoScaleECS *gizmo, bool visible);
 
 static void SyncAllSubGizmoTransforms(GizmoECS *gizmo)
 {
@@ -501,7 +471,7 @@ void SetGizmoVisible(GizmoECS *gizmo, bool visible)
     }
 }
 
-hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo)
+static hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo)
 {
     return gizmo ? gizmo->root : nullptr;
 }
@@ -851,20 +821,20 @@ namespace
     }
 }
 
-GizmoSystem::GizmoSystem()
-    : hgl::ecs::System("GizmoSystem")
+TransformGizmoSystem::TransformGizmoSystem()
+    : hgl::ecs::System("TransformGizmoSystem")
 {
     SetExecutionOrder(hgl::ecs::ExecutionPhase::TickCamera, hgl::ecs::ExecutionPriority::Last);
     AddDependency<hgl::ecs::InputSystem>();
     AddDependency<hgl::ecs::CameraSystem>();
 }
 
-GizmoSystem::~GizmoSystem()
+TransformGizmoSystem::~TransformGizmoSystem()
 {
     Shutdown();
 }
 
-void GizmoSystem::Initialize()
+void TransformGizmoSystem::Initialize()
 {
     if (!resource_registered)
     {
@@ -876,7 +846,7 @@ void GizmoSystem::Initialize()
     EnsureGizmo();
 }
 
-void GizmoSystem::Shutdown()
+void TransformGizmoSystem::Shutdown()
 {
     if (gizmo)
     {
@@ -898,7 +868,7 @@ void GizmoSystem::Shutdown()
     }
 }
 
-bool GizmoSystem::EnsureGizmo()
+bool TransformGizmoSystem::EnsureGizmo()
 {
     if (gizmo)
         return true;
@@ -932,7 +902,7 @@ bool GizmoSystem::EnsureGizmo()
     return true;
 }
 
-bool GizmoSystem::SetTargetEntity(hgl::ecs::Entity *entity)
+bool TransformGizmoSystem::SetTargetEntity(hgl::ecs::Entity *entity)
 {
     target_entity = entity;
 
@@ -942,7 +912,7 @@ bool GizmoSystem::SetTargetEntity(hgl::ecs::Entity *entity)
     return BindGizmoTargetEntity(gizmo, target_entity);
 }
 
-bool GizmoSystem::SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformComponent> &transform)
+bool TransformGizmoSystem::SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformComponent> &transform)
 {
     if (!transform)
         return SetTargetEntity(nullptr);
@@ -950,21 +920,21 @@ bool GizmoSystem::SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformCo
     return SetTargetEntity(transform->GetOwner());
 }
 
-void GizmoSystem::SetChangedCallback(GizmoChangedCallback callback)
+void TransformGizmoSystem::SetChangedCallback(GizmoChangedCallback callback)
 {
     changed_callback = std::move(callback);
     if (gizmo)
         SetGizmoChangedCallback(gizmo, changed_callback);
 }
 
-void GizmoSystem::SetAllowNegativeScale(bool enabled)
+void TransformGizmoSystem::SetAllowNegativeScale(bool enabled)
 {
     allow_negative_scale = enabled;
     if (gizmo)
         SetGizmoAllowNegativeScale(gizmo, enabled);
 }
 
-void GizmoSystem::Update(float)
+void TransformGizmoSystem::Update(float)
 {
     if (!context)
         return;
@@ -1032,20 +1002,20 @@ void GizmoSystem::Update(float)
                    left_released);
 }
 
-SunDirectionGizmoSystem::SunDirectionGizmoSystem()
-    : hgl::ecs::System("SunDirectionGizmoSystem")
+SunDirectionControlSystem::SunDirectionControlSystem()
+    : hgl::ecs::System("SunDirectionControlSystem")
 {
     SetExecutionOrder(hgl::ecs::ExecutionPhase::TickCamera, hgl::ecs::ExecutionPriority::Last);
     AddDependency<hgl::ecs::InputSystem>();
     AddDependency<hgl::ecs::CameraSystem>();
 }
 
-SunDirectionGizmoSystem::~SunDirectionGizmoSystem()
+SunDirectionControlSystem::~SunDirectionControlSystem()
 {
     Shutdown();
 }
 
-bool SunDirectionGizmoSystem::EnsureEnvironment()
+bool SunDirectionControlSystem::EnsureEnvironment()
 {
     if (!context)
         return false;
@@ -1061,7 +1031,7 @@ bool SunDirectionGizmoSystem::EnsureEnvironment()
     return environment_system != nullptr;
 }
 
-bool SunDirectionGizmoSystem::EnsureProxyEntity()
+bool SunDirectionControlSystem::EnsureProxyEntity()
 {
     if (!context)
         return false;
@@ -1084,7 +1054,7 @@ bool SunDirectionGizmoSystem::EnsureProxyEntity()
     return true;
 }
 
-bool SunDirectionGizmoSystem::EnsureGizmo()
+bool SunDirectionControlSystem::EnsureGizmo()
 {
     if (gizmo)
         return true;
@@ -1102,7 +1072,7 @@ bool SunDirectionGizmoSystem::EnsureGizmo()
     return true;
 }
 
-void SunDirectionGizmoSystem::Initialize()
+void SunDirectionControlSystem::Initialize()
 {
     if (!resource_registered)
     {
@@ -1136,7 +1106,7 @@ void SunDirectionGizmoSystem::Initialize()
     }
 }
 
-void SunDirectionGizmoSystem::Shutdown()
+void SunDirectionControlSystem::Shutdown()
 {
     if (gizmo)
     {
@@ -1163,13 +1133,13 @@ void SunDirectionGizmoSystem::Shutdown()
         g_gizmo_resident_state.standby = true;
 }
 
-void SunDirectionGizmoSystem::SetGizmoVisible(bool visible)
+void SunDirectionControlSystem::SetGizmoVisible(bool visible)
 {
     if (gizmo)
         hgl::graph::SetGizmoVisible(gizmo, visible);
 }
 
-void SunDirectionGizmoSystem::Update(float)
+void SunDirectionControlSystem::Update(float)
 {
     if (!context)
         return;
@@ -1248,6 +1218,85 @@ void SunDirectionGizmoSystem::Update(float)
             environment_system->MarkSkyDirty();
         }
     }
+}
+
+TransformGizmo *CreateTransformGizmo(hgl::ecs::ECSContext *world,
+                                     const char *name,
+                                     const math::Vector3f &position)
+{
+    return CreateGizmoECS(world, name, position);
+}
+
+TransformGizmo *CreateDefaultTransformGizmo(hgl::ecs::ECSContext *world,
+                                            const char *name,
+                                            const math::Vector3f &position,
+                                            GizmoMode default_mode)
+{
+    return CreateDefaultGizmo(world, name, position, default_mode);
+}
+
+void DestroyTransformGizmo(TransformGizmo *gizmo)
+{
+    DestroyGizmoECS(gizmo);
+}
+
+void SetTransformGizmoMode(TransformGizmo *gizmo, GizmoMode mode)
+{
+    SetGizmoMode(gizmo, mode);
+}
+
+GizmoMode GetTransformGizmoMode(const TransformGizmo *gizmo)
+{
+    return GetGizmoMode(gizmo);
+}
+
+void SetTransformGizmoVisible(TransformGizmo *gizmo, bool visible)
+{
+    SetGizmoVisible(gizmo, visible);
+}
+
+bool BindTransformGizmoTargetEntity(TransformGizmo *gizmo, hgl::ecs::Entity *target_entity)
+{
+    return BindGizmoTargetEntity(gizmo, target_entity);
+}
+
+hgl::ecs::Entity *GetTransformGizmoTargetEntity(const TransformGizmo *gizmo)
+{
+    return GetGizmoTargetEntity(gizmo);
+}
+
+void SetTransformGizmoChangedCallback(TransformGizmo *gizmo, GizmoChangedCallback callback)
+{
+    SetGizmoChangedCallback(gizmo, std::move(callback));
+}
+
+void SetTransformGizmoAllowNegativeScale(TransformGizmo *gizmo, bool enabled)
+{
+    SetGizmoAllowNegativeScale(gizmo, enabled);
+}
+
+bool IsTransformGizmoAllowNegativeScale(const TransformGizmo *gizmo)
+{
+    return IsGizmoAllowNegativeScale(gizmo);
+}
+
+void UpdateTransformGizmo(TransformGizmo *gizmo,
+                         const math::Vector2i &mouse_coord,
+                         const CameraInfo *camera_info,
+                         const ViewportInfo *viewport_info,
+                         hgl::ecs::InputSystem *input_system,
+                         bool left_down,
+                         bool left_pressed,
+                         bool left_released)
+{
+    UpdateGizmoECS(gizmo,
+                   mouse_coord,
+                   camera_info,
+                   viewport_info,
+                   input_system,
+                   left_down,
+                   left_pressed,
+                   left_released);
 }
 
 }//namespace hgl::graph
