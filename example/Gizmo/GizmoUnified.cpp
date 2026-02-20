@@ -1,12 +1,12 @@
-﻿/*
- 统一 Gizmo 世界 - 通过 SubWorldComponent 管理三个 Gizmo 子世界
+/*
+ 统一 Gizmo 架构 - 通过 SubWorldComponent 管理三个 Gizmo 子世界
 
  结构：
      Main World
-         └─ GizmoECS (root)
-                ├─ Move (SubWorld)
-                ├─ Rotate (SubWorld)
-                └─ Scale (SubWorld)
+         └── GizmoECS (root)
+                ├── Move (SubWorld)
+                ├── Rotate (SubWorld)
+                └── Scale (SubWorld)
 */
 
 #include"Gizmo.h"
@@ -49,7 +49,7 @@ struct GizmoECS
     hgl::ecs::Entity* root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
 
-    // 三个子 Gizmo 的管理指针（内部实现使用）
+    // 保存各个 Gizmo 的内部指针（内部实现使用）
     void* move_impl = nullptr;     // MoveGizmoImpl*
     void* rotate_impl = nullptr;   // RotateGizmoImpl*
     void* scale_impl = nullptr;    // ScaleGizmoImpl*
@@ -87,23 +87,23 @@ struct GizmoECS
 GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
                          const char *name,
                          const math::Vector3f &position);
-void DestroyGizmoECS(GizmoECS *gizmo);
-void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode);
-GizmoMode GetGizmoMode(const GizmoECS *gizmo);
-void SetGizmoVisible(GizmoECS *gizmo, bool visible);
-bool BindGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity);
-hgl::ecs::Entity *GetGizmoTargetEntity(const GizmoECS *gizmo);
-void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback);
-void SetGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled);
-bool IsGizmoAllowNegativeScale(const GizmoECS *gizmo);
-void UpdateGizmoECS(GizmoECS *gizmo,
-                    const math::Vector2i &mouse_coord,
-                    const CameraInfo *camera_info,
-                    const ViewportInfo *viewport_info,
-                    hgl::ecs::InputSystem *input_system,
-                    bool left_down,
-                    bool left_pressed,
-                    bool left_released);
+void DestroyTransformGizmo(GizmoECS *gizmo);
+void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode);
+GizmoMode GetTransformGizmoMode(const GizmoECS *gizmo);
+void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible);
+bool BindTransformGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity);
+hgl::ecs::Entity *GetTransformGizmoTargetEntity(const GizmoECS *gizmo);
+void SetTransformGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback);
+void SetTransformGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled);
+bool IsTransformGizmoAllowNegativeScale(const GizmoECS *gizmo);
+void UpdateTransformGizmo(GizmoECS *gizmo,
+                          const math::Vector2i &mouse_coord,
+                          const CameraInfo *camera_info,
+                          const ViewportInfo *viewport_info,
+                          hgl::ecs::InputSystem *input_system,
+                          bool left_down,
+                          bool left_pressed,
+                          bool left_released);
 
 static void SyncAllSubGizmoTransforms(GizmoECS *gizmo);
 
@@ -225,9 +225,9 @@ static bool IsCurrentModeDragging(const GizmoECS *gizmo)
 }
 
 
-GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
-                         const char *name,
-                         const math::Vector3f &position)
+GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
+                               const char *name,
+                               const math::Vector3f &position)
 {
     if (!world)
         return nullptr;
@@ -258,7 +258,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->move_entity)
         {
             std::cout << "[GizmoECS] Create move entity failed" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
@@ -273,7 +273,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->move_world)
         {
             std::cout << "[GizmoECS] Move subworld is null" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
@@ -281,7 +281,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->move_impl)
         {
             std::cout << "[GizmoECS] Create move gizmo failed" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
     }
@@ -292,7 +292,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->rotate_entity)
         {
             std::cout << "[GizmoECS] Create rotate entity failed" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
@@ -307,7 +307,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->rotate_world)
         {
             std::cout << "[GizmoECS] Rotate subworld is null" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
@@ -315,7 +315,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->rotate_impl)
         {
             std::cout << "[GizmoECS] Create rotate gizmo failed" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
     }
@@ -326,7 +326,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->scale_entity)
         {
             std::cout << "[GizmoECS] Create scale entity failed" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
@@ -341,7 +341,7 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->scale_world)
         {
             std::cout << "[GizmoECS] Scale subworld is null" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
@@ -349,34 +349,34 @@ GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
         if (!gizmo->scale_impl)
         {
             std::cout << "[GizmoECS] Create scale gizmo failed" << std::endl;
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             return nullptr;
         }
     }
 
     // Initialize with Move mode active
-    SetGizmoMode(gizmo, GizmoMode::MoveWorld);
+    SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
     SyncAllSubGizmoTransforms(gizmo);
     std::cout << "[GizmoECS] Create done" << std::endl;
 
     return gizmo;
 }
 
-GizmoECS *CreateDefaultGizmo(hgl::ecs::ECSContext *world,
-                             const char *name,
-                             const math::Vector3f &position,
-                             GizmoMode default_mode)
+GizmoECS *CreateDefaultTransformGizmo(hgl::ecs::ECSContext *world,
+                                      const char *name,
+                                      const math::Vector3f &position,
+                                      GizmoMode default_mode)
 {
-    GizmoECS *gizmo = CreateGizmoECS(world, name, position);
+    GizmoECS *gizmo = CreateTransformGizmo(world, name, position);
     if(!gizmo)
         return nullptr;
 
-    SetGizmoMode(gizmo, default_mode);
-    SetGizmoVisible(gizmo, true);
+    SetTransformGizmoMode(gizmo, default_mode);
+    SetTransformGizmoVisible(gizmo, true);
     return gizmo;
 }
 
-void DestroyGizmoECS(GizmoECS *gizmo)
+void DestroyTransformGizmo(GizmoECS *gizmo)
 {
     if (!gizmo)
         return;
@@ -414,7 +414,7 @@ void DestroyGizmoECS(GizmoECS *gizmo)
     std::cout << "[GizmoECS] Destroy done" << std::endl;
 }
 
-void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
+void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
 {
     if (!gizmo)
         return;
@@ -449,12 +449,12 @@ void SetGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     SyncAllSubGizmoTransforms(gizmo);
 }
 
-GizmoMode GetGizmoMode(const GizmoECS *gizmo)
+GizmoMode GetTransformGizmoMode(const GizmoECS *gizmo)
 {
     return gizmo ? gizmo->current_mode : GizmoMode::MoveWorld;
 }
 
-void SetGizmoVisible(GizmoECS *gizmo, bool visible)
+void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
 {
     if (!gizmo || !gizmo->root)
         return;
@@ -477,7 +477,7 @@ static hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo)
     return gizmo ? gizmo->root : nullptr;
 }
 
-bool BindGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity)
+bool BindTransformGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity)
 {
     if(!gizmo)
         return false;
@@ -499,12 +499,12 @@ bool BindGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_entity)
     return true;
 }
 
-hgl::ecs::Entity *GetGizmoTargetEntity(const GizmoECS *gizmo)
+hgl::ecs::Entity *GetTransformGizmoTargetEntity(const GizmoECS *gizmo)
 {
     return gizmo ? gizmo->target_entity : nullptr;
 }
 
-void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback)
+void SetTransformGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback)
 {
     if(!gizmo)
         return;
@@ -512,7 +512,7 @@ void SetGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback)
     gizmo->on_changed = std::move(callback);
 }
 
-void SetGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled)
+void SetTransformGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled)
 {
     if (!gizmo)
         return;
@@ -521,15 +521,15 @@ void SetGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled)
     ApplyScalePolicyToTargetIfNeeded(gizmo);
 }
 
-bool IsGizmoAllowNegativeScale(const GizmoECS *gizmo)
+bool IsTransformGizmoAllowNegativeScale(const GizmoECS *gizmo)
 {
     return gizmo ? gizmo->allow_negative_scale : true;
 }
 
-void UpdateGizmoECS(GizmoECS *gizmo,
-                    const math::Vector2i &mouse_coord,
-                    const CameraInfo *camera_info,
-                    const ViewportInfo *viewport_info,
+void UpdateTransformGizmo(GizmoECS *gizmo,
+                          const math::Vector2i &mouse_coord,
+                          const CameraInfo *camera_info,
+                          const ViewportInfo *viewport_info,
                     hgl::ecs::InputSystem *input_system,
                     bool left_down,
                     bool left_pressed,
@@ -851,7 +851,7 @@ void TransformGizmoSystem::Shutdown()
 {
     if (gizmo)
     {
-        DestroyGizmoECS(gizmo);
+        DestroyTransformGizmo(gizmo);
         gizmo = nullptr;
     }
 
@@ -888,17 +888,17 @@ bool TransformGizmoSystem::EnsureGizmo()
             create_pos = target_transform->GetLocalPosition();
     }
 
-    gizmo = CreateDefaultGizmo(context, "Gizmo", create_pos, default_mode);
+    gizmo = CreateDefaultTransformGizmo(context, "Gizmo", create_pos, default_mode);
     if (!gizmo)
         return false;
 
     if (target_entity)
-        BindGizmoTargetEntity(gizmo, target_entity);
+        BindTransformGizmoTargetEntity(gizmo, target_entity);
 
-    SetGizmoAllowNegativeScale(gizmo, allow_negative_scale);
+    SetTransformGizmoAllowNegativeScale(gizmo, allow_negative_scale);
 
     if (changed_callback)
-        SetGizmoChangedCallback(gizmo, changed_callback);
+        SetTransformGizmoChangedCallback(gizmo, changed_callback);
 
     return true;
 }
@@ -910,7 +910,7 @@ bool TransformGizmoSystem::SetTargetEntity(hgl::ecs::Entity *entity)
     if (!gizmo)
         return true;
 
-    return BindGizmoTargetEntity(gizmo, target_entity);
+    return BindTransformGizmoTargetEntity(gizmo, target_entity);
 }
 
 bool TransformGizmoSystem::SetTargetTransform(const std::shared_ptr<hgl::ecs::TransformComponent> &transform)
@@ -925,14 +925,14 @@ void TransformGizmoSystem::SetChangedCallback(GizmoChangedCallback callback)
 {
     changed_callback = std::move(callback);
     if (gizmo)
-        SetGizmoChangedCallback(gizmo, changed_callback);
+        SetTransformGizmoChangedCallback(gizmo, changed_callback);
 }
 
 void TransformGizmoSystem::SetAllowNegativeScale(bool enabled)
 {
     allow_negative_scale = enabled;
     if (gizmo)
-        SetGizmoAllowNegativeScale(gizmo, enabled);
+        SetTransformGizmoAllowNegativeScale(gizmo, enabled);
 }
 
 GizmoMode TransformGizmoSystem::GetCurrentMode() const
@@ -952,7 +952,7 @@ void TransformGizmoSystem::Update(float)
     {
         if (gizmo)
         {
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             gizmo = nullptr;
         }
 
@@ -987,13 +987,13 @@ void TransformGizmoSystem::Update(float)
         const bool key_4 = input_system->IsKeyDown(hgl::io::KeyboardButton::_4);
 
         if (key_1 && !last_key_1)
-            SetGizmoMode(gizmo, GizmoMode::MoveWorld);
+            SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
         else if (key_2 && !last_key_2)
-            SetGizmoMode(gizmo, GizmoMode::MoveLocal);
+            SetTransformGizmoMode(gizmo, GizmoMode::MoveLocal);
         else if (key_3 && !last_key_3)
-            SetGizmoMode(gizmo, GizmoMode::Rotate);
+            SetTransformGizmoMode(gizmo, GizmoMode::Rotate);
         else if (key_4 && !last_key_4)
-            SetGizmoMode(gizmo, GizmoMode::ScaleLocal);
+            SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
 
         last_key_1 = key_1;
         last_key_2 = key_2;
@@ -1001,7 +1001,7 @@ void TransformGizmoSystem::Update(float)
         last_key_4 = key_4;
     }
 
-    UpdateGizmoECS(gizmo,
+    UpdateTransformGizmo(gizmo,
                    mouse_coord,
                    camera_info,
                    viewport_info,
@@ -1071,13 +1071,13 @@ bool SunDirectionControlSystem::EnsureGizmo()
     if (!context || !proxy_transform)
         return false;
 
-    gizmo = CreateDefaultGizmo(context, "SunDirectionGizmo", gizmo_position, GizmoMode::Rotate);
+    gizmo = CreateDefaultTransformGizmo(context, "SunDirectionGizmo", gizmo_position, GizmoMode::Rotate);
     if (!gizmo)
         return false;
 
-    BindGizmoTargetEntity(gizmo, proxy_entity);
-    SetGizmoMode(gizmo, GizmoMode::Rotate);
-    SetGizmoAllowNegativeScale(gizmo, false);
+    BindTransformGizmoTargetEntity(gizmo, proxy_entity);
+    SetTransformGizmoMode(gizmo, GizmoMode::Rotate);
+    SetTransformGizmoAllowNegativeScale(gizmo, false);
     return true;
 }
 
@@ -1119,7 +1119,7 @@ void SunDirectionControlSystem::Shutdown()
 {
     if (gizmo)
     {
-        DestroyGizmoECS(gizmo);
+        DestroyTransformGizmo(gizmo);
         gizmo = nullptr;
     }
 
@@ -1145,7 +1145,7 @@ void SunDirectionControlSystem::Shutdown()
 void SunDirectionControlSystem::SetGizmoVisible(bool visible)
 {
     if (gizmo)
-        hgl::graph::SetGizmoVisible(gizmo, visible);
+        hgl::graph::SetTransformGizmoVisible(gizmo, visible);
 }
 
 void SunDirectionControlSystem::Update(float)
@@ -1157,7 +1157,7 @@ void SunDirectionControlSystem::Update(float)
     {
         if (gizmo)
         {
-            DestroyGizmoECS(gizmo);
+            DestroyTransformGizmo(gizmo);
             gizmo = nullptr;
         }
 
@@ -1190,10 +1190,10 @@ void SunDirectionControlSystem::Update(float)
     const bool left_released = !left_down && last_left_down;
     last_left_down = left_down;
 
-    if (GetGizmoMode(gizmo) != GizmoMode::Rotate)
-        SetGizmoMode(gizmo, GizmoMode::Rotate);
+    if (GetTransformGizmoMode(gizmo) != GizmoMode::Rotate)
+        SetTransformGizmoMode(gizmo, GizmoMode::Rotate);
 
-    UpdateGizmoECS(gizmo,
+    UpdateTransformGizmo(gizmo,
                    mouse_coord,
                    camera_info,
                    viewport_info,
@@ -1229,84 +1229,8 @@ void SunDirectionControlSystem::Update(float)
     }
 }
 
-TransformGizmo *CreateTransformGizmo(hgl::ecs::ECSContext *world,
-                                     const char *name,
-                                     const math::Vector3f &position)
-{
-    return CreateGizmoECS(world, name, position);
-}
-
-TransformGizmo *CreateDefaultTransformGizmo(hgl::ecs::ECSContext *world,
-                                            const char *name,
-                                            const math::Vector3f &position,
-                                            GizmoMode default_mode)
-{
-    return CreateDefaultGizmo(world, name, position, default_mode);
-}
-
-void DestroyTransformGizmo(TransformGizmo *gizmo)
-{
-    DestroyGizmoECS(gizmo);
-}
-
-void SetTransformGizmoMode(TransformGizmo *gizmo, GizmoMode mode)
-{
-    SetGizmoMode(gizmo, mode);
-}
-
-GizmoMode GetTransformGizmoMode(const TransformGizmo *gizmo)
-{
-    return GetGizmoMode(gizmo);
-}
-
-void SetTransformGizmoVisible(TransformGizmo *gizmo, bool visible)
-{
-    SetGizmoVisible(gizmo, visible);
-}
-
-bool BindTransformGizmoTargetEntity(TransformGizmo *gizmo, hgl::ecs::Entity *target_entity)
-{
-    return BindGizmoTargetEntity(gizmo, target_entity);
-}
-
-hgl::ecs::Entity *GetTransformGizmoTargetEntity(const TransformGizmo *gizmo)
-{
-    return GetGizmoTargetEntity(gizmo);
-}
-
-void SetTransformGizmoChangedCallback(TransformGizmo *gizmo, GizmoChangedCallback callback)
-{
-    SetGizmoChangedCallback(gizmo, std::move(callback));
-}
-
-void SetTransformGizmoAllowNegativeScale(TransformGizmo *gizmo, bool enabled)
-{
-    SetGizmoAllowNegativeScale(gizmo, enabled);
-}
-
-bool IsTransformGizmoAllowNegativeScale(const TransformGizmo *gizmo)
-{
-    return IsGizmoAllowNegativeScale(gizmo);
-}
-
-void UpdateTransformGizmo(TransformGizmo *gizmo,
-                         const math::Vector2i &mouse_coord,
-                         const CameraInfo *camera_info,
-                         const ViewportInfo *viewport_info,
-                         hgl::ecs::InputSystem *input_system,
-                         bool left_down,
-                         bool left_pressed,
-                         bool left_released)
-{
-    UpdateGizmoECS(gizmo,
-                   mouse_coord,
-                   camera_info,
-                   viewport_info,
-                   input_system,
-                   left_down,
-                   left_pressed,
-                   left_released);
-}
-
 }//namespace hgl::graph
+
+
+
 
