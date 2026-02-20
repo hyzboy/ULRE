@@ -2,19 +2,11 @@
  统一 Gizmo 世界 - 通过 SubWorldComponent 管理三个 Gizmo 子世界
 
  结构：
-   Main World
-     └─ GizmoECS (root)
-        ├─ Move (SubWorld)
-        ├─ Rotate (SubWorld)
-
-GizmoMode TransformGizmoSystem::GetCurrentMode() const
-{
-    if(!gizmo)
-        return default_mode;
-
-    return GetTransformGizmoMode(gizmo);
-}
-        └─ Scale (SubWorld)
+     Main World
+         └─ GizmoECS (root)
+                ├─ Move (SubWorld)
+                ├─ Rotate (SubWorld)
+                └─ Scale (SubWorld)
 */
 
 #include"Gizmo.h"
@@ -941,6 +933,14 @@ void TransformGizmoSystem::SetAllowNegativeScale(bool enabled)
     allow_negative_scale = enabled;
     if (gizmo)
         SetGizmoAllowNegativeScale(gizmo, enabled);
+}
+
+GizmoMode TransformGizmoSystem::GetCurrentMode() const
+{
+    if(!gizmo)
+        return default_mode;
+
+    return GetTransformGizmoMode(gizmo);
 }
 
 void TransformGizmoSystem::Update(float)
