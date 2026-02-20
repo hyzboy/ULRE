@@ -18,10 +18,13 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
+#include<hgl/vk/VKBuffer.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
@@ -104,6 +107,7 @@ namespace hgl::ecs
         auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
         auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
         auto* sampler_manager = graphics_context ? graphics_context->GetSamplerManager() : nullptr;
+        auto* buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
 
         for (auto& pair : resources_by_font)
         {
@@ -139,6 +143,12 @@ namespace hgl::ecs
                 res.sampler = nullptr;
             }
 
+            if (res.material_instance_buffer && buffer_manager)
+            {
+                buffer_manager->Release(res.material_instance_buffer);
+                res.material_instance_buffer = nullptr;
+            }
+
             if (res.tile_font)
             {
                 delete res.tile_font;
@@ -170,6 +180,7 @@ namespace hgl::ecs
         RenderResources resources;
         graph::MaterialManager* material_manager = nullptr;
         graph::SamplerManager* sampler_manager = nullptr;
+        graph::BufferManager* buffer_manager = nullptr;
 
         struct BuildGuard
         {
@@ -177,6 +188,8 @@ namespace hgl::ecs
             graph::SamplerManager* sampler_manager = nullptr;
             graph::Material* material = nullptr;
             graph::Sampler* sampler = nullptr;
+            graph::BufferManager* buffer_manager = nullptr;
+            graph::DeviceBuffer* material_instance_buffer = nullptr;
             std::unique_ptr<graph::TileFont> tile_font;
             bool committed = false;
 
@@ -187,6 +200,9 @@ namespace hgl::ecs
 
                 if (sampler && sampler_manager)
                     sampler_manager->Release(sampler);
+
+                if (material_instance_buffer && buffer_manager)
+                    buffer_manager->Release(material_instance_buffer);
 
                 if (material && material_manager)
                     material_manager->Release(material);
@@ -222,9 +238,7 @@ namespace hgl::ecs
         guard.material_manager = material_manager;
 
         static uint32_t material_id = 0;
-        AnsiString material_name;
-        hgl::Sprintf(material_name, "Text2D_ECS_%u", material_id++);
-        guard.material = material_manager->CreateMaterial(material_name, mci);
+        guard.material = material_manager->CreateMaterial("Text2D", mci);
         if (!guard.material)
             return nullptr;
 
@@ -237,6 +251,38 @@ namespace hgl::ecs
         guard.sampler = sampler_manager->CreateSampler();
         if (!guard.sampler)
             return nullptr;
+
+        buffer_manager = graphics_context->GetBufferManager();
+        if (!buffer_manager)
+            return nullptr;
+
+        guard.buffer_manager = buffer_manager;
+
+        const uint32_t mi_bytes = guard.material->GetMIDataBytes();
+        if (mi_bytes > 0)
+        {
+#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+            guard.material_instance_buffer = buffer_manager->CreateSSBO("Text2D_MI", mi_bytes, graph::SharingMode::Exclusive);
+            if (!guard.material_instance_buffer)
+                return nullptr;
+
+            if (!guard.material->BindSSBO(graph::mtl::SBS_MaterialInstance.set_type,
+                                          graph::mtl::SBS_MaterialInstance.name,
+                                          guard.material_instance_buffer))
+                return nullptr;
+#else
+            guard.material_instance_buffer = buffer_manager->CreateUBO("Text2D_MI", mi_bytes, graph::SharingMode::Exclusive);
+            if (!guard.material_instance_buffer)
+                return nullptr;
+
+            if (!guard.material->BindUBO(&graph::mtl::SBS_MaterialInstance,
+                                         guard.material_instance_buffer))
+                return nullptr;
+#endif
+
+            resources.material_instance_buffer = guard.material_instance_buffer;
+            guard.material_instance_buffer = nullptr;
+        }
 
         if (!guard.material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
                                                     graph::mtl::SamplerName::Text,
@@ -358,17 +404,23 @@ namespace hgl::ecs
                 vil_config.Add("Position", VF_V4I16);
 
                 mi = material_manager->CreateMaterialInstance(resources->material,
-                                                             &vil_config,
-                                                             &resources->char_style,
-                                                             sizeof(graph::layout::CharStyle));
+                                                             &vil_config);
                 if (!mi)
                     continue;
 
                 resources->material_instance = mi;
+
+                input.dirty=true;
             }
-            else if (input.dirty)
+
+            if (input.dirty)
             {
-                mi->WriteMIData(resources->char_style);
+                if (resources->material_instance_buffer)
+                {
+                    const uint32_t upload_bytes = hgl_min<uint32_t>(resources->material->GetMIDataBytes(),
+                                                                    sizeof(graph::layout::CharStyle));
+                    resources->material_instance_buffer->Write(&resources->char_style, upload_bytes);
+                }
             }
 
             if (!resources->pipeline)

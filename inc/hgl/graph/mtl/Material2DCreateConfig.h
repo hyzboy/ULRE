@@ -58,7 +58,7 @@ struct Text2DMaterialCreateConfig:public Material2DCreateConfig
 {
 public:
 
-    Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::SolidRectangles,CoordinateSystem2D::Ortho,WithLocalToWorld::With)
+    Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::SolidRectangles,CoordinateSystem2D::Ortho,WithLocalToWorld::Without)
     {
         material_instance=true;        //包含材质实例
 

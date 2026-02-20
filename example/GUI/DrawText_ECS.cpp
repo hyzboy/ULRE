@@ -43,10 +43,15 @@ protected:
         if(!text_comp)
             return(false);
 
+        hgl::graph::layout::CharStyle cs;
+
+        cs.CharColor.setOne();
+
         // Just set text and font - TextRenderSystem handles the rest!
         text_comp->SetText(str);
         text_comp->SetFontSource(fs);
         text_comp->SetStartPosition({0, 0});
+        text_comp->SetCharStyle(cs);
 
         return(true);
     }

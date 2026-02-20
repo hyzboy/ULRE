@@ -19,6 +19,7 @@ namespace hgl
         class MaterialInstance;
         class Pipeline;
         class Sampler;
+        class DeviceBuffer;
     }
 }
 
@@ -44,6 +45,7 @@ namespace hgl::ecs
             graph::Material* material = nullptr;               // Owned by MaterialManager
             graph::Pipeline* pipeline = nullptr;               // Owned by RenderPass
             graph::Sampler* sampler = nullptr;                 // Owned by SamplerManager
+            graph::DeviceBuffer* material_instance_buffer = nullptr; // Owned by BufferManager
 
             // Per-batch resources (same font)
             graph::layout::CharStyle char_style{};
