@@ -1,6 +1,6 @@
 #include<hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<hgl/ecs/core/Context.h>
 
 namespace hgl::ecs
@@ -18,13 +18,13 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        auto batch_system = context->GetSystem<RenderPrimitiveBatchSystem>();
-        if (!batch_system)
+        auto pipeline = context->GetPrimitiveBatchPipeline();
+        if (!pipeline)
             return;
 
-        if (!batch_system->PrepareFrame())
+        if (!pipeline->PrepareFrame(context))
             return;
 
-        batch_system->RunSorting();
+        pipeline->RunSorting();
     }
 }

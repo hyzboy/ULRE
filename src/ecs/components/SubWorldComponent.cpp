@@ -7,7 +7,10 @@
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderBufferCommitSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include<hgl/graph/CameraInfo.h>
@@ -32,19 +35,11 @@ namespace hgl::ecs
             }
 
             const graph::CameraInfo* parent_camera_info = nullptr;
-            graph::VulkanDevice* parent_device_from_system = nullptr;
+            graph::VulkanDevice* parent_device_from_system = parent_context->GetGPUDevice();
 
             if (auto parent_collect = parent_context->GetSystem<RenderPrimitiveCollectSystem>())
             {
                 parent_camera_info = parent_collect->GetCameraInfo();
-            }
-
-            if (auto parent_batch = parent_context->GetSystem<RenderPrimitiveBatchSystem>())
-            {
-                if (!parent_camera_info)
-                    parent_camera_info = parent_batch->GetCameraInfo();
-
-                parent_device_from_system = parent_batch->GetDevice();
             }
 
             if (!parent_device_from_system)
@@ -57,13 +52,6 @@ namespace hgl::ecs
             {
                 child_collect->SetWorld(child_context);
                 child_collect->SetCameraInfo(parent_camera_info);
-            }
-
-            if (auto child_batch = child_context->GetSystem<RenderPrimitiveBatchSystem>())
-            {
-                child_batch->SetWorld(child_context);
-                child_batch->SetCameraInfo(parent_camera_info);
-                child_batch->SetDevice(parent_device_from_system);
             }
 
             if (auto child_commit = child_context->GetSystem<RenderBufferCommitSystem>())
@@ -184,18 +172,11 @@ namespace hgl::ecs
         child_context->SetSubWorldAutoUpdate(false);
 
         const graph::CameraInfo* parent_camera_info = nullptr;
-        graph::VulkanDevice* parent_device = nullptr;
+        graph::VulkanDevice* parent_device = parent_context->GetGPUDevice();
 
         if (auto parent_collect = parent_context->GetSystem<RenderPrimitiveCollectSystem>())
         {
             parent_camera_info = parent_collect->GetCameraInfo();
-        }
-
-        if (auto parent_batch = parent_context->GetSystem<RenderPrimitiveBatchSystem>())
-        {
-            if (!parent_camera_info)
-                parent_camera_info = parent_batch->GetCameraInfo();
-            parent_device = parent_batch->GetDevice();
         }
 
         if (!parent_device)
@@ -208,7 +189,10 @@ namespace hgl::ecs
         auto camera_system = child_context->RegisterTickSystem<CameraSystem>(child_context);
         auto bbox_system = child_context->RegisterTickSystem<BoundingBoxUpdateSystem>();
         auto render_collect_system = child_context->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
-        auto render_batch_system = child_context->RegisterRenderSystem<RenderPrimitiveBatchSystem>();
+        auto render_cull_system = child_context->RegisterRenderSystem<RenderPrimitiveCullSystem>();
+        auto render_sort_system = child_context->RegisterRenderSystem<RenderPrimitiveSortSystem>();
+        auto render_batch_build_system = child_context->RegisterRenderSystem<RenderPrimitiveBatchBuildSystem>();
+        auto render_batch_finalize_system = child_context->RegisterRenderSystem<RenderPrimitiveBatchFinalizeSystem>();
         auto render_commit_system = child_context->RegisterRenderSystem<RenderBufferCommitSystem>();
         auto render_submit_system = child_context->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
 
@@ -221,18 +205,16 @@ namespace hgl::ecs
             render_collect_system->SetCameraInfo(parent_camera_info);
         }
 
-        if (render_batch_system)
-        {
-            render_batch_system->SetWorld(child_context);
-            render_batch_system->SetCameraInfo(parent_camera_info);
-            render_batch_system->SetDevice(parent_device);
-        }
-
         if (render_commit_system)
         {
             render_commit_system->SetWorld(child_context);
             render_commit_system->SetDevice(parent_device);
         }
+
+        (void)render_cull_system;
+        (void)render_sort_system;
+        (void)render_batch_build_system;
+        (void)render_batch_finalize_system;
 
         if (render_submit_system)
         {

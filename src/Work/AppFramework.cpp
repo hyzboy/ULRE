@@ -11,7 +11,6 @@
 #include <hgl/log/Logger.h>
 #include <hgl/io/event/MouseEvent.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferCommitSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>

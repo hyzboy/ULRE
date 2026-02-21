@@ -40,7 +40,6 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/systems/tick/CameraInputMapping.h
 
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
-                ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCullSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchBuildSystem.h
@@ -68,6 +67,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
                 ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
                 ${ECS_INCLUDE_PATH}/support/TextHelper.h
+                ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
 
                 core/Object.cpp
                 core/Component.cpp
@@ -103,7 +103,6 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 systems/tick/CameraInputMapping.cpp
 
                 systems/render/RenderPrimitiveCollectSystem.cpp
-                systems/render/RenderPrimitiveBatchSystem.cpp
                 systems/render/RenderPrimitiveCullSystem.cpp
                 systems/render/RenderPrimitiveSortSystem.cpp
                 systems/render/RenderPrimitiveBatchBuildSystem.cpp
@@ -128,6 +127,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 support/TransformAssignmentBuffer.cpp
                 support/MaterialInstanceAssignmentBuffer.cpp
                 support/PipelineMaterialRenderer.cpp
+                support/PrimitiveBatchPipeline.cpp
 
                 serialization/ContextSerialization.cpp
                 serialization/RenderableComponentSerialization.cpp)
@@ -206,7 +206,6 @@ source_group("ECS\\Systems\\Tick" FILES
 
 source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
-    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCullSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchBuildSystem.h
@@ -225,7 +224,6 @@ source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
     systems/render/RenderPrimitiveCollectSystem.cpp
-    systems/render/RenderPrimitiveBatchSystem.cpp
     systems/render/RenderPrimitiveCullSystem.cpp
     systems/render/RenderPrimitiveSortSystem.cpp
     systems/render/RenderPrimitiveBatchBuildSystem.cpp
@@ -258,10 +256,12 @@ source_group("ECS\\Support" FILES
     ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
     ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
     ${ECS_INCLUDE_PATH}/support/TextHelper.h
+    ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
     support/VisibilityDataStorage.cpp
     support/TransformAssignmentBuffer.cpp
     support/MaterialInstanceAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
+    support/PrimitiveBatchPipeline.cpp
 )
 
 source_group("ECS\\Serialization" FILES

@@ -1,16 +1,13 @@
-﻿#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<source_location>
 #include<cstdio>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/BoundingBoxComponent.h>
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
-#include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -54,14 +51,238 @@ namespace hgl::ecs
             indexed_draw_cmd->vertexOffset = batch->geom_draw_range->vertex_offset;
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
-    }//anonymous namespace
+    }
 
-    void RenderPrimitiveBatchSystem::ReallocICB(MaterialBatch& batch)
+    bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
+    {
+        if (!ctx)
+            return false;
+
+        world = ctx;
+        auto& cache = world->GetRenderFrameCache();
+        if (cache.renderItems.empty())
+            return false;
+
+        camera_info = cache.cameraInfo;
+        if (!camera_info)
+            return false;
+
+        if (!device)
+            device = world->GetGPUDevice();
+
+        const uint32_t frame_index = world->GetFrameIndex();
+        if (prepared_frame_index != frame_index)
+            prepared_frame_index = frame_index;
+
+        return true;
+    }
+
+    void PrimitiveBatchPipeline::RunCulling()
+    {
+        PerformFrustumCulling();
+    }
+
+    void PrimitiveBatchPipeline::RunSorting()
+    {
+        SortByDistance();
+    }
+
+    void PrimitiveBatchPipeline::RunTransformIndexing()
+    {
+        TransformSystem* transform_system = nullptr;
+        if (world)
+        {
+            if (auto system = world->GetSystem<TransformSystem>())
+            {
+                transform_system = system.get();
+                transform_system->SetDevice(device);
+                transform_system->EnsureTransformBuffer();
+                transform_system->RefreshHandleOrder();
+            }
+        }
+
+        AssignTransformIndices(transform_system);
+    }
+
+    void PrimitiveBatchPipeline::RunBatching()
+    {
+        BuildMaterialBatches();
+        FinalizeBatches();
+    }
+
+    void PrimitiveBatchPipeline::PerformFrustumCulling()
+    {
+        if (!world || !camera_info)
+            return;
+
+        auto& cache = world->GetRenderFrameCache();
+
+        frustum.SetMatrix(camera_info->vp);
+
+        for (auto& itemPtr : cache.renderItems)
+        {
+            PrimitiveRenderItem* item = itemPtr.get();
+            if (!item || !item->isVisible)
+                continue;
+
+            auto entity = item->GetEntity();
+            if (!entity)
+                continue;
+
+            auto bbox = entity->GetComponent<BoundingBoxComponent>();
+            if (bbox)
+            {
+                if (bbox->HasWorldAABB())
+                    item->isVisible = TestFrustumWithWorldAABB(item, bbox.get());
+                else
+                    item->isVisible = TestFrustumWithLocalAABB(item, bbox.get());
+            }
+            else
+            {
+                item->isVisible = TestFrustumWithBoundingSphere(item);
+            }
+        }
+    }
+
+    bool PrimitiveBatchPipeline::TestFrustumWithWorldAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
+    {
+        const auto& world_aabb = bbox->GetWorldAABB();
+        const glm::vec3 world_center = world_aabb.GetCenter();
+        const glm::vec3 world_extents = world_aabb.GetExtent();
+        const float radius = glm::length(world_extents);
+
+        return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
+    }
+
+    bool PrimitiveBatchPipeline::TestFrustumWithLocalAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
+    {
+        const glm::vec3 local_center = bbox->GetCenter();
+        const glm::vec3 local_extents = bbox->GetExtents();
+        const float radius = glm::length(local_extents);
+
+        const glm::mat4 worldMat = item->GetWorldMatrix();
+        const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
+
+        return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
+    }
+
+    bool PrimitiveBatchPipeline::TestFrustumWithBoundingSphere(PrimitiveRenderItem* item)
+    {
+        auto primitiveComp = item->GetPrimitiveComponent();
+        if (!primitiveComp)
+            return false;
+
+        auto transform = item->GetTransform();
+        if (!transform)
+            return false;
+
+        glm::vec3 worldPos = transform->GetWorldPosition();
+        float boundingRadius = primitiveComp->GetBoundingRadius();
+
+        if (boundingRadius <= 0.0f)
+            return true;
+
+        return frustum.SphereIn(worldPos, boundingRadius) != math::Frustum::Scope::OUTSIDE;
+    }
+
+    void PrimitiveBatchPipeline::SortByDistance()
+    {
+        if (!world)
+            return;
+
+        auto& cache = world->GetRenderFrameCache();
+
+        std::sort(cache.renderItems.begin(), cache.renderItems.end(),
+            [](const std::unique_ptr<PrimitiveRenderItem>& a, const std::unique_ptr<PrimitiveRenderItem>& b) {
+                return a->distanceToCamera < b->distanceToCamera;
+            });
+    }
+
+    void PrimitiveBatchPipeline::AssignTransformIndices(TransformSystem* transform_system)
+    {
+        if (!world)
+            return;
+
+        auto& cache = world->GetRenderFrameCache();
+        uint32_t static_count = 0;
+        uint32_t dynamic_count = 0;
+        uint32_t dynamic_base = 0;
+
+        if (transform_system)
+        {
+            static_count = transform_system->GetStaticCount();
+            dynamic_count = transform_system->GetDynamicCount();
+            dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
+        }
+
+        for (auto& itemPtr : cache.renderItems)
+        {
+            RenderItem* item = itemPtr.get();
+            if (!item)
+                continue;
+
+            auto transform = item->GetTransform();
+            if (!transform)
+                continue;
+
+            const auto handle = transform->GetStorageHandle();
+            if (handle == TransformDataStorage::INVALID_HANDLE)
+            {
+                item->transform_index = 0;
+                continue;
+            }
+
+            uint32_t group_index = 0;
+            if (transform_system &&
+                transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
+            {
+                item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : group_index;
+            }
+            else
+            {
+                item->transform_index = 0;
+            }
+        }
+    }
+
+    graph::BufferManager* PrimitiveBatchPipeline::GetBufferManager() const
+    {
+        auto render_ctx = world ? world->GetRenderContext() : nullptr;
+        auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
+        if (!graphics_context && world)
+            graphics_context = world->GetGraphicsContext();
+        return graphics_context ? graphics_context->GetBufferManager() : nullptr;
+    }
+
+    std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder>
+    PrimitiveBatchPipeline::BuildICBNames() const
+    {
+        graph::ObjectNameBuilder draw_name;
+        graph::ObjectNameBuilder indexed_name;
+
+        if (world && !world->GetResourceNamePrefix().empty())
+        {
+            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectDrawBuffer";
+            std::string indexed_str = world->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
+
+            draw_name = graph::ObjectNameBuilder(draw_str.c_str());
+            indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
+        }
+        else
+        {
+            draw_name = graph::ObjectNameBuilder("RPBS_IndirectDrawBuffer");
+            indexed_name = graph::ObjectNameBuilder("RPBS_IndirectDrawIndexedBuffer");
+        }
+
+        return {draw_name, indexed_name};
+    }
+
+    void PrimitiveBatchPipeline::ReallocICB(MaterialBatch& batch)
     {
         HGL_CAPTURE_SCOPE();
         if (!device || batch.items.empty())
         {
-            LogWarning("[ECS::RenderPrimitiveBatchSystem] Cannot allocate ICB - Device: %p, Items: %zu",
+            LogWarning("[ECS::PrimitiveBatchPipeline] Cannot allocate ICB - Device: %p, Items: %zu",
                        (void*)device,
                        batch.items.size());
             return;
@@ -86,7 +307,7 @@ namespace hgl::ecs
         batch.icb_draw_indexed = device->CreateIndirectDrawIndexedBuffer(icb_new_count, indexed_name);
     }
 
-    void RenderPrimitiveBatchSystem::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
+    void PrimitiveBatchPipeline::BuildBatches(MaterialBatch& batch, const uint32_t base_instance)
     {
         const size_t count = batch.items.size();
         if (count == 0)
@@ -197,7 +418,7 @@ namespace hgl::ecs
         batch.icb_draw_indexed->Unmap();
     }
 
-    void RenderPrimitiveBatchSystem::FinalizeBatch(MaterialBatch& batch)
+    void PrimitiveBatchPipeline::FinalizeBatch(MaterialBatch& batch)
     {
         SortBatchItems(batch);
         BuildBatches(batch, 0);
@@ -206,14 +427,13 @@ namespace hgl::ecs
         WriteTransformIndices(batch);
     }
 
-    void RenderPrimitiveBatchSystem::SortBatchItems(MaterialBatch& batch)
+    void PrimitiveBatchPipeline::SortBatchItems(MaterialBatch& batch)
     {
         std::vector<RenderItem*> static_items;
         std::vector<RenderItem*> movable_items;
         static_items.reserve(batch.items.size());
         movable_items.reserve(batch.items.size());
 
-        // Separate items by mobility
         for (auto *item : batch.items)
         {
             if (!item)
@@ -226,7 +446,6 @@ namespace hgl::ecs
                 movable_items.push_back(item);
         }
 
-        // Sort both groups
         std::sort(static_items.begin(), static_items.end(),
             [](const RenderItem* a, const RenderItem* b) {
                 return a->Compare(*b) < 0;
@@ -237,7 +456,6 @@ namespace hgl::ecs
                 return a->Compare(*b) < 0;
             });
 
-        // Rebuild items list: static first, then movable
         batch.items.clear();
         batch.items.reserve(static_items.size() + movable_items.size());
         for (auto *item : static_items)
@@ -245,7 +463,6 @@ namespace hgl::ecs
         for (auto *item : movable_items)
             batch.items.push_back(item);
 
-        // Update indices
         for (size_t i = 0; i < batch.items.size(); ++i)
         {
             batch.items[i]->index = i;
@@ -254,7 +471,7 @@ namespace hgl::ecs
         batch.static_count = static_cast<uint32_t>(static_items.size());
     }
 
-    void RenderPrimitiveBatchSystem::UpdateMaterialInstanceBuffer(MaterialBatch& batch)
+    void PrimitiveBatchPipeline::UpdateMaterialInstanceBuffer(MaterialBatch& batch)
     {
         if (!batch.key.material || !batch.key.material->hasMI())
             return;
@@ -266,7 +483,7 @@ namespace hgl::ecs
             batch.mi_buffer->WriteItems(batch.items);
     }
 
-    void RenderPrimitiveBatchSystem::EnsureTransformVAB(MaterialBatch& batch)
+    void PrimitiveBatchPipeline::EnsureTransformVAB(MaterialBatch& batch)
     {
         if (!batch.buffer_manager || batch.items.empty())
             return;
@@ -296,7 +513,7 @@ namespace hgl::ecs
         }
     }
 
-    void RenderPrimitiveBatchSystem::WriteTransformIndices(MaterialBatch& batch)
+    void PrimitiveBatchPipeline::WriteTransformIndices(MaterialBatch& batch)
     {
         if (!batch.transform_vab || batch.items.empty())
             return;
@@ -317,7 +534,7 @@ namespace hgl::ecs
             {
                 if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
                 {
-                    LogWarning("[ECS::RenderPrimitiveBatchSystem] TransformID overflow (%u)", idx);
+                    LogWarning("[ECS::PrimitiveBatchPipeline] TransformID overflow (%u)", idx);
                     warned_overflow = true;
                 }
                 *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
@@ -333,291 +550,11 @@ namespace hgl::ecs
         batch.transform_vab->Unmap();
     }
 
-    RenderPrimitiveBatchSystem::RenderPrimitiveBatchSystem(const std::string& name)
-        : System(name)
+    void PrimitiveBatchPipeline::BuildMaterialBatches()
     {
-        // Set system type and properties
-        SetSystemType(SystemType::RenderBatch);
-        SetExecutionOrder(ExecutionPhase::RenderBatch);
-
-        // Declare dependencies
-        AddDependency<TransformSystem>();            // Needs transform indices
-        AddDependency<CameraSystem>();               // Needs camera for frustum culling
-        AddDependency<BoundingBoxUpdateSystem>();    // Needs updated world AABBs
-        AddDependency<RenderPrimitiveCollectSystem>(); // Needs collected items
-    }
-
-    bool RenderPrimitiveBatchSystem::PrepareFrame()
-    {
-        if (!world || !cameraInfo)
-            return false;
-
-        auto& cache = world->GetRenderFrameCache();
-        if (cache.renderItems.empty())
-            return false;
-
-        const uint32_t frame_index = world->GetFrameIndex();
-        if (prepared_frame_index != frame_index)
-        {
-            stats = Statistics{};
-            stats.totalEntities = cache.renderItems.size();
-            prepared_frame_index = frame_index;
-        }
-
-        return true;
-    }
-
-    void RenderPrimitiveBatchSystem::Update(float /*deltaTime*/)
-    {
-        if (external_pipeline_enabled)
+        if (!world)
             return;
 
-        if (!PrepareFrame())
-            return;
-
-        RunCulling();
-        RunSorting();
-        RunTransformIndexing();
-        RunBatching();
-    }
-
-    void RenderPrimitiveBatchSystem::RunCulling()
-    {
-        if (frustumCullingEnabled)
-            PerformFrustumCulling();
-    }
-
-    void RenderPrimitiveBatchSystem::RunSorting()
-    {
-        if (distanceSortingEnabled)
-            SortByDistance();
-    }
-
-    void RenderPrimitiveBatchSystem::RunTransformIndexing()
-    {
-        TransformSystem* transform_system = nullptr;
-        if (auto system = world->GetSystem<TransformSystem>())
-        {
-            transform_system = system.get();
-            transform_system->SetDevice(device);
-            transform_system->EnsureTransformBuffer();
-            transform_system->RefreshHandleOrder();
-        }
-
-        AssignTransformIndices(transform_system);
-    }
-
-    void RenderPrimitiveBatchSystem::RunBatching()
-    {
-        if (!batchingEnabled)
-            return;
-
-        auto& cache = world->GetRenderFrameCache();
-        const auto start = std::chrono::high_resolution_clock::now();
-
-        BuildMaterialBatches();
-        FinalizeBatches();
-
-        const auto end = std::chrono::high_resolution_clock::now();
-        stats.batchingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
-        stats.batchCount = cache.materialBatches.GetCount();
-
-        if (events.onBatchesBuilt)
-            events.onBatchesBuilt(stats.batchCount);
-        if (events.onBatchingComplete)
-            events.onBatchingComplete();
-    }
-
-    void RenderPrimitiveBatchSystem::PerformFrustumCulling()
-    {
-        auto& cache = world->GetRenderFrameCache();
-
-        const auto start = std::chrono::high_resolution_clock::now();
-
-        if (events.onCullingStart)
-            events.onCullingStart(cache.renderItems.size());
-
-        frustum.SetMatrix(cameraInfo->vp);
-
-        for (auto& itemPtr : cache.renderItems)
-        {
-            PrimitiveRenderItem* item = itemPtr.get();
-            if (!item || !item->isVisible)
-                continue;
-
-            auto entity = item->GetEntity();
-            if (!entity)
-                continue;
-
-            auto bbox = entity->GetComponent<BoundingBoxComponent>();
-            if (bbox)
-            {
-                if (bbox->HasWorldAABB())
-                    item->isVisible = TestFrustumWithWorldAABB(item, bbox.get());
-                else
-                    item->isVisible = TestFrustumWithLocalAABB(item, bbox.get());
-            }
-            else
-            {
-                item->isVisible = TestFrustumWithBoundingSphere(item);
-            }
-        }
-
-        size_t visible_count = 0;
-        for (const auto& itemPtr : cache.renderItems)
-        {
-            if (itemPtr && itemPtr->isVisible)
-                ++visible_count;
-        }
-
-        stats.visibleEntities = visible_count;
-        stats.culledEntities = cache.renderItems.size() - visible_count;
-
-        const auto end = std::chrono::high_resolution_clock::now();
-        stats.cullingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
-
-        if (events.onCullingComplete)
-            events.onCullingComplete(stats.visibleEntities, stats.culledEntities);
-    }
-
-    bool RenderPrimitiveBatchSystem::TestFrustumWithWorldAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
-    {
-        const auto& world_aabb = bbox->GetWorldAABB();
-        const glm::vec3 world_center = world_aabb.GetCenter();
-        const glm::vec3 world_extents = world_aabb.GetExtent();
-        const float radius = glm::length(world_extents);
-
-        return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
-    }
-
-    bool RenderPrimitiveBatchSystem::TestFrustumWithLocalAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
-    {
-        const glm::vec3 local_center = bbox->GetCenter();
-        const glm::vec3 local_extents = bbox->GetExtents();
-        const float radius = glm::length(local_extents);
-
-        const glm::mat4 worldMat = item->GetWorldMatrix();
-        const glm::vec3 world_center = glm::vec3(worldMat * glm::vec4(local_center, 1.0f));
-
-        return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
-    }
-
-    bool RenderPrimitiveBatchSystem::TestFrustumWithBoundingSphere(PrimitiveRenderItem* item)
-    {
-        auto primitiveComp = item->GetPrimitiveComponent();
-        if (!primitiveComp)
-            return false;
-
-        auto transform = item->GetTransform();
-        if (!transform)
-            return false;
-
-        glm::vec3 worldPos = transform->GetWorldPosition();
-        float boundingRadius = primitiveComp->GetBoundingRadius();
-
-        if (boundingRadius <= 0.0f)
-            return true;
-
-        return frustum.SphereIn(worldPos, boundingRadius) != math::Frustum::Scope::OUTSIDE;
-    }
-
-    void RenderPrimitiveBatchSystem::SortByDistance()
-    {
-        auto& cache = world->GetRenderFrameCache();
-
-        const auto start = std::chrono::high_resolution_clock::now();
-
-        std::sort(cache.renderItems.begin(), cache.renderItems.end(),
-            [](const std::unique_ptr<PrimitiveRenderItem>& a, const std::unique_ptr<PrimitiveRenderItem>& b) {
-                return a->distanceToCamera < b->distanceToCamera;
-            });
-
-        const auto end = std::chrono::high_resolution_clock::now();
-        stats.sortingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
-
-        if (events.onSortingComplete)
-            events.onSortingComplete(cache.renderItems.size());
-    }
-
-    void RenderPrimitiveBatchSystem::AssignTransformIndices(TransformSystem* transform_system)
-    {
-        auto& cache = world->GetRenderFrameCache();
-        uint32_t static_count = 0;
-        uint32_t dynamic_count = 0;
-        uint32_t dynamic_base = 0;
-
-        if (transform_system)
-        {
-            static_count = transform_system->GetStaticCount();
-            dynamic_count = transform_system->GetDynamicCount();
-            dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
-        }
-
-        for (auto& itemPtr : cache.renderItems)
-        {
-            RenderItem* item = itemPtr.get();
-            if (!item)
-                continue;
-
-            auto transform = item->GetTransform();
-            if (!transform)
-                continue;
-
-            const auto handle = transform->GetStorageHandle();
-            if (handle == TransformDataStorage::INVALID_HANDLE)
-            {
-                item->transform_index = 0;
-                continue;
-            }
-
-            uint32_t group_index = 0;
-            if (transform_system &&
-                transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
-            {
-                item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : group_index;
-            }
-            else
-            {
-                item->transform_index = 0;
-            }
-        }
-    }
-
-    graph::BufferManager* RenderPrimitiveBatchSystem::GetBufferManager() const
-    {
-        auto render_ctx = world ? world->GetRenderContext() : nullptr;
-        auto graphics_context = render_ctx ? render_ctx->GetGraphicsContext() : nullptr;
-        if (!graphics_context && world)
-            graphics_context = world->GetGraphicsContext();
-        return graphics_context ? graphics_context->GetBufferManager() : nullptr;
-    }
-
-    std::pair<graph::ObjectNameBuilder, graph::ObjectNameBuilder>
-    RenderPrimitiveBatchSystem::BuildICBNames() const
-    {
-        graph::ObjectNameBuilder draw_name;
-        graph::ObjectNameBuilder indexed_name;
-
-        if (world && !world->GetResourceNamePrefix().empty())
-        {
-            // Use context prefix for hierarchical naming
-            std::string draw_str = world->GetResourceNamePrefix() + ":IndirectDrawBuffer";
-            std::string indexed_str = world->GetResourceNamePrefix() + ":IndirectDrawIndexedBuffer";
-
-            draw_name = graph::ObjectNameBuilder(draw_str.c_str());
-            indexed_name = graph::ObjectNameBuilder(indexed_str.c_str());
-        }
-        else
-        {
-            draw_name = graph::ObjectNameBuilder("RPBS_IndirectDrawBuffer");
-            indexed_name = graph::ObjectNameBuilder("RPBS_IndirectDrawIndexedBuffer");
-        }
-
-        return {draw_name, indexed_name};
-    }
-
-    void RenderPrimitiveBatchSystem::BuildMaterialBatches()
-    {
         auto& cache = world->GetRenderFrameCache();
 
         TransformAssignmentBuffer* shared_transform_buffer = nullptr;
@@ -646,7 +583,7 @@ namespace hgl::ecs
             if (!batch_ptr)
             {
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
-                batch->cameraInfo = cameraInfo;
+                batch->cameraInfo = camera_info;
                 batch->transform_buffer = shared_transform_buffer;
                 batch->AddItem(item);
                 cache.materialBatches[key] = std::move(batch);
@@ -660,8 +597,11 @@ namespace hgl::ecs
         }
     }
 
-    void RenderPrimitiveBatchSystem::FinalizeBatches()
+    void PrimitiveBatchPipeline::FinalizeBatches()
     {
+        if (!world)
+            return;
+
         auto& cache = world->GetRenderFrameCache();
 
         for (auto& pair : cache.materialBatches)
@@ -670,5 +610,4 @@ namespace hgl::ecs
                 FinalizeBatch(*pair.second);
         }
     }
-}//namespace hgl::ecs
-
+}

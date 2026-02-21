@@ -7,7 +7,6 @@
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
@@ -35,26 +34,16 @@ namespace hgl::ecs
         // Frame lifecycle is driven by ECSContext::Render(float) + RenderSystemCore.
         auto *rc = ctx->GetRenderContext();
         auto *device = ctx->GetGPUDevice();
-        const bool use_split_primitive_batch = true;
 
         auto text_render_system = ctx->RegisterRenderSystem<ecs::TextRenderSystem>();
         auto environment_system = ctx->RegisterRenderSystem<ecs::EnvironmentSystem>();
         auto camera_system = ctx->RegisterTickSystem<ecs::CameraSystem>();
         auto render_target_system = ctx->RegisterRenderSystem<ecs::RenderTargetSystem>();
         auto render_collect_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveCollectSystem>();
-        auto render_batch_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchSystem>();
-        std::shared_ptr<ecs::RenderPrimitiveCullSystem> render_cull_system;
-        std::shared_ptr<ecs::RenderPrimitiveSortSystem> render_sort_system;
-        std::shared_ptr<ecs::RenderPrimitiveBatchBuildSystem> render_batch_build_system;
-        std::shared_ptr<ecs::RenderPrimitiveBatchFinalizeSystem> render_batch_finalize_system;
-
-        if (use_split_primitive_batch)
-        {
-            render_cull_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveCullSystem>();
-            render_sort_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveSortSystem>();
-            render_batch_build_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchBuildSystem>();
-            render_batch_finalize_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchFinalizeSystem>();
-        }
+        auto render_cull_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveCullSystem>();
+        auto render_sort_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveSortSystem>();
+        auto render_batch_build_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchBuildSystem>();
+        auto render_batch_finalize_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchFinalizeSystem>();
         auto render_commit_system = ctx->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
         auto render_upload_system = ctx->RegisterRenderSystem<ecs::RenderBufferUploadSystem>();
         auto render_submit_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
@@ -97,18 +86,10 @@ namespace hgl::ecs
             render_collect_system->SetCameraInfo(camera_info);
         }
 
-        if (render_batch_system)
-        {
-            render_batch_system->SetWorld(ctx);
-            render_batch_system->SetDevice(device);
-            render_batch_system->SetCameraInfo(camera_info);
-
-            if (use_split_primitive_batch)
-            {
-                render_batch_system->SetExternalPipelineEnabled(true);
-                render_batch_system->SetEnabled(false);
-            }
-        }
+        (void)render_cull_system;
+        (void)render_sort_system;
+        (void)render_batch_build_system;
+        (void)render_batch_finalize_system;
 
         if (render_commit_system)
         {

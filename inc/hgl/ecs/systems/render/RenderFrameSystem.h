@@ -49,9 +49,9 @@ namespace hgl::ecs
      * │  ├─ RenderCollect                        │
      * │  │   └─ RenderPrimitiveCollectSystem     │
      * │  │       (收集需要渲染的图元)            │
-     * │  ├─ RenderBatch                          │
-     * │  │   └─ RenderPrimitiveBatchSystem       │
-     * │  │       (批处理优化)                    │
+    * │  ├─ RenderBatch                          │
+    * │  │   └─ RenderPrimitiveBatch* Systems    │
+    * │  │       (Cull/Sort/BatchBuild/Finalize) │
     * │  ├─ RenderDrawSubmit                     │
     * │  │   ├─ RenderPrimitiveSubmitSystem      │
     * │  │   │   (发送绘制命令)                  │

@@ -3,7 +3,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/components/TransformComponent.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
@@ -19,7 +19,7 @@ namespace hgl::ecs
         SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
 
         // Declare dependencies
-        AddDependency<RenderPrimitiveBatchSystem>(); // Needs batched data
+        AddDependency<RenderPrimitiveBatchFinalizeSystem>(); // Needs batched data
     }
 
     void RenderPrimitiveSubmitSystem::Render(graph::RenderCmdBuffer* cmdBuffer, float /*deltaTime*/)

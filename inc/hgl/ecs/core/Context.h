@@ -33,6 +33,7 @@ namespace hgl
     namespace ecs
     {
     class RenderSystemCore;
+        class PrimitiveBatchPipeline;
         class MaterialBatch;
         class PrimitiveRenderItem;
 
@@ -105,6 +106,8 @@ namespace hgl
             SystemProfiler profiler;
             bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
+
+            std::unique_ptr<PrimitiveBatchPipeline> primitive_batch_pipeline;
 
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
 
@@ -279,6 +282,8 @@ namespace hgl
             void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }
             hgl::graph::RenderContext* GetRenderContext() { return render_context; }
             const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
+
+            PrimitiveBatchPipeline* GetPrimitiveBatchPipeline();
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"

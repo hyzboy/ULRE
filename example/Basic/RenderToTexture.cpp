@@ -23,7 +23,10 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
@@ -163,8 +166,11 @@ public:
         ecs_world->InitializeGraphics(owner->GetDevice(), rt);
 
         auto render_target_system = ecs_world->RegisterRenderSystem<RenderTargetSystem>();
-        auto render_collect_system = ecs_world->RegisterTickSystem<RenderPrimitiveCollectSystem>();
-        auto render_batch_system = ecs_world->RegisterTickSystem<RenderPrimitiveBatchSystem>();
+        auto render_collect_system = ecs_world->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
+        auto render_cull_system = ecs_world->RegisterRenderSystem<RenderPrimitiveCullSystem>();
+        auto render_sort_system = ecs_world->RegisterRenderSystem<RenderPrimitiveSortSystem>();
+        auto render_batch_build_system = ecs_world->RegisterRenderSystem<RenderPrimitiveBatchBuildSystem>();
+        auto render_batch_finalize_system = ecs_world->RegisterRenderSystem<RenderPrimitiveBatchFinalizeSystem>();
         auto render_submit_system = ecs_world->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
         ecs_world->RegisterTickSystem<InputSystem>();
         auto camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
@@ -174,8 +180,10 @@ public:
 
         render_collect_system->SetWorld(ecs_world);
 
-        render_batch_system->SetWorld(ecs_world);
-        render_batch_system->SetDevice(device);
+        (void)render_cull_system;
+        (void)render_sort_system;
+        (void)render_batch_build_system;
+        (void)render_batch_finalize_system;
 
         render_submit_system->SetWorld(ecs_world);
 
@@ -189,7 +197,6 @@ public:
 
         const auto *camera_info = camera_system ? camera_system->GetCameraInfo() : nullptr;
         render_collect_system->SetCameraInfo(camera_info);
-        render_batch_system->SetCameraInfo(camera_info);
 
         render_core = std::make_unique<hgl::ecs::RenderSystemCore>(ecs_world);
         if (!render_core || !render_core->Initialize())

@@ -9,6 +9,7 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
+#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -121,6 +122,14 @@ namespace hgl
 
             active = true;
             OnCreate();
+        }
+
+        PrimitiveBatchPipeline* ECSContext::GetPrimitiveBatchPipeline()
+        {
+            if (!primitive_batch_pipeline)
+                primitive_batch_pipeline = std::make_unique<PrimitiveBatchPipeline>();
+
+            return primitive_batch_pipeline.get();
         }
 
         void ECSContext::Shutdown()
