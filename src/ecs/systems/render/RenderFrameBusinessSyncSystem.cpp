@@ -3,6 +3,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
 
 namespace hgl::ecs
 {
@@ -12,6 +13,7 @@ namespace hgl::ecs
         SetExecutionOrder(ExecutionPhase::RenderPostBeginFrame);
         AddDependency<RenderBufferUploadSystem>();
         AddDependency<EnvironmentSystem>();
+        AddDependency<RenderTargetSystem>();
     }
 
     void RenderFrameBusinessSyncSystem::Update(float /*deltaTime*/)

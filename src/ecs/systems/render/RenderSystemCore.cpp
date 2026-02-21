@@ -9,7 +9,7 @@ namespace hgl::ecs {
 
 RenderSystemCore::RenderSystemCore(ECSContext* ctx)
     : world(ctx), gpu_device(nullptr), render_target(nullptr),
-      current_frame(0), swapchain_image_index(0), frame_begun(false) {
+    current_frame(0), swapchain_image_index(0), frame_begun(false), render_pass_begun(false) {
     if (!world) {
         LogError("RenderSystemCore: ECSContext is null");
     }
@@ -61,20 +61,24 @@ bool RenderSystemCore::BeginFrame() {
         return false;
     }
 
-    if (world)
-        world->SetCurrentRenderCmd(render_cmd);
+    swapchain_image_index = render_target->GetCurrentFrameIndex();
 
-    if (world)
+    frame_begun = true;
+    render_pass_begun = false;
+    return true;
+}
+
+bool RenderSystemCore::BeginRenderPass()
+{
+    if (!frame_begun || !render_cmd)
     {
-        world->PrepareRenderPassSetup(render_target->GetCurrentFrameIndex(), 0.0f);
+        LogWarning("RenderSystemCore::BeginRenderPass: frame not ready");
+        return false;
     }
 
     render_cmd->SetClearColor(0, clear_color);
     render_cmd->BeginRenderPass();
-
-    swapchain_image_index = render_target->GetCurrentFrameIndex();
-
-    frame_begun = true;
+    render_pass_begun = true;
     return true;
 }
 
@@ -91,24 +95,20 @@ void RenderSystemCore::EndFrame() {
 
     if (!render_target) {
         LogError("RenderSystemCore::EndFrame: render_target is null");
-        if (world)
-            world->SetCurrentRenderCmd(nullptr);
         frame_begun = false;
+        render_pass_begun = false;
         return;
     }
 
-    if (render_cmd)
+    if (render_cmd && render_pass_begun)
         render_cmd->EndRenderPass();
 
     render_target->EndRender();
 
-    // 推进到下一帧
-    if (world)
-        world->SetCurrentRenderCmd(nullptr);
-
     current_frame++;
     render_cmd = nullptr;
     frame_begun = false;
+    render_pass_begun = false;
 }
 
 } // namespace hgl::ecs

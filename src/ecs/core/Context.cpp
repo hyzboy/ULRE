@@ -409,6 +409,18 @@ namespace hgl
                 return;
             }
 
+            SetCurrentRenderCmd(render_core->GetRenderCmd());
+            PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), 0.0f);
+
+            LogInfo("[ECS RENDER] Calling BeginRenderPass");
+            if (!render_core->BeginRenderPass())
+            {
+                LogWarning("[ECS RENDER] BeginRenderPass FAILED");
+                render_core->EndFrame();
+                SetCurrentRenderCmd(nullptr);
+                return;
+            }
+
             if (pre_render)
                 pre_render(deltaTime);
 
@@ -417,6 +429,8 @@ namespace hgl
 
             LogInfo("[ECS RENDER] Calling EndFrame");
             render_core->EndFrame();
+
+            SetCurrentRenderCmd(nullptr);
 
             LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
             if (!SubmitFrameToRenderTarget(0.0f))

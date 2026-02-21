@@ -66,6 +66,7 @@ private:
     uint32_t current_frame = 0;
     uint32_t swapchain_image_index = 0;
     bool frame_begun = false;
+    bool render_pass_begun = false;
 
     hgl::Color4f clear_color{0,0,0,1};
 
@@ -115,6 +116,12 @@ public:
      * @endcode
      */
     bool BeginFrame();
+
+    /**
+     * Begin render pass on current frame command buffer.
+     * Must be called after BeginFrame() and before issuing draw commands.
+     */
+    bool BeginRenderPass();
 
     /**
      * 结束一帧的渲染

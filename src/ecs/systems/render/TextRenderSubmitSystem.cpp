@@ -3,6 +3,7 @@
 #include<hgl/ecs/systems/render/TextResourceSyncSystem.h>
 #include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
+#include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/vk/VKCommandBuffer.h>
 
 namespace hgl::ecs
@@ -14,6 +15,7 @@ namespace hgl::ecs
         SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
         AddDependency<TextResourceSyncSystem>();
         AddDependency<RenderPrimitiveSubmitSystem>();
+        AddDependency<RenderBufferUploadSystem>();
     }
 
     void TextRenderSubmitSystem::Render(graph::RenderCmdBuffer* cmdBuffer, float /*deltaTime*/)
