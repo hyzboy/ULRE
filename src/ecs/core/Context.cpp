@@ -16,7 +16,10 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/SwapchainNextImageSystem.h>
+#include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
@@ -385,6 +388,18 @@ namespace hgl
                 }
             }
 
+            LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
+            if (!AcquireSwapchainImage(0.0f))
+            {
+                LogWarning("[ECS RENDER] AcquireSwapchainImage FAILED");
+                return;
+            }
+
+            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
+            RenderPreBeginFrame(0.0f);
+
+            SyncRenderTargetViewport();
+
             render_core->SetClearColor(clear_color);
 
             LogInfo("[ECS RENDER] Calling BeginFrame");
@@ -402,6 +417,10 @@ namespace hgl
 
             LogInfo("[ECS RENDER] Calling EndFrame");
             render_core->EndFrame();
+
+            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
+            if (!SubmitFrameToRenderTarget(0.0f))
+                LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
 
             if (wait_idle_enabled)
             {
@@ -427,6 +446,50 @@ namespace hgl
                 return;
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderSwapchainNextImage, deltaTime);
+        }
+
+        bool ECSContext::AcquireSwapchainImage(float deltaTime)
+        {
+            if (!active)
+                return false;
+
+            bool swapchain_ok = true;
+            bool swapchain_system_present = false;
+
+            RenderSwapchainNextImage(deltaTime);
+
+            if (auto swapchain_system = GetSystem<SwapchainNextImageSystem>())
+            {
+                swapchain_system_present = true;
+                swapchain_ok = swapchain_system->WasSuccessful();
+            }
+
+            if (!swapchain_system_present)
+            {
+                if (auto* target = GetRenderTarget())
+                {
+                    if (auto swapchain_rt = dynamic_cast<graph::SwapchainRenderTarget*>(target))
+                        swapchain_ok = swapchain_rt->NextFrame();
+                }
+            }
+
+            return swapchain_ok;
+        }
+
+        void ECSContext::SyncRenderTargetViewport()
+        {
+            if (!active)
+                return;
+
+            auto *target = GetRenderTarget();
+            if (!target)
+                return;
+
+            const VkExtent2D &ext = target->GetExtent();
+            const auto *vp_info = target->GetViewportInfo();
+
+            if (vp_info && (vp_info->GetViewport().x != ext.width || vp_info->GetViewport().y != ext.height))
+                target->OnResize(ext);
         }
 
         void ECSContext::RenderBeginFrame(float deltaTime)
@@ -461,21 +524,16 @@ namespace hgl
             RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame, deltaTime);
         }
 
-        void ECSContext::RenderBeginFrameBusinessSync(graph::RenderCmdBuffer* cmdBuffer)
+        void ECSContext::PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime)
         {
             if (!active)
                 return;
 
-            auto camera_system = GetSystem<CameraSystem>();
-            if (camera_system)
-                camera_system->SyncCameraUBO();
-
-            auto environment_system = GetSystem<EnvironmentSystem>();
-            if (environment_system)
-                environment_system->SyncSkyUBO();
-
-            if (camera_system && cmdBuffer)
-                camera_system->BindDescriptor(cmdBuffer);
+            SetFrameIndex(frameIndex);
+            RenderBeginFrame(deltaTime);
+            RenderBufferCommit(deltaTime);
+            RenderBufferUpload(deltaTime);
+            RenderPostBeginFrame(deltaTime);
         }
         void ECSContext::RenderSubmit(float deltaTime)
         {
@@ -483,6 +541,31 @@ namespace hgl
                 return;
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderSubmit, deltaTime);
+        }
+
+        bool ECSContext::SubmitFrameToRenderTarget(float deltaTime)
+        {
+            if (!active)
+                return false;
+
+            bool submit_ok = false;
+            bool submit_system_present = false;
+
+            RenderSubmit(deltaTime);
+
+            if (auto submit_system = GetSystem<SwapchainSubmitSystem>())
+            {
+                submit_system_present = true;
+                submit_ok = submit_system->WasSuccessful();
+            }
+
+            if (!submit_system_present)
+            {
+                if (auto* target = GetRenderTarget())
+                    submit_ok = target->Submit();
+            }
+
+            return submit_ok;
         }
 
         void ECSContext::RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime)

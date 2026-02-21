@@ -198,6 +198,12 @@ namespace hgl
             /// Run swapchain image acquisition updates (no command buffer)
             void RenderSwapchainNextImage(float deltaTime);
 
+            /// Acquire swapchain image for current frame with ECS-system-first fallback.
+            bool AcquireSwapchainImage(float deltaTime = 0.0f);
+
+            /// Ensure render target viewport metadata is synced with current extent.
+            void SyncRenderTargetViewport();
+
             /// Run begin-frame render updates (frame index available)
             void RenderBeginFrame(float deltaTime);
 
@@ -210,12 +216,15 @@ namespace hgl
             /// Run post-begin-frame render updates (no command buffer)
             void RenderPostBeginFrame(float deltaTime);
 
-            /// Legacy begin-frame business sync (camera/env UBO + camera descriptor bind)
-            /// Kept in ECSContext to keep RenderSystemCore as frame lifecycle shell.
-            void RenderBeginFrameBusinessSync(graph::RenderCmdBuffer* cmdBuffer);
+            /// Orchestrate pre-pass render setup phases for a specific frame index.
+            /// Includes BeginFrame/BufferCommit/BufferUpload/PostBegin.
+            void PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime = 0.0f);
 
             /// Run frame submit updates (no command buffer)
             void RenderSubmit(float deltaTime);
+
+            /// Submit current frame with ECS-system-first fallback.
+            bool SubmitFrameToRenderTarget(float deltaTime = 0.0f);
 
             /// Clear all entities and component registries
             void ClearEntities();
