@@ -210,6 +210,10 @@ namespace hgl
             /// Run post-begin-frame render updates (no command buffer)
             void RenderPostBeginFrame(float deltaTime);
 
+            /// Legacy begin-frame business sync (camera/env UBO + camera descriptor bind)
+            /// Kept in ECSContext to keep RenderSystemCore as frame lifecycle shell.
+            void RenderBeginFrameBusinessSync(graph::RenderCmdBuffer* cmdBuffer);
+
             /// Run frame submit updates (no command buffer)
             void RenderSubmit(float deltaTime);
 

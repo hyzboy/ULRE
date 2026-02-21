@@ -15,6 +15,7 @@
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
+#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
@@ -384,14 +385,14 @@ namespace hgl
                 }
             }
 
+            render_core->SetClearColor(clear_color);
+
             LogInfo("[ECS RENDER] Calling BeginFrame");
             if (!render_core->BeginFrame())
             {
                 LogWarning("[ECS RENDER] BeginFrame FAILED");
                 return;
             }
-
-            render_core->SetClearColor(clear_color);
 
             if (pre_render)
                 pre_render(deltaTime);
@@ -460,6 +461,22 @@ namespace hgl
             RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame, deltaTime);
         }
 
+        void ECSContext::RenderBeginFrameBusinessSync(graph::RenderCmdBuffer* cmdBuffer)
+        {
+            if (!active)
+                return;
+
+            auto camera_system = GetSystem<CameraSystem>();
+            if (camera_system)
+                camera_system->SyncCameraUBO();
+
+            auto environment_system = GetSystem<EnvironmentSystem>();
+            if (environment_system)
+                environment_system->SyncSkyUBO();
+
+            if (camera_system && cmdBuffer)
+                camera_system->BindDescriptor(cmdBuffer);
+        }
         void ECSContext::RenderSubmit(float deltaTime)
         {
             if (!active)

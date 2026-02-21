@@ -5,8 +5,6 @@
 #include <hgl/graph/camera/ViewportInfo.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
-#include <hgl/ecs/systems/tick/CameraSystem.h>
-#include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/log/Log.h>
@@ -111,21 +109,9 @@ bool RenderSystemCore::BeginFrame() {
         world->SetFrameIndex(render_target->GetCurrentFrameIndex());
         world->RenderBeginFrame(0.0f);
         world->RenderBufferCommit(0.0f);
-
-        auto camera_system = world->GetSystem<CameraSystem>();
-        if (camera_system)
-            camera_system->SyncCameraUBO();
-
-        auto environment_system = world->GetSystem<EnvironmentSystem>();
-        if (environment_system)
-            environment_system->SyncSkyUBO();
-
         world->RenderBufferUpload(0.0f);
-
         world->RenderPostBeginFrame(0.0f);
-
-        if (camera_system)
-            camera_system->BindDescriptor(render_cmd);
+        world->RenderBeginFrameBusinessSync(render_cmd);
     }
 
     render_cmd->SetClearColor(0, clear_color);
