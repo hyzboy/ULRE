@@ -29,7 +29,7 @@ namespace hgl::ecs
      * Responsibilities:
      * - Convert facing direction to quaternion
      * - Handle smooth rotation transitions
-     * - Support multiple facing modes (LookAtCamera, LookAtTarget, BillboardY)
+    * - Support multiple facing modes (LookAtCamera, LookAtTarget, BillboardY, BillboardZ)
      *
      * The computed rotation is stored in TransformComponent::local_rotation,
      * which is then used by the rendering pipeline.
@@ -73,6 +73,9 @@ namespace hgl::ecs
                                           float deltaTime);
 
         bool CalculateBillboardYRotation(TransformComponent* transform,
+                                        float deltaTime);
+
+        bool CalculateBillboardZRotation(TransformComponent* transform,
                                         float deltaTime);
     };
 }//namespace hgl::ecs

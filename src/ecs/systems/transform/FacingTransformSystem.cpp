@@ -68,6 +68,9 @@ namespace hgl::ecs
             case FacingMode::BillboardY:
                 return CalculateBillboardYRotation(transform, deltaTime);
 
+            case FacingMode::BillboardZ:
+                return CalculateBillboardZRotation(transform, deltaTime);
+
             default:
                 return false;
         }
@@ -202,6 +205,46 @@ namespace hgl::ecs
             rotation_matrix[2] = glm::vec4(-forward, 0.0f);
 
             glm::quat new_rotation = glm::quat_cast(rotation_matrix);
+            if (!std::isfinite(new_rotation.w) || !std::isfinite(new_rotation.x) ||
+                !std::isfinite(new_rotation.y) || !std::isfinite(new_rotation.z))
+                return false;
+
+            transform->SetLocalRotation(new_rotation);
+            return true;
+        }
+        catch (const std::exception&)
+        {
+            return false;
+        }
+    }
+
+    bool FacingTransformSystem::CalculateBillboardZRotation(TransformComponent* transform,
+                                                           float deltaTime)
+    {
+        if (!transform || !camera_info)
+            return false;
+
+        try
+        {
+            glm::vec3 world_pos = glm::vec3(transform->GetWorldMatrix()[3]);
+            glm::vec3 camera_pos = glm::vec3(camera_info->pos.x, camera_info->pos.y, camera_info->pos.z);
+
+            // Z-up billboard: only rotate around Z axis (pure yaw, no pitch/roll change)
+            glm::vec3 to_camera = glm::vec3(camera_pos.x - world_pos.x,
+                                            camera_pos.y - world_pos.y,
+                                            0.0f); // Ignore Z difference
+
+            const float len2 = glm::dot(to_camera, to_camera);
+            if (len2 < 1e-6f)
+                return false;
+
+            // Calculate yaw angle in XY plane to point toward camera
+            float yaw = std::atan2(to_camera.y, to_camera.x);
+
+            // Create rotation quaternion around Z axis only
+            // Quaternion for rotation θ around Z(0,0,1): q = (cos(θ/2), 0, 0, sin(θ/2))
+            float half_yaw = yaw * 0.5f;
+            glm::quat new_rotation(std::cos(half_yaw), 0.0f, 0.0f, std::sin(half_yaw));
             if (!std::isfinite(new_rotation.w) || !std::isfinite(new_rotation.x) ||
                 !std::isfinite(new_rotation.y) || !std::isfinite(new_rotation.z))
                 return false;

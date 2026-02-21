@@ -17,7 +17,8 @@ namespace hgl::ecs
      * Facing Modes:
      * - LookAtCamera: Always face the camera (for billboards, labels, etc.)
      * - LookAtTarget: Face towards a specific world position
-     * - BillboardY: Only rotate around Y axis, top-to-camera (partial billboard)
+    * - BillboardY: Only rotate around Y axis, top-to-camera (partial billboard)
+    * - BillboardZ: Z-up billboard, only rotates around Z axis (yaw in XY plane)
      *
      * Use Cases:
      * - Billboards
@@ -37,6 +38,7 @@ namespace hgl::ecs
         LookAtCamera = 0,    ///< Face towards the camera (full rotation)
         LookAtTarget = 1,    ///< Face towards a specific world position
         BillboardY = 2,      ///< Only rotate around Y axis, but face camera from top
+        BillboardZ = 3,      ///< Z-up billboard, only rotates around Z axis (yaw in XY plane)
     };
 
     class FacingTransformComponent : public Component
