@@ -1,4 +1,5 @@
 #include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -27,6 +28,7 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::Material);
         SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        AddDependency<RenderTargetSystem>();
     }
 
     void QuadResourcePrepareSystem::Update(float deltaTime)

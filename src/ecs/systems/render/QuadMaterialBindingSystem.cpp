@@ -17,6 +17,7 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::Material);
         SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        AddDependency<QuadResourcePrepareSystem>();
     }
 
     void QuadMaterialBindingSystem::Update(float deltaTime)
