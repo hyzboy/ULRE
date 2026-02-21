@@ -7,6 +7,7 @@
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
 #include<functional>
 #include<cstddef>
+#include<limits>
 
 namespace hgl
 {
@@ -43,6 +44,9 @@ namespace hgl::ecs
         bool frustumCullingEnabled = true;
         bool distanceSortingEnabled = true;
         bool batchingEnabled = true;
+
+        bool external_pipeline_enabled = false;
+        uint32_t prepared_frame_index = std::numeric_limits<uint32_t>::max();
 
         struct Statistics
         {
@@ -82,16 +86,21 @@ namespace hgl::ecs
         void SetDistanceSortingEnabled(bool enabled) { distanceSortingEnabled = enabled; }
         void SetBatchingEnabled(bool enabled) { batchingEnabled = enabled; }
 
-        const Statistics& GetStatistics() const { return stats; }
+        void SetExternalPipelineEnabled(bool enabled) { external_pipeline_enabled = enabled; }
+        bool IsExternalPipelineEnabled() const { return external_pipeline_enabled; }
 
-        void Update(float deltaTime) override;
-
-    private:
+        bool PrepareFrame();
 
         void RunCulling();
         void RunSorting();
         void RunTransformIndexing();
         void RunBatching();
+
+        const Statistics& GetStatistics() const { return stats; }
+
+        void Update(float deltaTime) override;
+
+    private:
 
         void PerformFrustumCulling();
 

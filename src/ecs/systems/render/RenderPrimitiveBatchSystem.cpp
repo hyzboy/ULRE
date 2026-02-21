@@ -347,17 +347,33 @@ namespace hgl::ecs
         AddDependency<RenderPrimitiveCollectSystem>(); // Needs collected items
     }
 
-    void RenderPrimitiveBatchSystem::Update(float /*deltaTime*/)
+    bool RenderPrimitiveBatchSystem::PrepareFrame()
     {
         if (!world || !cameraInfo)
-            return;
+            return false;
 
         auto& cache = world->GetRenderFrameCache();
         if (cache.renderItems.empty())
+            return false;
+
+        const uint32_t frame_index = world->GetFrameIndex();
+        if (prepared_frame_index != frame_index)
+        {
+            stats = Statistics{};
+            stats.totalEntities = cache.renderItems.size();
+            prepared_frame_index = frame_index;
+        }
+
+        return true;
+    }
+
+    void RenderPrimitiveBatchSystem::Update(float /*deltaTime*/)
+    {
+        if (external_pipeline_enabled)
             return;
 
-        stats = Statistics{};
-        stats.totalEntities = cache.renderItems.size();
+        if (!PrepareFrame())
+            return;
 
         RunCulling();
         RunSorting();

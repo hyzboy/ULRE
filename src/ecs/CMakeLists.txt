@@ -41,6 +41,10 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
 
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCullSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchBuildSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchFinalizeSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
@@ -100,6 +104,10 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
 
                 systems/render/RenderPrimitiveCollectSystem.cpp
                 systems/render/RenderPrimitiveBatchSystem.cpp
+                systems/render/RenderPrimitiveCullSystem.cpp
+                systems/render/RenderPrimitiveSortSystem.cpp
+                systems/render/RenderPrimitiveBatchBuildSystem.cpp
+                systems/render/RenderPrimitiveBatchFinalizeSystem.cpp
                 systems/render/RenderPrimitiveSubmitSystem.cpp
                 systems/render/RenderBufferCommitSystem.cpp
                 systems/render/RenderBufferUploadSystem.cpp
@@ -199,6 +207,10 @@ source_group("ECS\\Systems\\Tick" FILES
 source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCullSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchBuildSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchFinalizeSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
@@ -214,6 +226,10 @@ source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
     systems/render/RenderPrimitiveCollectSystem.cpp
     systems/render/RenderPrimitiveBatchSystem.cpp
+    systems/render/RenderPrimitiveCullSystem.cpp
+    systems/render/RenderPrimitiveSortSystem.cpp
+    systems/render/RenderPrimitiveBatchBuildSystem.cpp
+    systems/render/RenderPrimitiveBatchFinalizeSystem.cpp
     systems/render/RenderPrimitiveSubmitSystem.cpp
     systems/render/RenderBufferCommitSystem.cpp
     systems/render/RenderBufferUploadSystem.cpp
