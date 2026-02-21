@@ -359,93 +359,24 @@ namespace hgl
 
         void ECSContext::Render(float deltaTime)
         {
-            Render(deltaTime, nullptr);
+            // Lazy-initialize default graph cache on first use
+            if (!default_render_graph_initialized)
+            {
+                cached_default_render_graph = CreateDefaultLinearGraph();
+                default_render_graph_initialized = true;
+            }
+            Render(deltaTime, cached_default_render_graph);
         }
 
         void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)
         {
-            if (!active)
-                return;
-
-            // Canonical frame entry (Phase 1 boundary hardening).
-            LogInfo("[ECS RENDER] ===== Frame Start =====");
-
-            if (!render_core)
+            // Lazy-initialize default graph cache on first use
+            if (!default_render_graph_initialized)
             {
-                render_core = std::make_unique<RenderSystemCore>(this);
-                if (!render_core->Initialize())
-                {
-                    render_core.reset();
-                    return;
-                }
+                cached_default_render_graph = CreateDefaultLinearGraph();
+                default_render_graph_initialized = true;
             }
-
-            if (auto *rt = GetRenderTarget())
-            {
-                LogInfo("[ECS RENDER] Calling WaitFence");
-                if (!rt->WaitFence())
-                {
-                    LogWarning("[ECS RENDER] WaitFence FAILED");
-                    return;
-                }
-            }
-
-            LogInfo("[ECS RENDER] Calling AcquireSwapchainImage");
-            if (!AcquireSwapchainImage(0.0f))
-            {
-                LogWarning("[ECS RENDER] AcquireSwapchainImage FAILED");
-                return;
-            }
-
-            LogInfo("[ECS RENDER] Calling RenderPreBeginFrame");
-            RenderPreBeginFrame(0.0f);
-
-            SyncRenderTargetViewport();
-
-            render_core->SetClearColor(clear_color);
-
-            LogInfo("[ECS RENDER] Calling BeginFrame");
-            if (!render_core->BeginFrame())
-            {
-                LogWarning("[ECS RENDER] BeginFrame FAILED");
-                return;
-            }
-
-            SetCurrentRenderCmd(render_core->GetRenderCmd());
-            PrepareRenderPassSetup(render_core->GetSwapchainImageIndex(), 0.0f);
-
-            LogInfo("[ECS RENDER] Calling BeginRenderPass");
-            if (!render_core->BeginRenderPass())
-            {
-                LogWarning("[ECS RENDER] BeginRenderPass FAILED");
-                render_core->EndFrame();
-                SetCurrentRenderCmd(nullptr);
-                return;
-            }
-
-            if (pre_render)
-                pre_render(deltaTime);
-
-            LogInfo("[ECS RENDER] Calling Render(cmd)");
-            Render(render_core->GetRenderCmd(), deltaTime);
-
-            LogInfo("[ECS RENDER] Calling EndFrame");
-            render_core->EndFrame();
-
-            SetCurrentRenderCmd(nullptr);
-
-            LogInfo("[ECS RENDER] Calling SubmitFrameToRenderTarget");
-            if (!SubmitFrameToRenderTarget(0.0f))
-                LogError("[ECS RENDER] SubmitFrameToRenderTarget FAILED");
-
-            if (wait_idle_enabled)
-            {
-                LogInfo("[ECS RENDER] Calling WaitIdle");
-                if (auto *device = GetGPUDevice())
-                    device->WaitIdle();
-            }
-
-            LogInfo("[ECS RENDER] ===== Frame End =====");
+            Render(deltaTime, cached_default_render_graph, pre_render);
         }
 
         void ECSContext::RenderPreBeginFrame(float deltaTime)
@@ -656,6 +587,34 @@ namespace hgl
                 profiler.End(system);
 
             LogDebug("[ECS] Update End: %s", system->GetName().c_str());
+        }
+
+        void ECSContext::RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime)
+        {
+            SortRenderSystems();
+
+            const int min_phase = static_cast<int>(minPhase);
+            const int max_phase = static_cast<int>(maxPhase);
+
+            for (auto& entry : render_system_order)
+            {
+                if (!entry.system || !entry.system->IsEnabled())
+                    continue;
+
+                if (entry.phase < min_phase || entry.phase > max_phase)
+                    continue;
+
+                HGL_CAPTURE_SCOPE();
+                LogDebug("[ECS] Render Begin: %s (phase %d)", entry.system->GetName().c_str(), entry.phase);
+                
+                if (system_profiling_enabled)
+                    profiler.Begin(entry.system.get());
+                entry.system->Render(current_render_cmd, deltaTime);
+                if (system_profiling_enabled)
+                    profiler.End(entry.system.get());
+                
+                LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
+            }
         }
 
         void ECSContext::ClearEntities()

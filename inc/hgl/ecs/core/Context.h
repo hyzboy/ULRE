@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/Object.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/System.h>
+#include<hgl/ecs/core/RenderGraph.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/EntityManager.h>
 #include<hgl/ecs/core/SystemProfiler.h>
@@ -126,6 +127,10 @@ namespace hgl
             bool wait_idle_enabled = false;
             hgl::Color4f clear_color{0,0,0,1};
 
+            /// Cached default linear render graph (created once, reused every frame)
+            mutable RenderGraph cached_default_render_graph;
+            mutable bool default_render_graph_initialized = false;
+
             /// Graphics context adapter (Phase 2) - now raw pointer
             hgl::graph::GraphicsContext* graphics_context = nullptr;
             hgl::graph::RenderContext* render_context = nullptr;
@@ -150,6 +155,7 @@ namespace hgl
             void RunRenderPhaseUpdates(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesFrom(ExecutionPhase phase, float deltaTime);
             void RunRenderUpdatesRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
+            void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
 
@@ -188,6 +194,12 @@ namespace hgl
 
             /// Run a full render frame with a pre-render callback
             void Render(float deltaTime, const std::function<void(float)> &pre_render);
+
+            /// Run a full render frame using a custom RenderGraph (supports multi-RT, conditional passes)
+            void Render(float deltaTime, const RenderGraph& graph);
+
+            /// Run a full render frame using a custom RenderGraph with a pre-render callback
+            void Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)> &pre_render);
 
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
