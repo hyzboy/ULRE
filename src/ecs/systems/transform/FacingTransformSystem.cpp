@@ -91,27 +91,22 @@ namespace hgl::ecs
             if (dist2 < 1e-6f)
                 return false;
 
-            const float inv_dist = 1.0f / std::sqrt(dist2);
-            glm::vec3 to_camera = camera_delta * inv_dist;
+            glm::vec3 direction = camera_delta / std::sqrt(dist2);
 
-            // Use camera's precomputed billboard vectors
-            glm::vec3 billboard_up = glm::vec3(camera_info->billboard_up.x, camera_info->billboard_up.y, camera_info->billboard_up.z);
-            glm::vec3 billboard_right = glm::vec3(camera_info->billboard_right.x, camera_info->billboard_right.y, camera_info->billboard_right.z);
+            // Z-up stable basis construction
+            glm::vec3 up(0.0f, 0.0f, 1.0f);
+            if (std::abs(glm::dot(direction, up)) > 0.99f)
+                up = glm::vec3(0.0f, 1.0f, 0.0f);
 
-            const bool up_valid = glm::dot(billboard_up, billboard_up) > 1e-6f;
-            const bool right_valid = glm::dot(billboard_right, billboard_right) > 1e-6f;
-            if (!up_valid || !right_valid)
-            {
-                const glm::vec3 world_up(0.0f, 1.0f, 0.0f);
-                billboard_right = glm::normalize(glm::cross(world_up, to_camera));
-                billboard_up = glm::normalize(glm::cross(to_camera, billboard_right));
-            }
+            glm::vec3 forward = -direction;
+            glm::vec3 right = glm::normalize(glm::cross(up, forward));
+            glm::vec3 calc_up = glm::cross(forward, right);
 
             // Create rotation matrix
             glm::mat4 rotation_matrix(1.0f);
-            rotation_matrix[0] = glm::vec4(billboard_right, 0.0f);
-            rotation_matrix[1] = glm::vec4(billboard_up, 0.0f);
-            rotation_matrix[2] = glm::vec4(-to_camera, 0.0f);
+            rotation_matrix[0] = glm::vec4(right, 0.0f);
+            rotation_matrix[1] = glm::vec4(calc_up, 0.0f);
+            rotation_matrix[2] = glm::vec4(forward, 0.0f);
 
             // Extract quaternion from rotation matrix
             glm::quat new_rotation = glm::quat_cast(rotation_matrix);
@@ -147,12 +142,12 @@ namespace hgl::ecs
                 return false;
 
             glm::vec3 direction = glm::normalize(to_target);
-            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+            glm::vec3 up = glm::vec3(0.0f, 0.0f, 1.0f);
 
             // Avoid gimbal lock if looking straight up/down
             if (std::abs(glm::dot(direction, up)) > 0.99f)
             {
-                up = glm::vec3(1.0f, 0.0f, 0.0f);
+                up = glm::vec3(0.0f, 1.0f, 0.0f);
             }
 
             // Create look-at rotation matrix
