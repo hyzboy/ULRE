@@ -39,6 +39,15 @@ namespace hgl
                 /// Whether this pass should execute
                 bool enabled = true;
 
+                /// Whether this pass should execute Update() over the phase range
+                bool runUpdate = true;
+
+                /// Whether this pass should submit transform data before Render()
+                bool submitTransforms = true;
+
+                /// Whether this pass should execute Render() over the phase range
+                bool runRender = true;
+
                 /// Optional setup callback invoked before running this pass
                 /// Useful for clearing colors, setting stencil state, etc.
                 /// Signature: void(ECSContext& context, const Pass& pass)
@@ -51,8 +60,17 @@ namespace hgl
 
                 Pass(ExecutionPhase start, ExecutionPhase end,
                      hgl::graph::IRenderTarget* rt = nullptr,
-                     bool en = true)
-                    : startPhase(start), endPhase(end), renderTarget(rt), enabled(en) {}
+                                         bool en = true,
+                                         bool update = true,
+                                         bool submit = true,
+                                         bool render = true)
+                                        : startPhase(start),
+                                            endPhase(end),
+                                            renderTarget(rt),
+                                            enabled(en),
+                                            runUpdate(update),
+                                            submitTransforms(submit),
+                                            runRender(render) {}
             };
 
             /// Ordered sequence of render passes

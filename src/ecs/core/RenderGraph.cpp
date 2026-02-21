@@ -116,7 +116,8 @@ namespace hgl
                     pass.onBeforePass(*this, pass);
                 }
 
-                // Step 1: Update() pass — collect, cull, sort, batch (CPU data preparation)
+                // Step 1: optional Update() pass — collect, cull, sort, batch (CPU data preparation)
+                if (pass.runUpdate)
                 {
                     HGL_CAPTURE_SCOPE();
                     LogDebug("[ECS RENDER] Update phase range %d to %d", 
@@ -124,14 +125,16 @@ namespace hgl
                     RunRenderUpdatesRange(pass.startPhase, pass.endPhase, deltaTime);
                 }
 
-                // Step 2: Submit transform data to GPU before recording draw commands
+                // Step 2: optional transform submit before Render()
+                if (pass.submitTransforms)
                 {
                     LogDebug("[ECS RENDER] Submitting transform updates");
                     if (auto transform_system = GetSystem<TransformSystem>())
                         transform_system->SubmitTransformUpdates();
                 }
 
-                // Step 3: Render() pass — record GPU draw commands
+                // Step 3: optional Render() pass — record GPU draw commands
+                if (pass.runRender)
                 {
                     HGL_CAPTURE_SCOPE();
                     LogDebug("[ECS RENDER] Render phase range %d to %d", 
@@ -198,7 +201,10 @@ namespace hgl
                 ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
                 ExecutionPhase::RenderPostProcess_LineRenderSystem,
                 nullptr,  // nullptr = use current/swapchain RT
-                true      // enabled by default
+                true,     // enabled
+                true,     // run Update() pass
+                true,     // submit transforms
+                true      // run Render() pass
             ));
 
             // Note: SwapchainSubmitSystem (phase 28) is handled by SubmitFrameToRenderTarget()
