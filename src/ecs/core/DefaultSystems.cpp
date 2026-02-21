@@ -14,6 +14,8 @@
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/LineRenderSystem.h>
+#include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include <hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
 
@@ -41,6 +43,8 @@ namespace hgl::ecs
         auto swapchain_submit_system = ctx->RegisterRenderSystem<ecs::SwapchainSubmitSystem>();
         auto text_submit_system = ctx->RegisterRenderSystem<ecs::TextRenderSubmitSystem>();
         auto line_render_system = ctx->RegisterRenderSystem<ecs::LineRenderSystem>();
+        auto quad_resource_prepare_system = ctx->RegisterRenderSystem<ecs::QuadResourcePrepareSystem>();
+        auto quad_material_binding_system = ctx->RegisterRenderSystem<ecs::QuadMaterialBindingSystem>();
 
         (void)swapchain_next_image_system;
         (void)swapchain_submit_system;
@@ -98,6 +102,12 @@ namespace hgl::ecs
 
         if (text_submit_system)
             text_submit_system->SetWorld(ctx);
+
+        if (quad_resource_prepare_system)
+            quad_resource_prepare_system->SetWorld(ctx);
+
+        if (quad_material_binding_system)
+            quad_material_binding_system->SetWorld(ctx);
 
         // CN: LineRenderSystem 会在 Render 时延迟初始化，自动获取 context 中的信息
         // EN: LineRenderSystem will lazy-init on first Render, automatically get context info

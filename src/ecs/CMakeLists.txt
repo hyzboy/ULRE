@@ -51,6 +51,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/systems/render/TextRenderSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/QuadRenderSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/QuadResourcePrepareSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
 
@@ -109,6 +111,8 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 systems/render/TextRenderSystem.cpp
                 systems/render/TextRenderSubmitSystem.cpp
                 systems/render/QuadRenderSystem.cpp
+                systems/render/QuadResourcePrepareSystem.cpp
+                systems/render/QuadMaterialBindingSystem.cpp
                 systems/render/SwapchainNextImageSystem.cpp
                 systems/render/SwapchainSubmitSystem.cpp
 
@@ -207,6 +211,8 @@ source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/TextRenderSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/QuadRenderSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/QuadResourcePrepareSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
     systems/render/RenderPrimitiveCollectSystem.cpp
@@ -221,6 +227,8 @@ source_group("ECS\\Systems\\Render" FILES
     systems/render/TextRenderSystem.cpp
     systems/render/TextRenderSubmitSystem.cpp
     systems/render/QuadRenderSystem.cpp
+    systems/render/QuadResourcePrepareSystem.cpp
+    systems/render/QuadMaterialBindingSystem.cpp
     systems/render/SwapchainNextImageSystem.cpp
     systems/render/SwapchainSubmitSystem.cpp
 )

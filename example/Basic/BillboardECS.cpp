@@ -30,7 +30,8 @@
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/QuadRenderSystem.h>
+#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/ecs/systems/transform/FacingTransformSystem.h>
 
 #include<glm/glm.hpp>
@@ -177,28 +178,47 @@ private:
 
     /**
      * Ensure render systems are registered
-     * - QuadRenderSystem: Handles texture loading and material creation
+     * - QuadResourcePrepareSystem: Prepares shared resources (geometry, material, sampler)
+     * - QuadMaterialBindingSystem: Binds textures per quad entity
      * - FacingTransformSystem: Handles camera-facing rotation
      */
     bool EnsureRenderSystems()
     {
         if (!ecs_world) return false;
 
-        // Register QuadRenderSystem (handles texture loading and material creation)
-        auto quad_system = ecs_world->GetSystem<QuadRenderSystem>();
-        if (!quad_system)
+        // Register QuadResourcePrepareSystem (shared resources)
+        auto quad_prepare_system = ecs_world->GetSystem<QuadResourcePrepareSystem>();
+        if (!quad_prepare_system)
         {
-            std::cout << "[BillboardECS] Creating QuadRenderSystem..." << std::endl;
-            quad_system = ecs_world->RegisterTickSystem<QuadRenderSystem>();
-            quad_system->SetWorld(ecs_world);
+            std::cout << "[BillboardECS] Creating QuadResourcePrepareSystem..." << std::endl;
+            quad_prepare_system = ecs_world->RegisterRenderSystem<QuadResourcePrepareSystem>();
+            quad_prepare_system->SetWorld(ecs_world);
 
-            std::cout << "[BillboardECS] QuadRenderSystem created at " << (void*)quad_system.get() << std::endl;
+            std::cout << "[BillboardECS] QuadResourcePrepareSystem created" << std::endl;
 
             if (ecs_world->IsActive())
             {
-                quad_system->OnDependenciesReady();
-                quad_system->Initialize();
-                std::cout << "[BillboardECS] QuadRenderSystem initialized and started" << std::endl;
+                quad_prepare_system->OnDependenciesReady();
+                quad_prepare_system->Initialize();
+                std::cout << "[BillboardECS] QuadResourcePrepareSystem initialized" << std::endl;
+            }
+        }
+
+        // Register QuadMaterialBindingSystem (per-entity texture binding)
+        auto quad_binding_system = ecs_world->GetSystem<QuadMaterialBindingSystem>();
+        if (!quad_binding_system)
+        {
+            std::cout << "[BillboardECS] Creating QuadMaterialBindingSystem..." << std::endl;
+            quad_binding_system = ecs_world->RegisterRenderSystem<QuadMaterialBindingSystem>();
+            quad_binding_system->SetWorld(ecs_world);
+
+            std::cout << "[BillboardECS] QuadMaterialBindingSystem created" << std::endl;
+
+            if (ecs_world->IsActive())
+            {
+                quad_binding_system->OnDependenciesReady();
+                quad_binding_system->Initialize();
+                std::cout << "[BillboardECS] QuadMaterialBindingSystem initialized" << std::endl;
             }
         }
 
@@ -221,7 +241,7 @@ private:
             }
         }
 
-        return quad_system && facing_system;
+        return quad_prepare_system && quad_binding_system && facing_system;
     }
 
     /**
