@@ -359,12 +359,26 @@ namespace hgl::ecs
         stats = Statistics{};
         stats.totalEntities = cache.renderItems.size();
 
+        RunCulling();
+        RunSorting();
+        RunTransformIndexing();
+        RunBatching();
+    }
+
+    void RenderPrimitiveBatchSystem::RunCulling()
+    {
         if (frustumCullingEnabled)
             PerformFrustumCulling();
+    }
 
+    void RenderPrimitiveBatchSystem::RunSorting()
+    {
         if (distanceSortingEnabled)
             SortByDistance();
+    }
 
+    void RenderPrimitiveBatchSystem::RunTransformIndexing()
+    {
         TransformSystem* transform_system = nullptr;
         if (auto system = world->GetSystem<TransformSystem>())
         {
@@ -375,23 +389,27 @@ namespace hgl::ecs
         }
 
         AssignTransformIndices(transform_system);
+    }
 
-        if (batchingEnabled)
-        {
-            const auto start = std::chrono::high_resolution_clock::now();
+    void RenderPrimitiveBatchSystem::RunBatching()
+    {
+        if (!batchingEnabled)
+            return;
 
-            BuildMaterialBatches();
-            FinalizeBatches();
+        auto& cache = world->GetRenderFrameCache();
+        const auto start = std::chrono::high_resolution_clock::now();
 
-            const auto end = std::chrono::high_resolution_clock::now();
-            stats.batchingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
-            stats.batchCount = cache.materialBatches.GetCount();
+        BuildMaterialBatches();
+        FinalizeBatches();
 
-            if (events.onBatchesBuilt)
-                events.onBatchesBuilt(stats.batchCount);
-            if (events.onBatchingComplete)
-                events.onBatchingComplete();
-        }
+        const auto end = std::chrono::high_resolution_clock::now();
+        stats.batchingTimeMs = std::chrono::duration<float, std::milli>(end - start).count();
+        stats.batchCount = cache.materialBatches.GetCount();
+
+        if (events.onBatchesBuilt)
+            events.onBatchesBuilt(stats.batchCount);
+        if (events.onBatchingComplete)
+            events.onBatchingComplete();
     }
 
     void RenderPrimitiveBatchSystem::PerformFrustumCulling()

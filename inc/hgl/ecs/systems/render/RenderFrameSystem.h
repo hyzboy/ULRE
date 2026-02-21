@@ -14,6 +14,12 @@ namespace hgl {
 namespace hgl::ecs
 {
     /**
+     * Legacy note (Phase 1):
+     * - This type is kept for compatibility/documentation only.
+     * - Default runtime frame driver is ECSContext::Render(float) + RenderSystemCore.
+     * - Do not register RenderFrameSystem in new code paths.
+     */
+    /**
      * RenderFrameSystem: 渲染帧驱动系统
      *
      * 职责:
@@ -68,14 +74,11 @@ namespace hgl::ecs
      *
      * 使用示例:
      * ```cpp
-    * // 在应用初始化中
-     * auto render_frame_sys = ecs_context->RegisterRenderSystem<RenderFrameSystem>();
-     * render_frame_sys->SetRenderTarget(swapchain_target);
-     * render_frame_sys->SetRenderContext(render_context);
-     * render_frame_sys->SetClearColor(Color4f(0,0,0,1));
+    * // Legacy only: retained for compatibility; not used by default runtime.
+    * // Preferred path:
+    * // ecs_context->Render(delta_time);
      *
-     * // 执行流程
-     * ecs_context->Render(nullptr, delta_time);  // RenderFrameSystem 被调用
+    * // Frame lifecycle is driven by RenderSystemCore internally.
      * ```
      */
     class RenderFrameSystem : public System

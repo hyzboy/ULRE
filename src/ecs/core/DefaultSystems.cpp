@@ -27,6 +27,8 @@ namespace hgl::ecs
         if (!ctx)
             return systems;
 
+        // Phase 1 boundary: RenderFrameSystem is not registered here.
+        // Frame lifecycle is driven by ECSContext::Render(float) + RenderSystemCore.
         auto *rc = ctx->GetRenderContext();
         auto *device = ctx->GetGPUDevice();
 

@@ -88,6 +88,11 @@ namespace hgl::ecs
 
     private:
 
+        void RunCulling();
+        void RunSorting();
+        void RunTransformIndexing();
+        void RunBatching();
+
         void PerformFrustumCulling();
 
         // Frustum culling strategies
