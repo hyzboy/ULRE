@@ -125,6 +125,7 @@ namespace hgl
             std::unique_ptr<SystemCache> cache_manager;  // Component query cache
             class ECSContext* context = nullptr;  // Owning context
             bool enabled = true;
+            std::string render_element_type;  // Render element type (e.g., "Primitive", "Text", "SkySphere")
 
         public:
 
@@ -150,6 +151,10 @@ namespace hgl
 
             void SetEnabled(bool value) { enabled = value; }
             bool IsEnabled() const { return enabled; }
+
+            /// Set render element type (e.g., "Primitive", "Text", "SkySphere")
+            void SetRenderElementType(const std::string& type) { render_element_type = type; }
+            const std::string& GetRenderElementType() const { return render_element_type; }
 
             /// Get system type
             SystemType GetSystemType() const { return systemType; }

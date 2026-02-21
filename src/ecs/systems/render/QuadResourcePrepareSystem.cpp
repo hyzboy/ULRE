@@ -28,6 +28,7 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::Material);
         SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame_QuadResourcePrepareSystem);
+        SetRenderElementType("Billboard");
         AddDependency<RenderTargetSystem>();
     }
 

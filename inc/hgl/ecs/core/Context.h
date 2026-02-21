@@ -12,6 +12,7 @@
 #include<memory>
 #include<functional>
 #include<vector>
+#include<map>
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
@@ -66,6 +67,9 @@ namespace hgl
             // 分类存储：更新系统与渲染系统分开
             hgl::UnorderedMap<size_t, std::shared_ptr<System>> tick_systems;
             hgl::UnorderedMap<size_t, std::shared_ptr<System>> render_systems;
+
+            // 按render element type存储系统（用于运行时按名称查找和启用/禁用）
+            std::map<std::string, std::vector<std::shared_ptr<System>>> systems_by_element_type;
 
             struct OrderedSystem
             {
@@ -130,6 +134,11 @@ namespace hgl
             /// Cached default linear render graph (created once, reused every frame)
             mutable RenderGraph cached_default_render_graph;
             mutable bool default_render_graph_initialized = false;
+
+            /// Cached adaptive render graph (auto-culls based on scene content)
+            mutable RenderGraph cached_adaptive_render_graph;
+            mutable uint64_t cached_adaptive_scene_hash = ~0ULL;  // sentinel: "not computed yet"
+            mutable bool use_adaptive_render_graph = true;  // default: use adaptive mode
 
             /// Graphics context adapter (Phase 2) - now raw pointer
             hgl::graph::GraphicsContext* graphics_context = nullptr;
@@ -200,6 +209,15 @@ namespace hgl
 
             /// Run a full render frame using a custom RenderGraph with a pre-render callback
             void Render(float deltaTime, const RenderGraph& graph, const std::function<void(float)> &pre_render);
+
+            /// Control whether to use adaptive RenderGraph (default: true)
+            /// If true: automatically culls render passes based on scene content (no Primitives → skip collect/batch, etc.)
+            /// If false: uses default linear graph regardless of scene content
+            void SetAdaptiveRenderGraphEnabled(bool enabled) { use_adaptive_render_graph = enabled; }
+            bool GetAdaptiveRenderGraphEnabled() const { return use_adaptive_render_graph; }
+
+            /// Invalidate cached adaptive graph to force re-computation on next render
+            void InvalidateAdaptiveRenderGraph() { cached_adaptive_scene_hash = ~0ULL; }
 
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
@@ -466,6 +484,12 @@ namespace hgl
                     return std::static_pointer_cast<T>(*system);
                  return nullptr;
              }
+
+            /// Get systems by render element type name (e.g., "Primitive", "Text", "SkySphere")
+            void GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const;
+
+            /// Set enabled state for all systems of a given render element type
+            void SetElementTypeSystemsEnabled(const std::string& element_type, bool enabled);
 
         public:
             /// Get entity count

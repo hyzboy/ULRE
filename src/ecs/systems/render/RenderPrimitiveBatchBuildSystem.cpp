@@ -11,6 +11,7 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch_RenderPrimitiveBatchBuildSystem);
+        SetRenderElementType("Primitive");
         AddDependency<RenderPrimitiveSortSystem>();
         AddDependency<TransformSystem>();
     }

@@ -10,6 +10,7 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch_TextResourceSyncSystem);
+        SetRenderElementType("Text");
         AddDependency<TextBuildSystem>();
     }
 

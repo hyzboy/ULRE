@@ -104,5 +104,59 @@ namespace hgl
          */
         RenderGraph CreateDefaultLinearGraph();
 
+        /**
+         * Main scene pass only (primitive/text submit, no line overlay pass).
+         * Note: still excludes swapchain submit phase (handled externally).
+         */
+        RenderGraph CreateMainSceneGraph();
+
+        /**
+         * Main scene + split line overlay pass.
+         * Pass 0: collect/cull/sort/batch/text/submit (17-26)
+         * Pass 1: line overlay render only (27)
+         */
+        RenderGraph CreateMainWithLineOverlayGraph();
+
+        /**
+         * Line-only debug overlay graph.
+         * Useful for debugging line pipeline independently.
+         */
+        RenderGraph CreateLineOnlyGraph();
+
+        /**
+         * Scene statistics for adaptive graph generation
+         */
+        struct SceneStats
+        {
+            bool hasPrimitives = false;
+            bool hasText = false;
+            bool hasLines = false;
+            bool hasBillboards = false;  // Quad components
+            bool hasEnvironment = false;
+            
+            // Returns a hash for caching decisions
+            uint64_t GetHash() const
+            {
+                uint64_t hash = 0;
+                if (hasPrimitives) hash |= 1ULL;
+                if (hasText) hash |= (1ULL << 1);
+                if (hasLines) hash |= (1ULL << 2);
+                if (hasBillboards) hash |= (1ULL << 3);
+                if (hasEnvironment) hash |= (1ULL << 4);
+                return hash;
+            }
+        };
+
+        /**
+         * Gather scene component statistics. Call this to understand what's in the world.
+         */
+        SceneStats GatherSceneStats(ECSContext* context);
+
+        /**
+         * Create RenderGraph adapted to scene content.
+         * Skips render phases and systems for content types not present.
+         */
+        RenderGraph CreateAdaptiveRenderGraph(ECSContext* context);
+
     } // namespace ecs
 } // namespace hgl

@@ -359,24 +359,62 @@ namespace hgl
 
         void ECSContext::Render(float deltaTime)
         {
-            // Lazy-initialize default graph cache on first use
-            if (!default_render_graph_initialized)
+            if (use_adaptive_render_graph)
             {
-                cached_default_render_graph = CreateDefaultLinearGraph();
-                default_render_graph_initialized = true;
+                // Gather scene statistics and check if we need to rebuild the adaptive graph
+                SceneStats stats = GatherSceneStats(this);
+                uint64_t current_hash = stats.GetHash();
+
+                if (current_hash != cached_adaptive_scene_hash)
+                {
+                    LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",
+                             cached_adaptive_scene_hash, current_hash);
+                    cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this);
+                    cached_adaptive_scene_hash = current_hash;
+                }
+
+                Render(deltaTime, cached_adaptive_render_graph);
             }
-            Render(deltaTime, cached_default_render_graph);
+            else
+            {
+                // Lazy-initialize default graph cache on first use
+                if (!default_render_graph_initialized)
+                {
+                    cached_default_render_graph = CreateDefaultLinearGraph();
+                    default_render_graph_initialized = true;
+                }
+                Render(deltaTime, cached_default_render_graph);
+            }
         }
 
         void ECSContext::Render(float deltaTime, const std::function<void(float)> &pre_render)
         {
-            // Lazy-initialize default graph cache on first use
-            if (!default_render_graph_initialized)
+            if (use_adaptive_render_graph)
             {
-                cached_default_render_graph = CreateDefaultLinearGraph();
-                default_render_graph_initialized = true;
+                // Gather scene statistics and check if we need to rebuild the adaptive graph
+                SceneStats stats = GatherSceneStats(this);
+                uint64_t current_hash = stats.GetHash();
+
+                if (current_hash != cached_adaptive_scene_hash)
+                {
+                    LogDebug("[ECS] Adaptive RenderGraph scene hash changed: %llu -> %llu, regenerating",
+                             cached_adaptive_scene_hash, current_hash);
+                    cached_adaptive_render_graph = CreateAdaptiveRenderGraph(this);
+                    cached_adaptive_scene_hash = current_hash;
+                }
+
+                Render(deltaTime, cached_adaptive_render_graph, pre_render);
             }
-            Render(deltaTime, cached_default_render_graph, pre_render);
+            else
+            {
+                // Lazy-initialize default graph cache on first use
+                if (!default_render_graph_initialized)
+                {
+                    cached_default_render_graph = CreateDefaultLinearGraph();
+                    default_render_graph_initialized = true;
+                }
+                Render(deltaTime, cached_default_render_graph, pre_render);
+            }
         }
 
         void ECSContext::RenderPreBeginFrame(float deltaTime)
@@ -785,6 +823,24 @@ namespace hgl
 
             sys_map[key] = system;
 
+            // Register in element type map
+            const std::string& element_type = system->GetRenderElementType();
+            if (!element_type.empty())
+            {
+                auto& systems_list = systems_by_element_type[element_type];
+                // Remove if already exists (in case of update)
+                for (auto it = systems_list.begin(); it != systems_list.end(); ++it)
+                {
+                    if (*it == system)
+                    {
+                        systems_list.erase(it);
+                        break;
+                    }
+                }
+                // Add to list
+                systems_list.push_back(system);
+            }
+
             if (auto *entry = FindOrderedSystem(order_list, key))
             {
                 entry->system = system;
@@ -1129,6 +1185,31 @@ namespace hgl
                     if (removed > 0)
                     {
                         LogWarning("[ECS] Pruned %zu stale query entries in render system %s", removed, system->GetName().c_str());
+                    }
+                }
+            }
+        }
+
+        void ECSContext::GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const
+        {
+            out_systems.clear();
+            auto it = systems_by_element_type.find(element_type);
+            if (it != systems_by_element_type.end())
+            {
+                out_systems = it->second;
+            }
+        }
+
+        void ECSContext::SetElementTypeSystemsEnabled(const std::string& element_type, bool enabled)
+        {
+            auto it = systems_by_element_type.find(element_type);
+            if (it != systems_by_element_type.end())
+            {
+                for (auto& system : it->second)
+                {
+                    if (system)
+                    {
+                        system->SetEnabled(enabled);
                     }
                 }
             }

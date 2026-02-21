@@ -1,11 +1,30 @@
 #include<hgl/ecs/core/RenderGraph.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
+#include<hgl/ecs/components/TextComponent.h>
+#include<hgl/ecs/components/BillboardComponent.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h>
+#include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
+#include<hgl/ecs/systems/render/TextCollectSystem.h>
+#include<hgl/ecs/systems/render/TextBuildSystem.h>
+#include<hgl/ecs/systems/render/TextResourceSyncSystem.h>
+#include<hgl/ecs/systems/render/TextRenderSubmitSystem.h>
+#include<hgl/ecs/systems/render/LineRenderSystem.h>
+#include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
+
+
+DEFINE_LOGGER_MODULE(RenderGraph)
 
 namespace hgl
 {
@@ -186,25 +205,183 @@ namespace hgl
             LogInfo("[ECS RENDER] ===== Frame End (RenderGraph) =====");
         }
 
-        RenderGraph CreateDefaultLinearGraph()
+        SceneStats GatherSceneStats(ECSContext* context)
+        {
+            SceneStats stats;
+            if (!context)
+                return stats;
+
+            // Check for Primitives (includes Quad through hierarchy)
+            std::vector<std::shared_ptr<PrimitiveComponent>> primitives;
+            context->GetComponents<PrimitiveComponent>(primitives);
+            stats.hasPrimitives = !primitives.empty();
+
+            // Check for Text
+            std::vector<std::shared_ptr<TextComponent>> texts;
+            context->GetComponents<TextComponent>(texts);
+            stats.hasText = !texts.empty();
+
+            // Check for Billboards
+            std::vector<std::shared_ptr<BillboardComponent>> billboards;
+            context->GetComponents<BillboardComponent>(billboards);
+            stats.hasBillboards = !billboards.empty();
+
+            // Note: Line detection would require LineComponent or special marker
+            // For now, assume lines always exist (lazy-init in LineRenderSystem)
+            stats.hasLines = true;
+
+            // Environment detection could check for specialized environmental components
+            // For now, assume environment system always runs
+            stats.hasEnvironment = true;
+
+            MLogDebug(RenderGraph,"[RenderGraph] Scene stats: Primitives=%d Text=%d Lines=%d Billboards=%d",
+                     stats.hasPrimitives, stats.hasText, stats.hasLines, stats.hasBillboards);
+
+            return stats;
+        }
+
+        RenderGraph CreateAdaptiveRenderGraph(ECSContext* context)
         {
             RenderGraph graph;
+            SceneStats stats = GatherSceneStats(context);
 
-            // Define the default linear render pipeline as it currently exists
-            // This ensures backward compatibility with the existing render flow
+            MLogDebug(RenderGraph,"[RenderGraph] Adaptive: Primitives=%d Text=%d Lines=%d Billboards=%d",
+                     stats.hasPrimitives, stats.hasText, stats.hasLines, stats.hasBillboards);
 
-            // Pre-frame setup phases (RenderPreBeginFrame, RenderSwapchainNextImage, RenderBeginFrame, etc.)
-            // These happen before BeginRenderPass starts
-            
-            // Main render phases: from first Collect phase to last PostProcess phase
+            // === System Group Management ===
+            // Use per-element-type API to enable/disable system groups based on scene content
+            context->SetElementTypeSystemsEnabled("Primitive", stats.hasPrimitives);
+            context->SetElementTypeSystemsEnabled("Text", stats.hasText);
+            context->SetElementTypeSystemsEnabled("Line", stats.hasLines);
+            context->SetElementTypeSystemsEnabled("Billboard", stats.hasBillboards);
+
+            if (stats.hasPrimitives) {
+                MLogDebug(RenderGraph,"[RenderGraph] Enabling Primitive system group");
+            } else {
+                MLogDebug(RenderGraph,"[RenderGraph] Disabling Primitive system group (no PrimitiveComponents)");
+            }
+
+            if (stats.hasText) {
+                MLogDebug(RenderGraph,"[RenderGraph] Enabling Text system group");
+            } else {
+                MLogDebug(RenderGraph,"[RenderGraph] Disabling Text system group (no TextComponents)");
+            }
+
+            if (stats.hasLines) {
+                MLogDebug(RenderGraph,"[RenderGraph] Enabling Line system group");
+            } else {
+                MLogDebug(RenderGraph,"[RenderGraph] Disabling Line system group (no lines)");
+            }
+
+            if (stats.hasBillboards) {
+                MLogDebug(RenderGraph,"[RenderGraph] Enabling Billboard system group");
+            } else {
+                MLogDebug(RenderGraph,"[RenderGraph] Disabling Billboard system group (no Billboards)");
+            }
+
+            // === Single Pass: All Render Phases (systems will check enabled flag) ===
+            // The pass covers the full range; individual systems control execution via SetEnabled()
+            MLogDebug(RenderGraph,"[RenderGraph] Adaptive: Adding comprehensive render pass (phases 17-27)");
             graph.Add(RenderGraph::Pass(
                 ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
                 ExecutionPhase::RenderPostProcess_LineRenderSystem,
+                nullptr,
+                true,  // enabled
+                true,  // run Update()
+                true,  // submit transforms
+                true   // run Render()
+            ));
+
+            // === Future extensibility ===
+            // To add Particle, Decal, Terrain systems:
+            // 1. Add stats.hasParticles, stats.hasDecals, stats.hasTerrain to SceneStats
+            // 2. Add corresponding system group enable/disable blocks here
+            // 3. Systems will execute/skip based on SetEnabled() calls
+
+            return graph;
+        }
+
+
+
+
+        RenderGraph CreateMainSceneGraph()
+        {
+            RenderGraph graph;
+
+            // Main scene phases: collect/batch/build/submit primitive+text (line excluded)
+            graph.Add(RenderGraph::Pass(
+                ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
+                ExecutionPhase::RenderDrawSubmit_TextRenderSubmitSystem,
                 nullptr,  // nullptr = use current/swapchain RT
                 true,     // enabled
                 true,     // run Update() pass
                 true,     // submit transforms
                 true      // run Render() pass
+            ));
+
+            return graph;
+        }
+
+        RenderGraph CreateMainWithLineOverlayGraph()
+        {
+            RenderGraph graph;
+
+            // Pass 0: main scene (up to text submit)
+            graph.Add(RenderGraph::Pass(
+                ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
+                ExecutionPhase::RenderDrawSubmit_TextRenderSubmitSystem,
+                nullptr,
+                true,
+                true,
+                true,
+                true
+            ));
+
+            // Pass 1: line overlay render-only
+            graph.Add(RenderGraph::Pass(
+                ExecutionPhase::RenderPostProcess_LineRenderSystem,
+                ExecutionPhase::RenderPostProcess_LineRenderSystem,
+                nullptr,
+                true,
+                false,
+                false,
+                true
+            ));
+
+            return graph;
+        }
+
+        RenderGraph CreateLineOnlyGraph()
+        {
+            RenderGraph graph;
+
+            graph.Add(RenderGraph::Pass(
+                ExecutionPhase::RenderPostProcess_LineRenderSystem,
+                ExecutionPhase::RenderPostProcess_LineRenderSystem,
+                nullptr,
+                true,
+                false,
+                false,
+                true
+            ));
+
+            return graph;
+        }
+
+        RenderGraph CreateDefaultLinearGraph()
+        {
+            RenderGraph graph;
+
+            // For backward compatibility, default keeps a single combined pass.
+
+            graph.Add(RenderGraph::Pass(
+                ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
+                ExecutionPhase::RenderPostProcess_LineRenderSystem,
+                nullptr,
+                true,
+                true,
+                true,
+                true
             ));
 
             // Note: SwapchainSubmitSystem (phase 28) is handled by SubmitFrameToRenderTarget()

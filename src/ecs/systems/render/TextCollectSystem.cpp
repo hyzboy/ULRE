@@ -10,6 +10,7 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::RenderCollect);
         SetExecutionOrder(ExecutionPhase::RenderCollect_TextCollectSystem);
+        SetRenderElementType("Text");
         AddDependency<RenderPrimitiveCollectSystem>();
     }
 
