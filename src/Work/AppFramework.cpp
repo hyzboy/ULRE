@@ -16,7 +16,6 @@
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/LineRenderSystem.h>
-#include <hgl/ecs/systems/render/TextRenderSystem.h>
 #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>

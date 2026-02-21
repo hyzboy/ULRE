@@ -51,7 +51,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderTargetSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/EnvironmentSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/LineRenderSystem.h
-                ${ECS_INCLUDE_PATH}/systems/render/TextRenderSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/TextCollectSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/TextBuildSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/TextResourceSyncSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/QuadResourcePrepareSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
@@ -68,6 +70,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
                 ${ECS_INCLUDE_PATH}/support/TextHelper.h
                 ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
+                ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
 
                 core/Object.cpp
                 core/Component.cpp
@@ -114,7 +117,9 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 systems/render/RenderTargetSystem.cpp
                 systems/render/EnvironmentSystem.cpp
                 systems/render/LineRenderSystem.cpp
-                systems/render/TextRenderSystem.cpp
+                systems/render/TextCollectSystem.cpp
+                systems/render/TextBuildSystem.cpp
+                systems/render/TextResourceSyncSystem.cpp
                 systems/render/TextRenderSubmitSystem.cpp
                 systems/render/QuadResourcePrepareSystem.cpp
                 systems/render/QuadMaterialBindingSystem.cpp
@@ -128,6 +133,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 support/MaterialInstanceAssignmentBuffer.cpp
                 support/PipelineMaterialRenderer.cpp
                 support/PrimitiveBatchPipeline.cpp
+                support/TextRenderPipeline.cpp
 
                 serialization/ContextSerialization.cpp
                 serialization/RenderableComponentSerialization.cpp)
@@ -217,7 +223,9 @@ source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderTargetSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/EnvironmentSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/LineRenderSystem.h
-    ${ECS_INCLUDE_PATH}/systems/render/TextRenderSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/TextCollectSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/TextBuildSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/TextResourceSyncSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/QuadResourcePrepareSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
@@ -235,7 +243,9 @@ source_group("ECS\\Systems\\Render" FILES
     systems/render/RenderTargetSystem.cpp
     systems/render/EnvironmentSystem.cpp
     systems/render/LineRenderSystem.cpp
-    systems/render/TextRenderSystem.cpp
+    systems/render/TextCollectSystem.cpp
+    systems/render/TextBuildSystem.cpp
+    systems/render/TextResourceSyncSystem.cpp
     systems/render/TextRenderSubmitSystem.cpp
     systems/render/QuadResourcePrepareSystem.cpp
     systems/render/QuadMaterialBindingSystem.cpp
@@ -257,11 +267,13 @@ source_group("ECS\\Support" FILES
     ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
     ${ECS_INCLUDE_PATH}/support/TextHelper.h
     ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
+    ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
     support/VisibilityDataStorage.cpp
     support/TransformAssignmentBuffer.cpp
     support/MaterialInstanceAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
     support/PrimitiveBatchPipeline.cpp
+    support/TextRenderPipeline.cpp
 )
 
 source_group("ECS\\Serialization" FILES

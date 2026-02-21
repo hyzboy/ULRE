@@ -2,7 +2,9 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
-#include <hgl/ecs/systems/render/TextRenderSystem.h>
+#include <hgl/ecs/systems/render/TextCollectSystem.h>
+#include <hgl/ecs/systems/render/TextBuildSystem.h>
+#include <hgl/ecs/systems/render/TextResourceSyncSystem.h>
 #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -35,7 +37,9 @@ namespace hgl::ecs
         auto *rc = ctx->GetRenderContext();
         auto *device = ctx->GetGPUDevice();
 
-        auto text_render_system = ctx->RegisterRenderSystem<ecs::TextRenderSystem>();
+        auto text_collect_system = ctx->RegisterRenderSystem<ecs::TextCollectSystem>();
+        auto text_build_system = ctx->RegisterRenderSystem<ecs::TextBuildSystem>();
+        auto text_sync_system = ctx->RegisterRenderSystem<ecs::TextResourceSyncSystem>();
         auto environment_system = ctx->RegisterRenderSystem<ecs::EnvironmentSystem>();
         auto camera_system = ctx->RegisterTickSystem<ecs::CameraSystem>();
         auto render_target_system = ctx->RegisterRenderSystem<ecs::RenderTargetSystem>();
@@ -57,11 +61,9 @@ namespace hgl::ecs
         (void)swapchain_next_image_system;
         (void)swapchain_submit_system;
 
-        if (text_render_system)
-        {
-            text_render_system->SetWorld(ctx);
-            text_render_system->SetRenderContext(rc);
-        }
+        (void)text_collect_system;
+        (void)text_build_system;
+        (void)text_sync_system;
 
         if (environment_system)
             environment_system->SetRenderContext(rc);

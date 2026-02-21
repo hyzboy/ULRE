@@ -10,6 +10,7 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/PrimitiveBatchPipeline.h>
+#include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -132,10 +133,28 @@ namespace hgl
             return primitive_batch_pipeline.get();
         }
 
+        TextRenderPipeline* ECSContext::GetTextRenderPipeline()
+        {
+            if (!text_render_pipeline)
+            {
+                text_render_pipeline = std::make_unique<TextRenderPipeline>();
+                text_render_pipeline->SetWorld(this);
+                text_render_pipeline->SetRenderContext(GetRenderContext());
+            }
+
+            return text_render_pipeline.get();
+        }
+
         void ECSContext::Shutdown()
         {
             if (auto *device = GetGPUDevice())
                 device->WaitIdle();
+
+            // Release support pipelines early while graphics managers are still valid.
+            // AppFramework destroys GraphicsContext before deleting ECSContext, so
+            // deferring this to ECSContext destructor can access dangling pointers.
+            text_render_pipeline.reset();
+            primitive_batch_pipeline.reset();
 
             // Release render-frame items first  (only clears renderItems, keeps materialBatches for reuse)
             render_frame_cache.renderItems.clear();

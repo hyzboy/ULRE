@@ -34,6 +34,7 @@ namespace hgl
     {
     class RenderSystemCore;
         class PrimitiveBatchPipeline;
+        class TextRenderPipeline;
         class MaterialBatch;
         class PrimitiveRenderItem;
 
@@ -108,6 +109,7 @@ namespace hgl
             uint32_t frame_index = 0;
 
             std::unique_ptr<PrimitiveBatchPipeline> primitive_batch_pipeline;
+            std::unique_ptr<TextRenderPipeline> text_render_pipeline;
 
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
 
@@ -284,6 +286,7 @@ namespace hgl
             const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
 
             PrimitiveBatchPipeline* GetPrimitiveBatchPipeline();
+            TextRenderPipeline* GetTextRenderPipeline();
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"

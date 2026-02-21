@@ -21,7 +21,7 @@ namespace hgl::ecs
      * TextComponent
      *
      * Stores text content and layout/style data for ECS-driven text rendering.
-     * Runtime rendering resources are managed separately by TextRenderSystem.
+    * Runtime rendering resources are managed separately by TextRenderPipeline.
      */
     class TextComponent : public Component
     {

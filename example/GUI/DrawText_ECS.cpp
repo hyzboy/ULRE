@@ -47,7 +47,7 @@ protected:
 
         cs.CharColor.setOne();
 
-        // Just set text and font - TextRenderSystem handles the rest!
+        // Just set text and font - TextRenderPipeline handles the rest!
         text_comp->SetText(str);
         text_comp->SetFontSource(fs);
         text_comp->SetStartPosition({0, 0});

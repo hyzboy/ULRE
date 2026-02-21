@@ -1,7 +1,6 @@
-﻿#include<hgl/ecs/systems/render/TextRenderSystem.h>
+#include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
-#include<hgl/ecs/core/Entity.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -29,7 +28,6 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
 #include<cmath>
-#include<memory>
 
 namespace hgl::ecs
 {
@@ -91,14 +89,7 @@ namespace hgl::ecs
         }
     }
 
-    TextRenderSystem::TextRenderSystem(const std::string& name)
-        : System(name)
-    {
-        SetSystemType(SystemType::RenderCollect);
-        SetExecutionOrder(ExecutionPhase::RenderCollect);
-    }
-
-    TextRenderSystem::~TextRenderSystem()
+    TextRenderPipeline::~TextRenderPipeline()
     {
         if (!render_context && world)
             render_context = world->GetRenderContext();
@@ -158,8 +149,63 @@ namespace hgl::ecs
         resources_by_font.Clear();
     }
 
-    TextRenderSystem::RenderResources* TextRenderSystem::GetOrCreateResources(graph::FontSource* font_source,
-                                                                              uint32_t estimate_chars)
+    bool TextRenderPipeline::PrepareFrame()
+    {
+        if (!world)
+            return false;
+
+        const uint32_t frame_index = world->GetFrameIndex();
+        if (prepared_frame_index == frame_index)
+            return true;
+
+        frame_texts.clear();
+        frame_inputs.clear();
+
+        world->GetComponents<TextComponent>(frame_texts);
+
+        if (!PrepareFrameResources(frame_graphics_context,
+                                   frame_material_manager,
+                                   frame_primitive_manager,
+                                   frame_render_pass,
+                                   frame_device,
+                                   frame_render_target))
+            return false;
+
+        prepared_frame_index = frame_index;
+        return true;
+    }
+
+    void TextRenderPipeline::RunCollect()
+    {
+        frame_inputs.clear();
+        BuildInputs(frame_texts, frame_inputs);
+    }
+
+    void TextRenderPipeline::RunBuild()
+    {
+        ProcessInputs(frame_inputs,
+                      frame_material_manager,
+                      frame_primitive_manager,
+                      frame_render_pass,
+                      frame_device);
+    }
+
+    void TextRenderPipeline::RunSync()
+    {
+        ClearChanges(frame_texts);
+    }
+
+    void TextRenderPipeline::GetRenderPrimitives(std::vector<graph::Primitive*>& out_primitives) const
+    {
+        for (const auto& pair : resources_by_font)
+        {
+            if (pair.second.primitive)
+                out_primitives.push_back(pair.second.primitive);
+        }
+    }
+
+    TextRenderPipeline::RenderResources* TextRenderPipeline::GetOrCreateResources(graph::FontSource* font_source,
+                                                                                   uint32_t estimate_chars)
     {
         if (!font_source)
             return nullptr;
@@ -237,7 +283,6 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        static uint32_t material_id = 0;
         guard.material = material_manager->CreateMaterial("Text2D", mci);
         if (!guard.material)
             return nullptr;
@@ -285,9 +330,9 @@ namespace hgl::ecs
         }
 
         if (!guard.material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
-                                                    graph::mtl::SamplerName::Text,
-                                                    guard.tile_font->GetTexture(),
-                                                    guard.sampler))
+                                                graph::mtl::SamplerName::Text,
+                                                guard.tile_font->GetTexture(),
+                                                guard.sampler))
             return nullptr;
 
         resources.tile_font = guard.tile_font.release();
@@ -299,60 +344,48 @@ namespace hgl::ecs
         return resources_by_font.GetValuePointer(font_source);
     }
 
-    void TextRenderSystem::GetRenderPrimitives(std::vector<graph::Primitive*>& out_primitives) const
-    {
-        for (const auto& pair : resources_by_font)
-        {
-            if (pair.second.primitive)
-                out_primitives.push_back(pair.second.primitive);
-        }
-    }
-
-    void TextRenderSystem::Update(float /*deltaTime*/)
+    bool TextRenderPipeline::PrepareFrameResources(graph::GraphicsContext*& graphics_context,
+                                                   graph::MaterialManager*& material_manager,
+                                                   graph::PrimitiveManager*& primitive_manager,
+                                                   graph::RenderPass*& render_pass,
+                                                   graph::VulkanDevice*& device,
+                                                   graph::IRenderTarget*& render_target)
     {
         if (!world)
-            return;
+            return false;
 
         if (!render_context)
             render_context = world->GetRenderContext();
 
         if (!render_context)
-            return;
+            return false;
 
-        auto* graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
+        graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
         if (!graphics_context && world)
             graphics_context = world->GetGraphicsContext();
 
-        auto* device = graphics_context ? graphics_context->GetDevice() : nullptr;
+        device = graphics_context ? graphics_context->GetDevice() : nullptr;
         if (!device)
-            return;
+            return false;
 
-        auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
-        auto* primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
+        material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
+        primitive_manager = graphics_context ? graphics_context->GetPrimitiveManager() : nullptr;
 
-        auto* render_target = render_context->GetCurrentRenderTarget();
+        render_target = render_context->GetCurrentRenderTarget();
         if (!render_target && world)
             render_target = world->GetRenderTarget();
 
-        auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        render_pass = render_target ? render_target->GetRenderPass() : nullptr;
 
         if (!material_manager || !primitive_manager || !render_pass)
-            return;
+            return false;
 
-        struct BatchInput
-        {
-            graph::FontSource* font_source = nullptr;
-            std::vector<const TextComponent*> texts;
-            graph::layout::CharStyle batch_style{};
-            uint32_t total_chars = 0;
-            bool dirty = false;
-        };
+        return true;
+    }
 
-        std::vector<std::shared_ptr<TextComponent>> texts;
-        world->GetComponents<TextComponent>(texts);
-
-        std::unordered_map<graph::FontSource*, BatchInput> inputs;
-
+    void TextRenderPipeline::BuildInputs(std::vector<std::shared_ptr<TextComponent>>& texts,
+                                         std::unordered_map<graph::FontSource*, BatchInput>& inputs)
+    {
         for (const auto& text_comp : texts)
         {
             if (!text_comp || text_comp->GetText().IsEmpty())
@@ -375,7 +408,14 @@ namespace hgl::ecs
             if (text_comp->GetChangeMask() != 0)
                 input.dirty = true;
         }
+    }
 
+    void TextRenderPipeline::ProcessInputs(std::unordered_map<graph::FontSource*, BatchInput>& inputs,
+                                           graph::MaterialManager* material_manager,
+                                           graph::PrimitiveManager* primitive_manager,
+                                           graph::RenderPass* render_pass,
+                                           graph::VulkanDevice* device)
+    {
         for (auto& pair : inputs)
         {
             auto& input = pair.second;
@@ -400,17 +440,14 @@ namespace hgl::ecs
             if (!mi)
             {
                 graph::VILConfig vil_config;
-
                 vil_config.Add("Position", VF_V4I16);
 
-                mi = material_manager->CreateMaterialInstance(resources->material,
-                                                             &vil_config);
+                mi = material_manager->CreateMaterialInstance(resources->material, &vil_config);
                 if (!mi)
                     continue;
 
                 resources->material_instance = mi;
-
-                input.dirty=true;
+                input.dirty = true;
             }
 
             if (input.dirty)
@@ -482,12 +519,14 @@ namespace hgl::ecs
 
             resources->last_string_count = static_cast<uint32_t>(input.texts.size());
         }
+    }
 
+    void TextRenderPipeline::ClearChanges(const std::vector<std::shared_ptr<TextComponent>>& texts)
+    {
         for (const auto& text_comp : texts)
         {
             if (text_comp)
                 text_comp->ClearAllChanges();
         }
     }
-}//namespace hgl::ecs
-
+}

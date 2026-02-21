@@ -71,7 +71,7 @@ protected:
             text_comp->SetStartPosition({rand_x(dre), rand_y(dre)});
             text_comp->SetCharStyle(cs);
 
-            // TextRenderSystem will batch by FontSource automatically!
+            // TextRenderPipeline will batch by FontSource automatically!
         }
 
         return(true);

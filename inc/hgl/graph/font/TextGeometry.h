@@ -6,7 +6,7 @@
 
 namespace hgl::ecs
 {
-    class TextRenderSystem;
+    class TextRenderPipeline;
 }//namespace hgl::ecs
 
 namespace hgl::graph
@@ -34,7 +34,7 @@ namespace hgl::graph
 
         friend class layout::TextLayout;
         friend class TextRender;
-        friend class ::hgl::ecs::TextRenderSystem;
+        friend class ::hgl::ecs::TextRenderPipeline;
 
         U32CharSet chars_sets;
 
