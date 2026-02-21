@@ -232,6 +232,17 @@ namespace hgl
             if (!active)
                 return;
 
+            // Boundary rule (Phase 1): this overload executes render-phase ECS systems
+            // for an already-open frame command buffer. The frame lifecycle driver is
+            // ECSContext::Render(float) -> RenderSystemCore.
+            static bool warned_missing_cmd_once = false;
+            if (!cmd && !current_render_cmd && !warned_missing_cmd_once)
+            {
+                LogWarning("[ECSContext::Render(cmd)] called without command buffer. "
+                           "Preferred entry is ECSContext::Render(float) frame driver path.");
+                warned_missing_cmd_once = true;
+            }
+
             // (Phase 1) 设置当前渲染命令缓冲区（如果没有由 RenderSystemCore 设置）
             if (!current_render_cmd && cmd) {
                 current_render_cmd = cmd;
@@ -322,6 +333,7 @@ namespace hgl
             if (!active)
                 return;
 
+            // Canonical frame entry (Phase 1 boundary hardening).
             LogInfo("[ECS RENDER] ===== Frame Start =====");
 
             if (!render_core)

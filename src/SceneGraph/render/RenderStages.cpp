@@ -1,14 +1,9 @@
 ﻿#include<hgl/graph/render/RenderStages.h>
-#include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
-#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/camera/ViewportInfo.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/log/Log.h>
 
@@ -35,21 +30,6 @@ namespace hgl::graph
             }
         };
 
-        class StageEcsPreBeginFrame : public RenderStage
-        {
-        public:
-
-            const char *GetName() const override { return "EcsPreBeginFrame"; }
-
-            void Execute(RenderStageContext &ctx) override
-            {
-                StageScope scope(GetName());
-                if (ctx.ecs_context)
-                    ctx.ecs_context->RenderPreBeginFrame(0.0f);
-            }
-        };
-
-
         class StageBeginFrame : public RenderStage
         {
         public:
@@ -70,46 +50,6 @@ namespace hgl::graph
                 }
 
                 ctx.cmd = ctx.render_target->BeginRender();
-
-                if(ctx.ecs_context)
-                {
-                    ctx.ecs_context->SetCurrentRenderCmd(ctx.cmd);
-                    ctx.ecs_context->SetFrameIndex(ctx.render_target->GetCurrentFrameIndex());
-                    ctx.ecs_context->RenderBeginFrame(0.0f);
-                    ctx.ecs_context->RenderBufferCommit(0.0f);
-
-                    auto camera_system = ctx.ecs_context->GetSystem<ecs::CameraSystem>();
-                    if (camera_system)
-                        camera_system->SyncCameraUBO();
-
-                    auto environment_system = ctx.ecs_context->GetSystem<ecs::EnvironmentSystem>();
-                    if (environment_system)
-                        environment_system->SyncSkyUBO();
-
-                    ctx.ecs_context->RenderBufferUpload(0.0f);
-                }
-            }
-        };
-
-        class StageBindDescriptor : public RenderStage
-        {
-        public:
-
-            const char *GetName() const override { return "BindDescriptor"; }
-
-            void Execute(RenderStageContext &ctx) override
-            {
-                StageScope scope(GetName());
-                if(!ctx.cmd)
-                    return;
-
-                if(ctx.ecs_context)
-                {
-                    auto camera_system = ctx.ecs_context->GetSystem<ecs::CameraSystem>();
-                    if(camera_system)
-                        camera_system->BindDescriptor(ctx.cmd);
-                }
-
             }
         };
 
@@ -122,9 +62,6 @@ namespace hgl::graph
             void Execute(RenderStageContext &ctx) override
             {
                 StageScope scope(GetName());
-                if(ctx.ecs_context)
-                    return;
-
                 if(!ctx.render_target || !ctx.cmd)
                     return;
 
@@ -169,49 +106,6 @@ namespace hgl::graph
             }
         };
 
-        class StageEcsRender : public RenderStage
-        {
-        public:
-
-            const char *GetName() const override { return "EcsRender"; }
-
-            void Execute(RenderStageContext &ctx) override
-            {
-                StageScope scope(GetName());
-                if(ctx.ecs_context && ctx.cmd)
-                    ctx.ecs_context->Render(ctx.cmd, 0.0f);
-            }
-        };
-
-        class StageEcsPostBeginFrame : public RenderStage
-        {
-        public:
-
-            const char *GetName() const override { return "EcsPostBeginFrame"; }
-
-            void Execute(RenderStageContext &ctx) override
-            {
-                StageScope scope(GetName());
-                if (ctx.ecs_context)
-                    ctx.ecs_context->RenderPostBeginFrame(0.0f);
-            }
-        };
-
-        class StageLineRender : public RenderStage
-        {
-        public:
-
-            const char *GetName() const override { return "LineRender"; }
-
-            void Execute(RenderStageContext &ctx) override
-            {
-                StageScope scope(GetName());
-                // CN: LineRenderSystem 会在 EcsRender 阶段处理所有 LinesComponent 的渲染
-                // EN: LineRenderSystem handles all LinesComponent rendering in EcsRender phase
-                (void)ctx;  // Unused
-            }
-        };
-
         class StageEndRenderPass : public RenderStage
         {
         public:
@@ -226,9 +120,6 @@ namespace hgl::graph
 
                 ctx.cmd->EndRenderPass();
                 ctx.render_target->EndRender();
-
-                if(ctx.ecs_context)
-                    ctx.ecs_context->SetCurrentRenderCmd(nullptr);
             }
         };
 
@@ -239,24 +130,17 @@ namespace hgl::graph
         if(!pipeline.GetStages().empty())
             return;
 
-        // RenderStages only cover a single RT/FBO pass and can be replayed
-        // for multi-pass or deferred rendering workflows. Frame submit is handled elsewhere.
+        // RenderStages only cover RT/FBO pass orchestration and can be replayed
+        // for multi-pass workflows. ECS business systems run in ECSContext phases.
 
-        static StageEcsPreBeginFrame ecs_pre_begin_frame;
         static StageBeginFrame begin_frame;
-        static StageEcsPostBeginFrame ecs_post_begin_frame;
-        static StageBindDescriptor bind_descriptor;
         static StageFlushUpload flush_upload;
         static StageBeginRenderPass begin_pass;
-        static StageEcsRender ecs_render;
         static StageEndRenderPass end_pass;
-        pipeline.AddStage(&ecs_pre_begin_frame);
+
         pipeline.AddStage(&begin_frame);
-        pipeline.AddStage(&ecs_post_begin_frame);
-        pipeline.AddStage(&bind_descriptor);
         pipeline.AddStage(&flush_upload);
         pipeline.AddStage(&begin_pass);
-        pipeline.AddStage(&ecs_render);
         pipeline.AddStage(&end_pass);
     }
 }//namespace hgl::graph

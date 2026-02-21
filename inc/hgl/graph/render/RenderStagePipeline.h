@@ -18,6 +18,8 @@ namespace hgl::graph
         RenderCmdBuffer *   cmd                 = nullptr;
         IRenderTarget *     render_target       = nullptr;
         RenderTask *        render_task         = nullptr;
+        // Compatibility field: do not invoke ECS business updates from RenderStage.
+        // ECS updates should execute in ECSContext ExecutionPhase pipeline.
         ecs::ECSContext *   ecs_context         = nullptr;
         LineRenderManager * line_render_manager = nullptr;
         const hgl::Color4f *clear_color         = nullptr;
