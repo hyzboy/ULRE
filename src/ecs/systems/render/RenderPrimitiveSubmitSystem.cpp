@@ -16,7 +16,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit, ExecutionPriority::First);
+        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
 
         // Declare dependencies
         AddDependency<RenderPrimitiveBatchSystem>(); // Needs batched data

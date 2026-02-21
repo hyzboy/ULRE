@@ -10,7 +10,8 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderPostProcess, ExecutionPriority::First);
+        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
+        AddDependency<TextRenderSystem>();
         AddDependency<RenderPrimitiveSubmitSystem>();
     }
 

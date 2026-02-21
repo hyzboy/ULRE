@@ -14,7 +14,6 @@
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
-#include<limits>
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/color/Color4f.h>
 
@@ -59,8 +58,6 @@ namespace hgl
         private:
             OBJECT_LOGGER
 
-            static constexpr int kUnspecifiedSystemPriority = (std::numeric_limits<int>::min)();
-
             std::unique_ptr<EntityManager> entity_manager;
 
             // 分类存储：更新系统与渲染系统分开
@@ -71,7 +68,6 @@ namespace hgl
             {
                 size_t key = 0;
                 int phase = 0;          // ExecutionPhase as int
-                int priority = 0;       // ExecutionPriority as int (for ordering within phase)
                 uint64_t insertion_order = 0;  // For stable sorting
                 std::shared_ptr<System> system;
             };
@@ -142,7 +138,7 @@ namespace hgl
                                 bool& dirty_flag,
                                 const char* label);
             OrderedSystem* FindOrderedSystem(std::vector<OrderedSystem>& list, size_t key);
-            void AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system, int priority);
+            void AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system);
             void AddSystemDependency(bool is_render, size_t dependent_key, size_t dependency_key);
             bool SetSystemEnabledByKey(size_t key, bool enabled);
             bool RemoveSystemByKey(size_t key);
@@ -199,6 +195,12 @@ namespace hgl
 
             /// Run begin-frame render updates (frame index available)
             void RenderBeginFrame(float deltaTime);
+
+            /// Run explicit buffer commit cycle updates
+            void RenderBufferCommit(float deltaTime);
+
+            /// Run explicit buffer upload cycle updates (must run before render pass)
+            void RenderBufferUpload(float deltaTime);
 
             /// Run post-begin-frame render updates (no command buffer)
             void RenderPostBeginFrame(float deltaTime);
@@ -266,6 +268,7 @@ namespace hgl
 
             /// 获取当前渲染命令缓冲区（仅在 Render() 执行期间有效）
             hgl::graph::RenderCmdBuffer* GetCurrentRenderCmd() { return current_render_cmd; }
+            void SetCurrentRenderCmd(hgl::graph::RenderCmdBuffer* cmd) { current_render_cmd = cmd; }
 
             /// Graphics context adapter (Phase 2)
             void SetGraphicsContext(hgl::graph::GraphicsContext* ctx) { graphics_context = ctx; }
@@ -387,17 +390,7 @@ namespace hgl
             {
                 auto system = std::make_shared<T>(std::forward<Args>(args)...);
                 const size_t key = typeid(T).hash_code();
-                AddOrUpdateSystem(is_render, key, system, kUnspecifiedSystemPriority);
-                return system;
-            }
-
-            /// Register a system with explicit priority (lower runs earlier)
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterSystemWithPriority(bool is_render, int priority, Args&&... args)
-            {
-                auto system = std::make_shared<T>(std::forward<Args>(args)...);
-                const size_t key = typeid(T).hash_code();
-                AddOrUpdateSystem(is_render, key, system, priority);
+                AddOrUpdateSystem(is_render, key, system);
                 return system;
             }
 
@@ -408,54 +401,11 @@ namespace hgl
                 return RegisterSystem<T>(false, std::forward<Args>(args)...);
             }
 
-            /// Register a tick (logic) system with explicit priority
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterTickSystemWithPriority(int priority, Args&&... args)
-            {
-                return RegisterSystemWithPriority<T>(false, priority, std::forward<Args>(args)...);
-            }
-
             /// Register a render system
             template<typename T, typename... Args>
             std::shared_ptr<T> RegisterRenderSystem(Args&&... args)
             {
                 return RegisterSystem<T>(true, std::forward<Args>(args)...);
-            }
-
-            /// Register a render system with explicit priority
-            template<typename T, typename... Args>
-            std::shared_ptr<T> RegisterRenderSystemWithPriority(int priority, Args&&... args)
-            {
-                return RegisterSystemWithPriority<T>(true, priority, std::forward<Args>(args)...);
-            }
-
-            /// Update system priority (lower runs earlier)
-            template<typename T>
-            bool SetSystemPriority(int priority)
-            {
-                const size_t key = typeid(T).hash_code();
-
-                if (tick_systems.ContainsKey(key))
-                {
-                    if (auto *entry = FindOrderedSystem(tick_system_order, key))
-                    {
-                        entry->priority = priority;
-                        tick_order_dirty = true;
-                        return true;
-                    }
-                }
-
-                if (render_systems.ContainsKey(key))
-                {
-                    if (auto *entry = FindOrderedSystem(render_system_order, key))
-                    {
-                        entry->priority = priority;
-                        render_order_dirty = true;
-                        return true;
-                    }
-                }
-
-                return false;
             }
 
             template<typename T>

@@ -15,7 +15,6 @@
 #include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
@@ -245,28 +244,6 @@ namespace hgl
                 transform_system->SubmitTransformUpdates();
             }
 
-            if (cmd)
-            {
-                if (auto *device = GetGPUDevice())
-                {
-                    auto *update_queue = device->GetBufferUpdateQueue();
-                    if (update_queue && update_queue->HasPendingUpdates())
-                    {
-                        update_queue->FlushAll(cmd->operator VkCommandBuffer());
-
-                        VkMemoryBarrier barrier{};
-                        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-                        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                        barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
-
-                        vkCmdPipelineBarrier(cmd->operator VkCommandBuffer(),
-                                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                             VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                             0, 1, &barrier, 0, nullptr, 0, nullptr);
-                    }
-                }
-            }
-
             for (auto& entry : render_system_order)
             {
                 if (!entry.system)
@@ -417,6 +394,22 @@ namespace hgl
                 return;
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderBeginFrame, deltaTime);
+        }
+
+        void ECSContext::RenderBufferCommit(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferCommit, deltaTime);
+        }
+
+        void ECSContext::RenderBufferUpload(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferUpload, deltaTime);
         }
 
         void ECSContext::RenderPostBeginFrame(float deltaTime)
@@ -585,10 +578,7 @@ namespace hgl
                 // First sort by phase
                 if (lhs.phase != rhs.phase)
                     return lhs.phase < rhs.phase;
-                // Then sort by priority within phase
-                if (lhs.priority != rhs.priority)
-                    return lhs.priority < rhs.priority;
-                // Finally use insertion order for stable sort
+                // Then use insertion order for stable sort
                 return lhs.insertion_order < rhs.insertion_order;
             };
 
@@ -626,12 +616,10 @@ namespace hgl
                     {
                         if (a.phase != b.phase)
                             return a.phase < b.phase;
-                        if (a.priority != b.priority)
-                            return a.priority < b.priority;
                         return a.insertion_order < b.insertion_order;
                     });
 
-                LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/priority order.",
+                LogWarning("[ECSContext::SortSystemList] %s system dependencies contain a cycle. Falling back to phase/insertion order.",
                            label);
             }
             else
@@ -653,7 +641,7 @@ namespace hgl
             return nullptr;
         }
 
-        void ECSContext::AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system, int priority)
+        void ECSContext::AddOrUpdateSystem(bool is_render, size_t key, const std::shared_ptr<System>& system)
         {
             if (!system)
                 return;
@@ -680,15 +668,10 @@ namespace hgl
 
             sys_map[key] = system;
 
-            const int effective_priority = (priority == kUnspecifiedSystemPriority)
-                                         ? static_cast<int>(system->GetExecutionPriority())
-                                         : priority;
-
             if (auto *entry = FindOrderedSystem(order_list, key))
             {
                 entry->system = system;
                 entry->phase = effective_phase;
-                entry->priority = effective_priority;
                 dirty_flag = true;
             }
             else
@@ -696,7 +679,6 @@ namespace hgl
                 OrderedSystem new_entry;
                 new_entry.key = key;
                 new_entry.phase = effective_phase;
-                new_entry.priority = effective_priority;
                 new_entry.insertion_order = next_system_order++;
                 new_entry.system = system;
                 order_list.push_back(std::move(new_entry));

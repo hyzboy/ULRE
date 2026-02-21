@@ -28,6 +28,8 @@ namespace hgl::ecs
     QuadRenderSystem::QuadRenderSystem(const std::string& name)
         : System(name)
     {
+        SetSystemType(SystemType::Material);
+        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
     }
 
     void QuadRenderSystem::Update(float deltaTime)

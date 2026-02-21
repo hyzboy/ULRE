@@ -13,7 +13,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::BoundingBox);
-        SetExecutionOrder(ExecutionPhase::TickTransform, ExecutionPriority::Second);
+        SetExecutionOrder(ExecutionPhase::TickTransform);
         AddDependency<TransformSystem>();
     }
 

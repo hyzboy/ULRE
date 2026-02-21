@@ -10,6 +10,7 @@
 #include <hgl/ecs/systems/render/RenderPrimitiveBatchSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferCommitSystem.h>
+#include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/LineRenderSystem.h>
@@ -34,6 +35,7 @@ namespace hgl::ecs
         auto render_collect_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveCollectSystem>();
         auto render_batch_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchSystem>();
         auto render_commit_system = ctx->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
+        auto render_upload_system = ctx->RegisterRenderSystem<ecs::RenderBufferUploadSystem>();
         auto render_submit_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
         auto swapchain_next_image_system = ctx->RegisterRenderSystem<ecs::SwapchainNextImageSystem>();
         auto swapchain_submit_system = ctx->RegisterRenderSystem<ecs::SwapchainSubmitSystem>();
@@ -83,6 +85,12 @@ namespace hgl::ecs
         {
             render_commit_system->SetWorld(ctx);
             render_commit_system->SetDevice(device);
+        }
+
+        if (render_upload_system)
+        {
+            render_upload_system->SetWorld(ctx);
+            render_upload_system->SetDevice(device);
         }
 
         if (render_submit_system)

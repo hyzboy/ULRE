@@ -43,6 +43,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
+                ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
                 ${ECS_INCLUDE_PATH}/systems/render/RenderTargetSystem.h
                 ${ECS_INCLUDE_PATH}/systems/render/EnvironmentSystem.h
@@ -100,6 +101,7 @@ SET(ECS_SOURCE  ${ECS_INCLUDE_PATH}/core/Object.h
                 systems/render/RenderPrimitiveBatchSystem.cpp
                 systems/render/RenderPrimitiveSubmitSystem.cpp
                 systems/render/RenderBufferCommitSystem.cpp
+                systems/render/RenderBufferUploadSystem.cpp
                 systems/render/RenderSystemCore.cpp
                 systems/render/RenderTargetSystem.cpp
                 systems/render/EnvironmentSystem.cpp
@@ -197,6 +199,7 @@ source_group("ECS\\Systems\\Render" FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
+    ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderTargetSystem.h
     ${ECS_INCLUDE_PATH}/systems/render/EnvironmentSystem.h
@@ -210,6 +213,7 @@ source_group("ECS\\Systems\\Render" FILES
     systems/render/RenderPrimitiveBatchSystem.cpp
     systems/render/RenderPrimitiveSubmitSystem.cpp
     systems/render/RenderBufferCommitSystem.cpp
+    systems/render/RenderBufferUploadSystem.cpp
     systems/render/RenderSystemCore.cpp
     systems/render/RenderTargetSystem.cpp
     systems/render/EnvironmentSystem.cpp

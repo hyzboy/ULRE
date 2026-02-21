@@ -12,7 +12,8 @@ namespace hgl::ecs
     EnvironmentSystem::EnvironmentSystem(const std::string &name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame, ExecutionPriority::First);
+        SetSystemType(SystemType::RenderSubmit);
+        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
     }
 
     EnvironmentSystem::~EnvironmentSystem()

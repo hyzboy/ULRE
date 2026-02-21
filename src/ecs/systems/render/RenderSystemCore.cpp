@@ -3,7 +3,6 @@
 #include <hgl/vk/VKDevice.h>
 #include <hgl/graph/CameraInfo.h>
 #include <hgl/graph/camera/ViewportInfo.h>
-#include <hgl/vk/VKBufferUpdateQueue.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTargetSwapchain.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
@@ -105,9 +104,13 @@ bool RenderSystemCore::BeginFrame() {
     }
 
     if (world)
+        world->SetCurrentRenderCmd(render_cmd);
+
+    if (world)
     {
         world->SetFrameIndex(render_target->GetCurrentFrameIndex());
         world->RenderBeginFrame(0.0f);
+        world->RenderBufferCommit(0.0f);
 
         auto camera_system = world->GetSystem<CameraSystem>();
         if (camera_system)
@@ -117,29 +120,12 @@ bool RenderSystemCore::BeginFrame() {
         if (environment_system)
             environment_system->SyncSkyUBO();
 
+        world->RenderBufferUpload(0.0f);
+
         world->RenderPostBeginFrame(0.0f);
 
         if (camera_system)
             camera_system->BindDescriptor(render_cmd);
-    }
-
-    if (auto *device = render_target->GetDevice())
-    {
-        auto *update_queue = device->GetBufferUpdateQueue();
-        if (update_queue && update_queue->HasPendingUpdates())
-        {
-            update_queue->FlushAll(render_cmd->operator VkCommandBuffer());
-
-            VkMemoryBarrier barrier{};
-            barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT;
-
-            vkCmdPipelineBarrier(render_cmd->operator VkCommandBuffer(),
-                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                 0, 1, &barrier, 0, nullptr, 0, nullptr);
-        }
     }
 
     render_cmd->SetClearColor(0, clear_color);
@@ -164,6 +150,8 @@ void RenderSystemCore::EndFrame() {
 
     if (!render_target) {
         LogError("RenderSystemCore::EndFrame: render_target is null");
+        if (world)
+            world->SetCurrentRenderCmd(nullptr);
         frame_begun = false;
         return;
     }
@@ -194,6 +182,9 @@ void RenderSystemCore::EndFrame() {
         LogError("RenderSystemCore::EndFrame: Submit failed");
 
     // 推进到下一帧
+    if (world)
+        world->SetCurrentRenderCmd(nullptr);
+
     current_frame++;
     render_cmd = nullptr;
     frame_begun = false;

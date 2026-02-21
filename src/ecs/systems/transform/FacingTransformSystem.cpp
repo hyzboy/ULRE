@@ -3,6 +3,8 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/FacingTransformComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/systems/tick/TransformSystem.h>
+#include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/graph/CameraInfo.h>
 #include<glm/gtx/quaternion.hpp>
 #include<iostream>
@@ -13,6 +15,10 @@ namespace hgl::ecs
     FacingTransformSystem::FacingTransformSystem(const std::string& name)
         : System(name)
     {
+        SetSystemType(SystemType::Transform);
+        SetExecutionOrder(ExecutionPhase::TickPostCamera);
+        AddDependency<TransformSystem>();
+        AddDependency<CameraSystem>();
     }
 
     void FacingTransformSystem::Update(float deltaTime)

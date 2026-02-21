@@ -73,8 +73,10 @@ namespace hgl::graph
 
                 if(ctx.ecs_context)
                 {
+                    ctx.ecs_context->SetCurrentRenderCmd(ctx.cmd);
                     ctx.ecs_context->SetFrameIndex(ctx.render_target->GetCurrentFrameIndex());
                     ctx.ecs_context->RenderBeginFrame(0.0f);
+                    ctx.ecs_context->RenderBufferCommit(0.0f);
 
                     auto camera_system = ctx.ecs_context->GetSystem<ecs::CameraSystem>();
                     if (camera_system)
@@ -83,6 +85,8 @@ namespace hgl::graph
                     auto environment_system = ctx.ecs_context->GetSystem<ecs::EnvironmentSystem>();
                     if (environment_system)
                         environment_system->SyncSkyUBO();
+
+                    ctx.ecs_context->RenderBufferUpload(0.0f);
                 }
             }
         };
@@ -118,6 +122,9 @@ namespace hgl::graph
             void Execute(RenderStageContext &ctx) override
             {
                 StageScope scope(GetName());
+                if(ctx.ecs_context)
+                    return;
+
                 if(!ctx.render_target || !ctx.cmd)
                     return;
 
@@ -219,6 +226,9 @@ namespace hgl::graph
 
                 ctx.cmd->EndRenderPass();
                 ctx.render_target->EndRender();
+
+                if(ctx.ecs_context)
+                    ctx.ecs_context->SetCurrentRenderCmd(nullptr);
             }
         };
 

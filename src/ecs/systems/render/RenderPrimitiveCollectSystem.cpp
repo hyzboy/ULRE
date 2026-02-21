@@ -18,7 +18,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::RenderCollect);
-        SetExecutionOrder(ExecutionPhase::RenderCollect, ExecutionPriority::First);
+        SetExecutionOrder(ExecutionPhase::RenderCollect);
 
         // Declare dependencies
         AddDependency<TransformSystem>(); // Needs world transforms

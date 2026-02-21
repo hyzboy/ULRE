@@ -95,7 +95,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderCollect);
-        SetExecutionOrder(ExecutionPhase::RenderCollect, ExecutionPriority::First);
+        SetExecutionOrder(ExecutionPhase::RenderCollect);
     }
 
     TextRenderSystem::~TextRenderSystem()

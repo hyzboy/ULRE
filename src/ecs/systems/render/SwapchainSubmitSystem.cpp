@@ -9,7 +9,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderSubmit, ExecutionPriority::Last);
+        SetExecutionOrder(ExecutionPhase::RenderSubmit);
     }
 
     void SwapchainSubmitSystem::Update(float /*deltaTime*/)
