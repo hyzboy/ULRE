@@ -16,6 +16,54 @@
 			"xlocmon": "cpp",
 			"xtr1common": "cpp",
 			"xutility": "cpp"
+		},
+		
+		// ===== AI Skills Configuration =====
+		"copilot.chat.customSkills": {
+			"enabled": true,
+			"path": ".ai/skills"
+		},
+		"copilot.enable": {
+			"*": true,
+			"plaintext": false,
+			"markdown": false
 		}
+	},
+	
+	// ===== Extension Recommendations =====
+	"extensions": {
+		"recommendations": [
+			"GitHub.copilot-chat",
+			"GitHub.copilot",
+			"ms-vscode.cmake-tools",
+			"twxs.cmake",
+			"ms-vscode.cpptools",
+			"ms-vscode.cpptools-extension-pack"
+		]
+	},
+	
+	// ===== Quick Access Tasks =====
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "📚 Open ECS Skills Index",
+				"type": "shell",
+				"command": "code",
+				"args": [".ai/skills/SKILL_INDEX.md"],
+				"presentation": {
+					"reveal": "silent"
+				}
+			},
+			{
+				"label": "⚡ Quick Reference for Adding Components",
+				"type": "shell",
+				"command": "code",
+				"args": [".ai/skills/SKILL_QUICK_REFERENCE.md"],
+				"presentation": {
+					"reveal": "silent"
+				}
+			}
+		]
 	}
 }

@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "name": "ECS Render System Skills",
+  "description": "Complete SKILL guide for adding new rendering components and systems to the ECS architecture",
+  "skills": [
+    {
+      "id": "add-render-component",
+      "name": "Add New Render Component",
+      "path": "SKILL_ADD_NEW_RENDER_COMPONENT.md",
+      "description": "Complete workflow for adding new rendering element types (SkySphere, Particle, Decal, etc.)",
+      "tags": ["component", "system", "rendering", "workflow"],
+      "difficulty": "intermediate",
+      "estimated_time_minutes": 60
+    },
+    {
+      "id": "system-grouping",
+      "name": "System Grouping and Enablement",
+      "path": "SKILL_SYSTEM_GROUPING_AND_ENABLEMENT.md",
+      "description": "Understand system grouping mechanism and per-element-type enable/disable",
+      "tags": ["system", "grouping", "enablement", "api"],
+      "difficulty": "intermediate",
+      "estimated_time_minutes": 15
+    },
+    {
+      "id": "execution-phase",
+      "name": "Execution Phase Ordering",
+      "path": "SKILL_EXECUTION_PHASE_ORDERING.md",
+      "description": "Learn how to choose ExecutionPhase and manage system execution order",
+      "tags": ["phase", "ordering", "dependencies", "architecture"],
+      "difficulty": "beginner",
+      "estimated_time_minutes": 10
+    },
+    {
+      "id": "rendergraph",
+      "name": "RenderGraph Usage",
+      "path": "SKILL_RENDERGRAPH_USAGE.md",
+      "description": "Create and use RenderGraph, define custom render pipelines",
+      "tags": ["rendergraph", "pipeline", "presets", "custom"],
+      "difficulty": "intermediate",
+      "estimated_time_minutes": 15
+    },
+    {
+      "id": "quick-reference",
+      "name": "Quick Reference",
+      "path": "SKILL_QUICK_REFERENCE.md",
+      "description": "Fast lookup, code templates, checklist for adding new components",
+      "tags": ["reference", "checklist", "template", "quick"],
+      "difficulty": "beginner",
+      "estimated_time_minutes": 5
+    },
+    {
+      "id": "skills-index",
+      "name": "Skills Index",
+      "path": "SKILL_INDEX.md",
+      "description": "Central navigation hub for all ECS rendering skills",
+      "tags": ["navigation", "index", "guide"],
+      "difficulty": "beginner",
+      "estimated_time_minutes": 3
+    }
+  ],
+  "learning_paths": [
+    {
+      "name": "Beginner Path",
+      "description": "First time adding a component? Start here",
+      "skills": ["quick-reference", "add-render-component", "system-grouping"],
+      "estimated_time_hours": 2
+    },
+    {
+      "name": "Advanced Path",
+      "description": "Deep dive into architecture and custom rendering",
+      "skills": ["skills-index", "execution-phase", "rendergraph", "add-render-component"],
+      "estimated_time_hours": 3
+    },
+    {
+      "name": "Quick Task",
+      "description": "I know what I'm doing, just need the checklist",
+      "skills": ["quick-reference"],
+      "estimated_time_hours": 1.5
+    }
+  ],
+  "ai_commands": {
+    "add_new_component": {
+      "description": "Add a new rendering component to the ECS system",
+      "skill": "add-render-component",
+      "requires": ["quick-reference"],
+      "outputs": ["Component class", "System class", "Registration code"]
+    },
+    "understand_grouping": {
+      "description": "Learn about system grouping and element type enablement",
+      "skill": "system-grouping",
+      "requires": [],
+      "outputs": ["API reference", "Usage patterns", "Examples"]
+    },
+    "create_rendergraph": {
+      "description": "Create a custom RenderGraph for specific rendering needs",
+      "skill": "rendergraph",
+      "requires": ["execution-phase"],
+      "outputs": ["RenderGraph code", "Pass configuration", "Quality presets"]
+    }
+  }
+}
