@@ -280,7 +280,9 @@ namespace hgl
                 current_render_cmd = cmd;
             }
 
-            RunRenderUpdatesRange(ExecutionPhase::RenderCollect, ExecutionPhase::RenderPostProcess, deltaTime);
+            RunRenderUpdatesRange(ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
+                                  ExecutionPhase::RenderPostProcess_LineRenderSystem,
+                                  deltaTime);
 
             if (auto transform_system = GetSystem<TransformSystem>())
             {
@@ -292,10 +294,10 @@ namespace hgl
                 if (!entry.system)
                     continue;
 
-                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect))
+                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem))
                     continue;
 
-                if (entry.phase > static_cast<int>(ExecutionPhase::RenderPostProcess))
+                if (entry.phase > static_cast<int>(ExecutionPhase::RenderPostProcess_LineRenderSystem))
                     continue;
 
                 if (entry.system)
@@ -451,7 +453,9 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderPreBeginFrame, deltaTime);
+            RunRenderUpdatesRange(ExecutionPhase::RenderPreBeginFrame_RenderTargetSystem,
+                                  ExecutionPhase::RenderPreBeginFrame_QuadMaterialBindingSystem,
+                                  deltaTime);
         }
 
         void ECSContext::RenderSwapchainNextImage(float deltaTime)
@@ -459,7 +463,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderSwapchainNextImage, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderSwapchainNextImage_SwapchainAcquireSystem, deltaTime);
         }
 
         bool ECSContext::AcquireSwapchainImage(float deltaTime)
@@ -511,7 +515,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBeginFrame, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBeginFrame_FrameIndexReady, deltaTime);
         }
 
         void ECSContext::RenderBufferCommit(float deltaTime)
@@ -519,7 +523,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferCommit, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferCommit_RenderBufferCommitSystem, deltaTime);
         }
 
         void ECSContext::RenderBufferUpload(float deltaTime)
@@ -527,7 +531,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferUpload, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferUpload_RenderBufferUploadSystem, deltaTime);
         }
 
         void ECSContext::RenderPostBeginFrame(float deltaTime)
@@ -535,7 +539,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame_RenderFrameBusinessSyncSystem, deltaTime);
         }
 
         void ECSContext::PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime)
@@ -554,7 +558,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderSubmit, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderSubmit_SwapchainSubmitSystem, deltaTime);
         }
 
         bool ECSContext::SubmitFrameToRenderTarget(float deltaTime)
@@ -804,7 +808,7 @@ namespace hgl
             system->SetContext(this);
 
             const int effective_phase = static_cast<int>(system->GetExecutionPhase());
-            const bool phase_is_render = effective_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage);
+            const bool phase_is_render = effective_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage_SwapchainAcquireSystem);
             const bool effective_is_render = phase_is_render;
 
             if (effective_is_render != is_render)

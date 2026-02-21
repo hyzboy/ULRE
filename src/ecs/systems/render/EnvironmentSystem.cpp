@@ -13,7 +13,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame_EnvironmentSystem);
     }
 
     EnvironmentSystem::~EnvironmentSystem()

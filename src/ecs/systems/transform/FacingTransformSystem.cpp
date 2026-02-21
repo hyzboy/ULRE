@@ -16,7 +16,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::Transform);
-        SetExecutionOrder(ExecutionPhase::TickPostCamera);
+        SetExecutionOrder(ExecutionPhase::TickPostCamera_FacingTransformSystem);
         AddDependency<TransformSystem>();
         AddDependency<CameraSystem>();
     }

@@ -10,7 +10,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::Transform);
-        SetExecutionOrder(ExecutionPhase::TickTransform);
+        SetExecutionOrder(ExecutionPhase::TickTransform_TransformSystem);
 
         // No dependencies - Transform is fundamental
     }

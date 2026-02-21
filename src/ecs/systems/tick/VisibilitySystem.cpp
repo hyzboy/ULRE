@@ -11,7 +11,7 @@ namespace hgl::ecs
         , visibility_storage(nullptr)
     {
         SetSystemType(SystemType::Unknown);
-        SetExecutionOrder(ExecutionPhase::TickTransform);
+        SetExecutionOrder(ExecutionPhase::TickTransform_VisibilitySystem);
 
         visibility_storage = new VisibilityDataStorage();
     }

@@ -27,7 +27,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::Material);
-        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame_QuadResourcePrepareSystem);
         AddDependency<RenderTargetSystem>();
     }
 

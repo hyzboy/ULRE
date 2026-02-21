@@ -11,7 +11,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame_RenderTargetSystem);
     }
 
     void RenderTargetSystem::SetRenderContext(graph::RenderContext *ctx)
