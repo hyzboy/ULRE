@@ -25,6 +25,7 @@ namespace hgl
         {
         private:
             graph::LineRenderManager *line_manager = nullptr;
+            bool own_line_manager = false;
             bool manager_initialized = false;
             std::unordered_set<uint64_t> active_component_keys;
             bool has_uploaded_once = false;
@@ -34,15 +35,29 @@ namespace hgl
         public:
 
             LineRenderSystem(const std::string &name = "LineRenderSystem");
-            ~LineRenderSystem() override = default;
+            ~LineRenderSystem() override;
 
             void Initialize() override;
+            void Shutdown() override;
 
             /**
              * CN: 设置 LineRenderManager（外部创建并传入）
              * EN: Set LineRenderManager (created externally)
              */
-            void SetLineRenderManager(graph::LineRenderManager *mgr) { line_manager = mgr; }
+            void SetLineRenderManager(graph::LineRenderManager *mgr, bool take_ownership = true)
+            {
+                if (line_manager == mgr)
+                {
+                    own_line_manager = take_ownership;
+                    return;
+                }
+
+                if (line_manager && own_line_manager)
+                    delete line_manager;
+
+                line_manager = mgr;
+                own_line_manager = take_ownership;
+            }
 
             graph::LineRenderManager *GetLineRenderManager() const { return line_manager; }
             uint32_t GetLastUploadedLineCount() const { return last_uploaded_line_count; }

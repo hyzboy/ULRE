@@ -25,6 +25,11 @@ namespace hgl::ecs
         AddDependency<RenderPrimitiveSubmitSystem>();
     }
 
+    LineRenderSystem::~LineRenderSystem()
+    {
+        Shutdown();
+    }
+
     void LineRenderSystem::Initialize()
     {
         if (manager_initialized || !context)
@@ -35,6 +40,20 @@ namespace hgl::ecs
             return;
 
         manager_initialized = true;
+    }
+
+    void LineRenderSystem::Shutdown()
+    {
+        if (line_manager && own_line_manager)
+            delete line_manager;
+
+        line_manager = nullptr;
+        own_line_manager = false;
+        manager_initialized = false;
+        active_component_keys.clear();
+        has_uploaded_once = false;
+        last_uploaded_line_count = 0;
+        last_collect_visible_set_signature = 0;
     }
 
     void LineRenderSystem::SetColor(int index, const hgl::Color4f &color)

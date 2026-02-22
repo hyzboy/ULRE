@@ -27,7 +27,6 @@ public:
 
     ~WireShapeTestApp() override
     {
-        delete line_manager;
         line_manager = nullptr;
     }
 
@@ -69,7 +68,8 @@ public:
             return false;
         }
 
-        line_render_system->SetLineRenderManager(line_manager);
+        line_render_system->SetLineRenderManager(line_manager, true);
+        line_manager = nullptr;
 
         // CN: 创建存储线条的 Entity
         // EN: Create entity to hold lines
