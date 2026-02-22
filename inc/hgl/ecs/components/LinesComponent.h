@@ -34,6 +34,8 @@ namespace hgl::ecs
         LinesComponent() = default;
         virtual ~LinesComponent() = default;
 
+        const char* GetRenderSystemGroupName() const override { return "Line"; }
+
         /**
          * CN: 添加一条线段
          * EN: Add a line segment

@@ -61,6 +61,8 @@ namespace hgl::ecs
 
         virtual ~BillboardComponent() = default;
 
+        const char* GetRenderSystemGroupName() const override { return "Billboard"; }
+
     public:
 
         // Access underlying components

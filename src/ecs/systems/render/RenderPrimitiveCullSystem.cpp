@@ -9,7 +9,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderCollect);
-        SetExecutionOrder(ExecutionPhase::RenderCollect_RenderPrimitiveCullSystem);
+        SetExecutionOrder(ExecutionPhase::RenderCollect);
         SetRenderElementType("Primitive");
         AddDependency<RenderPrimitiveCollectSystem>();
     }

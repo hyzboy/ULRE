@@ -16,7 +16,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::Material);
-        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame_QuadMaterialBindingSystem);
+        SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
         SetRenderElementType("Billboard");
         AddDependency<QuadResourcePrepareSystem>();
     }

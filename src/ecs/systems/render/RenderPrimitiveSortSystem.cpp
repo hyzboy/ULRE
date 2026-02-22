@@ -9,7 +9,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderBatch);
-        SetExecutionOrder(ExecutionPhase::RenderBatch_RenderPrimitiveSortSystem);
+        SetExecutionOrder(ExecutionPhase::RenderBatch);
         SetRenderElementType("Primitive");
         AddDependency<RenderPrimitiveCullSystem>();
     }

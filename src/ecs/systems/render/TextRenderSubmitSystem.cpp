@@ -12,7 +12,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit_TextRenderSubmitSystem);
+        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
         SetRenderElementType("Text");
         AddDependency<TextResourceSyncSystem>();
         AddDependency<RenderPrimitiveSubmitSystem>();

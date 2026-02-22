@@ -12,7 +12,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderBufferUpload_RenderBufferUploadSystem);
+        SetExecutionOrder(ExecutionPhase::RenderBufferUpload);
         AddDependency<RenderBufferCommitSystem>();
     }
 

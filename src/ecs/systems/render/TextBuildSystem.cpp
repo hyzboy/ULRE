@@ -9,7 +9,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderBatch);
-        SetExecutionOrder(ExecutionPhase::RenderBatch_TextBuildSystem);
+        SetExecutionOrder(ExecutionPhase::RenderBatch);
         SetRenderElementType("Text");
         AddDependency<TextCollectSystem>();
     }

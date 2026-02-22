@@ -18,7 +18,7 @@ namespace hgl::ecs
     {
         // Set system type and properties
         SetSystemType(SystemType::RenderCollect);
-        SetExecutionOrder(ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem);
+        SetExecutionOrder(ExecutionPhase::RenderCollect);
         SetRenderElementType("Primitive");
 
         // Declare dependencies

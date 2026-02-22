@@ -55,6 +55,8 @@ namespace hgl::ecs
     public:
 
         // Primitive management
+        const char* GetRenderSystemGroupName() const override { return "Primitive"; }
+
         void SetPrimitive(hgl::graph::Primitive* prim);
         hgl::graph::Primitive* GetPrimitive() const { return primitive; }
 

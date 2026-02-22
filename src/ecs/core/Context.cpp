@@ -280,8 +280,8 @@ namespace hgl
                 current_render_cmd = cmd;
             }
 
-            RunRenderUpdatesRange(ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-                                  ExecutionPhase::RenderPostProcess_LineRenderSystem,
+            RunRenderUpdatesRange(ExecutionPhase::RenderCollect,
+                                  ExecutionPhase::RenderStat,
                                   deltaTime);
 
             if (auto transform_system = GetSystem<TransformSystem>())
@@ -294,10 +294,10 @@ namespace hgl
                 if (!entry.system)
                     continue;
 
-                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem))
+                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect))
                     continue;
 
-                if (entry.phase > static_cast<int>(ExecutionPhase::RenderPostProcess_LineRenderSystem))
+                if (entry.phase > static_cast<int>(ExecutionPhase::RenderStat))
                     continue;
 
                 if (entry.system)
@@ -380,7 +380,7 @@ namespace hgl
                 // Lazy-initialize default graph cache on first use
                 if (!default_render_graph_initialized)
                 {
-                    cached_default_render_graph = CreateDefaultLinearGraph();
+                    cached_default_render_graph = CreateDefaultLinearGraph(this);
                     default_render_graph_initialized = true;
                 }
                 Render(deltaTime, cached_default_render_graph);
@@ -410,7 +410,7 @@ namespace hgl
                 // Lazy-initialize default graph cache on first use
                 if (!default_render_graph_initialized)
                 {
-                    cached_default_render_graph = CreateDefaultLinearGraph();
+                    cached_default_render_graph = CreateDefaultLinearGraph(this);
                     default_render_graph_initialized = true;
                 }
                 Render(deltaTime, cached_default_render_graph, pre_render);
@@ -422,8 +422,8 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderUpdatesRange(ExecutionPhase::RenderPreBeginFrame_RenderTargetSystem,
-                                  ExecutionPhase::RenderPreBeginFrame_QuadMaterialBindingSystem,
+            RunRenderUpdatesRange(ExecutionPhase::RenderPreBeginFrame,
+                                  ExecutionPhase::RenderPreBeginFrame,
                                   deltaTime);
         }
 
@@ -432,7 +432,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderSwapchainNextImage_SwapchainAcquireSystem, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderSwapchainNextImage, deltaTime);
         }
 
         bool ECSContext::AcquireSwapchainImage(float deltaTime)
@@ -484,7 +484,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBeginFrame_FrameIndexReady, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBeginFrame, deltaTime);
         }
 
         void ECSContext::RenderBufferCommit(float deltaTime)
@@ -492,7 +492,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferCommit_RenderBufferCommitSystem, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferCommit, deltaTime);
         }
 
         void ECSContext::RenderBufferUpload(float deltaTime)
@@ -500,7 +500,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferUpload_RenderBufferUploadSystem, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBufferUpload, deltaTime);
         }
 
         void ECSContext::RenderPostBeginFrame(float deltaTime)
@@ -508,7 +508,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame_RenderFrameBusinessSyncSystem, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame, deltaTime);
         }
 
         void ECSContext::PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime)
@@ -527,7 +527,7 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderSubmit_SwapchainSubmitSystem, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderSubmit, deltaTime);
         }
 
         bool ECSContext::SubmitFrameToRenderTarget(float deltaTime)
@@ -805,7 +805,7 @@ namespace hgl
             system->SetContext(this);
 
             const int effective_phase = static_cast<int>(system->GetExecutionPhase());
-            const bool phase_is_render = effective_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage_SwapchainAcquireSystem);
+            const bool phase_is_render = effective_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage);
             const bool effective_is_render = phase_is_render;
 
             if (effective_is_render != is_render)
@@ -1197,6 +1197,17 @@ namespace hgl
             if (it != systems_by_element_type.end())
             {
                 out_systems = it->second;
+            }
+        }
+
+        void ECSContext::GetAllRenderElementTypes(std::vector<std::string>& out_element_types) const
+        {
+            out_element_types.clear();
+            out_element_types.reserve(systems_by_element_type.size());
+
+            for (const auto& pair : systems_by_element_type)
+            {
+                out_element_types.push_back(pair.first);
             }
         }
 

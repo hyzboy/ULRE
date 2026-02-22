@@ -42,6 +42,10 @@ namespace hgl
             /// Called when component is detached from an entity
             virtual void OnDetach() {}
 
+            /// Return render system group name this component belongs to.
+            /// Default: nullptr (non-render component)
+            virtual const char *GetRenderSystemGroupName() const { return nullptr; }
+
         public:
 
             const std::string& GetName() const { return componentName; }

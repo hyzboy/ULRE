@@ -1,8 +1,10 @@
 #pragma once
 
 #include <hgl/ecs/core/System.h>
+#include <hgl/ecs/core/RenderSystemGroup.h>
 #include <vector>
 #include <functional>
+#include <set>
 
 namespace hgl
 {
@@ -99,50 +101,40 @@ namespace hgl
         };
 
         /**
-         * Create the default linear render graph (the current sequential pipeline)
-         * This maintains backward compatibility with existing render flow
+         * Initialize all default system groups (Primitive, Text, Line, Billboard)
+         * Called automatically by CreateAdaptiveRenderGraph if not already initialized
+         * Can also be called manually to reset/customize system groups
          */
-        RenderGraph CreateDefaultLinearGraph();
+        void InitializeRenderSystemGroups(ECSContext* context);
 
         /**
-         * Main scene pass only (primitive/text submit, no line overlay pass).
-         * Note: still excludes swapchain submit phase (handled externally).
+         * Create the default linear render graph with all system groups enabled
+         * Maintains backward compatibility with existing render flow
          */
-        RenderGraph CreateMainSceneGraph();
-
-        /**
-         * Main scene + split line overlay pass.
-         * Pass 0: collect/cull/sort/batch/text/submit (17-26)
-         * Pass 1: line overlay render only (27)
-         */
-        RenderGraph CreateMainWithLineOverlayGraph();
-
-        /**
-         * Line-only debug overlay graph.
-         * Useful for debugging line pipeline independently.
-         */
-        RenderGraph CreateLineOnlyGraph();
+        RenderGraph CreateDefaultLinearGraph(ECSContext* context);
 
         /**
          * Scene statistics for adaptive graph generation
          */
         struct SceneStats
         {
-            bool hasPrimitives = false;
-            bool hasText = false;
-            bool hasLines = false;
-            bool hasBillboards = false;  // Quad components
-            bool hasEnvironment = false;
+            std::set<std::string> active_render_groups;
+
+            bool HasGroup(const std::string& group_name) const
+            {
+                return active_render_groups.find(group_name) != active_render_groups.end();
+            }
             
             // Returns a hash for caching decisions
             uint64_t GetHash() const
             {
-                uint64_t hash = 0;
-                if (hasPrimitives) hash |= 1ULL;
-                if (hasText) hash |= (1ULL << 1);
-                if (hasLines) hash |= (1ULL << 2);
-                if (hasBillboards) hash |= (1ULL << 3);
-                if (hasEnvironment) hash |= (1ULL << 4);
+                uint64_t hash = 1469598103934665603ULL;
+                for (const auto& group_name : active_render_groups)
+                {
+                    const uint64_t value = static_cast<uint64_t>(std::hash<std::string>{}(group_name));
+                    hash ^= value;
+                    hash *= 1099511628211ULL;
+                }
                 return hash;
             }
         };

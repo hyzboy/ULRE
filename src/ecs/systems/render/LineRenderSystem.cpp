@@ -13,7 +13,7 @@ namespace hgl::ecs
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderPostProcess_LineRenderSystem);
+        SetExecutionOrder(ExecutionPhase::RenderDebug);
         SetRenderElementType("Line");
         AddDependency<RenderPrimitiveSubmitSystem>();
     }

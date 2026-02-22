@@ -56,6 +56,8 @@ namespace hgl::ecs
 
         ~TextComponent() override = default;
 
+        const char* GetRenderSystemGroupName() const override { return "Text"; }
+
     public:
 
         const U16String& GetText() const { return text; }

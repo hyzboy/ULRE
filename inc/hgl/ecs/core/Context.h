@@ -488,6 +488,9 @@ namespace hgl
             /// Get systems by render element type name (e.g., "Primitive", "Text", "SkySphere")
             void GetSystemsByElementType(const std::string& element_type, std::vector<std::shared_ptr<System>>& out_systems) const;
 
+            /// Get all registered render element type names
+            void GetAllRenderElementTypes(std::vector<std::string>& out_element_types) const;
+
             /// Set enabled state for all systems of a given render element type
             void SetElementTypeSystemsEnabled(const std::string& element_type, bool enabled);
 

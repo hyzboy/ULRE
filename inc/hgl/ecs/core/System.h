@@ -14,79 +14,33 @@ namespace hgl
     namespace ecs
     {
         /**
-         * Execution Phase - Defines the stage (may have multiple systems per phase)
-         * ordered by enum value.
+         * Execution Phase - Generic runtime cycles ordered by enum value.
          *
-         * Refinement rule (2026-02-22): one concrete runtime system maps to one
-         * concrete phase enum item, so developers can infer execution location by
-         * reading phase name only.
-         *
-         * Mapping guideline:
-         * - TickInput_*                  : input collection systems
-         * - TickTransform_*              : transform/bounds/visibility systems
-         * - TickCamera_*                 : camera simulation systems
-         * - TickPostCamera_*             : post-camera transform alignment systems
-         * - RenderSwapchainNextImage_*   : acquire systems
-         * - RenderPreBeginFrame_*        : RT/context/material pre-pass preparation
-         * - RenderBeginFrame_*           : frame-index-ready hooks
-         * - RenderBufferCommit_*         : commit queue systems
-         * - RenderBufferUpload_*         : upload/barrier systems
-         * - RenderPostBeginFrame_*       : begin-frame business sync systems
-         * - RenderCollect_*              : collect/cull systems
-         * - RenderBatch_*                : sort/build/finalize systems
-         * - RenderDrawSubmit_*           : draw submission systems
-         * - RenderPostProcess_*          : overlay/post systems
-         * - RenderSubmit_*               : present/submit systems
-         *
-         * Maintenance contract:
-         * - New runtime system SHOULD define a new dedicated phase enum item.
-         * - If a range API in ECSContext depends on phase intervals, keep new item
-         *   inside the corresponding contiguous stage block.
+         * Rule:
+         * - Keep only common/mandatory cycles.
+         * - Concrete systems sharing same lifecycle stage use the same phase.
          */
         enum class ExecutionPhase
         {
-            // ===== Tick Phase =====
-            TickInput_InputSystem,                  // InputSystem
-            TickTransform_TransformSystem,          // TransformSystem
-            TickTransform_BoundingBoxUpdateSystem,  // BoundingBoxUpdateSystem
-            TickTransform_VisibilitySystem,         // VisibilitySystem
-            TickCamera_CameraSystem,                // CameraSystem
-            TickPostCamera_FacingTransformSystem,   // FacingTransformSystem
-            TickPostCamera_SunDirectionControlSystem, // SunDirectionControlSystem
-            TickPostCamera_TransformGizmoSystem,     // TransformGizmoSystem
+            TickInput,
+            TickTransform,
+            TickCamera,
+            TickPostCamera,
 
-            // ===== Pre-Render Phase =====
-            RenderSwapchainNextImage_SwapchainAcquireSystem, // SwapchainNextImageSystem
-            RenderPreBeginFrame_RenderTargetSystem,           // RenderTargetSystem
-            RenderPreBeginFrame_EnvironmentSystem,            // EnvironmentSystem
-            RenderPreBeginFrame_QuadResourcePrepareSystem,    // QuadResourcePrepareSystem
-            RenderPreBeginFrame_QuadMaterialBindingSystem,    // QuadMaterialBindingSystem
-            RenderBeginFrame_FrameIndexReady,                 // Reserved begin-frame hook
-            RenderBufferCommit_RenderBufferCommitSystem,      // RenderBufferCommitSystem
-            RenderBufferUpload_RenderBufferUploadSystem,      // RenderBufferUploadSystem
-            RenderPostBeginFrame_RenderFrameBusinessSyncSystem, // RenderFrameBusinessSyncSystem
+            RenderSwapchainNextImage,
+            RenderPreBeginFrame,
+            RenderBeginFrame,
+            RenderBufferCommit,
+            RenderBufferUpload,
+            RenderPostBeginFrame,
 
-            // ===== Render Collection Phase (may have multiple collectors) =====
-            RenderCollect_RenderPrimitiveCollectSystem, // RenderPrimitiveCollectSystem
-            RenderCollect_RenderPrimitiveCullSystem,    // RenderPrimitiveCullSystem
-            RenderCollect_TextCollectSystem,            // TextCollectSystem
-
-            // ===== Render Batch Phase =====
-            RenderBatch_RenderPrimitiveSortSystem,          // RenderPrimitiveSortSystem
-            RenderBatch_RenderPrimitiveBatchBuildSystem,    // RenderPrimitiveBatchBuildSystem
-            RenderBatch_RenderPrimitiveBatchFinalizeSystem, // RenderPrimitiveBatchFinalizeSystem
-            RenderBatch_TextBuildSystem,                    // TextBuildSystem
-            RenderBatch_TextResourceSyncSystem,             // TextResourceSyncSystem
-
-            // ===== Render Submit Phase =====
-            RenderDrawSubmit_RenderPrimitiveSubmitSystem, // RenderPrimitiveSubmitSystem
-            RenderDrawSubmit_TextRenderSubmitSystem,      // TextRenderSubmitSystem
-
-            // ===== Post-Render Phase =====
-            RenderPostProcess_LineRenderSystem, // LineRenderSystem
-
-            // ===== Frame Submit Phase =====
-            RenderSubmit_SwapchainSubmitSystem // SwapchainSubmitSystem
+            RenderCollect,
+            RenderBatch,
+            RenderDrawSubmit,
+            RenderPostProcess,
+            RenderDebug,
+            RenderStat,
+            RenderSubmit
         };
 
         /**
@@ -120,7 +74,7 @@ namespace hgl
 
             bool initialized = false;
             SystemType systemType = SystemType::Unknown;
-            ExecutionPhase executionPhase = ExecutionPhase::TickInput_InputSystem;
+            ExecutionPhase executionPhase = ExecutionPhase::TickInput;
             std::vector<std::type_index> dependencies; // Type IDs of systems this depends on
             std::unique_ptr<SystemCache> cache_manager;  // Component query cache
             class ECSContext* context = nullptr;  // Owning context
