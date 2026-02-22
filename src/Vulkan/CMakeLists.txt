@@ -106,6 +106,7 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/VKBufferMap.h
                                 ${VK_INCLUDE_PATH}/VKBufferCommitQueue.h
                                 ${VK_INCLUDE_PATH}/VKBufferUpdateQueue.h
+                                ${VK_INCLUDE_PATH}/VKBufferTransferAgent.h
                                 ${VK_INCLUDE_PATH}/VKStagedBuffer.h
                                 ${VK_INCLUDE_PATH}/VKStagedBufferAccessor.h
                                 ${VK_INCLUDE_PATH}/BufferPolicy.h
@@ -118,6 +119,7 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 VKArrayBuffer.cpp
                                 VKBufferCommitQueue.cpp
                                 VKBufferUpdateQueue.cpp
+                                VKBufferTransferAgent.cpp
                                 VKStagedBuffer.cpp
                                 BufferPolicyImpl.cpp)
 

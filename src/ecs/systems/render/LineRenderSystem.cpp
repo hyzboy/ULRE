@@ -68,6 +68,7 @@ namespace hgl::ecs
         has_uploaded_once = false;
         last_uploaded_line_count = 0;
         last_collect_visible_set_signature = 0;
+        last_synced_frame_index = UINT32_MAX;
     }
 
     void LineRenderSystem::SetColor(int index, const hgl::Color4f &color)
@@ -79,6 +80,27 @@ namespace hgl::ecs
 
         if (line_manager)
             line_manager->SetColor(index, color);
+    }
+
+    void LineRenderSystem::PrepareBuffersForCurrentFrame()
+    {
+        if (!line_manager)
+        {
+            Initialize();
+            if (!line_manager)
+                return;
+        }
+
+        ECSContext *ctx = context;
+        if (!ctx)
+            return;
+
+        const uint32_t frame_index = ctx->GetFrameIndex();
+        if (last_synced_frame_index == frame_index)
+            return;
+
+        SyncComponentsToRenderer();
+        last_synced_frame_index = frame_index;
     }
 
     void LineRenderSystem::SyncComponentsToRenderer()
@@ -164,14 +186,10 @@ namespace hgl::ecs
         if (!cmd)
             return;
 
+        PrepareBuffersForCurrentFrame();
         if (!line_manager)
-        {
-            Initialize();
-            if (!line_manager)
-                return;
-        }
+            return;
 
-        SyncComponentsToRenderer();
         line_manager->Draw(cmd);
     }
 }//namespace hgl::ecs

@@ -208,13 +208,18 @@ void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
     if(!primitive)
         return;
 
-    // Commit会自动检查dirty状态，只在需要时才Unmap/Remap
-    position.Commit();
-    color.Commit();
-
     cmd->BindDataBuffer(primitive->GetDataBuffer());
 
     cmd->Draw(primitive->GetDataBuffer(),primitive->GetRenderData());
+}
+
+void LineWidthBatch::CommitCpuWrites()
+{
+    if(!primitive)
+        return;
+
+    position.Commit();
+    color.Commit();
 }
 
 void LineWidthBatch::UpdatePipeline(Pipeline *p)

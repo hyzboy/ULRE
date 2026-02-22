@@ -54,6 +54,8 @@ public:
     void AddLine(const Vector3f &from,const Vector3f &to,uint8 color_index);
     void AddLine(const std::vector<LineSegmentDescriptor> &);
 
+    void CommitCpuWrites();
+
     void Draw(RenderCmdBuffer *);
 
     // expose count for manager usage

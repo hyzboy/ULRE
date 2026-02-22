@@ -1,5 +1,7 @@
 ﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/vk/VKBufferTransferAgent.h>
+#include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/object/ObjectTracker.h>
 
 namespace hgl::graph{
@@ -76,7 +78,7 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
         return(nullptr);
 
     if(staged)
-        return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count,staged));
+        return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count,new StagedBufferTransferAgent(staged)));
 
     return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count));
 }
@@ -96,7 +98,7 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
         return(nullptr);
 
     if(staged)
-        return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count,staged));
+        return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count,new StagedBufferTransferAgent(staged)));
 
     return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count));
 }
@@ -116,7 +118,7 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
         return(nullptr);
 
     if(staged)
-        return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count,staged));
+        return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count,new StagedBufferTransferAgent(staged)));
 
     return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count));
 }

@@ -257,12 +257,12 @@ namespace hgl
             std::vector<const Entity*> entities;
             context->GetAllEntities(entities);
 
-            std::vector<std::shared_ptr<Component>> components;
             for (const Entity* entity : entities)
             {
                 if (!entity)
                     continue;
 
+                std::vector<std::shared_ptr<Component>> components;
                 entity->GetAllComponents(components);
                 for (const auto& component : components)
                 {

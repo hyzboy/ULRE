@@ -13,6 +13,8 @@
 #include<functional>
 #include<vector>
 #include<map>
+#include<set>
+#include<unordered_map>
 #include <hgl/type/UnorderedMap.h>
 #include<typeinfo>
 #include<type_traits>
@@ -70,6 +72,10 @@ namespace hgl
 
             // 按render element type存储系统（用于运行时按名称查找和启用/禁用）
             std::map<std::string, std::vector<std::shared_ptr<System>>> systems_by_element_type;
+
+            // Component-driven system-group activity tracking
+            std::unordered_map<std::string, uint32_t> system_group_component_counts;
+            std::set<std::string> known_system_groups;
 
             struct OrderedSystem
             {
@@ -493,6 +499,24 @@ namespace hgl
 
             /// Set enabled state for all systems of a given render element type
             void SetElementTypeSystemsEnabled(const std::string& element_type, bool enabled);
+
+            /// Get tracked component count for a system group
+            uint32_t GetSystemGroupComponentCount(const std::string& group_name) const;
+
+            /// Get all known system group names (seen from component registration)
+            void GetKnownSystemGroups(std::vector<std::string>& out_group_names) const;
+
+            /// Disable all groups whose tracked component count is zero (systems stay resident)
+            void DisableUnusedSystemGroups();
+
+            /// Disable a specific system group (systems stay resident)
+            bool DisableSystemGroup(const std::string& group_name);
+
+            /// Cleanup a specific system group. When remove_systems=true, unregister the group's systems.
+            bool CleanupSystemGroup(const std::string& group_name, bool remove_systems = false);
+
+            /// Cleanup all unused groups (component count == 0). Returns cleaned group count.
+            size_t CleanupUnusedSystemGroups(bool remove_systems = false);
 
         public:
             /// Get entity count

@@ -54,6 +54,45 @@ namespace hgl::ecs
     void SystemProfiler::Reset()
     {
         profiles.Clear();
+        group_profiles.clear();
+    }
+
+    void SystemProfiler::MarkGroupEnsured(const std::string& group_name)
+    {
+        if (group_name.empty())
+            return;
+
+        auto& data = group_profiles[group_name];
+        data.groupName = group_name;
+        ++data.ensureCount;
+    }
+
+    void SystemProfiler::UpdateGroupState(const std::string& group_name, uint32_t component_count, bool enabled)
+    {
+        if (group_name.empty())
+            return;
+
+        auto& data = group_profiles[group_name];
+        data.groupName = group_name;
+        data.componentCount = component_count;
+
+        if (data.enabled != enabled)
+        {
+            if (enabled)
+                ++data.activationCount;
+            else
+                ++data.deactivationCount;
+        }
+
+        data.enabled = enabled;
+    }
+
+    void SystemProfiler::RemoveGroupProfile(const std::string& group_name)
+    {
+        if (group_name.empty())
+            return;
+
+        group_profiles.erase(group_name);
     }
 }//namespace hgl::ecs
 

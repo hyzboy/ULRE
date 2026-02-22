@@ -14,10 +14,10 @@ DeviceBuffer::~DeviceBuffer()
         auto_commit_proxy=nullptr;
     }
 
-    if(staged_buffer)
+    if(transfer_agent)
     {
-        delete staged_buffer;
-        staged_buffer=nullptr;
+        delete transfer_agent;
+        transfer_agent=nullptr;
         buf.memory=nullptr;
         buf.buffer=nullptr;
         return;

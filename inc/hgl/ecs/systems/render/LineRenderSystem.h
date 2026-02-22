@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<unordered_set>
+#include<cstdint>
 
 namespace hgl
 {
@@ -31,6 +32,7 @@ namespace hgl
             bool has_uploaded_once = false;
             uint32_t last_uploaded_line_count = 0;
             uint64_t last_collect_visible_set_signature = 0;
+            uint32_t last_synced_frame_index = UINT32_MAX;
 
         public:
 
@@ -67,6 +69,12 @@ namespace hgl
              * EN: Set palette color (will wait for Manager initialization)
              */
             void SetColor(int index, const hgl::Color4f &color);
+
+            /**
+             * CN: 在上传阶段前准备并同步线条缓冲（每帧最多一次）
+             * EN: Prepare/sync line buffers before upload phase (at most once per frame)
+             */
+            void PrepareBuffersForCurrentFrame();
 
             /**
              * CN: 每帧收集所有 LinesComponent 并同步到渲染器

@@ -26,7 +26,7 @@ private:
         max_count=mc;
     }
 
-    IndirectCommandBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,const uint32_t mc,StagedBuffer *sb):DeviceBuffer(owner,d,vb,sb)
+    IndirectCommandBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,const uint32_t mc,BufferTransferAgent *agent):DeviceBuffer(owner,d,vb,agent)
     {
         max_count=mc;
     }

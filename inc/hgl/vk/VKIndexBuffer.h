@@ -25,7 +25,7 @@ private:
             stride=0;
     }
 
-    IndexBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count,StagedBuffer *sb):DeviceBuffer(owner,d,vb,sb)
+    IndexBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count,BufferTransferAgent *agent):DeviceBuffer(owner,d,vb,agent)
     {
         index_type=it;
         count=_count;

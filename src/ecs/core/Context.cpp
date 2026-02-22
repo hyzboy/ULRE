@@ -203,6 +203,8 @@ namespace hgl
             }
 
             component_registry.Clear();
+            system_group_component_counts.clear();
+            known_system_groups.clear();
             static_transforms.clear();
             movable_transforms.clear();
 
@@ -927,6 +929,8 @@ namespace hgl
                 if (!holder)
                     return false;
 
+                const auto removed_system = *holder;
+
                 if (*holder)
                     (*holder)->Shutdown();
 
@@ -946,6 +950,20 @@ namespace hgl
                                                     return entry.key == key;
                                                 }),
                                  order_list.end());
+
+                if (removed_system)
+                {
+                    for (auto it = systems_by_element_type.begin(); it != systems_by_element_type.end();)
+                    {
+                        auto& vec = it->second;
+                        vec.erase(std::remove(vec.begin(), vec.end(), removed_system), vec.end());
+
+                        if (vec.empty())
+                            it = systems_by_element_type.erase(it);
+                        else
+                            ++it;
+                    }
+                }
 
                 order_dirty = true;
                 return true;
@@ -973,11 +991,20 @@ namespace hgl
 
             RegisterComponentInstanceInternal(type_hash, comp);
 
-            const char* render_group = comp->GetSystemGroupName();
-            if (render_group && render_group[0] != '\0')
+            const char* group_name = comp->GetSystemGroupName();
+            if (group_name && group_name[0] != '\0')
             {
-                EnsureSystemGroupSystems(this, render_group, GetRenderTarget());
-                SetElementTypeSystemsEnabled(render_group, true);
+                const std::string group(group_name);
+                known_system_groups.insert(group);
+
+                auto& count = system_group_component_counts[group];
+                ++count;
+
+                EnsureSystemGroupSystems(this, group, GetRenderTarget());
+                SetElementTypeSystemsEnabled(group, true);
+
+                profiler.MarkGroupEnsured(group);
+                profiler.UpdateGroupState(group, count, true);
             }
 
             for (const auto& entry : component_query_bases)
@@ -995,6 +1022,27 @@ namespace hgl
             (void)type_hash;
             if (!comp_ptr)
                 return;
+
+            const char* group_name = comp_ptr->GetSystemGroupName();
+            if (group_name && group_name[0] != '\0')
+            {
+                const std::string group(group_name);
+                known_system_groups.insert(group);
+
+                auto it = system_group_component_counts.find(group);
+                if (it != system_group_component_counts.end())
+                {
+                    if (it->second > 0)
+                        --(it->second);
+
+                    if (it->second == 0)
+                    {
+                        SetElementTypeSystemsEnabled(group, false);
+                    }
+
+                    profiler.UpdateGroupState(group, it->second, it->second > 0);
+                }
+            }
 
             for (auto& pair : component_registry)
             {
@@ -1232,6 +1280,97 @@ namespace hgl
                     }
                 }
             }
+        }
+
+        uint32_t ECSContext::GetSystemGroupComponentCount(const std::string& group_name) const
+        {
+            auto it = system_group_component_counts.find(group_name);
+            if (it == system_group_component_counts.end())
+                return 0;
+
+            return it->second;
+        }
+
+        void ECSContext::GetKnownSystemGroups(std::vector<std::string>& out_group_names) const
+        {
+            out_group_names.clear();
+            out_group_names.reserve(known_system_groups.size());
+
+            for (const auto& group_name : known_system_groups)
+                out_group_names.push_back(group_name);
+        }
+
+        void ECSContext::DisableUnusedSystemGroups()
+        {
+            for (const auto& group_name : known_system_groups)
+            {
+                if (GetSystemGroupComponentCount(group_name) == 0)
+                {
+                    SetElementTypeSystemsEnabled(group_name, false);
+                    profiler.UpdateGroupState(group_name, 0, false);
+                }
+            }
+        }
+
+        bool ECSContext::DisableSystemGroup(const std::string& group_name)
+        {
+            if (group_name.empty())
+                return false;
+
+            SetElementTypeSystemsEnabled(group_name, false);
+            profiler.UpdateGroupState(group_name, GetSystemGroupComponentCount(group_name), false);
+            return true;
+        }
+
+        bool ECSContext::CleanupSystemGroup(const std::string& group_name, bool remove_systems)
+        {
+            if (group_name.empty())
+                return false;
+
+            SetElementTypeSystemsEnabled(group_name, false);
+            profiler.UpdateGroupState(group_name, GetSystemGroupComponentCount(group_name), false);
+
+            if (!remove_systems)
+                return true;
+
+            auto it = systems_by_element_type.find(group_name);
+            if (it == systems_by_element_type.end())
+                return false;
+
+            std::vector<std::shared_ptr<System>> systems = it->second;
+            for (const auto& system : systems)
+            {
+                if (!system)
+                    continue;
+
+                const size_t key = typeid(*system).hash_code();
+                RemoveSystemByKey(key);
+            }
+
+            systems_by_element_type.erase(group_name);
+            profiler.RemoveGroupProfile(group_name);
+            return true;
+        }
+
+        size_t ECSContext::CleanupUnusedSystemGroups(bool remove_systems)
+        {
+            std::vector<std::string> targets;
+            targets.reserve(known_system_groups.size());
+
+            for (const auto& group_name : known_system_groups)
+            {
+                if (GetSystemGroupComponentCount(group_name) == 0)
+                    targets.push_back(group_name);
+            }
+
+            size_t cleaned = 0;
+            for (const auto& group_name : targets)
+            {
+                if (CleanupSystemGroup(group_name, remove_systems))
+                    ++cleaned;
+            }
+
+            return cleaned;
         }
     }//namespace ecs
 }//namespace hgl

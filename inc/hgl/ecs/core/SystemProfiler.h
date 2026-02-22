@@ -4,6 +4,7 @@
 #include <hgl/type/UnorderedMap.h>
 #include<chrono>
 #include<cstdint>
+#include<map>
 
 namespace hgl::ecs
 {
@@ -28,15 +29,31 @@ namespace hgl::ecs
             bool running = false;
         };
 
+        struct SystemGroupProfileData
+        {
+            std::string groupName;
+            uint32_t componentCount = 0;
+            bool enabled = false;
+            uint64_t ensureCount = 0;
+            uint64_t activationCount = 0;
+            uint64_t deactivationCount = 0;
+        };
+
     public:
         void Begin(System* system);
         void End(System* system);
         void Reset();
 
+        void MarkGroupEnsured(const std::string& group_name);
+        void UpdateGroupState(const std::string& group_name, uint32_t component_count, bool enabled);
+        void RemoveGroupProfile(const std::string& group_name);
+
         const hgl::UnorderedMap<System*, ProfileData>& GetProfiles() const { return profiles; }
+        const std::map<std::string, SystemGroupProfileData>& GetSystemGroupProfiles() const { return group_profiles; }
 
     private:
         hgl::UnorderedMap<System*, ProfileData> profiles;
+        std::map<std::string, SystemGroupProfileData> group_profiles;
     };
 }//namespace hgl::ecs
 

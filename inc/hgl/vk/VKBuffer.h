@@ -3,7 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/BufferPolicy.h>
 #include<hgl/vk/VKMemory.h>
-#include<hgl/vk/VKStagedBuffer.h>
+#include<hgl/vk/VKBufferTransferAgent.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
 
@@ -28,13 +28,10 @@ protected:
     VulkanDevice *owner_device=nullptr;
     VkDevice device;
     DeviceBufferData buf;
-    StagedBuffer *staged_buffer=nullptr;
+    BufferTransferAgent *transfer_agent=nullptr;
     RawBufferAccessor *auto_commit_proxy=nullptr;
     BufferCommitPolicy commit_policy=BufferCommitPolicy::Auto;
     BufferUpdateClass update_class=BufferUpdateClass::Default;
-    VkDeviceSize staged_map_offset=0;
-    VkDeviceSize staged_map_size=0;
-    bool staged_map_active=false;
 
     BufferPolicy policy;
 
@@ -60,7 +57,15 @@ private:
         owner_device=owner;
         device=d;
         buf=b;
-        staged_buffer=sb;
+        transfer_agent=new StagedBufferTransferAgent(sb);
+    }
+
+    DeviceBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &b,BufferTransferAgent *agent)
+    {
+        owner_device=owner;
+        device=d;
+        buf=b;
+        transfer_agent=agent;
     }
 
 public:
@@ -73,7 +78,7 @@ public:
     const   VkDescriptorBufferInfo *    GetBufferInfo   ()const{return &buf.info;}
             VkDeviceSize                GetSize         ()const{return buf.info.range;}
             VulkanDevice *              GetOwnerDevice  ()const{return owner_device;}
-            bool                        HasStagedDirty  ()const{return staged_buffer ? staged_buffer->IsDirty() : false;}
+            bool                        HasStagedDirty  ()const{return transfer_agent ? transfer_agent->HasPendingUpload() : false;}
             void                        SetAutoCommitProxy(RawBufferAccessor *proxy){auto_commit_proxy=proxy;}
             void                        SetCommitPolicy(BufferCommitPolicy policy){commit_policy=policy;}
             BufferCommitPolicy          GetCommitPolicy()const{return commit_policy;}
@@ -129,38 +134,23 @@ public:
 
             void *  Map     ()
             {
-                if(staged_buffer)
-                {
-                    staged_map_offset=0;
-                    staged_map_size=VK_WHOLE_SIZE;
-                    staged_map_active=true;
-                    return staged_buffer->Map();
-                }
+                if(transfer_agent)
+                    return transfer_agent->Map(0, VK_WHOLE_SIZE);
 
                 return buf.memory?buf.memory->Map():nullptr;
             }
     virtual void *  Map     (VkDeviceSize start,VkDeviceSize size)
             {
-                if(staged_buffer)
-                {
-                    staged_map_offset=start;
-                    staged_map_size=(size==0)?VK_WHOLE_SIZE:size;
-                    staged_map_active=true;
-                    return staged_buffer->Map(start,size);
-                }
+                if(transfer_agent)
+                    return transfer_agent->Map(start, size);
 
                 return buf.memory?buf.memory->Map(start,size):nullptr;
             }
             void    Unmap   ()
             {
-                if(staged_buffer)
+                if(transfer_agent)
                 {
-                    staged_buffer->Unmap();
-                    if(staged_map_active)
-                    {
-                        staged_buffer->MarkDirty(staged_map_offset,staged_map_size);
-                        staged_map_active=false;
-                    }
+                    transfer_agent->Unmap();
                     return;
                 }
 
@@ -169,9 +159,9 @@ public:
             }
     virtual void    Flush   (VkDeviceSize start,VkDeviceSize size)
             {
-                if(staged_buffer)
+                if(transfer_agent)
                 {
-                    staged_buffer->MarkDirty(start,(size==0)?VK_WHOLE_SIZE:size);
+                    transfer_agent->Flush(start, size);
                     return;
                 }
 
@@ -202,9 +192,9 @@ public:
             }
     virtual void    Flush   (VkDeviceSize size)
             {
-                if(staged_buffer)
+                if(transfer_agent)
                 {
-                    staged_buffer->MarkDirty(0,(size==0)?VK_WHOLE_SIZE:size);
+                    transfer_agent->Flush(0, size);
                     return;
                 }
 
@@ -235,22 +225,22 @@ public:
 
     virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size)
             {
-                if(staged_buffer)
-                    return staged_buffer->Write(ptr,start,size);
+                if(transfer_agent)
+                    return transfer_agent->Write(ptr,start,size);
 
                 return buf.memory?buf.memory->Write(ptr,start,size):false;
             }
     virtual bool    Write   (const void *ptr,uint32_t size)
             {
-                if(staged_buffer)
-                    return staged_buffer->Write(ptr,0,size);
+                if(transfer_agent)
+                    return transfer_agent->Write(ptr,0,size);
 
                 return buf.memory?buf.memory->Write(ptr,0,size):false;
             }
             bool    Write   (const void *ptr)
             {
-                if(staged_buffer)
-                    return staged_buffer->Write(ptr);
+                if(transfer_agent)
+                    return transfer_agent->Write(ptr,0,static_cast<uint32_t>(buf.info.range));
 
                 return buf.memory?buf.memory->Write(ptr):false;
             }

@@ -167,6 +167,11 @@ set(ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES
     systems/render/LineCollectSystem.cpp
 )
 
+set(ECS_SYS_18C_RenderPreBeginFrame_LineBufferPrepareSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/LineBufferPrepareSystem.h
+    systems/render/LineBufferPrepareSystem.cpp
+)
+
 set(ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
     systems/render/RenderPrimitiveSortSystem.cpp
@@ -264,6 +269,7 @@ set(ECS_SOURCE
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
     ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
     ${ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES}
+    ${ECS_SYS_18C_RenderPreBeginFrame_LineBufferPrepareSystem_FILES}
     ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES}
     ${ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES}
     ${ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES}
@@ -298,6 +304,7 @@ source_group("ECS\\Systems\\15 RenderPostBeginFrame_RenderFrameBusinessSyncSyste
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})
 source_group("ECS\\Systems\\18 RenderCollect_TextCollectSystem" FILES ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES})
+source_group("ECS\\Systems\\18C RenderPreBeginFrame_LineBufferPrepareSystem" FILES ${ECS_SYS_18C_RenderPreBeginFrame_LineBufferPrepareSystem_FILES})
 source_group("ECS\\Systems\\19 RenderBatch_RenderPrimitiveSortSystem" FILES ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES})
 source_group("ECS\\Systems\\20 RenderBatch_RenderPrimitiveBatchBuildSystem" FILES ${ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES})
 source_group("ECS\\Systems\\21 RenderBatch_RenderPrimitiveBatchFinalizeSystem" FILES ${ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES})

@@ -706,6 +706,11 @@ namespace hgl::graph
             line_groups[batch_index].AddLine(block.lines);
         }
 
+        for (const uint8 batch_index : dirty_batch_indices)
+        {
+            line_groups[batch_index].CommitCpuWrites();
+        }
+
         total_line_count = 0;
         for (const auto& entry : component_line_map)
         {

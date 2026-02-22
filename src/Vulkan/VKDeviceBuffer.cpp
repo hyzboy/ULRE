@@ -2,6 +2,8 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
+#include<hgl/vk/VKBufferTransferAgent.h>
+#include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/BufferPolicyImpl.h>
 #include<hgl/log/Log.h>
@@ -170,7 +172,7 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
         buf.info.offset=0;
         buf.info.range=size;
 
-            VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count,staged);
+            VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count,new StagedBufferTransferAgent(staged));
             ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
             vab->SetAutoCommitProxy(new RawBufferAccessor(vab));
@@ -256,7 +258,7 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
         buf.info.offset=0;
         buf.info.range=size;
 
-            IndexBuffer *ibo = new IndexBuffer(this,attr->device,buf,index_type,count,staged);
+            IndexBuffer *ibo = new IndexBuffer(this,attr->device,buf,index_type,count,new StagedBufferTransferAgent(staged));
             ApplyUpdateClassWithPolicy(this, ibo, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
             ibo->SetAutoCommitProxy(new RawBufferAccessor(ibo));
@@ -316,7 +318,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
         buf.info.offset=0;
         buf.info.range=range;
 
-            DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,staged);
+            DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,new StagedBufferTransferAgent(staged));
             ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
         dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
 
@@ -382,7 +384,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
         buf.info.offset=0;
         buf.info.range=range;
 
-        DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,staged);
+        DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,new StagedBufferTransferAgent(staged));
         ApplyUpdateClassWithPolicy(this, dev_buf, update_class, buf_usage, policy);
         dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
         TrackBuffer(dev_buf, name, loc);
@@ -446,7 +448,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
         buf.info.offset=0;
         buf.info.range=size;
 
-        VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count,staged);
+        VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count,new StagedBufferTransferAgent(staged));
         ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
         vab->SetAutoCommitProxy(new RawBufferAccessor(vab));

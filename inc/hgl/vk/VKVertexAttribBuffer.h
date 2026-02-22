@@ -21,7 +21,7 @@ private:
         count=_count;
     }
 
-    VertexAttribBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count,StagedBuffer *sb):DeviceBuffer(owner,d,vb,sb)
+    VertexAttribBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count,BufferTransferAgent *agent):DeviceBuffer(owner,d,vb,agent)
     {
         format=fmt;
         stride=_stride;
