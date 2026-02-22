@@ -236,12 +236,6 @@ SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterial.h
 
 SOURCE_GROUP("9.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
 
-# --- 8.3 Render Context ---
-SET(VK_RENDER_CONTEXT_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKRenderContext.h
-                                VKRenderContext.cpp)
-
-SOURCE_GROUP("9.Vulkan\\RenderContext" FILES ${VK_RENDER_CONTEXT_FILES})
-
 # --- 8.4 Texture Loader ---
 SET(VK_TEXTURE_LOADER_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
                                 ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureType.h
@@ -291,7 +285,6 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
 
                                         ${VK_GEOMETRY_FILES}
                                         ${VK_SCENEGRAPH_MATERIAL_FILES}
-                                        ${VK_RENDER_CONTEXT_FILES}
                                         ${VK_TEXTURE_LOADER_FILES}
 
                                         ${CM_SG_HEADER}

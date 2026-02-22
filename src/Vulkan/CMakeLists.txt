@@ -213,7 +213,6 @@ SET(VK_RENDER_PASS_FILES        ${VK_INCLUDE_PATH}/VKFramebuffer.h
                                 ${VK_INCLUDE_PATH}/VKSubpass.h
                                 ${VK_INCLUDE_PATH}/VKSubpassInfo.h
                                 ${VK_INCLUDE_PATH}/VKAttachment.h
-                                ${VK_INCLUDE_PATH}/VKRenderContext.h
                                 VKFramebuffer.cpp
                                 VKRenderPass.cpp
                                 VKSubpass.cpp)
