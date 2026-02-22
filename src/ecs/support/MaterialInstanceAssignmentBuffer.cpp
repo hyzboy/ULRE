@@ -157,7 +157,8 @@ namespace hgl::ecs
 
         // 合并材质实例数据到缓冲
         {
-            uint8* mip = (uint8*)(material_instance_buffer->Map());
+            auto *mibuf = material_instance_buffer->GetGPUBuffer();
+            uint8* mip = mibuf ? (uint8*)mibuf->Map(0, mibuf->GetSize()) : nullptr;
 
             for (graph::MaterialInstance* mi : mi_set)
             {
@@ -179,7 +180,7 @@ namespace hgl::ecs
                 mip += material_instance_data_bytes;
             }
 
-            material_instance_buffer->Unmap();
+            if(mibuf) mibuf->Unmap();
         }
     }
 

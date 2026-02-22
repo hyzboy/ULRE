@@ -3,6 +3,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
 #include<hgl/vk/VKStagedBuffer.h>
+#include<hgl/vk/VKReBarBuffer.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Log.h>
 #include<iostream>
@@ -144,7 +145,10 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
         return(nullptr);
 
+    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
+    ReBarBuffer *rebar = new ReBarBuffer("VAB", attr->device, buf.buffer, buf.memory, size);
     VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+    vab->SetStagedSource(rebar);
     vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
     TrackBuffer(vab, ObjectNameBuilder("VAB"), loc);
     return vab;
@@ -231,7 +235,12 @@ IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType in
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
+    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
+    ReBarBuffer *rebar = new ReBarBuffer(
+        name.base_name[0] ? std::string(name.base_name) : std::string("IBO"),
+        attr->device, buf.buffer, buf.memory, size);
     IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
+    ibo->SetStagedSource(rebar);
     ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
     TrackBuffer(ibo, name, loc);
     return ibo;
@@ -305,7 +314,10 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,ObjectNameBuilder(memory_name.c_str()),loc))
         return(nullptr);
 
+    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
+    ReBarBuffer *rebar = new ReBarBuffer(std::string(buffer_type), attr->device, buf.buffer, buf.memory, size);
     DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
+    dev_buf->SetStagedSource(rebar);
     TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
     return dev_buf;
 }
@@ -358,7 +370,12 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
+    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
+    ReBarBuffer *rebar = new ReBarBuffer(
+        name.base_name[0] ? std::string(name.base_name) : std::string("Buffer"),
+        attr->device, buf.buffer, buf.memory, size);
     DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
+    dev_buf->SetStagedSource(rebar);
     dev_buf->SetUpdateClass(update_class);
     TrackBuffer(dev_buf, name, loc);
     return dev_buf;
@@ -421,7 +438,12 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
+    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
+    ReBarBuffer *rebar = new ReBarBuffer(
+        name.base_name[0] ? std::string(name.base_name) : std::string("VAB"),
+        attr->device, buf.buffer, buf.memory, size);
     VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+    vab->SetStagedSource(rebar);
     vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
     TrackBuffer(vab, name, loc);
     return vab;

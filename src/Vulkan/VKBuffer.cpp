@@ -1,18 +1,8 @@
 ﻿#include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/VKStagedBuffer.h>
+#include<hgl/vk/VKStagedBuffer.h>  // needed so ~DeviceBuffer can fully delete StagedBuffer via IGPUBuffer*
+#include<hgl/vk/VKReBarBuffer.h>   // needed so ~DeviceBuffer can fully delete ReBarBuffer via IGPUBuffer*
 
 namespace hgl::graph{
-
-IGPUBuffer *DeviceBuffer::GetGPUBuffer()
-{
-    return static_cast<IGPUBuffer*>(staged_source);
-}
-
-const IGPUBuffer *DeviceBuffer::GetGPUBuffer() const
-{
-    return static_cast<const IGPUBuffer*>(staged_source);
-}
-
 DeviceBuffer::~DeviceBuffer()
 {
     if(staged_source)

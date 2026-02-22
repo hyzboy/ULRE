@@ -99,7 +99,8 @@ namespace hgl::ecs
             return;
 
         const VkDeviceSize map_size = sizeof(math::Matrix4f) * write_count;
-        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map(0, map_size));
+        auto *tbuf = transform_buffer->GetGPUBuffer();
+        math::Matrix4f* l2wp = tbuf ? (math::Matrix4f*)tbuf->Map(0, map_size) : nullptr;
         if (!l2wp)
             return;
 
@@ -108,7 +109,7 @@ namespace hgl::ecs
             l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&mats[i]);
         }
 
-        transform_buffer->Unmap();
+        if(tbuf) tbuf->Unmap();
     }
 
     void TransformAssignmentBuffer::WriteDynamicFromStorage(const TransformDataStorage& storage,const uint32_t static_count,const uint32_t dynamic_count)
@@ -141,7 +142,8 @@ namespace hgl::ecs
             return;
 
         const VkDeviceSize map_size = sizeof(math::Matrix4f) * write_count;
-        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map(0, map_size));
+        auto *tbuf = transform_buffer->GetGPUBuffer();
+        math::Matrix4f* l2wp = tbuf ? (math::Matrix4f*)tbuf->Map(0, map_size) : nullptr;
         if (!l2wp)
             return;
 
@@ -152,7 +154,7 @@ namespace hgl::ecs
             l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
         }
 
-        transform_buffer->Unmap();
+        if(tbuf) tbuf->Unmap();
     }
 
     void TransformAssignmentBuffer::WriteDynamicFromHandles(const TransformDataStorage& storage,
@@ -327,7 +329,8 @@ namespace hgl::ecs
         const size_t map_size = sizeof(math::Matrix4f) * (last - first + 1);
         const size_t map_offset = sizeof(math::Matrix4f) * first;
 
-        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map(map_offset, map_size));
+        auto *tbuf = transform_buffer->GetGPUBuffer();
+        math::Matrix4f* l2wp = tbuf ? (math::Matrix4f*)tbuf->Map(map_offset, map_size) : nullptr;
         if (!l2wp)
             return;
 
@@ -347,7 +350,7 @@ namespace hgl::ecs
             l2wp[transform_idx - first] = l2w;
         }
 
-        transform_buffer->Unmap();
+        if(tbuf) tbuf->Unmap();
     }
 
     void TransformAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
@@ -431,7 +434,8 @@ namespace hgl::ecs
             item->transform_index = ring_base + dynamic_index++;
         }
 
-        math::Matrix4f* l2wp = (math::Matrix4f*)(transform_buffer->Map());
+        auto *wbuf = transform_buffer->GetGPUBuffer();
+        math::Matrix4f* l2wp = wbuf ? (math::Matrix4f*)wbuf->Map(0, wbuf->GetSize()) : nullptr;
         if (l2wp)
         {
             for (auto *item : static_items)
@@ -456,7 +460,7 @@ namespace hgl::ecs
                 l2wp[idx] = l2w;
             }
 
-            transform_buffer->Unmap();
+            if(wbuf) wbuf->Unmap();
         }
 
         // 2. 创建或重用 Transform VAB（索引缓冲）

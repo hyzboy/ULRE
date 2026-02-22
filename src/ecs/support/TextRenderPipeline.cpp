@@ -456,7 +456,8 @@ namespace hgl::ecs
                 {
                     const uint32_t upload_bytes = hgl_min<uint32_t>(resources->material->GetMIDataBytes(),
                                                                     sizeof(graph::layout::CharStyle));
-                    resources->material_instance_buffer->Write(&resources->char_style, upload_bytes);
+                    if(auto *mgpu = resources->material_instance_buffer->GetGPUBuffer())
+                        mgpu->Write(&resources->char_style, 0, upload_bytes);
                 }
             }
 

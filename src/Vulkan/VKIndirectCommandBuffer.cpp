@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKStagedBuffer.h>
+#include<hgl/vk/VKReBarBuffer.h>
 #include<hgl/object/ObjectTracker.h>
 
 namespace hgl::graph{
@@ -16,7 +17,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,name);
 }
 
-bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,StagedBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sharing_mode)
+bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,BufferAllocPolicy policy,IGPUBuffer **staged_out,const ObjectNameBuilder &name,SharingMode sharing_mode)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -58,7 +59,17 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
     else if(policy==BufferAllocPolicy::Readback)
         mem_usage=MemoryUsage::GPUToCPU;
 
-    return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,mem_usage,name);
+    if(!CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode,mem_usage,name))
+        return(false);
+
+    // CPUVisible: install ReBarBuffer so GetGPUBuffer() always yields a valid IGPUBuffer*
+    if(staged_out)
+    {
+        const std::string buf_name = name.base_name[0] ? std::string(name.base_name) : std::string("IndirectBuffer");
+        *staged_out = new ReBarBuffer(buf_name, attr->device, buf->buffer, buf->memory, size);
+    }
+
+    return(true);
 }
 
 // 新版本：带名字追踪
@@ -71,7 +82,7 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
 {
     HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
-    StagedBuffer *staged=nullptr;
+    IGPUBuffer *staged=nullptr;
 
     if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndirectCommand),policy,&staged,name,sm))
         return(nullptr);
@@ -95,7 +106,7 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
 {
     HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
-    StagedBuffer *staged=nullptr;
+    IGPUBuffer *staged=nullptr;
 
     if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDrawIndexedIndirectCommand),policy,&staged,name,sm))
         return(nullptr);
@@ -119,7 +130,7 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
 {
     HGL_CAPTURE_SCOPE();
     DeviceBufferData buf;
-    StagedBuffer *staged=nullptr;
+    IGPUBuffer *staged=nullptr;
 
     if(!CreateIndirectCommandBuffer(&buf,cmd_count,sizeof(VkDispatchIndirectCommand),policy,&staged,name,sm))
         return(nullptr);
