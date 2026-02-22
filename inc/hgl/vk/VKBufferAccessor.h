@@ -4,6 +4,7 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VertexAttribDataAccess.h>
 #include<hgl/vk/VKBufferAccessBase.h>
+#include<hgl/vk/VKDevice.h>
 
 namespace hgl::graph{
 
@@ -324,16 +325,12 @@ public:
      */
     bool IsDirty() const { return dirty; }
 
+private:
+
      /**
-      * CN: 提交修改到 GPU
-      *     对于 StagedBuffer: Unmap 触发 flush
-      *     对于 ReBAR/CPUOnly: 无操作（已经同步）
-      * EN: Commit changes to GPU
-      *     For StagedBuffer: Unmap triggers flush
-      *     For ReBAR/CPUOnly: No-op (already synced)
-      * \return 是否执行了提交 / Whether committed
+      * Internal commit path used by BufferCommitQueue-driven Update only.
       */
-    bool Commit()
+    bool CommitInternal()
     {
         if(!dirty || !buffer)
             return false;
@@ -351,9 +348,11 @@ public:
         return true;
     }
 
+public:
+
     void Update() const override
     {
-        const_cast<BufferAccessor*>(this)->Commit();
+        const_cast<BufferAccessor*>(this)->CommitInternal();
     }
 
     /**

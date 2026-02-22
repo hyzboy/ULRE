@@ -86,7 +86,7 @@ ViewportInfo *IRenderTarget::GetViewportInfo()
         {
             desc_binding.AddUBO(ubo_vp_info);
             ubo_vp_info->Data()->Set(extent.width, extent.height);
-            ubo_vp_info->ImmediateUpdate();
+            ubo_vp_info->MarkDirty();
         }
     }
 
@@ -140,7 +140,7 @@ void IRenderTarget::OnResize(const VkExtent2D &ext)
 
     ubo_vp_info->Data()->Set(ext.width,ext.height);
 
-    ubo_vp_info->ImmediateUpdate();  // 立即同步到 GPU / Immediate sync to GPU
+    ubo_vp_info->MarkDirty();
 }
 
 }//namespace hgl::graph

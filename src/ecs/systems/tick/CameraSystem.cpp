@@ -309,7 +309,7 @@ namespace hgl::ecs
     void CameraSystem::SyncCameraUBO()
     {
         if (camera_ubo)
-            camera_ubo->Commit();
+            camera_ubo->MarkDirty();
     }
 
     void CameraSystem::Update(float deltaTime)

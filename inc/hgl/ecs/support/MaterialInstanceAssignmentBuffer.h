@@ -7,6 +7,7 @@
 
 #pragma once
 #include<hgl/vk/VK.h>
+#include<hgl/vk/VKRingBufferWrapper.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<vector>
@@ -92,6 +93,7 @@ namespace hgl::ecs
 
         uint32_t material_instance_data_bytes;      ///<单个材质实例数据字节数
         graph::DeviceBuffer* material_instance_buffer;  ///<材质实例数据(UBO/SSBO)
+        graph::RingBufferWrapper material_instance_ring_writer;
 
         void StatMaterialInstance(const std::vector<RenderItem*>& items);
 

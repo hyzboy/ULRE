@@ -64,7 +64,7 @@ namespace hgl::ecs
 
         sky_ubo->Update(info);
         if (immediate)
-            sky_ubo->Commit();
+            sky_ubo->MarkDirty();
     }
 
     void EnvironmentSystem::MarkSkyDirty()
@@ -76,7 +76,7 @@ namespace hgl::ecs
     void EnvironmentSystem::SyncSkyUBO()
     {
         if (sky_ubo && sky_ubo->IsDirty())
-            sky_ubo->Commit();
+            sky_ubo->MarkDirty();
     }
 
     void EnvironmentSystem::Update(float /*deltaTime*/)
@@ -117,7 +117,7 @@ namespace hgl::ecs
         if (sky_ubo)
         {
             sky_ubo->Data()->SetTime(10, 0, 0);
-            sky_ubo->ImmediateUpdate();
+            sky_ubo->MarkDirty();
         }
     }
 }//namespace hgl::ecs

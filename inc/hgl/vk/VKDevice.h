@@ -54,6 +54,7 @@ class VulkanDevice
     VulkanDevAttr *attr;
     BufferUpdateQueue *buffer_update_queue;
     BufferCommitQueue *buffer_commit_queue;
+    bool draw_phase_active = false;
 
     struct ObjectDebugRecord
     {
@@ -150,6 +151,9 @@ public: //内存相关
 
     BufferUpdateQueue * GetBufferUpdateQueue() { return buffer_update_queue; }
     BufferCommitQueue * GetBufferCommitQueue() { return buffer_commit_queue; }
+
+    void SetDrawPhaseActive(bool active) { draw_phase_active = active; }
+    bool IsDrawPhaseActive() const { return draw_phase_active; }
 
 private: //Buffer相关
 

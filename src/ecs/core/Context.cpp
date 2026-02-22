@@ -634,6 +634,9 @@ namespace hgl
         {
             SortRenderSystems();
 
+            if (gpu_device)
+                gpu_device->SetDrawPhaseActive(true);
+
             const int min_phase = static_cast<int>(minPhase);
             const int max_phase = static_cast<int>(maxPhase);
 
@@ -656,6 +659,9 @@ namespace hgl
                 
                 LogDebug("[ECS] Render End: %s", entry.system->GetName().c_str());
             }
+
+            if (gpu_device)
+                gpu_device->SetDrawPhaseActive(false);
         }
 
         void ECSContext::ClearEntities()

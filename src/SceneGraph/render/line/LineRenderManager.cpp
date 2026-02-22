@@ -513,7 +513,6 @@ namespace hgl::graph
 
         (*palette)[index] = c;
         ubo_color->MarkDirty();
-        ubo_color->Commit();
     }
 
     bool LineRenderManager::AddLine(const Vector3f& from, const Vector3f& to, const uint8 color_index, uint8 width)

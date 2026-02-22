@@ -267,8 +267,9 @@ void BufferCommitQueue::CommitAll()
         const std::string &group_name = GetBudgetGroupName(accessor);
         BudgetGroupState &group = budget_groups[group_name];
 
+        const bool accessor_dirty = accessor->IsDirty();
         const bool has_pending_upload = buf->HasStagedDirty();
-        if(has_pending_upload)
+        if(accessor_dirty || has_pending_upload)
         {
             accessor->Update();
 

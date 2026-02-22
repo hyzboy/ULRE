@@ -210,8 +210,7 @@ void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
 
     if(position.IsDirty() || color.IsDirty())
     {
-        GLogWarning("LineWidthBatch::Draw detected dirty buffer state; CPU flush phase ordering violated. Applying emergency commit.");
-        CommitCpuWrites();
+        GLogError("LineWidthBatch::Draw detected dirty buffer state. Commit/flush in draw stage is forbidden.");
     }
 
     cmd->BindDataBuffer(primitive->GetDataBuffer());
@@ -221,11 +220,8 @@ void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
 
 void LineWidthBatch::CommitCpuWrites()
 {
-    if(!primitive)
-        return;
-
-    position.Commit();
-    color.Commit();
+    // No manual commit API in business code.
+    // Dirty data is finalized by RenderBufferCommit system via BufferCommitQueue.
 }
 
 void LineWidthBatch::UpdatePipeline(Pipeline *p)

@@ -39,7 +39,7 @@ namespace hgl::graph{
 template<typename T>
 class StructuredBufferAccessor:public BufferAccessBase
 {
-private:
+public:
     T *mapped_data;                 ///< 映射后的数据指针 / Mapped data pointer
     VkDeviceSize aligned_size = 0;
     bool initialized = false;
@@ -198,7 +198,7 @@ public:
         return *this;
     }
 
-private:
+public:
 
     /**
      * CN: 绑定到新的缓冲区
@@ -265,6 +265,8 @@ public:
      */
     bool IsDirty() const { return dirty; }
 
+public:
+
     /**
      * CN: 便利方法：修改数据并标记 dirty
      * EN: Convenience method: assign data and mark dirty
@@ -277,26 +279,14 @@ public:
         dirty = true;
     }
 
+private:
+
     /**
-     * CN: 提交修改到 GPU
+     * Internal commit path used by BufferCommitQueue-driven Update only.
      *
-     * 行为：
-     * 1. 如果缓冲区有关联 StagedBuffer，Unmap 会触发 MarkDirty
-     * 2. 重新 Map，确保 StagedBuffer 的变更被标记
-     * 3. 对于 ReBAR/CPUOnly 缓冲区，Unmap/Map 可能是无操作
-     * 4. 对于需要显式 flush 的情况，调用 buffer->Flush()
-     *
-     * EN: Commit changes to GPU
-     *
-     * Behavior:
-     * 1. If buffer has associated StagedBuffer, Unmap triggers MarkDirty
-     * 2. Re-Map to ensure StagedBuffer changes are tracked
-     * 3. For ReBAR/CPUOnly buffers, Unmap/Map may be no-ops
-     * 4. For cases needing explicit flush, call buffer->Flush()
-     *
-     * \return 是否执行了提交 / Whether committed
+     * \return whether committed
      */
-    bool Commit()
+    bool CommitInternal()
     {
         if(!dirty || !buffer || !mapped_data)
             return false;
@@ -313,12 +303,16 @@ public:
         return true;
     }
 
+public:
+
     /**
      * CN: 立即 Update 的便利方法（和旧 UBOInstance::Update() 兼容）
      * 对应旧的 DeviceBufferMap::Update() 行为
      * EN: Convenience method for immediate update (compatible with old UBOInstance::Update())
      * Maps to old DeviceBufferMap::Update() behavior
      */
+private:
+
     void ImmediateUpdate() const
     {
         if(!mapped_data || !buffer)
@@ -336,27 +330,13 @@ public:
      * EN: Proxy DeviceBuffer::Write method - for partial data update
      * 用于更新结构体中的某个字段而不是整个结构体
      */
+public:
+
     bool Write(const void *ptr, uint32_t offset, uint32_t size)
     {
         if(!buffer)
             return false;
         return buffer->Write(ptr, offset, size);
-    }
-
-    void Flush(uint32_t)
-    {
-        if(buffer)
-            buffer->Flush(aligned_size);
-    }
-
-    /**
-     * CN: 代理 DeviceBuffer::Flush 方法
-     * EN: Proxy DeviceBuffer::Flush method
-     */
-    void Flush()
-    {
-        if(buffer)
-            buffer->Flush(aligned_size);
     }
 
     // ===== UBOInstance 兼容接口 / UBOInstance Compatible Interface =====
@@ -385,7 +365,7 @@ public:
      */
     void Update() const override
     {
-        ImmediateUpdate();
+        const_cast<StructuredBufferAccessor<T>*>(this)->CommitInternal();
     }
 
     /**
