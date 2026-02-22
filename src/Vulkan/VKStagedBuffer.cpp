@@ -89,7 +89,10 @@ void * StagedBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
 void StagedBuffer::Unmap()
 {
     if (staging_memory)
+    {
         staging_memory->Unmap();
+        MarkDirty(0, VK_WHOLE_SIZE);  // caller wrote via Map pointer — mark the whole buffer dirty
+    }
 }
 
 void StagedBuffer::MarkDirty(VkDeviceSize offset, VkDeviceSize size)
