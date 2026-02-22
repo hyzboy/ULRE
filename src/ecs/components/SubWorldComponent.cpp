@@ -6,7 +6,6 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/RenderBufferCommitSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
@@ -42,22 +41,10 @@ namespace hgl::ecs
                 parent_camera_info = parent_collect->GetCameraInfo();
             }
 
-            if (!parent_device_from_system)
-            {
-                if (auto parent_commit = parent_context->GetSystem<RenderBufferCommitSystem>())
-                    parent_device_from_system = parent_commit->GetDevice();
-            }
-
             if (auto child_collect = child_context->GetSystem<RenderPrimitiveCollectSystem>())
             {
                 child_collect->SetWorld(child_context);
                 child_collect->SetCameraInfo(parent_camera_info);
-            }
-
-            if (auto child_commit = child_context->GetSystem<RenderBufferCommitSystem>())
-            {
-                child_commit->SetWorld(child_context);
-                child_commit->SetDevice(parent_device_from_system);
             }
 
             if (auto child_submit = child_context->GetSystem<RenderPrimitiveSubmitSystem>())
@@ -179,12 +166,6 @@ namespace hgl::ecs
             parent_camera_info = parent_collect->GetCameraInfo();
         }
 
-        if (!parent_device)
-        {
-            if (auto parent_commit = parent_context->GetSystem<RenderBufferCommitSystem>())
-                parent_device = parent_commit->GetDevice();
-        }
-
         // Register required systems for sub-world rendering
         auto camera_system = child_context->RegisterTickSystem<CameraSystem>(child_context);
         auto bbox_system = child_context->RegisterTickSystem<BoundingBoxUpdateSystem>();
@@ -193,7 +174,6 @@ namespace hgl::ecs
         auto render_sort_system = child_context->RegisterRenderSystem<RenderPrimitiveSortSystem>();
         auto render_batch_build_system = child_context->RegisterRenderSystem<RenderPrimitiveBatchBuildSystem>();
         auto render_batch_finalize_system = child_context->RegisterRenderSystem<RenderPrimitiveBatchFinalizeSystem>();
-        auto render_commit_system = child_context->RegisterRenderSystem<RenderBufferCommitSystem>();
         auto render_submit_system = child_context->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
 
         if (bbox_system)
@@ -203,12 +183,6 @@ namespace hgl::ecs
         {
             render_collect_system->SetWorld(child_context);
             render_collect_system->SetCameraInfo(parent_camera_info);
-        }
-
-        if (render_commit_system)
-        {
-            render_commit_system->SetWorld(child_context);
-            render_commit_system->SetDevice(parent_device);
         }
 
         (void)render_cull_system;

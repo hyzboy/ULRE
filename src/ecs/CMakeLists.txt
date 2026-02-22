@@ -122,11 +122,6 @@ set(ECS_SYS_11_RenderPreBeginFrame_QuadMaterialBindingSystem_FILES
     components/QuadComponent.cpp
 )
 
-set(ECS_SYS_13_RenderBufferCommit_RenderBufferCommitSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderBufferCommitSystem.h
-    systems/render/RenderBufferCommitSystem.cpp
-)
-
 set(ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderBufferUploadSystem.h
     systems/render/RenderBufferUploadSystem.cpp
@@ -262,7 +257,6 @@ set(ECS_SOURCE
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
     ${ECS_SYS_10_RenderPreBeginFrame_QuadResourcePrepareSystem_FILES}
     ${ECS_SYS_11_RenderPreBeginFrame_QuadMaterialBindingSystem_FILES}
-    ${ECS_SYS_13_RenderBufferCommit_RenderBufferCommitSystem_FILES}
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_15_RenderPostBeginFrame_RenderFrameBusinessSyncSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
@@ -298,7 +292,6 @@ source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${E
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
 source_group("ECS\\Systems\\10 RenderPreBeginFrame_QuadResourcePrepareSystem" FILES ${ECS_SYS_10_RenderPreBeginFrame_QuadResourcePrepareSystem_FILES})
 source_group("ECS\\Systems\\11 RenderPreBeginFrame_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderPreBeginFrame_QuadMaterialBindingSystem_FILES})
-source_group("ECS\\Systems\\13 RenderBufferCommit_RenderBufferCommitSystem" FILES ${ECS_SYS_13_RenderBufferCommit_RenderBufferCommitSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderPostBeginFrame_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderPostBeginFrame_RenderFrameBusinessSyncSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})

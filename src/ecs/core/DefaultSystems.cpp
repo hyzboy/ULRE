@@ -19,7 +19,6 @@
 #include <hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
-#include <hgl/ecs/systems/render/RenderBufferCommitSystem.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -73,7 +72,6 @@ namespace
         auto render_sort_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveSortSystem>(ctx);
         auto render_batch_build_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveBatchBuildSystem>(ctx);
         auto render_batch_finalize_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveBatchFinalizeSystem>(ctx);
-        auto render_commit_system = EnsureRenderSystem<hgl::ecs::RenderBufferCommitSystem>(ctx);
         auto render_upload_system = EnsureRenderSystem<hgl::ecs::RenderBufferUploadSystem>(ctx);
         auto render_submit_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveSubmitSystem>(ctx);
 
@@ -81,12 +79,6 @@ namespace
         {
             render_collect_system->SetWorld(ctx);
             render_collect_system->SetCameraInfo(camera_info);
-        }
-
-        if (render_commit_system)
-        {
-            render_commit_system->SetWorld(ctx);
-            render_commit_system->SetDevice(device);
         }
 
         if (render_upload_system)
