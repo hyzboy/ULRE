@@ -28,6 +28,11 @@ namespace hgl::graph
             buffer = buf;
         }
 
+        DeviceBuffer* GetBuffer() const
+        {
+            return buffer;
+        }
+
         void SetElementSize(const VkDeviceSize elem_size)
         {
             element_size = elem_size;

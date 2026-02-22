@@ -1,10 +1,11 @@
 #pragma once
 
 #include<hgl/vk/DeviceBufferRingWriter.h>
+#include<hgl/vk/VKBufferWriteAgent.h>
 
 namespace hgl::graph
 {
-class RingBufferWrapper
+class RingBufferWrapper : public BufferWriteAgent
 {
 private:
     DeviceBufferRingWriter writer;
@@ -67,7 +68,18 @@ public:
         return ok;
     }
 
-    bool IsDirty() const { return dirty; }
+    bool IsDirty() const override { return dirty; }
     void ClearDirty() { dirty = false; }
+
+    // BufferWriteAgent interface (note: Unmap already defined above in non-virtual form)
+    void* MapRange(VkDeviceSize offset, VkDeviceSize count) override;
+    // Unmap is already in the wrapper, just mark as override requirement
+    bool WriteRange(const void *data, VkDeviceSize offset, VkDeviceSize count) override;
+    bool HasPendingUpload() const override;
+    void MarkDirty() override;
+    bool CommitInternal() override;
+    DeviceBuffer* GetBuffer() override;
+    const DeviceBuffer* GetBuffer() const override;
 };
 }
+
