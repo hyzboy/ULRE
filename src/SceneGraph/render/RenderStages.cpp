@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/render/RenderStages.h>
-#include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/IGPUBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/graph/camera/ViewportInfo.h>
@@ -69,11 +69,21 @@ namespace hgl::graph
                 if(!device)
                     return;
 
-                auto *update_queue = device->GetBufferUpdateQueue();
-                if(update_queue && update_queue->HasPendingUpdates())
-                {
-                    update_queue->FlushAll(ctx.cmd->operator VkCommandBuffer());
+                const auto &registry = device->GetGPUBufferRegistry();
+                bool had_uploads = false;
 
+                for(auto *gpu_buf : registry)
+                {
+                    if(gpu_buf && gpu_buf->IsDirty())
+                    {
+                        gpu_buf->CopyToDevice(ctx.cmd->operator VkCommandBuffer());
+                        gpu_buf->ClearDirty();
+                        had_uploads = true;
+                    }
+                }
+
+                if(had_uploads)
+                {
                     VkMemoryBarrier barrier{};
                     barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
                     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;

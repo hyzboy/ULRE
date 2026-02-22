@@ -204,7 +204,7 @@ public:
         , element_offset(0)
         , element_count(0)
     {
-        SetBuffer(vab, take_ownership);
+        SetBuffer(vab);
         if(buffer)
             MapInternal();
     }
@@ -218,7 +218,7 @@ public:
         , element_offset(offset)
         , element_count(count)
     {
-        SetBuffer(vab, take_ownership);
+        SetBuffer(vab);
         if(buffer)
             MapInternal();
     }
@@ -232,7 +232,7 @@ public:
         , element_offset(offset)
         , element_count(count)
     {
-        SetBuffer(ibo, take_ownership);
+        SetBuffer(ibo);
         if(buffer)
             MapInternal();
     }
@@ -259,7 +259,7 @@ public:
     void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0, bool take_ownership = false)
     {
         UnmapInternal();
-        SetBuffer(vab, take_ownership);
+        SetBuffer(vab);
         buffer_total_count = vab ? vab->GetCount() : 0;
         buffer_stride = vab ? vab->GetStride() : 0;
         element_offset = offset;
@@ -340,10 +340,6 @@ private:
         MapInternal();
 
         dirty = false;
-
-        // Reset frame counter after successful commit
-        if(buffer)
-            buffer->ResetFramesSinceUpdate();
 
         return true;
     }

@@ -88,7 +88,7 @@ public:
         , mapped_data(nullptr)
         , aligned_size(aligned_size_param)
     {
-        SetBuffer(buf, take_ownership);
+        SetBuffer(buf);
         if(buffer)
             MapInternal();
         InitDefaultsIfNeeded();
@@ -112,7 +112,7 @@ public:
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
-        SetBuffer(buf, take_ownership);
+        SetBuffer(buf);
         if(buffer)
             MapInternal();
         InitDefaultsIfNeeded();
@@ -123,7 +123,7 @@ public:
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
-        SetBuffer(buf, take_ownership);
+        SetBuffer(buf);
         SetUBOMeta(dst, name);
         if(buffer)
             MapInternal();
@@ -135,7 +135,7 @@ public:
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
-        SetBuffer(buf, take_ownership);
+        SetBuffer(buf);
         SetUBOMeta(desc ? desc->set_type : DescriptorSetType::PerMaterial, desc ? desc->name : "");
         if(buffer)
             MapInternal();
@@ -208,7 +208,7 @@ public:
     {
         UnmapInternal();
         aligned_size = buf ? buf->GetSize() : 0;
-        SetBuffer(buf, take_ownership);
+        SetBuffer(buf);
 
         if(buffer)
             MapInternal();
@@ -320,9 +320,6 @@ private:
 
         buffer->Write(mapped_data, sizeof(T));
         buffer->Flush(aligned_size);
-
-        // Reset frame counter after successful commit
-        const_cast<DeviceBuffer*>(buffer)->ResetFramesSinceUpdate();
     }
 
     /**

@@ -28,9 +28,6 @@ inline bool operator==(const VkQueueFamilyProperties& lhs, const VkQueueFamilyPr
 
 namespace hgl::graph{
 
-// Forward declaration
-struct AllDeviceBufferPolicies;
-
 using VkQueueFamilyPropertiesList=ValueArray<VkQueueFamilyProperties>;
 
 class VulkanPhyDevice
@@ -62,8 +59,6 @@ private:
     bool support_u8_index=false;
     bool dynamic_state=false;
     VkDeviceSize rebar_size=0;  // Resizable BAR size (0 if not available)
-
-    AllDeviceBufferPolicies *all_buffer_policies=nullptr;  // All buffer policies for this device
 
 public:
 
@@ -130,8 +125,6 @@ public:
 
     const bool HasReBAR         ()const{return rebar_size > 0;}                                                          ///<是否支持Resizable BAR
     const VkDeviceSize GetReBarSize()const{return rebar_size;}                                                           ///<获取Resizable BAR容量
-
-    const AllDeviceBufferPolicies *GetAllBufferPolicies()const{return all_buffer_policies;}                           ///<获取所有缓冲策略
 
 #define HGL_VK_IS_BRAND(name)   (hgl::stricmp(properties.deviceName,#name,sizeof(#name))==0)
 

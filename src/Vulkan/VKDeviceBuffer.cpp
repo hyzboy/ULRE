@@ -2,14 +2,13 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
-#include<hgl/vk/VKBufferTransferAgent.h>
 #include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/vk/VKPhysicalDevice.h>
-#include<hgl/vk/BufferPolicyImpl.h>
 #include<hgl/log/Log.h>
 #include<iostream>
 
 namespace hgl::graph{
+
 static BufferAllocPolicy ResolvePolicy(VulkanDevice *device, BufferAllocPolicy policy)
 {
     if(policy!=BufferAllocPolicy::Auto)
@@ -19,50 +18,6 @@ static BufferAllocPolicy ResolvePolicy(VulkanDevice *device, BufferAllocPolicy p
         return BufferAllocPolicy::CPUVisible;
 
     return BufferAllocPolicy::StagedUpload;
-}
-
-static BufferCommitPolicy SelectCommitPolicy(BufferUpdateClass update_class, VkBufferUsageFlags usage, BufferAllocPolicy policy)
-{
-    if(update_class == BufferUpdateClass::Manual)
-        return BufferCommitPolicy::Manual;
-
-    if(update_class == BufferUpdateClass::CriticalPerFrame || update_class == BufferUpdateClass::TransformData)
-        return BufferCommitPolicy::Always;
-
-    if(update_class == BufferUpdateClass::MeshStatic || update_class == BufferUpdateClass::MeshDynamic ||
-       update_class == BufferUpdateClass::TextureTile || update_class == BufferUpdateClass::Particle ||
-       update_class == BufferUpdateClass::Deferred)
-        return BufferCommitPolicy::StagedOnly;
-
-    if(policy == BufferAllocPolicy::StagedUpload || policy == BufferAllocPolicy::GPUOnly)
-        return BufferCommitPolicy::StagedOnly;
-
-    if((usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) || (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
-        return BufferCommitPolicy::Always;
-
-    return BufferCommitPolicy::Auto;
-}
-
-static void ApplyUpdateClass(DeviceBuffer *buf, BufferUpdateClass update_class, VkBufferUsageFlags usage, BufferAllocPolicy policy)
-{
-    if(!buf)
-        return;
-
-    buf->SetUpdateClass(update_class);
-    buf->SetCommitPolicy(SelectCommitPolicy(update_class, usage, policy));
-}
-
-static void ApplyUpdateClassWithPolicy(VulkanDevice *device, DeviceBuffer *buf, BufferUpdateClass update_class,
-                                       VkBufferUsageFlags usage, BufferAllocPolicy policy)
-{
-    ApplyUpdateClass(buf, update_class, usage, policy);
-
-    if(!buf)
-        return;
-
-    const BufferPolicy *hardcoded = GetPolicyForUpdateClass(update_class);
-    if(hardcoded)
-        ApplyPolicy(buf, hardcoded);
 }
 
 const VkDeviceSize VulkanDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
@@ -166,18 +121,17 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
             return(nullptr);
 
         DeviceBufferData buf;
-        buf.buffer=staged->GetDeviceBuffer();
+        buf.buffer=staged->GetVkDeviceBuffer();
         buf.memory=staged->GetDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
 
-            VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count,new StagedBufferTransferAgent(staged));
-            ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
-                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
-            vab->SetAutoCommitProxy(new RawBufferAccessor(vab));
-            TrackBuffer(vab, ObjectNameBuilder("VAB"), loc);
-            return vab;
+        VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+        vab->SetStagedSource(staged);
+        vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
+        TrackBuffer(vab, ObjectNameBuilder("VAB"), loc);
+        return vab;
     }
 
     MemoryUsage mem_usage=MemoryUsage::CPUOnly;
@@ -190,10 +144,8 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Buf
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("VAB:Memory"),loc))
         return(nullptr);
 
-    VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count);
-    ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
-                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
-    vab->SetAutoCommitProxy(new RawBufferAccessor(vab));
+    VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+    vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
     TrackBuffer(vab, ObjectNameBuilder("VAB"), loc);
     return vab;
 }
@@ -252,18 +204,17 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
             return(nullptr);
 
         DeviceBufferData buf;
-        buf.buffer=staged->GetDeviceBuffer();
+        buf.buffer=staged->GetVkDeviceBuffer();
         buf.memory=staged->GetDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
 
-            IndexBuffer *ibo = new IndexBuffer(this,attr->device,buf,index_type,count,new StagedBufferTransferAgent(staged));
-            ApplyUpdateClassWithPolicy(this, ibo, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
-                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
-            ibo->SetAutoCommitProxy(new RawBufferAccessor(ibo));
-            TrackBuffer(ibo, ObjectNameBuilder("IBO"), loc);
-            return ibo;
+        IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
+        ibo->SetStagedSource(staged);
+        ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
+        TrackBuffer(ibo, ObjectNameBuilder("IBO"), loc);
+        return ibo;
     }
 
     MemoryUsage mem_usage=MemoryUsage::CPUOnly;
@@ -276,10 +227,8 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("IBO:Memory"),loc))
         return(nullptr);
 
-    IndexBuffer *ibo = new IndexBuffer(this,attr->device,buf,index_type,count);
-    ApplyUpdateClassWithPolicy(this, ibo, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
-                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
-    ibo->SetAutoCommitProxy(new RawBufferAccessor(ibo));
+    IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
+    ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
     TrackBuffer(ibo, ObjectNameBuilder("IBO"), loc);
     return ibo;
 }
@@ -312,16 +261,14 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
             return(nullptr);
 
         DeviceBufferData buf;
-        buf.buffer=staged->GetDeviceBuffer();
+        buf.buffer=staged->GetVkDeviceBuffer();
         buf.memory=staged->GetDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
 
-            DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,new StagedBufferTransferAgent(staged));
-            ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
-        dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
-
+        DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
+        dev_buf->SetStagedSource(staged);
         TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
         return dev_buf;
     }
@@ -349,10 +296,7 @@ DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSi
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,ObjectNameBuilder(memory_name.c_str()),loc))
         return(nullptr);
 
-    DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf);
-    ApplyUpdateClassWithPolicy(this, dev_buf, BufferUpdateClass::Default, buf_usage, policy);
-    dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
-
+    DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
     TrackBuffer(dev_buf, ObjectNameBuilder(buffer_type), loc);
     return dev_buf;
 }
@@ -378,15 +322,15 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
             return(nullptr);
 
         DeviceBufferData buf;
-        buf.buffer=staged->GetDeviceBuffer();
+        buf.buffer=staged->GetVkDeviceBuffer();
         buf.memory=staged->GetDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=range;
 
-        DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf,new StagedBufferTransferAgent(staged));
-        ApplyUpdateClassWithPolicy(this, dev_buf, update_class, buf_usage, policy);
-        dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
+        DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
+        dev_buf->SetStagedSource(staged);
+        dev_buf->SetUpdateClass(update_class);
         TrackBuffer(dev_buf, name, loc);
         return dev_buf;
     }
@@ -405,9 +349,8 @@ DeviceBuffer *VulkanDevice::CreateBuffer(const ObjectNameBuilder &name,
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
-    DeviceBuffer *dev_buf = new DeviceBuffer(this,attr->device,buf);
-    ApplyUpdateClassWithPolicy(this, dev_buf, update_class, buf_usage, policy);
-    dev_buf->SetAutoCommitProxy(new RawBufferAccessor(dev_buf));
+    DeviceBuffer *dev_buf = new DeviceBuffer(attr->device,buf);
+    dev_buf->SetUpdateClass(update_class);
     TrackBuffer(dev_buf, name, loc);
     return dev_buf;
 }
@@ -442,16 +385,15 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
             return(nullptr);
 
         DeviceBufferData buf;
-        buf.buffer=staged->GetDeviceBuffer();
+        buf.buffer=staged->GetVkDeviceBuffer();
         buf.memory=staged->GetDeviceMemory();
         buf.info.buffer=buf.buffer;
         buf.info.offset=0;
         buf.info.range=size;
 
-        VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count,new StagedBufferTransferAgent(staged));
-        ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
-                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
-        vab->SetAutoCommitProxy(new RawBufferAccessor(vab));
+        VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+        vab->SetStagedSource(staged);
+        vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
         TrackBuffer(vab, name, loc);
         return vab;
     }
@@ -470,10 +412,8 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
-    VertexAttribBuffer *vab = new VertexAttribBuffer(this,attr->device,buf,format,stride,count);
-    ApplyUpdateClassWithPolicy(this, vab, update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class,
-                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, policy);
-    vab->SetAutoCommitProxy(new RawBufferAccessor(vab));
+    VertexAttribBuffer *vab = new VertexAttribBuffer(attr->device,buf,format,stride,count);
+    vab->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
     TrackBuffer(vab, name, loc);
     return vab;
 }
@@ -481,7 +421,7 @@ VAB *VulkanDevice::CreateVAB(const ObjectNameBuilder &name,
 DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
 {
     DeviceBuffer *buf = CreateBuffer(buf_usage,range,size,data,policy,sharing_mode,loc);
-    ApplyUpdateClassWithPolicy(this, buf, update_class, buf_usage, ResolvePolicy(this, policy));
+    if(buf) buf->SetUpdateClass(update_class);
     return buf;
 }
 

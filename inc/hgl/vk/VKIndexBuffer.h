@@ -14,18 +14,7 @@ private:
 
     friend class VulkanDevice;
 
-    IndexBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count):DeviceBuffer(owner,d,vb)
-    {
-        index_type=it;
-        count=_count;
-
-        if(index_type==IndexType::U16)stride=2;else
-        if(index_type==IndexType::U32)stride=4;else
-        if(index_type==IndexType::U8)stride=1;else
-            stride=0;
-    }
-
-    IndexBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count,BufferTransferAgent *agent):DeviceBuffer(owner,d,vb,agent)
+    IndexBuffer(VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count):DeviceBuffer(d,vb)
     {
         index_type=it;
         count=_count;

@@ -104,14 +104,10 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/VKIndexBuffer.h
                                 ${VK_INCLUDE_PATH}/VKArrayBuffer.h
                                 ${VK_INCLUDE_PATH}/VKBufferMap.h
-                                ${VK_INCLUDE_PATH}/VKBufferCommitQueue.h
-                                ${VK_INCLUDE_PATH}/VKBufferUpdateQueue.h
                                 ${VK_INCLUDE_PATH}/VKBufferWriteAgent.h
-                                ${VK_INCLUDE_PATH}/VKBufferTransferAgent.h
                                 ${VK_INCLUDE_PATH}/VKStagedBuffer.h
                                 ${VK_INCLUDE_PATH}/VKStagedBufferAccessor.h
                                 ${VK_INCLUDE_PATH}/BufferPolicy.h
-                                ${VK_INCLUDE_PATH}/BufferPolicyImpl.h
                                 ${VK_INCLUDE_PATH}/DeviceBufferRingWriter.h
                                 ${VK_INCLUDE_PATH}/VKRingBufferWrapper.h
                                 ${VK_INCLUDE_PATH}/StructuredBufferAccessor.h
@@ -119,12 +115,8 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 VKMemoryAllocator.cpp
                                 VKBuffer.cpp
                                 VKArrayBuffer.cpp
-                                VKBufferCommitQueue.cpp
-                                VKBufferUpdateQueue.cpp
-                                VKBufferTransferAgent.cpp
                                 VKRingBufferWrapper.cpp
-                                VKStagedBuffer.cpp
-                                BufferPolicyImpl.cpp)
+                                VKStagedBuffer.cpp)
 
 SOURCE_GROUP("Memory" FILES ${VK_MEMORY_FILES})
 

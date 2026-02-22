@@ -3,19 +3,19 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKMemory.h>
+#include<hgl/vk/IGPUBuffer.h>
 
 namespace hgl::graph{
 
-class BufferUpdateQueue;
 class DeviceMemory;
 
 /**
  * Staged buffer with CPU-visible staging buffer and GPU-local device buffer
+ * Implements IGPUBuffer — ECS System calls CopyToDevice each frame for dirty buffers
  */
-class StagedBuffer
+class StagedBuffer : public IGPUBuffer
 {
     VkDevice            device;
-    BufferUpdateQueue * update_queue;
 
     // Staging buffer (CPU accessible)
     VkBuffer            staging_buffer;
@@ -36,51 +36,42 @@ private:
 
     friend class VulkanDevice;
 
-    StagedBuffer(VkDevice dev, BufferUpdateQueue *queue, VkBuffer staging_buf, DeviceMemory *staging_mem,
+    StagedBuffer(VkDevice dev, VkBuffer staging_buf, DeviceMemory *staging_mem,
                  VkBuffer device_buf, DeviceMemory *device_mem, VkDeviceSize size, VkBufferUsageFlags usage_flags);
 
 public:
 
     virtual ~StagedBuffer();
 
-    /**
-     * Write data to staging buffer and mark as dirty
-     */
-    bool Write(const void *data, VkDeviceSize offset, VkDeviceSize size);
-    bool Write(const void *data, VkDeviceSize size) { return Write(data, 0, size); }
-    bool Write(const void *data) { return Write(data, 0, buffer_size); }
+    // ---- IGPUBuffer interface ----
+    bool   Write      (const void *data, VkDeviceSize offset, VkDeviceSize size) override;
+    bool   Write      (const void *data, VkDeviceSize size) { return Write(data, 0, size); }
+    bool   Write      (const void *data)                    { return Write(data, 0, buffer_size); }
 
-    /**
-     * Map staging buffer for CPU access
-     */
-    void * Map();
-    void * Map(VkDeviceSize offset, VkDeviceSize size);
-    void   Unmap();
+    void * Map        (VkDeviceSize offset, VkDeviceSize size) override;
+    void * Map        ();
+    void   Unmap      () override;
 
-    /**
-     * Mark buffer as dirty (to be copied to device)
-     */
-    void MarkDirty(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+    void   MarkDirty  (VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE) override;
+    bool   IsDirty    () const override { return is_dirty; }
+    void   ClearDirty () override;
 
-    /**
-     * Copy staging buffer to device buffer (called by BufferUpdateQueue)
-     */
-    void CopyToDevice(VkCommandBuffer cmd);
+    /** Called by RenderBufferUploadSystem each frame for dirty buffers */
+    void   CopyToDevice(VkCommandBuffer cmd) override;
 
-    /**
-     * Get the device buffer for rendering
-     */
-    VkBuffer GetDeviceBuffer() const { return device_buffer; }
-    VkBuffer GetStagingBuffer() const { return staging_buffer; }
-    DeviceMemory *GetDeviceMemory() const { return device_memory; }
+    VkDeviceSize GetSize()            const override { return buffer_size; }
+    VkBuffer     GetVkDeviceBuffer()  const override { return device_buffer; }
+    VkBuffer     GetStagingBuffer()   const          { return staging_buffer; }
+    DeviceMemory *GetDeviceMemory()   const          { return device_memory; }
 
-    VkDeviceSize GetSize() const { return buffer_size; }
-    bool IsDirty() const { return is_dirty; }
-
-    /**
-     * Clear dirty flag (called after copy)
-     */
-    void ClearDirty();
+    VkDescriptorBufferInfo GetDescriptorBufferInfo() const override
+    {
+        VkDescriptorBufferInfo info{};
+        info.buffer = device_buffer;
+        info.offset = 0;
+        info.range  = buffer_size;
+        return info;
+    }
 };//class StagedBuffer
 
 }//namespace hgl::graph

@@ -1,7 +1,6 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/vk/VKStagedBuffer.h>
-#include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<cassert>
 
@@ -166,7 +165,6 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, Vk
     // Create StagedBuffer wrapper
     StagedBuffer *staged_buffer = new StagedBuffer(
         attr->device,
-        buffer_update_queue,
         staging_buffer,
         staging_memory,
         device_buffer,

@@ -3,12 +3,11 @@
 #include<hgl/vk/VKFence.h>
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKBufferUpdateQueue.h>
-#include<hgl/vk/VKBufferCommitQueue.h>
 #include<hgl/vk/pipeline/VKComputePipeline.h>
-#include<hgl/vk/BufferPolicyImpl.h>
 #include<hgl/vk/VKObjectName.h>
+#include<hgl/vk/IGPUBuffer.h>
 #include<hgl/log/Log.h>
+#include <algorithm>
 #include <functional>
 #include <thread>
 #include <utility>
@@ -61,13 +60,6 @@ namespace
 VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 {
     attr=da;
-    buffer_update_queue = new BufferUpdateQueue(da->device);
-
-    // Initialize BufferCommitQueue with device policies from physical device
-    const AllDeviceBufferPolicies *policies = nullptr;
-    if(da->physical_device)
-        policies = da->physical_device->GetAllBufferPolicies();
-    buffer_commit_queue = new BufferCommitQueue(policies);
 
     if(attr && attr->device)
         g_device_map[attr->device] = this;
@@ -85,8 +77,6 @@ VulkanDevice::~VulkanDevice()
 
     LogInfo("=== End VulkanDevice Destructor ===");
 
-    delete buffer_update_queue;
-    delete buffer_commit_queue;
     delete attr;
 }
 
@@ -94,6 +84,22 @@ VulkanDevice *VulkanDevice::FromDevice(VkDevice device)
 {
     auto it = g_device_map.find(device);
     return it == g_device_map.end() ? nullptr : it->second;
+}
+
+void VulkanDevice::RegisterGPUBuffer(IGPUBuffer *buf)
+{
+    if (!buf)
+        return;
+    gpu_buffer_registry.push_back(buf);
+}
+
+void VulkanDevice::UnregisterGPUBuffer(IGPUBuffer *buf)
+{
+    if (!buf)
+        return;
+    auto it = std::find(gpu_buffer_registry.begin(), gpu_buffer_registry.end(), buf);
+    if (it != gpu_buffer_registry.end())
+        gpu_buffer_registry.erase(it);
 }
 
 void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectNameBuilder &name, const std::source_location &loc)
@@ -235,16 +241,6 @@ void VulkanDevice::TrackBuffer(DeviceBuffer *buf, const ObjectNameBuilder &name,
 
     TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->GetBuffer(), name.Append(ObjectTypeTag::VKBuffer), loc);
     TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
-}
-
-void VulkanDevice::UntrackBuffer(DeviceBuffer *buf)
-{
-    if (!buf)
-        return;
-
-    UntrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->GetBuffer());
-    // DeviceMemory will untrack itself in its destructor - don't double-untrack
-    // UntrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory());
 }
 
 void VulkanDevice::TrackTexture(Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc)

@@ -1,19 +1,17 @@
 ﻿#include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBufferUpdateQueue.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/log/Log.h>
 #include<string.h>
 
 namespace hgl::graph{
 
-StagedBuffer::StagedBuffer(VkDevice dev, BufferUpdateQueue *queue,
+StagedBuffer::StagedBuffer(VkDevice dev,
                            VkBuffer staging_buf, DeviceMemory *staging_mem,
                            VkBuffer device_buf, DeviceMemory *device_mem,
                            VkDeviceSize size, VkBufferUsageFlags usage_flags)
 {
     device = dev;
-    update_queue = queue;
     staging_buffer = staging_buf;
     staging_memory = staging_mem;
     device_buffer = device_buf;
@@ -23,16 +21,19 @@ StagedBuffer::StagedBuffer(VkDevice dev, BufferUpdateQueue *queue,
     is_dirty = false;
     dirty_offset = 0;
     dirty_size = 0;
+
+    // Register with the device's IGPUBuffer registry
+    VulkanDevice *owner = VulkanDevice::FromDevice(device);
+    if (owner)
+        owner->RegisterGPUBuffer(this);
 }
 
 StagedBuffer::~StagedBuffer()
 {
-    if (update_queue)
-        update_queue->Remove(this);
-
     VulkanDevice *owner = VulkanDevice::FromDevice(device);
     if (owner)
     {
+        owner->UnregisterGPUBuffer(this);
         if (staging_buffer)
             owner->UntrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)staging_buffer);
         if (staging_memory)
@@ -61,13 +62,8 @@ bool StagedBuffer::Write(const void *data, VkDeviceSize offset, VkDeviceSize siz
     if (!staging_memory->Write(data, offset, size))
         return false;
 
-    // Mark as dirty and add to update queue
+    // Mark as dirty (no queue notification needed — ECS System polls IsDirty)
     MarkDirty(offset, size);
-
-    //GLogInfo("[StagedBuffer] Write buffer=%p offset=%llu size=%llu",
-    //         (void *)this,
-    //         static_cast<unsigned long long>(offset),
-    //         static_cast<unsigned long long>(size));
 
     return true;
 }
@@ -115,15 +111,6 @@ void StagedBuffer::MarkDirty(VkDeviceSize offset, VkDeviceSize size)
         dirty_offset = hgl_min(dirty_offset, offset);
         dirty_size = hgl_max(end1, end2) - dirty_offset;
     }
-
-    // Add to update queue
-    if (update_queue)
-        update_queue->AddUpdate(this, dirty_offset, dirty_size);
-
-    //GLogInfo("[StagedBuffer] MarkDirty buffer=%p offset=%llu size=%llu",
-    //         (void *)this,
-    //         static_cast<unsigned long long>(dirty_offset),
-    //         static_cast<unsigned long long>(dirty_size));
 }
 
 void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)

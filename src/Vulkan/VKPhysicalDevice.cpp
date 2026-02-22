@@ -1,6 +1,5 @@
 ﻿#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKInstance.h>
-#include<hgl/vk/BufferPolicyImpl.h>
 #include<hgl/log/Log.h>
 #include"DebugOutProperties.h"
 
@@ -254,17 +253,10 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 
-    // Generate all buffer policies for this device
-    all_buffer_policies=new AllDeviceBufferPolicies(GenerateAllDeviceBufferPolicies(this));
 }
 
 VulkanPhyDevice::~VulkanPhyDevice()
 {
-    if(all_buffer_policies)
-    {
-        delete all_buffer_policies;
-        all_buffer_policies=nullptr;
-    }
 }
 
 const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const

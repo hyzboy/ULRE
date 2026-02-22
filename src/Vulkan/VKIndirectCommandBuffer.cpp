@@ -1,6 +1,5 @@
 ﻿#include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKBufferTransferAgent.h>
 #include<hgl/vk/VKStagedBuffer.h>
 #include<hgl/object/ObjectTracker.h>
 
@@ -41,7 +40,7 @@ bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint3
         if(!staged)
             return(false);
 
-        buf->buffer=staged->GetDeviceBuffer();
+        buf->buffer=staged->GetVkDeviceBuffer();
         buf->memory=staged->GetDeviceMemory();
         buf->info.buffer=buf->buffer;
         buf->info.offset=0;
@@ -78,9 +77,13 @@ IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_co
         return(nullptr);
 
     if(staged)
-        return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count,new StagedBufferTransferAgent(staged)));
+    {
+        auto *buf_obj = new IndirectDrawBuffer(attr->device,buf,cmd_count);
+        buf_obj->SetStagedSource(staged);
+        return buf_obj;
+    }
 
-    return(new IndirectDrawBuffer(this,attr->device,buf,cmd_count));
+    return(new IndirectDrawBuffer(attr->device,buf,cmd_count));
 }
 
 IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
@@ -98,9 +101,13 @@ IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const u
         return(nullptr);
 
     if(staged)
-        return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count,new StagedBufferTransferAgent(staged)));
+    {
+        auto *buf_obj = new IndirectDrawIndexedBuffer(attr->device,buf,cmd_count);
+        buf_obj->SetStagedSource(staged);
+        return buf_obj;
+    }
 
-    return(new IndirectDrawIndexedBuffer(this,attr->device,buf,cmd_count));
+    return(new IndirectDrawIndexedBuffer(attr->device,buf,cmd_count));
 }
 
 IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,const ObjectNameBuilder &name,SharingMode sm)
@@ -118,9 +125,13 @@ IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_
         return(nullptr);
 
     if(staged)
-        return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count,new StagedBufferTransferAgent(staged)));
+    {
+        auto *buf_obj = new IndirectDispatchBuffer(attr->device,buf,cmd_count);
+        buf_obj->SetStagedSource(staged);
+        return buf_obj;
+    }
 
-    return(new IndirectDispatchBuffer(this,attr->device,buf,cmd_count));
+    return(new IndirectDispatchBuffer(attr->device,buf,cmd_count));
 }
 
 }//namespace hgl::graph

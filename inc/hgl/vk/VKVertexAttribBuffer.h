@@ -14,14 +14,7 @@ private:
 
     friend class VulkanDevice;
 
-    VertexAttribBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):DeviceBuffer(owner,d,vb)
-    {
-        format=fmt;
-        stride=_stride;
-        count=_count;
-    }
-
-    VertexAttribBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count,BufferTransferAgent *agent):DeviceBuffer(owner,d,vb,agent)
+    VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):DeviceBuffer(d,vb)
     {
         format=fmt;
         stride=_stride;

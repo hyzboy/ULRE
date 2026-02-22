@@ -25,6 +25,7 @@
 #include<source_location>
 #include<ostream>
 #include<string>
+#include<vector>
 
 namespace hgl::graph{
 class TileData;
@@ -34,9 +35,8 @@ class VulkanArrayBuffer;
 class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
-class BufferUpdateQueue;
-class BufferCommitQueue;
 class StagedBuffer;
+class IGPUBuffer;
 class ComputePipeline;
 class Material;
 class Texture;
@@ -52,9 +52,8 @@ class VulkanDevice
     OBJECT_LOGGER
 
     VulkanDevAttr *attr;
-    BufferUpdateQueue *buffer_update_queue;
-    BufferCommitQueue *buffer_commit_queue;
     bool draw_phase_active = false;
+    std::vector<IGPUBuffer*> gpu_buffer_registry;  // All Layer2 buffers, iterated by ECS UploadSystem
 
     struct ObjectDebugRecord
     {
@@ -130,7 +129,6 @@ public:
                 void                DumpTrackedObjects  ()const;
 
                 void                TrackBuffer         (DeviceBuffer *buf, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
-                void                UntrackBuffer       (DeviceBuffer *buf);
                 void                TrackTexture        (Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public:
@@ -149,11 +147,13 @@ public: //内存相关
     DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, const ObjectNameBuilder &name = ObjectNameBuilder("ImageMemory"), const std::source_location &loc = std::source_location::current());
     DeviceMemory *  CreateMemory(const VkMemoryRequirements &req, MemoryUsage usage, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
-    BufferUpdateQueue * GetBufferUpdateQueue() { return buffer_update_queue; }
-    BufferCommitQueue * GetBufferCommitQueue() { return buffer_commit_queue; }
-
     void SetDrawPhaseActive(bool active) { draw_phase_active = active; }
     bool IsDrawPhaseActive() const { return draw_phase_active; }
+
+    // ---- IGPUBuffer Registry (used by RenderBufferUploadSystem) ----
+    void RegisterGPUBuffer  (IGPUBuffer *buf);
+    void UnregisterGPUBuffer(IGPUBuffer *buf);
+    const std::vector<IGPUBuffer*> &GetGPUBufferRegistry() const { return gpu_buffer_registry; }
 
 private: //Buffer相关
 

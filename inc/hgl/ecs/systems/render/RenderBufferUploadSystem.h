@@ -17,8 +17,11 @@ namespace hgl::ecs
     /**
      * RenderBufferUploadSystem
      *
-        * Executes staged buffer uploads (BufferUpdateQueue::FlushAll) and inserts
-        * a memory barrier before render pass begins.
+     * Iterates the VulkanDevice's IGPUBuffer registry each frame,
+     * calls CopyToDevice on dirty buffers, and inserts a memory barrier
+     * before the render pass begins.
+     *
+     * Replaces the old BufferUpdateQueue + BufferCommitQueue two-queue system.
      */
     class RenderBufferUploadSystem : public System
     {
