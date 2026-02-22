@@ -6,10 +6,17 @@
 namespace hgl::graph{
 
 /**
- * Layer2 统一接口
+ * Layer2 统一接口 —— 外部开发者面向此接口，不直接接触底层实现
  *
- * StagedBuffer / ReBarBuffer / RingBuffer 均实现此接口
- * Layer3 (Accessor) 和 ECS System 只依赖此接口
+ * 实现类（各自独立，互不依赖）：
+ *   StagedBuffer  — staging(CPU) + device(GPU) 两块内存，Write/Unmap 自动置脏，
+ *                   构造时注册到 VulkanDevice::gpu_buffer_registry，
+ *                   ECS RenderBufferUploadSystem 每帧轮询，调用 CopyToDevice 完成上传。
+ *   ReBarBuffer   — 单块 CPU-visible + Device-local 内存（需硬件 ReBAR 支持），
+ *                   Write 直接可见，CopyToDevice 为 no-op，同样注册 registry。
+ *   RingBuffer    — 多帧轮转的 CPU-visible buffer，不注册 registry，
+ *                   由 TransformAssignmentBuffer 等外部逻辑每帧直接驱动，
+ *                   不经过 RenderBufferUploadSystem。
  *
  * 规则：
  * - MarkDirty/IsDirty/ClearDirty 只记录状态，不触发任何提交

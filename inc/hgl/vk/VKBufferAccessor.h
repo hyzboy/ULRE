@@ -135,6 +135,10 @@ private:
      int32_t element_offset;             ///< 元素偏移(单位:元素) / Element offset
      uint32_t element_count;             ///< 访问元素数量 / Element count
 
+     // 跟踪是否通过此 accessor 写过数据，用于 CommitInternal() 决策
+     // 与 GPU 上传无关，GPU dirty 由底层 Write()/Unmap() 路径自动维护
+     bool dirty = false;
+
     /**
      * CN: 内部 Map 操作
      * EN: Internal map operation

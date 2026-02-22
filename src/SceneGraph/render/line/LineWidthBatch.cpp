@@ -208,11 +208,6 @@ void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
     if(!primitive)
         return;
 
-    if(position.IsDirty() || color.IsDirty())
-    {
-        GLogError("LineWidthBatch::Draw detected dirty buffer state. Commit/flush in draw stage is forbidden.");
-    }
-
     cmd->BindDataBuffer(primitive->GetDataBuffer());
 
     cmd->Draw(primitive->GetDataBuffer(),primitive->GetRenderData());

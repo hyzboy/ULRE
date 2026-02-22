@@ -45,6 +45,11 @@ public:
     bool initialized = false;
     friend class VulkanDevice;
 
+private:
+    // 跟踪结构体数据是否被 Update() 修改过，用于 CommitInternal() 决策
+    // 与 GPU 上传无关，GPU dirty 由底层 Write()/Unmap() 路径自动维护
+    bool dirty = false;
+
     /**
      * CN: 内部 Map 操作
      * EN: Internal map operation

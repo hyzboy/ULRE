@@ -75,6 +75,8 @@ void * StagedBuffer::Map()
     if (!staging_memory)
         return nullptr;
 
+    mapped_offset = 0;
+    mapped_size   = buffer_size;
     return staging_memory->Map();
 }
 
@@ -83,6 +85,8 @@ void * StagedBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
     if (!staging_memory)
         return nullptr;
 
+    mapped_offset = offset;
+    mapped_size   = size;
     return staging_memory->Map(offset, size);
 }
 
@@ -91,7 +95,9 @@ void StagedBuffer::Unmap()
     if (staging_memory)
     {
         staging_memory->Unmap();
-        MarkDirty(0, VK_WHOLE_SIZE);  // caller wrote via Map pointer — mark the whole buffer dirty
+        MarkDirty(mapped_offset, mapped_size);
+        mapped_offset = 0;
+        mapped_size   = 0;
     }
 }
 

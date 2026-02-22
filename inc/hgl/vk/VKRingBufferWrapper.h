@@ -5,6 +5,18 @@
 
 namespace hgl::graph
 {
+/**
+ * Ring buffer 写入封装
+ *
+ * 使用场景：每帧高频更新的动态数据（Transform 矩阵、MaterialInstance 参数等）。
+ * 底层是 CPU-visible buffer（CPUOnly 或 ReBAR），写入立即可见，无需 staging copy。
+ *
+ * 与 StagedBuffer/ReBarBuffer 的关键区别：
+ * - 不注册到 VulkanDevice::gpu_buffer_registry
+ * - 不经过 RenderBufferUploadSystem
+ * - 由持有方（TransformAssignmentBuffer 等）每帧在渲染前直接调用 WriteDynamicRange()
+ * - CommitInternal() 是 no-op（数据已直接写入 device-visible 内存）
+ */
 class RingBufferWrapper : public BufferWriteAgent
 {
 private:

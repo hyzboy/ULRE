@@ -32,6 +32,10 @@ class StagedBuffer : public IGPUBuffer
     VkDeviceSize        dirty_offset;
     VkDeviceSize        dirty_size;
 
+    // Tracks the last Map() range so Unmap() can dirty only what was actually mapped
+    VkDeviceSize        mapped_offset = 0;
+    VkDeviceSize        mapped_size   = 0;
+
 private:
 
     friend class VulkanDevice;
