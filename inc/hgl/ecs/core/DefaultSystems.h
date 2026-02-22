@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <memory>
+#include <string>
 
 namespace hgl
 {
@@ -28,6 +29,9 @@ namespace hgl
             std::shared_ptr<LineRenderSystem> line_render_system;
             std::shared_ptr<LineStatsSystem> line_stats_system;
         };
+
+        void EnsureCoreEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt = nullptr);
+        bool EnsureSystemGroupSystems(ECSContext *ctx, const std::string& group_name, graph::IRenderTarget *default_rt = nullptr);
 
         DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt);
     }

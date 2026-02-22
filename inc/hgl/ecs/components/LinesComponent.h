@@ -57,7 +57,7 @@ namespace hgl::ecs
         LinesComponent() = default;
         virtual ~LinesComponent() = default;
 
-        const char* GetRenderSystemGroupName() const override { return "Line"; }
+        const char* GetSystemGroupName() const override { return "Line"; }
 
         /**
          * CN: 添加一条线段

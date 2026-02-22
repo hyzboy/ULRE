@@ -1,7 +1,5 @@
 ﻿#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
-#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/LinesComponent.h>
@@ -18,8 +16,6 @@ class WireShapeTestApp:public WorkObject
     hgl::ecs::ECSContext *ecs_world = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
     hgl::ecs::Entity *lines_entity = nullptr;
-    std::shared_ptr<hgl::ecs::LineRenderSystem> line_render_system;
-    LineRenderManager *line_manager = nullptr;
 
 public:
 
@@ -27,7 +23,6 @@ public:
 
     ~WireShapeTestApp() override
     {
-        line_manager = nullptr;
     }
 
     bool Init() override
@@ -36,40 +31,7 @@ public:
         if (!ecs)
             return false;
 
-        auto *render_target = ecs->GetRenderTarget();
-        if (!render_target)
-            return false;
-
         ecs_world = ecs;
-
-        // CN: 注册线条渲染系统（延迟初始化）
-        // EN: Register line render system (lazy initialization)
-        line_render_system = ecs->GetSystem<LineRenderSystem>();
-        if (!line_render_system)
-            line_render_system = ecs->RegisterRenderSystem<LineRenderSystem>();
-
-        if (!line_render_system)
-        {
-            LogError("WireShapeTestApp::Init: Failed to create/register LineRenderSystem\n");
-            return false;
-        }
-
-        // CN: 创建并设置 LineRenderManager
-        // EN: Create and set LineRenderManager
-        auto *render_context = ecs->GetRenderContext();
-        if (render_context)
-            line_manager = CreateLineRenderManager(render_context, render_target);
-        else if (auto *graphics_context = ecs->GetGraphicsContext())
-            line_manager = CreateLineRenderManager(graphics_context, render_target);
-
-        if (!line_manager)
-        {
-            LogError("WireShapeTestApp::Init: Failed to create LineRenderManager\n");
-            return false;
-        }
-
-        line_render_system->SetLineRenderManager(line_manager, true);
-        line_manager = nullptr;
 
         // CN: 创建存储线条的 Entity
         // EN: Create entity to hold lines
@@ -87,24 +49,6 @@ public:
         {
             LogError("WireShapeTestApp::Init: Failed to add LinesComponent\n");
             return false;
-        }
-
-        // CN: 设置调色板颜色
-        // EN: Set palette colors
-        Color4f palette[8] = {
-            Color4f(1,0,0,1),              // red
-            Color4f(0,1,0,1),              // green
-            Color4f(0,0,1,1),              // blue
-            Color4f(1,1,0,1),              // yellow
-            Color4f(0,1,1,1),              // cyan
-            Color4f(1,0,1,1),              // magenta
-            Color4f(1,1,1,1),              // white
-            Color4f(0.5f,0.5f,0.5f,1)      // gray
-        };
-
-        for (int i = 0; i < 8; ++i)
-        {
-            line_render_system->SetColor(i, palette[i]);
         }
 
         // CN: 创建同心圆层，每层是辐条环

@@ -39,6 +39,20 @@ namespace hgl::ecs
         if (!rt)
             return;
 
+        if (!line_manager)
+        {
+            if (auto *render_context = context->GetRenderContext())
+            {
+                line_manager = graph::CreateLineRenderManager(render_context, rt);
+            }
+            else if (auto *graphics_context = context->GetGraphicsContext())
+            {
+                line_manager = graph::CreateLineRenderManager(graphics_context, rt);
+            }
+
+            own_line_manager = (line_manager != nullptr);
+        }
+
         manager_initialized = true;
     }
 
@@ -147,8 +161,15 @@ namespace hgl::ecs
 
     void LineRenderSystem::Render(graph::RenderCmdBuffer *cmd, float /*deltaTime*/)
     {
-        if (!cmd || !line_manager)
+        if (!cmd)
             return;
+
+        if (!line_manager)
+        {
+            Initialize();
+            if (!line_manager)
+                return;
+        }
 
         SyncComponentsToRenderer();
         line_manager->Draw(cmd);

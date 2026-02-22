@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/ecs/core/System.h>
-#include <hgl/ecs/core/RenderSystemGroup.h>
+#include <hgl/ecs/core/SystemGroup.h>
 #include <vector>
 #include <functional>
 #include <set>
@@ -101,11 +101,12 @@ namespace hgl
         };
 
         /**
-         * Initialize all default system groups (Primitive, Text, Line, Billboard)
-         * Called automatically by CreateAdaptiveRenderGraph if not already initialized
-         * Can also be called manually to reset/customize system groups
+         * Initialize system groups from currently registered systems in context.
          */
-        void InitializeRenderSystemGroups(ECSContext* context);
+        void InitializeSystemGroups(ECSContext* context);
+
+        /// Backward-compatible alias
+        inline void InitializeRenderSystemGroups(ECSContext* context) { InitializeSystemGroups(context); }
 
         /**
          * Create the default linear render graph with all system groups enabled

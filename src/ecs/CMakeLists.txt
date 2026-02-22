@@ -11,7 +11,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
     ${ECS_INCLUDE_PATH}/core/Context.h
     ${ECS_INCLUDE_PATH}/core/RenderGraph.h
-    ${ECS_INCLUDE_PATH}/core/RenderSystemGroup.h
+    ${ECS_INCLUDE_PATH}/core/SystemGroup.h
     ${ECS_INCLUDE_PATH}/core/World.h
     ${ECS_INCLUDE_PATH}/core/DefaultSystems.h
     ${ECS_INCLUDE_PATH}/core/ComponentRecords.h
@@ -29,7 +29,7 @@ set(ECS_CORE_FILES
     core/SystemProfiler.cpp
     core/Context.cpp
     core/RenderGraph.cpp
-    core/RenderSystemGroup.cpp
+    core/SystemGroup.cpp
     core/World.cpp
     core/DefaultSystems.cpp
     core/MaterialBatch.cpp

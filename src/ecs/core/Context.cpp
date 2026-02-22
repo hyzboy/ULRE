@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/EntityManager.h>
+#include<hgl/ecs/core/DefaultSystems.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/VisibilitySystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
@@ -971,6 +972,13 @@ namespace hgl
                 return;
 
             RegisterComponentInstanceInternal(type_hash, comp);
+
+            const char* render_group = comp->GetSystemGroupName();
+            if (render_group && render_group[0] != '\0')
+            {
+                EnsureSystemGroupSystems(this, render_group, GetRenderTarget());
+                SetElementTypeSystemsEnabled(render_group, true);
+            }
 
             for (const auto& entry : component_query_bases)
             {

@@ -1,5 +1,5 @@
 #include<hgl/ecs/core/RenderGraph.h>
-#include<hgl/ecs/core/RenderSystemGroup.h>
+#include<hgl/ecs/core/SystemGroup.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
@@ -16,16 +16,16 @@ namespace hgl
 {
     namespace ecs
     {
-        // ========== RenderSystemGroup Initialization ==========
+        // ========== SystemGroup Initialization ==========
 
-        void InitializeRenderSystemGroups(ECSContext* context)
+        void InitializeSystemGroups(ECSContext* context)
         {
-            auto& registry = RenderSystemGroupRegistry::Get();
+            auto& registry = SystemGroupRegistry::Get();
             registry.Clear();
 
             if (!context)
             {
-                MLogWarning(RenderGraph, "[RenderGraph] InitializeRenderSystemGroups called with null context");
+                MLogWarning(RenderGraph, "[RenderGraph] InitializeSystemGroups called with null context");
                 return;
             }
 
@@ -66,7 +66,7 @@ namespace hgl
                 if (!has_phase)
                     continue;
 
-                registry.Register(RenderSystemGroup(element_type, start_phase, end_phase, true));
+                registry.RegisterGroup(SystemGroup(element_type, start_phase, end_phase, true));
             }
 
             MLogInfo(RenderGraph, "[RenderGraph] Initialized %zu system groups", registry.GetAllGroups().size());
@@ -269,7 +269,7 @@ namespace hgl
                     if (!component)
                         continue;
 
-                    const char* group_name = component->GetRenderSystemGroupName();
+                    const char* group_name = component->GetSystemGroupName();
                     if (group_name && *group_name)
                     {
                         stats.active_render_groups.emplace(group_name);
@@ -295,8 +295,8 @@ namespace hgl
             MLogDebug(RenderGraph,"[RenderGraph] Adaptive: detected %zu active groups",
                      stats.active_render_groups.size());
 
-            auto& registry = RenderSystemGroupRegistry::Get();
-            InitializeRenderSystemGroups(context);
+            auto& registry = SystemGroupRegistry::Get();
+            InitializeSystemGroups(context);
 
             // Enable/disable groups based on detected component-driven groups
             const auto all_groups = registry.GetAllGroups();
@@ -338,7 +338,7 @@ namespace hgl
             }
 
             // Fully data-driven:
-            // - Components declare their group via Component::GetRenderSystemGroupName()
+            // - Components declare their group via Component::GetSystemGroupName()
             // - Systems declare their group via System::SetRenderElementType()
             // - RenderGraph builds passes from the name mapping at runtime
 
@@ -349,8 +349,8 @@ namespace hgl
         {
             RenderGraph graph;
 
-            auto& registry = RenderSystemGroupRegistry::Get();
-            InitializeRenderSystemGroups(context);
+            auto& registry = SystemGroupRegistry::Get();
+            InitializeSystemGroups(context);
 
             // Enable all registered groups for default graph (full compatibility)
             const auto all_groups = registry.GetAllGroups();

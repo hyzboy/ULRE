@@ -1,5 +1,6 @@
 ﻿#include <hgl/ecs/core/DefaultSystems.h>
 #include <hgl/ecs/core/Context.h>
+#include <hgl/ecs/core/SystemGroup.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
@@ -28,78 +29,58 @@
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
 
-namespace hgl::ecs
+namespace
 {
-    DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
+    template<typename T>
+    std::shared_ptr<T> EnsureTickSystem(hgl::ecs::ECSContext* ctx)
     {
-        DefaultEcsSystems systems;
         if (!ctx)
-            return systems;
+            return nullptr;
 
-        // Phase 1 boundary: RenderFrameSystem is not registered here.
-        // Frame lifecycle is driven by ECSContext::Render(float) + RenderSystemCore.
-        auto *rc = ctx->GetRenderContext();
+        auto system = ctx->GetSystem<T>();
+        if (!system)
+            system = ctx->RegisterTickSystem<T>();
+
+        return system;
+    }
+
+    template<typename T>
+    std::shared_ptr<T> EnsureRenderSystem(hgl::ecs::ECSContext* ctx)
+    {
+        if (!ctx)
+            return nullptr;
+
+        auto system = ctx->GetSystem<T>();
+        if (!system)
+            system = ctx->RegisterRenderSystem<T>();
+
+        return system;
+    }
+
+    bool InstallPrimitiveGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
+    {
+        if (!ctx)
+            return false;
+
         auto *device = ctx->GetGPUDevice();
+        const hgl::graph::CameraInfo *camera_info = nullptr;
+        if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
+            camera_info = camera_system->GetCameraInfo();
 
-        auto text_collect_system = ctx->RegisterRenderSystem<ecs::TextCollectSystem>();
-        auto text_build_system = ctx->RegisterRenderSystem<ecs::TextBuildSystem>();
-        auto text_sync_system = ctx->RegisterRenderSystem<ecs::TextResourceSyncSystem>();
-        auto environment_system = ctx->RegisterRenderSystem<ecs::EnvironmentSystem>();
-        auto camera_system = ctx->RegisterTickSystem<ecs::CameraSystem>();
-        auto render_target_system = ctx->RegisterRenderSystem<ecs::RenderTargetSystem>();
-        auto render_collect_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveCollectSystem>();
-        auto render_cull_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveCullSystem>();
-        auto render_sort_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveSortSystem>();
-        auto render_batch_build_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchBuildSystem>();
-        auto render_batch_finalize_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveBatchFinalizeSystem>();
-        auto render_commit_system = ctx->RegisterRenderSystem<ecs::RenderBufferCommitSystem>();
-        auto render_upload_system = ctx->RegisterRenderSystem<ecs::RenderBufferUploadSystem>();
-        auto render_submit_system = ctx->RegisterRenderSystem<ecs::RenderPrimitiveSubmitSystem>();
-        auto swapchain_next_image_system = ctx->RegisterRenderSystem<ecs::SwapchainNextImageSystem>();
-        auto swapchain_submit_system = ctx->RegisterRenderSystem<ecs::SwapchainSubmitSystem>();
-        auto text_submit_system = ctx->RegisterRenderSystem<ecs::TextRenderSubmitSystem>();
-        auto line_render_system = ctx->RegisterRenderSystem<ecs::LineRenderSystem>();
-        auto line_collect_system = ctx->RegisterRenderSystem<ecs::LineCollectSystem>();
-        auto line_stats_system = ctx->RegisterRenderSystem<ecs::LineStatsSystem>();
-        auto line_bounds_update_system = ctx->RegisterTickSystem<ecs::LineBoundsUpdateSystem>();
-        auto quad_resource_prepare_system = ctx->RegisterRenderSystem<ecs::QuadResourcePrepareSystem>();
-        auto quad_material_binding_system = ctx->RegisterRenderSystem<ecs::QuadMaterialBindingSystem>();
-        auto render_frame_business_sync_system = ctx->RegisterRenderSystem<ecs::RenderFrameBusinessSyncSystem>();
-
-        (void)swapchain_next_image_system;
-        (void)swapchain_submit_system;
-
-        (void)text_collect_system;
-        (void)text_build_system;
-        (void)text_sync_system;
-
-        if (environment_system)
-            environment_system->SetRenderContext(rc);
-
-        if (camera_system)
-        {
-            camera_system->SetRenderContext(rc);
-            camera_system->SetViewportInfo(default_rt ? default_rt->GetViewportInfo() : nullptr);
-        }
-
-        if (render_target_system)
-        {
-            render_target_system->SetRenderContext(rc);
-            render_target_system->SetRenderTarget(default_rt);
-        }
-
-        const graph::CameraInfo *camera_info = camera_system ? camera_system->GetCameraInfo() : nullptr;
+        auto render_collect_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);
+        auto render_cull_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCullSystem>(ctx);
+        auto render_sort_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveSortSystem>(ctx);
+        auto render_batch_build_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveBatchBuildSystem>(ctx);
+        auto render_batch_finalize_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveBatchFinalizeSystem>(ctx);
+        auto render_commit_system = EnsureRenderSystem<hgl::ecs::RenderBufferCommitSystem>(ctx);
+        auto render_upload_system = EnsureRenderSystem<hgl::ecs::RenderBufferUploadSystem>(ctx);
+        auto render_submit_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveSubmitSystem>(ctx);
 
         if (render_collect_system)
         {
             render_collect_system->SetWorld(ctx);
             render_collect_system->SetCameraInfo(camera_info);
         }
-
-        (void)render_cull_system;
-        (void)render_sort_system;
-        (void)render_batch_build_system;
-        (void)render_batch_finalize_system;
 
         if (render_commit_system)
         {
@@ -116,14 +97,58 @@ namespace hgl::ecs
         if (render_submit_system)
             render_submit_system->SetWorld(ctx);
 
+        (void)render_cull_system;
+        (void)render_sort_system;
+        (void)render_batch_build_system;
+        (void)render_batch_finalize_system;
+        return true;
+    }
+
+    bool InstallTextGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
+    {
+        if (!ctx)
+            return false;
+
+        auto text_collect_system = EnsureRenderSystem<hgl::ecs::TextCollectSystem>(ctx);
+        auto text_build_system = EnsureRenderSystem<hgl::ecs::TextBuildSystem>(ctx);
+        auto text_sync_system = EnsureRenderSystem<hgl::ecs::TextResourceSyncSystem>(ctx);
+        auto text_submit_system = EnsureRenderSystem<hgl::ecs::TextRenderSubmitSystem>(ctx);
+
         if (text_submit_system)
             text_submit_system->SetWorld(ctx);
+
+        (void)text_collect_system;
+        (void)text_build_system;
+        (void)text_sync_system;
+        return true;
+    }
+
+    bool InstallBillboardGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
+    {
+        if (!ctx)
+            return false;
+
+        auto quad_resource_prepare_system = EnsureRenderSystem<hgl::ecs::QuadResourcePrepareSystem>(ctx);
+        auto quad_material_binding_system = EnsureRenderSystem<hgl::ecs::QuadMaterialBindingSystem>(ctx);
 
         if (quad_resource_prepare_system)
             quad_resource_prepare_system->SetWorld(ctx);
 
         if (quad_material_binding_system)
             quad_material_binding_system->SetWorld(ctx);
+
+        return true;
+    }
+
+    bool InstallLineGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
+    {
+        if (!ctx)
+            return false;
+
+        auto line_bounds_update_system = EnsureTickSystem<hgl::ecs::LineBoundsUpdateSystem>(ctx);
+        auto line_collect_system = EnsureRenderSystem<hgl::ecs::LineCollectSystem>(ctx);
+        auto line_render_system = EnsureRenderSystem<hgl::ecs::LineRenderSystem>(ctx);
+        auto line_stats_system = EnsureRenderSystem<hgl::ecs::LineStatsSystem>(ctx);
 
         if (line_collect_system)
             line_collect_system->SetWorld(ctx);
@@ -134,17 +159,95 @@ namespace hgl::ecs
         if (line_stats_system)
             line_stats_system->SetWorld(ctx);
 
+        (void)line_render_system;
+        return true;
+    }
+
+    void RegisterBuiltinSystemGroupInstallers()
+    {
+        static bool registered = false;
+        if (registered)
+            return;
+
+        auto& registry = hgl::ecs::SystemGroupRegistry::Get();
+        registry.RegisterGroupInstaller("Primitive", InstallPrimitiveGroup);
+        registry.RegisterGroupInstaller("Text", InstallTextGroup);
+        registry.RegisterGroupInstaller("Billboard", InstallBillboardGroup);
+        registry.RegisterGroupInstaller("Line", InstallLineGroup);
+
+        registered = true;
+    }
+}
+
+namespace hgl::ecs
+{
+    void EnsureCoreEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
+    {
+        if (!ctx)
+            return;
+
+        RegisterBuiltinSystemGroupInstallers();
+
+        auto *rc = ctx->GetRenderContext();
+
+        auto input_system = EnsureTickSystem<ecs::InputSystem>(ctx);
+        auto camera_system = EnsureTickSystem<ecs::CameraSystem>(ctx);
+        auto environment_system = EnsureRenderSystem<ecs::EnvironmentSystem>(ctx);
+        auto render_target_system = EnsureRenderSystem<ecs::RenderTargetSystem>(ctx);
+        auto swapchain_next_image_system = EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
+        auto swapchain_submit_system = EnsureRenderSystem<ecs::SwapchainSubmitSystem>(ctx);
+        auto render_frame_business_sync_system = EnsureRenderSystem<ecs::RenderFrameBusinessSyncSystem>(ctx);
+
+        (void)input_system;
+        (void)swapchain_next_image_system;
+        (void)swapchain_submit_system;
         (void)render_frame_business_sync_system;
 
-        // CN: LineRenderSystem 会在 Render 时延迟初始化，自动获取 context 中的信息
-        // EN: LineRenderSystem will lazy-init on first Render, automatically get context info
+        if (environment_system)
+            environment_system->SetRenderContext(rc);
 
-        systems.input_system = ctx->RegisterTickSystem<ecs::InputSystem>();
-        systems.camera_system = camera_system;
-        systems.line_bounds_update_system = line_bounds_update_system;
-        systems.line_collect_system = line_collect_system;
-        systems.line_render_system = line_render_system;
-        systems.line_stats_system = line_stats_system;
+        if (camera_system)
+        {
+            camera_system->SetRenderContext(rc);
+            camera_system->SetViewportInfo(default_rt ? default_rt->GetViewportInfo() : nullptr);
+        }
+
+        if (render_target_system)
+        {
+            render_target_system->SetRenderContext(rc);
+            render_target_system->SetRenderTarget(default_rt ? default_rt : ctx->GetRenderTarget());
+        }
+    }
+
+    bool EnsureSystemGroupSystems(ECSContext *ctx, const std::string& group_name, graph::IRenderTarget *default_rt)
+    {
+        if (!ctx || group_name.empty())
+            return false;
+
+        EnsureCoreEcsSystems(ctx, default_rt);
+
+        auto& registry = SystemGroupRegistry::Get();
+        return registry.EnsureGroupSystems(group_name, ctx, default_rt);
+    }
+
+    DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)
+    {
+        DefaultEcsSystems systems;
+        if (!ctx)
+            return systems;
+
+        EnsureCoreEcsSystems(ctx, default_rt);
+        EnsureSystemGroupSystems(ctx, "Primitive", default_rt);
+        EnsureSystemGroupSystems(ctx, "Text", default_rt);
+        EnsureSystemGroupSystems(ctx, "Billboard", default_rt);
+        EnsureSystemGroupSystems(ctx, "Line", default_rt);
+
+        systems.input_system = ctx->GetSystem<ecs::InputSystem>();
+        systems.camera_system = ctx->GetSystem<ecs::CameraSystem>();
+        systems.line_bounds_update_system = ctx->GetSystem<ecs::LineBoundsUpdateSystem>();
+        systems.line_collect_system = ctx->GetSystem<ecs::LineCollectSystem>();
+        systems.line_render_system = ctx->GetSystem<ecs::LineRenderSystem>();
+        systems.line_stats_system = ctx->GetSystem<ecs::LineStatsSystem>();
 
         return systems;
     }

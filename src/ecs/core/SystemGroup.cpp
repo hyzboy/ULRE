@@ -1,4 +1,4 @@
-#include <hgl/ecs/core/RenderSystemGroup.h>
+#include <hgl/ecs/core/SystemGroup.h>
 #include <hgl/log/Log.h>
 #include <algorithm>
 
@@ -7,27 +7,27 @@ namespace hgl
     namespace ecs
     {
         // Static instance initialization
-        RenderSystemGroupRegistry* RenderSystemGroupRegistry::instance = nullptr;
+        SystemGroupRegistry* SystemGroupRegistry::instance = nullptr;
 
-        RenderSystemGroupRegistry& RenderSystemGroupRegistry::Get()
+        SystemGroupRegistry& SystemGroupRegistry::Get()
         {
             if (!instance)
-                instance = new RenderSystemGroupRegistry();
+                instance = new SystemGroupRegistry();
             return *instance;
         }
 
-        void RenderSystemGroupRegistry::Register(const RenderSystemGroup& group)
+        void SystemGroupRegistry::RegisterGroup(const SystemGroup& group)
         {
             if (group.name.empty())
             {
-                GLogWarning("[RenderSystemGroup] Attempting to register group with empty name");
+                GLogWarning("[SystemGroup] Attempting to register group with empty name");
                 return;
             }
 
             auto it = groups.find(group.name);
             if (it != groups.end())
             {
-                GLogDebug("[RenderSystemGroup] Overwriting existing group: %s (phases %d-%d) -> (%d-%d)",
+                GLogDebug("[SystemGroup] Overwriting existing group: %s (phases %d-%d) -> (%d-%d)",
                          group.name.c_str(),
                          static_cast<int>(it->second.startPhase),
                          static_cast<int>(it->second.endPhase),
@@ -36,7 +36,7 @@ namespace hgl
             }
             else
             {
-                GLogDebug("[RenderSystemGroup] Registering new group: %s (phases %d-%d)",
+                GLogDebug("[SystemGroup] Registering new group: %s (phases %d-%d)",
                          group.name.c_str(),
                          static_cast<int>(group.startPhase),
                          static_cast<int>(group.endPhase));
@@ -45,25 +45,47 @@ namespace hgl
             groups[group.name] = group;
         }
 
-        bool RenderSystemGroupRegistry::SetGroupEnabled(const std::string& name, bool enabled)
+        void SystemGroupRegistry::RegisterGroupInstaller(const std::string& name, GroupInstaller installer)
+        {
+            if (name.empty() || !installer)
+                return;
+
+            installers[name] = std::move(installer);
+        }
+
+        bool SystemGroupRegistry::HasGroupInstaller(const std::string& name) const
+        {
+            return installers.find(name) != installers.end();
+        }
+
+        bool SystemGroupRegistry::EnsureGroupSystems(const std::string& name, ECSContext* context, hgl::graph::IRenderTarget* default_rt)
+        {
+            auto it = installers.find(name);
+            if (it == installers.end())
+                return false;
+
+            return it->second(context, default_rt);
+        }
+
+        bool SystemGroupRegistry::SetGroupEnabled(const std::string& name, bool enabled)
         {
             auto it = groups.find(name);
             if (it == groups.end())
             {
-                GLogWarning("[RenderSystemGroup] Attempted to set enabled state for non-existent group: %s", name.c_str());
+                GLogWarning("[SystemGroup] Attempted to set enabled state for non-existent group: %s", name.c_str());
                 return false;
             }
 
             if (it->second.enabled != enabled)
             {
-                GLogDebug("[RenderSystemGroup] Group '%s' %s", name.c_str(), enabled ? "ENABLED" : "DISABLED");
+                GLogDebug("[SystemGroup] Group '%s' %s", name.c_str(), enabled ? "ENABLED" : "DISABLED");
                 it->second.enabled = enabled;
             }
 
             return true;
         }
 
-        bool RenderSystemGroupRegistry::IsGroupEnabled(const std::string& name) const
+        bool SystemGroupRegistry::IsGroupEnabled(const std::string& name) const
         {
             auto it = groups.find(name);
             if (it == groups.end())
@@ -71,23 +93,23 @@ namespace hgl
             return it->second.enabled;
         }
 
-        std::vector<RenderSystemGroup> RenderSystemGroupRegistry::GetAllGroups() const
+        std::vector<SystemGroup> SystemGroupRegistry::GetAllGroups() const
         {
-            std::vector<RenderSystemGroup> result;
+            std::vector<SystemGroup> result;
             for (const auto& [name, group] : groups)
             {
                 result.push_back(group);
             }
             // Sort by startPhase for consistent ordering
             std::sort(result.begin(), result.end(),
-                     [](const RenderSystemGroup& a, const RenderSystemGroup& b)
+                     [](const SystemGroup& a, const SystemGroup& b)
                      { return a.startPhase < b.startPhase; });
             return result;
         }
 
-        std::vector<RenderSystemGroup> RenderSystemGroupRegistry::GetEnabledGroups() const
+        std::vector<SystemGroup> SystemGroupRegistry::GetEnabledGroups() const
         {
-            std::vector<RenderSystemGroup> result;
+            std::vector<SystemGroup> result;
             for (const auto& [name, group] : groups)
             {
                 if (group.enabled)
@@ -95,12 +117,12 @@ namespace hgl
             }
             // Sort by startPhase for consistent ordering
             std::sort(result.begin(), result.end(),
-                     [](const RenderSystemGroup& a, const RenderSystemGroup& b)
+                     [](const SystemGroup& a, const SystemGroup& b)
                      { return a.startPhase < b.startPhase; });
             return result;
         }
 
-        const RenderSystemGroup* RenderSystemGroupRegistry::GetGroup(const std::string& name) const
+        const SystemGroup* SystemGroupRegistry::GetGroup(const std::string& name) const
         {
             auto it = groups.find(name);
             if (it == groups.end())
@@ -108,7 +130,7 @@ namespace hgl
             return &it->second;
         }
 
-        RenderSystemGroup* RenderSystemGroupRegistry::GetGroupMutable(const std::string& name)
+        SystemGroup* SystemGroupRegistry::GetGroupMutable(const std::string& name)
         {
             auto it = groups.find(name);
             if (it == groups.end())
@@ -116,27 +138,27 @@ namespace hgl
             return &it->second;
         }
 
-        void RenderSystemGroupRegistry::Clear()
+        void SystemGroupRegistry::Clear()
         {
-            GLogDebug("[RenderSystemGroup] Clearing all %zu registered groups", groups.size());
+            GLogDebug("[SystemGroup] Clearing all %zu registered groups", groups.size());
             groups.clear();
         }
 
-        void RenderSystemGroupRegistry::DebugPrint() const
+        void SystemGroupRegistry::DebugPrint() const
         {
-            GLogInfo("[RenderSystemGroup] === RenderSystemGroup Registry ===");
-            GLogInfo("[RenderSystemGroup] Total groups: %zu", groups.size());
+            GLogInfo("[SystemGroup] === SystemGroup Registry ===");
+            GLogInfo("[SystemGroup] Total groups: %zu", groups.size());
 
             for (const auto& [name, group] : groups)
             {
-                GLogInfo("[RenderSystemGroup]   %-12s [%3d - %3d] %s",
+                GLogInfo("[SystemGroup]   %-12s [%3d - %3d] %s",
                          name.c_str(),
                          static_cast<int>(group.startPhase),
                          static_cast<int>(group.endPhase),
                          group.enabled ? "ENABLED" : "DISABLED");
             }
 
-            GLogInfo("[RenderSystemGroup] ===================================");
+            GLogInfo("[SystemGroup] ===================================");
         }
 
     } // namespace ecs
