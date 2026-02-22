@@ -59,7 +59,11 @@ private:
         if(!buffer || mapped_data)
             return;
 
-        void *ptr = buffer->Map(0, aligned_size);
+        void *ptr = nullptr;
+        if(auto *gpu = buffer->GetGPUBuffer())
+            ptr = gpu->Map(0, aligned_size);
+        else
+            ptr = buffer->Map(0, aligned_size);
         if(ptr)
             mapped_data = static_cast<T*>(ptr);
     }
@@ -108,7 +112,10 @@ private:
         if(!buffer || !mapped_data)
             return;
 
-        buffer->Unmap();
+        if(auto *gpu = buffer->GetGPUBuffer())
+            gpu->Unmap();
+        else
+            buffer->Unmap();
         mapped_data = nullptr;
     }
 
@@ -296,13 +303,16 @@ private:
         if(!dirty || !buffer || !mapped_data)
             return false;
 
-        // 显式 Flush 当前数据到 GPU
-        // Explicitly flush current data to GPU
-        buffer->Write(mapped_data, sizeof(T));
-
-        // 对于 StagedBuffer，标记为脏状态以触发暂存缓冲区提交
-        // For StagedBuffer, mark as dirty to trigger staged buffer submission
-        buffer->Flush(aligned_size);
+        // 显式写入并标记 GPU dirty
+        if(auto *gpu = buffer->GetGPUBuffer())
+        {
+            gpu->Write(mapped_data, 0, sizeof(T));
+        }
+        else
+        {
+            buffer->Write(mapped_data, sizeof(T));
+            buffer->Flush(aligned_size);
+        }
 
         dirty = false;
         return true;
@@ -323,8 +333,15 @@ private:
         if(!mapped_data || !buffer)
             return;
 
-        buffer->Write(mapped_data, sizeof(T));
-        buffer->Flush(aligned_size);
+        if(auto *gpu = buffer->GetGPUBuffer())
+        {
+            gpu->Write(mapped_data, 0, sizeof(T));
+        }
+        else
+        {
+            buffer->Write(mapped_data, sizeof(T));
+            buffer->Flush(aligned_size);
+        }
     }
 
     /**
@@ -338,7 +355,8 @@ public:
     {
         if(!buffer)
             return false;
-        return buffer->Write(ptr, offset, size);
+        // Route through BufferAccessBase which already prefers IGPUBuffer*.
+        return BufferAccessBase::Write(ptr, offset, size);
     }
 
     // ===== UBOInstance 兼容接口 / UBOInstance Compatible Interface =====

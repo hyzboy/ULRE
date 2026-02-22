@@ -54,10 +54,21 @@ public:
     DeviceBuffer *GetBuffer()             { return buffer; }
     const DeviceBuffer *GetBuffer() const { return buffer; }
 
+    /**
+     * Phase 3 migration: access the IGPUBuffer upload interface directly.
+     * Returns nullptr if the buffer has no staged upload path (pure device-local).
+     */
+    IGPUBuffer       *GetGPUBuffer()       { return buffer ? buffer->GetGPUBuffer() : nullptr; }
+    const IGPUBuffer *GetGPUBuffer() const { return buffer ? buffer->GetGPUBuffer() : nullptr; }
+
     bool Write(const void *ptr, uint32_t offset, uint32_t size)
     {
         if(!buffer)
             return false;
+
+        // Prefer IGPUBuffer path when available (Phase 3 migration).
+        if(auto *gpu = buffer->GetGPUBuffer())
+            return gpu->Write(ptr, (VkDeviceSize)offset, (VkDeviceSize)size);
 
         return buffer->Write(ptr, offset, size);
     }

@@ -502,8 +502,11 @@ namespace hgl::ecs
 
         // 3. 生成 transform 索引列表
         {
+            graph::IGPUBuffer *transform_gpu = transform_vab->GetGPUBuffer();
             graph::Assign::TransformID::ValueType* transform_ptr =
-                (graph::Assign::TransformID::ValueType*)(transform_vab->DeviceBuffer::Map());
+                transform_gpu
+                    ? (graph::Assign::TransformID::ValueType*)(transform_gpu->Map(0, transform_gpu->GetSize()))
+                    : nullptr;
             bool warned_overflow = false;
 
             for (size_t i = 0; i < item_count; i++)

@@ -4,6 +4,7 @@
 #include<hgl/vk/VKMemory.h>
 #include<hgl/vk/BufferPolicy.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/vk/IGPUBuffer.h>
 
 #include<string>
 
@@ -25,6 +26,12 @@ class StagedBuffer;
  * If staged_source is set (factory assigned), write/map/flush operations are routed
  * through the StagedBuffer (CPU-visible staging → GPU copy on demand).
  * The StagedBuffer is owned by this DeviceBuffer and deleted in the destructor.
+ *
+ * Migration path (Phase 3):
+ *   - Prefer GetGPUBuffer()->Write/Map/Unmap over DeviceBuffer::Write/Map/Flush
+ *     for new code.  The DeviceBuffer::Write/Map/Flush overloads are transitional
+ *     forwarders and will be removed once all call sites migrate to IGPUBuffer*.
+ *   - GetGPUBuffer() returns nullptr for pure device-local buffers (no CPU write path).
  */
 class DeviceBuffer
 {
@@ -69,6 +76,16 @@ public:
     void              SetUpdateClass(BufferUpdateClass cls){update_class=cls;}
     BufferUpdateClass GetUpdateClass()const{return update_class;}
 
+    /**
+     * Returns the IGPUBuffer interface for CPU writes and dirty tracking.
+     * nullptr for pure device-local buffers (no upload path configured).
+     * Phase 3 migration: prefer this over Write/Map/Flush for new code.
+     */
+    IGPUBuffer *      GetGPUBuffer();
+    const IGPUBuffer *GetGPUBuffer() const;
+
+    // Transitional forwarders — route through staged_source when present.
+    // New code should use GetGPUBuffer()->Write/Map/Unmap instead.
             void *  Map     ();
     virtual void *  Map     (VkDeviceSize start,VkDeviceSize size);
             void    Unmap   ();

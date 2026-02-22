@@ -3,6 +3,16 @@
 
 namespace hgl::graph{
 
+IGPUBuffer *DeviceBuffer::GetGPUBuffer()
+{
+    return static_cast<IGPUBuffer*>(staged_source);
+}
+
+const IGPUBuffer *DeviceBuffer::GetGPUBuffer() const
+{
+    return static_cast<const IGPUBuffer*>(staged_source);
+}
+
 DeviceBuffer::~DeviceBuffer()
 {
     if(staged_source)
