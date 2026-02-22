@@ -267,6 +267,22 @@ void BufferCommitQueue::CommitAll()
         const std::string &group_name = GetBudgetGroupName(accessor);
         BudgetGroupState &group = budget_groups[group_name];
 
+        const bool has_pending_upload = buf->HasStagedDirty();
+        if(has_pending_upload)
+        {
+            accessor->Update();
+
+            const uint64_t buf_size = buf->GetSize();
+            current_frame_bytes += buf_size;
+            total_committed_bytes += buf_size;
+
+            group.frame_bytes += buf_size;
+            group.total_bytes += buf_size;
+
+            last_committed_count++;
+            continue;
+        }
+
         // Check if buffer has reached deadline
         const bool deadline_reached = ShouldCommitByDeadline(accessor);
         const BufferDeadlinePolicy deadline_policy = buf->GetDeadlinePolicy();

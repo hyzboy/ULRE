@@ -682,6 +682,10 @@ namespace hgl::graph
         if (!component_lines_dirty)
             return;
 
+        // Strict pipeline rule:
+        // All CPU-side buffer commit/flush must happen before RenderBufferUpload.
+        // Draw stage must be upload-free.
+
         if (!support_wide_lines)
         {
             dirty_batch_indices.clear();

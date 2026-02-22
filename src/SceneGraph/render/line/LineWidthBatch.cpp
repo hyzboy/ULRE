@@ -208,6 +208,12 @@ void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
     if(!primitive)
         return;
 
+    if(position.IsDirty() || color.IsDirty())
+    {
+        GLogWarning("LineWidthBatch::Draw detected dirty buffer state; CPU flush phase ordering violated. Applying emergency commit.");
+        CommitCpuWrites();
+    }
+
     cmd->BindDataBuffer(primitive->GetDataBuffer());
 
     cmd->Draw(primitive->GetDataBuffer(),primitive->GetRenderData());

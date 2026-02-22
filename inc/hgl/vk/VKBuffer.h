@@ -52,14 +52,6 @@ private:
         buf=b;
     }
 
-    DeviceBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &b,StagedBuffer *sb)
-    {
-        owner_device=owner;
-        device=d;
-        buf=b;
-        transfer_agent=new StagedBufferTransferAgent(sb);
-    }
-
     DeviceBuffer(VulkanDevice *owner,VkDevice d,const DeviceBufferData &b,BufferTransferAgent *agent)
     {
         owner_device=owner;
