@@ -22,6 +22,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSwapchain.h>
 #include<hgl/vk/VKDevice.h>
+#include<hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
@@ -66,6 +67,10 @@ namespace hgl
             gpu_device = device;
             render_target = target;
 
+            // Propagate device to RenderBufferUploadSystem if it was registered first
+            if (auto upload_system = GetSystem<RenderBufferUploadSystem>())
+                upload_system->SetDevice(gpu_device);
+
             // Phase 1: Initialized with GPU device and render target
             return true;
         }
@@ -101,6 +106,20 @@ namespace hgl
                 {
                     visibility_system->SetWorld(this);
                     // VulkanDevice will be set later when available
+                }
+            }
+
+            // Ensure RenderBufferUploadSystem is always present — it is infrastructure,
+            // not a feature system. Every app with staged GPU buffers needs it.
+            {
+                auto upload_system = GetSystem<RenderBufferUploadSystem>();
+                if (!upload_system)
+                    upload_system = RegisterRenderSystem<RenderBufferUploadSystem>();
+
+                if (upload_system)
+                {
+                    upload_system->SetWorld(this);
+                    upload_system->SetDevice(gpu_device); // may be null here for deferred init; set again in InitializeGraphics
                 }
             }
 

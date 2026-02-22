@@ -164,6 +164,7 @@ StagedBuffer *VulkanDevice::CreateStagedBuffer(const ObjectNameBuilder &name, Vk
 
     // Create StagedBuffer wrapper
     StagedBuffer *staged_buffer = new StagedBuffer(
+        std::string(name.base_name),
         attr->device,
         staging_buffer,
         staging_memory,

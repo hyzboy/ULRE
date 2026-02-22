@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
+#include<string>
 
 namespace hgl::graph{
 
@@ -17,8 +18,16 @@ namespace hgl::graph{
  */
 class IGPUBuffer
 {
+protected:
+    const std::string buffer_name;  // e.g. "PlaneGrid:Position", set once at construction
+
+    IGPUBuffer() = delete;
+    explicit IGPUBuffer(const std::string &name) : buffer_name(name) {}
+
 public:
     virtual ~IGPUBuffer() = default;
+
+    const std::string &GetBufferName() const { return buffer_name; }
 
     // 写入数据（开发者调用）
     virtual bool   Write  (const void *data, VkDeviceSize offset, VkDeviceSize size) = 0;

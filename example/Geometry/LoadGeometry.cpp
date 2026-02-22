@@ -285,7 +285,7 @@ namespace
             return false;
         }
 
-        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,index_type);
+        IndexBuffer *ibo=geo_data->InitIBO(header.indexCount,index_type,"LoadGeometry:IBO");    //这里未来改成文件名
         if(!ibo)
         {
             MLogError(LoadGeometry,OS_TEXT("Cannot create IBO for file ") + filename);

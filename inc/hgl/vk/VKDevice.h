@@ -199,6 +199,7 @@ public: //Buffer相关
     const IndexType ChooseIndexType (const VkDeviceSize &vertex_count)const;                    ///<求一个合适的索引类型
     const bool      CheckIndexType  (const IndexType,const VkDeviceSize &vertex_count)const;    ///<检测一个索引类型是否合适
 
+    IndexBuffer *   CreateIBO   (const ObjectNameBuilder &name, IndexType type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm=SharingMode::Exclusive, BufferUpdateClass update_class=BufferUpdateClass::Default, const std::source_location &loc = std::source_location::current());
     IndexBuffer *   CreateIBO   (IndexType type,  uint32_t count,const void *  data,BufferAllocPolicy policy,SharingMode sm=SharingMode::Exclusive,BufferUpdateClass update_class=BufferUpdateClass::Default, const std::source_location &loc = std::source_location::current());
     IndexBuffer *   CreateIBO   (IndexType type,  uint32_t count,const void *  data,  SharingMode sm=SharingMode::Exclusive, BufferUpdateClass update_class=BufferUpdateClass::Default, const std::source_location &loc = std::source_location::current()){return CreateIBO(type,count,data,BufferAllocPolicy::Auto,sm,update_class,loc);}
     IndexBuffer *   CreateIBO8  (                 uint32_t count,const void *  data,  SharingMode sm=SharingMode::Exclusive, BufferUpdateClass update_class=BufferUpdateClass::Default, const std::source_location &loc = std::source_location::current()){return CreateIBO(IndexType::U8,  count,(void *)data,sm,update_class,loc);}

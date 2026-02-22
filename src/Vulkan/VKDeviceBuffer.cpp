@@ -182,7 +182,7 @@ const bool VulkanDevice::CheckIndexType(const IndexType it,const VkDeviceSize &v
     return(false);
 }
 
-IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
+IndexBuffer *VulkanDevice::CreateIBO(const ObjectNameBuilder &name, IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, BufferUpdateClass update_class, const std::source_location &loc)
 {
     if(count==0)return(nullptr);
 
@@ -199,7 +199,7 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
 
     if(policy==BufferAllocPolicy::StagedUpload||policy==BufferAllocPolicy::GPUOnly)
     {
-        StagedBuffer *staged=CreateStagedBuffer(ObjectNameBuilder("IBO"), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size, data, sharing_mode, loc);
+        StagedBuffer *staged=CreateStagedBuffer(name, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, size, data, sharing_mode, loc);
         if(!staged)
             return(nullptr);
 
@@ -213,7 +213,7 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
         IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
         ibo->SetStagedSource(staged);
         ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-        TrackBuffer(ibo, ObjectNameBuilder("IBO"), loc);
+        TrackBuffer(ibo, name, loc);
         return ibo;
     }
 
@@ -223,14 +223,23 @@ IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const v
     else if(policy==BufferAllocPolicy::Readback)
         mem_usage=MemoryUsage::GPUToCPU;
 
+    ObjectNameBuilder memory_name = name.base_name[0] == '\0'
+        ? ObjectNameBuilder("Memory")
+        : ObjectNameBuilder(AnsiString(name.base_name) + ".Memory");
+
     DeviceBufferData buf;
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,ObjectNameBuilder("IBO:Memory"),loc))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,size,data,sharing_mode,mem_usage,memory_name,loc))
         return(nullptr);
 
     IndexBuffer *ibo = new IndexBuffer(attr->device,buf,index_type,count);
     ibo->SetUpdateClass(update_class == BufferUpdateClass::Default ? BufferUpdateClass::MeshStatic : update_class);
-    TrackBuffer(ibo, ObjectNameBuilder("IBO"), loc);
+    TrackBuffer(ibo, name, loc);
     return ibo;
+}
+
+IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,BufferAllocPolicy policy,SharingMode sharing_mode,BufferUpdateClass update_class, const std::source_location &loc)
+{
+    return CreateIBO(ObjectNameBuilder("IBO"), index_type, count, data, policy, sharing_mode, update_class, loc);
 }
 
 DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode, const std::source_location &loc)

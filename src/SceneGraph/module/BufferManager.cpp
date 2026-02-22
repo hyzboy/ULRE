@@ -68,19 +68,24 @@ BUFFER_MANAGER_CREATE_BUFFER(INBO)
 
 #undef BUFFER_MANAGER_CREATE_BUFFER
 
-IndexBuffer *BufferManager::CreateIBO(IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, const std::source_location &loc)
+IndexBuffer *BufferManager::CreateIBO(const ObjectNameBuilder &name, IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, const std::source_location &loc)
 {
     VulkanDevice *device = GetDevice();
     if (!device)
         return nullptr;
 
-    IndexBuffer *buf = device->CreateIBO(index_type, count, data, policy, sharing_mode, BufferUpdateClass::Default, loc);
+    IndexBuffer *buf = device->CreateIBO(name, index_type, count, data, policy, sharing_mode, BufferUpdateClass::Default, loc);
 
     if (!buf)
         return nullptr;
 
     rm_buffers.Add(buf);
     return buf;
+}
+
+IndexBuffer *BufferManager::CreateIBO(IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sharing_mode, const std::source_location &loc)
+{
+    return CreateIBO(ObjectNameBuilder("IBO"), index_type, count, data, policy, sharing_mode, loc);
 }
 
 }//namespace hgl::graph

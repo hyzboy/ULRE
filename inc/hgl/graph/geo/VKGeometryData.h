@@ -38,7 +38,7 @@ protected:
 
     IndexBuffer *   ibo;
 
-    virtual IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it)=0;
+    virtual IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it,const AnsiString &name)=0;
 
 public:
 
@@ -59,7 +59,7 @@ public:
             VAB *           InitVAB         (const int vab_index,const void *data,const AnsiString &name="VAB");
             VABMap *        GetVABMap       (const int vab_index);
 
-            IndexBuffer *   InitIBO         (const int index_count,IndexType it);
+            IndexBuffer *   InitIBO         (const int index_count,IndexType it,const AnsiString &name="IBO");
             IndexBuffer *   GetIBO          (){return ibo;}
             uint32_t        GetIndexCount   ()const{return index_count;}
 

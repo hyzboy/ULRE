@@ -42,6 +42,9 @@ namespace hgl::ecs
         {
             if (buf && buf->IsDirty())
             {
+                GLogDebug("[RenderBufferUpload] CopyToDevice: %s (size=%llu)",
+                          buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
+                          static_cast<unsigned long long>(buf->GetSize()));
                 buf->CopyToDevice(vk_cmd);
                 // CopyToDevice calls ClearDirty internally for StagedBuffer
             }

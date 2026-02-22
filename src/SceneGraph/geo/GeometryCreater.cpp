@@ -98,7 +98,7 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
 
     if(index_number>0)
     {
-        ibo=geometry_data->InitIBO(index_number,index_type);
+        ibo=geometry_data->InitIBO(index_number,index_type,geometry_name+":IBO");
 
         if(!ibo)
         {
@@ -106,19 +106,6 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
             geometry_data=nullptr;
             return(false);
         }
-
-    #ifdef _DEBUG
-        if(!vdm)
-        {
-            DebugUtils *du=device->GetDebugUtils();
-
-            if(du)
-            {
-                du->SetBuffer(      ibo->GetBuffer(),   geometry_name+":IndexBuffer:Buffer");
-                du->SetDeviceMemory(ibo->GetVkMemory(), geometry_name+":IndexBuffer:Memory");
-            }
-        }
-    #endif//_DEBUG
     }
 
     geometry_name=pname;
@@ -152,19 +139,6 @@ const int GeometryCreater::InitVAB(const AnsiString &name,const VkFormat format,
 
         if(!vab)
             return(-1);
-
-    #ifdef _DEBUG
-        if (!vdm)
-        {
-            DebugUtils *du=device->GetDebugUtils();
-
-            if (du)
-            {
-                du->SetBuffer(vab->GetBuffer(), geometry_name+":VAB:Buffer:"+name);
-                du->SetDeviceMemory(vab->GetVkMemory(), geometry_name+":VAB:Memory:"+name);
-            }
-        }
-    #endif//_DEBUG
     }
 
     return(vab_index);
@@ -279,7 +253,7 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
     // 创建 IBO（如果需要）
     if(index_count>0)
     {
-        IndexBuffer *ibo = pd->InitIBO(index_count, index_type);
+        IndexBuffer *ibo = pd->InitIBO(index_count, index_type, name+":IBO");
 
         if(!ibo)
         {

@@ -86,6 +86,7 @@ public: // Buffer creation methods
 
 public: // Index Buffer creation
 
+    IndexBuffer *CreateIBO(const ObjectNameBuilder &name, IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
     IndexBuffer *CreateIBO(IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
     IndexBuffer *CreateIBO(IndexType index_type, uint32_t count, const void *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(index_type, count, data, BufferAllocPolicy::Auto, sm, loc); }
     IndexBuffer *CreateIBO8(uint32_t count, const uint8 *data, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current()) { return CreateIBO(IndexType::U8, count, (void *)data, sm, loc); }

@@ -104,11 +104,11 @@ VAB *GeometryData::InitVAB(const int vab_index,const void *data,const AnsiString
     return vab_list[vab_index];
 }
 
-IndexBuffer *GeometryData::InitIBO(const int ic,IndexType it)
+IndexBuffer *GeometryData::InitIBO(const int ic,IndexType it,const AnsiString &name)
 {
     if(ibo)delete ibo;
 
-    ibo=CreateIBO(ic,it);
+    ibo=CreateIBO(ic,it,name);
 
     if(!ibo)
         return(nullptr);
@@ -164,11 +164,11 @@ namespace
                 delete ibo;
         }
 
-        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
+        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it,const AnsiString &name) override
         {
             if(!device)return(nullptr);
 
-            return device->CreateIBO(it,ic,nullptr,policy);
+            return device->CreateIBO(ObjectNameBuilder(name),it,ic,nullptr,policy);
         }
 
         VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data,const AnsiString &name) override
@@ -218,11 +218,11 @@ namespace
                 buffer_manager->Release(ibo);
         }
 
-        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
+        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it,const AnsiString &name) override
         {
             if(!buffer_manager)return(nullptr);
 
-            return buffer_manager->CreateIBO(it,ic,nullptr,policy);
+            return buffer_manager->CreateIBO(ObjectNameBuilder(name),it,ic,nullptr,policy);
         }
 
         VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data,const AnsiString &name) override
@@ -268,7 +268,7 @@ namespace
                 vdm->ReleaseVAB(vab_node);
         }
 
-        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
+        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it,const AnsiString &/*name*/) override
         {
             if(!vdm)
                 return(nullptr);

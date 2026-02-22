@@ -6,10 +6,12 @@
 
 namespace hgl::graph{
 
-StagedBuffer::StagedBuffer(VkDevice dev,
+StagedBuffer::StagedBuffer(const std::string &name,
+                           VkDevice dev,
                            VkBuffer staging_buf, DeviceMemory *staging_mem,
                            VkBuffer device_buf, DeviceMemory *device_mem,
                            VkDeviceSize size, VkBufferUsageFlags usage_flags)
+    : IGPUBuffer(name)
 {
     device = dev;
     staging_buffer = staging_buf;
