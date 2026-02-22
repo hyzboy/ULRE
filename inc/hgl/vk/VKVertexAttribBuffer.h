@@ -43,7 +43,8 @@ public:
 
 using VAB=VertexAttribBuffer;
 
-class VABMap:public VKBufferMap<VAB>
+// DEPRECATED: Use BufferAccessor<VAB> instead.
+class [[deprecated("VABMap is superseded by BufferAccessor<VAB>. See VKBufferAccessor.h.")]] VABMap:public VKBufferMap<VAB>
 {
 public:
 

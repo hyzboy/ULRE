@@ -1,5 +1,11 @@
 ﻿#pragma once
 
+// DEPRECATED: VKBufferMap<T> and VABMap are superseded by BufferAccessor<T>.
+// BufferAccessor<T> provides RAII Map/Unmap, precise dirty-range tracking,
+// and a unified Commit interface compatible with all buffer types.
+// New code should use BufferAccessor<T>. These classes will be removed once
+// all remaining call sites are migrated.
+
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VertexAttribDataAccess.h>
 

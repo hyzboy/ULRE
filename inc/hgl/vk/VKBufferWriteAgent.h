@@ -5,20 +5,22 @@
 namespace hgl::graph
 {
 /**
- * CN: 统一缓冲写入代理接口
- * 抽象不同底层实现（StagedBuffer、RingBuffer、ReBar等）的写入差异
- * EN: Unified buffer write agent interface
- * Abstract differences between various backend implementations (StagedBuffer, RingBuffer, ReBar, etc.)
+ * CN: 缓冲写入代理接口（当前为 dead abstraction，保留待评估）
+ * EN: Buffer write agent interface (currently a dead abstraction, kept for evaluation)
  *
- * 用途 / Usage:
- * - `BufferAccessor<T>` 和 `StructuredBufferAccessor<T>` 通过此接口访问底层存储
- * - 开发者写数据时无感知底层是什么机制
- * - 系统框架负责自动 dirty 追踪和周期性 commit
+ * 现状 / Current status:
+ * - 唯一实现者: `RingBufferWrapper`
+ * - 所有持有方（TransformAssignmentBuffer、MaterialInstanceAssignmentBuffer）均持有
+ *   具体类型 `RingBufferWrapper`，而非此接口指针——多态性从未被实际使用
+ * - `StagedBuffer` 路径完全绕过此接口，直接通过 DeviceBuffer::Write/Unmap 路径写入
+ * - `BufferAccessor<T>` / `StructuredBufferAccessor<T>` 不使用此接口
  *
- * 实现方 / Implementers:
- * - `StagedBufferTransferAgent`: staging buffer + explicit flush
- * - `RingBufferWrapper`: ring buffer for dynamic data
- * - `ReBarDirectWriter`: direct CPU write (future)
+ * 结论 / Conclusion:
+ * 此接口当前没有任何接口调度发生。若第二个实现者（如 StagedBufferWriteAgent）
+ * 始终不出现，应在 Phase 3 架构重构时将其删除，RingBufferWrapper 改为普通类。
+ *
+ * 原始设计意图 / Original design intent:
+ * 抽象 StagedBuffer/RingBuffer/ReBar 的写入差异，由 BufferAccessor 通过此接口访问底层存储
  */
 class BufferWriteAgent
 {

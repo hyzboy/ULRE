@@ -1,6 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBufferMap.h>
+// VKBufferMap.h is transitively included via VKVertexAttribBuffer.h below.
+// Direct include removed — new code should use VKBufferAccessor.h directly.
 #include<hgl/vk/VKBufferAccessor.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
