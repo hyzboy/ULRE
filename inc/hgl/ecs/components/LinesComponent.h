@@ -2,8 +2,11 @@
 
 #include<hgl/ecs/core/Component.h>
 #include<hgl/math/Vector.h>
+#include<hgl/math/geometry/AABB.h>
 #include<hgl/color/Color4f.h>
 #include<vector>
+#include<limits>
+#include<algorithm>
 
 namespace hgl::ecs
 {
@@ -17,6 +20,20 @@ namespace hgl::ecs
     struct LinesComponent : public Component
     {
     public:
+        enum class LineChange : uint32_t
+        {
+            Geometry = 1u << 0,
+            Style = 1u << 1,
+            Visibility = 1u << 2,
+        };
+
+        enum class LineStyle : uint8_t
+        {
+            Solid = 0,
+            Dashed,
+            Dotted,
+        };
+
         struct LineSegment
         {
             hgl::math::Vector3f from;       ///< CN: 起始点 EN: Start point
@@ -26,8 +43,14 @@ namespace hgl::ecs
 
         std::vector<LineSegment> lines;      ///< CN: 线段列表 EN: Line segments
         uint8_t width = 1;                   ///< CN: 线宽(1-16) EN: Line width (1-16)
+        LineStyle style = LineStyle::Solid;  ///< CN: 线条风格 EN: Line style
         bool visible = true;                 ///< CN: 是否可见 EN: Visibility
         bool dirty = true;                   ///< CN: 是否需要同步 EN: Need sync to renderer
+
+    private:
+
+        hgl::math::AABB local_bounds;
+        bool local_bounds_valid = false;
 
     public:
 
@@ -44,6 +67,8 @@ namespace hgl::ecs
         {
             lines.push_back({from, to, color_index});
             dirty = true;
+            local_bounds_valid = false;
+            TouchChange(static_cast<uint32_t>(LineChange::Geometry));
         }
 
         /**
@@ -54,6 +79,8 @@ namespace hgl::ecs
         {
             lines.clear();
             dirty = true;
+            local_bounds_valid = false;
+            TouchChange(static_cast<uint32_t>(LineChange::Geometry));
         }
 
         /**
@@ -78,7 +105,65 @@ namespace hgl::ecs
             {
                 width = w;
                 dirty = true;
+                TouchChange(static_cast<uint32_t>(LineChange::Style));
             }
+        }
+
+        void SetStyle(LineStyle s)
+        {
+            if (style != s)
+            {
+                style = s;
+                dirty = true;
+                TouchChange(static_cast<uint32_t>(LineChange::Style));
+            }
+        }
+
+        LineStyle GetStyle() const { return style; }
+
+        void SetVisible(bool value)
+        {
+            if (visible != value)
+            {
+                visible = value;
+                dirty = true;
+                TouchChange(static_cast<uint32_t>(LineChange::Visibility));
+            }
+        }
+
+        bool HasValidLocalBounds() const { return local_bounds_valid; }
+
+        const hgl::math::AABB& GetLocalBounds() const { return local_bounds; }
+
+        bool RecalculateLocalBounds()
+        {
+            if (lines.empty())
+            {
+                local_bounds_valid = false;
+                return false;
+            }
+
+            float min_x = std::numeric_limits<float>::max();
+            float min_y = std::numeric_limits<float>::max();
+            float min_z = std::numeric_limits<float>::max();
+            float max_x = -std::numeric_limits<float>::max();
+            float max_y = -std::numeric_limits<float>::max();
+            float max_z = -std::numeric_limits<float>::max();
+
+            for (const auto& segment : lines)
+            {
+                min_x = std::min(min_x, std::min(segment.from.x, segment.to.x));
+                min_y = std::min(min_y, std::min(segment.from.y, segment.to.y));
+                min_z = std::min(min_z, std::min(segment.from.z, segment.to.z));
+                max_x = std::max(max_x, std::max(segment.from.x, segment.to.x));
+                max_y = std::max(max_y, std::max(segment.from.y, segment.to.y));
+                max_z = std::max(max_z, std::max(segment.from.z, segment.to.z));
+            }
+
+            local_bounds.SetMinMax(hgl::math::Vector3f(min_x, min_y, min_z),
+                                   hgl::math::Vector3f(max_x, max_y, max_z));
+            local_bounds_valid = true;
+            return true;
         }
 
         /**

@@ -90,6 +90,11 @@ set(ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES
     components/FacingTransformComponent.cpp
 )
 
+set(ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/tick/LineBoundsUpdateSystem.h
+    systems/tick/LineBoundsUpdateSystem.cpp
+)
+
 set(ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainNextImageSystem.h
     systems/render/SwapchainNextImageSystem.cpp
@@ -157,6 +162,11 @@ set(ECS_SYS_18_RenderCollect_TextCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/components/TextComponent.h
 )
 
+set(ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/LineCollectSystem.h
+    systems/render/LineCollectSystem.cpp
+)
+
 set(ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
     systems/render/RenderPrimitiveSortSystem.cpp
@@ -198,6 +208,11 @@ set(ECS_SYS_26_RenderPostProcess_LineRenderSystem_FILES
     ${ECS_INCLUDE_PATH}/components/LinesComponent.h
 )
 
+set(ECS_SYS_26B_RenderStat_LineStatsSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/LineStatsSystem.h
+    systems/render/LineStatsSystem.cpp
+)
+
 set(ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/SwapchainSubmitSystem.h
     systems/render/SwapchainSubmitSystem.cpp
@@ -236,6 +251,7 @@ set(ECS_SOURCE
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
     ${ECS_SYS_06_TickPostCamera_FacingTransformSystem_FILES}
+    ${ECS_SYS_06B_TickTransform_LineBoundsUpdateSystem_FILES}
     ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
@@ -247,6 +263,7 @@ set(ECS_SOURCE
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
     ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
+    ${ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES}
     ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES}
     ${ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES}
     ${ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES}
@@ -255,6 +272,7 @@ set(ECS_SOURCE
     ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES}
     ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES}
     ${ECS_SYS_26_RenderPostProcess_LineRenderSystem_FILES}
+    ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES}
     ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES}
     ${ECS_SUPPORT_FILES}
     ${ECS_SERIALIZATION_FILES}
@@ -288,6 +306,7 @@ source_group("ECS\\Systems\\23 RenderBatch_TextResourceSyncSystem" FILES ${ECS_S
 source_group("ECS\\Systems\\24 RenderDrawSubmit_RenderPrimitiveSubmitSystem" FILES ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES})
 source_group("ECS\\Systems\\25 RenderDrawSubmit_TextRenderSubmitSystem" FILES ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES})
 source_group("ECS\\Systems\\26 RenderPostProcess_LineRenderSystem" FILES ${ECS_SYS_26_RenderPostProcess_LineRenderSystem_FILES})
+source_group("ECS\\Systems\\26B RenderStat_LineStatsSystem" FILES ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES})
 source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES})
 source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
 source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})

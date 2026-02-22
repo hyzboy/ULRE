@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
+#include<unordered_set>
 
 namespace hgl
 {
@@ -14,6 +15,8 @@ namespace hgl
 
     namespace ecs
     {
+        class LinesComponent;
+
         /**
          * CN: 线条渲染系统 - 收集所有 LinesComponent 并渲染
          * EN: Line Render System - Collect all LinesComponent and render them
@@ -23,6 +26,10 @@ namespace hgl
         private:
             graph::LineRenderManager *line_manager = nullptr;
             bool manager_initialized = false;
+            std::unordered_set<uint64_t> active_component_keys;
+            bool has_uploaded_once = false;
+            uint32_t last_uploaded_line_count = 0;
+            uint64_t last_collect_visible_set_signature = 0;
 
         public:
 
@@ -38,6 +45,7 @@ namespace hgl
             void SetLineRenderManager(graph::LineRenderManager *mgr) { line_manager = mgr; }
 
             graph::LineRenderManager *GetLineRenderManager() const { return line_manager; }
+            uint32_t GetLastUploadedLineCount() const { return last_uploaded_line_count; }
 
             /**
              * CN: 设置调色板中的颜色（会等待 Manager 初始化）
@@ -58,6 +66,7 @@ namespace hgl
              * EN: Sync LinesComponent to LineRenderManager
              */
             void SyncComponentsToRenderer();
+            uint64_t MakeComponentKey(const LinesComponent* comp) const;
         };
     }//namespace ecs
 }//namespace hgl

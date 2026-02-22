@@ -39,6 +39,18 @@ DEFINE_LOGGER_MODULE(LineRenderManager)
 
 namespace hgl::graph
 {
+        static inline uint8 NormalizeBatchIndex(const bool support_wide_lines, const uint8 width)
+        {
+            if (!support_wide_lines)
+                return 0;
+
+            if (width == 0)
+                return 0;
+
+            const uint8 clamped = width > MAX_LINE_WIDTH ? static_cast<uint8>(MAX_LINE_WIDTH) : width;
+            return static_cast<uint8>(clamped - 1);
+        }
+
     constexpr const size_t LINE_COUNT_INCREMENT =       1024;          ///< CN: 线段容量增量基数 EN: line count allocation granularity
     constexpr const size_t POSITION_COMPONENT_COUNT =   6;             ///< CN: 位置分量(2个点*3) EN: position components (2 points * 3)
     constexpr const size_t COLOR_COMPONENT_COUNT =      2;             ///< CN: 颜色索引分量(2个端点) EN: color index components (2 endpoints)
@@ -597,6 +609,114 @@ namespace hgl::graph
         }
 
         return true;
+    }
+
+    void LineRenderManager::UpsertComponentLines(uint64 component_key, uint8 width, const std::vector<LineSegmentDescriptor>& lines)
+    {
+        if (width == 0 || width > MAX_LINE_WIDTH)
+            return;
+
+        if (lines.empty())
+        {
+            RemoveComponentLines(component_key);
+            return;
+        }
+
+        const uint8 new_batch_index = NormalizeBatchIndex(support_wide_lines, width);
+
+        auto it = component_line_map.find(component_key);
+        if (it != component_line_map.end())
+        {
+            const uint8 old_batch_index = NormalizeBatchIndex(support_wide_lines, it->second.width);
+            if (old_batch_index != new_batch_index)
+                dirty_batch_indices.insert(old_batch_index);
+
+            it->second.width = width;
+            it->second.lines = lines;
+        }
+        else
+        {
+            ComponentLineBlock block;
+            block.width = width;
+            block.lines = lines;
+            component_line_map.emplace(component_key, std::move(block));
+        }
+
+        dirty_batch_indices.insert(new_batch_index);
+        component_lines_dirty = true;
+    }
+
+    void LineRenderManager::RemoveComponentLines(uint64 component_key)
+    {
+        auto it = component_line_map.find(component_key);
+        if (it == component_line_map.end())
+            return;
+
+        const uint8 old_batch_index = NormalizeBatchIndex(support_wide_lines, it->second.width);
+        dirty_batch_indices.insert(old_batch_index);
+
+        component_line_map.erase(it);
+        component_lines_dirty = true;
+    }
+
+    void LineRenderManager::ClearComponentLines()
+    {
+        if (component_line_map.empty())
+            return;
+
+        component_line_map.clear();
+
+        if (support_wide_lines)
+        {
+            for (uint8 i = 0; i < static_cast<uint8>(MAX_LINE_WIDTH); ++i)
+                dirty_batch_indices.insert(i);
+        }
+        else
+        {
+            dirty_batch_indices.insert(0);
+        }
+
+        component_lines_dirty = true;
+    }
+
+    void LineRenderManager::CommitComponentLines()
+    {
+        if (!component_lines_dirty)
+            return;
+
+        if (!support_wide_lines)
+        {
+            dirty_batch_indices.clear();
+            dirty_batch_indices.insert(0);
+        }
+
+        for (const uint8 batch_index : dirty_batch_indices)
+        {
+            line_groups[batch_index].Clear();
+            line_groups[batch_index].SetCount(0);
+        }
+
+        for (const auto& entry : component_line_map)
+        {
+            const auto& block = entry.second;
+            if (block.lines.empty())
+                continue;
+
+            const uint8 batch_index = NormalizeBatchIndex(support_wide_lines, block.width);
+            if (dirty_batch_indices.find(batch_index) == dirty_batch_indices.end())
+                continue;
+
+            line_groups[batch_index].AddLine(block.lines);
+        }
+
+        total_line_count = 0;
+        for (const auto& entry : component_line_map)
+        {
+            total_line_count += static_cast<uint32>(entry.second.lines.size());
+        }
+
+        dirty_batch_indices.clear();
+        component_lines_dirty = false;
     }
 } // namespace hgl::graph
 

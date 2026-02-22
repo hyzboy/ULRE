@@ -9,6 +9,8 @@
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/log/Log.h>
 #include <hgl/graph/geo/line/LineWidthBatch.h>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace hgl::graph
 {
@@ -90,6 +92,12 @@ namespace hgl::graph
     {
         OBJECT_LOGGER
 
+        struct ComponentLineBlock
+        {
+            uint8 width = 1;
+            std::vector<LineSegmentDescriptor> lines;
+        };
+
     private:
 
         VulkanDevice *device;               ///< CN: Vulkan设备指针 EN: Vulkan device pointer
@@ -111,6 +119,12 @@ namespace hgl::graph
         SharedLineBackup *  shared_backup = nullptr;     ///< CN: 批次间共享缓冲备份 EN: Shared backup buffer among batches
         MaterialManager *   material_manager = nullptr;  ///< CN: 材质管理器 EN: Material manager
         BufferManager *     buffer_manager = nullptr;    ///< CN: 缓冲区管理器 EN: Buffer manager
+
+    private:
+
+        std::unordered_map<uint64, ComponentLineBlock> component_line_map;
+        std::unordered_set<uint8> dirty_batch_indices;
+        bool component_lines_dirty = false;
 
     public:
 
@@ -178,6 +192,18 @@ namespace hgl::graph
          * \return CN: 成功返回 true EN: True on success
          */
         bool Draw(RenderCmdBuffer *cmd);
+
+        /// Incremental API: upsert one component line block (keyed by component id/pointer hash)
+        void UpsertComponentLines(uint64 component_key, uint8 width, const std::vector<LineSegmentDescriptor>& lines);
+
+        /// Incremental API: remove one component line block
+        void RemoveComponentLines(uint64 component_key);
+
+        /// Incremental API: clear all component blocks
+        void ClearComponentLines();
+
+        /// Incremental API: flush changed component blocks to GPU batches
+        void CommitComponentLines();
 
         /**
          * CN: 获取当前缓存的线段总数。

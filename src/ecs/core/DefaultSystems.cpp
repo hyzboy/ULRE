@@ -2,10 +2,13 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
 #include <hgl/ecs/systems/render/TextCollectSystem.h>
 #include <hgl/ecs/systems/render/TextBuildSystem.h>
 #include <hgl/ecs/systems/render/TextResourceSyncSystem.h>
 #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h>
+#include <hgl/ecs/systems/render/LineCollectSystem.h>
+#include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
@@ -56,6 +59,9 @@ namespace hgl::ecs
         auto swapchain_submit_system = ctx->RegisterRenderSystem<ecs::SwapchainSubmitSystem>();
         auto text_submit_system = ctx->RegisterRenderSystem<ecs::TextRenderSubmitSystem>();
         auto line_render_system = ctx->RegisterRenderSystem<ecs::LineRenderSystem>();
+        auto line_collect_system = ctx->RegisterRenderSystem<ecs::LineCollectSystem>();
+        auto line_stats_system = ctx->RegisterRenderSystem<ecs::LineStatsSystem>();
+        auto line_bounds_update_system = ctx->RegisterTickSystem<ecs::LineBoundsUpdateSystem>();
         auto quad_resource_prepare_system = ctx->RegisterRenderSystem<ecs::QuadResourcePrepareSystem>();
         auto quad_material_binding_system = ctx->RegisterRenderSystem<ecs::QuadMaterialBindingSystem>();
         auto render_frame_business_sync_system = ctx->RegisterRenderSystem<ecs::RenderFrameBusinessSyncSystem>();
@@ -119,6 +125,15 @@ namespace hgl::ecs
         if (quad_material_binding_system)
             quad_material_binding_system->SetWorld(ctx);
 
+        if (line_collect_system)
+            line_collect_system->SetWorld(ctx);
+
+        if (line_bounds_update_system)
+            line_bounds_update_system->SetWorld(ctx);
+
+        if (line_stats_system)
+            line_stats_system->SetWorld(ctx);
+
         (void)render_frame_business_sync_system;
 
         // CN: LineRenderSystem 会在 Render 时延迟初始化，自动获取 context 中的信息
@@ -126,7 +141,10 @@ namespace hgl::ecs
 
         systems.input_system = ctx->RegisterTickSystem<ecs::InputSystem>();
         systems.camera_system = camera_system;
+        systems.line_bounds_update_system = line_bounds_update_system;
+        systems.line_collect_system = line_collect_system;
         systems.line_render_system = line_render_system;
+        systems.line_stats_system = line_stats_system;
 
         return systems;
     }
