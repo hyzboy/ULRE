@@ -561,14 +561,12 @@ namespace hgl::graph
         {
             for(size_t i = 0; i < MAX_LINE_WIDTH; ++i)
             {
-                line_groups[i].Clear();
-                line_groups[i].SetCount(0);
+                line_groups[i].Reset();
             }
         }
         else
         {
-            line_groups[0].Clear();
-            line_groups[0].SetCount(0);
+            line_groups[0].Reset();
         }
 
         total_line_count = 0;
@@ -692,8 +690,7 @@ namespace hgl::graph
 
         for (const uint8 batch_index : dirty_batch_indices)
         {
-            line_groups[batch_index].Clear();
-            line_groups[batch_index].SetCount(0);
+            line_groups[batch_index].Reset();
         }
 
         for (const auto& entry : component_line_map)

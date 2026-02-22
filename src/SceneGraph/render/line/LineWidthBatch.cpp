@@ -42,6 +42,20 @@ void LineWidthBatch::Clear()
     SAFE_CLEAR(geometry);
 }
 
+void LineWidthBatch::Reset()
+{
+    count = 0;
+
+    if(primitive)
+        primitive->SetDrawCounts(0);
+
+    if(position.IsValid())
+        position.Seek(0);
+
+    if(color.IsValid())
+        color.Seek(0);
+}
+
 bool LineWidthBatch::RebuildMesh()
 {
     Clear();

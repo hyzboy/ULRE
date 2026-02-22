@@ -47,6 +47,7 @@ public:
     void Init(const uint w,VulkanDevice *,MaterialInstance *,Pipeline *p,SharedLineBackup *sb,const AnsiString &name="");
 
     void Clear();
+    void Reset();
     bool RebuildMesh();
     void Expand(uint);
 
