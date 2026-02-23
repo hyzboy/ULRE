@@ -5,6 +5,8 @@
 #include<hgl/type/ManagedArray.h>
 #include<hgl/log/Log.h>
 
+namespace hgl::graph{ class VkBufferOwner; }  // forward-decl for BindUBO/BindSSBO offset+range params
+
 // Comparison operators for Vulkan structures used in ValueArray
 inline bool operator==(const VkDescriptorBufferInfo& lhs, const VkDescriptorBufferInfo& rhs) {
     return lhs.buffer == rhs.buffer &&
@@ -75,12 +77,8 @@ public:
 
     void Clear();
 
-    [[deprecated("Use BindUBO(binding, IGPUBuffer*, dynamic) instead.")]]
-    bool BindUBO    (const int binding,const DeviceBuffer *buf,bool dynamic=false);
-    bool BindUBO    (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
-    [[deprecated("Use BindSSBO(binding, IGPUBuffer*, dynamic) instead.")]]
-    bool BindSSBO   (const int binding,const DeviceBuffer *buf,bool dynamic=false);
-    bool BindSSBO   (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindUBO    (const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindSSBO   (const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
     bool BindUBO    (const int binding,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO   (const int binding,const IGPUBuffer *gpu,bool dynamic=false);

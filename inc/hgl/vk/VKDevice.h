@@ -129,8 +129,6 @@ public:
                 void                DumpTrackedObjects  ()const;
 
                 void                TrackBuffer         (VkBufferOwner *buf, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
-                // Backward-compat overload for stale OBJ files referencing TrackBuffer(DeviceBuffer*).
-                void                TrackBuffer         (DeviceBuffer *buf, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
                 void                TrackTexture        (Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc = std::source_location::current());
 
 public:

@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferAccessBase.h>
-#include<hgl/vk/VKBuffer.h>
 
 #include<type_traits>
 
@@ -90,7 +89,7 @@ private:
         initialized = true;
     }
 
-    StructuredBufferAccessor(DeviceBuffer *buf, VkDeviceSize aligned_size_param, bool take_ownership)
+    StructuredBufferAccessor(VkBufferOwner *buf, VkDeviceSize aligned_size_param, bool take_ownership)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(aligned_size_param)
@@ -114,7 +113,7 @@ private:
         mapped_data = nullptr;
     }
 
-    StructuredBufferAccessor(DeviceBuffer *buf, bool take_ownership = false)
+    StructuredBufferAccessor(VkBufferOwner *buf, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
@@ -125,7 +124,7 @@ private:
         InitDefaultsIfNeeded();
     }
 
-    StructuredBufferAccessor(DeviceBuffer *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
+    StructuredBufferAccessor(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
@@ -137,7 +136,7 @@ private:
         InitDefaultsIfNeeded();
     }
 
-    StructuredBufferAccessor(DeviceBuffer *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
+    StructuredBufferAccessor(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
@@ -150,17 +149,17 @@ private:
     }
 
 public:
-    static StructuredBufferAccessor *Create(DeviceBuffer *buf, bool take_ownership = false)
+    static StructuredBufferAccessor *Create(VkBufferOwner *buf, bool take_ownership = false)
     {
         return buf ? new StructuredBufferAccessor(buf, take_ownership) : nullptr;
     }
 
-    static StructuredBufferAccessor *Create(DeviceBuffer *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
+    static StructuredBufferAccessor *Create(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
     {
         return buf ? new StructuredBufferAccessor(buf, dst, name, take_ownership) : nullptr;
     }
 
-    static StructuredBufferAccessor *Create(DeviceBuffer *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
+    static StructuredBufferAccessor *Create(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
     {
         return buf ? new StructuredBufferAccessor(buf, desc, take_ownership) : nullptr;
     }
@@ -211,7 +210,7 @@ public:
      * CN: 绑定到新的缓冲区
      * EN: Bind to new buffer
      */
-    void Bind(DeviceBuffer *buf, bool take_ownership = false)
+    void Bind(VkBufferOwner *buf, bool take_ownership = false)
     {
         UnmapInternal();
         aligned_size = buf ? buf->GetSize() : 0;
@@ -349,8 +348,8 @@ public:
     const AnsiString& name() const { return ubo_name; }
 
     /**
-     * CN: 获取底层 DeviceBuffer（UBOInstance 兼容）
-     * EN: Get underlying DeviceBuffer (UBOInstance compatible)
+     * CN: 获取底层 VkBufferOwner（UBOInstance 兼容）
+     * EN: Get underlying VkBufferOwner (UBOInstance compatible)
      */
     VkBufferOwner* ubo() const { return buffer; }
 

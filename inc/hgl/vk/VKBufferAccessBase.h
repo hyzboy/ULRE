@@ -29,11 +29,6 @@ protected:
 
     void SetBuffer(VkBufferOwner *buf);
 
-    // Backward-compat overload: stale OBJ files compiled before the VkBufferOwner
-    // migration still emit calls to SetBuffer(DeviceBuffer*).  Remove once all
-    // dependent libraries have been rebuilt against the new headers.
-    void SetBuffer(DeviceBuffer *buf);
-
     void SetUBOMeta(const DescriptorSetType &dst, const AnsiString &name)
     {
         desc_set_type = dst;

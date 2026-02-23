@@ -39,7 +39,7 @@ namespace
     {
     public:
 
-        DescriptorBufferInfo(const DeviceBuffer *buf,const VkDeviceSize off,const VkDeviceSize rng)
+        DescriptorBufferInfo(const VkBufferOwner *buf,const VkDeviceSize off,const VkDeviceSize rng)
         {
             buffer=buf->GetBuffer();
             offset=off;
@@ -83,12 +83,7 @@ void DescriptorSet::Clear()
     is_dirty=false;
 }
 
-bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,bool dynamic)
-{
-    return buf ? BindUBO(binding,buf->GetGPUBuffer(),dynamic) : false;
-}
-
-bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+bool DescriptorSet::BindUBO(const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -108,12 +103,7 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDe
     return(true);
 }
 
-bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,bool dynamic)
-{
-    return buf ? BindSSBO(binding,buf->GetGPUBuffer(),dynamic) : false;
-}
-
-bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+bool DescriptorSet::BindSSBO(const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);

@@ -243,12 +243,6 @@ void VulkanDevice::TrackBuffer(VkBufferOwner *buf, const ObjectNameBuilder &name
     TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
 }
 
-// Backward-compat: stale OBJ files reference TrackBuffer(DeviceBuffer*)
-void VulkanDevice::TrackBuffer(DeviceBuffer *buf, const ObjectNameBuilder &name, const std::source_location &loc)
-{
-    TrackBuffer(static_cast<VkBufferOwner *>(buf), name, loc);
-}
-
 void VulkanDevice::TrackTexture(Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc)
 {
     if (!tex)

@@ -17,26 +17,6 @@ MaterialParameters::~MaterialParameters()
     delete descriptor_set;
 }
 
-bool MaterialParameters::BindUBO(const int &index,DeviceBuffer *ubo,bool dynamic)
-{
-    return ubo ? BindUBO(index,ubo->GetGPUBuffer(),dynamic) : false;
-}
-
-bool MaterialParameters::BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
-{
-    return ubo ? BindUBO(name,ubo->GetGPUBuffer(),dynamic) : false;
-}
-
-bool MaterialParameters::BindSSBO(const int &index,DeviceBuffer *ssbo,bool dynamic)
-{
-    return ssbo ? BindSSBO(index,ssbo->GetGPUBuffer(),dynamic) : false;
-}
-
-bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool dynamic)
-{
-    return ssbo ? BindSSBO(name,ssbo->GetGPUBuffer(),dynamic) : false;
-}
-
 bool MaterialParameters::BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic)
 {
     if(index<0||!gpu)

@@ -97,18 +97,11 @@ public:
 
 public:
 
-    [[deprecated("Use BindUBO(type, name, buf->GetGPUBuffer()) instead.")]]
-    bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
-    [[deprecated("Use BindSSBO(type, name, buf->GetGPUBuffer()) instead.")]]
-    bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex);
     bool BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
 
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
-
-    [[deprecated("Use BindUBO(sbd, buf->GetGPUBuffer()) instead.")]]
-    bool BindUBO(const ShaderBufferDesc *sbd,DeviceBuffer *ubo,bool dynamic=false);
 
     bool BindUBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
     {

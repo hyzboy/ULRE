@@ -73,21 +73,6 @@ const uint Material::GetVILCount()
     return vertex_input->GetInstanceCount();
 }
 
-bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
-{
-    return ubo ? BindUBO(type,name,ubo->GetGPUBuffer(),dynamic) : false;
-}
-
-bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
-{
-    return ubo ? BindSSBO(type,name,ubo->GetGPUBuffer(),dynamic) : false;
-}
-
-bool Material::BindUBO(const ShaderBufferDesc *sbd,DeviceBuffer *ubo,bool dynamic)
-{
-    return ubo ? BindUBO(sbd->set_type,sbd->name,ubo->GetGPUBuffer(),dynamic) : false;
-}
-
 bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
