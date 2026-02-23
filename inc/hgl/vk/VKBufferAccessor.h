@@ -145,7 +145,8 @@ private:
      */
     void MapInternal()
     {
-        if(!buffer || mapped_pointer)
+        // gpu_buf is cached in BufferAccessBase::SetBuffer(); no DeviceBuffer chain needed.
+        if(!gpu_buf || mapped_pointer)
             return;
 
         if(element_offset < 0)
@@ -163,11 +164,7 @@ private:
         if(count == 0)
             return;
 
-        // Phase 3c: bypass DeviceBuffer transitional forwarder, go directly through IGPUBuffer.
-        // buffer_stride is already element size; VAB/IBO Map() override multiplied by stride,
-        // so we replicate that here to call GetGPUBuffer()->Map() with byte offsets directly.
-        auto *gpu_buf = GetGPUBuffer();
-        if(!gpu_buf) return;
+        // Byte-offset Map: buffer_stride is element size, multiply to get byte offsets.
         mapped_pointer = gpu_buf->Map(static_cast<VkDeviceSize>(element_offset) * buffer_stride,
                                       static_cast<VkDeviceSize>(count) * buffer_stride);
         if(mapped_pointer)
@@ -190,10 +187,9 @@ private:
             data_access = nullptr;
         }
 
-        if(buffer && mapped_pointer)
+        if(gpu_buf && mapped_pointer)
         {
-            if(auto *gpu_buf = GetGPUBuffer())
-                gpu_buf->Unmap();
+            gpu_buf->Unmap();
             mapped_pointer = nullptr;
         }
     }
@@ -216,7 +212,7 @@ public:
         , element_count(0)
     {
         SetBuffer(vab);
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
     }
 
@@ -230,7 +226,7 @@ public:
         , element_count(count)
     {
         SetBuffer(vab);
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
     }
 
@@ -244,7 +240,7 @@ public:
         , element_count(count)
     {
         SetBuffer(ibo);
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
     }
 
@@ -276,7 +272,7 @@ public:
         element_offset = offset;
         element_count = count;
 
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
     }
 
@@ -284,7 +280,7 @@ public:
      * CN: 检查是否有效
      * EN: Check if valid
      */
-    bool IsValid() const { return buffer && data_access; }
+    bool IsValid() const { return gpu_buf && data_access; }
     operator bool() const { return IsValid(); }
 
     /**
@@ -343,7 +339,7 @@ private:
       */
     bool CommitInternal()
     {
-        if(!dirty || !buffer)
+        if(!dirty || !gpu_buf)
             return false;
 
         // Unmap + Remap 触发 flush（对于 StagedBuffer）
@@ -384,7 +380,7 @@ public:
      */
     bool WriteBulk(const void *data, uint32_t element_count)
     {
-        if(!buffer || !data || element_count == 0)
+        if(!gpu_buf || !data || element_count == 0)
             return false;
 
         if(element_offset < 0)
@@ -401,12 +397,9 @@ public:
         if(element_count > max_count)
             return false;
 
-        // Phase 3c: bypass DeviceBuffer::Write virtual forwarder, call IGPUBuffer directly.
-        bool result = false;
-        if(auto *gpu_buf = GetGPUBuffer())
-            result = gpu_buf->Write(data,
-                static_cast<VkDeviceSize>(element_offset) * buffer_stride,
-                static_cast<VkDeviceSize>(element_count) * buffer_stride);
+        bool result = gpu_buf->Write(data,
+            static_cast<VkDeviceSize>(element_offset) * buffer_stride,
+            static_cast<VkDeviceSize>(element_count) * buffer_stride);
         if(result)
             dirty = true;
         return result;
@@ -418,7 +411,7 @@ public:
      */
     bool ReadBulk(void *dst, uint32_t element_count)
     {
-        if(!buffer || !dst || element_count == 0 || !mapped_pointer)
+        if(!gpu_buf || !dst || element_count == 0 || !mapped_pointer)
             return false;
 
         if(buffer_stride == 0)

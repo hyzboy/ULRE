@@ -56,14 +56,11 @@ private:
      */
     void MapInternal()
     {
-        if(!buffer || mapped_data)
+        // gpu_buf cached in BufferAccessBase::SetBuffer(); no DeviceBuffer chain.
+        if(!gpu_buf || mapped_data)
             return;
 
-        void *ptr = nullptr;
-        if(auto *gpu = buffer->GetGPUBuffer())
-            ptr = gpu->Map(0, aligned_size);
-        else
-            ptr = buffer->Map(0, aligned_size);
+        void *ptr = gpu_buf->Map(0, aligned_size);
         if(ptr)
             mapped_data = static_cast<T*>(ptr);
     }
@@ -98,7 +95,7 @@ private:
         , aligned_size(aligned_size_param)
     {
         SetBuffer(buf);
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
     }
@@ -109,13 +106,10 @@ private:
      */
     void UnmapInternal()
     {
-        if(!buffer || !mapped_data)
+        if(!gpu_buf || !mapped_data)
             return;
 
-        if(auto *gpu = buffer->GetGPUBuffer())
-            gpu->Unmap();
-        else
-            buffer->Unmap();
+        gpu_buf->Unmap();
         mapped_data = nullptr;
     }
 
@@ -125,7 +119,7 @@ private:
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
     }
@@ -137,7 +131,7 @@ private:
     {
         SetBuffer(buf);
         SetUBOMeta(dst, name);
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
     }
@@ -149,7 +143,7 @@ private:
     {
         SetBuffer(buf);
         SetUBOMeta(desc ? desc->set_type : DescriptorSetType::PerMaterial, desc ? desc->name : "");
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
     }
@@ -222,7 +216,7 @@ public:
         aligned_size = buf ? buf->GetSize() : 0;
         SetBuffer(buf);
 
-        if(buffer)
+        if(gpu_buf)
             MapInternal();
     }
 
@@ -232,7 +226,7 @@ public:
      * CN: 检查是否有效
      * EN: Check if valid
      */
-    bool IsValid() const { return buffer && mapped_data; }
+    bool IsValid() const { return gpu_buf && mapped_data; }
     operator bool() const { return IsValid(); }
 
     /**
@@ -300,20 +294,10 @@ private:
      */
     bool CommitInternal()
     {
-        if(!dirty || !buffer || !mapped_data)
+        if(!dirty || !gpu_buf || !mapped_data)
             return false;
 
-        // 显式写入并标记 GPU dirty
-        if(auto *gpu = buffer->GetGPUBuffer())
-        {
-            gpu->Write(mapped_data, 0, sizeof(T));
-        }
-        else
-        {
-            buffer->Write(mapped_data, sizeof(T));
-            buffer->Flush(aligned_size);
-        }
-
+        gpu_buf->Write(mapped_data, 0, sizeof(T));
         dirty = false;
         return true;
     }
@@ -330,18 +314,10 @@ private:
 
     void ImmediateUpdate() const
     {
-        if(!mapped_data || !buffer)
+        if(!mapped_data || !gpu_buf)
             return;
 
-        if(auto *gpu = buffer->GetGPUBuffer())
-        {
-            gpu->Write(mapped_data, 0, sizeof(T));
-        }
-        else
-        {
-            buffer->Write(mapped_data, sizeof(T));
-            buffer->Flush(aligned_size);
-        }
+        gpu_buf->Write(mapped_data, 0, sizeof(T));
     }
 
     /**
@@ -353,9 +329,7 @@ public:
 
     bool Write(const void *ptr, uint32_t offset, uint32_t size)
     {
-        if(!buffer)
-            return false;
-        // Route through BufferAccessBase which already prefers IGPUBuffer*.
+        // BufferAccessBase::Write guards on gpu_buf internally.
         return BufferAccessBase::Write(ptr, offset, size);
     }
 
