@@ -250,7 +250,7 @@ namespace hgl::ecs
 
         if (camera_ubo)
         {
-            graph::DeviceBuffer *buf = camera_ubo->ubo();
+            graph::VkBufferOwner *buf = camera_ubo->ubo();
             delete camera_ubo;
             camera_ubo = nullptr;
             camera_info = nullptr;

@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKBufferMap.h>
 
 namespace hgl::graph{
-class IndexBuffer:public DeviceBuffer
+class IndexBuffer:public VkBufferOwner
 {
     IndexType   index_type;
     uint        stride;
@@ -14,7 +14,7 @@ private:
 
     friend class VulkanDevice;
 
-    IndexBuffer(VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count):DeviceBuffer(d,vb)
+    IndexBuffer(VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count):VkBufferOwner(d,vb)
     {
         index_type=it;
         count=_count;
@@ -35,19 +35,19 @@ public:
 
 public:
 
-    void *  Map     (VkDeviceSize start,VkDeviceSize size)          override {return GetGPUBuffer()->Map(start*stride,size*stride);}
-    void    Unmap   ()                                                      {GetGPUBuffer()->Unmap();}
-    void    Flush   (VkDeviceSize start,VkDeviceSize size)          override {GetGPUBuffer()->MarkDirty(start*stride,size*stride);}
-    void    Flush   (VkDeviceSize size)                             override {GetGPUBuffer()->MarkDirty(0,size*stride);}
+    void *  Map     (VkDeviceSize start,VkDeviceSize size)          {return GetGPUBuffer()->Map(start*stride,size*stride);}
+    void    Unmap   ()                                              {GetGPUBuffer()->Unmap();}
+    void    Flush   (VkDeviceSize start,VkDeviceSize size)          {GetGPUBuffer()->MarkDirty(start*stride,size*stride);}
+    void    Flush   (VkDeviceSize size)                             {GetGPUBuffer()->MarkDirty(0,size*stride);}
 
-    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return GetGPUBuffer()->Write(ptr,start*stride,size*stride);}
-    bool    Write   (const void *ptr,uint32_t size)                 override {return GetGPUBuffer()->Write(ptr,0,size*stride);}
+    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return GetGPUBuffer()->Write(ptr,start*stride,size*stride);}
+    bool    Write   (const void *ptr,uint32_t size)                 {return GetGPUBuffer()->Write(ptr,0,size*stride);}
 
     /**
      * Returns the underlying VkBuffer handle for vkCmdBindIndexBuffer.
      * Prefer this over GetBuffer() — does not require DeviceBuffer inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
-};//class IndexBuffer:public DeviceBuffer
+};//class IndexBuffer:public VkBufferOwner
 
 }//namespace hgl::graph

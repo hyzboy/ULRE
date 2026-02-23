@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferAccessBase.h>
+#include<hgl/vk/VKBuffer.h>
 
 #include<type_traits>
 
@@ -233,8 +234,8 @@ public:
      * CN: 获取底层缓冲区
      * EN: Get underlying buffer
      */
-    DeviceBuffer* GetBuffer() { return buffer; }
-    const DeviceBuffer* GetBuffer() const { return buffer; }
+    VkBufferOwner* GetBuffer() { return buffer; }
+    const VkBufferOwner* GetBuffer() const { return buffer; }
 
     /**
      * CN: 获取结构体数据指针
@@ -351,7 +352,7 @@ public:
      * CN: 获取底层 DeviceBuffer（UBOInstance 兼容）
      * EN: Get underlying DeviceBuffer (UBOInstance compatible)
      */
-    DeviceBuffer* ubo() const { return buffer; }
+    VkBufferOwner* ubo() const { return buffer; }
 
     /**
      * CN: Update() 方法（UBOInstance 兼容） 尝试自动 Flush（如果是 StagedBuffer）

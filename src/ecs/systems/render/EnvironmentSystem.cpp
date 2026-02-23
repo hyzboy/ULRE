@@ -20,7 +20,7 @@ namespace hgl::ecs
     {
         if (sky_ubo)
         {
-            graph::DeviceBuffer *buf = sky_ubo->ubo();
+            graph::VkBufferOwner *buf = sky_ubo->ubo();
             delete sky_ubo;
             sky_ubo = nullptr;
 

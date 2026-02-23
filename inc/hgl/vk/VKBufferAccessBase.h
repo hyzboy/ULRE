@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 
 namespace hgl::graph{
@@ -19,7 +19,7 @@ class VulkanDevice;
 class BufferAccessBase
 {
 protected:
-    DeviceBuffer *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 保留不变
+    VkBufferOwner *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 保留不变
     IGPUBuffer   *gpu_buf = nullptr;  // 写路径专用，SetBuffer() 时同步赋值，直接持有，无需跨层查找
 
     DescriptorSetType desc_set_type = DescriptorSetType::PerMaterial;
@@ -27,6 +27,11 @@ protected:
 
 protected:
 
+    void SetBuffer(VkBufferOwner *buf);
+
+    // Backward-compat overload: stale OBJ files compiled before the VkBufferOwner
+    // migration still emit calls to SetBuffer(DeviceBuffer*).  Remove once all
+    // dependent libraries have been rebuilt against the new headers.
     void SetBuffer(DeviceBuffer *buf);
 
     void SetUBOMeta(const DescriptorSetType &dst, const AnsiString &name)
@@ -53,8 +58,8 @@ public:
     BufferAccessBase(const BufferAccessBase &) = delete;
     BufferAccessBase &operator=(const BufferAccessBase &) = delete;
 
-    DeviceBuffer *GetBuffer()             { return buffer; }
-    const DeviceBuffer *GetBuffer() const { return buffer; }
+    VkBufferOwner *GetBuffer()             { return buffer; }
+    const VkBufferOwner *GetBuffer() const { return buffer; }
 
     /**
      * Returns the cached IGPUBuffer* for CPU writes.

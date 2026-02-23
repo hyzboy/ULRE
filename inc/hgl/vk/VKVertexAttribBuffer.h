@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKBufferOwner.h>
 #include<hgl/vk/VKBufferMap.h>
 
 namespace hgl::graph{
-class VertexAttribBuffer:public DeviceBuffer
+class VertexAttribBuffer:public VkBufferOwner
 {
     VkFormat format;                    ///<数据格式
     uint32_t stride;                    ///<单个数据字节数
@@ -14,7 +14,7 @@ private:
 
     friend class VulkanDevice;
 
-    VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):DeviceBuffer(d,vb)
+    VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):VkBufferOwner(d,vb)
     {
         format=fmt;
         stride=_stride;
@@ -33,20 +33,20 @@ public:
 
 public:
 
-    void *  Map     (VkDeviceSize start,VkDeviceSize size)          override {return GetGPUBuffer()->Map(start*stride,size*stride);}
-    void    Unmap   ()                                                      {GetGPUBuffer()->Unmap();}
-    void    Flush   (VkDeviceSize start,VkDeviceSize size)          override {GetGPUBuffer()->MarkDirty(start*stride,size*stride);}
-    void    Flush   (VkDeviceSize size)                             override {GetGPUBuffer()->MarkDirty(0,size*stride);}
+    void *  Map     (VkDeviceSize start,VkDeviceSize size)          {return GetGPUBuffer()->Map(start*stride,size*stride);}
+    void    Unmap   ()                                              {GetGPUBuffer()->Unmap();}
+    void    Flush   (VkDeviceSize start,VkDeviceSize size)          {GetGPUBuffer()->MarkDirty(start*stride,size*stride);}
+    void    Flush   (VkDeviceSize size)                             {GetGPUBuffer()->MarkDirty(0,size*stride);}
 
-    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return GetGPUBuffer()->Write(ptr,start*stride,size*stride);}
-    bool    Write   (const void *ptr,uint32_t size)                 override {return GetGPUBuffer()->Write(ptr,0,size*stride);}
+    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return GetGPUBuffer()->Write(ptr,start*stride,size*stride);}
+    bool    Write   (const void *ptr,uint32_t size)                 {return GetGPUBuffer()->Write(ptr,0,size*stride);}
 
     /**
      * Returns the underlying VkBuffer handle for draw/bind calls.
      * Prefer this over GetBuffer() for VkCmdBindVertexBuffers — does not require DeviceBuffer inheritance.
      */
     VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
-};//class VertexAttribBuffer:public DeviceBuffer
+};//class VertexAttribBuffer:public VkBufferOwner
 
 using VAB=VertexAttribBuffer;
 

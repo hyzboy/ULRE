@@ -234,13 +234,19 @@ void VulkanDevice::DumpTrackedObjects() const
 
 }
 
-void VulkanDevice::TrackBuffer(DeviceBuffer *buf, const ObjectNameBuilder &name, const std::source_location &loc)
+void VulkanDevice::TrackBuffer(VkBufferOwner *buf, const ObjectNameBuilder &name, const std::source_location &loc)
 {
     if (!buf)
         return;
 
     TrackObject(VK_OBJECT_TYPE_BUFFER, (uint64_t)(uintptr_t)buf->GetBuffer(), name.Append(ObjectTypeTag::VKBuffer), loc);
     TrackObject(VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(uintptr_t)buf->GetVkMemory(), name.Append(ObjectTypeTag::VKMemory), loc);
+}
+
+// Backward-compat: stale OBJ files reference TrackBuffer(DeviceBuffer*)
+void VulkanDevice::TrackBuffer(DeviceBuffer *buf, const ObjectNameBuilder &name, const std::source_location &loc)
+{
+    TrackBuffer(static_cast<VkBufferOwner *>(buf), name, loc);
 }
 
 void VulkanDevice::TrackTexture(Texture *tex, const ObjectNameBuilder &name, const std::source_location &loc)

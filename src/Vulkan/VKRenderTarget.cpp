@@ -115,7 +115,7 @@ IRenderTarget::~IRenderTarget()
 {
     if (ubo_vp_info)
     {
-        DeviceBuffer *buf = ubo_vp_info->ubo();
+        VkBufferOwner *buf = ubo_vp_info->ubo();
         delete ubo_vp_info;
         ubo_vp_info = nullptr;
 

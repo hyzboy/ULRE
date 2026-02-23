@@ -4,7 +4,7 @@
 
 namespace hgl::graph{
 
-void BufferManager::AddBuffer(const AnsiString &buf_name, DeviceBuffer *buf, const std::source_location &loc)
+void BufferManager::AddBuffer(const AnsiString &buf_name, VkBufferOwner *buf, const std::source_location &loc)
 {
     rm_buffers.Add(buf);
 

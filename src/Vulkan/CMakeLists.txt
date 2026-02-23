@@ -114,6 +114,7 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/StructuredBufferAccessor.h
                                 VKMemory.cpp
                                 VKMemoryAllocator.cpp
+                                VKBufferOwner.cpp
                                 VKBuffer.cpp
                                 VKArrayBuffer.cpp
                                 VKRingBufferWrapper.cpp

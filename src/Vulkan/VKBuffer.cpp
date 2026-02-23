@@ -1,23 +1,10 @@
 ﻿#include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/VKStagedBuffer.h>  // needed so ~DeviceBuffer can fully delete StagedBuffer via IGPUBuffer*
-#include<hgl/vk/VKReBarBuffer.h>   // needed so ~DeviceBuffer can fully delete ReBarBuffer via IGPUBuffer*
 
 namespace hgl::graph{
-DeviceBuffer::~DeviceBuffer()
-{
-    if(staged_source)
-    {
-        // StagedBuffer owns device_buffer and device_memory — it cleans them up
-        delete staged_source;
-        staged_source = nullptr;
-        // buf.memory and buf.buffer are aliases into staged_source — already freed
-    }
-    else
-    {
-        if(buf.memory) delete buf.memory;
-        if(buf.buffer) vkDestroyBuffer(device,buf.buffer,nullptr);
-    }
-}
+
+// Out-of-line destructor: provides the symbol expected by stale OBJ files compiled
+// before VKBuffer.h switched to ~DeviceBuffer() = default.  Cleanup is in VkBufferOwner.
+DeviceBuffer::~DeviceBuffer() {}
 
 void *DeviceBuffer::Map()
 {

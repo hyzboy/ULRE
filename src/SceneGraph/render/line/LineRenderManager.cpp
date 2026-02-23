@@ -479,7 +479,7 @@ namespace hgl::graph
 
         if (ubo_color)
         {
-            DeviceBuffer *buf = ubo_color->GetBuffer();
+            VkBufferOwner *buf = ubo_color->GetBuffer();
             delete ubo_color;
             if (buffer_manager && buf)
                 buffer_manager->Release(buf);
