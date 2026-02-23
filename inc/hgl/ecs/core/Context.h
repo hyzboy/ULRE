@@ -38,7 +38,6 @@ namespace hgl
     {
     class RenderSystemCore;
         class PrimitiveBatchPipeline;
-        class TextRenderPipeline;
         class RenderPipelineBase;
         class MaterialBatch;
         class PrimitiveRenderItem;
@@ -121,7 +120,6 @@ namespace hgl
             uint32_t frame_index = 0;
 
             std::unique_ptr<PrimitiveBatchPipeline> primitive_batch_pipeline;
-            std::unique_ptr<TextRenderPipeline> text_render_pipeline;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
@@ -355,7 +353,6 @@ namespace hgl
             const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
 
             PrimitiveBatchPipeline* GetPrimitiveBatchPipeline();
-            TextRenderPipeline* GetTextRenderPipeline();
 
             /// Unified render pipeline registry
             /// Get a pipeline by name (e.g., "Primitive", "Text", "Line", "Quad")

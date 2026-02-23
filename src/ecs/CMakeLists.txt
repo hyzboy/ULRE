@@ -148,7 +148,7 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
 
 set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCullSystem.h
-    systems/render/RenderPrimitiveCullSystem.cpp
+    # systems/render/RenderPrimitiveCullSystem.cpp  REMOVED: replaced by PrimitiveCullSystem
 )
 
 set(ECS_SYS_18_RenderCollect_TextCollectSystem_FILES
@@ -164,17 +164,17 @@ set(ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES
 
 set(ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
-    systems/render/RenderPrimitiveSortSystem.cpp
+    # systems/render/RenderPrimitiveSortSystem.cpp  REMOVED: replaced by PrimitiveSortSystem
 )
 
 set(ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchBuildSystem.h
-    systems/render/RenderPrimitiveBatchBuildSystem.cpp
+    # systems/render/RenderPrimitiveBatchBuildSystem.cpp  REMOVED: replaced by PrimitiveBuildSystem
 )
 
 set(ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchFinalizeSystem.h
-    systems/render/RenderPrimitiveBatchFinalizeSystem.cpp
+    # systems/render/RenderPrimitiveBatchFinalizeSystem.cpp  REMOVED: replaced by PrimitiveBuildSystem
 )
 
 set(ECS_SYS_22_RenderBatch_TextBuildSystem_FILES
@@ -279,6 +279,11 @@ set(ECS_SUPPORT_LINE_FILES
     support/line/LineRenderPipelineGroup.cpp
 )
 
+set(ECS_SUPPORT_BILLBOARD_FILES
+    ${ECS_INCLUDE_PATH}/support/billboard/BillboardRenderPipelineGroup.h
+    support/billboard/BillboardRenderPipelineGroup.cpp
+)
+
 set(ECS_SERIALIZATION_FILES
     serialization/ContextSerialization.cpp
     serialization/RenderableComponentSerialization.cpp
@@ -320,6 +325,7 @@ set(ECS_SOURCE
     ${ECS_SUPPORT_PRIMITIVE_FILES}
     ${ECS_SUPPORT_TEXT_FILES}
     ${ECS_SUPPORT_LINE_FILES}
+    ${ECS_SUPPORT_BILLBOARD_FILES}
     ${ECS_SERIALIZATION_FILES}
 )
 
@@ -356,6 +362,7 @@ source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
 source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
 source_group("ECS\\Support\\Text" FILES ${ECS_SUPPORT_TEXT_FILES})
 source_group("ECS\\Support\\Line" FILES ${ECS_SUPPORT_LINE_FILES})
+source_group("ECS\\Support\\Billboard" FILES ${ECS_SUPPORT_BILLBOARD_FILES})
 source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}

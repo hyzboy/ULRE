@@ -11,12 +11,13 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/PrimitiveBatchPipeline.h>
-#include<hgl/ecs/support/TextRenderPipeline.h>
+// TextRenderPipeline.h removed — now owned by TextRenderPipelineAdapter
+// LineRenderSystem.h removed — LineRenderSystem is now in support/line/
 #include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
-#include<hgl/ecs/systems/render/LineRenderSystem.h>
+// old systems/render/LineRenderSystem.h removed — replaced by support/line/LineRenderSystem
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -157,18 +158,7 @@ namespace hgl
 
             return primitive_batch_pipeline.get();
         }
-
-        TextRenderPipeline* ECSContext::GetTextRenderPipeline()
-        {
-            if (!text_render_pipeline)
-            {
-                text_render_pipeline = std::make_unique<TextRenderPipeline>();
-                text_render_pipeline->SetWorld(this);
-                text_render_pipeline->SetRenderContext(GetRenderContext());
-            }
-
-            return text_render_pipeline.get();
-        }
+        // GetTextRenderPipeline() removed — TextRenderPipelineAdapter owns TextRenderPipeline directly
 
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
@@ -212,7 +202,7 @@ namespace hgl
             // Release support pipelines early while graphics managers are still valid.
             // AppFramework destroys GraphicsContext before deleting ECSContext, so
             // deferring this to ECSContext destructor can access dangling pointers.
-            text_render_pipeline.reset();
+            // text_render_pipeline removed — now owned by TextRenderPipelineAdapter
             primitive_batch_pipeline.reset();
             
             // Release all registered render pipelines

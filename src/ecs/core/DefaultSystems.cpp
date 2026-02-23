@@ -16,6 +16,7 @@
 #include <hgl/ecs/support/line/LineRenderPipelineGroup.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
+#include <hgl/ecs/support/billboard/BillboardRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -32,8 +33,9 @@
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 // Old line render system is now part of LineRenderPipelineGroup:
 // #include <hgl/ecs/systems/render/LineRenderSystem.h>    // replaced by support/line/LineRenderSystem
-#include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
-#include <hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
+// Old quad systems now wrapped by BillboardRenderPipelineGroup:
+// #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>  // moved to support/billboard/
+// #include <hgl/ecs/systems/render/QuadMaterialBindingSystem.h>  // moved to support/billboard/
 #include <hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
@@ -116,14 +118,9 @@ namespace
         if (!ctx)
             return false;
 
-        auto quad_resource_prepare_system = EnsureRenderSystem<hgl::ecs::QuadResourcePrepareSystem>(ctx);
-        auto quad_material_binding_system = EnsureRenderSystem<hgl::ecs::QuadMaterialBindingSystem>(ctx);
-
-        if (quad_resource_prepare_system)
-            quad_resource_prepare_system->SetWorld(ctx);
-
-        if (quad_material_binding_system)
-            quad_material_binding_system->SetWorld(ctx);
+        // New unified pipeline group replaces inline system registration
+        hgl::ecs::BillboardRenderPipelineGroup group;
+        group.Initialize(ctx);
 
         return true;
     }

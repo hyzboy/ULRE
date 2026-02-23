@@ -9,8 +9,10 @@ namespace hgl::ecs
 
     TextRenderPipelineAdapter::TextRenderPipelineAdapter(ECSContext* context)
         : context_(context)
-        , impl_(context->GetTextRenderPipeline())
+        , impl_(std::make_unique<TextRenderPipeline>())
     {
+        impl_->SetWorld(context_);
+        impl_->SetRenderContext(context_->GetRenderContext());
     }
 
     const std::string& TextRenderPipelineAdapter::GetName() const

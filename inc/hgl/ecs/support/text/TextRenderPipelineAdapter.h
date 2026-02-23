@@ -1,6 +1,8 @@
 #pragma once
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
+#include <hgl/ecs/support/TextRenderPipeline.h>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -9,19 +11,18 @@ namespace hgl::graph { class Primitive; }
 namespace hgl::ecs
 {
     class ECSContext;
-    class TextRenderPipeline;
 
     /**
      * TextRenderPipelineAdapter - RenderPipelineBase adapter for TextRenderPipeline
      *
-     * Wraps the existing TextRenderPipeline (non-owning — ECSContext owns it)
-     * to conform to the unified RenderPipelineBase interface.
+     * Owns a TextRenderPipeline instance (created in the constructor).
+     * Conforms to the unified RenderPipelineBase interface.
      */
     class TextRenderPipelineAdapter : public RenderPipelineBase
     {
     private:
-        ECSContext*       context_ = nullptr;
-        TextRenderPipeline* impl_  = nullptr;
+        ECSContext* context_ = nullptr;
+        std::unique_ptr<TextRenderPipeline> impl_;
 
         static const std::string kName;
 
