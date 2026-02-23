@@ -13,7 +13,6 @@
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/vk/VKArrayBuffer.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
@@ -31,7 +30,6 @@ namespace hgl::graph{
 class TileData;
 class TileFont;
 class FontDataSource;
-class VulkanArrayBuffer;
 class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
@@ -367,9 +365,6 @@ public: //Buffer相关
     {
         return CreateINBO(name, size, nullptr, BufferAllocPolicy::Auto, sm, BufferUpdateClass::Default, loc);
     }
-
-    VulkanArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
-    VulkanArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
 
 public: //间接绘制
 

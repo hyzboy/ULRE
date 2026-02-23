@@ -6,7 +6,6 @@
 #include<hgl/vk/VKDescriptorSet.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
-#include<hgl/vk/VKArrayBuffer.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
 class MaterialParameters

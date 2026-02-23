@@ -96,13 +96,11 @@ SOURCE_GROUP("Device\\Platform" FILES ${VK_DEVICE_PLATFORM_FILES})
 
 # --- 2. Memory Management ---
 SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
-                                ${VK_INCLUDE_PATH}/VKMemoryAllocator.h
                                 ${VK_INCLUDE_PATH}/VKBuffer.h
                                 ${VK_INCLUDE_PATH}/VKBufferAccessBase.h
                                 ${VK_INCLUDE_PATH}/VKBufferAccessor.h
                                 ${VK_INCLUDE_PATH}/VKBufferData.h
                                 ${VK_INCLUDE_PATH}/VKIndexBuffer.h
-                                ${VK_INCLUDE_PATH}/VKArrayBuffer.h
                                 ${VK_INCLUDE_PATH}/VKBufferMap.h
                                 ${VK_INCLUDE_PATH}/VKBufferWriteAgent.h
                                 ${VK_INCLUDE_PATH}/VKStagedBuffer.h
@@ -112,11 +110,10 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/DeviceBufferRingWriter.h
                                 ${VK_INCLUDE_PATH}/VKRingBufferWrapper.h
                                 ${VK_INCLUDE_PATH}/StructuredBufferAccessor.h
+                                ${VK_INCLUDE_PATH}/AlignedStructureBuffer.h
                                 VKMemory.cpp
-                                VKMemoryAllocator.cpp
                                 VKBufferOwner.cpp
                                 VKBuffer.cpp
-                                VKArrayBuffer.cpp
                                 VKRingBufferWrapper.cpp
                                 VKStagedBuffer.cpp
                                 VKReBarBuffer.cpp)

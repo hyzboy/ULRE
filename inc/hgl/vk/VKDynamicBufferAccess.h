@@ -1,7 +1,6 @@
 ﻿#ifndef HGL_GRAPH_DYNAMIC_BUFFER_ACCESS_INCLUDE
 #define HGL_GRAPH_DYNAMIC_BUFFER_ACCESS_INCLUDE
 
-#include<hgl/vk/VKArrayBuffer.h>
 namespace hgl::graph{
 template<typename T> class DynamicBufferAccess
 {
@@ -36,8 +35,6 @@ private:
         count=c;
         index=0;
     }
-
-    friend class VulkanArrayBuffer;
 
 public:
 
