@@ -65,17 +65,17 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
         {
             if(tci->target_mipmaps<=1)      //???????mipmaps????????mipmaps
             {
-                CommitTextureCube(tex,tci->buffer,tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+                CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
             }
             else //??????mipmaps????
             {
-                CommitTextureCubeMipmaps(tex,tci->buffer,tci->extent,tci->mipmap_zero_total_bytes);
+                CommitTextureCubeMipmaps(tex,tci->buffer->GetBuffer(),tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
             if(tci->origin_mipmaps<=1)          //???????mipmaps????,?????mipmaps
             {
-                CommitTextureCube(tex,tci->buffer,tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_TRANSFER_BIT);
+                CommitTextureCube(tex,tci->buffer->GetBuffer(),tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_TRANSFER_BIT);
                 GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,6);
             }
         texture_cmd_buf->End();
@@ -89,16 +89,16 @@ TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
     return tex;
 }
 
-bool TextureManager::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTextureCube(TextureCube *tex,VkBuffer buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
 {
-    if(!tex||!buf||!mipmaps_zero_bytes)return(false);
+    if(!tex||buf==VK_NULL_HANDLE||!mipmaps_zero_bytes)return(false);
 
     BufferImageCopy buffer_image_copy(tex);
 
     return CopyBufferToImageCube(tex,buf,&buffer_image_copy,destinationStage);
 }
 
-bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,VkBuffer buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
       ||extent.width*extent.height<=0)

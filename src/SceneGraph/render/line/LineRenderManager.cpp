@@ -424,7 +424,7 @@ namespace hgl::graph
             Material *mat = mi_line->GetMaterial();
             if(mat)
             {
-                mat->BindUBO(&mtl::SBS_ColorPattle, ubo_color->GetBuffer());
+                mat->BindUBO(&mtl::SBS_ColorPattle, ubo_color->GetGPUBuffer());
                 mat->Update();
             }
         }
@@ -479,7 +479,7 @@ namespace hgl::graph
 
         if (ubo_color)
         {
-            DeviceBuffer *buf = ubo_color->ubo();
+            DeviceBuffer *buf = ubo_color->GetBuffer();
             delete ubo_color;
             if (buffer_manager && buf)
                 buffer_manager->Release(buf);

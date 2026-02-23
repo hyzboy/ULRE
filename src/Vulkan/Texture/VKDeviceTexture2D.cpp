@@ -80,17 +80,17 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
         {
             if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
             {
-                CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+                CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
             }
             else //本身有mipmaps数据
             {
-                CommitTexture2DMipmaps(tex,tci->buffer,tci->extent,tci->mipmap_zero_total_bytes);
+                CommitTexture2DMipmaps(tex,tci->buffer->GetBuffer(),tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
         if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
         {
-            CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
+            CommitTexture2D(tex,tci->buffer->GetBuffer(),VK_PIPELINE_STAGE_TRANSFER_BIT);
             GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tci->target_mipmaps,1);
         }
 
@@ -105,16 +105,16 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
     return tex;
 }
 
-bool TextureManager::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTexture2D(Texture2D *tex,VkBuffer buf,VkPipelineStageFlags destinationStage)
 {
-    if(!tex||!buf)return(false);
+    if(!tex||buf==VK_NULL_HANDLE)return(false);
 
     BufferImageCopy buffer_image_copy(tex);
 
     return CopyBufferToImage2D(tex,buf,&buffer_image_copy,destinationStage);
 }
 
-bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,VkBuffer buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
       ||extent.width*extent.height<=0)
@@ -160,10 +160,12 @@ bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,con
     return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf_dev,const ValueArray<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 {
-    if(!tex||!buf||ir_list.GetCount()<=0)
+    if(!tex||!buf_dev||ir_list.GetCount()<=0)
         return(false);
+
+    const VkBuffer buf=buf_dev->GetBuffer();
 
     const int ir_count=ir_list.GetCount();
     int count=0;
@@ -209,10 +211,11 @@ bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const Rect
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
+    const VkBuffer vk_buf=buf->GetBuffer();
     BufferImageCopy buffer_image_copy(tex,scope);
 
     texture_cmd_buf->Begin();
-    bool result=CopyBufferToImage2D(tex,buf,&buffer_image_copy,1,destinationStage);
+    bool result=CopyBufferToImage2D(tex,vk_buf,&buffer_image_copy,1,destinationStage);
     texture_cmd_buf->End();
     SubmitTexture(*texture_cmd_buf);
     return result;

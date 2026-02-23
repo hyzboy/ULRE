@@ -74,15 +74,15 @@ bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipel
     return(true);
 }
 
-bool TextureManager::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::CopyBufferToImage(Texture *tex,VkBuffer buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
-    if(!tex||!buf)
+    if(!tex||buf==VK_NULL_HANDLE)
         return(false);
 
     CopyBufferToImageInfo info;
 
     info.image      =tex->GetImage();
-    info.buffer     =buf->GetBuffer();
+    info.buffer     =buf;
 
     info.isr.aspectMask     =tex->GetAspect();
     info.isr.baseMipLevel   =0;

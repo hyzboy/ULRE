@@ -209,9 +209,9 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint
 //    return result;
 //}
 
-bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf_dev,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
-    if(!tex||!buf
+    if(!tex||!buf_dev
         ||base_layer<0
         ||layer_count<=0
         ||scope.GetWidth()<=0
@@ -219,6 +219,8 @@ bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,
         ||scope.GetRight()>tex->GetWidth()
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
+
+    const VkBuffer buf=buf_dev->GetBuffer();
 
     BufferImageCopy buffer_image_copy(tex,scope,base_layer,layer_count);
 
