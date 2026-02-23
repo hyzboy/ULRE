@@ -509,7 +509,7 @@ namespace hgl::ecs
                                                                     batch.transform_vab_node_count,
                                                                     nullptr,
                                                                     graph::BufferAllocPolicy::Auto);
-            batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetBuffer() : VK_NULL_HANDLE;
+            batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetVkBuffer() : VK_NULL_HANDLE;
         }
     }
 

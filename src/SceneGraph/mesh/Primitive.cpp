@@ -130,7 +130,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
             return(nullptr);
         }
 
-        geom_data_buffer->vab_list[i]=vab->GetBuffer();
+        geom_data_buffer->vab_list[i]=vab->GetVkBuffer();
         geom_data_buffer->vab_offset[i]=0;
         ++vif;
     }

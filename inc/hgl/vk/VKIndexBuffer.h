@@ -42,6 +42,12 @@ public:
 
     bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return GetGPUBuffer()->Write(ptr,start*stride,size*stride);}
     bool    Write   (const void *ptr,uint32_t size)                 override {return GetGPUBuffer()->Write(ptr,0,size*stride);}
+
+    /**
+     * Returns the underlying VkBuffer handle for vkCmdBindIndexBuffer.
+     * Prefer this over GetBuffer() — does not require DeviceBuffer inheritance.
+     */
+    VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
 };//class IndexBuffer:public DeviceBuffer
 
 }//namespace hgl::graph

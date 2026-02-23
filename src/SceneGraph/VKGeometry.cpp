@@ -69,14 +69,14 @@ VkBuffer Geometry::GetVkBuffer(const int index)const
 {
     VAB *vab=GetVAB(index);
     if(!vab)return(VK_NULL_HANDLE);
-    return vab->GetBuffer();
+    return vab->GetVkBuffer();
 }
 
 VkBuffer Geometry::GetVkBuffer(const AnsiString &name)const
 {
     VAB *vab=GetVAB(name);
     if(!vab)return(VK_NULL_HANDLE);
-    return vab->GetBuffer();
+    return vab->GetVkBuffer();
 }
 
 const int32_t Geometry::GetVertexOffset()const

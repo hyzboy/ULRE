@@ -177,7 +177,7 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
     //std::cerr << "[RenderCmdBuffer::BindIBO] Byte offset: " << byte_offset << std::endl;
 
     vkCmdBindIndexBuffer(cmd_buf,
-                         ibo->GetBuffer(),
+                         ibo->GetVkBuffer(),
                          byte_offset,
                          VkIndexType(ibo->GetType()));
 

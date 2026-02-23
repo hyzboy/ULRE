@@ -40,6 +40,12 @@ public:
 
     bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return GetGPUBuffer()->Write(ptr,start*stride,size*stride);}
     bool    Write   (const void *ptr,uint32_t size)                 override {return GetGPUBuffer()->Write(ptr,0,size*stride);}
+
+    /**
+     * Returns the underlying VkBuffer handle for draw/bind calls.
+     * Prefer this over GetBuffer() for VkCmdBindVertexBuffers — does not require DeviceBuffer inheritance.
+     */
+    VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
 };//class VertexAttribBuffer:public DeviceBuffer
 
 using VAB=VertexAttribBuffer;

@@ -258,14 +258,14 @@ namespace hgl::ecs
                 if (buffer_manager)
                 {
                     material_instance_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, node_count);
-                    material_instance_vab_buffer = material_instance_vab ? material_instance_vab->GetBuffer() : nullptr;
+                    material_instance_vab_buffer = material_instance_vab ? material_instance_vab->GetVkBuffer() : nullptr;
 
                 #ifdef _DEBUG
                     auto device = buffer_manager->GetDevice();
                     graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
                     if (du && material_instance_vab)
                     {
-                        du->SetBuffer(material_instance_vab->GetBuffer(), "ECS:VAB:Buffer:MaterialInstanceID");
+                        du->SetBuffer(material_instance_vab->GetVkBuffer(), "ECS:VAB:Buffer:MaterialInstanceID");
                         du->SetDeviceMemory(material_instance_vab->GetVkMemory(), "ECS:VAB:Memory:MaterialInstanceID");
                     }
                 #endif//_DEBUG

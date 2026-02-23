@@ -43,6 +43,12 @@ public:
 
     bool    WriteCmd(const T *ptr,uint32_t start,uint32_t size)             {return GetGPUBuffer()->Write(ptr,start*sizeof(T),size*sizeof(T));}
     bool    WriteCmd(const T *ptr,uint32_t size)                            {return GetGPUBuffer()->Write(ptr,0,size*sizeof(T));}
+
+    /**
+     * Returns the underlying VkBuffer handle for vkCmdDrawIndirect / vkCmdDispatchIndirect.
+     * Prefer this over GetBuffer() — does not require DeviceBuffer inheritance.
+     */
+    VkBuffer GetVkBuffer() const { return GetGPUBuffer()->GetVkDeviceBuffer(); }
 };//class IndirectCommandBuffer:public DeviceBuffer
 
 class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
@@ -56,7 +62,7 @@ public:
     void Draw(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
     {
         vkCmdDrawIndirect(cmd_buf,
-                          buf.buffer,
+                          GetVkBuffer(),
                           cmd_offset*sizeof(VkDrawIndirectCommand),
                           draw_count,
                           sizeof(VkDrawIndirectCommand));
@@ -74,7 +80,7 @@ public:
     void DrawIndexed(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
     {
         vkCmdDrawIndexedIndirect(cmd_buf,
-                                 buf.buffer,
+                                 GetVkBuffer(),
                                  cmd_offset*sizeof(VkDrawIndexedIndirectCommand),
                                  draw_count,
                                  sizeof(VkDrawIndexedIndirectCommand));
@@ -91,7 +97,7 @@ public:
 
     void Dispatch(VkCommandBuffer cmd_buf,uint32_t offset) const
     {
-        vkCmdDispatchIndirect(cmd_buf,buf.buffer,offset);
+        vkCmdDispatchIndirect(cmd_buf,GetVkBuffer(),offset);
     }
 };//class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectCommand>
 }//namespace hgl::graph

@@ -489,14 +489,14 @@ namespace hgl::ecs
                 if (buffer_manager)
                 {
                     transform_vab = buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
-                    transform_vab_buffer = transform_vab ? transform_vab->GetBuffer() : nullptr;
+                    transform_vab_buffer = transform_vab ? transform_vab->GetVkBuffer() : nullptr;
 
                 #ifdef _DEBUG
                     auto device = buffer_manager->GetDevice();
                     graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
                     if (du && transform_vab)
                     {
-                        du->SetBuffer(transform_vab->GetBuffer(), "ECS:VAB:Buffer:TransformID");
+                        du->SetBuffer(transform_vab->GetVkBuffer(), "ECS:VAB:Buffer:TransformID");
                         du->SetDeviceMemory(transform_vab->GetVkMemory(), "ECS:VAB:Memory:TransformID");
                     }
                 #endif//_DEBUG
