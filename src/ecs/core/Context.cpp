@@ -10,7 +10,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
-#include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 // TextRenderPipeline.h removed — now owned by TextRenderPipelineAdapter
 // LineRenderSystem.h removed — LineRenderSystem is now in support/line/
 #include<hgl/ecs/support/RenderPipelineBase.h>
@@ -151,15 +150,6 @@ namespace hgl
             OnCreate();
         }
 
-        PrimitiveBatchPipeline* ECSContext::GetPrimitiveBatchPipeline()
-        {
-            if (!primitive_batch_pipeline)
-                primitive_batch_pipeline = std::make_unique<PrimitiveBatchPipeline>();
-
-            return primitive_batch_pipeline.get();
-        }
-        // GetTextRenderPipeline() removed — TextRenderPipelineAdapter owns TextRenderPipeline directly
-
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
             auto it = render_pipelines.find(name);
@@ -202,8 +192,7 @@ namespace hgl
             // Release support pipelines early while graphics managers are still valid.
             // AppFramework destroys GraphicsContext before deleting ECSContext, so
             // deferring this to ECSContext destructor can access dangling pointers.
-            // text_render_pipeline removed — now owned by TextRenderPipelineAdapter
-            primitive_batch_pipeline.reset();
+            // Text/Primitive specific support-pipeline members removed; all pipelines live in render_pipelines.
             
             // Release all registered render pipelines
             render_pipelines.clear();

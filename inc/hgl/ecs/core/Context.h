@@ -37,7 +37,6 @@ namespace hgl
     namespace ecs
     {
     class RenderSystemCore;
-        class PrimitiveBatchPipeline;
         class RenderPipelineBase;
         class MaterialBatch;
         class PrimitiveRenderItem;
@@ -118,8 +117,6 @@ namespace hgl
             SystemProfiler profiler;
             bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
-
-            std::unique_ptr<PrimitiveBatchPipeline> primitive_batch_pipeline;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
@@ -351,8 +348,6 @@ namespace hgl
             void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }
             hgl::graph::RenderContext* GetRenderContext() { return render_context; }
             const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
-
-            PrimitiveBatchPipeline* GetPrimitiveBatchPipeline();
 
             /// Unified render pipeline registry
             /// Get a pipeline by name (e.g., "Primitive", "Text", "Line", "Quad")
