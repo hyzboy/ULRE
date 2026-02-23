@@ -66,9 +66,9 @@ namespace hgl::ecs
     #if defined(HGL_L2W_USE_SSBO)
         mtl->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.set_type,
                   hgl::graph::mtl::SBS_LocalToWorld.name,
-                  transform_buffer);
+                  transform_buffer->GetGPUBuffer());
     #else
-        mtl->BindUBO(&hgl::graph::mtl::SBS_LocalToWorld, transform_buffer);
+        mtl->BindUBO(&hgl::graph::mtl::SBS_LocalToWorld, transform_buffer->GetGPUBuffer());
     #endif
     }
 

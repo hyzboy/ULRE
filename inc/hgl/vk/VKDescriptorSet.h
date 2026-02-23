@@ -75,8 +75,10 @@ public:
 
     void Clear();
 
+    [[deprecated("Use BindUBO(binding, IGPUBuffer*, dynamic) instead.")]]
     bool BindUBO    (const int binding,const DeviceBuffer *buf,bool dynamic=false);
     bool BindUBO    (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    [[deprecated("Use BindSSBO(binding, IGPUBuffer*, dynamic) instead.")]]
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,bool dynamic=false);
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 

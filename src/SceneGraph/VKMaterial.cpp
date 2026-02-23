@@ -5,6 +5,7 @@
 #include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/vk/VKBuffer.h>
 
 namespace hgl::graph{
 
@@ -74,22 +75,17 @@ const uint Material::GetVILCount()
 
 bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
-    MaterialParameters *mp=GetMP(type);
-
-    if(!mp)
-        return(false);
-
-    return mp->BindUBO(name,ubo,dynamic);
+    return ubo ? BindUBO(type,name,ubo->GetGPUBuffer(),dynamic) : false;
 }
 
 bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
-    MaterialParameters *mp=GetMP(type);
+    return ubo ? BindSSBO(type,name,ubo->GetGPUBuffer(),dynamic) : false;
+}
 
-    if(!mp)
-        return(false);
-
-    return mp->BindSSBO(name,ubo,dynamic);
+bool Material::BindUBO(const ShaderBufferDesc *sbd,DeviceBuffer *ubo,bool dynamic)
+{
+    return ubo ? BindUBO(sbd->set_type,sbd->name,ubo->GetGPUBuffer(),dynamic) : false;
 }
 
 bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)

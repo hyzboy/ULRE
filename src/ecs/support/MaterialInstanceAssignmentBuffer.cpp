@@ -45,9 +45,9 @@ namespace hgl::ecs
     #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
         mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstance.set_type,
                   hgl::graph::mtl::SBS_MaterialInstance.name,
-                  material_instance_buffer);
+                  material_instance_buffer->GetGPUBuffer());
     #else
-        mtl->BindUBO(&hgl::graph::mtl::SBS_MaterialInstance, material_instance_buffer);
+        mtl->BindUBO(&hgl::graph::mtl::SBS_MaterialInstance, material_instance_buffer->GetGPUBuffer());
     #endif
     }
 

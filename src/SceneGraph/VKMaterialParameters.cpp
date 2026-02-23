@@ -2,6 +2,7 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKDescriptorSet.h>
+#include<hgl/vk/VKBuffer.h>
 
 namespace hgl::graph{
 MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
@@ -18,56 +19,22 @@ MaterialParameters::~MaterialParameters()
 
 bool MaterialParameters::BindUBO(const int &index,DeviceBuffer *ubo,bool dynamic)
 {
-    if(index<0||!ubo)
-        return(false);
-
-    if(!descriptor_set->BindUBO(index,ubo,dynamic))
-        return(false);
-
-    return(true);
+    return ubo ? BindUBO(index,ubo->GetGPUBuffer(),dynamic) : false;
 }
 
 bool MaterialParameters::BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
-    if(name.IsEmpty()||!ubo)
-        return(false);
-
-    const int index=desc_manager->GetUBO(set_type,name,dynamic);
-
-    if(index<0)
-        return(false);
-
-    if(!descriptor_set->BindUBO(index,ubo,dynamic))
-        return(false);
-
-    return(true);
+    return ubo ? BindUBO(name,ubo->GetGPUBuffer(),dynamic) : false;
 }
 
 bool MaterialParameters::BindSSBO(const int &index,DeviceBuffer *ssbo,bool dynamic)
 {
-    if(index<0||!ssbo)
-        return(false);
-
-    if(!descriptor_set->BindSSBO(index,ssbo,dynamic))
-        return(false);
-
-    return(true);
+    return ssbo ? BindSSBO(index,ssbo->GetGPUBuffer(),dynamic) : false;
 }
 
 bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool dynamic)
 {
-    if(name.IsEmpty()||!ssbo)
-        return(false);
-
-    const int index=desc_manager->GetSSBO(set_type,name,dynamic);
-
-    if(index<0)
-        return(false);
-
-    if(!descriptor_set->BindSSBO(index,ssbo,dynamic))
-        return(false);
-
-    return(true);
+    return ssbo ? BindSSBO(name,ssbo->GetGPUBuffer(),dynamic) : false;
 }
 
 bool MaterialParameters::BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic)

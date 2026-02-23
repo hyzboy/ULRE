@@ -85,18 +85,7 @@ void DescriptorSet::Clear()
 
 bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,bool dynamic)
 {
-    if(binding<0||!buf)
-        return(false);
-
-    if(binded_sets.Contains(binding))return(false);
-
-    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),desc_type));
-
-    binded_sets.Add(binding);
-    is_dirty=true;
-    return(true);
+    return buf ? BindUBO(binding,buf->GetGPUBuffer(),dynamic) : false;
 }
 
 bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
@@ -121,18 +110,7 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDe
 
 bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,bool dynamic)
 {
-    if(binding<0||!buf)
-        return(false);
-
-    if(binded_sets.Contains(binding))return(false);
-
-    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),desc_type));
-
-    binded_sets.Add(binding);
-    is_dirty=true;
-    return(true);
+    return buf ? BindSSBO(binding,buf->GetGPUBuffer(),dynamic) : false;
 }
 
 bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)

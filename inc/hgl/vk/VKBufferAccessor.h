@@ -139,6 +139,12 @@ private:
      // 与 GPU 上传无关，GPU dirty 由底层 Write()/Unmap() 路径自动维护
      bool dirty = false;
 
+     /**
+      * Typed VAB pointer: stored by VAB constructors/Bind to avoid static_cast<VAB*> UB.
+      * Remains nullptr when accessor is backed by IndexBuffer or not yet Bound.
+      */
+     VAB* typed_vab = nullptr;
+
     /**
      * CN: 内部 Map 操作
      * EN: Internal map operation
@@ -211,6 +217,7 @@ public:
         , element_offset(0)
         , element_count(0)
     {
+        typed_vab = vab;
         SetBuffer(vab);
         if(gpu_buf)
             MapInternal();
@@ -225,6 +232,7 @@ public:
         , element_offset(offset)
         , element_count(count)
     {
+        typed_vab = vab;
         SetBuffer(vab);
         if(gpu_buf)
             MapInternal();
@@ -266,6 +274,7 @@ public:
     void Bind(VAB *vab, int32_t offset = 0, uint32_t count = 0, bool take_ownership = false)
     {
         UnmapInternal();
+        typed_vab = vab;
         SetBuffer(vab);
         buffer_total_count = vab ? vab->GetCount() : 0;
         buffer_stride = vab ? vab->GetStride() : 0;
@@ -285,10 +294,10 @@ public:
 
     /**
      * CN: 获取底层 buffer
-     * EN: Get underlying buffer
+     * EN: Get underlying VAB buffer (nullptr if backed by IndexBuffer)
      */
-    VAB* GetBuffer() { return static_cast<VAB*>(buffer); }
-    const VAB* GetBuffer() const { return static_cast<const VAB*>(buffer); }
+    VAB* GetBuffer() { return typed_vab; }
+    const VAB* GetBuffer() const { return typed_vab; }
 
     /**
      * CN: 获取数据访问器

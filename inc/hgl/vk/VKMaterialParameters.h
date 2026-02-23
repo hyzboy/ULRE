@@ -47,13 +47,17 @@ public:
     MaterialParameters(const MaterialDescriptorManager *,const DescriptorSetType &type,DescriptorSet *);
     virtual ~MaterialParameters();
 
+    [[deprecated("Use BindUBO(index, GetGPUBuffer(), dynamic) instead.")]]
     bool BindUBO(const int &index,DeviceBuffer *ubo,bool dynamic=false);
+    [[deprecated("Use BindSSBO(index, GetGPUBuffer(), dynamic) instead.")]]
     bool BindSSBO(const int &index,DeviceBuffer *ubo,bool dynamic=false);
     bool BindTexture(const int &index,Texture *tex);
     bool BindTextureSampler(const int &index,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const int &index,ImageView *);
 
+    [[deprecated("Use BindUBO(name, GetGPUBuffer(), dynamic) instead.")]]
     bool BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
+    [[deprecated("Use BindSSBO(name, GetGPUBuffer(), dynamic) instead.")]]
     bool BindSSBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindTexture(const AnsiString &name,Texture *tex);
     bool BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler);

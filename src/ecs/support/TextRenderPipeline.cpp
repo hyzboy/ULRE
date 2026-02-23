@@ -313,7 +313,7 @@ namespace hgl::ecs
 
             if (!guard.material->BindSSBO(graph::mtl::SBS_MaterialInstance.set_type,
                                           graph::mtl::SBS_MaterialInstance.name,
-                                          guard.material_instance_buffer))
+                                          guard.material_instance_buffer->GetGPUBuffer()))
                 return nullptr;
 #else
             guard.material_instance_buffer = buffer_manager->CreateUBO("Text2D_MI", mi_bytes, graph::SharingMode::Exclusive);
@@ -321,7 +321,7 @@ namespace hgl::ecs
                 return nullptr;
 
             if (!guard.material->BindUBO(&graph::mtl::SBS_MaterialInstance,
-                                         guard.material_instance_buffer))
+                                         guard.material_instance_buffer->GetGPUBuffer()))
                 return nullptr;
 #endif
 
