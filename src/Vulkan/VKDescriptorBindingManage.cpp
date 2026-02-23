@@ -7,14 +7,14 @@ void DescriptorBinding::BindUBO(MaterialParameters *mp,const BindingMap &binding
 {
     if (binding_map.GetCount() <= 0)return;
 
-    DeviceBuffer* buf = nullptr;
+    const IGPUBuffer* gpu = nullptr;
 
     for(const auto& [name, binding] : binding_map)
     {
-        buf=GetUBO(name);
+        gpu=GetUBO(name);
 
-        if(buf)
-            mp->BindUBO(binding,buf,dynamic);
+        if(gpu)
+            mp->BindUBO(binding,gpu,dynamic);
     }
 }
 

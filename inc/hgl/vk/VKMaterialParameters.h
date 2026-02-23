@@ -59,6 +59,11 @@ public:
     bool BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const AnsiString &name,ImageView *);
 
+    bool BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindUBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
+
     void Update();
 };//class MaterialParameters
 }//namespace hgl::graph

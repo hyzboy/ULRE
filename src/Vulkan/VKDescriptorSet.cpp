@@ -155,6 +155,40 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
     return(true);
 }
 
+bool DescriptorSet::BindUBO(const int binding,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(binding<0||!gpu)
+        return(false);
+
+    if(binded_sets.Contains(binding))return(false);
+
+    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    const int buf_index=vab_list.Add(gpu->GetDescriptorBufferInfo());
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,vab_list.GetData()+buf_index,desc_type));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
+    return(true);
+}
+
+bool DescriptorSet::BindSSBO(const int binding,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(binding<0||!gpu)
+        return(false);
+
+    if(binded_sets.Contains(binding))return(false);
+
+    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+    const int buf_index=vab_list.Add(gpu->GetDescriptorBufferInfo());
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,vab_list.GetData()+buf_index,desc_type));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
+    return(true);
+}
+
 bool DescriptorSet::BindTexture(const int binding,Texture *tex)
 {
     if(binding<0||!tex)

@@ -20,8 +20,8 @@ class DescriptorBinding
 {
     DescriptorSetType set_type;                     ///<描述符合集类型
 
-    UnorderedMap<AnsiString,DeviceBuffer *> ubo_map;
-    UnorderedMap<AnsiString,DeviceBuffer *> ssbo_map;
+    UnorderedMap<AnsiString,const IGPUBuffer *> ubo_map;
+    UnorderedMap<AnsiString,const IGPUBuffer *> ssbo_map;
     UnorderedMap<AnsiString,Texture *> texture_map;
 
 public:
@@ -35,12 +35,12 @@ public:
         set_type=dst;
     }
 
-    bool AddUBO(const AnsiString &name,DeviceBuffer *buf)
+    bool AddUBO(const AnsiString &name,const IGPUBuffer *gpu)
     {
-        if(!buf)return(false);
+        if(!gpu)return(false);
         if(name.IsEmpty())return(false);
 
-        return ubo_map.Add(name,buf);
+        return ubo_map.Add(name,gpu);
     }
 
     bool AddUBO(const BufferAccessBase *ubo_instance)
@@ -59,11 +59,11 @@ public:
         return ubo_map.Add(ubo_instance->name(),ubo_instance->ubo());
     }
 
-    DeviceBuffer *GetUBO(const AnsiString &name)
+    const IGPUBuffer *GetUBO(const AnsiString &name)
     {
         if(name.IsEmpty())return(nullptr);
 
-        DeviceBuffer** ptr = ubo_map.GetValuePointer(name);
+        const IGPUBuffer** ptr = ubo_map.GetValuePointer(name);
         return ptr ? *ptr : nullptr;
     }
 
@@ -74,12 +74,12 @@ public:
         ubo_map.DeleteByKey(name);
     }
 
-    bool AddSSBO(const AnsiString &name,DeviceBuffer *buf)
+    bool AddSSBO(const AnsiString &name,const IGPUBuffer *gpu)
     {
-        if(!buf)return(false);
+        if(!gpu)return(false);
         if(name.IsEmpty())return(false);
 
-        return ssbo_map.Add(name,buf);
+        return ssbo_map.Add(name,gpu);
     }
 
     bool AddSSBO(const AnsiString &name,const BufferAccessBase *accessor)
@@ -87,14 +87,14 @@ public:
         if(!accessor)
             return false;
 
-        return AddSSBO(name, const_cast<DeviceBuffer*>(accessor->GetBuffer()));
+        return AddSSBO(name, accessor->GetGPUBuffer());
     }
 
-    DeviceBuffer *GetSSBO(const AnsiString &name)
+    const IGPUBuffer *GetSSBO(const AnsiString &name)
     {
         if(name.IsEmpty())return(nullptr);
 
-        DeviceBuffer** ptr = ssbo_map.GetValuePointer(name);
+        const IGPUBuffer** ptr = ssbo_map.GetValuePointer(name);
         return ptr ? *ptr : nullptr;
     }
 

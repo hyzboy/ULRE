@@ -81,7 +81,7 @@ public:
     // ===== UBO metadata access =====
     const DescriptorSetType &set_type() const { return desc_set_type; }
     const AnsiString &name()            const { return ubo_name; }
-    DeviceBuffer *ubo()                 const { return buffer; }
+    IGPUBuffer *ubo()                   const { return gpu_buf; }
 };//class BufferAccessBase
 
 }//namespace hgl::graph

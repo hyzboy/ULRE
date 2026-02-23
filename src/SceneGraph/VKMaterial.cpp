@@ -92,6 +92,26 @@ bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,Dev
     return mp->BindSSBO(name,ubo,dynamic);
 }
 
+bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+{
+    MaterialParameters *mp=GetMP(type);
+
+    if(!mp)
+        return(false);
+
+    return mp->BindUBO(name,gpu,dynamic);
+}
+
+bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+{
+    MaterialParameters *mp=GetMP(type);
+
+    if(!mp)
+        return(false);
+
+    return mp->BindSSBO(name,gpu,dynamic);
+}
+
 bool Material::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);

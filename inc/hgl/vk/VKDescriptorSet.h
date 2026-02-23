@@ -33,6 +33,7 @@ inline bool operator==(const VkWriteDescriptorSet& lhs, const VkWriteDescriptorS
 
 namespace hgl::graph{
 class DeviceBuffer;
+class IGPUBuffer;
 
 class DescriptorSet
 {
@@ -78,6 +79,9 @@ public:
     bool BindUBO    (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,bool dynamic=false);
     bool BindSSBO   (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+
+    bool BindUBO    (const int binding,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO   (const int binding,const IGPUBuffer *gpu,bool dynamic=false);
 
     bool BindTexture(const int binding,Texture *);
     bool BindTextureSampler(const int binding,Texture *,Sampler *);

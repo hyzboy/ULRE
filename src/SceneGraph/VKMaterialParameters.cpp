@@ -70,6 +70,60 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool
     return(true);
 }
 
+bool MaterialParameters::BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(index<0||!gpu)
+        return(false);
+
+    if(!descriptor_set->BindUBO(index,gpu,dynamic))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindUBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(name.IsEmpty()||!gpu)
+        return(false);
+
+    const int index=desc_manager->GetUBO(set_type,name,dynamic);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_set->BindUBO(index,gpu,dynamic))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(index<0||!gpu)
+        return(false);
+
+    if(!descriptor_set->BindSSBO(index,gpu,dynamic))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindSSBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(name.IsEmpty()||!gpu)
+        return(false);
+
+    const int index=desc_manager->GetSSBO(set_type,name,dynamic);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_set->BindSSBO(index,gpu,dynamic))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialParameters::BindTexture(const int &index,Texture *tex)
 {
     if(index < 0 || !tex)

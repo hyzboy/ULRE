@@ -14,6 +14,8 @@ namespace hgl
 
 namespace hgl::graph{
 
+class IGPUBuffer;
+
 namespace mtl
 {
     class MaterialCreateInfo;
@@ -100,9 +102,22 @@ public:
     bool BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex);
     bool BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
 
+    bool BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
+
     bool BindUBO(const ShaderBufferDesc *sbd,DeviceBuffer *ubo,bool dynamic=false)
     {
         return BindUBO(sbd->set_type,sbd->name,ubo,dynamic);
+    }
+
+    bool BindUBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
+    {
+        return BindUBO(sbd->set_type,sbd->name,gpu,dynamic);
+    }
+
+    bool BindSSBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
+    {
+        return BindSSBO(sbd->set_type,sbd->name,gpu,dynamic);
     }
 
     void Update();
