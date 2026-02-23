@@ -4,10 +4,13 @@
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
-#include <hgl/ecs/systems/render/TextCollectSystem.h>
-#include <hgl/ecs/systems/render/TextBuildSystem.h>
-#include <hgl/ecs/systems/render/TextResourceSyncSystem.h>
-#include <hgl/ecs/systems/render/TextRenderSubmitSystem.h>
+// Old Text systems removed — see below for new TextRenderPipelineGroup
+// #include <hgl/ecs/systems/render/TextCollectSystem.h>     // replaced by support/text/TextCollectSystem
+// Old Text build/sync/submit systems replaced by TextRenderPipelineGroup:
+// #include <hgl/ecs/systems/render/TextBuildSystem.h>        // replaced by support/text/TextBuildSystem
+// #include <hgl/ecs/systems/render/TextResourceSyncSystem.h> // replaced by support/text/TextSyncSystem
+// #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h> // replaced by support/text/TextRenderSystem
+#include <hgl/ecs/support/text/TextRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/LineCollectSystem.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
@@ -96,17 +99,10 @@ namespace
         if (!ctx)
             return false;
 
-        auto text_collect_system = EnsureRenderSystem<hgl::ecs::TextCollectSystem>(ctx);
-        auto text_build_system = EnsureRenderSystem<hgl::ecs::TextBuildSystem>(ctx);
-        auto text_sync_system = EnsureRenderSystem<hgl::ecs::TextResourceSyncSystem>(ctx);
-        auto text_submit_system = EnsureRenderSystem<hgl::ecs::TextRenderSubmitSystem>(ctx);
+        // New unified pipeline group replaces TextCollect/Build/Sync/Submit systems
+        hgl::ecs::TextRenderPipelineGroup group;
+        group.Initialize(ctx);
 
-        if (text_submit_system)
-            text_submit_system->SetWorld(ctx);
-
-        (void)text_collect_system;
-        (void)text_build_system;
-        (void)text_sync_system;
         return true;
     }
 

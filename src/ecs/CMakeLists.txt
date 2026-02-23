@@ -153,7 +153,7 @@ set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
 
 set(ECS_SYS_18_RenderCollect_TextCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/TextCollectSystem.h
-    systems/render/TextCollectSystem.cpp
+    # systems/render/TextCollectSystem.cpp  REMOVED: replaced by support/text/TextCollectSystem.cpp
     ${ECS_INCLUDE_PATH}/components/TextComponent.h
 )
 
@@ -179,12 +179,12 @@ set(ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES
 
 set(ECS_SYS_22_RenderBatch_TextBuildSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/TextBuildSystem.h
-    systems/render/TextBuildSystem.cpp
+    # systems/render/TextBuildSystem.cpp  REMOVED: replaced by support/text/TextBuildSystem.cpp
 )
 
 set(ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/TextResourceSyncSystem.h
-    systems/render/TextResourceSyncSystem.cpp
+    # systems/render/TextResourceSyncSystem.cpp  REMOVED: replaced by support/text/TextSyncSystem.cpp
 )
 
 set(ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES
@@ -194,7 +194,7 @@ set(ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES
 
 set(ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
-    systems/render/TextRenderSubmitSystem.cpp
+    # systems/render/TextRenderSubmitSystem.cpp  REMOVED: replaced by support/text/TextRenderSystem.cpp
 )
 
 set(ECS_SYS_26_RenderBatch_LineRenderSystem_FILES
@@ -251,6 +251,21 @@ set(ECS_SUPPORT_PRIMITIVE_FILES
     support/primitive/PrimitiveRenderPipelineGroup.cpp
 )
 
+set(ECS_SUPPORT_TEXT_FILES
+    ${ECS_INCLUDE_PATH}/support/text/TextRenderPipelineAdapter.h
+    ${ECS_INCLUDE_PATH}/support/text/TextCollectSystem.h
+    ${ECS_INCLUDE_PATH}/support/text/TextBuildSystem.h
+    ${ECS_INCLUDE_PATH}/support/text/TextSyncSystem.h
+    ${ECS_INCLUDE_PATH}/support/text/TextRenderSystem.h
+    ${ECS_INCLUDE_PATH}/support/text/TextRenderPipelineGroup.h
+    support/text/TextRenderPipelineAdapter.cpp
+    support/text/TextCollectSystem.cpp
+    support/text/TextBuildSystem.cpp
+    support/text/TextSyncSystem.cpp
+    support/text/TextRenderSystem.cpp
+    support/text/TextRenderPipelineGroup.cpp
+)
+
 set(ECS_SERIALIZATION_FILES
     serialization/ContextSerialization.cpp
     serialization/RenderableComponentSerialization.cpp
@@ -290,6 +305,7 @@ set(ECS_SOURCE
     ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES}
     ${ECS_SUPPORT_FILES}
     ${ECS_SUPPORT_PRIMITIVE_FILES}
+    ${ECS_SUPPORT_TEXT_FILES}
     ${ECS_SERIALIZATION_FILES}
 )
 
@@ -324,6 +340,7 @@ source_group("ECS\\Systems\\26B RenderStat_LineStatsSystem" FILES ${ECS_SYS_26B_
 source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES})
 source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
 source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
+source_group("ECS\\Support\\Text" FILES ${ECS_SUPPORT_TEXT_FILES})
 source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
