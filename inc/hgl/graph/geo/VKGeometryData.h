@@ -57,7 +57,6 @@ public:
             VAB *           GetVAB          (const AnsiString &name)const;
 
             VAB *           InitVAB         (const int vab_index,const void *data,const AnsiString &name="VAB");
-            VABMap *        GetVABMap       (const int vab_index);
 
             IndexBuffer *   InitIBO         (const int index_count,IndexType it,const AnsiString &name="IBO");
             IndexBuffer *   GetIBO          (){return ibo;}
