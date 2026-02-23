@@ -12,6 +12,7 @@
 #include<hgl/ecs/core/PrimitiveRenderItem.h>
 #include<hgl/ecs/support/PrimitiveBatchPipeline.h>
 #include<hgl/ecs/support/TextRenderPipeline.h>
+#include<hgl/ecs/support/RenderPipelineBase.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/systems/render/RenderSystemCore.h>
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -169,6 +170,40 @@ namespace hgl
             return text_render_pipeline.get();
         }
 
+        RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
+        {
+            auto it = render_pipelines.find(name);
+            if (it != render_pipelines.end())
+                return it->second.get();
+            return nullptr;
+        }
+
+        void ECSContext::RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline)
+        {
+            if (!pipeline)
+                return;
+
+            LogDebug("[ECS] Registering render pipeline: %s", name.c_str());
+            render_pipelines[name] = std::move(pipeline);
+        }
+
+        bool ECSContext::IsRenderPipelineEnabled(const std::string& name) const
+        {
+            auto it = render_pipelines.find(name);
+            if (it != render_pipelines.end())
+                return it->second != nullptr;  // If registered and not null, it's enabled
+            return false;
+        }
+
+        std::vector<std::string> ECSContext::GetRenderPipelineNames() const
+        {
+            std::vector<std::string> names;
+            names.reserve(render_pipelines.size());
+            for (const auto& pair : render_pipelines)
+                names.push_back(pair.first);
+            return names;
+        }
+
         void ECSContext::Shutdown()
         {
             if (auto *device = GetGPUDevice())
@@ -179,6 +214,9 @@ namespace hgl
             // deferring this to ECSContext destructor can access dangling pointers.
             text_render_pipeline.reset();
             primitive_batch_pipeline.reset();
+            
+            // Release all registered render pipelines
+            render_pipelines.clear();
 
             // Release render-frame items first  (only clears renderItems, keeps materialBatches for reuse)
             render_frame_cache.renderItems.clear();

@@ -39,6 +39,7 @@ namespace hgl
     class RenderSystemCore;
         class PrimitiveBatchPipeline;
         class TextRenderPipeline;
+        class RenderPipelineBase;
         class MaterialBatch;
         class PrimitiveRenderItem;
 
@@ -121,6 +122,11 @@ namespace hgl
 
             std::unique_ptr<PrimitiveBatchPipeline> primitive_batch_pipeline;
             std::unique_ptr<TextRenderPipeline> text_render_pipeline;
+
+            /// Unified render pipeline registry: name → RenderPipelineBase
+            /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
+            /// Supports dynamic enable/disable per SystemGroup
+            std::unordered_map<std::string, std::unique_ptr<RenderPipelineBase>> render_pipelines;
 
             // ========== GPU 设备和资源管理（Phase 1 新增） ==========
 
@@ -350,6 +356,23 @@ namespace hgl
 
             PrimitiveBatchPipeline* GetPrimitiveBatchPipeline();
             TextRenderPipeline* GetTextRenderPipeline();
+
+            /// Unified render pipeline registry
+            /// Get a pipeline by name (e.g., "Primitive", "Text", "Line", "Quad")
+            /// @param name: pipeline group name from SystemGroup
+            /// @return pointer to RenderPipelineBase, or nullptr if not registered
+            RenderPipelineBase* GetRenderPipeline(const std::string& name);
+
+            /// Register a render pipeline (typically called during system group installation)
+            /// @param name: pipeline group name
+            /// @param pipeline: newly created pipeline instance
+            void RegisterRenderPipeline(const std::string& name, std::unique_ptr<RenderPipelineBase> pipeline);
+
+            /// Check if a render pipeline is registered and enabled
+            bool IsRenderPipelineEnabled(const std::string& name) const;
+
+            /// Get all registered pipeline names
+            std::vector<std::string> GetRenderPipelineNames() const;
 
             /// Resource naming prefix for hierarchical GPU resource tracking
             /// Example: "RenderToTexture:OffscreenRT:IndirectDrawBuffer"
