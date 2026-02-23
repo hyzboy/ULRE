@@ -28,6 +28,7 @@ namespace hgl
             graph::LineRenderManager *line_manager = nullptr;
             bool own_line_manager = false;
             bool manager_initialized = false;
+            bool first_render_after_init = true;  // Force sync on first Render() after Initialize()
             std::unordered_set<uint64_t> active_component_keys;
             bool has_uploaded_once = false;
             uint32_t last_uploaded_line_count = 0;
@@ -41,6 +42,8 @@ namespace hgl
 
             void Initialize() override;
             void Shutdown() override;
+            void Update(float deltaTime) override;  // Sync data in RenderBatch phase
+            void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;  // Only draw, no sync
 
             /**
              * CN: 设置 LineRenderManager（外部创建并传入）
@@ -69,18 +72,6 @@ namespace hgl
              * EN: Set palette color (will wait for Manager initialization)
              */
             void SetColor(int index, const hgl::Color4f &color);
-
-            /**
-             * CN: 在上传阶段前准备并同步线条缓冲（每帧最多一次）
-             * EN: Prepare/sync line buffers before upload phase (at most once per frame)
-             */
-            void PrepareBuffersForCurrentFrame();
-
-            /**
-             * CN: 每帧收集所有 LinesComponent 并同步到渲染器
-             * EN: Per-frame collect all LinesComponent and sync to renderer
-             */
-            void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
 
         private:
 

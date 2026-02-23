@@ -9,7 +9,6 @@
 #include <hgl/ecs/systems/render/TextResourceSyncSystem.h>
 #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h>
 #include <hgl/ecs/systems/render/LineCollectSystem.h>
-#include <hgl/ecs/systems/render/LineBufferPrepareSystem.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -140,7 +139,6 @@ namespace
 
         auto line_bounds_update_system = EnsureTickSystem<hgl::ecs::LineBoundsUpdateSystem>(ctx);
         auto line_collect_system = EnsureRenderSystem<hgl::ecs::LineCollectSystem>(ctx);
-        auto line_prepare_system = EnsureRenderSystem<hgl::ecs::LineBufferPrepareSystem>(ctx);
         auto line_render_system = EnsureRenderSystem<hgl::ecs::LineRenderSystem>(ctx);
         auto line_stats_system = EnsureRenderSystem<hgl::ecs::LineStatsSystem>(ctx);
 
@@ -152,9 +150,6 @@ namespace
 
         if (line_stats_system)
             line_stats_system->SetWorld(ctx);
-
-        if (line_prepare_system)
-            line_prepare_system->SetWorld(ctx);
 
         (void)line_render_system;
         return true;

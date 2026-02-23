@@ -211,7 +211,7 @@ Geometry *GeometryCreater::Create()
 // -----------------------------------------------------------------------------
 //  新增：直接创建 Geometry 的便捷函数
 // -----------------------------------------------------------------------------
-Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm)
+Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it, BufferManager *bm, BufferAllocPolicy policy)
 {
     if(!device || !vil || name.IsEmpty() || vertex_count==0)
         return nullptr;
@@ -237,8 +237,8 @@ Geometry *CreateGeometry(VulkanDevice *device, const VIL *vil, const AnsiString 
     }
 
 // 创建 GeometryData（使用 device 分配私有缓冲）
-    GeometryData *pd = bm ? CreateGeometryData(bm, vil, vertex_count)
-                          : CreateGeometryData(device, vil, vertex_count);
+    GeometryData *pd = bm ? CreateGeometryData(bm, vil, vertex_count, policy)
+                          : CreateGeometryData(device, vil, vertex_count, policy);
 
     if(!pd)
         return nullptr;

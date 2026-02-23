@@ -62,7 +62,7 @@ bool LineWidthBatch::RebuildMesh()
 
     AnsiString geom_name = batch_name + ":Geometry";
 
-    geometry = CreateGeometry(device,mtl_inst->GetVIL(),geom_name,max_count * 2, 0, IndexType::AUTO, nullptr);
+    geometry = CreateGeometry(device,mtl_inst->GetVIL(),geom_name,max_count * 2, 0, IndexType::AUTO, nullptr, BufferAllocPolicy::StagedUpload);
 
     if(!geometry)
         return(false);
