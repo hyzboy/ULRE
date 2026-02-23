@@ -163,7 +163,13 @@ private:
         if(count == 0)
             return;
 
-        mapped_pointer = buffer->Map(static_cast<VkDeviceSize>(element_offset), count);
+        // Phase 3c: bypass DeviceBuffer transitional forwarder, go directly through IGPUBuffer.
+        // buffer_stride is already element size; VAB/IBO Map() override multiplied by stride,
+        // so we replicate that here to call GetGPUBuffer()->Map() with byte offsets directly.
+        auto *gpu_buf = GetGPUBuffer();
+        if(!gpu_buf) return;
+        mapped_pointer = gpu_buf->Map(static_cast<VkDeviceSize>(element_offset) * buffer_stride,
+                                      static_cast<VkDeviceSize>(count) * buffer_stride);
         if(mapped_pointer)
         {
             data_access = DataAccessType::Create(count, mapped_pointer);
@@ -186,7 +192,8 @@ private:
 
         if(buffer && mapped_pointer)
         {
-            buffer->Unmap();
+            if(auto *gpu_buf = GetGPUBuffer())
+                gpu_buf->Unmap();
             mapped_pointer = nullptr;
         }
     }
@@ -394,7 +401,12 @@ public:
         if(element_count > max_count)
             return false;
 
-        bool result = buffer->Write(data, static_cast<uint32_t>(element_offset), element_count);
+        // Phase 3c: bypass DeviceBuffer::Write virtual forwarder, call IGPUBuffer directly.
+        bool result = false;
+        if(auto *gpu_buf = GetGPUBuffer())
+            result = gpu_buf->Write(data,
+                static_cast<VkDeviceSize>(element_offset) * buffer_stride,
+                static_cast<VkDeviceSize>(element_count) * buffer_stride);
         if(result)
             dirty = true;
         return result;

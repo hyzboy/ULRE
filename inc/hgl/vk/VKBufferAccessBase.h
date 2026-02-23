@@ -75,8 +75,9 @@ public:
 
     void Flush(uint32_t size)
     {
-        if(buffer)
-            buffer->Flush(size);
+        // Phase 3c: bypass DeviceBuffer::Flush forwarder, mark dirty directly on IGPUBuffer.
+        if(auto *gpu = GetGPUBuffer())
+            gpu->MarkDirty(0, static_cast<VkDeviceSize>(size));
     }
 
     // Optional update hook for structured accessors.
