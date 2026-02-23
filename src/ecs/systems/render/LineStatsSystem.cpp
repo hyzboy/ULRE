@@ -31,7 +31,7 @@ namespace hgl::ecs
             return;
 
         const auto& stats = collect_system->GetStats();
-        const uint32_t uploaded = render_system ? render_system->GetLastUploadedLineCount() : 0;
+        const uint32_t uploaded = render_system ? render_system->GetLineCount() : 0;
 
         LogInfo("[LineStats] total=%u visible=%u culled(vis=%u frustum=%u hzb=%u) ratio=%.2f uploaded_lines=%u",
                 stats.total_components,

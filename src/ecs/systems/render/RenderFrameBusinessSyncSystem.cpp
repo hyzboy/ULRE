@@ -10,7 +10,7 @@ namespace hgl::ecs
     RenderFrameBusinessSyncSystem::RenderFrameBusinessSyncSystem(const std::string& name)
         : System(name)
     {
-        SetExecutionOrder(ExecutionPhase::RenderPostBeginFrame);
+        SetExecutionOrder(ExecutionPhase::RenderFrameSync);
         AddDependency<RenderBufferUploadSystem>();
         AddDependency<EnvironmentSystem>();
         AddDependency<RenderTargetSystem>();

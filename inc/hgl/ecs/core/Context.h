@@ -228,8 +228,15 @@ namespace hgl
             /// Handle render target resize
             void OnResize(const VkExtent2D &extent);
 
-            /// Run pre-begin-frame render updates (no command buffer)
+            /// Run pre-begin-frame render updates (no command buffer).
+            /// Covers RenderPreBeginFrame + RenderResourceSetup + RenderMaterialBind.
             void RenderPreBeginFrame(float deltaTime);
+
+            /// Run lazy GPU resource-creation phase (QuadResourcePrepareSystem, etc.)
+            void RenderResourceSetup(float deltaTime);
+
+            /// Run per-entity material/texture binding phase (QuadMaterialBindingSystem, etc.)
+            void RenderMaterialBind(float deltaTime);
 
             /// Run swapchain image acquisition updates (no command buffer)
             void RenderSwapchainNextImage(float deltaTime);
@@ -249,11 +256,12 @@ namespace hgl
             /// Run explicit buffer upload cycle updates (must run before render pass)
             void RenderBufferUpload(float deltaTime);
 
-            /// Run post-begin-frame render updates (no command buffer)
-            void RenderPostBeginFrame(float deltaTime);
+            /// Run frame-sync phase: sync UBOs/descriptors after upload
+            /// (replaces RenderPostBeginFrame; runs before BeginRenderPass)
+            void RenderFrameSync(float deltaTime);
 
             /// Orchestrate pre-pass render setup phases for a specific frame index.
-            /// Includes BeginFrame/BufferCommit/BufferUpload/PostBegin.
+            /// Strict order: BeginFrame → Collect → Batch → BufferCommit → BufferUpload → FrameSync
             void PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime = 0.0f);
 
             /// Run frame submit updates (no command buffer)

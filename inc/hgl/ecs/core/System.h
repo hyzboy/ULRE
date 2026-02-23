@@ -22,25 +22,38 @@ namespace hgl
          */
         enum class ExecutionPhase
         {
-            TickInput,
-            TickTransform,
-            TickCamera,
-            TickPostCamera,
+            // ── Tick (game logic, every frame) ─────────────────────────────
+            TickInput,              // user input
+            TickTransform,          // transforms, bounds, visibility
+            TickCamera,             // camera matrices
+            TickPostCamera,         // billboard / facing transforms
 
-            RenderSwapchainNextImage,
-            RenderPreBeginFrame,
-            RenderBeginFrame,
-            RenderBufferCommit,
-            RenderBufferUpload,
-            RenderPostBeginFrame,
+            // ── Render setup (before command buffer opens) ─────────────────
+            RenderSwapchainNextImage,   // acquire swapchain image
+            RenderPreBeginFrame,        // per-frame env / viewport sync
+                                        //   EnvironmentSystem, RenderTargetSystem
+            RenderResourceSetup,        // lazy one-time GPU resource creation
+                                        //   QuadResourcePrepareSystem
+            RenderMaterialBind,         // per-entity material / texture binding
+                                        //   QuadMaterialBindingSystem
 
-            RenderCollect,
-            RenderBatch,
-            RenderDrawSubmit,
-            RenderPostProcess,
-            RenderDebug,
-            RenderStat,
-            RenderSubmit
+            // ── Pre-pass CPU work (command buffer open, outside render pass) ─
+            RenderBeginFrame,       // open command buffer, record frame UBOs
+            RenderCollect,          // collect / cull visible components
+            RenderBatch,            // build batches, write VABs (StagedBuffer writes)
+            RenderBufferCommit,     // finalize staged CPU writes
+            RenderBufferUpload,     // GPU transfer: vkCmdCopyBuffer
+            RenderFrameSync,        // sync frame UBOs/descriptors after upload
+                                    //   RenderFrameBusinessSyncSystem
+
+            // ── Inside render pass ──────────────────────────────────────────
+            RenderDrawSubmit,       // record draw commands
+            RenderPostProcess,      // post-process effects
+            RenderDebug,            // debug overlays
+
+            // ── Post-pass ───────────────────────────────────────────────────
+            RenderStat,             // stats systems
+            RenderSubmit            // present to swapchain
         };
 
         /**

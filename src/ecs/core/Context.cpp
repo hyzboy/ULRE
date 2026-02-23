@@ -444,9 +444,27 @@ namespace hgl
             if (!active)
                 return;
 
-            RunRenderUpdatesRange(ExecutionPhase::RenderPreBeginFrame,
-                                  ExecutionPhase::RenderPreBeginFrame,
-                                  deltaTime);
+            // Run all phases that execute before the command buffer opens:
+            // PreBeginFrame → ResourceSetup → MaterialBind (strict enum order)
+            RunRenderPhaseUpdates(ExecutionPhase::RenderPreBeginFrame,  deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderResourceSetup,  deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderMaterialBind,   deltaTime);
+        }
+
+        void ECSContext::RenderResourceSetup(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderResourceSetup, deltaTime);
+        }
+
+        void ECSContext::RenderMaterialBind(float deltaTime)
+        {
+            if (!active)
+                return;
+
+            RunRenderPhaseUpdates(ExecutionPhase::RenderMaterialBind, deltaTime);
         }
 
         void ECSContext::RenderSwapchainNextImage(float deltaTime)
@@ -525,12 +543,12 @@ namespace hgl
             RunRenderPhaseUpdates(ExecutionPhase::RenderBufferUpload, deltaTime);
         }
 
-        void ECSContext::RenderPostBeginFrame(float deltaTime)
+        void ECSContext::RenderFrameSync(float deltaTime)
         {
             if (!active)
                 return;
 
-            RunRenderPhaseUpdates(ExecutionPhase::RenderPostBeginFrame, deltaTime);
+            RunRenderPhaseUpdates(ExecutionPhase::RenderFrameSync, deltaTime);
         }
 
         void ECSContext::PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime)
@@ -538,11 +556,15 @@ namespace hgl
             if (!active)
                 return;
 
+            // Strict enum order — all CPU work and GPU uploads happen
+            // before BeginRenderPass; the render pass only issues draw commands.
             SetFrameIndex(frameIndex);
-            RenderBeginFrame(deltaTime);
-            RenderBufferCommit(deltaTime);
-            RenderBufferUpload(deltaTime);
-            RenderPostBeginFrame(deltaTime);
+            RenderBeginFrame(deltaTime);                                         // open cmd buffer, record frame UBOs
+            RunRenderPhaseUpdates(ExecutionPhase::RenderCollect,     deltaTime); // collect / cull visible components
+            RunRenderPhaseUpdates(ExecutionPhase::RenderBatch,       deltaTime); // write VABs (StagedBuffer → marks dirty)
+            RenderBufferCommit(deltaTime);                                       // finalize staged CPU writes
+            RenderBufferUpload(deltaTime);                                       // GPU transfer (dirty → uploaded)
+            RenderFrameSync(deltaTime);                                          // sync UBOs/descriptors after upload
         }
         void ECSContext::RenderSubmit(float deltaTime)
         {

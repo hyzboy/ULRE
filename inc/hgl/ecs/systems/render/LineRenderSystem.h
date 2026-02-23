@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<unordered_set>
 #include<cstdint>
 
 namespace hgl
@@ -16,24 +15,30 @@ namespace hgl
 
     namespace ecs
     {
-        class LinesComponent;
-
         /**
-         * CN: 线条渲染系统 - 收集所有 LinesComponent 并渲染
-         * EN: Line Render System - Collect all LinesComponent and render them
+         * CN: 线条渲染系统
+         *
+         * Update() 运行于 RenderBatch 阶段：
+         *   重置批次，遍历可见 LinesComponent，将数据写入 StagedBuffer VAB（自动标脏）。
+         *   RenderBufferUploadSystem 在 RenderBufferUpload 阶段自动上传所有脏缓冲。
+         *
+         * Render() 运行于 RenderDrawSubmit 阶段，仅录制绘制命令。
+         *
+         * EN: Line Render System
+         *
+         * Update() runs in RenderBatch phase:
+         *   Resets batches, iterates visible LinesComponents, writes into StagedBuffer VABs (auto-dirty).
+         *   RenderBufferUploadSystem auto-uploads all dirty buffers in RenderBufferUpload phase.
+         *
+         * Render() runs in RenderDrawSubmit phase: records draw commands only.
          */
         class LineRenderSystem : public System
         {
         private:
-            graph::LineRenderManager *line_manager = nullptr;
-            bool own_line_manager = false;
-            bool manager_initialized = false;
-            bool first_render_after_init = true;  // Force sync on first Render() after Initialize()
-            std::unordered_set<uint64_t> active_component_keys;
-            bool has_uploaded_once = false;
-            uint32_t last_uploaded_line_count = 0;
-            uint64_t last_collect_visible_set_signature = 0;
-            uint32_t last_synced_frame_index = UINT32_MAX;
+            graph::LineRenderManager *line_manager      = nullptr;
+            bool                      own_line_manager    = false;
+            bool                      manager_initialized = false;
+            uint32_t                  last_batch_frame_   = UINT32_MAX; ///< frame-level guard: skip re-batch in same frame
 
         public:
 
@@ -41,46 +46,28 @@ namespace hgl
             ~LineRenderSystem() override;
 
             void Initialize() override;
-            void Shutdown() override;
-            void Update(float deltaTime) override;  // Sync data in RenderBatch phase
-            void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;  // Only draw, no sync
+            void Shutdown()   override;
 
-            /**
-             * CN: 设置 LineRenderManager（外部创建并传入）
-             * EN: Set LineRenderManager (created externally)
-             */
+            /// RenderBatch: ClearLines + write visible component lines → StagedBuffer VABs
+            void Update(float deltaTime) override;
+
+            /// RenderDrawSubmit: issue draw commands only (VABs already uploaded)
+            void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
+
             void SetLineRenderManager(graph::LineRenderManager *mgr, bool take_ownership = true)
             {
-                if (line_manager == mgr)
-                {
-                    own_line_manager = take_ownership;
-                    return;
-                }
-
-                if (line_manager && own_line_manager)
-                    delete line_manager;
-
-                line_manager = mgr;
+                if (line_manager == mgr) { own_line_manager = take_ownership; return; }
+                if (line_manager && own_line_manager) delete line_manager;
+                line_manager     = mgr;
                 own_line_manager = take_ownership;
             }
 
             graph::LineRenderManager *GetLineRenderManager() const { return line_manager; }
-            uint32_t GetLastUploadedLineCount() const { return last_uploaded_line_count; }
 
-            /**
-             * CN: 设置调色板中的颜色（会等待 Manager 初始化）
-             * EN: Set palette color (will wait for Manager initialization)
-             */
+            uint32_t GetLineCount() const;
+
+            /// Set palette color (deferred until manager is initialized)
             void SetColor(int index, const hgl::Color4f &color);
-
-        private:
-
-            /**
-             * CN: 同步 LinesComponent 到 LineRenderManager
-             * EN: Sync LinesComponent to LineRenderManager
-             */
-            void SyncComponentsToRenderer();
-            uint64_t MakeComponentKey(const LinesComponent* comp) const;
         };
     }//namespace ecs
 }//namespace hgl

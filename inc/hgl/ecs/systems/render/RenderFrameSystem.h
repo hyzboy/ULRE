@@ -40,25 +40,30 @@ namespace hgl::ecs
     * │  ├─ RenderSwapchainNextImage             │
     * │  │   (获取 swapchain 图像)               │
     * │  ├─ RenderPreBeginFrame                  │
-    * │  │   (同步父/子世界等准备工作)           │
+    * │  │   RenderResourceSetup                │
+    * │  │   RenderMaterialBind                 │
+    * │  │   (所有 pre-cmdbuffer 准备工作)       │
     * │  ├─ RenderBeginFrame                     │
     * │  │   (开始新帧: RenderFrameSystem)       │
     * │  │   └─ 创建帧命令缓冲区                │
-     * │  ├─ RenderPostBeginFrame                 │
-     * │  │   (帧初始化完成)                      │
      * │  ├─ RenderCollect                        │
      * │  │   └─ RenderPrimitiveCollectSystem     │
      * │  │       (收集需要渲染的图元)            │
     * │  ├─ RenderBatch                          │
     * │  │   └─ RenderPrimitiveBatch* Systems    │
     * │  │       (Cull/Sort/BatchBuild/Finalize) │
+    * │  ├─ RenderBufferCommit / RenderBufferUpload │
+    * │  │   (GPU transfer, outside render pass) │
+    * │  ├─ RenderFrameSync                      │
+    * │  │   (帧初始化完成: RenderFrameBusinessSyncSystem) │
+    * │  ├─ [BeginRenderPass]                    │
     * │  ├─ RenderDrawSubmit                     │
     * │  │   ├─ RenderPrimitiveSubmitSystem      │
     * │  │   │   (发送绘制命令)                  │
     * │  │   └─ TextRenderSubmitSystem           │
     * │  │       (发送文本绘制命令)              │
     * │  ├─ RenderPostProcess                    │
-    * │  │   └─ LineRenderSystem                 │
+    * │  │   (保留给后处理效果)                  │
     * └──────────────────────────────────────────┘
     *
     * RenderSubmit 是帧驱动层的最终提交步骤，

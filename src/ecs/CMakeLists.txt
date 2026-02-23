@@ -110,12 +110,12 @@ set(ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES
     systems/render/EnvironmentSystem.cpp
 )
 
-set(ECS_SYS_10_RenderPreBeginFrame_QuadResourcePrepareSystem_FILES
+set(ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/QuadResourcePrepareSystem.h
     systems/render/QuadResourcePrepareSystem.cpp
 )
 
-set(ECS_SYS_11_RenderPreBeginFrame_QuadMaterialBindingSystem_FILES
+set(ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/QuadMaterialBindingSystem.h
     systems/render/QuadMaterialBindingSystem.cpp
     ${ECS_INCLUDE_PATH}/components/QuadComponent.h
@@ -127,7 +127,7 @@ set(ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES
     systems/render/RenderBufferUploadSystem.cpp
 )
 
-set(ECS_SYS_15_RenderPostBeginFrame_RenderFrameBusinessSyncSystem_FILES
+set(ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderFrameBusinessSyncSystem.h
     systems/render/RenderFrameBusinessSyncSystem.cpp
 )
@@ -197,7 +197,7 @@ set(ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES
     systems/render/TextRenderSubmitSystem.cpp
 )
 
-set(ECS_SYS_26_RenderPostProcess_LineRenderSystem_FILES
+set(ECS_SYS_26_RenderBatch_LineRenderSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/LineRenderSystem.h
     systems/render/LineRenderSystem.cpp
     ${ECS_INCLUDE_PATH}/components/LinesComponent.h
@@ -250,10 +250,10 @@ set(ECS_SOURCE
     ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES}
     ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES}
     ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES}
-    ${ECS_SYS_10_RenderPreBeginFrame_QuadResourcePrepareSystem_FILES}
-    ${ECS_SYS_11_RenderPreBeginFrame_QuadMaterialBindingSystem_FILES}
+    ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES}
+    ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES}
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
-    ${ECS_SYS_15_RenderPostBeginFrame_RenderFrameBusinessSyncSystem_FILES}
+    ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
     ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
@@ -265,7 +265,7 @@ set(ECS_SOURCE
     ${ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES}
     ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES}
     ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES}
-    ${ECS_SYS_26_RenderPostProcess_LineRenderSystem_FILES}
+    ${ECS_SYS_26_RenderBatch_LineRenderSystem_FILES}
     ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES}
     ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES}
     ${ECS_SUPPORT_FILES}
@@ -284,10 +284,10 @@ source_group("ECS\\Systems\\06 TickPostCamera_FacingTransformSystem" FILES ${ECS
 source_group("ECS\\Systems\\07 RenderSwapchainNextImage_SwapchainAcquireSystem" FILES ${ECS_SYS_07_RenderSwapchainNextImage_SwapchainAcquireSystem_FILES})
 source_group("ECS\\Systems\\08 RenderPreBeginFrame_RenderTargetSystem" FILES ${ECS_SYS_08_RenderPreBeginFrame_RenderTargetSystem_FILES})
 source_group("ECS\\Systems\\09 RenderPreBeginFrame_EnvironmentSystem" FILES ${ECS_SYS_09_RenderPreBeginFrame_EnvironmentSystem_FILES})
-source_group("ECS\\Systems\\10 RenderPreBeginFrame_QuadResourcePrepareSystem" FILES ${ECS_SYS_10_RenderPreBeginFrame_QuadResourcePrepareSystem_FILES})
-source_group("ECS\\Systems\\11 RenderPreBeginFrame_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderPreBeginFrame_QuadMaterialBindingSystem_FILES})
+source_group("ECS\\Systems\\10 RenderResourceSetup_QuadResourcePrepareSystem" FILES ${ECS_SYS_10_RenderResourceSetup_QuadResourcePrepareSystem_FILES})
+source_group("ECS\\Systems\\11 RenderMaterialBind_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
-source_group("ECS\\Systems\\15 RenderPostBeginFrame_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderPostBeginFrame_RenderFrameBusinessSyncSystem_FILES})
+source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})
 source_group("ECS\\Systems\\18 RenderCollect_TextCollectSystem" FILES ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES})
@@ -298,7 +298,7 @@ source_group("ECS\\Systems\\22 RenderBatch_TextBuildSystem" FILES ${ECS_SYS_22_R
 source_group("ECS\\Systems\\23 RenderBatch_TextResourceSyncSystem" FILES ${ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES})
 source_group("ECS\\Systems\\24 RenderDrawSubmit_RenderPrimitiveSubmitSystem" FILES ${ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES})
 source_group("ECS\\Systems\\25 RenderDrawSubmit_TextRenderSubmitSystem" FILES ${ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES})
-source_group("ECS\\Systems\\26 RenderPostProcess_LineRenderSystem" FILES ${ECS_SYS_26_RenderPostProcess_LineRenderSystem_FILES})
+source_group("ECS\\Systems\\26 RenderBatch_LineRenderSystem" FILES ${ECS_SYS_26_RenderBatch_LineRenderSystem_FILES})
 source_group("ECS\\Systems\\26B RenderStat_LineStatsSystem" FILES ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES})
 source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES})
 source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})

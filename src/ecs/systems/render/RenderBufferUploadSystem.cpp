@@ -38,6 +38,7 @@ namespace hgl::ecs
         const VkCommandBuffer vk_cmd = static_cast<VkCommandBuffer>(*cmdBuffer);
 
         // Flush all dirty IGPUBuffer objects
+        bool any_uploads = false;
         for (auto *buf : registry)
         {
             if (buf && buf->IsDirty())
@@ -47,8 +48,16 @@ namespace hgl::ecs
                           static_cast<unsigned long long>(buf->GetSize()));
                 buf->CopyToDevice(vk_cmd);
                 // CopyToDevice calls ClearDirty internally for StagedBuffer
+                any_uploads = true;
             }
         }
+
+        // Only emit the transfer→vertex barrier when transfers actually happened.
+        // Skipping when any_uploads==false prevents an invalid
+        // VK_PIPELINE_STAGE_TRANSFER_BIT barrier inside a Vulkan render pass
+        // on the second call (RenderGraph re-runs Update inside BeginRenderPass).
+        if (!any_uploads)
+            return;
 
         VkMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
