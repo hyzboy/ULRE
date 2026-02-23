@@ -91,15 +91,24 @@ public:
     const IGPUBuffer *GetGPUBuffer() const { return staged_source; }
 
     // Transitional forwarders — route through staged_source when present.
-    // New code should use GetGPUBuffer()->Write/Map/Unmap instead.
+    // TODO(Phase3c): Remove once VKMemoryAllocator is migrated or isolated.
+    // New code must use GetGPUBuffer()->Map/Write/Unmap/MarkDirty instead.
+    // NOTE: [[deprecated]] is intentionally NOT placed on virtual overloads —
+    // MSVC changes symbol mangling for deprecated virtuals which breaks linking.
+    // Non-virtual overloads below are marked [[deprecated]] for call-site warnings.
+    [[deprecated("Use GetGPUBuffer()->Map(0,GetSize()) instead.")]]
             void *  Map     ();
-    virtual void *  Map     (VkDeviceSize start,VkDeviceSize size);
+    virtual void *  Map     (VkDeviceSize start,VkDeviceSize size);  // TODO: use GetGPUBuffer()->Map
+    // Non-virtual: subclasses hide with their own Unmap() calling GetGPUBuffer()->Unmap().
+    // Kept non-virtual to preserve MSVC symbol QEAAXXZ in precompiled OBJ archives.
+    [[deprecated("Use GetGPUBuffer()->Unmap() instead.")]]
             void    Unmap   ();
-    virtual void    Flush   (VkDeviceSize start,VkDeviceSize size);
-    virtual void    Flush   (VkDeviceSize size);
+    virtual void    Flush   (VkDeviceSize start,VkDeviceSize size);   // TODO: use GetGPUBuffer()->MarkDirty
+    virtual void    Flush   (VkDeviceSize size);                      // TODO: use GetGPUBuffer()->MarkDirty(0,size)
 
-    virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size);
-    virtual bool    Write   (const void *ptr,uint32_t size);
+    virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size);  // TODO: use GetGPUBuffer()->Write
+    virtual bool    Write   (const void *ptr,uint32_t size);                 // TODO: use GetGPUBuffer()->Write(ptr,0,size)
+    [[deprecated("Use GetGPUBuffer()->Write(ptr,0,GetSize()) instead.")]]
             bool    Write   (const void *ptr);
 
 };//class DeviceBuffer

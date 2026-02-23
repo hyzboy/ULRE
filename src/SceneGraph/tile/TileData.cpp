@@ -66,7 +66,8 @@ namespace hgl::graph
     void TileData::BeginCommit()
     {
         commit_list.Clear();
-        commit_ptr=(uint8 *)tile_buffer->Map();
+        auto *gpu = tile_buffer->GetGPUBuffer();
+        commit_ptr=(uint8 *)gpu->Map(0, gpu->GetSize());
 
         memset(commit_ptr,255,tile_bytes*tile_max_count);  //清除所有数据
     }
@@ -78,7 +79,7 @@ namespace hgl::graph
         if(commit_count<=0)
             return -1;
 
-        tile_buffer->Unmap();
+        tile_buffer->GetGPUBuffer()->Unmap();
         commit_ptr=nullptr;
 
         if(!tex_manager->ChangeTexture2D(tile_texture,tile_buffer,commit_list))

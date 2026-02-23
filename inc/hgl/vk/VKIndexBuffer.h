@@ -35,12 +35,13 @@ public:
 
 public:
 
-    void *  Map     (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Map(start*stride,size*stride);}
-    void    Flush   (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Flush(start*stride,size*stride); }
-    void    Flush   (VkDeviceSize size)                             override {return DeviceBuffer::Flush(size*stride);}
+    void *  Map     (VkDeviceSize start,VkDeviceSize size)          override {return GetGPUBuffer()->Map(start*stride,size*stride);}
+    void    Unmap   ()                                                      {GetGPUBuffer()->Unmap();}
+    void    Flush   (VkDeviceSize start,VkDeviceSize size)          override {GetGPUBuffer()->MarkDirty(start*stride,size*stride);}
+    void    Flush   (VkDeviceSize size)                             override {GetGPUBuffer()->MarkDirty(0,size*stride);}
 
-    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return DeviceBuffer::Write(ptr,start*stride,size*stride);}
-    bool    Write   (const void *ptr,uint32_t size)                 override {return DeviceBuffer::Write(ptr,0,size*stride);}
+    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return GetGPUBuffer()->Write(ptr,start*stride,size*stride);}
+    bool    Write   (const void *ptr,uint32_t size)                 override {return GetGPUBuffer()->Write(ptr,0,size*stride);}
 };//class IndexBuffer:public DeviceBuffer
 
 }//namespace hgl::graph
