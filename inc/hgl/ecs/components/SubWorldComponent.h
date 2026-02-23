@@ -76,7 +76,17 @@ namespace hgl::ecs
         /// Update sub-world systems
         void UpdateSubWorld(float delta_time);
 
-        /// Render sub-world
+        /// Prepare sub-world for rendering: run Collect+Batch+Upload phases
+        /// MUST be called before the parent's BeginRenderPass (outside render pass).
+        void PrepareSubWorld(float delta_time);
+
+        /// Issue sub-world draw commands into an already-open render pass.
+        /// PrepareSubWorld() MUST have been called first this frame.
+        void DrawSubWorld(graph::RenderCmdBuffer* cmd, float delta_time);
+
+        /// Render sub-world (legacy: Prepare+Draw in one call — only safe when
+        /// the child context uses CPUVisible buffers, i.e. on ReBAR hardware).
+        /// Prefer PrepareSubWorld() + DrawSubWorld() for correct non-ReBAR support.
         void RenderSubWorld(graph::RenderCmdBuffer* cmd, float delta_time);
 
         /// Check if sub-world is initialized

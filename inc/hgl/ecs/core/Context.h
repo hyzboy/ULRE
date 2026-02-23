@@ -204,6 +204,12 @@ namespace hgl
             /// Run all render systems
             void Render(graph::RenderCmdBuffer *cmd, float deltaTime);
 
+            /// Run only draw-phase render systems (Collect..Stat), skipping Update() phases.
+            /// Use this when PrepareRenderPassSetup() (or PrepareSubWorld()) was already called
+            /// before BeginRenderPass — prevents duplicate CPU work and StagedBuffer upload
+            /// inside the render pass.
+            void RenderDrawOnly(graph::RenderCmdBuffer *cmd, float deltaTime);
+
             /// Run a full render frame (Begin/Render/End/Sync)
             void Render(float deltaTime);
 

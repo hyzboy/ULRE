@@ -270,6 +270,47 @@ namespace hgl::ecs
         RenderNestedSubWorlds(child_context, cmd, delta_time);
     }
 
+    void SubWorldComponent::PrepareSubWorld(float delta_time)
+    {
+        ECSContext* child_context = GetSubContext();
+        if (!child_context || !child_context->IsActive())
+            return;
+
+        if (paused || !render_enabled)
+            return;
+
+        ECSContext* parent_context = owner_entity ? owner_entity->GetContext() : nullptr;
+        SyncSubWorldRuntimeResources(parent_context, child_context);
+        SyncSubWorldFrameIndex(owner_entity, child_context);
+
+        // Run Collect → Batch → BufferCommit → BufferUpload → FrameSync.
+        // This MUST happen before the parent's BeginRenderPass so that any
+        // StagedBuffers written during Batch (e.g. transform_vab) are
+        // copied to GPU memory before the render pass opens.
+        const uint32_t frame_index = child_context->GetFrameIndex();
+        child_context->PrepareRenderPassSetup(frame_index, delta_time);
+
+        // Propagate to nested sub-worlds (depth-first)
+        std::vector<std::shared_ptr<SubWorldComponent>> nested;
+        child_context->GetComponents(nested);
+        for (const auto& sw : nested)
+            if (sw) sw->PrepareSubWorld(delta_time);
+    }
+
+    void SubWorldComponent::DrawSubWorld(graph::RenderCmdBuffer* cmd, float delta_time)
+    {
+        ECSContext* child_context = GetSubContext();
+        if (!child_context || !child_context->IsActive())
+            return;
+
+        if (paused || !render_enabled)
+            return;
+
+        // PrepareSubWorld() must have been called this frame before BeginRenderPass.
+        // Here we only issue GPU draw commands into the already-open render pass.
+        child_context->RenderDrawOnly(cmd, delta_time);
+    }
+
     void SubWorldComponent::ClearSubWorld()
     {
         if (auto* ctx = GetSubContext())

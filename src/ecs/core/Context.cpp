@@ -302,8 +302,14 @@ namespace hgl
                 current_render_cmd = cmd;
             }
 
+            // Run CPU-side Update() for Collect and Batch phases only.
+            // Buffer commit/upload (phases RenderBufferCommit, RenderBufferUpload) and
+            // FrameSync must NOT run inside an open Vulkan render pass — they are
+            // handled by PrepareRenderPassSetup() before BeginRenderPass().
+            // DrawSubmit systems (RenderPrimitiveSubmitSystem etc.) only override
+            // Render(), not Update(), so they are covered by the Render() loop below.
             RunRenderUpdatesRange(ExecutionPhase::RenderCollect,
-                                  ExecutionPhase::RenderStat,
+                                  ExecutionPhase::RenderBatch,
                                   deltaTime);
 
             if (auto transform_system = GetSystem<TransformSystem>())
@@ -347,6 +353,52 @@ namespace hgl
             if (current_render_cmd == cmd) {
                 current_render_cmd = nullptr;
             }
+        }
+
+        void ECSContext::RenderDrawOnly(graph::RenderCmdBuffer* cmd, float deltaTime)
+        {
+            if (!active)
+                return;
+
+            // Draw-only entry: Update() phases (Collect/Batch/Upload) were already executed
+            // by PrepareRenderPassSetup() or SubWorldComponent::PrepareSubWorld() before
+            // BeginRenderPass. Only issue GPU draw commands here.
+            if (!current_render_cmd && cmd)
+                current_render_cmd = cmd;
+
+            if (auto transform_system = GetSystem<TransformSystem>())
+                transform_system->SubmitTransformUpdates();
+
+            for (auto& entry : render_system_order)
+            {
+                if (!entry.system)
+                    continue;
+
+                if (entry.phase < static_cast<int>(ExecutionPhase::RenderCollect))
+                    continue;
+
+                if (entry.phase > static_cast<int>(ExecutionPhase::RenderStat))
+                    continue;
+
+                HGL_CAPTURE_SCOPE();
+                LogDebug("[ECS] RenderDrawOnly: %s", entry.system->GetName().c_str());
+                entry.system->Render(cmd, deltaTime);
+            }
+
+            // Recurse into nested sub-worlds (draw-only — they were also Prepare'd before the pass)
+            if (sub_world_auto_update)
+            {
+                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
+                GetComponents(sub_worlds);
+                for (const auto& sub_world : sub_worlds)
+                {
+                    if (sub_world)
+                        sub_world->DrawSubWorld(cmd, deltaTime);
+                }
+            }
+
+            if (current_render_cmd == cmd)
+                current_render_cmd = nullptr;
         }
 
         void ECSContext::OnResize(const VkExtent2D &extent)
