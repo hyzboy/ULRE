@@ -8,6 +8,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/log/Log.h>
+#include<algorithm>
 
 
 DEFINE_LOGGER_MODULE(RenderGraph)
@@ -178,13 +179,23 @@ namespace hgl
                     pass.onBeforePass(*this, pass);
                 }
 
-                // Step 1: optional Update() pass — collect, cull, sort, batch (CPU data preparation)
+                // Step 1: optional Update() pass — inside the render pass only dispatch
+                // phases from RenderDrawSubmit onward.  Collect/Batch/Upload/FrameSync
+                // were already executed by PrepareRenderPassSetup before BeginRenderPass;
+                // re-running them here would duplicate CPU work and, for RenderBufferUpload,
+                // issue vkCmdCopyBuffer inside a Vulkan render pass (spec violation).
                 if (pass.runUpdate)
                 {
-                    HGL_CAPTURE_SCOPE();
-                    LogDebug("[ECS RENDER] Update phase range %d to %d", 
-                            static_cast<int>(pass.startPhase), static_cast<int>(pass.endPhase));
-                    RunRenderUpdatesRange(pass.startPhase, pass.endPhase, deltaTime);
+                    const ExecutionPhase update_min =
+                        std::max(pass.startPhase, ExecutionPhase::RenderDrawSubmit);
+                    if (update_min <= pass.endPhase)
+                    {
+                        HGL_CAPTURE_SCOPE();
+                        LogDebug("[ECS RENDER] Update phase range %d to %d (clamped from %d)",
+                                static_cast<int>(update_min), static_cast<int>(pass.endPhase),
+                                static_cast<int>(pass.startPhase));
+                        RunRenderUpdatesRange(update_min, pass.endPhase, deltaTime);
+                    }
                 }
 
                 // Step 2: optional transform submit before Render()
