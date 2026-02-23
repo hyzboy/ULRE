@@ -10,17 +10,17 @@ class VulkanDevice;
 /**
  * Buffer access base class (Layer 3)
  *
- * 只持有 DeviceBuffer* 引用，提供统一的 Write 接口。
- * 不含任何提交逻辑 —— flush/submit 完全由 ECS System 负责。
+ * 持有 DeviceBuffer* 和独立缓存的 IGPUBuffer* 两个指针。
+ * DeviceBuffer* 用于 GetBuffer()/GetBufferInfo()/descriptor binding / static_cast<VAB*>。
+ * IGPUBuffer*  用于所有 CPU 写操作（Map/Write/MarkDirty），直接访问，不经 DeviceBuffer 转发器。
  *
- * 注意：此层不维护 dirty 标记。GPU 上传 dirty 状态由底层 StagedBuffer::is_dirty
- * 自动管理（Write/Unmap 路径均会自动置脏），ECS RenderBufferUploadSystem 负责轮询。
- * 上层代码无需也不应在 Accessor 层手动追踪 dirty。
+ * 不含任何提交逻辑 —— flush/submit 完全由 ECS RenderBufferUploadSystem 负责。
  */
 class BufferAccessBase
 {
 protected:
-    DeviceBuffer *buffer = nullptr;
+    DeviceBuffer *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 保留不变
+    IGPUBuffer   *gpu_buf = nullptr;  // 写路径专用，SetBuffer() 时同步赋值，直接持有，无需跨层查找
 
     DescriptorSetType desc_set_type = DescriptorSetType::PerMaterial;
     AnsiString ubo_name;
@@ -37,11 +37,13 @@ protected:
 
     void MoveFrom(BufferAccessBase &&other)
     {
-        buffer = other.buffer;
+        buffer        = other.buffer;
+        gpu_buf       = other.gpu_buf;
         desc_set_type = other.desc_set_type;
         ubo_name      = other.ubo_name;
 
-        other.buffer = nullptr;
+        other.buffer  = nullptr;
+        other.gpu_buf = nullptr;
     }
 
 public:
@@ -55,29 +57,22 @@ public:
     const DeviceBuffer *GetBuffer() const { return buffer; }
 
     /**
-     * Phase 3 migration: access the IGPUBuffer upload interface directly.
-     * Returns nullptr if the buffer has no staged upload path (pure device-local).
+     * Returns the cached IGPUBuffer* for CPU writes.
+     * Populated by SetBuffer(); nullptr for pure device-local buffers (no upload path).
      */
-    IGPUBuffer       *GetGPUBuffer()       { return buffer ? buffer->GetGPUBuffer() : nullptr; }
-    const IGPUBuffer *GetGPUBuffer() const { return buffer ? buffer->GetGPUBuffer() : nullptr; }
+    IGPUBuffer       *GetGPUBuffer()       { return gpu_buf; }
+    const IGPUBuffer *GetGPUBuffer() const { return gpu_buf; }
 
     bool Write(const void *ptr, uint32_t offset, uint32_t size)
     {
-        if(!buffer)
-            return false;
-
-        // Prefer IGPUBuffer path when available (Phase 3 migration).
-        if(auto *gpu = buffer->GetGPUBuffer())
-            return gpu->Write(ptr, (VkDeviceSize)offset, (VkDeviceSize)size);
-
-        return buffer->Write(ptr, offset, size);
+        if(!gpu_buf) return false;
+        return gpu_buf->Write(ptr, (VkDeviceSize)offset, (VkDeviceSize)size);
     }
 
     void Flush(uint32_t size)
     {
-        // Phase 3c: bypass DeviceBuffer::Flush forwarder, mark dirty directly on IGPUBuffer.
-        if(auto *gpu = GetGPUBuffer())
-            gpu->MarkDirty(0, static_cast<VkDeviceSize>(size));
+        if(gpu_buf)
+            gpu_buf->MarkDirty(0, static_cast<VkDeviceSize>(size));
     }
 
     // Optional update hook for structured accessors.
