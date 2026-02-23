@@ -11,7 +11,11 @@
 // #include <hgl/ecs/systems/render/TextResourceSyncSystem.h> // replaced by support/text/TextSyncSystem
 // #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h> // replaced by support/text/TextRenderSystem
 #include <hgl/ecs/support/text/TextRenderPipelineGroup.h>
-#include <hgl/ecs/systems/render/LineCollectSystem.h>
+// Old line systems replaced by LineRenderPipelineGroup:
+// #include <hgl/ecs/systems/render/LineCollectSystem.h>   // replaced by support/line/LineCollectSystem
+#include <hgl/ecs/support/line/LineRenderPipelineGroup.h>
+#include <hgl/ecs/support/line/LineCollectSystem.h>
+#include <hgl/ecs/support/line/LineRenderSystem.h>
 #include <hgl/ecs/systems/render/LineStatsSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
@@ -26,7 +30,8 @@
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
-#include <hgl/ecs/systems/render/LineRenderSystem.h>
+// Old line render system is now part of LineRenderPipelineGroup:
+// #include <hgl/ecs/systems/render/LineRenderSystem.h>    // replaced by support/line/LineRenderSystem
 #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
 #include <hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include <hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
@@ -128,21 +133,18 @@ namespace
         if (!ctx)
             return false;
 
+        // LineBoundsUpdateSystem is a tick system, stays outside the group
         auto line_bounds_update_system = EnsureTickSystem<hgl::ecs::LineBoundsUpdateSystem>(ctx);
-        auto line_collect_system = EnsureRenderSystem<hgl::ecs::LineCollectSystem>(ctx);
-        auto line_render_system = EnsureRenderSystem<hgl::ecs::LineRenderSystem>(ctx);
-        auto line_stats_system = EnsureRenderSystem<hgl::ecs::LineStatsSystem>(ctx);
-
-        if (line_collect_system)
-            line_collect_system->SetWorld(ctx);
-
         if (line_bounds_update_system)
             line_bounds_update_system->SetWorld(ctx);
 
-        if (line_stats_system)
-            line_stats_system->SetWorld(ctx);
+        // New unified pipeline group replaces old LineCollectSystem + LineRenderSystem
+        hgl::ecs::LineRenderPipelineGroup group;
+        group.Initialize(ctx);
 
-        (void)line_render_system;
+        // Stats system (thin stats logger, not part of the pipeline group)
+        EnsureRenderSystem<hgl::ecs::LineStatsSystem>(ctx);
+
         return true;
     }
 

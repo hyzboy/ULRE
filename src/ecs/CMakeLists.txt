@@ -159,7 +159,7 @@ set(ECS_SYS_18_RenderCollect_TextCollectSystem_FILES
 
 set(ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/LineCollectSystem.h
-    systems/render/LineCollectSystem.cpp
+    # systems/render/LineCollectSystem.cpp  REMOVED: replaced by support/line/LineCollectSystem.cpp
 )
 
 set(ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES
@@ -199,7 +199,7 @@ set(ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES
 
 set(ECS_SYS_26_RenderBatch_LineRenderSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/LineRenderSystem.h
-    systems/render/LineRenderSystem.cpp
+    # systems/render/LineRenderSystem.cpp  REMOVED: replaced by support/line/LineRenderSystem.cpp
     ${ECS_INCLUDE_PATH}/components/LinesComponent.h
 )
 
@@ -266,6 +266,19 @@ set(ECS_SUPPORT_TEXT_FILES
     support/text/TextRenderPipelineGroup.cpp
 )
 
+set(ECS_SUPPORT_LINE_FILES
+    ${ECS_INCLUDE_PATH}/support/line/LineRenderPipeline.h
+    ${ECS_INCLUDE_PATH}/support/line/LineCollectSystem.h
+    ${ECS_INCLUDE_PATH}/support/line/LineBuildSystem.h
+    ${ECS_INCLUDE_PATH}/support/line/LineRenderSystem.h
+    ${ECS_INCLUDE_PATH}/support/line/LineRenderPipelineGroup.h
+    support/line/LineRenderPipeline.cpp
+    support/line/LineCollectSystem.cpp
+    support/line/LineBuildSystem.cpp
+    support/line/LineRenderSystem.cpp
+    support/line/LineRenderPipelineGroup.cpp
+)
+
 set(ECS_SERIALIZATION_FILES
     serialization/ContextSerialization.cpp
     serialization/RenderableComponentSerialization.cpp
@@ -306,6 +319,7 @@ set(ECS_SOURCE
     ${ECS_SUPPORT_FILES}
     ${ECS_SUPPORT_PRIMITIVE_FILES}
     ${ECS_SUPPORT_TEXT_FILES}
+    ${ECS_SUPPORT_LINE_FILES}
     ${ECS_SERIALIZATION_FILES}
 )
 
@@ -341,6 +355,7 @@ source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_S
 source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
 source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
 source_group("ECS\\Support\\Text" FILES ${ECS_SUPPORT_TEXT_FILES})
+source_group("ECS\\Support\\Line" FILES ${ECS_SUPPORT_LINE_FILES})
 source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}

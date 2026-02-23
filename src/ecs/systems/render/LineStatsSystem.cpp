@@ -1,7 +1,8 @@
 #include<hgl/ecs/systems/render/LineStatsSystem.h>
 #include<hgl/ecs/core/Context.h>
-#include<hgl/ecs/systems/render/LineCollectSystem.h>
-#include<hgl/ecs/systems/render/LineRenderSystem.h>
+#include<hgl/ecs/support/line/LineCollectSystem.h>
+#include<hgl/ecs/support/line/LineRenderSystem.h>
+#include<hgl/ecs/support/line/LineRenderPipeline.h>
 
 namespace hgl::ecs
 {
@@ -25,13 +26,13 @@ namespace hgl::ecs
         if (!world)
             return;
 
-        auto collect_system = world->GetSystem<LineCollectSystem>();
-        auto render_system = world->GetSystem<LineRenderSystem>();
-        if (!collect_system)
+        auto* raw = world->GetRenderPipeline(LineRenderPipeline::kName);
+        if (!raw)
             return;
 
-        const auto& stats = collect_system->GetStats();
-        const uint32_t uploaded = render_system ? render_system->GetLineCount() : 0;
+        auto* pipeline = static_cast<LineRenderPipeline*>(raw);
+        const auto& stats = pipeline->GetCollectStats();
+        const uint32_t uploaded = pipeline->GetTotalLineCount();
 
         LogInfo("[LineStats] total=%u visible=%u culled(vis=%u frustum=%u hzb=%u) ratio=%.2f uploaded_lines=%u",
                 stats.total_components,
