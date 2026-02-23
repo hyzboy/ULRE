@@ -11,11 +11,8 @@
 #include <hgl/log/Logger.h>
 #include <hgl/io/event/MouseEvent.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
-#include <hgl/ecs/systems/render/LineRenderSystem.h>
-#include <hgl/ecs/systems/render/TextRenderSubmitSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>

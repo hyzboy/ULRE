@@ -147,60 +147,47 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
 )
 
 set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCullSystem.h
-    # systems/render/RenderPrimitiveCullSystem.cpp  REMOVED: replaced by PrimitiveCullSystem
+    # REMOVED: replaced by support/primitive/PrimitiveCullSystem
 )
 
 set(ECS_SYS_18_RenderCollect_TextCollectSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/TextCollectSystem.h
-    # systems/render/TextCollectSystem.cpp  REMOVED: replaced by support/text/TextCollectSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/TextComponent.h
+    # REMOVED: replaced by support/text/TextCollectSystem
 )
 
 set(ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/LineCollectSystem.h
-    # systems/render/LineCollectSystem.cpp  REMOVED: replaced by support/line/LineCollectSystem.cpp
+    # REMOVED: replaced by support/line/LineCollectSystem
 )
 
 set(ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSortSystem.h
-    # systems/render/RenderPrimitiveSortSystem.cpp  REMOVED: replaced by PrimitiveSortSystem
+    # REMOVED: replaced by support/primitive/PrimitiveSortSystem
 )
 
 set(ECS_SYS_20_RenderBatch_RenderPrimitiveBatchBuildSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchBuildSystem.h
-    # systems/render/RenderPrimitiveBatchBuildSystem.cpp  REMOVED: replaced by PrimitiveBuildSystem
+    # REMOVED: replaced by support/primitive/PrimitiveBuildSystem
 )
 
 set(ECS_SYS_21_RenderBatch_RenderPrimitiveBatchFinalizeSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveBatchFinalizeSystem.h
-    # systems/render/RenderPrimitiveBatchFinalizeSystem.cpp  REMOVED: replaced by PrimitiveBuildSystem
+    # REMOVED: replaced by support/primitive/PrimitiveBuildSystem
 )
 
 set(ECS_SYS_22_RenderBatch_TextBuildSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/TextBuildSystem.h
-    # systems/render/TextBuildSystem.cpp  REMOVED: replaced by support/text/TextBuildSystem.cpp
+    # REMOVED: replaced by support/text/TextBuildSystem
 )
 
 set(ECS_SYS_23_RenderBatch_TextResourceSyncSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/TextResourceSyncSystem.h
-    # systems/render/TextResourceSyncSystem.cpp  REMOVED: replaced by support/text/TextSyncSystem.cpp
+    # REMOVED: replaced by support/text/TextSyncSystem
 )
 
 set(ECS_SYS_24_RenderDrawSubmit_RenderPrimitiveSubmitSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveSubmitSystem.h
-    systems/render/RenderPrimitiveSubmitSystem.cpp
+    # REMOVED: replaced by support/primitive/PrimitiveRenderSystem
 )
 
 set(ECS_SYS_25_RenderDrawSubmit_TextRenderSubmitSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/TextRenderSubmitSystem.h
-    # systems/render/TextRenderSubmitSystem.cpp  REMOVED: replaced by support/text/TextRenderSystem.cpp
+    # REMOVED: replaced by support/text/TextRenderSystem
 )
 
 set(ECS_SYS_26_RenderBatch_LineRenderSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/render/LineRenderSystem.h
-    # systems/render/LineRenderSystem.cpp  REMOVED: replaced by support/line/LineRenderSystem.cpp
-    ${ECS_INCLUDE_PATH}/components/LinesComponent.h
+    # REMOVED: replaced by support/line/LineRenderSystem
 )
 
 set(ECS_SYS_26B_RenderStat_LineStatsSystem_FILES

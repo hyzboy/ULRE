@@ -8,7 +8,6 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/time/Time.h>
 //#include<iostream>
 

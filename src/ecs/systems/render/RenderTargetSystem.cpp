@@ -1,7 +1,6 @@
 ﻿#include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/LineRenderSystem.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKRenderTarget.h>
 

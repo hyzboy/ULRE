@@ -4,15 +4,7 @@
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
-// Old Text systems removed — see below for new TextRenderPipelineGroup
-// #include <hgl/ecs/systems/render/TextCollectSystem.h>     // replaced by support/text/TextCollectSystem
-// Old Text build/sync/submit systems replaced by TextRenderPipelineGroup:
-// #include <hgl/ecs/systems/render/TextBuildSystem.h>        // replaced by support/text/TextBuildSystem
-// #include <hgl/ecs/systems/render/TextResourceSyncSystem.h> // replaced by support/text/TextSyncSystem
-// #include <hgl/ecs/systems/render/TextRenderSubmitSystem.h> // replaced by support/text/TextRenderSystem
 #include <hgl/ecs/support/text/TextRenderPipelineGroup.h>
-// Old line systems replaced by LineRenderPipelineGroup:
-// #include <hgl/ecs/systems/render/LineCollectSystem.h>   // replaced by support/line/LineCollectSystem
 #include <hgl/ecs/support/line/LineRenderPipelineGroup.h>
 #include <hgl/ecs/support/line/LineCollectSystem.h>
 #include <hgl/ecs/support/line/LineRenderSystem.h>
@@ -21,21 +13,10 @@
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-// Old primitive pipeline systems (Cull/Sort/Build/Finalize/Submit replaced by new Group)
-// #include <hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>       // replaced by PrimitiveCullSystem
-// #include <hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>       // replaced by PrimitiveSortSystem
-// #include <hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h> // replaced by PrimitiveBuildSystem
-// #include <hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h> // replaced by PrimitiveBuildSystem
-// #include <hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>     // replaced by PrimitiveRenderSystem
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
-// Old line render system is now part of LineRenderPipelineGroup:
-// #include <hgl/ecs/systems/render/LineRenderSystem.h>    // replaced by support/line/LineRenderSystem
-// Old quad systems now wrapped by BillboardRenderPipelineGroup:
-// #include <hgl/ecs/systems/render/QuadResourcePrepareSystem.h>  // moved to support/billboard/
-// #include <hgl/ecs/systems/render/QuadMaterialBindingSystem.h>  // moved to support/billboard/
 #include <hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
