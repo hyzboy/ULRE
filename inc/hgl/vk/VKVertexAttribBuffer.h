@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferOwner.h>
-#include<hgl/vk/VKBufferMap.h>
 
 namespace hgl::graph{
 class VertexAttribBuffer:public VkBufferOwner
@@ -49,21 +48,5 @@ public:
 };//class VertexAttribBuffer:public VkBufferOwner
 
 using VAB=VertexAttribBuffer;
-
-// DEPRECATED: Use BufferAccessor<VAB> instead.
-class [[deprecated("VABMap is superseded by BufferAccessor<VAB>. See VKBufferAccessor.h.")]] VABMap:public VKBufferMap<VAB>
-{
-public:
-
-    using VKBufferMap<VAB>::VKBufferMap;
-    virtual ~VABMap()=default;
-
-    const VkFormat GetFormat()const { return buffer->GetFormat(); }
-
-    void BindVAB(VAB *vab,const VkDeviceSize off,const uint32_t count)
-    {
-        VKBufferMap<VAB>::Bind(vab,off,vab->GetStride(),count);
-    }
-};//class VABMap
 
 }//namespace hgl::graph

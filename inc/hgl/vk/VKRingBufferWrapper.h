@@ -1,7 +1,6 @@
 #pragma once
 
 #include<hgl/vk/DeviceBufferRingWriter.h>
-#include<hgl/vk/VKBufferWriteAgent.h>
 
 namespace hgl::graph
 {
@@ -17,7 +16,7 @@ namespace hgl::graph
  * - 由持有方（TransformAssignmentBuffer 等）每帧在渲染前直接调用 WriteDynamicRange()
  * - CommitInternal() 是 no-op（数据已直接写入 device-visible 内存）
  */
-class RingBufferWrapper : public BufferWriteAgent
+class RingBufferWrapper
 {
 private:
     DeviceBufferRingWriter writer;
@@ -80,18 +79,17 @@ public:
         return ok;
     }
 
-    bool IsDirty() const override { return dirty; }
+    bool IsDirty() const { return dirty; }
     void ClearDirty() { dirty = false; }
 
-    // BufferWriteAgent interface (note: Unmap already defined above in non-virtual form)
-    void* MapRange(VkDeviceSize offset, VkDeviceSize count) override;
-    // Unmap is already in the wrapper, just mark as override requirement
-    bool WriteRange(const void *data, VkDeviceSize offset, VkDeviceSize count) override;
-    bool HasPendingUpload() const override;
-    void MarkDirty() override;
-    bool CommitInternal() override;
-    DeviceBuffer* GetBuffer() override;
-    const DeviceBuffer* GetBuffer() const override;
+    // Writing methods
+    void* MapRange(VkDeviceSize offset, VkDeviceSize count);
+    bool WriteRange(const void *data, VkDeviceSize offset, VkDeviceSize count);
+    bool HasPendingUpload() const;
+    void MarkDirty();
+    bool CommitInternal();
+    DeviceBuffer* GetBuffer();
+    const DeviceBuffer* GetBuffer() const;
 };
 }
 

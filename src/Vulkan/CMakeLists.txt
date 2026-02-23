@@ -101,8 +101,6 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/VKBufferAccessor.h
                                 ${VK_INCLUDE_PATH}/VKBufferData.h
                                 ${VK_INCLUDE_PATH}/VKIndexBuffer.h
-                                ${VK_INCLUDE_PATH}/VKBufferMap.h
-                                ${VK_INCLUDE_PATH}/VKBufferWriteAgent.h
                                 ${VK_INCLUDE_PATH}/VKStagedBuffer.h
                                 ${VK_INCLUDE_PATH}/VKStagedBufferAccessor.h
                                 ${VK_INCLUDE_PATH}/VKReBarBuffer.h

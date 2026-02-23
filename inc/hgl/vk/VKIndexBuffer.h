@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferOwner.h>
-#include<hgl/vk/VKBufferMap.h>
 
 namespace hgl::graph{
 class IndexBuffer:public VkBufferOwner
