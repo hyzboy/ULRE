@@ -13,11 +13,13 @@
 #include <hgl/ecs/systems/render/EnvironmentSystem.h>
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h>
-#include <hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
+// Old primitive pipeline systems (Cull/Sort/Build/Finalize/Submit replaced by new Group)
+// #include <hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>       // replaced by PrimitiveCullSystem
+// #include <hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>       // replaced by PrimitiveSortSystem
+// #include <hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h> // replaced by PrimitiveBuildSystem
+// #include <hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h> // replaced by PrimitiveBuildSystem
+// #include <hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>     // replaced by PrimitiveRenderSystem
+#include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -66,33 +68,26 @@ namespace
         if (auto camera_system = ctx->GetSystem<hgl::ecs::CameraSystem>())
             camera_info = camera_system->GetCameraInfo();
 
+        // Collect system stays: gathers PrimitiveComponents into RenderFrameCache
         auto render_collect_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCollectSystem>(ctx);
-        auto render_cull_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveCullSystem>(ctx);
-        auto render_sort_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveSortSystem>(ctx);
-        auto render_batch_build_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveBatchBuildSystem>(ctx);
-        auto render_batch_finalize_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveBatchFinalizeSystem>(ctx);
-        auto render_upload_system = EnsureRenderSystem<hgl::ecs::RenderBufferUploadSystem>(ctx);
-        auto render_submit_system = EnsureRenderSystem<hgl::ecs::RenderPrimitiveSubmitSystem>(ctx);
-
         if (render_collect_system)
         {
             render_collect_system->SetWorld(ctx);
             render_collect_system->SetCameraInfo(camera_info);
         }
 
+        // Buffer upload is a shared utility system, not Primitive-specific
+        auto render_upload_system = EnsureRenderSystem<hgl::ecs::RenderBufferUploadSystem>(ctx);
         if (render_upload_system)
         {
             render_upload_system->SetWorld(ctx);
             render_upload_system->SetDevice(device);
         }
 
-        if (render_submit_system)
-            render_submit_system->SetWorld(ctx);
+        // New unified pipeline group replaces Cull/Sort/Build/Finalize/Submit systems
+        hgl::ecs::PrimitiveRenderPipelineGroup group;
+        group.Initialize(ctx);
 
-        (void)render_cull_system;
-        (void)render_sort_system;
-        (void)render_batch_build_system;
-        (void)render_batch_finalize_system;
         return true;
     }
 

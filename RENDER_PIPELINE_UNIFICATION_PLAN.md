@@ -28,44 +28,54 @@
 
 #### 问题 1: 混乱的管道实现模式
 
-**Primitive 渲染**:
+**Primitive 渲染** (接近正确的模式):
 ```
 ECSContext::GetPrimitiveBatchPipeline() 
-├─ 返回 PrimitiveBatchPipeline*
-└─ 被 4 个 System 分别调用:
-   ├─ RenderPrimitiveCullSystem::Update()
-   ├─ RenderPrimitiveSortSystem::Update()
-   ├─ RenderPrimitiveBatchBuildSystem::Update()
+├─ 返回 PrimitiveBatchPipeline*（Pipeline 是独立的）
+└─ 被 4 个"薄"System 分别调用（System 只是委托）:
+   ├─ RenderPrimitiveCullSystem::Update() → pipeline->RunCull()
+   ├─ RenderPrimitiveSortSystem::Update() → pipeline->RunSort()
+   ├─ RenderPrimitiveBatchBuildSystem::Update() → pipeline->RunBuild()
    └─ RenderPrimitiveBatchFinalizeSystem::Update()
 ```
 
-**Text 渲染**:
+**Text 渲染** (接近正确的模式):
 ```
 ECSContext::GetTextRenderPipeline()
-├─ 返回 TextRenderPipeline*
-└─ 被 3 个 System 分别调用:
-   ├─ TextCollectSystem::Update()
-   ├─ TextResourceSyncSystem::Update()
-   └─ TextBuildSystem::Update()
+├─ 返回 TextRenderPipeline*（Pipeline 是独立的）
+└─ 被 3 个"薄"System 分别调用（System 只是委托）:
+   ├─ TextCollectSystem::Update() → pipeline->RunCollect()
+   ├─ TextResourceSyncSystem::Update() → pipeline->RunSync()
+   └─ TextBuildSystem::Update() → pipeline->RunBuild()
 ```
 
-**Line 渲染**:
+**Line 渲染** (❌ 错误的反面教材!):
 ```
-LineRenderSystem (自身就是 System)
-├─ 持有 LineRenderManager* 
-├─ Update() 在 RenderBatch 阶段
-└─ Render() 在 RenderDrawSubmit 阶段
-└─ 不经过 Pipeline 模式
-```
-
-**Quad/Billboard 渲染**:
-```
-QuadRenderSystem / BillboardSystem (自身就是 System)
-├─ 持有相应 Manager
-└─ 不经过 Pipeline 模式
+LineRenderSystem (既是 System，又是 Pipeline 所有者)
+├─ 自身就是 System，注册到 ExecutionPhase
+├─ 持有 LineRenderManager* （业务逻辑容器）
+├─ Update() 在 RenderBatch 阶段做 Pipeline 工作(数据收集、批处理)
+├─ Render() 在 RenderDrawSubmit 阶段做绘制
+├─ 问题 A: System 不应该掺杂业务逻辑
+├─ 问题 B: 没有独立的 Pipeline，无法复用
+├─ 问题 C: 框架需要特殊认识 LineRenderSystem 这个类型
+└─ 问题 D: 扩展性极差,每个新元素都这样搞
 ```
 
-**现象**: 三种不同的模式混在一起，难以理解、维护和扩展。
+**Quad/Billboard 渲染** (❌ 同样错误):
+```
+QuadResourcePrepareSystem + QuadRenderSystem
+├─ 混合了 System 和 Pipeline 的职责
+├─ 自己持有资源管理逻辑
+├─ 框架需要特殊认识这些 System
+└─ 无法与其他元素统一管理
+```
+
+**现象**: 有两种截然不同的实现模式:
+- **好的**: Primitive/Text - System(委托) → Pipeline(逻辑)
+- **坏的**: Line/Quad - System ≈ Pipeline(混合体)
+
+这导致代码风格不一致、难于维护和扩展。
 
 #### 问题 2: Context 中的特定元素耦合
 
@@ -91,9 +101,31 @@ public:
 
 #### 问题 3: System 与 Pipeline 的关系不清晰
 
-- **Primitive/Text**: System 是 Pipeline 的客户端，Pipeline 是共享资源（Provider 模式）
-- **Line/Quad**: System 本身就包含 Pipeline 逻辑（Monolith 模式）
-- 没有统一的接口约定
+**当前混乱的模式**:
+
+```
+模式 A: Primitive/Text
+  System (薄代理) → Pipeline (业务逻辑)
+  ✓ 清晰，但不一致
+  
+模式 B: Line/Quad  
+  System ≈ Pipeline (混合体)
+  ✗ 混淆了职责，难以维护
+  ✗ 每个这样的 System 都是一个独特的雪花，难以标准化
+  ✗ 无法通过框架统一管理
+```
+
+**问题**:
+- **Primitive/Text**: System 是 Pipeline 的客户端，Pipeline 是共享资源（中间人模式）
+- **Line/Quad**: System 本身就包含 Pipeline 逻辑（紧耦合），不该存在！
+- 框架无法以统一的方式处理所有元素
+
+**根本原因**:
+LineRenderSystem 和 QuadRenderSystem 不应该存在！它们应该被拆分为：
+- **LineRenderPipeline**: 业务逻辑容器
+- **LineCollectSystem**: 薄代理，仅调用 pipeline->RunCollect()
+- **LineBatchSystem**: 薄代理，仅调用 pipeline->RunBuild()
+- **LineRenderSystem**: 薄代理，仅调用 pipeline->Render(cmd)
 
 #### 问题 4: SystemGroup 与 Pipeline 没有显式关联
 
@@ -138,6 +170,15 @@ struct SystemGroup {
 - 每个 SystemGroup 关联一个 Pipeline
 - SystemGroup 的启用/禁用直接影响 Pipeline 的生命周期
 - Pipeline 的实例化和清理由 SystemGroup 的安装器控制
+
+**目标 5: 消除混合体 System - System 必须是"薄代理"**
+- 不应该存在 `LineRenderSystem`、`QuadRenderSystem` 这样既是 System 又包含业务逻辑的混合体
+- 所有 System 都应该是"薄代理"：仅在特定 Phase 调用 Pipeline 的对应方法
+- 例如，`LineRenderSystem` 应该被拆分为：
+  - `LineRenderPipeline` - 包含所有业务逻辑（数据收集、批处理、绘制命令）
+  - `LineCollectSystem` - 薄代理，仅调用 `LineRenderPipeline::RunCollect()`
+  - `LineBatchSystem` - 薄代理，仅调用 `LineRenderPipeline::RunBuild()`
+  - `LineDrawSystem` - 薄代理，仅调用 `LineRenderPipeline::Render(cmd)`
 
 ### 2.2 次要目标
 
@@ -196,6 +237,120 @@ Pipeline 生命周期:
     → 每帧执行 (PrepareFrame → Collect → Cull → Sort → Build → Sync → Render)
     → 关闭 (Context::Shutdown)
     → 销毁 (SystemGroup 卸载)
+```
+
+### 3.5 ⭐ ECS 框架零特定元素操作原则 (Framework Element Agnostic)
+
+**这是本次重构最重要的设计原则!**
+
+#### 原则描述
+
+ECS 框架内部（Context、System 基类、RenderGraph 等）应该**完全不知道任何具体的渲染元素**（Primitive、Text、Line、Quad、Particle 等）的存在。
+
+#### 具体要求
+
+**❌ 不允许的做法**:
+
+```cpp
+// Context.h - 禁止！
+class ECSContext {
+public:
+    PrimitiveBatchPipeline* GetPrimitiveBatchPipeline();  // ❌ 特定元素 API
+    TextRenderPipeline* GetTextRenderPipeline();          // ❌ 特定元素 API
+    LineRenderManager* GetLineRenderManager();            // ❌ 特定元素 API
+    // ...每加一个元素就加一个 getter？NO!
+};
+```
+
+```cpp
+// System.h - 禁止！
+class System {
+    virtual void OnPrimitiveRender() {}   // ❌ 特定于元素的虚函数
+    virtual void OnTextRender() {}        // ❌ 特定于元素的虚函数
+    virtual void OnLineRender() {}        // ❌ 特定于元素的虚函数
+};
+```
+
+```cpp
+// RenderGraph.cpp - 禁止！
+void ECSContext::Render(float dt) {
+    if (has_primitives) {
+        primitive_pipeline->RunCollect();     // ❌ 具体元素逻辑
+        primitive_pipeline->RunCull();
+    }
+    if (has_texts) {
+        text_pipeline->RunCollect();          // ❌ 具体元素逻辑
+    }
+    if (has_lines) {
+        line_manager->Prepare();              // ❌ 具体元素逻辑
+    }
+    // ...继续堆砌 if 语句？NO!
+}
+```
+
+#### ✅ 正确的做法
+
+```cpp
+// Context.h - 框架只知道抽象
+class ECSContext {
+public:
+    // 完全不知道 Primitive/Text/Line/Quad 的存在
+    RenderPipelineBase* GetRenderPipeline(const std::string& name);  // ✅ 通用接口
+    void RegisterRenderPipeline(const std::string& name,             // ✅ 通用接口
+                               std::unique_ptr<RenderPipelineBase> p);
+};
+```
+
+```cpp
+// System.h - 框架提供通用的 System 基类
+class RenderPipelineSystem : public System {
+protected:
+    virtual RenderPipelineBase* GetPipeline(ECSContext* ctx) = 0;
+    // 子类只需实现"我的 Pipeline 名字是什么"和"调用哪个 Pipeline 方法"
+};
+```
+
+```cpp
+// RenderGraph.cpp - 框架通过 Pipeline 接口统一迭代
+void ECSContext::Render(float dt) {
+    // 框架代码与具体元素无关，适用于任何数量的元素
+    for (const auto& group_name : GetSystemGroupNames()) {
+        if (!IsSystemGroupEnabled(group_name)) continue;
+        
+        auto pipeline = GetRenderPipeline(group_name);
+        if (!pipeline) continue;
+        
+        pipeline->PrepareFrame();
+        pipeline->RunCollect();
+        pipeline->RunCull();
+        pipeline->RunSort();
+        pipeline->RunBuild();
+        pipeline->RunSync();
+        // 在 BeginRenderPass 中
+        pipeline->GetRenderPrimitives(...);
+        pipeline->Render(cmd);
+    }
+    // ✅ 这段代码对任何元素数量都有效，无需改动!
+}
+```
+
+#### 为什么这很重要？
+
+| 问题 | 影响 | 解决方案 |
+|------|------|---------|
+| **每加一个元素就改 Context** | Context 变成怪物，而且元素越多改动越复杂 | 通过统一接口 GetRenderPipeline() |
+| **System 需要了解具体元素** | System 代码重复，难以维护 | 提供 RenderPipelineSystem 基类 |
+| **RenderGraph 充满不同元素的特殊逻辑** | 难以理解、易出错、难以测试 | 抽象统一的 Pipeline 执行循环 |
+| **添加第 5、6、7... 个元素** | 每次都要改框架代码 | Framework 可以无限扩展，无需改动 |
+
+#### 影响范围
+
+```
+需要梳理的代码：
+1. ECSContext - 完全隔离
+2. System / RenderGraph - 完全通过 RenderPipeline 接口操作
+3. SystemGroup 独立管理每个 Pipeline 的生命周期（安装、卸载）
+4. 没有任何 if/switch/特殊处理语句涉及具体元素
 ```
 
 ---
@@ -315,7 +470,86 @@ namespace hgl::ecs {
 - 自动处理错误情况：如 Pipeline 未注册、已禁用等
 - 减少重复代码：每个 System 不需要再做 GetRenderPipeline() 的空值检查
 
-#### 4.2.2 每个 Pipeline 的设计
+#### 4.2.2 RenderPipelineGroup - Pipeline 与其 System 的统一封装（⭐ 核心架构）
+
+**目的**：将每个 RenderPipeline 及其 3-4 个 System 打包为一个内聚的"组"，作为一个可部署的单元。
+
+```cpp
+// inc/hgl/ecs/support/RenderPipelineGroup.h
+#pragma once
+
+#include <hgl/ecs/support/RenderPipelineBase.h>
+#include <hgl/ecs/core/RenderPipelineSystem.h>
+#include <memory>
+#include <vector>
+
+namespace hgl::ecs {
+
+class ECSContext;
+
+/**
+ * RenderPipelineGroup - Pipeline 与其关联 System 的统一容器
+ * 
+ * 职责：
+ * 1. 拥有并管理一个 RenderPipelineBase 派生类实例
+ * 2. 拥有并管理 1-4 个 RenderPipelineSystem 派生类实例（Collect/Cull/Build/Render）
+ * 3. 统一的生命周期管理：Initialize() → Render() → Shutdown()
+ * 4. 处理 System 与 Pipeline 之间的绑定
+ * 
+ * 示例：
+ *   LineRenderPipelineGroup 包含：
+ *   - LineRenderPipeline （持有 LineRenderManager）
+ *   - LineCollectSystem （调用 line_pipeline->RunCollect()）
+ *   - LineBatchSystem （调用 line_pipeline->RunBuild()）
+ *   - LineRenderSystem （调用 line_pipeline->Render()）
+ */
+class RenderPipelineGroup {
+protected:
+    std::string name_;  // "Primitive", "Text", "Line", "Quad"等
+    std::unique_ptr<RenderPipelineBase> pipeline_;
+    std::vector<std::unique_ptr<RenderPipelineSystem>> systems_;
+    bool enabled_ = true;
+
+public:
+    explicit RenderPipelineGroup(const std::string& name) : name_(name) {}
+    virtual ~RenderPipelineGroup() = default;
+
+    // ===== 生命周期管理 =====
+    
+    /// 初始化：创建 Pipeline 和 System，注册到 Context
+    virtual bool Initialize(ECSContext* context) = 0;
+    
+    /// 关闭：清理 Pipeline 和 System
+    virtual void Shutdown(ECSContext* context) = 0;
+
+    // ===== 属性访问 =====
+    
+    const std::string& GetName() const { return name_; }
+    RenderPipelineBase* GetPipeline() const { return pipeline_.get(); }
+    const std::vector<std::unique_ptr<RenderPipelineSystem>>& GetSystems() const { return systems_; }
+    
+    bool IsEnabled() const { return enabled_; }
+    void SetEnabled(bool enabled) { enabled_ = enabled; }
+
+protected:
+    /// 子类实现：创建 Pipeline 实例
+    virtual std::unique_ptr<RenderPipelineBase> CreatePipeline() = 0;
+    
+    /// 子类实现：创建并注册 System 实例
+    virtual void RegisterSystems() = 0;
+};
+
+}  // namespace hgl::ecs
+```
+
+**key design point**：
+- 每个 Group 管理一个 Pipeline + 一组 System
+- In `Initialize()`，group 创建 pipeline + systems，然后将 systems 注册到 Context
+- In `Shutdown()`，group 负责清理 pipeline + systems
+- ECS Context 持有 Groups map，而不是直接持有 Pipeline map
+- Group 是**部署单元**：启用/禁用 group = 启用/禁用整个渲染元素
+
+#### 4.2.3 每个 Pipeline 的设计
 
 以 PrimitiveBatchPipeline 为例：
 
@@ -352,56 +586,205 @@ public:
 
 ---
 
-## 具体迁移步骤
+## 代码组织结构
 
-### 5.1 迁移顺序和依赖
+### 4.3 目录组织
+
+为了避免代码散落四处，每个 RenderPipeline 应该有独立的目录结构。建议如下：
 
 ```
-┌─────────────────────────────────────────────────┐
-│ Phase 1: 基础设施 (已完成)                       │
-│ - RenderPipelineBase                           │
-│ - Context::RegisterRenderPipeline()            │
-│ - Context::GetRenderPipeline()                 │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│ Phase 2a: Primitive 迁移 (推荐首先)              │
-│ - PrimitiveBatchPipeline implements Base      │
-│ - 4 个 System 改用新模式                        │
-│ - 测试完整性                                    │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│ Phase 2b: Text 迁移 (同步进行)                   │
-│ - TextRenderPipeline implements Base           │
-│ - 3 个 System 改用新模式                        │
-│ - 测试完整性                                    │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│ Phase 2c: Line 迁移 (同步进行)                   │
-│ - 从 LineRenderSystem 中分离 LineRenderPipeline │
-│ - 创建 LineCollectSystem, LineRenderSystem     │
-│ - 测试完整性                                    │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│ Phase 2d: Quad/Billboard 迁移                    │
-│ - 从 QuadResourcePrepareSystem 中分离           │
-│ - 创建 QuadRenderPipeline                      │
-│ - 创建对应的 System                             │
-│ - 测试完整性                                    │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
-│ Phase 3: Context 接口清理                       │
-│ - 删除 GetPrimitiveBatchPipeline()             │
-│ - 删除 GetTextRenderPipeline()                 │
-│ - 更新所有调用处                                │
-│ - 全局编译测试                                  │
-└─────────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────────┐
+inc/hgl/ecs/
+├── support/
+│   ├── RenderPipelineBase.h          （已存在）
+│   ├── RenderPipelineGroup.h          （新建：Group 基类）
+│   ├── RenderPipelineSystem.h         （新建：System 基类）
+│   │
+│   ├── primitive/                     （新目录）
+│   │   ├── PrimitiveBatchPipeline.h
+│   │   └── PrimitiveRenderPipelineGroup.h
+│   │
+│   ├── text/                          （新目录）
+│   │   ├── TextRenderPipeline.h
+│   │   └── TextRenderPipelineGroup.h
+│   │
+│   ├── line/                          （新目录：从分散中收集）
+│   │   ├── LineRenderPipeline.h       （新建：从 LineRenderManager 抽离）
+│   │   └── LineRenderPipelineGroup.h
+│   │
+│   └── quad/                          （新目录：从分散中收集）
+│       ├── QuadRenderPipeline.h       （新建）
+│       └── QuadRenderPipelineGroup.h
+│
+src/ecs/
+├── support/
+│   ├── RenderPipelineGroup.cpp        （新建）
+│   ├── RenderPipelineSystem.cpp       （新建）
+│   │
+│   ├── primitive/                     （新目录）
+│   │   ├── PrimitiveBatchPipeline.cpp
+│   │   └── PrimitiveRenderPipelineGroup.cpp
+│   │
+│   ├── text/                          （新目录）
+│   │   ├── TextRenderPipeline.cpp
+│   │   └── TextRenderPipelineGroup.cpp
+│   │
+│   ├── line/                          （新目录）
+│   │   ├── LineRenderPipeline.cpp     （新建）
+│   │   ├── LineCollectSystem.cpp
+│   │   ├── LineBatchSystem.cpp
+│   │   ├── LineRenderSystem.cpp       （已存在，改造）
+│   │   └── LineRenderPipelineGroup.cpp
+│   │
+│   └── quad/                          （新目录）
+│       ├── QuadRenderPipeline.cpp     （新建）
+│       ├── QuadCollectSystem.cpp      （新建）
+│       ├── QuadBatchSystem.cpp        （新建）
+│       ├── QuadRenderSystem.cpp       （已存在，改造）
+│       └── QuadRenderPipelineGroup.cpp
+
+systems/
+├── render/
+│   ├── primitive/                     （可选：System 也可放在这里）
+│   │   ├── RenderPrimitiveCullSystem.h
+│   │   ├── RenderPrimitiveSortSystem.h
+│   │   └── ...
+│   │
+│   ├── text/
+│   │   ├── TextCollectSystem.h
+│   │   └── ...
+│   │
+│   ├── line/
+│   │   ├── LineCollectSystem.h        （新建）
+│   │   ├── LineBatchSystem.h          （新建）
+│   │   └── LineRenderSystem.h         （改造）
+│   │
+│   └── quad/
+│       ├── QuadCollectSystem.h        （新建）
+│       ├── QuadBatchSystem.h          （新建）
+│       └── QuadRenderSystem.h         （改造）
+```
+
+**关键原则**：
+- ✅ **每个 Pipeline 类型独占一个子目录** （primitive/text/line/quad）
+- ✅ **目录包含 Pipeline、Group、System 的完整实现**
+- ✅ **对应的 .h 和 .cpp 都在同一目录**
+- ✅ **便于管理和未来的按需编译**
+- ✅ **新增 Pipeline 时只需创建新目录，无需修改其他目录**
+
+#### 旧代码迁移（Line/Quad）
+
+当前的 Line 和 Quad 实现分散在：
+- `inc/hgl/render/LineRenderManager.h`
+- `src/SceneGraph/render/line/` （多个文件）
+- `inc/hgl/ecs/systems/render/LineRenderSystem.h`
+- `src/ecs/systems/render/LineRenderSystem.cpp`
+
+**迁移策略**：
+1. 在 `inc/hgl/ecs/support/line/` 创建新头文件：`LineRenderPipeline.h`
+2. 在 `src/ecs/support/line/` 创建新实现：`LineRenderPipeline.cpp`, `LineRenderPipelineGroup.cpp`
+3. `LineRenderManager` 保留原位置（它是纯数据/算法类）
+4. 将 `LineRenderManager` 的所有权转移给 `LineRenderPipeline`（而非 LineRenderSystem）
+5. 逐步关闭旧 System 中的业务逻辑，改为委托调用
+
+---
+
+## 具体迁移步骤
+
+### 5.1 迁移顺序和依赖（使用 RenderPipelineGroup 架构）
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ Phase 1: 基础设施 (已完成)                                 │
+│ - RenderPipelineBase                                     │
+│ - RenderPipelineGroup（新的统一容器）                     │
+│ - RenderPipelineSystem 虚基类                            │
+│ - Context::RegisterRenderPipeline()                      │
+│ - Context::GetRenderPipeline()                           │
+└──────────────────────────────────────────────────────────┘
+                         ↓
+┌──────────────────────────────────────────────────────────┐
+│ Phase 2a: Primitive 迁移 (推荐首先 ✅ 风险最低)            │
+│ - 创建 PrimitiveRenderPipelineGroup                      │
+│   ├─ PrimitiveBatchPipeline (继承 RenderPipelineBase)   │
+│   ├─ RenderPrimitiveCullSystem (使用新的 CallectSystem)   │
+│   ├─ RenderPrimitiveSortSystem (使用新的基类)             │
+│   ├─ RenderPrimitiveBatchBuildSystem (使用新的 BuildSystem) │
+│   └─ RenderPrimitiveBatchFinalizeSystem                  │
+│ - Group::Initialize() 将 Pipeline 注册到 Context        │
+│ - 测试完整性                                             │
+└──────────────────────────────────────────────────────────┘
+                         ↓
+┌──────────────────────────────────────────────────────────┐
+│ Phase 2b: Text 迁移 (同步进行)                           │
+│ - 创建 TextRenderPipelineGroup                          │
+│   ├─ TextRenderPipeline (继承 RenderPipelineBase)       │
+│   ├─ TextCollectSystem (使用新的基类)                     │
+│   ├─ TextResourceSyncSystem (改造)                      │
+│   └─ TextBuildSystem (改造)                             │
+│ - Group::Initialize() 将 Pipeline 注册到 Context        │
+│ - 测试完整性                                             │
+└──────────────────────────────────────────────────────────┘
+                         ↓
+┌──────────────────────────────────────────────────────────┐
+│ Phase 2c: Line 迁移 (⭐ 关键迁移，从混合体分离)            │
+│ - 创建 LineRenderPipelineGroup                          │
+│   ├─ LineRenderPipeline (新建，从 LineRenderManager 抽离) │
+│   ├─ LineCollectSystem (新建，薄代理)                    │
+│   ├─ LineBatchSystem (新建，薄代理)                      │
+│   └─ LineRenderSystem (改造，改为薄代理)                  │
+│ - Group::Initialize():                                   │
+│   ├─ 创建 LineRenderPipeline，拥有 LineRenderManager    │
+│   ├─ 创建 3 个 System，注册到 Context                    │
+│   ├─ 注册 Pipeline 到 Context::render_pipelines         │
+│   └─ 返回 true                                          │
+│ - Group::Shutdown() 清理所有资源                         │
+│ - 目录组织：inc/hgl/ecs/support/line/{.h}               │
+│ - 删除 LineRenderManager 的分散引用                       │
+│ - 测试完整性                                             │
+└──────────────────────────────────────────────────────────┘
+                         ↓
+┌──────────────────────────────────────────────────────────┐
+│ Phase 2d: Quad 迁移 (⭐ 关键迁移，从混合体分离)            │
+│ - 创建 QuadRenderPipelineGroup (与 Phase 2c 完全相同的模式) │
+│   ├─ QuadRenderPipeline (新建，与 QuadRenderManager 解耦)  │
+│   ├─ QuadCollectSystem (新建，薄代理)                    │
+│   ├─ QuadBatchSystem (新建，薄代理)                      │
+│   └─ QuadRenderSystem (改造，改为薄代理)                  │
+│ - 目录组织：inc/hgl/ecs/support/quad/{.h}               │
+│ - 删除早前的 QuadResourcePrepareSystem 中混合的逻辑        │
+│ - 测试完整性                                             │
+└──────────────────────────────────────────────────────────┘
+                         ↓
+┌──────────────────────────────────────────────────────────┐
+│ Phase 3: ⭐ ECS Context 纯净化 (本阶段核心目标)            │
+│ ─────────────────────────────────────────────────────────│
+│ 当前 Context 持有：                                       │
+│   ✗ PrimitiveBatchPipeline* primitive_batch_pipeline;   │
+│   ✗ TextRenderPipeline* text_render_pipeline;           │
+│   ✗ … 每加一种元素就加一个 getter                        │
+│                                                         │
+│ 目标 Context 应该持有：                                   │
+│   ✓ std::unordered_map<std::string,                     │
+│       std::unique_ptr<RenderPipelineBase>>               │
+│   ✓ 统一的 GetRenderPipeline(name) API                  │
+│   ✓ 完全不知道 Primitive/Text/Line/Quad 具体实现        │
+│                                                         │
+│ 具体步骤：                                               │
+│ 3.1 删除 Context 中的特定元素 getter                     │
+│     - 删除 GetPrimitiveBatchPipeline()                  │
+│     - 删除 GetTextRenderPipeline()                      │
+│ 3.2 确保所有调用处通过 GetRenderPipeline(name) 访问      │
+│ 3.3 验证：Context 代码中不存在 "Primitive" "Text" 等词    │
+│ 3.4 全局编译和单元测试                                  │
+└──────────────────────────────────────────────────────────┘
+                         ↓
+┌──────────────────────────────────────────────────────────┐
+│ Phase 4: 文档和示例                                       │
+│ - 更新架构文档                                            │
+│ - 创建"如何添加新的 Pipeline"指南                         │
+│ - 验收标准检查清单                                        │
+└──────────────────────────────────────────────────────────┘
+```
 │ Phase 4: 文档和示例                             │
 │ - 更新开发文档                                  │
 │ - 新增 Pipeline 实现示例                        │
@@ -483,92 +866,562 @@ cmake --build build --config Debug --target ULRE.ECS
 
 #### Step 1: 分离 LineRenderPipeline
 
-当前 LineRenderSystem 是单一的 System，同时管理 Batch 和 Draw 逻辑。
+**当前问题**：LineRenderSystem 是混合体 System，同时包含：
+- System 职责（被 ECS 调度）
+- Pipeline 职责（数据管理、渲染逻辑）
+- Manager 职责（LineRenderManager 成员）
 
-需要拆分为：
-1. **LineRenderPipeline**: 维护行渲染数据、批处理
-2. **LineCollectSystem**: Collect 阶段（继承 CollectSystem）
-3. **LineBatchSystem**: Build 阶段（继承 BuildSystem）
-4. **LineRenderSystem**: Draw 阶段（继承 RenderPipelineDrawSystem）
+**目标**：分离成 4 个独立组件：
+
+| 组件 | 职责 | 继承类 | 文件位置 |
+|-----|------|-------|--------|
+| **LineRenderPipeline** | 数据管理、渲染逻辑 | RenderPipelineBase | inc/hgl/ecs/support/ |
+| **LineCollectSystem** | Collect 阶段委托 | CollectSystem | inc/hgl/ecs/systems/render/ |
+| **LineBatchSystem** | Build 阶段委托 | BuildSystem | inc/hgl/ecs/systems/render/ |
+| **LineRenderSystem** | Draw 阶段委托 | RenderPipelineDrawSystem | inc/hgl/ecs/systems/render/ |
+
+**1.1 创建 LineRenderPipeline**
 
 ```cpp
 // inc/hgl/ecs/support/LineRenderPipeline.h
-class LineRenderPipeline : public RenderPipelineBase {
-    // 从 LineRenderSystem 中的 LineRenderManager 迁移过来
-};
+#pragma once
 
+#include <hgl/ecs/support/RenderPipelineBase.h>
+#include <hgl/render/LineRenderManager.h>
+
+class LineRenderPipeline : public RenderPipelineBase {
+private:
+    std::unique_ptr<LineRenderManager> line_manager;
+    bool prepared = false;
+
+public:
+    LineRenderPipeline();
+    ~LineRenderPipeline() = default;
+
+    // 从 RenderPipelineBase 实现的虚方法
+    bool PrepareFrame() override;
+    void RunCollect() override;
+    void RunCull() override;
+    void RunSort() override;
+    void RunBuild() override;
+    void RunSync() override;
+    void GetRenderPrimitives(RenderPrimitives& out) override;
+    void Render(RenderCmdBuffer* cmd) override;
+
+    // Pipeline 特定接口（供 System 使用）
+    LineRenderManager* GetManager() const { return line_manager.get(); }
+
+    void Shutdown() override;
+};
+```
+
+**1.2 实现 LineRenderPipeline**
+
+```cpp
+// src/ecs/support/LineRenderPipeline.cpp
+#include <hgl/ecs/support/LineRenderPipeline.h>
+
+LineRenderPipeline::LineRenderPipeline() {
+    line_manager = std::make_unique<LineRenderManager>();
+}
+
+bool LineRenderPipeline::PrepareFrame() {
+    if (!prepared) {
+        line_manager->PrepareFrame();
+        prepared = true;
+    }
+    return true;
+}
+
+void LineRenderPipeline::RunCollect() {
+    line_manager->CollectLines();
+}
+
+void LineRenderPipeline::RunCull() {
+    line_manager->CullLines();
+}
+
+void LineRenderPipeline::RunSort() {
+    line_manager->SortLines();
+}
+
+void LineRenderPipeline::RunBuild() {
+    line_manager->BuildBatches();
+}
+
+void LineRenderPipeline::RunSync() {
+    line_manager->SyncGPU();
+}
+
+void LineRenderPipeline::GetRenderPrimitives(RenderPrimitives& out) {
+    line_manager->GetPrimitives(out);
+}
+
+void LineRenderPipeline::Render(RenderCmdBuffer* cmd) {
+    line_manager->RecordDrawCalls(cmd);
+}
+
+void LineRenderPipeline::Shutdown() {
+    line_manager.reset();
+}
+```
+
+**1.3 创建 LineCollectSystem（Collect 阶段委托）**
+
+```cpp
 // inc/hgl/ecs/systems/render/LineCollectSystem.h
+#pragma once
+
+#include <hgl/ecs/systems/support/RenderPipelineSystem.h>
+
 class LineCollectSystem : public CollectSystem {
+public:
+    explicit LineCollectSystem(ECSContext* ctx) : CollectSystem(ctx) {}
+
+    std::string GetName() const override { return "LineCollectSystem"; }
+
     RenderPipelineBase* GetPipeline(ECSContext* ctx) override {
         return ctx->GetRenderPipeline("Line");
     }
-    void OnCollect(RenderPipelineBase* pipeline) override { ... }
-};
 
-// 同理: LineBatchSystem, LineRenderSystem 改造
+    void OnCollect(RenderPipelineBase* pipeline) override {
+        // 这就是委托的全部：调用 Pipeline 的 RunCollect
+        if (pipeline) {
+            pipeline->RunCollect();
+        }
+    }
+};
 ```
+
+**1.4 创建 LineBatchSystem（Build 阶段委托）**
+
+```cpp
+// inc/hgl/ecs/systems/render/LineBatchSystem.h
+#pragma once
+
+#include <hgl/ecs/systems/support/RenderPipelineSystem.h>
+
+class LineBatchSystem : public BuildSystem {
+public:
+    explicit LineBatchSystem(ECSContext* ctx) : BuildSystem(ctx) {}
+
+    std::string GetName() const override { return "LineBatchSystem"; }
+
+    RenderPipelineBase* GetPipeline(ECSContext* ctx) override {
+        return ctx->GetRenderPipeline("Line");
+    }
+
+    void OnBuild(RenderPipelineBase* pipeline) override {
+        if (pipeline) {
+            pipeline->RunCull();
+            pipeline->RunSort();
+            pipeline->RunBuild();
+        }
+    }
+};
+```
+
+**1.5 改造 LineRenderSystem（Draw 阶段委托）**
+
+```cpp
+// inc/hgl/ecs/systems/render/LineRenderSystem.h（改造）
+#pragma once
+
+#include <hgl/ecs/systems/support/RenderPipelineSystem.h>
+
+class LineRenderSystem : public RenderPipelineDrawSystem {
+public:
+    explicit LineRenderSystem(ECSContext* ctx) : RenderPipelineDrawSystem(ctx) {}
+
+    std::string GetName() const override { return "LineRenderSystem"; }
+
+    RenderPipelineBase* GetPipeline(ECSContext* ctx) override {
+        return ctx->GetRenderPipeline("Line");
+    }
+
+    // 注意：父类的 OnRender 方法会调用 pipeline->Render(cmd_buffer)
+    // LineRenderSystem 现在无需覆盖，只需提供 GetPipeline
+};
+```
+
+**1.6 更新 DefaultSystems.h**
+
+在初始化系统时，按顺序注册三个 Line 系统：
+
+```cpp
+// inc/hgl/ecs/core/DefaultSystems.h
+// 添加系统到正确的阶段：
+
+auto line_collect = std::make_unique<LineCollectSystem>(context);
+line_collect->SetExecutionPhase(ECSContext::RenderCollect);
+context->AddSystem(std::move(line_collect));
+
+auto line_batch = std::make_unique<LineBatchSystem>(context);
+line_batch->SetExecutionPhase(ECSContext::RenderBatch);
+context->AddSystem(std::move(line_batch));
+
+auto line_render = std::make_unique<LineRenderSystem>(context);
+line_render->SetExecutionPhase(ECSContext::RenderDraw);
+context->AddSystem(std::move(line_render));
+```
+
+**1.7 在 Context 初始化中注册 LineRenderPipeline**
+
+```cpp
+// src/ecs/core/Context.cpp (ECSContext::Initialize) 中添加：
+
+auto line_pipeline = std::make_unique<LineRenderPipeline>();
+RegisterRenderPipeline("Line", std::move(line_pipeline));
+```
+
+#### Step 2: 编译和初步检查
+
+在项目中构建新的 Pipeline 和 System：
+
+```bash
+cd e:\ULRE
+cmake --build build --config Debug --target ULRE.ECS
+```
+
+**预期结果**：
+- ✅ 编译通过（可能有一些定义缺失的链接错误，这是正常的）
+- ✅ 新的 System 文件被包含在编译中
+
+如果出现编译错误：
+- 检查 `#include` 路径是否正确
+- 确保 `CollectSystem`, `BuildSystem`, `RenderPipelineDrawSystem` 基类存在
+- 检查 `LineRenderManager` 是否可从 `<hgl/render/LineRenderManager.h>` 导入
+
+#### Step 3: 迁移 LineRenderManager 内部逻辑
+
+**当前状态**：LineRenderManager 可能存在于 LineRenderSystem 中或作为单独的类。
+
+**操作**：
+1. 检查 `inc/hgl/render/LineRenderManager.h` 中 LineRenderManager 的完整接口
+2. 确保所有必要的方法都在 LineRenderPipeline::RunXxx() 中被正确委托
+3. LineRenderManager 应该保持**私有**，不暴露给 System
+
+**检查清单**：
+- [ ] LineRenderManager::CollectLines() 在 RunCollect() 中被调用
+- [ ] LineRenderManager::CullLines() 在 RunCull() 中被调用
+- [ ] LineRenderManager::SortLines() 在 RunSort() 中被调用
+- [ ] LineRenderManager::BuildBatches() 在 RunBuild() 中被调用
+- [ ] LineRenderManager::SyncGPU() 在 RunSync() 中被调用
+- [ ] LineRenderManager::RecordDrawCalls(cmd) 在 Render(cmd) 中被调用
+
+#### Step 4: 删除旧的 LineRenderSystem（混合体版本）
+
+**警告**：此步骤会改变现有的 LineRenderSystem 行为。需要谨慎进行。
+
+在 `inc/hgl/ecs/systems/render/LineRenderSystem.h` 中：
+
+```cpp
+// 删除这些成员和方法：
+// - std::unique_ptr<LineRenderManager> manager;
+// - void Update() override { ... }  // 旧的业务逻辑
+// - void Render(RenderCmdBuffer*) override { ... }
+
+// 只保留新的瘦代理实现（见 Step 1.5）
+```
+
+#### Step 5: 修复任何调用点
+
+搜索代码库中直接使用 LineRenderSystem 的地方：
+
+```bash
+# 在 VS Code 中使用 Ctrl+Shift+F 搜索：
+# "LineRenderSystem"  
+# 和 ".line_render_system" 或 "context->line_render_system"
+# 和 "line_manager->"
+```
+
+**需要修改**：
+- 任何直接访问 `line_manager` 的代码应改为访问 Pipeline
+- 示例修改模板：
+  ```cpp
+  // 之前
+  context->GetLineRenderSystem()->GetManager()->AddLine(...);
+  
+  // 之后（假设 rendering 代码能访问 Pipeline）
+  auto line_pipeline = context->GetRenderPipeline("Line");
+  auto* line_mgr = dynamic_cast<LineRenderPipeline*>(line_pipeline)->GetManager();
+  line_mgr->AddLine(...);
+  ```
+
+#### Step 6: 运行 Line 相关的单元测试
+
+假设项目中有针对 Line 渲染的单元测试：
+
+```bash
+# 构建并运行测试
+cmake --build build --config Debug --target LineRenderTests
+# 或运行整个测试套件
+ctest --output-on-failure
+```
+
+**需要通过**：
+- ✅ 简单 Line 添加和绘制
+- ✅ Line 批处理逻辑（多条线合并）
+- ✅ Line 裁剪（Cull）功能
+- ✅ Line 排序（Sort）功能
+- ✅ Line 颜色和样式变化
+
+#### Step 7: 综合测试 - 运行渲染示例
+
+```bash
+# 构建完整项目
+cmake --build build --config Debug --target ULRE
+
+# 运行包含 Line 渲染的示例应用
+# 例如：EditorApp, GizmoUsageExample 等
+```
+
+**验证清单**：
+- [ ] 应用启动时无崩溃
+- [ ] Line 正常渲染（在 3D 视图中可见）
+- [ ] 多条 Line 正确批处理（性能未下降）
+- [ ] Line 颜色、宽度等属性生效
+- [ ] 与其他渲染元素（Primitive、Text）共存无冲突
+
+#### Step 8: 性能验证
+
+检查 Line 渲染性能是否与迁移前一致：
+
+```cpp
+// 在 RenderGraph::Execute 中添加简单的计时（临时）
+auto line_pipeline = context->GetRenderPipeline("Line");
+if (line_pipeline) {
+    auto start = std::chrono::high_resolution_clock::now();
+    line_pipeline->RunCollect();
+    line_pipeline->RunCull();
+    line_pipeline->RunSort();
+    line_pipeline->RunBuild();
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    auto duration_ms = std::chrono::duration<double, std::milli>(end - start).count();
+    HLOGD("[Line] Pipeline execution: {:.3f} ms", duration_ms);
+}
+```
+
+**目标**：Line 单独执行时间应 < 1 ms（对于中等复杂度场景）
 
 ### 5.5 Phase 2d 详细步骤 - Quad 迁移
 
-类似 Line 迁移，需要分离 QuadRenderPipeline 和相应的 System。
+**前提条件**：与 Phase 2c（Line 迁移）的流程完全相同，只是将 `Line` 替换为 `Quad`。
 
-### 5.6 Phase 3 - Context 接口清理
+#### Step 1: 分离 QuadRenderPipeline 和创建三个 System
+
+与 Phase 2c Step 1 完全相同的步骤：
+
+1. 创建 `QuadRenderPipeline` 继承 `RenderPipelineBase`
+2. 创建 `QuadCollectSystem : public CollectSystem`
+3. 创建 `QuadBatchSystem : public BuildSystem`
+4. 改造 `QuadRenderSystem : public RenderPipelineDrawSystem`（如果存在混合体版本）
+5. 在 Context::Initialize 中注册：`RegisterRenderPipeline("Quad", quad_pipeline)`
+6. 在 DefaultSystems.h 中按顺序添加三个 System
+
+**示例代码模板**（所有类都遵循与 Line 完全相同的模式）：
+
+```cpp
+// 在三个 System 的 GetPipeline() 中返回：
+RenderPipelineBase* GetPipeline(ECSContext* ctx) override {
+    return ctx->GetRenderPipeline("Quad");  // 只改这一行
+}
+
+// 在 OnCollect / OnBuild / OnRender 中委托给 Pipeline
+void OnCollect(RenderPipelineBase* pipeline) override {
+    if (pipeline) pipeline->RunCollect();
+}
+```
+
+#### Step 2-9: 编译、测试、验证
+
+完全参照 Phase 2c 的 Step 2-8 执行（编译、单元测试、集成测试、性能验证）。
+
+**关键验证**：
+- ✅ Quad 创建、绘制、批处理正常
+- ✅ 与 Line、Primitive、Text 共存无冲突
+- ✅ 性能无下降
+
+#### 总结：Phase 2d 努力量
+
+预估时间：**0.5-1 天**（几乎与 Phase 2c 的模板完全相同）
+
+复杂度：**极低**（全部代码模板化，可自动生成）
+
+---
+
+### 5.6 Phase 3 - ⭐ ECS Context 纯净化（本阶段核心目标）
+
+**这是整个重构的最关键步骤！** 目的是彻底清理 Context，实现"ECS 框架零特定元素知识"的设计原则。
+
+#### 为什么这很重要？
+
+**当前问题**：
+```cpp
+class ECSContext {
+    // Context 充斥着特定元素的代码
+    PrimitiveBatchPipeline* primitive_batch_pipeline;     // ← Primitive 特定
+    TextRenderPipeline* text_render_pipeline;             // ← Text 特定
+    // 还要加 Line? Quad? Particle?
+};
+```
+
+**后果**：
+- ❌ 每增加一种渲染元素，Context 就要修改和重新编译
+- ❌ Context 知道了所有具体的 Pipeline 类型，打破了依赖倒置
+- ❌ 代码不能优雅地扩展，违背开闭原则
+- ❌ Context 变成了"框架怪物"，职责不单一
+
+**目标状态**：
+```cpp
+class ECSContext {
+    // Context 完全抽象，不知道任何具体元素
+    std::unordered_map<std::string, std::unique_ptr<RenderPipelineBase>> render_pipelines;
+    // ↑ 这就够了！任意数量的 Pipeline，无需改 Context!
+};
+```
+
+**当添加第 10 个渲染元素时**：
+- ✅ 只需创建新的 Pipeline + Group
+- ✅ Context 代码**零修改**
+- ✅ 框架自动支持（通过统一的 GetRenderPipeline() 接口）
+
+#### 验收标准
+
+Phase 3 完成后，Context.h/.cpp 中**不应该出现**以下词汇：
+- ❌ `Primitive`（除了在注释或日志中）
+- ❌ `Text`（除了在注释或日志中）
+- ❌ `Line`（除了在注释或日志中）
+- ❌ `Quad`（除了在注释或日志中）
+- ❌ `GetPrimitiveBatchPipeline()`
+- ❌ `GetTextRenderPipeline()`
+- ❌ 任何针对特定元素的 if-switch 语句
 
 #### Step 1: 删除特定元素的 getter
 
-在 `inc/hgl/ecs/core/Context.h` 中：
+在 `inc/hgl/ecs/core/Context.h` 中，删除：
 
 ```cpp
-// 删除这些函数
+// ❌ 删除这些—它们是"特定元素耦合"的罪魁祸首
 PrimitiveBatchPipeline* GetPrimitiveBatchPipeline();    // REMOVE
 TextRenderPipeline* GetTextRenderPipeline();            // REMOVE
+LineRenderPipeline* GetLineRenderPipeline();            // （如果存在）REMOVE
+QuadRenderPipeline* GetQuadRenderPipeline();            // （如果存在）REMOVE
 
-// 所有访问统一为：
+// ✅ 只保留通用 API
 RenderPipelineBase* GetRenderPipeline(const std::string& name);
 ```
 
 #### Step 2: 更新所有调用处
 
-查找并替换：
+使用全局搜索（Ctrl+Shift+F）查找所有调用：
+- `GetPrimitiveBatchPipeline()`
+- `GetTextRenderPipeline()`  
+- `GetLineRenderPipeline()`
+- `GetQuadRenderPipeline()`
+
+对于每个调用，替换模板：
 
 ```cpp
 // 之前
 context->GetPrimitiveBatchPipeline()->RunCulling();
 
 // 之后
-auto p = context->GetRenderPipeline("Primitive");
-if (p) p->RunCull();  // 注: 通过虚接口调用
+auto pipeline = context->GetRenderPipeline("Primitive");
+if (pipeline) {
+    pipeline->RunCull();  // 注: 通过虚接口调用，type-safe
+}
 ```
 
-#### Step 3: 删除成员变量
+**关键**：所有调用都改为通过字符串 `"Primitive"` / `"Text"` / `"Line"` / `"Quad"` 获取。
 
-在 `inc/hgl/ecs/core/Context.h` 的私有部分：
+#### Step 3: 删除或迁移成员变量
+
+在 `inc/hgl/ecs/core/Context.h` 的 **private** 部分：
 
 ```cpp
-// 删除这些成员
-std::unique_ptr<PrimitiveBatchPipeline> primitive_batch_pipeline;
-std::unique_ptr<TextRenderPipeline> text_render_pipeline;
-
-// 只保留统一的 map：
-std::unordered_map<std::string, std::unique_ptr<RenderPipelineBase>> render_pipelines;
+private:
+    // ❌ 删除这些特定元素的成员
+    std::unique_ptr<PrimitiveBatchPipeline> primitive_batch_pipeline;    // DELETE
+    std::unique_ptr<TextRenderPipeline> text_render_pipeline;            // DELETE
+    // ...
+    
+    // ✅ 只保留统一的 map
+    std::unordered_map<std::string, std::unique_ptr<RenderPipelineBase>> render_pipelines;
 ```
 
-#### Step 4: 更新 Context 的 Shutdown()
+#### Step 4: 更新 Context 的初始化
+
+在 `src/ecs/core/Context.cpp` 的 `Initialize()` 方法中：
+
+```cpp
+bool ECSContext::Initialize() {
+    // 之前
+    // primitive_batch_pipeline = std::make_unique<PrimitiveBatchPipeline>();  // DELETE
+    // text_render_pipeline = std::make_unique<TextRenderPipeline>();          // DELETE
+    
+    // 之后：RenderPipelineGroup 的 Initialize() 负责创建 Pipeline
+    // Context 只需要这样：
+    for (auto& [group_name, group] : render_pipeline_groups) {
+        if (!group->Initialize(this)) {
+            HLOGE("Failed to initialize pipeline group: {}", group_name);
+            return false;
+        }
+    }
+    return true;
+}
+```
+
+#### Step 5: 更新 Context 的清理
+
+在 `Shutdown()` 方法中：
 
 ```cpp
 void ECSContext::Shutdown() {
-    // 之前的特定清理逻辑可以删除
-    // text_render_pipeline.reset();        // REMOVE
-    // primitive_batch_pipeline.reset();    // REMOVE
+    // 之前的特定清理逻辑删除
+    // if (text_render_pipeline) text_render_pipeline->Shutdown();        // DELETE
+    // if (primitive_batch_pipeline) primitive_batch_pipeline->Shutdown();  // DELETE
     
-    // 统一清理
-    for (auto& [name, pipeline] : render_pipelines) {
-        if (pipeline)
-            pipeline->Shutdown();
+    // 统一清理（RenderPipelineGroup 负责）
+    for (auto& [group_name, group] : render_pipeline_groups) {
+        group->Shutdown(this);
     }
+    render_pipeline_groups.clear();
     render_pipelines.clear();
 }
 ```
+
+#### Step 6: 编译全局测试
+
+```bash
+cd e:\ULRE
+cmake --build build --config Debug
+
+# 应该看到：
+# - Context.h/.cpp 中没有特定元素的引用
+# - 所有引用都通过 GetRenderPipeline(name) 完成
+# - 编译成功（EXIT=0）
+```
+
+**验证**：在编译输出中搜索 "undefined reference to GetPrimitiveBatchPipeline"
+- 如果出现，说明还有遗漏的调用点需要更新
+- 应该**零条警告**
+
+#### Step 7: 验收清单
+
+完成 Phase 3 后，检查：
+
+- [ ] Context.h 中没有 PrimitiveBatchPipeline 成员
+- [ ] Context.h 中没有 TextRenderPipeline 成员  
+- [ ] Context.h 中没有 GetPrimitiveBatchPipeline() 方法
+- [ ] Context.h 中没有 GetTextRenderPipeline() 方法
+- [ ] Context.cpp 中没有创建特定 Pipeline 的代码
+- [ ] 所有 Pipeline 访问都通过 GetRenderPipeline(name)
+- [ ] Context 代码中不出现 "Primitive", "Text", "Line", "Quad" 等词（除注释外）
+- [ ] 全局编译通过（EXIT=0）
+- [ ] 单元测试通过
+- [ ] 示例应用（EditorApp, GizmoUsageExample）运行正常
 
 ---
 

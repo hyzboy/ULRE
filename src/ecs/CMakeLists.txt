@@ -221,14 +221,34 @@ set(ECS_SUPPORT_FILES
     ${ECS_INCLUDE_PATH}/support/TransformAssignmentBuffer.h
     ${ECS_INCLUDE_PATH}/support/MaterialInstanceAssignmentBuffer.h
     ${ECS_INCLUDE_PATH}/support/TextHelper.h
+    ${ECS_INCLUDE_PATH}/support/RenderPipelineBase.h
+    ${ECS_INCLUDE_PATH}/support/RenderPipelineSystem.h
+    ${ECS_INCLUDE_PATH}/support/RenderPipelineGroup.h
     ${ECS_INCLUDE_PATH}/support/PrimitiveBatchPipeline.h
     ${ECS_INCLUDE_PATH}/support/TextRenderPipeline.h
+    support/RenderPipelineSystem.cpp
+    support/RenderPipelineGroup.cpp
     support/VisibilityDataStorage.cpp
     support/TransformAssignmentBuffer.cpp
     support/MaterialInstanceAssignmentBuffer.cpp
     support/PipelineMaterialRenderer.cpp
     support/PrimitiveBatchPipeline.cpp
     support/TextRenderPipeline.cpp
+)
+
+set(ECS_SUPPORT_PRIMITIVE_FILES
+    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderPipeline.h
+    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveCullSystem.h
+    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveSortSystem.h
+    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveBuildSystem.h
+    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderSystem.h
+    ${ECS_INCLUDE_PATH}/support/primitive/PrimitiveRenderPipelineGroup.h
+    support/primitive/PrimitiveRenderPipeline.cpp
+    support/primitive/PrimitiveCullSystem.cpp
+    support/primitive/PrimitiveSortSystem.cpp
+    support/primitive/PrimitiveBuildSystem.cpp
+    support/primitive/PrimitiveRenderSystem.cpp
+    support/primitive/PrimitiveRenderPipelineGroup.cpp
 )
 
 set(ECS_SERIALIZATION_FILES
@@ -269,6 +289,7 @@ set(ECS_SOURCE
     ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES}
     ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES}
     ${ECS_SUPPORT_FILES}
+    ${ECS_SUPPORT_PRIMITIVE_FILES}
     ${ECS_SERIALIZATION_FILES}
 )
 
@@ -302,6 +323,7 @@ source_group("ECS\\Systems\\26 RenderBatch_LineRenderSystem" FILES ${ECS_SYS_26_
 source_group("ECS\\Systems\\26B RenderStat_LineStatsSystem" FILES ${ECS_SYS_26B_RenderStat_LineStatsSystem_FILES})
 source_group("ECS\\Systems\\27 RenderSubmit_SwapchainSubmitSystem" FILES ${ECS_SYS_27_RenderSubmit_SwapchainSubmitSystem_FILES})
 source_group("ECS\\Support" FILES ${ECS_SUPPORT_FILES})
+source_group("ECS\\Support\\Primitive" FILES ${ECS_SUPPORT_PRIMITIVE_FILES})
 source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}

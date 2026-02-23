@@ -6,12 +6,9 @@
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveCullSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveSortSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveBatchBuildSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveBatchFinalizeSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
-#include<hgl/ecs/systems/render/RenderPrimitiveSubmitSystem.h>
+// Old Cull/Sort/Build/Finalize/Submit systems replaced by PrimitiveRenderPipelineGroup
+#include<hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/log/Log.h>
 
@@ -47,10 +44,7 @@ namespace hgl::ecs
                 child_collect->SetCameraInfo(parent_camera_info);
             }
 
-            if (auto child_submit = child_context->GetSystem<RenderPrimitiveSubmitSystem>())
-            {
-                child_submit->SetWorld(child_context);
-            }
+            // PrimitiveRenderSystem uses context set by RegisterRenderSystem, no manual SetWorld needed
         }
 
         void ParentImportedRoots(Entity* owner_entity,
@@ -170,11 +164,6 @@ namespace hgl::ecs
         auto camera_system = child_context->RegisterTickSystem<CameraSystem>(child_context);
         auto bbox_system = child_context->RegisterTickSystem<BoundingBoxUpdateSystem>();
         auto render_collect_system = child_context->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
-        auto render_cull_system = child_context->RegisterRenderSystem<RenderPrimitiveCullSystem>();
-        auto render_sort_system = child_context->RegisterRenderSystem<RenderPrimitiveSortSystem>();
-        auto render_batch_build_system = child_context->RegisterRenderSystem<RenderPrimitiveBatchBuildSystem>();
-        auto render_batch_finalize_system = child_context->RegisterRenderSystem<RenderPrimitiveBatchFinalizeSystem>();
-        auto render_submit_system = child_context->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
 
         if (bbox_system)
             bbox_system->SetWorld(child_context);
@@ -185,15 +174,9 @@ namespace hgl::ecs
             render_collect_system->SetCameraInfo(parent_camera_info);
         }
 
-        (void)render_cull_system;
-        (void)render_sort_system;
-        (void)render_batch_build_system;
-        (void)render_batch_finalize_system;
-
-        if (render_submit_system)
-        {
-            render_submit_system->SetWorld(child_context);
-        }
+        // New unified pipeline group replaces Cull/Sort/Build/Finalize/Submit systems
+        hgl::ecs::PrimitiveRenderPipelineGroup group;
+        group.Initialize(child_context);
 
         // Initialize sub-world systems
         child_context->Initialize();
