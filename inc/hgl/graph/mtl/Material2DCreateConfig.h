@@ -46,13 +46,12 @@ public:
     const AnsiString ToHashString() override;
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
-DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,        const Material2DCreateConfig)
-DEFINE_MATERIAL_FACTORY_CLASS(PureColor2D,          Material2DCreateConfig)
-//DEFINE_MATERIAL_FACTORY_CLASS(LerpLine2D,           const Material2DCreateConfig);
+DECLARE_MATERIAL_CREATOR(VertexColor2D,         const Material2DCreateConfig)
+DECLARE_MATERIAL_CREATOR(PureColor2D,           Material2DCreateConfig)
 
-DEFINE_MATERIAL_FACTORY_CLASS(PureTexture2D,        const Material2DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(RectTexture2D,        Material2DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(RectTexture2DArray,   Material2DCreateConfig);
+DECLARE_MATERIAL_CREATOR(PureTexture2D,         const Material2DCreateConfig)
+DECLARE_MATERIAL_CREATOR(RectTexture2D,         Material2DCreateConfig)
+DECLARE_MATERIAL_CREATOR(RectTexture2DArray,    Material2DCreateConfig)
 
 struct Text2DMaterialCreateConfig:public Material2DCreateConfig
 {
@@ -68,7 +67,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(Text2D,const Text2DMaterialCreateConfig)
+DECLARE_MATERIAL_CREATOR(Text2D, const Text2DMaterialCreateConfig)
 
 // 为什么有了LoadMaterialFromFile，还需要保留以上Create系列函数？
 

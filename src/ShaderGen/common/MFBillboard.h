@@ -10,8 +10,10 @@ namespace func
 
     constexpr const ShaderBufferSource SBS_Billboard=
     {
-        "BillboardData",
+        DescriptorSetType::PerMaterial,
+
         "billboard",
+        "BillboardData",
 
         R"(
 vec2 center;
@@ -29,9 +31,9 @@ vec4 GetBillboardPosition()
 
     vec3 pos        =GetPosition3D();
 
-    vec3(billboard.center,0)+
-    cv_right*pos.x*billboard.size.x+
-    cv_up   *pos.y*billboard.size.y;
+    return vec3(billboard.center,0)+
+           cv_right*pos.x*billboard.size.x+
+           cv_up   *pos.y*billboard.size.y;
 }
 )";
 }//namespace func

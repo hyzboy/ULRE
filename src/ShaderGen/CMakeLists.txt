@@ -98,6 +98,10 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
+                    ${STD_MTL_HEADER_PATH}/Std2DMaterial.h
+                    ${STD_MTL_HEADER_PATH}/Std3DMaterial.h
+                    ${STD_MTL_HEADER_PATH}/MaterialFactory2D.h
+                    ${STD_MTL_HEADER_PATH}/MaterialFactory3D.h
                     ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
                     MaterialCreateConfig.cpp
                     StandardMaterial.cpp

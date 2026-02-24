@@ -54,12 +54,12 @@ public:
     const AnsiString ToHashString() override;
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
-DEFINE_MATERIAL_FACTORY_CLASS(PureColor3D,      Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(VertexPattleColor3D,const Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(TextureBlinnPhong,const Material3DCreateConfig);
+DECLARE_MATERIAL_CREATOR(PureColor3D,       Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(VertexColor3D,     const Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(VertexLuminance3D, Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(VertexPattleColor3D,const Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(TextureBlinnPhong, const Material3DCreateConfig)
 
 struct TerrainGridCreateConfig:public Material3DCreateConfig
 {
@@ -72,7 +72,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(TerrainGrid,      const TerrainGridCreateConfig);
+DECLARE_MATERIAL_CREATOR(TerrainGrid,       const TerrainGridCreateConfig)
 
 struct SkyMinimalCreateConfig:public Material3DCreateConfig
 {
@@ -84,7 +84,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(SkyMinimal,       const SkyMinimalCreateConfig);
+DECLARE_MATERIAL_CREATOR(SkyMinimal,        const SkyMinimalCreateConfig)
 
 struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
@@ -99,7 +99,7 @@ public:
     using Material3DCreateConfig::Material3DCreateConfig;
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(Billboard2D,BillboardMaterialCreateConfig);
+DECLARE_MATERIAL_CREATOR(Billboard2D, BillboardMaterialCreateConfig)
 
 struct BasicLitMaterialInstance
 {
@@ -128,7 +128,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,BasicLitMaterialCreateConfig);
+DECLARE_MATERIAL_CREATOR(BasicLit, BasicLitMaterialCreateConfig)
 
 /**
  * 从文件加载材质
