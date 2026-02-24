@@ -12,6 +12,7 @@
 
 #include <hgl/graph/mtl/ShaderComposition.h>
 #include <hgl/graph/mtl/ResourceLayoutGenerator.h>
+#include <hgl/graph/mtl/BuiltinHelpers.h>
 #include <hgl/type/String.h>
 #include <hgl/graph/mtl/StdMaterial.h>
 
@@ -191,6 +192,7 @@ vec4 GetScreenSpacePos(vec4 clip_pos) {
 
 AnsiString ComposedShaderGenerator::GenHelperFunctionLibrary(
     const ComposedMaterialDef &def,
+    const ShaderPermutationKey &key,
     const char *shader_stage)
 {
     AnsiString result;
@@ -215,6 +217,9 @@ AnsiString ComposedShaderGenerator::GenHelperFunctionLibrary(
         result += GenGetPositionFunctions(def, "FS");
         result += GenGetMaterialInstanceFunctions(def, "FS");
     }
+
+    // Stage 3: 框架统一内置 helper 库（高级函数）
+    result += builtin_helpers::GenStageHelpers(def, key, shader_stage);
     
     return result;
 }
@@ -480,7 +485,7 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     result += GenCoordinateTransformFunctions();
     
     // Step 5: 辅助函数库（关键部分）
-    result += GenHelperFunctionLibrary(def, "VS");
+    result += GenHelperFunctionLibrary(def, key, "VS");
     
     // Step 6: 开发者业务代码
     if (def.vertex_business) {
@@ -555,7 +560,7 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     result += GenCoordinateTransformFunctions();
     
     // 辅助函数库
-    result += GenHelperFunctionLibrary(def, "FS");
+    result += GenHelperFunctionLibrary(def, key, "FS");
     
     // 光照计算（如果启用）
     if (def.enable_lighting) {

@@ -303,6 +303,7 @@ private:
      */
     static AnsiString GenHelperFunctionLibrary(
         const ComposedMaterialDef &def,
+        const ShaderPermutationKey &key,
         const char *shader_stage);
 
     // 具体的函数生成方法
