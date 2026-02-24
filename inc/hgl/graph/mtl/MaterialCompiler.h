@@ -31,18 +31,21 @@ MaterialCreateInfo *CompileFixedMaterial(
     const ShaderPermutationKey &key = ShaderPermutationKey{});
 
 /**
- * 材质 fallback 工厂辅助宏。
+ * 材质 fallback 工厂辅助宏。（待实现，参见任务 2.3）
  * 先尝试从 recipe 文件加载（file-driven），文件不存在时用 hardcode def。
  * 在 M_Xxx.cpp 工厂函数中使用：
  *
  *   COMPILE_WITH_RECIPE_FALLBACK(dev_attr, BASIC_LIT_BASE_DEF, key,
  *                                "recipes/uber/uber_3d.json", "pc_high")
+ *
+ * 注：此宏的实现需要完成 ShaderTemplateEngine 和 TemplateBasedMaterialFactory。
+ * 当前版本保留宏定义但注释掉，避免前向引用错误。
  */
-#define COMPILE_WITH_RECIPE_FALLBACK(dev_attr_, def_, key_, recipe_path_, quality_) \
-    ([&]() -> MaterialCreateInfo* { \
-        MaterialCreateInfo *_mci = CreateMaterialFromRecipe(dev_attr_, recipe_path_, quality_, def_); \
-        if(_mci) return _mci; \
-        return CompileFixedMaterial(dev_attr_, def_, key_); \
-    }())
+// #define COMPILE_WITH_RECIPE_FALLBACK(dev_attr_, def_, key_, recipe_path_, quality_) \
+//     ([&]() -> MaterialCreateInfo* { \
+//         MaterialCreateInfo *_mci = CreateMaterialFromRecipe(dev_attr_, recipe_path_, quality_, def_); \
+//         if(_mci) return _mci; \
+//         return CompileFixedMaterial(dev_attr_, def_, key_); \
+//     }())
 
 }//namespace hgl::graph::mtl

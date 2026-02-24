@@ -124,6 +124,13 @@ SET(FIXED_MTL_FILES ${STD_MTL_HEADER_PATH}/FixedMaterialDef.h
 
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 
+SET(SHADER_TEMPLATE_ENGINE_HEADER_FILES	${SHADERGEN_INCLUDE_PATH}/ShaderTemplateEngine.h)
+SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES	ShaderTemplateEngine.cpp
+                                         MaterialCompiler.cpp)
+
+SOURCE_GROUP("Shader Template Engine" FILES ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
+                                            ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES})
+
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
 
                                         ${DESC_INFO_HEADER_FILES}
