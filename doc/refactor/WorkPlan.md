@@ -15,6 +15,13 @@
 > - ✅ `PermutationToRecipe.h`：ShaderPermutationKey → Recipe 模块名映射表（M0.3 完成）
 > - ✅ `ShaderComposition.h` / `ShaderComposition_Examples.h`：合成型着色器框架（M0.4 完成）
 > - ✅ `SHADER_COMPOSITION_ARCHITECTURE.md` / `HELPER_FUNCTION_AUTO_GENERATION.md`：架构设计文档（M0.4-0.5 参考）
+> - ✅ `ComposedShaderGenerator.cpp`：完整 GLSL 生成实现（M0.5 ✓ 2026-02-24 完成）
+>   - ✅ GenVertexInputStruct() / GenVSOutputStruct() / GenLightingOutputStruct()
+>   - ✅ GenLayoutDeclarations() / GenCoordinateTransformFunctions()
+>   - ✅ GenHelperFunctionLibrary() 及其所有子方法（GetLocalToWorld/GetNormalMatrix/GetNormal/GetPosition3D/GetMaterialInstance）
+>   - ✅ GenOutputCompositionCode() / GenLightingCode()
+>   - ✅ ComposeVertexShader() / ComposeFragmentShader() / ComposeGeometryShader()
+>   - ✅ 已验证编译通过（ULRE.ShaderGen.lib）
 
 ---
 
@@ -531,17 +538,17 @@ public:
 
 ## 里程碑检查点（每个里程碑对应一次可演示 build）
 
-| 里程碑 | 完成条件 | 对应任务 | 关键文件 |
-|--------|---------|---------|---------|
-| **M0 基础设施** | CompileFixedMaterial() + inja 编译通过 + PermutationToRecipe 映射表 | 0.1, 0.2, 0.3 | MaterialCompiler.{h,cpp}，PermutationToRecipe.h |
-| **M0.5 合成框架** | ComposedShaderGenerator 框架完成；辅助函数库自动生成机制可用 | 0.4, 0.5 | ShaderComposition.h，ShaderComposition_Examples.h，SHADER_COMPOSITION_ARCHITECTURE.md，HELPER_FUNCTION_AUTO_GENERATION.md |
-| **M1 硬编码材质** | 6 个编辑器 fallback 材质全部走 FixedMaterialDef；删除对应 class MaterialXxx | 1.1, 1.2, 1.3 | S_PureColor3D.h，S_VertexColor3D.h，S_Gizmo3D.h 等 |
-| **M2 文件驱动材质** | CreateMaterialFromRecipe() 可以从 recipe JSON 生成 BasicLit Lambert 效果 | 2.1–2.3 | TemplateBasedMaterialFactory.{h,cpp}，forward_uber.frag.tmpl，recipes/uber/uber_3d.json |
-| **M3 质量预设** | BasicLit 支持 5 种质量等级（mobile_low ~ pc_ultra），文件丢失自动 fallback | 2.4 | M_BasicLit.cpp（fallback 路由逻辑） |
-| **M4 光照模块** | 卡通渲染 + 半球环境光 + PBR_Lite 三个新模块全部可用 | 3.1–3.3 | ShaderLibrary/modules/lighting/cel_shading.glsl，hemisphere.glsl，pbr_lite.glsl |
-| **M5 描述符精简** | DescriptorSetType 精简为 4 值；旧 9 值枚举变为 alias；全场景渲染正确 | 4.1–4.3 | VKDescriptorSetType.h（精简后），相关 binding 代码 |
-| **M6 清理旧代码** | 旧 Std3DMaterial / Std2DMaterial 删除；ShaderCreateInfo 仅内部使用 | 5.2–5.3 | 文件删除 + MaterialCompiler.cpp 内部使用 |
-| **M7 性能优化** | 10000 Mesh 只产生 1 DrawCall；纹理 pool 正常工作 | 6.1–6.2 | MaterialBatch.cpp，UberTexturePool.{h,cpp} |
+| 里程碑 | 完成条件 | 对应任务 | 关键文件 | 状态 |
+|--------|---------|---------|---------|------|
+| **M0 基础设施** | CompileFixedMaterial() + inja 编译通过 + PermutationToRecipe 映射表 | 0.1, 0.2, 0.3 | MaterialCompiler.{h,cpp}，PermutationToRecipe.h | ✅ 完成 |
+| **M0.5 合成框架** | ComposedShaderGenerator 框架完成；辅助函数库自动生成机制可用 | 0.4, 0.5 | ShaderComposition.h，ShaderComposition_Examples.h，ComposedShaderGenerator.cpp | ✅ 完成 |
+| **M1 硬编码材质** | 6 个编辑器 fallback 材质全部走 FixedMaterialDef；删除对应 class MaterialXxx | 1.1, 1.2, 1.3 | S_PureColor3D.h，S_VertexColor3D.h，S_Gizmo3D.h 等 | ⏳ 进行中 |
+| **M2 文件驱动材质** | CreateMaterialFromRecipe() 可以从 recipe JSON 生成 BasicLit Lambert 效果 | 2.1–2.3 | TemplateBasedMaterialFactory.{h,cpp}，forward_uber.frag.tmpl，recipes/uber/uber_3d.json | ⏳ 待开始 |
+| **M3 质量预设** | BasicLit 支持 5 种质量等级（mobile_low ~ pc_ultra），文件丢失自动 fallback | 2.4 | M_BasicLit.cpp（fallback 路由逻辑） | ⏳ 待开始 |
+| **M4 光照模块** | 卡通渲染 + 半球环境光 + PBR_Lite 三个新模块全部可用 | 3.1–3.3 | ShaderLibrary/modules/lighting/cel_shading.glsl，hemisphere.glsl，pbr_lite.glsl | ⏳ 待开始 |
+| **M5 描述符精简** | DescriptorSetType 精简为 4 值；旧 9 值枚举变为 alias；全场景渲染正确 | 4.1–4.3 | VKDescriptorSetType.h（精简后），相关 binding 代码 | ⏳ 待开始 |
+| **M6 清理旧代码** | 旧 Std3DMaterial / Std2DMaterial 删除；ShaderCreateInfo 仅内部使用 | 5.2–5.3 | 文件删除 + MaterialCompiler.cpp 内部使用 | ⏳ 待开始 |
+| **M7 性能优化** | 10000 Mesh 只产生 1 DrawCall；纹理 pool 正常工作 | 6.1–6.2 | MaterialBatch.cpp，UberTexturePool.{h,cpp} | ⏳ 待开始 |
 
 ---
 
