@@ -2,6 +2,7 @@
 
 #include<hgl/graph/mtl/FixedMaterialDef.h>
 #include<hgl/type/String.h>
+#include<stdio.h>
 
 namespace hgl::graph::mtl{
 
@@ -28,7 +29,7 @@ void ShaderPermutationKey::AppendGLSLDefines(AnsiString &out) const
 {
     char buf[256];
 
-    hgl::sprintf(buf,sizeof(buf),
+    snprintf(buf,sizeof(buf),
         "#define AMBIENT_MODEL %u\n"
         "#define LIGHT_MODEL %u\n"
         "#define SPECULAR_SPLIT %u\n"
