@@ -11,6 +11,7 @@
 /// - Main 函数组装
 
 #include <hgl/graph/mtl/ShaderComposition.h>
+#include <hgl/graph/mtl/ResourceLayoutGenerator.h>
 #include <hgl/type/String.h>
 #include <hgl/graph/mtl/StdMaterial.h>
 
@@ -153,52 +154,10 @@ AnsiString ComposedShaderGenerator::GenLightingOutputStruct()
 
 static AnsiString GenLayoutDeclarations(const ComposedMaterialDef &def)
 {
-    AnsiString result;
-    
-    // 遍历所有描述符，生成对应的 layout 声明
-    for (uint32_t i = 0; i < def.descriptor_entry_count; i++) {
-        const auto &desc = def.descriptor_entries[i];
-        
-        char buf[512];
-        
-        switch (desc.kind) {
-            case DescriptorKind::UBO: {
-                snprintf(buf, sizeof(buf),
-                    "layout(set=0, binding=%u) uniform %s {\n"
-                    "    // 数据将在运行时填充\n"
-                    "    vec4 _placeholder;\n"
-                    "} %s;\n\n",
-                    i, desc.struct_name ? desc.struct_name : "UniformBlock", desc.name);
-                result += buf;
-                break;
-            }
-            
-            case DescriptorKind::SSBO: {
-                snprintf(buf, sizeof(buf),
-                    "layout(set=0, binding=%u, std430) buffer %s {\n"
-                    "    // 数据将在运行时填充\n"
-                    "    vec4 _data[];\n"
-                    "} %s;\n\n",
-                    i, desc.struct_name ? desc.struct_name : "StorageBlock", desc.name);
-                result += buf;
-                break;
-            }
-            
-            case DescriptorKind::Texture: {
-                snprintf(buf, sizeof(buf),
-                    "layout(set=0, binding=%u) uniform sampler2D %s;\n\n",
-                    i, desc.name);
-                result += buf;
-                break;
-            }
-                
-            case DescriptorKind::TextureSampler:
-                // 通常与 Texture 一起，这里跳过或生成采样器
-                break;
-        }
-    }
-    
-    return result;
+    ResourceLayoutGenerator layout_gen;
+    layout_gen.Reset();
+
+    return layout_gen.GenDescriptorLayout(def.descriptor_entries, def.descriptor_entry_count);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -120,6 +120,8 @@ SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 SET(FIXED_MTL_FILES ${STD_MTL_HEADER_PATH}/FixedMaterialDef.h
                     ShaderPermutationKey.cpp
+                    ${STD_MTL_HEADER_PATH}/ResourceLayoutGenerator.h
+                    ResourceLayoutGenerator.cpp
 )
 
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
