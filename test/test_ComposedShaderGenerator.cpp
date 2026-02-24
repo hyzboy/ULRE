@@ -110,6 +110,18 @@ static bool ValidateStage3Helpers(const hgl::AnsiString &glsl_code, const char *
     return ValidateGLSL(glsl_code, helper_checks, uint32_t(sizeof(helper_checks) / sizeof(helper_checks[0])));
 }
 
+static bool ValidateHelperAliasEmission(const hgl::AnsiString &glsl_code, const char *label)
+{
+    printf("\n[Helper 别名检查] %s\n", label);
+
+    ShaderTextValidation helper_alias_checks[] = {
+        {"包含 GetWorldPosition", "GetWorldPosition("},
+        {"包含 GetCameraPosition", "GetCameraPosition("},
+    };
+
+    return ValidateGLSL(glsl_code, helper_alias_checks, uint32_t(sizeof(helper_alias_checks) / sizeof(helper_alias_checks[0])));
+}
+
 static bool ValidateHelperAbsence(const hgl::AnsiString &glsl_code, const char *label)
 {
     printf("\n[Helper 未注入检查] %s\n", label);
@@ -195,7 +207,7 @@ int main()
     static const char HELPER_DEMAND_FS_BUSINESS[] = R"(
         vec4 FragmentShaderBusiness(const VS_Output vso) {
             vec3 world_n = TransformNormal(vso.WorldNormal);
-            vec3 view_dir = normalize(GetCameraPos() - GetWorldPos());
+            vec3 view_dir = normalize(GetCameraPosition() - GetWorldPosition());
             float ndv = max(dot(world_n, view_dir), 0.0);
             return vec4(vec3(ndv), 1.0);
         }
@@ -224,6 +236,7 @@ int main()
 
     bool vs_helper_ok = ValidateHelperAbsence(helper_vs_code, "VS(HelperDemand)");
     bool fs_helper_ok = ValidateStage3Helpers(helper_fs_code, "FS(HelperDemand)");
+    bool fs_helper_alias_ok = ValidateHelperAliasEmission(helper_fs_code, "FS(HelperDemand)");
 
     printf("\n========================================\n");
     printf("  测试总结\n");
@@ -236,11 +249,13 @@ int main()
     printf("  FS Helper 未注入(BasicLit): %s\n", fs_helper_absent_ok ? "✓ 通过" : "✗ 失败");
     printf("  VS Helper 未注入(HelperDemand): %s\n", vs_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  FS Helper 注入(HelperDemand): %s\n", fs_helper_ok ? "✓ 通过" : "✗ 失败");
+    printf("  FS Helper 别名输出(HelperDemand): %s\n", fs_helper_alias_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
                      && vs_helper_absent_ok && fs_helper_absent_ok
                      && vs_helper_ok && fs_helper_ok
+                     && fs_helper_alias_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 

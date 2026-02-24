@@ -5,6 +5,27 @@
 namespace hgl::graph::mtl {
 namespace builtin_helpers {
 
+enum class BuiltinHelperId : uint8_t {
+    TransformNormal,
+    GetWorldPos,
+    GetCameraPos,
+};
+
+struct HelperNameAlias {
+    const char *name;
+};
+
+struct HelperMeta {
+    BuiltinHelperId id;
+    HelperNameAlias aliases[3];
+};
+
+static constexpr HelperMeta HELPER_META_TABLE[] = {
+    {BuiltinHelperId::TransformNormal, {{"TransformNormal"}, {nullptr}, {nullptr}}},
+    {BuiltinHelperId::GetWorldPos,     {{"GetWorldPos"}, {"GetWorldPosition"}, {nullptr}}},
+    {BuiltinHelperId::GetCameraPos,    {{"GetCameraPos"}, {"GetCameraPosition"}, {nullptr}}},
+};
+
 static const char* GetStageBusinessCode(const ComposedMaterialDef &def, const char *shader_stage)
 {
     if (strcmp(shader_stage, "VS") == 0)
@@ -25,6 +46,26 @@ static bool IsHelperUsed(const char *business_code, const char *helper_name)
     snprintf(token, sizeof(token), "%s(", helper_name);
 
     return std::strstr(business_code, token) != nullptr;
+}
+
+static bool IsHelperUsed(const char *business_code, const BuiltinHelperId helper_id)
+{
+    for (const auto &meta : HELPER_META_TABLE)
+    {
+        if (meta.id != helper_id)
+            continue;
+
+        for (const auto &alias : meta.aliases)
+        {
+            if (!alias.name)
+                break;
+
+            if (IsHelperUsed(business_code, alias.name))
+                return true;
+        }
+    }
+
+    return false;
 }
 
 static bool HasDescriptor(const ComposedMaterialDef &def, const char *name)
@@ -56,6 +97,10 @@ vec3 GetWorldPos() {
     return GetPosition3D().xyz;
 }
 
+vec3 GetWorldPosition() {
+    return GetWorldPos();
+}
+
 )";
     }
 
@@ -70,6 +115,10 @@ vec3 GetCameraPos() {
     return CameraPos;
 }
 
+vec3 GetCameraPosition() {
+    return GetCameraPos();
+}
+
 )";
     }
 
@@ -77,6 +126,10 @@ vec3 GetCameraPos() {
         return R"(
 vec3 GetCameraPos() {
     return CameraPosition;
+}
+
+vec3 GetCameraPosition() {
+    return GetCameraPos();
 }
 
 )";
@@ -88,12 +141,20 @@ vec3 GetCameraPos() {
     return ViewPos;
 }
 
+vec3 GetCameraPosition() {
+    return GetCameraPos();
+}
+
 )";
     }
 
     return R"(
 vec3 GetCameraPos() {
     return vec3(0.0, 0.0, 0.0);
+}
+
+vec3 GetCameraPosition() {
+    return GetCameraPos();
 }
 
 )";
@@ -108,9 +169,9 @@ AnsiString GenStageHelpers(
 
     const char *business_code = GetStageBusinessCode(def, shader_stage);
 
-    const bool need_transform_normal = IsHelperUsed(business_code, "TransformNormal");
-    const bool need_get_world_pos = IsHelperUsed(business_code, "GetWorldPos");
-    const bool need_get_camera_pos = IsHelperUsed(business_code, "GetCameraPos");
+    const bool need_transform_normal = IsHelperUsed(business_code, BuiltinHelperId::TransformNormal);
+    const bool need_get_world_pos = IsHelperUsed(business_code, BuiltinHelperId::GetWorldPos);
+    const bool need_get_camera_pos = IsHelperUsed(business_code, BuiltinHelperId::GetCameraPos);
 
     if (!(need_transform_normal || need_get_world_pos || need_get_camera_pos)) {
         (void)key;
