@@ -1,4 +1,5 @@
 ﻿#include"Std3DMaterial.h"
+#include"S_PureColor3D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 namespace hgl::graph::mtl{
