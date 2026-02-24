@@ -64,42 +64,63 @@ World / Static / Global / Instance 要么未用，要么可以合并。
 
 ```
 Layer A: FixedMaterialDef（编译期常量）
-  ─ 完整的 GLSL vertex + fragment 字符串（或 #embed 嵌入的 .glsl）
+  ─ 完整的 GLSL vertex + fragment 字符串（含 #if 排列宏，非片段）
   ─ 描述符布局表（constexpr 数组）
   ─ 顶点输入表（constexpr 数组）
 
 Layer B: MaterialCompiler（运行时，仅做 glslang 编译）
-  ─ 输入：FixedMaterialDef + VulkanDevAttr
+  ─ 输入：FixedMaterialDef + ShaderPermutationKey + VulkanDevAttr
   ─ 输出：MaterialCreateInfo（仅含 SPV + 描述符布局）
-  ─ 不做任何字符串拼接，只编译
+  ─ 不做任何 GLSL 组装，只在文件头插入 4 行 #define 后调用 glslang
 ```
 
 与现有代码的对应关系：
 
 ```
 旧: StdMaterial → ShaderCreateInfo → 动态拼接 GLSL → 编译
-新: FixedMaterialDef（constexpr）→ MaterialCompiler → 编译（仅此一步）
+新: FixedMaterialDef（constexpr）+ ShaderPermutationKey → MaterialCompiler → 编译（仅此一步）
 ```
 
-### 3.2 `FixedDescriptorEntry`（编译期描述符表）
+### 3.2 `ShaderPermutationKey` — 解决环境光 / 光照组合爆炸（已实现于 FixedMaterialDef.h）
+
+**问题背景**：手机与 PC 同时支持时，以下维度各自独立：
+- 环境光：纯色 → 半球 → IBL → IBL+SH → 混合 GI（5 种）
+- 直接光照：无光照 → Lambert → Blinn-Phong → PBR_Lite → PBR_Full → 卡通渲染（6 种）
+- 高光通道：合并 / 分离（2 种，分离用于延迟渲染 G-Buffer pass）
+- 阴影接收：无 / PCF / PCSS（3 种）
+
+理论最大排列数 = 5 × 6 × 2 × 3 = **180 种**。实际只需编译约 20 种（手机和 PC 分别只用少数几种），每种排列在首次使用时编译一次后缓存。
+
+**解决方案**（已实现）：`ShaderPermutationKey` 是一个 32bit 整数，4 个 uint8 字段：
 
 ```cpp
-/// inc/hgl/graph/mtl/FixedMaterialDef.h
-
-enum class DescriptorKind : uint8 { UBO, SSBO, Texture, TextureSampler };
-
-struct FixedDescriptorEntry
-{
-    DescriptorSetType   set_type;
-    DescriptorKind      kind;
-    uint32_t            stage_flags;    // VkShaderStageFlagBits 组合
-    const char *        name;           // 绑定名称（binding resolution 用）
-    const char *        struct_name;    // GLSL 结构体名称（UBO/SSBO 用）
-    const char *        glsl_type;      // sampler2D / sampler2DArray 等（Texture 用）
+struct ShaderPermutationKey {
+    AmbientModel    ambient;    // 0=FlatColor  1=Hemisphere  2=IBL  3=IBL_SH  4=MixedGI
+    LightModel      light;      // 0=Unlit  1=Lambert  2=BlinnPhong  3=PBR_Lite  4=PBR_Full  5=CelShading
+    SpecularChannel specular;   // 0=Combined  1=Separated
+    ShadowReceive   shadow;     // 0=None  1=PCF  2=PCSS
 };
 ```
 
-使用示例（BasicLit 材质）：
+`ShaderPermutationKey::AppendGLSLDefines(out)` 将 key 转换为 4 行 `#define` 插入 shader 头部：
+
+```glsl
+#define AMBIENT_MODEL 2   // IBL
+#define LIGHT_MODEL 3     // PBR_LITE
+#define SPECULAR_SPLIT 0  // COMBINED
+#define SHADOW_MODE 1     // PCF
+```
+
+GLSL 侧用 `#if LIGHT_MODEL == 4` 等条件编译控制，**无运行时分支**，每个排列都是独立的 SPV。
+
+**缓存 key 扩展**：现有 `MaterialManager` 用 `"MaterialName?HashString"` 作为缓存 key，只需把 `ShaderPermutationKey::ToU32()` 追加到 hash 字符串：
+```
+"BasicLit?MI_1D_VF_Triangles_Camera_L2W?02010"   // 后段 = 排列 key
+```
+
+**IBL 描述符的统一处理**：即使是 FlatColor 排列，也可以在描述符布局里保留 `env_map` 的 binding slot，只是 shader 里 `#if AMBIENT_MODEL < 2` 不采样它。这样所有排列可以共用同一个 `PipelineLayout`，降低 descriptor set layout 数量。
+
+### 3.3 `FixedDescriptorEntry`（编译期描述符表）
 
 ```cpp
 constexpr FixedDescriptorEntry BASIC_LIT_DESCRIPTORS[] = {
@@ -113,20 +134,15 @@ constexpr FixedDescriptorEntry BASIC_LIT_DESCRIPTORS[] = {
       VK_SHADER_STAGE_VERTEX_BIT, "l2w", "LocalToWorldData", nullptr },
     { DescriptorSetType::PerMaterial, DescriptorKind::SSBO,
       VK_SHADER_STAGE_FRAGMENT_BIT, "mtl", "MaterialInstanceData", nullptr },
+    // IBL 专用槽：所有排列共享布局，shader 侧 #if AMBIENT_MODEL >= 2 控制是否采样
+    { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler,
+      VK_SHADER_STAGE_FRAGMENT_BIT, "env_map", nullptr, "samplerCube" },
 };
 ```
 
-### 3.3 `FixedVertexEntry`（编译期顶点输入表）
+### 3.4 `FixedVertexEntry`（编译期顶点输入表）
 
 ```cpp
-struct FixedVertexEntry
-{
-    VAType              type;
-    VertexInputGroup    group;
-    VkVertexInputRate   input_rate;
-    const char *        name;
-};
-
 constexpr FixedVertexEntry BASIC_LIT_VERTEX[] = {
     { VAT_VEC3,  VertexInputGroup::Basic,               VK_VERTEX_INPUT_RATE_VERTEX,   VAN::Position },
     { VAT_VEC3,  VertexInputGroup::Basic,               VK_VERTEX_INPUT_RATE_VERTEX,   VAN::Normal },
@@ -135,50 +151,37 @@ constexpr FixedVertexEntry BASIC_LIT_VERTEX[] = {
 };
 ```
 
-### 3.4 `FixedMaterialDef`（完整材质定义，全部 constexpr）
+### 3.5 `FixedMaterialDef`（完整材质定义，全部 constexpr）
 
 ```cpp
-struct FixedMaterialDef
-{
-    const char *                    name;
-
-    PrimitiveType                   primitive_type;
-
-    // 顶点输入
-    const FixedVertexEntry *        vertex_entries;
-    uint32_t                        vertex_entry_count;
-
-    // 描述符
-    const FixedDescriptorEntry *    descriptor_entries;
-    uint32_t                        descriptor_entry_count;
-
-    // MaterialInstance 数据
-    const char *                    mi_glsl_codes;      // nullptr = 无
-    uint32_t                        mi_struct_bytes;
-
-    // GLSL 源码（完整文件，不是片段）
-    const char *                    vert_glsl;
-    const char *                    geom_glsl;          // nullptr = 无几何 shader
-    const char *                    frag_glsl;
+constexpr FixedMaterialDef BASIC_LIT_DEF {
+    "BasicLit",
+    PrimitiveType::Triangles,
+    BASIC_LIT_VERTEX, HGL_ARRAY_COUNT(BASIC_LIT_VERTEX),
+    BASIC_LIT_DESCRIPTORS, HGL_ARRAY_COUNT(BASIC_LIT_DESCRIPTORS),
+    basic_lit_mi_codes, basic_lit_mi_bytes,
+    basic_lit_vert_glsl, nullptr, basic_lit_frag_glsl
 };
 ```
 
-### 3.5 `MaterialCompiler`（唯一的运行时工作）
+### 3.6 `MaterialCompiler`（唯一的运行时工作）
 
 ```cpp
 /// src/ShaderGen/MaterialCompiler.cpp
 
 MaterialCreateInfo *CompileFixedMaterial(
     const VulkanDevAttr *dev_attr,
-    const FixedMaterialDef &def);
+    const FixedMaterialDef &def,
+    const ShaderPermutationKey &key = ShaderPermutationKey{});  // 默认 = Unlit+FlatColor
 ```
 
 内部实现：
-1. 按 `def.descriptor_entries` 构建 `MaterialDescriptorInfo`（顺序固定，无需 `Resort()`）
-2. 调用 glslang 编译 `def.vert_glsl` / `def.frag_glsl` → SPV
-3. 填充 `MaterialCreateInfo` 并返回
+1. 按 `def.descriptor_entries` 构建 `MaterialDescriptorInfo`（顺序固定，无需 `Resort()` 的动态排序）
+2. `key.AppendGLSLDefines(prefix)` 生成 4 行 `#define`
+3. `prefix + def.vert_glsl` / `prefix + def.frag_glsl` → glslang 编译 → SPV
+4. 填充 `MaterialCreateInfo` 并返回
 
-整个过程**没有字符串拼接**，只有编译。
+整个过程**没有 GLSL 字符串组装**，只有一次 `#define 前缀 + 完整源码` 的编译。
 
 ---
 

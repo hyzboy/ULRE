@@ -124,6 +124,12 @@ SET(SHADER_LIBRARY_FILES    ShaderLibrary.cpp
 
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
+SET(FIXED_MTL_FILES ${STD_MTL_HEADER_PATH}/FixedMaterialDef.h
+                    ShaderPermutationKey.cpp
+)
+
+SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
+
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
 
                                         ${DESC_INFO_HEADER_FILES}
@@ -141,4 +147,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${BLINN_PHONG_HEADER_FILES}
                                         ${STD_MTL_2D_SOURCE_FILES}
                                         ${STD_MTL_3D_SOURCE_FILES}
+                                        ${FIXED_MTL_FILES}
 )
