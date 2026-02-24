@@ -148,4 +148,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${STD_MTL_2D_SOURCE_FILES}
                                         ${STD_MTL_3D_SOURCE_FILES}
                                         ${FIXED_MTL_FILES}
+                                        ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
+                                        ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
 )

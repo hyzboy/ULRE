@@ -1,0 +1,133 @@
+// forward_uber.frag.tmpl — UberMaterial3D 专用 fragment shader 模板
+// 通过 ShaderPermutationKey::AppendGLSLDefines() 或 recipe JSON permutation 字段
+// 在此模板头部注入 #define 宏，控制编译分支。
+// 模板由 ShaderTemplateEngine（inja）渲染，{{ ... }} 为 inja 占位符。
+#version 450
+
+// ─── 排列宏（由调用方在头部前置注入，此处列出默认值供参考）────────────────────
+// #define AMBIENT_MODEL 0   // 0=FlatColor
+// #define LIGHT_MODEL   0   // 0=Unlit
+// #define SPECULAR_SPLIT 0  // 0=Combined
+// #define SHADOW_MODE   0   // 0=None
+
+// ─── Fragment 输入（来自 VS）───────────────────────────────────────────────────
+layout(location=0) in vec3  in_WorldNormal;
+layout(location=1) in vec2  in_UV;
+layout(location=2) in vec4  in_WorldPos;
+layout(location=3) flat in  uint in_MIID;
+
+// ─── Fragment 输出 ─────────────────────────────────────────────────────────────
+#if SPECULAR_SPLIT == 1
+layout(location=0) out vec4 out_Diffuse;
+layout(location=1) out vec4 out_Specular;
+#else
+layout(location=0) out vec4 FragColor;
+#endif
+
+// ─── Descriptor Set 2：Per-Frame SSBO ─────────────────────────────────────────
+// LocalToWorld 矩阵（由 VS 使用，FS 通过 in_WorldPos 已完成变换）
+layout(set=2, binding=1, std430) readonly buffer UberMaterialInstanceData {
+    // UberMaterialInstance struct 成员由 MaterialCompiler 在编译前注入
+    // 此处使用占位符，实际由 SetMaterialInstance() 替换
+    uint  base_color_layer;
+    uint  normal_layer;
+    uint  arm_layer;
+    uint  packed_tint;
+    float metallic;
+    float roughness;
+    float emissive;
+    uint  flags;
+} umi[];
+
+// ─── Descriptor Set 3：Per-Material 纹理 ──────────────────────────────────────
+layout(set=3, binding=0) uniform sampler2DArray UberBaseColorArray;
+#if AMBIENT_MODEL >= 2
+layout(set=3, binding=1) uniform samplerCube    env_map;
+#endif
+
+// ─── Camera & Sky（Set 1）────────────────────────────────────────────────────
+layout(set=1, binding=0, std430) readonly buffer CameraInfoData {
+    vec4 pos;
+    mat4 view;
+    mat4 proj;
+    mat4 vp;
+} camera;
+
+layout(set=1, binding=1, std430) readonly buffer SkyInfoData {
+    vec4 sun_direction;
+    vec4 sun_color;
+    float sun_intensity;
+    vec4 base_sky_color;
+    vec4 base_ground_color;
+} sky;
+
+// ─── 模块函数（由 ShaderTemplateEngine 插入）──────────────────────────────────
+{{ module_functions }}
+
+// ─── 主函数 ───────────────────────────────────────────────────────────────────
+void main()
+{
+    // 取材质实例数据
+    uint mi_id = in_MIID;
+    uint packed_tint = umi[mi_id].packed_tint;
+    vec4 tint = unpackUnorm4x8(packed_tint);
+
+    // BaseColor（从 Texture2DArray 采样）
+    vec4 base_color = texture(UberBaseColorArray,
+                              vec3(in_UV, float(umi[mi_id].base_color_layer))) * tint;
+
+    // Unlit 快速路径
+#if LIGHT_MODEL == 0
+  #if SPECULAR_SPLIT == 1
+    out_Diffuse  = base_color;
+    out_Specular = vec4(0.0);
+  #else
+    FragColor = base_color;
+  #endif
+    return;
+#endif
+
+    // 法线
+    vec3 N = normalize(in_WorldNormal);
+
+    // ─── 环境光 ───────────────────────────────────────────────────────────────
+    vec3 ambient = vec3(0.0);
+#if AMBIENT_MODEL == 0
+    // FlatColor：无环境光模块，直接用 sky.base_sky_color 作为环境底色
+    ambient = sky.base_sky_color.rgb * base_color.rgb * 0.05;
+#else
+    // Hemisphere / IBL / IBL_SH / MixedGI：由插入的模块函数 GetAmbientColor() 计算
+    ambient = GetAmbientColor();
+#endif
+
+    // ─── 直接光照 ──────────────────────────────────────────────────────────────
+    vec3 diffuse  = vec3(0.0);
+    vec3 specular = vec3(0.0);
+
+#if LIGHT_MODEL >= 1
+    diffuse = GetDiffuseColor();
+#endif
+
+#if LIGHT_MODEL >= 2 && SPECULAR_SPLIT == 0
+    // 合并高光仅在非分离模式下计算
+    // 简单 Blinn-Phong 高光
+    vec3 viewDir = normalize(camera.pos.xyz - in_WorldPos.xyz);
+    vec3 lightDir = normalize(sky.sun_direction.xyz);
+    vec3 halfDir  = normalize(lightDir + viewDir);
+    float NdotH   = max(dot(N, halfDir), 0.0);
+    float rough2  = umi[mi_id].roughness * umi[mi_id].roughness;
+    specular = vec3(pow(NdotH, max(2.0 / (rough2 * rough2 + 0.001), 1.0)));
+    specular *= sky.sun_color.rgb * sky.sun_intensity * umi[mi_id].metallic;
+#endif
+
+    // ─── 自发光 ───────────────────────────────────────────────────────────────
+    vec3 emissive = base_color.rgb * umi[mi_id].emissive;
+
+    // ─── 输出 ─────────────────────────────────────────────────────────────────
+#if SPECULAR_SPLIT == 1
+    out_Diffuse  = vec4(diffuse + ambient + emissive, base_color.a);
+    out_Specular = vec4(specular, 1.0);
+#else
+    FragColor = vec4(diffuse + specular + ambient + emissive, base_color.a);
+#endif
+}
