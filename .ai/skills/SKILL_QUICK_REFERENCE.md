@@ -100,7 +100,7 @@ namespace hgl::ecs {
     MyElementSystem::MyElementSystem(const std::string& name)
         : System(name) {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderPostProcess_LineRenderSystem);
+        SetExecutionPhase(ExecutionPhase::RenderPostProcess);  // 通用阶段
         SetRenderElementType("MyElement");  // ⭐ 关键
     }
 
@@ -179,9 +179,9 @@ const std::string& type = system->GetRenderElementType();
 system->SetEnabled(true/false);
 bool enabled = system->IsEnabled();
 
-// 执行顺序
-system->SetExecutionOrder(ExecutionPhase::RenderCollect_*);
-system->AddDependency<OtherSystem>();
+// 执行阶段与依赖
+system->SetExecutionPhase(ExecutionPhase::RenderCollect);  // 通用阶段
+system->AddDependency<OtherSystem>();  // 显式依赖关系
 ```
 
 ### 调试
@@ -221,52 +221,41 @@ class ParticleComponent : public Component {
     // ...
 };
 
-// 2. 收集系统
-class ParticleCollectSystem : public System {
-    ParticleCollectSystem() : System("ParticleCollectSystem") {
-        SetExecutionOrder(ExecutionPhase::RenderCollect_TextCollectSystem);  // +1
-        SetRenderElementType("Particle");
+// 2. 创建 PipelineGroup（推荐新架构）
+class ParticleRenderPipelineGroup {
+public:
+    void Initialize(ECSContext* ctx) {
+        auto collect_system = EnsureRenderSystem<ParticleCollectSystem>(ctx);
+        collect_system->SetRenderElementType("Particle");
+        collect_system->SetExecutionPhase(ExecutionPhase::RenderCollect);
+
+        auto simulation_system = EnsureRenderSystem<ParticleSimulationSystem>(ctx);
+        simulation_system->SetRenderElementType("Particle");
+        simulation_system->SetExecutionPhase(ExecutionPhase::RenderBatch);
+        simulation_system->AddDependency<ParticleCollectSystem>();
+
+        auto submit_system = EnsureRenderSystem<ParticleSubmitSystem>(ctx);
+        submit_system->SetRenderElementType("Particle");
+        submit_system->SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);
+        submit_system->AddDependency<ParticleSimulationSystem>();
     }
-    void Update(float dt) override { /* 收集 */ }
 };
 
-// 3. 模拟系统
-class ParticleSimulationSystem : public System {
-    ParticleSimulationSystem() : System("ParticleSimulationSystem") {
-        SetExecutionOrder(ExecutionPhase::RenderBatch_TextBuildSystem);  // +1
-        SetRenderElementType("Particle");
-        AddDependency<ParticleCollectSystem>();
-    }
-    void Update(float dt) override { /* 模拟 */ }
-};
-
-// 4. 排序系统
-class ParticleSortSystem : public System {
-    ParticleSortSystem() : System("ParticleSortSystem") {
-        SetExecutionOrder(ExecutionPhase::RenderBatch_TextResourceSyncSystem);  // +1
-        SetRenderElementType("Particle");
-        AddDependency<ParticleSimulationSystem>();
-    }
-    void Update(float dt) override { /* 排序 */ }
-};
-
-// 5. 提交系统
-class ParticleSubmitSystem : public System {
-    ParticleSubmitSystem() : System("ParticleSubmitSystem") {
-        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit_TextRenderSubmitSystem);  // +1
-        SetRenderElementType("Particle");
-        AddDependency<ParticleSortSystem>();
-    }
-    void Render(RenderCmdBuffer* cmd, float dt) override { /* 提交 */ }
-};
-
-// 6. 注册
-void DefaultSystemsCP::Setup(ECSContext& context) {
-    context.RegisterRenderSystem<ParticleCollectSystem>();
-    context.RegisterRenderSystem<ParticleSimulationSystem>();
-    context.RegisterRenderSystem<ParticleSortSystem>();
-    context.RegisterRenderSystem<ParticleSubmitSystem>();
+// 3. 注册 Installer
+bool InstallParticleGroup(ECSContext* ctx, IRenderTarget* /*default_rt*/) {
+    ParticleRenderPipelineGroup group;
+    group.Initialize(ctx);
+    return true;
 }
+
+void RegisterParticleGroup() {
+    auto& registry = SystemGroupRegistry::Get();
+    registry.RegisterGroupInstaller("Particle", InstallParticleGroup);
+}
+
+// 4. 应用代码调用
+EnsureSystemGroupSystems(context, "Particle", default_rt);
+```
 
 // 7. 自动检测
 // 在GatherSceneStats()中

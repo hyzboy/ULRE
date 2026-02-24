@@ -70,7 +70,7 @@ namespace hgl::ecs {
         : System(name)
     {
         SetSystemType(SystemType::RenderSubmit);  // 选择合适的SystemType
-        SetExecutionOrder(ExecutionPhase::RenderPostProcess_LineRenderSystem);  // 选择合适的执行阶段
+        SetExecutionPhase(ExecutionPhase::RenderPostProcess);  // 通用阶段
         SetRenderElementType("MyElement");  // ⭐ 关键：声明element type
     }
 
@@ -106,57 +106,91 @@ namespace hgl::ecs {
 
 ### 3️⃣ **多系统情况：创建系统组**
 
-如果需要多个系统（如Primitive有6个），应分为阶段：
+如果需要多个系统（如Primitive有Collect/Batch/Submit），应分为阶段：
 
 ```cpp
 // 收集阶段
 class MyElementCollectSystem : public System {
-    // SetRenderElementType("MyElement")
-    // SetExecutionOrder(RenderCollect_MyElementCollectSystem)
+    MyElementCollectSystem() : System("MyElementCollectSystem") {
+        SetRenderElementType("MyElement");
+        SetExecutionPhase(ExecutionPhase::RenderCollect);
+    }
 };
 
 // 处理/排序阶段  
 class MyElementSortSystem : public System {
-    // SetRenderElementType("MyElement")
-    // SetExecutionOrder(RenderBatch_MyElementSortSystem)
-    // AddDependency<MyElementCollectSystem>()
+    MyElementSortSystem() : System("MyElementSortSystem") {
+        SetRenderElementType("MyElement");
+        SetExecutionPhase(ExecutionPhase::RenderBatch);
+        AddDependency<MyElementCollectSystem>();
+    }
 };
 
 // 提交阶段
 class MyElementSubmitSystem : public System {
-    // SetRenderElementType("MyElement")
-    // SetExecutionOrder(RenderDrawSubmit_MyElementSubmitSystem)
-    // AddDependency<MyElementSortSystem>()
+    MyElementSubmitSystem() : System("MyElementSubmitSystem") {
+        SetRenderElementType("MyElement");
+        SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);
+        AddDependency<MyElementSortSystem>();
+    }
 };
 ```
 
 **CheckList:**
 - [ ] 所有相关系统使用 **相同的** `SetRenderElementType("MyElement")`
 - [ ] 系统之间通过 `AddDependency<>()` 建立执行顺序
-- [ ] 使用合适的 `ExecutionPhase` 前缀（Collect→Sort→Finalize→Submit）
+- [ ] 使用合适的 `ExecutionPhase`（RenderCollect / RenderBatch / RenderDrawSubmit）
 
 ---
 
-### 4️⃣ **注册系统到Context**
+### 4️⃣ **创建 PipelineGroup 并注册 Installer**
 
-在 `DefaultSystemsCP::Setup()` 中注册：
+**新架构模式（推荐）：**
 
 ```cpp
-// src/ecs/core/DefaultSystemsCP.cpp
-void DefaultSystemsCP::Setup(ECSContext& context) {
-    // ... 现有系统 ...
-    
-    // 新增系统组
-    context.RegisterRenderSystem<MyElementCollectSystem>();
-    context.RegisterRenderSystem<MyElementSortSystem>();
-    context.RegisterRenderSystem<MyElementSubmitSystem>();
+// inc/hgl/ecs/support/myelement/MyElementRenderPipelineGroup.h
+namespace hgl::ecs {
+    class MyElementRenderPipelineGroup {
+    public:
+        void Initialize(ECSContext* ctx);
+    };
+}
+
+// src/ecs/support/myelement/MyElementRenderPipelineGroup.cpp
+void MyElementRenderPipelineGroup::Initialize(ECSContext* ctx) {
+    auto collect_system = EnsureRenderSystem<MyElementCollectSystem>(ctx);
+    collect_system->SetRenderElementType("MyElement");
+    collect_system->SetExecutionPhase(ExecutionPhase::RenderCollect);
+
+    auto sort_system = EnsureRenderSystem<MyElementSortSystem>(ctx);
+    sort_system->SetRenderElementType("MyElement");
+    sort_system->SetExecutionPhase(ExecutionPhase::RenderBatch);
+    sort_system->AddDependency<MyElementCollectSystem>();
+
+    auto submit_system = EnsureRenderSystem<MyElementSubmitSystem>(ctx);
+    submit_system->SetRenderElementType("MyElement");
+    submit_system->SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);
+    submit_system->AddDependency<MyElementSortSystem>();
+}
+
+// src/ecs/core/DefaultSystems.cpp 中注册
+bool InstallMyElementGroup(ECSContext* ctx, IRenderTarget* /*default_rt*/) {
+    MyElementRenderPipelineGroup group;
+    group.Initialize(ctx);
+    return true;
+}
+
+void RegisterBuiltinSystemGroupInstallers() {
+    // ... 现有注册 ...
+    registry.RegisterGroupInstaller("MyElement", InstallMyElementGroup);
 }
 ```
 
 **CheckList:**
-- [ ] 使用 `RegisterRenderSystem<T>()` 注册render系统
-- [ ] 如果是tick系统，使用 `RegisterTickSystem<T>()`
-- [ ] 系统按执行顺序注册（或依赖自动排序）
+- [ ] 创建 `XxxRenderPipelineGroup` 类封装系统初始化
+- [ ] 实现 `InstallXxxGroup()` 函数
+- [ ] 在 `RegisterBuiltinSystemGroupInstallers()` 中注册
+- [ ] 应用代码通过 `EnsureSystemGroupSystems(ctx, "MyElement")` 调用
 
 ---
 
@@ -231,7 +265,7 @@ private:
 SkySphereRenderSystem::SkySphereRenderSystem(const std::string& name)
     : System(name) {
     SetSystemType(SystemType::RenderSubmit);
-    SetExecutionOrder(ExecutionPhase::RenderPostProcess_LineRenderSystem);  // 天空球在后处理
+    SetExecutionPhase(ExecutionPhase::RenderPostProcess);  // 天空球在后处理阶段
     SetRenderElementType("SkySphere");  // ⭐ 关键
 }
 ```

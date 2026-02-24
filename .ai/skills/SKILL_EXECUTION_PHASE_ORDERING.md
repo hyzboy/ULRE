@@ -17,48 +17,39 @@
 7: TickPostCamera_TransformGizmoSystem      // 变换工具
 ```
 
-### 渲染前处理（8-16）
+### 渲染前处理（8-12）
 ```
 8:  RenderSwapchainNextImage_*              // 交换链获取
 9:  RenderPreBeginFrame_RenderTargetSystem
 10: RenderPreBeginFrame_EnvironmentSystem
-11: RenderPreBeginFrame_QuadResourcePrepareSystem
-12: RenderPreBeginFrame_QuadMaterialBindingSystem
-13: RenderBeginFrame_FrameIndexReady        // 帧号就绪回调
-14: RenderBufferCommit_RenderBufferCommitSystem
-15: RenderBufferUpload_RenderBufferUploadSystem
-16: RenderPostBeginFrame_RenderFrameBusinessSyncSystem
+11: RenderBeginFrame_FrameIndexReady        // 帧号就绪回调
+12: RenderBufferUpload_RenderBufferUploadSystem
+13: RenderPostBeginFrame_RenderFrameBusinessSyncSystem
 ```
 
-### 渲染主流程（17-27）
+### 渲染主流程（14-17）
 ```
-📊 收集阶段 (17)
-17: RenderCollect_RenderPrimitiveCollectSystem
+📊 收集阶段 (14)
+14: RenderCollect_RenderPrimitiveCollectSystem
 
-📊 剔除阶段 (18)  
-18: RenderCollect_RenderPrimitiveCullSystem
+📊 批处理阶段 (15-16)
+// 注：Batch/Cull/Finalize 系统已整合进 PipelineGroup
+15: RenderBatch_[PrimitiveRenderPipelineGroup内部]
+16: RenderBatch_[TextRenderPipelineGroup内部]
 
-📊 收集阶段续 (19)
-19: RenderCollect_TextCollectSystem
+📊 提交阶段 (17-18)
+17: RenderDrawSubmit_[PrimitiveRenderPipelineGroup.Draw]
+18: RenderDrawSubmit_[TextRenderPipelineGroup.Draw]
 
-📊 排序/批处理 (20-24)
-20: RenderBatch_RenderPrimitiveSortSystem
-21: RenderBatch_RenderPrimitiveBatchBuildSystem
-22: RenderBatch_RenderPrimitiveBatchFinalizeSystem
-23: RenderBatch_TextBuildSystem
-24: RenderBatch_TextResourceSyncSystem
-
-📊 提交阶段 (25-26)
-25: RenderDrawSubmit_RenderPrimitiveSubmitSystem
-26: RenderDrawSubmit_TextRenderSubmitSystem
-
-📊 后处理 (27)
-27: RenderPostProcess_LineRenderSystem
+📊 后处理 (19)
+19: RenderPostProcess_[LineRenderPipelineGroup.Draw]
 ```
 
-### 帧提交阶段（28+）
+### 帧提交阶段（20+）
 ```
-28: RenderSubmit_SwapchainSubmitSystem      // 帧提交
+20: RenderStat_LineStatsSystem
+21: RenderSubmit_SwapchainSubmitSystem      // 帧提交
+```
 ```
 
 ---
@@ -112,51 +103,52 @@
 
 ## 添加新系统的ExecutionPhase
 
+### ⚠️ 新架构：不再需要新增 ExecutionPhase 枚举值
+
+**当前架构（推荐）：**
+- System.h 只定义 **12 个通用阶段**（TickInput, TickTransform, ..., RenderCollect, RenderBatch, RenderDrawSubmit, RenderSubmit 等）
+- 每个系统通过 `SetExecutionPhase(ExecutionPhase::Xxx)` 指定在哪个阶段执行
+- **依赖关系通过 `AddDependency<>()` 解决，不再用自定义 Phase 值排序**
+
 ### 场景1：简单后处理元素（如SkySphere）
 
 ```cpp
 class SkySphereRenderSystem : public System {
     SkySphereRenderSystem(const std::string& name) : System(name) {
-        // 方案：在LineRenderSystem之后，作为后处理
-        SetExecutionOrder(ExecutionPhase::RenderPostProcess_LineRenderSystem);
-        // 或创建新Phase
-        // SetExecutionOrder(ExecutionPhase::RenderPostProcess_SkySphereRenderSystem);
+        SetExecutionPhase(ExecutionPhase::RenderPostProcess);  // 通用阶段
+        SetRenderElementType("SkySphere");
     }
 };
 ```
 
 ### 场景2：多阶段元素（如Particle系统）
 
-需要在 `System.h` 中添加新的ExecutionPhase值：
+不需要在 System.h 添加新 Phase，直接使用通用阶段 + 依赖关系：
 
 ```cpp
-enum class ExecutionPhase {
-    // ... 现有值 ...
-    
-    // 新增：Particle系统
-    RenderCollect_ParticleCollectSystem,         // 新值(应该编号为19?)
-    RenderBatch_ParticleSortSystem,              // 新值
-    RenderDrawSubmit_ParticleSubmitSystem,       // 新值
-    
-    // ... 后续值 ...
-};
-```
-
-然后在对应System中使用：
-
-```cpp
+// Collect 系统
 class ParticleCollectSystem : public System {
     ParticleCollectSystem() : System("ParticleCollectSystem") {
-        SetExecutionOrder(ExecutionPhase::RenderCollect_ParticleCollectSystem);
+        SetExecutionPhase(ExecutionPhase::RenderCollect);  // 通用阶段
         SetRenderElementType("Particle");
     }
 };
 
+// Sort 系统
 class ParticleSortSystem : public System {
     ParticleSortSystem() : System("ParticleSortSystem") {
-        SetExecutionOrder(ExecutionPhase::RenderBatch_ParticleSortSystem);
+        SetExecutionPhase(ExecutionPhase::RenderBatch);    // 通用阶段
         SetRenderElementType("Particle");
-        AddDependency<ParticleCollectSystem>();
+        AddDependency<ParticleCollectSystem>();             // 依赖关系
+    }
+};
+
+// Submit 系统
+class ParticleSubmitSystem : public System {
+    ParticleSubmitSystem() : System("ParticleSubmitSystem") {
+        SetExecutionPhase(ExecutionPhase::RenderDrawSubmit);  // 通用阶段
+        SetRenderElementType("Particle");
+        AddDependency<ParticleSortSystem>();
     }
 };
 ```
@@ -166,8 +158,7 @@ class ParticleSortSystem : public System {
 ```cpp
 class MyResourcePrepareSystem : public System {
     MyResourcePrepareSystem() : System("MyResourcePrepareSystem") {
-        // 在其他Pre-Begin系统之后
-        SetExecutionOrder(ExecutionPhase::RenderPostBeginFrame_RenderFrameBusinessSyncSystem);
+        SetExecutionPhase(ExecutionPhase::RenderResourceSetup);  // 通用阶段
         SetRenderElementType("MyElement");
     }
 };
@@ -177,18 +168,20 @@ class MyResourcePrepareSystem : public System {
 
 ## ExecutionPhase设计原则
 
-### 原则1：依赖关系驼序
-使用 `AddDependency<>()` 确保逻辑顺序，即使ExecutionPhase间隔很大：
+### 原则1：依赖关系优先
+使用 `AddDependency<>()` 确保逻辑顺序，即使ExecutionPhase不同：
 
 ```cpp
 class A : public System {
-    A() { SetExecutionOrder(ExecutionPhase::RenderCollect_ACollectSystem); }
+    A() { 
+        SetExecutionPhase(ExecutionPhase::RenderCollect);  // 通用阶段
+    }
 };
 
 class B : public System {
     B() { 
-        SetExecutionOrder(ExecutionPhase::RenderBatch_BSortSystem);  // 看起来是Phase 99
-        AddDependency<A>();  // 但会在A之后执行
+        SetExecutionPhase(ExecutionPhase::RenderBatch);  // 不同阶段
+        AddDependency<A>();  // 但保证在A之后执行
     }
 };
 ```
@@ -197,23 +190,27 @@ class B : public System {
 相同ExecutionPhase的系统执行顺序**不确定**，除非有依赖关系：
 
 ```cpp
-// 这两个系统执行顺序可能互换：
-RenderPrimitiveCollectSystem   // phase 17
-TextCollectSystem              // phase 19
+// RenderCollect阶段可能有多个系统：
+RenderPrimitiveCollectSystem   // phase: RenderCollect
+MyParticleCollectSystem        // phase: RenderCollect
 
-// ❌ 错误做法：依赖phase数字顺序
-// ✅ 正确做法：明确AddDependency
+// ❌ 错误做法：依赖两者的默认执行顺序
+// ✅ 正确做法：需要顺序则明确 AddDependency<RenderPrimitiveCollectSystem>()
 ```
 
 ### 原则3：阶段区间的含义
 
-- **TickInput-TickPostCamera (0-7)** ：逻辑更新，组件状态变化
-- **RenderPreBeginFrame-RenderPostBeginFrame (9-16)** ：渲染前一次性准备
-- **RenderCollect (17-19)** ：扫描所有Component
-- **RenderBatch (20-24)** ：处理收集的数据
-- **RenderDrawSubmit (25-26)** ：提交GPU命令
-- **RenderPostProcess (27)** ：后处理/叠加
-- **RenderSubmit (28+)** ：帧级操作
+- **TickInput-TickPostCamera (Tick阶段)** ：逻辑更新，组件状态变化
+- **RenderBeginFrame** ：帧开始，交换链获取
+- **RenderCollect** ：扫描可见Component（如RenderPrimitiveCollectSystem）
+- **RenderBatch** ：PipelineGroup内部处理（Cull/Sort/Build/Finalize）
+- **RenderBufferUpload** ：GPU上传（RenderBufferUploadSystem）
+- **RenderFrameSync** ：帧UBO/描述符同步
+- **RenderDrawSubmit** ：PipelineGroup提交GPU绘制命令
+- **RenderPostProcess** ：后处理/叠加（如LineRenderPipelineGroup）
+- **RenderDebug** ：调试覆盖层（预留）
+- **RenderStat** ：统计系统（如LineStatsSystem）
+- **RenderSubmit** ：帧级提交（SwapchainSubmitSystem）
 
 ---
 
@@ -351,17 +348,22 @@ class MySystemB : public System {
 
 **未来改进方向（5.5天计划第3阶段）:**
 
-当前系统有35+个ExecutionPhase值。可考虑简化为~10个核心phase，通过 `executionPriority` 字段在同一phase内排序。这样：
+**✅ 当前架构已简化：**
+
+系统已从 35+ 个细粒度 ExecutionPhase 值简化为 **12 个通用阶段**，依赖关系通过 `AddDependency<>()` 管理：
 
 ```cpp
-// 未来
+// 当前架构（已实现）
 class MySystem : public System {
     MySystem() : System() {
-        SetExecutionOrder(ExecutionPhase::RenderCollect);  // 只需核心phase
-        SetExecutionPriority(100);  // phase内的优先级
+        SetExecutionPhase(ExecutionPhase::RenderCollect);  // 通用阶段
         SetRenderElementType("MyElement");
+        AddDependency<OtherSystem>();  // 显式依赖关系
     }
 };
 ```
 
-但当前仍保持35+值的细粒度控制简化代码复杂度。
+**好处：**
+- 简化了 System.h（只需维护 12 个枚举值）
+- 依赖关系更明确（不再依赖 Phase 数值排序）
+- 更容易添加新的渲染元素类型

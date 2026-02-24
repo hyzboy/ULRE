@@ -91,8 +91,8 @@ while (running) {
 RenderGraph CreateDefaultLinearGraph() {
     RenderGraph graph;
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderPostProcess,
         nullptr,  // 使用当前RT
         true,     // enabled
         true,     // runUpdate
@@ -114,18 +114,18 @@ RenderGraph CreateDefaultLinearGraph() {
 RenderGraph CreateMainWithLineOverlayGraph() {
     RenderGraph graph;
     
-    // Pass1: 主渲染（不含线条）
+    // Pass1: 主渲染（Primitive + Text）
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderDrawSubmit_TextRenderSubmitSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderDrawSubmit,
         nullptr,
         true, true, true, true
     ));
     
-    // Pass2: 线叠加
+    // Pass2: 线叠加（后处理阶段）
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
+        ExecutionPhase::RenderPostProcess,
+        ExecutionPhase::RenderPostProcess,
         nullptr,
         true, false, false, true  // 只运行Render
     ));
@@ -137,6 +137,8 @@ RenderGraph CreateMainWithLineOverlayGraph() {
 **特点：**
 - 保证线条始终在最前
 - 通过两个Pass精细控制
+- RenderPostProcess 包含 LineRenderPipelineGroup
+
 
 ### 3. 仅线条图
 
@@ -144,8 +146,8 @@ RenderGraph CreateMainWithLineOverlayGraph() {
 RenderGraph CreateLineOnlyGraph() {
     RenderGraph graph;
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
+        ExecutionPhase::RenderPostProcess,
+        ExecutionPhase::RenderPostProcess,
         nullptr,
         true, true, true, true
     ));
@@ -173,8 +175,8 @@ RenderGraph CreateAdaptiveRenderGraph(ECSContext* context) {
     // 创建单一Pass（系统内部过滤）
     RenderGraph graph;
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderPostProcess,
         nullptr, true, true, true, true
     ));
     
@@ -204,24 +206,24 @@ RenderGraph CreateGBufferGraph(
     
     // Pass1: 渲染到Position RT
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderDrawSubmit_RenderPrimitiveSubmitSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderDrawSubmit,
         rt_position,  // ⭐ 指定RT
         true, true, true, true
     ));
     
     // Pass2: 渲染到Normal RT
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderDrawSubmit_RenderPrimitiveSubmitSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderDrawSubmit,
         rt_normal,
         true, false, false, true  // 复用数据
     ));
     
     // Pass3: 渲染到Albedo RT
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderDrawSubmit_RenderPrimitiveSubmitSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderDrawSubmit,
         rt_albedo,
         true, false, false, true
     ));
@@ -242,8 +244,8 @@ RenderGraph CreateLowQualityGraph(ECSContext* context) {
     // 创建简化图
     RenderGraph graph;
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderDrawSubmit_RenderPrimitiveSubmitSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderDrawSubmit,
         nullptr,
         true, true, true, true
     ));
@@ -268,26 +270,26 @@ RenderGraph CreateHighQualityGraph(ECSContext* context) {
 RenderGraph CreateLayeredGraph(ECSContext* context) {
     RenderGraph graph;
     
-    // Layer1: 背景（SkySphere）
+    // Layer1: 背景（SkySphere 或其他背景元素）
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
+        ExecutionPhase::RenderPostProcess,
+        ExecutionPhase::RenderPostProcess,
         nullptr,
         true, true, false, true
     ));
     
-    // Layer2: 主体（Primitive + Text + Particle）
+    // Layer2: 主体（Primitive + Text + Billboard + Particle）
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderCollect_RenderPrimitiveCollectSystem,
-        ExecutionPhase::RenderDrawSubmit_TextRenderSubmitSystem,
+        ExecutionPhase::RenderCollect,
+        ExecutionPhase::RenderDrawSubmit,
         nullptr,
         true, true, true, true
     ));
     
-    // Layer3: UI叠加
+    // Layer3: UI叠加（如 Line 或 Text UI）
     graph.Add(RenderGraph::Pass(
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
-        ExecutionPhase::RenderPostProcess_LineRenderSystem,
+        ExecutionPhase::RenderPostProcess,
+        ExecutionPhase::RenderPostProcess,
         nullptr,
         true, false, false, true
     ));

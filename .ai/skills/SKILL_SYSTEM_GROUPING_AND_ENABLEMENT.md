@@ -31,7 +31,7 @@
 // 在System构造函数中
 MyElementSystem::MyElementSystem(const std::string& name) : System(name) {
     SetSystemType(SystemType::RenderCollect);
-    SetExecutionOrder(ExecutionPhase::RenderCollect_MyElementCollectSystem);
+    SetExecutionPhase(ExecutionPhase::RenderCollect);  // 通用阶段
     SetRenderElementType("MyElement");  // ⭐ 声明
 }
 
@@ -152,37 +152,38 @@ void FrameRateProfiling(ECSContext* context) {
 
 ## 系统组设计指南
 
-### Primitive系统组（参考实现）
+### Primitive系统组（当前架构：PipelineGroup）
 ```
 RenderPrimitiveCollectSystem ─┐
-                              ├─ RenderPrimitiveCullSystem ─┐
-                                                            ├─ RenderPrimitiveSortSystem ─┐
-                                                                                         ├─ RenderPrimitiveBatchBuildSystem ─┐
-                                                                                                                           ├─ RenderPrimitiveBatchFinalizeSystem ─┐
-                                                                                                                                                                  ├─ RenderPrimitiveSubmitSystem
+                              ├─ [PrimitiveRenderPipelineGroup内部] ─┐
+                                                                      ├─ Batch构建 ─┐
+                                                                                   ├─ 绘制提交
 ```
 
-**六阶段模式：**
-1. **Collect** - 收集符合条件的Component
-2. **Cull** - 视锥体/遮挡剔除
-3. **Sort** - 按深度/材质排序
-4. **Batch** - 合并成批次
-5. **Finalize** - 最后处理
-6. **Submit** - GPU命令提交
+**新架构模式（统一 Pipeline Group）：**
+- **RenderCollect阶段：** RenderPrimitiveCollectSystem 收集可见Component
+- **RenderBatch阶段：** PrimitiveRenderPipelineGroup 内部自动处理 Cull/Sort/Batch
+- **RenderDrawSubmit阶段：** 同一 PipelineGroup 提交GPU绘制命令
+- **核心改进：** 不再需要手动注册 6 个独立系统，由 `InstallPrimitiveGroup()` 自动初始化
 
-### Text系统组（参考实现）
+### Text系统组（当前架构：PipelineGroup）
 ```
-TextCollectSystem ─┐
-                   ├─ TextBuildSystem ─┐
-                                       ├─ TextResourceSyncSystem ─┐
-                                                                  ├─ TextRenderSubmitSystem
+[TextRenderPipelineGroup统一处理] ─┐
+                                  ├─ Collect → Build → ResourceSync → Submit
 ```
 
-**四阶段模式：**
-1. **Collect** - 收集TextComponent
-2. **Build** - 构建纹理/排版
-3. **ResourceSync** - 同步GPU资源
-4. **Submit** - 提交绘制命令
+**新架构模式：**
+- **统一注册：** `InstallTextGroup()` 调用 `TextRenderPipelineGroup::Initialize(ctx)`
+- **内部流水线：** Collect/Build/Sync/Submit 全部封装在 Group 内
+- **外部接口：** 应用代码只需调用 `EnsureSystemGroupSystems(ctx, "Text")`
+
+### Line系统组（当前架构）
+```
+LineBoundsUpdateSystem (Tick阶段) ─┐
+                                   ├─ [LineRenderPipelineGroup] ─┐
+                                                                  ├─ LineCollectSystem ─┐
+                                                                                        ├─ LineRenderSystem (PostProcess阶段)
+```
 
 ### 最小化：单System模式
 
@@ -190,7 +191,7 @@ TextCollectSystem ─┐
 // 简单元素只需一个System
 class SkySphereRenderSystem : public System {
     SkySphereRenderSystem(const std::string& name) : System(name) {
-        SetExecutionOrder(ExecutionPhase::RenderPostProcess_LineRenderSystem);
+        SetExecutionPhase(ExecutionPhase::RenderPostProcess);  // 通用阶段
         SetRenderElementType("SkySphere");  // 声明
     }
     
