@@ -359,6 +359,38 @@ int main()
     hgl::AnsiString bridge_fs_code = ComposedShaderGenerator::ComposeFragmentShader(bridge_result.def, key);
     bool bridge_helper_inject_ok = ValidateContainsWorldAndCameraHelpersOnly(bridge_fs_code, "FS(BridgeLogic)");
 
+    // Forward PerVertex 光照模式路由检查：应生成明确的模式宏
+    PipelineMode forward_pervertex_mode;
+    forward_pervertex_mode.render_path = PipelineRenderPath::Forward;
+    forward_pervertex_mode.forward_lighting = PipelineForwardLightingMode::PerVertex;
+
+    hgl::AnsiString forward_pervertex_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, forward_pervertex_mode);
+    hgl::AnsiString forward_pervertex_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, forward_pervertex_mode);
+
+    bool forward_pervertex_vs_macro_ok = (std::strstr(forward_pervertex_vs.c_str(), "#define FORWARD_LIGHTING_PER_VERTEX 1") != nullptr)
+                                    && (std::strstr(forward_pervertex_vs.c_str(), "#define FORWARD_LIGHTING_PER_PIXEL 0") != nullptr);
+
+    bool forward_pervertex_fs_macro_ok = (std::strstr(forward_pervertex_fs.c_str(), "#define FORWARD_LIGHTING_PER_VERTEX 1") != nullptr)
+                                    && (std::strstr(forward_pervertex_fs.c_str(), "#define FORWARD_LIGHTING_PER_PIXEL 0") != nullptr);
+
+    bool forward_pervertex_channel_ok = (std::strstr(forward_pervertex_vs.c_str(), "vec3 VertexLighting") != nullptr)
+                                     && (std::strstr(forward_pervertex_vs.c_str(), "vso.VertexLighting = _vertex_light") != nullptr)
+                                     && (std::strstr(forward_pervertex_fs.c_str(), "business_output.rgb *= clamp(vso.VertexLighting") != nullptr);
+
+    // MobileSubpassGBuffer 路由检查：应生成 subpassLoad 路径宏与模板
+    PipelineMode mobile_subpass_mode;
+    mobile_subpass_mode.render_path = PipelineRenderPath::MobileSubpassGBufferDeferred;
+
+    hgl::AnsiString mobile_subpass_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, mobile_subpass_mode);
+    hgl::AnsiString mobile_subpass_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, mobile_subpass_mode);
+
+    bool mobile_subpass_vs_macro_ok = (std::strstr(mobile_subpass_vs.c_str(), "#define MOBILE_SUBPASS_GBUFFER 1") != nullptr)
+                                   && (std::strstr(mobile_subpass_vs.c_str(), "#define MOBILE_SUBPASS_USE_SUBPASSLOAD 1") != nullptr);
+
+    bool mobile_subpass_fs_route_ok = (std::strstr(mobile_subpass_fs.c_str(), "#define MOBILE_SUBPASS_GBUFFER 1") != nullptr)
+                                   && (std::strstr(mobile_subpass_fs.c_str(), "subpassLoad(") != nullptr)
+                                   && (std::strstr(mobile_subpass_fs.c_str(), "MobileSubpassGBufferDeferred route") != nullptr);
+
     printf("\n========================================\n");
     printf("  测试总结\n");
     printf("========================================\n");
@@ -377,6 +409,11 @@ int main()
     printf("  逻辑桥接描述符过滤: %s\n", bridge_descriptor_filter_ok ? "✓ 通过" : "✗ 失败");
     printf("  逻辑桥接Helper聚合: %s\n", bridge_logic_helper_count_ok ? "✓ 通过" : "✗ 失败");
     printf("  逻辑桥接Helper注入: %s\n", bridge_helper_inject_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Forward PerVertex VS宏路由: %s\n", forward_pervertex_vs_macro_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Forward PerVertex FS宏路由: %s\n", forward_pervertex_fs_macro_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Forward PerVertex 通道连通: %s\n", forward_pervertex_channel_ok ? "✓ 通过" : "✗ 失败");
+    printf("  MobileSubpass VS宏路由: %s\n", mobile_subpass_vs_macro_ok ? "✓ 通过" : "✗ 失败");
+    printf("  MobileSubpass FS子通道路由: %s\n", mobile_subpass_fs_route_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
@@ -389,6 +426,11 @@ int main()
                      && bridge_descriptor_filter_ok
                      && bridge_logic_helper_count_ok
                      && bridge_helper_inject_ok
+                     && forward_pervertex_vs_macro_ok
+                     && forward_pervertex_fs_macro_ok
+                     && forward_pervertex_channel_ok
+                     && mobile_subpass_vs_macro_ok
+                     && mobile_subpass_fs_route_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 

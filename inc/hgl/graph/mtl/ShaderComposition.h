@@ -89,6 +89,135 @@ enum class ShaderOutputMode : uint8 {
     ENUM_CLASS_RANGE(SingleRTAlphaBlend, Custom)
 };
 
+enum class PipelineRenderPath : uint8 {
+    Forward = 0,
+    GBufferDeferred,
+    VBufferDeferred,
+    MobileSubpassGBufferDeferred,
+    PostProcess,
+
+    ENUM_CLASS_RANGE(Forward, PostProcess)
+};
+
+enum class PipelineCoverageMode : uint8 {
+    // 常规颜色渲染覆盖模式
+    Solid = 0,
+    Mask,
+
+    // 纯深度渲染覆盖模式（ShadowMap / Early-Z 等）
+    DepthOnlySolid,
+    DepthOnlyMask,
+
+    ENUM_CLASS_RANGE(Solid, DepthOnlyMask)
+};
+
+enum class PipelineInputMode : uint8 {
+    VertexInput = 0,
+    SSBOVertexInput,
+    AutoByCapability,
+
+    ENUM_CLASS_RANGE(VertexInput, AutoByCapability)
+};
+
+enum class PipelineTopology : uint8 {
+    VSFS = 0,
+    MeshFS,
+    AutoByCapability,
+
+    ENUM_CLASS_RANGE(VSFS, AutoByCapability)
+};
+
+enum class GBufferChannel : uint32_t {
+    None          = 0,
+    Color         = 1u << 0,
+    Normal        = 1u << 1,
+    Depth         = 1u << 2,
+    Emissive      = 1u << 3,
+    MotionVector  = 1u << 4,
+    Specular      = 1u << 5,
+    Roughness     = 1u << 6,
+    Metallic      = 1u << 7,
+    AO            = 1u << 8,
+};
+
+inline GBufferChannel operator|(GBufferChannel a, GBufferChannel b)
+{
+    return GBufferChannel(uint32_t(a) | uint32_t(b));
+}
+
+inline GBufferChannel operator&(GBufferChannel a, GBufferChannel b)
+{
+    return GBufferChannel(uint32_t(a) & uint32_t(b));
+}
+
+inline GBufferChannel &operator|=(GBufferChannel &a, GBufferChannel b)
+{
+    a = a | b;
+    return a;
+}
+
+enum class GBufferFormatLevel : uint8 {
+    // 手机极低配：Color + Normal + Depth
+    MobileLite = 0,
+
+    // 手机/主机中档：在 MobileLite 基础上增加 Emissive / MotionVector
+    MobileExtended,
+
+    // 桌面标准：增加 PBR 关键通道
+    DesktopStandard,
+
+    // 桌面高配：完整延迟通道集
+    DesktopFull,
+
+    // 自定义通道集合
+    Custom,
+
+    ENUM_CLASS_RANGE(MobileLite, Custom)
+};
+
+struct GBufferFormatSpec {
+    // 格式级别（与光照模式档位协同）
+    GBufferFormatLevel level = GBufferFormatLevel::MobileLite;
+
+    // 该格式可输出的通道掩码
+    GBufferChannel channel_mask = GBufferChannel::None;
+
+    // 自动生成到 shader 的参数结构体名称
+    const char *generated_param_struct_name = "GBufferParams";
+
+    // true: 生成器自动生成上述参数结构体
+    bool auto_generate_param_struct = true;
+};
+
+enum class PipelineForwardLightingMode : uint8 {
+    // 默认：片元光照（质量优先）
+    PerPixel = 0,
+
+    // 顶点光照（极低配/远景对象）
+    PerVertex,
+
+    // 运行时按能力与距离策略自动选择
+    AutoByCapability,
+
+    ENUM_CLASS_RANGE(PerPixel, AutoByCapability)
+};
+
+struct PipelineMode {
+    PipelineRenderPath render_path = PipelineRenderPath::Forward;
+    PipelineCoverageMode coverage = PipelineCoverageMode::Solid;
+    PipelineInputMode input_mode = PipelineInputMode::AutoByCapability;
+    PipelineTopology topology = PipelineTopology::AutoByCapability;
+
+    // 延迟渲染输出格式（GBuffer/VBuffer 必填；Forward/PostProcess 可复用）
+    GBufferFormatSpec gbuffer_format;
+
+    // 后处理输出通道组合（必须是 gbuffer_format.channel_mask 的子集）
+    // 为 None 时表示自动继承 gbuffer_format.channel_mask
+    GBufferChannel postprocess_output_channels = GBufferChannel::None;
+
+    PipelineForwardLightingMode forward_lighting = PipelineForwardLightingMode::PerPixel;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 光照计算委托（框架根据 ShaderPermutationKey 生成）
 // ─────────────────────────────────────────────────────────────────────────────
@@ -299,14 +428,32 @@ public:
         const ShaderPermutationKey &key,
         const bool include_preamble = true);
 
+    static AnsiString ComposeVertexShader(
+        const ComposedMaterialDef &def,
+        const ShaderPermutationKey &key,
+        const PipelineMode &pipeline_mode,
+        const bool include_preamble = true);
+
     static AnsiString ComposeFragmentShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const bool include_preamble = true);
 
+    static AnsiString ComposeFragmentShader(
+        const ComposedMaterialDef &def,
+        const ShaderPermutationKey &key,
+        const PipelineMode &pipeline_mode,
+        const bool include_preamble = true);
+
     static AnsiString ComposeGeometryShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
+        const bool include_preamble = true);
+
+    static AnsiString ComposeMeshShader(
+        const ComposedMaterialDef &def,
+        const ShaderPermutationKey &key,
+        const PipelineMode &pipeline_mode,
         const bool include_preamble = true);
 
 private:

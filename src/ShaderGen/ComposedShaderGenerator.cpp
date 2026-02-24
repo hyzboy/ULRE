@@ -54,6 +54,74 @@ static const FixedDescriptorEntry *FindDescriptorByName(
     return nullptr;
 }
 
+static PipelineMode ResolvePipelineModeForCurrentBackend(const PipelineMode &requested)
+{
+    PipelineMode resolved = requested;
+
+    auto GetDefaultGBufferChannelMask = [](const GBufferFormatLevel level) -> GBufferChannel
+    {
+        switch (level)
+        {
+            case GBufferFormatLevel::MobileLite:
+                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth;
+
+            case GBufferFormatLevel::MobileExtended:
+                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
+                     | GBufferChannel::Emissive | GBufferChannel::MotionVector;
+
+            case GBufferFormatLevel::DesktopStandard:
+                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
+                     | GBufferChannel::Emissive | GBufferChannel::MotionVector
+                     | GBufferChannel::Roughness | GBufferChannel::Metallic;
+
+            case GBufferFormatLevel::DesktopFull:
+                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
+                     | GBufferChannel::Emissive | GBufferChannel::MotionVector
+                     | GBufferChannel::Specular | GBufferChannel::Roughness
+                     | GBufferChannel::Metallic | GBufferChannel::AO;
+
+            case GBufferFormatLevel::Custom:
+            default:
+                return GBufferChannel::None;
+        }
+    };
+
+    // SG-1: 仅建立模式轴与路由骨架。
+    // 当前后端仍使用 VS/FS + VertexInput 作为稳定实现。
+    if (resolved.input_mode == PipelineInputMode::AutoByCapability)
+        resolved.input_mode = PipelineInputMode::VertexInput;
+
+    if (resolved.topology == PipelineTopology::AutoByCapability)
+        resolved.topology = PipelineTopology::VSFS;
+
+    if (resolved.forward_lighting == PipelineForwardLightingMode::AutoByCapability)
+        resolved.forward_lighting = PipelineForwardLightingMode::PerPixel;
+
+    // 前向光照模式仅对 Forward 路径有效，其他路径回退到 PerPixel（占位语义）
+    if (resolved.render_path != PipelineRenderPath::Forward)
+        resolved.forward_lighting = PipelineForwardLightingMode::PerPixel;
+
+    // GBuffer 格式默认通道
+    if (resolved.gbuffer_format.channel_mask == GBufferChannel::None
+     && resolved.gbuffer_format.level != GBufferFormatLevel::Custom)
+    {
+        resolved.gbuffer_format.channel_mask = GetDefaultGBufferChannelMask(resolved.gbuffer_format.level);
+    }
+
+    // 后处理输出通道：默认继承 GBuffer 格式；并裁剪为其子集
+    if (resolved.postprocess_output_channels == GBufferChannel::None)
+    {
+        resolved.postprocess_output_channels = resolved.gbuffer_format.channel_mask;
+    }
+    else
+    {
+        resolved.postprocess_output_channels =
+            (resolved.postprocess_output_channels & resolved.gbuffer_format.channel_mask);
+    }
+
+    return resolved;
+}
+
 static bool ContainsName(const std::vector<std::string> &names, const char *name)
 {
     if (!name || !*name)
@@ -229,6 +297,11 @@ AnsiString ComposedShaderGenerator::GenVSOutputStruct(const ComposedMaterialDef 
     
     // 材质实例 ID（用于从 SSBO 读取材质数据）
     result += "    uint MaterialInstanceID; // 材质实例索引\n";
+
+    // 前向顶点光照插值通道（低配/远景）
+    result += "#if FORWARD_LIGHTING_PER_VERTEX\n";
+    result += "    vec3 VertexLighting;    // 顶点光照插值\n";
+    result += "#endif\n";
     
     result += "};\n\n";
     return result;
@@ -626,9 +699,79 @@ void main() {
     }
     
     result += "    vso.MaterialInstanceID = MaterialInstanceID;\n";
+    result += R"(
+#if FORWARD_LIGHTING_PER_VERTEX
+    vec3 _vertex_light = vec3(1.0, 1.0, 1.0);
+)";
+    if (HasVertexAttribute(def, "Normal")) {
+        result += R"(
+    vec3 _n = normalize(vso.WorldNormal);
+    vec3 _l = normalize(vec3(0.2, 0.8, 0.4));
+    float _half_lambert = dot(_n, _l) * 0.5 + 0.5;
+    _vertex_light = vec3(_half_lambert);
+)";
+    }
+    result += R"(
+    vso.VertexLighting = _vertex_light;
+#endif
+)";
     result += "}\n";
     
     return result;
+}
+
+AnsiString ComposedShaderGenerator::ComposeVertexShader(
+    const ComposedMaterialDef &def,
+    const ShaderPermutationKey &key,
+    const PipelineMode &pipeline_mode,
+    const bool include_preamble)
+{
+    const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
+
+    if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
+    {
+        AnsiString result;
+        if (include_preamble)
+        {
+            result += GenPreamble(key);
+            result += "#define MOBILE_SUBPASS_GBUFFER 1\n";
+            result += "#define MOBILE_SUBPASS_USE_SUBPASSLOAD 1\n\n";
+        }
+
+        result += ComposeVertexShader(def, key, false);
+        result += "\n// MobileSubpassGBufferDeferred route (VS): geometry path unchanged, FS consumes subpass inputs.\n";
+        return result;
+    }
+
+    if (resolved_mode.render_path == PipelineRenderPath::Forward
+     && resolved_mode.forward_lighting == PipelineForwardLightingMode::PerVertex)
+    {
+        AnsiString result;
+        if (include_preamble)
+        {
+            result += GenPreamble(key);
+            result += "#define FORWARD_LIGHTING_PER_VERTEX 1\n";
+            result += "#define FORWARD_LIGHTING_PER_PIXEL 0\n\n";
+        }
+
+        result += ComposeVertexShader(def, key, false);
+        result += "\n// Forward lighting mode: PerVertex (SG-2 placeholder route).\n";
+        return result;
+    }
+
+    if (resolved_mode.topology == PipelineTopology::MeshFS)
+    {
+        AnsiString result;
+        if (include_preamble)
+            result += GenPreamble(key);
+
+        result += "// Mesh/FS topology selected: vertex shader stage is not used.\n";
+        result += "// SG-2: mesh shader generation will be emitted by ComposeMeshShader().\n";
+        return result;
+    }
+
+    // 当前实现：VS/FS 路径复用 legacy 生成逻辑
+    return ComposeVertexShader(def, key, include_preamble);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -682,6 +825,10 @@ void main() {
     VS_Output vso = Input;
     
     vec4 business_output = FragmentShaderBusiness(vso);
+
+#if FORWARD_LIGHTING_PER_VERTEX
+    business_output.rgb *= clamp(vso.VertexLighting, vec3(0.0), vec3(1.0));
+#endif
     
     vec4 out_rt0;
     ComposeFinalOutput(business_output, out_rt0);
@@ -691,6 +838,68 @@ void main() {
 )";
     
     return result;
+}
+
+AnsiString ComposedShaderGenerator::ComposeFragmentShader(
+    const ComposedMaterialDef &def,
+    const ShaderPermutationKey &key,
+    const PipelineMode &pipeline_mode,
+    const bool include_preamble)
+{
+    const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
+
+    if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
+    {
+        AnsiString result;
+        if (include_preamble)
+        {
+            result += GenPreamble(key);
+            result += "#define MOBILE_SUBPASS_GBUFFER 1\n";
+            result += "#define MOBILE_SUBPASS_USE_SUBPASSLOAD 1\n\n";
+        }
+
+        result += R"(
+// Mobile subpass GBuffer input template (SG-2 placeholder)
+// layout(input_attachment_index=0, set=0, binding=0) uniform subpassInput GBufferInput0;
+// layout(input_attachment_index=1, set=0, binding=1) uniform subpassInput GBufferInput1;
+// vec4 ReadGBuffer0() { return subpassLoad(GBufferInput0); }
+// vec4 ReadGBuffer1() { return subpassLoad(GBufferInput1); }
+
+)";
+
+        result += ComposeFragmentShader(def, key, false);
+        result += "\n// MobileSubpassGBufferDeferred route (FS): subpassLoad input path enabled.\n";
+        return result;
+    }
+
+    if (resolved_mode.render_path == PipelineRenderPath::Forward
+     && resolved_mode.forward_lighting == PipelineForwardLightingMode::PerVertex)
+    {
+        AnsiString result;
+        if (include_preamble)
+        {
+            result += GenPreamble(key);
+            result += "#define FORWARD_LIGHTING_PER_VERTEX 1\n";
+            result += "#define FORWARD_LIGHTING_PER_PIXEL 0\n\n";
+        }
+
+        result += ComposeFragmentShader(def, key, false);
+        result += "\n// Forward lighting mode: PerVertex (expect interpolated vertex-lighting input in SG-2).\n";
+        return result;
+    }
+
+    if (resolved_mode.topology == PipelineTopology::MeshFS)
+    {
+        AnsiString result;
+        if (include_preamble)
+            result += GenPreamble(key);
+
+        result += "// Mesh/FS topology selected: fragment stage shares FS composer path.\n";
+        result += ComposeFragmentShader(def, key, false);
+        return result;
+    }
+
+    return ComposeFragmentShader(def, key, include_preamble);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -706,6 +915,26 @@ AnsiString ComposedShaderGenerator::ComposeGeometryShader(
     if (include_preamble)
         return "#version 450 core\n\n// 几何着色器生成延迟至 M2-M3\n";
     return "// 几何着色器生成延迟至 M2-M3\n";
+}
+
+AnsiString ComposedShaderGenerator::ComposeMeshShader(
+    const ComposedMaterialDef &def,
+    const ShaderPermutationKey &key,
+    const PipelineMode &pipeline_mode,
+    const bool include_preamble)
+{
+    const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
+
+    AnsiString result;
+    if (include_preamble)
+        result += GenPreamble(key);
+
+    (void)def;
+    (void)resolved_mode;
+
+    result += "// Mesh shader generation placeholder (SG-2).\n";
+    result += "// This entry exists for topology-adaptive routing (VS/FS <-> Mesh/FS).\n";
+    return result;
 }
 
 }  // namespace hgl::graph::mtl
