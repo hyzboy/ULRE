@@ -4,7 +4,8 @@ add_executable(test_ComposedShaderGenerator
     test_ComposedShaderGenerator.cpp)
 
 target_link_libraries(test_ComposedShaderGenerator
-    PRIVATE ULRE.ShaderGen)
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan)
 
 add_executable(test_ComposedShaderGenerator_Verify
     test_ComposedShaderGenerator_Verify.cpp)

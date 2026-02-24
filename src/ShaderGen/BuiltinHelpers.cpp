@@ -1,9 +1,31 @@
 #include <hgl/graph/mtl/BuiltinHelpers.h>
 #include <hgl/graph/mtl/ShaderComposition.h>
-#include <string.h>
+#include <cstring>
 
 namespace hgl::graph::mtl {
 namespace builtin_helpers {
+
+static const char* GetStageBusinessCode(const ComposedMaterialDef &def, const char *shader_stage)
+{
+    if (strcmp(shader_stage, "VS") == 0)
+        return def.vertex_business ? def.vertex_business->code : nullptr;
+
+    if (strcmp(shader_stage, "FS") == 0)
+        return def.fragment_business ? def.fragment_business->code : nullptr;
+
+    return nullptr;
+}
+
+static bool IsHelperUsed(const char *business_code, const char *helper_name)
+{
+    if (!business_code || !helper_name)
+        return false;
+
+    char token[128];
+    snprintf(token, sizeof(token), "%s(", helper_name);
+
+    return std::strstr(business_code, token) != nullptr;
+}
 
 static bool HasDescriptor(const ComposedMaterialDef &def, const char *name)
 {
@@ -84,10 +106,27 @@ AnsiString GenStageHelpers(
 {
     AnsiString result;
 
+    const char *business_code = GetStageBusinessCode(def, shader_stage);
+
+    const bool need_transform_normal = IsHelperUsed(business_code, "TransformNormal");
+    const bool need_get_world_pos = IsHelperUsed(business_code, "GetWorldPos");
+    const bool need_get_camera_pos = IsHelperUsed(business_code, "GetCameraPos");
+
+    if (!(need_transform_normal || need_get_world_pos || need_get_camera_pos)) {
+        (void)key;
+        return result;
+    }
+
     result += "// Builtin helper library\n";
-    result += GenTransformNormal();
-    result += GenGetWorldPos(shader_stage);
-    result += GenGetCameraPos(def);
+
+    if (need_transform_normal)
+        result += GenTransformNormal();
+
+    if (need_get_world_pos)
+        result += GenGetWorldPos(shader_stage);
+
+    if (need_get_camera_pos)
+        result += GenGetCameraPos(def);
 
     // 预留：后续根据排列键选择复杂 helper（PBR、阴影、雾效等）
     (void)key;
