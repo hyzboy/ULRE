@@ -12,9 +12,9 @@
 /// 使用示例：
 ///   // 业务代码（S_PureColor3D.h）
 ///   constexpr char PURE_COLOR_VERTEX_LOGIC[] = R"(
-///       vec4 ComputeVertexOutput(vec3 Position, uint MaterialInstanceID) {
-///           MaterialInstance mi = GetMI();  // GetMI 由框架提供
-///           return vec4(Position, 1.0);
+///       vec4 VertexMain(vec3 Position, MaterialInstance mi) {
+///           Output.Color = mi.Color;
+///           return vec4(Position, 1.0);  // 框架自动应用变换
 ///       }
 ///   )";
 ///
@@ -22,7 +22,7 @@
 ///   ShaderLogicBlock vertex_logic = {
 ///       .main_logic = PURE_COLOR_VERTEX_LOGIC,
 ///       .required_resources = {"MaterialInstanceData", "LocalToWorld"},
-///       .required_helpers = {"GetMI", "GetWorldPos"}
+///       .required_helpers = {}  // 基础数据由框架自动传入，不需要手动调用
 ///   };
 
 #pragma once
@@ -47,11 +47,14 @@ struct ResourceDependency {
 
 /**
  * 辅助函数依赖
- * 业务逻辑可能调用框架提供的函数（GetMI/GetWorldPos等）
+ * 业务逻辑可能调用框架提供的高级函数（如光照计算、特效等）
+ * 
+ * 注意：基础数据（MaterialInstance 等）框架会自动提取并作为参数传入，
+ *      不需要在这里声明依赖，也不需要在业务代码中手动调用 GetMI() 等
  */
 struct HelperFunctionDependency {
-    const char* name;           // 函数名，如 "GetMI", "GetWorldPos"
-    const char* category;       // 类别：material/transform/lighting/output
+    const char* name;           // 函数名，如 "ComputeLighting", "ApplyFog"
+    const char* category;       // 类别：transform/lighting/output/utility
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,13 +68,17 @@ struct HelperFunctionDependency {
  *   - main_logic: 只包含计算代码，不写 layout(...)
  *   - custom_functions: 自定义辅助函数（可选）
  *   - required_resources: 需要哪些资源（只是名字列表）
- *   - required_helpers: 需要哪些框架函数（只是名字列表）
+ *   - required_helpers: 需要哪些高级辅助函数（只是名字列表）
  * 
  * 框架职责：
  *   1. 根据 required_resources 生成所有 layout(...) 声明
- *   2. 根据 required_helpers 注入对应的框架函数代码
- *   3. 将 custom_functions 和 main_logic 插入到合适位置
- *   4. 组装成完整的 GLSL Shader
+ *   2. 从资源中提取数据（如调用 GetMI() 获取 MaterialInstance）
+ *   3. 生成 main() 函数，在其中：
+ *      - 提取基础数据作为参数
+ *      - 调用业务函数: vec4 result = VertexMain(Position, mi);
+ *      - 应用变换: gl_Position = ViewProj * LocalToWorld * result;
+ *   4. 根据 required_helpers 注入高级辅助函数代码
+ *   5. 将 custom_functions 和 main_logic 插入到合适位置
  */
 struct ShaderLogicBlock {
     /// 主业务逻辑（必需）
@@ -141,26 +148,29 @@ struct MaterialLogicDef {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 框架内置辅助函数
+ * 框架内置高级辅助函数
  * 业务代码可以直接调用，无需自己实现
+ * 
+ * 注意：基础数据获取（GetMI GetWorldPos 等）不在这里，框架会：
+ *      1. 自动调用这些函数获取数据
+ *      2. 将数据作为参数传给业务函数
+ *      3. 业务代码无需手动调用
+ * 
+ * 这里只列出业务代码可能需要手动调用的高级函数
  */
 namespace BuiltinHelpers {
-    // 材质实例相关
-    constexpr char GetMI[] = "GetMI";                   // MaterialInstance GetMI()
-    constexpr char GetMaterialColor[] = "GetMaterialColor"; // vec4 GetMaterialColor()
+    // 高级变换
+    constexpr char TransformNormal[] = "TransformNormal";     // vec3 TransformNormal(vec3)
+    constexpr char GetTangentSpace[] = "GetTangentSpace";     // mat3 GetTangentSpace()
     
-    // 变换相关
-    constexpr char GetWorldPos[] = "GetWorldPos";       // vec4 GetWorldPos()
-    constexpr char GetClipPos[] = "GetClipPos";         // vec4 GetClipPos()
-    constexpr char GetLocalToWorld[] = "GetLocalToWorld"; // mat4 GetLocalToWorld()
-    constexpr char GetNormalMatrix[] = "GetNormalMatrix"; // mat3 GetNormalMatrix()
+    // 光照计算
+    constexpr char ComputeLighting[] = "ComputeLighting";     // vec3 ComputeLighting(...)
+    constexpr char ComputePBR[] = "ComputePBR";               // vec3 ComputePBR(...)
+    constexpr char ComputeShadow[] = "ComputeShadow";         // float ComputeShadow(...)
     
-    // 光照相关
-    constexpr char GetNormal[] = "GetNormal";           // vec3 GetNormal(vec3 local_normal)
-    constexpr char ComputeLighting[] = "ComputeLighting"; // vec3 ComputeLighting(...)
-    
-    // 输出相关
-    constexpr char ApplyAlpha[] = "ApplyAlpha";         // vec4 ApplyAlpha(vec3 color, float alpha)
+    // 特效
+    constexpr char ApplyFog[] = "ApplyFog";                   // vec3 ApplyFog(vec3 color, float depth)
+    constexpr char ApplyAlpha[] = "ApplyAlpha";               // vec4 ApplyAlpha(vec3 color, float alpha)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -172,9 +182,8 @@ namespace BuiltinHelpers {
 
 // Step 1: 定义纯业务逻辑（S_PureColor3D.h）
 constexpr char PURE_COLOR_VERTEX_LOGIC[] = R"(
-    vec4 VertexMain(vec3 Position, uint MaterialInstanceID) {
-        MaterialInstance mi = GetMI();  // 调用框架函数
-        Output.Color = mi.Color;        // 输出到下一阶段
+    vec4 VertexMain(vec3 Position, MaterialInstance mi) {
+        Output.Color = mi.Color;        // 直接使用参数
         return vec4(Position, 1.0);     // 返回本地坐标（框架会自动变换）
     }
 )";
@@ -187,14 +196,12 @@ constexpr char PURE_COLOR_FRAGMENT_LOGIC[] = R"(
 
 // Step 2: 声明依赖
 constexpr const char* VERTEX_REQUIRED_RESOURCES[] = {
-    "MaterialInstanceData",
-    "LocalToWorld"
+    "MaterialInstanceData",  // 框架会自动调用 GetMI() 并传给 VertexMain
+    "LocalToWorld"           // 用于坐标变换
 };
 
-constexpr const char* VERTEX_REQUIRED_HELPERS[] = {
-    BuiltinHelpers::GetMI,
-    BuiltinHelpers::GetWorldPos
-};
+// 不需要声明基础辅助函数依赖，框架自动处理
+constexpr const char** VERTEX_REQUIRED_HELPERS = nullptr;
 
 // Step 3: 构造逻辑定义
 MaterialLogicDef PURE_COLOR_LOGIC = {
@@ -203,8 +210,8 @@ MaterialLogicDef PURE_COLOR_LOGIC = {
         .custom_functions = nullptr,
         .required_resources = VERTEX_REQUIRED_RESOURCES,
         .required_resource_count = 2,
-        .required_helpers = VERTEX_REQUIRED_HELPERS,
-        .required_helper_count = 2
+        .required_helpers = nullptr,  // 基础函数由框架自动处理
+        .required_helper_count = 0
     },
     .fragment = {
         .main_logic = PURE_COLOR_FRAGMENT_LOGIC,

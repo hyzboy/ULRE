@@ -14,6 +14,7 @@
 #pragma once
 
 #include <hgl/graph/mtl/ShaderComposition.h>
+#include <hgl/vk/VKRenderAssign.h>
 
 namespace hgl::graph::mtl {
 
@@ -29,7 +30,7 @@ namespace hgl::graph::mtl {
  */
 
 // 业务顶点着色器：只关心 local 坐标，框架负责世界坐标和投影
-constexpr const char PURE_COLOR_3D_VS_BUSINESS[] = R"(
+constexpr const char EX_PURE_COLOR_3D_VS_BUSINESS[] = R"(
     vec4 VertexShaderBusiness(const VertexInput vi) {
         // 返回 local 坐标，框架会自动：
         //   1. 乘以 LocalToWorld 矩阵 → 世界坐标
@@ -40,7 +41,7 @@ constexpr const char PURE_COLOR_3D_VS_BUSINESS[] = R"(
 )";
 
 // 业务片元着色器：只关心业务逻辑，框架负责 Alpha 合成
-constexpr const char PURE_COLOR_3D_FS_BUSINESS[] = R"(
+constexpr const char EX_PURE_COLOR_3D_FS_BUSINESS[] = R"(
     vec4 FragmentShaderBusiness(const VS_Output vso) {
         // 从材质实例读取颜色
         return MaterialData.Color;  // vec4(R, G, B, A)
@@ -48,39 +49,42 @@ constexpr const char PURE_COLOR_3D_FS_BUSINESS[] = R"(
 )";
 
 // 材质实例数据（只有颜色）
-constexpr const char PURE_COLOR_3D_MI_GLSL[] = R"(
+constexpr const char EX_PURE_COLOR_3D_MI_GLSL[] = R"(
     struct MaterialInstance {
         vec4 Color;
     };
 )";
 
 // 顶点输入（position + instance ID）
-constexpr FixedVertexEntry PURE_COLOR_3D_VERTEX[] = {
-    {VAType::F32_3, "Position"},
+constexpr FixedVertexEntry EX_PURE_COLOR_3D_VERTEX[] = {
+    {VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "Position"},
 };
 
 // 描述符（视图矩阵、相机矩阵、L2W矩阵、材质数据）
-constexpr FixedDescriptorEntry PURE_COLOR_3D_DESCRIPTORS[] = {
-    {DescriptorKind::UBO, 0, "ViewportInfo"},
-    {DescriptorKind::UBO, 1, "CameraInfo"},
-    {DescriptorKind::UBO, 2, "LocalToWorld"},
-    {DescriptorKind::SSBO, 3, "MaterialInstanceData"},
+constexpr FixedDescriptorEntry EX_PURE_COLOR_3D_DESCRIPTORS[] = {
+    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr},
+    {DescriptorSetType::Camera,       DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",   nullptr},
+    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorld", nullptr},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mtl",      "MaterialInstanceData", nullptr},
 };
 
+constexpr VertexShaderBusiness EX_PURE_COLOR_3D_VERTEX_BUSINESS { EX_PURE_COLOR_3D_VS_BUSINESS };
+constexpr FragmentShaderBusiness EX_PURE_COLOR_3D_FRAGMENT_BUSINESS { EX_PURE_COLOR_3D_FS_BUSINESS };
+
 // 合成定义（替代 FixedMaterialDef）
-constexpr ComposedMaterialDef PURE_COLOR_3D_COMPOSED {
+constexpr ComposedMaterialDef EX_PURE_COLOR_3D_COMPOSED {
     .name = "PureColor3D",
     .primitive_type = PrimitiveType::Triangles,
-    .vertex_entries = PURE_COLOR_3D_VERTEX,
+    .vertex_entries = EX_PURE_COLOR_3D_VERTEX,
     .vertex_entry_count = 1,
-    .descriptor_entries = PURE_COLOR_3D_DESCRIPTORS,
+    .descriptor_entries = EX_PURE_COLOR_3D_DESCRIPTORS,
     .descriptor_entry_count = 4,
-    .vertex_business = &VertexShaderBusiness{PURE_COLOR_3D_VS_BUSINESS},
-    .fragment_business = &FragmentShaderBusiness{PURE_COLOR_3D_FS_BUSINESS},
+    .vertex_business = &EX_PURE_COLOR_3D_VERTEX_BUSINESS,
+    .fragment_business = &EX_PURE_COLOR_3D_FRAGMENT_BUSINESS,
     .output_mode = ShaderOutputMode::SingleRTAlphaBlend,
     .enable_lighting = false,  // 无光照
-    .mi_glsl_codes = PURE_COLOR_3D_MI_GLSL,
-    .mi_struct_bytes = sizeof(vec4),  // Color
+    .mi_glsl_codes = EX_PURE_COLOR_3D_MI_GLSL,
+    .mi_struct_bytes = sizeof(float) * 4,  // Color
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -96,7 +100,7 @@ constexpr ComposedMaterialDef PURE_COLOR_3D_COMPOSED {
  *   - 光照模式：由 ShaderPermutationKey 决定（Lambertian / PBR / Cel Shading）
  */
 
-constexpr const char BASIC_LIT_VS_BUSINESS[] = R"(
+constexpr const char EX_BASIC_LIT_VS_BUSINESS[] = R"(
     // VS 只处理顶点变换和法线计算
     // 框架会自动 pack 法线进 VS_Output
     vec4 VertexShaderBusiness(const VertexInput vi) {
@@ -109,7 +113,7 @@ constexpr const char BASIC_LIT_VS_BUSINESS[] = R"(
     }
 )";
 
-constexpr const char BASIC_LIT_FS_BUSINESS[] = R"(
+constexpr const char EX_BASIC_LIT_FS_BUSINESS[] = R"(
     // FS 处理贴图采样 + 光照合成
     vec4 FragmentShaderBusiness(const VS_Output vso) {
         // 获取表面属性
@@ -129,7 +133,7 @@ constexpr const char BASIC_LIT_FS_BUSINESS[] = R"(
     }
 )";
 
-constexpr const char BASIC_LIT_MI_GLSL[] = R"(
+constexpr const char EX_BASIC_LIT_MI_GLSL[] = R"(
     struct MaterialInstance {
         float Alpha;
         float Metallic;
@@ -137,34 +141,37 @@ constexpr const char BASIC_LIT_MI_GLSL[] = R"(
     };
 )";
 
-constexpr FixedVertexEntry BASIC_LIT_VERTEX[] = {
-    {VAType::F32_3, "Position"},
-    {VAType::F32_3, "Normal"},
-    {VAType::F32_2, "TexCoord"},
+constexpr FixedVertexEntry EX_BASIC_LIT_VERTEX[] = {
+    {VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "Position"},
+    {VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "Normal"},
+    {VAT_VEC2, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "TexCoord"},
 };
 
-constexpr FixedDescriptorEntry BASIC_LIT_DESCRIPTORS[] = {
-    {DescriptorKind::UBO, 0, "ViewportInfo"},
-    {DescriptorKind::UBO, 1, "CameraInfo"},
-    {DescriptorKind::UBO, 2, "LocalToWorld"},
-    {DescriptorKind::UBO, 3, "LightData"},
-    {DescriptorKind::Texture, 0, "BaseColorMap"},
-    {DescriptorKind::TextureSampler, 0, "LinearSampler"},
-    {DescriptorKind::SSBO, 4, "MaterialInstanceData"},
+constexpr FixedDescriptorEntry EX_BASIC_LIT_DESCRIPTORS[] = {
+    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr},
+    {DescriptorSetType::Camera,       DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",   nullptr},
+    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorld", nullptr},
+    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "light",    "LightData",    nullptr},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::Texture,        uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "BaseColorMap", nullptr, "sampler2D"},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "LinearSampler", nullptr, "sampler2D"},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO,           uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mtl",      "MaterialInstanceData", nullptr},
 };
 
-constexpr ComposedMaterialDef BASIC_LIT_COMPOSED {
+constexpr VertexShaderBusiness EX_BASIC_LIT_VERTEX_BUSINESS { EX_BASIC_LIT_VS_BUSINESS };
+constexpr FragmentShaderBusiness EX_BASIC_LIT_FRAGMENT_BUSINESS { EX_BASIC_LIT_FS_BUSINESS };
+
+constexpr ComposedMaterialDef EX_BASIC_LIT_COMPOSED {
     .name = "BasicLit",
     .primitive_type = PrimitiveType::Triangles,
-    .vertex_entries = BASIC_LIT_VERTEX,
+    .vertex_entries = EX_BASIC_LIT_VERTEX,
     .vertex_entry_count = 3,
-    .descriptor_entries = BASIC_LIT_DESCRIPTORS,
+    .descriptor_entries = EX_BASIC_LIT_DESCRIPTORS,
     .descriptor_entry_count = 7,
-    .vertex_business = &VertexShaderBusiness{BASIC_LIT_VS_BUSINESS},
-    .fragment_business = &FragmentShaderBusiness{BASIC_LIT_FS_BUSINESS},
+    .vertex_business = &EX_BASIC_LIT_VERTEX_BUSINESS,
+    .fragment_business = &EX_BASIC_LIT_FRAGMENT_BUSINESS,
     .output_mode = ShaderOutputMode::SingleRTAlphaBlend,
     .enable_lighting = true,  // 启用光照（由 ShaderPermutationKey 决定具体算法）
-    .mi_glsl_codes = BASIC_LIT_MI_GLSL,
+    .mi_glsl_codes = EX_BASIC_LIT_MI_GLSL,
     .mi_struct_bytes = sizeof(float) * 3,  // Alpha, Metallic, Roughness
 };
 
@@ -196,7 +203,7 @@ constexpr ComposedMaterialDef BASIC_LIT_COMPOSED {
 // 例 4：特效材质（Additive 混合）
 // ═════════════════════════════════════════════════════════════════════════════
 
-constexpr const char FX_EMISSION_VS_BUSINESS[] = R"(
+constexpr const char EX_FX_EMISSION_VS_BUSINESS[] = R"(
     vec4 VertexShaderBusiness(const VertexInput vi) {
         vec3 local_pos = vi.Position;
         local_pos += MaterialData.OffsetX * normalize(cross(vec3(0,1,0), vi.Normal));
@@ -205,7 +212,7 @@ constexpr const char FX_EMISSION_VS_BUSINESS[] = R"(
     }
 )";
 
-constexpr const char FX_EMISSION_FS_BUSINESS[] = R"(
+constexpr const char EX_FX_EMISSION_FS_BUSINESS[] = R"(
     vec4 FragmentShaderBusiness(const VS_Output vso) {
         vec4 tex = texture(EmissionMap, vso.TexCoord);
         // 框架会自动转 Additive 输出：out = src + dst
@@ -213,7 +220,7 @@ constexpr const char FX_EMISSION_FS_BUSINESS[] = R"(
     }
 )";
 
-constexpr const char FX_EMISSION_MI_GLSL[] = R"(
+constexpr const char EX_FX_EMISSION_MI_GLSL[] = R"(
     struct MaterialInstance {
         float EmissionIntensity;
         float OffsetX;
@@ -221,18 +228,21 @@ constexpr const char FX_EMISSION_MI_GLSL[] = R"(
     };
 )";
 
-constexpr ComposedMaterialDef FX_EMISSION_COMPOSED {
+constexpr VertexShaderBusiness EX_FX_EMISSION_VERTEX_BUSINESS { EX_FX_EMISSION_VS_BUSINESS };
+constexpr FragmentShaderBusiness EX_FX_EMISSION_FRAGMENT_BUSINESS { EX_FX_EMISSION_FS_BUSINESS };
+
+constexpr ComposedMaterialDef EX_FX_EMISSION_COMPOSED {
     .name = "FXEmission",
     .primitive_type = PrimitiveType::Triangles,
-    .vertex_entries = BASIC_LIT_VERTEX,
+    .vertex_entries = EX_BASIC_LIT_VERTEX,
     .vertex_entry_count = 3,
-    .descriptor_entries = BASIC_LIT_DESCRIPTORS,
+    .descriptor_entries = EX_BASIC_LIT_DESCRIPTORS,
     .descriptor_entry_count = 7,
-    .vertex_business = &VertexShaderBusiness{FX_EMISSION_VS_BUSINESS},
-    .fragment_business = &FragmentShaderBusiness{FX_EMISSION_FS_BUSINESS},
+    .vertex_business = &EX_FX_EMISSION_VERTEX_BUSINESS,
+    .fragment_business = &EX_FX_EMISSION_FRAGMENT_BUSINESS,
     .output_mode = ShaderOutputMode::SingleRTAdditive,  // 加式输出！
     .enable_lighting = false,  // 特效不需要光照
-    .mi_glsl_codes = FX_EMISSION_MI_GLSL,
+    .mi_glsl_codes = EX_FX_EMISSION_MI_GLSL,
     .mi_struct_bytes = sizeof(float) * 3,
 };
 

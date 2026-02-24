@@ -59,8 +59,13 @@ void PrintComparison()
     printf("OLD (S_PureColor3D.h - PURE_COLOR_3D_COMPOSED_DEF):\n");
     printf("❌ Business code contains layout declarations:\n");
     printf("   layout(set=0,binding=0) buffer MaterialInstanceData {...} mtl;\n");
-    printf("   MaterialInstance GetMI() { return mtl.mi[MaterialInstanceID]; }\n");
-    printf("   vec4 VertexShaderBusiness() { ... }\n\n");
+    printf("   MaterialInstance GetMI() { return mtl.mi[MaterialInstanceID]; }\n\n");
+    
+    printf("❌ Business code manually calls GetMI():\n");
+    printf("   vec4 VertexShaderBusiness(vec3 Position, uint MaterialInstanceID) {\n");
+    printf("       MaterialInstance mi = GetMI();\n");
+    printf("       ...\n");
+    printf("   }\n\n");
     
     printf("❌ Generator ALSO generates layout from FixedDescriptorEntry:\n");
     printf("   layout(set=0,binding=3) buffer MaterialInstanceData {...} mtl;\n\n");
@@ -71,15 +76,20 @@ void PrintComparison()
     
     printf("NEW (S_PureColor3D_Logic.h - PURE_COLOR_3D_LOGIC):\n");
     printf("✅ Business code contains ONLY computation:\n");
-    printf("   vec4 VertexMain(vec3 Position, uint MaterialInstanceID) {\n");
-    printf("       MaterialInstance mi = GetMI();  // Calls framework function\n");
-    printf("       Output.Color = mi.Color;\n");
+    printf("   vec4 VertexMain(vec3 Position, MaterialInstance mi) {\n");
+    printf("       Output.Color = mi.Color;  // Use parameter directly\n");
     printf("       return vec4(Position, 1.0);\n");
     printf("   }\n\n");
     
-    printf("✅ GetMI() provided by framework (BuiltinHelpers)\n");
+    printf("✅ Framework generates main() that prepares data:\n");
+    printf("   void main() {\n");
+    printf("       MaterialInstance mi = GetMI();  // Framework calls\n");
+    printf("       vec4 result = VertexMain(Position, mi);  // Pass to business\n");
+    printf("       gl_Position = ApplyTransform(result);\n");
+    printf("   }\n\n");
+    
     printf("✅ Layout generated ONCE by ResourceLayoutGenerator\n");
-    printf("✅ Result: No duplication → Success!\n\n");
+    printf("✅ Result: No duplication, cleaner business code → Success!\n\n");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

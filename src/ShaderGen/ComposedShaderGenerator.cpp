@@ -498,12 +498,14 @@ LightingOutput ComputeLighting(vec3 normal, vec3 albedo, vec3 view_dir) {
 
 AnsiString ComposedShaderGenerator::ComposeVertexShader(
     const ComposedMaterialDef &def,
-    const ShaderPermutationKey &key)
+    const ShaderPermutationKey &key,
+    const bool include_preamble)
 {
     AnsiString result;
     
     // Step 1: 前置部分
-    result += GenPreamble(key);
+    if (include_preamble)
+        result += GenPreamble(key);
     
     // Step 2: 布局声明
     result += GenLayoutDeclarations(def);
@@ -571,12 +573,14 @@ void main() {
 
 AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     const ComposedMaterialDef &def,
-    const ShaderPermutationKey &key)
+    const ShaderPermutationKey &key,
+    const bool include_preamble)
 {
     AnsiString result;
     
     // 前置部分
-    result += GenPreamble(key);
+    if (include_preamble)
+        result += GenPreamble(key);
     
     // 布局声明
     result += GenLayoutDeclarations(def);
@@ -631,9 +635,12 @@ void main() {
 
 AnsiString ComposedShaderGenerator::ComposeGeometryShader(
     const ComposedMaterialDef &def,
-    const ShaderPermutationKey &key)
+    const ShaderPermutationKey &key,
+    const bool include_preamble)
 {
     // TODO: M2-M3 实现几何着色器生成
+    if (include_preamble)
+        return "#version 450 core\n\n// 几何着色器生成延迟至 M2-M3\n";
     return "// 几何着色器生成延迟至 M2-M3\n";
 }
 

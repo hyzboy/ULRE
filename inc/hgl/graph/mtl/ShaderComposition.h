@@ -262,15 +262,18 @@ public:
      */
     static AnsiString ComposeVertexShader(
         const ComposedMaterialDef &def,
-        const ShaderPermutationKey &key);
+        const ShaderPermutationKey &key,
+        const bool include_preamble = true);
 
     static AnsiString ComposeFragmentShader(
         const ComposedMaterialDef &def,
-        const ShaderPermutationKey &key);
+        const ShaderPermutationKey &key,
+        const bool include_preamble = true);
 
     static AnsiString ComposeGeometryShader(
         const ComposedMaterialDef &def,
-        const ShaderPermutationKey &key);
+        const ShaderPermutationKey &key,
+        const bool include_preamble = true);
 
 private:
     // ─────────────────────────────────────────────────────────────────────────

@@ -18,24 +18,22 @@ namespace hgl::graph::mtl {
 
 /// Vertex Shader 主逻辑
 /// 
-/// 输入参数：
+/// 输入参数：（框架自动准备并传入）
 ///   - Position: vec3 (来自 VBO)
-///   - MaterialInstanceID: uint (来自 VBO)
-/// 
-/// 依赖的框架函数：
-///   - GetMI(): 获取材质实例数据
-///   - GetWorldPos(): 计算世界坐标
+///   - mi: MaterialInstance (框架已从 MaterialInstanceData 中提取)
 /// 
 /// 输出：
 ///   - Output.Color: 传递给 Fragment Shader
-///   - 返回值: 本地坐标（框架会自动应用变换）
+///   - 返回值: 本地坐标（框架会自动应用 LocalToWorld 和 ViewProj 变换）
+/// 
+/// 设计优势：
+///   ✅ 业务代码不需要知道如何获取 MaterialInstance
+///   ✅ 框架在 main() 中调用 GetMI() 并传给业务函数
+///   ✅ 业务函数签名清晰，只做纯计算
 constexpr char PURE_COLOR_VERTEX_LOGIC[] = R"(
-vec4 VertexMain(vec3 Position, uint MaterialInstanceID) 
+vec4 VertexMain(vec3 Position, MaterialInstance mi) 
 {
-    // 获取材质实例（框架提供的函数）
-    MaterialInstance mi = GetMI();
-    
-    // 输出颜色到下一阶段
+    // 直接使用框架传入的材质实例
     Output.Color = mi.Color;
     
     // 返回本地坐标（框架会自动转换到裁剪空间）
@@ -68,12 +66,9 @@ constexpr const char* PURE_COLOR_VERTEX_RESOURCES[] = {
     "LocalToWorld"              // 变换矩阵
 };
 
-/// Vertex Shader 需要的辅助函数
-constexpr const char* PURE_COLOR_VERTEX_HELPERS[] = {
-    BuiltinHelpers::GetMI,          // MaterialInstance GetMI()
-    BuiltinHelpers::GetWorldPos,    // vec4 GetWorldPos()
-    BuiltinHelpers::GetClipPos      // vec4 GetClipPos()
-};
+/// Vertex Shader 需要的高级辅助函数（基础数据提取由框架自动处理）
+/// PureColor3D 很简单，不需要任何高级辅助函数
+constexpr const char** PURE_COLOR_VERTEX_HELPERS = nullptr;
 
 /// Fragment Shader 不需要额外资源（使用来自 VS 的插值）
 constexpr const char** PURE_COLOR_FRAGMENT_RESOURCES = nullptr;
@@ -101,7 +96,7 @@ constexpr MaterialLogicDef PURE_COLOR_3D_LOGIC = {
         .required_resources = PURE_COLOR_VERTEX_RESOURCES,
         .required_resource_count = 2,
         .required_helpers = PURE_COLOR_VERTEX_HELPERS,
-        .required_helper_count = 3
+        .required_helper_count = 0  // 基础数据由框架自动处理
     },
     
     // Fragment Shader 逻辑
@@ -130,7 +125,12 @@ constexpr MaterialLogicDef PURE_COLOR_3D_LOGIC = {
 问题：
 ❌ 业务代码包含 layout(...) 声明：
     layout(set=0,binding=0) readonly buffer MaterialInstanceData { ... } mtl;
-    MaterialInstance GetMI() { return mtl.mi[MaterialInstanceID]; }
+    
+❌ 业务代码需要手动调用 GetMI()：
+    vec4 VertexShaderBusiness(vec3 Position, uint MaterialInstanceID) {
+        MaterialInstance mi = GetMI();  // 手动调用
+        ...
+    }
 
 ❌ Generator 又基于 FixedDescriptorEntry 生成声明：
     layout(set=0, binding=3, std430) buffer MaterialInstanceData { ... } mtl;
@@ -141,15 +141,21 @@ constexpr MaterialLogicDef PURE_COLOR_3D_LOGIC = {
 ### 新方式（S_PureColor3D_Logic.h — 本文件）
 
 优势：
-✅ 业务代码只有纯逻辑：
-    MaterialInstance mi = GetMI();  // 调用函数，不关心声明
-    Output.Color = mi.Color;
+✅ 业务代码只有纯计算：
+    vec4 VertexMain(vec3 Position, MaterialInstance mi) {
+        Output.Color = mi.Color;  // 直接使用参数
+    }
 
-✅ GetMI() 由框架提供（在 BuiltinHelpers 中定义）
+✅ 框架生成的 main() 负责准备数据：
+    void main() {
+        MaterialInstance mi = GetMI();  // 框架调用
+        vec4 result = VertexMain(Position, mi);  // 传给业务
+        gl_Position = ApplyTransform(result);
+    }
 
 ✅ MaterialInstanceData 的 layout 由 ResourceLayoutGenerator 统一生成
 
-✅ 无重复，无冲突！
+✅ 无重复，无冲突，业务代码更纯粹！
 
 
 ### 下一步（Stage 1.2）
