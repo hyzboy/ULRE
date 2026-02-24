@@ -66,7 +66,7 @@ void main()
     };//class MaterialPureColor3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureColor3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureColor3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
 {
     MaterialPureColor3D mvc3d(cfg);
 
