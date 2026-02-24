@@ -122,6 +122,21 @@ static bool ValidateHelperAliasEmission(const hgl::AnsiString &glsl_code, const 
     return ValidateGLSL(glsl_code, helper_alias_checks, uint32_t(sizeof(helper_alias_checks) / sizeof(helper_alias_checks[0])));
 }
 
+static bool ValidateContainsWorldAndCameraHelpersOnly(const hgl::AnsiString &glsl_code, const char *label)
+{
+    printf("\n[显式依赖注入检查] %s\n", label);
+
+    const bool has_world = (std::strstr(glsl_code.c_str(), "GetWorldPos(") != nullptr);
+    const bool has_camera = (std::strstr(glsl_code.c_str(), "GetCameraPos(") != nullptr);
+    const bool has_transform = (std::strstr(glsl_code.c_str(), "TransformNormal(") != nullptr);
+
+    printf("%s 包含 GetWorldPos\n", has_world ? "✓" : "✗");
+    printf("%s 包含 GetCameraPos\n", has_camera ? "✓" : "✗");
+    printf("%s 不包含 TransformNormal\n", !has_transform ? "✓" : "✗");
+
+    return has_world && has_camera && !has_transform;
+}
+
 static bool ValidateHelperAbsence(const hgl::AnsiString &glsl_code, const char *label)
 {
     printf("\n[Helper 未注入检查] %s\n", label);
@@ -238,6 +253,42 @@ int main()
     bool fs_helper_ok = ValidateStage3Helpers(helper_fs_code, "FS(HelperDemand)");
     bool fs_helper_alias_ok = ValidateHelperAliasEmission(helper_fs_code, "FS(HelperDemand)");
 
+    // 显式依赖注入测试：业务代码不调用 helper，但通过 ComposedMaterialDef 显式声明依赖
+    static const char EXPLICIT_HELPER_FS_BUSINESS[] = R"(
+        vec4 FragmentShaderBusiness(const VS_Output vso) {
+            // 这里不直接调用 helper，验证显式依赖是否生效
+            return vec4(vso.WorldNormal * 0.5 + vec3(0.5), 1.0);
+        }
+    )";
+
+    const FragmentShaderBusiness EXPLICIT_HELPER_FRAGMENT_BUSINESS { EXPLICIT_HELPER_FS_BUSINESS };
+    const char *EXPLICIT_FS_HELPERS[] = {
+        "GetWorldPos",
+        "GetCameraPosition", // 别名也应生效
+    };
+
+    const ComposedMaterialDef EXPLICIT_HELPER_COMPOSED {
+        .name = "ExplicitHelperDemand",
+        .primitive_type = EX_BASIC_LIT_COMPOSED.primitive_type,
+        .vertex_entries = EX_BASIC_LIT_VERTEX,
+        .vertex_entry_count = 3,
+        .descriptor_entries = EX_BASIC_LIT_DESCRIPTORS,
+        .descriptor_entry_count = 7,
+        .vertex_business = &HELPER_DEMAND_VERTEX_BUSINESS,
+        .fragment_business = &EXPLICIT_HELPER_FRAGMENT_BUSINESS,
+        .output_mode = ShaderOutputMode::SingleRTAlphaBlend,
+        .enable_lighting = false,
+        .mi_glsl_codes = EX_BASIC_LIT_MI_GLSL,
+        .mi_struct_bytes = sizeof(float) * 3,
+        .vertex_required_helpers = nullptr,
+        .vertex_required_helper_count = 0,
+        .fragment_required_helpers = EXPLICIT_FS_HELPERS,
+        .fragment_required_helper_count = 2,
+    };
+
+    hgl::AnsiString explicit_fs_code = ComposedShaderGenerator::ComposeFragmentShader(EXPLICIT_HELPER_COMPOSED, key);
+    bool fs_explicit_helper_ok = ValidateContainsWorldAndCameraHelpersOnly(explicit_fs_code, "FS(ExplicitHelperDemand)");
+
     printf("\n========================================\n");
     printf("  测试总结\n");
     printf("========================================\n");
@@ -250,12 +301,14 @@ int main()
     printf("  VS Helper 未注入(HelperDemand): %s\n", vs_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  FS Helper 注入(HelperDemand): %s\n", fs_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  FS Helper 别名输出(HelperDemand): %s\n", fs_helper_alias_ok ? "✓ 通过" : "✗ 失败");
+    printf("  FS 显式依赖注入(ExplicitHelperDemand): %s\n", fs_explicit_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
                      && vs_helper_absent_ok && fs_helper_absent_ok
                      && vs_helper_ok && fs_helper_ok
                      && fs_helper_alias_ok
+                     && fs_explicit_helper_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 

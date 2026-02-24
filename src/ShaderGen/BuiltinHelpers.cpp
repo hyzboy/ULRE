@@ -68,6 +68,51 @@ static bool IsHelperUsed(const char *business_code, const BuiltinHelperId helper
     return false;
 }
 
+static bool IsHelperExplicitlyRequired(
+    const ComposedMaterialDef &def,
+    const char *shader_stage,
+    const BuiltinHelperId helper_id)
+{
+    const char **required_helpers = nullptr;
+    uint32_t required_count = 0;
+
+    if (strcmp(shader_stage, "VS") == 0) {
+        required_helpers = def.vertex_required_helpers;
+        required_count = def.vertex_required_helper_count;
+    }
+    else if (strcmp(shader_stage, "FS") == 0) {
+        required_helpers = def.fragment_required_helpers;
+        required_count = def.fragment_required_helper_count;
+    }
+
+    if (!required_helpers || required_count == 0)
+        return false;
+
+    for (uint32_t i = 0; i < required_count; ++i)
+    {
+        const char *required_name = required_helpers[i];
+        if (!required_name || !*required_name)
+            continue;
+
+        for (const auto &meta : HELPER_META_TABLE)
+        {
+            if (meta.id != helper_id)
+                continue;
+
+            for (const auto &alias : meta.aliases)
+            {
+                if (!alias.name)
+                    break;
+
+                if (strcmp(required_name, alias.name) == 0)
+                    return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 static bool HasDescriptor(const ComposedMaterialDef &def, const char *name)
 {
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i) {
@@ -169,9 +214,17 @@ AnsiString GenStageHelpers(
 
     const char *business_code = GetStageBusinessCode(def, shader_stage);
 
-    const bool need_transform_normal = IsHelperUsed(business_code, BuiltinHelperId::TransformNormal);
-    const bool need_get_world_pos = IsHelperUsed(business_code, BuiltinHelperId::GetWorldPos);
-    const bool need_get_camera_pos = IsHelperUsed(business_code, BuiltinHelperId::GetCameraPos);
+    const bool need_transform_normal =
+        IsHelperExplicitlyRequired(def, shader_stage, BuiltinHelperId::TransformNormal)
+        || IsHelperUsed(business_code, BuiltinHelperId::TransformNormal);
+
+    const bool need_get_world_pos =
+        IsHelperExplicitlyRequired(def, shader_stage, BuiltinHelperId::GetWorldPos)
+        || IsHelperUsed(business_code, BuiltinHelperId::GetWorldPos);
+
+    const bool need_get_camera_pos =
+        IsHelperExplicitlyRequired(def, shader_stage, BuiltinHelperId::GetCameraPos)
+        || IsHelperUsed(business_code, BuiltinHelperId::GetCameraPos);
 
     if (!(need_transform_normal || need_get_world_pos || need_get_camera_pos)) {
         (void)key;

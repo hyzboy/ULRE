@@ -160,6 +160,14 @@ struct ComposedMaterialDef {
     /// 材质实例数据
     const char *mi_glsl_codes;
     uint32_t mi_struct_bytes;
+
+    /// 可选：显式 helper 依赖（Stage 5+）
+    /// 当配置后，框架会按依赖名注入 helper；未配置时回退到业务代码字符串检测。
+    const char **vertex_required_helpers;
+    uint32_t vertex_required_helper_count;
+
+    const char **fragment_required_helpers;
+    uint32_t fragment_required_helper_count;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
