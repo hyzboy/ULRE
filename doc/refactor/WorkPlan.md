@@ -11,6 +11,10 @@
 > - ✅ `ShaderTemplateEngine`（inja）：模块加载、依赖解析、模板渲染框架（已有代码但注释掉）
 > - ✅ `ShaderLibrary/`：templates/、modules/、recipes/、.mtl 文件树
 > - ✅ `MaterialFileLoader`：现有 `.mtl` 文本文件解析器
+> - ✅ `CompileFixedMaterial()`：从 FixedMaterialDef → MaterialCreateInfo 编译器（M0.1 完成）
+> - ✅ `PermutationToRecipe.h`：ShaderPermutationKey → Recipe 模块名映射表（M0.3 完成）
+> - ✅ `ShaderComposition.h` / `ShaderComposition_Examples.h`：合成型着色器框架（M0.4 完成）
+> - ✅ `SHADER_COMPOSITION_ARCHITECTURE.md` / `HELPER_FUNCTION_AUTO_GENERATION.md`：架构设计文档（M0.4-0.5 参考）
 
 ---
 
@@ -97,6 +101,81 @@ constexpr const char *AMBIENT_MODEL_MODULE_NAMES[] = {
 ```
 
 **验证**：编译通过即可（纯头文件）
+
+---
+
+## 阶段 0.5：合成驱动着色器系统（核心框架）
+
+> **说明**：这个阶段是"新设计体系"的架构奠基。使开发者只写业务逻辑片段（VertexShaderBusiness + FragmentShaderBusiness），框架自动生成坐标变换、法线矩阵、光照计算、输出合成等通用部分。
+
+### 任务 0.4 — 设计 `ComposedMaterialDef` 体系（新文件）
+
+**目标**：引入高级着色器定义体系，代替低级 `FixedMaterialDef` 的繁琐 GLSL 编写。
+
+**新增文件**
+- `inc/hgl/graph/mtl/ShaderComposition.h` —— 核心数据结构和 `ComposedShaderGenerator` 骨架
+- `inc/hgl/graph/mtl/ShaderComposition_Examples.h` —— PureColor3D、BasicLit、FXEmission 用例
+- `SHADER_COMPOSITION_ARCHITECTURE.md` —— 详细设计文档（7 步生成流程、permutation 机制、与 ShaderTemplateEngine 协作）
+
+**核心概念**
+- `VertexShaderBusiness` / `FragmentShaderBusiness`：开发者只写业务逻辑片段（无需关心坐标变换、MVP 矩阵投影、光照计算）
+- `ShaderOutputMode`：枚举（SingleRTAlphaBlend / SingleRTAdditive / DualRTDeferred）—— 框架根据此自动生成输出合成代码
+- `ComposedShaderGenerator`：框架编译器，根据 `ComposedMaterialDef` + `ShaderPermutationKey` 自动生成完整 GLSL
+
+**实现内容**
+- `ComposedMaterialDef` 结构定义（业务代码 + 输出模式 + 光照启用标记）
+- `GenVertexInputStruct()` / `GenVSOutputStruct()` —— 生成通用结构体
+- `GenCoordinateTransformFunctions()` —— 生成坐标变换（L2W、NormalMatrix、VP 投影）
+- `GenLightingCode()` —— 根据 key 生成光照计算（占位，实现延迟至 M2-M3）
+- `GenOutputCompositionCode()` —— 根据 output_mode 生成最终 RT 写入逻辑
+
+**验证**
+- 编译 `ULRE.ShaderGen` 无错误
+- 用 `ComposedShaderGenerator::ComposeVertexShader()` 生成一个 PureColor3D 的完整 VS 源码，验证包含：
+  - `GetLocalToWorld()` 函数
+  - `GetNormalMatrix()` 函数
+  - `GetPosition3D()` 函数
+  - `GetClipPosition()` 函数
+  - 并且源码可以被 glslang 成功编译到 SPV
+
+---
+
+### 任务 0.5 — 辅助函数库自动生成机制（关键优化）
+
+**目标**：框架根据 `ComposedMaterialDef` 自动生成 `GetLocalToWorld()`、`GetNormal()`、`GetMaterialInstance()` 等辅助函数，开发者无需从 MFGetPosition.h/MFCommon.h 中选择变体。
+
+**新增文件**
+- `HELPER_FUNCTION_AUTO_GENERATION.md` —— 完整设计（参数化工作表、算法伪代码、效果对比）
+
+**核心扩展**（对 `ComposedShaderGenerator` 添加）
+- `GenHelperFunctionLibrary(def, shader_stage)` —— 根据材质定义和 shader 阶段生成完整辅助函数库
+  - `GenGetLocalToWorld()` —— 生成矩阵获取函数（自动选择 ByIndex/ByAssign/Fixed）
+  - `GenGetNormalMatrix()` —— 生成法线矩阵推导
+  - `GenGetNormalFunction()` —— 根据 VS/GS/FS 生成不同签名的 GetNormal()
+  - `GenGetPositionFunctions()` —— 生成 GetPosition3D/GetClipPosition（自动处理坐标系）
+  - `GenGetMaterialInstanceFunctions()` —— 生成 GetMaterialInstance/GetMI（自动选择 stage-specific 版本）
+
+**关键特性**
+- **VS 版本**：GetNormal() 接收参数、GetPosition3D() 使用顶点输入、生成 GetClipPosition()
+- **GS 版本**：所有函数添加 vertex_index 参数、生成 HandoverMaterialInstanceID()
+- **FS 版本**：GetPosition3D() 返回插值的世界坐标、GetNormal() 返回插值的世界法线
+- **条件生成**：无 Normal 顶点属性 → 不生成 GetNormal(无参) 版本
+- **零运行时成本**：所有函数均为 inline，最终 SPV 与手写等效
+
+**验证**
+- 使用 BasicLit 的 ComposedMaterialDef（含 Position/Normal/TexCoord 顶点输入、LocalToWorld/CameraInfo/MaterialInstanceData 描述符）
+- 调用 `GenHelperFunctionLibrary(def, "VS")` 生成函数库，验证包含：
+  - `mat4 GetLocalToWorld()`
+  - `mat3 GetNormalMatrix()`
+  - `vec3 GetNormal()` 和 `vec3 GetNormal(vec3)` 两个重载
+  - `vec4 GetPosition3D()` 和 `vec4 GetClipPosition()`
+  - `MaterialInstance GetMaterialInstance()` / `MaterialInstance GetMI()`
+- 调用 `GenHelperFunctionLibrary(def, "FS")` 生成函数库，验证生成的函数签名符合 FS 阶段需求（玻不接受参数、返回插值值）
+- 将生成的函数库和业务代码合并，编译到 SPV，验证着色器执行正确
+
+**设计文件涉及**
+- SHADER_COMPOSITION_ARCHITECTURE.md 更新 Step 3-4（加入函数库生成步骤）
+- HELPER_FUNCTION_AUTO_GENERATION.md 提供完整参数化表和算法实现指南
 
 ---
 
@@ -452,13 +531,63 @@ public:
 
 ## 里程碑检查点（每个里程碑对应一次可演示 build）
 
-| 里程碑 | 完成条件 | 对应任务 |
-|--------|---------|---------|
-| M0 | `ULRE.ShaderGen` 编译含 inja；PureColor3D 用 `CompileFixedMaterial()` 渲染正常 | 0.1, 0.2, 1.1, 1.2 |
-| M1 | 6 个编辑器 fallback 材质全部走 `FixedMaterialDef`，删除对应 `class MaterialXxx` | 1.3 |
-| M2 | `CreateMaterialFromRecipe()` 可以从 recipe JSON 生成 BasicLit Lambert 效果 | 2.1–2.3 |
-| M3 | BasicLit 支持 5 种质量等级，文件丢失自动 fallback | 2.4 |
-| M4 | 卡通渲染 + 半球环境光 + PBR_Lite 三个新模块全部可用 | 3.1–3.3 |
-| M5 | `DescriptorSetType` 精简为 4 值，场景渲染正确 | 4.1–4.3 |
-| M6 | 旧 `Std3DMaterial` / `ShaderCreateInfo` 删除，全场景仍可渲染 | 5.2–5.3 |
-| M7 | 10000 Mesh 只产生 1 DrawCall，纹理 pool 正常工作 | 6.1–6.2 |
+| 里程碑 | 完成条件 | 对应任务 | 关键文件 |
+|--------|---------|---------|---------|
+| **M0 基础设施** | CompileFixedMaterial() + inja 编译通过 + PermutationToRecipe 映射表 | 0.1, 0.2, 0.3 | MaterialCompiler.{h,cpp}，PermutationToRecipe.h |
+| **M0.5 合成框架** | ComposedShaderGenerator 框架完成；辅助函数库自动生成机制可用 | 0.4, 0.5 | ShaderComposition.h，ShaderComposition_Examples.h，SHADER_COMPOSITION_ARCHITECTURE.md，HELPER_FUNCTION_AUTO_GENERATION.md |
+| **M1 硬编码材质** | 6 个编辑器 fallback 材质全部走 FixedMaterialDef；删除对应 class MaterialXxx | 1.1, 1.2, 1.3 | S_PureColor3D.h，S_VertexColor3D.h，S_Gizmo3D.h 等 |
+| **M2 文件驱动材质** | CreateMaterialFromRecipe() 可以从 recipe JSON 生成 BasicLit Lambert 效果 | 2.1–2.3 | TemplateBasedMaterialFactory.{h,cpp}，forward_uber.frag.tmpl，recipes/uber/uber_3d.json |
+| **M3 质量预设** | BasicLit 支持 5 种质量等级（mobile_low ~ pc_ultra），文件丢失自动 fallback | 2.4 | M_BasicLit.cpp（fallback 路由逻辑） |
+| **M4 光照模块** | 卡通渲染 + 半球环境光 + PBR_Lite 三个新模块全部可用 | 3.1–3.3 | ShaderLibrary/modules/lighting/cel_shading.glsl，hemisphere.glsl，pbr_lite.glsl |
+| **M5 描述符精简** | DescriptorSetType 精简为 4 值；旧 9 值枚举变为 alias；全场景渲染正确 | 4.1–4.3 | VKDescriptorSetType.h（精简后），相关 binding 代码 |
+| **M6 清理旧代码** | 旧 Std3DMaterial / Std2DMaterial 删除；ShaderCreateInfo 仅内部使用 | 5.2–5.3 | 文件删除 + MaterialCompiler.cpp 内部使用 |
+| **M7 性能优化** | 10000 Mesh 只产生 1 DrawCall；纹理 pool 正常工作 | 6.1–6.2 | MaterialBatch.cpp，UberTexturePool.{h,cpp} |
+
+---
+
+## 关键设计原则回顾
+
+### 从 FixedMaterialDef 到 ComposedMaterialDef 的演进
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ 阶段 M0-M1：硬编码基础                                      │
+│                                                            │
+│ 开发者 → 手写完整 GLSL（坐标变换、法线、光照、输出合成）   │
+│       → 填充 FixedMaterialDef                             │
+│       → CompileFixedMaterial() → SPV                      │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ 阶段 M0.5：抽象革新                                         │
+│                                                            │
+│ 开发者 → 只写业务逻辑片段：                                │
+│          · VertexShaderBusiness(vi) → 顶点变换            │
+│          · FragmentShaderBusiness(vso) → 颜色/法线        │
+│       → 框架自动生成 Complete GLSL：                      │
+│          · 坐标变换函数库（GetLocalToWorld等）            │
+│          · 法线矩阵函数（GetNormalMatrix等）             │
+│          · 光照计算（根据 ShaderPermutationKey）          │
+│          · 输出合成（根据 ShaderOutputMode）             │
+│       → ComposedShaderGenerator → SPV                     │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│ 阶段 M2-M4：模板驱动                                        │
+│                                                            │
+│ 开发者 → 通过 recipe JSON 选择质量等级                    │
+│       → ShaderTemplateEngine 加载 .glsl 模块             │
+│       → Inja 模板渲染 + ComposedShaderGenerator 拼接       │
+│       → TemplateBasedMaterialFactory → SPV               │
+└────────────────────────────────────────────────────────────┘
+```
+
+### M0.5 对整个系统的核心改进
+
+| 维度 | 改进 |
+|------|------|
+| **开发复杂度** | ↓80%：无需手工管理坐标变换、法线矩阵、光照调用 |
+| **可维护性** | ↑ 修改坐标系/光照算法一次，自动适用所有材质 |
+| **可扩展性** | ↑ 添加新光照模式无需改业务代码，仅需添加光照函数 |
+| **性能成本** | = 0：所有辅助函数均 inline，编译后 SPV 完全相同 |
+| **学习曲线** | ↓：API 统一（GetLocalToWorld/GetNormal/GetMI），无选择困扰 |
