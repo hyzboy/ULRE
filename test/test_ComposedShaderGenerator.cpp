@@ -391,6 +391,32 @@ int main()
                                    && (std::strstr(mobile_subpass_fs.c_str(), "subpassLoad(") != nullptr)
                                    && (std::strstr(mobile_subpass_fs.c_str(), "MobileSubpassGBufferDeferred route") != nullptr);
 
+    // Normal compression 自动编解码路由检查
+    PipelineMode normal_compression_mode;
+    normal_compression_mode.render_path = PipelineRenderPath::Forward;
+    normal_compression_mode.normal_compression.compress_vertex_input_normal = true;
+    normal_compression_mode.normal_compression.compress_normal_map = true;
+    normal_compression_mode.normal_compression.compress_gbuffer_normal = true;
+    normal_compression_mode.normal_compression.vertex_input_encoding = NormalEncodingMode::Octahedral;
+    normal_compression_mode.normal_compression.normal_map_encoding = NormalEncodingMode::Octahedral;
+    normal_compression_mode.normal_compression.gbuffer_encoding = NormalEncodingMode::Octahedral;
+
+    hgl::AnsiString normal_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_compression_mode);
+    hgl::AnsiString normal_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_compression_mode);
+
+    ComposedMaterialDef deferred_composed = EX_BASIC_LIT_COMPOSED;
+    deferred_composed.output_mode = ShaderOutputMode::DualRTDeferred;
+    hgl::AnsiString normal_fs_deferred = ComposedShaderGenerator::ComposeFragmentShader(deferred_composed, key, normal_compression_mode);
+
+    bool normal_compression_define_ok = (std::strstr(normal_vs.c_str(), "#define COMPRESS_VERTEX_INPUT_NORMAL 1") != nullptr)
+                                     && (std::strstr(normal_vs.c_str(), "#define COMPRESS_NORMAL_MAP 1") != nullptr)
+                                     && (std::strstr(normal_vs.c_str(), "#define COMPRESS_GBUFFER_NORMAL 1") != nullptr);
+
+    bool normal_compression_decode_route_ok = (std::strstr(normal_vs.c_str(), "DecodeVertexInputNormal(Normal)") != nullptr)
+                                           && (std::strstr(normal_fs.c_str(), "DecodeMaterialNormal(") != nullptr);
+
+    bool normal_compression_gbuffer_encode_ok = (std::strstr(normal_fs_deferred.c_str(), "EncodeGBufferNormal(GetWorldNormal())") != nullptr);
+
     printf("\n========================================\n");
     printf("  测试总结\n");
     printf("========================================\n");
@@ -414,6 +440,9 @@ int main()
     printf("  Forward PerVertex 通道连通: %s\n", forward_pervertex_channel_ok ? "✓ 通过" : "✗ 失败");
     printf("  MobileSubpass VS宏路由: %s\n", mobile_subpass_vs_macro_ok ? "✓ 通过" : "✗ 失败");
     printf("  MobileSubpass FS子通道路由: %s\n", mobile_subpass_fs_route_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Normal压缩 宏注入: %s\n", normal_compression_define_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Normal压缩 解码路由: %s\n", normal_compression_decode_route_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Normal压缩 GBuffer编码路由: %s\n", normal_compression_gbuffer_encode_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
@@ -431,6 +460,9 @@ int main()
                      && forward_pervertex_channel_ok
                      && mobile_subpass_vs_macro_ok
                      && mobile_subpass_fs_route_ok
+                     && normal_compression_define_ok
+                     && normal_compression_decode_route_ok
+                     && normal_compression_gbuffer_encode_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 

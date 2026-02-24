@@ -49,8 +49,9 @@
     - 覆盖模式：Solid / Mask / DepthOnlySolid / DepthOnlyMask
             - 输入模式：VertexInput / SSBO VertexInput（长期目标：全 SSBO GPU-Driven）
             - 阶段拓扑：VS/FS 或 MeshShader/FS
-            - 后处理输出：NormalOnly / EmissiveOnly / MotionVectorOnly / DepthOnly / Custom
+            - 后处理输出：GBuffer 通道组合（MotionVector 默认可关闭，按需开启）
             - 前向光照模式：PerPixel / PerVertex（低配与远景）
+            - 法线压缩策略：VertexInput / NormalMap / GBuffer 三处可独立配置，生成器自动编解码
     - 通过受控 permutation 生成变体，不提供任意节点图式扩展点。
 
 5. **GPU-Driven 演进方向（输入与阶段自适应）**
@@ -473,6 +474,8 @@ Shader 生成器定位为“受控组合器（Controlled Composer）”：
 - 开发者在指定光照算法档位时，必须同时指定 `GBufferFormatLevel`。
 - 生成器根据 `GBufferFormat` 自动生成 shader 参数结构体（如 `GBufferParams`）。
 - 后处理阶段直接复用该格式定义作为可输出通道列表。
+- `MotionVector` 作为可选通道，不强制进入默认格式（尤其移动端默认关闭）。
+- 通过 `GBufferFormatSpec.enable_motion_vector` 显式启用后才加入格式通道掩码。
 
 当 `RenderPath = MobileSubpassGBuffer` 时，额外约束：
 - 面向移动端 Vulkan 路径，采用 `subpassLoad` 读取前序 subpass 输出。

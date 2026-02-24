@@ -58,32 +58,44 @@ static PipelineMode ResolvePipelineModeForCurrentBackend(const PipelineMode &req
 {
     PipelineMode resolved = requested;
 
-    auto GetDefaultGBufferChannelMask = [](const GBufferFormatLevel level) -> GBufferChannel
+    auto GetDefaultGBufferChannelMask = [](const GBufferFormatLevel level, const bool enable_motion_vector) -> GBufferChannel
     {
+        GBufferChannel mask = GBufferChannel::None;
+
         switch (level)
         {
             case GBufferFormatLevel::MobileLite:
-                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth;
+                mask = GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth;
+                break;
 
             case GBufferFormatLevel::MobileExtended:
-                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
-                     | GBufferChannel::Emissive | GBufferChannel::MotionVector;
+                mask = GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
+                     | GBufferChannel::Emissive;
+                break;
 
             case GBufferFormatLevel::DesktopStandard:
-                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
-                     | GBufferChannel::Emissive | GBufferChannel::MotionVector
+                mask = GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
+                     | GBufferChannel::Emissive
                      | GBufferChannel::Roughness | GBufferChannel::Metallic;
+                break;
 
             case GBufferFormatLevel::DesktopFull:
-                return GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
-                     | GBufferChannel::Emissive | GBufferChannel::MotionVector
+                mask = GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth
+                     | GBufferChannel::Emissive
                      | GBufferChannel::Specular | GBufferChannel::Roughness
                      | GBufferChannel::Metallic | GBufferChannel::AO;
+                break;
 
             case GBufferFormatLevel::Custom:
             default:
-                return GBufferChannel::None;
+                mask = GBufferChannel::None;
+                break;
         }
+
+        if (enable_motion_vector)
+            mask |= GBufferChannel::MotionVector;
+
+        return mask;
     };
 
     // SG-1: 仅建立模式轴与路由骨架。
@@ -105,7 +117,9 @@ static PipelineMode ResolvePipelineModeForCurrentBackend(const PipelineMode &req
     if (resolved.gbuffer_format.channel_mask == GBufferChannel::None
      && resolved.gbuffer_format.level != GBufferFormatLevel::Custom)
     {
-        resolved.gbuffer_format.channel_mask = GetDefaultGBufferChannelMask(resolved.gbuffer_format.level);
+        resolved.gbuffer_format.channel_mask = GetDefaultGBufferChannelMask(
+            resolved.gbuffer_format.level,
+            resolved.gbuffer_format.enable_motion_vector);
     }
 
     // 后处理输出通道：默认继承 GBuffer 格式；并裁剪为其子集
@@ -120,6 +134,103 @@ static PipelineMode ResolvePipelineModeForCurrentBackend(const PipelineMode &req
     }
 
     return resolved;
+}
+
+static const char *NormalEncodingModeToToken(const NormalEncodingMode mode)
+{
+    switch (mode)
+    {
+        case NormalEncodingMode::Octahedral: return "OCT";
+        case NormalEncodingMode::Spheremap:  return "SPHEREMAP";
+        case NormalEncodingMode::None:
+        default:                             return "NONE";
+    }
+}
+
+static AnsiString GenNormalCompressionDefines(const PipelineMode &mode)
+{
+    AnsiString result;
+
+    char buf[256];
+    snprintf(buf, sizeof(buf), "#define COMPRESS_VERTEX_INPUT_NORMAL %d\n",
+             mode.normal_compression.compress_vertex_input_normal ? 1 : 0);
+    result += buf;
+    snprintf(buf, sizeof(buf), "#define COMPRESS_NORMAL_MAP %d\n",
+             mode.normal_compression.compress_normal_map ? 1 : 0);
+    result += buf;
+    snprintf(buf, sizeof(buf), "#define COMPRESS_GBUFFER_NORMAL %d\n",
+             mode.normal_compression.compress_gbuffer_normal ? 1 : 0);
+    result += buf;
+
+    snprintf(buf, sizeof(buf), "#define VERTEX_NORMAL_ENCODING_%s 1\n",
+             NormalEncodingModeToToken(mode.normal_compression.vertex_input_encoding));
+    result += buf;
+    snprintf(buf, sizeof(buf), "#define NORMAL_MAP_ENCODING_%s 1\n",
+             NormalEncodingModeToToken(mode.normal_compression.normal_map_encoding));
+    result += buf;
+    snprintf(buf, sizeof(buf), "#define GBUFFER_NORMAL_ENCODING_%s 1\n",
+             NormalEncodingModeToToken(mode.normal_compression.gbuffer_encoding));
+    result += buf;
+
+    result += "\n";
+    return result;
+}
+
+static AnsiString GenNormalCompressionHelpers()
+{
+    return R"(
+// Normal compression helpers (SG-2 template)
+vec2 EncodeNormalOct(vec3 n) {
+    n = normalize(n);
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    vec2 enc = n.xy;
+    if (n.z < 0.0) {
+        enc = (1.0 - abs(enc.yx)) * sign(enc.xy);
+    }
+    return enc * 0.5 + 0.5;
+}
+
+vec3 DecodeNormalOct(vec2 e) {
+    vec2 f = e * 2.0 - 1.0;
+    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    float t = clamp(-n.z, 0.0, 1.0);
+    n.xy += vec2(n.x >= 0.0 ? -t : t, n.y >= 0.0 ? -t : t);
+    return normalize(n);
+}
+
+vec3 DecodeVertexInputNormal(vec3 normal_in) {
+#if COMPRESS_VERTEX_INPUT_NORMAL
+    return DecodeNormalOct(normal_in.xy);
+#else
+    return normalize(normal_in);
+#endif
+}
+
+vec3 DecodeNormalMapNormal(vec3 normal_sample) {
+#if COMPRESS_NORMAL_MAP
+    return DecodeNormalOct(normal_sample.xy);
+#else
+    return normalize(normal_sample * 2.0 - 1.0);
+#endif
+}
+
+vec2 EncodeGBufferNormal(vec3 n) {
+#if COMPRESS_GBUFFER_NORMAL
+    return EncodeNormalOct(n);
+#else
+    return normalize(n).xy;
+#endif
+}
+
+vec3 DecodeGBufferNormal(vec2 packed_n) {
+#if COMPRESS_GBUFFER_NORMAL
+    return DecodeNormalOct(packed_n);
+#else
+    return normalize(vec3(packed_n, sqrt(max(0.0, 1.0 - dot(packed_n, packed_n)))));
+#endif
+}
+
+)";
 }
 
 static bool ContainsName(const std::vector<std::string> &names, const char *name)
@@ -443,7 +554,7 @@ AnsiString ComposedShaderGenerator::GenGetNormalFunction(
         if (has_normal) {
             result += R"(
 vec3 GetNormal() {
-    return normalize(GetNormalMatrix() * Normal);
+    return normalize(GetNormalMatrix() * DecodeVertexInputNormal(Normal));
 }
 
 )";
@@ -460,11 +571,15 @@ vec3 GetNormal(vec3 local_normal) {
         // FS 中返回插值的世界法线
         result += R"(
 vec3 GetNormal() {
-    return Input.WorldNormal;
+    return normalize(Input.WorldNormal);
 }
 
 vec3 GetWorldNormal() {
-    return Input.WorldNormal;
+    return normalize(Input.WorldNormal);
+}
+
+vec3 DecodeMaterialNormal(vec3 normal_sample) {
+    return DecodeNormalMapNormal(normal_sample);
 }
 
 )";
@@ -586,7 +701,8 @@ void ComposeFinalOutput(vec4 color_with_alpha, out vec4 out_rt0) {
             result += R"(
 void ComposeFinalOutput(vec4 color_with_alpha, out vec4 out_rt0, out vec4 out_rt1) {
     out_rt0 = vec4(color_with_alpha.rgb, 1.0);   // Diffuse color
-    out_rt1 = vec4(GetWorldNormal(), 1.0);       // Normal + material id
+    vec2 packed_n = EncodeGBufferNormal(GetWorldNormal());
+    out_rt1 = vec4(packed_n, 0.0, 1.0);          // packed normal + reserved
 }
 
 )";
@@ -642,7 +758,12 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     
     // Step 1: 前置部分
     if (include_preamble)
+    {
         result += GenPreamble(key);
+        PipelineMode default_pipeline_mode;
+        result += GenNormalCompressionDefines(default_pipeline_mode);
+        result += GenNormalCompressionHelpers();
+    }
     
     // Step 2: 布局声明
     result += GenLayoutDeclarations(def);
@@ -734,6 +855,8 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionDefines(resolved_mode);
+            result += GenNormalCompressionHelpers();
             result += "#define MOBILE_SUBPASS_GBUFFER 1\n";
             result += "#define MOBILE_SUBPASS_USE_SUBPASSLOAD 1\n\n";
         }
@@ -750,6 +873,8 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionDefines(resolved_mode);
+            result += GenNormalCompressionHelpers();
             result += "#define FORWARD_LIGHTING_PER_VERTEX 1\n";
             result += "#define FORWARD_LIGHTING_PER_PIXEL 0\n\n";
         }
@@ -771,6 +896,16 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     }
 
     // 当前实现：VS/FS 路径复用 legacy 生成逻辑
+    if (include_preamble)
+    {
+        AnsiString result;
+        result += GenPreamble(key);
+        result += GenNormalCompressionDefines(resolved_mode);
+        result += GenNormalCompressionHelpers();
+        result += ComposeVertexShader(def, key, false);
+        return result;
+    }
+
     return ComposeVertexShader(def, key, include_preamble);
 }
 
@@ -787,7 +922,12 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     
     // 前置部分
     if (include_preamble)
+    {
         result += GenPreamble(key);
+        PipelineMode default_pipeline_mode;
+        result += GenNormalCompressionDefines(default_pipeline_mode);
+        result += GenNormalCompressionHelpers();
+    }
     
     // 布局声明
     result += GenLayoutDeclarations(def);
@@ -854,6 +994,8 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionDefines(resolved_mode);
+            result += GenNormalCompressionHelpers();
             result += "#define MOBILE_SUBPASS_GBUFFER 1\n";
             result += "#define MOBILE_SUBPASS_USE_SUBPASSLOAD 1\n\n";
         }
@@ -879,6 +1021,8 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionDefines(resolved_mode);
+            result += GenNormalCompressionHelpers();
             result += "#define FORWARD_LIGHTING_PER_VERTEX 1\n";
             result += "#define FORWARD_LIGHTING_PER_PIXEL 0\n\n";
         }
@@ -895,6 +1039,16 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
             result += GenPreamble(key);
 
         result += "// Mesh/FS topology selected: fragment stage shares FS composer path.\n";
+        result += ComposeFragmentShader(def, key, false);
+        return result;
+    }
+
+    if (include_preamble)
+    {
+        AnsiString result;
+        result += GenPreamble(key);
+        result += GenNormalCompressionDefines(resolved_mode);
+        result += GenNormalCompressionHelpers();
         result += ComposeFragmentShader(def, key, false);
         return result;
     }

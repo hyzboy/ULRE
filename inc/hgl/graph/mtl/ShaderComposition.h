@@ -160,7 +160,7 @@ enum class GBufferFormatLevel : uint8 {
     // 手机极低配：Color + Normal + Depth
     MobileLite = 0,
 
-    // 手机/主机中档：在 MobileLite 基础上增加 Emissive / MotionVector
+    // 手机/主机中档：在 MobileLite 基础上增加 Emissive（MotionVector 按需开启）
     MobileExtended,
 
     // 桌面标准：增加 PBR 关键通道
@@ -187,6 +187,9 @@ struct GBufferFormatSpec {
 
     // true: 生成器自动生成上述参数结构体
     bool auto_generate_param_struct = true;
+
+    // MotionVector 是否加入该格式（默认关闭，尤其是移动端）
+    bool enable_motion_vector = false;
 };
 
 enum class PipelineForwardLightingMode : uint8 {
@@ -200,6 +203,28 @@ enum class PipelineForwardLightingMode : uint8 {
     AutoByCapability,
 
     ENUM_CLASS_RANGE(PerPixel, AutoByCapability)
+};
+
+enum class NormalEncodingMode : uint8 {
+    None = 0,
+    Octahedral,
+    Spheremap,
+
+    ENUM_CLASS_RANGE(None, Spheremap)
+};
+
+struct NormalCompressionPolicy {
+    // 顶点输入 normal：存储压缩 + 读取自动解压
+    bool compress_vertex_input_normal = false;
+    NormalEncodingMode vertex_input_encoding = NormalEncodingMode::Octahedral;
+
+    // 法线贴图 normal：采样后自动解压到线性法线
+    bool compress_normal_map = false;
+    NormalEncodingMode normal_map_encoding = NormalEncodingMode::Octahedral;
+
+    // GBuffer normal：写入自动压缩，读取自动解压
+    bool compress_gbuffer_normal = false;
+    NormalEncodingMode gbuffer_encoding = NormalEncodingMode::Octahedral;
 };
 
 struct PipelineMode {
@@ -216,6 +241,9 @@ struct PipelineMode {
     GBufferChannel postprocess_output_channels = GBufferChannel::None;
 
     PipelineForwardLightingMode forward_lighting = PipelineForwardLightingMode::PerPixel;
+
+    // 法线压缩策略（生成器自动插入编码/解码 helper）
+    NormalCompressionPolicy normal_compression;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
