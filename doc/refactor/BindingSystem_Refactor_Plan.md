@@ -181,27 +181,20 @@ enum class VertexInputGroup:uint8 { Basic, TransformID, MaterialInstanceID, Join
 
 ### 阶段 0：修复渲染正确性 bug（优先级：紧急）
 
-**描述符 set 号错位问题**
+**说明**
 
-修改 `RenderCmdBuffer::BindDescriptorSets()` 中的 `vkCmdBindDescriptorSets` 调用：
+经过对 `MaterialDescriptorInfo::Resort()`、`CreatePipelineLayoutData()` 和 `BindDescriptorSets()` 的完整追踪，三者均按 `DescriptorSetType` 枚举顺序迭代并跳过空槽、连续压缩，**描述符 set 号映射是一致的**，不存在错位。
+
+当前的 `vkCmdBindDescriptorSets(firstSet=0, count=N, ds[])` 调用在所有内置材质上是正确的。
+
+**真正的 P0 优先工作**
+
+移除 `DescriptorSet::BindTexture()`、`BindTextureSampler()` 中残留的 `LogInfo` 调用（当前每次绑定都打印日志，在渲染循环中会产生大量日志噪音）：
 
 ```cpp
-// 当前（错误）：全部从 firstSet=0 开始，跳过空 mp 导致 set 号错位
-vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-    pipeline_layout, 0, count, ds, 0, 0);
-
-// 修改后：每个非空 mp 单独提交，使用其真实 set 号
-ENUM_CLASS_FOR(DescriptorSetType, int, i)
-{
-    mp = mtl->GetMP((DescriptorSetType)i);
-    if(!mp || !mp->IsReady()) continue;
-    VkDescriptorSet ds = mp->GetVkDescriptorSet();
-    vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pipeline_layout, i /*firstSet = actual set number*/, 1, &ds, 0, 0);
-}
+// VKDescriptorSet.cpp — 移除 BindTexture 和 BindTextureSampler 中的 LogInfo 块
+// 这些日志原本用于调试 imageView/imageLayout，已不再需要
 ```
-
-或者在 `MaterialDescriptorManager` 中记录每个已激活 set 的 `{set_index, VkDescriptorSetLayout}` 对，在 `PipelineLayoutData` 中使用连续无空洞布局（当前 Vulkan 驱动不接受中间有洞的 set 数组）。
 
 ---
 
