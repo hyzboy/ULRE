@@ -188,10 +188,18 @@ namespace hgl::ecs
             return false;
 
         EnsureCoreEcsSystems(ctx, default_rt);
-        ctx->GetSystemProfiler().MarkGroupEnsured(group_name);
+
+        if (ctx->IsSystemGroupInstalled(group_name))
+            return true;
 
         auto& registry = SystemGroupRegistry::Get();
-        return registry.EnsureGroupSystems(group_name, ctx, default_rt);
+        const bool installed = registry.EnsureGroupSystems(group_name, ctx, default_rt);
+        if (!installed)
+            return false;
+
+        ctx->MarkSystemGroupInstalled(group_name);
+        ctx->GetSystemProfiler().MarkGroupEnsured(group_name);
+        return true;
     }
 
     DefaultEcsSystems RegisterDefaultEcsSystems(ECSContext *ctx, graph::IRenderTarget *default_rt)

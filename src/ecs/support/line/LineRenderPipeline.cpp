@@ -20,6 +20,7 @@
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/StructuredBufferAccessor.h>
 #include <hgl/math/geometry/Frustum.h>
+#include <hgl/log/Log.h>
 #include <glm/glm.hpp>
 #include <algorithm>
 
@@ -41,9 +42,16 @@ namespace hgl::ecs
     void LineRenderPipeline::LineWidthSlot::Reset()
     {
         line_count = 0;
-        if (va_pos.IsValid())   va_pos.Seek(0);
-        if (va_color.IsValid()) va_color.Seek(0);
-        if (primitive)          primitive->SetDrawCounts(0);
+        bool pos_valid = va_pos.IsValid();
+        bool color_valid = va_color.IsValid();
+        
+        GLogInfo("[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d",
+                 pos_valid ? 1 : 0,
+                 color_valid ? 1 : 0);
+        
+        if (pos_valid)   va_pos.Seek(0);
+        if (color_valid) va_color.Seek(0);
+        if (primitive)   primitive->SetDrawCounts(0);
     }
 
     void LineRenderPipeline::LineWidthSlot::Clear()
@@ -69,7 +77,7 @@ namespace hgl::ecs
         // Round up to granule
         const uint32_t new_cap = ((needed + LineRenderPipeline::LINES_GRANULE - 1)
                                           / LineRenderPipeline::LINES_GRANULE)
-                                              * LineRenderPipeline::LINES_GRANULE;
+                                          * LineRenderPipeline::LINES_GRANULE;
 
         // Release old resources
         va_pos.Bind(nullptr);
@@ -81,7 +89,7 @@ namespace hgl::ecs
         const graph::AnsiString name = graph::AnsiString("LineSlot_W") + graph::AnsiString::numberOf(width);
         geometry = graph::CreateGeometry(dev, mi->GetVIL(), name, new_cap * 2, 0,
                                          graph::IndexType::AUTO, nullptr,
-                                         graph::BufferAllocPolicy::StagedUpload);
+                                         graph::BufferAllocPolicy::CPUVisible);
         if (!geometry)
             return false;
 
@@ -104,6 +112,23 @@ namespace hgl::ecs
 
         va_pos.Bind(geometry->GetVAB(pos_idx));
         va_color.Bind(geometry->GetVAB(color_idx));
+
+        GLogInfo("[LineRenderPipeline] Slot %u after Bind: pos_valid=%d color_valid=%d",
+                 width,
+                 va_pos.IsValid() ? 1 : 0,
+                 va_color.IsValid() ? 1 : 0);
+
+        if (!va_pos.IsValid() || !va_color.IsValid())
+        {
+            GLogWarning("[LineRenderPipeline] Slot %u accessor bind failed (pos_valid=%d color_valid=%d)",
+                        width,
+                        va_pos.IsValid() ? 1 : 0,
+                        va_color.IsValid() ? 1 : 0);
+            SAFE_CLEAR(primitive);
+            SAFE_CLEAR(geometry);
+            return false;
+        }
+
         va_pos.Seek(0);
         va_color.Seek(0);
 
@@ -111,18 +136,35 @@ namespace hgl::ecs
         return true;
     }
 
-    void LineRenderPipeline::LineWidthSlot::AddSegment(
+    bool LineRenderPipeline::LineWidthSlot::AddSegment(
         const hgl::math::Vector3f& from,
         const hgl::math::Vector3f& to,
         uint8_t                     color_index)
     {
-        va_pos.Write(from);
-        va_pos.Write(to);
-        va_color.Write(color_index);
-        va_color.Write(color_index);
+        bool pos_valid = va_pos.IsValid();
+        bool color_valid = va_color.IsValid();
+        
+        if (!pos_valid || !color_valid)
+        {
+            GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d",
+                        pos_valid ? 1 : 0,
+                        color_valid ? 1 : 0);
+            return false;
+        }
+
+        if (!va_pos.Write(from))
+            return false;
+        if (!va_pos.Write(to))
+            return false;
+        if (!va_color.Write(color_index))
+            return false;
+        if (!va_color.Write(color_index))
+            return false;
+
         ++line_count;
         if (primitive)
             primitive->SetDrawCounts(line_count * 2);
+        return true;
     }
 
     void LineRenderPipeline::LineWidthSlot::Draw(graph::RenderCmdBuffer* cmd)
@@ -140,6 +182,9 @@ namespace hgl::ecs
     LineRenderPipeline::LineRenderPipeline(ECSContext* context)
         : context_(context)
     {
+        // Initialize palette to white by default
+        std::fill(std::begin(palette_), std::end(palette_), hgl::Color4f(1.0f, 1.0f, 1.0f, 1.0f));
+        GLogInfo(OS_TEXT("[LineRenderPipeline] Constructor: initialized palette_ to all white"));
     }
 
     LineRenderPipeline::~LineRenderPipeline()
@@ -154,6 +199,11 @@ namespace hgl::ecs
     {
         if (initialized_)
             return true;
+
+        GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: START"));
+        GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: palette_[0]=(%.2f,%.2f,%.2f,%.2f) palette_[1]=(%.2f,%.2f,%.2f,%.2f)"),
+                 palette_[0].r, palette_[0].g, palette_[0].b, palette_[0].a,
+                 palette_[1].r, palette_[1].g, palette_[1].b, palette_[1].a);
 
         auto* gc = context_ ? context_->GetGraphicsContext() : nullptr;
         if (!gc)
@@ -225,16 +275,19 @@ namespace hgl::ecs
         ubo_color_   = ubo;
         ubo_raw_buf_ = raw_buf;
 
-        // Bind UBO to material, upload default white palette
+        // Bind UBO to material
         material_->BindUBO(&graph::mtl::SBS_ColorPattle, ubo->GetGPUBuffer());
         material_->Update();
 
-        // Initialize default palette (white)
-        std::fill(std::begin(palette_), std::end(palette_), hgl::Color4f(1.0f, 1.0f, 1.0f, 1.0f));
-        palette_dirty_ = true;
+        // Flush current palette to UBO (palette initialized in constructor)
+        FlushPaletteToGPU();
 
         delete mci;
         initialized_ = true;
+        
+        GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: COMPLETE, palette_[0]=(%.2f,%.2f,%.2f,%.2f)"),
+                 palette_[0].r, palette_[0].g, palette_[0].b, palette_[0].a);
+        
         return true;
     }
 
@@ -358,10 +411,13 @@ namespace hgl::ecs
 
         // First pass: count lines per slot
         uint32_t slot_counts[MAX_WIDTHS] = {};
+        uint32_t expected_total = 0;
         for (const auto& comp : collected_)
         {
             const uint32_t idx = GetSlotIndex(comp->width);
-            slot_counts[idx] += static_cast<uint32_t>(comp->lines.size());
+            const uint32_t cnt = static_cast<uint32_t>(comp->lines.size());
+            slot_counts[idx] += cnt;
+            expected_total += cnt;
         }
 
         // Ensure GPU capacity per slot (recreate if needed)
@@ -371,38 +427,93 @@ namespace hgl::ecs
             if (slot_counts[i] == 0)
                 continue;
             if (!slots_[i].EnsureCapacity(slot_counts[i], device_, mi_, pipeline_, i + 1))
+            {
+                GLogWarning("[LineRenderPipeline] EnsureCapacity failed: slot=%u need=%u cap=%u",
+                            i + 1,
+                            slot_counts[i],
+                            slots_[i].gpu_capacity);
                 return; // Allocation failure: skip frame
+            }
+
+            if (slots_[i].gpu_capacity < slot_counts[i])
+            {
+                GLogWarning("[LineRenderPipeline] Slot capacity insufficient after ensure: slot=%u cap=%u need=%u",
+                            i + 1,
+                            slots_[i].gpu_capacity,
+                            slot_counts[i]);
+            }
+
             slots_[i].Reset(); // seek back to 0
         }
 
         // Second pass: write segments
+        uint32_t write_fail_count = 0;
         for (const auto& comp : collected_)
         {
             const uint32_t idx = GetSlotIndex(comp->width);
+            bool comp_write_ok = true;
             for (const auto& seg : comp->lines)
-                slots_[idx].AddSegment(seg.from, seg.to, seg.color_index);
-            comp->MarkSynced();
+            {
+                if (!slots_[idx].AddSegment(seg.from, seg.to, seg.color_index))
+                {
+                    ++write_fail_count;
+                    comp_write_ok = false;
+                }
+            }
+
+            if (comp_write_ok)
+                comp->MarkSynced();
         }
 
         // Tally total
         total_line_count_ = 0;
         for (uint32_t i = 0; i < num_slots; ++i)
             total_line_count_ += slots_[i].line_count;
+
+        if (write_fail_count > 0 || total_line_count_ != expected_total)
+        {
+            GLogWarning("[LineRenderPipeline] Build mismatch: expected=%u built=%u write_fail=%u collected_components=%zu",
+                        expected_total,
+                        total_line_count_,
+                        write_fail_count,
+                        collected_.size());
+
+            for (uint32_t i = 0; i < num_slots; ++i)
+            {
+                if (slot_counts[i] == 0 && slots_[i].line_count == 0)
+                    continue;
+
+                GLogWarning("[LineRenderPipeline]   slot=%u expected=%u built=%u capacity=%u pos_valid=%d color_valid=%d",
+                            i + 1,
+                            slot_counts[i],
+                            slots_[i].line_count,
+                            slots_[i].gpu_capacity,
+                            slots_[i].va_pos.IsValid() ? 1 : 0,
+                            slots_[i].va_color.IsValid() ? 1 : 0);
+            }
+        }
     }
 
     void LineRenderPipeline::FlushPaletteToGPU()
     {
         if (!palette_dirty_ || !ubo_color_)
+        {
+            GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: skipped - dirty=%d ubo=%p"), 
+                     palette_dirty_ ? 1 : 0, ubo_color_);
             return;
+        }
 
         auto* ubo = static_cast<UBOLineColorPalette*>(ubo_color_);
-        auto* pal = ubo->Data();
-        if (pal)
-        {
-            for (uint32_t i = 0; i < PALETTE_SIZE; ++i)
-                (*pal)[i] = palette_[i];
-            ubo->MarkDirty();
-        }
+        
+        GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: writing %d colors directly from palette_"), PALETTE_SIZE);
+        
+        // Write directly from palette_ array to GPU buffer (not via mapped_data)
+        // This ensures actual data transfer instead of no-op when source == destination
+        bool write_ok = ubo->Write(palette_, 0, sizeof(LineColorPalette));
+        
+        GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: Write result=%d size=%zu bytes"), 
+                 write_ok ? 1 : 0, sizeof(LineColorPalette));
+        
         palette_dirty_ = false;
     }
 
@@ -414,8 +525,6 @@ namespace hgl::ecs
         if (!pipeline_ || !mi_)
             return;
 
-        FlushPaletteToGPU();
-
         auto* mat = mi_->GetMaterial();
         if (mat)
             cmd->BindDescriptorSets(mat);
@@ -423,6 +532,7 @@ namespace hgl::ecs
         cmd->BindPipeline(pipeline_);
 
         const uint32_t num_slots = support_wide_lines_ ? MAX_WIDTHS : 1;
+        uint32_t draw_lines = 0;
         for (uint32_t i = 0; i < num_slots; ++i)
         {
             if (slots_[i].line_count == 0)
@@ -432,6 +542,14 @@ namespace hgl::ecs
                 cmd->SetLineWidth(static_cast<float>(i + 1));
 
             slots_[i].Draw(cmd);
+            draw_lines += slots_[i].line_count;
+        }
+
+        if (draw_lines != total_line_count_)
+        {
+            GLogWarning("[LineRenderPipeline] Render mismatch: total_line_count=%u draw_lines=%u",
+                        total_line_count_,
+                        draw_lines);
         }
     }
 
@@ -470,10 +588,31 @@ namespace hgl::ecs
 
     void LineRenderPipeline::SetPaletteColor(int index, const hgl::Color4f& color)
     {
+        GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: index=%d color=(%.2f,%.2f,%.2f,%.2f) initialized=%d"),
+                 index, color.r, color.g, color.b, color.a, initialized_ ? 1 : 0);
+        
         if (index < 0 || index >= static_cast<int>(PALETTE_SIZE))
+        {
+            GLogWarning(OS_TEXT("[LineRenderPipeline] SetPaletteColor: index %d out of range"), index);
             return;
+        }
+        
         palette_[index]  = color;
         palette_dirty_   = true;
+        
+        GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: palette_[%d] now = (%.2f,%.2f,%.2f,%.2f)"),
+                 index, palette_[index].r, palette_[index].g, palette_[index].b, palette_[index].a);
+        
+        // Flush immediately if pipeline is initialized
+        if (initialized_)
+        {
+            GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: calling FlushPaletteToGPU immediately"));
+            FlushPaletteToGPU();
+        }
+        else
+        {
+            GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: pipeline not initialized yet, deferring flush"));
+        }
     }
 
 }  // namespace hgl::ecs

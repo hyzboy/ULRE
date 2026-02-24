@@ -100,7 +100,7 @@ namespace hgl::ecs
                                 graph::MaterialInstance* mi,
                                 graph::Pipeline*         p,
                                 uint32_t                 width);
-            void AddSegment(const hgl::math::Vector3f& from,
+            bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
                             uint8_t                     color_index);
             void Draw(graph::RenderCmdBuffer* cmd);

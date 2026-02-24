@@ -241,6 +241,7 @@ namespace hgl
             component_registry.Clear();
             system_group_component_counts.clear();
             known_system_groups.clear();
+            installed_system_groups.clear();
             static_transforms.clear();
             movable_transforms.clear();
 
@@ -1405,6 +1406,22 @@ namespace hgl
                 return 0;
 
             return it->second;
+        }
+
+        bool ECSContext::IsSystemGroupInstalled(const std::string& group_name) const
+        {
+            if (group_name.empty())
+                return false;
+
+            return installed_system_groups.find(group_name) != installed_system_groups.end();
+        }
+
+        void ECSContext::MarkSystemGroupInstalled(const std::string& group_name)
+        {
+            if (group_name.empty())
+                return;
+
+            installed_system_groups.insert(group_name);
         }
 
         void ECSContext::GetKnownSystemGroups(std::vector<std::string>& out_group_names) const

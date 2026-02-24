@@ -3,7 +3,9 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/LinesComponent.h>
+#include<hgl/ecs/support/line/LineRenderPipeline.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/color/Color.h>
 #include<cmath>
 #include<memory>
 
@@ -32,6 +34,29 @@ public:
             return false;
 
         ecs_world = ecs;
+
+        // CN: 设置线条调色板
+        // EN: Setup line color palette
+        auto* line_pipeline = dynamic_cast<LineRenderPipeline*>(ecs->GetRenderPipeline("Line"));
+        LogInfo("[LineRenderTest] Init: GetRenderPipeline returned %p\n", line_pipeline);
+        
+        if (line_pipeline)
+        {
+            LogInfo("[LineRenderTest] Init: Setting 8 palette colors\n");
+            line_pipeline->SetPaletteColor(0, hgl::Color4f(1.0f, 0.0f, 0.0f, 1.0f)); // Red
+            line_pipeline->SetPaletteColor(1, hgl::Color4f(0.0f, 1.0f, 0.0f, 1.0f)); // Green
+            line_pipeline->SetPaletteColor(2, hgl::Color4f(0.0f, 0.0f, 1.0f, 1.0f)); // Blue
+            line_pipeline->SetPaletteColor(3, hgl::Color4f(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow
+            line_pipeline->SetPaletteColor(4, hgl::Color4f(1.0f, 0.0f, 1.0f, 1.0f)); // Magenta
+            line_pipeline->SetPaletteColor(5, hgl::Color4f(0.0f, 1.0f, 1.0f, 1.0f)); // Cyan
+            line_pipeline->SetPaletteColor(6, hgl::Color4f(1.0f, 0.5f, 0.0f, 1.0f)); // Orange
+            line_pipeline->SetPaletteColor(7, hgl::Color4f(0.5f, 0.0f, 1.0f, 1.0f)); // Purple
+            LogInfo("[LineRenderTest] Init: Palette colors set complete\n");
+        }
+        else
+        {
+            LogError("[LineRenderTest] Init: Failed to get Line pipeline!\n");
+        }
 
         // CN: 创建存储线条的 Entity
         // EN: Create entity to hold lines

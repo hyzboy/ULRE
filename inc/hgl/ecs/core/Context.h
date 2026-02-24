@@ -75,6 +75,7 @@ namespace hgl
             // Component-driven system-group activity tracking
             std::unordered_map<std::string, uint32_t> system_group_component_counts;
             std::set<std::string> known_system_groups;
+            std::set<std::string> installed_system_groups;
 
             struct OrderedSystem
             {
@@ -531,6 +532,12 @@ namespace hgl
 
             /// Get tracked component count for a system group
             uint32_t GetSystemGroupComponentCount(const std::string& group_name) const;
+
+            /// Check whether the system group installer has already run for this context
+            bool IsSystemGroupInstalled(const std::string& group_name) const;
+
+            /// Mark a system group as installed in this context (idempotent)
+            void MarkSystemGroupInstalled(const std::string& group_name);
 
             /// Get all known system group names (seen from component registration)
             void GetKnownSystemGroups(std::vector<std::string>& out_group_names) const;
