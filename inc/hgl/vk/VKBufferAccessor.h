@@ -333,7 +333,28 @@ public:
      * CN: 标记为 dirty
      * EN: Mark as dirty
      */
-    void MarkDirty() { dirty = true; }
+    void MarkDirty()
+    {
+        dirty = true;
+
+        if(!gpu_buf || buffer_stride == 0)
+            return;
+
+        uint32_t offset = (element_offset < 0) ? 0u : static_cast<uint32_t>(element_offset);
+        if(offset >= buffer_total_count)
+            return;
+
+        uint32_t count = (element_count == 0)
+            ? (buffer_total_count - offset)
+            : element_count;
+
+        if(count == 0)
+            return;
+
+        // Mark the mapped range dirty so StagedBuffer will copy on the next upload pass.
+        gpu_buf->MarkDirty(static_cast<VkDeviceSize>(offset) * buffer_stride,
+                           static_cast<VkDeviceSize>(count) * buffer_stride);
+    }
 
     /**
      * CN: 检查是否 dirty
@@ -379,7 +400,7 @@ public:
 
         bool result = data_access->Write(value);
         if(result)
-            dirty = true;
+            MarkDirty();
         return result;
     }
 

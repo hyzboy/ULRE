@@ -88,8 +88,8 @@ namespace hgl::ecs
         // Create new geometry (2 verts per line)
         const graph::AnsiString name = graph::AnsiString("LineSlot_W") + graph::AnsiString::numberOf(width);
         geometry = graph::CreateGeometry(dev, mi->GetVIL(), name, new_cap * 2, 0,
-                                         graph::IndexType::AUTO, nullptr,
-                                         graph::BufferAllocPolicy::CPUVisible);
+                         graph::IndexType::AUTO, nullptr,
+                         graph::BufferAllocPolicy::StagedUpload);
         if (!geometry)
             return false;
 
