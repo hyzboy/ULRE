@@ -343,12 +343,8 @@ public:
     }
     ~GizmoExampleApp()
     {
+        // Resources are owned by ECS/Graphics managers; avoid double-free on shutdown.
         gizmo_system.reset();
-
-        SAFE_CLEAR(cube_primitive)
-        SAFE_CLEAR(cube_geometry)
-        SAFE_CLEAR(grid_primitive)
-        SAFE_CLEAR(grid_geometry)
     }
 
     void Tick(double delta) override
