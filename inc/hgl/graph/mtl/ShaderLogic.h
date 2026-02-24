@@ -28,7 +28,6 @@
 #pragma once
 
 #include <hgl/type/String.h>
-#include <hgl/type/List.h>
 
 namespace hgl::graph::mtl {
 

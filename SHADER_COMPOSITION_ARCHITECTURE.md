@@ -392,10 +392,21 @@ ComposedShaderGenerator.Compose()
 
 ## 6. 实现优先级（建议）
 
+### 当前状态（2026-02）
+- [x] `ComposedShaderGenerator::ComposeVertexShader()` 已完成并通过回归
+- [x] `ComposedShaderGenerator::ComposeFragmentShader()` 已完成并通过回归
+- [x] `ResourceLayoutGenerator` 已接入合成流程（统一 layout 生成）
+- [x] `BuiltinHelpers` 已支持字符串检测 + 显式依赖 + 逻辑依赖注入
+- [x] `BuildComposedMaterialDefFromLogic()` 已实现：
+    - 从 `MaterialLogicDef.vertex/fragment.required_resources` 过滤描述符
+    - 聚合 `required_helpers` 到 `ComposedMaterialDef.logic_required_helpers`
+    - 返回缺失资源诊断（`missing_resources`）
+- [x] `test_ComposedShaderGenerator` 已覆盖逻辑桥接路径并通过
+
 ### Phase 1（M1-M2）：ComposedMaterialDef 框架
-- [ ] 完成 `ComposedShaderGenerator::ComposeVertexShader()`
-- [ ] 完成 `ComposedShaderGenerator::ComposeFragmentShader()`
-- [ ] 完成 BasicLit ComposedMaterialDef
+- [x] 完成 `ComposedShaderGenerator::ComposeVertexShader()`
+- [x] 完成 `ComposedShaderGenerator::ComposeFragmentShader()`
+- [x] 完成 BasicLit ComposedMaterialDef
 
 ### Phase 2（M3-M4）：ShaderTemplateEngine 整合
 - [ ] 实现 ShaderTemplateEngine 文件读取

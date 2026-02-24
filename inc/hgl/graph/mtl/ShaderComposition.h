@@ -20,8 +20,12 @@
 
 #include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/type/String.h>
+#include <string>
+#include <vector>
 
 namespace hgl::graph::mtl {
+
+struct MaterialLogicDef;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 着色器段定义（开发者编写的业务逻辑）
@@ -168,10 +172,29 @@ struct ComposedMaterialDef {
 
     const char **fragment_required_helpers;
     uint32_t fragment_required_helper_count;
-    
-        /// 逻辑驱动的 helper 依赖（来自 ShaderLogic.h 的 required_helpers）
-        std::vector<std::string> logic_required_helpers;
+
+    /// 逻辑驱动的 helper 依赖（来自 ShaderLogic.h 的 required_helpers）
+    std::vector<std::string> logic_required_helpers;
 };
+
+struct LogicResourceBridgeDiagnostics {
+    std::vector<std::string> missing_resources;
+};
+
+struct ComposedMaterialBuildFromLogicResult {
+    ComposedMaterialDef def;
+    VertexShaderBusiness vertex_business;
+    FragmentShaderBusiness fragment_business;
+    std::vector<FixedDescriptorEntry> filtered_descriptors;
+    LogicResourceBridgeDiagnostics diagnostics;
+
+    bool HasMissingResources() const { return !diagnostics.missing_resources.empty(); }
+};
+
+bool BuildComposedMaterialDefFromLogic(
+    const ComposedMaterialDef &base_def,
+    const MaterialLogicDef &logic,
+    ComposedMaterialBuildFromLogicResult &out);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 辅助函数库生成策略：自动生成开发者使用的工具函数

@@ -2,6 +2,7 @@
 
 #include <hgl/graph/mtl/ShaderComposition.h>
 #include <hgl/graph/mtl/ShaderComposition_Examples.h>
+#include <hgl/graph/mtl/ShaderLogic.h>
 #include <hgl/type/String.h>
 #include <cstdio>
 #include <cstring>
@@ -302,6 +303,62 @@ int main()
     hgl::AnsiString logic_fs_code = ComposedShaderGenerator::ComposeFragmentShader(LOGIC_HELPER_COMPOSED, key);
     bool fs_logic_helper_ok = ValidateContainsWorldAndCameraHelpersOnly(logic_fs_code, "FS(LogicHelperDemand)");
 
+    // 逻辑桥接测试：required_resources -> descriptor 过滤 + missing 诊断
+    const char *LOGIC_VERTEX_REQUIRED_RESOURCES[] = {
+        "MaterialInstanceData",
+        "LocalToWorld",
+    };
+    const char *LOGIC_FRAGMENT_REQUIRED_RESOURCES[] = {
+        "camera",
+        "ThisResourceDoesNotExist",
+    };
+    const char *LOGIC_VERTEX_REQUIRED_HELPERS[] = {
+        "GetWorldPos",
+    };
+    const char *LOGIC_FRAGMENT_REQUIRED_HELPERS[] = {
+        "GetCameraPos",
+    };
+
+    MaterialLogicDef bridge_logic = {};
+    bridge_logic.vertex.main_logic = HELPER_DEMAND_VS_BUSINESS;
+    bridge_logic.vertex.custom_functions = nullptr;
+    bridge_logic.vertex.required_resources = LOGIC_VERTEX_REQUIRED_RESOURCES;
+    bridge_logic.vertex.required_resource_count = 2;
+    bridge_logic.vertex.required_helpers = LOGIC_VERTEX_REQUIRED_HELPERS;
+    bridge_logic.vertex.required_helper_count = 1;
+    bridge_logic.fragment.main_logic = EXPLICIT_HELPER_FS_BUSINESS;
+    bridge_logic.fragment.custom_functions = nullptr;
+    bridge_logic.fragment.required_resources = LOGIC_FRAGMENT_REQUIRED_RESOURCES;
+    bridge_logic.fragment.required_resource_count = 2;
+    bridge_logic.fragment.required_helpers = LOGIC_FRAGMENT_REQUIRED_HELPERS;
+    bridge_logic.fragment.required_helper_count = 1;
+
+    ComposedMaterialBuildFromLogicResult bridge_result;
+    const bool bridge_ok = BuildComposedMaterialDefFromLogic(EX_BASIC_LIT_COMPOSED, bridge_logic, bridge_result);
+
+    bool bridge_missing_detect_ok = (!bridge_ok)
+                                 && (bridge_result.diagnostics.missing_resources.size() == 1)
+                                 && (bridge_result.diagnostics.missing_resources[0] == "ThisResourceDoesNotExist");
+
+    bool bridge_descriptor_filter_ok = (bridge_result.def.descriptor_entry_count == 3);
+
+    bool bridge_logic_helper_count_ok = (bridge_result.def.logic_required_helpers.size() == 2);
+    bool bridge_logic_helper_contains_world = false;
+    bool bridge_logic_helper_contains_camera = false;
+    for (const auto &name : bridge_result.def.logic_required_helpers)
+    {
+        if (name == "GetWorldPos")
+            bridge_logic_helper_contains_world = true;
+        if (name == "GetCameraPos")
+            bridge_logic_helper_contains_camera = true;
+    }
+    bridge_logic_helper_count_ok = bridge_logic_helper_count_ok
+                                && bridge_logic_helper_contains_world
+                                && bridge_logic_helper_contains_camera;
+
+    hgl::AnsiString bridge_fs_code = ComposedShaderGenerator::ComposeFragmentShader(bridge_result.def, key);
+    bool bridge_helper_inject_ok = ValidateContainsWorldAndCameraHelpersOnly(bridge_fs_code, "FS(BridgeLogic)");
+
     printf("\n========================================\n");
     printf("  测试总结\n");
     printf("========================================\n");
@@ -316,6 +373,10 @@ int main()
     printf("  FS Helper 别名输出(HelperDemand): %s\n", fs_helper_alias_ok ? "✓ 通过" : "✗ 失败");
     printf("  FS 显式依赖注入(ExplicitHelperDemand): %s\n", fs_explicit_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  FS 逻辑依赖注入(LogicHelperDemand): %s\n", fs_logic_helper_ok ? "✓ 通过" : "✗ 失败");
+    printf("  逻辑桥接缺失资源诊断: %s\n", bridge_missing_detect_ok ? "✓ 通过" : "✗ 失败");
+    printf("  逻辑桥接描述符过滤: %s\n", bridge_descriptor_filter_ok ? "✓ 通过" : "✗ 失败");
+    printf("  逻辑桥接Helper聚合: %s\n", bridge_logic_helper_count_ok ? "✓ 通过" : "✗ 失败");
+    printf("  逻辑桥接Helper注入: %s\n", bridge_helper_inject_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
@@ -324,6 +385,10 @@ int main()
                      && fs_helper_alias_ok
                      && fs_explicit_helper_ok
                      && fs_logic_helper_ok
+                     && bridge_missing_detect_ok
+                     && bridge_descriptor_filter_ok
+                     && bridge_logic_helper_count_ok
+                     && bridge_helper_inject_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 
