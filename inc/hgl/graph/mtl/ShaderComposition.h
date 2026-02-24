@@ -168,6 +168,9 @@ struct ComposedMaterialDef {
 
     const char **fragment_required_helpers;
     uint32_t fragment_required_helper_count;
+    
+        /// 逻辑驱动的 helper 依赖（来自 ShaderLogic.h 的 required_helpers）
+        std::vector<std::string> logic_required_helpers;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

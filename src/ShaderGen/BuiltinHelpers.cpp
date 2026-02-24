@@ -76,40 +76,48 @@ static bool IsHelperExplicitlyRequired(
     const char **required_helpers = nullptr;
     uint32_t required_count = 0;
 
+    // Collect all explicit and logic-driven required helpers
+    std::vector<std::string> all_required_helpers;
+
+    // Explicit (metadata-driven)
     if (strcmp(shader_stage, "VS") == 0) {
-        required_helpers = def.vertex_required_helpers;
-        required_count = def.vertex_required_helper_count;
-    }
-    else if (strcmp(shader_stage, "FS") == 0) {
-        required_helpers = def.fragment_required_helpers;
-        required_count = def.fragment_required_helper_count;
-    }
-
-    if (!required_helpers || required_count == 0)
-        return false;
-
-    for (uint32_t i = 0; i < required_count; ++i)
-    {
-        const char *required_name = required_helpers[i];
-        if (!required_name || !*required_name)
-            continue;
-
-        for (const auto &meta : HELPER_META_TABLE)
-        {
-            if (meta.id != helper_id)
-                continue;
-
-            for (const auto &alias : meta.aliases)
-            {
-                if (!alias.name)
-                    break;
-
-                if (strcmp(required_name, alias.name) == 0)
-                    return true;
+        if (def.vertex_required_helpers && def.vertex_required_helper_count > 0) {
+            for (uint32_t i = 0; i < def.vertex_required_helper_count; ++i) {
+                if (def.vertex_required_helpers[i])
+                    all_required_helpers.emplace_back(def.vertex_required_helpers[i]);
+            }
+        }
+    } else if (strcmp(shader_stage, "FS") == 0) {
+        if (def.fragment_required_helpers && def.fragment_required_helper_count > 0) {
+            for (uint32_t i = 0; i < def.fragment_required_helper_count; ++i) {
+                if (def.fragment_required_helpers[i])
+                    all_required_helpers.emplace_back(def.fragment_required_helpers[i]);
             }
         }
     }
 
+    // Logic-driven (from ShaderLogic.h)
+    for (const auto& helper : def.logic_required_helpers) {
+        all_required_helpers.emplace_back(helper);
+    }
+
+    if (all_required_helpers.empty())
+        return false;
+
+    for (const auto& required_name : all_required_helpers) {
+        if (required_name.empty())
+            continue;
+        for (const auto &meta : HELPER_META_TABLE) {
+            if (meta.id != helper_id)
+                continue;
+            for (const auto &alias : meta.aliases) {
+                if (!alias.name)
+                    break;
+                if (required_name == alias.name)
+                    return true;
+            }
+        }
+    }
     return false;
 }
 

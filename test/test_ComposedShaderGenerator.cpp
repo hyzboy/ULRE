@@ -289,6 +289,19 @@ int main()
     hgl::AnsiString explicit_fs_code = ComposedShaderGenerator::ComposeFragmentShader(EXPLICIT_HELPER_COMPOSED, key);
     bool fs_explicit_helper_ok = ValidateContainsWorldAndCameraHelpersOnly(explicit_fs_code, "FS(ExplicitHelperDemand)");
 
+    // Logic-driven helper injection test: business code does not call helper, but required_helpers is set via logic_required_helpers
+    const FragmentShaderBusiness LOGIC_HELPER_FRAGMENT_BUSINESS { EXPLICIT_HELPER_FS_BUSINESS };
+    std::vector<std::string> LOGIC_FS_HELPERS = {"GetWorldPos", "GetCameraPosition"};
+
+    ComposedMaterialDef LOGIC_HELPER_COMPOSED = EX_BASIC_LIT_COMPOSED;
+    LOGIC_HELPER_COMPOSED.name = "LogicHelperDemand";
+    LOGIC_HELPER_COMPOSED.vertex_business = &HELPER_DEMAND_VERTEX_BUSINESS;
+    LOGIC_HELPER_COMPOSED.fragment_business = &LOGIC_HELPER_FRAGMENT_BUSINESS;
+    LOGIC_HELPER_COMPOSED.logic_required_helpers = LOGIC_FS_HELPERS;
+
+    hgl::AnsiString logic_fs_code = ComposedShaderGenerator::ComposeFragmentShader(LOGIC_HELPER_COMPOSED, key);
+    bool fs_logic_helper_ok = ValidateContainsWorldAndCameraHelpersOnly(logic_fs_code, "FS(LogicHelperDemand)");
+
     printf("\n========================================\n");
     printf("  测试总结\n");
     printf("========================================\n");
@@ -302,6 +315,7 @@ int main()
     printf("  FS Helper 注入(HelperDemand): %s\n", fs_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  FS Helper 别名输出(HelperDemand): %s\n", fs_helper_alias_ok ? "✓ 通过" : "✗ 失败");
     printf("  FS 显式依赖注入(ExplicitHelperDemand): %s\n", fs_explicit_helper_ok ? "✓ 通过" : "✗ 失败");
+    printf("  FS 逻辑依赖注入(LogicHelperDemand): %s\n", fs_logic_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
@@ -309,6 +323,7 @@ int main()
                      && vs_helper_ok && fs_helper_ok
                      && fs_helper_alias_ok
                      && fs_explicit_helper_ok
+                     && fs_logic_helper_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 

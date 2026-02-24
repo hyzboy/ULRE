@@ -72,7 +72,7 @@ constexpr VertexShaderBusiness EX_PURE_COLOR_3D_VERTEX_BUSINESS { EX_PURE_COLOR_
 constexpr FragmentShaderBusiness EX_PURE_COLOR_3D_FRAGMENT_BUSINESS { EX_PURE_COLOR_3D_FS_BUSINESS };
 
 // 合成定义（替代 FixedMaterialDef）
-constexpr ComposedMaterialDef EX_PURE_COLOR_3D_COMPOSED {
+const ComposedMaterialDef EX_PURE_COLOR_3D_COMPOSED {
     .name = "PureColor3D",
     .primitive_type = PrimitiveType::Triangles,
     .vertex_entries = EX_PURE_COLOR_3D_VERTEX,
@@ -160,7 +160,7 @@ constexpr FixedDescriptorEntry EX_BASIC_LIT_DESCRIPTORS[] = {
 constexpr VertexShaderBusiness EX_BASIC_LIT_VERTEX_BUSINESS { EX_BASIC_LIT_VS_BUSINESS };
 constexpr FragmentShaderBusiness EX_BASIC_LIT_FRAGMENT_BUSINESS { EX_BASIC_LIT_FS_BUSINESS };
 
-constexpr ComposedMaterialDef EX_BASIC_LIT_COMPOSED {
+const ComposedMaterialDef EX_BASIC_LIT_COMPOSED {
     .name = "BasicLit",
     .primitive_type = PrimitiveType::Triangles,
     .vertex_entries = EX_BASIC_LIT_VERTEX,
@@ -231,7 +231,7 @@ constexpr const char EX_FX_EMISSION_MI_GLSL[] = R"(
 constexpr VertexShaderBusiness EX_FX_EMISSION_VERTEX_BUSINESS { EX_FX_EMISSION_VS_BUSINESS };
 constexpr FragmentShaderBusiness EX_FX_EMISSION_FRAGMENT_BUSINESS { EX_FX_EMISSION_FS_BUSINESS };
 
-constexpr ComposedMaterialDef EX_FX_EMISSION_COMPOSED {
+const ComposedMaterialDef EX_FX_EMISSION_COMPOSED {
     .name = "FXEmission",
     .primitive_type = PrimitiveType::Triangles,
     .vertex_entries = EX_BASIC_LIT_VERTEX,
