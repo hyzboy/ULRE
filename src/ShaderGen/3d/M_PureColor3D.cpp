@@ -1,12 +1,11 @@
 ﻿#include"Std3DMaterial.h"
-#include"S_PureColor3D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 namespace hgl::graph::mtl{
 namespace
 {
     constexpr const char mi_codes[]="vec4 Color;";          //材质实例代码
-    constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);     //材质实例数据大小
+    constexpr const uint32_t mi_bytes=sizeof(Vector4f);     //材质实例数据大小
 
     constexpr const char vs_main[]=R"(
 void main()
@@ -60,17 +59,15 @@ void main()
         {
             mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
                                         mi_bytes,                       //材质实例数据大小
-                                        (uint32_t)ShaderStage::Vertex);    //只在Vertex Shader中使用材质实例最终数据
+                                        VK_SHADER_STAGE_VERTEX_BIT);    //只在Vertex Shader中使用材质实例最终数据
 
             return(true);
         }
     };//class MaterialPureColor3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureColor3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureColor3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg)
 {
-    cfg->material_instance=true;
-
     MaterialPureColor3D mvc3d(cfg);
 
     return mvc3d.Create(dev_attr);
