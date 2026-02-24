@@ -345,6 +345,9 @@ namespace hgl::ecs
             if (!camera_comp)
                 continue;
 
+            if (first_update_pending)
+                camera_comp->matrix_dirty = true;
+
             // 处理输入
             ProcessInput(camera_comp.get(), deltaTime);
 
@@ -365,6 +368,9 @@ namespace hgl::ecs
             // 上传到GPU
             UploadToGPU(camera_comp.get());
         }
+
+        if (first_update_pending)
+            first_update_pending = false;
     }
 
     std::vector<std::shared_ptr<CameraComponent>> CameraSystem::CollectCameras()

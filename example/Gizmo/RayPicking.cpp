@@ -228,7 +228,7 @@ private:
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);  // 平面网格是静态的
+            transform->SetMovable(true);  // 平面网格是静态的
 
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -297,9 +297,6 @@ private:
         // camera_component->camera_ubo = nullptr; // UBO is managed internally
         camera_component->is_main_camera = true;
         camera_component->matrix_dirty = true;
-
-        // 注册 CameraSystem / Register CameraSystem
-        auto camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
 
         return(true);
     }

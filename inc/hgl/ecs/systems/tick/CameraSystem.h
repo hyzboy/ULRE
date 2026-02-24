@@ -99,6 +99,7 @@ namespace hgl
             graph::StructuredBufferAccessor<graph::CameraInfo>* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
             graph::DescriptorBinding* camera_desc_binding = nullptr;
+            bool first_update_pending = true;
 
         public:
 
