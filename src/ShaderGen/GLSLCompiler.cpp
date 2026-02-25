@@ -56,7 +56,9 @@ namespace hgl
                                                   compile_info.spv_version=SPV_VERSION_1_0;
         }
 
-        struct SPVParseData;
+        // Opaque handle for the DLL's internal SPVParseData type.
+        // Matches the forward decl in GLSLCompiler.h as SPVParseDataOpaque.
+        using SPVParseDataOpaque = struct SPVParseDataDLL;
 
         struct GLSLCompilerInterface
         {
@@ -72,8 +74,10 @@ namespace hgl
 
             void        (*Free)(SPVData *);
 
-            SPVParseData *(*ParseSPV)(SPVData *spv_data);
-            void        (*FreeParseSPVData)(SPVParseData *);
+            // ParseSPV returns the DLL's internal layout (opaque from ULRE side).
+            // TODO: update DLL to use hgl::SPVParseData, then remove this alias.
+            SPVParseDataOpaque *(*ParseSPV)(SPVData *spv_data);
+            void               (*FreeParseSPVData)(SPVParseDataOpaque *);
         };
 
         static ExternalModule *gsi_module=nullptr;
@@ -179,6 +183,21 @@ namespace hgl
             }
 
             return spv;
+        }
+
+        SPVParseDataOpaque *ParseSPVData(const SPVData *spv_data)
+        {
+            if (!gsi || !spv_data || !spv_data->result)
+                return nullptr;
+
+            // The DLL's ParseSPV does not modify SPVData; cast is safe.
+            return gsi->ParseSPV(const_cast<SPVData *>(spv_data));
+        }
+
+        void FreeSPVParseData(SPVParseDataOpaque *parse_data)
+        {
+            if (gsi && parse_data)
+                gsi->FreeParseSPVData(parse_data);
         }
     }//namespace graph
 }//namespace hgl
