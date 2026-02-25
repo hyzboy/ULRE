@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include <string>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/vk/VKDeviceAttribute.h>
@@ -53,15 +54,15 @@ MaterialCreateInfo::~MaterialCreateInfo()
     shader_map.Clear();
 }
 
-bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
+bool MaterialCreateInfo::AddStruct(const std::string &struct_name,const std::string &codes)
 {
-    if(struct_name.IsEmpty()||codes.IsEmpty())
+    if(struct_name.empty()||codes.empty())
         return(false);
 
     return mdi.AddStruct(struct_name,codes);
 }
 
-bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -96,7 +97,7 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
     }
 }
 
-bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
@@ -125,7 +126,7 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
-bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -160,7 +161,7 @@ bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetT
     }
 }
 
-bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
@@ -187,7 +188,7 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBuff
     return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
-bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name)
+bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -201,7 +202,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorS
 
     TextureDescriptor *texture = mdi.GetTexture(name);
 
-    const AnsiString st_name = GetTextureTypeName(tt);        //这里可能需要根据纹理类型，在前面增加i/u的前缀
+    const std::string st_name = GetTextureTypeName(tt);        //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     if(texture)
     {
@@ -223,7 +224,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorS
     }
 }
 
-bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
+bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -237,7 +238,7 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Desc
 
     TextureSamplerDescriptor *image_sampler=mdi.GetTextureSampler(name);
 
-    const AnsiString st_name=GetSamplerTypeName(st);      //这里可能需要根据纹理类型，在前面增加i/u的前缀
+    const std::string st_name=GetSamplerTypeName(st);      //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     if(image_sampler)
     {
@@ -266,13 +267,13 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Desc
 * @param shader_stage_flag_bits   具体使用材质实例的shader
 * @return 是否设置成功
 */
-bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
+bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
 {
     if(mi_data_bytes>0)return(false);           //已经有数据了
 
     if(shader_stage_flag_bits==0)return(false);
 
-    if(data_bytes>0&&glsl_codes.Length()<4)return(false);
+    if(data_bytes>0&&glsl_codes.length()<4)return(false);
 
     mi_data_bytes=data_bytes;
 
@@ -297,7 +298,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     mdi.AddUBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,mi_ubo);
 #endif
 
-    const AnsiString MI_MAX_COUNT_STRING=AnsiString::numberOf(mi_max_count);
+    const std::string MI_MAX_COUNT_STRING=std::to_string(mi_max_count);
 
     for(auto& kv : shader_map)
     {
@@ -338,7 +339,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     mdi.AddUBO(shader_stage_flag_bits,SBS_LocalToWorld.set_type,l2w_ubo);
 #endif
 
-    const AnsiString L2W_MAX_COUNT_STRING=AnsiString::numberOf(l2w_max_count);
+    const std::string L2W_MAX_COUNT_STRING=std::to_string(l2w_max_count);
 
     for(auto& kv : shader_map)
     {
@@ -394,9 +395,15 @@ void MaterialCreateInfo::SetDevice(const VulkanDevAttr *dev_attr)
     ssbo_range=dev_attr->physical_device->GetSSBORange();
 }
 
+void MaterialCreateInfo::SetDeviceFallback(uint32_t ubo_range_bytes, uint32_t ssbo_range_bytes)
+{
+    ubo_range  = ubo_range_bytes;
+    ssbo_range = ssbo_range_bytes;
+}
+
 bool MaterialCreateInfo::CreateShader()
 {
-    if(shader_map.IsEmpty())
+    if(shader_map.empty())
         return(false);
 
     mdi.Resort();
@@ -411,6 +418,31 @@ bool MaterialCreateInfo::CreateShader()
             sc->AddMaterialInstanceOutput();
 
         sc->CreateShader(last);
+
+        last=sc;
+    }
+
+    return(true);
+}
+
+bool MaterialCreateInfo::BuildGLSLOnly()
+{
+    if(shader_map.empty())
+        return(false);
+
+    mdi.Resort();
+
+    ShaderCreateInfo *last=nullptr;
+
+    for(auto& kv : shader_map)
+    {
+        ShaderCreateInfo *sc = kv.second;
+
+        if(static_cast<uint32_t>(sc->GetShaderStage())<mi_shader_stage)
+            sc->AddMaterialInstanceOutput();
+
+        if(!sc->BuildGLSLOnly(last))
+            return(false);
 
         last=sc;
     }

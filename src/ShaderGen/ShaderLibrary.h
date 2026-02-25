@@ -1,12 +1,12 @@
-﻿#pragma once
+#include <string>
+#pragma once
 
-#include<hgl/type/String.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 
 namespace hgl::graph::mtl{
 
-//void SetGlobalDefine(const AnsiString &,const AnsiString &);
+//void SetGlobalDefine(const std::string &,const std::string &);
 
-const AnsiString *LoadShader(const AnsiString &);
+const std::string *LoadShader(const std::string &);
 
 }//namespace hgl::graph::mtl

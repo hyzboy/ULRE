@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include <string>
+#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include"common/MFCommon.h"
 
 namespace hgl
@@ -41,7 +42,7 @@ namespace hgl
             return count;
         }
 
-        int ShaderCreateInfoGeometry::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
+        int ShaderCreateInfoGeometry::AddOutput(const SVType &type,const std::string &name,Interpolation inter)
         {
             ShaderVariable sv;
 
@@ -53,7 +54,7 @@ namespace hgl
             return gsdi.AddOutput(sv);
         }
 
-        void ShaderCreateInfoGeometry::GetOutputStrcutString(AnsiString &str)
+        void ShaderCreateInfoGeometry::GetOutputStrcutString(std::string &str)
         {
             gsdi.GetOutput().ToString(str);
         }
@@ -61,7 +62,7 @@ namespace hgl
         bool ShaderCreateInfoGeometry::ProcLayout()
         {
             final_shader+="layout("+input_prim+") in;\n"
-                          "layout("+output_prim+", max_vertices = "+AnsiString::numberOf(max_vertices)+") out;\n";
+                          "layout("+output_prim+", max_vertices = "+std::to_string(max_vertices)+") out;\n";
 
             return(true);
         }

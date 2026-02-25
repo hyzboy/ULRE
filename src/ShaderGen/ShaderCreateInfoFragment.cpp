@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/ShaderCreateInfoFragment.h>
+#include <string>
+#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
@@ -20,7 +21,7 @@ int ShaderCreateInfoFragment::AddOutput(VIAList &via_list)
     return count;
 }
 
-int ShaderCreateInfoFragment::AddOutput(const VAType &type,const AnsiString &name,Interpolation inter)
+int ShaderCreateInfoFragment::AddOutput(const VAType &type,const std::string &name,Interpolation inter)
 {
     VertexInputAttribute via;
 
@@ -33,11 +34,11 @@ int ShaderCreateInfoFragment::AddOutput(const VAType &type,const AnsiString &nam
     return fsdi.AddOutput(via);
 }
 
-int ShaderCreateInfoFragment::AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter)
+int ShaderCreateInfoFragment::AddOutput(const std::string &type,const std::string &name,Interpolation inter)
 {
     VAType vat;
 
-    if(name.IsEmpty())
+    if(name.empty())
         return -1;
 
     if(!ParseVertexAttribType(&vat,type))
@@ -57,7 +58,7 @@ bool ShaderCreateInfoFragment::ProcOutput()
     for(uint i=0;i<output_list.count;i++)
     {
         final_shader+="layout(location=";
-        final_shader+=AnsiString::numberOf(i);
+        final_shader+=std::to_string(i);
         final_shader+=") out ";
         final_shader+=GetShaderAttributeTypename(o);
         final_shader+=" ";

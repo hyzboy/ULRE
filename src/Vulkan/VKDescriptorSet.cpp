@@ -169,15 +169,6 @@ bool DescriptorSet::BindTexture(const int binding,Texture *tex)
     const int image_index = image_list.Add(image_info);
     auto *stored_info = image_list.GetData() ? (image_list.GetData() + image_index) : nullptr;
 
-        LogInfo(u8"[VKDescriptorSet] BindTexture binding=%d tex=%p imageView=%p imageLayout=%u image_info_ptr=%p stored_ptr=%p image_list_count=%d",
-            binding,
-            (void*)tex,
-            (void*)image_info.imageView,
-            (uint)image_info.imageLayout,
-            (void*)&image_info,
-            (void*)stored_info,
-            image_list.GetCount());
-
     wds_list.Add(WriteDescriptorSet(desc_set,binding,stored_info));
 
     binded_sets.Add(binding);
@@ -196,16 +187,6 @@ bool DescriptorSet::BindTextureSampler(const int binding,Texture *tex,Sampler *s
 
     const int image_index = image_list.Add(image_info);
     auto *stored_info = image_list.GetData() ? (image_list.GetData() + image_index) : nullptr;
-
-        LogInfo(u8"[VKDescriptorSet] BindTextureSampler binding=%d tex=%p sampler=%p imageView=%p imageLayout=%u image_info_ptr=%p stored_ptr=%p image_list_count=%d",
-            binding,
-            (void*)tex,
-            (void*)sampler,
-            (void*)image_info.imageView,
-            (uint)image_info.imageLayout,
-            (void*)&image_info,
-            (void*)stored_info,
-            image_list.GetCount());
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,stored_info));
 

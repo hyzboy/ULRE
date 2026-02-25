@@ -1,6 +1,7 @@
-﻿#pragma once
+#include <string>
+#include <vector>
+#pragma once
 #include<hgl/type/UnorderedMap.h>
-#include<hgl/type/StringList.h>
 #include<hgl/type/AccumMemoryManager.h>
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
@@ -145,8 +146,8 @@ namespace material_file
 
     public:
 
-        AnsiStringList          require_list;               ///<需求的内部模块(如LocalToWorld,Sun,Shadow等系统内置元素)
-//        AnsiStringList          import_list;                ///<引用的外部模块
+        std::vector<std::string>          require_list;               ///<需求的内部模块(如LocalToWorld,Sun,Shadow等系统内置元素)
+//        std::vector<std::string>          import_list;                ///<引用的外部模块
 
         MaterialInstanceData    mi_data{};
 

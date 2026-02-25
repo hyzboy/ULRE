@@ -1,11 +1,12 @@
-﻿#pragma once
+#include <string>
+#include <vector>
+#pragma once
 
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKInterpolation.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
-#include<hgl/type/StringList.h>
 #include<hgl/log/Log.h>
 
 namespace hgl{namespace graph
@@ -32,20 +33,20 @@ protected:
 
 protected:
 
-    AnsiStringList define_macro_list;
-    AnsiStringList define_value_list;
+    std::vector<std::string> define_macro_list;
+    std::vector<std::string> define_value_list;
     int define_macro_max_length;
     int define_value_max_length;
 
-    AnsiString output_struct;
+    std::string output_struct;
 
-    AnsiString mi_codes;
+    std::string mi_codes;
 
     ValueArray<const char *> user_data_list;
     ValueArray<const char *> function_list;
-    AnsiString main_function;
+    std::string main_function;
 
-    AnsiString final_shader;
+    std::string final_shader;
 
     SPVData *spv_data;
 
@@ -59,7 +60,7 @@ protected:
     virtual bool ProcInput(ShaderCreateInfo *);
 
     virtual bool IsEmptyOutput()const=0;
-    virtual void GetOutputStrcutString(AnsiString &){}
+    virtual void GetOutputStrcutString(std::string &){}
     virtual bool ProcOutput();
 
     virtual bool ProcStruct();
@@ -88,9 +89,9 @@ public:
     ShaderCreateInfo();
     virtual ~ShaderCreateInfo();
 
-    bool AddDefine(const AnsiString &m,const AnsiString &v);
+    bool AddDefine(const std::string &m,const std::string &v);
 
-    void AddStruct(const AnsiString &);
+    void AddStruct(const std::string &);
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
@@ -99,20 +100,24 @@ public:
     void AddUserData(const char *str){user_data_list.Add(str);}
     void AddFunction(const char *str){function_list.Add(str);}
 
-    void SetMaterialInstance(UBODescriptor *,const AnsiString &);
-    void SetMaterialInstance(SSBODescriptor *,const AnsiString &);
+    void SetMaterialInstance(UBODescriptor *,const std::string &);
+    void SetMaterialInstance(SSBODescriptor *,const std::string &);
     virtual void AddMaterialInstanceOutput()=0;
 
-    void SetMain(const AnsiString &str){main_function=str;}
+    void SetMain(const std::string &str){main_function=str;}
     void SetMain(const char *str,const int len)
     {
         main_function.fromString(str,len);
     }
 
-    const AnsiString &GetOutputStruct()const{return output_struct;}
-    const AnsiString &GetShaderSource()const{return final_shader;}
+    const std::string &GetOutputStruct()const{return output_struct;}
+    const std::string &GetShaderSource()const{return final_shader;}
 
     bool CreateShader(ShaderCreateInfo *);
+
+    /// Build GLSL source text only — does not call CompileToSPV().
+    /// Use when you only need the generated GLSL (e.g. for offline validation).
+    bool BuildGLSLOnly(ShaderCreateInfo *last_sc);
 
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;

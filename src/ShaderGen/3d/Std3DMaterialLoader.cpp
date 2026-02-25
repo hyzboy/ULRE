@@ -1,4 +1,5 @@
-﻿#include"MaterialFileData.h"
+#include <string>
+#include"MaterialFileData.h"
 #include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
@@ -102,11 +103,11 @@ namespace
     }; // class Std3DMaterialLoader:public Std3DMaterial
 } // namespace
 
-material_file::MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename);
+material_file::MaterialFileData *LoadMaterialDataFromFile(const std::string &mtl_filename);
 
-MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg)
+MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const std::string &name,Material3DCreateConfig *cfg)
 {
-    if(name.IsEmpty()||!cfg)
+    if(name.empty()||!cfg)
         return (nullptr);
 
     material_file::MaterialFileData *mfd=LoadMaterialDataFromFile(name);

@@ -1,7 +1,7 @@
-﻿#pragma once
+#include <string>
+#pragma once
 
 #include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/type/String.h>
 #include<hgl/graph/render/RenderTargetOutputConfig.h>
 #include<hgl/vk/VK.h>
 #include<hgl/graph/mtl/SamplerName.h>
@@ -67,6 +67,6 @@ public:
         return shader_stage_flag_bit<=>cfg.shader_stage_flag_bit;
     }
 
-    virtual const AnsiString ToHashString();
+    virtual const std::string ToHashString();
 };//struct MaterialCreateConfig
 }//namespace hgl::graph::mtl

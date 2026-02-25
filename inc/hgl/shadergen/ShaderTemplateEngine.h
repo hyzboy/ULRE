@@ -1,119 +1,69 @@
-﻿#ifndef HGL_SHADER_TEMPLATE_ENGINE_INCLUDE
-#define HGL_SHADER_TEMPLATE_ENGINE_INCLUDE
+/// ShaderTemplateEngine.h — Shader 模板渲染引擎（基于 inja）
+///
+/// 功能：
+///   - 加载 ShaderLibrary/ 中的模板文件（.tmpl、.glsl）
+///   - 解析 recipe JSON（定义排列组合）
+///   - 调用 inja 渲染模板 → 生成 GLSL 代码
 
-#include<inja/inja.hpp>
-#include<nlohmann/json.hpp>
-#include<hgl/type/UnorderedMap.h>
-#include<hgl/type/ArrayList.h>
-#include<hgl/type/StringList.h>
+#pragma once
 
-namespace hgl::graph
+#include <string>
+#include <unordered_map>
+
+
+
+namespace hgl::graph::mtl {
+
+// 前向声明
+struct ShaderPermutationKey;
+struct ShaderTemplate;
+struct ShaderRecipe;
+
+/**
+ * ShaderTemplateEngine — Shader 生成模板系统
+ *
+ * 当前版本（M0）实现基本框架和 inja 集成，实际渲染逻辑在 M2-M3 补全。
+ * 
+ * 使用流程：
+ *   1. engine.LoadTemplate(path) → 读取 .tmpl 或 .glsl 文件
+ *   2. engine.LoadRecipe(path)   → 读取 recipe JSON 定义排列
+ *   3. engine.Render(recipe, permutation_key) → 渲染 GLSL
+ */
+class ShaderTemplateEngine
 {
-    using json = nlohmann::json;
+public:
+    ShaderTemplateEngine();
+    ~ShaderTemplateEngine();
 
-    /**
-     * Shader模块描述结构
-     * 每个模块代表一个可重用的GLSL代码片段，如一个光照模型或者纹理采样函数
-     */
-    struct ShaderModule
-    {
-        AnsiString name;                        ///<模块名称
-        AnsiString file_path;                   ///<模块文件路径
-        AnsiString code;                        ///<GLSL代码内容
+    /// 从文件加载策咨询模板
+    /// @param template_path 相对 ShaderLibrary/ 的路径，如 "templates/forward_uber.frag.tmpl"
+    /// @return 成功返回 template，失败返回 nullptr
+    ShaderTemplate *LoadTemplate(const std::string &template_path);
 
-        AnsiStringList provides;                ///<提供的函数名列表（此模块导出的函数）
-        AnsiStringList requires_funcs;          ///<依赖的函数名列表（需要其他模块提供）
-        AnsiStringList requires_inputs;         ///<需要的Input变量（如Input.Normal）
-        AnsiStringList requires_descriptors;    ///<需要的UBO/Sampler（如camera, sky）
-        AnsiStringList dependencies;            ///<依赖的其他模块名称
-    };
+    /// 从文件加载 recipe（排列定义）
+    /// @param recipe_path 相对 ShaderLibrary/ 的路径，如 "recipes/uber/uber_3d.json"
+    /// @return 成功返回 recipe，失败返回 nullptr
+    ShaderRecipe *LoadRecipe(const std::string &recipe_path);
 
-    /**
-     * Shader配方结构
-     * 描述如何组合多个模块来生成一个完整的shader
-     */
-    struct ShaderRecipe
-    {
-        AnsiString name;                        ///<配方名称（如"Metal", "Wood"）
-        AnsiString template_file;               ///<使用的模板文件名
+    /// 用排列 key 渲染模板 → GLSL 源码
+    /// @param tmpl 模板对象（由 LoadTemplate 返回）
+    /// @param recipe recipe 对象（由 LoadRecipe 返回）
+    /// @param key 排列键（宏定义源）
+    /// @return 渲染后的 GLSL 源码；失败返回空串
+    std::string Render(const ShaderTemplate *tmpl, const ShaderRecipe *recipe, 
+                     const ShaderPermutationKey &key);
 
-        Map<AnsiString, AnsiString> module_map; ///<模块映射："lighting" -> "blinn_phong"
-        json template_data;                     ///<传递给inja的模板数据
-    };
+    /// 清空所有缓存
+    void Reset();
 
-    /**
-     * Shader模板引擎
-     * 负责加载模块、解析依赖、生成shader代码
-     */
-    class ShaderTemplateEngine
-    {
-        inja::Environment env;                  ///<inja模板引擎环境
+private:
+    std::unordered_map<std::string, ShaderTemplate *> template_cache;
+    std::unordered_map<std::string, ShaderRecipe *> recipe_cache;
 
-        AnsiString template_root;               ///<模板文件根目录
-        AnsiString module_root;                 ///<模块文件根目录
+    // 辅助方法
+    std::string ReadFile(const std::string &path);
+    ShaderTemplate *ParseTemplate(const std::string &source);
+    ShaderRecipe *ParseRecipe(const std::string &json_source);
+};
 
-        Map<AnsiString, ShaderModule*> module_cache;    ///<模块缓存
-        Map<AnsiString, json> interface_cache;          ///<接口定义缓存
-
-    public:
-        /**
-         * 构造函数
-         * @param template_path 模板文件根路径
-         * @param module_path 模块文件根路径
-         */
-        ShaderTemplateEngine(const AnsiString& template_path, const AnsiString& module_path);
-        ~ShaderTemplateEngine();
-
-        /**
-         * 加载指定的模块
-         * @param category 模块类别（如"lighting", "specular"）
-         * @param name 模块名称（如"blinn_phong"）
-         * @return 加载的模块指针，失败返回nullptr
-         */
-        ShaderModule* LoadModule(const AnsiString& category, const AnsiString& name);
-
-        /**
-         * 解析依赖树并进行拓扑排序
-         * @param recipe 要处理的配方
-         * @param ordered_modules 输出：排序后的模块名称列表
-         * @param missing_deps 输出：缺失的依赖列表
-         * @return 成功返回true，存在循环依赖或缺失依赖返回false
-         */
-        bool ResolveDependencies(const ShaderRecipe& recipe,
-                                AnsiStringList& ordered_modules,
-                                AnsiStringList& missing_deps);
-
-        /**
-         * 根据配方生成最终的shader代码
-         * @param recipe 材质配方
-         * @return 生成的GLSL代码
-         */
-        AnsiString Generate(const ShaderRecipe& recipe);
-
-        /**
-         * 从JSON配置文件加载配方
-         * @param recipe_file 配方文件路径
-         * @param quality_level 质量等级（如"high", "medium", "low"）
-         * @return 加载的配方
-         */
-        ShaderRecipe LoadRecipe(const AnsiString& recipe_file, const AnsiString& quality_level);
-
-    private:
-        /**
-         * 构建传递给模板的数据对象
-         * @param recipe 配方
-         * @param ordered_modules 排序后的模块列表
-         * @return inja使用的json数据
-         */
-        json BuildTemplateData(const ShaderRecipe& recipe, const AnsiStringList& ordered_modules);
-
-        /**
-         * 加载指定类别的接口定义
-         * @param category 模块类别
-         * @return 成功返回true
-         */
-        bool LoadInterface(const AnsiString& category);
-    };
-}//namespace hgl::graph
-
-#endif//HGL_SHADER_TEMPLATE_ENGINE_INCLUDE
+}  // namespace hgl::graph::mtl

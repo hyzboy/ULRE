@@ -1,8 +1,9 @@
-﻿#pragma once
+#include <string>
+#include <unordered_map>
+#pragma once
 
 #include<hgl/vk/VKShaderDescriptorSet.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
-#include<hgl/type/UnorderedMap.h>
 
 namespace hgl{namespace graph{
 /**
@@ -14,18 +15,18 @@ class MaterialDescriptorInfo
     uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
-    UnorderedMap<AnsiString,AnsiString> struct_map;
-    UnorderedMap<AnsiString,UBODescriptor *> ubo_map;
-    UnorderedMap<AnsiString,SSBODescriptor *> ssbo_map;
-    UnorderedMap<AnsiString,TextureDescriptor *> texture_map;
-    UnorderedMap<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
+    std::unordered_map<std::string, std::string> struct_map;
+    std::unordered_map<std::string, UBODescriptor *> ubo_map;
+    std::unordered_map<std::string, SSBODescriptor *> ssbo_map;
+    std::unordered_map<std::string, TextureDescriptor *> texture_map;
+    std::unordered_map<std::string, TextureSamplerDescriptor *> texture_sampler_map;
 
 public:
 
     MaterialDescriptorInfo();
     ~MaterialDescriptorInfo()=default;
 
-    bool AddStruct(const AnsiString &name,const AnsiString &code)
+    bool AddStruct(const std::string &name,const std::string &code)
     {
            struct_map[name] = code;
         return(true);
@@ -36,20 +37,20 @@ public:
         return(AddStruct(ss.struct_name,ss.codes));
     }
 
-    bool GetStruct(const AnsiString &name,AnsiString &code)
+    bool GetStruct(const std::string &name,std::string &code)
     {
-        const AnsiString* value_ptr = struct_map.GetValuePointer(name);
-        if(value_ptr)
+        auto it = struct_map.find(name);
+        if(it != struct_map.end())
         {
-            code = *value_ptr;
+            code = it->second;
             return true;
         }
         return false;
     }
 
-    bool hasStruct(const AnsiString &name) const
+    bool hasStruct(const std::string &name) const
     {
-        return struct_map.ContainsKey(name);
+        return struct_map.count(name) > 0;
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
@@ -57,12 +58,12 @@ public:
     const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
     const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
-    UBODescriptor *GetUBO(const AnsiString &name);
-    SSBODescriptor *GetSSBO(const AnsiString &name);
-    TextureDescriptor *GetTexture(const AnsiString &name);
-    TextureSamplerDescriptor *GetTextureSampler(const AnsiString &name);
+    UBODescriptor *GetUBO(const std::string &name);
+    SSBODescriptor *GetSSBO(const std::string &name);
+    TextureDescriptor *GetTexture(const std::string &name);
+    TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
 
-    const DescriptorSetType GetSetType(const AnsiString &)const;
+    const DescriptorSetType GetSetType(const std::string &)const;
 
     void Resort();      //排序产生set号与binding号
 

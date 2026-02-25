@@ -14,6 +14,8 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/MaterialFactory2D.h>
+#include<hgl/graph/mtl/MaterialFactory3D.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 

@@ -1,4 +1,5 @@
-﻿#pragma once
+#include <string>
+#pragma once
 
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
@@ -51,15 +52,15 @@ public:
         return position_format <=> cfg.position_format;
     }
 
-    const AnsiString ToHashString() override;
+    const std::string ToHashString() override;
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
-DEFINE_MATERIAL_FACTORY_CLASS(PureColor3D,      Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(VertexPattleColor3D,const Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          Material3DCreateConfig);
-DEFINE_MATERIAL_FACTORY_CLASS(TextureBlinnPhong,const Material3DCreateConfig);
+DECLARE_MATERIAL_CREATOR(PureColor3D,       Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(VertexColor3D,     const Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(VertexLuminance3D, Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(VertexPattleColor3D,const Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(TextureBlinnPhong, const Material3DCreateConfig)
 
 struct TerrainGridCreateConfig:public Material3DCreateConfig
 {
@@ -72,7 +73,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(TerrainGrid,      const TerrainGridCreateConfig);
+DECLARE_MATERIAL_CREATOR(TerrainGrid,       const TerrainGridCreateConfig)
 
 struct SkyMinimalCreateConfig:public Material3DCreateConfig
 {
@@ -84,7 +85,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(SkyMinimal,       const SkyMinimalCreateConfig);
+DECLARE_MATERIAL_CREATOR(SkyMinimal,        const SkyMinimalCreateConfig)
 
 struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
@@ -99,7 +100,7 @@ public:
     using Material3DCreateConfig::Material3DCreateConfig;
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(Billboard2D,BillboardMaterialCreateConfig);
+DECLARE_MATERIAL_CREATOR(Billboard2D, BillboardMaterialCreateConfig)
 
 struct BasicLitMaterialInstance
 {
@@ -128,7 +129,7 @@ public:
     }
 };
 
-DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,BasicLitMaterialCreateConfig);
+DECLARE_MATERIAL_CREATOR(BasicLit, BasicLitMaterialCreateConfig)
 
 /**
  * 从文件加载材质
@@ -136,5 +137,5 @@ DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,BasicLitMaterialCreateConfig);
  * @param cfg 材质创建参数
  * @return 材质创建信息
  */
-MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg);
+MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const std::string &name,Material3DCreateConfig *cfg);
 }//namespace hgl::graph::mtl

@@ -1,5 +1,5 @@
-﻿#include<hgl/type/String.h>
-#include<hgl/type/UnorderedMap.h>
+#include <string>
+#include <unordered_map>
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/io/LoadString.h>
 #include<hgl/filesystem/Filename.h>
@@ -9,40 +9,39 @@ namespace hgl::graph::mtl{
 
 namespace
 {
-    UnorderedMap<AnsiString,AnsiString> shader_library;
+    std::unordered_map<std::string, std::string> shader_library;
 }
 
 // 因为是Debug阶段，所以现在直接从文件系统加载
 
-const AnsiString *LoadShader(const AnsiString &shader_name)
+const std::string *LoadShader(const std::string &shader_name)
 {
-    if(shader_name.IsEmpty())
+    if(shader_name.empty())
         return(nullptr);
 
-    AnsiString shader;
+    // Check cache
+    auto it = shader_library.find(shader_name);
+    if (it != shader_library.end())
+        return &it->second;
 
-    if(shader_library.Get(shader_name,shader))
-        return shader_library.GetValuePointer(shader_name);
+    const std::string filename=shader_name+".glsl";
 
-    const AnsiString filename=shader_name+".glsl";
-
-    const AnsiString fullname=filesystem::JoinPathWithFilename("ShaderLibrary",filename);
+    const std::string fullname=filesystem::JoinPathWithFilename("ShaderLibrary",filename);
 
     const OSString os_fn=ToOSString(fullname);
 
     if(!filesystem::FileExist(os_fn))
         return(nullptr);
 
-    AnsiString loaded_shader;
+    std::string loaded_shader;
 
     if(LoadStringFromTextFile((U8String &)loaded_shader,os_fn)<=0)
     {
         return nullptr;
     }
 
-    shader_library.Add(shader_name,loaded_shader);
-
-    return shader_library.GetValuePointer(shader_name);
+    auto [insert_it, ok] = shader_library.emplace(shader_name, std::move(loaded_shader));
+    return &insert_it->second;
 }
 
 }//namespace hgl::graph::mtl

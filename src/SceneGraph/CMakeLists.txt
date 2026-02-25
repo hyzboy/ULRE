@@ -230,6 +230,13 @@ SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterial.h
 
 SOURCE_GROUP("9.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
 
+# --- 8.3 SPV Layout Builder (Layer 3: SPIR-V reflection → Vulkan layout) ---
+SET(SPV_LAYOUT_BUILDER_FILES    ${ROOT_INCLUDE_PATH}/hgl/graph/mtl/SPVParseData.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/mtl/SPVLayoutBuilder.h
+                                SPVLayoutBuilder.cpp)
+
+SOURCE_GROUP("9.Vulkan\\SPVLayout" FILES ${SPV_LAYOUT_BUILDER_FILES})
+
 # --- 8.4 Texture Loader ---
 SET(VK_TEXTURE_LOADER_FILES     ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureLoader.h
                                 ${ROOT_INCLUDE_PATH}/hgl/vk/VKTextureType.h
@@ -279,6 +286,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SG_INCLUDE_PATH}
 
                                         ${VK_GEOMETRY_FILES}
                                         ${VK_SCENEGRAPH_MATERIAL_FILES}
+                                        ${SPV_LAYOUT_BUILDER_FILES}
                                         ${VK_TEXTURE_LOADER_FILES}
 
                                         ${CM_SG_HEADER}

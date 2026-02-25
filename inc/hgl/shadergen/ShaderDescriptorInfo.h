@@ -1,6 +1,7 @@
-﻿#pragma once
+#include <string>
+#include <vector>
+#pragma once
 
-#include<hgl/type/StringList.h>
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
 #include<hgl/vk/VKDescriptorSetType.h>
@@ -25,7 +26,7 @@ protected:
 
     ShaderStage                         stage_flag;
 
-    AnsiStringList                      struct_list;        //用到的结构列表
+    std::vector<std::string>                      struct_list;        //用到的结构列表
 
     //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdi中的用于产生set/binding号，这里的用于产生shader
     UBODescriptorList                   ubo_list;
@@ -44,11 +45,11 @@ public:
 
     const ShaderStage                   GetShaderStage()const { return stage_flag; }
     const VkShaderStageFlagBits         GetVkShaderStage()const { return (VkShaderStageFlagBits)stage_flag; }
-    const AnsiString                    GetStageName()const { return AnsiString(GetShaderStageName((VkShaderStageFlagBits)stage_flag)); }
+    const std::string                    GetStageName()const { return std::string(GetShaderStageName((VkShaderStageFlagBits)stage_flag)); }
 
 public:
 
-    const AnsiStringList &              GetStructList()const{return struct_list;}
+    const std::vector<std::string> &              GetStructList()const{return struct_list;}
 
     const UBODescriptorList &           GetUBOList()const{return ubo_list;}
     const SSBODescriptorList &          GetSSBOList()const{return ssbo_list;}
@@ -58,7 +59,7 @@ public:
 
 public:
 
-    void AddStruct(const AnsiString &);
+    void AddStruct(const std::string &);
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
@@ -66,7 +67,7 @@ public:
 
     bool AddConstValue(ConstValueDescriptor *sd);
 
-    void SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size);
+    void SetPushConstant(const std::string &name,uint8_t offset,uint8_t size);
 };//class ShaderDescriptorInfo
 
 template<ShaderStage SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderDescriptorInfo
@@ -89,8 +90,8 @@ public:
     IArray &GetInput(){return input;}
     OArray &GetOutput(){return output;}
 
-    const bool IsEmptyInput()const{return input.IsEmpty();}
-    const bool IsEmptyOutput()const{return output.IsEmpty();}
+    const bool IsEmptyInput()const{return input.empty();}
+    const bool IsEmptyOutput()const{return output.empty();}
 };//class CustomShaderDescriptorInfo
 
 class VertexShaderDescriptorInfo:public CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable  >
@@ -106,7 +107,7 @@ public:
     using CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable>::CustomShaderDescriptorInfo;
     ~VertexShaderDescriptorInfo()override=default;
 
-    bool AddSubpassInput(const AnsiString &name,uint8_t index);
+    bool AddSubpassInput(const std::string &name,uint8_t index);
 };//class VertexShaderDescriptorInfo
 
 using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessControl, SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;

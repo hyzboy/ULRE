@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include <string>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
 ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
@@ -8,7 +9,7 @@ ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
     mem_zero(push_constant);
 }
 
-void ShaderDescriptorInfo::AddStruct(const AnsiString &name)
+void ShaderDescriptorInfo::AddStruct(const std::string &name)
 {
     struct_list.AddUnique(name);
 }
@@ -65,7 +66,7 @@ bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
     return(true);
 }
 
-bool VertexShaderDescriptorInfo::AddSubpassInput(const AnsiString &name,uint8_t index)
+bool VertexShaderDescriptorInfo::AddSubpassInput(const std::string &name,uint8_t index)
 {
     for(auto *si:subpass_input)
     {
@@ -82,7 +83,7 @@ bool VertexShaderDescriptorInfo::AddSubpassInput(const AnsiString &name,uint8_t 
     return(true);
 }
 
-void ShaderDescriptorInfo::SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size)
+void ShaderDescriptorInfo::SetPushConstant(const std::string &name,uint8_t offset,uint8_t size)
 {
     push_constant.name  =name;
     push_constant.offset=offset;

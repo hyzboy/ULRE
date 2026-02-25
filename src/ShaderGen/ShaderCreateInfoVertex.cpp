@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include <string>
+#include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
 #include<hgl/vk/VKRenderAssign.h>
@@ -30,7 +31,7 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
     return count;
 }
 
-int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
+int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
     VIA via;
 
@@ -47,7 +48,7 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,c
     return vsdi.AddInput(via);
 }
 
-int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
+int ShaderCreateInfoVertex::AddInput(const std::string &type,const std::string &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
     VAType vat;
 
@@ -77,7 +78,7 @@ int ShaderCreateInfoVertex::AddOutput(SVList &sv_list)
     return count;
 }
 
-int ShaderCreateInfoVertex::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
+int ShaderCreateInfoVertex::AddOutput(const SVType &type,const std::string &name,Interpolation inter)
 {
     ShaderVariable sv;
 
@@ -119,7 +120,7 @@ bool ShaderCreateInfoVertex::ProcSubpassInput()
 {
     auto sil=vsdi.GetSubpassInputList();
 
-    if(sil.IsEmpty())
+    if(sil.empty())
         return(true);
 
     final_shader+="\n";
@@ -130,9 +131,9 @@ bool ShaderCreateInfoVertex::ProcSubpassInput()
     for(int i=0;i<si_count;i++)
     {
         final_shader+="layout(input_attachment_index=";
-        final_shader+=AnsiString::numberOf((*si)->input_attachment_index);
+        final_shader+=std::to_string((*si)->input_attachment_index);
         final_shader+=", binding=";
-        final_shader+=AnsiString::numberOf((*si)->binding);
+        final_shader+=std::to_string((*si)->binding);
         final_shader+=") uniform subpassInput ";
         final_shader+=(*si)->name;
         final_shader+=";\n";
@@ -164,10 +165,10 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
     for(uint i=0;i<input.count;i++)
     {
         final_shader+="layout(location=";
-        final_shader+=AnsiString::numberOf(ss->location);
+        final_shader+=std::to_string(ss->location);
         final_shader+=") in ";
         final_shader+=GetShaderAttributeTypename(ss);
-        final_shader+=" "+AnsiString(ss->name);
+        final_shader+=" "+std::string(ss->name);
         final_shader+=";\n";
 
         ++ss;
@@ -176,7 +177,7 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
     return(true);
 }
 
-void ShaderCreateInfoVertex::GetOutputStrcutString(AnsiString &str)
+void ShaderCreateInfoVertex::GetOutputStrcutString(std::string &str)
 {
     vsdi.GetOutput().ToString(str);
 }

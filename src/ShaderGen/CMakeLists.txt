@@ -40,12 +40,6 @@ SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
 
 SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 
-SET(SHADER_TEMPLATE_ENGINE_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderTemplateEngine.h)
-SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES ShaderTemplateEngine.cpp)
-
-SOURCE_GROUP("Shader Template Engine" FILES ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
-                                            ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES})
-
 set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
 SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
@@ -98,9 +92,13 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
+                    ${STD_MTL_HEADER_PATH}/Std2DMaterial.h
+                    ${STD_MTL_HEADER_PATH}/Std3DMaterial.h
+                    ${STD_MTL_HEADER_PATH}/MaterialFactory2D.h
+                    ${STD_MTL_HEADER_PATH}/MaterialFactory3D.h
                     ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
                     MaterialCreateConfig.cpp
-                    StandardMaterial.cpp
+                    StdMaterial.cpp
                     MaterialFileData.h
                     MaterialFileLoader.cpp
                     GLSLStructSize.cpp
@@ -120,6 +118,25 @@ SET(SHADER_LIBRARY_FILES    ShaderLibrary.cpp
 
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
+SET(FIXED_MTL_FILES ${STD_MTL_HEADER_PATH}/FixedMaterialDef.h
+                    ShaderPermutationKey.cpp
+                    ${STD_MTL_HEADER_PATH}/ResourceLayoutGenerator.h
+                    ResourceLayoutGenerator.cpp
+)
+
+SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
+
+SET(SHADER_TEMPLATE_ENGINE_HEADER_FILES	${SHADERGEN_INCLUDE_PATH}/ShaderTemplateEngine.h
+                                         ${STD_MTL_HEADER_PATH}/ShaderComposition.h
+                                         ${STD_MTL_HEADER_PATH}/BuiltinHelpers.h)
+SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES	ShaderTemplateEngine.cpp
+                                         MaterialCompiler.cpp
+                                         ComposedShaderGenerator.cpp
+                                         BuiltinHelpers.cpp)
+
+SOURCE_GROUP("Shader Template Engine" FILES ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
+                                            ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES})
+
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
 
                                         ${DESC_INFO_HEADER_FILES}
@@ -128,8 +145,6 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${MATERIAL_CREATE_INFO_SOURCE_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
-#                                        ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
-#                                        ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${SHADER_LIBRARY_FILES}
@@ -137,4 +152,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${BLINN_PHONG_HEADER_FILES}
                                         ${STD_MTL_2D_SOURCE_FILES}
                                         ${STD_MTL_3D_SOURCE_FILES}
+                                        ${FIXED_MTL_FILES}
+                                        ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
+                                        ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
 )

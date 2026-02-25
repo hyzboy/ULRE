@@ -1,4 +1,5 @@
-﻿#include<hgl/shadergen/MaterialDescriptorInfo.h>
+#include <string>
+#include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<vector>
 
 namespace hgl{namespace graph{
@@ -19,10 +20,11 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
     descriptor_count=0;
 }
 
-const DescriptorSetType MaterialDescriptorInfo::GetSetType(const AnsiString &name)const
+const DescriptorSetType MaterialDescriptorInfo::GetSetType(const std::string &name)const
 {
     for(auto &sds:desc_set_array)
-        if(sds.descriptor_map.ContainsKey(name))
+        ShaderDescriptor *sd = nullptr;
+        if(sds.descriptor_map.Get(name,sd))
             return(sds.set_type);
 
     return DescriptorSetType::Global;
@@ -80,40 +82,28 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
     return((TextureSamplerDescriptor *)obj);
 }
 
-UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
+UBODescriptor *MaterialDescriptorInfo::GetUBO(const std::string &name)
 {
-    UBODescriptor* const* value_ptr = ubo_map.GetValuePointer(name);
-    if(value_ptr)
-        return *value_ptr;
-
-    return(nullptr);
+    auto it = ubo_map.find(name);
+    return it != ubo_map.end() ? it->second : nullptr;
 }
 
-SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const AnsiString &name)
+SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const std::string &name)
 {
-    SSBODescriptor* const* value_ptr = ssbo_map.GetValuePointer(name);
-    if(value_ptr)
-        return *value_ptr;
-
-    return(nullptr);
+    auto it = ssbo_map.find(name);
+    return it != ssbo_map.end() ? it->second : nullptr;
 }
 
-TextureDescriptor *MaterialDescriptorInfo::GetTexture(const AnsiString &name)
+TextureDescriptor *MaterialDescriptorInfo::GetTexture(const std::string &name)
 {
-    TextureDescriptor* const* value_ptr = texture_map.GetValuePointer(name);
-    if(value_ptr)
-        return *value_ptr;
-
-    return(nullptr);
+    auto it = texture_map.find(name);
+    return it != texture_map.end() ? it->second : nullptr;
 }
 
-TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const AnsiString &name)
+TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::string &name)
 {
-    TextureSamplerDescriptor* const* value_ptr = texture_sampler_map.GetValuePointer(name);
-    if(value_ptr)
-        return *value_ptr;
-
-    return(nullptr);
+    auto it = texture_sampler_map.find(name);
+    return it != texture_sampler_map.end() ? it->second : nullptr;
 }
 
 void MaterialDescriptorInfo::Resort()
@@ -133,12 +123,11 @@ void MaterialDescriptorInfo::Resort()
         p.set=set;
 
         int i = 0;
-        std::vector<AnsiString> keys;
-        p.descriptor_map.GetKeyArray(keys);
-        for(const auto &key:keys)
+        std::vector<ShaderDescriptor *> values;
+        p.descriptor_map.GetValueArray(values);
+        for(ShaderDescriptor *sd : values)
         {
-            if(!p.descriptor_map.ContainsKey(key))continue;
-            auto* sd=p.descriptor_map.GetValueRef(key);
+            if(!sd) continue;
             sd->set = set;
             sd->binding = i;
             ++i;
