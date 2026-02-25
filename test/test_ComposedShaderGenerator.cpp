@@ -440,6 +440,8 @@ int main()
 
     hgl::AnsiString normal_none_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
     hgl::AnsiString normal_none_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
+    ShaderComposeResult normal_none_vs_with_diag = ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
+    ShaderComposeResult normal_none_fs_with_diag = ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostics(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
 
     bool normal_none_normalize_ok = (std::strstr(normal_none_vs.c_str(), "#define COMPRESS_VERTEX_INPUT_NORMAL 0") != nullptr)
                                  && (std::strstr(normal_none_fs.c_str(), "#define COMPRESS_NORMAL_MAP 0") != nullptr)
@@ -452,6 +454,11 @@ int main()
                                       && (std::strstr(normal_none_vs.c_str(), "// NORMAL_POLICY_NORMALIZED_VERTEX_INPUT=1") != nullptr)
                                       && (std::strstr(normal_none_fs.c_str(), "// NORMAL_POLICY_NORMALIZED_NORMAL_MAP=1") != nullptr)
                                       && (std::strstr(normal_none_fs.c_str(), "// NORMAL_POLICY_NORMALIZED_GBUFFER=1") != nullptr);
+
+    bool normal_none_structured_diag_ok = normal_none_vs_with_diag.diagnostics.normal_compression_policy_normalized
+                                       && normal_none_vs_with_diag.diagnostics.normal_policy_normalized_vertex_input
+                                       && normal_none_fs_with_diag.diagnostics.normal_policy_normalized_normal_map
+                                       && normal_none_fs_with_diag.diagnostics.normal_policy_normalized_gbuffer;
 
     printf("\n========================================\n");
     printf("  测试总结\n");
@@ -483,6 +490,7 @@ int main()
     printf("  Normal Spheremap Helper路由: %s\n", normal_spheremap_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  Normal None 组合归一化: %s\n", normal_none_normalize_ok ? "✓ 通过" : "✗ 失败");
     printf("  Normal None 归一化诊断: %s\n", normal_none_normalize_diag_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Normal None 结构化诊断: %s\n", normal_none_structured_diag_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
@@ -507,6 +515,7 @@ int main()
                      && normal_spheremap_helper_ok
                      && normal_none_normalize_ok
                      && normal_none_normalize_diag_ok
+                     && normal_none_structured_diag_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 

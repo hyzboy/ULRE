@@ -246,6 +246,18 @@ struct PipelineMode {
     NormalCompressionPolicy normal_compression;
 };
 
+struct ShaderComposeDiagnostics {
+    bool normal_compression_policy_normalized = false;
+    bool normal_policy_normalized_vertex_input = false;
+    bool normal_policy_normalized_normal_map = false;
+    bool normal_policy_normalized_gbuffer = false;
+};
+
+struct ShaderComposeResult {
+    AnsiString code;
+    ShaderComposeDiagnostics diagnostics;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 光照计算委托（框架根据 ShaderPermutationKey 生成）
 // ─────────────────────────────────────────────────────────────────────────────
@@ -462,12 +474,24 @@ public:
         const PipelineMode &pipeline_mode,
         const bool include_preamble = true);
 
+    static ShaderComposeResult ComposeVertexShaderWithDiagnostics(
+        const ComposedMaterialDef &def,
+        const ShaderPermutationKey &key,
+        const PipelineMode &pipeline_mode,
+        const bool include_preamble = true);
+
     static AnsiString ComposeFragmentShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const bool include_preamble = true);
 
     static AnsiString ComposeFragmentShader(
+        const ComposedMaterialDef &def,
+        const ShaderPermutationKey &key,
+        const PipelineMode &pipeline_mode,
+        const bool include_preamble = true);
+
+    static ShaderComposeResult ComposeFragmentShaderWithDiagnostics(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const PipelineMode &pipeline_mode,

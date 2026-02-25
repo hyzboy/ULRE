@@ -217,6 +217,17 @@ static AnsiString GenNormalCompressionNormalizationComments(
     return result;
 }
 
+static ShaderComposeDiagnostics ToPublicDiagnostics(
+    const NormalCompressionNormalizationDiagnostics &diagnostics)
+{
+    ShaderComposeDiagnostics out;
+    out.normal_compression_policy_normalized = diagnostics.Any();
+    out.normal_policy_normalized_vertex_input = diagnostics.vertex_input_normalized;
+    out.normal_policy_normalized_normal_map = diagnostics.normal_map_normalized;
+    out.normal_policy_normalized_gbuffer = diagnostics.gbuffer_normal_normalized;
+    return out;
+}
+
 static void AppendEncodingDefines(
     AnsiString &result,
     const char *prefix,
@@ -970,9 +981,21 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     const PipelineMode &pipeline_mode,
     const bool include_preamble)
 {
+    return ComposeVertexShaderWithDiagnostics(def, key, pipeline_mode, include_preamble).code;
+}
+
+ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
+    const ComposedMaterialDef &def,
+    const ShaderPermutationKey &key,
+    const PipelineMode &pipeline_mode,
+    const bool include_preamble)
+{
     const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
     const NormalCompressionNormalizationDiagnostics normalization_diagnostics =
         BuildNormalCompressionNormalizationDiagnostics(pipeline_mode, resolved_mode);
+
+    ShaderComposeResult output;
+    output.diagnostics = ToPublicDiagnostics(normalization_diagnostics);
 
     if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
     {
@@ -989,7 +1012,8 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
 
         result += ComposeVertexShader(def, key, false);
         result += "\n// MobileSubpassGBufferDeferred route (VS): geometry path unchanged, FS consumes subpass inputs.\n";
-        return result;
+        output.code = result;
+        return output;
     }
 
     if (resolved_mode.render_path == PipelineRenderPath::Forward
@@ -1008,7 +1032,8 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
 
         result += ComposeVertexShader(def, key, false);
         result += "\n// Forward lighting mode: PerVertex (SG-2 placeholder route).\n";
-        return result;
+        output.code = result;
+        return output;
     }
 
     if (resolved_mode.topology == PipelineTopology::MeshFS)
@@ -1019,7 +1044,8 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
 
         result += "// Mesh/FS topology selected: vertex shader stage is not used.\n";
         result += "// SG-2: mesh shader generation will be emitted by ComposeMeshShader().\n";
-        return result;
+        output.code = result;
+        return output;
     }
 
     // 当前实现：VS/FS 路径复用 legacy 生成逻辑
@@ -1031,10 +1057,12 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
         result += GenNormalCompressionDefines(resolved_mode);
         result += GenNormalCompressionHelpers();
         result += ComposeVertexShader(def, key, false);
-        return result;
+        output.code = result;
+        return output;
     }
 
-    return ComposeVertexShader(def, key, include_preamble);
+    output.code = ComposeVertexShader(def, key, include_preamble);
+    return output;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1114,9 +1142,21 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     const PipelineMode &pipeline_mode,
     const bool include_preamble)
 {
+    return ComposeFragmentShaderWithDiagnostics(def, key, pipeline_mode, include_preamble).code;
+}
+
+ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostics(
+    const ComposedMaterialDef &def,
+    const ShaderPermutationKey &key,
+    const PipelineMode &pipeline_mode,
+    const bool include_preamble)
+{
     const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
     const NormalCompressionNormalizationDiagnostics normalization_diagnostics =
         BuildNormalCompressionNormalizationDiagnostics(pipeline_mode, resolved_mode);
+
+    ShaderComposeResult output;
+    output.diagnostics = ToPublicDiagnostics(normalization_diagnostics);
 
     if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
     {
@@ -1142,7 +1182,8 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
 
         result += ComposeFragmentShader(def, key, false);
         result += "\n// MobileSubpassGBufferDeferred route (FS): subpassLoad input path enabled.\n";
-        return result;
+        output.code = result;
+        return output;
     }
 
     if (resolved_mode.render_path == PipelineRenderPath::Forward
@@ -1161,7 +1202,8 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
 
         result += ComposeFragmentShader(def, key, false);
         result += "\n// Forward lighting mode: PerVertex (expect interpolated vertex-lighting input in SG-2).\n";
-        return result;
+        output.code = result;
+        return output;
     }
 
     if (resolved_mode.topology == PipelineTopology::MeshFS)
@@ -1172,7 +1214,8 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
 
         result += "// Mesh/FS topology selected: fragment stage shares FS composer path.\n";
         result += ComposeFragmentShader(def, key, false);
-        return result;
+        output.code = result;
+        return output;
     }
 
     if (include_preamble)
@@ -1183,10 +1226,12 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
         result += GenNormalCompressionDefines(resolved_mode);
         result += GenNormalCompressionHelpers();
         result += ComposeFragmentShader(def, key, false);
-        return result;
+        output.code = result;
+        return output;
     }
 
-    return ComposeFragmentShader(def, key, include_preamble);
+    output.code = ComposeFragmentShader(def, key, include_preamble);
+    return output;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
