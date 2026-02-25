@@ -61,6 +61,9 @@ const AnsiString Material3DCreateConfig::ToHashString()
     if(camera)
         hash+="_Camera";
 
+    if(sky)
+        hash+="_Sky";
+
     if(local_to_world)
         hash+="_L2W";
 

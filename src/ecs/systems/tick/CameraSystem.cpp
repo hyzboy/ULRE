@@ -612,8 +612,21 @@ namespace hgl::ecs
         if (camera_desc_binding && context)
         {
             auto environment_system = context->GetSystem<EnvironmentSystem>();
+            if (!environment_system)
+            {
+                environment_system = context->RegisterRenderSystem<EnvironmentSystem>();
+                if (context->IsActive())
+                {
+                    environment_system->OnDependenciesReady();
+                    environment_system->Initialize();
+                }
+            }
+
             if (environment_system)
             {
+                // 确保 Sky UBO 已创建（GetSkyUBO 仅返回指针，不会触发资源创建）
+                environment_system->EditSkyInfo();
+
                 auto *sky_ubo = environment_system->GetSkyUBO();
                 if (sky_ubo)
                 {

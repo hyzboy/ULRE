@@ -333,11 +333,24 @@ MaterialCreateInfo *CompileFixedMaterial(
     // Step 1: 创建 MaterialCreateConfig（运行时配置优先于定义默认值）
     // ─────────────────────────────────────────────────────────────────────────
 
-    Material3DCreateConfig cfg;
+    Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
     cfg.prim = config ? config->prim : def.primitive_type;
     cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-    if (def.geom_glsl) 
+    if (def.geom_glsl)
         cfg.shader_stage_flag_bit |= uint32_t(ShaderStage::Geometry);
+
+    const bool infer_has_camera = HasDescriptorNamed(def, "camera") || HasDescriptorNamed(def, "CameraInfo");
+    const bool infer_has_sky = HasDescriptorNamed(def, "sky") || HasDescriptorNamed(def, "SkyInfo");
+    const bool infer_has_l2w = HasDescriptorNamed(def, "l2w") || HasDescriptorNamed(def, "LocalToWorldData");
+    const bool infer_has_mi = HasDescriptorNamed(def, "mtl")
+                           || HasDescriptorNamed(def, "MaterialInstanceData")
+                           || HasVertexEntry(def, Assign::MaterialInstanceID::VIS_NAME)
+                           || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
+
+    cfg.camera = cfg.camera || infer_has_camera;
+    cfg.sky = cfg.sky || infer_has_sky;
+    cfg.local_to_world = cfg.local_to_world || infer_has_l2w;
+    cfg.material_instance = cfg.material_instance || infer_has_mi;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Step 2: 创建 MaterialCreateInfo
@@ -375,6 +388,12 @@ MaterialCreateInfo *CompileFixedMaterial(
                 {
                     mci->AddUBOStruct(stage_bits, SBS_CameraInfo);
                     has_camera_descriptor = true;
+                    break;
+                }
+
+                if (std::strcmp(entry.struct_name, SBS_SkyInfo.struct_name) == 0)
+                {
+                    mci->AddUBOStruct(stage_bits, SBS_SkyInfo);
                     break;
                 }
 
