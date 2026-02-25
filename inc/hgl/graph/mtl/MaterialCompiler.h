@@ -12,10 +12,14 @@
 /// 与现有 Std3DMaterial 体系互不干扰，可渐进迁移。
 
 #include<hgl/graph/mtl/FixedMaterialDef.h>
+#include<hgl/graph/mtl/ShaderComposition.h>
+#include<hgl/graph/mtl/ShaderLogic.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 
 namespace hgl::graph::mtl{
+
+struct Material3DCreateConfig;
 
 /**
  * 编译一个 FixedMaterialDef 排列，返回 MaterialCreateInfo*。
@@ -23,12 +27,29 @@ namespace hgl::graph::mtl{
  * @param dev_attr  Vulkan 设备能力（用于判断 SSBO 对齐等限制）
  * @param def       编译期材质定义（constexpr 常量，描述符布局 + 顶点输入 + GLSL 源码）
  * @param key       排列键（ambient/light/specular/shadow 轴组合），默认 = 手机最低配
+ * @param config    运行时配置（可选），若非空则 config->prim 覆盖 def.primitive_type
  * @return          编译好的 MaterialCreateInfo*，调用方负责 delete；失败返回 nullptr
  */
 MaterialCreateInfo *CompileFixedMaterial(
     const VulkanDevAttr *       dev_attr,
     const FixedMaterialDef &    def,
-    const ShaderPermutationKey &key = ShaderPermutationKey{});
+    const ShaderPermutationKey &key = ShaderPermutationKey{},
+    const Material3DCreateConfig *config = nullptr);
+
+/**
+ * 使用 ComposedMaterialDef + MaterialLogicDef 生成业务驱动的 VS/FS main，
+ * 再复用 FixedMaterialDef 编译入口完成 SPV 编译。
+ *
+ * @param config    运行时配置（可选），若非空则 config->prim 覆盖 def.primitive_type
+ * 失败返回 nullptr；调用方可回退到 legacy 材质路径。
+ */
+MaterialCreateInfo *CompileComposedBusinessMaterial(
+    const VulkanDevAttr *       dev_attr,
+    const FixedMaterialDef &    base_fixed_def,
+    const ComposedMaterialDef & base_composed_def,
+    const MaterialLogicDef &    logic,
+    const ShaderPermutationKey &key = ShaderPermutationKey{},
+    const Material3DCreateConfig *config = nullptr);
 
 /**
  * 材质 fallback 工厂辅助宏。（待实现，参见任务 2.3）

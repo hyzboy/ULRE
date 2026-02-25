@@ -57,7 +57,7 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 )";
 
 constexpr const char PURE_COLOR_3D_FS_BUSINESS[] = R"(
-vec4 FragmentShaderBusiness(const VS_Output vso)
+vec4 FragmentShaderBusiness()
 {
     MaterialInstance mi = GetMI();
     return mi.Color;

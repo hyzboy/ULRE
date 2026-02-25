@@ -15,6 +15,7 @@
 #include <hgl/vk/VKDeviceAttribute.h>
 #include <hgl/type/String.h>
 #include <cstring>
+#include <cstdio>
 
 #include "common/MFCommon.h"
 #include "common/MFGetPosition.h"
@@ -35,6 +36,174 @@ static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
     return false;
 }
 
+static bool HasDescriptorNamed(const FixedMaterialDef &def, const char *name)
+{
+    if (!name || !*name)
+        return false;
+
+    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    {
+        const auto &entry = def.descriptor_entries[i];
+        if ((entry.name && std::strcmp(entry.name, name) == 0)
+         || (entry.struct_name && std::strcmp(entry.struct_name, name) == 0))
+            return true;
+    }
+
+    return false;
+}
+
+static bool HasVertexEntry(const ComposedMaterialDef &def, const char *name)
+{
+    if (!name || !*name)
+        return false;
+
+    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+    {
+        if (def.vertex_entries[i].name && std::strcmp(def.vertex_entries[i].name, name) == 0)
+            return true;
+    }
+
+    return false;
+}
+
+static bool HasDescriptorNamed(const ComposedMaterialDef &def, const char *name)
+{
+    if (!name || !*name)
+        return false;
+
+    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    {
+        const auto &entry = def.descriptor_entries[i];
+        if ((entry.name && std::strcmp(entry.name, name) == 0)
+         || (entry.struct_name && std::strcmp(entry.struct_name, name) == 0))
+            return true;
+    }
+
+    return false;
+}
+
+static const char *VATypeToGLSL(const VAType &type)
+{
+    switch (type.basetype)
+    {
+        case VertexAttribBaseType::Float:
+            switch (type.vec_size)
+            {
+                case 1: return "float";
+                case 2: return "vec2";
+                case 3: return "vec3";
+                case 4: return "vec4";
+                default: return "vec4";
+            }
+        case VertexAttribBaseType::UInt:
+            switch (type.vec_size)
+            {
+                case 1: return "uint";
+                case 2: return "uvec2";
+                case 3: return "uvec3";
+                case 4: return "uvec4";
+                default: return "uint";
+            }
+        case VertexAttribBaseType::Int:
+            switch (type.vec_size)
+            {
+                case 1: return "int";
+                case 2: return "ivec2";
+                case 3: return "ivec3";
+                case 4: return "ivec4";
+                default: return "int";
+            }
+        case VertexAttribBaseType::Bool:
+            switch (type.vec_size)
+            {
+                case 1: return "bool";
+                case 2: return "bvec2";
+                case 3: return "bvec3";
+                case 4: return "bvec4";
+                default: return "bool";
+            }
+        default:
+            return "vec4";
+    }
+}
+
+static AnsiString BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def, const ComposedMaterialDef &def)
+{
+    AnsiString glsl;
+
+    glsl += "struct VertexInput\n{\n";
+    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+    {
+        const auto &entry = def.vertex_entries[i];
+        glsl += "    ";
+        glsl += VATypeToGLSL(entry.type);
+        glsl += " ";
+        glsl += entry.name;
+        glsl += ";\n";
+    }
+    glsl += "};\n\n";
+
+    if (def.vertex_business && def.vertex_business->code)
+    {
+        glsl += def.vertex_business->code;
+        glsl += "\n\n";
+    }
+
+    const bool has_transform = HasVertexEntry(fixed_def, Assign::TransformID::VIS_NAME);
+    const bool has_camera = HasDescriptorNamed(fixed_def, "camera") || HasDescriptorNamed(fixed_def, "CameraInfo");
+    const bool has_material_instance = HasVertexEntry(fixed_def, Assign::MaterialInstanceID::VIS_NAME);
+
+    glsl += R"(
+void main()
+{
+    VertexInput vi;
+)";
+
+    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+    {
+        const auto &entry = def.vertex_entries[i];
+        glsl += "    vi.";
+        glsl += entry.name;
+        glsl += "=";
+        glsl += entry.name;
+        glsl += ";\n";
+    }
+
+    if (has_material_instance)
+        glsl += "    HandoverMI();\n";
+
+    glsl += "    vec4 local_pos = VertexShaderBusiness(vi);\n";
+
+    if (has_transform && has_camera)
+        glsl += "    gl_Position = camera.vp * GetLocalToWorld() * local_pos;\n";
+    else if (has_transform)
+        glsl += "    gl_Position = GetLocalToWorld() * local_pos;\n";
+    else if (has_camera)
+        glsl += "    gl_Position = camera.vp * local_pos;\n";
+    else
+        glsl += "    gl_Position = local_pos;\n";
+
+    glsl += "}\n";
+    return glsl;
+}
+
+static AnsiString BuildFragmentGLSLFromBusiness(const FixedMaterialDef &fixed_def, const ComposedMaterialDef &def)
+{
+    AnsiString glsl;
+
+    if (def.fragment_business && def.fragment_business->code)
+    {
+        glsl += def.fragment_business->code;
+        glsl += "\n\n";
+    }
+
+    glsl += "void main()\n{\n";
+    glsl += "    FragColor = FragmentShaderBusiness();\n";
+    glsl += "}\n";
+
+    return glsl;
+}
+
 /**
  * 编译一个 FixedMaterialDef 排列到 MaterialCreateInfo。
  *
@@ -47,17 +216,18 @@ static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
 MaterialCreateInfo *CompileFixedMaterial(
     const VulkanDevAttr *       dev_attr,
     const FixedMaterialDef &    def,
-    const ShaderPermutationKey &key)
+    const ShaderPermutationKey &key,
+    const Material3DCreateConfig *config)
 {
     if (!dev_attr)
         return nullptr;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Step 1: 创建 MaterialCreateConfig（最小化配置）
+    // Step 1: 创建 MaterialCreateConfig（运行时配置优先于定义默认值）
     // ─────────────────────────────────────────────────────────────────────────
 
     Material3DCreateConfig cfg;
-    cfg.prim = def.primitive_type;
+    cfg.prim = config ? config->prim : def.primitive_type;
     cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
     if (def.geom_glsl) 
         cfg.shader_stage_flag_bit |= uint32_t(ShaderStage::Geometry);
@@ -198,6 +368,7 @@ MaterialCreateInfo *CompileFixedMaterial(
 
     ShaderCreateInfoVertex *vsc = mci->GetVS();
     const bool has_position = HasVertexEntry(def, VAN::Position);
+    const bool has_color = HasVertexEntry(def, VAN::Color);
     const bool has_transform_id = HasVertexEntry(def, Assign::TransformID::VIS_NAME);
 
     if (vsc)
@@ -213,6 +384,9 @@ MaterialCreateInfo *CompileFixedMaterial(
 
         if (has_transform_id)
             vsc->AddFunction(func::MF_GetLocalToWorld_ByAssign);
+
+        if (has_color)
+            vsc->AddOutput(SVT_VEC4, "Color");
 
         if (has_position)
         {
@@ -284,6 +458,41 @@ MaterialCreateInfo *CompileFixedMaterial(
     }
 
     return mci;
+}
+
+MaterialCreateInfo *CompileComposedBusinessMaterial(
+    const VulkanDevAttr *       dev_attr,
+    const FixedMaterialDef &    base_fixed_def,
+    const ComposedMaterialDef & base_composed_def,
+    const MaterialLogicDef &    logic,
+    const ShaderPermutationKey &key,
+    const Material3DCreateConfig *config)
+{
+    ComposedMaterialBuildFromLogicResult bridge_result;
+    const bool bridge_ok = BuildComposedMaterialDefFromLogic(base_composed_def, logic, bridge_result);
+
+    if (!bridge_ok)
+    {
+        std::fprintf(stderr, "[ComposedBusiness] bridge failed, missing resources: ");
+        for (size_t i = 0; i < bridge_result.diagnostics.missing_resources.size(); ++i)
+        {
+            std::fprintf(stderr,
+                         "%s%s",
+                         i == 0 ? "" : ", ",
+                         bridge_result.diagnostics.missing_resources[i].c_str());
+        }
+        std::fprintf(stderr, "\n");
+        return nullptr;
+    }
+
+    AnsiString generated_vs = BuildVertexGLSLFromBusiness(base_fixed_def, bridge_result.def);
+    AnsiString generated_fs = BuildFragmentGLSLFromBusiness(base_fixed_def, bridge_result.def);
+
+    FixedMaterialDef runtime_def = base_fixed_def;
+    runtime_def.vert_glsl = generated_vs.c_str();
+    runtime_def.frag_glsl = generated_fs.c_str();
+
+    return CompileFixedMaterial(dev_attr, runtime_def, key, config);
 }
 
 }  // namespace hgl::graph::mtl

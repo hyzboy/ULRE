@@ -40,12 +40,13 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 /// Fragment Shader 主逻辑
 /// 
 /// 输入：
-///   - Input.Color: 来自 Vertex Shader 的插值结果
+///   - 通过全局 Input (Vertex_Output 接口块) 访问 VS 传递的数据（本材质未使用）
+///   - 通过 GetMI() 访问材质实例数据
 /// 
 /// 输出：
-///   - FragColor: 最终颜色
+///   - vec4: 最终颜色（写入 FragColor 由框架 main 完成）
 constexpr char PURE_COLOR_FRAGMENT_LOGIC[] = R"(
-vec4 FragmentShaderBusiness(const VS_Output vso)
+vec4 FragmentShaderBusiness()
 {
     MaterialInstance mi = GetMI();
     return mi.Color;
