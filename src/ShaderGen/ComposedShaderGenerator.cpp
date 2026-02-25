@@ -162,6 +162,61 @@ static PipelineMode ResolvePipelineModeForCurrentBackend(const PipelineMode &req
     return resolved;
 }
 
+struct NormalCompressionNormalizationDiagnostics
+{
+    bool vertex_input_normalized = false;
+    bool normal_map_normalized = false;
+    bool gbuffer_normal_normalized = false;
+
+    bool Any() const
+    {
+        return vertex_input_normalized || normal_map_normalized || gbuffer_normal_normalized;
+    }
+};
+
+static NormalCompressionNormalizationDiagnostics BuildNormalCompressionNormalizationDiagnostics(
+    const PipelineMode &requested,
+    const PipelineMode &resolved)
+{
+    NormalCompressionNormalizationDiagnostics diagnostics;
+
+    diagnostics.vertex_input_normalized =
+        (requested.normal_compression.compress_vertex_input_normal != resolved.normal_compression.compress_vertex_input_normal)
+     || (requested.normal_compression.vertex_input_encoding != resolved.normal_compression.vertex_input_encoding);
+
+    diagnostics.normal_map_normalized =
+        (requested.normal_compression.compress_normal_map != resolved.normal_compression.compress_normal_map)
+     || (requested.normal_compression.normal_map_encoding != resolved.normal_compression.normal_map_encoding);
+
+    diagnostics.gbuffer_normal_normalized =
+        (requested.normal_compression.compress_gbuffer_normal != resolved.normal_compression.compress_gbuffer_normal)
+     || (requested.normal_compression.gbuffer_encoding != resolved.normal_compression.gbuffer_encoding);
+
+    return diagnostics;
+}
+
+static AnsiString GenNormalCompressionNormalizationComments(
+    const NormalCompressionNormalizationDiagnostics &diagnostics)
+{
+    if (!diagnostics.Any())
+        return "";
+
+    AnsiString result;
+    result += "// NORMAL_COMPRESSION_POLICY_NORMALIZED\n";
+    result += diagnostics.vertex_input_normalized
+           ? "// NORMAL_POLICY_NORMALIZED_VERTEX_INPUT=1\n"
+           : "// NORMAL_POLICY_NORMALIZED_VERTEX_INPUT=0\n";
+    result += diagnostics.normal_map_normalized
+           ? "// NORMAL_POLICY_NORMALIZED_NORMAL_MAP=1\n"
+           : "// NORMAL_POLICY_NORMALIZED_NORMAL_MAP=0\n";
+    result += diagnostics.gbuffer_normal_normalized
+           ? "// NORMAL_POLICY_NORMALIZED_GBUFFER=1\n"
+           : "// NORMAL_POLICY_NORMALIZED_GBUFFER=0\n";
+    result += "\n";
+
+    return result;
+}
+
 static void AppendEncodingDefines(
     AnsiString &result,
     const char *prefix,
@@ -916,6 +971,8 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     const bool include_preamble)
 {
     const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
+    const NormalCompressionNormalizationDiagnostics normalization_diagnostics =
+        BuildNormalCompressionNormalizationDiagnostics(pipeline_mode, resolved_mode);
 
     if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
     {
@@ -923,6 +980,7 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
             result += GenNormalCompressionDefines(resolved_mode);
             result += GenNormalCompressionHelpers();
             result += "#define MOBILE_SUBPASS_GBUFFER 1\n";
@@ -941,6 +999,7 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
             result += GenNormalCompressionDefines(resolved_mode);
             result += GenNormalCompressionHelpers();
             result += "#define FORWARD_LIGHTING_PER_VERTEX 1\n";
@@ -968,6 +1027,7 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     {
         AnsiString result;
         result += GenPreamble(key);
+        result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
         result += GenNormalCompressionDefines(resolved_mode);
         result += GenNormalCompressionHelpers();
         result += ComposeVertexShader(def, key, false);
@@ -1055,6 +1115,8 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     const bool include_preamble)
 {
     const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
+    const NormalCompressionNormalizationDiagnostics normalization_diagnostics =
+        BuildNormalCompressionNormalizationDiagnostics(pipeline_mode, resolved_mode);
 
     if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
     {
@@ -1062,6 +1124,7 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
             result += GenNormalCompressionDefines(resolved_mode);
             result += GenNormalCompressionHelpers();
             result += "#define MOBILE_SUBPASS_GBUFFER 1\n";
@@ -1089,6 +1152,7 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
         if (include_preamble)
         {
             result += GenPreamble(key);
+            result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
             result += GenNormalCompressionDefines(resolved_mode);
             result += GenNormalCompressionHelpers();
             result += "#define FORWARD_LIGHTING_PER_VERTEX 1\n";
@@ -1115,6 +1179,7 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     {
         AnsiString result;
         result += GenPreamble(key);
+        result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
         result += GenNormalCompressionDefines(resolved_mode);
         result += GenNormalCompressionHelpers();
         result += ComposeFragmentShader(def, key, false);
