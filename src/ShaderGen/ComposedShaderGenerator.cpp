@@ -133,18 +133,52 @@ static PipelineMode ResolvePipelineModeForCurrentBackend(const PipelineMode &req
             (resolved.postprocess_output_channels & resolved.gbuffer_format.channel_mask);
     }
 
+    auto NormalizeNormalCompression = [](bool &compress, NormalEncodingMode &encoding)
+    {
+        if (!compress)
+        {
+            encoding = NormalEncodingMode::None;
+            return;
+        }
+
+        if (encoding == NormalEncodingMode::None)
+        {
+            compress = false;
+        }
+    };
+
+    NormalizeNormalCompression(
+        resolved.normal_compression.compress_vertex_input_normal,
+        resolved.normal_compression.vertex_input_encoding);
+
+    NormalizeNormalCompression(
+        resolved.normal_compression.compress_normal_map,
+        resolved.normal_compression.normal_map_encoding);
+
+    NormalizeNormalCompression(
+        resolved.normal_compression.compress_gbuffer_normal,
+        resolved.normal_compression.gbuffer_encoding);
+
     return resolved;
 }
 
-static const char *NormalEncodingModeToToken(const NormalEncodingMode mode)
+static void AppendEncodingDefines(
+    AnsiString &result,
+    const char *prefix,
+    const NormalEncodingMode mode)
 {
-    switch (mode)
-    {
-        case NormalEncodingMode::Octahedral: return "OCT";
-        case NormalEncodingMode::Spheremap:  return "SPHEREMAP";
-        case NormalEncodingMode::None:
-        default:                             return "NONE";
-    }
+    char buf[256];
+    snprintf(buf, sizeof(buf), "#define %s_NONE %d\n", prefix,
+             mode == NormalEncodingMode::None ? 1 : 0);
+    result += buf;
+
+    snprintf(buf, sizeof(buf), "#define %s_OCT %d\n", prefix,
+             mode == NormalEncodingMode::Octahedral ? 1 : 0);
+    result += buf;
+
+    snprintf(buf, sizeof(buf), "#define %s_SPHEREMAP %d\n", prefix,
+             mode == NormalEncodingMode::Spheremap ? 1 : 0);
+    result += buf;
 }
 
 static AnsiString GenNormalCompressionDefines(const PipelineMode &mode)
@@ -162,15 +196,9 @@ static AnsiString GenNormalCompressionDefines(const PipelineMode &mode)
              mode.normal_compression.compress_gbuffer_normal ? 1 : 0);
     result += buf;
 
-    snprintf(buf, sizeof(buf), "#define VERTEX_NORMAL_ENCODING_%s 1\n",
-             NormalEncodingModeToToken(mode.normal_compression.vertex_input_encoding));
-    result += buf;
-    snprintf(buf, sizeof(buf), "#define NORMAL_MAP_ENCODING_%s 1\n",
-             NormalEncodingModeToToken(mode.normal_compression.normal_map_encoding));
-    result += buf;
-    snprintf(buf, sizeof(buf), "#define GBUFFER_NORMAL_ENCODING_%s 1\n",
-             NormalEncodingModeToToken(mode.normal_compression.gbuffer_encoding));
-    result += buf;
+    AppendEncodingDefines(result, "VERTEX_NORMAL_ENCODING", mode.normal_compression.vertex_input_encoding);
+    AppendEncodingDefines(result, "NORMAL_MAP_ENCODING", mode.normal_compression.normal_map_encoding);
+    AppendEncodingDefines(result, "GBUFFER_NORMAL_ENCODING", mode.normal_compression.gbuffer_encoding);
 
     result += "\n";
     return result;
@@ -218,8 +246,10 @@ vec3 DecodeVertexInputNormal(vec3 normal_in) {
 #if COMPRESS_VERTEX_INPUT_NORMAL
 #if VERTEX_NORMAL_ENCODING_SPHEREMAP
     return DecodeNormalSpheremap(normal_in.xy);
-#else
+#elif VERTEX_NORMAL_ENCODING_OCT
     return DecodeNormalOct(normal_in.xy);
+#else
+    return normalize(normal_in);
 #endif
 #else
     return normalize(normal_in);
@@ -230,8 +260,10 @@ vec3 DecodeNormalMapNormal(vec3 normal_sample) {
 #if COMPRESS_NORMAL_MAP
 #if NORMAL_MAP_ENCODING_SPHEREMAP
     return DecodeNormalSpheremap(normal_sample.xy);
-#else
+#elif NORMAL_MAP_ENCODING_OCT
     return DecodeNormalOct(normal_sample.xy);
+#else
+    return normalize(normal_sample * 2.0 - 1.0);
 #endif
 #else
     return normalize(normal_sample * 2.0 - 1.0);
@@ -242,8 +274,10 @@ vec2 EncodeGBufferNormal(vec3 n) {
 #if COMPRESS_GBUFFER_NORMAL
 #if GBUFFER_NORMAL_ENCODING_SPHEREMAP
     return EncodeNormalSpheremap(n);
-#else
+#elif GBUFFER_NORMAL_ENCODING_OCT
     return EncodeNormalOct(n);
+#else
+    return normalize(n).xy;
 #endif
 #else
     return normalize(n).xy;
@@ -254,8 +288,10 @@ vec3 DecodeGBufferNormal(vec2 packed_n) {
 #if COMPRESS_GBUFFER_NORMAL
 #if GBUFFER_NORMAL_ENCODING_SPHEREMAP
     return DecodeNormalSpheremap(packed_n);
-#else
+#elif GBUFFER_NORMAL_ENCODING_OCT
     return DecodeNormalOct(packed_n);
+#else
+    return normalize(vec3(packed_n, sqrt(max(0.0, 1.0 - dot(packed_n, packed_n)))));
 #endif
 #else
     return normalize(vec3(packed_n, sqrt(max(0.0, 1.0 - dot(packed_n, packed_n)))));

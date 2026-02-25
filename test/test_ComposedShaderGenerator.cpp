@@ -433,6 +433,21 @@ int main()
                                   && (std::strstr(normal_spheremap_fs.c_str(), "DecodeNormalSpheremap(normal_sample.xy)") != nullptr)
                                   && (std::strstr(normal_spheremap_fs.c_str(), "EncodeNormalSpheremap(n)") != nullptr);
 
+    PipelineMode normal_none_mode = normal_compression_mode;
+    normal_none_mode.normal_compression.vertex_input_encoding = NormalEncodingMode::None;
+    normal_none_mode.normal_compression.normal_map_encoding = NormalEncodingMode::None;
+    normal_none_mode.normal_compression.gbuffer_encoding = NormalEncodingMode::None;
+
+    hgl::AnsiString normal_none_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
+    hgl::AnsiString normal_none_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
+
+    bool normal_none_normalize_ok = (std::strstr(normal_none_vs.c_str(), "#define COMPRESS_VERTEX_INPUT_NORMAL 0") != nullptr)
+                                 && (std::strstr(normal_none_fs.c_str(), "#define COMPRESS_NORMAL_MAP 0") != nullptr)
+                                 && (std::strstr(normal_none_fs.c_str(), "#define COMPRESS_GBUFFER_NORMAL 0") != nullptr)
+                                 && (std::strstr(normal_none_vs.c_str(), "#define VERTEX_NORMAL_ENCODING_NONE 1") != nullptr)
+                                 && (std::strstr(normal_none_fs.c_str(), "#define NORMAL_MAP_ENCODING_NONE 1") != nullptr)
+                                 && (std::strstr(normal_none_fs.c_str(), "#define GBUFFER_NORMAL_ENCODING_NONE 1") != nullptr);
+
     printf("\n========================================\n");
     printf("  测试总结\n");
     printf("========================================\n");
@@ -461,6 +476,7 @@ int main()
     printf("  Normal压缩 GBuffer编码路由: %s\n", normal_compression_gbuffer_encode_ok ? "✓ 通过" : "✗ 失败");
     printf("  Normal Spheremap 宏路由: %s\n", normal_spheremap_macro_ok ? "✓ 通过" : "✗ 失败");
     printf("  Normal Spheremap Helper路由: %s\n", normal_spheremap_helper_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Normal None 组合归一化: %s\n", normal_none_normalize_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
@@ -483,6 +499,7 @@ int main()
                      && normal_compression_gbuffer_encode_ok
                      && normal_spheremap_macro_ok
                      && normal_spheremap_helper_ok
+                     && normal_none_normalize_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 
