@@ -8,8 +8,12 @@
  *
  * Rules:
  *  - Pure C-compatible types only (no STL, no Vulkan types).
- *  - All heap memory is owned by the DLL; caller must free via FreeParseSPVData().
- *  - This header is shared between GLSLCompiler and ULRE — keep it in sync.
+ *  - The hgl::SPVParseData returned by ParseSPVData() is ULRE-allocated by the
+ *    bridge in GLSLCompiler.cpp; always free it with FreeSPVParseData().
+ *  - Once GLSLCompiler is updated to natively produce hgl::SPVParseData
+ *    (see doc/refactor/GLSLCompiler_Update.md), this header can be shared
+ *    directly between both projects without changes.
+ *  - This header must remain free of STL, Vulkan, and HGL-engine dependencies.
  *
  * Design document: doc/refactor/ShaderGen_Compiler_Loader_Separation.md
  */
@@ -175,8 +179,9 @@ struct SPVParseData
         memset(this, 0, sizeof(*this));
     }
 
-    // Destructor is intentionally not defined here — the DLL owns the heap
-    // allocations.  Always free via GLSLCompilerInterface::FreeParseSPVData().
+    // Destructor is intentionally not defined here — all sub-array allocations
+    // are owned by ULRE (created by the bridge in GLSLCompiler.cpp).
+    // Always free via FreeSPVParseData() declared in GLSLCompiler.h.
 
     // ---------------------------------------------------------------------------
     // Convenience accessors

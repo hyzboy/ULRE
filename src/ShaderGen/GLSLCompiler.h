@@ -2,6 +2,7 @@
 #define HGL_GLSL_COMPILER_INCLUDE
 
 #include<hgl/type/DataType.h>
+#include<hgl/graph/mtl/SPVParseData.h>
 
 namespace hgl
 {
@@ -26,23 +27,21 @@ namespace hgl
         // ------------------------------------------------------------------
         // ParseSPVData / FreeSPVParseData
         //
-        // These wrap gsi->ParseSPV() and return the DLL-allocated parse data.
-        // The returned pointer type will become hgl::SPVParseData (from
-        // SPVParseData.h) once the GLSLCompiler DLL is updated to the new
-        // rich reflection format described in:
-        //   doc/refactor/ShaderGen_Compiler_Loader_Separation.md
+        // ParseSPVData calls the GLSLCompiler DLL's ParseSPV, then converts
+        // the legacy DLL-internal layout to hgl::SPVParseData (defined in
+        // inc/hgl/graph/mtl/SPVParseData.h).  All sub-arrays in the returned
+        // struct are ULRE-allocated and must be freed by calling
+        // FreeSPVParseData().
         //
-        // Until then, callers access the raw opaque pointer only through the
-        // SPVLayoutBuilder API (inc/hgl/graph/mtl/SPVLayoutBuilder.h).
+        // When the GLSLCompiler DLL is updated to natively fill hgl::SPVParseData
+        // (see doc/refactor/GLSLCompiler_Update.md), the bridge code in
+        // GLSLCompiler.cpp can be removed and these functions will simply forward
+        // to the new DLL API.
         // ------------------------------------------------------------------
 
-        // Forward-declare the opaque DLL parse data type.
-        // Do NOT dereference this pointer in ULRE code — pass it to
-        // SPVLayoutBuilder functions or free it via FreeSPVParseData().
-        struct SPVParseDataOpaque;
+        hgl::SPVParseData *  ParseSPVData    (const SPVData *spv_data);
+        void                 FreeSPVParseData(hgl::SPVParseData *parse_data);
 
-        SPVParseDataOpaque *  ParseSPVData    (const SPVData *spv_data);
-        void                  FreeSPVParseData(SPVParseDataOpaque *parse_data);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GLSL_COMPILER_INCLUDE
