@@ -1,31 +1,31 @@
 [submodule "CMCMakeModule"]
 	path = CMCMakeModule
-	url = https://github.com//hyzboy/CMCMakeModule.git
+	url = https://github.com/hyzboy/CMCMakeModule.git
 [submodule "CMCoreType"]
 	path = CMCoreType
-	url = https://github.com//hyzboy/CMCoreType.git
+	url = https://github.com/hyzboy/CMCoreType.git
 [submodule "CMCore"]
 	path = CMCore
-	url = https://github.com//hyzboy/CMCore.git
+	url = https://github.com/hyzboy/CMCore.git
 [submodule "CMMath"]
 	path = CMMath
-	url = https://github.com//hyzboy/CMMath.git
+	url = https://github.com/hyzboy/CMMath.git
 [submodule "CMAssetsManage"]
 	path = CMAssetsManage
-	url = https://github.com//hyzboy/CMAssetsManage.git
+	url = https://github.com/hyzboy/CMAssetsManage.git
 [submodule "res"]
 	path = res
-	url = https://github.com//hyzboy/RuntimeData.git
+	url = https://github.com/hyzboy/RuntimeData.git
 
 [submodule "CMUtil"]
 	path = CMUtil
-	url = https://github.com//hyzboy/CMUtil.git
+	url = https://github.com/hyzboy/CMUtil.git
 [submodule "CMGUI"]
 	path = CMGUI
-	url = https://github.com//hyzboy/CMGUI.git
+	url = https://github.com/hyzboy/CMGUI.git
 [submodule "CM2D"]
 	path = CM2D
-	url = https://github.com//hyzboy/CM2D.git
+	url = https://github.com/hyzboy/CM2D.git
 
 [submodule "CMScript"]
 	path = CMScript
@@ -33,13 +33,13 @@
 
 [submodule "GLTFConvert"]
 	path = src/Tools/GLTFConvert
-	url = https://github.com//hyzboy/GLTFConvert.git
+	url = https://github.com/hyzboy/GLTFConvert.git
 [submodule "src/Tools/HeightmapCompress"]
 	path = src/Tools/HeightmapCompress
-	url = https://github.com//hyzboy/HeightmapCompress.git
+	url = https://github.com/hyzboy/HeightmapCompress.git
 [submodule "src/Tools/MiniPack"]
 	path = src/Tools/MiniPack
-	url = https://github.com//hyzboy/MiniPack.git
+	url = https://github.com/hyzboy/MiniPack.git
 [submodule "3rdpty/inja"]
 	path = 3rdpty/inja
 	url = https://github.com/pantor/inja.git
