@@ -16,7 +16,24 @@
 #include <hgl/type/String.h>
 #include <cstring>
 
+#include "common/MFCommon.h"
+#include "common/MFGetPosition.h"
+
 namespace hgl::graph::mtl {
+
+static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
+{
+    if (!name || !*name)
+        return false;
+
+    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+    {
+        if (def.vertex_entries[i].name && std::strcmp(def.vertex_entries[i].name, name) == 0)
+            return true;
+    }
+
+    return false;
+}
 
 /**
  * 编译一个 FixedMaterialDef 排列到 MaterialCreateInfo。
@@ -52,6 +69,10 @@ MaterialCreateInfo *CompileFixedMaterial(
     MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
     mci->SetDevice(dev_attr);
 
+    bool has_camera_descriptor = false;
+    bool has_local_to_world_descriptor = false;
+    uint32_t mi_stage_bits = uint32_t(ShaderStage::Vertex);
+
     // ─────────────────────────────────────────────────────────────────────────
     // Step 3: 从 FixedDescriptorEntry[] 添加描述符
     // ─────────────────────────────────────────────────────────────────────────
@@ -67,9 +88,33 @@ MaterialCreateInfo *CompileFixedMaterial(
         case DescriptorKind::UBO:
             if (entry.struct_name)
             {
-                // 必须先添加结构体定义
-                mci->AddStruct(AnsiString(entry.struct_name),
-                              AnsiString());  // GLSL 代码由 shader 文件本身提供，此处留空
+                if (std::strcmp(entry.struct_name, SBS_ViewportInfo.struct_name) == 0)
+                {
+                    mci->AddUBOStruct(stage_bits, SBS_ViewportInfo);
+                    break;
+                }
+
+                if (std::strcmp(entry.struct_name, SBS_CameraInfo.struct_name) == 0)
+                {
+                    mci->AddUBOStruct(stage_bits, SBS_CameraInfo);
+                    has_camera_descriptor = true;
+                    break;
+                }
+
+                if (std::strcmp(entry.struct_name, SBS_LocalToWorld.struct_name) == 0)
+                {
+                    mci->SetLocalToWorld(stage_bits);
+                    has_local_to_world_descriptor = true;
+                    break;
+                }
+
+                if (std::strcmp(entry.struct_name, SBS_MaterialInstance.struct_name) == 0)
+                {
+                    mi_stage_bits = stage_bits;
+                    break;
+                }
+
+                // 自定义结构体（要求 entry.struct_name 在其它地方已注册完整代码）
                 mci->AddUBO(stage_bits, set_type,
                            AnsiString(entry.struct_name), AnsiString(entry.name));
             }
@@ -78,8 +123,19 @@ MaterialCreateInfo *CompileFixedMaterial(
         case DescriptorKind::SSBO:
             if (entry.struct_name)
             {
-                mci->AddStruct(AnsiString(entry.struct_name),
-                              AnsiString());
+                if (std::strcmp(entry.struct_name, SBS_LocalToWorld.struct_name) == 0)
+                {
+                    mci->SetLocalToWorld(stage_bits);
+                    has_local_to_world_descriptor = true;
+                    break;
+                }
+
+                if (std::strcmp(entry.struct_name, SBS_MaterialInstance.struct_name) == 0)
+                {
+                    mi_stage_bits = stage_bits;
+                    break;
+                }
+
                 mci->AddSSBO(stage_bits, set_type,
                             AnsiString(entry.struct_name), AnsiString(entry.name));
             }
@@ -141,12 +197,33 @@ MaterialCreateInfo *CompileFixedMaterial(
     // ─────────────────────────────────────────────────────────────────────────
 
     ShaderCreateInfoVertex *vsc = mci->GetVS();
+    const bool has_position = HasVertexEntry(def, VAN::Position);
+    const bool has_transform_id = HasVertexEntry(def, Assign::TransformID::VIS_NAME);
+
     if (vsc)
     {
         for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
         {
             const FixedVertexEntry &entry = def.vertex_entries[i];
-            vsc->AddInput(entry.type, entry.name);
+            vsc->AddInput(entry.type,
+                          entry.name,
+                          entry.input_rate,
+                          entry.group);
+        }
+
+        if (has_transform_id)
+            vsc->AddFunction(func::MF_GetLocalToWorld_ByAssign);
+
+        if (has_position)
+        {
+            if (has_transform_id && has_camera_descriptor)
+                vsc->AddFunction(func::GetPosition3DL2WCamera);
+            else if (has_transform_id)
+                vsc->AddFunction(func::GetPosition3DL2W);
+            else if (has_camera_descriptor)
+                vsc->AddFunction(func::GetPosition3DCamera);
+            else
+                vsc->AddFunction(func::GetPosition3D);
         }
     }
 
@@ -159,7 +236,7 @@ MaterialCreateInfo *CompileFixedMaterial(
         mci->SetMaterialInstance(
             AnsiString(def.mi_glsl_codes),
             def.mi_struct_bytes,
-            uint32_t(ShaderStage::Vertex));  // MI 数据通常在 VS 中使用
+            mi_stage_bits);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -177,6 +254,11 @@ MaterialCreateInfo *CompileFixedMaterial(
     // 设置 shaders（这里调用 mci 的 shader 编译接口）
     ShaderCreateInfoVertex *vert = mci->GetVS();
     ShaderCreateInfoFragment *frag = mci->GetFS();
+
+    if (frag)
+    {
+        frag->AddOutput(VAT_VEC4, "FragColor");
+    }
 
     // 暂时使用 SetMain() 的方式来设置源码（不完美，但能工作）
     if (vert && def.vert_glsl)

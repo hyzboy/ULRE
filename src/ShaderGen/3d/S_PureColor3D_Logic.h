@@ -31,13 +31,9 @@ namespace hgl::graph::mtl {
 ///   ✅ 框架在 main() 中调用 GetMI() 并传给业务函数
 ///   ✅ 业务函数签名清晰，只做纯计算
 constexpr char PURE_COLOR_VERTEX_LOGIC[] = R"(
-vec4 VertexMain(vec3 Position, MaterialInstance mi) 
+vec4 VertexShaderBusiness(const VertexInput vi)
 {
-    // 直接使用框架传入的材质实例
-    Output.Color = mi.Color;
-    
-    // 返回本地坐标（框架会自动转换到裁剪空间）
-    return vec4(Position, 1.0);
+    return vec4(vi.Position, 1.0);
 }
 )";
 
@@ -49,10 +45,10 @@ vec4 VertexMain(vec3 Position, MaterialInstance mi)
 /// 输出：
 ///   - FragColor: 最终颜色
 constexpr char PURE_COLOR_FRAGMENT_LOGIC[] = R"(
-vec4 FragmentMain() 
+vec4 FragmentShaderBusiness(const VS_Output vso)
 {
-    // 直接使用插值后的颜色
-    return Input.Color;
+    MaterialInstance mi = GetMI();
+    return mi.Color;
 }
 )";
 
@@ -63,16 +59,18 @@ vec4 FragmentMain()
 /// Vertex Shader 需要的资源
 constexpr const char* PURE_COLOR_VERTEX_RESOURCES[] = {
     "MaterialInstanceData",     // Material Instance 缓冲
-    "LocalToWorld"              // 变换矩阵
+    "l2w"                       // 变换矩阵（descriptor name）
 };
 
 /// Vertex Shader 需要的高级辅助函数（基础数据提取由框架自动处理）
 /// PureColor3D 很简单，不需要任何高级辅助函数
-constexpr const char** PURE_COLOR_VERTEX_HELPERS = nullptr;
+constexpr const char* const* PURE_COLOR_VERTEX_HELPERS = nullptr;
 
 /// Fragment Shader 不需要额外资源（使用来自 VS 的插值）
-constexpr const char** PURE_COLOR_FRAGMENT_RESOURCES = nullptr;
-constexpr const char** PURE_COLOR_FRAGMENT_HELPERS = nullptr;
+constexpr const char* PURE_COLOR_FRAGMENT_RESOURCES[] = {
+    "MaterialInstanceData"
+};
+constexpr const char* const* PURE_COLOR_FRAGMENT_HELPERS = nullptr;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 完整材质逻辑定义
@@ -88,31 +86,34 @@ constexpr const char** PURE_COLOR_FRAGMENT_HELPERS = nullptr;
 ///   1. 从 FixedMaterialDef 生成 layout(...) 声明
 ///   2. 从 MaterialLogicDef 注入业务逻辑和辅助函数
 ///   3. 合成完整的 GLSL
-constexpr MaterialLogicDef PURE_COLOR_3D_LOGIC = {
-    // Vertex Shader 逻辑
-    .vertex = {
-        .main_logic = PURE_COLOR_VERTEX_LOGIC,
-        .custom_functions = nullptr,  // 没有自定义函数
-        .required_resources = PURE_COLOR_VERTEX_RESOURCES,
-        .required_resource_count = 2,
-        .required_helpers = PURE_COLOR_VERTEX_HELPERS,
-        .required_helper_count = 0  // 基础数据由框架自动处理
-    },
-    
-    // Fragment Shader 逻辑
-    .fragment = {
-        .main_logic = PURE_COLOR_FRAGMENT_LOGIC,
-        .custom_functions = nullptr,
-        .required_resources = nullptr,
-        .required_resource_count = 0,
-        .required_helpers = nullptr,
-        .required_helper_count = 0
-    },
-    
-    // 其他 Shader 阶段（未使用）
-    .geometry = nullptr,
-    .tess_control = nullptr,
-    .tess_eval = nullptr
+const VertexShaderLogic PURE_COLOR_VERTEX_SHADER_LOGIC = {
+    {
+        PURE_COLOR_VERTEX_LOGIC,
+        nullptr,
+        PURE_COLOR_VERTEX_RESOURCES,
+        2,
+        PURE_COLOR_VERTEX_HELPERS,
+        0
+    }
+};
+
+const FragmentShaderLogic PURE_COLOR_FRAGMENT_SHADER_LOGIC = {
+    {
+        PURE_COLOR_FRAGMENT_LOGIC,
+        nullptr,
+        PURE_COLOR_FRAGMENT_RESOURCES,
+        1,
+        nullptr,
+        0
+    }
+};
+
+const MaterialLogicDef PURE_COLOR_3D_LOGIC = {
+    PURE_COLOR_VERTEX_SHADER_LOGIC,
+    PURE_COLOR_FRAGMENT_SHADER_LOGIC,
+    nullptr,
+    nullptr,
+    nullptr
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

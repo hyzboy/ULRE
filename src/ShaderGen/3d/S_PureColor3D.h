@@ -32,23 +32,21 @@ constexpr FixedDescriptorEntry PURE_COLOR_3D_DESCRIPTORS[] = {
     { DescriptorSetType::RenderTarget, DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
     { DescriptorSetType::Camera,       DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",   nullptr },
     { DescriptorSetType::PerFrame,     PURE_COLOR_3D_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
-    { DescriptorSetType::PerMaterial,  PURE_COLOR_3D_MI_KIND,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mtl", "MaterialInstanceData", nullptr },
+    { DescriptorSetType::PerMaterial,  PURE_COLOR_3D_MI_KIND,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
 };
 
 constexpr const char PURE_COLOR_3D_VERT_GLSL[] = R"(
 void main()
 {
-    MaterialInstance mi=GetMI();
-
-    Output.Color=mi.Color;
-
+    HandoverMI();
     gl_Position=GetPosition3D();
 })";
 
 constexpr const char PURE_COLOR_3D_FRAG_GLSL[] = R"(
 void main()
 {
-    FragColor=Input.Color;
+    MaterialInstance mi=GetMI();
+    FragColor=mi.Color;
 })";
 
 constexpr const char PURE_COLOR_3D_VS_BUSINESS[] = R"(
@@ -83,7 +81,7 @@ constexpr FixedMaterialDef PURE_COLOR_3D_DEF {
     PURE_COLOR_3D_FRAG_GLSL,
 };
 
-constexpr ComposedMaterialDef PURE_COLOR_3D_COMPOSED_DEF {
+const ComposedMaterialDef PURE_COLOR_3D_COMPOSED_DEF {
     "PureColor3D",
     PrimitiveType::Triangles,
     PURE_COLOR_3D_VERTEX,

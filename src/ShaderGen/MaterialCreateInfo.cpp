@@ -11,9 +11,8 @@ using namespace hgl::graph;
 
 namespace hgl::graph::mtl{
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
+    : config(*mc)
 {
-    config=mc;
-
     if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdi));else vert=nullptr;
     if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
     if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
@@ -38,7 +37,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     l2w_ubo=nullptr;
 #endif
 
-    has_l2w_matrix=mc->local_to_world;
+    has_l2w_matrix=config.local_to_world;
 }
 
 MaterialCreateInfo::~MaterialCreateInfo()

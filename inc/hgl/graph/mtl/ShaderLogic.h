@@ -91,12 +91,12 @@ struct ShaderLogicBlock {
 
     /// 需要的资源（只是名字数组）
     /// 示例: {"MaterialInstanceData", "LocalToWorld", "ViewProj"}
-    const char** required_resources;
+    const char* const* required_resources;
     uint32_t required_resource_count;
 
     /// 需要的框架辅助函数（只是名字数组）
     /// 示例: {"GetMI", "GetWorldPos", "GetNormal"}
-    const char** required_helpers;
+    const char* const* required_helpers;
     uint32_t required_helper_count;
 };
 

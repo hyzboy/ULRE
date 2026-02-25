@@ -24,7 +24,7 @@ namespace hgl::graph
         {
         protected:
 
-            const MaterialCreateConfig *config;
+            MaterialCreateConfig config;
             uint32_t ubo_range;
             uint32_t ssbo_range;
 
@@ -58,11 +58,11 @@ namespace hgl::graph
 
         public:
 
-            const PrimitiveType GetPrimitiveType()const{return config->prim;}
+            const PrimitiveType GetPrimitiveType()const{return config.prim;}
 
-            const   uint32      GetShaderStage  ()const{return config->shader_stage_flag_bit;}
+            const   uint32      GetShaderStage  ()const{return config.shader_stage_flag_bit;}
 
-                    bool        hasShader       (const ShaderStage ss)const{return config->shader_stage_flag_bit&(uint32)ss;}
+                    bool        hasShader       (const ShaderStage ss)const{return config.shader_stage_flag_bit&(uint32)ss;}
 
                     bool        hasVertex       ()const{return hasShader(ShaderStage::Vertex);}
         //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessControl);}

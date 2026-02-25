@@ -23,6 +23,6 @@ CreateProject(05d_FacingMeshBillboardECS        FacingMeshBillboardECS.cpp)
 CreateProject(05e_FacingMeshBillboardZECS       FacingMeshBillboardZECS.cpp)
 CreateProject(06_SimpleCube                     SimpleCube.cpp)
 CreateProject(07_RenderBoundBox                 RenderBoundBox.cpp)
-CreateProject(08_RenderToTexture                RenderToTexture.cpp)
+#CreateProject(08_RenderToTexture                RenderToTexture.cpp)
 CreateProject(09_RecursiveCube                  RecursiveCube.cpp)
 
