@@ -19,7 +19,6 @@
 #pragma once
 
 #include <hgl/graph/mtl/FixedMaterialDef.h>
-#include <hgl/type/String.h>
 #include <string>
 #include <vector>
 
@@ -254,7 +253,7 @@ struct ShaderComposeDiagnostics {
 };
 
 struct ShaderComposeResult {
-    AnsiString code;
+    std::string code;
     ShaderComposeDiagnostics diagnostics;
 };
 
@@ -440,7 +439,7 @@ bool BuildComposedMaterialDefFromLogic(
  */
 struct HelperFunctionLibrary {
     // 框架生成的完整函数库代码
-    AnsiString code;
+    std::string code;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -463,12 +462,12 @@ public:
      *
      * @return 完整 GLSL 源码
      */
-    static AnsiString ComposeVertexShader(
+    static std::string ComposeVertexShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const bool include_preamble = true);
 
-    static AnsiString ComposeVertexShader(
+    static std::string ComposeVertexShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const PipelineMode &pipeline_mode,
@@ -480,12 +479,12 @@ public:
         const PipelineMode &pipeline_mode,
         const bool include_preamble = true);
 
-    static AnsiString ComposeFragmentShader(
+    static std::string ComposeFragmentShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const bool include_preamble = true);
 
-    static AnsiString ComposeFragmentShader(
+    static std::string ComposeFragmentShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const PipelineMode &pipeline_mode,
@@ -497,12 +496,12 @@ public:
         const PipelineMode &pipeline_mode,
         const bool include_preamble = true);
 
-    static AnsiString ComposeGeometryShader(
+    static std::string ComposeGeometryShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const bool include_preamble = true);
 
-    static AnsiString ComposeMeshShader(
+    static std::string ComposeMeshShader(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const PipelineMode &pipeline_mode,
@@ -512,9 +511,9 @@ private:
     // ─────────────────────────────────────────────────────────────────────────
     // 结构体和常数定义生成
     // ─────────────────────────────────────────────────────────────────────────
-    static AnsiString GenVertexInputStruct(const ComposedMaterialDef &def);
-    static AnsiString GenVSOutputStruct(const ComposedMaterialDef &def);
-    static AnsiString GenLightingOutputStruct();
+    static std::string GenVertexInputStruct(const ComposedMaterialDef &def);
+    static std::string GenVSOutputStruct(const ComposedMaterialDef &def);
+    static std::string GenLightingOutputStruct();
 
     // ─────────────────────────────────────────────────────────────────────────
     // 辅助函数库生成（这是关键部分！）
@@ -534,24 +533,24 @@ private:
      * @param shader_stage VS/GS/FS 标记，影响函数签名
      * @return 完整的 GLSL 函数库代码
      */
-    static AnsiString GenHelperFunctionLibrary(
+    static std::string GenHelperFunctionLibrary(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key,
         const char *shader_stage);
 
     // 具体的函数生成方法
-    static AnsiString GenGetLocalToWorld(const ComposedMaterialDef &def);
-    static AnsiString GenGetNormalMatrix(const ComposedMaterialDef &def);
-    static AnsiString GenGetNormalFunction(const ComposedMaterialDef &def, const char *shader_stage);
-    static AnsiString GenGetPositionFunctions(const ComposedMaterialDef &def, const char *shader_stage);
-    static AnsiString GenGetMaterialInstanceFunctions(const ComposedMaterialDef &def, const char *shader_stage);
+    static std::string GenGetLocalToWorld(const ComposedMaterialDef &def);
+    static std::string GenGetNormalMatrix(const ComposedMaterialDef &def);
+    static std::string GenGetNormalFunction(const ComposedMaterialDef &def, const char *shader_stage);
+    static std::string GenGetPositionFunctions(const ComposedMaterialDef &def, const char *shader_stage);
+    static std::string GenGetMaterialInstanceFunctions(const ComposedMaterialDef &def, const char *shader_stage);
 
     // ─────────────────────────────────────────────────────────────────────────
     // 其他生成方法
     // ─────────────────────────────────────────────────────────────────────────
-    static AnsiString GenCoordinateTransformFunctions();
-    static AnsiString GenOutputCompositionCode(ShaderOutputMode mode);
-    static AnsiString GenLightingCode(
+    static std::string GenCoordinateTransformFunctions();
+    static std::string GenOutputCompositionCode(ShaderOutputMode mode);
+    static std::string GenLightingCode(
         const ComposedMaterialDef &def,
         const ShaderPermutationKey &key);
 };

@@ -1,3 +1,4 @@
+#include <string>
 #include <hgl/graph/mtl/BuiltinHelpers.h>
 #include <hgl/graph/mtl/ShaderComposition.h>
 #include <cstring>
@@ -132,7 +133,7 @@ static bool HasDescriptor(const ComposedMaterialDef &def, const char *name)
     return false;
 }
 
-static AnsiString GenTransformNormal()
+static std::string GenTransformNormal()
 {
     return R"(
 vec3 TransformNormal(vec3 local_normal) {
@@ -142,7 +143,7 @@ vec3 TransformNormal(vec3 local_normal) {
 )";
 }
 
-static AnsiString GenGetWorldPos(const char *shader_stage)
+static std::string GenGetWorldPos(const char *shader_stage)
 {
     if (strcmp(shader_stage, "VS") == 0 || strcmp(shader_stage, "FS") == 0) {
         return R"(
@@ -157,10 +158,10 @@ vec3 GetWorldPosition() {
 )";
     }
 
-    return AnsiString();
+    return std::string();
 }
 
-static AnsiString GenGetCameraPos(const ComposedMaterialDef &def)
+static std::string GenGetCameraPos(const ComposedMaterialDef &def)
 {
     if (HasDescriptor(def, "CameraPos")) {
         return R"(
@@ -213,12 +214,12 @@ vec3 GetCameraPosition() {
 )";
 }
 
-AnsiString GenStageHelpers(
+std::string GenStageHelpers(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const char *shader_stage)
 {
-    AnsiString result;
+    std::string result;
 
     const char *business_code = GetStageBusinessCode(def, shader_stage);
 

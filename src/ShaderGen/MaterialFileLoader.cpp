@@ -1,4 +1,6 @@
-﻿#include<hgl/graph/mtl/MaterialCreateConfig.h>
+#include <string>
+#include <vector>
+#include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
@@ -187,7 +189,7 @@ namespace
     {
         MaterialFileBlock state;
 
-        AnsiStringList *require_list=nullptr;
+        std::vector<std::string> *require_list=nullptr;
 
         UBODataList *ubo_list=nullptr;
 
@@ -196,7 +198,7 @@ namespace
 
     public:
 
-        MaterialBlockParse(AnsiStringList *asl,UBODataList *udl)
+        MaterialBlockParse(std::vector<std::string> *asl,UBODataList *udl)
         {
             state=MaterialFileBlock::None;
 
@@ -234,7 +236,7 @@ namespace
                 {
                     while(hgl::is_identifier_char(*text))++text;
 
-                    require_list->Add(AnsiString(sp,text-sp));
+                    require_list->push_back(std::string(sp,text-sp));
 
                     while(!hgl::is_identifier_char(*text))++text;
 
@@ -762,7 +764,7 @@ const char *GetUBOCodes(const AccumMemoryManager::Block *block)
     return (const char *)ubo_memory.Access(block);
 }
 
-MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
+MaterialFileData *LoadMaterialDataFromFile(const std::string &mtl_filename)
 {
     const OSString mtl_osfn=filesystem::NormalizeFilename(ToOSString(mtl_filename+".mtl"));
 

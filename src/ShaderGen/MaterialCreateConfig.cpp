@@ -1,11 +1,12 @@
-﻿#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include <string>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VertexAttrib.h>
 
 namespace hgl::graph::mtl{
-const AnsiString MaterialCreateConfig::ToHashString()
+const std::string MaterialCreateConfig::ToHashString()
 {
-    AnsiString hash;
+    std::string hash;
 
     char str[16];
     char *p=str;
@@ -39,9 +40,9 @@ const AnsiString MaterialCreateConfig::ToHashString()
     return hash;
 }
 
-const AnsiString Material2DCreateConfig::ToHashString()
+const std::string Material2DCreateConfig::ToHashString()
 {
-    AnsiString hash=MaterialCreateConfig::ToHashString();
+    std::string hash=MaterialCreateConfig::ToHashString();
 
     hash+=GetCoordinateSystem2DName(coordinate_system);
 
@@ -54,9 +55,9 @@ const AnsiString Material2DCreateConfig::ToHashString()
     return hash;
 }
 
-const AnsiString Material3DCreateConfig::ToHashString()
+const std::string Material3DCreateConfig::ToHashString()
 {
-    AnsiString hash=MaterialCreateConfig::ToHashString();
+    std::string hash=MaterialCreateConfig::ToHashString();
 
     if(camera)
         hash+="_Camera";

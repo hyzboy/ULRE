@@ -10,7 +10,7 @@
 /// **用法**：
 ///   ```cpp
 ///   ResourceLayoutGenerator gen;
-///   AnsiString layout_code = gen.GenDescriptorLayout(entries, count);
+///   std::string layout_code = gen.GenDescriptorLayout(entries, count);
 ///   // 生成:
 ///   // layout(set=0,binding=0) uniform CameraUBO { ... } camera;
 ///   // layout(set=1,binding=0) buffer MaterialInstanceData { ... } mtl;
@@ -20,7 +20,7 @@
 ///   - 重复 binding 会触发 assert 并输出详细冲突信息
 ///   - 生成的 GLSL 字符串可直接插入到 shader 源码中
 
-#include<hgl/type/String.h>
+
 #include<stdint.h>
 #include<string.h>
 
@@ -68,7 +68,7 @@ public:
     ///
     /// **异常**：
     ///   - 检测到重复 binding → assert 失败 + 错误日志
-    AnsiString GenDescriptorLayout(const FixedDescriptorEntry* entries, uint32_t count);
+    std::string GenDescriptorLayout(const FixedDescriptorEntry* entries, uint32_t count);
 
     /// 生成顶点输入布局声明
     ///
@@ -82,7 +82,7 @@ public:
     /// **注意**：
     ///   - location 编号自动分配（0, 1, 2, ...）
     ///   - 名称从 FixedVertexEntry::name 获取
-    AnsiString GenVertexInputLayout(const FixedVertexEntry* entries, uint32_t count);
+    std::string GenVertexInputLayout(const FixedVertexEntry* entries, uint32_t count);
 
     /// 生成片段着色器输出布局声明
     ///
@@ -91,7 +91,7 @@ public:
     ///
     /// **说明**：
     ///   - 当前只支持单个颜色输出，后续可扩展为 MRT（多渲染目标）
-    AnsiString GenFragmentOutputLayout();
+    std::string GenFragmentOutputLayout();
 
     /// 重置状态（多次生成不同 shader 时调用）
     void Reset() {

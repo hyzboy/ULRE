@@ -1,4 +1,5 @@
-﻿#pragma once
+#include <string>
+#pragma once
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
@@ -26,7 +27,7 @@ public:
     ~ShaderCreateInfoFragment()=default;
 
     int AddOutput(VIAList &);
-    int AddOutput(const VAType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
-    int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
+    int AddOutput(const VAType &type,const std::string &name,Interpolation inter=Interpolation::Smooth);
+    int AddOutput(const std::string &type,const std::string &name,Interpolation inter=Interpolation::Smooth);
 };
 }}//namespace hgl::graph

@@ -26,7 +26,7 @@
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKPrimitiveType.h>
-#include<hgl/type/String.h>
+#include<string>
 #include<stdint.h>
 
 namespace hgl::graph::mtl{
@@ -142,7 +142,7 @@ struct ShaderPermutationKey
     bool operator< (const ShaderPermutationKey &o) const { return ToU32() <  o.ToU32(); }
 
     /// 生成对应的 GLSL #define 列表，写入 defines_out（格式："#define MACRO_NAME value\n"）
-    void AppendGLSLDefines(AnsiString &defines_out) const;
+    void AppendGLSLDefines(std::string &defines_out) const;
 };//struct ShaderPermutationKey
 
 // ─────────────────────────────────────────────────────────────────────────────

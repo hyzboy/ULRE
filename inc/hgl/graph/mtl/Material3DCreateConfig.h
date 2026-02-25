@@ -1,4 +1,5 @@
-﻿#pragma once
+#include <string>
+#pragma once
 
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
@@ -51,7 +52,7 @@ public:
         return position_format <=> cfg.position_format;
     }
 
-    const AnsiString ToHashString() override;
+    const std::string ToHashString() override;
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
 DECLARE_MATERIAL_CREATOR(PureColor3D,       Material3DCreateConfig)
@@ -136,5 +137,5 @@ DECLARE_MATERIAL_CREATOR(BasicLit, BasicLitMaterialCreateConfig)
  * @param cfg 材质创建参数
  * @return 材质创建信息
  */
-MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg);
+MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const std::string &name,Material3DCreateConfig *cfg);
 }//namespace hgl::graph::mtl

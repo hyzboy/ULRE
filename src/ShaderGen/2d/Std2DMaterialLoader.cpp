@@ -1,4 +1,5 @@
-﻿#include"Std2DMaterial.h"
+#include <string>
+#include"Std2DMaterial.h"
 #include"MaterialFileData.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
@@ -103,11 +104,11 @@ namespace
     };//class Std2DMaterialLoader:public Std2DMaterial
 }//namespace
 
-material_file::MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename);
+material_file::MaterialFileData *LoadMaterialDataFromFile(const std::string &mtl_filename);
 
-MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material2DCreateConfig *cfg)
+MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const std::string &name,Material2DCreateConfig *cfg)
 {
-    if(name.IsEmpty()||!cfg)
+    if(name.empty()||!cfg)
         return(nullptr);
 
     material_file::MaterialFileData *mfd=LoadMaterialDataFromFile(name);

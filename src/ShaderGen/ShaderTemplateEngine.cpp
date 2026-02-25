@@ -1,19 +1,20 @@
+#include <unordered_map>
+#include <string>
 /// ShaderTemplateEngine.cpp — Shader 模板渲染引擎实现
 
 #include <hgl/shadergen/ShaderTemplateEngine.h>
 #include <hgl/graph/mtl/FixedMaterialDef.h>
-#include <hgl/log/Log.h>
 
 namespace hgl::graph::mtl {
 
 /// 内部数据结构
 struct ShaderTemplate {
-    AnsiString name;
-    AnsiString source;  // 原始模板文本
+    std::string name;
+    std::string source;  // 原始模板文本
 };
 
 struct ShaderRecipe {
-    AnsiString name;
+    std::string name;
     // TODO: 解析 JSON 后的结构体字段
 };
 
@@ -26,16 +27,16 @@ ShaderTemplateEngine::~ShaderTemplateEngine()
     Reset();
 }
 
-AnsiString ShaderTemplateEngine::ReadFile(const AnsiString &path)
+std::string ShaderTemplateEngine::ReadFile(const std::string &path)
 {
     // TODO: 实现文件读取
     // 返回空串（暂时占位符）
-    return AnsiString();
+    return std::string();
 }
 
-ShaderTemplate *ShaderTemplateEngine::ParseTemplate(const AnsiString &source)
+ShaderTemplate *ShaderTemplateEngine::ParseTemplate(const std::string &source)
 {
-    if (source.IsEmpty())
+    if (source.empty())
         return nullptr;
 
     ShaderTemplate *tmpl = new ShaderTemplate();
@@ -43,9 +44,9 @@ ShaderTemplate *ShaderTemplateEngine::ParseTemplate(const AnsiString &source)
     return tmpl;
 }
 
-ShaderRecipe *ShaderTemplateEngine::ParseRecipe(const AnsiString &json_source)
+ShaderRecipe *ShaderTemplateEngine::ParseRecipe(const std::string &json_source)
 {
-    if (json_source.IsEmpty())
+    if (json_source.empty())
         return nullptr;
 
     ShaderRecipe *recipe = new ShaderRecipe();
@@ -53,20 +54,19 @@ ShaderRecipe *ShaderTemplateEngine::ParseRecipe(const AnsiString &json_source)
     return recipe;
 }
 
-ShaderTemplate *ShaderTemplateEngine::LoadTemplate(const AnsiString &template_path)
+ShaderTemplate *ShaderTemplateEngine::LoadTemplate(const std::string &template_path)
 {
-
     // 先查缓存
-    if (template_cache.ContainsKey(template_path))
+    auto it = template_cache.find(template_path);
+    if (it != template_cache.end())
     {
-        ShaderTemplate **cached = template_cache.GetValuePointer(template_path);
-        if (cached && *cached)
-            return *cached;
+        if (it->second)
+            return it->second;
     }
 
     // 从文件读取
-    AnsiString source = ReadFile(template_path);
-    if (source.IsEmpty())
+    std::string source = ReadFile(template_path);
+    if (source.empty())
         return nullptr;
 
     // 解析
@@ -75,24 +75,23 @@ ShaderTemplate *ShaderTemplateEngine::LoadTemplate(const AnsiString &template_pa
         return nullptr;
 
     tmpl->name = template_path;
-    template_cache[template_path] = tmpl;
+    template_cache.emplace(template_path, tmpl);
     return tmpl;
 }
 
-ShaderRecipe *ShaderTemplateEngine::LoadRecipe(const AnsiString &recipe_path)
+ShaderRecipe *ShaderTemplateEngine::LoadRecipe(const std::string &recipe_path)
 {
-
     // 先查缓存
-    if (recipe_cache.ContainsKey(recipe_path))
+    auto it = recipe_cache.find(recipe_path);
+    if (it != recipe_cache.end())
     {
-        ShaderRecipe **cached = recipe_cache.GetValuePointer(recipe_path);
-        if (cached && *cached)
-            return *cached;
+        if (it->second)
+            return it->second;
     }
 
     // 从文件读取
-    AnsiString source = ReadFile(recipe_path);
-    if (source.IsEmpty())
+    std::string source = ReadFile(recipe_path);
+    if (source.empty())
         return nullptr;
 
     // 解析 JSON
@@ -101,20 +100,20 @@ ShaderRecipe *ShaderTemplateEngine::LoadRecipe(const AnsiString &recipe_path)
         return nullptr;
 
     recipe->name = recipe_path;
-    recipe_cache[recipe_path] = recipe;
+    recipe_cache.emplace(recipe_path, recipe);
     return recipe;
 }
 
-AnsiString ShaderTemplateEngine::Render(const ShaderTemplate *tmpl, const ShaderRecipe *recipe,
+std::string ShaderTemplateEngine::Render(const ShaderTemplate *tmpl, const ShaderRecipe *recipe,
                                         const ShaderPermutationKey &key)
 {
     if (!tmpl)
-        return AnsiString();
+        return std::string();
 
     // TODO: 调用 inja 渲染
     // 当前的占位符实现只返回排列宏前缀 + 模板源码（不经过 inja 处理）
 
-    AnsiString result;
+    std::string result;
     key.AppendGLSLDefines(result);
     result += tmpl->source;
 
@@ -126,12 +125,12 @@ void ShaderTemplateEngine::Reset()
     for (auto [path, tmpl] : template_cache)
         if (tmpl)
             delete tmpl;
-    template_cache.Clear();
+    template_cache.clear();
 
     for (auto [path, recipe] : recipe_cache)
         if (recipe)
             delete recipe;
-    recipe_cache.Clear();
+    recipe_cache.clear();
 }
 
 }  // namespace hgl::graph::mtl

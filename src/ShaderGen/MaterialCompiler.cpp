@@ -1,3 +1,4 @@
+#include <string>
 /// MaterialCompiler.cpp — FixedMaterialDef → MaterialCreateInfo 编译器实现
 ///
 /// 三步流程：
@@ -13,7 +14,6 @@
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/vk/VKDeviceAttribute.h>
-#include <hgl/type/String.h>
 #include <cstring>
 
 namespace hgl::graph::mtl {
@@ -68,20 +68,20 @@ MaterialCreateInfo *CompileFixedMaterial(
             if (entry.struct_name)
             {
                 // 必须先添加结构体定义
-                mci->AddStruct(AnsiString(entry.struct_name),
-                              AnsiString());  // GLSL 代码由 shader 文件本身提供，此处留空
+                mci->AddStruct(std::string(entry.struct_name),
+                              std::string());  // GLSL 代码由 shader 文件本身提供，此处留空
                 mci->AddUBO(stage_bits, set_type,
-                           AnsiString(entry.struct_name), AnsiString(entry.name));
+                           std::string(entry.struct_name), std::string(entry.name));
             }
             break;
 
         case DescriptorKind::SSBO:
             if (entry.struct_name)
             {
-                mci->AddStruct(AnsiString(entry.struct_name),
-                              AnsiString());
+                mci->AddStruct(std::string(entry.struct_name),
+                              std::string());
                 mci->AddSSBO(stage_bits, set_type,
-                            AnsiString(entry.struct_name), AnsiString(entry.name));
+                            std::string(entry.struct_name), std::string(entry.name));
             }
             break;
 
@@ -105,7 +105,7 @@ MaterialCreateInfo *CompileFixedMaterial(
                     tt = TextureType::Texture2D;  // fallback
 
                 mci->AddTexture(ShaderStage(stage_bits), set_type, tt,
-                               AnsiString(entry.name));
+                               std::string(entry.name));
             }
             break;
 
@@ -130,7 +130,7 @@ MaterialCreateInfo *CompileFixedMaterial(
                     st = SamplerType::Sampler2D;
                 }
 
-                mci->AddTextureSampler(ShaderStage(stage_bits), set_type, st, AnsiString(entry.name));
+                mci->AddTextureSampler(ShaderStage(stage_bits), set_type, st, std::string(entry.name));
             }
             break;
         }
@@ -157,7 +157,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
     {
         mci->SetMaterialInstance(
-            AnsiString(def.mi_glsl_codes),
+            std::string(def.mi_glsl_codes),
             def.mi_struct_bytes,
             uint32_t(ShaderStage::Vertex));  // MI 数据通常在 VS 中使用
     }
@@ -171,7 +171,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     //   3. ShaderCreateInfo 进行 glslang 编译到 SPV
     // ─────────────────────────────────────────────────────────────────────────
 
-    AnsiString glsl_prefix;
+    std::string glsl_prefix;
     key.AppendGLSLDefines(glsl_prefix);
 
     // 设置 shaders（这里调用 mci 的 shader 编译接口）
@@ -181,14 +181,14 @@ MaterialCreateInfo *CompileFixedMaterial(
     // 暂时使用 SetMain() 的方式来设置源码（不完美，但能工作）
     if (vert && def.vert_glsl)
     {
-        AnsiString vert_source = glsl_prefix + def.vert_glsl;
-        vert->SetMain(vert_source.c_str(), vert_source.Length());
+        std::string vert_source = glsl_prefix + def.vert_glsl;
+        vert->SetMain(vert_source.c_str(), vert_source.length());
     }
 
     if (frag && def.frag_glsl)
     {
-        AnsiString frag_source = glsl_prefix + def.frag_glsl;
-        frag->SetMain(frag_source.c_str(), frag_source.Length());
+        std::string frag_source = glsl_prefix + def.frag_glsl;
+        frag->SetMain(frag_source.c_str(), frag_source.length());
     }
 
     // ─────────────────────────────────────────────────────────────────────────

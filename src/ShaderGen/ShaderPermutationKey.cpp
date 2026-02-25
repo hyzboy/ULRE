@@ -1,7 +1,7 @@
+#include <string>
 /// ShaderPermutationKey.cpp — 排列 key → GLSL #define 映射实现
 
 #include<hgl/graph/mtl/FixedMaterialDef.h>
-#include<hgl/type/String.h>
 #include<stdio.h>
 
 namespace hgl::graph::mtl{
@@ -25,7 +25,7 @@ namespace hgl::graph::mtl{
 ///     uniform samplerCube env_map;
 ///   #endif
 
-void ShaderPermutationKey::AppendGLSLDefines(AnsiString &out) const
+void ShaderPermutationKey::AppendGLSLDefines(std::string &out) const
 {
     char buf[256];
 

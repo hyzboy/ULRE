@@ -1,10 +1,9 @@
-﻿#include"GLSLCompiler.h"
+#include"GLSLCompiler.h"
 #include<hgl/platform/ExternalModule.h>
-#include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<vulkan/vulkan.h>
+#include<iostream>
 #include<hgl/vk/VKPhysicalDevice.h>
-#include<hgl/log/Logger.h>
 
 namespace hgl
 {
@@ -172,7 +171,8 @@ namespace hgl
 
             if(!result)
             {
-                GLogError("Compile shader failed, error info: "+AnsiString(spv->log));
+                std::cerr << "Compile shader failed, error info: " << spv->log << "
+";
 
                 FreeSPVData(spv);
                 return(nullptr);
