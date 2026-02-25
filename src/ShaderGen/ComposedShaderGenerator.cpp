@@ -198,9 +198,29 @@ vec3 DecodeNormalOct(vec2 e) {
     return normalize(n);
 }
 
+vec2 EncodeNormalSpheremap(vec3 n) {
+    n = normalize(n);
+    float m = sqrt(max(2.0 * n.z + 2.0, 1e-6));
+    return n.xy / m + 0.5;
+}
+
+vec3 DecodeNormalSpheremap(vec2 e) {
+    vec2 f = e * 4.0 - 2.0;
+    float ff = dot(f, f);
+    float g = sqrt(max(1.0 - ff * 0.25, 0.0));
+    vec3 n;
+    n.xy = f * g;
+    n.z = 1.0 - ff * 0.5;
+    return normalize(n);
+}
+
 vec3 DecodeVertexInputNormal(vec3 normal_in) {
 #if COMPRESS_VERTEX_INPUT_NORMAL
+#if VERTEX_NORMAL_ENCODING_SPHEREMAP
+    return DecodeNormalSpheremap(normal_in.xy);
+#else
     return DecodeNormalOct(normal_in.xy);
+#endif
 #else
     return normalize(normal_in);
 #endif
@@ -208,7 +228,11 @@ vec3 DecodeVertexInputNormal(vec3 normal_in) {
 
 vec3 DecodeNormalMapNormal(vec3 normal_sample) {
 #if COMPRESS_NORMAL_MAP
+#if NORMAL_MAP_ENCODING_SPHEREMAP
+    return DecodeNormalSpheremap(normal_sample.xy);
+#else
     return DecodeNormalOct(normal_sample.xy);
+#endif
 #else
     return normalize(normal_sample * 2.0 - 1.0);
 #endif
@@ -216,7 +240,11 @@ vec3 DecodeNormalMapNormal(vec3 normal_sample) {
 
 vec2 EncodeGBufferNormal(vec3 n) {
 #if COMPRESS_GBUFFER_NORMAL
+#if GBUFFER_NORMAL_ENCODING_SPHEREMAP
+    return EncodeNormalSpheremap(n);
+#else
     return EncodeNormalOct(n);
+#endif
 #else
     return normalize(n).xy;
 #endif
@@ -224,7 +252,11 @@ vec2 EncodeGBufferNormal(vec3 n) {
 
 vec3 DecodeGBufferNormal(vec2 packed_n) {
 #if COMPRESS_GBUFFER_NORMAL
+#if GBUFFER_NORMAL_ENCODING_SPHEREMAP
+    return DecodeNormalSpheremap(packed_n);
+#else
     return DecodeNormalOct(packed_n);
+#endif
 #else
     return normalize(vec3(packed_n, sqrt(max(0.0, 1.0 - dot(packed_n, packed_n)))));
 #endif

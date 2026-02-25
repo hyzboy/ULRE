@@ -417,6 +417,22 @@ int main()
 
     bool normal_compression_gbuffer_encode_ok = (std::strstr(normal_fs_deferred.c_str(), "EncodeGBufferNormal(GetWorldNormal())") != nullptr);
 
+    PipelineMode normal_spheremap_mode = normal_compression_mode;
+    normal_spheremap_mode.normal_compression.vertex_input_encoding = NormalEncodingMode::Spheremap;
+    normal_spheremap_mode.normal_compression.normal_map_encoding = NormalEncodingMode::Spheremap;
+    normal_spheremap_mode.normal_compression.gbuffer_encoding = NormalEncodingMode::Spheremap;
+
+    hgl::AnsiString normal_spheremap_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_spheremap_mode);
+    hgl::AnsiString normal_spheremap_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_spheremap_mode);
+
+    bool normal_spheremap_macro_ok = (std::strstr(normal_spheremap_vs.c_str(), "#define VERTEX_NORMAL_ENCODING_SPHEREMAP 1") != nullptr)
+                                 && (std::strstr(normal_spheremap_fs.c_str(), "#define NORMAL_MAP_ENCODING_SPHEREMAP 1") != nullptr)
+                                 && (std::strstr(normal_spheremap_fs.c_str(), "#define GBUFFER_NORMAL_ENCODING_SPHEREMAP 1") != nullptr);
+
+    bool normal_spheremap_helper_ok = (std::strstr(normal_spheremap_vs.c_str(), "DecodeNormalSpheremap(normal_in.xy)") != nullptr)
+                                  && (std::strstr(normal_spheremap_fs.c_str(), "DecodeNormalSpheremap(normal_sample.xy)") != nullptr)
+                                  && (std::strstr(normal_spheremap_fs.c_str(), "EncodeNormalSpheremap(n)") != nullptr);
+
     printf("\n========================================\n");
     printf("  测试总结\n");
     printf("========================================\n");
@@ -443,6 +459,8 @@ int main()
     printf("  Normal压缩 宏注入: %s\n", normal_compression_define_ok ? "✓ 通过" : "✗ 失败");
     printf("  Normal压缩 解码路由: %s\n", normal_compression_decode_route_ok ? "✓ 通过" : "✗ 失败");
     printf("  Normal压缩 GBuffer编码路由: %s\n", normal_compression_gbuffer_encode_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Normal Spheremap 宏路由: %s\n", normal_spheremap_macro_ok ? "✓ 通过" : "✗ 失败");
+    printf("  Normal Spheremap Helper路由: %s\n", normal_spheremap_helper_ok ? "✓ 通过" : "✗ 失败");
     printf("  GLSL 导出: %s\n", (dump_vs_ok && dump_fs_ok) ? "✓ 成功" : "✗ 失败");
 
     const bool all_ok = vs_ok && fs_ok && vs_no_dup && fs_no_dup
@@ -463,6 +481,8 @@ int main()
                      && normal_compression_define_ok
                      && normal_compression_decode_route_ok
                      && normal_compression_gbuffer_encode_ok
+                     && normal_spheremap_macro_ok
+                     && normal_spheremap_helper_ok
                      && dump_vs_ok && dump_fs_ok;
     printf("  总体结果: %s\n\n", all_ok ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
 
