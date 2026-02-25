@@ -9,6 +9,129 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    static const char *VATypeToGLSL(const VAType &type)
+    {
+        switch (type.basetype)
+        {
+            case VertexAttribBaseType::Float:
+                switch (type.vec_size)
+                {
+                    case 1: return "float";
+                    case 2: return "vec2";
+                    case 3: return "vec3";
+                    case 4: return "vec4";
+                    default: return "vec4";
+                }
+            case VertexAttribBaseType::UInt:
+                switch (type.vec_size)
+                {
+                    case 1: return "uint";
+                    case 2: return "uvec2";
+                    case 3: return "uvec3";
+                    case 4: return "uvec4";
+                    default: return "uint";
+                }
+            case VertexAttribBaseType::Int:
+                switch (type.vec_size)
+                {
+                    case 1: return "int";
+                    case 2: return "ivec2";
+                    case 3: return "ivec3";
+                    case 4: return "ivec4";
+                    default: return "int";
+                }
+            case VertexAttribBaseType::Bool:
+                switch (type.vec_size)
+                {
+                    case 1: return "bool";
+                    case 2: return "bvec2";
+                    case 3: return "bvec3";
+                    case 4: return "bvec4";
+                    default: return "bool";
+                }
+            default:
+                return "vec4";
+        }
+    }
+
+    static AnsiString BuildVertexGLSLFromBusiness(const ComposedMaterialDef &def)
+    {
+        AnsiString glsl;
+
+        glsl += "struct VertexInput\n{\n";
+        for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+        {
+            const auto &entry = def.vertex_entries[i];
+            glsl += "    ";
+            glsl += VATypeToGLSL(entry.type);
+            glsl += " ";
+            glsl += entry.name;
+            glsl += ";\n";
+        }
+        glsl += "};\n\n";
+
+        if (def.vertex_business && def.vertex_business->code)
+        {
+            glsl += def.vertex_business->code;
+            glsl += "\n\n";
+        }
+
+        glsl += R"(
+void main()
+{
+    VertexInput vi;
+)";
+
+        for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+        {
+            const auto &entry = def.vertex_entries[i];
+            glsl += "    vi.";
+            glsl += entry.name;
+            glsl += "=";
+            glsl += entry.name;
+            glsl += ";\n";
+        }
+
+        glsl += R"(
+    HandoverMI();
+    vec4 local_pos = VertexShaderBusiness(vi);
+    gl_Position = camera.vp * GetLocalToWorld() * local_pos;
+}
+)";
+
+        return glsl;
+    }
+
+    static AnsiString BuildFragmentGLSLFromBusiness(const ComposedMaterialDef &def)
+    {
+        AnsiString glsl;
+
+        glsl += R"(
+struct VS_Output
+{
+    uint MaterialInstanceID;
+};
+
+)";
+
+        if (def.fragment_business && def.fragment_business->code)
+        {
+            glsl += def.fragment_business->code;
+            glsl += "\n\n";
+        }
+
+        glsl += R"(
+void main()
+{
+    VS_Output vso;
+    vso.MaterialInstanceID = Input.MaterialInstanceID;
+    FragColor = FragmentShaderBusiness(vso);
+}
+)";
+
+        return glsl;
+    }
+
     static bool ProbePureColor3DComposedPath(const ShaderPermutationKey &key)
     {
         ComposedMaterialBuildFromLogicResult bridge_result;
@@ -118,17 +241,39 @@ MaterialCreateInfo *CreatePureColor3D(const VulkanDevAttr *dev_attr,Material3DCr
 
     if (composed_precheck_ok)
     {
-        MaterialCreateInfo *mci_new = CompileFixedMaterial(dev_attr, PURE_COLOR_3D_DEF, key);
+        ComposedMaterialBuildFromLogicResult bridge_result;
+        const bool bridge_ok = BuildComposedMaterialDefFromLogic(
+            PURE_COLOR_3D_COMPOSED_DEF,
+            PURE_COLOR_3D_LOGIC,
+            bridge_result);
+
+        if (!bridge_ok)
+        {
+            std::fprintf(stderr,
+                "[PureColor3D] bridge failed after precheck, fallback to legacy path\n");
+
+            MaterialPureColor3D mvc3d(cfg);
+            return mvc3d.Create(dev_attr);
+        }
+
+        AnsiString generated_vs = BuildVertexGLSLFromBusiness(bridge_result.def);
+        AnsiString generated_fs = BuildFragmentGLSLFromBusiness(bridge_result.def);
+
+        FixedMaterialDef runtime_def = PURE_COLOR_3D_DEF;
+        runtime_def.vert_glsl = generated_vs.c_str();
+        runtime_def.frag_glsl = generated_fs.c_str();
+
+        MaterialCreateInfo *mci_new = CompileFixedMaterial(dev_attr, runtime_def, key);
 
         if (mci_new)
         {
             std::fprintf(stderr,
-                "[PureColor3D] using new compile path (CompileFixedMaterial)\n");
+                "[PureColor3D] using new composed-business compile path\n");
             return mci_new;
         }
 
         std::fprintf(stderr,
-            "[PureColor3D] new compile path failed, fallback to legacy Std3DMaterial path\n");
+            "[PureColor3D] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
     }
     else
     {
