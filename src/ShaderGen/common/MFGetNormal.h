@@ -19,6 +19,13 @@ vec3 GetNormal(mat3 normal_matrix,vec3 normal)
 }
 )";
 
+    constexpr const char *GetNormalByLocal=R"(
+vec3 GetNormal(vec3 local_normal)
+{
+    return normalize(mat3(camera.view*GetLocalToWorld())*local_normal);
+}
+)";
+
     constexpr const char *GetNormalVS=R"(
 vec3 GetNormal()
 {

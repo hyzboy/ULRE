@@ -19,6 +19,7 @@
 
 #include "common/MFCommon.h"
 #include "common/MFGetPosition.h"
+#include "common/MFGetNormal.h"
 
 namespace hgl::graph::mtl {
 
@@ -127,10 +128,60 @@ static const char *VATypeToGLSL(const VAType &type)
     }
 }
 
+/// 提取业务代码中的插值变量（简化版：基于字符串匹配）
+static std::vector<std::pair<std::string, std::string>> ExtractInterpolatedVariables(const char *code)
+{
+    std::vector<std::pair<std::string, std::string>> variables; // {name, type}
+    
+    if (!code || !*code)
+        return variables;
+    
+    std::string code_str(code);
+    
+    // 检测常见插值变量模式
+    struct InterpolationPattern {
+        const char *pattern;
+        const char *name;
+        const char *type;
+    };
+    
+    InterpolationPattern patterns[] = {
+        {"Output.Color", "Color", "vec4"},
+        {"Output.Normal", "Normal", "vec3"},
+        {"Output.Position", "Position", "vec4"},
+        {"Output.WorldPosition", "WorldPosition", "vec4"},
+        {"Output.TexCoord", "TexCoord", "vec2"},
+        {"Output.Tangent", "Tangent", "vec3"},
+        {"Output.Bitangent", "Bitangent", "vec3"},
+    };
+    
+    for (const auto &p : patterns)
+    {
+        if (code_str.find(p.pattern) != std::string::npos)
+        {
+            // 避免重复添加
+            bool exists = false;
+            for (const auto &v : variables)
+            {
+                if (v.first == p.name)
+                {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists)
+                variables.push_back({p.name, p.type});
+        }
+    }
+    
+    return variables;
+}
+
 static AnsiString BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def, const ComposedMaterialDef &def)
 {
     AnsiString glsl;
 
+    // Step 1: 生成 VertexInput 结构体
     glsl += "struct VertexInput\n{\n";
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
@@ -143,12 +194,40 @@ static AnsiString BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def,
     }
     glsl += "};\n\n";
 
+    // Step 2: 提取插值变量（从 VS business 代码中）
+    std::vector<std::pair<std::string, std::string>> interp_vars;
+    if (def.vertex_business && def.vertex_business->code)
+    {
+        interp_vars = ExtractInterpolatedVariables(def.vertex_business->code);
+    }
+
+    // Step 3: 生成业务用输出接口块（避免与 MI 输出的 Vertex_Output 冲突）
+    if (!interp_vars.empty())
+    {
+        glsl += "layout(location=1) out Vertex_Business_Output\n{\n";
+        for (const auto &v : interp_vars)
+        {
+            glsl += "    ";
+            glsl += v.second.c_str(); // type
+            glsl += " ";
+            glsl += v.first.c_str(); // name
+            glsl += ";\n";
+        }
+        glsl += "} BusinessOutput;\n\n";
+        glsl += "#define Output BusinessOutput\n";
+    }
+
+    // Step 4: 插入 business 代码
     if (def.vertex_business && def.vertex_business->code)
     {
         glsl += def.vertex_business->code;
         glsl += "\n\n";
     }
 
+    if (!interp_vars.empty())
+        glsl += "#undef Output\n\n";
+
+    // Step 5: 生成 main 函数
     const bool has_transform = HasVertexEntry(fixed_def, Assign::TransformID::VIS_NAME);
     const bool has_camera = HasDescriptorNamed(fixed_def, "camera") || HasDescriptorNamed(fixed_def, "CameraInfo");
     const bool has_material_instance = HasVertexEntry(fixed_def, Assign::MaterialInstanceID::VIS_NAME);
@@ -191,12 +270,40 @@ static AnsiString BuildFragmentGLSLFromBusiness(const FixedMaterialDef &fixed_de
 {
     AnsiString glsl;
 
+    // Step 1: 提取插值变量（从 VS business 代码中，FS 需要匹配）
+    std::vector<std::pair<std::string, std::string>> interp_vars;
+    if (def.vertex_business && def.vertex_business->code)
+    {
+        interp_vars = ExtractInterpolatedVariables(def.vertex_business->code);
+    }
+
+    // Step 2: 生成业务用输入接口块（避免与 MI 输入的 Vertex_Output 冲突）
+    if (!interp_vars.empty())
+    {
+        glsl += "layout(location=1) in Vertex_Business_Output\n{\n";
+        for (const auto &v : interp_vars)
+        {
+            glsl += "    ";
+            glsl += v.second.c_str(); // type
+            glsl += " ";
+            glsl += v.first.c_str(); // name
+            glsl += ";\n";
+        }
+        glsl += "} BusinessInput;\n\n";
+        glsl += "#define Input BusinessInput\n";
+    }
+
+    // Step 3: 插入 business 代码
     if (def.fragment_business && def.fragment_business->code)
     {
         glsl += def.fragment_business->code;
         glsl += "\n\n";
     }
 
+    if (!interp_vars.empty())
+        glsl += "#undef Input\n\n";
+
+    // Step 4: 生成 main 函数
     glsl += "void main()\n{\n";
     glsl += "    FragColor = FragmentShaderBusiness();\n";
     glsl += "}\n";
@@ -369,6 +476,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     ShaderCreateInfoVertex *vsc = mci->GetVS();
     const bool has_position = HasVertexEntry(def, VAN::Position);
     const bool has_color = HasVertexEntry(def, VAN::Color);
+    const bool has_normal = HasVertexEntry(def, VAN::Normal);
     const bool has_transform_id = HasVertexEntry(def, Assign::TransformID::VIS_NAME);
 
     if (vsc)
@@ -399,6 +507,9 @@ MaterialCreateInfo *CompileFixedMaterial(
             else
                 vsc->AddFunction(func::GetPosition3D);
         }
+
+        if (has_normal && has_transform_id && has_camera_descriptor)
+            vsc->AddFunction(func::GetNormalByLocal);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

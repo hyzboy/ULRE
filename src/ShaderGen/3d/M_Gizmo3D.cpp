@@ -100,17 +100,28 @@ MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreate
 {
     ShaderPermutationKey key;
 
-    // 注意：Gizmo3D 需要 Normal 和 Position 插值到 FS，当前 business 编译器
-    // 还不支持自动生成 Vertex_Output 结构体，暂时直接回退 legacy 路径
-    // TODO: Phase D 完成插值自动生成后接入新路径
-    
-    std::fprintf(stderr,
-        "[Gizmo3D] using legacy Std3DMaterial path (complex interpolation not yet supported in business compiler)\n");
+    if(cfg)
+        cfg->material_instance=true;
 
-    cfg->material_instance=true;
+    MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
+        dev_attr,
+        GIZMO_3D_DEF,
+        GIZMO_3D_COMPOSED_DEF,
+        GIZMO_3D_LOGIC,
+        key,
+        cfg);
+
+    if (mci_new)
+    {
+        std::fprintf(stderr,
+            "[Gizmo3D] using new composed-business compile path\n");
+        return mci_new;
+    }
+
+    std::fprintf(stderr,
+        "[Gizmo3D] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
 
     MaterialGizmo3D mg3d(cfg);
-
     return mg3d.Create(dev_attr);
 }
 }//namespace hgl::graph::mtl

@@ -77,50 +77,50 @@
 ## Phase B：一致性修正（M1.5，紧随 A）
 
 **目标**：把接口语义和 helper 行为对齐，避免"看起来能用，实则脆弱"。  
-**状态**：✅ 文档规范化完成（2026-02-26），代码实现验收待进行  
+**状态**：✅ 完成（2026-02-26）  
 **详细总结**：[doc/shader-system/PHASE_B_COMPLETION_SUMMARY.md](doc/shader-system/PHASE_B_COMPLETION_SUMMARY.md)  
 **规范索引**：[doc/shader-system/README.md](doc/shader-system/README.md)
 
 ### B.1 任务
 
-- [x] 统一 helper 签名：
-  - 明确 `GetWorldPos()` / `GetWorldPos(vec3)` 最终规范，只保留一种主签名。
-  - **文档**：[doc/shader-system/SHADER_HELPER_FUNCTION_SPEC.md](doc/shader-system/SHADER_HELPER_FUNCTION_SPEC.md)
-  - **成果**：规范化为 `GetLocalPosition()` / `GetWorldPosition()` / `GetClipPosition()` / `GetScreenPosition()`，废弃 `GetPosition3D` 等混乱签名。
-- [x] 统一 `required_resources` 命名规则（是否以 descriptor `name` 为准）。
-  - **文档**：[doc/shader-system/SHADER_RESOURCE_NAMING_SPEC.md](doc/shader-system/SHADER_RESOURCE_NAMING_SPEC.md)
-  - **成果**：明确 `descriptor.name` 使用 camelCase，`required_resources` 字符串必须与 descriptor 完全匹配，GLSL uniform block 实例名一致。
-- [x] 明确 `ShaderLogic.h` 的最小必填约束与错误信息格式。
-  - **文档**：[doc/shader-system/SHADER_LOGIC_CONSTRAINTS_SPEC.md](doc/shader-system/SHADER_LOGIC_CONSTRAINTS_SPEC.md)
-  - **成果**：定义 `ShaderLogicBlock` 必填字段（`main_logic` 非空等），规范错误消息格式（`[Error]` / `[Warning]` / `[Info]`）。
-- [x] 修正 `ResourceLayoutGenerator` 的 binding 分配策略文档与实现一致性（自动分配 vs 固定映射）。
-  - **文档**：[doc/shader-system/RESOURCE_LAYOUT_BINDING_STRATEGY.md](doc/shader-system/RESOURCE_LAYOUT_BINDING_STRATEGY.md)
-  - **成果**：明确当前使用固定映射策略，定义 Set 分配约定（Set 0=全局、Set 1=材质、Set 2=纹理等），文档化冲突检测机制。
+- [x] 统一 helper 签名
+- [x] 统一 `required_resources` 命名规则
+- [x] 明确 `ShaderLogic.h` 的最小必填约束与错误信息格式
+- [x] 修正 `ResourceLayoutGenerator` 的 binding 分配策略文档与实现一致性
 
 ### B.2 验收
 
-- [ ] 三个逻辑样例（PureColor/VertexColor/Gizmo）都能通过桥接校验。
-  - **待执行**：实现 `ValidateMaterialLogicDef` 函数，运行桥接验证测试。
-- [ ] helper 注入行为可预测、无重复定义。
-  - **待执行**：增加 helper 注入冲突检测，确保无重复定义错误。
+- [x] 三个逻辑样例（PureColor/VertexColor/Gizmo）都能通过桥接校验
+- [x] helper 注入行为可预测、无重复定义
+- [x] 实现 `ValidateMaterialLogicDef` 函数
+- [x] 更新 `MFGetPosition.h` / `MFCommon.h` 规范化 helper
 
 ---
 
 ## Phase C：批量迁移（M2）
 
-**目标**：把典型 3D 材质批量切到新路径，并保持稳定。
+**目标**：把典型 3D 材质批量切到新路径，并保持稳定。  
+**状态**：🔄 进行中（2026-02-26）
 
-### C.1 迁移顺序
+### C.1 核心能力实现
 
-1. [ ] `VertexColor3D`
-2. [ ] `Gizmo3D`
-3. [ ] `BasicLit`
-4. [ ] `TextureBlinnPhong`
+- [x] 插值接口块自动生成（MaterialCompiler.cpp）  
+  - ✅ 扫描 VS business 代码提取 `Output.XXX` 变量  
+  - ✅ 自动生成 `out Vertex_Output { ... } Output;` 接口块  
+  - ✅ 自动生成 `in Vertex_Output { ... } Input;` 接口块（FS）  
+  - 支持变量：Color / Normal / Position / WorldPosition / TexCoord / Tangent / Bitangent
 
-### C.2 每个材质统一流程
+### C.2 迁移顺序
 
-- [ ] 接入 bridge + fallback。
-- [ ] 生成 GLSL 编译通过（VS/FS）。
+1. [x] `VertexColor3D` - 已完成（Phase A）
+2. [x] `Gizmo3D` - 已接入新路径，保留 fallback（渲染细节待人工核验）
+3. [x] `BasicLit` - 已接入新路径（`ibl=false`），`ibl=true` 暂走 legacy
+4. [x] `TextureBlinnPhong` - 已接入新路径，保留 fallback
+
+### C.3 每个材质统一流程
+
+- [x] 接入 bridge + fallback。
+- [x] 生成 GLSL 编译通过（VS/FS）。
 - [ ] 样例渲染通过（截图或自动比对）。
 - [ ] 补充一条回归测试。
 
