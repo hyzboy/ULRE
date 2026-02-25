@@ -1,5 +1,8 @@
 ﻿#include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/graph/mtl/MaterialCompiler.h>
+#include"S_Gizmo3D.h"
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
@@ -95,6 +98,15 @@ void main()
 
 MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
 {
+    ShaderPermutationKey key;
+
+    // 注意：Gizmo3D 需要 Normal 和 Position 插值到 FS，当前 business 编译器
+    // 还不支持自动生成 Vertex_Output 结构体，暂时直接回退 legacy 路径
+    // TODO: Phase D 完成插值自动生成后接入新路径
+    
+    std::fprintf(stderr,
+        "[Gizmo3D] using legacy Std3DMaterial path (complex interpolation not yet supported in business compiler)\n");
+
     cfg->material_instance=true;
 
     MaterialGizmo3D mg3d(cfg);

@@ -76,20 +76,33 @@
 
 ## Phase B：一致性修正（M1.5，紧随 A）
 
-**目标**：把接口语义和 helper 行为对齐，避免“看起来能用，实则脆弱”。
+**目标**：把接口语义和 helper 行为对齐，避免"看起来能用，实则脆弱"。  
+**状态**：✅ 文档规范化完成（2026-02-26），代码实现验收待进行  
+**详细总结**：[doc/shader-system/PHASE_B_COMPLETION_SUMMARY.md](doc/shader-system/PHASE_B_COMPLETION_SUMMARY.md)  
+**规范索引**：[doc/shader-system/README.md](doc/shader-system/README.md)
 
 ### B.1 任务
 
-- [ ] 统一 helper 签名：
+- [x] 统一 helper 签名：
   - 明确 `GetWorldPos()` / `GetWorldPos(vec3)` 最终规范，只保留一种主签名。
-- [ ] 统一 `required_resources` 命名规则（是否以 descriptor `name` 为准）。
-- [ ] 明确 `ShaderLogic.h` 的最小必填约束与错误信息格式。
-- [ ] 修正 `ResourceLayoutGenerator` 的 binding 分配策略文档与实现一致性（自动分配 vs 固定映射）。
+  - **文档**：[doc/shader-system/SHADER_HELPER_FUNCTION_SPEC.md](doc/shader-system/SHADER_HELPER_FUNCTION_SPEC.md)
+  - **成果**：规范化为 `GetLocalPosition()` / `GetWorldPosition()` / `GetClipPosition()` / `GetScreenPosition()`，废弃 `GetPosition3D` 等混乱签名。
+- [x] 统一 `required_resources` 命名规则（是否以 descriptor `name` 为准）。
+  - **文档**：[doc/shader-system/SHADER_RESOURCE_NAMING_SPEC.md](doc/shader-system/SHADER_RESOURCE_NAMING_SPEC.md)
+  - **成果**：明确 `descriptor.name` 使用 camelCase，`required_resources` 字符串必须与 descriptor 完全匹配，GLSL uniform block 实例名一致。
+- [x] 明确 `ShaderLogic.h` 的最小必填约束与错误信息格式。
+  - **文档**：[doc/shader-system/SHADER_LOGIC_CONSTRAINTS_SPEC.md](doc/shader-system/SHADER_LOGIC_CONSTRAINTS_SPEC.md)
+  - **成果**：定义 `ShaderLogicBlock` 必填字段（`main_logic` 非空等），规范错误消息格式（`[Error]` / `[Warning]` / `[Info]`）。
+- [x] 修正 `ResourceLayoutGenerator` 的 binding 分配策略文档与实现一致性（自动分配 vs 固定映射）。
+  - **文档**：[doc/shader-system/RESOURCE_LAYOUT_BINDING_STRATEGY.md](doc/shader-system/RESOURCE_LAYOUT_BINDING_STRATEGY.md)
+  - **成果**：明确当前使用固定映射策略，定义 Set 分配约定（Set 0=全局、Set 1=材质、Set 2=纹理等），文档化冲突检测机制。
 
 ### B.2 验收
 
 - [ ] 三个逻辑样例（PureColor/VertexColor/Gizmo）都能通过桥接校验。
+  - **待执行**：实现 `ValidateMaterialLogicDef` 函数，运行桥接验证测试。
 - [ ] helper 注入行为可预测、无重复定义。
+  - **待执行**：增加 helper 注入冲突检测，确保无重复定义错误。
 
 ---
 

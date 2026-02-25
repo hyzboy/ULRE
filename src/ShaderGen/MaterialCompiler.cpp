@@ -468,6 +468,13 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
     const ShaderPermutationKey &key,
     const Material3DCreateConfig *config)
 {
+    // Phase B: 校验 MaterialLogicDef 是否符合规范约束
+    if (!ValidateMaterialLogicDef(logic))
+    {
+        std::fprintf(stderr, "[ComposedBusiness] MaterialLogicDef validation failed, see errors above\n");
+        return nullptr;
+    }
+
     ComposedMaterialBuildFromLogicResult bridge_result;
     const bool bridge_ok = BuildComposedMaterialDefFromLogic(base_composed_def, logic, bridge_result);
 

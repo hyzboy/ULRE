@@ -229,4 +229,107 @@ MaterialLogicDef PURE_COLOR_LOGIC = {
 
 */
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 运行时校验函数（Phase B 一致性保证）
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * 校验 ShaderLogicBlock 是否符合最小必填约束
+ * 
+ * @param block       要校验的逻辑块
+ * @param stage_name  阶段名称（用于错误消息，如 "Vertex" / "Fragment"）
+ * @return 是否通过校验（false = 有致命错误）
+ * 
+ * 校验规则：
+ *   1. main_logic 必须非空
+ *   2. 如果 required_resource_count > 0，required_resources 不能为 nullptr
+ *   3. 如果 required_helper_count > 0，required_helpers 不能为 nullptr
+ *   4. 如果 required_resources == nullptr，required_resource_count 必须为 0
+ *   5. 如果 required_helpers == nullptr，required_helper_count 必须为 0
+ * 
+ * 错误消息格式（符合 SHADER_LOGIC_CONSTRAINTS_SPEC.md）：
+ *   [Error][ShaderLogic:{StageName}] main_logic cannot be null
+ *   [Error][ShaderLogic:{StageName}] required_resource_count is {N} but required_resources is nullptr
+ *   [Warning][ShaderLogic:{StageName}] required_resources is non-null but count is 0 (will be ignored)
+ */
+inline bool ValidateShaderLogicBlock(const ShaderLogicBlock& block, const char* stage_name = "Unknown") {
+    bool is_valid = true;
+    
+    // 规则 1: main_logic 必须非空
+    if (!block.main_logic || block.main_logic[0] == '\0') {
+        fprintf(stderr, "[Error][ShaderLogic:%s] main_logic cannot be null or empty\n", stage_name);
+        is_valid = false;
+    }
+    
+    // 规则 2+4: required_resources 与 count 一致性
+    if (block.required_resource_count > 0 && !block.required_resources) {
+        fprintf(stderr, "[Error][ShaderLogic:%s] required_resource_count is %u but required_resources is nullptr\n", 
+                stage_name, block.required_resource_count);
+        is_valid = false;
+    }
+    if (block.required_resources && block.required_resource_count == 0) {
+        fprintf(stderr, "[Warning][ShaderLogic:%s] required_resources is non-null but count is 0 (will be ignored)\n", 
+                stage_name);
+    }
+    
+    // 规则 3+5: required_helpers 与 count 一致性
+    if (block.required_helper_count > 0 && !block.required_helpers) {
+        fprintf(stderr, "[Error][ShaderLogic:%s] required_helper_count is %u but required_helpers is nullptr\n", 
+                stage_name, block.required_helper_count);
+        is_valid = false;
+    }
+    if (block.required_helpers && block.required_helper_count == 0) {
+        fprintf(stderr, "[Warning][ShaderLogic:%s] required_helpers is non-null but count is 0 (will be ignored)\n", 
+                stage_name);
+    }
+    
+    return is_valid;
+}
+
+/**
+ * 校验完整 MaterialLogicDef（检查 VS + FS + 可选 Stage）
+ * 
+ * @param logic  要校验的材质逻辑定义
+ * @return 是否通过校验（false = 有致命错误）
+ * 
+ * 校验规则：
+ *   1. vertex.main_logic 和 fragment.main_logic 必须非空
+ *   2. 如果 geometry/tess_control/tess_eval 指针非空，其 main_logic 也必须非空
+ *   3. 所有 stage 都必须通过 ValidateShaderLogicBlock 检查
+ */
+inline bool ValidateMaterialLogicDef(const MaterialLogicDef& logic) {
+    bool is_valid = true;
+    
+    // 校验 Vertex Shader（必需）
+    if (!ValidateShaderLogicBlock(logic.vertex, "Vertex")) {
+        is_valid = false;
+    }
+    
+    // 校验 Fragment Shader（必需）
+    if (!ValidateShaderLogicBlock(logic.fragment, "Fragment")) {
+        is_valid = false;
+    }
+    
+    // 校验可选 Stage
+    if (logic.geometry) {
+        if (!ValidateShaderLogicBlock(*logic.geometry, "Geometry")) {
+            is_valid = false;
+        }
+    }
+    
+    if (logic.tess_control) {
+        if (!ValidateShaderLogicBlock(*logic.tess_control, "TessControl")) {
+            is_valid = false;
+        }
+    }
+    
+    if (logic.tess_eval) {
+        if (!ValidateShaderLogicBlock(*logic.tess_eval, "TessEval")) {
+            is_valid = false;
+        }
+    }
+    
+    return is_valid;
+}
+
 } // namespace hgl::graph::mtl
