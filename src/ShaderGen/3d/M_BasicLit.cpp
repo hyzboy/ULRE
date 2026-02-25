@@ -7,6 +7,8 @@
 #include <hgl/vk/VKRenderAssign.h>
 #include <cstdio>
 
+#include "common/MFSkyLight.h"
+
 namespace hgl::graph::mtl{
 namespace
 {
@@ -49,7 +51,7 @@ void main()
     gl_Position     = Output.Position;
 })";
 
-    constexpr const char fs_main[] = R"(
+    constexpr const char fs_main[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
     float NdotL = max(dot(normal, lightDir), 0.0);
@@ -67,7 +69,7 @@ void main()
 
     vec3 normal = normalize(Input.Normal);
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
-    vec3 lightDir = normalize(sky.sun_direction.xyz);
+    vec3 lightDir = ULRE_GetSkyLightDir();
 
     vec4 base_color = unpackUnorm4x8(mi.base_color);
 
@@ -84,13 +86,15 @@ void main()
     float fresnel = fresnelSchlick(max(dot(viewDir, halfDir), 0.0), mi.fresnel);
 
     // Directional light color
-    vec3 sunColor = sky.sun_color.rgb * sky.sun_intensity;
+    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
     sunColor = max(sunColor,vec3(0.1));
 
     // Combine
     vec3 color = diffuse + spec * fresnel;
     color *= sunColor;
+    color += skyAmbient * 0.15;
 
 #ifdef USE_IBL
     // 简单IBL: 直接加一份环境色
@@ -109,7 +113,7 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 }
 )";
 
-    constexpr const char BASIC_LIT_FS_BUSINESS[] = R"(
+    constexpr const char BASIC_LIT_FS_BUSINESS[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
     float NdotL = max(dot(normal, lightDir), 0.0);
@@ -127,7 +131,7 @@ vec4 FragmentShaderBusiness()
 
     vec3 normal = normalize(Input.Normal);
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
-    vec3 lightDir = normalize(sky.sun_direction.xyz);
+    vec3 lightDir = ULRE_GetSkyLightDir();
 
     vec4 base_color = unpackUnorm4x8(mi.base_color);
 
@@ -138,11 +142,13 @@ vec4 FragmentShaderBusiness()
     float spec = pow(max(dot(normal, halfDir), 0.0), 32.0) * mi.metallic;
     float fresnel = fresnelSchlick(max(dot(viewDir, halfDir), 0.0), mi.fresnel);
 
-    vec3 sunColor = sky.sun_color.rgb * sky.sun_intensity;
+    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 skyAmbient = ULRE_GetSkyAmbientColor();
     sunColor = max(sunColor, vec3(0.1));
 
     vec3 color = diffuse + spec * fresnel;
     color *= sunColor;
+    color += skyAmbient * 0.15;
 
     return vec4(color, 1.0);
 }

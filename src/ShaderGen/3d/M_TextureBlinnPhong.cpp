@@ -7,6 +7,8 @@
 #include <hgl/vk/VKRenderAssign.h>
 #include <cstdio>
 
+#include "common/MFSkyLight.h"
+
 namespace hgl::graph::mtl{
 namespace
 {
@@ -42,7 +44,7 @@ void main()
 })";
 
     // Fragment: textured Blinn-Phong + half-Lambert + Fresnel, lit by sky sun
-    constexpr const char fs_main[] = R"(
+    constexpr const char fs_main[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
 vec3 halfLambert(vec3 n, vec3 l)
 {
     float NdotL = max(dot(n, l), 0.0);
@@ -65,7 +67,7 @@ void main()
 
     vec3 n  = normalize(Input.Normal);
     vec3 v  = normalize(camera.pos - Input.Position.xyz);
-    vec3 l  = normalize(sky.sun_direction.xyz);
+    vec3 l  = ULRE_GetSkyLightDir();
 
     vec3 h  = normalize(l + v);
 
@@ -80,10 +82,12 @@ void main()
     float F = fresnelSchlick(max(dot(v, h), 0.0), F0);
 
     // Sun light color
-    vec3 sunColor = sky.sun_color.rgb * sky.sun_intensity;
+    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
     vec3 color = diffuse + spec * F;
     color *= sunColor;
+    color += skyAmbient * 0.15;
 
     FragColor = vec4(color, base_color.a);
 })";
@@ -98,7 +102,7 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 }
 )";
 
-    constexpr const char TEXTURE_BLINN_PHONG_FS_BUSINESS[] = R"(
+    constexpr const char TEXTURE_BLINN_PHONG_FS_BUSINESS[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
 vec3 halfLambert(vec3 n, vec3 l)
 {
     float NdotL = max(dot(n, l), 0.0);
@@ -120,7 +124,7 @@ vec4 FragmentShaderBusiness()
 
     vec3 n  = normalize(Input.Normal);
     vec3 v  = normalize(camera.pos - Input.Position.xyz);
-    vec3 l  = normalize(sky.sun_direction.xyz);
+    vec3 l  = ULRE_GetSkyLightDir();
 
     vec3 h  = normalize(l + v);
 
@@ -131,10 +135,12 @@ vec4 FragmentShaderBusiness()
 
     float F = fresnelSchlick(max(dot(v, h), 0.0), F0);
 
-    vec3 sunColor = sky.sun_color.rgb * sky.sun_intensity;
+    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
     vec3 color = diffuse + spec * F;
     color *= sunColor;
+    color += skyAmbient * 0.15;
 
     return vec4(color, base_color.a);
 }
