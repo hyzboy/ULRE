@@ -115,6 +115,10 @@ public:
 
     bool CreateShader(ShaderCreateInfo *);
 
+    /// Build GLSL source text only — does not call CompileToSPV().
+    /// Use when you only need the generated GLSL (e.g. for offline validation).
+    bool BuildGLSLOnly(ShaderCreateInfo *last_sc);
+
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;
 };//class ShaderCreateInfo

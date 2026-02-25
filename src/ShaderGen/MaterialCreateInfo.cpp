@@ -395,6 +395,12 @@ void MaterialCreateInfo::SetDevice(const VulkanDevAttr *dev_attr)
     ssbo_range=dev_attr->physical_device->GetSSBORange();
 }
 
+void MaterialCreateInfo::SetDeviceFallback(uint32_t ubo_range_bytes, uint32_t ssbo_range_bytes)
+{
+    ubo_range  = ubo_range_bytes;
+    ssbo_range = ssbo_range_bytes;
+}
+
 bool MaterialCreateInfo::CreateShader()
 {
     if(shader_map.empty())
@@ -412,6 +418,31 @@ bool MaterialCreateInfo::CreateShader()
             sc->AddMaterialInstanceOutput();
 
         sc->CreateShader(last);
+
+        last=sc;
+    }
+
+    return(true);
+}
+
+bool MaterialCreateInfo::BuildGLSLOnly()
+{
+    if(shader_map.empty())
+        return(false);
+
+    mdi.Resort();
+
+    ShaderCreateInfo *last=nullptr;
+
+    for(auto& kv : shader_map)
+    {
+        ShaderCreateInfo *sc = kv.second;
+
+        if(static_cast<uint32_t>(sc->GetShaderStage())<mi_shader_stage)
+            sc->AddMaterialInstanceOutput();
+
+        if(!sc->BuildGLSLOnly(last))
+            return(false);
 
         last=sc;
     }

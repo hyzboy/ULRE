@@ -115,6 +115,14 @@ namespace hgl::graph
             bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const std::string &name);
 
             bool CreateShader();
+
+            /// Build GLSL source text for all stages — skips SPV compilation.
+            /// Use when you only need the generated GLSL (e.g. for offline validation).
+            bool BuildGLSLOnly();
+
+            /// Set device limits directly without a real VulkanDevAttr.
+            /// Used by CreateGLSLOnly() when no device is available.
+            void SetDeviceFallback(uint32_t ubo_range_bytes, uint32_t ssbo_range_bytes);
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph

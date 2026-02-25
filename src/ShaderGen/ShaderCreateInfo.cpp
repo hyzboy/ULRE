@@ -372,6 +372,17 @@ bool ShaderCreateInfo::ProcSampler()
 
 bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 {
+    if(!BuildGLSLOnly(last_sc))
+        return(false);
+
+    if(!CompileToSPV())
+        return(false);
+
+    return(true);
+}
+
+bool ShaderCreateInfo::BuildGLSLOnly(ShaderCreateInfo *last_sc)
+{
     if(main_function.empty())
         return(false);
 
@@ -472,9 +483,6 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
     std::cerr << GetShaderStageName((VkShaderStageFlagBits)shader_stage) << " shader:\n" << final_shader.c_str() << "\n";
 
 #endif//_DEBUG
-
-    if(!CompileToSPV())
-        return(false);
 
     return(true);
 }

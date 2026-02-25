@@ -54,6 +54,10 @@ namespace hgl::graph
             virtual ~StdMaterial()=default;
 
             virtual MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr);
+
+            /// Build GLSL source text for all stages without SPV compilation.
+            /// dev_attr may be nullptr; ubo_range/ssbo_range default to desktop-safe values.
+            virtual MaterialCreateInfo *CreateGLSLOnly(const VulkanDevAttr *dev_attr=nullptr);
         };//class StdMaterial
     }//namespace mtl
 }//namespace hgl::graph
