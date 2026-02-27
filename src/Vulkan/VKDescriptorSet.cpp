@@ -90,13 +90,11 @@ bool DescriptorSet::BindUBO(const int binding,const VkBufferOwner *buf,const VkD
 
     if(binded_sets.Contains(binding))return(false);
 
-    DescriptorBufferInfo buf_info(buf,offset,range);
-
-    vab_list.Add(buf_info);
+    const int buf_index=vab_list.Add(DescriptorBufferInfo(buf,offset,range));
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,&buf_info,desc_type));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,vab_list.GetData()+buf_index,desc_type));
 
     binded_sets.Add(binding);
     is_dirty=true;
@@ -110,13 +108,11 @@ bool DescriptorSet::BindSSBO(const int binding,const VkBufferOwner *buf,const Vk
 
     if(binded_sets.Contains(binding))return(false);
 
-    DescriptorBufferInfo buf_info(buf,offset,range);
-
-    vab_list.Add(buf_info);
+    const int buf_index=vab_list.Add(DescriptorBufferInfo(buf,offset,range));
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,&buf_info,desc_type));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,vab_list.GetData()+buf_index,desc_type));
 
     binded_sets.Add(binding);
     is_dirty=true;
