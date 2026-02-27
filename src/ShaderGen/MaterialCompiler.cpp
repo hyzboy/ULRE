@@ -16,6 +16,8 @@
 #include <hgl/type/String.h>
 #include <cstring>
 #include <cstdio>
+#include <string>
+#include <vector>
 
 #include "common/MFCommon.h"
 #include "common/MFGetPosition.h"
@@ -309,6 +311,142 @@ static AnsiString BuildFragmentGLSLFromBusiness(const FixedMaterialDef &fixed_de
     glsl += "}\n";
 
     return glsl;
+}
+
+struct HelperAliasGroup
+{
+    const char *canonical;
+    const char *aliases[4];
+};
+
+static constexpr HelperAliasGroup FS_HELPER_ALIAS_GROUPS[] = {
+    {"TransformNormal", {"TransformNormal", nullptr, nullptr, nullptr}},
+    {"GetWorldPos", {"GetWorldPos", "GetWorldPosition", nullptr, nullptr}},
+    {"GetCameraPos", {"GetCameraPos", "GetCameraPosition", nullptr, nullptr}},
+};
+
+static bool ContainsCallToken(const char *code, const char *func_name)
+{
+    if (!code || !*code || !func_name || !*func_name)
+        return false;
+
+    char token[160];
+    std::snprintf(token, sizeof(token), "%s(", func_name);
+    return std::strstr(code, token) != nullptr;
+}
+
+static bool ContainsAnyAliasCall(const char *code, const HelperAliasGroup &group)
+{
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        const char *alias = group.aliases[i];
+        if (!alias)
+            break;
+
+        if (ContainsCallToken(code, alias))
+            return true;
+    }
+
+    return false;
+}
+
+static bool ContainsHelperInFSMain(const std::string &fs_main_without_business, const HelperAliasGroup &group)
+{
+    for (uint32_t i = 0; i < 4; ++i)
+    {
+        const char *alias = group.aliases[i];
+        if (!alias)
+            break;
+
+        const std::string token = std::string(alias) + "(";
+        if (fs_main_without_business.find(token) != std::string::npos)
+            return true;
+    }
+
+    return false;
+}
+
+static void AppendUniqueHelperName(std::vector<std::string> &out, const std::string &name)
+{
+    for (const auto &existing : out)
+    {
+        if (existing == name)
+            return;
+    }
+
+    out.emplace_back(name);
+}
+
+bool ValidateFSMainBusinessHelperConsistency(
+    const ComposedMaterialDef &def,
+    const AnsiString &generated_fs)
+{
+    const char *business_code = (def.fragment_business && def.fragment_business->code)
+        ? def.fragment_business->code
+        : nullptr;
+
+    if (!business_code || !*business_code)
+        return true;
+
+    std::string fs_main_only = generated_fs.c_str() ? generated_fs.c_str() : "";
+    const std::string business_block = business_code;
+    const size_t pos = fs_main_only.find(business_block);
+    if (pos != std::string::npos)
+        fs_main_only.erase(pos, business_block.size());
+
+    std::vector<std::string> missing_helpers;
+    for (const auto &group : FS_HELPER_ALIAS_GROUPS)
+    {
+        if (!ContainsAnyAliasCall(business_code, group))
+            continue;
+
+        if (!ContainsHelperInFSMain(fs_main_only, group))
+            AppendUniqueHelperName(missing_helpers, group.canonical);
+    }
+
+    for (const auto &declared_helper : def.logic_required_helpers)
+    {
+        if (declared_helper.empty())
+            continue;
+
+        if (!ContainsCallToken(business_code, declared_helper.c_str()))
+            continue;
+
+        const std::string token = declared_helper + "(";
+        if (fs_main_only.find(token) == std::string::npos)
+            AppendUniqueHelperName(missing_helpers, declared_helper);
+    }
+
+    if (def.fragment_required_helpers && def.fragment_required_helper_count > 0)
+    {
+        for (uint32_t i = 0; i < def.fragment_required_helper_count; ++i)
+        {
+            const char *declared = def.fragment_required_helpers[i];
+            if (!declared || !*declared)
+                continue;
+
+            if (!ContainsCallToken(business_code, declared))
+                continue;
+
+            const std::string token = std::string(declared) + "(";
+            if (fs_main_only.find(token) == std::string::npos)
+                AppendUniqueHelperName(missing_helpers, declared);
+        }
+    }
+
+    if (missing_helpers.empty())
+        return true;
+
+    const char *mat_name = (def.name && def.name[0]) ? def.name : "<unnamed-material>";
+    for (const auto &name : missing_helpers)
+    {
+        std::fprintf(stderr,
+            "[ComposedBusiness][HelperConsistency] material=%s missing helper '%s' in fs_main (required by FragmentShaderBusiness)\n",
+            mat_name,
+            name.c_str());
+    }
+
+    return false;
 }
 
 /**
@@ -624,6 +762,13 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
 
     AnsiString generated_vs = BuildVertexGLSLFromBusiness(base_fixed_def, bridge_result.def);
     AnsiString generated_fs = BuildFragmentGLSLFromBusiness(base_fixed_def, bridge_result.def);
+
+    if (!ValidateFSMainBusinessHelperConsistency(bridge_result.def, generated_fs))
+    {
+        std::fprintf(stderr,
+            "[ComposedBusiness] abort compile: fs_main and FS business required helpers are inconsistent\n");
+        return nullptr;
+    }
 
     FixedMaterialDef runtime_def = base_fixed_def;
     runtime_def.vert_glsl = generated_vs.c_str();

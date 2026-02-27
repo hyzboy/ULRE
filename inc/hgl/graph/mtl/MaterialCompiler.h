@@ -52,6 +52,17 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
     const Material3DCreateConfig *config = nullptr);
 
 /**
+ * 校验生成阶段 FS 入口代码（fs_main）与 FragmentShaderBusiness 所需 helper 是否一致。
+ *
+ * @param def         Composed 材质定义（包含 fragment_business 及显式 helper 依赖）
+ * @param generated_fs 生成后的 FS GLSL 文本
+ * @return            一致返回 true；缺失 helper 返回 false（并输出诊断）
+ */
+bool ValidateFSMainBusinessHelperConsistency(
+    const ComposedMaterialDef &def,
+    const AnsiString &generated_fs);
+
+/**
  * 材质 fallback 工厂辅助宏。（待实现，参见任务 2.3）
  * 先尝试从 recipe 文件加载（file-driven），文件不存在时用 hardcode def。
  * 在 M_Xxx.cpp 工厂函数中使用：
