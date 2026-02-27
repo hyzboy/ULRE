@@ -148,7 +148,14 @@ private:
         if (!pipeline)
             return false;
 
-        material_instance = material_manager->CreateMaterialInstance(material);
+        mtl::BasicLitMaterialInstance mi_data{};
+        mi_data.base_color = 0xFFFFFFFFu;
+        mi_data.metallic = 0.08f;
+        mi_data.roughness = 0.92f;
+        mi_data.fresnel = 0.03f;
+        mi_data.ibl_intensity = 0.0f;
+
+        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
         if (!material_instance)
             return false;
 
