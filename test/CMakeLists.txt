@@ -18,6 +18,8 @@ target_link_libraries(test_DescriptorSetLifecycleRegression
             ULRE.Vulkan
             ULRE.SceneGraph
             CMCore
+            CMMath
+            CMCoreType
             Vulkan::Vulkan)
 
 target_include_directories(test_DescriptorSetLifecycleRegression

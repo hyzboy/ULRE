@@ -50,10 +50,16 @@ class DescriptorSet
     ValueArray<VkDescriptorBufferInfo> vab_list;
     ValueArray<VkDescriptorImageInfo> image_list;
     ValueArray<VkWriteDescriptorSet> wds_list;
+    ValueArray<int> wds_buffer_info_indices;
+    ValueArray<int> wds_image_info_indices;
 
     OrderedSet<uint32_t> binded_sets;
 
     bool is_dirty;
+
+private:
+
+    void SyncWriteDescriptorInfoPointers();
 
 public:
 
@@ -67,6 +73,8 @@ public:
         vab_list.Reserve(vab_count);
         image_list.Reserve(vab_count);
         wds_list.Reserve(vab_count);
+        wds_buffer_info_indices.Reserve(vab_count);
+        wds_image_info_indices.Reserve(vab_count);
 
         is_dirty=true;
     }
