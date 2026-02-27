@@ -64,6 +64,10 @@ void main()
 #undef ULRE_SURFACE_TEX_MODE
 #define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
 
+#ifndef ULRE_NORMAL_STRENGTH
+#define ULRE_NORMAL_STRENGTH 0.35
+#endif
+
 
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
@@ -106,7 +110,7 @@ vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
     vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
-    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * 0.35);
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * ULRE_NORMAL_STRENGTH);
 #else
     return normalize(input_normal);
 #endif
@@ -189,6 +193,10 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 #undef ULRE_SURFACE_TEX_MODE
 #define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
 
+#ifndef ULRE_NORMAL_STRENGTH
+#define ULRE_NORMAL_STRENGTH 0.35
+#endif
+
 
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
@@ -231,7 +239,7 @@ vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
     vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
-    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * 0.35);
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * ULRE_NORMAL_STRENGTH);
 #else
     return normalize(input_normal);
 #endif
