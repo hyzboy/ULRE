@@ -19,6 +19,22 @@
 /// **验证**：
 ///   - 重复 binding 会触发 assert 并输出详细冲突信息
 ///   - 生成的 GLSL 字符串可直接插入到 shader 源码中
+///
+/// **当前绑定策略（与实现保持一致）**：
+///   - 按 `DescriptorSetType` 分组；每个 set 内从 binding=0 开始递增分配
+///   - `FixedDescriptorEntry` 当前不显式携带固定 binding，生成阶段负责稳定顺序分配
+///   - 单次生成流程内使用位图检测重复 `(set,binding)` 组合
+///   - 调用 `Reset()` 可在下一个 shader 生成前清空状态
+///
+/// **示例（伪输入 -> 输出）**：
+///   输入 entries:
+///     [set=Material, kind=SSBO, name=mtl]
+///     [set=Material, kind=TextureSampler, name=albedo_tex]
+///     [set=Global,   kind=UBO,  name=camera]
+///   可能输出:
+///     layout(set=<Material>, binding=0, std430) buffer ... mtl;
+///     layout(set=<Material>, binding=1) uniform sampler2D albedo_tex;
+///     layout(set=<Global>,   binding=0) uniform CameraUBO ... camera;
 
 #include<hgl/type/String.h>
 #include<stdint.h>

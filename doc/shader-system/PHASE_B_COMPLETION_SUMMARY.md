@@ -26,7 +26,7 @@
 
 **待执行工作**：
 - [x] 将 `ULRE_NORMAL_STRENGTH` 从编译期宏升级为材质实例参数（运行时可调）
-- [ ] 增加自动化回归（descriptor 生命周期 + shader business/main 一致性）
+- [x] 增加自动化回归（descriptor 生命周期 + shader business/main 一致性）
 
 ### ✅ B.1 - Helper 函数签名统一
 
@@ -44,8 +44,8 @@
 - Code Review 拦截规则明确
 
 **待执行工作**：
-- [ ] 更新 `MFGetPosition.h` 实现新 helper（保留 legacy 回退）
-- [ ] 更新 `MFCommon.h` 实现 `GetMI()` 统一签名
+- [x] 更新 `MFGetPosition.h` 实现新 helper（保留 legacy 回退）
+- [x] 更新 `MFCommon.h` 实现 `GetMI()` 统一签名
 - [ ] 已迁移材质（PureColor / VertexColor）使用新 helper
 
 ### ✅ B.2 - required_resources 命名规则统一
@@ -86,9 +86,9 @@
 - 明确 MaterialLogicDef 必须提供 vertex + fragment 逻辑
 
 **待执行工作**：
-- [ ] 实现 `ValidateMaterialLogicDef` 函数
-- [ ] 在材质编译入口调用验证函数
-- [ ] 增加单元测试（故意错误的定义）
+- [x] 实现 `ValidateMaterialLogicDef` 函数
+- [x] 在材质编译入口调用验证函数
+- [x] 增加单元测试（故意错误的定义）
 
 ### ✅ B.4 - ResourceLayoutGenerator binding 分配策略文档
 
@@ -106,7 +106,7 @@
 - Binding 分配最佳实践（按 set 分组、使用宏减少重复）
 
 **待执行工作**：
-- [ ] 在 `ResourceLayoutGenerator.h` 头部增加策略说明注释
+- [x] 在 `ResourceLayoutGenerator.h` 头部增加策略说明注释
 - [ ] 检查已迁移材质 binding 不冲突
 - [ ] 创建故意冲突的测试用例
 
@@ -141,6 +141,9 @@
 - [ ] MFGetPosition.h 提供新 helper（保留 legacy）
 - [ ] MFCommon.h 提供 `GetMI()` 统一签名
 - [ ] ResourceLayoutGenerator 增加策略说明注释
+- [x] MFGetPosition.h 提供新 helper（保留 legacy）
+- [x] MFCommon.h 提供 `GetMI()` 统一签名
+- [x] ResourceLayoutGenerator 增加策略说明注释
 
 **测试验证**：
 - [x] 运行已迁移材质的示例（06b_BasicLitMeshesECS / 06c_TextureBlinnPhongMeshesECS）

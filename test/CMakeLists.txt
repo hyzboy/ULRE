@@ -47,6 +47,18 @@ target_include_directories(test_DescriptorSetLifecycleRegression
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+add_executable(test_ShaderLogicValidation
+    ShaderLogicValidationTest.cpp)
+
+target_link_libraries(test_ShaderLogicValidation
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_ShaderLogicValidation
+    PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -60,6 +72,9 @@ if(BUILD_TESTING)
 
     add_test(NAME test_DescriptorSetLifecycleRegression
              COMMAND test_DescriptorSetLifecycleRegression)
+
+    add_test(NAME test_ShaderLogicValidation
+             COMMAND test_ShaderLogicValidation)
 endif()
 
 # 需要时可直接运行：
@@ -67,8 +82,10 @@ endif()
 #   cmake --build <build_dir> --target test_ComposedShaderGenerator_Verify
 #   cmake --build <build_dir> --target test_FSHelperConsistencyValidation
 #   cmake --build <build_dir> --target test_DescriptorSetLifecycleRegression
+#   cmake --build <build_dir> --target test_ShaderLogicValidation
 # 在生成目录执行：
 #   .\\test\\Debug\\test_ComposedShaderGenerator.exe
 #   .\\test\\Debug\\test_ComposedShaderGenerator_Verify.exe
 #   .\\test\\Debug\\test_FSHelperConsistencyValidation.exe
 #   .\\test\\Debug\\test_DescriptorSetLifecycleRegression.exe
+#   .\\test\\Debug\\test_ShaderLogicValidation.exe

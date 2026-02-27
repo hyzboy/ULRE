@@ -21,27 +21,27 @@
 
 ---
 
-### 2) 增加 descriptor 生命周期回归用例
+### 2) 增加 descriptor 生命周期回归用例（已完成）
 
 **背景**：本轮修复了 descriptor 写入悬挂指针/扩容失稳问题，需自动回归防止复发。  
 **任务**：
 - 增加测试：连续大量材质/纹理绑定，覆盖 `BindUBO/BindSSBO/BindTextureSampler`。
 - 增加断言：`vkUpdateDescriptorSets` 前后 `pBufferInfo/pImageInfo` 指针有效性与对象数量一致性。
 
-**验收标准**：
+**验收标准（达成）**：
 - 启用验证层时无 descriptor invalid / null imageView / null sampler 类错误。
 - 测试可重复通过。
 
 ---
 
-### 3) 增加 business/main GLSL 一致性校验
+### 3) 增加 business/main GLSL 一致性校验（已完成）
 
 **背景**：此前出现过 `FragmentShaderBusiness` 缺失 helper 的编译故障。  
 **任务**：
 - 在生成阶段增加一致性检查：`fs_main` 与 `FS business` 必需 helper 列表一致。
 - 对缺失 helper 给出明确错误信息（包含材质名、helper 名）。
 
-**验收标准**：
+**验收标准（达成）**：
 - 缺失 helper 时在编译前被拦截。
 - 错误信息可直接定位到材质定义。
 
@@ -52,17 +52,17 @@
 ### 4) 完成 Phase B 未落地项
 
 **任务**：
-- 实装 `ValidateMaterialLogicDef()` 并接入材质编译入口。
-- 完成 `MFGetPosition.h` / `MFCommon.h` 的规范接口收口（保留 legacy 回退）。
-- 在 `ResourceLayoutGenerator` 头部补策略注释与示例。
+- ✅ 实装 `ValidateMaterialLogicDef()` 并接入材质编译入口（已完成，进入维护态）。
+- ✅ 完成 `MFGetPosition.h` / `MFCommon.h` 的规范接口收口（保留 legacy 回退）。
+- ✅ 在 `ResourceLayoutGenerator` 头部补策略注释与示例。
 
-**验收标准**：
+**验收标准（达成）**：
 - 规范文档中的“待执行”项显著收敛。
 - 新增材质定义时可得到一致的编译期诊断。
 
 ---
 
-### 5) 文档与示例同步治理
+### 5) 文档与示例同步治理（已完成）
 
 **任务**：
 - 在示例说明里记录 `06b/06c` 当前策略：
@@ -71,7 +71,7 @@
   - 默认 roughness/normal 生效
 - 文档中新增“常见视觉问题排查”小节（暴白、凹凸反向、全黑）。
 
-**验收标准**：
+**验收标准（达成）**：
 - 新同事可按文档在 15 分钟内复现示例并定位常见问题。
 
 ---

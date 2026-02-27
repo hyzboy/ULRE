@@ -8,6 +8,10 @@ namespace func
     // ═════════════════════════════════════════════════════════════════════════
     // Phase B 规范化 Position Helper（强制使用，符合 SHADER_HELPER_FUNCTION_SPEC.md）
     // ═════════════════════════════════════════════════════════════════════════
+    // 规范约束：
+    //   1) 新逻辑优先使用 GetLocalPosition/GetWorldPosition/GetClipPosition/GetScreenPosition
+    //   2) 业务代码不再新增 GetPosition3D/GetWorldPosition3D 调用
+    //   3) Legacy 名称仅用于历史材质兼容，Phase C 后统一移除
     
     /// Vertex Shader: 获取 Local Space Position（不经过任何变换）
     constexpr const char *GetLocalPosition_VS = 
@@ -28,6 +32,10 @@ namespace func
     /// Fragment Shader: 获取 Screen Space Position
     constexpr const char *GetScreenPosition_FS = 
         "vec2 GetScreenPosition(){return gl_FragCoord.xy;}";
+
+    /// 规范映射（文档/代码统一口径）
+    ///   Canonical: GetLocalPosition / GetWorldPosition / GetClipPosition / GetScreenPosition
+    ///   Legacy   : GetPosition3D / GetWorldPosition3D / GetPosition2D
     
     // ═════════════════════════════════════════════════════════════════════════
     // Legacy Helper（Phase C 前保留，Phase C 后移除）

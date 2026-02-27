@@ -165,8 +165,64 @@
 
 ### 测试用例
 
-- `test/test_phase_b_validation.cpp` - Phase B 验收测试（计划）
-- `test/test_duplicate_binding.cpp` - Binding 冲突测试用例（计划）
+- `test/FSHelperConsistencyValidationTest.cpp` - FS business/main helper 一致性校验
+- `test/DescriptorSetLifecycleRegressionTest.cpp` - descriptor 生命周期回归
+- `test/ShaderLogicValidationTest.cpp` - ShaderLogic 结构约束校验
+- `test/run_shader_system_gate.ps1` - Shader System 门禁脚本（构建 + 聚焦执行）
+
+---
+
+## 🚑 常见视觉问题排查
+
+### 1) 画面暴白
+
+- 优先检查材质实例参数是否已初始化（尤其是 `BaseColor`、`specular`、`roughness`、`normal_strength`）。
+- 对照示例 `06b/06c` 的稳定默认值：`normal_strength` 建议 `0.30~0.45`。
+- 确认光照模型分支与输入法线空间一致（切线空间法线图应走 TBN 路径）。
+
+### 2) 凹凸方向反了（法线看起来内凹/外凸颠倒）
+
+- 检查 normal 贴图 Y 分量方向（OpenGL/DX 约定差异）；当前示例已采用修正路径。
+- 若素材来源混杂，优先通过材质参数或导入流程统一 normal Y 约定。
+
+### 3) 画面全黑
+
+- 先确认 descriptor 绑定有效（`imageView/sampler` 非空），再检查纹理回退是否生效。
+- 确认 SkyLight 接口统一函数可用：`ULRE_GetSkyLightDir/Color/Ambient`。
+- 用门禁脚本先跑回归：`test/run_shader_system_gate.ps1`，排除 helper/descriptor 基础问题。
+
+---
+
+## 🚀 06b/06c 快速复现（15 分钟）
+
+### Step 1: 构建示例
+
+- `cmake --build build --config Debug --target 06b_BasicLitMeshesECS 06c_TextureBlinnPhongMeshesECS -j 8`
+
+### Step 2: 运行示例
+
+- `./build/out/Windows_64_Debug/06b_BasicLitMeshesECS.exe`
+- `./build/out/Windows_64_Debug/06c_TextureBlinnPhongMeshesECS.exe`
+
+### Step 3: 预期画面要点
+
+- 两个示例均为 `VertexDataManager` 路径，模型集合与 `RenderBoundBox` 对齐。
+- `06c` 使用 Brickwall 三贴图（Albedo/Normal/Roughness），法线细节可见且方向正确。
+- 默认 roughness/normal 生效，`normal_strength` 运行时可调（当前稳定值约 `0.35`）。
+
+### Step 4: 快速排错顺序
+
+- 先看是否“全黑”→ 检查 descriptor 与贴图回退。
+- 再看是否“暴白”→ 检查材质实例参数初始化。
+- 再看“凹凸反向”→ 检查 normal Y 约定与素材来源。
+
+### 15 分钟上手检查清单
+
+- [ ] 能成功构建并运行 `06b/06c`。
+- [ ] 能确认 Brickwall 三贴图链路生效（不是仅 albedo）。
+- [ ] 能通过 `normal_strength` 观察凹凸强度变化。
+- [ ] 遇到异常时，能按“全黑→暴白→凹凸反向”顺序定位。
+- [ ] 能运行 `test/run_shader_system_gate.ps1` 并看到 `[Gate] PASS`。
 
 ---
 
