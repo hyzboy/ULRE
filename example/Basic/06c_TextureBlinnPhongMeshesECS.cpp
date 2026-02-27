@@ -48,7 +48,7 @@ private:
     MaterialInstance* material_instance = nullptr;
     Pipeline* pipeline = nullptr;
 
-    Texture2D* texture = nullptr;
+    Texture2D* base_texture = nullptr;
     Sampler* sampler = nullptr;
 
     std::vector<std::unique_ptr<RenderMesh>> meshes;
@@ -104,8 +104,8 @@ private:
         if (!material)
             return false;
 
-        texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
-        if (!texture)
+        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
+        if (!base_texture)
             return false;
 
         sampler = sampler_manager->CreateSampler();
@@ -114,7 +114,19 @@ private:
 
         if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
                                           mtl::SamplerName::BaseColor,
-                                          texture,
+                                          base_texture,
+                                          sampler))
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+                                          "TextureNormal",
+                                          base_texture,
+                                          sampler))
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+                                          "TextureRoughness",
+                                          base_texture,
                                           sampler))
             return false;
 

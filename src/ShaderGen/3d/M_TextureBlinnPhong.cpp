@@ -31,6 +31,8 @@ namespace
         { DescriptorSetType::Camera, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky", "SkyInfo", nullptr },
         { DescriptorSetType::PerFrame, TEXTURE_BLINN_PHONG_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
         { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D" },
+        { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal", nullptr, "sampler2D" },
+        { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D" },
     };
 
     // Vertex: pass through position, compute normal, forward TexCoord
@@ -45,6 +47,14 @@ void main()
 
     // Fragment: textured Blinn-Phong + half-Lambert + Fresnel, lit by sky sun
     constexpr const char fs_main[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
+#define ULRE_SURFACE_TEX_MODE_COLOR_ONLY 1
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL 2
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS 3
+
+#undef ULRE_SURFACE_TEX_MODE
+#define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+
+
 vec3 halfLambert(vec3 n, vec3 l)
 {
     float NdotL = max(dot(n, l), 0.0);
@@ -56,18 +66,71 @@ float fresnelSchlick(float cosTheta, float F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec2 ResolveSurfaceUV(vec2 uv)
+{
+    if (abs(uv.x) + abs(uv.y) < 0.0001)
+        return vec2(0.5, 0.5);
+
+    return fract(abs(uv));
+}
+
+vec3 ResolveAlbedoColor(vec2 uv)
+{
+    vec4 c = texture(TextureBaseColor, uv);
+    vec3 rgb = c.rgb;
+
+    if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+    {
+        vec4 center = texture(TextureBaseColor, vec2(0.5, 0.5));
+        rgb = center.rgb;
+
+        if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+            rgb = vec3(max(c.a, center.a));
+    }
+
+    return rgb;
+}
+
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
+    vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * 0.35);
+#else
+    return normalize(input_normal);
+#endif
+}
+
+float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
+    float roughness_tex = texture(TextureRoughness, uv).r;
+    return clamp(base_roughness * roughness_tex, 0.04, 1.0);
+#else
+    return clamp(base_roughness, 0.04, 1.0);
+#endif
+}
+
 void main()
 {
     // Hard-coded parameters
-    const float spec_power   = 32.0;   // shininess
     const float spec_strength= 0.6;    // spec scale
     const float F0           = 0.04;   // dieletric base reflectance
 
-    vec4 base_color = texture(TextureBaseColor, Input.TexCoord);
+    vec2 uv = ResolveSurfaceUV(Input.TexCoord);
+    vec4 base_color = vec4(ResolveAlbedoColor(uv), 1.0);
 
-    vec3 n  = normalize(Input.Normal);
-    vec3 v  = normalize(camera.pos - Input.Position.xyz);
-    vec3 l  = ULRE_GetSkyLightDir();
+#if ULRE_SURFACE_TEX_MODE == ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+    FragColor = vec4(base_color.rgb, 1.0);
+    return;
+#endif
+
+    float roughness = ResolveSurfaceRoughness(0.8, uv);
+    float spec_power = mix(96.0, 8.0, roughness);
+
+    vec3 n  = ResolveSurfaceNormal(Input.Normal, uv);
+    vec3 v  = vec3(0.0, 0.0, 1.0);
+    vec3 l  = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
     vec3 h  = normalize(l + v);
 
@@ -82,14 +145,19 @@ void main()
     float F = fresnelSchlick(max(dot(v, h), 0.0), F0);
 
     // Sun light color
-    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 sunColor = max(ULRE_GetSkyLightColor(), vec3(0.20));
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
     vec3 color = diffuse + spec * F;
     color *= sunColor;
-    color += skyAmbient * 0.15;
 
-    FragColor = vec4(color, base_color.a);
+#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL
+    color += sky.base_sky_color.rgb * 0.15;
+#else
+    color += skyAmbient * 0.25;
+#endif
+
+    FragColor = vec4(color, 1.0);
 })";
 
     constexpr const char TEXTURE_BLINN_PHONG_VS_BUSINESS[] = R"(
@@ -103,6 +171,14 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 )";
 
     constexpr const char TEXTURE_BLINN_PHONG_FS_BUSINESS[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
+#define ULRE_SURFACE_TEX_MODE_COLOR_ONLY 1
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL 2
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS 3
+
+#undef ULRE_SURFACE_TEX_MODE
+#define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+
+
 vec3 halfLambert(vec3 n, vec3 l)
 {
     float NdotL = max(dot(n, l), 0.0);
@@ -114,17 +190,69 @@ float fresnelSchlick(float cosTheta, float F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec2 ResolveSurfaceUV(vec2 uv)
+{
+    if (abs(uv.x) + abs(uv.y) < 0.0001)
+        return vec2(0.5, 0.5);
+
+    return fract(abs(uv));
+}
+
+vec3 ResolveAlbedoColor(vec2 uv)
+{
+    vec4 c = texture(TextureBaseColor, uv);
+    vec3 rgb = c.rgb;
+
+    if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+    {
+        vec4 center = texture(TextureBaseColor, vec2(0.5, 0.5));
+        rgb = center.rgb;
+
+        if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+            rgb = vec3(max(c.a, center.a));
+    }
+
+    return rgb;
+}
+
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
+    vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * 0.35);
+#else
+    return normalize(input_normal);
+#endif
+}
+
+float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
+    float roughness_tex = texture(TextureRoughness, uv).r;
+    return clamp(base_roughness * roughness_tex, 0.04, 1.0);
+#else
+    return clamp(base_roughness, 0.04, 1.0);
+#endif
+}
+
 vec4 FragmentShaderBusiness()
 {
-    const float spec_power   = 32.0;
     const float spec_strength= 0.6;
     const float F0           = 0.04;
 
-    vec4 base_color = texture(TextureBaseColor, Input.TexCoord);
+    vec2 uv = ResolveSurfaceUV(Input.TexCoord);
+    vec4 base_color = vec4(ResolveAlbedoColor(uv), 1.0);
 
-    vec3 n  = normalize(Input.Normal);
-    vec3 v  = normalize(camera.pos - Input.Position.xyz);
-    vec3 l  = ULRE_GetSkyLightDir();
+#if ULRE_SURFACE_TEX_MODE == ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+    return vec4(base_color.rgb, 1.0);
+#endif
+
+    float roughness = ResolveSurfaceRoughness(0.8, uv);
+    float spec_power = mix(96.0, 8.0, roughness);
+
+    vec3 n  = ResolveSurfaceNormal(Input.Normal, uv);
+    vec3 v  = vec3(0.0, 0.0, 1.0);
+    vec3 l  = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
     vec3 h  = normalize(l + v);
 
@@ -135,14 +263,19 @@ vec4 FragmentShaderBusiness()
 
     float F = fresnelSchlick(max(dot(v, h), 0.0), F0);
 
-    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 sunColor = max(ULRE_GetSkyLightColor(), vec3(0.20));
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
     vec3 color = diffuse + spec * F;
     color *= sunColor;
-    color += skyAmbient * 0.15;
 
-    return vec4(color, base_color.a);
+#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL
+    color += sky.base_sky_color.rgb * 0.15;
+#else
+    color += skyAmbient * 0.25;
+#endif
+
+    return vec4(color, 1.0);
 }
 )";
 
@@ -150,7 +283,7 @@ vec4 FragmentShaderBusiness()
     constexpr FragmentShaderBusiness TEXTURE_BLINN_PHONG_FRAGMENT_BUSINESS { TEXTURE_BLINN_PHONG_FS_BUSINESS };
 
     constexpr FixedMaterialDef TEXTURE_BLINN_PHONG_DEF {
-        "TextureBlinnPhong",
+        "TextureBlinnPhong_v2",
         PrimitiveType::Triangles,
         TEXTURE_BLINN_PHONG_VERTEX,
         uint32_t(sizeof(TEXTURE_BLINN_PHONG_VERTEX) / sizeof(TEXTURE_BLINN_PHONG_VERTEX[0])),
@@ -164,7 +297,7 @@ vec4 FragmentShaderBusiness()
     };
 
     const ComposedMaterialDef TEXTURE_BLINN_PHONG_COMPOSED_DEF {
-        "TextureBlinnPhong",
+        "TextureBlinnPhong_v2",
         PrimitiveType::Triangles,
         TEXTURE_BLINN_PHONG_VERTEX,
         uint32_t(sizeof(TEXTURE_BLINN_PHONG_VERTEX) / sizeof(TEXTURE_BLINN_PHONG_VERTEX[0])),
@@ -186,7 +319,9 @@ vec4 FragmentShaderBusiness()
     constexpr const char* TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES[] = {
         "camera",
         "sky",
-        "TextureBaseColor"
+        "TextureBaseColor",
+        "TextureNormal",
+        "TextureRoughness"
     };
 
     const VertexShaderLogic TEXTURE_BLINN_PHONG_VERTEX_SHADER_LOGIC = {
@@ -205,7 +340,7 @@ vec4 FragmentShaderBusiness()
             TEXTURE_BLINN_PHONG_FS_BUSINESS,
             nullptr,
             TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES,
-            3,
+            5,
             nullptr,
             0
         }
@@ -249,6 +384,14 @@ vec4 FragmentShaderBusiness()
                                    DescriptorSetType::PerMaterial,
                                    SamplerType::Sampler2D,
                                    mtl::SamplerName::BaseColor);
+            mci->AddTextureSampler(ShaderStage::Fragment,
+                                   DescriptorSetType::PerMaterial,
+                                   SamplerType::Sampler2D,
+                                   "TextureNormal");
+            mci->AddTextureSampler(ShaderStage::Fragment,
+                                   DescriptorSetType::PerMaterial,
+                                   SamplerType::Sampler2D,
+                                   "TextureRoughness");
 
             fsc->AddOutput(VAT_VEC4, "FragColor");
             fsc->SetMain(fs_main);

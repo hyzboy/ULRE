@@ -2,6 +2,8 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -46,6 +48,9 @@ private:
     Material* material = nullptr;
     Pipeline* pipeline = nullptr;
 
+    Texture2D* base_texture = nullptr;
+    Sampler* sampler = nullptr;
+
     std::vector<MaterialInstance*> material_instances;
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
@@ -81,8 +86,10 @@ private:
             return false;
 
         auto* material_manager = graphics_context->GetMaterialManager();
+        auto* texture_manager = graphics_context->GetTextureManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
         auto* device = graphics_context->GetDevice();
-        if (!material_manager || !device)
+        if (!material_manager || !texture_manager || !sampler_manager || !device)
             return false;
 
         mtl::BasicLitMaterialCreateConfig cfg(false);
@@ -92,6 +99,32 @@ private:
 
         material = material_manager->CreateMaterial("BasicLitMeshes", mci);
         if (!material)
+            return false;
+
+        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
+        if (!base_texture)
+            return false;
+
+        sampler = sampler_manager->CreateSampler();
+        if (!sampler)
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+                                          mtl::SamplerName::BaseColor,
+                                          base_texture,
+                                          sampler))
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+                                          "TextureNormal",
+                                          base_texture,
+                                          sampler))
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+                                          "TextureRoughness",
+                                          base_texture,
+                                          sampler))
             return false;
 
         auto* render_target = render_context->GetCurrentRenderTarget();

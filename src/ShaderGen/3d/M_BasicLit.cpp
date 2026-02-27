@@ -23,6 +23,7 @@ namespace
 
     constexpr FixedVertexEntry BASIC_LIT_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
+        { VAT_VEC2, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::TexCoord },
         { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Normal },
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::TransformID::VIS_NAME },
         { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::MaterialInstanceID::VIS_NAME },
@@ -40,18 +41,30 @@ namespace
         { DescriptorSetType::Camera, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky", "SkyInfo", nullptr },
         { DescriptorSetType::PerFrame, BASIC_LIT_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
         { DescriptorSetType::PerMaterial, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
+        { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D" },
+        { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal", nullptr, "sampler2D" },
+        { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D" },
     };
 
     constexpr const char vs_main[] = R"(
 void main()
 {
     HandoverMI();
+    Output.TexCoord = TexCoord;
     Output.Normal   = GetNormal();
     Output.Position = GetPosition3D();
     gl_Position     = Output.Position;
 })";
 
     constexpr const char fs_main[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
+#define ULRE_SURFACE_TEX_MODE_COLOR_ONLY 1
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL 2
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS 3
+
+#undef ULRE_SURFACE_TEX_MODE
+#define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+
+
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
     float NdotL = max(dot(normal, lightDir), 0.0);
@@ -63,15 +76,69 @@ float fresnelSchlick(float cosTheta, float F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec2 ResolveSurfaceUV(vec2 uv)
+{
+    if (abs(uv.x) + abs(uv.y) < 0.0001)
+        return vec2(0.5, 0.5);
+
+    return fract(abs(uv));
+}
+
+vec3 ResolveAlbedoColor(vec2 uv)
+{
+    vec4 c = texture(TextureBaseColor, uv);
+    vec3 rgb = c.rgb;
+
+    if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+    {
+        vec4 center = texture(TextureBaseColor, vec2(0.5, 0.5));
+        rgb = center.rgb;
+
+        if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+            rgb = vec3(max(c.a, center.a));
+    }
+
+    return rgb;
+}
+
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
+    vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * 0.35);
+#else
+    return normalize(input_normal);
+#endif
+}
+
+float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
+    float roughness_tex = texture(TextureRoughness, uv).r;
+    return clamp(base_roughness * roughness_tex, 0.04, 1.0);
+#else
+    return clamp(base_roughness, 0.04, 1.0);
+#endif
+}
+
 void main()
 {
     MaterialInstance mi = GetMI();
 
-    vec3 normal = normalize(Input.Normal);
+    vec2 uv = ResolveSurfaceUV(Input.TexCoord);
+    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv);
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
-    vec3 lightDir = ULRE_GetSkyLightDir();
+    vec3 lightDir = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
-    vec4 base_color = unpackUnorm4x8(mi.base_color);
+    vec3 sampled_albedo = ResolveAlbedoColor(uv);
+    vec4 base_color = unpackUnorm4x8(mi.base_color) * vec4(sampled_albedo, 1.0);
+
+#if ULRE_SURFACE_TEX_MODE == ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+    FragColor = vec4(base_color.rgb, 1.0);
+    return;
+#endif
+
+    float roughness_mix = ResolveSurfaceRoughness(mi.roughness, uv);
 
     // Half-Lambert diffuse
     vec3 diffuse = base_color.rgb * halfLambert(normal, lightDir);
@@ -80,23 +147,22 @@ void main()
 
     // Blinn-Phong specular
     vec3 halfDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfDir), 0.0), 32.0) * mi.metallic;
+    float spec_power = mix(96.0, 8.0, roughness_mix);
+    float spec = pow(max(dot(normal, halfDir), 0.0), spec_power) * mi.metallic;
 
     // Fresnel
     float fresnel = fresnelSchlick(max(dot(viewDir, halfDir), 0.0), mi.fresnel);
 
     // Directional light color
-    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 sunColor = max(ULRE_GetSkyLightColor(), vec3(0.20));
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
-
-    sunColor = max(sunColor,vec3(0.1));
 
     // Combine
     vec3 color = diffuse + spec * fresnel;
     color *= sunColor;
-    color += skyAmbient * 0.15;
+    color += skyAmbient * 0.25;
 
-#ifdef USE_IBL
+#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL
     // 简单IBL: 直接加一份环境色
     color += mi.ibl_intensity * sky.base_sky_color.rgb;
 #endif
@@ -107,6 +173,7 @@ void main()
     constexpr const char BASIC_LIT_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
+    Output.TexCoord = vi.TexCoord;
     Output.Normal = normalize(mat3(camera.view * GetLocalToWorld()) * vi.Normal);
     Output.Position = camera.vp * GetLocalToWorld() * vec4(vi.Position, 1.0);
     return vec4(vi.Position, 1.0);
@@ -114,6 +181,14 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 )";
 
     constexpr const char BASIC_LIT_FS_BUSINESS[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
+#define ULRE_SURFACE_TEX_MODE_COLOR_ONLY 1
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL 2
+#define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS 3
+
+#undef ULRE_SURFACE_TEX_MODE
+#define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+
+
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
     float NdotL = max(dot(normal, lightDir), 0.0);
@@ -125,30 +200,87 @@ float fresnelSchlick(float cosTheta, float F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec2 ResolveSurfaceUV(vec2 uv)
+{
+    if (abs(uv.x) + abs(uv.y) < 0.0001)
+        return vec2(0.5, 0.5);
+
+    return fract(abs(uv));
+}
+
+vec3 ResolveAlbedoColor(vec2 uv)
+{
+    vec4 c = texture(TextureBaseColor, uv);
+    vec3 rgb = c.rgb;
+
+    if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+    {
+        vec4 center = texture(TextureBaseColor, vec2(0.5, 0.5));
+        rgb = center.rgb;
+
+        if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
+            rgb = vec3(max(c.a, center.a));
+    }
+
+    return rgb;
+}
+
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
+    vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * 0.35);
+#else
+    return normalize(input_normal);
+#endif
+}
+
+float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
+{
+#if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
+    float roughness_tex = texture(TextureRoughness, uv).r;
+    return clamp(base_roughness * roughness_tex, 0.04, 1.0);
+#else
+    return clamp(base_roughness, 0.04, 1.0);
+#endif
+}
+
 vec4 FragmentShaderBusiness()
 {
     MaterialInstance mi = GetMI();
 
-    vec3 normal = normalize(Input.Normal);
+    vec2 uv = ResolveSurfaceUV(Input.TexCoord);
+    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv);
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
-    vec3 lightDir = ULRE_GetSkyLightDir();
+    vec3 lightDir = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
-    vec4 base_color = unpackUnorm4x8(mi.base_color);
+    vec3 sampled_albedo = ResolveAlbedoColor(uv);
+    vec4 base_color = unpackUnorm4x8(mi.base_color) * vec4(sampled_albedo, 1.0);
+
+#if ULRE_SURFACE_TEX_MODE == ULRE_SURFACE_TEX_MODE_COLOR_ONLY
+    return vec4(base_color.rgb, 1.0);
+#endif
+
+    float roughness_mix = ResolveSurfaceRoughness(mi.roughness, uv);
 
     vec3 diffuse = base_color.rgb * halfLambert(normal, lightDir);
     diffuse = max(diffuse, vec3(0.1));
 
     vec3 halfDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfDir), 0.0), 32.0) * mi.metallic;
+    float spec_power = mix(96.0, 8.0, roughness_mix);
+    float spec = pow(max(dot(normal, halfDir), 0.0), spec_power) * mi.metallic;
     float fresnel = fresnelSchlick(max(dot(viewDir, halfDir), 0.0), mi.fresnel);
 
-    vec3 sunColor = ULRE_GetSkyLightColor();
+    vec3 sunColor = max(ULRE_GetSkyLightColor(), vec3(0.20));
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
-    sunColor = max(sunColor, vec3(0.1));
 
     vec3 color = diffuse + spec * fresnel;
     color *= sunColor;
-    color += skyAmbient * 0.15;
+    color += skyAmbient * 0.25;
+
+#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL
+    color += mi.ibl_intensity * sky.base_sky_color.rgb;
+#endif
 
     return vec4(color, 1.0);
 }
@@ -158,7 +290,7 @@ vec4 FragmentShaderBusiness()
     constexpr FragmentShaderBusiness BASIC_LIT_FRAGMENT_BUSINESS { BASIC_LIT_FS_BUSINESS };
 
     constexpr FixedMaterialDef BASIC_LIT_DEF {
-        "BasicLit",
+        "BasicLit_v2",
         PrimitiveType::Triangles,
         BASIC_LIT_VERTEX,
         uint32_t(sizeof(BASIC_LIT_VERTEX) / sizeof(BASIC_LIT_VERTEX[0])),
@@ -172,7 +304,7 @@ vec4 FragmentShaderBusiness()
     };
 
     const ComposedMaterialDef BASIC_LIT_COMPOSED_DEF {
-        "BasicLit",
+        "BasicLit_v2",
         PrimitiveType::Triangles,
         BASIC_LIT_VERTEX,
         uint32_t(sizeof(BASIC_LIT_VERTEX) / sizeof(BASIC_LIT_VERTEX[0])),
@@ -194,7 +326,10 @@ vec4 FragmentShaderBusiness()
     constexpr const char* BASIC_LIT_FRAGMENT_RESOURCES[] = {
         "camera",
         "sky",
-        "mtl"
+        "mtl",
+        "TextureBaseColor",
+        "TextureNormal",
+        "TextureRoughness"
     };
 
     constexpr const char* BASIC_LIT_FRAGMENT_HELPERS[] = {
@@ -217,7 +352,7 @@ vec4 FragmentShaderBusiness()
             BASIC_LIT_FS_BUSINESS,
             nullptr,
             BASIC_LIT_FRAGMENT_RESOURCES,
-            3,
+            6,
             BASIC_LIT_FRAGMENT_HELPERS,
             1
         }
@@ -243,7 +378,9 @@ vec4 FragmentShaderBusiness()
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
+            vsc->AddInput(VAT_VEC2, VAN::TexCoord);
             vsc->AddInput(VAT_VEC3, VAN::Normal);
+            vsc->AddOutput(SVT_VEC2, "TexCoord");
             vsc->AddOutput(SVT_VEC4, "Position");
             vsc->AddOutput(SVT_VEC3, "Normal");
             if (!Std3DMaterial::CustomVertexShader(vsc))
@@ -254,10 +391,23 @@ vec4 FragmentShaderBusiness()
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
+            mci->AddTextureSampler(ShaderStage::Fragment,
+                                   DescriptorSetType::PerMaterial,
+                                   SamplerType::Sampler2D,
+                                   mtl::SamplerName::BaseColor);
+            mci->AddTextureSampler(ShaderStage::Fragment,
+                                   DescriptorSetType::PerMaterial,
+                                   SamplerType::Sampler2D,
+                                   "TextureNormal");
+            mci->AddTextureSampler(ShaderStage::Fragment,
+                                   DescriptorSetType::PerMaterial,
+                                   SamplerType::Sampler2D,
+                                   "TextureRoughness");
+
             fsc->AddOutput(VAT_VEC4, "FragColor");
 
             if(use_ibl)
-                fsc->AddDefine("USE_IBL","true");
+                fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_IBL");
 
             fsc->SetMain(fs_main);
             return true;

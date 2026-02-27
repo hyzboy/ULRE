@@ -46,6 +46,12 @@
    - 与 Phase A/C 的关系
    - 未解决问题与风险应对
 
+6. **[SKYLIGHT_MODEL_UNIFIED_SPEC.md](SKYLIGHT_MODEL_UNIFIED_SPEC.md)**  
+   SkyLight 统一模型接口规范（Phase C 扩展）  
+   - 统一函数契约：`ULRE_GetSkyLightDir/Color/Ambient`
+   - 模型切换：`SIMPLE / IBL / ENVMAP / SH`
+   - Legacy/Composed 接入与分支写法统一
+
 ---
 
 ## 📊 设计分析与历史文档
@@ -95,7 +101,8 @@
 1. [SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md) - 了解可用的 helper 函数
 2. [SHADER_RESOURCE_NAMING_SPEC.md](SHADER_RESOURCE_NAMING_SPEC.md) - 学习资源命名规则
 3. [SHADER_LOGIC_CONSTRAINTS_SPEC.md](SHADER_LOGIC_CONSTRAINTS_SPEC.md) - 掌握 ShaderLogic 定义约束
-4. 参考示例：`src/ShaderGen/3d/S_PureColor3D.h` / `S_VertexColor3D.h`
+4. [SKYLIGHT_MODEL_UNIFIED_SPEC.md](SKYLIGHT_MODEL_UNIFIED_SPEC.md) - 天光模型统一接口与切换规则
+5. 参考示例：`src/ShaderGen/3d/S_PureColor3D.h` / `S_VertexColor3D.h`
 
 ### 我是框架维护者
 
