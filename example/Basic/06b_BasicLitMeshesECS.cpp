@@ -1,4 +1,5 @@
 #include<hgl/framework/WorkManager.h>
+#include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
@@ -18,9 +19,11 @@
 
 #include<glm/glm.hpp>
 #include<glm/gtc/quaternion.hpp>
+#include<glm/gtx/quaternion.hpp>
 
 #include<vector>
 #include<memory>
+#include<string>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -47,6 +50,9 @@ private:
 
     Material* material = nullptr;
     Pipeline* pipeline = nullptr;
+    VertexDataManager* mesh_vdm = nullptr;
+
+    RenderMesh* rm_floor = nullptr;
 
     Texture2D* base_texture = nullptr;
     Texture2D* normal_texture = nullptr;
@@ -55,6 +61,27 @@ private:
 
     std::vector<MaterialInstance*> material_instances;
     std::vector<std::unique_ptr<RenderMesh>> meshes;
+
+    static constexpr const COLOR TestColor[] =
+    {
+        COLOR::MozillaCharcoal,
+        COLOR::MozillaSand,
+        COLOR::BlenderAxisRed,
+        COLOR::BlenderAxisGreen,
+        COLOR::BlenderAxisBlue,
+        COLOR::BananaYellow,
+        COLOR::CherryBlossomPink,
+        COLOR::SkyBlue,
+        COLOR::GrassGreen,
+        COLOR::BloodRed,
+        COLOR::Lavender,
+        COLOR::Mint,
+        COLOR::Coral,
+        COLOR::DarkOrange,
+        COLOR::DarkTurquoise,
+        COLOR::DarkViolet,
+    };
+    static constexpr size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
 
 private:
 
@@ -143,19 +170,10 @@ private:
         if (!pipeline)
             return false;
 
-        const COLOR colors[] = {
-            COLOR::BlenderAxisRed,
-            COLOR::BlenderAxisGreen,
-            COLOR::BlenderAxisBlue,
-            COLOR::BananaYellow,
-            COLOR::Coral,
-            COLOR::Lavender,
-        };
-
-        for (auto c : colors)
+        for (size_t i = 0; i < COLOR_COUNT; ++i)
         {
             mtl::BasicLitMaterialInstance mi_data{};
-            mi_data.base_color = GetRGBA(c);
+            mi_data.base_color = GetRGBA(TestColor[i]);
             mi_data.metallic = 0.15f;
             mi_data.roughness = 0.85f;
             mi_data.fresnel = 0.04f;
@@ -171,11 +189,8 @@ private:
         return true;
     }
 
-    bool AddMeshEntity(const char* name, Geometry* geometry, MaterialInstance* mi, const glm::vec3& pos)
+    bool InitVDM()
     {
-        if (!geometry || !mi)
-            return false;
-
         auto* render_context = GetRenderContext();
         if (!render_context)
             return false;
@@ -184,33 +199,305 @@ private:
         if (!graphics_context)
             return false;
 
+        auto* buffer_manager = graphics_context->GetBufferManager();
+        if (!buffer_manager)
+            return false;
+
+        mesh_vdm = new VertexDataManager(buffer_manager, material->GetDefaultVIL());
+        if (!mesh_vdm)
+            return false;
+
+        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16))
+            return false;
+
+        return true;
+    }
+
+    RenderMesh* CreateRenderMesh(Geometry* geometry, MaterialInstance* mi)
+    {
+        if (!geometry || !mi)
+            return nullptr;
+
+        auto* render_context = GetRenderContext();
+        if (!render_context)
+            return nullptr;
+
+        auto* graphics_context = render_context->GetGraphicsContext();
+        if (!graphics_context)
+            return nullptr;
+
         auto* geometry_manager = graphics_context->GetGeometryManager();
         auto* primitive_manager = graphics_context->GetPrimitiveManager();
         if (!geometry_manager || !primitive_manager)
-            return false;
+            return nullptr;
 
         geometry_manager->Add(geometry);
 
         Primitive* primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
         if (!primitive)
-            return false;
+            return nullptr;
 
         auto mesh = std::make_unique<RenderMesh>();
         mesh->geometry = geometry;
         mesh->primitive = primitive;
+
+        RenderMesh* result = mesh.get();
         meshes.push_back(std::move(mesh));
 
-        auto* entity = ecs_world->CreateEntity<Entity>(name);
-        auto transform = entity->AddComponent<TransformComponent>();
-        auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+        return result;
+    }
 
-        transform->SetLocalPosition(pos);
-        transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-        transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-        transform->SetMovable(false);
+    bool CreateGeometryMesh()
+    {
+        using namespace inline_geometry;
 
-        primitive_comp->SetPrimitive(primitive);
-        primitive_comp->SetVisible(true);
+        auto create_geometry = [this](auto&& creator) -> Geometry*
+        {
+            auto pc = std::make_unique<GeometryCreater>(mesh_vdm);
+            if (!pc)
+                return nullptr;
+
+            return creator(pc.get());
+        };
+
+        {
+            auto geom = create_geometry([](GeometryCreater* pc)
+            {
+                return CreatePlaneSqaure(pc);
+            });
+            if (!geom)
+                return false;
+
+            rm_floor = CreateRenderMesh(geom, material_instances[0]);
+            if (!rm_floor)
+                return false;
+        }
+
+        {
+            auto geom = create_geometry([](GeometryCreater* pc)
+            {
+                return CreateSphere(pc, 64);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[1 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            auto geom = create_geometry([](GeometryCreater* pc)
+            {
+                return CreateDome(pc, 64);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[2 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            ConeCreateInfo cci;
+            cci.radius = 1;
+            cci.halfExtend = 1;
+            cci.numberSlices = 64;
+            cci.numberStacks = 4;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateCone(pc, &cci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[3 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            CylinderCreateInfo cci;
+            cci.halfExtend = 1.25f;
+            cci.numberSlices = 16;
+            cci.radius = 1.25f;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateCylinder(pc, &cci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[4 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            TorusCreateInfo tci;
+            tci.innerRadius = 1.9f;
+            tci.outerRadius = 2.1f;
+            tci.numberSlices = 128;
+            tci.numberStacks = 16;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateTorus(pc, &tci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[5 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            HollowCylinderCreateInfo hcci;
+            hcci.halfExtend = 1.25f;
+            hcci.innerRadius = 0.8f;
+            hcci.outerRadius = 1.25f;
+            hcci.numberSlices = 64;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateHollowCylinder(pc, &hcci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[6 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            HexSphereCreateInfo hsci;
+            hsci.subdivisions = 3;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateHexSphere(pc, &hsci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[7 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            CapsuleCreateInfo cci;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateCapsule(pc, &cci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[8 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            TaperedCapsuleCreateInfo tcci;
+            tcci.topRadius = 0.1f;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateTaperedCapsule(pc, &tcci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[9 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            CubeCreateInfo cci;
+            cci.segments_x = 2;
+            cci.segments_y = 2;
+            cci.segments_z = 2;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateCube(pc, &cci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[10 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            FrustumCreateInfo fci;
+            fci.bottom_radius = 1.0f;
+            fci.top_radius = 0.5f;
+            fci.height = 2.0f;
+            fci.numberSlices = 32;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateFrustum(pc, &fci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[11 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            ArrowCreateInfo aci;
+            aci.shaft_radius = 0.1f;
+            aci.shaft_length = 2.0f;
+            aci.head_radius = 0.3f;
+            aci.head_length = 0.5f;
+            aci.numberSlices = 16;
+            aci.cross_section = ArrowCrossSection::Circular;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreateArrow(pc, &aci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[12 % COLOR_COUNT]))
+                return false;
+        }
+
+        {
+            PipeElbowCreateInfo peci;
+            peci.inner_radius = 0.3f;
+            peci.outer_radius = 0.5f;
+            peci.bend_angle = 90.0f;
+            peci.bend_radius = 1.0f;
+            peci.pipe_segments = 16;
+            peci.bend_segments = 16;
+
+            auto geom = create_geometry([&](GeometryCreater* pc)
+            {
+                return CreatePipeElbow(pc, &peci);
+            });
+            if (!geom || !CreateRenderMesh(geom, material_instances[13 % COLOR_COUNT]))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool InitSceneEntities()
+    {
+        if (!ecs_world || !rm_floor)
+            return false;
+
+        {
+            auto* entity = ecs_world->CreateEntity<Entity>("Floor");
+            auto transform = entity->AddComponent<TransformComponent>();
+            auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+
+            transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
+            transform->SetLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetMovable(false);
+
+            primitive_comp->SetPrimitive(rm_floor->primitive);
+            primitive_comp->SetVisible(true);
+        }
+
+        const size_t total = meshes.size();
+        const size_t mesh_count = total > 1 ? (total - 1) : 1;
+        size_t index = 0;
+
+        for (auto& mesh_ptr : meshes)
+        {
+            auto* rm = mesh_ptr.get();
+            if (!rm || rm == rm_floor)
+                continue;
+
+            auto* entity = ecs_world->CreateEntity<Entity>("Mesh_" + std::to_string(index));
+            auto transform = entity->AddComponent<TransformComponent>();
+            auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
+
+            float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
+            glm::quat rotation = glm::angleAxis(angle, glm::vec3(0.0f, 0.0f, 1.0f));
+            glm::vec3 pos = glm::rotate(rotation, glm::vec3(6.5f, 0.0f, 0.0f));
+
+            transform->SetLocalPosition(pos);
+            transform->SetLocalRotation(rotation);
+            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+            transform->SetMovable(false);
+
+            primitive_comp->SetPrimitive(rm->primitive);
+            primitive_comp->SetVisible(true);
+
+            ++index;
+        }
 
         return true;
     }
@@ -224,49 +511,13 @@ private:
         if (!EnsureCameraSystem())
             return false;
 
-        auto* render_context = GetRenderContext();
-        if (!render_context)
+        if (!InitVDM())
             return false;
 
-        auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
+        if (!CreateGeometryMesh())
             return false;
 
-        auto* device = graphics_context->GetDevice();
-        if (!device)
-            return false;
-
-        using namespace inline_geometry;
-
-        auto pc1 = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
-        CubeCreateInfo cube_ci;
-        cube_ci.normal = true;
-        cube_ci.tex_coord = true;
-        if (!AddMeshEntity("BasicLitCube", CreateCube(pc1.get(), &cube_ci), material_instances[0], glm::vec3(-4.0f, -1.2f, 0.0f)))
-            return false;
-
-        auto pc2 = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
-        if (!AddMeshEntity("BasicLitSphere", CreateSphere(pc2.get(), 32), material_instances[1], glm::vec3(-1.5f, -1.2f, 0.0f)))
-            return false;
-
-        auto pc3 = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
-        CylinderCreateInfo cyl_ci;
-        cyl_ci.halfExtend = 1.0f;
-        cyl_ci.radius = 0.8f;
-        cyl_ci.numberSlices = 24;
-        if (!AddMeshEntity("BasicLitCylinder", CreateCylinder(pc3.get(), &cyl_ci), material_instances[2], glm::vec3(1.0f, -1.2f, 0.0f)))
-            return false;
-
-        auto pc4 = std::make_unique<GeometryCreater>(device, material->GetDefaultVIL());
-        TorusCreateInfo torus_ci;
-        torus_ci.innerRadius = 0.5f;
-        torus_ci.outerRadius = 1.0f;
-        torus_ci.numberSlices = 48;
-        torus_ci.numberStacks = 16;
-        if (!AddMeshEntity("BasicLitTorus", CreateTorus(pc4.get(), &torus_ci), material_instances[3], glm::vec3(3.6f, -1.2f, 0.0f)))
-            return false;
-
-        return true;
+        return InitSceneEntities();
     }
 
     bool InitCamera()
@@ -278,10 +529,10 @@ private:
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;
-        camera->target = math::Vector3f(0.0f, -1.2f, 0.0f);
+        camera->target = math::Vector3f(0.0f, 0.0f, 0.0f);
         camera->distance = 14.0f;
         camera->yaw = 45.0f;
-        camera->pitch = -18.0f;
+        camera->pitch = -20.0f;
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
@@ -293,6 +544,11 @@ private:
     }
 
 public:
+    ~BasicLitMeshesECSApp()
+    {
+        SAFE_CLEAR(mesh_vdm)
+    }
+
     bool Init() override
     {
         SetClearColor(Color4f(0.18f, 0.18f, 0.20f, 1.0f));
