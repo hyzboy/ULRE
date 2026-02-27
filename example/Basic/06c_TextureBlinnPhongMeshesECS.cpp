@@ -49,6 +49,8 @@ private:
     Pipeline* pipeline = nullptr;
 
     Texture2D* base_texture = nullptr;
+    Texture2D* normal_texture = nullptr;
+    Texture2D* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
 
     std::vector<std::unique_ptr<RenderMesh>> meshes;
@@ -104,8 +106,16 @@ private:
         if (!material)
             return false;
 
-        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"), true);
+        base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)
+            return false;
+
+        normal_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
+        if (!normal_texture)
+            return false;
+
+        roughness_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
+        if (!roughness_texture)
             return false;
 
         sampler = sampler_manager->CreateSampler();
@@ -120,13 +130,13 @@ private:
 
         if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
                                           "TextureNormal",
-                                          base_texture,
+                                          normal_texture,
                                           sampler))
             return false;
 
         if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
                                           "TextureRoughness",
-                                          base_texture,
+                                          roughness_texture,
                                           sampler))
             return false;
 
