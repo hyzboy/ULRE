@@ -41,7 +41,17 @@ bool SwapchainRenderTarget::NextFrame()
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     LogInfo("[SWAPCHAIN] NextFrame END result=%d new_frame=%u time=%lldms", static_cast<int>(result), current_frame, duration);
 
-    return (result == VK_SUCCESS);
+    if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
+        return true;
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        LogWarning("[SWAPCHAIN] NextFrame OUT_OF_DATE");
+        return false;
+    }
+
+    LogWarning("[SWAPCHAIN] NextFrame FAILED result=%d", static_cast<int>(result));
+    return false;
 }
 
 bool SwapchainRenderTarget::Submit()
@@ -77,8 +87,13 @@ bool SwapchainRenderTarget::Submit()
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             LogWarning("[SWAPCHAIN] Submit OUT_OF_DATE");
-            return false;
         }
+        if (result != VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            LogWarning("[SWAPCHAIN] Submit FAILED result=%d", static_cast<int>(result));
+        }
+
+        return false;
     }
 
     auto submit_end = std::chrono::high_resolution_clock::now();
