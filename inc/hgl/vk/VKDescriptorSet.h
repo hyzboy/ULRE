@@ -79,6 +79,11 @@ public:
 
     const bool              IsReady             ()const{return wds_list.GetCount()==vab_count;}
 
+    // Debug/Test accessors: used by descriptor lifetime regression tests
+    const ValueArray<VkDescriptorBufferInfo> &DebugGetBufferInfoList() const { return vab_list; }
+    const ValueArray<VkDescriptorImageInfo>  &DebugGetImageInfoList () const { return image_list; }
+    const ValueArray<VkWriteDescriptorSet>   &DebugGetWriteSetList  () const { return wds_list; }
+
     void Clear();
 
     bool BindUBO    (const int binding,const VkBufferOwner *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
