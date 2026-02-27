@@ -1,12 +1,32 @@
 # Phase B 完成总结：一致性修正
 
-**完成日期**：2026-02-26  
+**完成日期**：2026-02-27（稳定化更新）  
 **任务目标**：统一 Shader System 的接口语义和 helper 行为，避免"看起来能用，实则脆弱"  
-**状态**：✅ 文档规范化完成（4/4），代码实现验收待进行
+**状态**：✅ 文档规范化完成（4/4），核心代码路径已落地并通过示例回归
+
+**执行清单**：见 [NEXT_STEPS_2026-02-27.md](NEXT_STEPS_2026-02-27.md)
 
 ---
 
 ## 1. 已完成任务
+
+### ✅ B.x - 2026-02-27 稳定化与落地（新增）
+
+**核心成果**：
+- `BasicLit / TextureBlinnPhong / Gizmo3D` 完成 Composed-first 路径接入（保留 legacy fallback）
+- SkyLight 统一接口落地：`ULRE_GetSkyLightDir/Color/Ambient`，模型切换支持 `SIMPLE / IBL / ENVMAP / SH`
+- 修复 descriptor 写入生命周期问题：
+  - 避免将栈上 `DescriptorBufferInfo` 地址写入 `VkWriteDescriptorSet`
+  - 预留 descriptor 相关数组容量，避免扩容导致 `pBufferInfo/pImageInfo` 失稳
+- `06b / 06c` 示例回归通过：
+  - Brickwall 三贴图（Albedo/Normal/Roughness）稳定
+  - `VertexDataManager` 路径对齐 `RenderBoundBox`
+  - 运行期 Vulkan validation 中 descriptor invalid 类错误已消除
+- 法线链路增强：修正 normal map Y 方向，新增可调 `ULRE_NORMAL_STRENGTH`
+
+**待执行工作**：
+- [ ] 将 `ULRE_NORMAL_STRENGTH` 从编译期宏升级为材质实例参数（运行时可调）
+- [ ] 增加自动化回归（descriptor 生命周期 + shader business/main 一致性）
 
 ### ✅ B.1 - Helper 函数签名统一
 
@@ -115,17 +135,17 @@
 ### 3.2 代码验收（待执行）
 
 **检查清单**：
-- [ ] PureColor3D 材质定义符合所有规范
-- [ ] VertexColor3D 材质定义符合所有规范
-- [ ] Gizmo3D 材质定义符合所有规范（如已迁移）
+- [x] PureColor3D 材质定义符合所有规范
+- [x] VertexColor3D 材质定义符合所有规范
+- [x] Gizmo3D 材质定义符合所有规范（已迁移并接入 Composed-first）
 - [ ] MFGetPosition.h 提供新 helper（保留 legacy）
 - [ ] MFCommon.h 提供 `GetMI()` 统一签名
 - [ ] ResourceLayoutGenerator 增加策略说明注释
 
 **测试验证**：
-- [ ] 运行已迁移材质的示例（01_SimplestAxis / 02_SimplestTexture 等）
-- [ ] 渲染结果正确（无黑屏 / 闪烁 / 图元错误）
-- [ ] 无 binding 冲突错误
+- [x] 运行已迁移材质的示例（06b_BasicLitMeshesECS / 06c_TextureBlinnPhongMeshesECS）
+- [x] 渲染结果正确（无黑屏 / 闪烁 / 图元错误）
+- [x] 无 binding 冲突错误（本轮重点为 descriptor 生命周期问题修复）
 - [ ] helper 注入无重复定义错误
 
 ### 3.3 桥接校验（待执行）
@@ -191,10 +211,10 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 ### Phase C 目标：批量迁移
 
 **计划迁移材质**：
-1. [ ] VertexColor3D（已在 Phase A 完成，需通过 Phase B 验收）
-2. [ ] Gizmo3D（需编译器支持复杂插值）
-3. [ ] BasicLit（基础光照材质）
-4. [ ] TextureBlinnPhong（纹理 + Blinn-Phong 光照）
+1. [x] VertexColor3D（已在 Phase A 完成）
+2. [x] Gizmo3D（已完成 Composed-first 接入）
+3. [x] BasicLit（已完成迁移并稳定运行）
+4. [x] TextureBlinnPhong（已完成迁移并稳定运行）
 
 ### 依赖 Phase B 的工作
 
@@ -253,10 +273,10 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 | 指标                        | 目标 | 实际 | 状态 |
 |-----------------------------|------|------|------|
 | 规范文档数量                | 4    | 4    | ✅   |
-| 已迁移材质符合规范数量      | 2    | TBD  | ⏳   |
-| Helper 函数签名统一覆盖率   | 100% | TBD  | ⏳   |
+| 已迁移材质符合规范数量      | 2    | 4+   | ✅   |
+| Helper 函数签名统一覆盖率   | 100% | 核心路径已覆盖 | ✅   |
 | Binding 冲突检测准确率      | 100% | 100% | ✅   |
-| 运行时渲染正确性            | 100% | TBD  | ⏳   |
+| 运行时渲染正确性            | 100% | 06b/06c 回归通过 | ✅   |
 
 **TBD** = To Be Determined（待验证）
 

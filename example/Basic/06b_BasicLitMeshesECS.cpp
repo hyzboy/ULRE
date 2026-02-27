@@ -154,6 +154,7 @@ private:
         mi_data.roughness = 0.92f;
         mi_data.fresnel = 0.03f;
         mi_data.ibl_intensity = 0.0f;
+        mi_data.normal_strength = 0.35f;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
         if (!material_instance)

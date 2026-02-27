@@ -2,8 +2,19 @@
 
 本目录包含 ULRE Shader System 重构的所有规范文档与设计分析。
 
-**最后更新**：2026-02-26  
+**最后更新**：2026-02-27  
 **总体计划**：[../../SHADER_SYSTEM_REFACTOR_PLAN.md](../../SHADER_SYSTEM_REFACTOR_PLAN.md)
+
+---
+
+## ✅ 最新里程碑（2026-02-27）
+
+- `BasicLit / TextureBlinnPhong / Gizmo3D` 已完成 Composed-first 路径落地（保留 legacy fallback）
+- SkyLight 统一接口已落地：`ULRE_GetSkyLightDir/Color/Ambient`，并支持 `SIMPLE / IBL / ENVMAP / SH` 模型切换
+- 修复 DescriptorSet 写入生命周期问题（悬挂指针/扩容后指针失稳），运行期 descriptor invalid 错误已清除
+- 示例 `06b_BasicLitMeshesECS` 与 `06c_TextureBlinnPhongMeshesECS` 已稳定运行并完成 Brickwall 三贴图链路
+- 两示例已对齐 `RenderBoundBox` 风格：`VertexDataManager` + 同款模型集合 + 圆环布局
+- 新增可调法线强度宏：`ULRE_NORMAL_STRENGTH`（当前默认 `0.35`）
 
 ---
 
@@ -40,7 +51,7 @@
    - Binding 分配最佳实践与调试技巧
 
 5. **[PHASE_B_COMPLETION_SUMMARY.md](PHASE_B_COMPLETION_SUMMARY.md)**  
-   Phase B 完成总结  
+   Phase B 完成总结（含 2026-02-27 稳定化进展）  
    - 已完成任务清单
    - 待执行验收工作
    - 与 Phase A/C 的关系
@@ -51,6 +62,12 @@
    - 统一函数契约：`ULRE_GetSkyLightDir/Color/Ambient`
    - 模型切换：`SIMPLE / IBL / ENVMAP / SH`
    - Legacy/Composed 接入与分支写法统一
+
+7. **[NEXT_STEPS_2026-02-27.md](NEXT_STEPS_2026-02-27.md)**  
+   下一步执行清单（P0/P1）  
+   - 运行时 normal_strength 参数化
+   - descriptor 生命周期自动回归
+   - shader business/main 一致性校验
 
 ---
 
@@ -109,8 +126,9 @@
 **阅读顺序**：
 1. [../../SHADER_SYSTEM_REFACTOR_PLAN.md](../../SHADER_SYSTEM_REFACTOR_PLAN.md) - 了解重构整体规划
 2. [PHASE_B_COMPLETION_SUMMARY.md](PHASE_B_COMPLETION_SUMMARY.md) - 当前进度与待办事项
-3. [RESOURCE_LAYOUT_BINDING_STRATEGY.md](RESOURCE_LAYOUT_BINDING_STRATEGY.md) - 理解 binding 分配机制
-4. [ShaderGen_Analysis_Report_EN.md](ShaderGen_Analysis_Report_EN.md) - 系统架构深度分析
+3. [NEXT_STEPS_2026-02-27.md](NEXT_STEPS_2026-02-27.md) - 当前迭代执行顺序与验收标准
+4. [RESOURCE_LAYOUT_BINDING_STRATEGY.md](RESOURCE_LAYOUT_BINDING_STRATEGY.md) - 理解 binding 分配机制
+5. [ShaderGen_Analysis_Report_EN.md](ShaderGen_Analysis_Report_EN.md) - 系统架构深度分析
 
 ### 我想了解历史演进
 
@@ -154,4 +172,4 @@
 
 **文档负责人**：Shader System 维护团队  
 **反馈渠道**：项目 Issue Tracker  
-**最后审核**：2026-02-26（Phase B 完成）
+**最后审核**：2026-02-27（Phase C 稳定化更新）

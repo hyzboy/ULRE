@@ -12,11 +12,17 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    constexpr const char mi_codes[] = R"(
+        float normal_strength;
+    )";
+    constexpr const uint32_t mi_bytes = sizeof(float);
+
     constexpr FixedVertexEntry TEXTURE_BLINN_PHONG_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
         { VAT_VEC2, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::TexCoord },
         { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Normal },
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::TransformID::VIS_NAME },
+        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::MaterialInstanceID::VIS_NAME },
     };
 
 #if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
@@ -30,6 +36,7 @@ namespace
         { DescriptorSetType::Camera, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
         { DescriptorSetType::Camera, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky", "SkyInfo", nullptr },
         { DescriptorSetType::PerFrame, TEXTURE_BLINN_PHONG_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::PerMaterial, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
         { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D" },
         { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal", nullptr, "sampler2D" },
         { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D" },
@@ -39,6 +46,7 @@ namespace
     constexpr const char vs_main[] = R"(
 void main()
 {
+    HandoverMI();
     Output.TexCoord = TexCoord;
     Output.Normal   = GetNormal();
     Output.Position = GetPosition3D();
@@ -53,10 +61,6 @@ void main()
 
 #undef ULRE_SURFACE_TEX_MODE
 #define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
-
-#ifndef ULRE_NORMAL_STRENGTH
-#define ULRE_NORMAL_STRENGTH 1
-#endif
 
 
 vec3 halfLambert(vec3 n, vec3 l)
@@ -95,12 +99,12 @@ vec3 ResolveAlbedoColor(vec2 uv)
     return rgb;
 }
 
-vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
 {
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
     vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
-    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * ULRE_NORMAL_STRENGTH);
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * normal_strength);
 #else
     return normalize(input_normal);
 #endif
@@ -118,6 +122,8 @@ float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 
 void main()
 {
+    MaterialInstance mi = GetMI();
+
     // Hard-coded parameters
     const float spec_strength= 0.6;    // spec scale
     const float F0           = 0.04;   // dieletric base reflectance
@@ -133,7 +139,7 @@ void main()
     float roughness = ResolveSurfaceRoughness(0.8, uv);
     float spec_power = mix(96.0, 8.0, roughness);
 
-    vec3 n  = ResolveSurfaceNormal(Input.Normal, uv);
+    vec3 n  = ResolveSurfaceNormal(Input.Normal, uv, mi.normal_strength);
     vec3 v  = vec3(0.0, 0.0, 1.0);
     vec3 l  = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
@@ -183,10 +189,6 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 #undef ULRE_SURFACE_TEX_MODE
 #define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
 
-#ifndef ULRE_NORMAL_STRENGTH
-#define ULRE_NORMAL_STRENGTH 0.35
-#endif
-
 
 vec3 halfLambert(vec3 n, vec3 l)
 {
@@ -224,12 +226,12 @@ vec3 ResolveAlbedoColor(vec2 uv)
     return rgb;
 }
 
-vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
 {
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
     vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
-    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * ULRE_NORMAL_STRENGTH);
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * normal_strength);
 #else
     return normalize(input_normal);
 #endif
@@ -247,6 +249,8 @@ float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 
 vec4 FragmentShaderBusiness()
 {
+    MaterialInstance mi = GetMI();
+
     const float spec_strength= 0.6;
     const float F0           = 0.04;
 
@@ -260,7 +264,7 @@ vec4 FragmentShaderBusiness()
     float roughness = ResolveSurfaceRoughness(0.8, uv);
     float spec_power = mix(96.0, 8.0, roughness);
 
-    vec3 n  = ResolveSurfaceNormal(Input.Normal, uv);
+    vec3 n  = ResolveSurfaceNormal(Input.Normal, uv, mi.normal_strength);
     vec3 v  = vec3(0.0, 0.0, 1.0);
     vec3 l  = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
@@ -299,8 +303,8 @@ vec4 FragmentShaderBusiness()
         uint32_t(sizeof(TEXTURE_BLINN_PHONG_VERTEX) / sizeof(TEXTURE_BLINN_PHONG_VERTEX[0])),
         TEXTURE_BLINN_PHONG_DESCRIPTORS,
         uint32_t(sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS) / sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS[0])),
-        nullptr,
-        0,
+        mi_codes,
+        mi_bytes,
         vs_main,
         nullptr,
         fs_main,
@@ -317,8 +321,8 @@ vec4 FragmentShaderBusiness()
         &TEXTURE_BLINN_PHONG_FRAGMENT_BUSINESS,
         ShaderOutputMode::SingleRTAlphaBlend,
         false,
-        nullptr,
-        0,
+        mi_codes,
+        mi_bytes,
     };
 
     constexpr const char* TEXTURE_BLINN_PHONG_VERTEX_RESOURCES[] = {
@@ -329,9 +333,14 @@ vec4 FragmentShaderBusiness()
     constexpr const char* TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES[] = {
         "camera",
         "sky",
+        "mtl",
         "TextureBaseColor",
         "TextureNormal",
         "TextureRoughness"
+    };
+
+    constexpr const char* TEXTURE_BLINN_PHONG_FRAGMENT_HELPERS[] = {
+        "GetMI"
     };
 
     const VertexShaderLogic TEXTURE_BLINN_PHONG_VERTEX_SHADER_LOGIC = {
@@ -350,9 +359,9 @@ vec4 FragmentShaderBusiness()
             TEXTURE_BLINN_PHONG_FS_BUSINESS,
             nullptr,
             TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES,
-            5,
-            nullptr,
-            0
+            6,
+            TEXTURE_BLINN_PHONG_FRAGMENT_HELPERS,
+            1
         }
     };
 
@@ -407,12 +416,21 @@ vec4 FragmentShaderBusiness()
             fsc->SetMain(fs_main);
             return true;
         }
+
+        bool EndCustomShader() override
+        {
+            mci->SetMaterialInstance(mi_codes, mi_bytes, (uint32_t)ShaderStage::Fragment);
+            return true;
+        }
     };
 }
 
 // Factory
 MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const Material3DCreateConfig *cfg)
 {
+    Material3DCreateConfig cfg_with_mi = cfg ? *cfg : Material3DCreateConfig();
+    cfg_with_mi.material_instance = true;
+
     ShaderPermutationKey key;
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
         dev_attr,
@@ -420,7 +438,7 @@ MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const
         TEXTURE_BLINN_PHONG_COMPOSED_DEF,
         TEXTURE_BLINN_PHONG_LOGIC,
         key,
-        cfg);
+        &cfg_with_mi);
 
     if (mci_new)
     {
@@ -432,7 +450,7 @@ MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const
     std::fprintf(stderr,
         "[TextureBlinnPhong] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
 
-    MaterialTextureBlinnPhong m(cfg);
+    MaterialTextureBlinnPhong m(&cfg_with_mi);
     return m.Create(dev_attr);
 }
 }//namespace hgl::graph::mtl

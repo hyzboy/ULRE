@@ -146,7 +146,10 @@ private:
                                           sampler))
             return false;
 
-        material_instance = material_manager->CreateMaterialInstance(material);
+        mtl::TextureBlinnPhongMaterialInstance mi_data{};
+        mi_data.normal_strength = 0.35f;
+
+        material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
         if (!material_instance)
             return false;
 

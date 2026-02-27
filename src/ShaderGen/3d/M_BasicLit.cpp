@@ -18,8 +18,9 @@ namespace
         float roughness;
         float fresnel;
         float ibl_intensity;
+        float normal_strength;
     )";
-    constexpr const uint32_t mi_bytes = sizeof(float) * 5;
+    constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 5;
 
     constexpr FixedVertexEntry BASIC_LIT_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
@@ -64,10 +65,6 @@ void main()
 #undef ULRE_SURFACE_TEX_MODE
 #define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
 
-#ifndef ULRE_NORMAL_STRENGTH
-#define ULRE_NORMAL_STRENGTH 0.35
-#endif
-
 
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
@@ -105,12 +102,12 @@ vec3 ResolveAlbedoColor(vec2 uv)
     return rgb;
 }
 
-vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
 {
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
     vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
-    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * ULRE_NORMAL_STRENGTH);
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * normal_strength);
 #else
     return normalize(input_normal);
 #endif
@@ -131,7 +128,7 @@ void main()
     MaterialInstance mi = GetMI();
 
     vec2 uv = ResolveSurfaceUV(Input.TexCoord);
-    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv);
+    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv, mi.normal_strength);
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
     vec3 lightDir = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
@@ -193,10 +190,6 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 #undef ULRE_SURFACE_TEX_MODE
 #define ULRE_SURFACE_TEX_MODE ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
 
-#ifndef ULRE_NORMAL_STRENGTH
-#define ULRE_NORMAL_STRENGTH 0.35
-#endif
-
 
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
@@ -234,12 +227,12 @@ vec3 ResolveAlbedoColor(vec2 uv)
     return rgb;
 }
 
-vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv)
+vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
 {
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL
     vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
-    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * ULRE_NORMAL_STRENGTH);
+    return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * normal_strength);
 #else
     return normalize(input_normal);
 #endif
@@ -260,7 +253,7 @@ vec4 FragmentShaderBusiness()
     MaterialInstance mi = GetMI();
 
     vec2 uv = ResolveSurfaceUV(Input.TexCoord);
-    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv);
+    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv, mi.normal_strength);
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
     vec3 lightDir = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
