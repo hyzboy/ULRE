@@ -8,7 +8,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/color/Color.h>
 
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
@@ -49,6 +48,7 @@ private:
     Entity* camera_entity = nullptr;
 
     Material* material = nullptr;
+    MaterialInstance* material_instance = nullptr;
     Pipeline* pipeline = nullptr;
     VertexDataManager* mesh_vdm = nullptr;
 
@@ -59,29 +59,7 @@ private:
     Texture2D* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
 
-    std::vector<MaterialInstance*> material_instances;
     std::vector<std::unique_ptr<RenderMesh>> meshes;
-
-    static constexpr const COLOR TestColor[] =
-    {
-        COLOR::MozillaCharcoal,
-        COLOR::MozillaSand,
-        COLOR::BlenderAxisRed,
-        COLOR::BlenderAxisGreen,
-        COLOR::BlenderAxisBlue,
-        COLOR::BananaYellow,
-        COLOR::CherryBlossomPink,
-        COLOR::SkyBlue,
-        COLOR::GrassGreen,
-        COLOR::BloodRed,
-        COLOR::Lavender,
-        COLOR::Mint,
-        COLOR::Coral,
-        COLOR::DarkOrange,
-        COLOR::DarkTurquoise,
-        COLOR::DarkViolet,
-    };
-    static constexpr size_t COLOR_COUNT = sizeof(TestColor) / sizeof(COLOR);
 
 private:
 
@@ -170,21 +148,9 @@ private:
         if (!pipeline)
             return false;
 
-        for (size_t i = 0; i < COLOR_COUNT; ++i)
-        {
-            mtl::BasicLitMaterialInstance mi_data{};
-            mi_data.base_color = GetRGBA(TestColor[i]);
-            mi_data.metallic = 0.15f;
-            mi_data.roughness = 0.85f;
-            mi_data.fresnel = 0.04f;
-            mi_data.ibl_intensity = 0.0f;
-
-            auto* mi = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
-            if (!mi)
-                return false;
-
-            material_instances.push_back(mi);
-        }
+        material_instance = material_manager->CreateMaterialInstance(material);
+        if (!material_instance)
+            return false;
 
         return true;
     }
@@ -213,9 +179,9 @@ private:
         return true;
     }
 
-    RenderMesh* CreateRenderMesh(Geometry* geometry, MaterialInstance* mi)
+    RenderMesh* CreateRenderMesh(Geometry* geometry)
     {
-        if (!geometry || !mi)
+        if (!geometry || !material_instance)
             return nullptr;
 
         auto* render_context = GetRenderContext();
@@ -233,7 +199,7 @@ private:
 
         geometry_manager->Add(geometry);
 
-        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+        Primitive* primitive = primitive_manager->CreatePrimitive(geometry, material_instance, pipeline);
         if (!primitive)
             return nullptr;
 
@@ -268,7 +234,7 @@ private:
             if (!geom)
                 return false;
 
-            rm_floor = CreateRenderMesh(geom, material_instances[0]);
+            rm_floor = CreateRenderMesh(geom);
             if (!rm_floor)
                 return false;
         }
@@ -278,7 +244,7 @@ private:
             {
                 return CreateSphere(pc, 64);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[1 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -287,7 +253,7 @@ private:
             {
                 return CreateDome(pc, 64);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[2 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -302,7 +268,7 @@ private:
             {
                 return CreateCone(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[3 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -316,7 +282,7 @@ private:
             {
                 return CreateCylinder(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[4 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -331,7 +297,7 @@ private:
             {
                 return CreateTorus(pc, &tci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[5 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -346,7 +312,7 @@ private:
             {
                 return CreateHollowCylinder(pc, &hcci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[6 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -358,7 +324,7 @@ private:
             {
                 return CreateHexSphere(pc, &hsci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[7 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -369,7 +335,7 @@ private:
             {
                 return CreateCapsule(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[8 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -381,7 +347,7 @@ private:
             {
                 return CreateTaperedCapsule(pc, &tcci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[9 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -395,7 +361,7 @@ private:
             {
                 return CreateCube(pc, &cci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[10 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -410,7 +376,7 @@ private:
             {
                 return CreateFrustum(pc, &fci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[11 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -427,7 +393,7 @@ private:
             {
                 return CreateArrow(pc, &aci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[12 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
@@ -444,7 +410,7 @@ private:
             {
                 return CreatePipeElbow(pc, &peci);
             });
-            if (!geom || !CreateRenderMesh(geom, material_instances[13 % COLOR_COUNT]))
+            if (!geom || !CreateRenderMesh(geom))
                 return false;
         }
 
