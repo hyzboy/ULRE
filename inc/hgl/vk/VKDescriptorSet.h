@@ -64,6 +64,10 @@ public:
         desc_set        =ds;
         pipeline_layout =pl;
 
+        vab_list.Reserve(vab_count);
+        image_list.Reserve(vab_count);
+        wds_list.Reserve(vab_count);
+
         is_dirty=true;
     }
 
