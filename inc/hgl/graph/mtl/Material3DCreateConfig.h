@@ -6,6 +6,8 @@
 
 namespace hgl::graph::mtl{
 
+constexpr float DefaultNormalStrength = 0.35f;
+
 struct Material3DCreateConfig:public MaterialCreateConfig
 {
     bool                camera;                 ///<包含摄像机矩阵信息
@@ -108,14 +110,14 @@ struct BasicLitMaterialInstance
     float  roughness;       ///<粗糙度
     float  fresnel;         ///<菲涅尔反射系数
     float  ibl_intensity;   ///<IBL强度
-    float  normal_strength; ///<法线强度(运行时可调)
+    float  normal_strength = DefaultNormalStrength; ///<法线强度(运行时可调)
 };
 
 constexpr const size_t BasicLitMaterialInstanceBytes=sizeof(BasicLitMaterialInstance);
 
 struct TextureBlinnPhongMaterialInstance
 {
-    float  normal_strength; ///<法线强度(运行时可调)
+    float  normal_strength = DefaultNormalStrength; ///<法线强度(运行时可调)
 };
 
 constexpr const size_t TextureBlinnPhongMaterialInstanceBytes=sizeof(TextureBlinnPhongMaterialInstance);

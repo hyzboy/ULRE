@@ -7,15 +7,15 @@
 
 ## P0（本周）
 
-### 1) 将 normal strength 升级为运行时参数
+### 1) 将 normal strength 升级为运行时参数（已完成）
 
-**背景**：当前 `ULRE_NORMAL_STRENGTH` 为编译期宏，调参需要重编译 shader。  
+**背景**：历史上 `ULRE_NORMAL_STRENGTH` 为编译期宏，调参需要重编译 shader。现已迁移为运行时参数。  
 **任务**：
-- 在 `BasicLitMaterialInstance` 与 `TextureBlinnPhong` 对应实例参数中加入 `normal_strength`（或统一命名）。
-- shader 中用材质实例字段替代 `ULRE_NORMAL_STRENGTH` 宏。
+- 在 `BasicLitMaterialInstance` 与 `TextureBlinnPhong` 对应实例参数中加入 `normal_strength`（统一命名）。
+- shader 中已用材质实例字段替代 `ULRE_NORMAL_STRENGTH` 宏。
 - 例子 `06b/06c` 提供一组稳定默认值（建议 `0.30~0.45`）。
 
-**验收标准**：
+**验收标准（达成）**：
 - 不重编 shader 即可调凹凸强度。
 - `06b/06c` 运行无回归，视觉效果与当前默认接近。
 

@@ -25,7 +25,7 @@
 - 法线链路增强：修正 normal map Y 方向，新增可调 `ULRE_NORMAL_STRENGTH`
 
 **待执行工作**：
-- [ ] 将 `ULRE_NORMAL_STRENGTH` 从编译期宏升级为材质实例参数（运行时可调）
+- [x] 将 `ULRE_NORMAL_STRENGTH` 从编译期宏升级为材质实例参数（运行时可调）
 - [ ] 增加自动化回归（descriptor 生命周期 + shader business/main 一致性）
 
 ### ✅ B.1 - Helper 函数签名统一

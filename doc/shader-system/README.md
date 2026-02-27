@@ -14,7 +14,7 @@
 - 修复 DescriptorSet 写入生命周期问题（悬挂指针/扩容后指针失稳），运行期 descriptor invalid 错误已清除
 - 示例 `06b_BasicLitMeshesECS` 与 `06c_TextureBlinnPhongMeshesECS` 已稳定运行并完成 Brickwall 三贴图链路
 - 两示例已对齐 `RenderBoundBox` 风格：`VertexDataManager` + 同款模型集合 + 圆环布局
-- 新增可调法线强度宏：`ULRE_NORMAL_STRENGTH`（当前默认 `0.35`）
+- 法线强度已升级为材质实例参数：`MaterialInstance.normal_strength`（默认 `0.35`，运行时可调）
 
 ---
 

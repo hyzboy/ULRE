@@ -113,6 +113,11 @@ vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
 #endif
 }
 
+float ResolveRuntimeNormalStrength(float normal_strength)
+{
+    return normal_strength > 0.0001 ? normal_strength : 0.35;
+}
+
 float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 {
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
@@ -128,7 +133,7 @@ void main()
     MaterialInstance mi = GetMI();
 
     vec2 uv = ResolveSurfaceUV(Input.TexCoord);
-    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv, mi.normal_strength);
+    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv, ResolveRuntimeNormalStrength(mi.normal_strength));
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
     vec3 lightDir = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
@@ -238,6 +243,11 @@ vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
 #endif
 }
 
+float ResolveRuntimeNormalStrength(float normal_strength)
+{
+    return normal_strength > 0.0001 ? normal_strength : 0.35;
+}
+
 float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 {
 #if ULRE_SURFACE_TEX_MODE >= ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS
@@ -253,7 +263,7 @@ vec4 FragmentShaderBusiness()
     MaterialInstance mi = GetMI();
 
     vec2 uv = ResolveSurfaceUV(Input.TexCoord);
-    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv, mi.normal_strength);
+    vec3 normal = ResolveSurfaceNormal(Input.Normal, uv, ResolveRuntimeNormalStrength(mi.normal_strength));
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
     vec3 lightDir = normalize((camera.view * vec4(ULRE_GetSkyLightDir(), 0.0)).xyz);
 
