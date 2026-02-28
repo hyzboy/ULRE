@@ -36,8 +36,8 @@
 
 ## 3) Batch-1 公共迁移动作（两材质都执行）
 
-- [ ] 拆分逻辑定义：将 `*_VS_BUSINESS / *_FS_BUSINESS / *_LOGIC` 提取到 `S_<Material>_Logic.h`。
-  - 进度：`TextureBlinnPhong` 已完成（`S_TextureBlinnPhong_Logic.h` 已创建并接回）。
+- [x] 拆分逻辑定义：将 `*_VS_BUSINESS / *_FS_BUSINESS / *_LOGIC` 提取到 `S_<Material>_Logic.h`。
+  - 进度：`TextureBlinnPhong` 与 `BasicLit` 已完成并接回。
 - [ ] 保持资源命名契约一致：`required_resources` 与 descriptor `name` 逐项对齐。
 - [ ] 固化 helper 依赖清单：避免“业务调用了 helper 但 required_helpers 未声明”。
 - [ ] 新增模板一致性测试（语义断言级，不是仅编译级）。
@@ -49,7 +49,7 @@
 
 ## 4.1 BasicLit 执行项
 
-- [ ] 生成 `S_BasicLit_Logic.h`，迁出 `BASIC_LIT_*_BUSINESS` 与 `BASIC_LIT_LOGIC`。
+- [x] 生成 `S_BasicLit_Logic.h`，迁出 `BASIC_LIT_*_BUSINESS` 与 `BASIC_LIT_LOGIC`。
 - [ ] 明确 FS 依赖清单包含：`camera/sky/mtl/TextureBaseColor/TextureNormal/TextureRoughness`。
 - [ ] 增加 `BasicLit` 模板一致性语义断言，至少覆盖：
   - `ResolveRuntimeNormalStrength(mi.normal_strength)`
@@ -70,6 +70,8 @@
   - `return vec4(color, 1.0)`
 
 > 2026-02-28 实测：`06c_TextureBlinnPhongMeshesECS` 可编译，`test/run_shader_system_gate.ps1` 通过且诊断工件 `count=1`。
+
+> 2026-02-28 增量：`06b_BasicLitMeshesECS` 可编译，`test/run_shader_system_gate.ps1` 再次通过且诊断工件 `count=1`。
 
 ---
 
