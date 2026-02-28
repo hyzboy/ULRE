@@ -174,11 +174,11 @@ namespace hgl::graph
 
         mtl_fs=mtl_manager->CreateMaterial("Text2D",mci);
 
-        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
+        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RG16I格式
         {
             VILConfig vil_config;
 
-            vil_config.Add("Position",VF_V4I16);
+            vil_config.Add("Position",VF_V2I16);
 
             mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style,sizeof(fixed_style));
             if(!mi_fs)return(false);

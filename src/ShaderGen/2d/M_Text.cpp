@@ -16,24 +16,7 @@ void main()
     HandoverMI();
 
     Output.TexCoord=TexCoord;
-
     gl_Position=GetPosition2D();
-})";
-
-    constexpr const char gs_main[]=R"(
-void main()
-{
-    vec2 vlt=gl_in[0].gl_Position.xy;
-    vec2 vrb=gl_in[0].gl_Position.zw;
-    vec2 tlt=Input[0].TexCoord.xy;
-    vec2 trb=Input[0].TexCoord.zw;
-
-    HandoverMI();gl_Position=vec4(vlt,           vec2(0,1));Output.TexCoord=tlt;                EmitVertex();
-    HandoverMI();gl_Position=vec4(vlt.x, vrb.y,  vec2(0,1));Output.TexCoord=vec2(tlt.x,trb.y);  EmitVertex();
-    HandoverMI();gl_Position=vec4(vrb.x, vlt.y,  vec2(0,1));Output.TexCoord=vec2(trb.x,tlt.y);  EmitVertex();
-    HandoverMI();gl_Position=vec4(vrb,           vec2(0,1));Output.TexCoord=trb;                EmitVertex();
-
-    EndPrimitive();
 })";
 
     constexpr const char fs_main[]=R"(
@@ -61,17 +44,9 @@ void main()
             if(!Std2DMaterial::CustomVertexShader(vsc))
                 return(false);
 
-            vsc->AddInput(VAT_VEC4,VAN::TexCoord);
-            vsc->AddOutput(SVT_VEC4,"TexCoord");
+            vsc->AddInput(VAT_VEC2,VAN::TexCoord);
+            vsc->AddOutput(SVT_VEC2,"TexCoord");
             vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomGeometryShader(ShaderCreateInfoGeometry *gsc) override
-        {
-            gsc->SetGeom(PrimitiveType::Points,PrimitiveType::TriangleStrip,4);
-            gsc->AddOutput(SVT_VEC2,"TexCoord");
-            gsc->SetMain(gs_main);
             return(true);
         }
 
@@ -101,7 +76,12 @@ MaterialCreateInfo *CreateText2D(const VulkanDevAttr *dev_attr,const Text2DMater
     if(!dev_attr||!cfg)
         return(nullptr);
 
-    MaterialText2D mt2d(cfg);
+    Text2DMaterialCreateConfig new_cfg=*cfg;
+    new_cfg.prim=PrimitiveType::Triangles;
+    new_cfg.position_format=VAT_IVEC2;
+    new_cfg.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
+
+    MaterialText2D mt2d(&new_cfg);
 
     return mt2d.Create(dev_attr);
 }

@@ -43,16 +43,16 @@ namespace func
     
     constexpr const char *GetPosition2D[size_t(CoordinateSystem2D::RANGE_SIZE)]=
     {
-        "vec4 GetPosition2D(){return vec4(Position,0,1);}",                                         //NDC
+        "vec4 GetPosition2D(){return vec4(Position.xy,0,1);}",                                      //NDC
         "vec4 GetPosition2D(){return vec4(Position.xy*2-1,0,1);}",                                  //ZeroToOne
-        "vec4 GetPosition2D(){return viewport.ortho_matrix*vec4(Position,0,1);}"                    //Ortho
+        "vec4 GetPosition2D(){return viewport.ortho_matrix*vec4(Position.xy,0,1);}"                 //Ortho
     };
 
     constexpr const char *GetPosition2DL2W[size_t(CoordinateSystem2D::RANGE_SIZE)]=
     {
-        "vec4 GetPosition2D(){return GetLocalToWorld()*vec4(Position,0,1);}",                       //NDC
+        "vec4 GetPosition2D(){return GetLocalToWorld()*vec4(Position.xy,0,1);}",                    //NDC
         "vec4 GetPosition2D(){return GetLocalToWorld()*vec4(Position.xy*2-1,0,1);}",                //ZeroToOne
-        "vec4 GetPosition2D(){return GetLocalToWorld()*viewport.ortho_matrix*vec4(Position,0,1);}"  //Ortho
+        "vec4 GetPosition2D(){return GetLocalToWorld()*viewport.ortho_matrix*vec4(Position.xy,0,1);}"//Ortho
     };
 
     // DEPRECATED: 使用 GetWorldPosition_VS / GetWorldPosition_Other 替代

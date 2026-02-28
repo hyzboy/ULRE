@@ -17,17 +17,23 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr float position_data[4]=
-{
-    0,     //left
-    0,     //top
-    1,     //right
-    1      //bottom
-};
-
-constexpr float tex_coord_data[4]=
+constexpr float position_data[12]=
 {
     0,0,
+    0,1,
+    1,0,
+    1,0,
+    0,1,
+    1,1
+};
+
+constexpr float tex_coord_data[12]=
+{
+    0,0,
+    0,1,
+    1,0,
+    1,0,
+    0,1,
     1,1
 };
 
@@ -126,9 +132,9 @@ private:
             return false;
 
         GeometryCreater pc(device, material_instance->GetVIL(), buffer_manager);
-        pc.Init("TextureRect", 1);
-        if (!pc.WriteVAB(VAN::Position, VF_V4F, position_data) ||
-            !pc.WriteVAB(VAN::TexCoord, VF_V4F, tex_coord_data))
+        pc.Init("TextureRect", 6);
+        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
+            !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
             return false;
 
         auto* geometry = pc.Create();

@@ -31,8 +31,8 @@ namespace hgl::graph::layout
         draw_chars_list.Reserve(Estimate);
 
         text_primitive=tr;
-        vertex.reserve(Estimate*4);
-        tex_coord.reserve(Estimate*4);
+        vertex.reserve(Estimate*12);
+        tex_coord.reserve(Estimate*12);
 
         draw_all_strings.Clear();
         draw_string_list.Clear();
@@ -201,13 +201,31 @@ namespace hgl::graph::layout
 
             if(cda.cla->visible)
             {
-                tp=WriteRect(   tp,
-                                left+cda.cla->metrics.x,
-                                top -cda.cla->metrics.y+font_source->GetCharHeight(),
-                                cda.cla->metrics.w,
-                                cda.cla->metrics.h);
+                const int16 rect_left  =int16(left+cda.cla->metrics.x);
+                const int16 rect_top   =int16(top -cda.cla->metrics.y+font_source->GetCharHeight());
+                const int16 rect_right =int16(rect_left+cda.cla->metrics.w);
+                const int16 rect_bottom=int16(rect_top +cda.cla->metrics.h);
 
-                tcp=WriteRect(tcp,cda.uv);
+                const float uv_left   =cda.uv.GetLeft();
+                const float uv_top    =cda.uv.GetTop();
+                const float uv_right  =cda.uv.GetRight();
+                const float uv_bottom =cda.uv.GetBottom();
+
+                tp[0]=rect_left;  tp[1]=rect_top;
+                tp[2]=rect_left;  tp[3]=rect_bottom;
+                tp[4]=rect_right; tp[5]=rect_top;
+                tp[6]=rect_right; tp[7]=rect_top;
+                tp[8]=rect_left;  tp[9]=rect_bottom;
+                tp[10]=rect_right;tp[11]=rect_bottom;
+                tp+=12;
+
+                tcp[0]=uv_left;   tcp[1]=uv_top;
+                tcp[2]=uv_left;   tcp[3]=uv_bottom;
+                tcp[4]=uv_right;  tcp[5]=uv_top;
+                tcp[6]=uv_right;  tcp[7]=uv_top;
+                tcp[8]=uv_left;   tcp[9]=uv_bottom;
+                tcp[10]=uv_right; tcp[11]=uv_bottom;
+                tcp+=12;
 
                 left+=cda.cla->metrics.adv_x;
 
@@ -252,8 +270,8 @@ namespace hgl::graph::layout
         if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
             return(-4);
 
-        vertex      .resize(draw_chars_count*4);
-        tex_coord   .resize(draw_chars_count*4);
+        vertex      .resize(draw_chars_count*12);
+        tex_coord   .resize(draw_chars_count*12);
 
         if(vertex.empty()||tex_coord.empty())
             return(-5);
@@ -276,15 +294,15 @@ namespace hgl::graph::layout
                                                                                 dc=sl_l2r(dsi);
 
             it_cda+=dsi.str.length;
-            vp+=dc*4;
-            tcp+=dc*4;
+            vp+=dc*12;
+            tcp+=dc*12;
 
             total+=dc;
         }
 
         if(total>0) //理论上total==draw_chars_count，不然就是错误的
         {
-            text_primitive->SetCharCount(total);
+            text_primitive->SetCharCount(total*6);
             text_primitive->WriteVertex(vertex.data());
             text_primitive->WriteTexCoord(tex_coord.data());
         }

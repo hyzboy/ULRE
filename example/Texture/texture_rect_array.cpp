@@ -33,17 +33,25 @@ constexpr const os_char *tex_filename[]=
 
 constexpr const size_t TexCount=sizeof(tex_filename)/sizeof(os_char *);
 
-constexpr const float position_data[4]=
-{
-    0,      //left
-    0,      //top
-    1.0f/float(TexCount),      //right
-    1       //bottom
-};
+constexpr const float rect_right=1.0f/float(TexCount);
 
-constexpr float tex_coord_data[4]=
+constexpr const float position_data[12]=
 {
     0,0,
+    0,1,
+    rect_right,0,
+    rect_right,0,
+    0,1,
+    rect_right,1
+};
+
+constexpr float tex_coord_data[12]=
+{
+    0,0,
+    0,1,
+    1,0,
+    1,0,
+    0,1,
     1,1
 };
 
@@ -173,9 +181,9 @@ private:
             return false;
 
         GeometryCreater pc(device, render_obj[0].mi->GetVIL(), buffer_manager);
-        pc.Init("TextureRect", 1);
-        if (!pc.WriteVAB(VAN::Position, VF_V4F, position_data) ||
-            !pc.WriteVAB(VAN::TexCoord, VF_V4F, tex_coord_data))
+        pc.Init("TextureRect", 6);
+        if (!pc.WriteVAB(VAN::Position, VF_V2F, position_data) ||
+            !pc.WriteVAB(VAN::TexCoord, VF_V2F, tex_coord_data))
             return false;
 
         auto* geometry = pc.Create();
