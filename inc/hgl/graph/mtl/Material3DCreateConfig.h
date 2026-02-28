@@ -8,6 +8,15 @@ namespace hgl::graph::mtl{
 
 constexpr float DefaultNormalStrength = 0.35f;
 
+enum class SkyLightAmbientModel : uint8
+{
+    Simple = 0,
+    IBL,
+    SphericalHarmonics,
+
+    ENUM_CLASS_RANGE(Simple, SphericalHarmonics)
+};
+
 struct Material3DCreateConfig:public MaterialCreateConfig
 {
     bool                camera;                 ///<包含摄像机矩阵信息
@@ -15,6 +24,8 @@ struct Material3DCreateConfig:public MaterialCreateConfig
     bool                sky;                    ///<是否包含天空信息(主要是太阳光和大气散射相关)
 
     VAType              position_format;        ///<position格式
+
+    SkyLightAmbientModel sky_ambient_model;     ///<天空环境光实现方式（按材质配置）
 
 //    bool                reverse_depth;          ///<使用反向深度
 
@@ -36,6 +47,8 @@ public:
 
         position_format=VAT_VEC3;
 
+        sky_ambient_model=SkyLightAmbientModel::Simple;
+
 //        reverse_depth=false;
     }
 
@@ -48,6 +61,9 @@ public:
             return cmp;
 
         if(auto cmp=sky<=>cfg.sky; cmp!=0)
+            return cmp;
+
+        if(auto cmp=sky_ambient_model<=>cfg.sky_ambient_model; cmp!=0)
             return cmp;
 
         return position_format <=> cfg.position_format;
@@ -135,6 +151,8 @@ public:
                                 WithSky::With)
     {
         ibl=use_ibl;
+        if(use_ibl)
+            sky_ambient_model=SkyLightAmbientModel::IBL;
     }
 };
 

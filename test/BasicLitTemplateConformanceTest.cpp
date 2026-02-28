@@ -71,19 +71,24 @@ int main()
                              && ContainsKeyword(fs_code, "ULRE_GetSkyAmbientColor")
                              && ContainsKeyword(fs_code, "return vec4(color, 1.0)");
 
+    const bool ibl_branch_semantic_ok = ContainsKeyword(fs_code, "#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL")
+                                     && ContainsKeyword(fs_code, "color += mi.ibl_intensity * sky.base_sky_color.rgb");
+
     printf("ValidateMaterialLogicDef: %s\n", logic_valid ? "PASS" : "FAIL");
     printf("Required resource shape: %s\n", required_resource_shape_ok ? "PASS" : "FAIL");
     printf("Required resource names: %s\n", required_resource_names_ok ? "PASS" : "FAIL");
     printf("Required helper dependencies: %s\n", required_helpers_ok ? "PASS" : "FAIL");
     printf("VS semantic assertions: %s\n", vs_semantic_ok ? "PASS" : "FAIL");
     printf("FS semantic assertions: %s\n", fs_semantic_ok ? "PASS" : "FAIL");
+    printf("IBL branch semantic assertions: %s\n", ibl_branch_semantic_ok ? "PASS" : "FAIL");
 
     const bool ok = logic_valid
                  && required_resource_shape_ok
                  && required_resource_names_ok
                  && required_helpers_ok
                  && vs_semantic_ok
-                 && fs_semantic_ok;
+                 && fs_semantic_ok
+                 && ibl_branch_semantic_ok;
     printf("\n=== BasicLit Template Conformance Summary: %s ===\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
 }

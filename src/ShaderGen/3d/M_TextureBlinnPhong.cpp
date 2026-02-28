@@ -13,6 +13,20 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    AmbientModel ResolveAmbientModelFromConfig(const Material3DCreateConfig *cfg)
+    {
+        if(!cfg)
+            return AmbientModel::FlatColor;
+
+        switch(cfg->sky_ambient_model)
+        {
+            case SkyLightAmbientModel::IBL:    return AmbientModel::IBL;
+            case SkyLightAmbientModel::SphericalHarmonics: return AmbientModel::IBL_SH;
+            case SkyLightAmbientModel::Simple:
+            default:                           return AmbientModel::Hemisphere;
+        }
+    }
+
     constexpr const char mi_codes[] = R"(
         float normal_strength;
     )";
@@ -268,6 +282,7 @@ MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const
     cfg_with_mi.material_instance = true;
 
     ShaderPermutationKey key;
+    key.ambient = ResolveAmbientModelFromConfig(&cfg_with_mi);
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
         dev_attr,
         TEXTURE_BLINN_PHONG_DEF,

@@ -56,8 +56,8 @@
   - `ULRE_GetSkyLightDir/Color/Ambient`
   - `return vec4(color, 1.0)`
 - [x] 定义 IBL 分支迁移策略（二选一并落文档）：
-  - [x] A. 继续 legacy（显式标注“已知保留点”）
-  - [ ] B. 接入 permutation/define 到 composed 路径（优先长期方案）
+  - [x] A. 继续 legacy（历史阶段保留点）
+  - [x] B. 接入 permutation/define 到 composed 路径（当前已完成）
 
 ## 4.2 TextureBlinnPhong 执行项
 
@@ -84,9 +84,9 @@
 > 2026-02-28 收口：修复 `ValidateFSMainBusinessHelperConsistency` 对 `GetMI/GetMaterialInstance` 的误判后，`06b_BasicLitMeshesECS` 与 `06c_TextureBlinnPhongMeshesECS` 启动日志均为 composed path（`using new composed-business compile path`），且未出现 fallback 日志。
 
 **IBL 策略说明（Batch-1 当前执行）**：
-- `BasicLit` 在 `cfg->ibl == true` 时继续走 legacy 路径；composed 路径仅处理非 IBL 分支。
-- 原因：当前 key/define 管线尚未统一到 composed 编译入口，先保持行为稳定。
-- 迁移到 B 方案条件：permutation key 与 define 注入路径在 composed 编译入口统一后再切换。
+- `BasicLit` 在 `cfg->ibl == true` 时已走 composed 路径（不再走 IBL 专用 legacy 分支）。
+- SkyLight 模型选择不在 `CreateBasicLit` 工厂中硬编码绑定；材质侧保留统一 `ULRE_SKYLIGHT_MODEL` 宏约定。
+- legacy 路径仅保留为通用编译失败回退，不再作为 IBL 专用分支。
 
 ---
 

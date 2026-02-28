@@ -64,6 +64,10 @@ const AnsiString Material3DCreateConfig::ToHashString()
     if(sky)
         hash+="_Sky";
 
+    hash+="_Amb";
+    char amb_model_str[2]={(char)('0'+(uint8)sky_ambient_model),0};
+    hash+=amb_model_str;
+
     if(local_to_world)
         hash+="_L2W";
 

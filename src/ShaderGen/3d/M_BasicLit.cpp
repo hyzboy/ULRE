@@ -13,6 +13,20 @@
 namespace hgl::graph::mtl{
 namespace
 {
+    AmbientModel ResolveAmbientModelFromConfig(const Material3DCreateConfig *cfg)
+    {
+        if(!cfg)
+            return AmbientModel::FlatColor;
+
+        switch(cfg->sky_ambient_model)
+        {
+            case SkyLightAmbientModel::IBL:    return AmbientModel::IBL;
+            case SkyLightAmbientModel::SphericalHarmonics: return AmbientModel::IBL_SH;
+            case SkyLightAmbientModel::Simple:
+            default:                           return AmbientModel::Hemisphere;
+        }
+    }
+
     constexpr const char mi_codes[] = R"(
         uint base_color;
         float metallic;
@@ -212,11 +226,11 @@ void main()
 
     class MaterialBasicLit : public Std3DMaterial
     {
-        bool use_ibl;
+        SkyLightAmbientModel ambient_model;
 
     public:
-        MaterialBasicLit(const Material3DCreateConfig *cfg, bool ibl)
-            : Std3DMaterial(cfg), use_ibl(ibl) {}
+        MaterialBasicLit(const Material3DCreateConfig *cfg, SkyLightAmbientModel model)
+            : Std3DMaterial(cfg), ambient_model(model) {}
 
         ~MaterialBasicLit() = default;
 
@@ -250,8 +264,19 @@ void main()
 
             fsc->AddOutput(VAT_VEC4, "FragColor");
 
-            if(use_ibl)
-                fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_IBL");
+            switch(ambient_model)
+            {
+                case SkyLightAmbientModel::IBL:
+                    fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_IBL");
+                    break;
+                case SkyLightAmbientModel::SphericalHarmonics:
+                    fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_SH");
+                    break;
+                case SkyLightAmbientModel::Simple:
+                default:
+                    fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_SIMPLE");
+                    break;
+            }
 
             fsc->SetMain(fs_main);
             return true;
@@ -270,17 +295,8 @@ MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMateri
     if(cfg)
         cfg->material_instance=true;
 
-    // 先保持 IBL 分支走 legacy，避免与当前 key/define 系统耦合
-    if (cfg && cfg->ibl)
-    {
-        std::fprintf(stderr,
-            "[BasicLit] IBL=true, using legacy Std3DMaterial path\n");
-
-        MaterialBasicLit m(cfg, cfg->ibl);
-        return m.Create(dev_attr);
-    }
-
     ShaderPermutationKey key;
+    key.ambient = ResolveAmbientModelFromConfig(cfg);
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
         dev_attr,
         BASIC_LIT_DEF,
@@ -293,13 +309,14 @@ MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMateri
     {
         std::fprintf(stderr,
             "[BasicLit] using new composed-business compile path\n");
+
         return mci_new;
     }
 
     std::fprintf(stderr,
         "[BasicLit] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
 
-    MaterialBasicLit m(cfg, cfg ? cfg->ibl : false);
+    MaterialBasicLit m(cfg, cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple);
     return m.Create(dev_attr);
 }
 }//namespace hgl::graph::mtl
