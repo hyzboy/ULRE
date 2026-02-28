@@ -16,6 +16,7 @@
 #include <hgl/type/String.h>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -375,6 +376,58 @@ static void AppendUniqueHelperName(std::vector<std::string> &out, const std::str
     }
 
     out.emplace_back(name);
+}
+
+static bool IsStrictHelperConflictModeEnabled()
+{
+    const char *env = std::getenv("ULRE_HELPER_CONFLICT_STRICT");
+    if (!env)
+        return false;
+
+    return (std::strcmp(env, "1") == 0)
+        || (std::strcmp(env, "true") == 0)
+        || (std::strcmp(env, "TRUE") == 0)
+        || (std::strcmp(env, "on") == 0)
+        || (std::strcmp(env, "ON") == 0);
+}
+
+static void AppendHelperConflictsFromDiagnostics(
+    const ShaderComposeDiagnostics &diagnostics,
+    std::vector<std::string> &out)
+{
+    if (diagnostics.helper_conflicts.empty())
+    {
+        if (diagnostics.helper_conflict_detected)
+            AppendUniqueHelperName(out, "<conflict-detected-without-detail>");
+        return;
+    }
+
+    for (const auto &item : diagnostics.helper_conflicts)
+    {
+        if (!item.empty())
+            AppendUniqueHelperName(out, item);
+    }
+}
+
+static void PrintComposedBusinessDiagnosticsJson(
+    const ComposedMaterialDef &def,
+    const std::vector<std::string> &helper_conflicts)
+{
+    if (helper_conflicts.empty())
+        return;
+
+    const char *mat_name = (def.name && def.name[0]) ? def.name : "<unnamed-material>";
+    std::fprintf(stderr,
+        "[ComposedBusiness][Diagnostics] {\"material\":\"%s\",\"helper_conflict_detected\":true,\"helper_conflict_count\":%u,\"helper_conflicts\":[",
+        mat_name,
+        static_cast<unsigned>(helper_conflicts.size()));
+
+    for (size_t i = 0; i < helper_conflicts.size(); ++i)
+    {
+        std::fprintf(stderr, "%s\"%s\"", i == 0 ? "" : ",", helper_conflicts[i].c_str());
+    }
+
+    std::fprintf(stderr, "]}\n");
 }
 
 bool ValidateFSMainBusinessHelperConsistency(
@@ -768,6 +821,32 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
         std::fprintf(stderr,
             "[ComposedBusiness] abort compile: fs_main and FS business required helpers are inconsistent\n");
         return nullptr;
+    }
+
+    {
+        PipelineMode default_pipeline_mode;
+        const ShaderComposeResult vs_diag = ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
+            bridge_result.def,
+            key,
+            default_pipeline_mode,
+            true);
+        const ShaderComposeResult fs_diag = ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostics(
+            bridge_result.def,
+            key,
+            default_pipeline_mode,
+            true);
+
+        std::vector<std::string> helper_conflicts;
+        AppendHelperConflictsFromDiagnostics(vs_diag.diagnostics, helper_conflicts);
+        AppendHelperConflictsFromDiagnostics(fs_diag.diagnostics, helper_conflicts);
+        PrintComposedBusinessDiagnosticsJson(bridge_result.def, helper_conflicts);
+
+        if (!helper_conflicts.empty() && IsStrictHelperConflictModeEnabled())
+        {
+            std::fprintf(stderr,
+                "[ComposedBusiness] abort compile: helper conflict detected under strict mode\n");
+            return nullptr;
+        }
     }
 
     FixedMaterialDef runtime_def = base_fixed_def;

@@ -251,6 +251,11 @@ struct ShaderComposeDiagnostics {
     bool normal_policy_normalized_vertex_input = false;
     bool normal_policy_normalized_normal_map = false;
     bool normal_policy_normalized_gbuffer = false;
+
+    // Helper 冲突诊断（业务代码自定义 helper 与 builtin helper 发生重名）
+    bool helper_conflict_detected = false;
+    uint32_t helper_conflict_count = 0;
+    std::vector<std::string> helper_conflicts;
 };
 
 struct ShaderComposeResult {

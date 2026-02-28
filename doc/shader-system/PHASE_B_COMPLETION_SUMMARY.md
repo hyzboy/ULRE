@@ -2,7 +2,7 @@
 
 **完成日期**：2026-02-27（稳定化更新）  
 **任务目标**：统一 Shader System 的接口语义和 helper 行为，避免"看起来能用，实则脆弱"  
-**状态**：✅ 文档规范化完成（4/4），核心代码路径已落地并通过示例回归
+**状态**：✅ Phase B 核心目标完成（规范 + 关键代码落地 + 回归门禁），当前进入 Phase C 启动准备态
 
 **执行清单**：见 [NEXT_STEPS_2026-02-27.md](NEXT_STEPS_2026-02-27.md)
 
@@ -46,7 +46,7 @@
 **待执行工作**：
 - [x] 更新 `MFGetPosition.h` 实现新 helper（保留 legacy 回退）
 - [x] 更新 `MFCommon.h` 实现 `GetMI()` 统一签名
-- [ ] 已迁移材质（PureColor / VertexColor）使用新 helper
+- [x] 已迁移材质（PureColor / VertexColor）使用新 helper
 
 ### ✅ B.2 - required_resources 命名规则统一
 
@@ -132,15 +132,12 @@
 - [x] 错误消息格式统一（`[Error]` / `[Warning]` / `[Info]`）
 - [ ] 代码注释引用规范文档链接
 
-### 3.2 代码验收（待执行）
+### 3.2 代码验收（已完成，持续观察）
 
 **检查清单**：
 - [x] PureColor3D 材质定义符合所有规范
 - [x] VertexColor3D 材质定义符合所有规范
 - [x] Gizmo3D 材质定义符合所有规范（已迁移并接入 Composed-first）
-- [ ] MFGetPosition.h 提供新 helper（保留 legacy）
-- [ ] MFCommon.h 提供 `GetMI()` 统一签名
-- [ ] ResourceLayoutGenerator 增加策略说明注释
 - [x] MFGetPosition.h 提供新 helper（保留 legacy）
 - [x] MFCommon.h 提供 `GetMI()` 统一签名
 - [x] ResourceLayoutGenerator 增加策略说明注释
@@ -151,7 +148,7 @@
 - [x] 无 binding 冲突错误（本轮重点为 descriptor 生命周期问题修复）
 - [ ] helper 注入无重复定义错误
 
-### 3.3 桥接校验（待执行）
+### 3.3 桥接校验（持续补强）
 
 根据 Phase B.2 验收要求：
 > 三个逻辑样例（PureColor/VertexColor/Gizmo）都能通过桥接校验
@@ -162,27 +159,11 @@
 3. **GLSL 编译验证**：生成的 shader 代码无语法错误
 4. **运行时渲染验证**：材质正确渲染
 
-**验证工具**（建议实现）：
-```cpp
-// test/test_phase_b_validation.cpp
-bool ValidatePhaseB_PureColor3D();
-bool ValidatePhaseB_VertexColor3D();
-bool ValidatePhaseB_Gizmo3D();
-
-int main() {
-    bool ok = true;
-    ok &= ValidatePhaseB_PureColor3D();
-    ok &= ValidatePhaseB_VertexColor3D();
-    ok &= ValidatePhaseB_Gizmo3D();
-    
-    if (ok) {
-        printf("✅ Phase B 验收通过！\n");
-    } else {
-        printf("❌ Phase B 验收失败，请检查上述错误\n");
-    }
-    return ok ? 0 : 1;
-}
-```
+**验证落地（2026-02-28）**：
+- [x] 新增 `test/BridgeValidation3MaterialsTest.cpp`，覆盖 PureColor / VertexColor / Gizmo 三材质桥接校验。
+- [x] 校验项包含：`ValidateMaterialLogicDef`、`BuildComposedMaterialDefFromLogic`、缺失资源检查、VS/FS 生成检查。
+- [x] 增加语义级断言（关键业务片段关键字存在性检查），避免“仅可生成但语义错误”。
+- [x] 已接入 `test/run_shader_system_gate.ps1` 并随 gate 稳定通过。
 
 ---
 
@@ -221,11 +202,11 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 
 ### 依赖 Phase B 的工作
 
-**Phase C 前置条件**：
-- [ ] Phase B 所有验收项通过
-- [ ] Helper 函数实现更新完成
-- [ ] 编译器增加 `ValidateMaterialLogicDef` 调用
-- [ ] 至少 2 个材质通过完整桥接校验（PureColor + VertexColor）
+**Phase C 前置条件（当前状态）**：
+- [x] Phase B 核心验收项通过（规范文档、示例回归、关键门禁）
+- [x] Helper 函数实现更新完成
+- [x] 编译器已接入 `ValidateMaterialLogicDef`
+- [x] 全量桥接校验（PureColor + VertexColor + Gizmo）已纳入门禁（含语义断言）
 
 **Phase C 启动标准**：
 - Phase B 文档规范冻结（不再修改）
@@ -240,10 +221,10 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 
 **现状**：
 - Gizmo3D FS 需要 Normal + Position 插值
-- 当前 business 编译器只支持单一插值（如 Color）
-- 已创建 `S_Gizmo3D.h` 定义文件，但工厂仍走 legacy 路径
+- 当前主线已完成 Composed-first 接入，并保留 legacy fallback 作为兼容路径
+- 复杂插值能力仍有增强空间（当前以稳定性优先）
 
-**解决方案**（Phase D）：
+**后续增强**（Phase D）：
 - 扩展编译器自动解析 VS business 中的 `Output.XXX` 赋值
 - 自动生成 `Vertex_Output` 结构体
 - 自动生成 FS `Input` 接口块
@@ -298,7 +279,7 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 
 ### 风险 2：Legacy 路径与新路径不一致
 
-**描述**：PureColor / VertexColor 走新路径，Gizmo 走 legacy 路径，可能导致行为差异。
+**描述**：已迁移材质保留 legacy fallback 与新路径并存，若缺少持续回归，仍可能出现行为漂移。
 
 **应对**：
 - 明确标记 legacy 路径材质（日志输出）

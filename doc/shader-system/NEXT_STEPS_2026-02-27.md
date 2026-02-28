@@ -98,3 +98,24 @@
 - `06b/06c` 在验证层开启下稳定运行。  
 - 新增自动化回归覆盖 descriptor 生命周期与 shader helper 一致性。  
 - 文档索引、阶段总结、执行清单三者一致且可追踪。
+
+---
+
+## 后继入口（Phase C）
+
+- 执行入口： [PHASE_C_KICKOFF_2026-02-27.md](PHASE_C_KICKOFF_2026-02-27.md)
+- 总体计划唯一来源： [../../SHADER_SYSTEM_REFACTOR_PLAN.md](../../SHADER_SYSTEM_REFACTOR_PLAN.md)
+
+---
+
+## Phase C 最新增量（2026-02-28）
+
+### 6) 诊断工件机读闭环（已完成）
+
+**任务**：
+- 新增 `test_ComposedDiagnosticsAggregation`，稳定产出 `[ComposedBusiness][Diagnostics]` JSON 行。
+- gate 脚本追加该测试的 verbose 采集，并抽取 JSON 到 `build/windows-msvc-debug/gate-artifacts/composed-diagnostics.jsonl`。
+
+**验收标准（达成）**：
+- `./test/run_shader_system_gate.ps1` 通过。
+- gate 输出 `composed-diagnostics.jsonl (count>=1)`。

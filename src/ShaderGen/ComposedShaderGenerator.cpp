@@ -228,6 +228,39 @@ static ShaderComposeDiagnostics ToPublicDiagnostics(
     return out;
 }
 
+static void CollectHelperConflictDiagnosticsFromCode(
+    const AnsiString &code,
+    ShaderComposeDiagnostics &diagnostics)
+{
+    diagnostics.helper_conflicts.clear();
+    diagnostics.helper_conflict_count = 0;
+    diagnostics.helper_conflict_detected = false;
+
+    const char *marker = "// HELPER_CONFLICT:";
+    const char *cursor = code.c_str();
+    if (!cursor)
+        return;
+
+    while ((cursor = std::strstr(cursor, marker)) != nullptr)
+    {
+        cursor += std::strlen(marker);
+
+        while (*cursor == ' ' || *cursor == '\t')
+            ++cursor;
+
+        const char *line_end = std::strchr(cursor, '\n');
+        if (!line_end)
+            line_end = cursor + std::strlen(cursor);
+
+        if (line_end > cursor)
+            diagnostics.helper_conflicts.emplace_back(cursor, size_t(line_end - cursor));
+
+        diagnostics.helper_conflict_count++;
+        diagnostics.helper_conflict_detected = true;
+        cursor = line_end;
+    }
+}
+
 static void AppendEncodingDefines(
     AnsiString &result,
     const char *prefix,
@@ -1013,6 +1046,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
         result += ComposeVertexShader(def, key, false);
         result += "\n// MobileSubpassGBufferDeferred route (VS): geometry path unchanged, FS consumes subpass inputs.\n";
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
@@ -1033,6 +1067,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
         result += ComposeVertexShader(def, key, false);
         result += "\n// Forward lighting mode: PerVertex (SG-2 placeholder route).\n";
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
@@ -1045,6 +1080,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
         result += "// Mesh/FS topology selected: vertex shader stage is not used.\n";
         result += "// SG-2: mesh shader generation will be emitted by ComposeMeshShader().\n";
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
@@ -1058,10 +1094,12 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
         result += GenNormalCompressionHelpers();
         result += ComposeVertexShader(def, key, false);
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
     output.code = ComposeVertexShader(def, key, include_preamble);
+    CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
     return output;
 }
 
@@ -1183,6 +1221,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
         result += ComposeFragmentShader(def, key, false);
         result += "\n// MobileSubpassGBufferDeferred route (FS): subpassLoad input path enabled.\n";
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
@@ -1203,6 +1242,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
         result += ComposeFragmentShader(def, key, false);
         result += "\n// Forward lighting mode: PerVertex (expect interpolated vertex-lighting input in SG-2).\n";
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
@@ -1215,6 +1255,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
         result += "// Mesh/FS topology selected: fragment stage shares FS composer path.\n";
         result += ComposeFragmentShader(def, key, false);
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
@@ -1227,10 +1268,12 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
         result += GenNormalCompressionHelpers();
         result += ComposeFragmentShader(def, key, false);
         output.code = result;
+        CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
         return output;
     }
 
     output.code = ComposeFragmentShader(def, key, include_preamble);
+    CollectHelperConflictDiagnosticsFromCode(output.code, output.diagnostics);
     return output;
 }
 

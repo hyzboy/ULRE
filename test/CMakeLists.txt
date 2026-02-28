@@ -59,6 +59,57 @@ target_include_directories(test_ShaderLogicValidation
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+add_executable(test_BridgeValidation3Materials
+    BridgeValidation3MaterialsTest.cpp)
+
+target_link_libraries(test_BridgeValidation3Materials
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_BridgeValidation3Materials
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+add_executable(test_HelperInjectionConflict
+    HelperInjectionConflictTest.cpp)
+
+target_link_libraries(test_HelperInjectionConflict
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_HelperInjectionConflict
+    PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+add_executable(test_HelperInjectionConflictMatrix
+    HelperInjectionConflictMatrixTest.cpp)
+
+target_link_libraries(test_HelperInjectionConflictMatrix
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_HelperInjectionConflictMatrix
+    PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+add_executable(test_ComposedDiagnosticsAggregation
+    ComposedDiagnosticsAggregationTest.cpp)
+
+target_link_libraries(test_ComposedDiagnosticsAggregation
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore
+            Vulkan::Vulkan)
+
+target_include_directories(test_ComposedDiagnosticsAggregation
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -75,6 +126,18 @@ if(BUILD_TESTING)
 
     add_test(NAME test_ShaderLogicValidation
              COMMAND test_ShaderLogicValidation)
+
+    add_test(NAME test_BridgeValidation3Materials
+             COMMAND test_BridgeValidation3Materials)
+
+    add_test(NAME test_HelperInjectionConflict
+             COMMAND test_HelperInjectionConflict)
+
+    add_test(NAME test_HelperInjectionConflictMatrix
+             COMMAND test_HelperInjectionConflictMatrix)
+
+    add_test(NAME test_ComposedDiagnosticsAggregation
+             COMMAND test_ComposedDiagnosticsAggregation)
 endif()
 
 # 需要时可直接运行：
@@ -83,9 +146,17 @@ endif()
 #   cmake --build <build_dir> --target test_FSHelperConsistencyValidation
 #   cmake --build <build_dir> --target test_DescriptorSetLifecycleRegression
 #   cmake --build <build_dir> --target test_ShaderLogicValidation
+#   cmake --build <build_dir> --target test_BridgeValidation3Materials
+#   cmake --build <build_dir> --target test_HelperInjectionConflict
+#   cmake --build <build_dir> --target test_HelperInjectionConflictMatrix
+#   cmake --build <build_dir> --target test_ComposedDiagnosticsAggregation
 # 在生成目录执行：
 #   .\\test\\Debug\\test_ComposedShaderGenerator.exe
 #   .\\test\\Debug\\test_ComposedShaderGenerator_Verify.exe
 #   .\\test\\Debug\\test_FSHelperConsistencyValidation.exe
 #   .\\test\\Debug\\test_DescriptorSetLifecycleRegression.exe
 #   .\\test\\Debug\\test_ShaderLogicValidation.exe
+#   .\\test\\Debug\\test_BridgeValidation3Materials.exe
+#   .\\test\\Debug\\test_HelperInjectionConflict.exe
+#   .\\test\\Debug\\test_HelperInjectionConflictMatrix.exe
+#   .\\test\\Debug\\test_ComposedDiagnosticsAggregation.exe

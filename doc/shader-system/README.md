@@ -2,12 +2,12 @@
 
 本目录包含 ULRE Shader System 重构的所有规范文档与设计分析。
 
-**最后更新**：2026-02-27  
+**最后更新**：2026-02-28  
 **总体计划**：[../../SHADER_SYSTEM_REFACTOR_PLAN.md](../../SHADER_SYSTEM_REFACTOR_PLAN.md)
 
 ---
 
-## ✅ 最新里程碑（2026-02-27）
+## ✅ 最新里程碑（2026-02-28）
 
 - `BasicLit / TextureBlinnPhong / Gizmo3D` 已完成 Composed-first 路径落地（保留 legacy fallback）
 - SkyLight 统一接口已落地：`ULRE_GetSkyLightDir/Color/Ambient`，并支持 `SIMPLE / IBL / ENVMAP / SH` 模型切换
@@ -15,6 +15,7 @@
 - 示例 `06b_BasicLitMeshesECS` 与 `06c_TextureBlinnPhongMeshesECS` 已稳定运行并完成 Brickwall 三贴图链路
 - 两示例已对齐 `RenderBoundBox` 风格：`VertexDataManager` + 同款模型集合 + 圆环布局
 - 法线强度已升级为材质实例参数：`MaterialInstance.normal_strength`（默认 `0.35`，运行时可调）
+- Helper 冲突诊断已机读闭环：新增 `test_ComposedDiagnosticsAggregation`，gate 可稳定导出 `gate-artifacts/composed-diagnostics.jsonl`（`count>=1`）
 
 ---
 
@@ -68,6 +69,15 @@
    - 运行时 normal_strength 参数化
    - descriptor 生命周期自动回归
    - shader business/main 一致性校验
+
+8. **[PHASE_C_KICKOFF_2026-02-27.md](PHASE_C_KICKOFF_2026-02-27.md)**  
+   Phase C 启动执行入口（本轮范围、门禁、首批任务、DoD）
+
+9. **[PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md](PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md)**  
+   Phase C 首批材质迁移模板（PureColor / VertexColor / Gizmo 共性约束与检查清单）
+
+10. **[PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md)**  
+   Phase C Batch-1 执行卡（BasicLit / TextureBlinnPhong）
 
 ---
 
@@ -127,8 +137,11 @@
 1. [../../SHADER_SYSTEM_REFACTOR_PLAN.md](../../SHADER_SYSTEM_REFACTOR_PLAN.md) - 了解重构整体规划
 2. [PHASE_B_COMPLETION_SUMMARY.md](PHASE_B_COMPLETION_SUMMARY.md) - 当前进度与待办事项
 3. [NEXT_STEPS_2026-02-27.md](NEXT_STEPS_2026-02-27.md) - 当前迭代执行顺序与验收标准
-4. [RESOURCE_LAYOUT_BINDING_STRATEGY.md](RESOURCE_LAYOUT_BINDING_STRATEGY.md) - 理解 binding 分配机制
-5. [ShaderGen_Analysis_Report_EN.md](ShaderGen_Analysis_Report_EN.md) - 系统架构深度分析
+4. [PHASE_C_KICKOFF_2026-02-27.md](PHASE_C_KICKOFF_2026-02-27.md) - Phase C 启动入口（执行视图）
+5. [PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md](PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md) - 首批材质迁移模板（执行模板）
+6. [PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md) - Batch-1 迁移执行卡（BasicLit/TextureBlinnPhong）
+7. [RESOURCE_LAYOUT_BINDING_STRATEGY.md](RESOURCE_LAYOUT_BINDING_STRATEGY.md) - 理解 binding 分配机制
+8. [ShaderGen_Analysis_Report_EN.md](ShaderGen_Analysis_Report_EN.md) - 系统架构深度分析
 
 ### 我想了解历史演进
 
@@ -169,6 +182,7 @@
 - `test/DescriptorSetLifecycleRegressionTest.cpp` - descriptor 生命周期回归
 - `test/ShaderLogicValidationTest.cpp` - ShaderLogic 结构约束校验
 - `test/run_shader_system_gate.ps1` - Shader System 门禁脚本（构建 + 聚焦执行）
+- `test/ComposedDiagnosticsAggregationTest.cpp` - 诊断 JSON 行聚合触发与回归
 
 ---
 

@@ -3,6 +3,8 @@ cmake_policy(VERSION 3.28)
 
 PROJECT(ULRE)
 
+include(CTest)
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMCMakeModule)
