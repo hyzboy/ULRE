@@ -133,3 +133,4 @@ fsc->AddDefine("ULRE_SKYLIGHT_MODEL", "ULRE_SKYLIGHT_MODEL_IBL");
 | 日期 | 版本 | 变更 | 负责人 |
 |---|---|---|---|
 | 2026-02-26 | v1.0 | 初版：定义 SkyLight 统一接口、模型切换规则与接入规范 | Copilot |
+| 2026-02-28 | v1.1 | 文档口径同步：阶段状态与时间戳对齐（无接口变更） | Copilot |

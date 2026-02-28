@@ -16,6 +16,7 @@
 - 两示例已对齐 `RenderBoundBox` 风格：`VertexDataManager` + 同款模型集合 + 圆环布局
 - 法线强度已升级为材质实例参数：`MaterialInstance.normal_strength`（默认 `0.35`，运行时可调）
 - Helper 冲突诊断已机读闭环：新增 `test_ComposedDiagnosticsAggregation`，gate 可稳定导出 `gate-artifacts/composed-diagnostics.jsonl`（`count>=1`）
+- 模板一致性门禁已扩展到 `BasicLit / TextureBlinnPhong / Gizmo`：新增 `test_Gizmo3DTemplateConformance` 后，当前 gate 聚焦集为 `10/10` 通过
 
 ---
 
@@ -178,11 +179,12 @@
 
 ### 测试用例
 
-- `test/FSHelperConsistencyValidationTest.cpp` - FS business/main helper 一致性校验
-- `test/DescriptorSetLifecycleRegressionTest.cpp` - descriptor 生命周期回归
+- `test/test_FSHelperConsistencyValidation.cpp` - FS business/main helper 一致性校验
+- `test/test_DescriptorSetLifecycleRegression.cpp` - descriptor 生命周期回归
 - `test/ShaderLogicValidationTest.cpp` - ShaderLogic 结构约束校验
 - `test/run_shader_system_gate.ps1` - Shader System 门禁脚本（构建 + 聚焦执行）
 - `test/ComposedDiagnosticsAggregationTest.cpp` - 诊断 JSON 行聚合触发与回归
+- `test/Gizmo3DTemplateConformanceTest.cpp` - Gizmo 模板一致性语义断言回归
 
 ---
 
@@ -242,4 +244,10 @@
 
 **文档负责人**：Shader System 维护团队  
 **反馈渠道**：项目 Issue Tracker  
-**最后审核**：2026-02-27（Phase C 稳定化更新）
+**最后审核**：2026-02-28（Phase C 文档口径同步）
+
+---
+
+## 变更历史
+
+- 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。

@@ -2,7 +2,7 @@
 
 本文档定义了 ULRE Shader System 中 `required_resources` 的命名规则与引用约定。
 
-**最后更新**：2026-02-26  
+**最后更新**：2026-02-28（文档口径统一，无规范变更）  
 **适用范围**：Phase B 及后续所有材质开发  
 **关联文档**：[SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md)
 
@@ -360,6 +360,7 @@ for (auto& desc : descriptors) {
 | 版本 | 日期 | 变更内容 |
 |------|------|----------|
 | 1.0  | 2026-02-26 | 初版发布，规范 descriptor / required_resources / GLSL 命名一致性 |
+| 1.1  | 2026-02-28 | 文档口径同步：更新时间与阶段状态说明对齐（无规范变更） |
 
 ---
 

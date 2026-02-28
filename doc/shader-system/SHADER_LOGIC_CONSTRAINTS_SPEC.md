@@ -2,7 +2,7 @@
 
 本文档定义了 `ShaderLogicBlock` / `MaterialLogicDef` 的最小必填字段约束、错误消息格式与运行时校验规则。
 
-**最后更新**：2026-02-26  
+**最后更新**：2026-02-28（文档口径统一，无规范变更）  
 **适用范围**：Phase B 及后续所有材质开发  
 **关联文档**：
 - [SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md)
@@ -469,6 +469,7 @@ void PrintMaterialLogicDiagnostics(const MaterialLogicDef& logic, const char* ma
 | 版本 | 日期       | 变更内容                                           |
 |------|------------|----------------------------------------------------|
 | 1.0  | 2026-02-26 | 初版发布，规范 ShaderLogicBlock / MaterialLogicDef 约束与错误格式 |
+| 1.1  | 2026-02-28 | 文档口径同步：更新时间与阶段状态说明对齐（无规范变更） |
 
 ---
 

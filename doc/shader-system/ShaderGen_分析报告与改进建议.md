@@ -1665,3 +1665,9 @@ namespace hgl::graph::mtl
 **创建日期**：2025-12-30  
 **作者**：ULRE ShaderGen 分析小组  
 **联系方式**：[项目 Issues](https://github.com/hyzboy/ULRE/issues)
+
+---
+
+## 变更历史
+
+- 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。

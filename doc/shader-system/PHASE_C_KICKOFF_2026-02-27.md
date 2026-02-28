@@ -49,6 +49,8 @@
 
 > 增量（闭环）：已新增 `test_ComposedDiagnosticsAggregation` 并接入 gate；`test/run_shader_system_gate.ps1` 现会额外执行该测试的 verbose 采集并产出 `gate-artifacts/composed-diagnostics.jsonl`，当前稳定为 `count>=1`。
 
+> 增量（模板一致性）：已新增 `test_Gizmo3DTemplateConformance` 并接入 gate；当前 gate 聚焦集已覆盖 `BasicLit/TextureBlinnPhong/Gizmo` 三条模板一致性测试。
+
 ---
 
 ## 5) 完成定义（DoD）
@@ -79,5 +81,12 @@
 
 - 状态：✅ 本轮首批任务已完成
 - 状态：✅ 本轮首批任务与诊断工件闭环已完成
+- 状态：✅ `test_Gizmo3DTemplateConformance` 已纳入 gate（聚焦集现为 10 项）
 - 负责人：Shader System 维护团队
 - 最近更新：2026-02-28
+
+---
+
+## 8) 变更历史
+
+- 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。

@@ -1,6 +1,7 @@
 # Phase B 完成总结：一致性修正
 
 **完成日期**：2026-02-27（稳定化更新）  
+**最后更新**：2026-02-28（文档口径统一）  
 **任务目标**：统一 Shader System 的接口语义和 helper 行为，避免"看起来能用，实则脆弱"  
 **状态**：✅ Phase B 核心目标完成（规范 + 关键代码落地 + 回归门禁），当前进入 Phase C 启动准备态
 
@@ -146,7 +147,7 @@
 - [x] 运行已迁移材质的示例（06b_BasicLitMeshesECS / 06c_TextureBlinnPhongMeshesECS）
 - [x] 渲染结果正确（无黑屏 / 闪烁 / 图元错误）
 - [x] 无 binding 冲突错误（本轮重点为 descriptor 生命周期问题修复）
-- [ ] helper 注入无重复定义错误
+- [x] helper 注入冲突可检测、可诊断且 strict 模式可阻断（`ULRE_HELPER_CONFLICT_STRICT=1`）
 
 ### 3.3 桥接校验（持续补强）
 
@@ -177,8 +178,8 @@
 - FS 代码生成规范修正（符合 `{Stage}_Output` 命名）
 - 拓扑配置传递修复（Lines / Triangles 正确性）
 
-⏸️ **暂缓**：
-- Gizmo3D 迁移（需要复杂插值，等待编译器增强）
+⏸️ **当时暂缓（后续已完成）**：
+- Gizmo3D 迁移（该项已在 Phase C 完成 Composed-first 接入并纳入门禁）
 
 ### Phase B 如何支持 Phase A
 
@@ -233,11 +234,12 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 
 **现状**：
 - 文档规定了 helper 签名规范
-- 但编译器尚未实现自动注入冲突检测
+- 编译器已实现冲突检测：会跳过重复注入并输出结构化冲突诊断
 
-**解决方案**（Phase C）：
-- 实现 `HelperInjector` 检查重复定义
-- 如果业务代码和注入的 helper 名字冲突 → 报错
+**当前状态**（Phase C 已完成）：
+- `test_HelperInjectionConflict`、`test_HelperInjectionConflictMatrix`、`test_ComposedDiagnosticsAggregation` 已接入 gate
+- strict 模式（`ULRE_HELPER_CONFLICT_STRICT=1`）会注入 `#error ULRE_HELPER_CONFLICT`
+- 诊断 JSON 行可由 gate 聚合到 `composed-diagnostics.jsonl`
 
 ### 问题 3：Binding 自动分配
 
@@ -283,7 +285,7 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 
 **应对**：
 - 明确标记 legacy 路径材质（日志输出）
-- Phase C 优先迁移 Gizmo（核心材质必须一致）
+- Gizmo 已完成迁移并纳入桥接/模板一致性门禁，持续以 gate 防漂移
 - Phase E 移除 legacy 路径前全面测试
 
 ### 风险 3：文档与代码脱节
@@ -299,7 +301,7 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 
 ## 9. 参考文档索引
 
-- [SHADER_SYSTEM_REFACTOR_PLAN.md](../SHADER_SYSTEM_REFACTOR_PLAN.md) - 总体重构计划
+- [SHADER_SYSTEM_REFACTOR_PLAN.md](../../SHADER_SYSTEM_REFACTOR_PLAN.md) - 总体重构计划
 - [SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md) - Helper 函数规范
 - [SHADER_RESOURCE_NAMING_SPEC.md](SHADER_RESOURCE_NAMING_SPEC.md) - 资源命名规范
 - [SHADER_LOGIC_CONSTRAINTS_SPEC.md](SHADER_LOGIC_CONSTRAINTS_SPEC.md) - Logic 约束规范
@@ -308,3 +310,9 @@ Phase B 的规范化工作直接支持 Phase A 已迁移材质：
 ---
 
 **总结**：Phase B 的核心价值在于**规范化**。通过统一接口语义、命名规则、约束定义和分配策略，我们为后续批量迁移（Phase C）和能力收敛（Phase D）奠定了坚实基础。接下来需要将文档规范落实到代码实现，并通过完整验收。
+
+---
+
+## 10. 变更历史
+
+- 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。

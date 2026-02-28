@@ -127,12 +127,14 @@
 
 ## 4. 首批共性检查清单（PureColor / VertexColor / Gizmo）
 
-- [ ] 都具备 `*_DEF` + `*_COMPOSED_DEF` 双轨定义
-- [ ] 资源命名统一使用标准名（`viewport/camera/l2w/mtl`）
-- [ ] 业务函数签名统一（`VertexShaderBusiness` / `FragmentShaderBusiness`）
-- [ ] 至少 1 条语义断言回归已纳入 gate
-- [ ] helper 冲突场景可生成结构化诊断（含 strict 模式行为）
-- [ ] gate 工件可稳定输出 `composed-diagnostics.jsonl`
+- [x] 都具备 `*_DEF` + `*_COMPOSED_DEF` 双轨定义
+- [x] 资源命名统一使用标准名（`viewport/camera/l2w/mtl`）
+- [x] 业务函数签名统一（`VertexShaderBusiness` / `FragmentShaderBusiness`）
+- [x] 至少 1 条语义断言回归已纳入 gate
+- [x] helper 冲突场景可生成结构化诊断（含 strict 模式行为）
+- [x] gate 工件可稳定输出 `composed-diagnostics.jsonl`
+
+> 2026-02-28 同步：已新增并接入 `test_Gizmo3DTemplateConformance`，当前 gate 聚焦集包含 PureColor/VertexColor/Gizmo 桥接验证与 BasicLit/TextureBlinnPhong/Gizmo 模板一致性验证。
 
 ---
 
@@ -148,3 +150,9 @@
 
 - BasicLit / TextureBlinnPhong 迁移清单：
 	[PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md)
+
+---
+
+## 7. 变更历史
+
+- 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。

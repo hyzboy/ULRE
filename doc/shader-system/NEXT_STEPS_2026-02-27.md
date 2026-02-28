@@ -119,3 +119,19 @@
 **验收标准（达成）**：
 - `./test/run_shader_system_gate.ps1` 通过。
 - gate 输出 `composed-diagnostics.jsonl (count>=1)`。
+
+### 7) Gizmo 模板一致性门禁接入（已完成）
+
+**任务**：
+- 新增 `test_Gizmo3DTemplateConformance`，覆盖 `ValidateMaterialLogicDef`、资源/Helper 依赖与 VS/FS 语义锚点断言。
+- gate 聚焦集接入该测试，保持与 `BasicLit/TextureBlinnPhong` 模板一致性测试同层级治理。
+
+**验收标准（达成）**：
+- `test_Gizmo3DTemplateConformance` 在 CTest 稳定通过。
+- gate 聚焦集当前为 10 项，整体 `PASS`。
+
+---
+
+## 变更历史
+
+- 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。

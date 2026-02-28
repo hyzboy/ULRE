@@ -392,3 +392,9 @@ By implementing the prioritized recommendations, the ShaderGen module can evolve
 **Contact**: [Project Issues](https://github.com/hyzboy/ULRE/issues)
 
 **For detailed Chinese version**: [ShaderGen_分析报告与改进建议.md](./ShaderGen_分析报告与改进建议.md)
+
+---
+
+## Change History
+
+- 2026-02-28: Documentation alignment sync (status, gate coverage, and timestamps aligned; no functional changes).

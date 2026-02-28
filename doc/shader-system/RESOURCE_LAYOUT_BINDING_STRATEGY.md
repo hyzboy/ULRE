@@ -2,7 +2,7 @@
 
 本文档定义了 `ResourceLayoutGenerator` 的 descriptor binding 分配规则、冲突检测机制与调试策略。
 
-**最后更新**：2026-02-26  
+**最后更新**：2026-02-28（文档口径统一，无规范变更）  
 **适用范围**：Phase B 及后续所有材质开发  
 **关联文档**：
 - [SHADER_RESOURCE_NAMING_SPEC.md](SHADER_RESOURCE_NAMING_SPEC.md)
@@ -502,6 +502,7 @@ void ResourceLayoutGenerator::PrintBindingMap() const {
 | 版本 | 日期       | 变更内容                                           |
 |------|------------|----------------------------------------------------|
 | 1.0  | 2026-02-26 | 初版发布，规范固定映射策略 + 冲突检测机制        |
+| 1.1  | 2026-02-28 | 文档口径同步：更新时间与阶段状态说明对齐（无策略变更） |
 
 ---
 

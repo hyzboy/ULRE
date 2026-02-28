@@ -73,9 +73,11 @@
 
 > 2026-02-28 增量：`06b_BasicLitMeshesECS` 可编译，`test/run_shader_system_gate.ps1` 再次通过且诊断工件 `count=1`。
 
-> 2026-02-28 增量：已新增 `test_TextureBlinnPhongTemplateConformance` 并接入 gate（当前 8/8 通过）。
+> 2026-02-28 增量：已新增 `test_TextureBlinnPhongTemplateConformance` 并接入 gate（当时 8/8 通过；当前聚焦集 10/10 通过）。
 
-> 2026-02-28 增量：已新增 `test_BasicLitTemplateConformance` 并接入 gate（当前 9/9 通过）。
+> 2026-02-28 增量：已新增 `test_BasicLitTemplateConformance` 并接入 gate（当时 9/9 通过；当前聚焦集 10/10 通过）。
+
+> 2026-02-28 同步：已新增 `test_Gizmo3DTemplateConformance` 并接入 gate，模板一致性覆盖扩展为 `BasicLit / TextureBlinnPhong / Gizmo` 三项。
 
 > 2026-02-28 收口：`BasicLit/TextureBlinnPhong` conformance 已增加资源名逐项断言与 helper 依赖断言。
 
@@ -92,7 +94,8 @@
 
 - 新增：`test/BasicLitTemplateConformanceTest.cpp`
 - 新增：`test/TextureBlinnPhongTemplateConformanceTest.cpp`
-- 两测试都采用“生成 GLSL 后关键语义锚点断言”模式，与 `BridgeValidation3Materials` 保持一致风格。
+- 新增：`test/Gizmo3DTemplateConformanceTest.cpp`
+- 三测试均采用“生成 GLSL 后关键语义锚点断言”模式，与 `BridgeValidation3Materials` 保持一致风格。
 
 可选复用：
 - `test/test_ComposedShaderGenerator.cpp`
@@ -103,7 +106,7 @@
 ## 6) 验收标准（Batch-1 完成定义）
 
 - [x] 两个材质都完成“定义层与逻辑层分离”（迁移到模板结构）。
-- [x] 两个模板一致性测试通过并纳入 gate。
+- [x] Batch-1 两个模板一致性测试通过并纳入 gate（后续已扩展纳入 Gizmo 模板一致性测试）。
 - [x] `06b_BasicLitMeshesECS`、`06c_TextureBlinnPhongMeshesECS` 运行无回退。
 - [x] gate 维持 `PASS`，且诊断工件链路不受影响。
 
@@ -113,4 +116,10 @@
 
 1. 先做 `TextureBlinnPhong`（无 IBL 特判，路径更直）。
 2. 再做 `BasicLit`（同步处理 IBL 分支策略）。
-3. 最后一次性接入两个 conformance 测试到 gate。
+3. 最后一次性接入 Batch-1 两个 conformance 测试到 gate（已完成；当前 gate 已扩展覆盖 Gizmo conformance）。
+
+---
+
+## 8) 变更历史
+
+- 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。
