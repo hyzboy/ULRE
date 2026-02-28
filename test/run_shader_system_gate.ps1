@@ -22,7 +22,8 @@ $targets = @(
     "test_BridgeValidation3Materials",
     "test_HelperInjectionConflict",
     "test_HelperInjectionConflictMatrix",
-    "test_ComposedDiagnosticsAggregation"
+    "test_ComposedDiagnosticsAggregation",
+    "test_TextureBlinnPhongTemplateConformance"
 )
 
 Write-Host "[Gate] Building targets..."
@@ -35,7 +36,7 @@ Write-Host "[Gate] Running focused ctest set..."
 Push-Location $BuildDir
 $prevErrorAction = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
-$ctestPattern = 'test_(FSHelperConsistencyValidation|DescriptorSetLifecycleRegression|ShaderLogicValidation|BridgeValidation3Materials|HelperInjectionConflict|HelperInjectionConflictMatrix|ComposedDiagnosticsAggregation)'
+$ctestPattern = 'test_(FSHelperConsistencyValidation|DescriptorSetLifecycleRegression|ShaderLogicValidation|BridgeValidation3Materials|HelperInjectionConflict|HelperInjectionConflictMatrix|ComposedDiagnosticsAggregation|TextureBlinnPhongTemplateConformance)'
 $ctestCommand = 'ctest -C {0} -R "{1}" --output-on-failure' -f $Config, $ctestPattern
 $ctestOutput = & cmd /c $ctestCommand 2>&1
 $ctestExit = $LASTEXITCODE

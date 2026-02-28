@@ -63,7 +63,7 @@
 
 - [x] 生成 `S_TextureBlinnPhong_Logic.h`，迁出 `TEXTURE_BLINN_PHONG_*_BUSINESS` 与 `*_LOGIC`。
 - [ ] 保持 FS 纹理链路语义锚点：`TextureBaseColor/TextureNormal/TextureRoughness`。
-- [ ] 增加模板一致性语义断言，至少覆盖：
+- [x] 增加模板一致性语义断言，至少覆盖：
   - `ResolveSurfaceUV`
   - `ResolveSurfaceNormal`
   - `fresnelSchlick`
@@ -72,6 +72,8 @@
 > 2026-02-28 实测：`06c_TextureBlinnPhongMeshesECS` 可编译，`test/run_shader_system_gate.ps1` 通过且诊断工件 `count=1`。
 
 > 2026-02-28 增量：`06b_BasicLitMeshesECS` 可编译，`test/run_shader_system_gate.ps1` 再次通过且诊断工件 `count=1`。
+
+> 2026-02-28 增量：已新增 `test_TextureBlinnPhongTemplateConformance` 并接入 gate（当前 8/8 通过）。
 
 ---
 

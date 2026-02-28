@@ -110,6 +110,19 @@ target_include_directories(test_ComposedDiagnosticsAggregation
             ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+add_executable(test_TextureBlinnPhongTemplateConformance
+    TextureBlinnPhongTemplateConformanceTest.cpp)
+
+target_link_libraries(test_TextureBlinnPhongTemplateConformance
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_TextureBlinnPhongTemplateConformance
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -138,6 +151,9 @@ if(BUILD_TESTING)
 
     add_test(NAME test_ComposedDiagnosticsAggregation
              COMMAND test_ComposedDiagnosticsAggregation)
+
+    add_test(NAME test_TextureBlinnPhongTemplateConformance
+             COMMAND test_TextureBlinnPhongTemplateConformance)
 endif()
 
 # 需要时可直接运行：
@@ -150,6 +166,7 @@ endif()
 #   cmake --build <build_dir> --target test_HelperInjectionConflict
 #   cmake --build <build_dir> --target test_HelperInjectionConflictMatrix
 #   cmake --build <build_dir> --target test_ComposedDiagnosticsAggregation
+#   cmake --build <build_dir> --target test_TextureBlinnPhongTemplateConformance
 # 在生成目录执行：
 #   .\\test\\Debug\\test_ComposedShaderGenerator.exe
 #   .\\test\\Debug\\test_ComposedShaderGenerator_Verify.exe
@@ -160,3 +177,4 @@ endif()
 #   .\\test\\Debug\\test_HelperInjectionConflict.exe
 #   .\\test\\Debug\\test_HelperInjectionConflictMatrix.exe
 #   .\\test\\Debug\\test_ComposedDiagnosticsAggregation.exe
+#   .\\test\\Debug\\test_TextureBlinnPhongTemplateConformance.exe

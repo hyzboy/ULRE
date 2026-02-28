@@ -2,7 +2,7 @@
 
 #include <hgl/graph/mtl/ShaderLogic.h>
 
-#include "common/MFSkyLight.h"
+#include "../common/MFSkyLight.h"
 
 namespace hgl::graph::mtl {
 
