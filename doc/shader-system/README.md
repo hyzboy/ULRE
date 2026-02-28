@@ -82,16 +82,19 @@
 10. **[PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md)**  
    Phase C Batch-1 执行卡（BasicLit / TextureBlinnPhong）
 
-11. **[ModernFixedRenderPipeline.md](ModernFixedRenderPipeline.md)**  
+11. **[PHASE_C_BATCH2_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH2_MIGRATION_CHECKLIST_2026-02-28.md)**  
+   Phase C Batch-2 执行卡（VertexLuminance3D / VertexPattleColor3D）
+
+12. **[ModernFixedRenderPipeline.md](ModernFixedRenderPipeline.md)**  
    现代固定管线 Shader 生成器实现草案（特性轴、档位、缓存键与验收口径）
 
-12. **[ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md)**  
+13. **[ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md)**  
    平台 × 档位 × 组合白名单矩阵（含 `AtmosphereSimple`、Composer 托管 `Mask/DitherMask` 约束）
 
-13. **[ModernFixedRenderPipeline_VariantMatrix.draft.json](ModernFixedRenderPipeline_VariantMatrix.draft.json)**  
+14. **[ModernFixedRenderPipeline_VariantMatrix.draft.json](ModernFixedRenderPipeline_VariantMatrix.draft.json)**  
    机读配置草案（状态字段、白名单矩阵、预留轴与降级规则），用于编辑器阶段校验与工具链消费（非运行时强依赖）
 
-14. **[RUNTIME_WHITELIST_INTEGRATION_DRAFT.md](RUNTIME_WHITELIST_INTEGRATION_DRAFT.md)**  
+15. **[RUNTIME_WHITELIST_INTEGRATION_DRAFT.md](RUNTIME_WHITELIST_INTEGRATION_DRAFT.md)**  
    运行时硬编码白名单接入草案（`constexpr` 结构、校验顺序、降级策略与日志约定）
 
 ---
@@ -155,12 +158,13 @@
 4. [PHASE_C_KICKOFF_2026-02-27.md](PHASE_C_KICKOFF_2026-02-27.md) - Phase C 启动入口（执行视图）
 5. [PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md](PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md) - 首批材质迁移模板（执行模板）
 6. [PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md) - Batch-1 迁移执行卡（BasicLit/TextureBlinnPhong）
-7. [RESOURCE_LAYOUT_BINDING_STRATEGY.md](RESOURCE_LAYOUT_BINDING_STRATEGY.md) - 理解 binding 分配机制
-8. [ShaderGen_Analysis_Report_EN.md](ShaderGen_Analysis_Report_EN.md) - 系统架构深度分析
-9. [ModernFixedRenderPipeline.md](ModernFixedRenderPipeline.md) - 固定管线生成策略总览
-10. [ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md) - 白名单矩阵（人工维护）
-11. [ModernFixedRenderPipeline_VariantMatrix.draft.json](ModernFixedRenderPipeline_VariantMatrix.draft.json) - 机读草案（工具消费入口）
-12. [RUNTIME_WHITELIST_INTEGRATION_DRAFT.md](RUNTIME_WHITELIST_INTEGRATION_DRAFT.md) - 运行时硬编码接入草案（实现入口）
+7. [PHASE_C_BATCH2_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH2_MIGRATION_CHECKLIST_2026-02-28.md) - Batch-2 迁移执行卡（VertexLuminance3D/VertexPattleColor3D）
+8. [RESOURCE_LAYOUT_BINDING_STRATEGY.md](RESOURCE_LAYOUT_BINDING_STRATEGY.md) - 理解 binding 分配机制
+9. [ShaderGen_Analysis_Report_EN.md](ShaderGen_Analysis_Report_EN.md) - 系统架构深度分析
+10. [ModernFixedRenderPipeline.md](ModernFixedRenderPipeline.md) - 固定管线生成策略总览
+11. [ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md) - 白名单矩阵（人工维护）
+12. [ModernFixedRenderPipeline_VariantMatrix.draft.json](ModernFixedRenderPipeline_VariantMatrix.draft.json) - 机读草案（工具消费入口）
+13. [RUNTIME_WHITELIST_INTEGRATION_DRAFT.md](RUNTIME_WHITELIST_INTEGRATION_DRAFT.md) - 运行时硬编码接入草案（实现入口）
 
 ### 我想了解历史演进
 

@@ -40,6 +40,21 @@ static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
     return false;
 }
 
+static bool IsPositionVec2(const FixedMaterialDef &def)
+{
+    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+    {
+        const auto &entry = def.vertex_entries[i];
+        if (!entry.name)
+            continue;
+
+        if (std::strcmp(entry.name, VAN::Position) == 0)
+            return entry.type.ToCode() == VAT_VEC2.ToCode();
+    }
+
+    return false;
+}
+
 static bool HasDescriptorNamed(const FixedMaterialDef &def, const char *name)
 {
     if (!name || !*name)
@@ -702,6 +717,7 @@ MaterialCreateInfo *CompileFixedMaterial(
 
     ShaderCreateInfoVertex *vsc = mci->GetVS();
     const bool has_position = HasVertexEntry(def, VAN::Position);
+    const bool position_is_vec2 = IsPositionVec2(def);
     const bool has_color = HasVertexEntry(def, VAN::Color);
     const bool has_normal = HasVertexEntry(def, VAN::Normal);
     const bool has_transform_id = HasVertexEntry(def, Assign::TransformID::VIS_NAME);
@@ -726,13 +742,13 @@ MaterialCreateInfo *CompileFixedMaterial(
         if (has_position)
         {
             if (has_transform_id && has_camera_descriptor)
-                vsc->AddFunction(func::GetPosition3DL2WCamera);
+                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DL2WCameraBy2D : func::GetPosition3DL2WCamera);
             else if (has_transform_id)
-                vsc->AddFunction(func::GetPosition3DL2W);
+                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DL2WBy2D : func::GetPosition3DL2W);
             else if (has_camera_descriptor)
-                vsc->AddFunction(func::GetPosition3DCamera);
+                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DCameraBy2D : func::GetPosition3DCamera);
             else
-                vsc->AddFunction(func::GetPosition3D);
+                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DBy2D : func::GetPosition3D);
         }
 
         if (has_normal && has_transform_id && has_camera_descriptor)

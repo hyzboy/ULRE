@@ -76,6 +76,7 @@
 - 模板文档：[`PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md`](PHASE_C_MATERIAL_MIGRATION_TEMPLATE_V1.md)
 - 使用范围：PureColor / VertexColor / Gizmo 三类首批模板与共性检查清单
 - Batch-1 执行卡：[`PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md`](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md)
+- Batch-2 执行卡：[`PHASE_C_BATCH2_MIGRATION_CHECKLIST_2026-02-28.md`](PHASE_C_BATCH2_MIGRATION_CHECKLIST_2026-02-28.md)
 
 ---
 
@@ -91,5 +92,6 @@
 
 ## 8) 变更历史
 
+- 2026-02-28：新增 Batch-2 执行卡入口（VertexLuminance3D / VertexPattleColor3D）。
 - 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。
 - 2026-02-28：补充边界说明：矩阵与 JSON 草案属于文档预研产物，不代表功能上线。

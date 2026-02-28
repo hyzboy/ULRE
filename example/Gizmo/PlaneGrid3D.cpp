@@ -5,6 +5,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -60,7 +61,16 @@ private:
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
 
-        material=material_manager->LoadMaterial("Std3D/VertexLum3D",&cfg);
+        auto* device = graphics_context->GetDevice();
+        if (!device)
+            return false;
+
+        mtl::MaterialCreateInfo* mci = mtl::CreateMaterialCreateInfo(
+            device->GetDevAttr(),
+            mtl::inline_material::VertexLuminance3D,
+            &cfg);
+
+        material = material_manager->CreateMaterial("PlaneGrid3D_VertexLuminance3D", mci);
         if(!material)return(false);
 
         VILConfig vil_config;
