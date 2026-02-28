@@ -199,13 +199,24 @@ static AnsiString BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def,
 {
     AnsiString glsl;
 
+    auto IsPositionVec2Entry = [](const FixedVertexEntry &entry) -> bool
+    {
+        if (!entry.name)
+            return false;
+
+        if (std::strcmp(entry.name, VAN::Position) != 0)
+            return false;
+
+        return entry.type.ToCode() == VAT_VEC2.ToCode();
+    };
+
     // Step 1: 生成 VertexInput 结构体
     glsl += "struct VertexInput\n{\n";
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
         const auto &entry = def.vertex_entries[i];
         glsl += "    ";
-        glsl += VATypeToGLSL(entry.type);
+        glsl += IsPositionVec2Entry(entry) ? "vec3" : VATypeToGLSL(entry.type);
         glsl += " ";
         glsl += entry.name;
         glsl += ";\n";
@@ -262,7 +273,14 @@ void main()
         glsl += "    vi.";
         glsl += entry.name;
         glsl += "=";
-        glsl += entry.name;
+        if (IsPositionVec2Entry(entry))
+        {
+            glsl += "vec3(";
+            glsl += entry.name;
+            glsl += ",0.0)";
+        }
+        else
+            glsl += entry.name;
         glsl += ";\n";
     }
 

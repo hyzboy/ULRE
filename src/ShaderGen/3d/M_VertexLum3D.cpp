@@ -87,9 +87,7 @@ MaterialCreateInfo *CreateVertexLuminance3D(const VulkanDevAttr *dev_attr,Materi
         ? VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2
         : VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3;
 
-    const MaterialLogicDef &logic_def = use_vec2_position
-        ? VERTEX_LUMINANCE_3D_LOGIC_VEC2
-        : VERTEX_LUMINANCE_3D_LOGIC;
+    const MaterialLogicDef &logic_def = VERTEX_LUMINANCE_3D_LOGIC;
 
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
         dev_attr,

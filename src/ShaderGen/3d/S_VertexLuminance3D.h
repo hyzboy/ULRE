@@ -59,21 +59,12 @@ void main()
     FragColor=Input.Color;
 })";
 
-constexpr const char VERTEX_LUMINANCE_3D_VS_BUSINESS_VEC3[] = R"(
+constexpr const char VERTEX_LUMINANCE_3D_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
     MaterialInstance mi = GetMI();
     Output.Color = vi.Luminance * mi.Color;
     return vec4(vi.Position, 1.0);
-}
-)";
-
-constexpr const char VERTEX_LUMINANCE_3D_VS_BUSINESS_VEC2[] = R"(
-vec4 VertexShaderBusiness(const VertexInput vi)
-{
-    MaterialInstance mi = GetMI();
-    Output.Color = vi.Luminance * mi.Color;
-    return vec4(vi.Position.xy, 0.0, 1.0);
 }
 )";
 
@@ -84,8 +75,7 @@ vec4 FragmentShaderBusiness()
 }
 )";
 
-constexpr VertexShaderBusiness VERTEX_LUMINANCE_3D_VERTEX_BUSINESS_VEC3 { VERTEX_LUMINANCE_3D_VS_BUSINESS_VEC3 };
-constexpr VertexShaderBusiness VERTEX_LUMINANCE_3D_VERTEX_BUSINESS_VEC2 { VERTEX_LUMINANCE_3D_VS_BUSINESS_VEC2 };
+constexpr VertexShaderBusiness VERTEX_LUMINANCE_3D_VERTEX_BUSINESS { VERTEX_LUMINANCE_3D_VS_BUSINESS };
 constexpr FragmentShaderBusiness VERTEX_LUMINANCE_3D_FRAGMENT_BUSINESS { VERTEX_LUMINANCE_3D_FS_BUSINESS };
 
 constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC3 {
@@ -123,7 +113,7 @@ const ComposedMaterialDef VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3 {
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC3) / sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC3[0])),
     VERTEX_LUMINANCE_3D_DESCRIPTORS,
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-    &VERTEX_LUMINANCE_3D_VERTEX_BUSINESS_VEC3,
+    &VERTEX_LUMINANCE_3D_VERTEX_BUSINESS,
     &VERTEX_LUMINANCE_3D_FRAGMENT_BUSINESS,
     ShaderOutputMode::SingleRTAlphaBlend,
     false,
@@ -138,7 +128,7 @@ const ComposedMaterialDef VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2 {
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2) / sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2[0])),
     VERTEX_LUMINANCE_3D_DESCRIPTORS,
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-    &VERTEX_LUMINANCE_3D_VERTEX_BUSINESS_VEC2,
+    &VERTEX_LUMINANCE_3D_VERTEX_BUSINESS,
     &VERTEX_LUMINANCE_3D_FRAGMENT_BUSINESS,
     ShaderOutputMode::SingleRTAlphaBlend,
     false,

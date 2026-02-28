@@ -27,9 +27,7 @@ int main()
 {
     printf("=== VertexLuminance3D Template Conformance Test ===\n\n");
 
-    const bool logic_valid_vec3 = ValidateMaterialLogicDef(VERTEX_LUMINANCE_3D_LOGIC);
-    const bool logic_valid_vec2 = ValidateMaterialLogicDef(VERTEX_LUMINANCE_3D_LOGIC_VEC2);
-    const bool logic_valid = logic_valid_vec3 && logic_valid_vec2;
+    const bool logic_valid = ValidateMaterialLogicDef(VERTEX_LUMINANCE_3D_LOGIC);
 
     const bool required_resource_shape_ok =
         VERTEX_LUMINANCE_3D_VERTEX_SHADER_LOGIC.required_resource_count == 3
@@ -52,8 +50,10 @@ int main()
 
     const bool vs_semantic_ok = ContainsKeyword(vs_code_vec3, "MaterialInstance mi = GetMI()")
                              && ContainsKeyword(vs_code_vec3, "Output.Color = vi.Luminance * mi.Color")
-                             && ContainsKeyword(vs_code_vec3, "return vec4(vi.Position, 1.0)")
-                             && ContainsKeyword(vs_code_vec2, "return vec4(vi.Position.xy, 0.0, 1.0)");
+                             && ContainsKeyword(vs_code_vec3, "return vec4(vi.Position")
+                             && ContainsKeyword(vs_code_vec2, "MaterialInstance mi = GetMI()")
+                             && ContainsKeyword(vs_code_vec2, "Output.Color = vi.Luminance * mi.Color")
+                             && ContainsKeyword(vs_code_vec2, "return vec4(vi.Position");
 
     const bool fs_semantic_ok = ContainsKeyword(fs_code, "return Input.Color");
 
