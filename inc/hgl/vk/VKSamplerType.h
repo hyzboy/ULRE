@@ -47,7 +47,7 @@ constexpr const char *SamplerTypeName[]=
     "sampler3D",
 
     "samplerCube",
-    "sampler2DRect"
+    "sampler2DRect",
 
     "sampler1DArray",
     "sampler2DArray",
