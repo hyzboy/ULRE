@@ -303,7 +303,7 @@ namespace
         {VK_PRIMITIVE_TOPOLOGY_POINT_LIST,  PrimitiveType::SolidCircles},
         {VK_PRIMITIVE_TOPOLOGY_LINE_LIST,   PrimitiveType::WireRectangles},
         {VK_PRIMITIVE_TOPOLOGY_LINE_LIST,   PrimitiveType::WireCircles},
-        {VK_PRIMITIVE_TOPOLOGY_POINT_LIST,  PrimitiveType::Billboard}
+        {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,PrimitiveType::Billboard}
     };
 
     const VkPrimitiveTopology GetVkPrimitive(const PrimitiveType &p)

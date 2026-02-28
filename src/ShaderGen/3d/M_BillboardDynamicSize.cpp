@@ -1,5 +1,4 @@
 ﻿#include"Std3DMaterial.h"
-#include"S_BillboardVertex.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 namespace hgl::graph::mtl{
@@ -8,29 +7,14 @@ namespace
     constexpr const char vs_main[]=R"(
 void main()
 {
-    Output.l2w_id=TransformID;
-    gl_Position=vec4(Position,1);
-})";
+    vec3 center = (GetLocalToWorld() * vec4(0.0,0.0,0.0,1.0)).xyz;
+    vec3 world_pos = center
+                   + Position.x * camera.billboard_right
+                   + Position.y * camera.billboard_up;
 
-    constexpr const char gs_main[]=R"(
-void main()
-{
-    mat4 MVPMatrix=camera.vp*l2w.mats[Input[0].l2w_id];
+    Output.TexCoord=vec2(Position.x+0.5,Position.y*-1.0+0.5);
 
-    for(int i=0;i<4;i++)
-    {
-        gl_Position=MVPMatrix
-                    *vec4(  gl_in[0].gl_Position.xyz+
-                            BillboardVertex[i].x*camera.billboard_right+
-                            BillboardVertex[i].y*camera.billboard_up,
-                            1
-                         );
-
-        Output.TexCoord=vec2(BillboardVertex[i].x+0.5,BillboardVertex[i].y*-1.0+0.5);
-
-        EmitVertex();
-    }
-    EndPrimitive();
+    gl_Position = camera.vp * vec4(world_pos,1.0);
 })";
 
     constexpr const char fs_main[]=R"(
@@ -41,14 +25,9 @@ void main()
 
     class MaterialBillboard2DDynamicSize:public Std3DMaterial
     {
-        mtl::BillboardMaterialCreateConfig *billboard_config;
-
     public:
 
-        MaterialBillboard2DDynamicSize(mtl::BillboardMaterialCreateConfig *bcfg):Std3DMaterial(bcfg)
-        {
-            billboard_config=bcfg;
-        }
+        MaterialBillboard2DDynamicSize(mtl::BillboardMaterialCreateConfig *bcfg):Std3DMaterial(bcfg){}
         ~MaterialBillboard2DDynamicSize()=default;
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
@@ -56,20 +35,9 @@ void main()
             if(!Std3DMaterial::CustomVertexShader(vsc))
                 return(false);
 
-            vsc->AddOutput(SVT_UINT,"l2w_id",Interpolation::Flat);
+            vsc->AddOutput(SVT_VEC2,"TexCoord");
 
             vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomGeometryShader(ShaderCreateInfoGeometry *gsc) override
-        {
-            gsc->SetGeom(PrimitiveType::Points,PrimitiveType::TriangleStrip,4);
-
-            gsc->AddOutput(SVT_VEC2,"TexCoord");
-
-            gsc->AddUserData(billboard_config->front_face==VK_FRONT_FACE_CLOCKWISE?shader_billboard_vertex_cw:shader_billboard_vertex_ccw);
-            gsc->SetMain(gs_main);
             return(true);
         }
 
@@ -89,8 +57,6 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const VulkanDevAttr *dev_attr,mtl::
 {
     if(!cfg)
         return(nullptr);
-
-    cfg->enableGeometryShader();
 
     cfg->local_to_world=true;
 

@@ -13,6 +13,7 @@
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
+#include<cstdint>
 
 namespace hgl::ecs
 {
@@ -85,12 +86,23 @@ namespace hgl::ecs
         if (!shared_pipeline)
             return false;
 
-        // Create shared quad geometry (single point that expands to quad in geometry shader)
+        // Create shared quad geometry (explicit quad for VS/FS-only billboard path)
         auto pc = std::make_unique<graph::GeometryCreater>(device, shared_material_instance->GetVIL());
-        pc->Init("Quad", 1);
+        pc->Init("Quad", 4, 6, graph::IndexType::U16);
 
-        static float position_data[3] = { 0.0f, 0.0f, 0.0f };
+        static const float position_data[12] =
+        {
+            -0.5f, -0.5f, 0.0f,
+             0.5f, -0.5f, 0.0f,
+             0.5f,  0.5f, 0.0f,
+            -0.5f,  0.5f, 0.0f
+        };
+        static const uint16_t index_data[6] = { 0, 1, 2, 0, 2, 3 };
+
         if (!pc->WriteVAB(graph::VertexAttribName::Position, VF_V3F, position_data))
+            return false;
+
+        if (!pc->WriteIBO(index_data))
             return false;
 
         shared_primitive = primitive_manager->CreatePrimitive(pc.get(), shared_material_instance, shared_pipeline);

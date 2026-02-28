@@ -27,15 +27,21 @@
 #include<glm/gtc/quaternion.hpp>
 #include<iostream>
 #include<memory>
+#include<cstdint>
 
 using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
-static float position_data[3]=
+static const float billboard_position_data[12]=
 {
-    0,0,0
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.5f,  0.5f, 0.0f,
+    -0.5f,  0.5f, 0.0f
 };
+
+static const uint16_t billboard_index_data[6]={0,1,2,0,2,3};
 
 static Color4f white_color(1,1,1,1);
 
@@ -234,9 +240,12 @@ private:
         {
             auto pc = std::make_unique<GeometryCreater>(device, mi_billboard->GetVIL());
 
-            pc->Init("Billboard", 1);
+            pc->Init("Billboard", 4, 6, IndexType::U16);
 
-            if(!pc->WriteVAB(VAN::Position, VF_V3F, position_data))
+            if(!pc->WriteVAB(VAN::Position, VF_V3F, billboard_position_data))
+                return false;
+
+            if(!pc->WriteIBO(billboard_index_data))
                 return false;
 
             prim_billboard = primitive_manager->CreatePrimitive(pc.get(), mi_billboard, pipeline_billboard);

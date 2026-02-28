@@ -1,5 +1,4 @@
 ﻿#include"Std3DMaterial.h"
-#include"S_BillboardVertex.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 namespace hgl::graph::mtl{
@@ -13,25 +12,14 @@ void main()
 {
     MaterialInstance mi=GetMI();
 
-    Output.BillboardSize=vec2(mi.BillboardSize)/vec2(viewport.canvas_resolution);
+    vec2 psize=vec2(mi.BillboardSize)/vec2(viewport.canvas_resolution);
+    vec4 center_clip=camera.vp*GetLocalToWorld()*vec4(0.0,0.0,0.0,1.0);
+    vec2 center_ndc=center_clip.xy/center_clip.w;
+    vec2 ndc=center_ndc+Position.xy*psize;
 
-    gl_Position=GetPosition3D();
-    gl_Position/=gl_Position.w;
-})";
+    Output.TexCoord=vec2(Position.x+0.5,Position.y+0.5);
 
-    constexpr const char gs_main[]=R"(
-void main()
-{
-    for(int i=0;i<4;i++)
-    {
-        gl_Position=gl_in[0].gl_Position;
-        gl_Position.xy+=BillboardVertex[i]*Input[0].BillboardSize;
-
-        Output.TexCoord=BillboardVertex[i]+vec2(0.5);
-
-        EmitVertex();
-    }
-    EndPrimitive();
+    gl_Position=vec4(ndc*center_clip.w,center_clip.z,center_clip.w);
 })";
 
     constexpr const char fs_main[]=R"(
@@ -42,14 +30,9 @@ void main()
 
     class MaterialBillboard2DFixedSize:public Std3DMaterial
     {
-        mtl::BillboardMaterialCreateConfig *billboard_config;
-
     public:
 
-        MaterialBillboard2DFixedSize(mtl::BillboardMaterialCreateConfig *bcfg):Std3DMaterial(bcfg)
-        {
-            billboard_config=bcfg;
-        }
+        MaterialBillboard2DFixedSize(mtl::BillboardMaterialCreateConfig *bcfg):Std3DMaterial(bcfg){}
         ~MaterialBillboard2DFixedSize()=default;
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
@@ -57,20 +40,9 @@ void main()
             if(!Std3DMaterial::CustomVertexShader(vsc))
                 return(false);
 
-            vsc->AddOutput(SVT_VEC2,"BillboardSize");
+            vsc->AddOutput(SVT_VEC2,"TexCoord");
 
             vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomGeometryShader(ShaderCreateInfoGeometry *gsc) override
-        {
-            gsc->SetGeom(PrimitiveType::Points,PrimitiveType::TriangleStrip,4);
-
-            gsc->AddOutput(SVT_VEC2,"TexCoord");
-
-            gsc->AddUserData(billboard_config->front_face==VK_FRONT_FACE_CLOCKWISE?shader_billboard_vertex_cw:shader_billboard_vertex_ccw);
-            gsc->SetMain(gs_main);
             return(true);
         }
 
@@ -99,8 +71,6 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const VulkanDevAttr *dev_attr,mtl
 {
     if(!cfg)
         return(nullptr);
-
-    cfg->enableGeometryShader();
 
     cfg->local_to_world=true;
 
