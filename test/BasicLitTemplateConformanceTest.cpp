@@ -3,7 +3,7 @@
 #include <hgl/graph/mtl/ShaderLogic.h>
 #include <hgl/type/String.h>
 
-#include "ShaderGen/3d/S_TextureBlinnPhong_Logic.h"
+#include "ShaderGen/3d/S_BasicLit_Logic.h"
 
 #include <cstdio>
 #include <cstring>
@@ -25,37 +25,37 @@ static bool EqualsString(const char *lhs, const char *rhs)
 
 int main()
 {
-    printf("=== TextureBlinnPhong Template Conformance Test ===\n\n");
+    printf("=== BasicLit Template Conformance Test ===\n\n");
 
-    const VertexShaderBusiness vs_business { TEXTURE_BLINN_PHONG_VS_BUSINESS };
-    const FragmentShaderBusiness fs_business { TEXTURE_BLINN_PHONG_FS_BUSINESS };
+    const VertexShaderBusiness vs_business { BASIC_LIT_VS_BUSINESS };
+    const FragmentShaderBusiness fs_business { BASIC_LIT_FS_BUSINESS };
 
     ComposedMaterialDef base_def = EX_BASIC_LIT_COMPOSED;
-    base_def.name = "TextureBlinnPhongTemplate";
+    base_def.name = "BasicLitTemplate";
     base_def.vertex_business = &vs_business;
     base_def.fragment_business = &fs_business;
     base_def.enable_lighting = false;
 
-    const bool logic_valid = ValidateMaterialLogicDef(TEXTURE_BLINN_PHONG_LOGIC);
+    const bool logic_valid = ValidateMaterialLogicDef(BASIC_LIT_LOGIC);
 
     const bool required_resource_shape_ok =
-        TEXTURE_BLINN_PHONG_VERTEX_SHADER_LOGIC.required_resource_count == 2
-        && TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_resource_count == 6;
+        BASIC_LIT_VERTEX_SHADER_LOGIC.required_resource_count == 2
+        && BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_resource_count == 6;
 
     const bool required_resource_names_ok =
-        EqualsString(TEXTURE_BLINN_PHONG_VERTEX_SHADER_LOGIC.required_resources[0], "camera")
-        && EqualsString(TEXTURE_BLINN_PHONG_VERTEX_SHADER_LOGIC.required_resources[1], "l2w")
-        && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_resources[0], "camera")
-        && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_resources[1], "sky")
-        && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_resources[2], "mtl")
-        && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_resources[3], "TextureBaseColor")
-        && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_resources[4], "TextureNormal")
-        && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_resources[5], "TextureRoughness");
+        EqualsString(BASIC_LIT_VERTEX_SHADER_LOGIC.required_resources[0], "camera")
+        && EqualsString(BASIC_LIT_VERTEX_SHADER_LOGIC.required_resources[1], "l2w")
+        && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_resources[0], "camera")
+        && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_resources[1], "sky")
+        && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_resources[2], "mtl")
+        && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_resources[3], "TextureBaseColor")
+        && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_resources[4], "TextureNormal")
+        && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_resources[5], "TextureRoughness");
 
     const bool required_helpers_ok =
-        TEXTURE_BLINN_PHONG_VERTEX_SHADER_LOGIC.required_helper_count == 0
-        && TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_helper_count == 1
-        && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_helpers[0], "GetMI");
+        BASIC_LIT_VERTEX_SHADER_LOGIC.required_helper_count == 0
+        && BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_helper_count == 1
+        && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_helpers[0], "GetMI");
 
     ShaderPermutationKey key {};
     const hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(base_def, key);
@@ -65,10 +65,10 @@ int main()
                              && ContainsKeyword(vs_code, "GetLocalToWorld()")
                              && ContainsKeyword(vs_code, "return vec4(vi.Position, 1.0)");
 
-    const bool fs_semantic_ok = ContainsKeyword(fs_code, "ResolveSurfaceUV")
-                             && ContainsKeyword(fs_code, "ResolveSurfaceNormal")
-                             && ContainsKeyword(fs_code, "fresnelSchlick")
-                             && ContainsKeyword(fs_code, "texture(TextureNormal")
+    const bool fs_semantic_ok = ContainsKeyword(fs_code, "ResolveRuntimeNormalStrength(mi.normal_strength)")
+                             && ContainsKeyword(fs_code, "ULRE_GetSkyLightDir")
+                             && ContainsKeyword(fs_code, "ULRE_GetSkyLightColor")
+                             && ContainsKeyword(fs_code, "ULRE_GetSkyAmbientColor")
                              && ContainsKeyword(fs_code, "return vec4(color, 1.0)");
 
     printf("ValidateMaterialLogicDef: %s\n", logic_valid ? "PASS" : "FAIL");
@@ -84,6 +84,6 @@ int main()
                  && required_helpers_ok
                  && vs_semantic_ok
                  && fs_semantic_ok;
-    printf("\n=== TextureBlinnPhong Template Conformance Summary: %s ===\n", ok ? "PASS" : "FAIL");
+    printf("\n=== BasicLit Template Conformance Summary: %s ===\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
 }

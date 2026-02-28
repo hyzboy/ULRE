@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.28)
 
+macro(CreateTestProject index name)
+    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Test/ShaderGen")
+
+    if(MSVC)
+        set_target_properties(${name} PROPERTIES PROJECT_LABEL "${index}_${name}")
+    endif()
+endmacro()
+
 add_executable(test_ComposedShaderGenerator
     test_ComposedShaderGenerator.cpp)
 
@@ -11,12 +19,16 @@ target_include_directories(test_ComposedShaderGenerator
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+CreateTestProject(01 test_ComposedShaderGenerator)
+
 add_executable(test_ComposedShaderGenerator_Verify
     test_ComposedShaderGenerator_Verify.cpp)
 
 target_include_directories(test_ComposedShaderGenerator_Verify
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(02 test_ComposedShaderGenerator_Verify)
 
 add_executable(test_FSHelperConsistencyValidation
     test_FSHelperConsistencyValidation.cpp)
@@ -30,6 +42,8 @@ target_link_libraries(test_FSHelperConsistencyValidation
 target_include_directories(test_FSHelperConsistencyValidation
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(03 test_FSHelperConsistencyValidation)
 
 add_executable(test_DescriptorSetLifecycleRegression
     test_DescriptorSetLifecycleRegression.cpp)
@@ -47,6 +61,8 @@ target_include_directories(test_DescriptorSetLifecycleRegression
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+CreateTestProject(04 test_DescriptorSetLifecycleRegression)
+
 add_executable(test_ShaderLogicValidation
     ShaderLogicValidationTest.cpp)
 
@@ -58,6 +74,8 @@ target_link_libraries(test_ShaderLogicValidation
 target_include_directories(test_ShaderLogicValidation
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(05 test_ShaderLogicValidation)
 
 add_executable(test_BridgeValidation3Materials
     BridgeValidation3MaterialsTest.cpp)
@@ -72,6 +90,8 @@ target_include_directories(test_BridgeValidation3Materials
             ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+CreateTestProject(06 test_BridgeValidation3Materials)
+
 add_executable(test_HelperInjectionConflict
     HelperInjectionConflictTest.cpp)
 
@@ -84,6 +104,8 @@ target_include_directories(test_HelperInjectionConflict
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+CreateTestProject(07 test_HelperInjectionConflict)
+
 add_executable(test_HelperInjectionConflictMatrix
     HelperInjectionConflictMatrixTest.cpp)
 
@@ -95,6 +117,8 @@ target_link_libraries(test_HelperInjectionConflictMatrix
 target_include_directories(test_HelperInjectionConflictMatrix
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(08 test_HelperInjectionConflictMatrix)
 
 add_executable(test_ComposedDiagnosticsAggregation
     ComposedDiagnosticsAggregationTest.cpp)
@@ -110,6 +134,8 @@ target_include_directories(test_ComposedDiagnosticsAggregation
             ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
+CreateTestProject(09 test_ComposedDiagnosticsAggregation)
+
 add_executable(test_TextureBlinnPhongTemplateConformance
     TextureBlinnPhongTemplateConformanceTest.cpp)
 
@@ -122,6 +148,23 @@ target_include_directories(test_TextureBlinnPhongTemplateConformance
     PRIVATE ${CMAKE_SOURCE_DIR}/src
             ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(10 test_TextureBlinnPhongTemplateConformance)
+
+add_executable(test_BasicLitTemplateConformance
+    BasicLitTemplateConformanceTest.cpp)
+
+target_link_libraries(test_BasicLitTemplateConformance
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_BasicLitTemplateConformance
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(11 test_BasicLitTemplateConformance)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -154,6 +197,9 @@ if(BUILD_TESTING)
 
     add_test(NAME test_TextureBlinnPhongTemplateConformance
              COMMAND test_TextureBlinnPhongTemplateConformance)
+
+    add_test(NAME test_BasicLitTemplateConformance
+             COMMAND test_BasicLitTemplateConformance)
 endif()
 
 # 需要时可直接运行：
@@ -167,6 +213,7 @@ endif()
 #   cmake --build <build_dir> --target test_HelperInjectionConflictMatrix
 #   cmake --build <build_dir> --target test_ComposedDiagnosticsAggregation
 #   cmake --build <build_dir> --target test_TextureBlinnPhongTemplateConformance
+#   cmake --build <build_dir> --target test_BasicLitTemplateConformance
 # 在生成目录执行：
 #   .\\test\\Debug\\test_ComposedShaderGenerator.exe
 #   .\\test\\Debug\\test_ComposedShaderGenerator_Verify.exe
@@ -178,3 +225,4 @@ endif()
 #   .\\test\\Debug\\test_HelperInjectionConflictMatrix.exe
 #   .\\test\\Debug\\test_ComposedDiagnosticsAggregation.exe
 #   .\\test\\Debug\\test_TextureBlinnPhongTemplateConformance.exe
+#   .\\test\\Debug\\test_BasicLitTemplateConformance.exe

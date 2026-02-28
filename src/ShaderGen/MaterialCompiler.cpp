@@ -448,9 +448,20 @@ bool ValidateFSMainBusinessHelperConsistency(
         fs_main_only.erase(pos, business_block.size());
 
     std::vector<std::string> missing_helpers;
+    auto IsFrameworkMIHelper = [](const char *name) -> bool
+    {
+        if (!name || !*name)
+            return false;
+
+        return std::strcmp(name, "GetMI") == 0
+            || std::strcmp(name, "GetMaterialInstance") == 0;
+    };
     for (const auto &group : FS_HELPER_ALIAS_GROUPS)
     {
         if (!ContainsAnyAliasCall(business_code, group))
+            continue;
+
+        if (IsFrameworkMIHelper(group.canonical))
             continue;
 
         if (!ContainsHelperInFSMain(fs_main_only, group))
@@ -463,6 +474,9 @@ bool ValidateFSMainBusinessHelperConsistency(
             continue;
 
         if (!ContainsCallToken(business_code, declared_helper.c_str()))
+            continue;
+
+        if (IsFrameworkMIHelper(declared_helper.c_str()))
             continue;
 
         const std::string token = declared_helper + "(";
@@ -479,6 +493,9 @@ bool ValidateFSMainBusinessHelperConsistency(
                 continue;
 
             if (!ContainsCallToken(business_code, declared))
+                continue;
+
+            if (IsFrameworkMIHelper(declared))
                 continue;
 
             const std::string token = std::string(declared) + "(";

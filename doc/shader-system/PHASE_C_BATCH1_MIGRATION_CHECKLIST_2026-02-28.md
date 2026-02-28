@@ -38,10 +38,10 @@
 
 - [x] 拆分逻辑定义：将 `*_VS_BUSINESS / *_FS_BUSINESS / *_LOGIC` 提取到 `S_<Material>_Logic.h`。
   - 进度：`TextureBlinnPhong` 与 `BasicLit` 已完成并接回。
-- [ ] 保持资源命名契约一致：`required_resources` 与 descriptor `name` 逐项对齐。
-- [ ] 固化 helper 依赖清单：避免“业务调用了 helper 但 required_helpers 未声明”。
-- [ ] 新增模板一致性测试（语义断言级，不是仅编译级）。
-- [ ] 纳入 gate 聚焦集并保持 `PASS`。
+- [x] 保持资源命名契约一致：`required_resources` 与 descriptor `name` 逐项对齐。
+- [x] 固化 helper 依赖清单：避免“业务调用了 helper 但 required_helpers 未声明”。
+- [x] 新增模板一致性测试（语义断言级，不是仅编译级）。
+- [x] 纳入 gate 聚焦集并保持 `PASS`。
 
 ---
 
@@ -50,19 +50,19 @@
 ## 4.1 BasicLit 执行项
 
 - [x] 生成 `S_BasicLit_Logic.h`，迁出 `BASIC_LIT_*_BUSINESS` 与 `BASIC_LIT_LOGIC`。
-- [ ] 明确 FS 依赖清单包含：`camera/sky/mtl/TextureBaseColor/TextureNormal/TextureRoughness`。
-- [ ] 增加 `BasicLit` 模板一致性语义断言，至少覆盖：
+- [x] 明确 FS 依赖清单包含：`camera/sky/mtl/TextureBaseColor/TextureNormal/TextureRoughness`。
+- [x] 增加 `BasicLit` 模板一致性语义断言，至少覆盖：
   - `ResolveRuntimeNormalStrength(mi.normal_strength)`
   - `ULRE_GetSkyLightDir/Color/Ambient`
   - `return vec4(color, 1.0)`
-- [ ] 定义 IBL 分支迁移策略（二选一并落文档）：
-  - A. 继续 legacy（显式标注“已知保留点”）
-  - B. 接入 permutation/define 到 composed 路径（优先长期方案）
+- [x] 定义 IBL 分支迁移策略（二选一并落文档）：
+  - [x] A. 继续 legacy（显式标注“已知保留点”）
+  - [ ] B. 接入 permutation/define 到 composed 路径（优先长期方案）
 
 ## 4.2 TextureBlinnPhong 执行项
 
 - [x] 生成 `S_TextureBlinnPhong_Logic.h`，迁出 `TEXTURE_BLINN_PHONG_*_BUSINESS` 与 `*_LOGIC`。
-- [ ] 保持 FS 纹理链路语义锚点：`TextureBaseColor/TextureNormal/TextureRoughness`。
+- [x] 保持 FS 纹理链路语义锚点：`TextureBaseColor/TextureNormal/TextureRoughness`。
 - [x] 增加模板一致性语义断言，至少覆盖：
   - `ResolveSurfaceUV`
   - `ResolveSurfaceNormal`
@@ -74,6 +74,17 @@
 > 2026-02-28 增量：`06b_BasicLitMeshesECS` 可编译，`test/run_shader_system_gate.ps1` 再次通过且诊断工件 `count=1`。
 
 > 2026-02-28 增量：已新增 `test_TextureBlinnPhongTemplateConformance` 并接入 gate（当前 8/8 通过）。
+
+> 2026-02-28 增量：已新增 `test_BasicLitTemplateConformance` 并接入 gate（当前 9/9 通过）。
+
+> 2026-02-28 收口：`BasicLit/TextureBlinnPhong` conformance 已增加资源名逐项断言与 helper 依赖断言。
+
+> 2026-02-28 收口：修复 `ValidateFSMainBusinessHelperConsistency` 对 `GetMI/GetMaterialInstance` 的误判后，`06b_BasicLitMeshesECS` 与 `06c_TextureBlinnPhongMeshesECS` 启动日志均为 composed path（`using new composed-business compile path`），且未出现 fallback 日志。
+
+**IBL 策略说明（Batch-1 当前执行）**：
+- `BasicLit` 在 `cfg->ibl == true` 时继续走 legacy 路径；composed 路径仅处理非 IBL 分支。
+- 原因：当前 key/define 管线尚未统一到 composed 编译入口，先保持行为稳定。
+- 迁移到 B 方案条件：permutation key 与 define 注入路径在 composed 编译入口统一后再切换。
 
 ---
 
@@ -91,10 +102,10 @@
 
 ## 6) 验收标准（Batch-1 完成定义）
 
-- [ ] 两个材质都完成“定义层与逻辑层分离”（迁移到模板结构）。
-- [ ] 两个模板一致性测试通过并纳入 gate。
-- [ ] `06b_BasicLitMeshesECS`、`06c_TextureBlinnPhongMeshesECS` 运行无回退。
-- [ ] gate 维持 `PASS`，且诊断工件链路不受影响。
+- [x] 两个材质都完成“定义层与逻辑层分离”（迁移到模板结构）。
+- [x] 两个模板一致性测试通过并纳入 gate。
+- [x] `06b_BasicLitMeshesECS`、`06c_TextureBlinnPhongMeshesECS` 运行无回退。
+- [x] gate 维持 `PASS`，且诊断工件链路不受影响。
 
 ---
 
