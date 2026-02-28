@@ -236,41 +236,44 @@ namespace hgl::ecs
             graph::mtl::WithLocalToWorld::Without,
             graph::mtl::WithSky::Without);
 
-        auto* mci = graph::mtl::CreateVertexPattleColor3D(gc->GetDevAttr(), &cfg);
-        if (!mci)
+        auto* mat_mgr = gc->GetMaterialManager();
+        if (!mat_mgr)
             return false;
 
-        auto* mat_mgr = gc->GetMaterialManager();
-        if (!mat_mgr) { delete mci; return false; }
-
-        material_ = mat_mgr->CreateMaterial("M_Line3D_ECS", mci);
-        if (!material_) { delete mci; return false; }
+        material_ = mat_mgr->CreateMaterial(graph::mtl::InlineMaterial::VertexPattleColor3D, &cfg);
+        if (!material_)
+            return false;
 
         // ------- Create material instance -------
         graph::VILConfig vil;
         vil.Add(graph::VAN::Color, VF_V1U8);
         mi_ = mat_mgr->CreateMaterialInstance(material_, &vil);
-        if (!mi_) { delete mci; return false; }
+        if (!mi_)
+            return false;
 
         // ------- Create pipeline -------
         pipeline_ = support_wide_lines_
             ? rp->CreatePipeline(mi_, graph::InlinePipeline::DynamicLineWidth3D)
             : rp->CreatePipeline(mi_, graph::InlinePipeline::Solid3D);
 
-        if (!pipeline_) { delete mci; return false; }
+        if (!pipeline_)
+            return false;
 
         // ------- Create color palette UBO -------
         auto* buf_mgr = gc->GetBufferManager();
-        if (!buf_mgr) { delete mci; return false; }
+        if (!buf_mgr)
+            return false;
 
         auto* raw_buf = buf_mgr->CreateUBO("LineColorPaletteUBO_ECS",
                                             graph::StructuredBufferAccessor<LineColorPalette>::GetSize());
-        if (!raw_buf) { delete mci; return false; }
+        if (!raw_buf)
+            return false;
         raw_buf->SetUpdateClass(graph::BufferUpdateClass::Default);
 
         auto* ubo = graph::StructuredBufferAccessor<LineColorPalette>::Create(
                         raw_buf, &graph::mtl::SBS_ColorPattle, false);
-        if (!ubo) { delete mci; return false; }
+        if (!ubo)
+            return false;
 
         ubo_color_   = ubo;
         ubo_raw_buf_ = raw_buf;
@@ -282,7 +285,6 @@ namespace hgl::ecs
         // Flush current palette to UBO (palette initialized in constructor)
         FlushPaletteToGPU();
 
-        delete mci;
         initialized_ = true;
         
         GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: COMPLETE, palette_[0]=(%.2f,%.2f,%.2f,%.2f)"),

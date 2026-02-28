@@ -23,7 +23,7 @@ namespace
     constexpr const char vs_main[]=R"(
 void main()
 {
-    Output.Color=color_pattle.color[Color.r];  //Color是输入的R8UI顶点属性
+    Output.Color=color_pattle.color[Color];  //Color是输入的R8UI顶点属性
 
     gl_Position=GetPosition3D();
 })";

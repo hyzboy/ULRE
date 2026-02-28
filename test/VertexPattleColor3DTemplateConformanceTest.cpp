@@ -46,7 +46,7 @@ int main()
     const hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF, key);
     const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF, key);
 
-    const bool vs_semantic_ok = ContainsKeyword(vs_code, "Output.Color = color_pattle.color[vi.Color.r]")
+    const bool vs_semantic_ok = ContainsKeyword(vs_code, "Output.Color = color_pattle.color[vi.Color]")
                              && ContainsKeyword(vs_code, "return vec4(vi.Position, 1.0)");
 
     const bool fs_semantic_ok = ContainsKeyword(fs_code, "return Input.Color");

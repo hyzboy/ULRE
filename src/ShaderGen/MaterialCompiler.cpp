@@ -101,6 +101,17 @@ static bool HasDescriptorNamed(const ComposedMaterialDef &def, const char *name)
     return false;
 }
 
+static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
+{
+    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    {
+        if (def.descriptor_entries[i].set_type == DescriptorSetType::PerMaterial)
+            return true;
+    }
+
+    return false;
+}
+
 static const char *VATypeToGLSL(const VAType &type)
 {
     switch (type.basetype)
@@ -585,6 +596,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     const bool infer_has_l2w = HasDescriptorNamed(def, "l2w") || HasDescriptorNamed(def, "LocalToWorldData");
     const bool infer_has_mi = HasDescriptorNamed(def, "mtl")
                            || HasDescriptorNamed(def, "MaterialInstanceData")
+                           || HasPerMaterialDescriptor(def)
                            || HasVertexEntry(def, Assign::MaterialInstanceID::VIS_NAME)
                            || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
@@ -651,9 +663,23 @@ MaterialCreateInfo *CompileFixedMaterial(
                     break;
                 }
 
+                if (std::strcmp(entry.struct_name, SBS_ColorPattle.struct_name) == 0)
+                {
+                    if (!mci->AddUBOStruct(stage_bits, SBS_ColorPattle))
+                    {
+                        delete mci;
+                        return nullptr;
+                    }
+                    break;
+                }
+
                 // 自定义结构体（要求 entry.struct_name 在其它地方已注册完整代码）
-                mci->AddUBO(stage_bits, set_type,
-                           AnsiString(entry.struct_name), AnsiString(entry.name));
+                if (!mci->AddUBO(stage_bits, set_type,
+                                 AnsiString(entry.struct_name), AnsiString(entry.name)))
+                {
+                    delete mci;
+                    return nullptr;
+                }
             }
             break;
 
@@ -673,8 +699,12 @@ MaterialCreateInfo *CompileFixedMaterial(
                     break;
                 }
 
-                mci->AddSSBO(stage_bits, set_type,
-                            AnsiString(entry.struct_name), AnsiString(entry.name));
+                if (!mci->AddSSBO(stage_bits, set_type,
+                                  AnsiString(entry.struct_name), AnsiString(entry.name)))
+                {
+                    delete mci;
+                    return nullptr;
+                }
             }
             break;
 

@@ -29,7 +29,7 @@ constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
 constexpr const char VERTEX_PATTLE_COLOR_3D_VERT_GLSL[] = R"(
 void main()
 {
-    Output.Color=color_pattle.color[Color.r];
+    Output.Color=color_pattle.color[Color];
 
     gl_Position=GetPosition3D();
 })";
@@ -43,7 +43,7 @@ void main()
 constexpr const char VERTEX_PATTLE_COLOR_3D_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
-    Output.Color = color_pattle.color[vi.Color.r];
+    Output.Color = color_pattle.color[vi.Color];
     return vec4(vi.Position, 1.0);
 }
 )";
