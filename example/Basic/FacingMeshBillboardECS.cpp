@@ -103,16 +103,11 @@ private:
             return false;
 
         auto* material_manager = graphics_context->GetMaterialManager();
-        auto* device = graphics_context->GetDevice();
-        if (!material_manager || !device)
+        if (!material_manager)
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        mtl::MaterialCreateInfo* mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg);
-        if (!mci)
-            return false;
-
-        solid.material = material_manager->CreateMaterial("FacingMeshGizmo3D", mci);
+        solid.material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg);
         if (!solid.material)
             return false;
 

@@ -95,8 +95,7 @@ private:
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* texture_manager = graphics_context->GetTextureManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
-        auto* device = graphics_context->GetDevice();
-        if (!material_manager || !texture_manager || !sampler_manager || !device)
+        if (!material_manager || !texture_manager || !sampler_manager)
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
@@ -104,11 +103,7 @@ private:
                                         mtl::WithLocalToWorld::With,
                                         mtl::WithSky::With);
 
-        mtl::MaterialCreateInfo* mci = mtl::CreateTextureBlinnPhong(device->GetDevAttr(), &cfg);
-        if (!mci)
-            return false;
-
-        material = material_manager->CreateMaterial("TextureBlinnPhongMeshes", mci);
+        material = material_manager->CreateMaterial(mtl::InlineMaterial::TextureBlinnPhong, &cfg);
         if (!material)
             return false;
 

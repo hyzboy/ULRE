@@ -13,6 +13,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -85,7 +86,7 @@ private:
         cfg.local_to_world = true;
         cfg.position_format = VAT_VEC2;
 
-        mtl_plane_grid = material_manager->LoadMaterial("Std3D/VertexLum3D", &cfg);
+        mtl_plane_grid = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
         if (!mtl_plane_grid) return false;
 
         std::cout << "[BillboardPerspective] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;

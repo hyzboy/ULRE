@@ -157,18 +157,8 @@ private:
         if (!material_manager)
             return false;
 
-        auto* device = graphics_context->GetDevice();
-        if (!device)
-            return false;
-
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-
-        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(),&cfg);
-
-        if(!mci)
-            return(false);
-
-        solid.material = material_manager->CreateMaterial("Gizmo3D",mci);
+        solid.material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D,&cfg);
 
         return InitMaterialInstance(&solid);
     }
@@ -187,18 +177,8 @@ private:
         if (!material_manager)
             return false;
 
-        auto* device = graphics_context->GetDevice();
-        if (!device)
-            return false;
-
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-
-        mtl::MaterialCreateInfo *mci=mtl::CreatePureColor3D(device->GetDevAttr(),&cfg);
-
-        if(!mci)
-            return(false);
-
-        wire.material=material_manager->CreateMaterial("PureColorLine3D",mci);
+        wire.material=material_manager->CreateMaterial(mtl::InlineMaterial::PureColor3D,&cfg);
 
         return InitMaterialInstance(&wire);
     }

@@ -128,16 +128,11 @@ public:
         if (!material_manager)
             return false;
 
-        auto* device = graphics_context->GetDevice();
-
         auto* geometry_manager = graphics_context->GetGeometryManager();
-        if (!device || !geometry_manager)
+        if (!geometry_manager)
             return false;
 
         mtl::BasicLitMaterialCreateConfig cfg;
-        mtl::MaterialCreateInfo *mci = mtl::CreateBasicLit(device->GetDevAttr(), &cfg);
-
-        if(!mci) return false;
 
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
@@ -145,7 +140,7 @@ public:
         mi_data.fresnel=0.04f;
         mi_data.ibl_intensity=0.0f;
 
-        material = material_manager->CreateMaterial("Gizmo3D_Walls", mci);
+        material = material_manager->CreateMaterial(mtl::InlineMaterial::BasicLit, &cfg);
         if(!material) return false;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);

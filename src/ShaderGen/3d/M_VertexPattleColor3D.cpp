@@ -12,6 +12,10 @@
 #include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/mtl/MaterialCompiler.h>
+#include"S_VertexPattleColor3D.h"
+#include"S_VertexPattleColor3D_Logic.h"
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
@@ -70,6 +74,25 @@ void main()
 
 MaterialCreateInfo *CreateVertexPattleColor3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg)
 {
+    ShaderPermutationKey key;
+    MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
+        dev_attr,
+        VERTEX_PATTLE_COLOR_3D_DEF,
+        VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF,
+        VERTEX_PATTLE_COLOR_3D_LOGIC,
+        key,
+        cfg);
+
+    if (mci_new)
+    {
+        std::fprintf(stderr,
+            "[VertexPattleColor3D] using new composed-business compile path\n");
+        return mci_new;
+    }
+
+    std::fprintf(stderr,
+        "[VertexPattleColor3D] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
+
     MaterialVertexPattleColor3D mvc3d(cfg);
 
     return mvc3d.Create(dev_attr);

@@ -17,6 +17,7 @@
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -84,7 +85,10 @@ private:
             return false;
 
         auto* material_manager = graphics_context->GetMaterialManager();
+        auto* device = graphics_context->GetDevice();
         if (!material_manager)
+            return false;
+        if (!device)
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
@@ -98,7 +102,7 @@ private:
         {
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid=material_manager->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_plane_grid = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
             if(!mtl_plane_grid)return(false);
 
             mi_plane_grid=material_manager->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
@@ -113,7 +117,7 @@ private:
         {
             cfg.position_format=VAT_VEC3;
 
-            mtl_line=material_manager->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_line = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
             if(!mtl_line)return(false);
 
             mi_line=material_manager->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);

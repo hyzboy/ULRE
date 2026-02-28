@@ -76,7 +76,7 @@ private:
                                         CoordinateSystem2D::NDC,
                                         mtl::WithLocalToWorld::Without);
 
-        material=material_manager->LoadMaterial("Std2D/PureTexture2D",&cfg);
+        material=material_manager->CreateMaterial(mtl::InlineMaterial::PureTexture2D,&cfg);
 
         if(!material)
             return(false);

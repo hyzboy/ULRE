@@ -61,16 +61,7 @@ private:
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
 
-        auto* device = graphics_context->GetDevice();
-        if (!device)
-            return false;
-
-        mtl::MaterialCreateInfo* mci = mtl::CreateMaterialCreateInfo(
-            device->GetDevAttr(),
-            mtl::inline_material::VertexLuminance3D,
-            &cfg);
-
-        material = material_manager->CreateMaterial("PlaneGrid3D_VertexLuminance3D", mci);
+        material = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
         if(!material)return(false);
 
         VILConfig vil_config;

@@ -212,6 +212,44 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     return mtl.Finish();
 }
 
+Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *cfg)
+{
+    HGL_CAPTURE_SCOPE();
+
+    if(!cfg)
+        return(nullptr);
+
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_id,cfg);
+
+    if(!mci)
+        return(nullptr);
+
+    AnsiString hash_name=mtl::GetInlineMaterialName(mtl_id);
+    hash_name+="?";
+    hash_name+=cfg->ToHashString();
+
+    return this->CreateMaterial(hash_name,mci);
+}
+
+Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *cfg)
+{
+    HGL_CAPTURE_SCOPE();
+
+    if(!cfg)
+        return(nullptr);
+
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_id,cfg);
+
+    if(!mci)
+        return(nullptr);
+
+    AnsiString hash_name=mtl::GetInlineMaterialName(mtl_id);
+    hash_name+="?";
+    hash_name+=cfg->ToHashString();
+
+    return this->CreateMaterial(hash_name,mci);
+}
+
 namespace mtl
 {
     MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &, Material2DCreateConfig *);
@@ -366,6 +404,30 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
     HGL_CAPTURE_SCOPE();
 
     Material *mtl=this->CreateMaterial(mtl_name,mci);
+
+    if(!mtl)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+{
+    HGL_CAPTURE_SCOPE();
+
+    Material *mtl=this->CreateMaterial(mtl_id,mcc);
+
+    if(!mtl)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+{
+    HGL_CAPTURE_SCOPE();
+
+    Material *mtl=this->CreateMaterial(mtl_id,mcc);
 
     if(!mtl)
         return(nullptr);

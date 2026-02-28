@@ -93,7 +93,7 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        material_instance=material_manager->CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
+        material_instance=material_manager->CreateMaterialInstance(mtl::InlineMaterial::VertexColor2D,&cfg,&vil_config);
 
         if(!material_instance)
             return(false);

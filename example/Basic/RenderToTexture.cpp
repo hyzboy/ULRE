@@ -232,10 +232,7 @@ public:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::Without);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg3d);
-        if (!mci) return false;
-
-        mtl = material_manager->CreateMaterial("OffscreenPureColor3D", mci);
+        mtl = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg3d);
         if (!mtl) return false;
 
         auto* render_pass = rt ? rt->GetRenderPass() : nullptr;
@@ -412,10 +409,7 @@ private:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::With);
 
-        mtl::MaterialCreateInfo *mci = mtl::CreateTextureBlinnPhong(device->GetDevAttr(), &cfg3d);
-        if (!mci) return false;
-
-        cube_mtl = material_manager->CreateMaterial("OnscreenCube", mci);
+        cube_mtl = material_manager->CreateMaterial(mtl::InlineMaterial::TextureBlinnPhong, &cfg3d);
         if (!cube_mtl) return false;
 
         cube_sampler = sampler_manager->CreateSampler();

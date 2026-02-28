@@ -12,6 +12,7 @@ namespace hgl::graph{
 
 namespace mtl
 {
+    enum class InlineMaterial:uint8;
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
     class MaterialCreateInfo;
@@ -112,6 +113,8 @@ public: //Shader
 public: //Material
 
     Material *          CreateMaterial  (const AnsiString &, const mtl::MaterialCreateInfo *);       ///<基于名称创建一个材质(一般用于程序内嵌材质)
+    Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
+    Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
 
     Material *          LoadMaterial    (const AnsiString &, mtl::Material2DCreateConfig *);         ///<基于资产名称加载一个材质(一般用于从文件加载材质)
     Material *          LoadMaterial    (const AnsiString &, mtl::Material3DCreateConfig *);
@@ -139,6 +142,18 @@ public: //MaterialInstance
 
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *, const VILConfig *vil_cfg=nullptr);
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *, const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+
+    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    {
+        return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
+    }
+
+    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    {
+        return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
+    }
 
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)

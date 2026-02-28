@@ -110,5 +110,6 @@
 
 ## 9) 变更历史
 
+- 2026-02-28：第二刀完成 `VertexPattleColor3D` composed-first 改造（新增 `S_VertexPattleColor3D.h` / `S_VertexPattleColor3D_Logic.h`、工厂接入 fallback），新增 `test_VertexPattleColor3DTemplateConformance` 并纳入 gate；当前 gate 聚焦集为 `12/12` 通过，诊断工件 `count=1`。
 - 2026-02-28：第一刀完成 `VertexLuminance3D` composed-first 改造（新增 `S_VertexLuminance3D.h` / `S_VertexLuminance3D_Logic.h`、工厂接入 fallback），新增 `test_VertexLuminance3DTemplateConformance` 并纳入 gate；当前 gate 聚焦集为 `11/11` 通过，诊断工件 `count=1`。
 - 2026-02-28：创建 Batch-2 执行卡（基于当前源码状态盘点，无功能变更）。

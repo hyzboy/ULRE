@@ -12,6 +12,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -88,7 +89,7 @@ private:
             cfg.local_to_world = true;
             cfg.position_format = VAT_VEC2;
 
-            grid_material = material_manager->LoadMaterial("Std3D/VertexLum3D", &cfg);
+            grid_material = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
             if(!grid_material)
                 return false;
 
@@ -126,11 +127,7 @@ private:
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-            mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg);
-            if(!mci)
-                return false;
-
-            cube_material = material_manager->CreateMaterial("GizmoUsageCube", mci);
+            cube_material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg);
             if(!cube_material)
                 return false;
 

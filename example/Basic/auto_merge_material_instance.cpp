@@ -87,16 +87,7 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
-        #ifndef USE_MATERIAL_FILE
-            auto* device = graphics_context->GetDevice();
-            if (!device)
-                return false;
-
-            mtl::MaterialCreateInfo* mci = mtl::CreatePureColor2D(device->GetDevAttr(), &cfg);  //走程序内置材质创建函数
-            material = material_manager->CreateMaterial("PureColor2D", mci);
-        #else
-            material = material_manager->LoadMaterial("Std2D/PureColor2D", &cfg);                         //走材质文件加载
-        #endif//USE_MATERIAL_FILE
+            material = material_manager->CreateMaterial(mtl::InlineMaterial::PureColor2D, &cfg);
 
             if (!material)
                 return false;

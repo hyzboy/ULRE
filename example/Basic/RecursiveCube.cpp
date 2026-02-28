@@ -114,15 +114,7 @@ private:
         if (!material_manager)
             return false;
 
-        auto *device = graphics_context->GetDevice();
-        if (!device)
-            return false;
-
-        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(device->GetDevAttr(), &cfg);
-        if (!mci)
-            return false;
-
-        material = material_manager->CreateMaterial("Gizmo3D", mci);
+        material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg);
         if (!material)
             return false;
 

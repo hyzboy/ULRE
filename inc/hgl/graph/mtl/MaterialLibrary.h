@@ -7,6 +7,29 @@
 
 namespace hgl::graph::mtl{
 
+enum class InlineMaterial:uint8
+{
+    VertexColor2D,
+    PureColor2D,
+    PureTexture2D,
+    RectTexture2D,
+    RectTexture2DArray,
+    Text2D,
+
+    PureColor3D,
+    VertexColor3D,
+    VertexLuminance3D,
+    VertexPattleColor3D,
+    Gizmo3D,
+    TextureBlinnPhong,
+    TerrainGrid,
+    SkyMinimal,
+    Billboard2D,
+    BasicLit,
+
+    ENUM_CLASS_RANGE(VertexColor2D,BasicLit)
+};
+
 HGL_DEFINE_ANSI_IDNAME(MaterialName)
 
 class MaterialFactory
@@ -91,6 +114,8 @@ DECLARE_MATERIAL_CREATOR(name,cfg_type) \
 IMPL_MATERIAL_FACTORY(name,cfg_type)
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialName &,MaterialCreateConfig *cfg);
+MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const InlineMaterial mtl_id,MaterialCreateConfig *cfg);
+const char *GetInlineMaterialName(const InlineMaterial mtl_id);
 
 inline MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const char *mtl_name,MaterialCreateConfig *cfg)
 {
