@@ -2,6 +2,11 @@
   "schema": "ulre.shader-variant-matrix/v0",
   "version": "2026-02-28-draft",
   "source": "doc/shader-system/ModernFixedRenderPipeline_VariantMatrix.md",
+  "usage": {
+    "runtime": "HardcodedWhitelist",
+    "editor": "ValidationAndVisualization",
+    "isRuntimeSourceOfTruth": false
+  },
   "statusEnum": [
     "Implemented",
     "Experimental",

@@ -17,6 +17,8 @@
 - 法线强度已升级为材质实例参数：`MaterialInstance.normal_strength`（默认 `0.35`，运行时可调）
 - Helper 冲突诊断已机读闭环：新增 `test_ComposedDiagnosticsAggregation`，gate 可稳定导出 `gate-artifacts/composed-diagnostics.jsonl`（`count>=1`）
 - 模板一致性门禁已扩展到 `BasicLit / TextureBlinnPhong / Gizmo`：新增 `test_Gizmo3DTemplateConformance` 后，当前 gate 聚焦集为 `10/10` 通过
+- 现代固定管线文档已补齐：新增平台/档位白名单矩阵与机读草案（JSON），用于编辑器阶段校验/可视化；运行时以硬编码白名单为准
+- Surface Set 后续扩展方向已切换为 Filament 语义参考（非 Unreal 主规范）；`Mask/DitherMask` 归 Composition 层统一托管
 
 ---
 
@@ -79,6 +81,18 @@
 
 10. **[PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md)**  
    Phase C Batch-1 执行卡（BasicLit / TextureBlinnPhong）
+
+11. **[ModernFixedRenderPipeline.md](ModernFixedRenderPipeline.md)**  
+   现代固定管线 Shader 生成器实现草案（特性轴、档位、缓存键与验收口径）
+
+12. **[ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md)**  
+   平台 × 档位 × 组合白名单矩阵（含 `AtmosphereSimple`、Composer 托管 `Mask/DitherMask` 约束）
+
+13. **[ModernFixedRenderPipeline_VariantMatrix.draft.json](ModernFixedRenderPipeline_VariantMatrix.draft.json)**  
+   机读配置草案（状态字段、白名单矩阵、预留轴与降级规则），用于编辑器阶段校验与工具链消费（非运行时强依赖）
+
+14. **[RUNTIME_WHITELIST_INTEGRATION_DRAFT.md](RUNTIME_WHITELIST_INTEGRATION_DRAFT.md)**  
+   运行时硬编码白名单接入草案（`constexpr` 结构、校验顺序、降级策略与日志约定）
 
 ---
 
@@ -143,6 +157,10 @@
 6. [PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md](PHASE_C_BATCH1_MIGRATION_CHECKLIST_2026-02-28.md) - Batch-1 迁移执行卡（BasicLit/TextureBlinnPhong）
 7. [RESOURCE_LAYOUT_BINDING_STRATEGY.md](RESOURCE_LAYOUT_BINDING_STRATEGY.md) - 理解 binding 分配机制
 8. [ShaderGen_Analysis_Report_EN.md](ShaderGen_Analysis_Report_EN.md) - 系统架构深度分析
+9. [ModernFixedRenderPipeline.md](ModernFixedRenderPipeline.md) - 固定管线生成策略总览
+10. [ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md) - 白名单矩阵（人工维护）
+11. [ModernFixedRenderPipeline_VariantMatrix.draft.json](ModernFixedRenderPipeline_VariantMatrix.draft.json) - 机读草案（工具消费入口）
+12. [RUNTIME_WHITELIST_INTEGRATION_DRAFT.md](RUNTIME_WHITELIST_INTEGRATION_DRAFT.md) - 运行时硬编码接入草案（实现入口）
 
 ### 我想了解历史演进
 
@@ -251,3 +269,4 @@
 ## 变更历史
 
 - 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。
+- 2026-02-28：新增固定管线矩阵文档与机读 JSON 草案入口；同步 Filament 参考与 Composer 托管 Mask/DitherMask 口径。

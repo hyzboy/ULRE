@@ -4,6 +4,8 @@
 
 机读草案（供编译器配置接入）：[ModernFixedRenderPipeline_VariantMatrix.draft.json](ModernFixedRenderPipeline_VariantMatrix.draft.json)
 
+运行时策略：白名单以 C++ 硬编码为准；JSON 草案用于编辑器阶段校验、可视化与导出。
+
 ## 1. 目标
 
 - 明确各平台可用渲染路径与质量档位
@@ -145,7 +147,7 @@
 
 ## 6. 编译白名单规则（实现建议）
 
-1. 启动时按 `platform + tier` 读取白名单集合
+1. 运行时使用硬编码白名单（`platform + tier`）
 2. 生成 `PermutationKey` 前先做组合合法性校验
 3. 非法组合：
    - 编辑器模式：报错并显示可替代建议
@@ -153,6 +155,16 @@
 4. 预留项组合（Reserved）：
   - 编辑器模式：给出“功能未开放”提示，不进入编译队列
   - 运行时：强制降级到最近的已实现 Surface Set（默认 S3 或平台指定默认）
+
+### 6.2 配置来源约定（Runtime vs Editor）
+
+- Runtime（游戏运行时）：
+  - 以硬编码白名单为唯一判定来源。
+  - 不依赖外部 JSON 文件读取，避免启动依赖与版本漂移。
+
+- Editor（编辑器阶段）：
+  - 可读取 `*.draft.json` 做合法性校验、矩阵可视化、导出报告。
+  - 编辑器产物不得绕过运行时硬编码边界。
 
 ## 6.1 Mask / Dither Mask 实现归属
 

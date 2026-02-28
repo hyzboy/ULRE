@@ -130,8 +130,34 @@
 - `test_Gizmo3DTemplateConformance` 在 CTest 稳定通过。
 - gate 聚焦集当前为 10 项，整体 `PASS`。
 
+### 8) 固定管线矩阵与机读配置草案（已完成）
+
+**任务**：
+- 新增固定管线实现文档：`ModernFixedRenderPipeline.md`。
+- 新增白名单矩阵文档：`ModernFixedRenderPipeline_VariantMatrix.md`（平台 × 档位 × 组合）。
+- 新增机读草案：`ModernFixedRenderPipeline_VariantMatrix.draft.json`（状态字段、Reserved 规则、回退策略、缓存键字段）。
+- 文档口径明确：Surface Set 扩展以 Filament 语义为参考；`Mask/DitherMask` 归 Composition 层托管。
+
+**验收标准（达成）**：
+- 人工文档与机读草案字段对应一致。
+- 预留项（Reserved）与已实现项（Implemented）边界明确。
+
+### 9) 编译器接入准备（待执行）
+
+**任务**：
+- 在编译入口固化硬编码白名单与合法性校验（`platform + tier`）。
+- 将非法组合与 Reserved 组合接入统一降级逻辑（优先同 Render Path）。
+- 在编辑器工具链接入 `ModernFixedRenderPipeline_VariantMatrix.draft.json`，用于配置检查与矩阵可视化。
+
+**验收标准（待达成）**：
+- 运行时能按硬编码白名单拦截非法组合并稳定降级。
+- 编辑器能基于 JSON 草案给出一致的预检查结果。
+- 日志可区分 `Illegal` 与 `Reserved` 两类拒绝原因。
+
 ---
 
 ## 变更历史
 
 - 2026-02-28：文档口径同步（状态、门禁覆盖与时间戳对齐，无功能变更）。
+- 2026-02-28：新增固定管线矩阵与机读 JSON 草案进展，并补充编译器接入待办。
+- 2026-02-28：执行策略调整为“运行时硬编码白名单 + 编辑器阶段 JSON 校验/可视化”。
