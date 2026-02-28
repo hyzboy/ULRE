@@ -187,6 +187,7 @@ static std::vector<std::pair<std::string, std::string>> ExtractInterpolatedVaria
     
     InterpolationPattern patterns[] = {
         {"Output.Color", "Color", "vec4"},
+        {"Output.Direction", "Direction", "vec3"},
         {"Output.Normal", "Normal", "vec3"},
         {"Output.Position", "Position", "vec4"},
         {"Output.WorldPosition", "WorldPosition", "vec4"},

@@ -211,6 +211,21 @@ target_include_directories(test_VertexPattleColor3DTemplateConformance
 
 CreateTestProject(14 test_VertexPattleColor3DTemplateConformance)
 
+add_executable(test_SkyMinimalTemplateConformance
+    SkyMinimalTemplateConformanceTest.cpp)
+
+target_link_libraries(test_SkyMinimalTemplateConformance
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_SkyMinimalTemplateConformance
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(15 test_SkyMinimalTemplateConformance)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -254,6 +269,9 @@ if(BUILD_TESTING)
 
     add_test(NAME test_VertexPattleColor3DTemplateConformance
              COMMAND test_VertexPattleColor3DTemplateConformance)
+
+    add_test(NAME test_SkyMinimalTemplateConformance
+             COMMAND test_SkyMinimalTemplateConformance)
 endif()
 
 # 需要时可直接运行：
@@ -271,6 +289,7 @@ endif()
 #   cmake --build <build_dir> --target test_Gizmo3DTemplateConformance
 #   cmake --build <build_dir> --target test_VertexLuminance3DTemplateConformance
 #   cmake --build <build_dir> --target test_VertexPattleColor3DTemplateConformance
+#   cmake --build <build_dir> --target test_SkyMinimalTemplateConformance
 # 在生成目录执行：
 #   .\\test\\Debug\\test_ComposedShaderGenerator.exe
 #   .\\test\\Debug\\test_ComposedShaderGenerator_Verify.exe
@@ -286,3 +305,4 @@ endif()
 #   .\\test\\Debug\\test_Gizmo3DTemplateConformance.exe
 #   .\\test\\Debug\\test_VertexLuminance3DTemplateConformance.exe
 #   .\\test\\Debug\\test_VertexPattleColor3DTemplateConformance.exe
+#   .\\test\\Debug\\test_SkyMinimalTemplateConformance.exe

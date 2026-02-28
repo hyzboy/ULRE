@@ -27,7 +27,8 @@ $targets = @(
     "test_BasicLitTemplateConformance",
     "test_Gizmo3DTemplateConformance",
     "test_VertexLuminance3DTemplateConformance",
-    "test_VertexPattleColor3DTemplateConformance"
+    "test_VertexPattleColor3DTemplateConformance",
+    "test_SkyMinimalTemplateConformance"
 )
 
 Write-Host "[Gate] Building targets..."
@@ -40,7 +41,7 @@ Write-Host "[Gate] Running focused ctest set..."
 Push-Location $BuildDir
 $prevErrorAction = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
-$ctestPattern = 'test_(FSHelperConsistencyValidation|DescriptorSetLifecycleRegression|ShaderLogicValidation|BridgeValidation3Materials|HelperInjectionConflict|HelperInjectionConflictMatrix|ComposedDiagnosticsAggregation|TextureBlinnPhongTemplateConformance|BasicLitTemplateConformance|Gizmo3DTemplateConformance|VertexLuminance3DTemplateConformance|VertexPattleColor3DTemplateConformance)'
+$ctestPattern = 'test_(FSHelperConsistencyValidation|DescriptorSetLifecycleRegression|ShaderLogicValidation|BridgeValidation3Materials|HelperInjectionConflict|HelperInjectionConflictMatrix|ComposedDiagnosticsAggregation|TextureBlinnPhongTemplateConformance|BasicLitTemplateConformance|Gizmo3DTemplateConformance|VertexLuminance3DTemplateConformance|VertexPattleColor3DTemplateConformance|SkyMinimalTemplateConformance)'
 $ctestCommand = 'ctest -C {0} -R "{1}" --output-on-failure' -f $Config, $ctestPattern
 $ctestOutput = & cmd /c $ctestCommand 2>&1
 $ctestExit = $LASTEXITCODE

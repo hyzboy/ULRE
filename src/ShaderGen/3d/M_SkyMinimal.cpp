@@ -1,5 +1,9 @@
 ﻿#include "Std3DMaterial.h"
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/graph/mtl/MaterialCompiler.h>
+#include "S_SkyMinimal.h"
+#include "S_SkyMinimal_Logic.h"
+#include <cstdio>
 
 namespace hgl::graph::mtl{
 namespace
@@ -106,6 +110,26 @@ void main()
 
 MaterialCreateInfo *CreateSkyMinimal(const VulkanDevAttr *dev_attr, const SkyMinimalCreateConfig *cfg)
 {
+    ShaderPermutationKey key;
+
+    MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
+        dev_attr,
+        SKY_MINIMAL_DEF,
+        SKY_MINIMAL_COMPOSED_DEF,
+        SKY_MINIMAL_LOGIC,
+        key,
+        cfg);
+
+    if (mci_new)
+    {
+        std::fprintf(stderr,
+            "[SkyMinimal] using new composed-business compile path\n");
+        return mci_new;
+    }
+
+    std::fprintf(stderr,
+        "[SkyMinimal] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
+
     MaterialSkyMinimal m(cfg);
     return m.Create(dev_attr);
 }
