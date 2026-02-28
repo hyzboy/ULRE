@@ -35,6 +35,7 @@ namespace hgl::ecs
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> static_index_map;
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint32_t> dynamic_index_map;
         hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_seen_version;
+        hgl::UnorderedMap<TransformDataStorage::HandleID, uint64_t> last_uploaded_version;
 
     public:
 

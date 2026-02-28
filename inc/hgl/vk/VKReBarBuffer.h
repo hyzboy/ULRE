@@ -72,6 +72,7 @@ public:
     // ReBAR memory is HOST_COHERENT: writes are always GPU-visible.
     // Dirty tracking is a no-op — CopyToDevice() never needs to be called.
     void MarkDirty (VkDeviceSize = 0, VkDeviceSize = VK_WHOLE_SIZE) override {}
+    void MarkDirtyRanges(const DirtyRange *, size_t) override {}
     bool IsDirty   () const override { return false; }
     void ClearDirty() override {}
 

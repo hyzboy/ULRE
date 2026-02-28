@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/vk/VK.h>
+#include<cstddef>
 #include<string>
 
 namespace hgl::graph{
@@ -32,6 +33,12 @@ protected:
     explicit IGPUBuffer(const std::string &name) : buffer_name(name) {}
 
 public:
+    struct DirtyRange
+    {
+        VkDeviceSize offset = 0;
+        VkDeviceSize size   = 0;
+    };
+
     virtual ~IGPUBuffer() = default;
 
     const std::string &GetBufferName() const { return buffer_name; }
@@ -43,6 +50,14 @@ public:
 
     // 脏标记（只记录，不触发任何提交）
     virtual void   MarkDirty  (VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE) = 0;
+    virtual void   MarkDirtyRanges(const DirtyRange *ranges, size_t count)
+    {
+        if (!ranges || count == 0)
+            return;
+
+        for (size_t i = 0; i < count; ++i)
+            MarkDirty(ranges[i].offset, ranges[i].size);
+    }
     virtual bool   IsDirty    () const = 0;
     virtual void   ClearDirty () = 0;
 

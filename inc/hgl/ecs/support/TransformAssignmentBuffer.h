@@ -102,6 +102,13 @@ namespace hgl::ecs
         void WriteDynamicFromHandles(const TransformDataStorage& storage,
                          const uint32_t static_count,
                          const std::vector<TransformDataStorage::HandleID>& handles);
+        void WriteStaticDirtyIndices(const TransformDataStorage& storage,
+                         const std::vector<TransformDataStorage::HandleID>& handles,
+                         const std::vector<uint32_t>& dirty_indices);
+        void WriteDynamicDirtyIndices(const TransformDataStorage& storage,
+                          const uint32_t static_count,
+                          const std::vector<TransformDataStorage::HandleID>& handles,
+                          const std::vector<uint32_t>& dirty_indices);
 
         /**
          * 写入所有RenderItem的变换数据

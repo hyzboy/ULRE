@@ -2,9 +2,58 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/log/Log.h>
+#include<algorithm>
 #include<string.h>
 
 namespace hgl::graph{
+
+namespace
+{
+    static bool NormalizeRange(VkDeviceSize buffer_size, VkDeviceSize &offset, VkDeviceSize &size)
+    {
+        if (offset >= buffer_size)
+            return false;
+
+        if (size == VK_WHOLE_SIZE || offset + size > buffer_size)
+            size = buffer_size - offset;
+
+        return size > 0;
+    }
+
+    static void MergeDirtyRanges(std::vector<IGPUBuffer::DirtyRange> &ranges)
+    {
+        if (ranges.size() <= 1)
+            return;
+
+        std::sort(ranges.begin(), ranges.end(), [](const IGPUBuffer::DirtyRange &a, const IGPUBuffer::DirtyRange &b)
+        {
+            return a.offset < b.offset;
+        });
+
+        size_t write_index = 0;
+        for (size_t read_index = 1; read_index < ranges.size(); ++read_index)
+        {
+            auto &last = ranges[write_index];
+            const auto &cur = ranges[read_index];
+
+            const VkDeviceSize last_end = last.offset + last.size;
+            const VkDeviceSize cur_end = cur.offset + cur.size;
+
+            if (cur.offset <= last_end)
+            {
+                if (cur_end > last_end)
+                    last.size = cur_end - last.offset;
+            }
+            else
+            {
+                ++write_index;
+                ranges[write_index] = cur;
+            }
+        }
+
+        ranges.resize(write_index + 1);
+    }
+}
 
 StagedBuffer::StagedBuffer(const std::string &name,
                            VkDevice dev,
@@ -103,25 +152,63 @@ void StagedBuffer::Unmap()
 
 void StagedBuffer::MarkDirty(VkDeviceSize offset, VkDeviceSize size)
 {
-    if (size == VK_WHOLE_SIZE)
-        size = buffer_size - offset;
+    if (!NormalizeRange(buffer_size, offset, size))
+        return;
 
     if (!is_dirty)
     {
-        // First time marking dirty
         is_dirty = true;
         dirty_offset = offset;
         dirty_size = size;
     }
     else
     {
-        // Merge dirty regions
         VkDeviceSize end1 = dirty_offset + dirty_size;
         VkDeviceSize end2 = offset + size;
 
         dirty_offset = hgl_min(dirty_offset, offset);
         dirty_size = hgl_max(end1, end2) - dirty_offset;
     }
+
+    dirty_ranges.push_back({offset, size});
+    MergeDirtyRanges(dirty_ranges);
+}
+
+void StagedBuffer::MarkDirtyRanges(const DirtyRange *ranges, size_t count)
+{
+    if (!ranges || count == 0)
+        return;
+
+    bool any_dirty = false;
+    for (size_t i = 0; i < count; ++i)
+    {
+        VkDeviceSize offset = ranges[i].offset;
+        VkDeviceSize size = ranges[i].size;
+
+        if (!NormalizeRange(buffer_size, offset, size))
+            continue;
+
+        any_dirty = true;
+        dirty_ranges.push_back({offset, size});
+
+        if (!is_dirty)
+        {
+            is_dirty = true;
+            dirty_offset = offset;
+            dirty_size = size;
+        }
+        else
+        {
+            VkDeviceSize end1 = dirty_offset + dirty_size;
+            VkDeviceSize end2 = offset + size;
+
+            dirty_offset = hgl_min(dirty_offset, offset);
+            dirty_size = hgl_max(end1, end2) - dirty_offset;
+        }
+    }
+
+    if (any_dirty)
+        MergeDirtyRanges(dirty_ranges);
 }
 
 void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)
@@ -129,12 +216,33 @@ void StagedBuffer::CopyToDevice(VkCommandBuffer cmd)
     if (!cmd || !is_dirty)
         return;
 
-    VkBufferCopy copy_region = {};
-    copy_region.srcOffset = dirty_offset;
-    copy_region.dstOffset = dirty_offset;
-    copy_region.size = dirty_size;
+    if (!dirty_ranges.empty())
+    {
+        std::vector<VkBufferCopy> copy_regions;
+        copy_regions.reserve(dirty_ranges.size());
 
-    vkCmdCopyBuffer(cmd, staging_buffer, device_buffer, 1, &copy_region);
+        for (const auto &range : dirty_ranges)
+        {
+            VkBufferCopy copy_region = {};
+            copy_region.srcOffset = range.offset;
+            copy_region.dstOffset = range.offset;
+            copy_region.size = range.size;
+            copy_regions.push_back(copy_region);
+        }
+
+        vkCmdCopyBuffer(cmd, staging_buffer, device_buffer,
+                        static_cast<uint32_t>(copy_regions.size()),
+                        copy_regions.data());
+    }
+    else if (dirty_size > 0)
+    {
+        VkBufferCopy copy_region = {};
+        copy_region.srcOffset = dirty_offset;
+        copy_region.dstOffset = dirty_offset;
+        copy_region.size = dirty_size;
+
+        vkCmdCopyBuffer(cmd, staging_buffer, device_buffer, 1, &copy_region);
+    }
 
     ClearDirty();
 
@@ -149,6 +257,7 @@ void StagedBuffer::ClearDirty()
     is_dirty = false;
     dirty_offset = 0;
     dirty_size = 0;
+    dirty_ranges.clear();
 }
 
 }//namespace hgl::graph

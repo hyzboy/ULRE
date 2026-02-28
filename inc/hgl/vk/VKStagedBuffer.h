@@ -4,6 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/vk/IGPUBuffer.h>
+#include<vector>
 
 namespace hgl::graph{
 
@@ -31,6 +32,7 @@ class StagedBuffer : public IGPUBuffer
     bool                is_dirty;
     VkDeviceSize        dirty_offset;
     VkDeviceSize        dirty_size;
+    std::vector<DirtyRange> dirty_ranges;
 
     // Tracks the last Map() range so Unmap() can dirty only what was actually mapped
     VkDeviceSize        mapped_offset = 0;
@@ -57,6 +59,7 @@ public:
     void   Unmap      () override;
 
     void   MarkDirty  (VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE) override;
+    void   MarkDirtyRanges(const DirtyRange *ranges, size_t count) override;
     bool   IsDirty    () const override { return is_dirty; }
     void   ClearDirty () override;
 

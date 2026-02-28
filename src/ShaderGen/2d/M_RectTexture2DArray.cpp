@@ -75,6 +75,7 @@ MaterialCreateInfo *CreateRectTexture2DArray(const VulkanDevAttr *dev_attr,mtl::
         return(nullptr);
 
     cfg->prim=PrimitiveType::Triangles;
+    cfg->material_instance=true;
     cfg->position_format=VAT_VEC2;
     cfg->shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 

@@ -17,6 +17,67 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        struct IndexRange
+        {
+            uint32_t first = 0;
+            uint32_t last = 0;
+        };
+
+        static std::vector<IndexRange> BuildMergedRangesFromIndices(const std::vector<uint32_t>& dirty_indices,
+                                                                     const uint32_t handle_count)
+        {
+            std::vector<IndexRange> result;
+            if (dirty_indices.empty() || handle_count == 0)
+                return result;
+
+            std::vector<uint32_t> sorted = dirty_indices;
+            std::sort(sorted.begin(), sorted.end());
+            sorted.erase(std::unique(sorted.begin(), sorted.end()), sorted.end());
+
+            uint32_t run_start = std::numeric_limits<uint32_t>::max();
+            uint32_t run_last = std::numeric_limits<uint32_t>::max();
+
+            for (const uint32_t idx : sorted)
+            {
+                if (idx >= handle_count)
+                    continue;
+
+                if (run_start == std::numeric_limits<uint32_t>::max())
+                {
+                    run_start = idx;
+                    run_last = idx;
+                    continue;
+                }
+
+                if (idx == run_last + 1)
+                {
+                    run_last = idx;
+                    continue;
+                }
+
+                IndexRange range;
+                range.first = run_start;
+                range.last = run_last;
+                result.push_back(range);
+
+                run_start = idx;
+                run_last = idx;
+            }
+
+            if (run_start != std::numeric_limits<uint32_t>::max())
+            {
+                IndexRange range;
+                range.first = run_start;
+                range.last = run_last;
+                result.push_back(range);
+            }
+
+            return result;
+        }
+    }
+
     std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
 
     TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m)
@@ -177,6 +238,103 @@ namespace hgl::ecs
         }
 
         ring_writer.Unmap();
+    }
+
+    void TransformAssignmentBuffer::WriteStaticDirtyIndices(const TransformDataStorage& storage,
+                                                            const std::vector<TransformDataStorage::HandleID>& handles,
+                                                            const std::vector<uint32_t>& dirty_indices)
+    {
+        if (!transform_buffer || handles.empty() || dirty_indices.empty())
+            return;
+
+        auto *tbuf = transform_buffer->GetGPUBuffer();
+        if (!tbuf)
+            return;
+
+        const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, static_cast<uint32_t>(handles.size()));
+        if (merged_ranges.empty())
+            return;
+
+        std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
+        flush_ranges.reserve(merged_ranges.size());
+
+        std::vector<math::Matrix4f> temp;
+        for (const auto &range : merged_ranges)
+        {
+            const uint32_t first = static_cast<uint32_t>(range.first);
+            const uint32_t last = static_cast<uint32_t>(range.last);
+            const uint32_t count = last - first + 1;
+
+            temp.resize(count);
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const auto handle = handles[first + i];
+                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+                temp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            }
+
+            const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(first);
+            const VkDeviceSize byte_size = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(count);
+
+            if (!tbuf->Write(temp.data(), byte_offset, byte_size))
+                continue;
+
+            flush_ranges.push_back({byte_offset, byte_size});
+        }
+
+        if (!flush_ranges.empty())
+            transform_buffer->FlushRanges(flush_ranges.data(), flush_ranges.size());
+    }
+
+    void TransformAssignmentBuffer::WriteDynamicDirtyIndices(const TransformDataStorage& storage,
+                                                             const uint32_t static_count,
+                                                             const std::vector<TransformDataStorage::HandleID>& handles,
+                                                             const std::vector<uint32_t>& dirty_indices)
+    {
+        if (!transform_buffer || handles.empty() || dirty_indices.empty())
+            return;
+
+        auto *tbuf = transform_buffer->GetGPUBuffer();
+        if (!tbuf)
+            return;
+
+        const uint32_t dynamic_count = static_cast<uint32_t>(handles.size());
+        const uint32_t base_index = ring_writer.GetBaseIndex(static_count, dynamic_count);
+
+        const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, dynamic_count);
+        if (merged_ranges.empty())
+            return;
+
+        std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
+        flush_ranges.reserve(merged_ranges.size());
+
+        std::vector<math::Matrix4f> temp;
+        for (const auto &range : merged_ranges)
+        {
+            const uint32_t first = static_cast<uint32_t>(range.first);
+            const uint32_t last = static_cast<uint32_t>(range.last);
+            const uint32_t count = last - first + 1;
+
+            temp.resize(count);
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const auto handle = handles[first + i];
+                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+                temp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            }
+
+            const VkDeviceSize logical_index = static_cast<VkDeviceSize>(base_index + first);
+            const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * logical_index;
+            const VkDeviceSize byte_size = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(count);
+
+            if (!tbuf->Write(temp.data(), byte_offset, byte_size))
+                continue;
+
+            flush_ranges.push_back({byte_offset, byte_size});
+        }
+
+        if (!flush_ranges.empty())
+            transform_buffer->FlushRanges(flush_ranges.data(), flush_ranges.size());
     }
 
     void TransformAssignmentBuffer::Clear()
@@ -555,13 +713,45 @@ namespace hgl::ecs
 
     void TransformAssignmentBuffer::FlushPendingUpdates()
     {
-        if (pending_updates.empty() || !last_items)
+        if (pending_updates.empty() || !last_items || !transform_buffer)
             return;
+
+        std::sort(pending_updates.begin(), pending_updates.end(),
+            [](const UpdateRange &a, const UpdateRange &b)
+            {
+                return a.first < b.first;
+            });
+
+        std::vector<graph::IGPUBuffer::DirtyRange> dirty_ranges;
+        dirty_ranges.reserve(pending_updates.size());
+
+        const VkDeviceSize matrix_size = sizeof(math::Matrix4f);
+        const VkDeviceSize buffer_size = transform_buffer->GetSize();
 
         for (const auto &range : pending_updates)
         {
+            if (range.first < 0 || range.last < range.first)
+                continue;
+
             WriteRange(*last_items, range.first, range.last);
+
+            VkDeviceSize offset = matrix_size * static_cast<VkDeviceSize>(range.first);
+            VkDeviceSize size = matrix_size * static_cast<VkDeviceSize>(range.last - range.first + 1);
+
+            if (offset >= buffer_size)
+                continue;
+
+            if (offset + size > buffer_size)
+                size = buffer_size - offset;
+
+            if (size == 0)
+                continue;
+
+            dirty_ranges.push_back({offset, size});
         }
+
+        if (!dirty_ranges.empty())
+            transform_buffer->FlushRanges(dirty_ranges.data(), dirty_ranges.size());
 
         pending_updates.clear();
     }

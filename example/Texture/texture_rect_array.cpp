@@ -209,7 +209,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            offset.x=position_data[2]*float(i);
+            offset.x=rect_right*2*float(i);
 
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
             auto transform = render_obj[i].entity->AddComponent<TransformComponent>();

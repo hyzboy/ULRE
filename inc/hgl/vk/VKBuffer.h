@@ -45,6 +45,7 @@ public:
             void    Unmap   ();
     virtual void    Flush   (VkDeviceSize start,VkDeviceSize size);
     virtual void    Flush   (VkDeviceSize size);
+        virtual void    FlushRanges(const IGPUBuffer::DirtyRange *ranges,size_t count);
 
     virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size);
     virtual bool    Write   (const void *ptr,uint32_t size);
