@@ -13,6 +13,7 @@ namespace hgl::graph::mtl{
 
 UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
 SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
+const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_name);
 
 constexpr const ShaderBufferSource SBS_ViewportInfo=
 {

@@ -112,6 +112,17 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
     return false;
 }
 
+static const ShaderBufferSource *ResolveShaderBufferSourceByStructName(const Material3DCreateConfig *cfg,const char *struct_name)
+{
+    if(cfg)
+    {
+        if(const ShaderBufferSource *sbs=cfg->FindPrivateShaderBufferSourceByStructName(struct_name))
+            return sbs;
+    }
+
+    return FindShaderBufferSourceByStructName(struct_name);
+}
+
 static const char *VATypeToGLSL(const VAType &type)
 {
     switch (type.basetype)
@@ -663,9 +674,15 @@ MaterialCreateInfo *CompileFixedMaterial(
                     break;
                 }
 
-                if (std::strcmp(entry.struct_name, SBS_ColorPattle.struct_name) == 0)
+                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
                 {
-                    if (!mci->AddUBOStruct(stage_bits, SBS_ColorPattle))
+                    if (entry.set_type != sbs->set_type)
+                    {
+                        delete mci;
+                        return nullptr;
+                    }
+
+                    if (!mci->AddUBOStruct(stage_bits, *sbs))
                     {
                         delete mci;
                         return nullptr;
@@ -696,6 +713,22 @@ MaterialCreateInfo *CompileFixedMaterial(
                 if (std::strcmp(entry.struct_name, SBS_MaterialInstance.struct_name) == 0)
                 {
                     mi_stage_bits = stage_bits;
+                    break;
+                }
+
+                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
+                {
+                    if (entry.set_type != sbs->set_type)
+                    {
+                        delete mci;
+                        return nullptr;
+                    }
+
+                    if (!mci->AddSSBOStruct(stage_bits, *sbs))
+                    {
+                        delete mci;
+                        return nullptr;
+                    }
                     break;
                 }
 

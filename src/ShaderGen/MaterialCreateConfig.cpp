@@ -36,6 +36,23 @@ const AnsiString MaterialCreateConfig::ToHashString()
     hash=p;
     hash+=GetPrimName(prim);
 
+    if(private_shader_buffer_source_count>0)
+    {
+        hash+="_PS";
+        hash+=AnsiString::numberOf(private_shader_buffer_source_count);
+
+        for(uint32 i=0;i<private_shader_buffer_source_count;++i)
+        {
+            hash+="_";
+
+            const ShaderBufferSource *sbs=private_shader_buffer_sources?private_shader_buffer_sources[i]:nullptr;
+            if(sbs&&sbs->struct_name)
+                hash+=sbs->struct_name;
+            else
+                hash+="null";
+        }
+    }
+
     return hash;
 }
 
