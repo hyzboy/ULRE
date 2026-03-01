@@ -10,7 +10,7 @@ namespace {
 constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
     { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
     { VAT_UINT, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Color },
-    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::TransformID::VIS_NAME },
+    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_VERTEX, Assign::TransformID::VIS_NAME },
 };
 
 #if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO

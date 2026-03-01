@@ -3,7 +3,10 @@
 #include <hgl/ecs/components/LinesComponent.h>
 #include <hgl/ecs/components/BoundingBoxComponent.h>
 #include <hgl/ecs/components/VisibilityComponent.h>
+#include <hgl/ecs/components/TransformComponent.h>
+#include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/module/MaterialManager.h>
@@ -17,12 +20,14 @@
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
+#include <hgl/vk/VKRenderAssign.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/StructuredBufferAccessor.h>
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
 #include <glm/glm.hpp>
 #include <algorithm>
+#include <limits>
 
 namespace hgl::ecs
 {
@@ -44,13 +49,16 @@ namespace hgl::ecs
         line_count = 0;
         bool pos_valid = va_pos.IsValid();
         bool color_valid = va_color.IsValid();
+        bool transform_valid = va_transform.IsValid();
         
-        GLogInfo("[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d",
+        GLogInfo("[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d transform_valid=%d",
                  pos_valid ? 1 : 0,
-                 color_valid ? 1 : 0);
+             color_valid ? 1 : 0,
+             transform_valid ? 1 : 0);
         
         if (pos_valid)   va_pos.Seek(0);
         if (color_valid) va_color.Seek(0);
+        if (transform_valid) va_transform.Seek(0);
         if (primitive)   primitive->SetDrawCounts(0);
     }
 
@@ -58,6 +66,7 @@ namespace hgl::ecs
     {
         va_pos.Bind(nullptr);
         va_color.Bind(nullptr);
+        va_transform.Bind(nullptr);
         SAFE_CLEAR(primitive);
         SAFE_CLEAR(geometry);
         line_count   = 0;
@@ -102,8 +111,9 @@ namespace hgl::ecs
 
         const int pos_idx   = geometry->GetVABIndex(graph::VAN::Position);
         const int color_idx = geometry->GetVABIndex(graph::VAN::Color);
+        const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::VIS_NAME);
 
-        if (pos_idx < 0 || color_idx < 0)
+        if (pos_idx < 0 || color_idx < 0 || transform_idx < 0)
         {
             SAFE_CLEAR(primitive);
             SAFE_CLEAR(geometry);
@@ -112,18 +122,21 @@ namespace hgl::ecs
 
         va_pos.Bind(geometry->GetVAB(pos_idx));
         va_color.Bind(geometry->GetVAB(color_idx));
+        va_transform.Bind(geometry->GetVAB(transform_idx));
 
-        GLogInfo("[LineRenderPipeline] Slot %u after Bind: pos_valid=%d color_valid=%d",
+        GLogInfo("[LineRenderPipeline] Slot %u after Bind: pos_valid=%d color_valid=%d transform_valid=%d",
                  width,
                  va_pos.IsValid() ? 1 : 0,
-                 va_color.IsValid() ? 1 : 0);
+                 va_color.IsValid() ? 1 : 0,
+                 va_transform.IsValid() ? 1 : 0);
 
-        if (!va_pos.IsValid() || !va_color.IsValid())
+        if (!va_pos.IsValid() || !va_color.IsValid() || !va_transform.IsValid())
         {
-            GLogWarning("[LineRenderPipeline] Slot %u accessor bind failed (pos_valid=%d color_valid=%d)",
+            GLogWarning("[LineRenderPipeline] Slot %u accessor bind failed (pos_valid=%d color_valid=%d transform_valid=%d)",
                         width,
                         va_pos.IsValid() ? 1 : 0,
-                        va_color.IsValid() ? 1 : 0);
+                        va_color.IsValid() ? 1 : 0,
+                        va_transform.IsValid() ? 1 : 0);
             SAFE_CLEAR(primitive);
             SAFE_CLEAR(geometry);
             return false;
@@ -131,6 +144,7 @@ namespace hgl::ecs
 
         va_pos.Seek(0);
         va_color.Seek(0);
+        va_transform.Seek(0);
 
         gpu_capacity = new_cap;
         return true;
@@ -139,16 +153,19 @@ namespace hgl::ecs
     bool LineRenderPipeline::LineWidthSlot::AddSegment(
         const hgl::math::Vector3f& from,
         const hgl::math::Vector3f& to,
-        uint8_t                     color_index)
+        uint8_t                     color_index,
+        uint16_t                    transform_index)
     {
         bool pos_valid = va_pos.IsValid();
         bool color_valid = va_color.IsValid();
+        bool transform_valid = va_transform.IsValid();
         
-        if (!pos_valid || !color_valid)
+        if (!pos_valid || !color_valid || !transform_valid)
         {
-            GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d",
+            GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d transform=%d",
                         pos_valid ? 1 : 0,
-                        color_valid ? 1 : 0);
+                        color_valid ? 1 : 0,
+                        transform_valid ? 1 : 0);
             return false;
         }
 
@@ -159,6 +176,10 @@ namespace hgl::ecs
         if (!va_color.Write(color_index))
             return false;
         if (!va_color.Write(color_index))
+            return false;
+        if (!va_transform.Write(transform_index))
+            return false;
+        if (!va_transform.Write(transform_index))
             return false;
 
         ++line_count;
@@ -233,7 +254,7 @@ namespace hgl::ecs
         graph::mtl::Material3DCreateConfig cfg(
             graph::PrimitiveType::Lines,
             graph::mtl::WithCamera::With,
-            graph::mtl::WithLocalToWorld::Without,
+            graph::mtl::WithLocalToWorld::With,
             graph::mtl::WithSky::Without);
 
         auto* mat_mgr = gc->GetMaterialManager();
@@ -247,6 +268,9 @@ namespace hgl::ecs
         // ------- Create material instance -------
         graph::VILConfig vil;
         vil.Add(graph::VAN::Color, VF_V1U8);
+        vil.Add(graph::Assign::TransformID::VIS_NAME,
+            graph::VAConfig(graph::Assign::TransformID::VAB_FMT,
+                    VK_VERTEX_INPUT_RATE_VERTEX));
         mi_ = mat_mgr->CreateMaterialInstance(material_, &vil);
         if (!mi_)
             return false;
@@ -285,6 +309,8 @@ namespace hgl::ecs
         // Flush current palette to UBO (palette initialized in constructor)
         FlushPaletteToGPU();
 
+        SyncTransformBinding();
+
         initialized_ = true;
         
         GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: COMPLETE, palette_[0]=(%.2f,%.2f,%.2f,%.2f)"),
@@ -305,6 +331,8 @@ namespace hgl::ecs
 
         if (!initialized_ && !Initialize())
             return false;
+
+        SyncTransformBinding();
 
         // Reset all active slots
         if (support_wide_lines_)
@@ -411,6 +439,18 @@ namespace hgl::ecs
         if (!initialized_ || collected_.empty())
             return;
 
+        std::shared_ptr<TransformSystem> transform_system_sp = context_ ? context_->GetSystem<TransformSystem>() : nullptr;
+        TransformSystem* transform_system = transform_system_sp.get();
+        uint32_t static_count = 0;
+        uint32_t dynamic_count = 0;
+        uint32_t dynamic_base = 0;
+        if (transform_system)
+        {
+            static_count = transform_system->GetStaticCount();
+            dynamic_count = transform_system->GetDynamicCount();
+            dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
+        }
+
         // First pass: count lines per slot
         uint32_t slot_counts[MAX_WIDTHS] = {};
         uint32_t expected_total = 0;
@@ -454,9 +494,33 @@ namespace hgl::ecs
         {
             const uint32_t idx = GetSlotIndex(comp->width);
             bool comp_write_ok = true;
+
+            graph::Assign::TransformID::ValueType transform_id = 0;
+            if (transform_system)
+            {
+                Entity* owner = comp ? comp->GetOwner() : nullptr;
+                auto transform = owner ? owner->GetComponent<TransformComponent>() : nullptr;
+                if (transform)
+                {
+                    const auto handle = transform->GetStorageHandle();
+                    uint32_t group_index = 0;
+                    if (handle != TransformDataStorage::INVALID_HANDLE
+                        && transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
+                    {
+                        const uint32_t resolved = transform->IsMovable() ? (dynamic_base + group_index)
+                                                                          : (group_index + 1u);
+
+                        constexpr uint32_t kMaxTransformID = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+                        transform_id = resolved > kMaxTransformID
+                                     ? 0
+                                     : static_cast<graph::Assign::TransformID::ValueType>(resolved);
+                    }
+                }
+            }
+
             for (const auto& seg : comp->lines)
             {
-                if (!slots_[idx].AddSegment(seg.from, seg.to, seg.color_index))
+                if (!slots_[idx].AddSegment(seg.from, seg.to, seg.color_index, transform_id))
                 {
                     ++write_fail_count;
                     comp_write_ok = false;
@@ -614,6 +678,35 @@ namespace hgl::ecs
         else
         {
             GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: pipeline not initialized yet, deferring flush"));
+        }
+    }
+
+    void LineRenderPipeline::SyncTransformBinding()
+    {
+        if (!context_ || !material_)
+            return;
+
+        std::shared_ptr<TransformSystem> transform_system_sp = context_->GetSystem<TransformSystem>();
+        auto* transform_system = transform_system_sp.get();
+        if (!transform_system)
+            return;
+
+        transform_system->EnsureTransformBuffer();
+        auto* transform_buffer = transform_system->GetTransformBuffer();
+        if (!transform_buffer)
+            return;
+
+        const uint32_t static_count = transform_system->GetStaticCount();
+        const uint32_t dynamic_count = transform_system->GetDynamicCount();
+        transform_buffer->EnsureCapacity(static_count, dynamic_count, graph::BufferAllocPolicy::Auto);
+
+        if (transform_buffer != bound_transform_buffer_)
+        {
+            transform_buffer->BindTransform(material_);
+            material_->Update();
+            bound_transform_buffer_ = transform_buffer;
+
+            GLogInfo("[LineRenderPipeline] SyncTransformBinding: bound transform buffer for Line material");
         }
     }
 

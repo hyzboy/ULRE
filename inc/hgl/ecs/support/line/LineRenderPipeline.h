@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <cstdint>
 
 namespace hgl
 {
@@ -28,6 +29,7 @@ namespace hgl
 
 namespace hgl::ecs
 {
+    class TransformAssignmentBuffer;
     // ----------------------------------------------------------------
     // Collect statistics (replaces LineCollectStats in old header)
     // ----------------------------------------------------------------
@@ -92,6 +94,7 @@ namespace hgl::ecs
 
             graph::BufferAccessor3f  va_pos;   ///< maps to StagedBuffer for positions
             graph::BufferAccessor1u8 va_color; ///< maps to StagedBuffer for color indices
+            graph::RawAccessorU16    va_transform; ///< per-vertex TransformID stream
 
             void Reset();
             void Clear();
@@ -102,7 +105,8 @@ namespace hgl::ecs
                                 uint32_t                 width);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
-                            uint8_t                     color_index);
+                            uint8_t                     color_index,
+                            uint16_t                    transform_index);
             void Draw(graph::RenderCmdBuffer* cmd);
         };
 
@@ -112,6 +116,7 @@ namespace hgl::ecs
         std::vector<std::shared_ptr<LinesComponent>> collected_;
         LineCollectStats stats_;
         uint32_t total_line_count_ = 0;
+        TransformAssignmentBuffer* bound_transform_buffer_ = nullptr;
 
     public:
         static const std::string kName;  ///< "Line"
@@ -147,6 +152,7 @@ namespace hgl::ecs
         bool Initialize();
         uint32_t GetSlotIndex(uint8_t width) const;
         void FlushPaletteToGPU();
+        void SyncTransformBinding();
     };
 
 }  // namespace hgl::ecs

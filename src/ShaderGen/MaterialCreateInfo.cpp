@@ -102,6 +102,7 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
     if(!mdi.hasStruct(struct_name))
         return(false);
 
+    uint expected=0;
     uint result=0;
 
     for(const auto& kv : shader_map)
@@ -109,11 +110,14 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
         ShaderStage bit = kv.first;
 
         if(flag_bits&(uint32_t)bit)
+        {
+            ++expected;
             if(AddUBO(bit,set_type,struct_name,name))
                 ++result;
+        }
     }
 
-    return(result==shader_map.GetCount());
+    return(expected>0 && result==expected);
 }
 
 bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
@@ -166,16 +170,20 @@ bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetTyp
     if(!mdi.hasStruct(struct_name))
         return(false);
 
+    uint expected=0;
     uint result=0;
 
     for(auto [bit, shader_info] : shader_map)
     {
         if(flag_bits&(uint32_t)bit)
+        {
+            ++expected;
             if(AddSSBO(bit,set_type,struct_name,name))
                 ++result;
+        }
     }
 
-    return(result==shader_map.GetCount());
+    return(expected>0 && result==expected);
 }
 
 bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
