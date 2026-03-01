@@ -10,10 +10,10 @@
 /// - 输出合成（根据 output mode）
 /// - Main 函数组装
 
-#include <hgl/graph/mtl/ShaderComposition.h>
-#include <hgl/graph/mtl/ShaderLogic.h>
-#include <hgl/graph/mtl/ResourceLayoutGenerator.h>
-#include <hgl/graph/mtl/BuiltinHelpers.h>
+#include <hgl/shadergen/ShaderComposition.h>
+#include <hgl/shadergen/ShaderLogic.h>
+#include <hgl/shadergen/ResourceLayoutGenerator.h>
+#include <hgl/shadergen/BuiltinHelpers.h>
 #include <hgl/type/String.h>
 #include <hgl/graph/mtl/StdMaterial.h>
 #include "common/MFSkyLight.h"  // SKYLIGHT_GLSL_HEADER, GetSkyLightModelImplGLSL

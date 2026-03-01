@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <hgl/graph/mtl/FixedMaterialDef.h>
+#include <hgl/shadergen/FixedMaterialDef.h>
 #include <hgl/type/String.h>
 #include <string>
 #include <vector>

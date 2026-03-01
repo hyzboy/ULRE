@@ -1,5 +1,5 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/MaterialCompiler.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include"S_Gizmo3D.h"
 #include<cstdio>

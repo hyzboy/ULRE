@@ -1,8 +1,8 @@
 /// test_ComposedShaderGenerator.cpp — 验证合成着色器生成器（真实生成路径）
 
-#include <hgl/graph/mtl/ShaderComposition.h>
-#include <hgl/graph/mtl/ShaderComposition_Examples.h>
-#include <hgl/graph/mtl/ShaderLogic.h>
+#include <hgl/shadergen/ShaderComposition.h>
+#include <hgl/shadergen/ShaderComposition_Examples.h>
+#include <hgl/shadergen/ShaderLogic.h>
 #include <hgl/type/String.h>
 #include <cstdio>
 #include <cstring>

@@ -1,9 +1,9 @@
-﻿#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
-#include <hgl/graph/mtl/MaterialCompiler.h>
+#include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
-#include <hgl/graph/mtl/FixedMaterialDef.h>
-#include <hgl/graph/mtl/ShaderComposition.h>
+#include <hgl/shadergen/FixedMaterialDef.h>
+#include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <cstdio>
 #include <vector>

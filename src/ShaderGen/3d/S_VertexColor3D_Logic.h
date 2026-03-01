@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <hgl/graph/mtl/ShaderLogic.h>
+#include <hgl/shadergen/ShaderLogic.h>
 
 namespace hgl::graph::mtl {
 

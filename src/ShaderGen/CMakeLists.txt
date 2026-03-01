@@ -112,17 +112,17 @@ SET(SHADER_LIBRARY_FILES    ShaderLibrary.cpp
 
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
-SET(FIXED_MTL_FILES ${STD_MTL_HEADER_PATH}/FixedMaterialDef.h
+SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/FixedMaterialDef.h
                     ShaderPermutationKey.cpp
-                    ${STD_MTL_HEADER_PATH}/ResourceLayoutGenerator.h
+                    ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
                     ResourceLayoutGenerator.cpp
 )
 
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 
 SET(SHADER_TEMPLATE_ENGINE_HEADER_FILES	${SHADERGEN_INCLUDE_PATH}/ShaderTemplateEngine.h
-                                         ${STD_MTL_HEADER_PATH}/ShaderComposition.h
-                                         ${STD_MTL_HEADER_PATH}/BuiltinHelpers.h)
+                                         ${SHADERGEN_INCLUDE_PATH}/ShaderComposition.h
+                                         ${SHADERGEN_INCLUDE_PATH}/BuiltinHelpers.h)
 SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES	ShaderTemplateEngine.cpp
                                          MaterialCompiler.cpp
                                          ComposedShaderGenerator.cpp

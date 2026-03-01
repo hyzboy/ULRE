@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include<hgl/graph/mtl/FixedMaterialDef.h>
+#include<hgl/shadergen/FixedMaterialDef.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/vk/VertexAttrib.h>

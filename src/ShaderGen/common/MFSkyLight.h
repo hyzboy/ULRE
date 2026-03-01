@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // 统一 SkyLight 输入与可扩展天光模型选择。
 // 约定：所有需要天光输入的材质都通过本块提供的函数读取。
@@ -9,7 +9,7 @@
 // 选择 GetSkyLightModelImplGLSL(key.ambient) 返回的实现字符串并注入 FS 前部。
 
 #include<hgl/graph/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
-#include<hgl/graph/mtl/FixedMaterialDef.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
+#include<hgl/shadergen/FixedMaterialDef.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
 #include<vector>
 #include<cstring>
 

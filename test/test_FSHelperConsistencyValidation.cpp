@@ -1,6 +1,6 @@
-#include <hgl/graph/mtl/MaterialCompiler.h>
-#include <hgl/graph/mtl/ShaderComposition.h>
-#include <hgl/graph/mtl/ShaderComposition_Examples.h>
+#include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/ShaderComposition.h>
+#include <hgl/shadergen/ShaderComposition_Examples.h>
 
 #include <cstdio>
 #include <cstring>

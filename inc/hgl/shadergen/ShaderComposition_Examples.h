@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <hgl/graph/mtl/ShaderComposition.h>
+#include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/vk/VKRenderAssign.h>
 
 namespace hgl::graph::mtl {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <hgl/type/String.h>
-#include <hgl/graph/mtl/FixedMaterialDef.h>
+#include <hgl/shadergen/FixedMaterialDef.h>
 
 namespace hgl::graph::mtl {
 

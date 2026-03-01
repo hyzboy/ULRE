@@ -1,6 +1,6 @@
 // Phase B 校验逻辑测试
 
-#include <hgl/graph/mtl/ShaderLogic.h>
+#include <hgl/shadergen/ShaderLogic.h>
 #include <stdio.h>
 
 using namespace hgl::graph::mtl;

@@ -7,7 +7,7 @@
 ///
 /// 注意：这是演示代码，暂不编译到项目中
 
-#include <hgl/graph/mtl/ShaderLogic.h>
+#include <hgl/shadergen/ShaderLogic.h>
 #include "../src/ShaderGen/3d/S_PureColor3D_Logic.h"
 #include <stdio.h>
 

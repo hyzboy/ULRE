@@ -7,7 +7,7 @@
 ///
 /// 当 ShaderLibrary/modules/ 中新增模块时，只需在此更新对应的映射表即可。
 
-#include<hgl/graph/mtl/FixedMaterialDef.h>
+#include<hgl/shadergen/FixedMaterialDef.h>
 
 namespace hgl::graph::mtl{
 

@@ -1,5 +1,5 @@
-#include <hgl/graph/mtl/BuiltinHelpers.h>
-#include <hgl/graph/mtl/ShaderComposition.h>
+#include <hgl/shadergen/BuiltinHelpers.h>
+#include <hgl/shadergen/ShaderComposition.h>
 #include <cstring>
 #include <cstdlib>
 

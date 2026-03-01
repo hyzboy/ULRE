@@ -1,6 +1,6 @@
-#include <hgl/graph/mtl/ShaderComposition.h>
-#include <hgl/graph/mtl/ShaderComposition_Examples.h>
-#include <hgl/graph/mtl/ShaderLogic.h>
+#include <hgl/shadergen/ShaderComposition.h>
+#include <hgl/shadergen/ShaderComposition_Examples.h>
+#include <hgl/shadergen/ShaderLogic.h>
 #include <hgl/type/String.h>
 
 #include "ShaderGen/3d/S_BasicLit_Logic.h"

@@ -1,7 +1,7 @@
 /// ResourceLayoutGenerator.cpp — GLSL 资源布局声明生成器实现
 
-#include<hgl/graph/mtl/ResourceLayoutGenerator.h>
-#include<hgl/graph/mtl/FixedMaterialDef.h>
+#include<hgl/shadergen/ResourceLayoutGenerator.h>
+#include<hgl/shadergen/FixedMaterialDef.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/type/String.h>

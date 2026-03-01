@@ -1,5 +1,5 @@
-#include <hgl/graph/mtl/ShaderComposition.h>
-#include <hgl/graph/mtl/ShaderComposition_Examples.h>
+#include <hgl/shadergen/ShaderComposition.h>
+#include <hgl/shadergen/ShaderComposition_Examples.h>
 #include <hgl/type/String.h>
 
 #include <cstdio>

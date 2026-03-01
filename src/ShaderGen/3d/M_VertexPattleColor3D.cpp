@@ -1,4 +1,4 @@
-﻿/** 顶点调色板色要求有一个UBO结构如下
+/** 顶点调色板色要求有一个UBO结构如下
 *
 *
 *   struct ColorPattle
@@ -11,7 +11,7 @@
 
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/graph/mtl/MaterialCompiler.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include"S_VertexPattleColor3D.h"
 #include"S_VertexPattleColor3D_Logic.h"

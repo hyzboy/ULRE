@@ -1,5 +1,5 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/MaterialCompiler.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include"S_VertexColor3D.h"
 #include"S_VertexColor3D_Logic.h"
 #include<cstdio>

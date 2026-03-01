@@ -5,7 +5,7 @@
 ///   2. 从 FixedVertexEntry[] 设置顶点输入
 ///   3. 使用 ShaderPermutationKey 的宏前缀编译 GLSL + 设置 MI 代码
 
-#include <hgl/graph/mtl/MaterialCompiler.h>
+#include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderDescriptorInfo.h>

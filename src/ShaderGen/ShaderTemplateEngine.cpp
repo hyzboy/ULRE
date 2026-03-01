@@ -1,7 +1,7 @@
 /// ShaderTemplateEngine.cpp — Shader 模板渲染引擎实现
 
 #include <hgl/shadergen/ShaderTemplateEngine.h>
-#include <hgl/graph/mtl/FixedMaterialDef.h>
+#include <hgl/shadergen/FixedMaterialDef.h>
 #include <hgl/log/Log.h>
 
 namespace hgl::graph::mtl {

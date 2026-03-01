@@ -1,8 +1,8 @@
 #pragma once
 
-#include <hgl/graph/mtl/FixedMaterialDef.h>
-#include <hgl/graph/mtl/ShaderComposition.h>
-#include <hgl/graph/mtl/ShaderLogic.h>
+#include <hgl/shadergen/FixedMaterialDef.h>
+#include <hgl/shadergen/ShaderComposition.h>
+#include <hgl/shadergen/ShaderLogic.h>
 #include <hgl/vk/VKRenderAssign.h>
 
 namespace hgl::graph::mtl {
