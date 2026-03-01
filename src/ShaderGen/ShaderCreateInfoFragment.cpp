@@ -1,5 +1,6 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include<string>
 
 namespace hgl{namespace graph{
 
@@ -52,20 +53,24 @@ bool ShaderCreateInfoFragment::ProcOutput()
 
     const VertexInputAttribute *o=output_list.items;
 
-        final_shader+="\n";
+    std::string block;
+    block+="\n";
 
     for(uint i=0;i<output_list.count;i++)
     {
-        final_shader+="layout(location=";
-        final_shader+=AnsiString::numberOf(i);
-        final_shader+=") out ";
-        final_shader+=GetShaderAttributeTypename(o);
-        final_shader+=" ";
-        final_shader+=o->name;
-        final_shader+=";\n";
+        block+="layout(location=";
+        const std::string location_str=std::to_string(i);
+        block+=location_str;
+        block+=") out ";
+        block+=GetShaderAttributeTypename(o);
+        block+=" ";
+        block+=o->name;
+        block+=";\n";
 
         ++o;
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }

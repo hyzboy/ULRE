@@ -15,6 +15,11 @@
 
 namespace hgl::graph::mtl {
 
+inline bool SkyCStrEq(const char *lhs,const char *rhs)
+{
+    return lhs&&rhs&&std::strcmp(lhs,rhs)==0;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SkyLight 资源注入结构（可复用到任意材质）
 //
@@ -71,7 +76,7 @@ inline void ApplySkyLightResourceInjection(
         bool exists = false;
         for (const auto &cur : descriptors_io)
         {
-            if (cur.name && entry.name && std::strcmp(cur.name, entry.name) == 0)
+            if (SkyCStrEq(cur.name, entry.name))
             {
                 exists = true;
                 break;
@@ -89,7 +94,7 @@ inline void ApplySkyLightResourceInjection(
         bool exists = false;
         for (const char *cur : fragment_resources_io)
         {
-            if (cur && name && std::strcmp(cur, name) == 0)
+            if (SkyCStrEq(cur, name))
             {
                 exists = true;
                 break;

@@ -7,6 +7,9 @@
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/type/StringList.h>
 #include<hgl/log/Log.h>
+#include <ankerl/unordered_dense.h>
+#include<string>
+#include<vector>
 
 namespace hgl{namespace graph
 {
@@ -32,20 +35,18 @@ protected:
 
 protected:
 
-    AnsiStringList define_macro_list;
-    AnsiStringList define_value_list;
-    int define_macro_max_length;
-    int define_value_max_length;
+    ankerl::unordered_dense::set<std::string> define_macro_set;
+    ankerl::unordered_dense::set<std::string> define_line_set;
 
-    AnsiString output_struct;
+    std::string output_struct;
 
-    AnsiString mi_codes;
+    std::string mi_codes;
 
-    ValueArray<const char *> user_data_list;
-    ValueArray<const char *> function_list;
-    AnsiString main_function;
+    std::vector<const char *> user_data_list;
+    std::vector<const char *> function_list;
+    std::string main_function;
 
-    AnsiString final_shader;
+    std::string final_shader;
 
     SPVData *spv_data;
 
@@ -88,7 +89,16 @@ public:
     ShaderCreateInfo();
     virtual ~ShaderCreateInfo();
 
-    bool AddDefine(const AnsiString &m,const AnsiString &v);
+    bool AddDefine(const std::string &m,const std::string &v);
+    bool AddDefine(const AnsiString &m,const AnsiString &v)
+    {
+        return AddDefine(std::string(m.c_str()?m.c_str():""),
+                         std::string(v.c_str()?v.c_str():""));
+    }
+    bool AddDefineFromStdString(const std::string &m,const std::string &v)
+    {
+        return AddDefine(m,v);
+    }
 
     void AddStruct(const AnsiString &);
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
@@ -96,21 +106,43 @@ public:
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
     bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
 
-    void AddUserData(const char *str){user_data_list.Add(str);}
-    void AddFunction(const char *str){function_list.Add(str);}
+    void AddUserData(const char *str){user_data_list.push_back(str);}
+    void AddFunction(const char *str){function_list.push_back(str);}
 
-    void SetMaterialInstance(UBODescriptor *,const AnsiString &);
-    void SetMaterialInstance(SSBODescriptor *,const AnsiString &);
+    void SetMaterialInstance(UBODescriptor *,const std::string &);
+    void SetMaterialInstance(SSBODescriptor *,const std::string &);
+    void SetMaterialInstance(UBODescriptor *ubo,const char *mi)
+    {
+        SetMaterialInstance(ubo,std::string(mi?mi:""));
+    }
+    void SetMaterialInstance(SSBODescriptor *ssbo,const char *mi)
+    {
+        SetMaterialInstance(ssbo,std::string(mi?mi:""));
+    }
+    void SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
+    {
+        SetMaterialInstance(ubo,std::string(mi.c_str()?mi.c_str():""));
+    }
+    void SetMaterialInstance(SSBODescriptor *ssbo,const AnsiString &mi)
+    {
+        SetMaterialInstance(ssbo,std::string(mi.c_str()?mi.c_str():""));
+    }
     virtual void AddMaterialInstanceOutput()=0;
 
-    void SetMain(const AnsiString &str){main_function=str;}
+    void SetMain(const std::string &str){main_function=str;}
+    void SetMain(const char *str){main_function=str?str:"";}
+    void SetMain(const AnsiString &str){main_function=str.c_str()?str.c_str():"";}
+    void SetMainFromStdString(const std::string &str)
+    {
+        main_function=str;
+    }
     void SetMain(const char *str,const int len)
     {
-        main_function.fromString(str,len);
+        main_function.assign(str?str:"",str?size_t(len):0);
     }
 
-    const AnsiString &GetOutputStruct()const{return output_struct;}
-    const AnsiString &GetShaderSource()const{return final_shader;}
+    const std::string &GetOutputStruct()const{return output_struct;}
+    const std::string &GetShaderSource()const{return final_shader;}
 
     bool CreateShader(ShaderCreateInfo *);
 

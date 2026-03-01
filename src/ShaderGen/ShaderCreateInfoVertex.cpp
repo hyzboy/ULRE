@@ -122,25 +122,28 @@ bool ShaderCreateInfoVertex::ProcSubpassInput()
     if(sil.IsEmpty())
         return(true);
 
-    final_shader+="\n";
-
     auto si=sil.GetData();
     int si_count=sil.GetCount();
 
+    std::string block;
+    block+="\n";
+
     for(int i=0;i<si_count;i++)
     {
-        final_shader+="layout(input_attachment_index=";
+        block+="layout(input_attachment_index=";
         const std::string input_attachment_index_str=std::to_string((*si)->input_attachment_index);
-        final_shader+=input_attachment_index_str.c_str();
-        final_shader+=", binding=";
+        block+=input_attachment_index_str;
+        block+=", binding=";
         const std::string binding_str=std::to_string((*si)->binding);
-        final_shader+=binding_str.c_str();
-        final_shader+=") uniform subpassInput ";
-        final_shader+=(*si)->name;
-        final_shader+=";\n";
+        block+=binding_str;
+        block+=") uniform subpassInput ";
+        block+=(*si)->name;
+        block+=";\n";
 
         ++si;
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }
@@ -159,23 +162,25 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
         return(true);
     }
 
-    final_shader+="\n";
-
     const VertexInputAttribute *ss=input.items;
+    std::string block;
+    block+="\n";
 
     for(uint i=0;i<input.count;i++)
     {
-        final_shader+="layout(location=";
+        block+="layout(location=";
         const std::string location_str=std::to_string(ss->location);
-        final_shader+=location_str.c_str();
-        final_shader+=") in ";
-        final_shader+=GetShaderAttributeTypename(ss);
-        final_shader+=" ";
-        final_shader+=ss->name;
-        final_shader+=";\n";
+        block+=location_str;
+        block+=") in ";
+        block+=GetShaderAttributeTypename(ss);
+        block+=" ";
+        block+=ss->name;
+        block+=";\n";
 
         ++ss;
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }

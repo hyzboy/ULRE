@@ -1,4 +1,5 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include<string>
 #include"common/MFCommon.h"
 
 namespace hgl
@@ -60,8 +61,19 @@ namespace hgl
 
         bool ShaderCreateInfoGeometry::ProcLayout()
         {
-            final_shader+="layout("+input_prim+") in;\n"
-                          "layout("+output_prim+", max_vertices = "+AnsiString::numberOf(max_vertices)+") out;\n";
+            std::string block;
+            block += "layout(";
+            block += input_prim.c_str()?input_prim.c_str():"";
+            block += ") in;\n";
+
+            block += "layout(";
+            block += output_prim.c_str()?output_prim.c_str():"";
+            block += ", max_vertices = ";
+            const std::string max_vertices_str=std::to_string(max_vertices);
+            block += max_vertices_str;
+            block += ") out;\n";
+
+            final_shader += block.c_str();
 
             return(true);
         }

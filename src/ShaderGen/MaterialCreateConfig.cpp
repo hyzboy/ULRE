@@ -1,11 +1,19 @@
 ﻿#include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VertexAttrib.h>
+#include<string>
 
 namespace hgl::graph::mtl{
+
+static const char *AsCStr(const AnsiString &text)
+{
+    return text.c_str()?text.c_str():"";
+}
+
 const AnsiString MaterialCreateConfig::ToHashString()
 {
-    AnsiString hash;
+    std::string hash;
+    hash.reserve(128);
 
     char str[16];
     char *p=str;
@@ -39,7 +47,8 @@ const AnsiString MaterialCreateConfig::ToHashString()
     if(private_shader_buffer_source_count>0)
     {
         hash+="_PS";
-        hash+=AnsiString::numberOf(private_shader_buffer_source_count);
+        const std::string pss_count_str=std::to_string(private_shader_buffer_source_count);
+        hash+=pss_count_str;
 
         for(uint32 i=0;i<private_shader_buffer_source_count;++i)
         {
@@ -53,12 +62,12 @@ const AnsiString MaterialCreateConfig::ToHashString()
         }
     }
 
-    return hash;
+    return AnsiString(hash.c_str());
 }
 
 const AnsiString Material2DCreateConfig::ToHashString()
 {
-    AnsiString hash=MaterialCreateConfig::ToHashString();
+    std::string hash=AsCStr(MaterialCreateConfig::ToHashString());
 
     hash+=GetCoordinateSystem2DName(coordinate_system);
 
@@ -68,12 +77,12 @@ const AnsiString Material2DCreateConfig::ToHashString()
     hash+="_";
     hash+=GetVertexAttribName(&position_format);
 
-    return hash;
+    return AnsiString(hash.c_str());
 }
 
 const AnsiString Material3DCreateConfig::ToHashString()
 {
-    AnsiString hash=MaterialCreateConfig::ToHashString();
+    std::string hash=AsCStr(MaterialCreateConfig::ToHashString());
 
     if(camera)
         hash+="_Camera";
@@ -91,6 +100,6 @@ const AnsiString Material3DCreateConfig::ToHashString()
     hash+="_";
     hash+=GetVertexAttribName(&position_format);
 
-    return hash;
+    return AnsiString(hash.c_str());
 }
 }//namespace hgl::graph::mtl

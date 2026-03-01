@@ -2,11 +2,28 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<cstring>
+#include<cstdio>
+#include<string>
 
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
 
 namespace hgl{namespace graph{
+
+static bool CStrEq(const char *lhs,const char *rhs)
+{
+    return lhs&&rhs&&std::strcmp(lhs,rhs)==0;
+}
+
+static const char *AsCStr(const AnsiString &text)
+{
+    return text.c_str()?text.c_str():"";
+}
+
+static const char *AsCStr(const std::string &text)
+{
+    return text.c_str();
+}
 
 ShaderCreateInfo::ShaderCreateInfo()
 {
@@ -14,9 +31,6 @@ ShaderCreateInfo::ShaderCreateInfo()
     mdi=nullptr;
 
     spv_data=nullptr;
-
-    define_macro_max_length=0;
-    define_value_max_length=0;
 }
 
 void ShaderCreateInfo::Init(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m)
@@ -31,73 +45,34 @@ ShaderCreateInfo::~ShaderCreateInfo()
         FreeSPVData(spv_data);
 }
 
-bool ShaderCreateInfo::AddDefine(const AnsiString &m,const AnsiString &v)
+bool ShaderCreateInfo::AddDefine(const std::string &m,const std::string &v)
 {
-    if(define_macro_list.Find(m)!=-1)
-        return(false);
+    if(!define_macro_set.emplace(m).second)
+        return false;
 
-    define_macro_list.Add(m);
-    define_value_list.Add(v);
+    std::string line;
+    line.reserve(10u+m.size()+v.size());
+    line+="#define ";
+    line+=m;
+    line+=" ";
+    line+=v;
+    line+="\n";
 
-    if(m.Length()>define_macro_max_length)
-        define_macro_max_length=m.Length();
-
-    if(v.Length()>define_value_max_length)
-        define_value_max_length=v.Length();
+    define_line_set.emplace(std::move(line));
 
     return(true);
 }
 
 bool ShaderCreateInfo::ProcDefine()
 {
-    const size_t count=define_macro_list.GetCount();
-
-    if(count==0)return(true);
+    if(define_line_set.empty())return(true);
 
     final_shader+="\n";
 
-    constexpr const char GLSL_DEFINE_FRONT[]="#define ";
-    constexpr const uint GLSL_DEFINE_FRONT_LENGTH=sizeof(GLSL_DEFINE_FRONT)-1;
-
-    const uint32_t total_length=GLSL_DEFINE_FRONT_LENGTH+define_macro_max_length+define_value_max_length+3;
-
-    char *tmp=new char[total_length];
-    char *p;
-
-    memcpy(tmp,GLSL_DEFINE_FRONT,GLSL_DEFINE_FRONT_LENGTH);
-
-    uint macro_length;
-    uint value_length;
-
-    AnsiString m;
-    AnsiString v;
-
-    for(size_t i=0;i<count;i++)
+    for(const auto &line:define_line_set)
     {
-        m=define_macro_list.GetString(i);
-        v=define_value_list.GetString(i);
-
-        macro_length=m.Length();
-        value_length=v.Length();
-
-        p=tmp+GLSL_DEFINE_FRONT_LENGTH;
-
-        memcpy(p,m.c_str(),macro_length);
-
-        p+=macro_length;
-
-        *p=' ';
-        ++p;
-
-        memcpy(p,v.c_str(),value_length);
-
-        p+=value_length;
-        *p='\n';
-
-        final_shader.Strcat(tmp,p-tmp+1);
+        final_shader+=line.c_str();
     }
-
-    delete[] tmp;
 
     return(true);
 }
@@ -128,7 +103,7 @@ bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSam
     return GetSDI()->AddTextureSampler(type,sd);
 }
 
-void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
+void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const std::string &mi)
 {
     AddUBO(DescriptorSetType::PerMaterial,ubo);
     AddStruct(mtl::MaterialInstanceStruct);
@@ -138,7 +113,7 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
     mi_codes=mi;
 }
 
-void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo,const AnsiString &mi)
+void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo,const std::string &mi)
 {
     AddSSBO(DescriptorSetType::PerMaterial,ssbo);
     AddStruct(mtl::MaterialInstanceStruct);
@@ -153,16 +128,16 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
     if(!last_sc)
         return(false);
 
-    AnsiString last_output=last_sc->GetOutputStruct();
+    const std::string &last_output=last_sc->GetOutputStruct();
 
-    if(last_output.IsEmpty())
+    if(last_output.empty())
     {
         final_shader+="\n";
         return(true);
     }
 
     final_shader+="\nlayout(location=0) in ";
-    final_shader+=last_output;
+    final_shader+=AsCStr(last_output);
 
     if(shader_stage==ShaderStage::Geometry)
         final_shader+="Input[];\n";
@@ -174,7 +149,7 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
 
 bool ShaderCreateInfo::ProcOutput()
 {
-    output_struct.Clear();
+    output_struct.clear();
 
     if(IsEmptyOutput())
         return(true);
@@ -182,12 +157,14 @@ bool ShaderCreateInfo::ProcOutput()
     output_struct=GetShaderStageName((VkShaderStageFlagBits)shader_stage);
     output_struct+="_Output\n{\n";
 
-    GetOutputStrcutString(output_struct);
+    AnsiString output_fields;
+    GetOutputStrcutString(output_fields);
+    output_struct+=AsCStr(output_fields);
 
     output_struct+="}";
 
     final_shader+="\nlayout(location=0) out ";
-    final_shader+=output_struct;
+    final_shader+=AsCStr(output_struct);
     final_shader+="Output;\n";
 
     return(true);
@@ -198,30 +175,37 @@ bool ShaderCreateInfo::ProcStruct()
     const AnsiStringList &struct_list=GetSDI()->GetStructList();
 
     AnsiString codes;
+    std::string block;
 
     for(auto str:struct_list)
     {
         if(!mdi->GetStruct(*str,codes))
             return(false);
 
-        final_shader+="\nstruct ";
-        final_shader+=*str;
-        final_shader+="\n{";
-        final_shader+=codes;
-        final_shader+="};\n";
+        block+="\nstruct ";
+        block+=AsCStr(*str);
+        block+="\n{";
+        block+=AsCStr(codes);
+        block+="};\n";
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }
 
 bool ShaderCreateInfo::ProcMI()
 {
-    if(mi_codes.IsEmpty())
+    if(mi_codes.empty())
         return(true);
 
-    final_shader+="\nstruct MaterialInstance\n{\n";
-    final_shader+=mi_codes;
-    final_shader+="\n};\n";
+    std::string block;
+    block.reserve(mi_codes.size()+32u);
+    block+="\nstruct MaterialInstance\n{\n";
+    block+=mi_codes;
+    block+="\n};\n";
+
+    final_shader+=block.c_str();
     return(true);
 }
 
@@ -233,33 +217,37 @@ bool ShaderCreateInfo::ProcUBO()
 
     if(count<=0)return(true);
 
-    final_shader+="\n";
-
     auto ubo=ubo_list.GetData();
 
     AnsiString struct_codes;
+    std::string block;
+    block+="\n";
 
     for(int i=0;i<count;i++)
     {
-        final_shader+="layout(set=";
-        final_shader+=AnsiString::numberOf((*ubo)->set);
-        final_shader+=",binding=";
-        final_shader+=AnsiString::numberOf((*ubo)->binding);
-        final_shader+=") uniform ";
-        final_shader+=(*ubo)->type;
-        final_shader+="\n{";
+        block+="layout(set=";
+        const std::string ubo_set_str=std::to_string((*ubo)->set);
+        block+=ubo_set_str;
+        block+=",binding=";
+        const std::string ubo_binding_str=std::to_string((*ubo)->binding);
+        block+=ubo_binding_str;
+        block+=") uniform ";
+        block+=AsCStr((*ubo)->type);
+        block+="\n{";
 
         if(!mdi->GetStruct((*ubo)->type,struct_codes))
             return(false);
 
-        final_shader+=struct_codes;
+        block+=AsCStr(struct_codes);
 
-        final_shader+="\n}";
-        final_shader+=(*ubo)->name;
-        final_shader+=";\n";
+        block+="\n}";
+        block+=(*ubo)->name;
+        block+=";\n";
 
         ++ubo;
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }
@@ -272,37 +260,41 @@ bool ShaderCreateInfo::ProcSSBO()
 
     if(count<=0)return(true);
 
-    final_shader+="\n";
-
     auto ssbo=ssbo_list.GetData();
 
     AnsiString struct_codes;
+    std::string block;
+    block+="\n";
 
     for(int i=0;i<count;i++)
     {
-        final_shader+="layout(set=";
-        final_shader+=AnsiString::numberOf((*ssbo)->set);
-        final_shader+=",binding=";
-        final_shader+=AnsiString::numberOf((*ssbo)->binding);
+        block+="layout(set=";
+        const std::string ssbo_set_str=std::to_string((*ssbo)->set);
+        block+=ssbo_set_str;
+        block+=",binding=";
+        const std::string ssbo_binding_str=std::to_string((*ssbo)->binding);
+        block+=ssbo_binding_str;
         const char *ssbo_name = (*ssbo)->name;
-        if(ssbo_name && (std::strcmp(ssbo_name,"l2w")==0 || std::strcmp(ssbo_name,"mtl")==0))
-            final_shader+=") readonly buffer ";
+        if(CStrEq(ssbo_name,"l2w")||CStrEq(ssbo_name,"mtl"))
+            block+=") readonly buffer ";
         else
-            final_shader+=") buffer ";
-        final_shader+=(*ssbo)->type;
-        final_shader+="\n{";
+            block+=") buffer ";
+        block+=AsCStr((*ssbo)->type);
+        block+="\n{";
 
         if(!mdi->GetStruct((*ssbo)->type,struct_codes))
             return(false);
 
-        final_shader+=struct_codes;
+        block+=AsCStr(struct_codes);
 
-        final_shader+="\n}";
-        final_shader+=(*ssbo)->name;
-        final_shader+=";\n";
+        block+="\n}";
+        block+=(*ssbo)->name;
+        block+=";\n";
 
         ++ssbo;
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }
@@ -315,24 +307,27 @@ bool ShaderCreateInfo::ProcConstantID()
 
     if(count<=0)return(true);
 
-    final_shader+="\n";
-
     auto const_data=const_list.GetData();
+    std::string block;
+    block+="\n";
 
     for(int i=0;i<count;i++)
     {
-        final_shader+="layout(constant_id=";
-        final_shader+=AnsiString::numberOf((*const_data)->constant_id);
-        final_shader+=") const ";
-        final_shader+=(*const_data)->type;
-        final_shader+=" ";
-        final_shader+=(*const_data)->name;
-        final_shader+="=";
-        final_shader+=(*const_data)->value;
-        final_shader+=";\n";
+        block+="layout(constant_id=";
+        const std::string const_id_str=std::to_string((*const_data)->constant_id);
+        block+=const_id_str;
+        block+=") const ";
+        block+=AsCStr((*const_data)->type);
+        block+=" ";
+        block+=AsCStr((*const_data)->name);
+        block+="=";
+        block+=AsCStr((*const_data)->value);
+        block+=";\n";
 
         ++const_data;
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }
@@ -345,31 +340,35 @@ bool ShaderCreateInfo::ProcSampler()
 
     if(count<=0)return(true);
 
-    final_shader+="\n";
-
     auto sampler=texture_sampler_list.GetData();
+    std::string block;
+    block+="\n";
 
     for(int i=0;i<count;i++)
     {
-        final_shader+="layout(set=";
-        final_shader+=AnsiString::numberOf((*sampler)->set);
-        final_shader+=",binding=";
-        final_shader+=AnsiString::numberOf((*sampler)->binding);
-        final_shader+=") uniform ";
-        final_shader+=(*sampler)->type;
-        final_shader+=" ";
-        final_shader+=(*sampler)->name;
-        final_shader+=";\n";
+        block+="layout(set=";
+        const std::string sampler_set_str=std::to_string((*sampler)->set);
+        block+=sampler_set_str;
+        block+=",binding=";
+        const std::string sampler_binding_str=std::to_string((*sampler)->binding);
+        block+=sampler_binding_str;
+        block+=") uniform ";
+        block+=AsCStr((*sampler)->type);
+        block+=" ";
+        block+=(*sampler)->name;
+        block+=";\n";
 
         ++sampler;
     }
+
+    final_shader+=block.c_str();
 
     return(true);
 }
 
 bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 {
-    if(main_function.IsEmpty())
+    if(main_function.empty())
         return(false);
 
     final_shader=R"(
@@ -424,11 +423,15 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 //)";
 
     {
-        char ss_hex_str[9];
+        char ss_hex_str[16];
+        std::snprintf(ss_hex_str,sizeof(ss_hex_str),"%08X",uint(shader_stage));
 
-        final_shader+="\n#define ShaderStage         0x";
-        final_shader+=utos(ss_hex_str,8,uint(shader_stage),16);
-        final_shader+="\n";
+        std::string header_ext;
+        header_ext.reserve(40);
+        header_ext += "\n#define ShaderStage         0x";
+        header_ext += ss_hex_str;
+        header_ext += "\n";
+        final_shader += header_ext.c_str();
     }
 
     ProcDefine();
@@ -454,19 +457,31 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     ProcOutput();
 
-    for(const char *str:user_data_list)
-        final_shader+=str;
+    {
+        std::string tail;
 
-    for(const char *str:function_list)
-        final_shader+=str;
+        for(const char *str:user_data_list)
+        {
+            if(str)
+                tail += str;
+        }
 
-    final_shader+="\n";
-    final_shader+=main_function;
+        for(const char *str:function_list)
+        {
+            if(str)
+                tail += str;
+        }
+
+        tail += "\n";
+        tail += main_function;
+
+        final_shader += tail.c_str();
+    }
 
 #ifdef _DEBUG
 
     //想办法存成文件或是输出行号，以方便出错了调试
-    LogInfo(AnsiString(GetShaderStageName((VkShaderStageFlagBits)shader_stage))+" shader: \n"+final_shader);
+    LogInfo(AnsiString(GetShaderStageName((VkShaderStageFlagBits)shader_stage))+" shader: \n"+AnsiString(final_shader.c_str()));
 
 #endif//_DEBUG
 
