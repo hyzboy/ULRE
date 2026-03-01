@@ -8,7 +8,8 @@ namespace hgl::graph::mtl{
 
 /// 宏名称约定
 /// -----------
-/// ULRE_SKYLIGHT_MODEL   Simple→1  IBL→2  SphericalHarmonics→4
+/// ULRE_SKYLIGHT_MODEL   映射关系见 SkyLight.h SkyLightAmbientModelToGLSL()
+///                       Simple→1  IBL→2  SphericalHarmonics→4
 /// LIGHT_MODEL     0=UNLIT  1=LAMBERT  2=BLINN_PHONG  3=PBR_LITE  4=PBR_FULL  5=CEL_SHADING
 /// SPECULAR_SPLIT  0=COMBINED  1=SEPARATED
 /// SHADOW_MODE     0=NONE  1=PCF  2=PCSS
@@ -27,12 +28,8 @@ namespace hgl::graph::mtl{
 
 void ShaderPermutationKey::AppendGLSLDefines(AnsiString &out) const
 {
-    // SkyLightAmbientModel 到 ULRE_SKYLIGHT_MODEL_* 数字的映射表
-    // Simple=0 →1(SIMPLE)  IBL=1 →2(IBL)  SphericalHarmonics=2 →4(SH)
-    static const uint32_t SKYLIGHT_GLSL_VALUES[] = { 1, 2, 4 };
-    const uint32_t glsl_skylight = SKYLIGHT_GLSL_VALUES[
-        unsigned(ambient) < sizeof(SKYLIGHT_GLSL_VALUES)/sizeof(SKYLIGHT_GLSL_VALUES[0])
-        ? unsigned(ambient) : 0];
+    // SkyLightAmbientModel → ULRE_SKYLIGHT_MODEL_* 数值转换由 SkyLight.h 集中定义
+    const uint32_t glsl_skylight = SkyLightAmbientModelToGLSL(ambient);
 
     char buf[256];
     snprintf(buf,sizeof(buf),

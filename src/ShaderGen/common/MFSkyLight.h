@@ -1,11 +1,14 @@
-#pragma once
+﻿#pragma once
 
 // 统一 SkyLight 输入与可扩展天光模型选择。
 // 约定：所有需要天光输入的材质都通过本块提供的函数读取。
-//
-// 可在材质侧通过 define 覆盖：
-//   ULRE_SKYLIGHT_MODEL = ULRE_SKYLIGHT_MODEL_SIMPLE / IBL / ENVMAP / SH
+// C++ 排列枚举与映射常量见 SkyLight.h（公共头）。
 
+#include<hgl/graph/mtl/SkyLight.h>   // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
+
+/// ULRE_SKYLIGHT_GLSL_COMMON — 在每个需要天光输入的材质 shader 首部注入此字符串
+/// 提供 GLSL 侧模型枚举宏常量、访问宏以及公共辅助函数
+/// 注意：C++ 侧的对应数值定义在 SkyLight.h SKYLIGHT_GLSL_* 常量中，两侧必须保持同步
 #define ULRE_SKYLIGHT_GLSL_COMMON R"(
 #define ULRE_SKYLIGHT_MODEL_SIMPLE  1
 #define ULRE_SKYLIGHT_MODEL_IBL     2

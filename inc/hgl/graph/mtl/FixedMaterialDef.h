@@ -24,11 +24,11 @@
 ///   - 新材质优先使用 FixedMaterialDef
 ///   - 旧材质逐步迁移；全部迁移完成后删除旧体系
 
+#include<hgl/graph/mtl/SkyLight.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<hgl/type/String.h>
-#include<stdint.h>
 
 namespace hgl::graph::mtl{
 
@@ -75,16 +75,7 @@ struct FixedVertexEntry
 // ShaderPermutationKey 是所有轴的枚举値组合，唯一确定一个 SPV 变体。
 // ─────────────────────────────────────────────────────────────────────────────────
 
-/// 天光环境光模型轴
-/// 直接对应 GLSL 端it ULRE_SKYLIGHT_MODEL_* 常量：Simple→1 / IBL→2 / SphericalHarmonics→4
-enum class SkyLightAmbientModel : uint8
-{
-    Simple              = 0,    ///<简单半球环境光（默认）
-    IBL                 = 1,    ///<基于图像的光照（IBL，需要 CubeMap）
-    SphericalHarmonics  = 2,    ///<球谐近似（低频 IBL，无 CubeMap lookup）
-
-    ENUM_CLASS_RANGE(Simple, SphericalHarmonics)
-};
+// SkyLightAmbientModel 定义在 SkyLight.h（通过文件头 include 已引入）
 
 /// 直接光照模型轴
 enum class LightModel : uint8
