@@ -29,11 +29,6 @@ class StagedBuffer : public IGPUBuffer
     VkDeviceSize        buffer_size;
     VkBufferUsageFlags  usage;
 
-    bool                is_dirty;
-    VkDeviceSize        dirty_offset;
-    VkDeviceSize        dirty_size;
-    std::vector<DirtyRange> dirty_ranges;
-
     // Tracks the last Map() range so Unmap() can dirty only what was actually mapped
     VkDeviceSize        mapped_offset = 0;
     VkDeviceSize        mapped_size   = 0;
@@ -60,7 +55,7 @@ public:
 
     void   MarkDirty  (VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE) override;
     void   MarkDirtyRanges(const DirtyRange *ranges, size_t count) override;
-    bool   IsDirty    () const override { return is_dirty; }
+    bool   IsDirty    () const override { return HasTrackedDirty(); }
     void   ClearDirty () override;
 
     /** Called by RenderBufferUploadSystem each frame for dirty buffers */

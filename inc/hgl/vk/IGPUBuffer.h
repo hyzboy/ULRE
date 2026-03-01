@@ -3,6 +3,8 @@
 #include<hgl/vk/VK.h>
 #include<cstddef>
 #include<string>
+#include<vector>
+#include<algorithm>
 
 namespace hgl::graph{
 
@@ -26,12 +28,6 @@ namespace hgl::graph{
  */
 class IGPUBuffer
 {
-protected:
-    const std::string buffer_name;  // e.g. "PlaneGrid:Position", set once at construction
-
-    IGPUBuffer() = delete;
-    explicit IGPUBuffer(const std::string &name) : buffer_name(name) {}
-
 public:
     struct DirtyRange
     {
@@ -39,6 +35,110 @@ public:
         VkDeviceSize size   = 0;
     };
 
+protected:
+    const std::string buffer_name;  // e.g. "PlaneGrid:Position", set once at construction
+
+    IGPUBuffer() = delete;
+    explicit IGPUBuffer(const std::string &name) : buffer_name(name) {}
+
+protected:
+    bool tracked_dirty = false;
+    VkDeviceSize tracked_dirty_offset = 0;
+    VkDeviceSize tracked_dirty_size = 0;
+    std::vector<DirtyRange> tracked_dirty_ranges;
+
+    static bool NormalizeRange(const VkDeviceSize buffer_size, VkDeviceSize &offset, VkDeviceSize &size)
+    {
+        if (offset >= buffer_size)
+            return false;
+
+        if (size == VK_WHOLE_SIZE || offset + size > buffer_size)
+            size = buffer_size - offset;
+
+        return size > 0;
+    }
+
+    static void MergeRanges(std::vector<DirtyRange> &ranges)
+    {
+        if (ranges.size() <= 1)
+            return;
+
+        std::sort(ranges.begin(), ranges.end(), [](const DirtyRange &a, const DirtyRange &b)
+        {
+            return a.offset < b.offset;
+        });
+
+        size_t write_index = 0;
+        for (size_t read_index = 1; read_index < ranges.size(); ++read_index)
+        {
+            auto &last = ranges[write_index];
+            const auto &cur = ranges[read_index];
+
+            const VkDeviceSize last_end = last.offset + last.size;
+            const VkDeviceSize cur_end = cur.offset + cur.size;
+
+            if (cur.offset <= last_end)
+            {
+                if (cur_end > last_end)
+                    last.size = cur_end - last.offset;
+            }
+            else
+            {
+                ++write_index;
+                ranges[write_index] = cur;
+            }
+        }
+
+        ranges.resize(write_index + 1);
+    }
+
+    void TrackDirtyRange(const VkDeviceSize buffer_size, VkDeviceSize offset, VkDeviceSize size)
+    {
+        if (!NormalizeRange(buffer_size, offset, size))
+            return;
+
+        if (!tracked_dirty)
+        {
+            tracked_dirty = true;
+            tracked_dirty_offset = offset;
+            tracked_dirty_size = size;
+        }
+        else
+        {
+            const VkDeviceSize end1 = tracked_dirty_offset + tracked_dirty_size;
+            const VkDeviceSize end2 = offset + size;
+
+            tracked_dirty_offset = (std::min)(tracked_dirty_offset, offset);
+            tracked_dirty_size = (std::max)(end1, end2) - tracked_dirty_offset;
+        }
+
+        tracked_dirty_ranges.push_back({offset, size});
+        MergeRanges(tracked_dirty_ranges);
+    }
+
+    void TrackDirtyRanges(const VkDeviceSize buffer_size, const DirtyRange *ranges, const size_t count)
+    {
+        if (!ranges || count == 0)
+            return;
+
+        for (size_t i = 0; i < count; ++i)
+            TrackDirtyRange(buffer_size, ranges[i].offset, ranges[i].size);
+    }
+
+    bool HasTrackedDirty() const { return tracked_dirty; }
+    VkDeviceSize GetTrackedDirtyOffset() const { return tracked_dirty_offset; }
+    VkDeviceSize GetTrackedDirtySize() const { return tracked_dirty_size; }
+    const std::vector<DirtyRange>& GetTrackedDirtyRanges() const { return tracked_dirty_ranges; }
+
+    void ClearTrackedDirty()
+    {
+        tracked_dirty = false;
+        tracked_dirty_offset = 0;
+        tracked_dirty_size = 0;
+        tracked_dirty_ranges.clear();
+    }
+
+public:
     virtual ~IGPUBuffer() = default;
 
     const std::string &GetBufferName() const { return buffer_name; }
