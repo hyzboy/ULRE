@@ -329,12 +329,6 @@ public:
             }
         }
 
-        // === 让TransformSystem更新所有movable transform ===
-        if (auto transform_system = ecs_world->GetSystem<TransformSystem>())
-        {
-            transform_system->Update(delta_time);
-        }
-
         WorkObject::Tick(delta_time);
     }
 };
