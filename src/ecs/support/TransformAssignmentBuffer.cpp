@@ -103,6 +103,16 @@ namespace hgl::ecs
 
             return result;
         }
+
+        static void RebuildTrackedDirtyRanges(graph::IGPUBuffer *gpu_buffer,
+                                              const std::vector<graph::IGPUBuffer::DirtyRange> &ranges)
+        {
+            if (!gpu_buffer || ranges.empty())
+                return;
+
+            gpu_buffer->ClearDirty();
+            gpu_buffer->MarkDirtyRanges(ranges.data(), ranges.size());
+        }
     }
 
     std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
@@ -284,39 +294,58 @@ namespace hgl::ecs
         if (merged_ranges.empty())
             return;
 
+        uint32_t min_first = std::numeric_limits<uint32_t>::max();
+        uint32_t max_last = 0;
+        for (const auto &range : merged_ranges)
+        {
+            const uint32_t first = static_cast<uint32_t>(range.first);
+            const uint32_t last = static_cast<uint32_t>(range.last);
+            min_first = hgl_min(min_first, first);
+            max_last = hgl_max(max_last, last);
+        }
+
+        if (min_first == std::numeric_limits<uint32_t>::max() || max_last < min_first)
+            return;
+
+        const VkDeviceSize span_logical_first = static_cast<VkDeviceSize>(kFirstObjectL2WSlot + min_first);
+        const VkDeviceSize span_matrix_count = static_cast<VkDeviceSize>(max_last - min_first + 1);
+        const VkDeviceSize span_offset_bytes = sizeof(math::Matrix4f) * span_logical_first;
+        const VkDeviceSize span_size_bytes = sizeof(math::Matrix4f) * span_matrix_count;
+
+        math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
+        if (!mapped)
+            return;
+
         std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
         flush_ranges.reserve(merged_ranges.size());
         VkDeviceSize total_written_bytes = 0;
 
-        std::vector<math::Matrix4f> temp;
         for (const auto &range : merged_ranges)
         {
             const uint32_t first = static_cast<uint32_t>(range.first);
             const uint32_t last = static_cast<uint32_t>(range.last);
             const uint32_t count = last - first + 1;
-
-            temp.resize(count);
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const auto handle = handles[first + i];
-                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
-                temp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            }
-
             const VkDeviceSize logical_index = static_cast<VkDeviceSize>(kFirstObjectL2WSlot + first);
             const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * logical_index;
             const VkDeviceSize byte_size = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(count);
 
-            if (!tbuf->Write(temp.data(), byte_offset, byte_size))
-                continue;
+            math::Matrix4f *dst = mapped + (logical_index - span_logical_first);
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const auto handle = handles[first + i];
+                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+                dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            }
 
             flush_ranges.push_back({byte_offset, byte_size});
             total_written_bytes += byte_size;
         }
 
+        tbuf->Unmap();
+
         if (!flush_ranges.empty())
         {
-            transform_buffer->FlushRanges(flush_ranges.data(), flush_ranges.size());
+            RebuildTrackedDirtyRanges(tbuf, flush_ranges);
 
             GLogInfo("[TransformAssignmentBuffer] Static L2W flush: ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
                       static_cast<uint32_t>(flush_ranges.size()),
@@ -352,39 +381,58 @@ namespace hgl::ecs
         if (merged_ranges.empty())
             return;
 
+        uint32_t min_first = std::numeric_limits<uint32_t>::max();
+        uint32_t max_last = 0;
+        for (const auto &range : merged_ranges)
+        {
+            const uint32_t first = static_cast<uint32_t>(range.first);
+            const uint32_t last = static_cast<uint32_t>(range.last);
+            min_first = hgl_min(min_first, first);
+            max_last = hgl_max(max_last, last);
+        }
+
+        if (min_first == std::numeric_limits<uint32_t>::max() || max_last < min_first)
+            return;
+
+        const VkDeviceSize span_logical_first = static_cast<VkDeviceSize>(base_index + min_first);
+        const VkDeviceSize span_matrix_count = static_cast<VkDeviceSize>(max_last - min_first + 1);
+        const VkDeviceSize span_offset_bytes = sizeof(math::Matrix4f) * span_logical_first;
+        const VkDeviceSize span_size_bytes = sizeof(math::Matrix4f) * span_matrix_count;
+
+        math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
+        if (!mapped)
+            return;
+
         std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
         flush_ranges.reserve(merged_ranges.size());
         VkDeviceSize total_written_bytes = 0;
 
-        std::vector<math::Matrix4f> temp;
         for (const auto &range : merged_ranges)
         {
             const uint32_t first = static_cast<uint32_t>(range.first);
             const uint32_t last = static_cast<uint32_t>(range.last);
             const uint32_t count = last - first + 1;
-
-            temp.resize(count);
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const auto handle = handles[first + i];
-                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
-                temp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            }
-
             const VkDeviceSize logical_index = static_cast<VkDeviceSize>(base_index + first);
             const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * logical_index;
             const VkDeviceSize byte_size = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(count);
 
-            if (!tbuf->Write(temp.data(), byte_offset, byte_size))
-                continue;
+            math::Matrix4f *dst = mapped + (logical_index - span_logical_first);
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const auto handle = handles[first + i];
+                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+                dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            }
 
             flush_ranges.push_back({byte_offset, byte_size});
             total_written_bytes += byte_size;
         }
 
+        tbuf->Unmap();
+
         if (!flush_ranges.empty())
         {
-            transform_buffer->FlushRanges(flush_ranges.data(), flush_ranges.size());
+            RebuildTrackedDirtyRanges(tbuf, flush_ranges);
 
             GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
                       static_count,
@@ -621,6 +669,247 @@ namespace hgl::ecs
         if(tbuf) tbuf->Unmap();
     }
 
+    void TransformAssignmentBuffer::SplitStaticAndMovableItems(const std::vector<RenderItem*>& items,
+                                                               std::vector<RenderItem*>& static_items,
+                                                               std::vector<RenderItem*>& movable_items) const
+    {
+        static_items.clear();
+        movable_items.clear();
+
+        static_items.reserve(items.size());
+        movable_items.reserve(items.size());
+
+        for (auto *item : items)
+        {
+            if (!item)
+                continue;
+
+            auto transform = item->GetTransform();
+            if (transform && !transform->IsMovable())
+                static_items.push_back(item);
+            else
+                movable_items.push_back(item);
+        }
+    }
+
+    void TransformAssignmentBuffer::SortStaticItemsByHandle(std::vector<RenderItem*>& static_items) const
+    {
+        std::sort(static_items.begin(), static_items.end(),
+            [](const RenderItem* a, const RenderItem* b)
+            {
+                const auto at = a ? a->GetTransform() : nullptr;
+                const auto bt = b ? b->GetTransform() : nullptr;
+                const auto ah = at ? at->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
+                const auto bh = bt ? bt->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
+
+                if (ah == TransformDataStorage::INVALID_HANDLE && bh == TransformDataStorage::INVALID_HANDLE)
+                    return false;
+                if (ah == TransformDataStorage::INVALID_HANDLE)
+                    return false;
+                if (bh == TransformDataStorage::INVALID_HANDLE)
+                    return true;
+                return ah < bh;
+            });
+    }
+
+    void TransformAssignmentBuffer::AssignTransformIndices(std::vector<RenderItem*>& static_items,
+                                                           std::vector<RenderItem*>& movable_items,
+                                                           const uint32_t ring_base) const
+    {
+        uint32_t transform_index = kFirstObjectL2WSlot;
+        for (auto *item : static_items)
+        {
+            if (item)
+                item->transform_index = transform_index++;
+        }
+
+        uint32_t dynamic_index = 0;
+        for (auto *item : movable_items)
+        {
+            if (item)
+                item->transform_index = ring_base + dynamic_index++;
+        }
+    }
+
+    bool TransformAssignmentBuffer::WriteAllLocalToWorld(const std::vector<RenderItem*>& static_items,
+                                                         const std::vector<RenderItem*>& movable_items,
+                                                         const uint32_t static_count,
+                                                         const uint32_t dynamic_count,
+                                                         const uint32_t total_count)
+    {
+        auto *wbuf = transform_buffer ? transform_buffer->GetGPUBuffer() : nullptr;
+        math::Matrix4f* l2wp = wbuf ? (math::Matrix4f*)wbuf->Map(0, wbuf->GetSize()) : nullptr;
+        if (!l2wp)
+        {
+            GLogWarning("[TransformAssignmentBuffer::WriteItems] L2W map failed: total=%u bytes=%llu",
+                        total_count,
+                        wbuf ? static_cast<unsigned long long>(wbuf->GetSize()) : 0ULL);
+            return false;
+        }
+
+        for (auto *item : static_items)
+        {
+            if (!item)
+                continue;
+
+            const uint32_t idx = item->transform_index;
+            math::Matrix4f l2w;
+            GetStorageWorldMatrix(item, l2w);
+            l2wp[idx] = l2w;
+        }
+
+        for (auto *item : movable_items)
+        {
+            if (!item)
+                continue;
+
+            const uint32_t idx = item->transform_index;
+            math::Matrix4f l2w;
+            GetStorageWorldMatrix(item, l2w);
+            l2wp[idx] = l2w;
+        }
+
+        if (wbuf)
+            wbuf->Unmap();
+
+        GLogInfo("[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d",
+                  static_count,
+                  dynamic_count,
+                  total_count,
+                  static_cast<unsigned long long>(wbuf->GetSize()),
+                  wbuf->IsDirty() ? 1 : 0);
+
+        std::fprintf(stderr,
+                     "[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d\n",
+                     static_count,
+                     dynamic_count,
+                     total_count,
+                     static_cast<unsigned long long>(wbuf->GetSize()),
+                     wbuf->IsDirty() ? 1 : 0);
+
+        return true;
+    }
+
+    bool TransformAssignmentBuffer::EnsureTransformVABCapacity(const size_t item_count)
+    {
+        if (!transform_vab)
+        {
+            node_count = power_to_2(item_count);
+        }
+        else if (node_count < item_count)
+        {
+            node_count = power_to_2(item_count);
+            if (buffer_manager)
+            {
+                buffer_manager->Release(transform_vab);
+                transform_vab = nullptr;
+            }
+            else
+            {
+                SAFE_CLEAR(transform_vab);
+            }
+        }
+
+        if (!transform_vab)
+        {
+            graph::BufferAllocPolicy vab_policy = static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto;
+            if (buffer_manager)
+            {
+                transform_vab = buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
+                transform_vab_buffer = transform_vab ? transform_vab->GetVkBuffer() : nullptr;
+
+            #ifdef _DEBUG
+                auto device = buffer_manager->GetDevice();
+                graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
+                if (du && transform_vab)
+                {
+                    du->SetBuffer(transform_vab->GetVkBuffer(), "ECS:VAB:Buffer:TransformID");
+                    du->SetDeviceMemory(transform_vab->GetVkMemory(), "ECS:VAB:Memory:TransformID");
+                }
+            #endif//_DEBUG
+            }
+        }
+
+        return transform_vab != nullptr;
+    }
+
+    bool TransformAssignmentBuffer::WriteTransformIDVAB(const std::vector<RenderItem*>& items,
+                                                        const size_t item_count,
+                                                        const uint32_t max_transform_id)
+    {
+        if (!transform_vab)
+            return false;
+
+        graph::IGPUBuffer *transform_gpu = transform_vab->GetGPUBuffer();
+        if (!transform_gpu)
+        {
+            GLogError("[TransformAssignmentBuffer::WriteItems] TransformID VAB GPU buffer is null");
+            return false;
+        }
+
+        graph::Assign::TransformID::ValueType* transform_ptr =
+            transform_gpu
+                ? (graph::Assign::TransformID::ValueType*)(transform_gpu->Map(0, transform_gpu->GetSize()))
+                : nullptr;
+
+        if (!transform_ptr)
+        {
+            GLogWarning("[TransformAssignmentBuffer::WriteItems] TransformID VAB map failed: items=%u bytes=%llu",
+                        static_cast<uint32_t>(item_count),
+                        static_cast<unsigned long long>(transform_gpu->GetSize()));
+            return false;
+        }
+
+        bool warned_overflow = false;
+
+        for (size_t i = 0; i < item_count; i++)
+        {
+            RenderItem* item = items[i];
+
+            if (!item)
+            {
+                *transform_ptr = 0;
+                ++transform_ptr;
+                continue;
+            }
+
+            const uint32_t idx = item->transform_index;
+            if (idx > max_transform_id)
+            {
+                if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
+                {
+                    std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
+                              << idx << ")" << std::endl;
+                    warned_overflow = true;
+                }
+
+                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
+            }
+            else
+            {
+                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
+            }
+            ++transform_ptr;
+        }
+
+        transform_vab->Unmap();
+
+        GLogInfo("[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u vab_capacity=%u dirty=%d vkbuf=0x%llX",
+                  static_cast<uint32_t>(item_count),
+                  node_count,
+                  transform_gpu->IsDirty() ? 1 : 0,
+                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
+
+        std::fprintf(stderr,
+                     "[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u vab_capacity=%u dirty=%d vkbuf=0x%llX\n",
+                     static_cast<uint32_t>(item_count),
+                     node_count,
+                     transform_gpu->IsDirty() ? 1 : 0,
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
+
+        return true;
+    }
+
     void TransformAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
     {
         const size_t item_count = items.size();
@@ -637,36 +926,8 @@ namespace hgl::ecs
 
         std::vector<RenderItem*> static_items;
         std::vector<RenderItem*> movable_items;
-        static_items.reserve(item_count);
-        movable_items.reserve(item_count);
-
-        for (auto *item : items)
-        {
-            if (!item)
-                continue;
-
-            auto transform = item->GetTransform();
-            if (transform && !transform->IsMovable())
-                static_items.push_back(item);
-            else
-                movable_items.push_back(item);
-        }
-
-        std::sort(static_items.begin(), static_items.end(),
-            [](const RenderItem* a, const RenderItem* b) {
-                const auto at = a ? a->GetTransform() : nullptr;
-                const auto bt = b ? b->GetTransform() : nullptr;
-                const auto ah = at ? at->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
-                const auto bh = bt ? bt->GetStorageHandle() : TransformDataStorage::INVALID_HANDLE;
-
-                if (ah == TransformDataStorage::INVALID_HANDLE && bh == TransformDataStorage::INVALID_HANDLE)
-                    return false;
-                if (ah == TransformDataStorage::INVALID_HANDLE)
-                    return false;
-                if (bh == TransformDataStorage::INVALID_HANDLE)
-                    return true;
-                return ah < bh;
-            });
+        SplitStaticAndMovableItems(items, static_items, movable_items);
+        SortStaticItemsByHandle(static_items);
 
         const uint32_t static_count = static_cast<uint32_t>(static_items.size());
         const uint32_t dynamic_count = static_cast<uint32_t>(movable_items.size());
@@ -696,184 +957,14 @@ namespace hgl::ecs
             return;
         }
 
-        uint32_t transform_index = kFirstObjectL2WSlot;
-        for (auto *item : static_items)
-        {
-            item->transform_index = transform_index++;
-        }
+        AssignTransformIndices(static_items, movable_items, ring_base);
 
-        uint32_t dynamic_index = 0;
-        for (auto *item : movable_items)
-        {
-            item->transform_index = ring_base + dynamic_index++;
-        }
+        WriteAllLocalToWorld(static_items, movable_items, static_count, dynamic_count, total_count);
 
-        auto *wbuf = transform_buffer->GetGPUBuffer();
-        math::Matrix4f* l2wp = wbuf ? (math::Matrix4f*)wbuf->Map(0, wbuf->GetSize()) : nullptr;
-        if (l2wp)
-        {
-            for (auto *item : static_items)
-            {
-                if (!item)
-                    continue;
+        if (!EnsureTransformVABCapacity(item_count))
+            return;
 
-                const uint32_t idx = item->transform_index;
-                math::Matrix4f l2w;
-                GetStorageWorldMatrix(item, l2w);
-                l2wp[idx] = l2w;
-            }
-
-            for (auto *item : movable_items)
-            {
-                if (!item)
-                    continue;
-
-                const uint32_t idx = item->transform_index;
-                math::Matrix4f l2w;
-                GetStorageWorldMatrix(item, l2w);
-                l2wp[idx] = l2w;
-            }
-
-            if(wbuf) wbuf->Unmap();
-
-            GLogInfo("[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d",
-                      static_count,
-                      dynamic_count,
-                      total_count,
-                      static_cast<unsigned long long>(wbuf->GetSize()),
-                      wbuf->IsDirty() ? 1 : 0);
-
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer::WriteItems] L2W full write: static=%u dynamic=%u total=%u bytes=%llu dirty=%d\n",
-                         static_count,
-                         dynamic_count,
-                         total_count,
-                         static_cast<unsigned long long>(wbuf->GetSize()),
-                         wbuf->IsDirty() ? 1 : 0);
-        }
-        else
-        {
-            GLogWarning("[TransformAssignmentBuffer::WriteItems] L2W map failed: total=%u bytes=%llu",
-                        total_count,
-                        wbuf ? static_cast<unsigned long long>(wbuf->GetSize()) : 0ULL);
-        }
-
-        // 2. 创建或重用 Transform VAB（索引缓冲）
-        {
-            if (!transform_vab)
-            {
-                node_count = power_to_2(item_count);
-            }
-            else if (node_count < item_count)
-            {
-                node_count = power_to_2(item_count);
-                if (buffer_manager)
-                {
-                    buffer_manager->Release(transform_vab);
-                    transform_vab = nullptr;
-                }
-                else
-                {
-                    SAFE_CLEAR(transform_vab);
-                }
-            }
-
-            if (!transform_vab)
-            {
-                graph::BufferAllocPolicy vab_policy = static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto;
-                if (buffer_manager)
-                {
-                    transform_vab = buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
-                    transform_vab_buffer = transform_vab ? transform_vab->GetVkBuffer() : nullptr;
-
-                #ifdef _DEBUG
-                    auto device = buffer_manager->GetDevice();
-                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
-                    if (du && transform_vab)
-                    {
-                        du->SetBuffer(transform_vab->GetVkBuffer(), "ECS:VAB:Buffer:TransformID");
-                        du->SetDeviceMemory(transform_vab->GetVkMemory(), "ECS:VAB:Memory:TransformID");
-                    }
-                #endif//_DEBUG
-                }
-            }
-        }
-
-        // 3. 生成 transform 索引列表
-        {
-            graph::IGPUBuffer *transform_gpu = transform_vab->GetGPUBuffer();
-            if (!transform_gpu)
-            {
-                GLogError("[TransformAssignmentBuffer::WriteItems] TransformID VAB GPU buffer is null");
-                return;
-            }
-
-            graph::Assign::TransformID::ValueType* transform_ptr =
-                transform_gpu
-                    ? (graph::Assign::TransformID::ValueType*)(transform_gpu->Map(0, transform_gpu->GetSize()))
-                    : nullptr;
-
-            if (!transform_ptr)
-            {
-                GLogWarning("[TransformAssignmentBuffer::WriteItems] TransformID VAB map failed: items=%u bytes=%llu",
-                            static_cast<uint32_t>(item_count),
-                            static_cast<unsigned long long>(transform_gpu->GetSize()));
-                return;
-            }
-
-            bool warned_overflow = false;
-
-            for (size_t i = 0; i < item_count; i++)
-            {
-                RenderItem* item = items[i];
-
-                if (!item)
-                {
-                    *transform_ptr = 0;
-                    ++transform_ptr;
-                    continue;
-                }
-
-                const uint32_t idx = item->transform_index;
-                if (idx > max_transform_id)
-                {
-                    if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
-                    {
-                        std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
-                                  << idx << ")" << std::endl;
-                        warned_overflow = true;
-                    }
-
-                    *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
-                }
-                else
-                {
-                    *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
-                }
-                ++transform_ptr;
-
-                // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个，避免刷屏
-                // {
-                //     std::cout << "[TransformAssignmentBuffer::WriteItems]   Item[" << i
-                //               << "] -> transform_index=" << item->transform_index << std::endl;
-                // }
-            }
-
-            transform_vab->Unmap();
-
-            GLogInfo("[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u vab_capacity=%u dirty=%d vkbuf=0x%llX",
-                      static_cast<uint32_t>(item_count),
-                      node_count,
-                      transform_gpu->IsDirty() ? 1 : 0,
-                      static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
-
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u vab_capacity=%u dirty=%d vkbuf=0x%llX\n",
-                         static_cast<uint32_t>(item_count),
-                         node_count,
-                         transform_gpu->IsDirty() ? 1 : 0,
-                         static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
-        }
+        WriteTransformIDVAB(items, item_count, max_transform_id);
     }
 
     void TransformAssignmentBuffer::FlushPendingUpdates()

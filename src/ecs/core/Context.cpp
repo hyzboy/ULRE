@@ -1208,6 +1208,21 @@ namespace hgl
             if (!comp)
                 return;
 
+            // Auto-ensure TransformSystem when any TransformComponent appears.
+            // This guarantees transform update/upload path without requiring apps to
+            // manually register the system.
+            {
+                auto transform_system = GetSystem<TransformSystem>();
+                if (!transform_system)
+                    transform_system = RegisterTickSystem<TransformSystem>();
+
+                if (transform_system)
+                {
+                    transform_system->SetWorld(this);
+                    transform_system->SetEnabled(true);
+                }
+            }
+
             if (isMovable)
             {
                 movable_transforms.push_back(comp);

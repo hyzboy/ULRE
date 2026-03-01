@@ -16,6 +16,7 @@
 namespace hgl::graph
 {
     class BufferManager;
+    class DeviceBuffer;
 }
 
 namespace hgl::ecs
@@ -68,6 +69,22 @@ namespace hgl::ecs
         void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
         void QueueUpdateRange(const int first,const int last);
         void WriteRange(const std::vector<RenderItem*>& items,const int first,const int last);
+        void SplitStaticAndMovableItems(const std::vector<RenderItem*>& items,
+                        std::vector<RenderItem*>& static_items,
+                        std::vector<RenderItem*>& movable_items) const;
+        void SortStaticItemsByHandle(std::vector<RenderItem*>& static_items) const;
+        void AssignTransformIndices(std::vector<RenderItem*>& static_items,
+                        std::vector<RenderItem*>& movable_items,
+                        const uint32_t ring_base) const;
+        bool WriteAllLocalToWorld(const std::vector<RenderItem*>& static_items,
+                      const std::vector<RenderItem*>& movable_items,
+                      const uint32_t static_count,
+                      const uint32_t dynamic_count,
+                      const uint32_t total_count);
+        bool EnsureTransformVABCapacity(const size_t item_count);
+        bool WriteTransformIDVAB(const std::vector<RenderItem*>& items,
+                     const size_t item_count,
+                     const uint32_t max_transform_id);
 
     private:    // 分发数据
         uint32_t node_count;                    ///<节点数量
@@ -85,6 +102,8 @@ namespace hgl::ecs
          * 获取Transform VAB缓冲（用于绑定到管线）
          */
         const VkBuffer GetTransformVAB() const { return transform_vab_buffer; }
+
+        graph::DeviceBuffer* GetTransformDataBuffer() const { return transform_buffer; }
 
         /**
          * 绑定Transform数据到材质
