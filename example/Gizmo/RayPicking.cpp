@@ -189,11 +189,6 @@ private:
             if (!geom_line)
                 return false;
             geometry_manager->Add(geom_line);
-
-            if(!geom_line)
-                return(false);
-
-            geometry_manager->Add(geom_line);
         }
 
         return(true);
