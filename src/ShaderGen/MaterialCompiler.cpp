@@ -23,6 +23,7 @@
 #include "common/MFCommon.h"
 #include "common/MFGetPosition.h"
 #include "common/MFGetNormal.h"
+#include "common/MFSkyLight.h"
 
 namespace hgl::graph::mtl {
 
@@ -325,7 +326,10 @@ void main()
     return glsl;
 }
 
-static AnsiString BuildFragmentGLSLFromBusiness(const FixedMaterialDef &fixed_def, const ComposedMaterialDef &def)
+static AnsiString BuildFragmentGLSLFromBusiness(
+    const FixedMaterialDef &fixed_def,
+    const ComposedMaterialDef &def,
+    const ShaderPermutationKey &key)
 {
     AnsiString glsl;
 
@@ -352,7 +356,25 @@ static AnsiString BuildFragmentGLSLFromBusiness(const FixedMaterialDef &fixed_de
         glsl += "#define Input BusinessInput\n";
     }
 
-    // Step 3: 插入 business 代码
+    const char *business_code = (def.fragment_business && def.fragment_business->code)
+        ? def.fragment_business->code
+        : nullptr;
+
+    const bool needs_skylight_helpers = business_code &&
+        (std::strstr(business_code, "ULRE_GetSkyLightDir(")
+      || std::strstr(business_code, "ULRE_GetSkyLightColor(")
+      || std::strstr(business_code, "ULRE_GetSkyAmbientColor("));
+
+    // Step 3: 注入 SkyLight helper（仅在 business 代码确实使用 ULRE_GetSky* 时）
+    if (needs_skylight_helpers)
+    {
+        glsl += SKYLIGHT_GLSL_HEADER;
+        glsl += "\n";
+        glsl += GetSkyLightModelImplGLSL(key.ambient);
+        glsl += "\n\n";
+    }
+
+    // Step 4: 插入 business 代码
     if (def.fragment_business && def.fragment_business->code)
     {
         glsl += def.fragment_business->code;
@@ -362,7 +384,7 @@ static AnsiString BuildFragmentGLSLFromBusiness(const FixedMaterialDef &fixed_de
     if (!interp_vars.empty())
         glsl += "#undef Input\n\n";
 
-    // Step 4: 生成 main 函数
+    // Step 5: 生成 main 函数
     glsl += "void main()\n{\n";
     glsl += "    FragColor = FragmentShaderBusiness();\n";
     glsl += "}\n";
@@ -932,7 +954,7 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
     }
 
     AnsiString generated_vs = BuildVertexGLSLFromBusiness(base_fixed_def, bridge_result.def);
-    AnsiString generated_fs = BuildFragmentGLSLFromBusiness(base_fixed_def, bridge_result.def);
+    AnsiString generated_fs = BuildFragmentGLSLFromBusiness(base_fixed_def, bridge_result.def, key);
 
     if (!ValidateFSMainBusinessHelperConsistency(bridge_result.def, generated_fs))
     {

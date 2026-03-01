@@ -16,6 +16,7 @@
 #include <hgl/graph/mtl/BuiltinHelpers.h>
 #include <hgl/type/String.h>
 #include <hgl/graph/mtl/StdMaterial.h>
+#include "common/MFSkyLight.h"  // SKYLIGHT_GLSL_HEADER, GetSkyLightModelImplGLSL
 
 namespace hgl::graph::mtl {
 
@@ -1147,6 +1148,11 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     // 输出合成代码
     result += GenOutputCompositionCode(def.output_mode);
     
+    // 天光辅助函数（header + 模型选择实现）— 在业务代码调用它们之前注入
+    result += SKYLIGHT_GLSL_HEADER;
+    result += GetSkyLightModelImplGLSL(key.ambient);
+    result += "\n";
+
     // 开发者业务代码
     if (def.fragment_business) {
         result += def.fragment_business->code;

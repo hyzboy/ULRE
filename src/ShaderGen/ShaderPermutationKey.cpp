@@ -8,8 +8,8 @@ namespace hgl::graph::mtl{
 
 /// 宏名称约定
 /// -----------
-/// ULRE_SKYLIGHT_MODEL   映射关系见 SkyLight.h SkyLightAmbientModelToGLSL()
-///                       Simple→1  IBL→2  SphericalHarmonics→4
+/// ULRE_SKYLIGHT_MODEL   GLSL 小 = C++ 枚举値 + 1（见 SkyLight.h）
+///                       Simple→1  FakeAtmosphere→2  CubeMap→3  SH→4  IBL→5
 /// LIGHT_MODEL     0=UNLIT  1=LAMBERT  2=BLINN_PHONG  3=PBR_LITE  4=PBR_FULL  5=CEL_SHADING
 /// SPECULAR_SPLIT  0=COMBINED  1=SEPARATED
 /// SHADOW_MODE     0=NONE  1=PCF  2=PCSS

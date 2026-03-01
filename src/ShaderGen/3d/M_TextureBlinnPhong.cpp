@@ -6,6 +6,7 @@
 #include <hgl/graph/mtl/ShaderComposition.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <cstdio>
+#include <vector>
 
 #include "S_TextureBlinnPhong_Logic.h"
 
@@ -81,11 +82,37 @@ MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const
 
     ShaderPermutationKey key;
     key.ambient = cfg_with_mi.sky_ambient_model;
+
+    std::vector<FixedDescriptorEntry> dynamic_descriptors(
+        TEXTURE_BLINN_PHONG_DESCRIPTORS,
+        TEXTURE_BLINN_PHONG_DESCRIPTORS + uint32_t(sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS) / sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS[0])));
+
+    std::vector<const char *> dynamic_fragment_resources(
+        TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES,
+        TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES + uint32_t(sizeof(TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES) / sizeof(TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES[0])));
+
+    ApplySkyLightResourceInjection(
+        GetSkyLightResourceInjectionSpec(key.ambient),
+        dynamic_descriptors,
+        dynamic_fragment_resources);
+
+    MaterialLogicDef dynamic_logic = TEXTURE_BLINN_PHONG_LOGIC;
+    dynamic_logic.fragment.required_resources = dynamic_fragment_resources.data();
+    dynamic_logic.fragment.required_resource_count = uint32_t(dynamic_fragment_resources.size());
+
+    FixedMaterialDef dynamic_fixed_def = TEXTURE_BLINN_PHONG_DEF;
+    dynamic_fixed_def.descriptor_entries = dynamic_descriptors.data();
+    dynamic_fixed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+
+    ComposedMaterialDef dynamic_composed_def = TEXTURE_BLINN_PHONG_COMPOSED_DEF;
+    dynamic_composed_def.descriptor_entries = dynamic_descriptors.data();
+    dynamic_composed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
         dev_attr,
-        TEXTURE_BLINN_PHONG_DEF,
-        TEXTURE_BLINN_PHONG_COMPOSED_DEF,
-        TEXTURE_BLINN_PHONG_LOGIC,
+        dynamic_fixed_def,
+        dynamic_composed_def,
+        dynamic_logic,
         key,
         &cfg_with_mi);
 

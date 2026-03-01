@@ -186,6 +186,11 @@ namespace hgl
 
         void ECSContext::Shutdown()
         {
+            if (shutdown_in_progress)
+                return;
+
+            shutdown_in_progress = true;
+
             if (auto *device = GetGPUDevice())
                 device->WaitIdle();
 
@@ -208,8 +213,12 @@ namespace hgl
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
                          render_frame_cache.materialBatches.GetCount());
                 render_frame_cache.materialBatches.Clear();
+                shutdown_in_progress = false;
                 return;
             }
+
+            // 先标记 inactive，避免系统/组件在 Shutdown 过程中触发重入时再走完整清理路径
+            active = false;
 
             // Destroy all systems FIRST(before clearing materialBatches)
             SortTickSystems();
@@ -250,9 +259,8 @@ namespace hgl
                      render_frame_cache.materialBatches.GetCount());
             render_frame_cache.materialBatches.Clear();
             LogDebug("[ECSContext] Shutdown - material batches cleared");
-
-            active = false;
             OnDestroy();
+            shutdown_in_progress = false;
         }
 
         void ECSContext::Tick(float deltaTime)

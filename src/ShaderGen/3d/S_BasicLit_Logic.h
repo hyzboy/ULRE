@@ -16,7 +16,7 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 }
 )";
 
-constexpr const char BASIC_LIT_FS_BUSINESS[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
+constexpr const char BASIC_LIT_FS_BUSINESS[] = R"(
 #define ULRE_SURFACE_TEX_MODE_COLOR_ONLY 1
 #define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL 2
 #define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL_ROUGHNESS 3
@@ -119,10 +119,6 @@ vec4 FragmentShaderBusiness()
     vec3 color = diffuse + spec * fresnel;
     color *= sunColor;
     color += skyAmbient * 0.25;
-
-#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL
-    color += mi.ibl_intensity * sky.base_sky_color.rgb;
-#endif
 
     return vec4(color, 1.0);
 }

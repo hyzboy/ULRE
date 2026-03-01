@@ -112,6 +112,7 @@ namespace hgl
             std::vector<std::weak_ptr<TransformComponent>> movable_transforms;
 
             bool active = false;
+            bool shutdown_in_progress = false;
             bool sub_world_auto_update = true;
 
             RenderFrameCache render_frame_cache;

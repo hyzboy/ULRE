@@ -14,6 +14,7 @@ namespace hgl::ecs
     {
         SetSystemType(SystemType::RenderSubmit);
         SetExecutionOrder(ExecutionPhase::RenderPreBeginFrame);
+        SyncSkyLightBindingKeysFromRequirement();
     }
 
     EnvironmentSystem::~EnvironmentSystem()
@@ -81,6 +82,14 @@ namespace hgl::ecs
 
     void EnvironmentSystem::Update(float /*deltaTime*/)
     {
+        EnsureResources();
+
+        // SkyLight 资源未就绪时，仅保持 UBO 存在，不做额外同步推进。
+        // 后续阶段在这里接入真实 CubeMap/SH/IBL 资源热切换与绑定。
+        if (!IsSkyLightResourceReady())
+            return;
+
+        SyncSkyUBO();
     }
 
     void EnvironmentSystem::EnsureResources()

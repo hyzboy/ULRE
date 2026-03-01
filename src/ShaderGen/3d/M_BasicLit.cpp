@@ -6,6 +6,7 @@
 #include <hgl/graph/mtl/ShaderComposition.h>
 #include <hgl/vk/VKRenderAssign.h>
 #include <cstdio>
+#include <vector>
 
 #include "S_BasicLit_Logic.h"
 
@@ -85,11 +86,37 @@ MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMateri
 
     ShaderPermutationKey key;
     key.ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
+
+    std::vector<FixedDescriptorEntry> dynamic_descriptors(
+        BASIC_LIT_DESCRIPTORS,
+        BASIC_LIT_DESCRIPTORS + uint32_t(sizeof(BASIC_LIT_DESCRIPTORS) / sizeof(BASIC_LIT_DESCRIPTORS[0])));
+
+    std::vector<const char *> dynamic_fragment_resources(
+        BASIC_LIT_FRAGMENT_RESOURCES,
+        BASIC_LIT_FRAGMENT_RESOURCES + uint32_t(sizeof(BASIC_LIT_FRAGMENT_RESOURCES) / sizeof(BASIC_LIT_FRAGMENT_RESOURCES[0])));
+
+    ApplySkyLightResourceInjection(
+        GetSkyLightResourceInjectionSpec(key.ambient),
+        dynamic_descriptors,
+        dynamic_fragment_resources);
+
+    MaterialLogicDef dynamic_logic = BASIC_LIT_LOGIC;
+    dynamic_logic.fragment.required_resources = dynamic_fragment_resources.data();
+    dynamic_logic.fragment.required_resource_count = uint32_t(dynamic_fragment_resources.size());
+
+    FixedMaterialDef dynamic_fixed_def = BASIC_LIT_DEF;
+    dynamic_fixed_def.descriptor_entries = dynamic_descriptors.data();
+    dynamic_fixed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+
+    ComposedMaterialDef dynamic_composed_def = BASIC_LIT_COMPOSED_DEF;
+    dynamic_composed_def.descriptor_entries = dynamic_descriptors.data();
+    dynamic_composed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
         dev_attr,
-        BASIC_LIT_DEF,
-        BASIC_LIT_COMPOSED_DEF,
-        BASIC_LIT_LOGIC,
+        dynamic_fixed_def,
+        dynamic_composed_def,
+        dynamic_logic,
         key,
         cfg);
 

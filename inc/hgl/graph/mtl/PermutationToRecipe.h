@@ -36,9 +36,11 @@ static_assert(
 // nullptr = 该枚举値尚无对应模块
 // ─────────────────────────────────────────────────────────────────────────────────
 constexpr const char *AMBIENT_MODEL_MODULE_NAMES[] = {
-    nullptr,      // Simple              — 无模块
-    "ibl_simple", // IBL                 — modules/ambient/ibl_simple.glsl
-    "ibl",        // SphericalHarmonics  — 临时映射，待球谐模块完成后替换
+    nullptr,      // Simple             — 无模块（内联实现）
+    nullptr,      // FakeAtmosphere     — 无模块（内联实现）
+    nullptr,      // CubeMap            — 待 cubemap_ambient.glsl 完成后填入
+    nullptr,      // SphericalHarmonics — 待 sh_ambient.glsl 完成后填入
+    nullptr,      // IBL                — 待 ibl_ambient.glsl 完成后填入
 };
 
 static_assert(
