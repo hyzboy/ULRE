@@ -72,14 +72,6 @@ SET(RENDERING_CORE_FILES    ${SG_INCLUDE_PATH}/render/RenderContext.h
 
 SOURCE_GROUP("4.Rendering\\Core" FILES ${RENDERING_CORE_FILES})
 
-SET(RENDERING_LINE_FILES    ${SG_INCLUDE_PATH}/geo/line/SharedLineBackup.h
-                            ${SG_INCLUDE_PATH}/geo/line/LineWidthBatch.h
-                            ${SG_INCLUDE_PATH}/geo/line/LineRenderManager.h
-                            render/line/LineWidthBatch.cpp
-                            render/line/LineRenderManager.cpp)
-
-SOURCE_GROUP("4.Rendering\\Line" FILES ${RENDERING_LINE_FILES})
-
 SET(RENDERING_LIGHTING_FILES ${SG_INCLUDE_PATH}/render/lighting/Light.h
                              ${SG_INCLUDE_PATH}/render/lighting/ShadowPolicy.h)
 
@@ -246,7 +238,6 @@ SOURCE_GROUP("9.Vulkan\\TextureLoader" FILES ${VK_TEXTURE_LOADER_FILES})
 
 SET(SCENE_GRAPH_FILES   ${SCENE_ENVIRONMENT_FILES}
                         ${RENDERING_CORE_FILES}
-                        ${RENDERING_LINE_FILES}
                         ${RENDERING_LIGHTING_FILES}
                         ${GIZMO_ALL_FILES})
 
