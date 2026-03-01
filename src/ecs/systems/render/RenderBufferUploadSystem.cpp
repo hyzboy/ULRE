@@ -4,6 +4,8 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/IGPUBuffer.h>
+#include<string>
+#include<cstdio>
 
 namespace hgl::ecs
 {
@@ -18,46 +20,101 @@ namespace hgl::ecs
     {
         ECSContext *ctx = world ? world : context;
         if (!ctx)
+        {
+            GLogInfo("[RenderBufferUpload] skip: no ECS context");
             return;
+        }
 
         graph::RenderCmdBuffer *cmdBuffer = ctx->GetCurrentRenderCmd();
         if (!cmdBuffer)
+        {
+            GLogInfo("[RenderBufferUpload] skip: no current render command buffer");
             return;
+        }
 
         graph::VulkanDevice* active_device = device;
         if (!active_device)
             active_device = ctx->GetGPUDevice();
 
         if (!active_device)
+        {
+            GLogInfo("[RenderBufferUpload] skip: no active GPU device");
             return;
+        }
 
         const auto &registry = active_device->GetGPUBufferRegistry();
         if (registry.empty())
+        {
+            GLogInfo("[RenderBufferUpload] skip: GPU buffer registry is empty");
             return;
+        }
 
         const VkCommandBuffer vk_cmd = static_cast<VkCommandBuffer>(*cmdBuffer);
 
         // Flush all dirty IGPUBuffer objects
         bool any_uploads = false;
+        uint32_t scanned_count = 0;
+        uint32_t dirty_count = 0;
+        uint32_t transform_tagged_count = 0;
+        uint32_t transform_tagged_dirty_count = 0;
+
         for (auto *buf : registry)
         {
+            ++scanned_count;
+
+            std::string buf_name;
+            if (buf)
+                buf_name = buf->GetBufferName();
+
+            const bool is_transform_related =
+                   (buf_name.find("LocalToWorld") != std::string::npos)
+                || (buf_name.find("TransformID") != std::string::npos)
+                || (buf_name.find("L2W") != std::string::npos);
+
+            if (is_transform_related)
+                ++transform_tagged_count;
+
             if (buf && buf->IsDirty())
             {
-                GLogDebug("[RenderBufferUpload] CopyToDevice: %s (size=%llu)",
+                ++dirty_count;
+                if (is_transform_related)
+                    ++transform_tagged_dirty_count;
+
+                GLogInfo("[RenderBufferUpload] CopyToDevice: %s (size=%llu)",
                           buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
                           static_cast<unsigned long long>(buf->GetSize()));
+                std::fprintf(stderr,
+                             "[RenderBufferUpload] CopyToDevice: %s (size=%llu)\n",
+                             buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
+                             static_cast<unsigned long long>(buf->GetSize()));
                 buf->CopyToDevice(vk_cmd);
                 // CopyToDevice calls ClearDirty internally for StagedBuffer
                 any_uploads = true;
             }
         }
 
+        GLogInfo("[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u",
+                  scanned_count,
+                  dirty_count,
+                  transform_tagged_count,
+                  transform_tagged_dirty_count);
+        std::fprintf(stderr,
+                 "[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u\n",
+                 scanned_count,
+                 dirty_count,
+                 transform_tagged_count,
+                 transform_tagged_dirty_count);
+
         // Only emit the transfer→vertex barrier when transfers actually happened.
         // Skipping when any_uploads==false prevents an invalid
         // VK_PIPELINE_STAGE_TRANSFER_BIT barrier inside a Vulkan render pass
         // on the second call (RenderGraph re-runs Update inside BeginRenderPass).
         if (!any_uploads)
+        {
+            GLogInfo("[RenderBufferUpload] no dirty buffers; skip transfer barrier");
+            std::fprintf(stderr, "[RenderBufferUpload] no dirty buffers; skip transfer barrier\n");
             return;
+        }
 
         VkMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;

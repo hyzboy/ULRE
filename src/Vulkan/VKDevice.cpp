@@ -114,10 +114,10 @@ void VulkanDevice::TrackObject(VkObjectType type, uint64_t handle, const ObjectN
     record.line = loc.line();
     record.stack_depth = hgl::utils::get_current_allocation_stack(record.stack, 64);
 
-#ifdef _DEBUG
-    // 详细日志：记录对象创建
-    LogDebug("[CREATE] Object tracked");
-#endif//_DEBUG
+//#ifdef _DEBUG
+//    // 详细日志：记录对象创建
+//    LogDebug("[CREATE] Object tracked");
+//#endif//_DEBUG
 
     ObjectKey key{type, handle};
     auto it = tracked_objects.find(key);
