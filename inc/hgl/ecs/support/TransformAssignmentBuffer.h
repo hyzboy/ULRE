@@ -78,7 +78,7 @@ namespace hgl::ecs
         void Clear();
 
     public:
-        TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly);
+        TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly, uint32_t ring_frames = HGL_L2W_RING_FRAMES);
         ~TransformAssignmentBuffer() { Clear(); }
 
         /**

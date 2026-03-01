@@ -80,7 +80,7 @@ namespace hgl::ecs
 
     std::vector<TransformAssignmentBuffer*> TransformAssignmentBuffer::all_instances;
 
-    TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m)
+    TransformAssignmentBuffer::TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m, uint32_t ring_frames)
         : buffer_manager(bm)
         , transform_buffer_max_count(0)
         , transform_buffer(nullptr)
@@ -90,7 +90,7 @@ namespace hgl::ecs
         , node_count(0)
         , transform_vab(nullptr)
         , transform_vab_buffer(nullptr)
-        , ring_writer(nullptr, sizeof(math::Matrix4f), HGL_L2W_RING_FRAMES)
+        , ring_writer(nullptr, sizeof(math::Matrix4f), ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
     {
 #if defined(HGL_L2W_USE_SSBO)
         if (buffer_manager)

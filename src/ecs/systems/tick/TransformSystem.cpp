@@ -2,6 +2,7 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/vk/VKRenderTarget.h>
 #include<algorithm>
 
 namespace hgl::ecs
@@ -306,7 +307,14 @@ namespace hgl::ecs
         if (!buffer_manager)
             return;
 
-        transform_buffer = new TransformAssignmentBuffer(buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly);
+        // Use the render target's actual frame count so the ring matches
+        // the swapchain's in-flight frame count, avoiding over/under allocation.
+        uint32_t ring_frames = HGL_L2W_RING_FRAMES;
+        auto render_target = world->GetRenderTarget();
+        if (render_target)
+            ring_frames = render_target->GetFrameCount();
+
+        transform_buffer = new TransformAssignmentBuffer(buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly, ring_frames);
         static_dirty = true;
     }
 
