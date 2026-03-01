@@ -19,8 +19,8 @@ namespace hgl
         uint fps=60;
         double frame_time=1.0f/double(fps);
 
-        double last_update_time=0;
-        double last_render_time=0;
+        double last_update_time=-1;
+        double last_render_time=-1;
         double cur_time=0;
 
         WorkObject *cur_work_object=nullptr;

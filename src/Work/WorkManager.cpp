@@ -13,7 +13,15 @@ namespace hgl
 
     void WorkManager::Tick(WorkObject *wo)
     {
-        double delta_time=cur_time-last_update_time;
+        double delta_time;
+
+        if(last_update_time<=0)
+        {
+            delta_time=0;
+            last_update_time=cur_time;
+        }
+        else
+            delta_time=cur_time-last_update_time;
 
         if(delta_time>=frame_time)
         {
@@ -35,7 +43,13 @@ namespace hgl
         }
         else
         {
-            delta_time=cur_time-last_render_time;
+            if(last_render_time<=0)
+            {
+                delta_time=0;
+                last_render_time=cur_time;
+            }
+            else
+                delta_time=cur_time-last_render_time;
 
             if(!can_render)
                 can_render=delta_time>=frame_time;
