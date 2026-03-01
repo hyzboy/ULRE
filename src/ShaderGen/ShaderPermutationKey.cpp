@@ -8,7 +8,7 @@ namespace hgl::graph::mtl{
 
 /// 宏名称约定
 /// -----------
-/// AMBIENT_MODEL   0=FLAT_COLOR  1=HEMISPHERE  2=IBL  3=IBL_SH  4=MIXED_GI
+/// ULRE_SKYLIGHT_MODEL   Simple→1  IBL→2  SphericalHarmonics→4
 /// LIGHT_MODEL     0=UNLIT  1=LAMBERT  2=BLINN_PHONG  3=PBR_LITE  4=PBR_FULL  5=CEL_SHADING
 /// SPECULAR_SPLIT  0=COMBINED  1=SEPARATED
 /// SHADOW_MODE     0=NONE  1=PCF  2=PCSS
@@ -21,20 +21,26 @@ namespace hgl::graph::mtl{
 ///     #include "pbr_lite_lighting.glsl"
 ///   #endif
 ///
-///   #if AMBIENT_MODEL >= 2  // IBL 及以上
+///   #if ULRE_SKYLIGHT_MODEL >= ULRE_SKYLIGHT_MODEL_IBL
 ///     uniform samplerCube env_map;
 ///   #endif
 
 void ShaderPermutationKey::AppendGLSLDefines(AnsiString &out) const
 {
-    char buf[256];
+    // SkyLightAmbientModel 到 ULRE_SKYLIGHT_MODEL_* 数字的映射表
+    // Simple=0 →1(SIMPLE)  IBL=1 →2(IBL)  SphericalHarmonics=2 →4(SH)
+    static const uint32_t SKYLIGHT_GLSL_VALUES[] = { 1, 2, 4 };
+    const uint32_t glsl_skylight = SKYLIGHT_GLSL_VALUES[
+        unsigned(ambient) < sizeof(SKYLIGHT_GLSL_VALUES)/sizeof(SKYLIGHT_GLSL_VALUES[0])
+        ? unsigned(ambient) : 0];
 
+    char buf[256];
     snprintf(buf,sizeof(buf),
-        "#define AMBIENT_MODEL %u\n"
+        "#define ULRE_SKYLIGHT_MODEL %u\n"
         "#define LIGHT_MODEL %u\n"
         "#define SPECULAR_SPLIT %u\n"
         "#define SHADOW_MODE %u\n",
-        (unsigned)ambient,
+        glsl_skylight,
         (unsigned)light,
         (unsigned)specular,
         (unsigned)shadow);

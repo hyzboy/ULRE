@@ -70,20 +70,19 @@ struct FixedVertexEntry
 // Shader 排列轴（Permutation Axis）
 //
 // 每个轴对应一个可独立选择的 shader 功能维度。
-// 轴的枚举值直接映射到 GLSL #define 宏名称，由各材质定义自己的 axis 表。
-// ShaderPermutationKey 是所有轴的枚举值组合，唯一确定一个 SPV 变体。
-// ─────────────────────────────────────────────────────────────────────────────
+// 轴的枚举値直接映射到 GLSL #define 宏名称，由各材质定义自己的 axis 表。
+// ShaderPermutationKey 是所有轴的枚举値组合，唯一确定一个 SPV 变体。
+// ─────────────────────────────────────────────────────────────────────────────────
 
-/// 环境光模型轴
-enum class AmbientModel : uint8
+/// 天光环境光模型轴
+/// 直接对应 GLSL 端it ULRE_SKYLIGHT_MODEL_* 常量：Simple→1 / IBL→2 / SphericalHarmonics→4
+enum class SkyLightAmbientModel : uint8
 {
-    FlatColor   = 0,    ///<纯色环境光（最轻量，适合手机）
-    Hemisphere,         ///<半球环境光（skyColor + groundColor）
-    IBL,                ///<基于图像的光照（IBL，需要 CubeMap）
-    IBL_SH,             ///<IBL + 球谐函数近似（低频 IBL，无 CubeMap lookup）
-    MixedGI,            ///<混合 GI（烘焙 lightmap + 运行时直接光）
+    Simple              = 0,    ///<简单半球环境光（默认）
+    IBL                 = 1,    ///<基于图像的光照（IBL，需要 CubeMap）
+    SphericalHarmonics  = 2,    ///<球谐近似（低频 IBL，无 CubeMap lookup）
 
-    ENUM_CLASS_RANGE(FlatColor, MixedGI)
+    ENUM_CLASS_RANGE(Simple, SphericalHarmonics)
 };
 
 /// 直接光照模型轴
@@ -123,7 +122,7 @@ enum class ShadowReceive : uint8
 // ─────────────────────────────────────────────────────────────────────────────
 struct ShaderPermutationKey
 {
-    AmbientModel    ambient     = AmbientModel::FlatColor;
+    SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
     LightModel      light       = LightModel::BlinnPhong;
     SpecularChannel specular    = SpecularChannel::Combined;
     ShadowReceive   shadow      = ShadowReceive::None;

@@ -13,11 +13,7 @@
 #define ULRE_SKYLIGHT_MODEL_SH      4
 
 #ifndef ULRE_SKYLIGHT_MODEL
-    #ifdef USE_IBL
-        #define ULRE_SKYLIGHT_MODEL ULRE_SKYLIGHT_MODEL_IBL
-    #else
-        #define ULRE_SKYLIGHT_MODEL ULRE_SKYLIGHT_MODEL_SIMPLE
-    #endif
+    #define ULRE_SKYLIGHT_MODEL ULRE_SKYLIGHT_MODEL_SIMPLE
 #endif
 
 #define ULRE_SKY_SUN_DIR normalize(sky.sun_direction.xyz)

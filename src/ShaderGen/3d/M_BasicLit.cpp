@@ -12,20 +12,6 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    AmbientModel ResolveAmbientModelFromConfig(const Material3DCreateConfig *cfg)
-    {
-        if(!cfg)
-            return AmbientModel::FlatColor;
-
-        switch(cfg->sky_ambient_model)
-        {
-            case SkyLightAmbientModel::IBL:    return AmbientModel::IBL;
-            case SkyLightAmbientModel::SphericalHarmonics: return AmbientModel::IBL_SH;
-            case SkyLightAmbientModel::Simple:
-            default:                           return AmbientModel::Hemisphere;
-        }
-    }
-
     constexpr const char mi_codes[] = R"(
         uint base_color;
         float metallic;
@@ -98,7 +84,7 @@ MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMateri
         cfg->material_instance=true;
 
     ShaderPermutationKey key;
-    key.ambient = ResolveAmbientModelFromConfig(cfg);
+    key.ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
         dev_attr,
         BASIC_LIT_DEF,

@@ -32,23 +32,19 @@ static_assert(
     "LIGHT_MODEL_MODULE_NAMES size mismatch — update when LightModel enum changes");
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 环境光模型 → ShaderLibrary/modules/ambient/ 中的模块文件名（不含 .glsl）
-// nullptr = 该枚举值尚无对应模块（或不需要环境光模块，如 FlatColor）
-// ─────────────────────────────────────────────────────────────────────────────
+// 天光环境光模型 → ShaderLibrary/modules/ambient/ 中的模块文件名（不含 .glsl）
+// nullptr = 该枚举値尚无对应模块
+// ─────────────────────────────────────────────────────────────────────────────────
 constexpr const char *AMBIENT_MODEL_MODULE_NAMES[] = {
-    nullptr,          // FlatColor   — 无模块，直接用 MI 中的 packed_tint
-    nullptr,          // Hemisphere  — 待 hemisphere.glsl 完成（任务 3.2）后填入
-    "ibl_simple",     // IBL         — modules/ambient/ibl_simple.glsl
-    // TODO(task post-3.2): 用专用 SH 模块替换此处的通用 ibl
-    // 当前暂用 ibl.glsl 占位，完成球谐模块后必须更新
-    "ibl",            // IBL_SH      — 临时映射，待球谐模块完成后替换
-    nullptr,          // MixedGI     — 待 mixed_gi.glsl 完成后填入
+    nullptr,      // Simple              — 无模块
+    "ibl_simple", // IBL                 — modules/ambient/ibl_simple.glsl
+    "ibl",        // SphericalHarmonics  — 临时映射，待球谐模块完成后替换
 };
 
 static_assert(
     sizeof(AMBIENT_MODEL_MODULE_NAMES)/sizeof(AMBIENT_MODEL_MODULE_NAMES[0])
-    == size_t(AmbientModel::RANGE_SIZE),
-    "AMBIENT_MODEL_MODULE_NAMES size mismatch — update when AmbientModel enum changes");
+    == size_t(SkyLightAmbientModel::RANGE_SIZE),
+    "AMBIENT_MODEL_MODULE_NAMES size mismatch — update when SkyLightAmbientModel enum changes");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 高光通道轴 → 不需要独立 GLSL 模块，由 #define SPECULAR_SPLIT 在模板中控制
@@ -75,11 +71,11 @@ static_assert(
 inline const char *PermutationKeyToQualityLevel(const ShaderPermutationKey &key)
 {
     if (key.light <= LightModel::Lambert &&
-        key.ambient <= AmbientModel::FlatColor)
+        key.ambient <= SkyLightAmbientModel::Simple)
         return "mobile_low";
 
     if (key.light <= LightModel::BlinnPhong &&
-        key.ambient <= AmbientModel::FlatColor)
+        key.ambient <= SkyLightAmbientModel::Simple)
         return "mobile_high";
 
     if (key.light <= LightModel::BlinnPhong)

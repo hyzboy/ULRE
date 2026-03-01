@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/mtl/FixedMaterialDef.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/vk/VertexAttrib.h>
@@ -7,15 +8,6 @@
 namespace hgl::graph::mtl{
 
 constexpr float DefaultNormalStrength = 0.35f;
-
-enum class SkyLightAmbientModel : uint8
-{
-    Simple = 0,
-    IBL,
-    SphericalHarmonics,
-
-    ENUM_CLASS_RANGE(Simple, SphericalHarmonics)
-};
 
 struct Material3DCreateConfig:public MaterialCreateConfig
 {
