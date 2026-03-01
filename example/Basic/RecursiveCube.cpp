@@ -1,4 +1,4 @@
-﻿// Recursive Cube (ECS)
+// Recursive Cube (ECS)
 //
 // This example places a base cube at origin and spawns 6 independent chains.
 // Each chain moves outward along a face normal by the parent cube size,
@@ -194,7 +194,7 @@ private:
             return nullptr;
 
         auto *entity = ecs_world->CreateEntity<Entity>(name);
-        auto transform = entity->AddComponent<TransformComponent>();
+        auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
         if (parent_id.IsValid())
             transform->SetParent(parent_id);
         transform->SetLocalPosition(local_pos);

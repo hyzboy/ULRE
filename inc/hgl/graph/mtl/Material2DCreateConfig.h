@@ -61,9 +61,7 @@ public:
     {
         material_instance=true;        //包含材质实例
 
-        position_format=VAT_IVEC4;
-
-        enableGeometryShader();
+        position_format=VAT_IVEC2;
     }
 };
 

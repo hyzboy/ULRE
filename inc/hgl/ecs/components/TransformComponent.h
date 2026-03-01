@@ -22,7 +22,14 @@ namespace hgl
 {
     namespace ecs
     {
-    struct ComponentRecord;
+        enum class Mobility : uint8_t
+        {
+            Static,
+            Movable
+        };
+
+        struct ComponentRecord;
+
         /**
          * Transform component for spatial transformation
          * Uses SOA (Structure of Arrays) storage for better cache performance
@@ -44,7 +51,7 @@ namespace hgl
             bool matrixDirty;
 
             // Optimization settings
-            bool movable;  // true = movable, false = static
+            Mobility mobility;
 
             // Fixed pixel-size mode (for gizmo/billboard-like controls)
             bool fixed_pixel_sizing_enabled;
@@ -72,7 +79,7 @@ namespace hgl
                 return static_cast<uint32_t>(change);
             }
 
-            TransformComponent(const std::string& name = "Transform");
+            TransformComponent(Mobility mobility, const std::string& name = "Transform");
             ~TransformComponent() override;
 
         public:
@@ -144,9 +151,11 @@ namespace hgl
         public:
 
             // Mobility settings for optimization
+            void SetMobility(Mobility new_mobility);
+            Mobility GetMobility() const { return static_cast<Mobility>(mobility); }
             void SetMovable(bool isMovable);
-            bool IsMovable() const { return movable; }
-            bool IsStatic() const { return !movable; }
+            bool IsMovable() const { return mobility == Mobility::Movable; }
+            bool IsStatic() const { return mobility == Mobility::Static; }
             bool IsDirty() const { return matrixDirty; }
 
         public:
@@ -183,7 +192,7 @@ namespace hgl
 
         private:
             void UpdateWorldMatrix();
-            void MigrateStorage(bool toMovable);
+            void MigrateStorage(Mobility target_mobility);
             std::shared_ptr<TransformDataStorage> GetStorage() const;
         };
     }//namespace ecs

@@ -68,7 +68,7 @@ namespace hgl::ecs
             if (!node_entity)
                 continue;
 
-            auto transform = node_entity->AddComponent<TransformComponent>();
+            auto transform = node_entity->AddComponent<TransformComponent>(Mobility::Static);
             if (node)
                 transform->SetLocalTRS(node->translation, node->rotation, node->scale);
             else
@@ -120,7 +120,7 @@ namespace hgl::ecs
                     if (!prim_entity)
                         continue;
 
-                    auto transform = prim_entity->AddComponent<TransformComponent>();
+                    auto transform = prim_entity->AddComponent<TransformComponent>(Mobility::Static);
                     transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
                     transform->SetParent(node_id);
 
@@ -148,7 +148,7 @@ namespace hgl::ecs
                 if (!prim_entity)
                     continue;
 
-                auto transform = prim_entity->AddComponent<TransformComponent>();
+                auto transform = prim_entity->AddComponent<TransformComponent>(Mobility::Static);
                 transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
                 transform->SetParent(node_id);
 

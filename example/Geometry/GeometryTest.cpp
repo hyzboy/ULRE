@@ -292,7 +292,7 @@ private:
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_world->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
-            bbox->transform = bbox->entity->AddComponent<hgl::ecs::TransformComponent>();
+            bbox->transform = bbox->entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             bbox->transform->SetParent(rm->entity->GetID());
@@ -348,7 +348,7 @@ private:
                 continue;
 
             rm->entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
-            rm->transform = rm->entity->AddComponent<hgl::ecs::TransformComponent>();
+            rm->transform = rm->entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             const float angle = glm::radians(360.0f * static_cast<float>(i) / static_cast<float>(mesh_count));

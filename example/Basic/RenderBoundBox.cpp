@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
+// 该范例主要演示使用ECS架构绘制多个几何体，并渲染对应的包围盒
 // This example demonstrates rendering multiple geometries with ECS and drawing their bounding boxes
 //
 // 本范例展示了：
@@ -591,7 +591,7 @@ private:
 
         {
             rm_floor->entity = ecs_world->CreateEntity<Entity>("Floor");
-            rm_floor->transform = rm_floor->entity->AddComponent<TransformComponent>();
+            rm_floor->transform = rm_floor->entity->AddComponent<TransformComponent>(Mobility::Static);
             rm_floor->primitive_comp = rm_floor->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             rm_floor->transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -614,7 +614,7 @@ private:
                 continue;
 
             rm->entity = ecs_world->CreateEntity<Entity>("Mesh_" + std::to_string(index));
-            rm->transform = rm->entity->AddComponent<TransformComponent>();
+            rm->transform = rm->entity->AddComponent<TransformComponent>(Mobility::Static);
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));
@@ -653,7 +653,7 @@ private:
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
             bbox->entity = ecs_world->CreateEntity<Entity>("BBox_" + std::to_string(i));
-            bbox->transform = bbox->entity->AddComponent<TransformComponent>();
+            bbox->transform = bbox->entity->AddComponent<TransformComponent>(Mobility::Static);
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             bbox->transform->SetParent(rm->entity->GetID());

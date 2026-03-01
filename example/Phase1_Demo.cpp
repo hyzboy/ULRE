@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Phase 1 完成示例应用
  *
  * 这个示例展示：
@@ -58,7 +58,7 @@ public:
         }
 
         // 为玩家添加组件
-        auto tc = player->AddComponent<TransformComponent>();
+        auto tc = player->AddComponent<TransformComponent>(Mobility::Static);
         if (!tc) {
             LOG_ERROR("Failed to add TransformComponent to player");
             return false;
@@ -73,7 +73,7 @@ public:
             return false;
         }
 
-        auto camera_tc = camera->AddComponent<TransformComponent>();
+        auto camera_tc = camera->AddComponent<TransformComponent>(Mobility::Static);
         if (!camera_tc) {
             LOG_ERROR("Failed to add TransformComponent to camera");
             return false;

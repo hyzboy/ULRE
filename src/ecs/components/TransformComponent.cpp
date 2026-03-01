@@ -43,11 +43,11 @@ namespace hgl
             }
         }
 
-        TransformComponent::TransformComponent(const std::string& name)
+        TransformComponent::TransformComponent(Mobility initial_mobility, const std::string& name)
             : Component(name)
             , cachedWorldMatrix(1.0f)
             , matrixDirty(true)
-            , movable(true)
+            , mobility(initial_mobility)
             , fixed_pixel_sizing_enabled(false)
             , fixed_pixel_diameter(160.0f)
             , fixed_pixel_reference_world_diameter(1.0f)
@@ -55,9 +55,9 @@ namespace hgl
             , fixed_pixel_camera_info(nullptr)
             , fixed_pixel_viewport_info(nullptr)
         {
-            // Allocate storage in the shared SOA storage by default
+            // Allocate storage in the shared SOA storage with target mobility.
             storageHandle = GetSharedStorage()->Allocate();
-            GetSharedStorage()->SetMobility(storageHandle, 1);
+            GetSharedStorage()->SetMobility(storageHandle, IsMovable() ? 1 : 0);
         }
 
         TransformComponent::~TransformComponent()
@@ -430,13 +430,14 @@ namespace hgl
             }
         }
 
+        void TransformComponent::SetMobility(Mobility new_mobility)
+        {
+            MigrateStorage(static_cast<Mobility>(new_mobility));
+        }
+
         void TransformComponent::SetMovable(bool isMovable)
         {
-            if (movable == isMovable)
-                return;
-
-            TouchChange(ToChangeMask(TransformChange::Mobility));
-            MigrateStorage(isMovable);
+            SetMobility(isMovable ? Mobility::Movable : Mobility::Static);
         }
 
         void TransformComponent::OnUpdate(float deltaTime)
@@ -462,7 +463,7 @@ namespace hgl
             {
                 if (auto ctx = owner->GetContext())
                 {
-                    ctx->RegisterTransformComponent(std::static_pointer_cast<TransformComponent>(shared_from_this()), movable);
+                    ctx->RegisterTransformComponent(std::static_pointer_cast<TransformComponent>(shared_from_this()), IsMovable());
                 }
             }
         }
@@ -598,23 +599,27 @@ namespace hgl
             return GetSharedStorage();
         }
 
-        void TransformComponent::MigrateStorage(bool toMovable)
+        void TransformComponent::MigrateStorage(Mobility target_mobility)
         {
-            if (movable == toMovable)
+            if (mobility == target_mobility)
                 return;
+
+            const bool to_movable = (target_mobility == Mobility::Movable);
+
+            TouchChange(ToChangeMask(TransformChange::Mobility));
 
             if (storageHandle == TransformDataStorage::INVALID_HANDLE)
             {
-                movable = toMovable;
+                mobility = target_mobility;
                 return;
             }
 
             auto storage = GetStorage();
-            storage->SetMobility(storageHandle, toMovable ? 1 : 0);
-            movable = toMovable;
+            storage->SetMobility(storageHandle, to_movable ? 1 : 0);
+            mobility = target_mobility;
 
             // If transitioning to static and dirty, compute world matrix once
-            if (!toMovable && matrixDirty)
+            if (!to_movable && matrixDirty)
             {
                 UpdateWorldMatrix();
             }
@@ -624,7 +629,7 @@ namespace hgl
             {
                 if (auto ctx = owner->GetContext())
                 {
-                    ctx->MigrateTransformComponent(this, toMovable);
+                    ctx->MigrateTransformComponent(this, to_movable);
                 }
             }
         }
@@ -663,12 +668,9 @@ namespace hgl
                                                         std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents)
         {
             const auto& data = std::any_cast<const TransformRecord&>(record.payload);
-            auto transform = std::make_shared<TransformComponent>();
+            auto transform = std::make_shared<TransformComponent>(data.movable ? Mobility::Movable : Mobility::Static);
             transform->SetLocalTRS(ToVec3(data.position), ToQuat(data.rotation), ToVec3(data.scale));
             entity->AddComponentInstance(transform);
-
-            if (data.movable != transform->IsMovable())
-                transform->SetMovable(data.movable);
 
             pending_parents.emplace_back(transform, data.parentIndex);
         }

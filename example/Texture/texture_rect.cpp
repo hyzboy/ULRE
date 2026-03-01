@@ -1,4 +1,4 @@
-﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
+// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -150,7 +150,7 @@ private:
             return false;
 
         rect_entity = ecs_world->CreateEntity<Entity>("TextureRect");
-        auto rect_transform = rect_entity->AddComponent<TransformComponent>();
+        auto rect_transform = rect_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto rect_primitive = rect_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         rect_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
+// 该范例主要演示使用ECS架构，在一个材质下使用不同材质实例传递颜色参数绘制三角形
 // 并依赖RenderCollector中的自动合并功能，让同一材质下所有不同材质实例的对象一次渲染完成
 // This example demonstrates using different material instances under one material with ECS architecture
 //
@@ -219,7 +219,7 @@ private:
 
             // === 步骤3: 添加TransformComponent ===
             // 每个三角形有不同的旋转角度
-            auto transform = triangles[i].entity->AddComponent<TransformComponent>();
+            auto transform = triangles[i].entity->AddComponent<TransformComponent>(Mobility::Static);
 
             // 计算旋转角度
             double rad = deg2rad(TRI_ROTATE_ANGLE * i);

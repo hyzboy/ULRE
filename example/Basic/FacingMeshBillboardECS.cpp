@@ -331,7 +331,7 @@ private:
                 continue;
 
             rm->entity = ecs_world->CreateEntity<Entity>("FacingMesh_" + std::to_string(i));
-            rm->transform = rm->entity->AddComponent<TransformComponent>();
+            rm->transform = rm->entity->AddComponent<TransformComponent>(Mobility::Static);
             rm->primitive_comp = rm->entity->AddComponent<PrimitiveComponent>();
             rm->facing_comp = rm->entity->AddComponent<FacingTransformComponent>();
 

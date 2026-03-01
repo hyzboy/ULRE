@@ -136,7 +136,7 @@ private:
             return false;
 
         sky_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("SkySphere");
-        auto transform = sky_entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto transform = sky_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = sky_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

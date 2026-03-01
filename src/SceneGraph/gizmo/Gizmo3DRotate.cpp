@@ -174,7 +174,7 @@ namespace
             if(!entity)
                 return false;
 
-            auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+            auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             const math::Vector3f torus_scale(GIZMO_ARROW_LENGTH, GIZMO_ARROW_LENGTH, GIZMO_ARROW_LENGTH);
             transform->SetLocalTRS(glm::vec3(0.0f), rotation, glm::vec3(torus_scale));
             transform->SetParent(gizmo->root->GetID());
@@ -210,7 +210,7 @@ RotateGizmoImpl *CreateRotateGizmoImpl(hgl::ecs::World *world,
         return nullptr;
     }
 
-    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>();
+    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     gizmo->root_transform->SetMovable(true);
     gizmo->root_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
@@ -242,7 +242,7 @@ RotateGizmoImpl *CreateRotateGizmoImpl(hgl::ecs::World *world,
             return nullptr;
         }
 
-        gizmo->white_torus_transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+        gizmo->white_torus_transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         const math::Vector3f white_scale(13.0f, 13.0f, 13.0f);
         gizmo->white_torus_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(white_scale));
         gizmo->white_torus_transform->SetParent(gizmo->root->GetID());

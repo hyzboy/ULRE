@@ -55,7 +55,7 @@ bool SunDirectionControlSystem::EnsureProxyEntity()
     if (!proxy_entity)
         return false;
 
-    proxy_transform = proxy_entity->AddComponent<hgl::ecs::TransformComponent>();
+    proxy_transform = proxy_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
     if (!proxy_transform)
         return false;
 

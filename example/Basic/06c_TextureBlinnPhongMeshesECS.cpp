@@ -424,7 +424,7 @@ private:
 
         {
             auto* entity = ecs_world->CreateEntity<Entity>("Floor");
-            auto transform = entity->AddComponent<TransformComponent>();
+            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -447,7 +447,7 @@ private:
                 continue;
 
             auto* entity = ecs_world->CreateEntity<Entity>("Mesh_" + std::to_string(index));
-            auto transform = entity->AddComponent<TransformComponent>();
+            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
             float angle = glm::radians(360.0f * static_cast<float>(index) / static_cast<float>(mesh_count));

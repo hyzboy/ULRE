@@ -1,4 +1,4 @@
-﻿// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
+// Billboard ECS Example - Refactored with decoupled Quad + FacingTransform
 //
 // This example demonstrates the new decoupled architecture:
 // - QuadComponent: Handles quad geometry and rendering
@@ -266,7 +266,7 @@ private:
             grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
             std::cout << "  -> PlaneGrid entity created at " << (void*)grid_entity << std::endl;
 
-            auto grid_transform = grid_entity->AddComponent<TransformComponent>();
+            auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
             grid_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             grid_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             grid_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
@@ -290,7 +290,7 @@ private:
             billboard_entity = ecs_world->CreateEntity<Entity>("Billboard");
             std::cout << "  -> Billboard entity created at " << (void*)billboard_entity << std::endl;
 
-            auto billboard_transform = billboard_entity->AddComponent<TransformComponent>();
+            auto billboard_transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
             billboard_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             billboard_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             billboard_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
@@ -330,7 +330,7 @@ private:
             auto quad_entity = ecs_world->CreateEntity<Entity>("StaticQuad");
             std::cout << "  -> StaticQuad entity created" << std::endl;
 
-            auto quad_transform = quad_entity->AddComponent<TransformComponent>();
+            auto quad_transform = quad_entity->AddComponent<TransformComponent>(Mobility::Static);
             quad_transform->SetLocalPosition(glm::vec3(2.0f, 0.0f, 0.0f));
             quad_transform->SetLocalScale(glm::vec3(2.0f, 2.0f, 1.0f));
 
@@ -354,7 +354,7 @@ private:
             auto target_entity = ecs_world->CreateEntity<Entity>("LookAtTarget");
             std::cout << "  -> LookAtTarget entity created" << std::endl;
 
-            auto target_transform = target_entity->AddComponent<TransformComponent>();
+            auto target_transform = target_entity->AddComponent<TransformComponent>(Mobility::Static);
             target_transform->SetLocalPosition(glm::vec3(-2.0f, 0.0f, 0.0f));
 
             auto quad = target_entity->AddComponent<QuadComponent>();

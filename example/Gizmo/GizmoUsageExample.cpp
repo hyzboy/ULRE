@@ -170,7 +170,7 @@ private:
         if(!plane_entity)
             return false;
 
-        auto plane_transform = plane_entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto plane_transform = plane_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         plane_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         plane_transform->SetMovable(false);
 
@@ -182,7 +182,7 @@ private:
         if(!cube_entity)
             return false;
 
-        auto cube_transform = cube_entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto cube_transform = cube_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         cube_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(3.0f));
         cube_transform->SetMovable(true);
 

@@ -1,4 +1,4 @@
-﻿// Billboard (ECS)
+// Billboard (ECS)
 //
 // This example demonstrates rendering a billboard and a plane grid using ECS.
 
@@ -287,7 +287,7 @@ private:
             return false;
 
         grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
-        auto grid_transform = grid_entity->AddComponent<TransformComponent>();
+        auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto grid_primitive = grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         grid_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -299,7 +299,7 @@ private:
         grid_primitive->SetVisible(true);
 
         billboard_entity = ecs_world->CreateEntity<Entity>("Billboard");
-        auto billboard_transform = billboard_entity->AddComponent<TransformComponent>();
+        auto billboard_transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto billboard_primitive = billboard_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         billboard_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

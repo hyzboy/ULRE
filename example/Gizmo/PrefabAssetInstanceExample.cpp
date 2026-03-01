@@ -43,7 +43,7 @@ private:
         if(!item.root)
             return false;
 
-        auto transform = item.root->AddComponent<hgl::ecs::TransformComponent>();
+        auto transform = item.root->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         if(transform)
         {
             transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));

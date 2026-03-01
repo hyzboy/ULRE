@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
+// 该范例主要演示使用ECS架构绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 // This example demonstrates drawing multiple triangles using ECS architecture with automatic instancing
 //
 // 本范例展示了：
@@ -154,7 +154,7 @@ private:
 
             // === 步骤3: 添加TransformComponent ===
             // 每个三角形有不同的旋转变换
-            auto transform = entity->AddComponent<TransformComponent>();
+            auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
 
             // 计算旋转角度
             rad = deg2rad((360.0/double(TRIANGLE_NUMBER))*i);

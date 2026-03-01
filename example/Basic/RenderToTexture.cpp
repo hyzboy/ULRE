@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -259,7 +259,7 @@ public:
         if (!primitive) return false;
 
         sphere_entity = ecs_world->CreateEntity<Entity>("OffscreenSphere");
-        auto transform = sphere_entity->AddComponent<TransformComponent>();
+        auto transform = sphere_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto prim_comp = sphere_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -451,7 +451,7 @@ private:
         if (!cube_primitive) return false;
 
         cube_entity = ecs_world->CreateEntity<Entity>("RotatingCube");
-        cube_transform = cube_entity->AddComponent<TransformComponent>();
+        cube_transform = cube_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto cube_prim_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         cube_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

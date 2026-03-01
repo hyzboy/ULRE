@@ -99,7 +99,7 @@ public:
                 continue;
 
             auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
-            auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+            auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

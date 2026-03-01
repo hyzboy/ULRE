@@ -157,7 +157,9 @@ namespace hgl::ecs
         if (static_count != last_static_count || static_layout_changed)
             static_dirty = true;
 
-        const bool dynamic_force_full = (dynamic_count != last_dynamic_count) || dynamic_layout_changed;
+        // Dynamic transforms are written into a per-frame ring segment.
+        // Even when transform values are unchanged, current frame segment must be populated.
+        const bool dynamic_force_full = (dynamic_count > 0);
 
         transform_buffer->EnsureCapacity(static_count, dynamic_count, graph::BufferAllocPolicy::Auto);
 

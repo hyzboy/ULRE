@@ -1,4 +1,4 @@
-﻿// 画一个带纹理的四边形 (ECS)
+// 画一个带纹理的四边形 (ECS)
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -148,7 +148,7 @@ private:
             return false;
 
         quad_entity = ecs_world->CreateEntity<Entity>("TextureQuad");
-        auto quad_transform = quad_entity->AddComponent<TransformComponent>();
+        auto quad_transform = quad_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto quad_primitive = quad_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         quad_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

@@ -240,7 +240,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
     }
     std::cout << "[GizmoECS] Root entity id=" << gizmo->root->GetID().index << std::endl;
 
-    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>();
+    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     gizmo->root_transform->SetMovable(true);
 
@@ -256,7 +256,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        auto move_transform = gizmo->move_entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto move_transform = gizmo->move_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         move_transform->SetParent(gizmo->root->GetID());
 
@@ -290,7 +290,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        auto rotate_transform = gizmo->rotate_entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto rotate_transform = gizmo->rotate_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         rotate_transform->SetParent(gizmo->root->GetID());
 
@@ -324,7 +324,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             return nullptr;
         }
 
-        auto scale_transform = gizmo->scale_entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto scale_transform = gizmo->scale_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         scale_transform->SetParent(gizmo->root->GetID());
 

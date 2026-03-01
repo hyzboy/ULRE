@@ -262,7 +262,7 @@ private:
             grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
             std::cout << "  -> PlaneGrid entity created" << std::endl;
 
-            auto grid_transform = grid_entity->AddComponent<TransformComponent>();
+            auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
             grid_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             grid_transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             grid_transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
@@ -279,7 +279,7 @@ private:
             billboard_near = ecs_world->CreateEntity<Entity>("BillboardNear");
             std::cout << "  -> BillboardNear entity created" << std::endl;
 
-            auto transform = billboard_near->AddComponent<TransformComponent>();
+            auto transform = billboard_near->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(-15.0f, 5.0f, 10.0f));  // Closer position
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
@@ -306,7 +306,7 @@ private:
             billboard_mid = ecs_world->CreateEntity<Entity>("BillboardMid");
             std::cout << "  -> BillboardMid entity created" << std::endl;
 
-            auto transform = billboard_mid->AddComponent<TransformComponent>();
+            auto transform = billboard_mid->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(0.0f, 5.0f, 0.0f));  // Mid position
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
@@ -327,7 +327,7 @@ private:
             billboard_far = ecs_world->CreateEntity<Entity>("BillboardFar");
             std::cout << "  -> BillboardFar entity created" << std::endl;
 
-            auto transform = billboard_far->AddComponent<TransformComponent>();
+            auto transform = billboard_far->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(15.0f, 5.0f, -10.0f));  // Farther position
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

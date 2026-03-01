@@ -167,7 +167,7 @@ namespace
                 if(!entity)
                     return false;
 
-                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
                 transform->SetLocalTRS(glm::vec3(axis_vector * GIZMO_CYLINDER_OFFSET), rotation, glm::vec3(cylinder_scale));
                 transform->SetParent(gizmo->root->GetID());
 
@@ -185,7 +185,7 @@ namespace
                 if(!entity)
                     return false;
 
-                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
                 transform->SetLocalTRS(glm::vec3(axis_vector * GIZMO_CONE_OFFSET), rotation, glm::vec3(one_scale));
                 transform->SetParent(gizmo->root->GetID());
 
@@ -203,7 +203,7 @@ namespace
                 if(!entity)
                     return false;
 
-                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+                auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
                 transform->SetLocalTRS(glm::vec3(cfg.plane_position), rotation, glm::vec3(plane_scale));
                 transform->SetParent(gizmo->root->GetID());
 
@@ -238,7 +238,7 @@ MoveGizmoImpl *CreateMoveGizmoImpl(hgl::ecs::World *world,
         return nullptr;
     }
 
-    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>();
+    gizmo->root_transform = gizmo->root->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     gizmo->root_transform->SetMovable(true);
     gizmo->root_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
@@ -266,7 +266,7 @@ MoveGizmoImpl *CreateMoveGizmoImpl(hgl::ecs::World *world,
             return nullptr;
         }
 
-        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         transform->SetParent(gizmo->root->GetID());
 

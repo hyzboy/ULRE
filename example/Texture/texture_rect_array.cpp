@@ -212,7 +212,7 @@ private:
             offset.x=rect_right*2*float(i);
 
             render_obj[i].entity = ecs_world->CreateEntity<Entity>("TextureRect");
-            auto transform = render_obj[i].entity->AddComponent<TransformComponent>();
+            auto transform = render_obj[i].entity->AddComponent<TransformComponent>(Mobility::Static);
             auto primitive = render_obj[i].entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
             transform->SetLocalPosition(glm::vec3(offset.x, offset.y, offset.z));

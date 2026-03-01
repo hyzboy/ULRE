@@ -1,4 +1,4 @@
-﻿// RayPicking (ECS Version)
+// RayPicking (ECS Version)
 // 该范例主要演示使用ECS架构实现射线拾取功能
 // This example demonstrates ray picking using ECS architecture
 //
@@ -228,11 +228,10 @@ private:
                 return false;
 
             // 添加TransformComponent
-            auto transform = plane_grid_entity->AddComponent<TransformComponent>();
+            auto transform = plane_grid_entity->AddComponent<TransformComponent>(Mobility::Static);
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(true);  // 平面网格是静态的
 
             // 添加PrimitiveComponent
             auto primitive_comp = plane_grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
@@ -257,11 +256,10 @@ private:
             prim_line_vab = prim_line->GetVAB(VAN::Position);
 
             // 添加TransformComponent
-            auto transform = ray_line_entity->AddComponent<TransformComponent>();
+            auto transform = ray_line_entity->AddComponent<TransformComponent>(Mobility::Static);//线段虽然会动，但我们改的是VAB不是Transform
             transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(true);  // 线段会动态更新
 
             // 添加PrimitiveComponent
             auto primitive_comp = ray_line_entity->AddComponent<hgl::ecs::PrimitiveComponent>();

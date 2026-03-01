@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
+// 该范例主要演示使用ECS架构结合Static/Movable Transform分离的时钟示例
 // 刻度是静态的三角形（Static Transform），指针是动态更新的三角形（Movable Transform）
 // This example demonstrates a clock using ECS architecture with Static/Movable Transform separation
 //
@@ -239,7 +239,7 @@ private:
             ticks[i].entity = ecs_world->CreateEntity<Entity>("ClockTick_" + std::to_string(i));
 
             // 添加TransformComponent - 静态变换
-            auto transform = ticks[i].entity->AddComponent<TransformComponent>();
+            auto transform = ticks[i].entity->AddComponent<TransformComponent>(Mobility::Static);
 
             // 计算刻度角度（360 / 12 = 30度）
             float tick_angle = deg2rad(30.0f * i);
@@ -286,7 +286,7 @@ private:
             hands[i].entity = ecs_world->CreateEntity<Entity>(hand_names[i]);
 
             // 添加TransformComponent - 动态变换
-            hands[i].transform = hands[i].entity->AddComponent<TransformComponent>().get();
+            hands[i].transform = hands[i].entity->AddComponent<TransformComponent>(Mobility::Movable).get();
 
             hands[i].transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             hands[i].transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));  // 单位四元数

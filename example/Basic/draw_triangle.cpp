@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
+// 该范例主要演示使用新的ECS架构管理和绘制一个渐变色的三角形，参考draw_triangle_use_UBO.cpp
 // This example demonstrates managing and drawing a gradient colored triangle using the new ECS architecture
 //
 // 本范例展示了：
@@ -176,7 +176,7 @@ private:
         // TransformComponent管理空间变换（位置、旋转、缩放）
         // 内部使用SOA（Structure of Arrays）存储以提高缓存性能
         HGL_TRACK_ALLOCATION("TriangleTransform", hgl::core::ObjectTypeTag::FrameResource);
-        auto transform = triangle_entity->AddComponent<TransformComponent>();
+        auto transform = triangle_entity->AddComponent<TransformComponent>(Mobility::Static);
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

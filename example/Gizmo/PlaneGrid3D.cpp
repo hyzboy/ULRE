@@ -141,7 +141,7 @@ private:
             return false;
 
         auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>(name);
-        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>();
+        auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));

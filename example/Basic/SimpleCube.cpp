@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
+// 该范例主要演示使用ECS架构绘制一个立方体，并通过ECS CameraSystem使用ViewModel模式
 // This example demonstrates rendering a cube with ECS and driving the camera via ViewModel mode
 //
 // 本范例展示了：
@@ -166,7 +166,7 @@ private:
 
         cube_entity = ecs_world->CreateEntity<Entity>("CubeEntity");
 
-        auto transform = cube_entity->AddComponent<TransformComponent>();
+        auto transform = cube_entity->AddComponent<TransformComponent>(Mobility::Static);
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
         transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
         transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
