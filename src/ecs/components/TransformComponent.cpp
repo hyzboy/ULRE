@@ -1,6 +1,7 @@
 ﻿#include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/ComponentRecords.h>
+#include<hgl/log/Log.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 #include<algorithm>
@@ -78,6 +79,20 @@ namespace hgl
         {
             GetStorage()->SetPosition(storageHandle, pos);
             MarkDirty(ToChangeMask(TransformChange::Position));
+
+            static uint32_t s_pos_log_tick = 0;
+            ++s_pos_log_tick;
+            if ((s_pos_log_tick % 120u) == 1u)
+            {
+                GLogInfo("[TransformComponent] SetLocalPosition: owner=%u handle=%u pos=(%.3f, %.3f, %.3f) version=%llu dirty=%d",
+                         owner_id.index,
+                         static_cast<uint32_t>(storageHandle),
+                         pos.x,
+                         pos.y,
+                         pos.z,
+                         static_cast<unsigned long long>(GetVersion()),
+                         matrixDirty ? 1 : 0);
+            }
         }
 
         glm::quat TransformComponent::GetLocalRotation() const
@@ -89,6 +104,21 @@ namespace hgl
         {
             GetStorage()->SetRotation(storageHandle, rot);
             MarkDirty(ToChangeMask(TransformChange::Rotation));
+
+            static uint32_t s_rot_log_tick = 0;
+            ++s_rot_log_tick;
+            if ((s_rot_log_tick % 180u) == 1u)
+            {
+                GLogInfo("[TransformComponent] SetLocalRotation: owner=%u handle=%u rot=(%.3f, %.3f, %.3f, %.3f) version=%llu dirty=%d",
+                         owner_id.index,
+                         static_cast<uint32_t>(storageHandle),
+                         rot.w,
+                         rot.x,
+                         rot.y,
+                         rot.z,
+                         static_cast<unsigned long long>(GetVersion()),
+                         matrixDirty ? 1 : 0);
+            }
         }
 
         glm::vec3 TransformComponent::GetLocalScale() const
@@ -100,6 +130,20 @@ namespace hgl
         {
             GetStorage()->SetScale(storageHandle, scale);
             MarkDirty(ToChangeMask(TransformChange::Scale));
+
+            static uint32_t s_scale_log_tick = 0;
+            ++s_scale_log_tick;
+            if ((s_scale_log_tick % 180u) == 1u)
+            {
+                GLogInfo("[TransformComponent] SetLocalScale: owner=%u handle=%u scale=(%.3f, %.3f, %.3f) version=%llu dirty=%d",
+                         owner_id.index,
+                         static_cast<uint32_t>(storageHandle),
+                         scale.x,
+                         scale.y,
+                         scale.z,
+                         static_cast<unsigned long long>(GetVersion()),
+                         matrixDirty ? 1 : 0);
+            }
         }
 
         void TransformComponent::SetLocalTRS(const glm::vec3& pos, const glm::quat& rot, const glm::vec3& scale)

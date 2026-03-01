@@ -9,6 +9,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/color/Color.h>
 #include<cmath>
+#include<algorithm>
 #include<memory>
 #include<vector>
 
@@ -34,6 +35,7 @@ class WireShapeTestApp:public WorkObject
     hgl::ecs::Entity *lines_entity = nullptr;
     std::vector<AnimatedLineGroup> animated_groups;
     float animation_time = 0.0f;
+    uint32_t animation_tick = 0;
 
 public:
 
@@ -265,7 +267,22 @@ public:
 
     void Tick(double delta_time) override
     {
-        animation_time += float(delta_time);
+        const float raw_dt = static_cast<float>(delta_time);
+        float dt = raw_dt;
+
+        if (!std::isfinite(dt) || dt <= 0.0f)
+        {
+            dt = 1.0f / 60.0f;
+        }
+        else
+        {
+            // Keep demo animation visually stable:
+            // - clamp huge first-frame spikes
+            // - avoid near-zero dt causing imperceptible motion
+            dt = std::clamp(dt, 1.0f / 240.0f, 1.0f / 20.0f);
+        }
+
+        animation_time += dt;
 
         for(auto &group : animated_groups)
         {
@@ -286,6 +303,30 @@ public:
                                                                    std::sin(t * 1.1f) * group.orbit_radius * 0.6f,
                                                                    0.0f);
             group.transform->SetLocalPosition(pos);
+        }
+
+        ++animation_tick;
+        if ((animation_tick % 60u) == 1u)
+        {
+            if (!animated_groups.empty() && animated_groups.front().transform)
+            {
+                const glm::vec3 p = animated_groups.front().transform->GetLocalPosition();
+            LogInfo("[LineRenderTest] Tick: raw_dt=%.6f used_dt=%.6f anim_time=%.3f group0_local_pos=(%.3f, %.3f, %.3f)",
+                raw_dt,
+                        dt,
+                        animation_time,
+                        p.x,
+                        p.y,
+                        p.z);
+            }
+            else
+            {
+            LogInfo("[LineRenderTest] Tick: raw_dt=%.6f used_dt=%.6f anim_time=%.3f groups=%u",
+                raw_dt,
+                        dt,
+                        animation_time,
+                        static_cast<uint32_t>(animated_groups.size()));
+            }
         }
 
         // === 让TransformSystem更新所有movable transform ===

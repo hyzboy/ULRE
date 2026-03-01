@@ -476,6 +476,10 @@ namespace hgl::ecs
         uint32_t dynamic_base = 0;
         if (transform_system)
         {
+            // Keep line animation independent of external tick ordering:
+            // apply pending movable transform dirty updates right before resolving IDs/upload.
+            transform_system->Update(0.0f);
+
             // Ensure transform handle ordering / index maps / buffer layout are up-to-date
             // before resolving per-component TransformID for line vertices.
             transform_system->SubmitTransformUpdates();

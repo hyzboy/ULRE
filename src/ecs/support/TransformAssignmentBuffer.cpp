@@ -507,22 +507,47 @@ namespace hgl::ecs
         {
             RebuildTrackedDirtyRanges(tbuf, flush_ranges);
 
-            GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
+            uint32_t sample_handle_u32 = 0;
+            glm::vec3 sample_world_pos(0.0f);
+            bool has_sample = false;
+            for (const auto &range : merged_ranges)
+            {
+                const uint32_t first = static_cast<uint32_t>(range.first);
+                if (first < handles.size())
+                {
+                    const auto sample_handle = handles[first];
+                    const glm::mat4 sample_world = storage.GetWorldMatrix(sample_handle);
+                    sample_world_pos = glm::vec3(sample_world[3]);
+                    sample_handle_u32 = static_cast<uint32_t>(sample_handle);
+                    has_sample = true;
+                    break;
+                }
+            }
+
+            GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)",
                       static_count,
                       base_index,
                       static_cast<uint32_t>(flush_ranges.size()),
                       static_cast<uint32_t>(dirty_indices.size()),
                       static_cast<unsigned long long>(total_written_bytes),
-                      tbuf->IsDirty() ? 1 : 0);
+                      tbuf->IsDirty() ? 1 : 0,
+                      has_sample ? sample_handle_u32 : 0u,
+                      has_sample ? sample_world_pos.x : 0.0f,
+                      has_sample ? sample_world_pos.y : 0.0f,
+                      has_sample ? sample_world_pos.z : 0.0f);
 
             std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d\n",
+                         "[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)\n",
                          static_count,
                          base_index,
                          static_cast<uint32_t>(flush_ranges.size()),
                          static_cast<uint32_t>(dirty_indices.size()),
                          static_cast<unsigned long long>(total_written_bytes),
-                         tbuf->IsDirty() ? 1 : 0);
+                         tbuf->IsDirty() ? 1 : 0,
+                         has_sample ? sample_handle_u32 : 0u,
+                         has_sample ? sample_world_pos.x : 0.0f,
+                         has_sample ? sample_world_pos.y : 0.0f,
+                         has_sample ? sample_world_pos.z : 0.0f);
 
             if (ShouldEmitPeriodicLog(60))
             {

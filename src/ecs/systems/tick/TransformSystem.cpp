@@ -35,8 +35,16 @@ namespace hgl::ecs
             return;
 
         const auto& movable_transforms = world->GetMovableTransforms();
+        uint32_t total_movable = 0;
+        uint32_t dirty_movable = 0;
+        uint32_t updated_movable = 0;
+        uint32_t skipped_by_mask = 0;
+        uint32_t skipped_by_version = 0;
 
         const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Position) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Rotation) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Scale) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
@@ -45,16 +53,41 @@ namespace hgl::ecs
         {
             if (auto comp = weak_comp.lock())
             {
+                ++total_movable;
+                if (comp->IsDirty())
+                    ++dirty_movable;
+
+                bool allow_by_mask = (comp->GetChangeMask() & update_mask) != 0;
                 if (ShouldUpdateTransform(comp, update_mask))
                 {
                     comp->UpdateIfDirty();
                     MarkTransformSeen(comp);
+                    ++updated_movable;
                 }
                 else
                 {
+                    if (comp->IsDirty())
+                    {
+                        if (!allow_by_mask)
+                            ++skipped_by_mask;
+                        else
+                            ++skipped_by_version;
+                    }
                     MarkTransformSeen(comp);
                 }
             }
+        }
+
+        static uint32_t s_update_log_tick = 0;
+        ++s_update_log_tick;
+        if ((s_update_log_tick % 60u) == 1u)
+        {
+            GLogInfo("[TransformSystem] Update: movable_total=%u dirty=%u updated=%u skip_mask=%u skip_ver=%u",
+                     total_movable,
+                     dirty_movable,
+                     updated_movable,
+                     skipped_by_mask,
+                     skipped_by_version);
         }
     }
 
@@ -92,6 +125,9 @@ namespace hgl::ecs
         }
 
         const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Position) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Rotation) |
+                                     TransformComponent::ToChangeMask(TransformComponent::TransformChange::Scale) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
                                      TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
@@ -116,6 +152,9 @@ namespace hgl::ecs
             const auto& static_transforms = world->GetStaticTransforms();
 
             const uint32_t update_mask = TransformComponent::ToChangeMask(TransformComponent::TransformChange::LocalTRS) |
+                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Position) |
+                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Rotation) |
+                                         TransformComponent::ToChangeMask(TransformComponent::TransformChange::Scale) |
                                          TransformComponent::ToChangeMask(TransformComponent::TransformChange::Parent) |
                                          TransformComponent::ToChangeMask(TransformComponent::TransformChange::WorldMatrix) |
                                          TransformComponent::ToChangeMask(TransformComponent::TransformChange::Mobility);
@@ -285,6 +324,36 @@ namespace hgl::ecs
 
         last_static_count = static_count;
         last_dynamic_count = dynamic_count;
+
+        static uint32_t s_submit_log_tick = 0;
+        ++s_submit_log_tick;
+        if ((s_submit_log_tick % 60u) == 1u)
+        {
+            uint32_t dynamic_base = transform_buffer ? transform_buffer->GetDynamicBaseIndex(static_count, dynamic_count) : 0u;
+
+            if (storage && dynamic_count > 0 && !dynamic_handles.empty())
+            {
+                const auto handle = dynamic_handles.front();
+                const glm::mat4 world = storage->GetWorldMatrix(handle);
+                const glm::vec3 pos(world[3]);
+
+                GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u first_dynamic_handle=%u world_pos=(%.3f, %.3f, %.3f)",
+                         static_count,
+                         dynamic_count,
+                         dynamic_base,
+                         static_cast<uint32_t>(handle),
+                         pos.x,
+                         pos.y,
+                         pos.z);
+            }
+            else
+            {
+                GLogInfo("[TransformSystem] SubmitTransformUpdates: static=%u dynamic=%u dynamic_base=%u (no dynamic sample)",
+                         static_count,
+                         dynamic_count,
+                         dynamic_base);
+            }
+        }
     }
 
     void TransformSystem::EnsureTransformBuffer()
