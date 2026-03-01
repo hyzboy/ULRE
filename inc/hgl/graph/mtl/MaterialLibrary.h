@@ -116,7 +116,6 @@ IMPL_MATERIAL_FACTORY(name,cfg_type)
 MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialName &,MaterialCreateConfig *cfg);
 MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const InlineMaterial mtl_id,MaterialCreateConfig *cfg);
 const char *GetInlineMaterialName(const InlineMaterial mtl_id);
-bool TryGetInlineMaterialByName(const AnsiString &mtl_name, InlineMaterial &out_mtl_id);
 
 inline MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const char *mtl_name,MaterialCreateConfig *cfg)
 {

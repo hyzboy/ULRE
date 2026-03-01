@@ -387,30 +387,6 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
-{
-    HGL_CAPTURE_SCOPE();
-
-    Material *mtl=this->CreateMaterial(mtl_name,mci);
-
-    if(!mtl)
-        return(nullptr);
-
-    return CreateMaterialInstance(mtl,vil_cfg);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *mci, const VILConfig *vil_cfg,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    Material *mtl=this->CreateMaterial(mtl_name,mci);
-
-    if(!mtl)
-        return(nullptr);
-
-    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
-}
-
 MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
@@ -433,38 +409,6 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::InlineMater
         return(nullptr);
 
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    mtl::InlineMaterial inline_mtl_id;
-    if (mtl::TryGetInlineMaterialByName(mtl_name, inline_mtl_id))
-        return CreateMaterialInstance(inline_mtl_id, mcc, vil_cfg, data, data_size);
-
-    mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
-
-    if(!mci)
-        return(nullptr);
-
-    return CreateMaterialInstance(mtl_name,mci,vil_cfg,data,data_size);
-}
-
-MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
-{
-    HGL_CAPTURE_SCOPE();
-
-    mtl::InlineMaterial inline_mtl_id;
-    if (mtl::TryGetInlineMaterialByName(mtl_name, inline_mtl_id))
-        return CreateMaterialInstance(inline_mtl_id, mcc, vil_cfg, data, data_size);
-
-    mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
-
-    if(!mci)
-        return(nullptr);
-
-    return CreateMaterialInstance(mtl_name,mci,vil_cfg,data,data_size);
 }
 
 }//namespace hgl::graph

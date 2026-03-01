@@ -100,7 +100,7 @@ namespace hgl::ecs
         cfg.front_face = quad->GetFrontFace();
         cfg.pixel_size = quad->GetPixelSize();
 
-        auto* mi = material_manager->CreateMaterialInstance(graph::mtl::inline_material::Billboard2D, &cfg);
+        auto* mi = material_manager->CreateMaterialInstance(graph::mtl::InlineMaterial::Billboard2D, &cfg);
         if (!mi)
             return false;
 

@@ -140,9 +140,6 @@ public: //MaterialInstance
         return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
     }
 
-    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *, const VILConfig *vil_cfg=nullptr);
-    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *, const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-
     MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
     MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
@@ -153,18 +150,6 @@ public: //MaterialInstance
     MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
-    }
-
-    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
-    {
-        return CreateMaterialInstance(mtl_name,mcc,vil_cfg,nullptr,0);
-    }
-
-    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
-    {
-        return CreateMaterialInstance(mtl_name,mcc,vil_cfg,nullptr,0);
     }
 
 };//class MaterialManager
