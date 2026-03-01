@@ -1,5 +1,4 @@
-﻿#include"Std3DMaterial.h"
-#include<hgl/shadergen/MaterialCreateInfo.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/MaterialCompiler.h>
 #include"S_VertexColor3D.h"
 #include"S_VertexColor3D_Logic.h"
@@ -28,34 +27,6 @@ void main()
     // |       +--ps:这里的Input.Color就是上一个Shader中的Output.Color
     // +--ps:这里的Color就是最终的RT
 
-    class MaterialVertexColor3D:public Std3DMaterial
-    {
-    public:
-
-        using Std3DMaterial::Std3DMaterial;
-        ~MaterialVertexColor3D()=default;
-
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            if(!Std3DMaterial::CustomVertexShader(vsc))
-                return(false);
-
-            vsc->AddInput(VAT_VEC4,VAN::Color);     //这个是要外部用的输入值，所以用VAN::Color
-
-            vsc->AddOutput(SVT_VEC4,"Color");       //这个就是本材质用的传递到下一段shader用的内部变量，所以直接写Color
-
-            vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
-
-            fsc->SetMain(fs_main);
-            return(true);
-        }
-    };//class MaterialVertexColor3D:public Std3DMaterial
 }//namespace
 
 MaterialCreateInfo *CreateVertexColor3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg)
@@ -70,18 +41,8 @@ MaterialCreateInfo *CreateVertexColor3D(const VulkanDevAttr *dev_attr,const Mate
         key,
         cfg);
 
-    if (mci_new)
-    {
-        std::fprintf(stderr,
-            "[VertexColor3D] using new composed-business compile path\n");
-        return mci_new;
-    }
-
-    std::fprintf(stderr,
-        "[VertexColor3D] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
-
-    MaterialVertexColor3D mvc3d(cfg);
-
-    return mvc3d.Create(dev_attr);
+    if (!mci_new)
+        std::fprintf(stderr, "[VertexColor3D] CompileComposedBusinessMaterial failed\n");
+    return mci_new;
 }
 }//namespace hgl::graph::mtl

@@ -1,7 +1,7 @@
-﻿#include "Std3DMaterial.h"
-#include <hgl/shadergen/MaterialCreateInfo.h>
+﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/graph/mtl/MaterialCompiler.h>
+#include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/graph/mtl/ShaderComposition.h>
 #include <hgl/vk/VKRenderAssign.h>
@@ -223,56 +223,6 @@ void main()
         mi_bytes,
     };
 
-    class MaterialTextureBlinnPhong : public Std3DMaterial
-    {
-    public:
-        using Std3DMaterial::Std3DMaterial;
-        ~MaterialTextureBlinnPhong() = default;
-
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            // Add inputs first so Std3D can decide how to compute normals, etc.
-            vsc->AddInput(VAT_VEC2, VAN::TexCoord);
-            vsc->AddInput(VAT_VEC3, VAN::Normal);
-
-            if(!Std3DMaterial::CustomVertexShader(vsc))
-                return false;
-
-            vsc->AddOutput(SVT_VEC2, "TexCoord");
-            vsc->AddOutput(SVT_VEC4, "Position");
-            vsc->AddOutput(SVT_VEC3, "Normal");
-
-            vsc->SetMain(vs_main);
-            return true;
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            // Bind base color texture sampler
-            mci->AddTextureSampler(ShaderStage::Fragment,
-                                   DescriptorSetType::PerMaterial,
-                                   SamplerType::Sampler2D,
-                                   mtl::SamplerName::BaseColor);
-            mci->AddTextureSampler(ShaderStage::Fragment,
-                                   DescriptorSetType::PerMaterial,
-                                   SamplerType::Sampler2D,
-                                   "TextureNormal");
-            mci->AddTextureSampler(ShaderStage::Fragment,
-                                   DescriptorSetType::PerMaterial,
-                                   SamplerType::Sampler2D,
-                                   "TextureRoughness");
-
-            fsc->AddOutput(VAT_VEC4, "FragColor");
-            fsc->SetMain(fs_main);
-            return true;
-        }
-
-        bool EndCustomShader() override
-        {
-            mci->SetMaterialInstance(mi_codes, mi_bytes, (uint32_t)ShaderStage::Fragment);
-            return true;
-        }
-    };
 }
 
 // Factory
@@ -291,17 +241,8 @@ MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const
         key,
         &cfg_with_mi);
 
-    if (mci_new)
-    {
-        std::fprintf(stderr,
-            "[TextureBlinnPhong] using new composed-business compile path\n");
-        return mci_new;
-    }
-
-    std::fprintf(stderr,
-        "[TextureBlinnPhong] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
-
-    MaterialTextureBlinnPhong m(&cfg_with_mi);
-    return m.Create(dev_attr);
+    if (!mci_new)
+        std::fprintf(stderr, "[TextureBlinnPhong] CompileComposedBusinessMaterial failed\n");
+    return mci_new;
 }
 }//namespace hgl::graph::mtl

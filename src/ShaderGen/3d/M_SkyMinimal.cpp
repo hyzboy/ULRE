@@ -1,6 +1,6 @@
-﻿#include "Std3DMaterial.h"
-#include <hgl/shadergen/MaterialCreateInfo.h>
+﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/MaterialCompiler.h>
+#include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include "S_SkyMinimal.h"
 #include "S_SkyMinimal_Logic.h"
 #include <cstdio>
@@ -81,31 +81,6 @@ void main()
     FragColor = vec4(sky_color+sun_color, 1.0);
 })";
 
-    class MaterialSkyMinimal : public Std3DMaterial
-    {
-    public:
-        using Std3DMaterial::Std3DMaterial;
-        ~MaterialSkyMinimal() = default;
-
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            if (!Std3DMaterial::CustomVertexShader(vsc))
-                return false;
-
-            // export a Direction vec3 from vertex to fragment
-            vsc->AddOutput(SVT_VEC3, "Direction");
-
-            vsc->SetMain(vs_main);
-            return true;
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            fsc->AddOutput(VAT_VEC4, "FragColor");
-            fsc->SetMain(fs_main);
-            return true;
-        }
-    };
 }
 
 MaterialCreateInfo *CreateSkyMinimal(const VulkanDevAttr *dev_attr, const SkyMinimalCreateConfig *cfg)
@@ -120,17 +95,8 @@ MaterialCreateInfo *CreateSkyMinimal(const VulkanDevAttr *dev_attr, const SkyMin
         key,
         cfg);
 
-    if (mci_new)
-    {
-        std::fprintf(stderr,
-            "[SkyMinimal] using new composed-business compile path\n");
-        return mci_new;
-    }
-
-    std::fprintf(stderr,
-        "[SkyMinimal] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
-
-    MaterialSkyMinimal m(cfg);
-    return m.Create(dev_attr);
+    if (!mci_new)
+        std::fprintf(stderr, "[SkyMinimal] CompileComposedBusinessMaterial failed\n");
+    return mci_new;
 }
 }//namespace hgl::graph::mtl

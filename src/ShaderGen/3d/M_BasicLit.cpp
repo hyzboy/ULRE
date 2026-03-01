@@ -1,7 +1,7 @@
-﻿#include "Std3DMaterial.h"
-#include <hgl/shadergen/MaterialCreateInfo.h>
+﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/graph/mtl/MaterialCompiler.h>
+#include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/graph/mtl/ShaderComposition.h>
 #include <hgl/vk/VKRenderAssign.h>
@@ -224,70 +224,6 @@ void main()
         mi_bytes,
     };
 
-    class MaterialBasicLit : public Std3DMaterial
-    {
-        SkyLightAmbientModel ambient_model;
-
-    public:
-        MaterialBasicLit(const Material3DCreateConfig *cfg, SkyLightAmbientModel model)
-            : Std3DMaterial(cfg), ambient_model(model) {}
-
-        ~MaterialBasicLit() = default;
-
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            vsc->AddInput(VAT_VEC2, VAN::TexCoord);
-            vsc->AddInput(VAT_VEC3, VAN::Normal);
-            vsc->AddOutput(SVT_VEC2, "TexCoord");
-            vsc->AddOutput(SVT_VEC4, "Position");
-            vsc->AddOutput(SVT_VEC3, "Normal");
-            if (!Std3DMaterial::CustomVertexShader(vsc))
-                return false;
-            vsc->SetMain(vs_main);
-            return true;
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            mci->AddTextureSampler(ShaderStage::Fragment,
-                                   DescriptorSetType::PerMaterial,
-                                   SamplerType::Sampler2D,
-                                   mtl::SamplerName::BaseColor);
-            mci->AddTextureSampler(ShaderStage::Fragment,
-                                   DescriptorSetType::PerMaterial,
-                                   SamplerType::Sampler2D,
-                                   "TextureNormal");
-            mci->AddTextureSampler(ShaderStage::Fragment,
-                                   DescriptorSetType::PerMaterial,
-                                   SamplerType::Sampler2D,
-                                   "TextureRoughness");
-
-            fsc->AddOutput(VAT_VEC4, "FragColor");
-
-            switch(ambient_model)
-            {
-                case SkyLightAmbientModel::IBL:
-                    fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_IBL");
-                    break;
-                case SkyLightAmbientModel::SphericalHarmonics:
-                    fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_SH");
-                    break;
-                case SkyLightAmbientModel::Simple:
-                default:
-                    fsc->AddDefine("ULRE_SKYLIGHT_MODEL","ULRE_SKYLIGHT_MODEL_SIMPLE");
-                    break;
-            }
-
-            fsc->SetMain(fs_main);
-            return true;
-        }
-
-        bool EndCustomShader() override
-        {
-            mci->SetMaterialInstance(mi_codes, mi_bytes, (uint32_t)ShaderStage::Fragment);
-            return true;
-        }
-    };
 }
 
 MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMaterialCreateConfig *cfg)
@@ -305,18 +241,8 @@ MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMateri
         key,
         cfg);
 
-    if (mci_new)
-    {
-        std::fprintf(stderr,
-            "[BasicLit] using new composed-business compile path\n");
-
-        return mci_new;
-    }
-
-    std::fprintf(stderr,
-        "[BasicLit] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
-
-    MaterialBasicLit m(cfg, cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple);
-    return m.Create(dev_attr);
+    if (!mci_new)
+        std::fprintf(stderr, "[BasicLit] CompileComposedBusinessMaterial failed\n");
+    return mci_new;
 }
 }//namespace hgl::graph::mtl

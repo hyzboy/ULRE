@@ -1,6 +1,6 @@
-﻿#include"Std3DMaterial.h"
-#include<hgl/shadergen/MaterialCreateInfo.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/MaterialCompiler.h>
+#include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include"S_Gizmo3D.h"
 #include<cstdio>
 
@@ -56,44 +56,6 @@ void main()
     FragColor=vec4(direct_color+spec_color,1.0);
 })";
 
-    class MaterialGizmo3D:public Std3DMaterial
-    {
-    public:
-
-        using Std3DMaterial::Std3DMaterial;
-        ~MaterialGizmo3D()=default;
-
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            vsc->AddInput(VAT_VEC3,VAN::Normal);
-
-            vsc->AddOutput(SVT_VEC4,"Position");
-            vsc->AddOutput(SVT_VEC3,"Normal");
-
-            if(!Std3DMaterial::CustomVertexShader(vsc))     //会根据是否有GetNormal函数来决定是否添加Normal计算代码，所以需要放在AddInput后面
-                return(false);
-
-            vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
-
-            fsc->SetMain(fs_main);
-            return(true);
-        }
-
-        bool EndCustomShader() override
-        {
-            mci->SetMaterialInstance(mi_codes,                       //材质实例glsl代码
-                                     mi_bytes,                       //材质实例数据大小
-                                     (uint32_t)ShaderStage::Fragment);  //只在Vertex Shader中使用材质实例最终数据
-
-            return(true);
-        }
-    };//class MaterialGizmo3D:public Std3DMaterial
 }//namespace
 
 MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
@@ -111,17 +73,8 @@ MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreate
         key,
         cfg);
 
-    if (mci_new)
-    {
-        std::fprintf(stderr,
-            "[Gizmo3D] using new composed-business compile path\n");
-        return mci_new;
-    }
-
-    std::fprintf(stderr,
-        "[Gizmo3D] composed-business compile failed, fallback to legacy Std3DMaterial path\n");
-
-    MaterialGizmo3D mg3d(cfg);
-    return mg3d.Create(dev_attr);
+    if (!mci_new)
+        std::fprintf(stderr, "[Gizmo3D] CompileComposedBusinessMaterial failed\n");
+    return mci_new;
 }
 }//namespace hgl::graph::mtl
