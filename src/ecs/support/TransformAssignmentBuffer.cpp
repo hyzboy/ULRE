@@ -25,6 +25,34 @@ namespace hgl::ecs
         constexpr uint32_t kIdentityL2WSlot = 0;
         constexpr uint32_t kFirstObjectL2WSlot = 1;
 
+        static bool ShouldEmitPeriodicLog(const uint32_t period = 120)
+        {
+            static uint32_t tick = 0;
+            ++tick;
+            return (tick % period) == 1;
+        }
+
+        static void LogDeviceBufferSnapshot(const char *tag, const graph::DeviceBuffer *buffer)
+        {
+            if (!tag)
+                tag = "[TransformAssignmentBuffer]";
+
+            if (!buffer)
+            {
+                GLogWarning("%s buffer=null", tag);
+                return;
+            }
+
+            const auto *gpu = buffer->GetGPUBuffer();
+            GLogInfo("%s buffer=0x%llX vk=0x%llX size=%llu gpu=0x%llX dirty=%d",
+                     tag,
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(buffer)),
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(buffer->GetBuffer())),
+                     static_cast<unsigned long long>(buffer->GetSize()),
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+                     gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
+        }
+
         static bool WriteIdentityToL2WSlot0(graph::DeviceBuffer *buffer)
         {
             if (!buffer)
@@ -161,12 +189,19 @@ namespace hgl::ecs
             return;
         }
 
+        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
+
     #if defined(HGL_L2W_USE_SSBO)
         mtl->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.set_type,
                   hgl::graph::mtl::SBS_LocalToWorld.name,
                   transform_buffer->GetGPUBuffer());
+        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO set_type=%d name=%s",
+                 static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
+                 hgl::graph::mtl::SBS_LocalToWorld.name);
     #else
         mtl->BindUBO(&hgl::graph::mtl::SBS_LocalToWorld, transform_buffer->GetGPUBuffer());
+        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindUBO name=%s",
+                 hgl::graph::mtl::SBS_LocalToWorld.name);
     #endif
     }
 
@@ -174,6 +209,19 @@ namespace hgl::ecs
     {
         const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
         StatTransform(total_count, policy);
+
+        if (ShouldEmitPeriodicLog())
+        {
+            const uint32_t ring_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
+            GLogInfo("[TransformAssignmentBuffer] EnsureCapacity: static=%u dynamic=%u total=%u ring_base=%u frame=%u policy=%d",
+                     static_count,
+                     dynamic_count,
+                     total_count,
+                     ring_base,
+                     ring_writer.GetFrameIndex(),
+                     static_cast<int>(policy));
+            LogDeviceBufferSnapshot("[TransformAssignmentBuffer] EnsureCapacity snapshot", transform_buffer);
+        }
     }
 
     uint32_t TransformAssignmentBuffer::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
@@ -314,7 +362,14 @@ namespace hgl::ecs
 
         math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
         if (!mapped)
+        {
+            GLogWarning("[TransformAssignmentBuffer] Static L2W map failed: map_offset=%llu map_size=%llu handles=%u dirty_indices=%u",
+                        static_cast<unsigned long long>(span_offset_bytes),
+                        static_cast<unsigned long long>(span_size_bytes),
+                        static_cast<uint32_t>(handles.size()),
+                        static_cast<uint32_t>(dirty_indices.size()));
             return;
+        }
 
         std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
         flush_ranges.reserve(merged_ranges.size());
@@ -359,6 +414,15 @@ namespace hgl::ecs
                          static_cast<uint32_t>(dirty_indices.size()),
                          static_cast<unsigned long long>(total_written_bytes),
                          tbuf->IsDirty() ? 1 : 0);
+
+            if (ShouldEmitPeriodicLog(60))
+            {
+                GLogInfo("[TransformAssignmentBuffer] Static L2W detail: min=%u max=%u span_offset=%llu span_size=%llu",
+                         min_first,
+                         max_last,
+                         static_cast<unsigned long long>(span_offset_bytes),
+                         static_cast<unsigned long long>(span_size_bytes));
+            }
         }
     }
 
@@ -401,7 +465,16 @@ namespace hgl::ecs
 
         math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
         if (!mapped)
+        {
+            GLogWarning("[TransformAssignmentBuffer] Dynamic L2W map failed: map_offset=%llu map_size=%llu static_count=%u dynamic_count=%u dirty_indices=%u frame=%u",
+                        static_cast<unsigned long long>(span_offset_bytes),
+                        static_cast<unsigned long long>(span_size_bytes),
+                        static_count,
+                        dynamic_count,
+                        static_cast<uint32_t>(dirty_indices.size()),
+                        ring_writer.GetFrameIndex());
             return;
+        }
 
         std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
         flush_ranges.reserve(merged_ranges.size());
@@ -450,6 +523,16 @@ namespace hgl::ecs
                          static_cast<uint32_t>(dirty_indices.size()),
                          static_cast<unsigned long long>(total_written_bytes),
                          tbuf->IsDirty() ? 1 : 0);
+
+            if (ShouldEmitPeriodicLog(60))
+            {
+                GLogInfo("[TransformAssignmentBuffer] Dynamic L2W detail: min=%u max=%u span_offset=%llu span_size=%llu frame=%u",
+                         min_first,
+                         max_last,
+                         static_cast<unsigned long long>(span_offset_bytes),
+                         static_cast<unsigned long long>(span_size_bytes),
+                         ring_writer.GetFrameIndex());
+            }
         }
     }
 
@@ -571,6 +654,16 @@ namespace hgl::ecs
                          transform_buffer_max_count,
                          static_cast<unsigned long long>(transform_buffer->GetSize()),
                          static_cast<int>(policy));
+
+            LogDeviceBufferSnapshot("[TransformAssignmentBuffer] L2W recreated", transform_buffer);
+        }
+        else if (ShouldEmitPeriodicLog())
+        {
+            GLogInfo("[TransformAssignmentBuffer] StatTransform reuse: required=%u capacity=%u policy=%d frame=%u",
+                     static_cast<uint32_t>(required_count),
+                     transform_buffer_max_count,
+                     static_cast<int>(policy),
+                     ring_writer.GetFrameIndex());
         }
     }
 
@@ -744,6 +837,11 @@ namespace hgl::ecs
             GLogWarning("[TransformAssignmentBuffer::WriteItems] L2W map failed: total=%u bytes=%llu",
                         total_count,
                         wbuf ? static_cast<unsigned long long>(wbuf->GetSize()) : 0ULL);
+            GLogWarning("[TransformAssignmentBuffer::WriteItems] L2W map context: static=%u dynamic=%u frame=%u base=%u",
+                        static_count,
+                        dynamic_count,
+                        ring_writer.GetFrameIndex(),
+                        ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count));
             return false;
         }
 
@@ -787,14 +885,25 @@ namespace hgl::ecs
                      static_cast<unsigned long long>(wbuf->GetSize()),
                      wbuf->IsDirty() ? 1 : 0);
 
+        if (ShouldEmitPeriodicLog(90))
+        {
+            GLogInfo("[TransformAssignmentBuffer::WriteItems] L2W full context: frame=%u ring_base=%u ring_frames=%u",
+                     ring_writer.GetFrameIndex(),
+                     ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count),
+                     ring_writer.GetRingFrames());
+        }
+
         return true;
     }
 
     bool TransformAssignmentBuffer::EnsureTransformVABCapacity(const size_t item_count)
     {
+        bool recreated = false;
+
         if (!transform_vab)
         {
             node_count = power_to_2(item_count);
+            recreated = true;
         }
         else if (node_count < item_count)
         {
@@ -808,6 +917,8 @@ namespace hgl::ecs
             {
                 SAFE_CLEAR(transform_vab);
             }
+
+            recreated = true;
         }
 
         if (!transform_vab)
@@ -828,6 +939,26 @@ namespace hgl::ecs
                 }
             #endif//_DEBUG
             }
+        }
+
+        if (recreated && transform_vab)
+        {
+            auto *gpu = transform_vab->GetGPUBuffer();
+            GLogInfo("[TransformAssignmentBuffer] TransformID VAB ready: item_count=%u capacity=%u bytes=%llu gpu=0x%llX vk=0x%llX",
+                     static_cast<uint32_t>(item_count),
+                     node_count,
+                     static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
+        }
+        else if (ShouldEmitPeriodicLog(120) && transform_vab)
+        {
+            auto *gpu = transform_vab->GetGPUBuffer();
+            GLogInfo("[TransformAssignmentBuffer] TransformID VAB reuse: item_count=%u capacity=%u bytes=%llu dirty=%d",
+                     static_cast<uint32_t>(item_count),
+                     node_count,
+                     static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),
+                     gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
         }
 
         return transform_vab != nullptr;
@@ -861,6 +992,9 @@ namespace hgl::ecs
         }
 
         bool warned_overflow = false;
+        uint32_t nonzero_transform_ids = 0;
+        uint32_t min_transform_id = std::numeric_limits<uint32_t>::max();
+        uint32_t max_written_transform_id = 0;
 
         for (size_t i = 0; i < item_count; i++)
         {
@@ -888,24 +1022,39 @@ namespace hgl::ecs
             else
             {
                 *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
+
+                if (idx != 0)
+                {
+                    ++nonzero_transform_ids;
+                    min_transform_id = hgl_min(min_transform_id, idx);
+                    max_written_transform_id = hgl_max(max_written_transform_id, idx);
+                }
             }
             ++transform_ptr;
         }
 
         transform_vab->Unmap();
 
-        GLogInfo("[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u vab_capacity=%u dirty=%d vkbuf=0x%llX",
+        GLogInfo("[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u nonzero=%u min=%u max=%u vab_capacity=%u dirty=%d vkbuf=0x%llX frame=%u",
                   static_cast<uint32_t>(item_count),
+                  nonzero_transform_ids,
+                  min_transform_id == std::numeric_limits<uint32_t>::max() ? 0 : min_transform_id,
+                  max_written_transform_id,
                   node_count,
                   transform_gpu->IsDirty() ? 1 : 0,
-                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
+                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)),
+                  ring_writer.GetFrameIndex());
 
         std::fprintf(stderr,
-                     "[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u vab_capacity=%u dirty=%d vkbuf=0x%llX\n",
+                     "[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u nonzero=%u min=%u max=%u vab_capacity=%u dirty=%d vkbuf=0x%llX frame=%u\n",
                      static_cast<uint32_t>(item_count),
+                     nonzero_transform_ids,
+                     min_transform_id == std::numeric_limits<uint32_t>::max() ? 0 : min_transform_id,
+                     max_written_transform_id,
                      node_count,
                      transform_gpu->IsDirty() ? 1 : 0,
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
+                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)),
+                     ring_writer.GetFrameIndex());
 
         return true;
     }
@@ -936,6 +1085,18 @@ namespace hgl::ecs
         const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
         const uint32_t max_transform_id = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
 
+        if (ShouldEmitPeriodicLog(60) || (dynamic_count > 0 && static_count == 0))
+        {
+            GLogInfo("[TransformAssignmentBuffer::WriteItems] Begin: items=%u static=%u dynamic=%u ring_base=%u total=%u frame=%u mode=%d",
+                     static_cast<uint32_t>(item_count),
+                     static_count,
+                     dynamic_count,
+                     ring_base,
+                     total_count,
+                     ring_writer.GetFrameIndex(),
+                     static_cast<int>(mode));
+        }
+
         if (sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t)
          && total_count > max_transform_id + 1)
         {
@@ -956,6 +1117,9 @@ namespace hgl::ecs
             GLogError("[TransformAssignmentBuffer::WriteItems] transform_buffer is null after StatTransform (total_count=%u)", total_count);
             return;
         }
+
+        if (ShouldEmitPeriodicLog(60))
+            LogDeviceBufferSnapshot("[TransformAssignmentBuffer::WriteItems] L2W before write", transform_buffer);
 
         AssignTransformIndices(static_items, movable_items, ring_base);
 
@@ -1014,6 +1178,18 @@ namespace hgl::ecs
             GLogInfo("[TransformAssignmentBuffer] FlushPendingUpdates: ranges=%u buffer_dirty=%d",
                       static_cast<uint32_t>(dirty_ranges.size()),
                       gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
+
+            if (ShouldEmitPeriodicLog(60))
+            {
+                const auto &first = dirty_ranges.front();
+                const auto &last = dirty_ranges.back();
+                GLogInfo("[TransformAssignmentBuffer] FlushPendingUpdates detail: first=[%llu,%llu] last=[%llu,%llu] frame=%u",
+                         static_cast<unsigned long long>(first.offset),
+                         static_cast<unsigned long long>(first.size),
+                         static_cast<unsigned long long>(last.offset),
+                         static_cast<unsigned long long>(last.size),
+                         ring_writer.GetFrameIndex());
+            }
         }
 
         pending_updates.clear();
