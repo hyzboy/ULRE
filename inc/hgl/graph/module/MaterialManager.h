@@ -43,6 +43,7 @@ private:
 
 private: // Helper methods with integrated DebugUtils
 
+    Material *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
 
@@ -112,12 +113,8 @@ public: //Shader
 
 public: //Material
 
-    Material *          CreateMaterial  (const AnsiString &, const mtl::MaterialCreateInfo *);       ///<基于名称创建一个材质(一般用于程序内嵌材质)
     Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
     Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
-
-    Material *          LoadMaterial    (const AnsiString &, mtl::Material2DCreateConfig *);         ///<基于资产名称加载一个材质(一般用于从文件加载材质)
-    Material *          LoadMaterial    (const AnsiString &, mtl::Material3DCreateConfig *);
 
 public: //MaterialInstance
 

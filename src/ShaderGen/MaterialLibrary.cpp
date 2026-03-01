@@ -1,56 +1,8 @@
 ﻿#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/type/IDName.h>
-#include<hgl/type/UnorderedMap.h>
-
-#include<memory>
 
 namespace hgl::graph::mtl{
-
-namespace
-{
-    using MaterialFactoryMap=UnorderedMap<int,std::unique_ptr<MaterialFactory>>;
-
-    MaterialFactoryMap &GetMaterialFactoryMap()
-    {
-        static MaterialFactoryMap material_factory_map;
-        return material_factory_map;
-    }
-}//namespace
-
-bool RegisterMaterialFactory(MaterialFactory *mf)
-{
-    if(!mf)
-        return(false);
-
-    const MaterialName &name=mf->GetName();
-    const int name_id=name.GetID();
-
-    auto &material_factory_map=GetMaterialFactoryMap();
-
-    if(material_factory_map.ContainsKey(name_id))
-    {
-        delete mf;
-        return(false);
-    }
-
-    material_factory_map.Add(name_id,std::unique_ptr<MaterialFactory>(mf));
-
-    return(true);
-}
-
-MaterialFactory *GetMaterialFactory(const MaterialName &name)
-{
-    auto &material_factory_map=GetMaterialFactoryMap();
-    std::unique_ptr<MaterialFactory>* ptr = material_factory_map.GetValuePointer(name.GetID());
-    return ptr ? ptr->get() : nullptr;
-}
-
-void ClearMaterialFactory()
-{
-    GetMaterialFactoryMap().Clear();
-}
 
 const char *GetInlineMaterialName(const InlineMaterial mtl_id)
 {
@@ -78,27 +30,31 @@ const char *GetInlineMaterialName(const InlineMaterial mtl_id)
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const InlineMaterial mtl_id,MaterialCreateConfig *cfg)
 {
-    const char *mtl_name=GetInlineMaterialName(mtl_id);
-
-    if(!mtl_name)
-        return(nullptr);
-
-    MaterialName mtl_id_name(mtl_name);
-
-    return CreateMaterialCreateInfo(dev_attr,mtl_id_name,cfg);
-}
-
-MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialName &name,MaterialCreateConfig *cfg)
-{
     if(!cfg)
         return(nullptr);
 
-    MaterialFactory *mf=GetMaterialFactory(name);
+    switch(mtl_id)
+    {
+        case InlineMaterial::VertexColor2D:         return CreateVertexColor2D      (dev_attr,(const Material2DCreateConfig *)cfg);
+        case InlineMaterial::PureColor2D:           return CreatePureColor2D        (dev_attr,(Material2DCreateConfig *)cfg);
+        case InlineMaterial::PureTexture2D:         return CreatePureTexture2D      (dev_attr,(const Material2DCreateConfig *)cfg);
+        case InlineMaterial::RectTexture2D:         return CreateRectTexture2D      (dev_attr,(Material2DCreateConfig *)cfg);
+        case InlineMaterial::RectTexture2DArray:    return CreateRectTexture2DArray (dev_attr,(Material2DCreateConfig *)cfg);
+        case InlineMaterial::Text2D:                return CreateText2D             (dev_attr,(const Text2DMaterialCreateConfig *)cfg);
 
-    if(!mf)
-        return(nullptr);
+        case InlineMaterial::PureColor3D:           return CreatePureColor3D        (dev_attr,(Material3DCreateConfig *)cfg);
+        case InlineMaterial::VertexColor3D:         return CreateVertexColor3D      (dev_attr,(const Material3DCreateConfig *)cfg);
+        case InlineMaterial::VertexLuminance3D:     return CreateVertexLuminance3D  (dev_attr,(Material3DCreateConfig *)cfg);
+        case InlineMaterial::VertexPattleColor3D:   return CreateVertexPattleColor3D(dev_attr,(const Material3DCreateConfig *)cfg);
+        case InlineMaterial::Gizmo3D:               return CreateGizmo3D            (dev_attr,(Material3DCreateConfig *)cfg);
+        case InlineMaterial::TextureBlinnPhong:     return CreateTextureBlinnPhong  (dev_attr,(const Material3DCreateConfig *)cfg);
+        case InlineMaterial::TerrainGrid:           return CreateTerrainGrid        (dev_attr,(const TerrainGridCreateConfig *)cfg);
+        case InlineMaterial::SkyMinimal:            return CreateSkyMinimal         (dev_attr,(const SkyMinimalCreateConfig *)cfg);
+        case InlineMaterial::Billboard2D:           return CreateBillboard2D        (dev_attr,(BillboardMaterialCreateConfig *)cfg);
+        case InlineMaterial::BasicLit:              return CreateBasicLit           (dev_attr,(BasicLitMaterialCreateConfig *)cfg);
 
-    return mf->Create(dev_attr,cfg);
+        default:                                    return nullptr;
+    }
 }
 
 }//namespace hgl::graph::mtl

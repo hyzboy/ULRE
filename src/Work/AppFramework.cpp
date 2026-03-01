@@ -25,11 +25,6 @@ namespace hgl
     {
         bool InitShaderCompiler();
         void CloseShaderCompiler();
-
-        namespace mtl
-        {
-            void ClearMaterialFactory();
-        }
     }
 
     namespace
@@ -114,7 +109,6 @@ namespace hgl
 
         if (APP_FRAMEWORK_COUNT == 0)
         {
-            graph::mtl::ClearMaterialFactory();
             graph::CloseShaderCompiler();
         }
     }

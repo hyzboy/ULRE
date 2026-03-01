@@ -14,8 +14,6 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/mtl/MaterialFactory2D.h>
-#include<hgl/graph/mtl/MaterialFactory3D.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 
@@ -249,39 +247,6 @@ Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::
 
     return this->CreateMaterial(hash_name,mci);
 }
-
-namespace mtl
-{
-    MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &, Material2DCreateConfig *);
-    MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &, Material3DCreateConfig *);
-}
-
-Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)
-{
-    HGL_CAPTURE_SCOPE();
-
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(GetDevAttr(),mtl_name,cfg);
-
-    //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
-
-    AnsiString hash_name=mtl_name+"?"+cfg->ToHashString();
-
-    return this->CreateMaterial(hash_name,mci);
-}
-
-Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
-{
-    HGL_CAPTURE_SCOPE();
-
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(GetDevAttr(),mtl_name,cfg);
-
-    //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
-
-    AnsiString hash_name=mtl_name+"?"+cfg->ToHashString();
-
-    return this->CreateMaterial(hash_name,mci);
-}
-
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
 {
