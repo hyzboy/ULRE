@@ -2,8 +2,8 @@
 
 本文档定义了 ULRE Shader System 中 `required_resources` 的命名规则与引用约定。
 
-**最后更新**：2026-02-28（文档口径统一，无规范变更）  
-**适用范围**：Phase B 及后续所有材质开发  
+**最后更新**：2026-03-01  
+**适用范围**：当前及后续所有材质开发  
 **关联文档**：[SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md)
 
 ---
@@ -287,7 +287,7 @@ constexpr MaterialDescriptor DESC[] = {
 
 ---
 
-## 7. Phase B 验收标准
+## 7. 验收标准
 
 ### 7.1 检查清单
 
@@ -299,7 +299,7 @@ constexpr MaterialDescriptor DESC[] = {
 
 ### 7.2 自动化检查工具（计划）
 
-Phase C 将增加编译时检查：
+建议在编译时检查：
 ```cpp
 // 伪代码
 for (auto& res_name : required_resources) {
@@ -365,5 +365,5 @@ for (auto& desc : descriptors) {
 ---
 
 **责任人**：Shader System 维护团队  
-**审核周期**：Phase B 完成后冻结，Phase E 总结时最终审查  
+**审核周期**：每月 review 一次，重大改动后强制 review  
 **相关文档**：[SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md)

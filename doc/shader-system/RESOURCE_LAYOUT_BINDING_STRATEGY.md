@@ -2,8 +2,8 @@
 
 本文档定义了 `ResourceLayoutGenerator` 的 descriptor binding 分配规则、冲突检测机制与调试策略。
 
-**最后更新**：2026-02-28（文档口径统一，无规范变更）  
-**适用范围**：Phase B 及后续所有材质开发  
+**最后更新**：2026-03-01  
+**适用范围**：当前及后续所有材质开发  
 **关联文档**：
 - [SHADER_RESOURCE_NAMING_SPEC.md](SHADER_RESOURCE_NAMING_SPEC.md)
 - [SHADER_LOGIC_CONSTRAINTS_SPEC.md](SHADER_LOGIC_CONSTRAINTS_SPEC.md)
@@ -360,7 +360,7 @@ constexpr MaterialDescriptor PURE_COLOR_3D_DESCRIPTORS[] = {
 
 ---
 
-## 6. 未来扩展方向（Phase C+）
+## 6. 可选扩展方向
 
 ### 6.1 自动分配模式（可选）
 
@@ -416,7 +416,7 @@ vec4 color = texture(textures[textureIndex], uv);  // 动态索引
 
 ---
 
-## 7. Phase B 验收标准
+## 7. 验收标准
 
 ### 7.1 文档完整性
 
@@ -507,7 +507,7 @@ void ResourceLayoutGenerator::PrintBindingMap() const {
 ---
 
 **责任人**：Shader System 维护团队  
-**审核周期**：Phase B 完成后冻结  
+**审核周期**：每月 review 一次，重大改动后强制 review  
 **相关文档**：
 - [SHADER_RESOURCE_NAMING_SPEC.md](SHADER_RESOURCE_NAMING_SPEC.md)
 - [SHADER_LOGIC_CONSTRAINTS_SPEC.md](SHADER_LOGIC_CONSTRAINTS_SPEC.md)

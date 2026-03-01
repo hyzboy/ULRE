@@ -2,8 +2,8 @@
 
 本文档定义了 `ShaderLogicBlock` / `MaterialLogicDef` 的最小必填字段约束、错误消息格式与运行时校验规则。
 
-**最后更新**：2026-02-28（文档口径统一，无规范变更）  
-**适用范围**：Phase B 及后续所有材质开发  
+**最后更新**：2026-03-01  
+**适用范围**：当前及后续所有材质开发  
 **关联文档**：
 - [SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md)
 - [SHADER_RESOURCE_NAMING_SPEC.md](SHADER_RESOURCE_NAMING_SPEC.md)
@@ -287,7 +287,7 @@ constexpr MaterialLogicDef VALID_MAT = {
 | 材质定义时（编译期）  | 结构体字段完整性（必填字段非空）        | C++ 编译错误           |
 | 材质编译时（运行时）  | 资源依赖合法性（resource 名称存在于 descriptors） | 返回 nullptr，输出错误 |
 | Shader 生成时         | helper 注入冲突检测（无重复定义）       | 返回 nullptr，输出错误 |
-| Shader 编译时         | GLSL 语法正确性（由驱动检查）           | fallback 到 legacy 路径|
+| Shader 编译时         | GLSL 语法正确性（由驱动检查）           | 回退到默认/低档可运行变体 |
 
 ### 4.2 校验函数伪代码
 
@@ -376,7 +376,7 @@ MaterialCreateInfo* CompileComposedBusinessMaterial(
 
 ---
 
-## 5. Phase B 验收标准
+## 5. 验收标准
 
 ### 5.1 已迁移材质验证
 
@@ -474,7 +474,7 @@ void PrintMaterialLogicDiagnostics(const MaterialLogicDef& logic, const char* ma
 ---
 
 **责任人**：Shader System 维护团队  
-**审核周期**：Phase B 完成后冻结  
+**审核周期**：每月 review 一次，重大改动后强制 review  
 **相关文档**：
 - [SHADER_HELPER_FUNCTION_SPEC.md](SHADER_HELPER_FUNCTION_SPEC.md)
 - [SHADER_RESOURCE_NAMING_SPEC.md](SHADER_RESOURCE_NAMING_SPEC.md)

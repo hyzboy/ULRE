@@ -2,8 +2,8 @@
 
 本文档定义了 ULRE Shader System 中所有 helper 函数的统一签名、命名与语义规则。
 
-**最后更新**：2026-02-28（文档口径统一，无规范变更）  
-**适用范围**：Phase B 及后续所有材质开发  
+**最后更新**：2026-03-01  
+**适用范围**：当前及后续所有材质开发  
 **规则约束**：违反本规范的代码不得通过 code review
 
 ---
@@ -21,7 +21,7 @@
 
 ### 2.1 规范化前的混乱状态（禁止使用）
 
-❌ **已废弃**（会在 Phase C 之前删除）：
+❌ **已废弃**（禁止继续使用）：
 ```glsl
 // 这些名字会被移除，请立即迁移
 GetWorldPosition3D()      // 语义不明确
@@ -143,7 +143,7 @@ MaterialInstance GetMI()
 
 ### 4.2 废弃的变体
 
-❌ **禁止使用**（Phase C 前移除）：
+❌ **禁止使用**：
 ```glsl
 GetMaterialInstance()  // 名字过长，使用 GetMI()
 GetMtl()               // 缩写不规范
@@ -230,7 +230,7 @@ float ComputeShadow(vec4 shadowCoord, sampler2D shadowMap);
 
 ## 8. 验证与执行
 
-### 8.1 Phase B 验收标准
+### 8.1 当前验收标准
 
 - [ ] 所有 `MF*.h` 文件已重命名/删除废弃 helper
 - [ ] 已迁移材质（PureColor3D / VertexColor3D）使用新签名
@@ -239,10 +239,10 @@ float ComputeShadow(vec4 shadowCoord, sampler2D shadowMap);
 
 ### 8.2 迁移路径
 
-1. **Phase B.1**：更新 `MFGetPosition.h`，删除所有 `GetPosition3D*` 变体，只保留 `GetLocalPosition` / `GetWorldPosition` / `GetClipPosition`
-2. **Phase B.2**：更新 `MFCommon.h`，`GetMaterialInstance` → `GetMI`
-3. **Phase B.3**：更新所有材质定义文件（`S_*.h`），使用新helper
-4. **Phase B.4**：运行测试验证渲染正确性
+1. 更新 `MFGetPosition.h`，删除所有 `GetPosition3D*` 变体，只保留 `GetLocalPosition` / `GetWorldPosition` / `GetClipPosition`
+2. 更新 `MFCommon.h`，`GetMaterialInstance` → `GetMI`
+3. 更新所有材质定义文件（`S_*.h`），使用新 helper
+4. 运行测试验证渲染正确性
 
 ### 8.3 Code Review 拦截规则
 
@@ -260,7 +260,7 @@ float ComputeShadow(vec4 shadowCoord, sampler2D shadowMap);
 **A**: 空间语义比字符数更重要。`GetWorldPosition()` 清晰传达"世界空间位置"，`GetPos()` 无法区分 Local / World / Clip。
 
 ### Q2: 旧材质中已经使用了 `GetPosition3D`，如何兼容？
-**A**: Phase B 期间保留 fallback（legacy GLSL 路径）。新路径强制使用新签名，旧路径保持不变直到 Phase E 冻结。
+**A**: 不再保留旧 helper 兼容路径。统一按本规范改造到新签名，并在评审中拦截旧写法。
 
 ### Q3: FS 中为什么 `GetWorldPosition()` 不需要参数？
 **A**: FS 中 WorldPosition 已由 VS 插值传递，直接从 `Input.WorldPosition` 读取。VS 中需要手动应用 L2W 变换。

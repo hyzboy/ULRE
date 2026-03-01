@@ -4,7 +4,7 @@
 
 - 材质侧只依赖一组稳定函数接口；
 - 天光模型（Simple/IBL/EnvMap/SH）可在不改材质业务代码的前提下切换；
-- Legacy 与 Composed-Business 路径保持同一语义。
+- 所有材质统一走现行 Composed-Business 语义路径。
 
 ---
 
@@ -76,16 +76,6 @@ constexpr const char fs_main[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
 #endif
 ```
 
-### 3.3 Legacy 路径定义注入
-
-Legacy `CustomFragmentShader()` 若需要 IBL 模型，应注入：
-
-```cpp
-fsc->AddDefine("ULRE_SKYLIGHT_MODEL", "ULRE_SKYLIGHT_MODEL_IBL");
-```
-
----
-
 ## 4. 当前落地状态
 
 已对齐到统一模型分支结构：
@@ -108,7 +98,7 @@ fsc->AddDefine("ULRE_SKYLIGHT_MODEL", "ULRE_SKYLIGHT_MODEL_IBL");
 1. 不修改材质业务函数签名（保持 `ULRE_GetSkyLight*` 不变）。
 2. 不要求材质改 descriptor 名称（沿用 `sky` 等既有资源命名规范）。
 3. 新增资源（如 cubemap / SH 系数）时，先在统一层给出降级路径（无资源时回退到 `SIMPLE`）。
-4. 优先保持 Legacy 与 Composed 视觉趋势一致，允许小幅误差但禁止量级偏差。
+4. 保持同一材质在各模型间视觉趋势连续，允许小幅误差但禁止量级偏差。
 
 ---
 

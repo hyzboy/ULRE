@@ -1,163 +1,99 @@
-现代固定管线 Shader 生成器（实现草案）
+现代固定管线 Shader 生成器（现行基线，2026-03）
 
-## 1. 背景与目标
+> 本文档是当前代码基线的实现约束与开发规范。
 
-当前引擎以“极致 DrawCall 合并”为核心优化方向，通常一个 DrawCall 覆盖全场景一批不透明物件。  
-在这种约束下，开放任意自定义 Shader 会导致：
+## 1. 目标与范围
 
-- 变体失控（编译数量爆炸）
-- 渲染路径不可预测（前向/延迟分裂）
-- 材质兼容性与调试成本急剧上升
+当前渲染体系继续坚持“固定语义 + 可控变体”的路线：
 
-因此采用“现代固定管线 + 可配置生成”的模式：
+- 上层按固定材质语义开发（BaseColor/Normal/Roughness/Metallic/AO 等）
+- 下层通过模板与排列键生成不同路径变体
+- 变体组合由平台与质量档约束，禁止业务侧自由扩张
 
-- 业务开发只配置材质参数与特性开关
-- Shader 逻辑模板由引擎团队维护
-- 由生成器统一产出各渲染路径 Shader 变体
+本文件只描述“当前可用且受支持”的实现。
 
-## 2. 核心原则
+## 2. 当前实现基线（已落地）
 
-### 2.1 固定接口，非固定实现
+### 2.1 材质创建路径
 
-- 对上层暴露固定的材质输入语义（BaseColor/Normal/Roughness/Metallic/AO 等）
-- 对底层可切换不同渲染路径（Forward/Deferred/Subpass/VBuffer）
-- 同一材质实例数据结构，映射到不同路径时保持字段语义一致
+- 唯一受支持入口：`InlineMaterial + CreateConfig`
+- `MaterialLibrary::CreateMaterialCreateInfo(InlineMaterial, cfg)` 已是直分发（switch -> CreateXXX）
+- `MaterialManager` 仅保留 InlineMaterial / Material* 路径
 
-### 2.2 特性驱动生成，不允许自由拼接
+### 2.2 运行边界（当前约束）
 
-- 允许配置“特性轴”
-- 禁止直接注入任意 GLSL 片段
-- 所有分支都必须在模板内白名单化
+- 仅允许 `InlineMaterial + CreateConfig` 路径
+- 不允许引入额外材质创建入口
+- 不允许引入运行时按名称分发或文件解析分发
 
-### 2.3 变体可控
+### 2.3 配置与语义分层
 
-- 变体由“有限维度排列键”决定（Permutation Key）
-- 通过“质量档位 + 平台裁剪”控制总组合数
+- MaterialInstance：仅参数数据
+- Business Logic：业务语义（固定白名单）
+- Composition / Template：按排列键组装 Shader
 
-## 3. 生成维度（Permutation Axis）
+## 3. 开发强约束（必须遵守）
 
-建议最小可用轴如下：
+1. 新增内置材质必须走以下流程：
+   - 在 `InlineMaterial` 增加枚举项
+   - 在对应 CreateConfig 头声明 `CreateXxx`
+   - 在 `MaterialLibrary.cpp` 的 InlineMaterial 分发中接入 `CreateXxx`
 
-1. 渲染路径（Render Path）
-    - ForwardVertexLit
-    - ForwardPixelLit
-    - MobileDeferredSubpass
-    - GBufferDeferred
-    - VBufferDeferred
+2. 禁止新增以下形式：
+   - 字符串材质名创建
+   - 运行时工厂注册/按名查找
+   - 从材质文件解析生成运行时材质
 
-2. 材质输入集（Surface Feature Set）
-    - BaseColor
-    - BaseColor+Normal
-    - BaseColor+Normal+Roughness
-    - BaseColor+Normal+Roughness+Metallic
-    - BaseColor+Normal+Roughness+Metallic+AO
+3. 若新增变体轴，必须同时提供：
+   - 轴值定义
+   - 平台白名单与质量档约束
+   - 失败回退策略
 
-3. 光照模型（Light Model）
-    - BlinnPhong
-    - PBR
+## 4. 变体与质量档策略
 
-4. 环境光模型（Sky/Ambient Model）
-  - FlatSimple（常量或高度渐变）
-  - AtmosphereSimple（超简大气：`exp2(elevation) * sky_color` 一行近似）
-    - SH
-    - EnvCubeMap
-    - Atmosphere
-    - IBL
+当前仍采用“轴驱动 + 档位裁剪”：
 
-5. 可选附加轴（按平台启用）
-    - 阴影模式（None/PCF/PCSS）
-    - 法线压缩编码（None/Oct/Spheremap）
-    - 输出模式（单 RT / 多 RT）
+- 质量档：Low / Medium / High
+- 平台裁剪优先，禁止未审核组合进入编译路径
+- 变体键最小集保持稳定（渲染路径、输入集、光照模型、环境模型）
 
-## 4. 质量档位（Quality Tier）
+详细组合建议见：
+- [ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md)
 
-建议预定义三档，禁止业务侧自定义组合：
+## 5. 编译与缓存要求
 
-- Low（移动低端）
-  - ForwardVertexLit / ForwardPixelLit
-  - BlinnPhong
-  - FlatSimple / AtmosphereSimple / SH
-  - 禁用高成本屏幕空间效果
+- 允许启动预编 + 运行时懒编译混合策略
+- 懒编失败必须有回退（低档或默认材质）
+- 缓存键必须覆盖：材质类型、渲染路径、输入集、光照模型、环境模型、平台宏版本
 
-- Medium（移动高端 / 主机性能模式）
-  - MobileDeferredSubpass 或轻量 GBuffer
-  - BlinnPhong 或 PBR-Lite
-  - AtmosphereSimple / SH / EnvCubeMap
+## 6. 验收标准（当前）
 
-- High（PC/主机画质模式）
-  - GBufferDeferred / VBufferDeferred
-  - PBR
-  - Atmosphere / IBL（可回退 AtmosphereSimple）
+### 6.1 正确性
 
-## 5. 材质数据与逻辑分层
+- 同材质在不同路径下语义一致（允许可解释差异）
+- 环境模型切换无黑材质/崩溃
 
-建议沿用“三层分离”：
+### 6.2 工程性
 
-- MaterialInstance 数据层：只存参数，不含路径逻辑
-- Business Logic 层：描述 VS/FS 业务语义（固定白名单函数）
-- Composition 层：根据 Permutation Key 组装辅助函数、宏与模板
+- Shader 生成失败有可定位诊断
+- 编译失败可自动回退到可运行路径
 
-这样可保证：
+### 6.3 约束一致性
 
-- 同一份业务语义可复用到多渲染路径
-- 测试可分别覆盖“语义正确性”和“编译可用性”
+- 代码与 CMake 层仅包含现行路径实现
 
-## 6. 编译与缓存策略
+## 7. 后续建议
 
-### 6.1 编译时机
+- 在 CI 增加规则，阻止新增非基线材质路径
+- 规范文档保持与代码同批更新，避免口径漂移
 
-- 启动阶段：按当前平台 + 质量档 + 场景配置批量预编
-- 运行时：允许懒编译，但必须有 fallback（默认材质或低档变体）
+## 8. 结论
 
-### 6.2 缓存键（必须）
+当前基线保持单一路径与可控变体：
 
-缓存键至少包含：
+- 稳定性由固定接口和白名单模板保证
+- 灵活性由受控排列键与配置驱动保证
 
-- 材质类型
-- Render Path
-- Surface Feature Set
-- Light Model
-- Sky/Ambient Model
-- 平台标识与关键宏版本
-
-若场景切换了天空模型（如选人界面 IBL、大场景 SH），应通过缓存键自然区分并触发对应变体编译。
-
-## 7. 变体爆炸控制建议
-
-1. 平台白名单裁剪：不支持的轴组合在配置阶段直接拒绝
-2. 档位绑定：Low/Medium/High 固定可用组合
-3. 热路径优先：对高频材质先预热，低频材质懒编译
-4. 统计驱动：记录变体命中率，定期清理低命中组合
-
-## 8. 验收标准（建议）
-
-### 8.1 功能正确性
-
-- 同一材质在不同渲染路径下视觉语义一致（允许可解释差异）
-- 各环境光模型切换时无崩溃、无黑材质
-- `AtmosphereSimple` 在低端设备上能稳定替代完整大气模型，且昼夜主色调变化连续
-
-### 8.2 工程稳定性
-
-- Shader 生成失败有明确诊断信息
-- 编译失败可回退到可运行路径
-- Gate 测试覆盖关键材质模板 conformance
-
-### 8.3 性能约束
-
-- 启动预编译总时长可控
-- 运行时首次懒编译不会造成明显卡顿峰值
-- 变体总数在平台预算内
-
-## 9. 结论
-
-这套方案的本质是：
-
-- 用“固定管线”保证稳定性与可维护性
-- 用“特性轴 + 生成器”保留必要灵活性
-
-建议下一步在文档旁补一份“平台-档位-组合矩阵表”，作为实际编译白名单来源，避免后续功能新增时重新失控。
-
-已补充配套文档：见 [ModernFixedRenderPipeline_VariantMatrix.md](ModernFixedRenderPipeline_VariantMatrix.md)。
+后续开发以本文为准执行。
 
 
