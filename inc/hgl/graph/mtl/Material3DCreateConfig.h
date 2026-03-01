@@ -150,11 +150,4 @@ public:
 
 DECLARE_MATERIAL_CREATOR(BasicLit, BasicLitMaterialCreateConfig)
 
-/**
- * 从文件加载材质
- * @param mtl_name 材质名称
- * @param cfg 材质创建参数
- * @return 材质创建信息
- */
-MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg);
 }//namespace hgl::graph::mtl

@@ -67,18 +67,4 @@ public:
 
 DECLARE_MATERIAL_CREATOR(Text2D, const Text2DMaterialCreateConfig)
 
-// 为什么有了LoadMaterialFromFile，还需要保留以上Create系列函数？
-
-//  1.LoadMaterialFromFile载的材质，是从文件中加载的。但我们要考虑文件损坏不能加载的情况。
-//  2.从文件加载材质过于复杂，而且不利于调试。所以我们需要保留Create系列函数，以便于调试以及测试一些新的情况。同时让开发人员知道材质具体是如何创建的。
-
-/**
- * 从文件加载材质
- * @param dev_attr 设备属性
- * @param mtl_name 材质名称
- * @param cfg 材质创建参数
- * @return 材质创建信息
- */
-MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
-
 }//namespace hgl::graph::mtl

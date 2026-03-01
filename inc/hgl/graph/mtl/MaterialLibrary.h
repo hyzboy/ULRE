@@ -28,14 +28,8 @@ enum class InlineMaterial:uint8
     ENUM_CLASS_RANGE(VertexColor2D,BasicLit)
 };
 
-/// 仅声明材质创建函数与 inline_material 名称常量，不产生工厂注册代码。
-/// 用于配置头文件，使配置头文件无需引入工厂注册的副作用。
+/// 仅声明材质创建函数，不产生任何注册或全局常量副作用。
 #define DECLARE_MATERIAL_CREATOR(name,cfg_type) \
-namespace inline_material   \
-{   \
-    constexpr const char name[]=#name; \
-}   \
-\
 MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr,cfg_type *); \
 \
 inline MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr)  \

@@ -8,22 +8,22 @@ const char *GetInlineMaterialName(const InlineMaterial mtl_id)
 {
     switch(mtl_id)
     {
-        case InlineMaterial::VertexColor2D:         return inline_material::VertexColor2D;
-        case InlineMaterial::PureColor2D:           return inline_material::PureColor2D;
-        case InlineMaterial::PureTexture2D:         return inline_material::PureTexture2D;
-        case InlineMaterial::RectTexture2D:         return inline_material::RectTexture2D;
-        case InlineMaterial::RectTexture2DArray:    return inline_material::RectTexture2DArray;
-        case InlineMaterial::Text2D:                return inline_material::Text2D;
-        case InlineMaterial::PureColor3D:           return inline_material::PureColor3D;
-        case InlineMaterial::VertexColor3D:         return inline_material::VertexColor3D;
-        case InlineMaterial::VertexLuminance3D:     return inline_material::VertexLuminance3D;
-        case InlineMaterial::VertexPattleColor3D:   return inline_material::VertexPattleColor3D;
-        case InlineMaterial::Gizmo3D:               return inline_material::Gizmo3D;
-        case InlineMaterial::TextureBlinnPhong:     return inline_material::TextureBlinnPhong;
-        case InlineMaterial::TerrainGrid:           return inline_material::TerrainGrid;
-        case InlineMaterial::SkyMinimal:            return inline_material::SkyMinimal;
-        case InlineMaterial::Billboard2D:           return inline_material::Billboard2D;
-        case InlineMaterial::BasicLit:              return inline_material::BasicLit;
+        case InlineMaterial::VertexColor2D:         return "VertexColor2D";
+        case InlineMaterial::PureColor2D:           return "PureColor2D";
+        case InlineMaterial::PureTexture2D:         return "PureTexture2D";
+        case InlineMaterial::RectTexture2D:         return "RectTexture2D";
+        case InlineMaterial::RectTexture2DArray:    return "RectTexture2DArray";
+        case InlineMaterial::Text2D:                return "Text2D";
+        case InlineMaterial::PureColor3D:           return "PureColor3D";
+        case InlineMaterial::VertexColor3D:         return "VertexColor3D";
+        case InlineMaterial::VertexLuminance3D:     return "VertexLuminance3D";
+        case InlineMaterial::VertexPattleColor3D:   return "VertexPattleColor3D";
+        case InlineMaterial::Gizmo3D:               return "Gizmo3D";
+        case InlineMaterial::TextureBlinnPhong:     return "TextureBlinnPhong";
+        case InlineMaterial::TerrainGrid:           return "TerrainGrid";
+        case InlineMaterial::SkyMinimal:            return "SkyMinimal";
+        case InlineMaterial::Billboard2D:           return "Billboard2D";
+        case InlineMaterial::BasicLit:              return "BasicLit";
         default:                                    return nullptr;
     }
 }

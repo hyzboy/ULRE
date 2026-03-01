@@ -76,7 +76,7 @@ bool ValidateFSMainBusinessHelperConsistency(
  *   COMPILE_WITH_RECIPE_FALLBACK(dev_attr, BASIC_LIT_BASE_DEF, key,
  *                                "recipes/uber/uber_3d.json", "pc_high")
  *
- * 注：此宏的实现需要完成 ShaderTemplateEngine 和 TemplateBasedMaterialFactory。
+ * 注：此宏的实现需要完成 ShaderTemplateEngine 与配方驱动编译入口。
  * 当前版本保留宏定义但注释掉，避免前向引用错误。
  */
 // #define COMPILE_WITH_RECIPE_FALLBACK(dev_attr_, def_, key_, recipe_path_, quality_) \
