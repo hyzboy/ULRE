@@ -40,40 +40,6 @@ constexpr const char GIZMO_3D_MI_GLSL[] = "vec4 Color;";
 constexpr uint32_t GIZMO_3D_MI_BYTES = sizeof(math::Vector4f);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Legacy 固定 GLSL（旧路径回退用）
-// ─────────────────────────────────────────────────────────────────────────────
-
-constexpr const char GIZMO_3D_VERT_GLSL[] = R"(
-void main()
-{
-    HandoverMI();
-    Output.Normal   = GetNormal();
-    Output.Position = GetPosition3D();
-    gl_Position     = Output.Position;
-})";
-
-constexpr const char GIZMO_3D_FRAG_GLSL[] = R"(
-const vec3 SUN_DIRECTION = vec3(0.655386, 0.491539, 0.573462);
-const vec3 SUN_COLOR = vec3(1.0, 1.0, 1.0);
-
-void main()
-{
-    MaterialInstance mi = GetMI();
-    float intensity = 0.5 * max(dot(Input.Normal, SUN_DIRECTION), 0.0) + 0.5;
-    vec3 direct_color = intensity * SUN_COLOR * mi.Color.rgb;
-    
-    vec3 spec_color = vec3(0);
-    if (intensity > 0.0)
-    {
-        vec3 half_vector = normalize(SUN_DIRECTION + normalize(Input.Position.xyz + camera.pos));
-        float specular = max(dot(half_vector, Input.Normal), 0.0);
-        spec_color = specular * pow(specular, 16) * SUN_COLOR;
-    }
-    
-    FragColor = vec4(direct_color + spec_color, 1.0);
-})";
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Business 函数（新路径）
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -112,10 +78,6 @@ vec4 FragmentShaderBusiness()
 constexpr VertexShaderBusiness GIZMO_3D_VERTEX_BUSINESS { GIZMO_3D_VS_BUSINESS };
 constexpr FragmentShaderBusiness GIZMO_3D_FRAGMENT_BUSINESS { GIZMO_3D_FS_BUSINESS };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FixedMaterialDef（legacy 路径）
-// ─────────────────────────────────────────────────────────────────────────────
-
 constexpr FixedMaterialDef GIZMO_3D_DEF {
     "Gizmo3D",
     PrimitiveType::Triangles,
@@ -125,9 +87,9 @@ constexpr FixedMaterialDef GIZMO_3D_DEF {
     uint32_t(sizeof(GIZMO_3D_DESCRIPTORS) / sizeof(GIZMO_3D_DESCRIPTORS[0])),
     GIZMO_3D_MI_GLSL,
     GIZMO_3D_MI_BYTES,
-    GIZMO_3D_VERT_GLSL,
     nullptr,
-    GIZMO_3D_FRAG_GLSL,
+    nullptr,
+    nullptr,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

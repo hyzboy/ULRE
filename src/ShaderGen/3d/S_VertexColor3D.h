@@ -25,19 +25,6 @@ constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
     { DescriptorSetType::PerFrame, VERTEX_COLOR_3D_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
 };
 
-constexpr const char VERTEX_COLOR_3D_VERT_GLSL[] = R"(
-void main()
-{
-    Output.Color=Color;
-    gl_Position=GetPosition3D();
-})";
-
-constexpr const char VERTEX_COLOR_3D_FRAG_GLSL[] = R"(
-void main()
-{
-    FragColor=Input.Color;
-})";
-
 constexpr const char VERTEX_COLOR_3D_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
@@ -65,9 +52,9 @@ constexpr FixedMaterialDef VERTEX_COLOR_3D_DEF {
     uint32_t(sizeof(VERTEX_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_COLOR_3D_DESCRIPTORS[0])),
     nullptr,
     0,
-    VERTEX_COLOR_3D_VERT_GLSL,
     nullptr,
-    VERTEX_COLOR_3D_FRAG_GLSL,
+    nullptr,
+    nullptr,
 };
 
 const ComposedMaterialDef VERTEX_COLOR_3D_COMPOSED_DEF {

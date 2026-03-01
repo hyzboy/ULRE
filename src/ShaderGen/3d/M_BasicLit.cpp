@@ -62,16 +62,6 @@ namespace
         { DescriptorSetType::PerMaterial, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D" },
     };
 
-    constexpr const char vs_main[] = R"(
-void main()
-{
-    HandoverMI();
-    Output.TexCoord = TexCoord;
-    Output.Normal   = GetNormal();
-    Output.Position = GetPosition3D();
-    gl_Position     = Output.Position;
-})";
-
     constexpr const char fs_main[] = ULRE_SKYLIGHT_GLSL_COMMON R"(
 #define ULRE_SURFACE_TEX_MODE_COLOR_ONLY 1
 #define ULRE_SURFACE_TEX_MODE_COLOR_NORMAL 2
@@ -204,9 +194,9 @@ void main()
         uint32_t(sizeof(BASIC_LIT_DESCRIPTORS) / sizeof(BASIC_LIT_DESCRIPTORS[0])),
         mi_codes,
         mi_bytes,
-        vs_main,
         nullptr,
-        fs_main,
+        nullptr,
+        nullptr,
     };
 
     const ComposedMaterialDef BASIC_LIT_COMPOSED_DEF {

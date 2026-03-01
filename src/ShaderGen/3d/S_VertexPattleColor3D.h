@@ -26,20 +26,6 @@ constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
     { DescriptorSetType::PerMaterial, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_pattle", "ColorPattle", nullptr },
 };
 
-constexpr const char VERTEX_PATTLE_COLOR_3D_VERT_GLSL[] = R"(
-void main()
-{
-    Output.Color=color_pattle.color[Color];
-
-    gl_Position=GetPosition3D();
-})";
-
-constexpr const char VERTEX_PATTLE_COLOR_3D_FRAG_GLSL[] = R"(
-void main()
-{
-    FragColor=Input.Color;
-})";
-
 constexpr const char VERTEX_PATTLE_COLOR_3D_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
@@ -67,9 +53,9 @@ constexpr FixedMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
     uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[0])),
     nullptr,
     0,
-    VERTEX_PATTLE_COLOR_3D_VERT_GLSL,
     nullptr,
-    VERTEX_PATTLE_COLOR_3D_FRAG_GLSL,
+    nullptr,
+    nullptr,
 };
 
 const ComposedMaterialDef VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF {

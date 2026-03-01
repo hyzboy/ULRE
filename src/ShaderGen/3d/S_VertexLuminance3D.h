@@ -43,22 +43,6 @@ constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
     { DescriptorSetType::PerMaterial, VERTEX_LUMINANCE_3D_MI_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
 };
 
-constexpr const char VERTEX_LUMINANCE_3D_VERT_GLSL[] = R"(
-void main()
-{
-    MaterialInstance mi=GetMI();
-
-    Output.Color=Luminance*mi.Color;
-
-    gl_Position=GetPosition3D();
-})";
-
-constexpr const char VERTEX_LUMINANCE_3D_FRAG_GLSL[] = R"(
-void main()
-{
-    FragColor=Input.Color;
-})";
-
 constexpr const char VERTEX_LUMINANCE_3D_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
@@ -87,9 +71,9 @@ constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC3 {
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
     VERTEX_LUMINANCE_3D_MI_CODES,
     VERTEX_LUMINANCE_3D_MI_BYTES,
-    VERTEX_LUMINANCE_3D_VERT_GLSL,
     nullptr,
-    VERTEX_LUMINANCE_3D_FRAG_GLSL,
+    nullptr,
+    nullptr,
 };
 
 constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC2 {
@@ -101,9 +85,9 @@ constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC2 {
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
     VERTEX_LUMINANCE_3D_MI_CODES,
     VERTEX_LUMINANCE_3D_MI_BYTES,
-    VERTEX_LUMINANCE_3D_VERT_GLSL,
     nullptr,
-    VERTEX_LUMINANCE_3D_FRAG_GLSL,
+    nullptr,
+    nullptr,
 };
 
 const ComposedMaterialDef VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3 {

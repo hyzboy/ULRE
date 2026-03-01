@@ -35,20 +35,6 @@ constexpr FixedDescriptorEntry PURE_COLOR_3D_DESCRIPTORS[] = {
     { DescriptorSetType::PerMaterial,  PURE_COLOR_3D_MI_KIND,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
 };
 
-constexpr const char PURE_COLOR_3D_VERT_GLSL[] = R"(
-void main()
-{
-    HandoverMI();
-    gl_Position=GetPosition3D();
-})";
-
-constexpr const char PURE_COLOR_3D_FRAG_GLSL[] = R"(
-void main()
-{
-    MaterialInstance mi=GetMI();
-    FragColor=mi.Color;
-})";
-
 constexpr const char PURE_COLOR_3D_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
@@ -76,9 +62,9 @@ constexpr FixedMaterialDef PURE_COLOR_3D_DEF {
     uint32_t(sizeof(PURE_COLOR_3D_DESCRIPTORS) / sizeof(PURE_COLOR_3D_DESCRIPTORS[0])),
     pure_color_3d_mi_codes,
     pure_color_3d_mi_bytes,
-    PURE_COLOR_3D_VERT_GLSL,
     nullptr,
-    PURE_COLOR_3D_FRAG_GLSL,
+    nullptr,
+    nullptr,
 };
 
 const ComposedMaterialDef PURE_COLOR_3D_COMPOSED_DEF {
