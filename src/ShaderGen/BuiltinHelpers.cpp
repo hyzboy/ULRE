@@ -2,9 +2,15 @@
 #include <hgl/shadergen/ShaderComposition.h>
 #include <cstring>
 #include <cstdlib>
+#include <string>
 
 namespace hgl::graph::mtl {
 namespace builtin_helpers {
+
+static bool CStrEq(const char *lhs, const char *rhs)
+{
+    return lhs && rhs && std::strcmp(lhs, rhs) == 0;
+}
 
 enum class BuiltinHelperId : uint8_t {
     TransformNormal,
@@ -29,10 +35,10 @@ static constexpr HelperMeta HELPER_META_TABLE[] = {
 
 static const char* GetStageBusinessCode(const ComposedMaterialDef &def, const char *shader_stage)
 {
-    if (strcmp(shader_stage, "VS") == 0)
+    if (CStrEq(shader_stage, "VS"))
         return def.vertex_business ? def.vertex_business->code : nullptr;
 
-    if (strcmp(shader_stage, "FS") == 0)
+    if (CStrEq(shader_stage, "FS"))
         return def.fragment_business ? def.fragment_business->code : nullptr;
 
     return nullptr;
@@ -136,14 +142,14 @@ static bool IsHelperExplicitlyRequired(
     std::vector<std::string> all_required_helpers;
 
     // Explicit (metadata-driven)
-    if (strcmp(shader_stage, "VS") == 0) {
+    if (CStrEq(shader_stage, "VS")) {
         if (def.vertex_required_helpers && def.vertex_required_helper_count > 0) {
             for (uint32_t i = 0; i < def.vertex_required_helper_count; ++i) {
                 if (def.vertex_required_helpers[i])
                     all_required_helpers.emplace_back(def.vertex_required_helpers[i]);
             }
         }
-    } else if (strcmp(shader_stage, "FS") == 0) {
+    } else if (CStrEq(shader_stage, "FS")) {
         if (def.fragment_required_helpers && def.fragment_required_helper_count > 0) {
             for (uint32_t i = 0; i < def.fragment_required_helper_count; ++i) {
                 if (def.fragment_required_helpers[i])
@@ -179,6 +185,9 @@ static bool IsHelperExplicitlyRequired(
 
 static bool HasDescriptor(const ComposedMaterialDef &def, const char *name)
 {
+    if (!name || !*name)
+        return false;
+
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i) {
         const auto &entry = def.descriptor_entries[i];
         if (entry.name && strcmp(entry.name, name) == 0) {
@@ -188,7 +197,7 @@ static bool HasDescriptor(const ComposedMaterialDef &def, const char *name)
     return false;
 }
 
-static AnsiString GenTransformNormal()
+static std::string GenTransformNormal()
 {
     return R"(
 vec3 TransformNormal(vec3 local_normal) {
@@ -198,9 +207,9 @@ vec3 TransformNormal(vec3 local_normal) {
 )";
 }
 
-static AnsiString GenGetWorldPos(const char *shader_stage)
+static std::string GenGetWorldPos(const char *shader_stage)
 {
-    if (strcmp(shader_stage, "VS") == 0 || strcmp(shader_stage, "FS") == 0) {
+    if (CStrEq(shader_stage, "VS") || CStrEq(shader_stage, "FS")) {
         return R"(
 vec3 GetWorldPos() {
     return GetPosition3D().xyz;
@@ -213,10 +222,10 @@ vec3 GetWorldPosition() {
 )";
     }
 
-    return AnsiString();
+    return std::string();
 }
 
-static AnsiString GenGetCameraPos(const ComposedMaterialDef &def)
+static std::string GenGetCameraPos(const ComposedMaterialDef &def)
 {
     if (HasDescriptor(def, "CameraPos")) {
         return R"(
@@ -269,12 +278,12 @@ vec3 GetCameraPosition() {
 )";
 }
 
-AnsiString GenStageHelpers(
+std::string GenStageHelpers(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const char *shader_stage)
 {
-    AnsiString result;
+    std::string result;
 
     const char *business_code = GetStageBusinessCode(def, shader_stage);
 
@@ -296,7 +305,7 @@ AnsiString GenStageHelpers(
 
     const char *material_name = (def.name && def.name[0]) ? def.name : "<unnamed-material>";
 
-    auto emit_conflict_marker = [&](AnsiString &out_code, const char *helper_name)
+    auto emit_conflict_marker = [&](std::string &out_code, const char *helper_name)
     {
         out_code += "// HELPER_CONFLICT: material=";
         out_code += material_name;

@@ -9,6 +9,7 @@
 #include<stdio.h>
 #include<assert.h>
 #include<map>
+#include <string>
 
 namespace hgl::graph::mtl {
 
@@ -132,13 +133,13 @@ const char* ResourceLayoutGenerator::GetGLSLType(uint8_t va_type) const
 // 生成描述符布局声明
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ResourceLayoutGenerator::GenDescriptorLayout(const FixedDescriptorEntry* entries, uint32_t count)
+std::string ResourceLayoutGenerator::GenDescriptorLayout(const FixedDescriptorEntry* entries, uint32_t count)
 {
     if (!entries || count == 0) {
-        return AnsiString();
+        return std::string();
     }
     
-    AnsiString result;
+    std::string result;
     
     // 按 set 分组，在每个 set 内部自动分配 binding
     // set -> (binding_counter, entries)
@@ -217,13 +218,13 @@ AnsiString ResourceLayoutGenerator::GenDescriptorLayout(const FixedDescriptorEnt
 // 生成顶点输入布局声明
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ResourceLayoutGenerator::GenVertexInputLayout(const FixedVertexEntry* entries, uint32_t count)
+std::string ResourceLayoutGenerator::GenVertexInputLayout(const FixedVertexEntry* entries, uint32_t count)
 {
     if (!entries || count == 0) {
-        return AnsiString();
+        return std::string();
     }
     
-    AnsiString result;
+    std::string result;
     
     for (uint32_t i = 0; i < count; i++) {
         const auto& entry = entries[i];
@@ -247,11 +248,11 @@ AnsiString ResourceLayoutGenerator::GenVertexInputLayout(const FixedVertexEntry*
 // 生成片段着色器输出布局
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ResourceLayoutGenerator::GenFragmentOutputLayout()
+std::string ResourceLayoutGenerator::GenFragmentOutputLayout()
 {
     // 当前只支持单个颜色输出
     // TODO: 后续扩展为 MRT（多渲染目标）
-    return AnsiString("layout(location=0) out vec4 FragColor;\n\n");
+    return std::string("layout(location=0) out vec4 FragColor;\n\n");
 }
 
 }//namespace hgl::graph::mtl

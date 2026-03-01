@@ -17,8 +17,14 @@
 #include <hgl/type/String.h>
 #include <hgl/graph/mtl/StdMaterial.h>
 #include "common/MFSkyLight.h"  // SKYLIGHT_GLSL_HEADER, GetSkyLightModelImplGLSL
+#include <string>
 
 namespace hgl::graph::mtl {
+
+static bool CStrEq(const char *lhs, const char *rhs)
+{
+    return lhs && rhs && std::strcmp(lhs, rhs) == 0;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 工具函数：顶点属性检查
@@ -28,9 +34,12 @@ static bool HasVertexAttribute(
     const ComposedMaterialDef &def,
     const char *name)
 {
+    if (!name)
+        return false;
+
     for (uint32_t i = 0; i < def.vertex_entry_count; i++) {
         const auto &entry = def.vertex_entries[i];
-        if (strcmp(entry.name, name) == 0) {
+        if (entry.name && strcmp(entry.name, name) == 0) {
             return true;
         }
     }
@@ -196,13 +205,13 @@ static NormalCompressionNormalizationDiagnostics BuildNormalCompressionNormaliza
     return diagnostics;
 }
 
-static AnsiString GenNormalCompressionNormalizationComments(
+static std::string GenNormalCompressionNormalizationComments(
     const NormalCompressionNormalizationDiagnostics &diagnostics)
 {
     if (!diagnostics.Any())
         return "";
 
-    AnsiString result;
+    std::string result;
     result += "// NORMAL_COMPRESSION_POLICY_NORMALIZED\n";
     result += diagnostics.vertex_input_normalized
            ? "// NORMAL_POLICY_NORMALIZED_VERTEX_INPUT=1\n"
@@ -230,7 +239,7 @@ static ShaderComposeDiagnostics ToPublicDiagnostics(
 }
 
 static void CollectHelperConflictDiagnosticsFromCode(
-    const AnsiString &code,
+    const std::string &code,
     ShaderComposeDiagnostics &diagnostics)
 {
     diagnostics.helper_conflicts.clear();
@@ -263,7 +272,7 @@ static void CollectHelperConflictDiagnosticsFromCode(
 }
 
 static void AppendEncodingDefines(
-    AnsiString &result,
+    std::string &result,
     const char *prefix,
     const NormalEncodingMode mode)
 {
@@ -281,9 +290,9 @@ static void AppendEncodingDefines(
     result += buf;
 }
 
-static AnsiString GenNormalCompressionDefines(const PipelineMode &mode)
+static std::string GenNormalCompressionDefines(const PipelineMode &mode)
 {
-    AnsiString result;
+    std::string result;
 
     char buf[256];
     snprintf(buf, sizeof(buf), "#define COMPRESS_VERTEX_INPUT_NORMAL %d\n",
@@ -304,7 +313,7 @@ static AnsiString GenNormalCompressionDefines(const PipelineMode &mode)
     return result;
 }
 
-static AnsiString GenNormalCompressionHelpers()
+static std::string GenNormalCompressionHelpers()
 {
     return R"(
 // Normal compression helpers (SG-2 template)
@@ -503,15 +512,15 @@ bool BuildComposedMaterialDefFromLogic(
 // Step 1: 生成前置部分（版本 + 宏定义）
 // ─────────────────────────────────────────────────────────────────────────────
 
-static AnsiString GenPreamble(const ShaderPermutationKey &key)
+static std::string GenPreamble(const ShaderPermutationKey &key)
 {
-    AnsiString result;
+    std::string result;
     result += "#version 450 core\n";
     result += "#extension GL_ARB_gpu_shader_int64 : enable\n";
     result += "\n";
     
     // 从 key 中注入 permutation 宏
-    AnsiString defines;
+    std::string defines;
     key.AppendGLSLDefines(defines);
     result += defines;
     result += "\n";
@@ -523,9 +532,9 @@ static AnsiString GenPreamble(const ShaderPermutationKey &key)
 // Step 2: 生成顶点输入结构体
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::GenVertexInputStruct(const ComposedMaterialDef &def)
+std::string ComposedShaderGenerator::GenVertexInputStruct(const ComposedMaterialDef &def)
 {
-    AnsiString result;
+    std::string result;
     result += "struct VertexInput {\n";
     
     for (uint32_t i = 0; i < def.vertex_entry_count; i++) {
@@ -539,9 +548,11 @@ AnsiString ComposedShaderGenerator::GenVertexInputStruct(const ComposedMaterialD
         if (!glsl_type) {
             glsl_type = "vec4";  // fallback
         }
+
+        const char *vertex_name = entry.name ? entry.name : "_unnamed";
         
         char buf[256];
-        snprintf(buf, sizeof(buf), "    %s %s;\n", glsl_type, entry.name);
+        snprintf(buf, sizeof(buf), "    %s %s;\n", glsl_type, vertex_name);
         result += buf;
     }
     
@@ -553,9 +564,9 @@ AnsiString ComposedShaderGenerator::GenVertexInputStruct(const ComposedMaterialD
 // Step 3: 生成 VS_Output 结构体（从 VS 到 FS 的插值数据）
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::GenVSOutputStruct(const ComposedMaterialDef &def)
+std::string ComposedShaderGenerator::GenVSOutputStruct(const ComposedMaterialDef &def)
 {
-    AnsiString result;
+    std::string result;
     result += "struct VS_Output {\n";
     result += "    vec4 ClipPos;           // 隐式，写入 gl_Position\n";
     
@@ -590,9 +601,9 @@ AnsiString ComposedShaderGenerator::GenVSOutputStruct(const ComposedMaterialDef 
 // Step 4: 生成光照输出结构体
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::GenLightingOutputStruct()
+std::string ComposedShaderGenerator::GenLightingOutputStruct()
 {
-    AnsiString result;
+    std::string result;
     result += "struct LightingOutput {\n";
     result += "    vec3 diffuse;           // 漫反射颜色\n";
     result += "    vec3 specular;          // 高光颜色\n";
@@ -605,7 +616,7 @@ AnsiString ComposedShaderGenerator::GenLightingOutputStruct()
 // Step 5: 生成布局声明和 uniform 块
 // ─────────────────────────────────────────────────────────────────────────────
 
-static AnsiString GenLayoutDeclarations(const ComposedMaterialDef &def)
+static std::string GenLayoutDeclarations(const ComposedMaterialDef &def)
 {
     ResourceLayoutGenerator layout_gen;
     layout_gen.Reset();
@@ -617,9 +628,9 @@ static AnsiString GenLayoutDeclarations(const ComposedMaterialDef &def)
 // Step 6: 生成坐标变换基础函数
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::GenCoordinateTransformFunctions()
+std::string ComposedShaderGenerator::GenCoordinateTransformFunctions()
 {
-    AnsiString result;
+    std::string result;
     result += R"(
 // 坐标变换辅助函数
 vec4 GetLocalToWorldPos(vec4 local_pos) {
@@ -642,29 +653,29 @@ vec4 GetScreenSpacePos(vec4 clip_pos) {
 // 关键部分：生成辅助函数库
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::GenHelperFunctionLibrary(
+std::string ComposedShaderGenerator::GenHelperFunctionLibrary(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const char *shader_stage)
 {
-    AnsiString result;
+    std::string result;
     
     // 所有 stage 都需要
     result += GenGetLocalToWorld(def);
     result += GenGetNormalMatrix(def);
     
     // Stage-specific 部分
-    if (strcmp(shader_stage, "VS") == 0) {
+    if (CStrEq(shader_stage, "VS")) {
         result += GenGetNormalFunction(def, "VS");
         result += GenGetPositionFunctions(def, "VS");
         result += GenGetMaterialInstanceFunctions(def, "VS");
     }
-    else if (strcmp(shader_stage, "GS") == 0) {
+    else if (CStrEq(shader_stage, "GS")) {
         result += GenGetNormalFunction(def, "GS");
         result += GenGetPositionFunctions(def, "GS");
         result += GenGetMaterialInstanceFunctions(def, "GS");
     }
-    else if (strcmp(shader_stage, "FS") == 0) {
+    else if (CStrEq(shader_stage, "FS")) {
         result += GenGetNormalFunction(def, "FS");
         result += GenGetPositionFunctions(def, "FS");
         result += GenGetMaterialInstanceFunctions(def, "FS");
@@ -676,9 +687,9 @@ AnsiString ComposedShaderGenerator::GenHelperFunctionLibrary(
     return result;
 }
 
-AnsiString ComposedShaderGenerator::GenGetLocalToWorld(const ComposedMaterialDef &def)
+std::string ComposedShaderGenerator::GenGetLocalToWorld(const ComposedMaterialDef &def)
 {
-    AnsiString result;
+    std::string result;
     
     // 查找 LocalToWorld 描述符
     const auto *l2w_desc = FindDescriptorByName(def, "LocalToWorld");
@@ -709,9 +720,9 @@ mat4 GetLocalToWorld() {
     return result;
 }
 
-AnsiString ComposedShaderGenerator::GenGetNormalMatrix(const ComposedMaterialDef &def)
+std::string ComposedShaderGenerator::GenGetNormalMatrix(const ComposedMaterialDef &def)
 {
-    AnsiString result;
+    std::string result;
     result += R"(
 mat3 GetNormalMatrix() {
     // = transpose(inverse(mat3(ViewMatrix * LocalToWorld)))
@@ -723,15 +734,15 @@ mat3 GetNormalMatrix() {
     return result;
 }
 
-AnsiString ComposedShaderGenerator::GenGetNormalFunction(
+std::string ComposedShaderGenerator::GenGetNormalFunction(
     const ComposedMaterialDef &def,
     const char *shader_stage)
 {
-    AnsiString result;
+    std::string result;
     
     bool has_normal = HasVertexAttribute(def, "Normal");
     
-    if (strcmp(shader_stage, "VS") == 0) {
+    if (CStrEq(shader_stage, "VS")) {
         // VS 中生成两个版本
         if (has_normal) {
             result += R"(
@@ -749,7 +760,7 @@ vec3 GetNormal(vec3 local_normal) {
 
 )";
     }
-    else if (strcmp(shader_stage, "FS") == 0) {
+    else if (CStrEq(shader_stage, "FS")) {
         // FS 中返回插值的世界法线
         result += R"(
 vec3 GetNormal() {
@@ -770,13 +781,13 @@ vec3 DecodeMaterialNormal(vec3 normal_sample) {
     return result;
 }
 
-AnsiString ComposedShaderGenerator::GenGetPositionFunctions(
+std::string ComposedShaderGenerator::GenGetPositionFunctions(
     const ComposedMaterialDef &def,
     const char *shader_stage)
 {
-    AnsiString result;
+    std::string result;
     
-    if (strcmp(shader_stage, "VS") == 0) {
+    if (CStrEq(shader_stage, "VS")) {
         result += R"(
 vec4 GetPosition3D() {
     return GetLocalToWorld() * vec4(Position, 1.0);
@@ -788,7 +799,7 @@ vec4 GetClipPosition() {
 
 )";
     }
-    else if (strcmp(shader_stage, "FS") == 0) {
+    else if (CStrEq(shader_stage, "FS")) {
         result += R"(
 vec4 GetPosition3D() {
     return vec4(Input.WorldPosition, 1.0);
@@ -804,24 +815,26 @@ vec3 GetWorldPosition() {
     return result;
 }
 
-AnsiString ComposedShaderGenerator::GenGetMaterialInstanceFunctions(
+std::string ComposedShaderGenerator::GenGetMaterialInstanceFunctions(
     const ComposedMaterialDef &def,
     const char *shader_stage)
 {
-    AnsiString result;
+    std::string result;
     
     // 查找 MaterialInstanceData 描述符
     const FixedDescriptorEntry *mi_desc = nullptr;
     for (uint32_t i = 0; i < def.descriptor_entry_count; i++) {
-        if (strcmp(def.descriptor_entries[i].name, "MaterialInstanceData") == 0 ||
-            strcmp(def.descriptor_entries[i].name, "mtl") == 0) {
+        const char *desc_name = def.descriptor_entries[i].name;
+        if (desc_name &&
+            (strcmp(desc_name, "MaterialInstanceData") == 0 ||
+             strcmp(desc_name, "mtl") == 0)) {
             mi_desc = &def.descriptor_entries[i];
             break;
         }
     }
     
     if (mi_desc) {
-        if (strcmp(shader_stage, "VS") == 0) {
+        if (CStrEq(shader_stage, "VS")) {
             result += R"(
 MaterialInstance GetMaterialInstance() {
     return mi.mi[MaterialInstanceID];
@@ -833,7 +846,7 @@ MaterialInstance GetMI() {
 
 )";
         }
-        else if (strcmp(shader_stage, "FS") == 0) {
+        else if (CStrEq(shader_stage, "FS")) {
             result += R"(
 MaterialInstance GetMaterialInstance() {
     return mtl.mi[Input.MaterialInstanceID];
@@ -854,9 +867,9 @@ MaterialInstance GetMI() {
 // Step 7: 生成输出合成代码
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::GenOutputCompositionCode(ShaderOutputMode mode)
+std::string ComposedShaderGenerator::GenOutputCompositionCode(ShaderOutputMode mode)
 {
-    AnsiString result;
+    std::string result;
     
     switch (mode) {
         case ShaderOutputMode::SingleRTAlphaBlend:
@@ -901,11 +914,11 @@ void ComposeFinalOutput(vec4 color_with_alpha, out vec4 out_rt0, out vec4 out_rt
 // Step 8: 生成光照计算代码（占位符，实现延迟至 M2-M3）
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::GenLightingCode(
+std::string ComposedShaderGenerator::GenLightingCode(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key)
 {
-    AnsiString result;
+    std::string result;
     
     if (!def.enable_lighting) {
         return "// 光照禁用，无计算代码\n";
@@ -931,12 +944,12 @@ LightingOutput ComputeLighting(vec3 normal, vec3 albedo, vec3 view_dir) {
 // 主入口：生成完整顶点着色器
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::ComposeVertexShader(
+std::string ComposedShaderGenerator::ComposeVertexShader(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const bool include_preamble)
 {
-    AnsiString result;
+    std::string result;
     
     // Step 1: 前置部分
     if (include_preamble)
@@ -954,8 +967,11 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     result += GenVertexInputStruct(def);
     result += GenVSOutputStruct(def);
     result += GenLightingOutputStruct();
-    result += def.mi_glsl_codes;  // 材质实例结构体
-    result += "\n";
+    if (def.mi_glsl_codes)
+    {
+        result += def.mi_glsl_codes;  // 材质实例结构体
+        result += "\n";
+    }
     
     // Step 4: 坐标变换基础函数
     result += GenCoordinateTransformFunctions();
@@ -964,7 +980,7 @@ AnsiString ComposedShaderGenerator::ComposeVertexShader(
     result += GenHelperFunctionLibrary(def, key, "VS");
     
     // Step 6: 开发者业务代码
-    if (def.vertex_business) {
+    if (def.vertex_business && def.vertex_business->code) {
         result += def.vertex_business->code;
         result += "\n\n";
     }
@@ -1023,7 +1039,7 @@ void main() {
     return result;
 }
 
-AnsiString ComposedShaderGenerator::ComposeVertexShader(
+std::string ComposedShaderGenerator::ComposeVertexShader(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const PipelineMode &pipeline_mode,
@@ -1047,7 +1063,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
 
     if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
     {
-        AnsiString result;
+        std::string result;
         if (include_preamble)
         {
             result += GenPreamble(key);
@@ -1068,7 +1084,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
     if (resolved_mode.render_path == PipelineRenderPath::Forward
      && resolved_mode.forward_lighting == PipelineForwardLightingMode::PerVertex)
     {
-        AnsiString result;
+        std::string result;
         if (include_preamble)
         {
             result += GenPreamble(key);
@@ -1088,7 +1104,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
 
     if (resolved_mode.topology == PipelineTopology::MeshFS)
     {
-        AnsiString result;
+        std::string result;
         if (include_preamble)
             result += GenPreamble(key);
 
@@ -1102,7 +1118,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
     // 当前实现：VS/FS 路径复用 legacy 生成逻辑
     if (include_preamble)
     {
-        AnsiString result;
+        std::string result;
         result += GenPreamble(key);
         result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
         result += GenNormalCompressionDefines(resolved_mode);
@@ -1122,12 +1138,12 @@ ShaderComposeResult ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
 // 主入口：生成完整片元着色器
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::ComposeFragmentShader(
+std::string ComposedShaderGenerator::ComposeFragmentShader(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const bool include_preamble)
 {
-    AnsiString result;
+    std::string result;
     
     // 前置部分
     if (include_preamble)
@@ -1145,8 +1161,11 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     result += GenVertexInputStruct(def);
     result += GenVSOutputStruct(def);
     result += GenLightingOutputStruct();
-    result += def.mi_glsl_codes;
-    result += "\n";
+    if (def.mi_glsl_codes)
+    {
+        result += def.mi_glsl_codes;
+        result += "\n";
+    }
     
     // 坐标变换基础函数
     result += GenCoordinateTransformFunctions();
@@ -1164,11 +1183,12 @@ AnsiString ComposedShaderGenerator::ComposeFragmentShader(
     
     // 天光辅助函数（header + 模型选择实现）— 在业务代码调用它们之前注入
     result += SKYLIGHT_GLSL_HEADER;
-    result += GetSkyLightModelImplGLSL(key.ambient);
+    if (const char *sky_model_impl = GetSkyLightModelImplGLSL(key.ambient))
+        result += sky_model_impl;
     result += "\n";
 
     // 开发者业务代码
-    if (def.fragment_business) {
+    if (def.fragment_business && def.fragment_business->code) {
         result += def.fragment_business->code;
         result += "\n\n";
     }
@@ -1194,7 +1214,7 @@ void main() {
     return result;
 }
 
-AnsiString ComposedShaderGenerator::ComposeFragmentShader(
+std::string ComposedShaderGenerator::ComposeFragmentShader(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const PipelineMode &pipeline_mode,
@@ -1218,7 +1238,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
 
     if (resolved_mode.render_path == PipelineRenderPath::MobileSubpassGBufferDeferred)
     {
-        AnsiString result;
+        std::string result;
         if (include_preamble)
         {
             result += GenPreamble(key);
@@ -1248,7 +1268,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
     if (resolved_mode.render_path == PipelineRenderPath::Forward
      && resolved_mode.forward_lighting == PipelineForwardLightingMode::PerVertex)
     {
-        AnsiString result;
+        std::string result;
         if (include_preamble)
         {
             result += GenPreamble(key);
@@ -1268,7 +1288,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
 
     if (resolved_mode.topology == PipelineTopology::MeshFS)
     {
-        AnsiString result;
+        std::string result;
         if (include_preamble)
             result += GenPreamble(key);
 
@@ -1281,7 +1301,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
 
     if (include_preamble)
     {
-        AnsiString result;
+        std::string result;
         result += GenPreamble(key);
         result += GenNormalCompressionNormalizationComments(normalization_diagnostics);
         result += GenNormalCompressionDefines(resolved_mode);
@@ -1301,7 +1321,7 @@ ShaderComposeResult ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostic
 // 几何着色器（占位符）
 // ─────────────────────────────────────────────────────────────────────────────
 
-AnsiString ComposedShaderGenerator::ComposeGeometryShader(
+std::string ComposedShaderGenerator::ComposeGeometryShader(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const bool include_preamble)
@@ -1312,7 +1332,7 @@ AnsiString ComposedShaderGenerator::ComposeGeometryShader(
     return "// 几何着色器生成延迟至 M2-M3\n";
 }
 
-AnsiString ComposedShaderGenerator::ComposeMeshShader(
+std::string ComposedShaderGenerator::ComposeMeshShader(
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key,
     const PipelineMode &pipeline_mode,
@@ -1320,7 +1340,7 @@ AnsiString ComposedShaderGenerator::ComposeMeshShader(
 {
     const PipelineMode resolved_mode = ResolvePipelineModeForCurrentBackend(pipeline_mode);
 
-    AnsiString result;
+    std::string result;
     if (include_preamble)
         result += GenPreamble(key);
 

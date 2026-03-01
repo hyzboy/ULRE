@@ -285,7 +285,8 @@ bool ShaderCreateInfo::ProcSSBO()
         final_shader+=AnsiString::numberOf((*ssbo)->set);
         final_shader+=",binding=";
         final_shader+=AnsiString::numberOf((*ssbo)->binding);
-        if(std::strcmp((*ssbo)->name,"l2w")==0 || std::strcmp((*ssbo)->name,"mtl")==0)
+        const char *ssbo_name = (*ssbo)->name;
+        if(ssbo_name && (std::strcmp(ssbo_name,"l2w")==0 || std::strcmp(ssbo_name,"mtl")==0))
             final_shader+=") readonly buffer ";
         else
             final_shader+=") buffer ";

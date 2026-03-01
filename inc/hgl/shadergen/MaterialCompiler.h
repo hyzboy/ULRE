@@ -16,6 +16,7 @@
 #include<hgl/shadergen/ShaderLogic.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKDeviceAttribute.h>
+#include <string>
 
 namespace hgl::graph::mtl{
 
@@ -66,7 +67,7 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
  */
 bool ValidateFSMainBusinessHelperConsistency(
     const ComposedMaterialDef &def,
-    const AnsiString &generated_fs);
+    const std::string &generated_fs);
 
 /**
  * 材质 fallback 工厂辅助宏。（待实现，参见任务 2.3）

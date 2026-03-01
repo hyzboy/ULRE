@@ -3,6 +3,7 @@
 #include<hgl/shadergen/FixedMaterialDef.h>
 #include<hgl/type/String.h>
 #include<stdio.h>
+#include <string>
 
 namespace hgl::graph::mtl{
 
@@ -26,7 +27,7 @@ namespace hgl::graph::mtl{
 ///     uniform samplerCube env_map;
 ///   #endif
 
-void ShaderPermutationKey::AppendGLSLDefines(AnsiString &out) const
+void ShaderPermutationKey::AppendGLSLDefines(std::string &out) const
 {
     // SkyLightAmbientModel → ULRE_SKYLIGHT_MODEL_* 数值转换由 SkyLight.h 集中定义
     const uint32_t glsl_skylight = SkyLightAmbientModelToGLSL(ambient);

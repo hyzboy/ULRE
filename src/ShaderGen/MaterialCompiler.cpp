@@ -219,9 +219,15 @@ static std::vector<std::pair<std::string, std::string>> ExtractInterpolatedVaria
     return variables;
 }
 
-static AnsiString BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def, const ComposedMaterialDef &def)
+static std::string BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def, const ComposedMaterialDef &def)
 {
-    AnsiString glsl;
+    std::string glsl;
+
+    auto AppendCStr = [](std::string &out, const char *text)
+    {
+        if (text)
+            out += text;
+    };
 
     auto IsPositionVec2Entry = [](const FixedVertexEntry &entry) -> bool
     {
@@ -239,10 +245,11 @@ static AnsiString BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def,
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
         const auto &entry = def.vertex_entries[i];
+        const char *entry_name = entry.name ? entry.name : "_unnamed";
         glsl += "    ";
         glsl += IsPositionVec2Entry(entry) ? "vec3" : VATypeToGLSL(entry.type);
         glsl += " ";
-        glsl += entry.name;
+        glsl += entry_name;
         glsl += ";\n";
     }
     glsl += "};\n\n";
@@ -294,17 +301,18 @@ void main()
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
         const auto &entry = def.vertex_entries[i];
+        const char *entry_name = entry.name ? entry.name : "_unnamed";
         glsl += "    vi.";
-        glsl += entry.name;
+        glsl += entry_name;
         glsl += "=";
         if (IsPositionVec2Entry(entry))
         {
             glsl += "vec3(";
-            glsl += entry.name;
+            glsl += entry_name;
             glsl += ",0.0)";
         }
         else
-            glsl += entry.name;
+            glsl += entry_name;
         glsl += ";\n";
     }
 
@@ -326,12 +334,18 @@ void main()
     return glsl;
 }
 
-static AnsiString BuildFragmentGLSLFromBusiness(
+static std::string BuildFragmentGLSLFromBusiness(
     const FixedMaterialDef &fixed_def,
     const ComposedMaterialDef &def,
     const ShaderPermutationKey &key)
 {
-    AnsiString glsl;
+    std::string glsl;
+
+    auto AppendCStr = [](std::string &out, const char *text)
+    {
+        if (text)
+            out += text;
+    };
 
     // Step 1: 提取插值变量（从 VS business 代码中，FS 需要匹配）
     std::vector<std::pair<std::string, std::string>> interp_vars;
@@ -368,9 +382,9 @@ static AnsiString BuildFragmentGLSLFromBusiness(
     // Step 3: 注入 SkyLight helper（仅在 business 代码确实使用 ULRE_GetSky* 时）
     if (needs_skylight_helpers)
     {
-        glsl += SKYLIGHT_GLSL_HEADER;
+        AppendCStr(glsl, SKYLIGHT_GLSL_HEADER);
         glsl += "\n";
-        glsl += GetSkyLightModelImplGLSL(key.ambient);
+        AppendCStr(glsl, GetSkyLightModelImplGLSL(key.ambient));
         glsl += "\n\n";
     }
 
@@ -510,7 +524,7 @@ static void PrintComposedBusinessDiagnosticsJson(
 
 bool ValidateFSMainBusinessHelperConsistency(
     const ComposedMaterialDef &def,
-    const AnsiString &generated_fs)
+    const std::string &generated_fs)
 {
     const char *business_code = (def.fragment_business && def.fragment_business->code)
         ? def.fragment_business->code
@@ -883,7 +897,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     //   3. ShaderCreateInfo 进行 glslang 编译到 SPV
     // ─────────────────────────────────────────────────────────────────────────
 
-    AnsiString glsl_prefix;
+    std::string glsl_prefix;
     key.AppendGLSLDefines(glsl_prefix);
 
     // 设置 shaders（这里调用 mci 的 shader 编译接口）
@@ -898,14 +912,14 @@ MaterialCreateInfo *CompileFixedMaterial(
     // 暂时使用 SetMain() 的方式来设置源码（不完美，但能工作）
     if (vert && vert_glsl)
     {
-        AnsiString vert_source = glsl_prefix + vert_glsl;
-        vert->SetMain(vert_source.c_str(), vert_source.Length());
+        std::string vert_source = glsl_prefix + vert_glsl;
+        vert->SetMain(vert_source.c_str(), vert_source.size());
     }
 
     if (frag && frag_glsl)
     {
-        AnsiString frag_source = glsl_prefix + frag_glsl;
-        frag->SetMain(frag_source.c_str(), frag_source.Length());
+        std::string frag_source = glsl_prefix + frag_glsl;
+        frag->SetMain(frag_source.c_str(), frag_source.size());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -953,8 +967,8 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
         return nullptr;
     }
 
-    AnsiString generated_vs = BuildVertexGLSLFromBusiness(base_fixed_def, bridge_result.def);
-    AnsiString generated_fs = BuildFragmentGLSLFromBusiness(base_fixed_def, bridge_result.def, key);
+    std::string generated_vs = BuildVertexGLSLFromBusiness(base_fixed_def, bridge_result.def);
+    std::string generated_fs = BuildFragmentGLSLFromBusiness(base_fixed_def, bridge_result.def, key);
 
     if (!ValidateFSMainBusinessHelperConsistency(bridge_result.def, generated_fs))
     {
