@@ -27,6 +27,11 @@
 
 namespace hgl::graph::mtl {
 
+static bool CStrEq(const char *lhs, const char *rhs)
+{
+    return lhs && rhs && std::strcmp(lhs, rhs) == 0;
+}
+
 static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
 {
     if (!name || !*name)
@@ -34,7 +39,7 @@ static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
 
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
-        if (def.vertex_entries[i].name && std::strcmp(def.vertex_entries[i].name, name) == 0)
+        if (CStrEq(def.vertex_entries[i].name, name))
             return true;
     }
 
@@ -49,7 +54,7 @@ static bool IsPositionVec2(const FixedMaterialDef &def)
         if (!entry.name)
             continue;
 
-        if (std::strcmp(entry.name, VAN::Position) == 0)
+        if (CStrEq(entry.name, VAN::Position))
             return entry.type.ToCode() == VAT_VEC2.ToCode();
     }
 
@@ -64,8 +69,8 @@ static bool HasDescriptorNamed(const FixedMaterialDef &def, const char *name)
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
     {
         const auto &entry = def.descriptor_entries[i];
-        if ((entry.name && std::strcmp(entry.name, name) == 0)
-         || (entry.struct_name && std::strcmp(entry.struct_name, name) == 0))
+        if (CStrEq(entry.name, name)
+         || CStrEq(entry.struct_name, name))
             return true;
     }
 
@@ -79,7 +84,7 @@ static bool HasVertexEntry(const ComposedMaterialDef &def, const char *name)
 
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
-        if (def.vertex_entries[i].name && std::strcmp(def.vertex_entries[i].name, name) == 0)
+        if (CStrEq(def.vertex_entries[i].name, name))
             return true;
     }
 
@@ -94,8 +99,8 @@ static bool HasDescriptorNamed(const ComposedMaterialDef &def, const char *name)
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
     {
         const auto &entry = def.descriptor_entries[i];
-        if ((entry.name && std::strcmp(entry.name, name) == 0)
-         || (entry.struct_name && std::strcmp(entry.struct_name, name) == 0))
+        if (CStrEq(entry.name, name)
+         || CStrEq(entry.struct_name, name))
             return true;
     }
 
@@ -234,7 +239,7 @@ static std::string BuildVertexGLSLFromBusiness(const FixedMaterialDef &fixed_def
         if (!entry.name)
             return false;
 
-        if (std::strcmp(entry.name, VAN::Position) != 0)
+        if (!CStrEq(entry.name, VAN::Position))
             return false;
 
         return entry.type.ToCode() == VAT_VEC2.ToCode();
@@ -476,11 +481,11 @@ static bool IsStrictHelperConflictModeEnabled()
     if (!env)
         return false;
 
-    return (std::strcmp(env, "1") == 0)
-        || (std::strcmp(env, "true") == 0)
-        || (std::strcmp(env, "TRUE") == 0)
-        || (std::strcmp(env, "on") == 0)
-        || (std::strcmp(env, "ON") == 0);
+    return CStrEq(env, "1")
+        || CStrEq(env, "true")
+        || CStrEq(env, "TRUE")
+        || CStrEq(env, "on")
+        || CStrEq(env, "ON");
 }
 
 static void AppendHelperConflictsFromDiagnostics(
@@ -545,8 +550,8 @@ bool ValidateFSMainBusinessHelperConsistency(
         if (!name || !*name)
             return false;
 
-        return std::strcmp(name, "GetMI") == 0
-            || std::strcmp(name, "GetMaterialInstance") == 0;
+        return CStrEq(name, "GetMI")
+            || CStrEq(name, "GetMaterialInstance");
     };
     for (const auto &group : FS_HELPER_ALIAS_GROUPS)
     {
@@ -682,33 +687,33 @@ MaterialCreateInfo *CompileFixedMaterial(
         case DescriptorKind::UBO:
             if (entry.struct_name)
             {
-                if (std::strcmp(entry.struct_name, SBS_ViewportInfo.struct_name) == 0)
+                if (CStrEq(entry.struct_name, SBS_ViewportInfo.struct_name))
                 {
                     mci->AddUBOStruct(stage_bits, SBS_ViewportInfo);
                     break;
                 }
 
-                if (std::strcmp(entry.struct_name, SBS_CameraInfo.struct_name) == 0)
+                if (CStrEq(entry.struct_name, SBS_CameraInfo.struct_name))
                 {
                     mci->AddUBOStruct(stage_bits, SBS_CameraInfo);
                     has_camera_descriptor = true;
                     break;
                 }
 
-                if (std::strcmp(entry.struct_name, SBS_SkyInfo.struct_name) == 0)
+                if (CStrEq(entry.struct_name, SBS_SkyInfo.struct_name))
                 {
                     mci->AddUBOStruct(stage_bits, SBS_SkyInfo);
                     break;
                 }
 
-                if (std::strcmp(entry.struct_name, SBS_LocalToWorld.struct_name) == 0)
+                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
                 {
                     mci->SetLocalToWorld(stage_bits);
                     has_local_to_world_descriptor = true;
                     break;
                 }
 
-                if (std::strcmp(entry.struct_name, SBS_MaterialInstance.struct_name) == 0)
+                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
                 {
                     mi_stage_bits = stage_bits;
                     break;
@@ -743,14 +748,14 @@ MaterialCreateInfo *CompileFixedMaterial(
         case DescriptorKind::SSBO:
             if (entry.struct_name)
             {
-                if (std::strcmp(entry.struct_name, SBS_LocalToWorld.struct_name) == 0)
+                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
                 {
                     mci->SetLocalToWorld(stage_bits);
                     has_local_to_world_descriptor = true;
                     break;
                 }
 
-                if (std::strcmp(entry.struct_name, SBS_MaterialInstance.struct_name) == 0)
+                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
                 {
                     mi_stage_bits = stage_bits;
                     break;
@@ -789,13 +794,13 @@ MaterialCreateInfo *CompileFixedMaterial(
                 const char *glsl_type_str = entry.glsl_type;
                 
                 // 常见类型映射
-                if (strcmp(glsl_type_str, "sampler2D") == 0)
+                if (CStrEq(glsl_type_str, "sampler2D"))
                     tt = TextureType::Texture2D;
-                else if (strcmp(glsl_type_str, "sampler3D") == 0)
+                else if (CStrEq(glsl_type_str, "sampler3D"))
                     tt = TextureType::Texture3D;
-                else if (strcmp(glsl_type_str, "samplerCube") == 0)
+                else if (CStrEq(glsl_type_str, "samplerCube"))
                     tt = TextureType::TextureCube;
-                else if (strcmp(glsl_type_str, "sampler2DArray") == 0)
+                else if (CStrEq(glsl_type_str, "sampler2DArray"))
                     tt = TextureType::Texture2DArray;
                 else
                     tt = TextureType::Texture2D;  // fallback
@@ -812,13 +817,13 @@ MaterialCreateInfo *CompileFixedMaterial(
                 SamplerType st = SamplerType::Sampler2D; // 默认
                 const char *glsl_type_str = entry.glsl_type;
 
-                if (strcmp(glsl_type_str, "sampler2D") == 0) {
+                if (CStrEq(glsl_type_str, "sampler2D")) {
                     tt = TextureType::Texture2D;
                     st = SamplerType::Sampler2D;
-                } else if (strcmp(glsl_type_str, "samplerCube") == 0) {
+                } else if (CStrEq(glsl_type_str, "samplerCube")) {
                     tt = TextureType::TextureCube;
                     st = SamplerType::SamplerCube;
-                } else if (strcmp(glsl_type_str, "sampler2DArray") == 0) {
+                } else if (CStrEq(glsl_type_str, "sampler2DArray")) {
                     tt = TextureType::Texture2DArray;
                     st = SamplerType::Sampler2DArray;
                 } else {

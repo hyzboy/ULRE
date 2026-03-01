@@ -123,11 +123,11 @@ static bool IsStrictHelperConflictModeEnabled()
     if (!env)
         return false;
 
-    return (std::strcmp(env, "1") == 0)
-        || (std::strcmp(env, "true") == 0)
-        || (std::strcmp(env, "TRUE") == 0)
-        || (std::strcmp(env, "on") == 0)
-        || (std::strcmp(env, "ON") == 0);
+    return CStrEq(env, "1")
+        || CStrEq(env, "true")
+        || CStrEq(env, "TRUE")
+        || CStrEq(env, "on")
+        || CStrEq(env, "ON");
 }
 
 static bool IsHelperExplicitlyRequired(
@@ -190,7 +190,7 @@ static bool HasDescriptor(const ComposedMaterialDef &def, const char *name)
 
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i) {
         const auto &entry = def.descriptor_entries[i];
-        if (entry.name && strcmp(entry.name, name) == 0) {
+        if (CStrEq(entry.name, name)) {
             return true;
         }
     }

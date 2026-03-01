@@ -39,7 +39,7 @@ static bool HasVertexAttribute(
 
     for (uint32_t i = 0; i < def.vertex_entry_count; i++) {
         const auto &entry = def.vertex_entries[i];
-        if (entry.name && strcmp(entry.name, name) == 0) {
+        if (CStrEq(entry.name, name)) {
             return true;
         }
     }
@@ -56,8 +56,8 @@ static const FixedDescriptorEntry *FindDescriptorByName(
 {
     for (uint32_t i = 0; i < def.descriptor_entry_count; i++) {
         const auto &entry = def.descriptor_entries[i];
-        if ((entry.name && strcmp(entry.name, name) == 0)
-         || (entry.struct_name && strcmp(entry.struct_name, name) == 0)) {
+        if (CStrEq(entry.name, name)
+         || CStrEq(entry.struct_name, name)) {
             return &entry;
         }
     }
@@ -826,8 +826,8 @@ std::string ComposedShaderGenerator::GenGetMaterialInstanceFunctions(
     for (uint32_t i = 0; i < def.descriptor_entry_count; i++) {
         const char *desc_name = def.descriptor_entries[i].name;
         if (desc_name &&
-            (strcmp(desc_name, "MaterialInstanceData") == 0 ||
-             strcmp(desc_name, "mtl") == 0)) {
+            (CStrEq(desc_name, "MaterialInstanceData") ||
+             CStrEq(desc_name, "mtl"))) {
             mi_desc = &def.descriptor_entries[i];
             break;
         }

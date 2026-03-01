@@ -3,6 +3,12 @@
 #include<cstring>
 
 namespace hgl::graph::mtl{
+
+static bool CStrEq(const char *lhs,const char *rhs)
+{
+    return lhs && rhs && std::strcmp(lhs,rhs)==0;
+}
+
 UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits)
 {
     UBODescriptor *ubo=new UBODescriptor;
@@ -34,12 +40,12 @@ const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_
     if(!struct_name||!*struct_name)
         return nullptr;
 
-    if(std::strcmp(struct_name,SBS_ViewportInfo.struct_name)==0)     return &SBS_ViewportInfo;
-    if(std::strcmp(struct_name,SBS_CameraInfo.struct_name)==0)       return &SBS_CameraInfo;
-    if(std::strcmp(struct_name,SBS_LocalToWorld.struct_name)==0)     return &SBS_LocalToWorld;
-    if(std::strcmp(struct_name,SBS_MaterialInstance.struct_name)==0) return &SBS_MaterialInstance;
-    if(std::strcmp(struct_name,SBS_JointInfo.struct_name)==0)        return &SBS_JointInfo;
-    if(std::strcmp(struct_name,SBS_SkyInfo.struct_name)==0)          return &SBS_SkyInfo;
+    if(CStrEq(struct_name,SBS_ViewportInfo.struct_name))     return &SBS_ViewportInfo;
+    if(CStrEq(struct_name,SBS_CameraInfo.struct_name))       return &SBS_CameraInfo;
+    if(CStrEq(struct_name,SBS_LocalToWorld.struct_name))     return &SBS_LocalToWorld;
+    if(CStrEq(struct_name,SBS_MaterialInstance.struct_name)) return &SBS_MaterialInstance;
+    if(CStrEq(struct_name,SBS_JointInfo.struct_name))        return &SBS_JointInfo;
+    if(CStrEq(struct_name,SBS_SkyInfo.struct_name))          return &SBS_SkyInfo;
 
     return nullptr;
 }
