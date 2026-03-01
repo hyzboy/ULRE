@@ -68,9 +68,6 @@ namespace
         uint32_t(sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS) / sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS[0])),
         mi_codes,
         mi_bytes,
-        nullptr,
-        nullptr,
-        nullptr,
     };
 
     const ComposedMaterialDef TEXTURE_BLINN_PHONG_COMPOSED_DEF {

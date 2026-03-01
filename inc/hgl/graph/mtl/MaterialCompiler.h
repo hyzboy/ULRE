@@ -6,7 +6,7 @@
 /// 内部流程：
 ///   1. 按 def.descriptor_entries[] 构建 MaterialDescriptorInfo（顺序固定，无动态排序）
 ///   2. key.AppendGLSLDefines(prefix) → 4 行 #define 前缀
-///   3. prefix + def.vert_glsl / frag_glsl → glslang 编译 → SPV
+///   3. prefix + vert_glsl / frag_glsl → glslang 编译 → SPV
 ///   4. 填充并返回 MaterialCreateInfo*
 ///
 /// 与现有 Std3DMaterial 体系互不干扰，可渐进迁移。
@@ -25,7 +25,10 @@ struct Material3DCreateConfig;
  * 编译一个 FixedMaterialDef 排列，返回 MaterialCreateInfo*。
  *
  * @param dev_attr  Vulkan 设备能力（用于判断 SSBO 对齐等限制）
- * @param def       编译期材质定义（constexpr 常量，描述符布局 + 顶点输入 + GLSL 源码）
+ * @param def       编译期材质定义（constexpr 常量，描述符布局 + 顶点输入）
+ * @param vert_glsl 完整 vertex shader 源码（含 void main()）
+ * @param frag_glsl 完整 fragment shader 源码（含 void main()）
+ * @param geom_glsl 完整 geometry shader 源码；nullptr = 无 GS
  * @param key       排列键（ambient/light/specular/shadow 轴组合），默认 = 手机最低配
  * @param config    运行时配置（可选），若非空则 config->prim 覆盖 def.primitive_type
  * @return          编译好的 MaterialCreateInfo*，调用方负责 delete；失败返回 nullptr
@@ -33,8 +36,11 @@ struct Material3DCreateConfig;
 MaterialCreateInfo *CompileFixedMaterial(
     const VulkanDevAttr *       dev_attr,
     const FixedMaterialDef &    def,
-    const ShaderPermutationKey &key = ShaderPermutationKey{},
-    const Material3DCreateConfig *config = nullptr);
+    const char *                vert_glsl,
+    const char *                frag_glsl,
+    const char *                geom_glsl     = nullptr,
+    const ShaderPermutationKey &key           = ShaderPermutationKey{},
+    const Material3DCreateConfig *config      = nullptr);
 
 /**
  * 使用 ComposedMaterialDef + MaterialLogicDef 生成业务驱动的 VS/FS main，

@@ -73,9 +73,6 @@ namespace
         uint32_t(sizeof(BASIC_LIT_DESCRIPTORS) / sizeof(BASIC_LIT_DESCRIPTORS[0])),
         mi_codes,
         mi_bytes,
-        nullptr,
-        nullptr,
-        nullptr,
     };
 
     const ComposedMaterialDef BASIC_LIT_COMPOSED_DEF {

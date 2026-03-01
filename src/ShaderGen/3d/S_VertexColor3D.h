@@ -52,9 +52,6 @@ constexpr FixedMaterialDef VERTEX_COLOR_3D_DEF {
     uint32_t(sizeof(VERTEX_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_COLOR_3D_DESCRIPTORS[0])),
     nullptr,
     0,
-    nullptr,
-    nullptr,
-    nullptr,
 };
 
 const ComposedMaterialDef VERTEX_COLOR_3D_COMPOSED_DEF {

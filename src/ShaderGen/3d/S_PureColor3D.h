@@ -62,9 +62,6 @@ constexpr FixedMaterialDef PURE_COLOR_3D_DEF {
     uint32_t(sizeof(PURE_COLOR_3D_DESCRIPTORS) / sizeof(PURE_COLOR_3D_DESCRIPTORS[0])),
     pure_color_3d_mi_codes,
     pure_color_3d_mi_bytes,
-    nullptr,
-    nullptr,
-    nullptr,
 };
 
 const ComposedMaterialDef PURE_COLOR_3D_COMPOSED_DEF {

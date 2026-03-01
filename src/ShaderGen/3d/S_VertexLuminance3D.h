@@ -71,9 +71,6 @@ constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC3 {
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
     VERTEX_LUMINANCE_3D_MI_CODES,
     VERTEX_LUMINANCE_3D_MI_BYTES,
-    nullptr,
-    nullptr,
-    nullptr,
 };
 
 constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC2 {
@@ -85,9 +82,6 @@ constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC2 {
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
     VERTEX_LUMINANCE_3D_MI_CODES,
     VERTEX_LUMINANCE_3D_MI_BYTES,
-    nullptr,
-    nullptr,
-    nullptr,
 };
 
 const ComposedMaterialDef VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3 {

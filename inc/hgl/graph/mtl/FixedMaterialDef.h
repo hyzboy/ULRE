@@ -167,13 +167,6 @@ struct FixedMaterialDef
     // ── MaterialInstance 数据 ─────────────────────────────────────────────────
     const char *                mi_glsl_codes;          ///<GLSL struct 成员代码；nullptr = 无 MI
     uint32_t                    mi_struct_bytes;        ///<sizeof(MIData)；0 = 无 MI
-
-    // ── GLSL 源码（完整 GLSL 文件，含 #ifdef 排列宏，非片段）─────────────────
-    // 编译时通过 ShaderPermutationKey::AppendGLSLDefines() 在文件头部插入 #define
-    // 不同 key 编译出不同 SPV，运行时根据 key 从缓存取对应 SPV
-    const char *                vert_glsl;              ///<完整 vertex shader 源码
-    const char *                geom_glsl;              ///<完整 geometry shader 源码；nullptr = 无 GS
-    const char *                frag_glsl;              ///<完整 fragment shader 源码
 };//struct FixedMaterialDef
 
 }//namespace hgl::graph::mtl

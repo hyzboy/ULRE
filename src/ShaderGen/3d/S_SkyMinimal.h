@@ -94,9 +94,6 @@ constexpr FixedMaterialDef SKY_MINIMAL_DEF {
     uint32_t(sizeof(SKY_MINIMAL_DESCRIPTORS) / sizeof(SKY_MINIMAL_DESCRIPTORS[0])),
     nullptr,
     0,
-    nullptr,
-    nullptr,
-    nullptr,
 };
 
 const ComposedMaterialDef SKY_MINIMAL_COMPOSED_DEF {

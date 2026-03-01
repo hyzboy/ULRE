@@ -587,6 +587,9 @@ bool ValidateFSMainBusinessHelperConsistency(
 MaterialCreateInfo *CompileFixedMaterial(
     const VulkanDevAttr *       dev_attr,
     const FixedMaterialDef &    def,
+    const char *                vert_glsl,
+    const char *                frag_glsl,
+    const char *                geom_glsl,
     const ShaderPermutationKey &key,
     const Material3DCreateConfig *config)
 {
@@ -600,7 +603,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
     cfg.prim = config ? config->prim : def.primitive_type;
     cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-    if (def.geom_glsl)
+    if (geom_glsl)
         cfg.shader_stage_flag_bit |= uint32_t(ShaderStage::Geometry);
 
     const bool infer_has_camera = HasDescriptorNamed(def, "camera") || HasDescriptorNamed(def, "CameraInfo");
@@ -871,15 +874,15 @@ MaterialCreateInfo *CompileFixedMaterial(
     }
 
     // 暂时使用 SetMain() 的方式来设置源码（不完美，但能工作）
-    if (vert && def.vert_glsl)
+    if (vert && vert_glsl)
     {
-        AnsiString vert_source = glsl_prefix + def.vert_glsl;
+        AnsiString vert_source = glsl_prefix + vert_glsl;
         vert->SetMain(vert_source.c_str(), vert_source.Length());
     }
 
-    if (frag && def.frag_glsl)
+    if (frag && frag_glsl)
     {
-        AnsiString frag_source = glsl_prefix + def.frag_glsl;
+        AnsiString frag_source = glsl_prefix + frag_glsl;
         frag->SetMain(frag_source.c_str(), frag_source.Length());
     }
 
@@ -964,11 +967,9 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
         }
     }
 
-    FixedMaterialDef runtime_def = base_fixed_def;
-    runtime_def.vert_glsl = generated_vs.c_str();
-    runtime_def.frag_glsl = generated_fs.c_str();
-
-    return CompileFixedMaterial(dev_attr, runtime_def, key, config);
+    return CompileFixedMaterial(dev_attr, base_fixed_def,
+        generated_vs.c_str(), generated_fs.c_str(), nullptr,
+        key, config);
 }
 
 }  // namespace hgl::graph::mtl

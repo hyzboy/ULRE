@@ -87,9 +87,6 @@ constexpr FixedMaterialDef GIZMO_3D_DEF {
     uint32_t(sizeof(GIZMO_3D_DESCRIPTORS) / sizeof(GIZMO_3D_DESCRIPTORS[0])),
     GIZMO_3D_MI_GLSL,
     GIZMO_3D_MI_BYTES,
-    nullptr,
-    nullptr,
-    nullptr,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
