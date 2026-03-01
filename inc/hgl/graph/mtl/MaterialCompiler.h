@@ -5,8 +5,8 @@
 /// 这是 FixedMaterialDef 体系的唯一运行时入口。
 /// 内部流程：
 ///   1. 按 def.descriptor_entries[] 构建 MaterialDescriptorInfo（顺序固定，无动态排序）
-///   2. key.AppendGLSLDefines(prefix) → 4 行 #define 前缀
-///   3. prefix + vert_glsl / frag_glsl → glslang 编译 → SPV
+///   2. key.AppendGLSLDefines(prefix) → #define 前缀（ULRE_SKYLIGHT_MODEL / LIGHT_MODEL 等）
+///   3. prefix + vert_glsl, frag_glsl（参数传入）→ glslang 编译 → SPV
 ///   4. 填充并返回 MaterialCreateInfo*
 ///
 /// 与现有 Std3DMaterial 体系互不干扰，可渐进迁移。
