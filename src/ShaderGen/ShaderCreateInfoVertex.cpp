@@ -4,7 +4,7 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
-#include"ShaderLibrary.h"
+#include<string>
 
 namespace hgl::graph{
 
@@ -130,9 +130,11 @@ bool ShaderCreateInfoVertex::ProcSubpassInput()
     for(int i=0;i<si_count;i++)
     {
         final_shader+="layout(input_attachment_index=";
-        final_shader+=AnsiString::numberOf((*si)->input_attachment_index);
+        const std::string input_attachment_index_str=std::to_string((*si)->input_attachment_index);
+        final_shader+=input_attachment_index_str.c_str();
         final_shader+=", binding=";
-        final_shader+=AnsiString::numberOf((*si)->binding);
+        const std::string binding_str=std::to_string((*si)->binding);
+        final_shader+=binding_str.c_str();
         final_shader+=") uniform subpassInput ";
         final_shader+=(*si)->name;
         final_shader+=";\n";
@@ -164,10 +166,12 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
     for(uint i=0;i<input.count;i++)
     {
         final_shader+="layout(location=";
-        final_shader+=AnsiString::numberOf(ss->location);
+        const std::string location_str=std::to_string(ss->location);
+        final_shader+=location_str.c_str();
         final_shader+=") in ";
         final_shader+=GetShaderAttributeTypename(ss);
-        final_shader+=" "+AnsiString(ss->name);
+        final_shader+=" ";
+        final_shader+=ss->name;
         final_shader+=";\n";
 
         ++ss;

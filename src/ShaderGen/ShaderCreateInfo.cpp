@@ -5,7 +5,6 @@
 
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
-#include"ShaderLibrary.h"
 
 namespace hgl{namespace graph{
 

@@ -2,7 +2,6 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
-#include"ShaderLibrary.h"
 
 namespace hgl::graph
 {
