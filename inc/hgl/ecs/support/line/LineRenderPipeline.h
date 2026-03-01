@@ -2,6 +2,7 @@
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/vk/VKBufferAccessor.h>
+#include <hgl/vk/VKRenderAssign.h>
 #include <hgl/color/Color4f.h>
 #include <memory>
 #include <vector>
@@ -13,6 +14,7 @@ namespace hgl
     namespace graph
     {
         class VulkanDevice;
+        class DeviceBuffer;
         class Material;
         class MaterialInstance;
         class Pipeline;
@@ -86,6 +88,8 @@ namespace hgl::ecs
         // ------- Per-width batch slots (replace LineWidthBatch) -------
         struct LineWidthSlot
         {
+            using TransformIDAccessor = hgl::graph::BufferAccessor<hgl::graph::RawDataAccess<hgl::graph::Assign::TransformID::ValueType>>;
+
             uint32_t line_count   = 0;
             uint32_t gpu_capacity = 0;   ///< current VAB capacity in line-count
 
@@ -94,7 +98,7 @@ namespace hgl::ecs
 
             graph::BufferAccessor3f  va_pos;   ///< maps to StagedBuffer for positions
             graph::BufferAccessor1u8 va_color; ///< maps to StagedBuffer for color indices
-            graph::RawAccessorU16    va_transform; ///< per-vertex TransformID stream
+            TransformIDAccessor      va_transform; ///< per-vertex TransformID stream
 
             void Reset();
             void Clear();
@@ -106,7 +110,7 @@ namespace hgl::ecs
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
                             uint8_t                     color_index,
-                            uint16_t                    transform_index);
+                            hgl::graph::Assign::TransformID::ValueType transform_index);
             void Draw(graph::RenderCmdBuffer* cmd);
         };
 
@@ -117,6 +121,7 @@ namespace hgl::ecs
         LineCollectStats stats_;
         uint32_t total_line_count_ = 0;
         TransformAssignmentBuffer* bound_transform_buffer_ = nullptr;
+        graph::DeviceBuffer* bound_transform_data_buffer_ = nullptr;
 
     public:
         static const std::string kName;  ///< "Line"

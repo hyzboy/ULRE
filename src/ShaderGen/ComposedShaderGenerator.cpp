@@ -682,14 +682,28 @@ AnsiString ComposedShaderGenerator::GenGetLocalToWorld(const ComposedMaterialDef
     
     // 查找 LocalToWorld 描述符
     const auto *l2w_desc = FindDescriptorByName(def, "LocalToWorld");
-    
+
     if (l2w_desc || FindDescriptorByName(def, "l2w")) {
-        result += R"(
+        const bool has_transform_id = HasVertexAttribute(def, "TransformID");
+
+        if (has_transform_id)
+        {
+            result += R"(
+mat4 GetLocalToWorld() {
+    return l2w.mats[TransformID];
+}
+
+)";
+        }
+        else
+        {
+            result += R"(
 mat4 GetLocalToWorld() {
     return LocalToWorld;  // 从 LocalToWorld UBO 读取
 }
 
 )";
+        }
     }
     
     return result;
