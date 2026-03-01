@@ -269,13 +269,6 @@ namespace hgl::ecs
             return nullptr;
 
         graph::mtl::Text2DMaterialCreateConfig mtl_cfg;
-        auto* device = graphics_context->GetDevice();
-        if (!device)
-            return nullptr;
-
-        graph::mtl::MaterialCreateInfo* mci = graph::mtl::CreateText2D(device->GetDevAttr(), &mtl_cfg);
-        if (!mci)
-            return nullptr;
 
         material_manager = graphics_context->GetMaterialManager();
         if (!material_manager)
@@ -283,7 +276,7 @@ namespace hgl::ecs
 
         guard.material_manager = material_manager;
 
-        guard.material = material_manager->CreateMaterial("Text2D", mci);
+        guard.material = material_manager->CreateMaterial(graph::mtl::InlineMaterial::Text2D, &mtl_cfg);
         if (!guard.material)
             return nullptr;
 

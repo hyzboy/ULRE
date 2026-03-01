@@ -439,6 +439,10 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
 {
     HGL_CAPTURE_SCOPE();
 
+    mtl::InlineMaterial inline_mtl_id;
+    if (mtl::TryGetInlineMaterialByName(mtl_name, inline_mtl_id))
+        return CreateMaterialInstance(inline_mtl_id, mcc, vil_cfg, data, data_size);
+
     mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
 
     if(!mci)
@@ -450,6 +454,10 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
 MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
+
+    mtl::InlineMaterial inline_mtl_id;
+    if (mtl::TryGetInlineMaterialByName(mtl_name, inline_mtl_id))
+        return CreateMaterialInstance(inline_mtl_id, mcc, vil_cfg, data, data_size);
 
     mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
 

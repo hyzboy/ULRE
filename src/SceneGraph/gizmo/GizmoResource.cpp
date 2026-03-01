@@ -37,7 +37,6 @@ namespace
         GeometryCreater *  prim_creater;
     };
 
-    static GizmoResource    gizmo_line{};
     static GizmoResource    gizmo_triangle{};
 
     struct GizmoMesh
@@ -98,65 +97,6 @@ namespace
         return(true);
     }
 
-    bool InitGizmoResource2D()
-    {
-        if(!gizmo_mtl_manager)
-            return(false);
-
-        VulkanDevice *device=graphics_context->GetDevice();
-        auto *buffer_manager = graphics_context->GetBufferManager();
-        VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
-        RenderPass *render_pass=gizmo_render_pass;
-
-        if(!device || !dev_attr || !render_pass)
-            return(false);
-
-        {
-            mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-
-            cfg.local_to_world=true;
-            cfg.position_format=VAT_VEC3;
-
-            mtl::MaterialCreateInfo *mci=CreateVertexLuminance3D(dev_attr,&cfg);
-
-            if(!mci)
-                return(false);
-
-            gizmo_line.mtl=gizmo_mtl_manager->CreateMaterial("GizmoLine",mci);
-            if(!gizmo_line.mtl)
-                return(false);
-
-            gizmo_line.mtl->Update();
-        }
-
-        {
-            gizmo_line.pipeline=render_pass->CreatePipeline(gizmo_line.mtl,InlinePipeline::Solid3D);
-
-            if(!gizmo_line.pipeline)
-                return(false);
-        }
-
-        if(!InitMI(&gizmo_line))
-            return(false);
-
-        {
-            gizmo_line.vdm=new VertexDataManager(buffer_manager,gizmo_line.mtl->GetDefaultVIL());
-
-            if(!gizmo_line.vdm)
-                return(false);
-
-            if(!gizmo_line.vdm->Init(   HGL_SIZE_1MB,       //最大顶点数量
-                                        HGL_SIZE_1MB,       //最大索引数量
-                                        IndexType::U16))    //索引类型
-                return(false);
-        }
-
-        {
-        }
-
-        return(true);
-    }
-
     bool InitGizmoResource3D()
     {
         if(!graphics_context)
@@ -164,10 +104,9 @@ namespace
 
         VulkanDevice *device=graphics_context->GetDevice();
         auto *buffer_manager = graphics_context->GetBufferManager();
-        VulkanDevAttr *dev_attr=device?device->GetDevAttr():nullptr;
         RenderPass *render_pass=gizmo_render_pass;
 
-        if(!device || !dev_attr || !render_pass)
+        if(!device || !render_pass)
             return(false);
 
         gizmo_mtl_manager=graphics_context->GetMaterialManager();
@@ -178,12 +117,7 @@ namespace
             cfg.local_to_world=true;
             cfg.material_instance=true;
 
-            mtl::MaterialCreateInfo *mci=CreatePureColor3D(dev_attr,&cfg);
-
-            if(!mci)
-                return(false);
-
-            gizmo_triangle.mtl=gizmo_mtl_manager->CreateMaterial("GizmoTriangle",mci);
+            gizmo_triangle.mtl=gizmo_mtl_manager->CreateMaterial(mtl::InlineMaterial::PureColor3D,&cfg);
             if(!gizmo_triangle.mtl)
                 return(false);
 
@@ -308,9 +242,6 @@ bool InitGizmoResource(GraphicsContext *gc, RenderPass *rp)
     if(!InitGizmoResource3D())
         return(false);
 
-    if(!InitGizmoResource2D())
-        return(false);
-
     return(true);
 }
 
@@ -329,14 +260,6 @@ void FreeGizmoResource()
     gizmo_triangle.mtl = nullptr;
     for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
         gizmo_triangle.mi[i] = nullptr;
-
-    SAFE_CLEAR(gizmo_line.prim_creater);
-    SAFE_CLEAR(gizmo_line.vdm);
-
-    gizmo_line.pipeline = nullptr;
-    gizmo_line.mtl = nullptr;
-    for (size_t i = 0; i < size_t(GizmoColor::RANGE_SIZE); ++i)
-        gizmo_line.mi[i] = nullptr;
 
     gizmo_mtl_manager = nullptr;
     gizmo_render_pass = nullptr;
