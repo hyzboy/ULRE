@@ -80,7 +80,7 @@ namespace hgl::graph::mtl::contract
 
             StageSpvBlob blob;
             blob.stage_mask = static_cast<uint32_t>(sc->GetShaderStage());
-            blob.words.assign(spv_data, spv_data + spv_length);
+            blob.words.assign(spv_data, spv_data + (spv_length / sizeof(uint32_t)));
             result.spv_per_stage.emplace_back(std::move(blob));
         }
 

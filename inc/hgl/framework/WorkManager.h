@@ -151,7 +151,7 @@ namespace hgl
             if(ParseShaderGenPathModeFromArgs(argc,argv,parsed_mode))
                 app.SetShaderGenPathMode(parsed_mode);
 
-            if(!app.Init(width,height))
+            if(!app.Init(width,height,argc,argv))
             {
                 result = -1;
             }

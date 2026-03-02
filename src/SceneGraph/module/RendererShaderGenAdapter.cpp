@@ -263,7 +263,7 @@ namespace hgl::graph
 
             SpvSig sig;
             sig.stage_mask = static_cast<uint32_t>(sc->GetShaderStage());
-            sig.words.assign(spv_data, spv_data + spv_length);
+            sig.words.assign(spv_data, spv_data + (spv_length / sizeof(uint32_t)));
             out.emplace_back(std::move(sig));
         }
     }

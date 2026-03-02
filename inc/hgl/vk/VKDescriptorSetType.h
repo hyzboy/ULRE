@@ -44,24 +44,21 @@ namespace hgl::graph{
 */
 enum class DescriptorSetType
 {
-    Unknow=0,           ///<未分类的（不应进入最终布局）
+    Unknow=0,           ///<未分类的
 
-    Scene,              ///<场景级：世界/全局/静态环境参数（低频更新）
-    View,               ///<视图级：RenderTarget/Camera/Pass 参数（每相机/每pass更新）
-    Draw,               ///<绘制级：PerFrame/Instance（高频更新，通常配合 dynamic buffer）
-    Material,           ///<材质级：材质参数、贴图、采样器
+    RenderTarget,       ///<所有的RenderTarget相关数据(包括Viewport，显示器HDR参数等等)
 
-    // 兼容旧命名（保持旧代码可编译，后续可逐步迁移到 Scene/View/Draw/Material）
-    RenderTarget=View,
-    Camera=View,
-    World=Scene,
-    Static=Scene,
-    Global=Scene,
-    PerFrame=Draw,
-    PerMaterial=Material,
-    Instance=Draw,
+    Camera,             ///<相机相关
 
-    ENUM_CLASS_RANGE(Unknow,Material)
+    World,              ///<场景世界数据，基本不怎么刷新的的数据(如天空球、太阳/月亮等)
+
+    Global,             ///<全局参数，不确定什么时候更新，但一般不怎么更新(如太阳光), 不会在RenderCollector中处理刷新
+
+    PerFrame,           ///<固定每帧刷新一次(如摄像机位置等)
+
+    PerMaterial,        ///<材质参数
+
+    ENUM_CLASS_RANGE(Unknow,PerMaterial)
 };//
 
 constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
@@ -70,10 +67,15 @@ constexpr const char *DescriptSetTypeName[]=
 {
     "Unknow",
 
-    "Scene",
-    "View",
-    "Draw",
-    "Material"
+    "RenderTarget",
+
+    "Camera",
+
+    "World",
+
+    "Global",
+    "PerFrame",
+    "PerMaterial"
 };
 
 inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
@@ -93,18 +95,25 @@ inline const DescriptorSetType GetDescriptorSetType(const char *str)
             return((DescriptorSetType)i);
     }
 
-    // legacy names compatibility
-    if(!hgl::strcmp(str,"RenderTarget")||!hgl::strcmp(str,"Camera"))
-        return DescriptorSetType::View;
+    // compatibility: new naming from temporary 4-slot design
+    if(!hgl::strcmp(str,"Scene"))
+        return DescriptorSetType::Global;
 
-    if(!hgl::strcmp(str,"World")||!hgl::strcmp(str,"Static")||!hgl::strcmp(str,"Global"))
-        return DescriptorSetType::Scene;
+    if(!hgl::strcmp(str,"View"))
+        return DescriptorSetType::Camera;
 
-    if(!hgl::strcmp(str,"PerFrame")||!hgl::strcmp(str,"Instance"))
-        return DescriptorSetType::Draw;
+    if(!hgl::strcmp(str,"Draw"))
+        return DescriptorSetType::PerFrame;
 
-    if(!hgl::strcmp(str,"PerMaterial"))
-        return DescriptorSetType::Material;
+    if(!hgl::strcmp(str,"Material"))
+        return DescriptorSetType::PerMaterial;
+
+    // compatibility: removed legacy names
+    if(!hgl::strcmp(str,"Static"))
+        return DescriptorSetType::World;
+
+    if(!hgl::strcmp(str,"Instance"))
+        return DescriptorSetType::PerFrame;
 
     return(DescriptorSetType::Unknow);
 }

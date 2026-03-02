@@ -88,7 +88,7 @@ namespace hgl
          * @return true if successful, false otherwise
          */
         virtual bool Init(uint w, uint h);
-        virtual bool Init(uint w, uint h, int argc, char **argv);
+        virtual bool Init(uint w, uint h, int argc, os_char **argv);
 
     public:
         // Event callbacks

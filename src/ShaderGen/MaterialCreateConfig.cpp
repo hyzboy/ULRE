@@ -35,8 +35,12 @@ std::string MaterialCreateConfig::ToHashStdString()
 
     *p=0;
 
-    hash=p;
-    hash+=GetPrimName(prim);
+    hash=str;
+
+    if(const char *prim_name=GetPrimName(prim))
+        hash+=prim_name;
+    else
+        hash+="UnknownPrim";
 
     if(private_shader_buffer_source_count>0)
     {
@@ -63,13 +67,19 @@ std::string Material2DCreateConfig::ToHashStdString()
 {
     std::string hash=MaterialCreateConfig::ToHashStdString();
 
-    hash+=GetCoordinateSystem2DName(coordinate_system);
+    if(const char *cs_name=GetCoordinateSystem2DName(coordinate_system))
+        hash+=cs_name;
+    else
+        hash+="UnknownCS2D";
 
     if(local_to_world)
         hash+="_L2W";
 
     hash+="_";
-    hash+=GetVertexAttribName(&position_format);
+    if(const char *attrib_name=GetVertexAttribName(&position_format))
+        hash+=attrib_name;
+    else
+        hash+="UnknownVA";
 
     return hash;
 }
@@ -92,7 +102,10 @@ std::string Material3DCreateConfig::ToHashStdString()
         hash+="_L2W";
 
     hash+="_";
-    hash+=GetVertexAttribName(&position_format);
+    if(const char *attrib_name=GetVertexAttribName(&position_format))
+        hash+=attrib_name;
+    else
+        hash+="UnknownVA";
 
     return hash;
 }

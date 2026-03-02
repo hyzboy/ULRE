@@ -19,6 +19,7 @@
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <cstring>
+#include <string_view>
 
 namespace hgl
 {
@@ -52,30 +53,58 @@ namespace hgl
     {
     }
 
-    static void ApplyShaderGenPathModeFromArgs(AppFramework *app, int argc, char **argv)
+    static void ApplyShaderGenPathModeFromArgs(AppFramework *app, int argc, os_char **argv)
     {
         if (!app || !argv || argc <= 1)
             return;
 
-        constexpr const char *kPrefix = "--shadergen-path-mode=";
-        constexpr size_t kPrefixLen = 22;
+        constexpr std::basic_string_view<os_char> kOption = OS_TEXT("--shadergen-path-mode");
+        constexpr std::basic_string_view<os_char> kLegacy = OS_TEXT("legacy-only");
+        constexpr std::basic_string_view<os_char> kValidate = OS_TEXT("mirror-validate");
+        constexpr std::basic_string_view<os_char> kPreferred = OS_TEXT("mirror-preferred");
 
         for (int i = 1; i < argc; ++i)
         {
-            const char *arg = argv[i];
+            const os_char *arg = argv[i];
             if (!arg || !arg[0])
                 continue;
 
-            if (std::strncmp(arg, kPrefix, kPrefixLen) == 0)
+            std::basic_string_view<os_char> arg_view(arg);
+
+            if (arg_view == kOption)
             {
-                app->SetShaderGenPathModeName(arg + kPrefixLen);
+                if (i + 1 >= argc || !argv[i + 1])
+                    continue;
+
+                std::basic_string_view<os_char> value_view(argv[i + 1]);
+
+                if (value_view == kLegacy)
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
+                else
+                if (value_view == kValidate)
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorValidate);
+                else
+                if (value_view == kPreferred)
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorPreferred);
+
+                ++i;
                 continue;
             }
 
-            if (std::strcmp(arg, "--shadergen-path-mode") == 0 && i + 1 < argc)
+            if (arg_view.size() > kOption.size()
+             && arg_view.substr(0, kOption.size()) == kOption
+             && arg_view[kOption.size()] == static_cast<os_char>('='))
             {
-                app->SetShaderGenPathModeName(argv[i + 1]);
-                ++i;
+                std::basic_string_view<os_char> value_view = arg_view.substr(kOption.size() + 1);
+
+                if (value_view == kLegacy)
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
+                else
+                if (value_view == kValidate)
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorValidate);
+                else
+                if (value_view == kPreferred)
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorPreferred);
             }
         }
     }
@@ -176,7 +205,7 @@ namespace hgl
         return Init(w, h, 0, nullptr);
     }
 
-    bool AppFramework::Init(uint w, uint h, int argc, char **argv)
+    bool AppFramework::Init(uint w, uint h, int argc, os_char **argv)
     {
         ApplyShaderGenPathModeFromArgs(this, argc, argv);
 
