@@ -164,6 +164,14 @@ namespace
         return true;
     }
 
+    static void RecordStrictAbortReport(const AnsiString &mtl_name, const std::string &reason, const char *category)
+    {
+        RendererShaderGenAdapter::RecordExternalValidationError(
+            mtl_name.c_str() ? mtl_name.c_str() : "<unnamed-material>",
+            reason.c_str(),
+            category);
+    }
+
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -350,6 +358,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
 
     if(path_policy.require_mirror_valid && !mirror_ptr)
     {
+        RecordStrictAbortReport(mtl_name, "creation aborted: mirror-preferred requires valid mirror result", "StrictGate.Prebuild");
         std::fprintf(stderr,
             "[RendererShaderGenAdapter] material=%s creation aborted: mirror-preferred requires valid mirror result\n",
             mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
@@ -422,6 +431,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
             {
                 if(blob.words.empty())
                 {
+                    RecordStrictAbortReport(mtl_name, "mirror-preferred build aborted: empty spv blob", "StrictGate.Spv");
                     std::fprintf(stderr,
                         "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: empty spv blob stage_mask=0x%X\n",
                         mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
@@ -436,6 +446,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
                 if(!sm)
                 {
+                    RecordStrictAbortReport(mtl_name, "mirror-preferred build aborted: failed create shader module", "StrictGate.Spv");
                     std::fprintf(stderr,
                         "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: failed create shader module stage_mask=0x%X\n",
                         mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
@@ -448,6 +459,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
             if(mtl->shader_maps->GetCount()<2)
             {
+                RecordStrictAbortReport(mtl_name, "mirror-preferred build aborted: insufficient shader stages from mirror result", "StrictGate.Spv");
                 std::fprintf(stderr,
                     "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: insufficient shader stages from mirror result\n",
                     mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
@@ -478,6 +490,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
             std::string reason;
             if(!ValidateMirrorPreferredVertexLayout(vert, *mirror_result, reason))
             {
+                RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
                 std::fprintf(stderr,
                     "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
                     mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
@@ -515,6 +528,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
                 std::string reason;
                 if(!ValidateMirrorPreferredDescriptorLayout(descriptors, *mirror_result, reason))
                 {
+                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
                     std::fprintf(stderr,
                         "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
                         mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",

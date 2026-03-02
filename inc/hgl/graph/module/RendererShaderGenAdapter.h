@@ -24,6 +24,8 @@ namespace hgl::graph
             bool result_valid = true;
             bool request_result_valid = true;
 
+            std::string category;
+
             uint32_t warning_count = 0;
             uint32_t error_count = 0;
 
@@ -69,6 +71,8 @@ namespace hgl::graph
         static bool GetLastValidationReport(ValidationReport &out_report, std::string *out_material_name = nullptr);
         static std::vector<ValidationReportRecord> GetRecentValidationReports(uint32_t max_count = 64);
         static std::map<std::string, std::vector<ValidationReportRecord>> GetRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128);
+        static std::map<std::string, uint32_t> GetRecentValidationReportCategoryHistogram(uint32_t max_count = 128);
+        static void RecordExternalValidationError(const char *material_name, const char *message, const char *category = nullptr);
 
         ValidationReport ValidateMaterialContractReadOnly(const mtl::MaterialCreateInfo &mci,
                                  const mtl::contract::ShaderGenRequest *request,

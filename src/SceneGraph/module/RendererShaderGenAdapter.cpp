@@ -392,4 +392,35 @@ namespace hgl::graph
         return BuildRecentValidationReportsByMaterial(recent, max_per_material);
     }
 
+    std::map<std::string, uint32_t> RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(uint32_t max_count)
+    {
+        std::map<std::string, uint32_t> histogram;
+        if (max_count == 0)
+            return histogram;
+
+        const auto recent = GetRecentValidationReports(max_count);
+        for (const auto &record : recent)
+        {
+            const std::string category = record.report.category.empty() ? "Uncategorized" : record.report.category;
+            ++histogram[category];
+        }
+
+        return histogram;
+    }
+
+    void RendererShaderGenAdapter::RecordExternalValidationError(const char *material_name, const char *message, const char *category)
+    {
+        ValidationReport report;
+        report.overall_valid = false;
+        report.diff_valid = false;
+        report.result_valid = false;
+        report.request_result_valid = false;
+        report.category = (category && category[0]) ? category : "External";
+
+        const char *msg = (message && message[0]) ? message : "external validation error";
+        AddError(report, msg);
+
+        StoreValidationReport(material_name, report);
+    }
+
 }//namespace hgl::graph

@@ -149,6 +149,11 @@ public: //ShaderGen Profiler (debug entry, collect-only)
         return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
     }
 
+    std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const
+    {
+        return RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
+    }
+
 public: //Material
 
     Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质

@@ -163,4 +163,12 @@ namespace hgl::graph
         return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
     }
 
+    std::map<std::string, uint32_t> GraphicsContext::GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count) const
+    {
+        if (material_manager)
+            return material_manager->GetShaderGenRecentValidationCategoryHistogram(max_count);
+
+        return RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
+    }
+
 } // namespace hgl::graph
