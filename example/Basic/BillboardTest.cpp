@@ -28,6 +28,7 @@
 #include<iostream>
 #include<memory>
 #include<cstdint>
+#include<cstdio>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -49,6 +50,48 @@ class TestApp:public WorkObject
 {
 private:
 
+    void DumpShaderGenValidationSample()
+    {
+        if(shadergen_report_dumped)
+            return;
+
+        auto *render_context = GetRenderContext();
+        auto *graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
+        if(!graphics_context)
+            return;
+
+        auto grouped = graphics_context->GetShaderGenRecentValidationReportsByMaterial(2, 32);
+
+        std::fprintf(stderr,"[ShaderGenValidationSample] material_groups=%zu\n",grouped.size());
+
+        size_t printed = 0;
+        for(const auto &kv : grouped)
+        {
+            if(printed >= 5)
+                break;
+
+            const auto &material_name = kv.first;
+            const auto &records = kv.second;
+            if(records.empty())
+                continue;
+
+            const auto &latest = records.front();
+            std::fprintf(stderr,
+                         "[ShaderGenValidationSample] material=%s seq=%llu valid=%d errors=%u warnings=%u\n",
+                         material_name.c_str(),
+                         static_cast<unsigned long long>(latest.sequence),
+                         latest.report.overall_valid ? 1 : 0,
+                         latest.report.error_count,
+                         latest.report.warning_count);
+
+            ++printed;
+        }
+
+        shadergen_report_dumped = true;
+    }
+
+private:
+
     ECSContext *  ecs_world      = nullptr;
     Entity *      grid_entity    = nullptr;
     Entity *      billboard_entity = nullptr;
@@ -66,6 +109,8 @@ private:
 
     Texture2D *         texture             = nullptr;
     Sampler *           sampler             = nullptr;
+
+    bool                shadergen_report_dumped = false;
 
 private:
 
@@ -365,12 +410,16 @@ public:
         if(!InitCamera())
             return false;
 
+        DumpShaderGenValidationSample();
+
         return true;
     }
 
     void Tick(double delta_time) override
     {
         WorkObject::Tick(delta_time);
+
+        DumpShaderGenValidationSample();
     }
 };//class TestApp:public WorkObject
 

@@ -139,4 +139,28 @@ namespace hgl::graph
         return RendererShaderGenAdapter::GetProfilerSnapshot();
     }
 
+    bool GraphicsContext::GetShaderGenLastValidationReport(RendererShaderGenAdapter::ValidationReport &out_report, std::string *out_material_name) const
+    {
+        if (material_manager)
+            return material_manager->GetShaderGenLastValidationReport(out_report, out_material_name);
+
+        return RendererShaderGenAdapter::GetLastValidationReport(out_report, out_material_name);
+    }
+
+    std::vector<RendererShaderGenAdapter::ValidationReportRecord> GraphicsContext::GetShaderGenRecentValidationReports(uint32_t max_count) const
+    {
+        if (material_manager)
+            return material_manager->GetShaderGenRecentValidationReports(max_count);
+
+        return RendererShaderGenAdapter::GetRecentValidationReports(max_count);
+    }
+
+    std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> GraphicsContext::GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material, uint32_t max_total) const
+    {
+        if (material_manager)
+            return material_manager->GetShaderGenRecentValidationReportsByMaterial(max_per_material, max_total);
+
+        return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
+    }
+
 } // namespace hgl::graph

@@ -31,6 +31,13 @@ namespace hgl::graph
             std::vector<std::string> errors;
         };
 
+        struct ValidationReportRecord
+        {
+            uint64_t sequence = 0;
+            std::string material_name;
+            ValidationReport report;
+        };
+
         struct ProfilerSnapshot
         {
             uint64_t sample_count = 0;
@@ -59,7 +66,9 @@ namespace hgl::graph
 
         static void ResetProfiler();
         static ProfilerSnapshot GetProfilerSnapshot();
-        static bool GetLastValidationReport(ValidationReport &out_report);
+        static bool GetLastValidationReport(ValidationReport &out_report, std::string *out_material_name = nullptr);
+        static std::vector<ValidationReportRecord> GetRecentValidationReports(uint32_t max_count = 64);
+        static std::map<std::string, std::vector<ValidationReportRecord>> GetRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128);
 
         ValidationReport ValidateRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         ValidationReport ValidateResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;

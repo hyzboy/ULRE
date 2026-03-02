@@ -128,6 +128,11 @@ namespace hgl::graph
         // ShaderGen Profiler debug entry (collect-only, no default output)
         void ResetShaderGenProfiler();
         RendererShaderGenAdapter::ProfilerSnapshot GetShaderGenProfilerSnapshot() const;
+
+        // ShaderGen Validation report query entry (collect-only, no default output)
+        bool GetShaderGenLastValidationReport(RendererShaderGenAdapter::ValidationReport &out_report, std::string *out_material_name = nullptr) const;
+        std::vector<RendererShaderGenAdapter::ValidationReportRecord> GetShaderGenRecentValidationReports(uint32_t max_count = 64) const;
+        std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128) const;
     };
 
     // 向后兼容别名

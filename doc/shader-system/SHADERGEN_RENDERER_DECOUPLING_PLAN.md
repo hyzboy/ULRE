@@ -32,6 +32,7 @@
   - 已将聚合统计升级为 `RendererShaderGenAdapter` 内置 Profiler：运行期累计 `match/count/stage-combo`，当前阶段仅采集不输出（为后续可视化/日志面板预留）
   - 已提供最小调试入口：可通过 `GraphicsContext` / `MaterialManager` 读取或重置 ShaderGen Profiler 快照（无默认输出）
   - 适配器校验链路已结构化：新增 `ValidationReport`（error/warning + diff/result/request-result 状态），`MaterialManager` 改为消费状态对象而非仅依赖 stderr 文本
+  - 新增 Validation 历史查询：支持 `GetLastValidationReport`、`GetRecentValidationReports`、`GetRecentValidationReportsByMaterial`（最近 N 条、按材质索引），默认仅内存采集不输出
 - Phase 2 并行入口已增加
   - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 新增 contract-aware 私有入口：可显式接收预构建 `ShaderGenResult`
   - 现有 `CreateMaterial` 已改为“先尝试预构建 mirror result，再转发到并行入口”，为后续主路径切换预留开关点

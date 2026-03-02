@@ -130,6 +130,21 @@ public: //ShaderGen Profiler (debug entry, collect-only)
         return RendererShaderGenAdapter::GetProfilerSnapshot();
     }
 
+    bool GetShaderGenLastValidationReport(RendererShaderGenAdapter::ValidationReport &out_report, std::string *out_material_name = nullptr) const
+    {
+        return RendererShaderGenAdapter::GetLastValidationReport(out_report, out_material_name);
+    }
+
+    std::vector<RendererShaderGenAdapter::ValidationReportRecord> GetShaderGenRecentValidationReports(const uint32_t max_count = 64) const
+    {
+        return RendererShaderGenAdapter::GetRecentValidationReports(max_count);
+    }
+
+    std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(const uint32_t max_per_material = 4, const uint32_t max_total = 128) const
+    {
+        return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
+    }
+
 public: //Material
 
     Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质

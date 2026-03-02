@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <mutex>
+#include <deque>
 
 namespace hgl::graph
 {
@@ -18,7 +19,10 @@ namespace hgl::graph
         {
             RendererShaderGenAdapter::ProfilerSnapshot snapshot;
             RendererShaderGenAdapter::ValidationReport last_report;
+            std::string last_report_material_name;
             bool has_last_report = false;
+            uint64_t report_sequence = 0;
+            std::deque<RendererShaderGenAdapter::ValidationReportRecord> history_reports;
             std::mutex mutex;
         };
 
@@ -41,12 +45,27 @@ namespace hgl::graph
             report.overall_valid = false;
         }
 
-        void StoreLastValidationReport(const RendererShaderGenAdapter::ValidationReport &report)
+        void StoreValidationReport(const char *material_name, const RendererShaderGenAdapter::ValidationReport &report)
         {
             auto &storage = GetShaderGenProfilerStorage();
             std::lock_guard<std::mutex> lock(storage.mutex);
+
+            const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
+
             storage.last_report = report;
+            storage.last_report_material_name = mat_name;
             storage.has_last_report = true;
+
+            RendererShaderGenAdapter::ValidationReportRecord rec;
+            rec.sequence = ++storage.report_sequence;
+            rec.material_name = mat_name;
+            rec.report = report;
+
+            storage.history_reports.emplace_back(std::move(rec));
+
+            constexpr size_t kMaxValidationHistory = 512;
+            while (storage.history_reports.size() > kMaxValidationHistory)
+                storage.history_reports.pop_front();
         }
 
         void MergeValidationReport(RendererShaderGenAdapter::ValidationReport &dst, const RendererShaderGenAdapter::ValidationReport &src)
@@ -582,7 +601,7 @@ namespace hgl::graph
 
         report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
 
-        StoreLastValidationReport(report);
+        StoreValidationReport(material_name, report);
         return report;
     }
 
@@ -682,14 +701,14 @@ namespace hgl::graph
         }
 
         report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
-        StoreLastValidationReport(report);
+        StoreValidationReport(material_name, report);
         return report;
     }
 
     bool RendererShaderGenAdapter::ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const
     {
         const ValidationReport report = ValidateResultReadOnly(result, material_name);
-        StoreLastValidationReport(report);
+        StoreValidationReport(material_name, report);
         return report.overall_valid;
     }
 
@@ -719,7 +738,7 @@ namespace hgl::graph
         return storage.snapshot;
     }
 
-    bool RendererShaderGenAdapter::GetLastValidationReport(ValidationReport &out_report)
+    bool RendererShaderGenAdapter::GetLastValidationReport(ValidationReport &out_report, std::string *out_material_name)
     {
         auto &storage = GetShaderGenProfilerStorage();
         std::lock_guard<std::mutex> lock(storage.mutex);
@@ -728,7 +747,51 @@ namespace hgl::graph
             return false;
 
         out_report = storage.last_report;
+
+        if (out_material_name)
+            *out_material_name = storage.last_report_material_name;
+
         return true;
+    }
+
+    std::vector<RendererShaderGenAdapter::ValidationReportRecord> RendererShaderGenAdapter::GetRecentValidationReports(uint32_t max_count)
+    {
+        auto &storage = GetShaderGenProfilerStorage();
+        std::lock_guard<std::mutex> lock(storage.mutex);
+
+        std::vector<ValidationReportRecord> out;
+        if (max_count == 0 || storage.history_reports.empty())
+            return out;
+
+        const size_t take = std::min<size_t>(max_count, storage.history_reports.size());
+        out.reserve(take);
+
+        auto it = storage.history_reports.rbegin();
+        for (size_t i = 0; i < take && it != storage.history_reports.rend(); ++i, ++it)
+            out.emplace_back(*it);
+
+        return out;
+    }
+
+    std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(uint32_t max_per_material, uint32_t max_total)
+    {
+        std::map<std::string, std::vector<ValidationReportRecord>> grouped;
+
+        if (max_per_material == 0 || max_total == 0)
+            return grouped;
+
+        const auto recent = GetRecentValidationReports(max_total);
+
+        for (const auto &record : recent)
+        {
+            auto &bucket = grouped[record.material_name];
+            if (bucket.size() >= max_per_material)
+                continue;
+
+            bucket.emplace_back(record);
+        }
+
+        return grouped;
     }
 
     bool RendererShaderGenAdapter::ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name, DiffLogDetail detail) const
