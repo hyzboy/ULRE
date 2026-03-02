@@ -13,6 +13,8 @@ namespace hgl::graph
     class Material;
     class IRenderTarget;
     class IGPUBuffer;
+    class Texture2D;
+    class Sampler;
 }
 
 namespace hgl::ecs
@@ -59,6 +61,7 @@ namespace hgl::ecs
         std::vector<BindingSource> binding_sources;
         std::unordered_map<const graph::Material *, bool> contract_last_ok;
         bool contract_diagnostics_enabled = true;
+        bool enable_legacy_material_binding_fallback = true;
         ContractDiagStats last_contract_stats{};
 
     public:
@@ -72,12 +75,15 @@ namespace hgl::ecs
                                         uint32_t &required_missing,
                                         uint32_t &optional_missing,
                                         uint32_t &fallback_hits) const;
+        void SetLegacyMaterialBindingFallbackEnabled(bool enabled) { enable_legacy_material_binding_fallback = enabled; }
+        bool IsLegacyMaterialBindingFallbackEnabled() const { return enable_legacy_material_binding_fallback; }
 
     private:
 
         void RegisterDefaultSources();
         void EnsureViewBinding();
         void ApplyContractBindings();
+        bool ResolveBatchTextureSampler(const class MaterialBatch *batch,graph::Texture2D *&out_texture,graph::Sampler *&out_sampler) const;
         const graph::IGPUBuffer *ResolveViewportUBO(graph::IRenderTarget *rt,const char *preferred_name) const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();

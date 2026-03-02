@@ -104,7 +104,7 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
-        // Bind texture to material
+        // Bind texture to material (keep explicit binding for compatibility).
         if (!mi->GetMaterial()->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
                                                    graph::mtl::SamplerName::BaseColor,
                                                    texture,
