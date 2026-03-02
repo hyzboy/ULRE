@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
+#include<hgl/shadergen/DescriptorBindingContract.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
@@ -30,6 +31,7 @@ namespace hgl::graph
             uint32_t ssbo_range;
 
             MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
+            BindingContract binding_contract;                       ///<descriptor semantic contract (phase 2)
 
             std::string mi_codes;                                   ///<MaterialInstance代码
             uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
@@ -81,6 +83,9 @@ namespace hgl::graph
         public:
 
             const MaterialDescriptorInfo &GetMDI()const{return mdi;}
+            const BindingContract &GetBindingContract()const{return binding_contract;}
+
+            void SetBindingContract(const BindingContract &contract){binding_contract=contract;}
 
             const uint32_t GetMIDataBytes   ()const{return mi_data_bytes;}
             const uint32_t GetMIMaxCount    ()const{return mi_max_count;}

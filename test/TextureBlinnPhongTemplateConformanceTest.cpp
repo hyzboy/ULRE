@@ -10,9 +10,9 @@
 
 using namespace hgl::graph::mtl;
 
-static bool ContainsKeyword(const hgl::AnsiString &text, const char *keyword)
+static bool ContainsKeyword(const char *text, const char *keyword)
 {
-    return std::strstr(text.c_str(), keyword) != nullptr;
+    return text && keyword && (std::strstr(text, keyword) != nullptr);
 }
 
 static bool EqualsString(const char *lhs, const char *rhs)
@@ -58,18 +58,18 @@ int main()
         && EqualsString(TEXTURE_BLINN_PHONG_FRAGMENT_SHADER_LOGIC.required_helpers[0], "GetMI");
 
     ShaderPermutationKey key {};
-    const hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(base_def, key);
-    const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(base_def, key);
+    const std::string vs_code = ComposedShaderGenerator::ComposeVertexShader(base_def, key);
+    const std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(base_def, key);
 
-    const bool vs_semantic_ok = ContainsKeyword(vs_code, "Output.TexCoord = vi.TexCoord")
-                             && ContainsKeyword(vs_code, "GetLocalToWorld()")
-                             && ContainsKeyword(vs_code, "return vec4(vi.Position, 1.0)");
+    const bool vs_semantic_ok = ContainsKeyword(vs_code.c_str(), "Output.TexCoord = vi.TexCoord")
+                             && ContainsKeyword(vs_code.c_str(), "GetLocalToWorld()")
+                             && ContainsKeyword(vs_code.c_str(), "return vec4(vi.Position, 1.0)");
 
-    const bool fs_semantic_ok = ContainsKeyword(fs_code, "ResolveSurfaceUV")
-                             && ContainsKeyword(fs_code, "ResolveSurfaceNormal")
-                             && ContainsKeyword(fs_code, "fresnelSchlick")
-                             && ContainsKeyword(fs_code, "texture(TextureNormal")
-                             && ContainsKeyword(fs_code, "return vec4(color, 1.0)");
+    const bool fs_semantic_ok = ContainsKeyword(fs_code.c_str(), "ResolveSurfaceUV")
+                             && ContainsKeyword(fs_code.c_str(), "ResolveSurfaceNormal")
+                             && ContainsKeyword(fs_code.c_str(), "fresnelSchlick")
+                             && ContainsKeyword(fs_code.c_str(), "texture(TextureNormal")
+                             && ContainsKeyword(fs_code.c_str(), "return vec4(color, 1.0)");
 
     printf("ValidateMaterialLogicDef: %s\n", logic_valid ? "PASS" : "FAIL");
     printf("Required resource shape: %s\n", required_resource_shape_ok ? "PASS" : "FAIL");

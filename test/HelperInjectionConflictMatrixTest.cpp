@@ -8,12 +8,12 @@
 
 using namespace hgl::graph::mtl;
 
-static uint32_t CountToken(const hgl::AnsiString &text, const char *token)
+static uint32_t CountToken(const char *text, const char *token)
 {
-    if (!token || !*token)
+    if (!text || !token || !*token)
         return 0;
 
-    const char *cursor = text.c_str();
+    const char *cursor = text;
     uint32_t count = 0;
     while ((cursor = std::strstr(cursor, token)) != nullptr)
     {
@@ -47,7 +47,7 @@ vec4 FragmentShaderBusiness(const VS_Output vso) {
 
     PipelineMode default_pipeline_mode;
 
-    const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(fs_def, key);
+    const std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(fs_def, key);
     const ShaderComposeResult fs_diag_result = ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostics(
         fs_def,
         key,
@@ -56,8 +56,8 @@ vec4 FragmentShaderBusiness(const VS_Output vso) {
 
     const bool fs_conflict_marker = (std::strstr(fs_code.c_str(), "// HELPER_CONFLICT:") != nullptr)
                                  && (std::strstr(fs_code.c_str(), "helper=GetCameraPos") != nullptr);
-    const bool fs_no_dup_get_camera_pos = (CountToken(fs_code, "vec3 GetCameraPos()") == 1);
-    const bool fs_no_dup_get_camera_position = (CountToken(fs_code, "vec3 GetCameraPosition()") == 1);
+    const bool fs_no_dup_get_camera_pos = (CountToken(fs_code.c_str(), "vec3 GetCameraPos()") == 1);
+    const bool fs_no_dup_get_camera_position = (CountToken(fs_code.c_str(), "vec3 GetCameraPosition()") == 1);
     const bool fs_diag_conflict_detected = fs_diag_result.diagnostics.helper_conflict_detected;
     const bool fs_diag_conflict_count_ok = fs_diag_result.diagnostics.helper_conflict_count >= 1;
     const bool fs_diag_conflict_detail_ok = !fs_diag_result.diagnostics.helper_conflicts.empty();
@@ -86,7 +86,7 @@ vec4 VertexShaderBusiness(const VertexInput vi) {
     vs_def.name = "HelperConflictMatrixVS";
     vs_def.vertex_business = &vs_custom;
 
-    const hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(vs_def, key);
+    const std::string vs_code = ComposedShaderGenerator::ComposeVertexShader(vs_def, key);
     const ShaderComposeResult vs_diag_result = ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(
         vs_def,
         key,
@@ -95,7 +95,7 @@ vec4 VertexShaderBusiness(const VertexInput vi) {
 
     const bool vs_conflict_marker = (std::strstr(vs_code.c_str(), "// HELPER_CONFLICT:") != nullptr)
                                  && (std::strstr(vs_code.c_str(), "helper=TransformNormal") != nullptr);
-    const bool vs_no_dup_transform_normal = (CountToken(vs_code, "vec3 TransformNormal(") == 1);
+    const bool vs_no_dup_transform_normal = (CountToken(vs_code.c_str(), "vec3 TransformNormal(") == 1);
     const bool vs_diag_conflict_detected = vs_diag_result.diagnostics.helper_conflict_detected;
     const bool vs_diag_conflict_count_ok = vs_diag_result.diagnostics.helper_conflict_count >= 1;
     const bool vs_diag_conflict_detail_ok = !vs_diag_result.diagnostics.helper_conflicts.empty();
@@ -113,7 +113,7 @@ vec4 VertexShaderBusiness(const VertexInput vi) {
     setenv("ULRE_HELPER_CONFLICT_STRICT", "1", 1);
 #endif
 
-    const hgl::AnsiString strict_fs_code = ComposedShaderGenerator::ComposeFragmentShader(fs_def, key);
+    const std::string strict_fs_code = ComposedShaderGenerator::ComposeFragmentShader(fs_def, key);
     const bool strict_error_injected = (std::strstr(strict_fs_code.c_str(), "#error ULRE_HELPER_CONFLICT") != nullptr);
 
     printf("[Case 3][Strict] #error injected: %s\n", strict_error_injected ? "PASS" : "FAIL");

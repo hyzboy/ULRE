@@ -10,9 +10,9 @@
 
 using namespace hgl::graph::mtl;
 
-static bool ContainsKeyword(const hgl::AnsiString &text, const char *keyword)
+static bool ContainsKeyword(const char *text, const char *keyword)
 {
-    return std::strstr(text.c_str(), keyword) != nullptr;
+    return text && keyword && (std::strstr(text, keyword) != nullptr);
 }
 
 static bool EqualsString(const char *lhs, const char *rhs)
@@ -44,18 +44,18 @@ int main()
         && VERTEX_LUMINANCE_3D_FRAGMENT_SHADER_LOGIC.required_helper_count == 0;
 
     ShaderPermutationKey key {};
-    const hgl::AnsiString vs_code_vec3 = ComposedShaderGenerator::ComposeVertexShader(VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3, key);
-    const hgl::AnsiString vs_code_vec2 = ComposedShaderGenerator::ComposeVertexShader(VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2, key);
-    const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2, key);
+    const std::string vs_code_vec3 = ComposedShaderGenerator::ComposeVertexShader(VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3, key);
+    const std::string vs_code_vec2 = ComposedShaderGenerator::ComposeVertexShader(VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2, key);
+    const std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2, key);
 
-    const bool vs_semantic_ok = ContainsKeyword(vs_code_vec3, "MaterialInstance mi = GetMI()")
-                             && ContainsKeyword(vs_code_vec3, "Output.Color = vi.Luminance * mi.Color")
-                             && ContainsKeyword(vs_code_vec3, "return vec4(vi.Position")
-                             && ContainsKeyword(vs_code_vec2, "MaterialInstance mi = GetMI()")
-                             && ContainsKeyword(vs_code_vec2, "Output.Color = vi.Luminance * mi.Color")
-                             && ContainsKeyword(vs_code_vec2, "return vec4(vi.Position");
+    const bool vs_semantic_ok = ContainsKeyword(vs_code_vec3.c_str(), "MaterialInstance mi = GetMI()")
+                             && ContainsKeyword(vs_code_vec3.c_str(), "Output.Color = vi.Luminance * mi.Color")
+                             && ContainsKeyword(vs_code_vec3.c_str(), "return vec4(vi.Position")
+                             && ContainsKeyword(vs_code_vec2.c_str(), "MaterialInstance mi = GetMI()")
+                             && ContainsKeyword(vs_code_vec2.c_str(), "Output.Color = vi.Luminance * mi.Color")
+                             && ContainsKeyword(vs_code_vec2.c_str(), "return vec4(vi.Position");
 
-    const bool fs_semantic_ok = ContainsKeyword(fs_code, "return Input.Color");
+    const bool fs_semantic_ok = ContainsKeyword(fs_code.c_str(), "return Input.Color");
 
     printf("ValidateMaterialLogicDef: %s\n", logic_valid ? "PASS" : "FAIL");
     printf("Required resource shape: %s\n", required_resource_shape_ok ? "PASS" : "FAIL");

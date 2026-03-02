@@ -111,6 +111,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/FixedMaterialDef.h
+                    ${SHADERGEN_INCLUDE_PATH}/DescriptorBindingContract.h
                     ShaderPermutationKey.cpp
                     ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
                     ResourceLayoutGenerator.cpp

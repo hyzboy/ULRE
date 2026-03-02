@@ -23,7 +23,7 @@ vec4 FragmentShaderBusiness(const VS_Output vso) {
     const FragmentShaderBusiness fs_business{FS_BUSINESS_OK};
     def.fragment_business = &fs_business;
 
-    const hgl::AnsiString generated_fs = ComposedShaderGenerator::ComposeFragmentShader(def, key);
+    const std::string generated_fs = ComposedShaderGenerator::ComposeFragmentShader(def, key);
     const bool ok = ValidateFSMainBusinessHelperConsistency(def, generated_fs);
 
     std::printf("[Case +] builtins required by FS business: %s\n", ok ? "PASS" : "FAIL");
@@ -49,7 +49,7 @@ vec4 FragmentShaderBusiness(const VS_Output vso) {
     def.fragment_required_helpers = FS_REQUIRED_HELPERS;
     def.fragment_required_helper_count = 1;
 
-    const hgl::AnsiString generated_fs = ComposedShaderGenerator::ComposeFragmentShader(def, key);
+    const std::string generated_fs = ComposedShaderGenerator::ComposeFragmentShader(def, key);
     const bool ok = ValidateFSMainBusinessHelperConsistency(def, generated_fs);
 
     std::printf("[Case -] missing FS helper must be blocked: %s\n", !ok ? "PASS" : "FAIL");

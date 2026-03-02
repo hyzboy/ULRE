@@ -23,8 +23,8 @@ struct BridgeCheckResult {
     bool semantic_ok = false;
 };
 
-static bool ContainsKeyword(const hgl::AnsiString &text, const char *keyword) {
-    return std::strstr(text.c_str(), keyword) != nullptr;
+static bool ContainsKeyword(const char *text, const char *keyword) {
+    return text && keyword && (std::strstr(text, keyword) != nullptr);
 }
 
 static BridgeCheckResult RunBridgeCheck(
@@ -47,15 +47,15 @@ static BridgeCheckResult RunBridgeCheck(
     result.no_missing_resource = bridge_result.diagnostics.missing_resources.empty();
 
     if (result.bridge_ok) {
-        const hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(bridge_result.def, key);
-        const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(bridge_result.def, key);
+        const std::string vs_code = ComposedShaderGenerator::ComposeVertexShader(bridge_result.def, key);
+        const std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(bridge_result.def, key);
 
-        result.vs_generated = (vs_code.Length() > 0) && ContainsKeyword(vs_code, "VertexShaderBusiness");
-        result.fs_generated = (fs_code.Length() > 0) && ContainsKeyword(fs_code, "FragmentShaderBusiness");
+        result.vs_generated = (!vs_code.empty()) && ContainsKeyword(vs_code.c_str(), "VertexShaderBusiness");
+        result.fs_generated = (!fs_code.empty()) && ContainsKeyword(fs_code.c_str(), "FragmentShaderBusiness");
 
         bool vs_semantic_ok = true;
         for (uint32_t i = 0; i < vs_semantic_keyword_count; ++i) {
-            if (!ContainsKeyword(vs_code, vs_semantic_keywords[i])) {
+            if (!ContainsKeyword(vs_code.c_str(), vs_semantic_keywords[i])) {
                 printf("  [Semantic][%s][VS] Missing keyword: %s\n", name, vs_semantic_keywords[i]);
                 vs_semantic_ok = false;
             }
@@ -63,7 +63,7 @@ static BridgeCheckResult RunBridgeCheck(
 
         bool fs_semantic_ok = true;
         for (uint32_t i = 0; i < fs_semantic_keyword_count; ++i) {
-            if (!ContainsKeyword(fs_code, fs_semantic_keywords[i])) {
+            if (!ContainsKeyword(fs_code.c_str(), fs_semantic_keywords[i])) {
                 printf("  [Semantic][%s][FS] Missing keyword: %s\n", name, fs_semantic_keywords[i]);
                 fs_semantic_ok = false;
             }

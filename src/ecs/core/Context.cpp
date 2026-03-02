@@ -18,6 +18,7 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 // old systems/render/LineRenderSystem.h removed — replaced by support/line/LineRenderSystem
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include<hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include<hgl/vk/VKRenderTarget.h>
@@ -27,6 +28,7 @@
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>
 #include<algorithm>
+#include<chrono>
 
 namespace hgl
 {
@@ -627,6 +629,37 @@ namespace hgl
                 return;
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderFrameSync, deltaTime);
+
+            if (descriptor_contract_diag_log_enabled)
+            {
+                using namespace std::chrono;
+                const uint64_t now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+
+                if (descriptor_contract_diag_last_log_ms == 0 || now_ms - descriptor_contract_diag_last_log_ms >= 1000)
+                {
+                    uint32_t materials_checked = 0;
+                    uint32_t materials_unresolved = 0;
+                    uint32_t required_missing = 0;
+                    uint32_t optional_missing = 0;
+                    uint32_t fallback_hits = 0;
+
+                    if (GetDescriptorContractDiagnostics(materials_checked,
+                                                         materials_unresolved,
+                                                         required_missing,
+                                                         optional_missing,
+                                                         fallback_hits))
+                    {
+                        LogInfo("[DescriptorContract][ECSContext] checked=%u unresolved=%u required_missing=%u optional_missing=%u fallback_hits=%u",
+                                materials_checked,
+                                materials_unresolved,
+                                required_missing,
+                                optional_missing,
+                                fallback_hits);
+                    }
+
+                    descriptor_contract_diag_last_log_ms = now_ms;
+                }
+            }
         }
 
         void ECSContext::PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime)
@@ -1041,6 +1074,29 @@ namespace hgl
             }
 
             return false;
+        }
+
+        bool ECSContext::GetDescriptorContractDiagnostics(uint32_t &materials_checked,
+                                                          uint32_t &materials_unresolved,
+                                                          uint32_t &required_missing,
+                                                          uint32_t &optional_missing,
+                                                          uint32_t &fallback_hits) const
+        {
+            materials_checked = 0;
+            materials_unresolved = 0;
+            required_missing = 0;
+            optional_missing = 0;
+            fallback_hits = 0;
+
+            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
+            if (!descriptor_system)
+                return false;
+
+            return descriptor_system->GetContractDiagnosticsStats(materials_checked,
+                                                                  materials_unresolved,
+                                                                  required_missing,
+                                                                  optional_missing,
+                                                                  fallback_hits);
         }
 
         bool ECSContext::RemoveSystemByKey(size_t key)

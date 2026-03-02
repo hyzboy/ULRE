@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKShaderModuleMap.h>
+#include<hgl/shadergen/DescriptorBindingContract.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
@@ -43,6 +44,7 @@ class Material
     ShaderModuleMap *shader_maps;
 
     MaterialDescriptorManager *desc_manager;
+    mtl::BindingContract binding_contract;
 
     ShaderStageCreateInfoList shader_stage_list;
 
@@ -68,6 +70,7 @@ public:
     virtual ~Material();
 
     const   AnsiString &                        GetName                 ()const{return name;}
+    const   mtl::BindingContract &              GetBindingContract      ()const{return binding_contract;}
 
     const   PrimitiveType &                     GetPrimitiveType        ()const{return geometry;}
 

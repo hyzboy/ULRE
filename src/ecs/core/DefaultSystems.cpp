@@ -18,6 +18,7 @@
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
 #include <hgl/ecs/systems/render/RenderFrameBusinessSyncSystem.h>
+#include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/vk/VKRenderTarget.h>
 
@@ -160,11 +161,13 @@ namespace hgl::ecs
         auto swapchain_next_image_system = EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
         auto swapchain_submit_system = EnsureRenderSystem<ecs::SwapchainSubmitSystem>(ctx);
         auto render_frame_business_sync_system = EnsureRenderSystem<ecs::RenderFrameBusinessSyncSystem>(ctx);
+        auto render_descriptor_binding_system = EnsureRenderSystem<ecs::RenderDescriptorBindingSystem>(ctx);
 
         (void)input_system;
         (void)swapchain_next_image_system;
         (void)swapchain_submit_system;
         (void)render_frame_business_sync_system;
+        (void)render_descriptor_binding_system;
 
         if (environment_system)
             environment_system->SetRenderContext(rc);

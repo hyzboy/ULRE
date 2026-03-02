@@ -14,8 +14,6 @@ namespace hgl::graph
     struct CameraInfo;
     class ViewportInfo;
     class RenderContext;
-    class RenderCmdBuffer;
-    class DescriptorBinding;
     template<typename T> class StructuredBufferAccessor;
 }
 
@@ -98,7 +96,6 @@ namespace hgl
             graph::CameraInfo* camera_info = nullptr;
             graph::StructuredBufferAccessor<graph::CameraInfo>* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
-            graph::DescriptorBinding* camera_desc_binding = nullptr;
             bool first_update_pending = true;
 
         public:
@@ -120,7 +117,7 @@ namespace hgl
             const graph::CameraInfo* GetCameraInfo() const;
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
-            void BindDescriptor(graph::RenderCmdBuffer* cmd);
+            graph::StructuredBufferAccessor<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
             void SyncCameraUBO();
 
         private:

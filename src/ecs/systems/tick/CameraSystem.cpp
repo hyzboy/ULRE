@@ -2,12 +2,9 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/TransformSystem.h>
-#include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKMemory.h>
@@ -242,12 +239,6 @@ namespace hgl::ecs
 
     void CameraSystem::Shutdown()
     {
-        if (camera_desc_binding)
-        {
-            delete camera_desc_binding;
-            camera_desc_binding = nullptr;
-        }
-
         if (camera_ubo)
         {
             graph::VkBufferOwner *buf = camera_ubo->ubo();
@@ -298,12 +289,6 @@ namespace hgl::ecs
     const graph::CameraInfo* CameraSystem::GetCameraInfo() const
     {
         return camera_info;
-    }
-
-    void CameraSystem::BindDescriptor(graph::RenderCmdBuffer* cmd)
-    {
-        if (cmd && camera_desc_binding)
-            cmd->SetDescriptorBinding(camera_desc_binding);
     }
 
     void CameraSystem::SyncCameraUBO()
@@ -597,44 +582,6 @@ namespace hgl::ecs
                 camera_ubo_managed = true;
             if (camera_ubo)
                 camera_info = camera_ubo->Data();
-        }
-
-        if (!camera_desc_binding)
-            camera_desc_binding = new graph::DescriptorBinding(graph::DescriptorSetType::Camera);
-
-        if (camera_desc_binding && camera_ubo)
-        {
-            const AnsiString ubo_name = camera_ubo->name();
-            if (!camera_desc_binding->GetUBO(ubo_name))
-                camera_desc_binding->AddUBO(camera_ubo);
-        }
-
-        if (camera_desc_binding && context)
-        {
-            auto environment_system = context->GetSystem<EnvironmentSystem>();
-            if (!environment_system)
-            {
-                environment_system = context->RegisterRenderSystem<EnvironmentSystem>();
-                if (context->IsActive())
-                {
-                    environment_system->OnDependenciesReady();
-                    environment_system->Initialize();
-                }
-            }
-
-            if (environment_system)
-            {
-                // 确保 Sky UBO 已创建（GetSkyUBO 仅返回指针，不会触发资源创建）
-                environment_system->EditSkyInfo();
-
-                auto *sky_ubo = environment_system->GetSkyUBO();
-                if (sky_ubo)
-                {
-                    const AnsiString sky_name = sky_ubo->name();
-                    if (!camera_desc_binding->GetUBO(sky_name))
-                        camera_desc_binding->AddUBO(sky_ubo);
-                }
-            }
         }
     }
 

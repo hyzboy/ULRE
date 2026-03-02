@@ -39,7 +39,7 @@ vec4 FragmentShaderBusiness(const VS_Output vso) {
         default_pipeline_mode,
         true);
 
-    const bool has_code = result.code.Length() > 0;
+    const bool has_code = !result.code.empty();
     const bool conflict_detected = result.diagnostics.helper_conflict_detected;
     const bool conflict_count_ok = result.diagnostics.helper_conflict_count >= 1;
 

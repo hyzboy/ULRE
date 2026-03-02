@@ -15,6 +15,7 @@ Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 {
     name=n;
     geometry=mci->GetPrimitiveType();
+    binding_contract=mci->GetBindingContract();
 
     vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;

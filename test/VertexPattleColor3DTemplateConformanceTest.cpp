@@ -10,9 +10,9 @@
 
 using namespace hgl::graph::mtl;
 
-static bool ContainsKeyword(const hgl::AnsiString &text, const char *keyword)
+static bool ContainsKeyword(const char *text, const char *keyword)
 {
-    return std::strstr(text.c_str(), keyword) != nullptr;
+    return text && keyword && (std::strstr(text, keyword) != nullptr);
 }
 
 static bool EqualsString(const char *lhs, const char *rhs)
@@ -43,13 +43,13 @@ int main()
         && VERTEX_PATTLE_COLOR_3D_FRAGMENT_SHADER_LOGIC.required_helper_count == 0;
 
     ShaderPermutationKey key {};
-    const hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF, key);
-    const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF, key);
+    const std::string vs_code = ComposedShaderGenerator::ComposeVertexShader(VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF, key);
+    const std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF, key);
 
-    const bool vs_semantic_ok = ContainsKeyword(vs_code, "Output.Color = color_pattle.color[vi.Color]")
-                             && ContainsKeyword(vs_code, "return vec4(vi.Position, 1.0)");
+    const bool vs_semantic_ok = ContainsKeyword(vs_code.c_str(), "Output.Color = color_pattle.color[vi.Color]")
+                             && ContainsKeyword(vs_code.c_str(), "return vec4(vi.Position, 1.0)");
 
-    const bool fs_semantic_ok = ContainsKeyword(fs_code, "return Input.Color");
+    const bool fs_semantic_ok = ContainsKeyword(fs_code.c_str(), "return Input.Color");
 
     printf("ValidateMaterialLogicDef: %s\n", logic_valid ? "PASS" : "FAIL");
     printf("Required resource shape: %s\n", required_resource_shape_ok ? "PASS" : "FAIL");

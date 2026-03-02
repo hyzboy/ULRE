@@ -8,6 +8,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/DescriptorBindingContract.h>
 #include <hgl/shadergen/ShaderDescriptorInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
@@ -636,6 +637,23 @@ MaterialCreateInfo *CompileFixedMaterial(
     if (!dev_attr)
         return nullptr;
 
+    // Contract validation (phase 1 skeleton): diagnostics only, no behavior changes yet.
+    BindingContract binding_contract = BuildBindingContract(def);
+    {
+        std::vector<std::string> diagnostics;
+
+        if (!ValidateBindingContract(binding_contract, diagnostics))
+        {
+            for (const auto &diag : diagnostics)
+            {
+                std::fprintf(stderr,
+                             "[DescriptorContract] material=%s, %s\n",
+                             def.name ? def.name : "<null>",
+                             diag.c_str());
+            }
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Step 1: 创建 MaterialCreateConfig（运行时配置优先于定义默认值）
     // ─────────────────────────────────────────────────────────────────────────
@@ -666,6 +684,7 @@ MaterialCreateInfo *CompileFixedMaterial(
 
     MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
     mci->SetDevice(dev_attr);
+    mci->SetBindingContract(binding_contract);
 
     bool has_camera_descriptor = false;
     bool has_local_to_world_descriptor = false;

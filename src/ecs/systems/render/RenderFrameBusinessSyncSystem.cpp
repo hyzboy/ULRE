@@ -28,8 +28,5 @@ namespace hgl::ecs
         auto environment_system = context->GetSystem<EnvironmentSystem>();
         if (environment_system)
             environment_system->SyncSkyUBO();
-
-        if (camera_system)
-            camera_system->BindDescriptor(context->GetCurrentRenderCmd());
     }
 }

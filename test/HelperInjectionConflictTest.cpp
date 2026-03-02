@@ -7,12 +7,12 @@
 
 using namespace hgl::graph::mtl;
 
-static uint32_t CountToken(const hgl::AnsiString &text, const char *token)
+static uint32_t CountToken(const char *text, const char *token)
 {
-    if (!token || !*token)
+    if (!text || !token || !*token)
         return 0;
 
-    const char *cursor = text.c_str();
+    const char *cursor = text;
     uint32_t count = 0;
 
     while ((cursor = std::strstr(cursor, token)) != nullptr)
@@ -51,13 +51,13 @@ vec4 FragmentShaderBusiness(const VS_Output vso) {
     def.enable_lighting = false;
 
     ShaderPermutationKey key{};
-    const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(def, key);
+    const std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(def, key);
 
-    const bool generated_ok = fs_code.Length() > 0;
+    const bool generated_ok = !fs_code.empty();
     const bool custom_body_present = std::strstr(fs_code.c_str(), "return vec3(1.0, 2.0, 3.0)") != nullptr;
 
-    const uint32_t get_camera_pos_defs = CountToken(fs_code, "vec3 GetCameraPos() {");
-    const uint32_t get_camera_position_defs = CountToken(fs_code, "vec3 GetCameraPosition() {");
+    const uint32_t get_camera_pos_defs = CountToken(fs_code.c_str(), "vec3 GetCameraPos() {");
+    const uint32_t get_camera_position_defs = CountToken(fs_code.c_str(), "vec3 GetCameraPosition() {");
 
     const bool no_duplicate_get_camera_pos = (get_camera_pos_defs == 1);
     const bool no_duplicate_get_camera_position = (get_camera_position_defs == 1);

@@ -5,6 +5,53 @@
 
 using namespace hgl::graph::mtl;
 
+static VertexShaderLogic MakeVertexLogic(
+    const char *main_logic,
+    const char *custom_functions,
+    const char *const *required_resources,
+    uint32_t required_resource_count,
+    const char *const *required_helpers,
+    uint32_t required_helper_count)
+{
+    VertexShaderLogic logic{};
+    logic.main_logic = main_logic;
+    logic.custom_functions = custom_functions;
+    logic.required_resources = required_resources;
+    logic.required_resource_count = required_resource_count;
+    logic.required_helpers = required_helpers;
+    logic.required_helper_count = required_helper_count;
+    return logic;
+}
+
+static FragmentShaderLogic MakeFragmentLogic(
+    const char *main_logic,
+    const char *custom_functions,
+    const char *const *required_resources,
+    uint32_t required_resource_count,
+    const char *const *required_helpers,
+    uint32_t required_helper_count)
+{
+    FragmentShaderLogic logic{};
+    logic.main_logic = main_logic;
+    logic.custom_functions = custom_functions;
+    logic.required_resources = required_resources;
+    logic.required_resource_count = required_resource_count;
+    logic.required_helpers = required_helpers;
+    logic.required_helper_count = required_helper_count;
+    return logic;
+}
+
+static MaterialLogicDef MakeLogic(const VertexShaderLogic &vertex, const FragmentShaderLogic &fragment)
+{
+    MaterialLogicDef logic{};
+    logic.vertex = vertex;
+    logic.fragment = fragment;
+    logic.geometry = nullptr;
+    logic.tess_control = nullptr;
+    logic.tess_eval = nullptr;
+    return logic;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // 测试用例 1：合法的最小材质（无任何依赖）
 // ═════════════════════════════════════════════════════════════════════════════
@@ -21,79 +68,25 @@ vec4 FragmentShaderBusiness() {
 }
 )";
 
-const MaterialLogicDef VALID_MINIMAL_LOGIC = {
-    VertexShaderLogic{{
-        SIMPLE_VS_LOGIC,
-        nullptr,
-        nullptr,
-        0,
-        nullptr,
-        0
-    }},
-    FragmentShaderLogic{{
-        SIMPLE_FS_LOGIC,
-        nullptr,
-        nullptr,
-        0,
-        nullptr,
-        0
-    }},
-    nullptr,
-    nullptr,
-    nullptr
-};
+const MaterialLogicDef VALID_MINIMAL_LOGIC = MakeLogic(
+    MakeVertexLogic(SIMPLE_VS_LOGIC, nullptr, nullptr, 0, nullptr, 0),
+    MakeFragmentLogic(SIMPLE_FS_LOGIC, nullptr, nullptr, 0, nullptr, 0));
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 测试用例 2：非法材质（VS main_logic 为空）
 // ═════════════════════════════════════════════════════════════════════════════
 
-const MaterialLogicDef INVALID_NO_VS_LOGIC = {
-    VertexShaderLogic{{
-        nullptr,
-        nullptr,
-        nullptr,
-        0,
-        nullptr,
-        0
-    }},
-    FragmentShaderLogic{{
-        SIMPLE_FS_LOGIC,
-        nullptr,
-        nullptr,
-        0,
-        nullptr,
-        0
-    }},
-    nullptr,
-    nullptr,
-    nullptr
-};
+const MaterialLogicDef INVALID_NO_VS_LOGIC = MakeLogic(
+    MakeVertexLogic(nullptr, nullptr, nullptr, 0, nullptr, 0),
+    MakeFragmentLogic(SIMPLE_FS_LOGIC, nullptr, nullptr, 0, nullptr, 0));
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 测试用例 3：非法材质（count 与数组指针不匹配）
 // ═════════════════════════════════════════════════════════════════════════════
 
-const MaterialLogicDef INVALID_COUNT_MISMATCH = {
-    VertexShaderLogic{{
-        SIMPLE_VS_LOGIC,
-        nullptr,
-        nullptr,
-        2,
-        nullptr,
-        0
-    }},
-    FragmentShaderLogic{{
-        SIMPLE_FS_LOGIC,
-        nullptr,
-        nullptr,
-        0,
-        nullptr,
-        0
-    }},
-    nullptr,
-    nullptr,
-    nullptr
-};
+const MaterialLogicDef INVALID_COUNT_MISMATCH = MakeLogic(
+    MakeVertexLogic(SIMPLE_VS_LOGIC, nullptr, nullptr, 2, nullptr, 0),
+    MakeFragmentLogic(SIMPLE_FS_LOGIC, nullptr, nullptr, 0, nullptr, 0));
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 测试用例 4：警告情况（数组非空但 count 为 0）
@@ -101,27 +94,9 @@ const MaterialLogicDef INVALID_COUNT_MISMATCH = {
 
 constexpr const char* DUMMY_RESOURCES[] = {"camera", "mtl"};
 
-const MaterialLogicDef WARNING_ARRAY_IGNORED = {
-    VertexShaderLogic{{
-        SIMPLE_VS_LOGIC,
-        nullptr,
-        DUMMY_RESOURCES,
-        0,
-        nullptr,
-        0
-    }},
-    FragmentShaderLogic{{
-        SIMPLE_FS_LOGIC,
-        nullptr,
-        nullptr,
-        0,
-        nullptr,
-        0
-    }},
-    nullptr,
-    nullptr,
-    nullptr
-};
+const MaterialLogicDef WARNING_ARRAY_IGNORED = MakeLogic(
+    MakeVertexLogic(SIMPLE_VS_LOGIC, nullptr, DUMMY_RESOURCES, 0, nullptr, 0),
+    MakeFragmentLogic(SIMPLE_FS_LOGIC, nullptr, nullptr, 0, nullptr, 0));
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 测试主函数

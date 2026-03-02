@@ -132,6 +132,11 @@ set(ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES
     systems/render/RenderFrameBusinessSyncSystem.cpp
 )
 
+set(ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/RenderDescriptorBindingSystem.h
+    systems/render/RenderDescriptorBindingSystem.cpp
+)
+
 set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
     systems/render/RenderPrimitiveCollectSystem.cpp
@@ -294,6 +299,7 @@ set(ECS_SOURCE
     ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES}
     ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES}
     ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
+    ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
     ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
@@ -332,6 +338,7 @@ source_group("ECS\\Systems\\10 RenderResourceSetup_QuadResourcePrepareSystem" FI
 source_group("ECS\\Systems\\11 RenderMaterialBind_QuadMaterialBindingSystem" FILES ${ECS_SYS_11_RenderMaterialBind_QuadMaterialBindingSystem_FILES})
 source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILES ${ECS_SYS_14_RenderBufferUpload_RenderBufferUploadSystem_FILES})
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
+source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})
 source_group("ECS\\Systems\\18 RenderCollect_TextCollectSystem" FILES ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES})

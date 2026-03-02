@@ -6,6 +6,7 @@
 #include <hgl/type/String.h>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <unordered_set>
 
 using namespace hgl::graph::mtl;
@@ -39,10 +40,10 @@ static bool DumpShaderTextFile(const char *filename, const char *text)
     return true;
 }
 
-static bool ValidateGLSL(const hgl::AnsiString &glsl_code, ShaderTextValidation *validations, uint32_t count)
+static bool ValidateGLSL(const std::string &glsl_code, ShaderTextValidation *validations, uint32_t count)
 {
     printf("\n[验证生成的 GLSL 代码]\n");
-    printf("代码长度：%u 字符\n\n", glsl_code.Length());
+    printf("代码长度：%u 字符\n\n", uint32_t(glsl_code.size()));
 
     bool all_ok = true;
     for (uint32_t i = 0; i < count; i++)
@@ -57,7 +58,7 @@ static bool ValidateGLSL(const hgl::AnsiString &glsl_code, ShaderTextValidation 
     return all_ok;
 }
 
-static bool ValidateNoDuplicateSetBinding(const hgl::AnsiString &glsl_code, const char *label)
+static bool ValidateNoDuplicateSetBinding(const std::string &glsl_code, const char *label)
 {
     std::unordered_set<uint64_t> binding_set;
     bool all_ok = true;
@@ -98,7 +99,7 @@ static bool ValidateNoDuplicateSetBinding(const hgl::AnsiString &glsl_code, cons
     return all_ok;
 }
 
-static bool ValidateStage3Helpers(const hgl::AnsiString &glsl_code, const char *label)
+static bool ValidateStage3Helpers(const std::string &glsl_code, const char *label)
 {
     printf("\n[Helper 注入检查] %s\n", label);
 
@@ -111,7 +112,7 @@ static bool ValidateStage3Helpers(const hgl::AnsiString &glsl_code, const char *
     return ValidateGLSL(glsl_code, helper_checks, uint32_t(sizeof(helper_checks) / sizeof(helper_checks[0])));
 }
 
-static bool ValidateHelperAliasEmission(const hgl::AnsiString &glsl_code, const char *label)
+static bool ValidateHelperAliasEmission(const std::string &glsl_code, const char *label)
 {
     printf("\n[Helper 别名检查] %s\n", label);
 
@@ -123,7 +124,7 @@ static bool ValidateHelperAliasEmission(const hgl::AnsiString &glsl_code, const 
     return ValidateGLSL(glsl_code, helper_alias_checks, uint32_t(sizeof(helper_alias_checks) / sizeof(helper_alias_checks[0])));
 }
 
-static bool ValidateContainsWorldAndCameraHelpersOnly(const hgl::AnsiString &glsl_code, const char *label)
+static bool ValidateContainsWorldAndCameraHelpersOnly(const std::string &glsl_code, const char *label)
 {
     printf("\n[显式依赖注入检查] %s\n", label);
 
@@ -138,7 +139,7 @@ static bool ValidateContainsWorldAndCameraHelpersOnly(const hgl::AnsiString &gls
     return has_world && has_camera && !has_transform;
 }
 
-static bool ValidateHelperAbsence(const hgl::AnsiString &glsl_code, const char *label)
+static bool ValidateHelperAbsence(const std::string &glsl_code, const char *label)
 {
     printf("\n[Helper 未注入检查] %s\n", label);
 
@@ -229,8 +230,8 @@ struct CoreRegressionCheckResult
 };
 
 static CoreRegressionCheckResult RunCoreRegressionChecks(
-    const hgl::AnsiString &vs_code,
-    const hgl::AnsiString &fs_code,
+    const std::string &vs_code,
+    const std::string &fs_code,
     const ShaderPermutationKey &key)
 {
     CoreRegressionCheckResult out;
@@ -274,8 +275,8 @@ static CoreRegressionCheckResult RunCoreRegressionChecks(
         .mi_struct_bytes = sizeof(float) * 3,
     };
 
-    hgl::AnsiString helper_vs_code = ComposedShaderGenerator::ComposeVertexShader(HELPER_DEMAND_COMPOSED, key);
-    hgl::AnsiString helper_fs_code = ComposedShaderGenerator::ComposeFragmentShader(HELPER_DEMAND_COMPOSED, key);
+    std::string helper_vs_code = ComposedShaderGenerator::ComposeVertexShader(HELPER_DEMAND_COMPOSED, key);
+    std::string helper_fs_code = ComposedShaderGenerator::ComposeFragmentShader(HELPER_DEMAND_COMPOSED, key);
 
     out.vs_helper_ok = ValidateHelperAbsence(helper_vs_code, "VS(HelperDemand)");
     out.fs_helper_ok = ValidateStage3Helpers(helper_fs_code, "FS(HelperDemand)");
@@ -313,7 +314,7 @@ static CoreRegressionCheckResult RunCoreRegressionChecks(
         .fragment_required_helper_count = 2,
     };
 
-    hgl::AnsiString explicit_fs_code = ComposedShaderGenerator::ComposeFragmentShader(EXPLICIT_HELPER_COMPOSED, key);
+    std::string explicit_fs_code = ComposedShaderGenerator::ComposeFragmentShader(EXPLICIT_HELPER_COMPOSED, key);
     out.fs_explicit_helper_ok = ValidateContainsWorldAndCameraHelpersOnly(explicit_fs_code, "FS(ExplicitHelperDemand)");
 
     const FragmentShaderBusiness LOGIC_HELPER_FRAGMENT_BUSINESS { EXPLICIT_HELPER_FS_BUSINESS };
@@ -325,7 +326,7 @@ static CoreRegressionCheckResult RunCoreRegressionChecks(
     LOGIC_HELPER_COMPOSED.fragment_business = &LOGIC_HELPER_FRAGMENT_BUSINESS;
     LOGIC_HELPER_COMPOSED.logic_required_helpers = LOGIC_FS_HELPERS;
 
-    hgl::AnsiString logic_fs_code = ComposedShaderGenerator::ComposeFragmentShader(LOGIC_HELPER_COMPOSED, key);
+    std::string logic_fs_code = ComposedShaderGenerator::ComposeFragmentShader(LOGIC_HELPER_COMPOSED, key);
     out.fs_logic_helper_ok = ValidateContainsWorldAndCameraHelpersOnly(logic_fs_code, "FS(LogicHelperDemand)");
 
     const char *LOGIC_VERTEX_REQUIRED_RESOURCES[] = {
@@ -380,15 +381,15 @@ static CoreRegressionCheckResult RunCoreRegressionChecks(
                                     && bridge_logic_helper_contains_world
                                     && bridge_logic_helper_contains_camera;
 
-    hgl::AnsiString bridge_fs_code = ComposedShaderGenerator::ComposeFragmentShader(bridge_result.def, key);
+    std::string bridge_fs_code = ComposedShaderGenerator::ComposeFragmentShader(bridge_result.def, key);
     out.bridge_helper_inject_ok = ValidateContainsWorldAndCameraHelpersOnly(bridge_fs_code, "FS(BridgeLogic)");
 
     PipelineMode forward_pervertex_mode;
     forward_pervertex_mode.render_path = PipelineRenderPath::Forward;
     forward_pervertex_mode.forward_lighting = PipelineForwardLightingMode::PerVertex;
 
-    hgl::AnsiString forward_pervertex_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, forward_pervertex_mode);
-    hgl::AnsiString forward_pervertex_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, forward_pervertex_mode);
+    std::string forward_pervertex_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, forward_pervertex_mode);
+    std::string forward_pervertex_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, forward_pervertex_mode);
 
     out.forward_pervertex_vs_macro_ok = (std::strstr(forward_pervertex_vs.c_str(), "#define FORWARD_LIGHTING_PER_VERTEX 1") != nullptr)
                                     && (std::strstr(forward_pervertex_vs.c_str(), "#define FORWARD_LIGHTING_PER_PIXEL 0") != nullptr);
@@ -403,8 +404,8 @@ static CoreRegressionCheckResult RunCoreRegressionChecks(
     PipelineMode mobile_subpass_mode;
     mobile_subpass_mode.render_path = PipelineRenderPath::MobileSubpassGBufferDeferred;
 
-    hgl::AnsiString mobile_subpass_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, mobile_subpass_mode);
-    hgl::AnsiString mobile_subpass_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, mobile_subpass_mode);
+    std::string mobile_subpass_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, mobile_subpass_mode);
+    std::string mobile_subpass_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, mobile_subpass_mode);
 
     out.mobile_subpass_vs_macro_ok = (std::strstr(mobile_subpass_vs.c_str(), "#define MOBILE_SUBPASS_GBUFFER 1") != nullptr)
                                   && (std::strstr(mobile_subpass_vs.c_str(), "#define MOBILE_SUBPASS_USE_SUBPASSLOAD 1") != nullptr);
@@ -429,12 +430,12 @@ static NormalCompressionCheckResult RunNormalCompressionChecks(const ShaderPermu
     normal_compression_mode.normal_compression.normal_map_encoding = NormalEncodingMode::Octahedral;
     normal_compression_mode.normal_compression.gbuffer_encoding = NormalEncodingMode::Octahedral;
 
-    hgl::AnsiString normal_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_compression_mode);
-    hgl::AnsiString normal_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_compression_mode);
+    std::string normal_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_compression_mode);
+    std::string normal_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_compression_mode);
 
     ComposedMaterialDef deferred_composed = EX_BASIC_LIT_COMPOSED;
     deferred_composed.output_mode = ShaderOutputMode::DualRTDeferred;
-    hgl::AnsiString normal_fs_deferred = ComposedShaderGenerator::ComposeFragmentShader(deferred_composed, key, normal_compression_mode);
+    std::string normal_fs_deferred = ComposedShaderGenerator::ComposeFragmentShader(deferred_composed, key, normal_compression_mode);
 
     out.compression_define_ok = (std::strstr(normal_vs.c_str(), "#define COMPRESS_VERTEX_INPUT_NORMAL 1") != nullptr)
                              && (std::strstr(normal_vs.c_str(), "#define COMPRESS_NORMAL_MAP 1") != nullptr)
@@ -458,8 +459,8 @@ static NormalCompressionCheckResult RunNormalCompressionChecks(const ShaderPermu
     normal_spheremap_mode.normal_compression.normal_map_encoding = NormalEncodingMode::Spheremap;
     normal_spheremap_mode.normal_compression.gbuffer_encoding = NormalEncodingMode::Spheremap;
 
-    hgl::AnsiString normal_spheremap_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_spheremap_mode);
-    hgl::AnsiString normal_spheremap_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_spheremap_mode);
+    std::string normal_spheremap_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_spheremap_mode);
+    std::string normal_spheremap_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_spheremap_mode);
 
     out.spheremap_macro_ok = (std::strstr(normal_spheremap_vs.c_str(), "#define VERTEX_NORMAL_ENCODING_SPHEREMAP 1") != nullptr)
                           && (std::strstr(normal_spheremap_fs.c_str(), "#define NORMAL_MAP_ENCODING_SPHEREMAP 1") != nullptr)
@@ -474,8 +475,8 @@ static NormalCompressionCheckResult RunNormalCompressionChecks(const ShaderPermu
     normal_none_mode.normal_compression.normal_map_encoding = NormalEncodingMode::None;
     normal_none_mode.normal_compression.gbuffer_encoding = NormalEncodingMode::None;
 
-    hgl::AnsiString normal_none_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
-    hgl::AnsiString normal_none_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
+    std::string normal_none_vs = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
+    std::string normal_none_fs = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
     ShaderComposeResult normal_none_vs_with_diag = ComposedShaderGenerator::ComposeVertexShaderWithDiagnostics(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
     ShaderComposeResult normal_none_fs_with_diag = ComposedShaderGenerator::ComposeFragmentShaderWithDiagnostics(EX_BASIC_LIT_COMPOSED, key, normal_none_mode);
 
@@ -509,11 +510,11 @@ int main()
 
     ShaderPermutationKey key{};
 
-    hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key);
-    hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key);
+    std::string vs_code = ComposedShaderGenerator::ComposeVertexShader(EX_BASIC_LIT_COMPOSED, key);
+    std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(EX_BASIC_LIT_COMPOSED, key);
 
-    printf("  VS 长度: %u\n", vs_code.Length());
-    printf("  FS 长度: %u\n", fs_code.Length());
+    printf("  VS 长度: %u\n", uint32_t(vs_code.size()));
+    printf("  FS 长度: %u\n", uint32_t(fs_code.size()));
 
     printf("\n[Step 2] 导出 GLSL 文件（失败时用于排查）\n");
 

@@ -119,6 +119,8 @@ namespace hgl
             SystemProfiler profiler;
             bool system_profiling_enabled = true;
             uint32_t frame_index = 0;
+            bool descriptor_contract_diag_log_enabled = false;
+            uint64_t descriptor_contract_diag_last_log_ms = 0;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
@@ -316,6 +318,15 @@ namespace hgl
             bool IsSystemProfilingEnabled() const { return system_profiling_enabled; }
             SystemProfiler& GetSystemProfiler() { return profiler; }
             const SystemProfiler& GetSystemProfiler() const { return profiler; }
+
+            bool GetDescriptorContractDiagnostics(uint32_t &materials_checked,
+                                                 uint32_t &materials_unresolved,
+                                                 uint32_t &required_missing,
+                                                 uint32_t &optional_missing,
+                                                 uint32_t &fallback_hits) const;
+
+            void SetDescriptorContractDiagnosticsLogEnabled(bool enabled) { descriptor_contract_diag_log_enabled = enabled; }
+            bool IsDescriptorContractDiagnosticsLogEnabled() const { return descriptor_contract_diag_log_enabled; }
 
             void SetFrameIndex(const uint32_t index);
             uint32_t GetFrameIndex() const { return frame_index; }

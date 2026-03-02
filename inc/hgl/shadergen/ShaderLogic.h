@@ -27,6 +27,9 @@
 
 #pragma once
 
+#include <cstdint>
+#include <cstdio>
+
 namespace hgl::graph::mtl {
 
 // ─────────────────────────────────────────────────────────────────────────────

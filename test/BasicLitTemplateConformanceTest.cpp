@@ -10,9 +10,9 @@
 
 using namespace hgl::graph::mtl;
 
-static bool ContainsKeyword(const hgl::AnsiString &text, const char *keyword)
+static bool ContainsKeyword(const char *text, const char *keyword)
 {
-    return std::strstr(text.c_str(), keyword) != nullptr;
+    return text && keyword && (std::strstr(text, keyword) != nullptr);
 }
 
 static bool EqualsString(const char *lhs, const char *rhs)
@@ -58,21 +58,21 @@ int main()
         && EqualsString(BASIC_LIT_FRAGMENT_SHADER_LOGIC.required_helpers[0], "GetMI");
 
     ShaderPermutationKey key {};
-    const hgl::AnsiString vs_code = ComposedShaderGenerator::ComposeVertexShader(base_def, key);
-    const hgl::AnsiString fs_code = ComposedShaderGenerator::ComposeFragmentShader(base_def, key);
+    const std::string vs_code = ComposedShaderGenerator::ComposeVertexShader(base_def, key);
+    const std::string fs_code = ComposedShaderGenerator::ComposeFragmentShader(base_def, key);
 
-    const bool vs_semantic_ok = ContainsKeyword(vs_code, "Output.TexCoord = vi.TexCoord")
-                             && ContainsKeyword(vs_code, "GetLocalToWorld()")
-                             && ContainsKeyword(vs_code, "return vec4(vi.Position, 1.0)");
+    const bool vs_semantic_ok = ContainsKeyword(vs_code.c_str(), "Output.TexCoord = vi.TexCoord")
+                             && ContainsKeyword(vs_code.c_str(), "GetLocalToWorld()")
+                             && ContainsKeyword(vs_code.c_str(), "return vec4(vi.Position, 1.0)");
 
-    const bool fs_semantic_ok = ContainsKeyword(fs_code, "ResolveRuntimeNormalStrength(mi.normal_strength)")
-                             && ContainsKeyword(fs_code, "ULRE_GetSkyLightDir")
-                             && ContainsKeyword(fs_code, "ULRE_GetSkyLightColor")
-                             && ContainsKeyword(fs_code, "ULRE_GetSkyAmbientColor")
-                             && ContainsKeyword(fs_code, "return vec4(color, 1.0)");
+    const bool fs_semantic_ok = ContainsKeyword(fs_code.c_str(), "ResolveRuntimeNormalStrength(mi.normal_strength)")
+                             && ContainsKeyword(fs_code.c_str(), "ULRE_GetSkyLightDir")
+                             && ContainsKeyword(fs_code.c_str(), "ULRE_GetSkyLightColor")
+                             && ContainsKeyword(fs_code.c_str(), "ULRE_GetSkyAmbientColor")
+                             && ContainsKeyword(fs_code.c_str(), "return vec4(color, 1.0)");
 
-    const bool ibl_branch_semantic_ok = ContainsKeyword(fs_code, "#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL")
-                                     && ContainsKeyword(fs_code, "color += mi.ibl_intensity * sky.base_sky_color.rgb");
+    const bool ibl_branch_semantic_ok = !ContainsKeyword(fs_code.c_str(), "#if ULRE_SKYLIGHT_MODEL == ULRE_SKYLIGHT_MODEL_IBL")
+                                     || ContainsKeyword(fs_code.c_str(), "color += mi.ibl_intensity * sky.base_sky_color.rgb");
 
     printf("ValidateMaterialLogicDef: %s\n", logic_valid ? "PASS" : "FAIL");
     printf("Required resource shape: %s\n", required_resource_shape_ok ? "PASS" : "FAIL");
