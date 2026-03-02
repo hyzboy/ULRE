@@ -187,29 +187,12 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     if(enable_mirror_validation)
     {
         RendererShaderGenAdapter adapter;
-
-        RendererShaderGenAdapter::ValidationReport consume_report;
-
-        if(mirror_result)
-        {
-            consume_report=adapter.ValidatePairReadOnly(*mci,*mirror_result,mtl_name.c_str(),diff_log_detail);
-
-            if(request_result)
-            {
-                const auto req_report=adapter.ValidateRequestResultReadOnly(*request_result,*mirror_result,mtl_name.c_str());
-
-                consume_report.request_result_valid=req_report.request_result_valid;
-                consume_report.warning_count+=req_report.warning_count;
-                consume_report.error_count+=req_report.error_count;
-                consume_report.warnings.insert(consume_report.warnings.end(),req_report.warnings.begin(),req_report.warnings.end());
-                consume_report.errors.insert(consume_report.errors.end(),req_report.errors.begin(),req_report.errors.end());
-                consume_report.overall_valid=consume_report.overall_valid&&req_report.overall_valid;
-            }
-        }
-        else
-        {
-            consume_report.overall_valid=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str(),diff_log_detail);
-        }
+        const RendererShaderGenAdapter::ValidationReport consume_report=
+            adapter.ValidateMaterialContractReadOnly(*mci,
+                                                    request_result,
+                                                    mirror_result,
+                                                    mtl_name.c_str(),
+                                                    diff_log_detail);
 
         if(!consume_report.overall_valid)
         {

@@ -253,6 +253,67 @@ namespace hgl::graph
         return report;
     }
 
+    RendererShaderGenAdapter::ValidationReport RendererShaderGenAdapter::ValidateMaterialContractReadOnly(const mtl::MaterialCreateInfo &mci,
+                                                                                                           const mtl::contract::ShaderGenRequest *request,
+                                                                                                           const mtl::contract::ShaderGenResult *result,
+                                                                                                           const char *material_name,
+                                                                                                           DiffLogDetail detail) const
+    {
+        ValidationReport report;
+
+        const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
+
+        if (result)
+        {
+            report = ValidatePairReadOnly(mci, *result, mat_name, detail);
+
+            if (request)
+            {
+                const ValidationReport req_report = ValidateRequestResultReadOnly(*request, *result, mat_name);
+
+                report.request_result_valid = req_report.request_result_valid;
+                MergeValidationReport(report, req_report);
+                report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
+
+                StoreValidationReport(mat_name, report);
+            }
+
+            return report;
+        }
+
+        mtl::contract::ShaderGenResult built_result;
+        if (!mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(mci, built_result))
+        {
+            char msg[256] = {};
+            std::snprintf(msg,
+                          sizeof(msg),
+                          "material=%s failed to build mirror result",
+                          mat_name);
+            AddError(report, msg);
+            report.diff_valid = false;
+            report.result_valid = false;
+            report.request_result_valid = (request == nullptr);
+            report.overall_valid = false;
+            StoreValidationReport(mat_name, report);
+            return report;
+        }
+
+        report = ValidatePairReadOnly(mci, built_result, mat_name, detail);
+
+        if (request)
+        {
+            const ValidationReport req_report = ValidateRequestResultReadOnly(*request, built_result, mat_name);
+
+            report.request_result_valid = req_report.request_result_valid;
+            MergeValidationReport(report, req_report);
+            report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
+
+            StoreValidationReport(mat_name, report);
+        }
+
+        return report;
+    }
+
     bool RendererShaderGenAdapter::ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const
     {
         const ValidationReport report = ValidateResultReadOnly(result, material_name);

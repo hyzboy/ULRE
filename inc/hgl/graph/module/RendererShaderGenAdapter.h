@@ -73,6 +73,11 @@ namespace hgl::graph
         ValidationReport ValidateRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         ValidationReport ValidateResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         ValidationReport ValidatePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
+        ValidationReport ValidateMaterialContractReadOnly(const mtl::MaterialCreateInfo &mci,
+                                 const mtl::contract::ShaderGenRequest *request,
+                                 const mtl::contract::ShaderGenResult *result,
+                                 const char *material_name,
+                                 DiffLogDetail detail = DiffLogDetail::Full) const;
 
         bool ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         bool ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
