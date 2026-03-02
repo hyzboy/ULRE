@@ -23,10 +23,147 @@
 #include<cstdint>
 #include<cstdio>
 #include<vector>
+#include<string>
 
 namespace hgl::graph{
 namespace
 {
+    static VkDescriptorType ToVkDescriptorType(const mtl::contract::ResourceClass rc)
+    {
+        switch(rc)
+        {
+            case mtl::contract::ResourceClass::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            case mtl::contract::ResourceClass::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case mtl::contract::ResourceClass::SampledImage: return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            case mtl::contract::ResourceClass::Sampler: return VK_DESCRIPTOR_TYPE_SAMPLER;
+            case mtl::contract::ResourceClass::CombinedImageSampler: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            case mtl::contract::ResourceClass::InputAttachment: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+            default: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+        }
+    }
+
+    static bool ValidateMirrorPreferredVertexLayout(ShaderCreateInfoVertex *vert,
+                                                    const mtl::contract::ShaderGenResult &mirror_result,
+                                                    std::string &reason)
+    {
+        const uint32_t legacy_count = vert ? vert->GetInput().count : 0u;
+        const uint32_t mirror_count = static_cast<uint32_t>(mirror_result.vertex_layout.attributes.size());
+
+        if(legacy_count != mirror_count)
+        {
+            reason = "vertex attribute count mismatch";
+            return false;
+        }
+
+        if(!vert)
+            return true;
+
+        const auto &legacy_input = vert->GetInput();
+        for(uint32_t i = 0; i < legacy_input.count; ++i)
+        {
+            const auto &legacy_attr = legacy_input.items[i];
+
+            const mtl::contract::VertexAttributeDesc *mirror_attr = nullptr;
+            for(const auto &candidate : mirror_result.vertex_layout.attributes)
+            {
+                if(candidate.location == legacy_attr.location)
+                {
+                    mirror_attr = &candidate;
+                    break;
+                }
+            }
+
+            if(!mirror_attr)
+            {
+                reason = "missing mirror vertex location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            if(mirror_attr->semantic != legacy_attr.name)
+            {
+                reason = "vertex semantic mismatch at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            if(mirror_attr->input_rate != legacy_attr.input_rate)
+            {
+                reason = "vertex input_rate mismatch at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            VAType parsed_type;
+            if(!ParseVertexAttribType(&parsed_type, mirror_attr->type_name.c_str()))
+            {
+                reason = "unrecognized mirror vertex type_name at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            if(parsed_type.basetype != (VABaseType)legacy_attr.basetype || parsed_type.vec_size != legacy_attr.vec_size)
+            {
+                reason = "vertex type mismatch at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static bool ValidateMirrorPreferredDescriptorLayout(const std::vector<ShaderDescriptor> &legacy_descriptors,
+                                                        const mtl::contract::ShaderGenResult &mirror_result,
+                                                        std::string &reason)
+    {
+        if(legacy_descriptors.size() != mirror_result.layout.bindings.size())
+        {
+            reason = "descriptor count mismatch";
+            return false;
+        }
+
+        for(const auto &legacy_desc : legacy_descriptors)
+        {
+            const mtl::contract::DescriptorBindingDesc *mirror_binding = nullptr;
+            for(const auto &candidate : mirror_result.layout.bindings)
+            {
+                if((int)candidate.set == legacy_desc.set && (int)candidate.binding == legacy_desc.binding)
+                {
+                    mirror_binding = &candidate;
+                    break;
+                }
+            }
+
+            if(!mirror_binding)
+            {
+                reason = "missing mirror descriptor set=" + std::to_string(legacy_desc.set) + ", binding=" + std::to_string(legacy_desc.binding);
+                return false;
+            }
+
+            if(ToVkDescriptorType(mirror_binding->resource_class) != legacy_desc.desc_type)
+            {
+                reason = "descriptor type mismatch set=" + std::to_string(legacy_desc.set) + ", binding=" + std::to_string(legacy_desc.binding);
+                return false;
+            }
+
+            if((int)mirror_binding->set != (int)legacy_desc.set_type)
+            {
+                reason = "descriptor set_type mismatch set=" + std::to_string(legacy_desc.set) + ", binding=" + std::to_string(legacy_desc.binding);
+                return false;
+            }
+
+            if(mirror_binding->stage_mask != legacy_desc.stage_flag)
+            {
+                reason = "descriptor stage_mask mismatch set=" + std::to_string(legacy_desc.set) + ", binding=" + std::to_string(legacy_desc.binding);
+                return false;
+            }
+
+            if(mirror_binding->name != legacy_desc.name)
+            {
+                reason = "descriptor name mismatch set=" + std::to_string(legacy_desc.set) + ", binding=" + std::to_string(legacy_desc.binding);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -274,11 +411,10 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
         return(nullptr);
 
     AutoDelete<Material> mtl=new Material(mtl_name,mci);
+    const bool prefer_mirror_spv_build = require_mirror_valid && mirror_result;
 
     {
         const ShaderModule *sm;
-
-        const bool prefer_mirror_spv_build = require_mirror_valid && mirror_result;
 
         if(prefer_mirror_spv_build)
         {
@@ -337,6 +473,19 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     {
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
+        if(prefer_mirror_spv_build)
+        {
+            std::string reason;
+            if(!ValidateMirrorPreferredVertexLayout(vert, *mirror_result, reason))
+            {
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                    reason.c_str());
+                return nullptr;
+            }
+        }
+
         if(vert)
             mtl->vertex_input=GetVertexInput(vert->GetInput());
     }
@@ -359,6 +508,19 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
                 for(auto *sd:values)
                     if(sd)
                         descriptors.emplace_back(*sd);
+            }
+
+            if(prefer_mirror_spv_build)
+            {
+                std::string reason;
+                if(!ValidateMirrorPreferredDescriptorLayout(descriptors, *mirror_result, reason))
+                {
+                    std::fprintf(stderr,
+                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                        reason.c_str());
+                    return nullptr;
+                }
             }
 
             if(!descriptors.empty())
