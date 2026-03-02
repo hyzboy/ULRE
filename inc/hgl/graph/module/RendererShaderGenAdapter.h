@@ -3,6 +3,8 @@
 #include <hgl/shadergen/contract/ShaderGenContract.h>
 #include <cstdint>
 #include <map>
+#include <string>
+#include <vector>
 
 namespace hgl::graph
 {
@@ -14,6 +16,20 @@ namespace hgl::graph
     class RendererShaderGenAdapter
     {
     public:
+
+        struct ValidationReport
+        {
+            bool overall_valid = true;
+            bool diff_valid = true;
+            bool result_valid = true;
+            bool request_result_valid = true;
+
+            uint32_t warning_count = 0;
+            uint32_t error_count = 0;
+
+            std::vector<std::string> warnings;
+            std::vector<std::string> errors;
+        };
 
         struct ProfilerSnapshot
         {
@@ -43,6 +59,11 @@ namespace hgl::graph
 
         static void ResetProfiler();
         static ProfilerSnapshot GetProfilerSnapshot();
+        static bool GetLastValidationReport(ValidationReport &out_report);
+
+        ValidationReport ValidateRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
+        ValidationReport ValidateResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;
+        ValidationReport ValidatePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
 
         bool ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         bool ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;

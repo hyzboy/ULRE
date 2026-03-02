@@ -17,6 +17,8 @@ namespace hgl::graph
         struct ShaderGenProfilerStorage
         {
             RendererShaderGenAdapter::ProfilerSnapshot snapshot;
+            RendererShaderGenAdapter::ValidationReport last_report;
+            bool has_last_report = false;
             std::mutex mutex;
         };
 
@@ -24,6 +26,37 @@ namespace hgl::graph
         {
             static ShaderGenProfilerStorage storage;
             return storage;
+        }
+
+        void AddWarning(RendererShaderGenAdapter::ValidationReport &report, const std::string &message)
+        {
+            report.warnings.emplace_back(message);
+            ++report.warning_count;
+        }
+
+        void AddError(RendererShaderGenAdapter::ValidationReport &report, const std::string &message)
+        {
+            report.errors.emplace_back(message);
+            ++report.error_count;
+            report.overall_valid = false;
+        }
+
+        void StoreLastValidationReport(const RendererShaderGenAdapter::ValidationReport &report)
+        {
+            auto &storage = GetShaderGenProfilerStorage();
+            std::lock_guard<std::mutex> lock(storage.mutex);
+            storage.last_report = report;
+            storage.has_last_report = true;
+        }
+
+        void MergeValidationReport(RendererShaderGenAdapter::ValidationReport &dst, const RendererShaderGenAdapter::ValidationReport &src)
+        {
+            dst.overall_valid = dst.overall_valid && src.overall_valid;
+            dst.warning_count += src.warning_count;
+            dst.error_count += src.error_count;
+
+            dst.warnings.insert(dst.warnings.end(), src.warnings.begin(), src.warnings.end());
+            dst.errors.insert(dst.errors.end(), src.errors.begin(), src.errors.end());
         }
     }//namespace
 
@@ -338,7 +371,11 @@ namespace hgl::graph
         }
     }
 
-    static bool PrintLegacyMirrorDiff(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, const RendererShaderGenAdapter::DiffLogDetail detail)
+    static bool PrintLegacyMirrorDiff(const mtl::MaterialCreateInfo &mci,
+                                      const mtl::contract::ShaderGenResult &result,
+                                      const char *material_name,
+                                      const RendererShaderGenAdapter::DiffLogDetail detail,
+                                      RendererShaderGenAdapter::ValidationReport *out_report)
     {
         const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
 
@@ -419,15 +456,28 @@ namespace hgl::graph
                 BoolToInt(spv_match));
         }
 
-        std::fprintf(stderr,
-            "[RendererShaderGenAdapter][DiffKV] material=%s event=summary match=%d\n",
-            mat_name,
-            BoolToInt(all_match));
+        if (!all_match && out_report)
+        {
+            char msg[512] = {};
+            std::snprintf(msg,
+                sizeof(msg),
+                "material=%s legacy/mirror diff mismatch: layout=%d vertex=%d spv=%d legacy_stages=%s mirror_stages=%s",
+                mat_name,
+                BoolToInt(layout_match),
+                BoolToInt(vertex_match),
+                BoolToInt(spv_match),
+                legacy_stage_summary.c_str(),
+                mirror_stage_summary.c_str());
+            AddError(*out_report, msg);
+            out_report->diff_valid = false;
+        }
 
         return all_match;
     }
 
-    static bool ValidateBindingUniqueness(const mtl::contract::ShaderGenResult &result, const char *material_name)
+    static bool ValidateBindingUniqueness(const mtl::contract::ShaderGenResult &result,
+                                          const char *material_name,
+                                          RendererShaderGenAdapter::ValidationReport *out_report)
     {
         std::unordered_set<uint64_t> seen;
 
@@ -439,11 +489,17 @@ namespace hgl::graph
             const uint64_t key = (static_cast<uint64_t>(binding.set) << 32) | static_cast<uint64_t>(binding.binding);
             if (!seen.insert(key).second)
             {
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s duplicate binding in mirror layout (set=%u, binding=%u)\n",
-                    mat_name,
-                    binding.set,
-                    binding.binding);
+                if (out_report)
+                {
+                    char msg[256] = {};
+                    std::snprintf(msg,
+                        sizeof(msg),
+                        "material=%s duplicate binding in mirror layout (set=%u, binding=%u)",
+                        mat_name,
+                        binding.set,
+                        binding.binding);
+                    AddError(*out_report, msg);
+                }
                 valid = false;
             }
         }
@@ -451,80 +507,116 @@ namespace hgl::graph
         return valid;
     }
 
-    bool RendererShaderGenAdapter::ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const
+    RendererShaderGenAdapter::ValidationReport RendererShaderGenAdapter::ValidateResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const
     {
         const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
-        bool valid = true;
+        ValidationReport report;
+        report.result_valid = true;
 
         if (result.contract_version != mtl::contract::kShaderGenContractVersion)
         {
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s contract_version mismatch (result=%u, expected=%u)\n",
+            char msg[256] = {};
+            std::snprintf(msg,
+                sizeof(msg),
+                "material=%s contract_version mismatch (result=%u, expected=%u)",
                 mat_name,
                 result.contract_version,
                 mtl::contract::kShaderGenContractVersion);
-            valid = false;
+            AddError(report, msg);
+            report.result_valid = false;
         }
 
         if (result.spv_per_stage.empty())
         {
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s warning: mirror has no stage SPV blobs\n",
+            char msg[256] = {};
+            std::snprintf(msg,
+                sizeof(msg),
+                "material=%s mirror has no stage SPV blobs",
                 mat_name);
+            AddWarning(report, msg);
         }
 
         for (const auto &blob : result.spv_per_stage)
         {
             if (blob.words.empty())
             {
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s empty SPV blob for stage_mask=%u\n",
+                char msg[256] = {};
+                std::snprintf(msg,
+                    sizeof(msg),
+                    "material=%s empty SPV blob for stage_mask=%u",
                     mat_name,
                     blob.stage_mask);
-                valid = false;
+                AddError(report, msg);
+                report.result_valid = false;
             }
         }
 
-        if (!ValidateBindingUniqueness(result, mat_name))
-            valid = false;
+        if (!ValidateBindingUniqueness(result, mat_name, &report))
+            report.result_valid = false;
 
         for (const auto &warn : result.diagnostics.warnings)
-            std::fprintf(stderr, "[RendererShaderGenAdapter] material=%s warning: %s\n", mat_name, warn.c_str());
+            AddWarning(report, std::string("material=") + mat_name + " shader diagnostics warning: " + warn);
 
-        return valid;
+        for (const auto &err : result.diagnostics.errors)
+        {
+            AddError(report, std::string("material=") + mat_name + " shader diagnostics error: " + err);
+            report.result_valid = false;
+        }
+
+        return report;
     }
 
-    bool RendererShaderGenAdapter::ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail) const
+    RendererShaderGenAdapter::ValidationReport RendererShaderGenAdapter::ValidatePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail) const
     {
-        const bool diff_ok = PrintLegacyMirrorDiff(mci, result, material_name, detail);
-        const bool validate_ok = ConsumeResultReadOnly(result, material_name);
-        return diff_ok && validate_ok;
+        ValidationReport report;
+        report.diff_valid = true;
+        report.result_valid = true;
+
+        const bool diff_ok = PrintLegacyMirrorDiff(mci, result, material_name, detail, &report);
+        if (!diff_ok)
+            report.diff_valid = false;
+
+        const ValidationReport result_report = ValidateResultReadOnly(result, material_name);
+        report.result_valid = result_report.result_valid;
+        MergeValidationReport(report, result_report);
+
+        report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
+
+        StoreLastValidationReport(report);
+        return report;
     }
 
-    bool RendererShaderGenAdapter::ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const
+    RendererShaderGenAdapter::ValidationReport RendererShaderGenAdapter::ValidateRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const
     {
         const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
 
-        bool valid = true;
+        ValidationReport report;
+        report.request_result_valid = true;
 
         if (request.contract_version != mtl::contract::kShaderGenContractVersion)
         {
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s request contract_version mismatch (request=%u, expected=%u)\n",
+            char msg[256] = {};
+            std::snprintf(msg,
+                sizeof(msg),
+                "material=%s request contract_version mismatch (request=%u, expected=%u)",
                 mat_name,
                 request.contract_version,
                 mtl::contract::kShaderGenContractVersion);
-            valid = false;
+            AddError(report, msg);
+            report.request_result_valid = false;
         }
 
         if (result.contract_version != request.contract_version)
         {
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s request/result contract_version mismatch (request=%u, result=%u)\n",
+            char msg[256] = {};
+            std::snprintf(msg,
+                sizeof(msg),
+                "material=%s request/result contract_version mismatch (request=%u, result=%u)",
                 mat_name,
                 request.contract_version,
                 result.contract_version);
-            valid = false;
+            AddError(report, msg);
+            report.request_result_valid = false;
         }
 
         for (const auto &req : request.required_resources)
@@ -548,12 +640,15 @@ namespace hgl::graph
 
             if (!found)
             {
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s request/result mismatch: missing required resource name=%s class=%u\n",
+                char msg[512] = {};
+                std::snprintf(msg,
+                    sizeof(msg),
+                    "material=%s request/result mismatch: missing required resource name=%s class=%u",
                     mat_name,
                     req.name.c_str(),
                     static_cast<unsigned>(req.resource_class));
-                valid = false;
+                AddError(report, msg);
+                report.request_result_valid = false;
             }
         }
 
@@ -574,16 +669,40 @@ namespace hgl::graph
 
             if (!found)
             {
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s request/result mismatch: missing vertex requirement semantic=%s location=%u\n",
+                char msg[512] = {};
+                std::snprintf(msg,
+                    sizeof(msg),
+                    "material=%s request/result mismatch: missing vertex requirement semantic=%s location=%u",
                     mat_name,
                     vre.semantic.c_str(),
                     static_cast<unsigned>(vre.location));
-                valid = false;
+                AddError(report, msg);
+                report.request_result_valid = false;
             }
         }
 
-        return valid;
+        report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
+        StoreLastValidationReport(report);
+        return report;
+    }
+
+    bool RendererShaderGenAdapter::ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const
+    {
+        const ValidationReport report = ValidateResultReadOnly(result, material_name);
+        StoreLastValidationReport(report);
+        return report.overall_valid;
+    }
+
+    bool RendererShaderGenAdapter::ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail) const
+    {
+        const ValidationReport report = ValidatePairReadOnly(mci, result, material_name, detail);
+        return report.overall_valid;
+    }
+
+    bool RendererShaderGenAdapter::ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const
+    {
+        const ValidationReport report = ValidateRequestResultReadOnly(request, result, material_name);
+        return report.overall_valid;
     }
 
     void RendererShaderGenAdapter::ResetProfiler()
@@ -598,6 +717,18 @@ namespace hgl::graph
         auto &storage = GetShaderGenProfilerStorage();
         std::lock_guard<std::mutex> lock(storage.mutex);
         return storage.snapshot;
+    }
+
+    bool RendererShaderGenAdapter::GetLastValidationReport(ValidationReport &out_report)
+    {
+        auto &storage = GetShaderGenProfilerStorage();
+        std::lock_guard<std::mutex> lock(storage.mutex);
+
+        if (!storage.has_last_report)
+            return false;
+
+        out_report = storage.last_report;
+        return true;
     }
 
     bool RendererShaderGenAdapter::ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name, DiffLogDetail detail) const

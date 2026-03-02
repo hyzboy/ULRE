@@ -188,20 +188,36 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     {
         RendererShaderGenAdapter adapter;
 
-        bool consume_ok=false;
+        RendererShaderGenAdapter::ValidationReport consume_report;
+
         if(mirror_result)
-            consume_ok=adapter.ConsumePairReadOnly(*mci,*mirror_result,mtl_name.c_str(),diff_log_detail);
+        {
+            consume_report=adapter.ValidatePairReadOnly(*mci,*mirror_result,mtl_name.c_str(),diff_log_detail);
+
+            if(request_result)
+            {
+                const auto req_report=adapter.ValidateRequestResultReadOnly(*request_result,*mirror_result,mtl_name.c_str());
+
+                consume_report.request_result_valid=req_report.request_result_valid;
+                consume_report.warning_count+=req_report.warning_count;
+                consume_report.error_count+=req_report.error_count;
+                consume_report.warnings.insert(consume_report.warnings.end(),req_report.warnings.begin(),req_report.warnings.end());
+                consume_report.errors.insert(consume_report.errors.end(),req_report.errors.begin(),req_report.errors.end());
+                consume_report.overall_valid=consume_report.overall_valid&&req_report.overall_valid;
+            }
+        }
         else
-            consume_ok=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str(),diff_log_detail);
+        {
+            consume_report.overall_valid=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str(),diff_log_detail);
+        }
 
-        if(consume_ok && request_result && mirror_result)
-            consume_ok=adapter.ConsumeRequestResultReadOnly(*request_result,*mirror_result,mtl_name.c_str());
-
-        if(!consume_ok)
+        if(!consume_report.overall_valid)
         {
             std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s read-only consume detected structural issues\n",
-                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+                "[RendererShaderGenAdapter] material=%s read-only validation failed (errors=%u, warnings=%u)\n",
+                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                consume_report.error_count,
+                consume_report.warning_count);
 
             if(require_mirror_valid)
             {
