@@ -29,6 +29,7 @@
   - `RendererShaderGenAdapter` 现输出 legacy vs mirror 的 `layout/vertex/spv` 对照摘要：`count/hash/match`
   - mismatch 不阻断旧路径，仅用于诊断与验收证据收集
   - diff 日志已升级为统一 `key=value` 结构，并附带 `spv stage` 汇总字段，便于按材质/阶段 grep 聚合
+  - 新增 `AggregateKV` 单行汇总（始终输出）：`material + legacy/mirror stages + layout/vertex/spv match + counts`，可在 `mirror-validate` 下直接按材质筛查
 - Phase 2 并行入口已增加
   - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 新增 contract-aware 私有入口：可显式接收预构建 `ShaderGenResult`
   - 现有 `CreateMaterial` 已改为“先尝试预构建 mirror result，再转发到并行入口”，为后续主路径切换预留开关点
@@ -335,3 +336,4 @@ struct ShaderGenResult {
   - 将 System 生命周期与调度收敛到主世界/主上下文；
   - 为 SubWorld 提供轻量的“上下文继承/视图”机制，避免重复 System 与状态分叉。
 - 本项作为后续架构任务保留，**不纳入当前阶段修复范围**。
+- 独立任务卡：`doc/ECS_SUBWORLD_CONTEXT_WORLD_REFACTOR_TASK.md`（用于后续排期与验收追踪）。

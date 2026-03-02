@@ -346,6 +346,21 @@ namespace hgl::graph
         }
 
         std::fprintf(stderr,
+            "[RendererShaderGenAdapter][AggregateKV] material=%s legacy_stages=%s mirror_stages=%s layout_match=%d vertex_match=%d spv_match=%d legacy_layout_count=%u mirror_layout_count=%u legacy_vertex_count=%u mirror_vertex_count=%u legacy_spv_count=%u mirror_spv_count=%u\n",
+            mat_name,
+            legacy_stage_summary.c_str(),
+            mirror_stage_summary.c_str(),
+            BoolToInt(layout_match),
+            BoolToInt(vertex_match),
+            BoolToInt(spv_match),
+            static_cast<unsigned>(legacy_layout.size()),
+            static_cast<unsigned>(mirror_layout.size()),
+            static_cast<unsigned>(legacy_vertex.size()),
+            static_cast<unsigned>(mirror_vertex.size()),
+            static_cast<unsigned>(legacy_spv.size()),
+            static_cast<unsigned>(mirror_spv.size()));
+
+        std::fprintf(stderr,
             "[RendererShaderGenAdapter][DiffKV] material=%s event=summary match=%d\n",
             mat_name,
             BoolToInt(all_match));
