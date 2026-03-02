@@ -9,12 +9,15 @@
 #include <hgl/graph/module/SamplerManager.h>
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
+#include <hgl/graph/module/ShaderGenPathMode.h>
 
 namespace hgl::graph
 {
-    GraphicsContext::GraphicsContext(VulkanDevice *dev)
+    GraphicsContext::GraphicsContext(VulkanDevice *dev, ShaderGenPathMode shadergen_mode)
         : device(dev)
     {
+        shadergen_path_mode = shadergen_mode;
+        shadergen_path_policy = MakeShaderGenPathPolicy(shadergen_path_mode);
     }
 
     GraphicsContext::~GraphicsContext()

@@ -18,6 +18,7 @@
 #include <hgl/ecs/systems/tick/TransformSystem.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <cstring>
 
 namespace hgl
 {
@@ -49,6 +50,34 @@ namespace hgl
     AppFramework::AppFramework(const OSString &name)
         : app_name(name)
     {
+    }
+
+    static void ApplyShaderGenPathModeFromArgs(AppFramework *app, int argc, char **argv)
+    {
+        if (!app || !argv || argc <= 1)
+            return;
+
+        constexpr const char *kPrefix = "--shadergen-path-mode=";
+        constexpr size_t kPrefixLen = 22;
+
+        for (int i = 1; i < argc; ++i)
+        {
+            const char *arg = argv[i];
+            if (!arg || !arg[0])
+                continue;
+
+            if (std::strncmp(arg, kPrefix, kPrefixLen) == 0)
+            {
+                app->SetShaderGenPathModeName(arg + kPrefixLen);
+                continue;
+            }
+
+            if (std::strcmp(arg, "--shadergen-path-mode") == 0 && i + 1 < argc)
+            {
+                app->SetShaderGenPathModeName(argv[i + 1]);
+                ++i;
+            }
+        }
     }
 
     AppFramework::~AppFramework()
@@ -144,6 +173,13 @@ namespace hgl
 
     bool AppFramework::Init(uint w, uint h)
     {
+        return Init(w, h, 0, nullptr);
+    }
+
+    bool AppFramework::Init(uint w, uint h, int argc, char **argv)
+    {
+        ApplyShaderGenPathModeFromArgs(this, argc, argv);
+
         if (APP_FRAMEWORK_COUNT == 0)
         {
             if (!graph::InitShaderCompiler())
@@ -185,7 +221,7 @@ namespace hgl
         win->AddChildDispatcher(this);
 
         // Create graphics context
-        graphics_context = new graph::GraphicsContext(device);
+        graphics_context = new graph::GraphicsContext(device, shadergen_path_mode);
         if (!graphics_context)
             return false;
 

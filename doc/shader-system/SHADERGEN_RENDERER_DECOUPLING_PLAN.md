@@ -1,8 +1,8 @@
 # ShaderGen 与渲染器彻底分离重构计划（可行性 + 执行方案）
 
-**版本**：v1.1  
+**版本**：v1.2  
 **日期**：2026-03-02  
-**状态**：执行中（Phase 0 已启动）
+**状态**：执行中（Phase 2 基本落地，待构建回归）
 
 ---
 
@@ -28,27 +28,68 @@
 - Phase 2 补充：双轨 diff 文本化输出已接入
   - `RendererShaderGenAdapter` 现输出 legacy vs mirror 的 `layout/vertex/spv` 对照摘要：`count/hash/match`
   - mismatch 不阻断旧路径，仅用于诊断与验收证据收集
+  - diff 日志已升级为统一 `key=value` 结构，并附带 `spv stage` 汇总字段，便于按材质/阶段 grep 聚合
 - Phase 2 并行入口已增加
   - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 新增 contract-aware 私有入口：可显式接收预构建 `ShaderGenResult`
   - 现有 `CreateMaterial` 已改为“先尝试预构建 mirror result，再转发到并行入口”，为后续主路径切换预留开关点
-  - 新增运行时路径模式开关 `ULRE_SHADERGEN_PATH_MODE`：
+  - 新增运行时路径模式（应用层显式配置）：
     - `legacy-only`：禁用 mirror 校验，仅走旧路径
     - `mirror-validate`（默认）：mirror 诊断并行执行，失败不阻断
     - `mirror-preferred`：mirror 预构建/校验失败时中止材质创建（严格模式）
+  - 日志细节已按模式分流：
+    - `mirror-validate` 输出 `DiffKV summary`
+    - `mirror-preferred` 输出完整 `DiffKV`（layout/vertex/spv/summary）
 - Phase 2 回归补齐
   - 新增 [inc/hgl/graph/module/ShaderGenPathMode.h](inc/hgl/graph/module/ShaderGenPathMode.h) 统一模式解析/命名函数
-  - 新增 [test/ShaderGenPathModeTest.cpp](test/ShaderGenPathModeTest.cpp) 覆盖模式解析回归（已通过）
+  - 新增 [test/ShaderGenPathModeTest.cpp](test/ShaderGenPathModeTest.cpp) 覆盖模式解析与日志级别映射回归（已通过）
+  - 新增 `ShaderGenPathPolicy`（mode -> validate/strict/full-diff）统一策略对象，`MaterialManager` 已改为消费该策略
+  - `GraphicsContext` 改为显式注入 `ShaderGenPathMode` 并构建 policy，`MaterialManager` 不再直接读取环境变量
+  - [src/Work/AppFramework.cpp](src/Work/AppFramework.cpp) 已在创建 `GraphicsContext` 时显式传入模式；[inc/hgl/framework/AppFramework.h](inc/hgl/framework/AppFramework.h) 提供 `SetShaderGenPathMode(...)`
+  - `AppFramework` 现为纯显式配置路径：默认 `mirror-validate`，可通过 `SetShaderGenPathMode(...)` / `SetShaderGenPathModeName(...)` 注入；已移除环境变量回退读取
+  - `AppFramework` 新增 `Init(w,h,argc,argv)` 重载，支持 `--shadergen-path-mode=<mode>` / `--shadergen-path-mode <mode>` 命令行注入
+  - [inc/hgl/framework/WorkManager.h](inc/hgl/framework/WorkManager.h) 新增 `RunFramework(title,argc,argv,...)` 重载（`os_char` 参数解析），可在示例入口直接透传命令行模式
+  - [example/Basic/draw_triangle.cpp](example/Basic/draw_triangle.cpp) 已接入新重载，形成端到端入口样例
+    - 已扩展多组示例入口透传 `argc/argv`（Texture/GUI/Geometry/Gizmo/Environment）
+    - 已完成一轮 22 个剩余示例入口批量迁移（`os_main` 参数透传到 `RunFramework`）
 - 相关 ShaderGen/测试链路已完成一轮稳定化回归（近邻测试通过），可作为后续 Phase 1 的安全基线
 
 当前阻塞：
 
-- 本机 CMake Tools 在执行构建时返回空错误（result code = -1 且无 stdout/stderr），导致本轮“刚落地改动”的自动构建验证暂未完成；代码级静态错误已清零。
+  - 本机 CMake Tools 在执行构建时返回空错误（result code = -1 且无 stdout/stderr），导致本轮“最后 22 文件迁移”的构建回归暂未完成；代码级静态错误已清零。
 
 下一步（建议本周）：
 
-1. 恢复 CMake Tools 构建能力并完成 `ULRE.ShaderGen` 与材质测试回归验证
-2. 将 diff 输出接入可筛选日志通道（按材质/阶段聚合）
-3. 在 `MaterialManager` 暴露统一配置入口（环境变量 -> 引擎配置对象）以替代直接读取进程环境
+  1. 在新机器恢复 CMake Tools 构建能力并完成示例抽样 + `test_ShaderGenPathMode` 回归验证
+  2. 在验证通过后，补齐剩余示例入口透传覆盖（如仍有漏网）并做一次全量检索确认
+  3. 将 diff 输出接入可筛选日志通道（按材质/阶段聚合）
+  4. 将 `ShaderGenPathPolicy` 挂接到更高层配置源（命令行/配置文件），由应用启动阶段一次注入
+
+  ### 0.1 换机接手清单（可直接执行）
+
+  建议在新机器按以下顺序接手：
+
+  1. **先验证工程状态**
+    - 打开工程后先执行目标枚举，确认 CMake Tools 正常：`ListBuildTargets_CMakeTools`
+    - 若仍异常，先修复 preset/toolchain/VS 组件，再进行代码回归
+
+  2. **先做最小回归（高优先）**
+    - 抽样构建 4 个示例目标（Environment/Basic/Gizmo/Geometry 各 1 个）
+    - 运行 `test_ShaderGenPathMode`
+    - 目标：确认“22 文件入口迁移”未引入编译或运行时回归
+
+  3. **再做覆盖确认（中优先）**
+    - 全局检索 `int os_main(int, os_char**)`（应为 0）
+    - 全局检索 `RunFramework<...>(..., width, height)` 老调用形态，确认是否仍有未透传 `argc/argv` 的示例
+
+  4. **最后推进功能性下一步**
+    - 继续完成 diff 日志通道聚合（按材质/stage）
+    - 为 `mirror-preferred` 增加端到端行为回归（严格模式失败路径）
+
+  ### 0.2 当前代码状态结论（交接摘要）
+
+  - 已完成：Contract/Mirror/Adapter/PathPolicy/CLI 注入链路贯通，示例入口大面积透传。
+  - 未完成：最后一批入口改动后的构建回归（受本机 CMake Tools 异常阻塞）。
+  - 风险等级：**中低**（代码侧静态错误已清零；主要风险在“未完成最终编译验收”）。
 
 ---
 

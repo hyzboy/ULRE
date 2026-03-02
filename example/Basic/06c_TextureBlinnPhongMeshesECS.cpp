@@ -532,7 +532,7 @@ public:
     }
 };
 
-int os_main(int, os_char**)
+int os_main(int argc, os_char** argv)
 {
-    return RunFramework<TextureBlinnPhongMeshesECSApp>(OS_TEXT("TextureBlinnPhong Meshes ECS"), 1280, 720);
+    return RunFramework<TextureBlinnPhongMeshesECSApp>(OS_TEXT("TextureBlinnPhong Meshes ECS"), argc, argv, 1280, 720);
 }

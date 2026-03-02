@@ -35,4 +35,25 @@ namespace hgl::graph
             default: return "mirror-validate";
         }
     }
+
+    inline bool IsShaderGenFullDiffLogEnabled(const ShaderGenPathMode mode)
+    {
+        return mode == ShaderGenPathMode::MirrorPreferred;
+    }
+
+    struct ShaderGenPathPolicy
+    {
+        bool enable_mirror_validation = true;
+        bool require_mirror_valid = false;
+        bool full_diff_log = false;
+    };
+
+    inline ShaderGenPathPolicy MakeShaderGenPathPolicy(const ShaderGenPathMode mode)
+    {
+        ShaderGenPathPolicy policy;
+        policy.enable_mirror_validation = (mode != ShaderGenPathMode::LegacyOnly);
+        policy.require_mirror_valid = (mode == ShaderGenPathMode::MirrorPreferred);
+        policy.full_diff_log = IsShaderGenFullDiffLogEnabled(mode);
+        return policy;
+    }
 }//namespace hgl::graph

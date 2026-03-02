@@ -121,7 +121,7 @@ public:
     }
 };
 
-int os_main(int, os_char **)
+int os_main(int argc, os_char **argv)
 {
-    return RunFramework<PrefabAssetInstanceApp>(OS_TEXT("Prefab Asset Instance Example"), 1280, 720);
+    return RunFramework<PrefabAssetInstanceApp>(OS_TEXT("Prefab Asset Instance Example"), argc, argv, 1280, 720);
 }

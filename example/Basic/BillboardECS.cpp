@@ -446,7 +446,7 @@ public:
     }
 };//class BillboardECSApp:public WorkObject
 
-int os_main(int, os_char**)
+int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BillboardECSApp>(OS_TEXT("Billboard ECS Example"), 1280, 720);
+    return RunFramework<BillboardECSApp>(OS_TEXT("Billboard ECS Example"), argc, argv, 1280, 720);
 }

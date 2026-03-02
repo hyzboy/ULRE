@@ -66,8 +66,8 @@ public:
     }
 };//class TestApp:public WorkObject
 
-int os_main(int, os_char **)
+int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("DrawText_ECS"), 2560, 1440);
+    return RunFramework<TestApp>(OS_TEXT("DrawText_ECS"), argc, argv, 2560, 1440);
 }
 

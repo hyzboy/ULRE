@@ -9,6 +9,7 @@
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
+#include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
@@ -20,16 +21,10 @@
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 #include<cstdio>
-#include<cstdlib>
 
 namespace hgl::graph{
 namespace
 {
-    static ShaderGenPathMode GetShaderGenPathMode()
-    {
-        return ParseShaderGenPathMode(std::getenv("ULRE_SHADERGEN_PATH_MODE"));
-    }
-
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -141,18 +136,22 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     if(!mci)
         return(nullptr);
 
-    const ShaderGenPathMode path_mode = GetShaderGenPathMode();
-    const bool enable_mirror_validation = path_mode != ShaderGenPathMode::LegacyOnly;
-    const bool require_mirror_valid = path_mode == ShaderGenPathMode::MirrorPreferred;
+    const GraphicsContext *graphics_context = GetGraphicsContext();
+    const ShaderGenPathMode path_mode = graphics_context ? graphics_context->GetShaderGenPathMode() : ShaderGenPathMode::MirrorValidate;
+    const ShaderGenPathPolicy path_policy = graphics_context ? graphics_context->GetShaderGenPathPolicy() : MakeShaderGenPathPolicy(path_mode);
+    const RendererShaderGenAdapter::DiffLogDetail diff_log_detail =
+        path_policy.full_diff_log
+        ? RendererShaderGenAdapter::DiffLogDetail::Full
+        : RendererShaderGenAdapter::DiffLogDetail::SummaryOnly;
 
     mtl::contract::ShaderGenResult mirror_result;
     const mtl::contract::ShaderGenResult *mirror_ptr = nullptr;
 
-    if(enable_mirror_validation && mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(*mci,mirror_result))
+    if(path_policy.enable_mirror_validation && mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(*mci,mirror_result))
     {
         mirror_ptr = &mirror_result;
     }
-    else if(enable_mirror_validation)
+    else if(path_policy.enable_mirror_validation)
     {
         std::fprintf(stderr,
             "[RendererShaderGenAdapter] material=%s failed to prebuild mirror result (mode=%s)\n",
@@ -160,7 +159,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
             GetShaderGenPathModeName(path_mode));
     }
 
-    if(require_mirror_valid && !mirror_ptr)
+    if(path_policy.require_mirror_valid && !mirror_ptr)
     {
         std::fprintf(stderr,
             "[RendererShaderGenAdapter] material=%s creation aborted: mirror-preferred requires valid mirror result\n",
@@ -168,10 +167,10 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         return nullptr;
     }
 
-    return CreateMaterialWithContract(mtl_name,mci,mirror_ptr,enable_mirror_validation,require_mirror_valid);
+    return CreateMaterialWithContract(mtl_name,mci,mirror_ptr,path_policy.enable_mirror_validation,path_policy.require_mirror_valid,diff_log_detail);
 }
 
-Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid)
+Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid,const RendererShaderGenAdapter::DiffLogDetail diff_log_detail)
 {
     if(!mci)
         return(nullptr);
@@ -182,9 +181,9 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
         bool consume_ok=false;
         if(mirror_result)
-            consume_ok=adapter.ConsumePairReadOnly(*mci,*mirror_result,mtl_name.c_str());
+            consume_ok=adapter.ConsumePairReadOnly(*mci,*mirror_result,mtl_name.c_str(),diff_log_detail);
         else
-            consume_ok=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str());
+            consume_ok=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str(),diff_log_detail);
 
         if(!consume_ok)
         {

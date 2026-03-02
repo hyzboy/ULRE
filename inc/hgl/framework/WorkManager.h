@@ -5,9 +5,78 @@
 #include<hgl/framework/AppFramework.h>
 #include<hgl/object/ObjectTracker.h>
 #include <memory>
+#include <string_view>
 
 namespace hgl
 {
+    inline bool ParseShaderGenPathModeFromArgs(int argc, os_char **argv, graph::ShaderGenPathMode &out_mode)
+    {
+        if (!argv || argc <= 1)
+            return false;
+
+        constexpr std::basic_string_view<os_char> kOption = OS_TEXT("--shadergen-path-mode");
+        constexpr std::basic_string_view<os_char> kLegacy = OS_TEXT("legacy-only");
+        constexpr std::basic_string_view<os_char> kValidate = OS_TEXT("mirror-validate");
+        constexpr std::basic_string_view<os_char> kPreferred = OS_TEXT("mirror-preferred");
+
+        for (int i = 1; i < argc; ++i)
+        {
+            const os_char *arg = argv[i];
+            if (!arg || !arg[0])
+                continue;
+
+            std::basic_string_view<os_char> arg_view(arg);
+
+            if (arg_view == kOption)
+            {
+                if (i + 1 >= argc || !argv[i + 1])
+                    continue;
+
+                std::basic_string_view<os_char> value_view(argv[i + 1]);
+                if (value_view == kLegacy)
+                {
+                    out_mode = graph::ShaderGenPathMode::LegacyOnly;
+                    return true;
+                }
+                if (value_view == kValidate)
+                {
+                    out_mode = graph::ShaderGenPathMode::MirrorValidate;
+                    return true;
+                }
+                if (value_view == kPreferred)
+                {
+                    out_mode = graph::ShaderGenPathMode::MirrorPreferred;
+                    return true;
+                }
+
+                ++i;
+                continue;
+            }
+
+            if (arg_view.size() > kOption.size() && arg_view.substr(0, kOption.size()) == kOption && arg_view[kOption.size()] == static_cast<os_char>('='))
+            {
+                std::basic_string_view<os_char> value_view = arg_view.substr(kOption.size() + 1);
+                if (value_view == kLegacy)
+                {
+                    out_mode = graph::ShaderGenPathMode::LegacyOnly;
+                    return true;
+                }
+                if (value_view == kValidate)
+                {
+                    out_mode = graph::ShaderGenPathMode::MirrorValidate;
+                    return true;
+                }
+                if (value_view == kPreferred)
+                {
+                    out_mode = graph::ShaderGenPathMode::MirrorPreferred;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /**
     * 工作管理器，管理一个序列的WorkObject<br>
     */
@@ -64,6 +133,11 @@ namespace hgl
 
     template<typename WO> int RunFramework(const OSString &title,uint width=1280,uint height=720)
     {
+        return RunFramework<WO>(title,0,nullptr,width,height);
+    }
+
+    template<typename WO> int RunFramework(const OSString &title,int argc,os_char **argv,uint width=1280,uint height=720)
+    {
         hgl::utils::initialize_object_tracker();
 
         int result = 0;
@@ -72,6 +146,10 @@ namespace hgl
         // BEFORE shutdown_object_tracker() checks for leaks
         {
             AppFramework app(title);
+
+            graph::ShaderGenPathMode parsed_mode;
+            if(ParseShaderGenPathModeFromArgs(argc,argv,parsed_mode))
+                app.SetShaderGenPathMode(parsed_mode);
 
             if(!app.Init(width,height))
             {

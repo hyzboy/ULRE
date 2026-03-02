@@ -356,8 +356,8 @@ public:
     }
 };
 
-int os_main(int, os_char **)
+int os_main(int argc, os_char **argv)
 {
-    return RunFramework<GizmoExampleApp>(OS_TEXT("Gizmo Usage Example"), 1280, 720);
+    return RunFramework<GizmoExampleApp>(OS_TEXT("Gizmo Usage Example"), argc, argv, 1280, 720);
 }
 

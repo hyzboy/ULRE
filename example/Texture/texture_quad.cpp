@@ -178,8 +178,8 @@ public:
     }
 };//class TestApp:public WorkObject
 
-int os_main(int,os_char **)
+int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),256,256);
+    return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),argc,argv,256,256);
 }
 

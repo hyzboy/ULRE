@@ -230,7 +230,7 @@ public:
     }
 };
 
-int os_main(int,os_char **)
+int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("AtmosphereSkySunGizmo"),1280,720);
+    return RunFramework<TestApp>(OS_TEXT("AtmosphereSkySunGizmo"),argc,argv,1280,720);
 }

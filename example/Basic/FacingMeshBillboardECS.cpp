@@ -431,7 +431,7 @@ public:
     }
 };
 
-int os_main(int, os_char**)
+int os_main(int argc, os_char** argv)
 {
-    return RunFramework<FacingMeshBillboardECSApp>(OS_TEXT("Facing Mesh Billboard ECS"), 1280, 720);
+    return RunFramework<FacingMeshBillboardECSApp>(OS_TEXT("Facing Mesh Billboard ECS"), argc, argv, 1280, 720);
 }

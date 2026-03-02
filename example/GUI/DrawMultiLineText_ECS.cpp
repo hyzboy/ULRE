@@ -87,8 +87,8 @@ public:
     }
 };//class TestApp:public WorkObject
 
-int os_main(int, os_char **)
+int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("DrawMultiLineText_ECS"), WINDOW_WIDTH, WINDOW_HEIGHT);
+    return RunFramework<TestApp>(OS_TEXT("DrawMultiLineText_ECS"), argc, argv, WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 

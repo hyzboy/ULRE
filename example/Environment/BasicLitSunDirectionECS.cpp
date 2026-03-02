@@ -542,7 +542,7 @@ public:
     }
 };
 
-int os_main(int, os_char**)
+int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BasicLitSunDirectionECSApp>(OS_TEXT("BasicLit Sun Direction ECS"), 1280, 720);
+    return RunFramework<BasicLitSunDirectionECSApp>(OS_TEXT("BasicLit Sun Direction ECS"), argc, argv, 1280, 720);
 }

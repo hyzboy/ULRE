@@ -39,6 +39,11 @@ namespace hgl::graph
         return hash;
     }
 
+    static int BoolToInt(const bool v)
+    {
+        return v ? 1 : 0;
+    }
+
     static mtl::contract::ResourceClass ToResourceClass(const VkDescriptorType desc_type)
     {
         switch(desc_type)
@@ -201,6 +206,33 @@ namespace hgl::graph
         }
     };
 
+    static std::string BuildStageMaskSummary(const std::vector<SpvSig> &sigs)
+    {
+        if (sigs.empty())
+            return "none";
+
+        std::vector<uint32_t> masks;
+        masks.reserve(sigs.size());
+        for (const auto &s : sigs)
+            masks.emplace_back(s.stage_mask);
+
+        std::sort(masks.begin(), masks.end());
+        masks.erase(std::unique(masks.begin(), masks.end()), masks.end());
+
+        std::string out;
+        for (size_t i = 0; i < masks.size(); ++i)
+        {
+            if (!out.empty())
+                out += '|';
+
+            char buf[32] = {};
+            std::snprintf(buf, sizeof(buf), "0x%X", static_cast<unsigned>(masks[i]));
+            out += buf;
+        }
+
+        return out;
+    }
+
     static uint64_t HashSpv(std::vector<SpvSig> sigs)
     {
         std::sort(sigs.begin(), sigs.end());
@@ -247,7 +279,7 @@ namespace hgl::graph
         }
     }
 
-    static bool PrintLegacyMirrorDiff(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name)
+    static bool PrintLegacyMirrorDiff(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, const RendererShaderGenAdapter::DiffLogDetail detail)
     {
         const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
 
@@ -278,24 +310,45 @@ namespace hgl::graph
         const bool spv_match = legacy_spv.size() == mirror_spv.size() && spv_hash_legacy == spv_hash_mirror;
         const bool all_match = layout_match && vertex_match && spv_match;
 
+        const std::string legacy_stage_summary = BuildStageMaskSummary(legacy_spv);
+        const std::string mirror_stage_summary = BuildStageMaskSummary(mirror_spv);
+
+        if(detail == RendererShaderGenAdapter::DiffLogDetail::Full)
+        {
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter][DiffKV] material=%s event=layout legacy_count=%u mirror_count=%u legacy_hash=0x%llx mirror_hash=0x%llx match=%d\n",
+                mat_name,
+                static_cast<unsigned>(legacy_layout.size()),
+                static_cast<unsigned>(mirror_layout.size()),
+                static_cast<unsigned long long>(layout_hash_legacy),
+                static_cast<unsigned long long>(layout_hash_mirror),
+                BoolToInt(layout_match));
+
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter][DiffKV] material=%s event=vertex legacy_count=%u mirror_count=%u legacy_hash=0x%llx mirror_hash=0x%llx match=%d\n",
+                mat_name,
+                static_cast<unsigned>(legacy_vertex.size()),
+                static_cast<unsigned>(mirror_vertex.size()),
+                static_cast<unsigned long long>(vertex_hash_legacy),
+                static_cast<unsigned long long>(vertex_hash_mirror),
+                BoolToInt(vertex_match));
+
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter][DiffKV] material=%s event=spv legacy_count=%u mirror_count=%u legacy_hash=0x%llx mirror_hash=0x%llx legacy_stages=%s mirror_stages=%s match=%d\n",
+                mat_name,
+                static_cast<unsigned>(legacy_spv.size()),
+                static_cast<unsigned>(mirror_spv.size()),
+                static_cast<unsigned long long>(spv_hash_legacy),
+                static_cast<unsigned long long>(spv_hash_mirror),
+                legacy_stage_summary.c_str(),
+                mirror_stage_summary.c_str(),
+                BoolToInt(spv_match));
+        }
+
         std::fprintf(stderr,
-            "[RendererShaderGenAdapter][Diff] material=%s layout(%u/%u,0x%llx/0x%llx,%s) vertex(%u/%u,0x%llx/0x%llx,%s) spv(%u/%u,0x%llx/0x%llx,%s)\n",
+            "[RendererShaderGenAdapter][DiffKV] material=%s event=summary match=%d\n",
             mat_name,
-            static_cast<unsigned>(legacy_layout.size()),
-            static_cast<unsigned>(mirror_layout.size()),
-            static_cast<unsigned long long>(layout_hash_legacy),
-            static_cast<unsigned long long>(layout_hash_mirror),
-            layout_match ? "ok" : "mismatch",
-            static_cast<unsigned>(legacy_vertex.size()),
-            static_cast<unsigned>(mirror_vertex.size()),
-            static_cast<unsigned long long>(vertex_hash_legacy),
-            static_cast<unsigned long long>(vertex_hash_mirror),
-            vertex_match ? "ok" : "mismatch",
-            static_cast<unsigned>(legacy_spv.size()),
-            static_cast<unsigned>(mirror_spv.size()),
-            static_cast<unsigned long long>(spv_hash_legacy),
-            static_cast<unsigned long long>(spv_hash_mirror),
-            spv_match ? "ok" : "mismatch");
+            BoolToInt(all_match));
 
         return all_match;
     }
@@ -367,14 +420,14 @@ namespace hgl::graph
         return valid;
     }
 
-    bool RendererShaderGenAdapter::ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name) const
+    bool RendererShaderGenAdapter::ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail) const
     {
-        const bool diff_ok = PrintLegacyMirrorDiff(mci, result, material_name);
+        const bool diff_ok = PrintLegacyMirrorDiff(mci, result, material_name, detail);
         const bool validate_ok = ConsumeResultReadOnly(result, material_name);
         return diff_ok && validate_ok;
     }
 
-    bool RendererShaderGenAdapter::ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name) const
+    bool RendererShaderGenAdapter::ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name, DiffLogDetail detail) const
     {
         mtl::contract::ShaderGenResult result;
         if (!mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(mci, result))
@@ -386,6 +439,6 @@ namespace hgl::graph
             return false;
         }
 
-        return ConsumePairReadOnly(mci, result, material_name);
+        return ConsumePairReadOnly(mci, result, material_name, detail);
     }
 }//namespace hgl::graph

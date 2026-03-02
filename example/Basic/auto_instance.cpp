@@ -214,8 +214,8 @@ public:
     }
 };//class TestApp:public WorkObject
 
-int os_main(int,os_char **)
+int os_main(int argc,os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("AutoInstance (ECS Version)"),1024,1024);
+    return RunFramework<TestApp>(OS_TEXT("AutoInstance (ECS Version)"),argc,argv,1024,1024);
 }
 

@@ -372,7 +372,7 @@ public:
     }
 };
 
-int os_main(int, os_char **)
+int os_main(int argc, os_char **argv)
 {
-    return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), 1280, 720);
+    return RunFramework<RecursiveCubeApp>(OS_TEXT("Recursive Cube (ECS)"), argc, argv, 1280, 720);
 }

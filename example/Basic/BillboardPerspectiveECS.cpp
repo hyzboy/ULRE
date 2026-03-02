@@ -425,7 +425,7 @@ public:
     }
 };//class BillboardPerspectiveECSApp:public WorkObject
 
-int os_main(int, os_char**)
+int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BillboardPerspectiveECSApp>(OS_TEXT("Billboard Perspective ECS Example - Near Large, Far Small"), 1280, 720);
+    return RunFramework<BillboardPerspectiveECSApp>(OS_TEXT("Billboard Perspective ECS Example - Near Large, Far Small"), argc, argv, 1280, 720);
 }

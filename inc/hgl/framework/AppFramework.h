@@ -6,6 +6,7 @@
 #include <hgl/type/String.h>
 #include <hgl/math/Vector.h>
 #include <hgl/graph/module/SwapchainModule.h>
+#include <hgl/graph/module/ShaderGenPathMode.h>
 #include <memory>
 
 namespace hgl
@@ -58,6 +59,9 @@ namespace hgl
         graph::GraphicsContext *graphics_context = nullptr;
         graph::SwapchainModule *sc_module = nullptr;
 
+        graph::ShaderGenPathMode shadergen_path_mode = graph::ShaderGenPathMode::MirrorValidate;
+        bool shadergen_path_mode_overridden = false;
+
         ecs::ECSContext *default_ecs_context = nullptr;
         std::unique_ptr<graph::RenderContext> render_context;
 
@@ -84,6 +88,7 @@ namespace hgl
          * @return true if successful, false otherwise
          */
         virtual bool Init(uint w, uint h);
+        virtual bool Init(uint w, uint h, int argc, char **argv);
 
     public:
         // Event callbacks
@@ -103,6 +108,17 @@ namespace hgl
         // Graphics context access
         graph::GraphicsContext *GetGraphicsContext() { return graphics_context; }
         const graph::GraphicsContext *GetGraphicsContext() const { return graphics_context; }
+
+        void SetShaderGenPathMode(const graph::ShaderGenPathMode mode)
+        {
+            shadergen_path_mode = mode;
+            shadergen_path_mode_overridden = true;
+        }
+        void SetShaderGenPathModeName(const char *mode_name)
+        {
+            SetShaderGenPathMode(graph::ParseShaderGenPathMode(mode_name));
+        }
+        graph::ShaderGenPathMode GetShaderGenPathMode() const { return shadergen_path_mode; }
 
         // Swapchain access
         graph::SwapchainModule *GetSwapchainModule() { return sc_module; }

@@ -333,8 +333,8 @@ public:
     }
 };
 
-int os_main(int,os_char **)
+int os_main(int argc,os_char **argv)
 {
-    return RunFramework<WireShapeTestApp>(OS_TEXT("Wire Shape Test"),1280,720);
+    return RunFramework<WireShapeTestApp>(OS_TEXT("Wire Shape Test"),argc,argv,1280,720);
 }
 

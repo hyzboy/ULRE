@@ -561,8 +561,8 @@ public:
     }
 };
 
-int os_main(int, os_char **)
+int os_main(int argc, os_char **argv)
 {
-    return RunFramework<RenderToTextureApp>(OS_TEXT("Render To Texture (ECS)"), 1280, 720);
+    return RunFramework<RenderToTextureApp>(OS_TEXT("Render To Texture (ECS)"), argc, argv, 1280, 720);
 }
 
