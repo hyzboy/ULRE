@@ -1,5 +1,6 @@
 #include <hgl/graph/module/RendererShaderGenAdapter.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/contract/ShaderGenMirrorDiff.h>
 #include <hgl/shadergen/contract/ShaderGenContractValidator.h>
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include <unordered_set>
@@ -399,189 +400,88 @@ namespace hgl::graph
     {
         const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
 
-        std::vector<LayoutSig> legacy_layout;
-        std::vector<LayoutSig> mirror_layout;
-        BuildLegacyLayoutSigs(mci, legacy_layout);
-        BuildMirrorLayoutSigs(result, mirror_layout);
+        mtl::contract::ShaderGenMirrorDiffSummary diff_summary;
+        mtl::contract::BuildShaderGenMirrorDiffSummary(mci, result, diff_summary);
 
-        std::vector<VertexSig> legacy_vertex;
-        std::vector<VertexSig> mirror_vertex;
-        BuildLegacyVertexSigs(mci, legacy_vertex);
-        BuildMirrorVertexSigs(result, mirror_vertex);
-
-        std::vector<SpvSig> legacy_spv;
-        std::vector<SpvSig> mirror_spv;
-        BuildLegacySpvSigs(mci, legacy_spv);
-        BuildMirrorSpvSigs(result, mirror_spv);
-
-        const uint64_t layout_hash_legacy = HashLayout(legacy_layout);
-        const uint64_t layout_hash_mirror = HashLayout(mirror_layout);
-        const uint64_t vertex_hash_legacy = HashVertex(legacy_vertex);
-        const uint64_t vertex_hash_mirror = HashVertex(mirror_vertex);
-        const uint64_t spv_hash_legacy = HashSpv(legacy_spv);
-        const uint64_t spv_hash_mirror = HashSpv(mirror_spv);
-
-        const bool layout_match = legacy_layout.size() == mirror_layout.size() && layout_hash_legacy == layout_hash_mirror;
-        const bool vertex_match = legacy_vertex.size() == mirror_vertex.size() && vertex_hash_legacy == vertex_hash_mirror;
-        const bool spv_match = legacy_spv.size() == mirror_spv.size() && spv_hash_legacy == spv_hash_mirror;
-        const bool all_match = layout_match && vertex_match && spv_match;
-
-        const std::string legacy_stage_summary = BuildStageMaskSummary(legacy_spv);
-        const std::string mirror_stage_summary = BuildStageMaskSummary(mirror_spv);
-        const uint32_t legacy_stage_combo = BuildStageComboMask(legacy_spv);
-        const uint32_t mirror_stage_combo = BuildStageComboMask(mirror_spv);
-
-        RecordProfilerSample(all_match,
-                     layout_match,
-                     vertex_match,
-                     spv_match,
-                     legacy_stage_combo,
-                     mirror_stage_combo,
-                     legacy_layout.size(),
-                     mirror_layout.size(),
-                     legacy_vertex.size(),
-                     mirror_vertex.size(),
-                     legacy_spv.size(),
-                     mirror_spv.size());
+        RecordProfilerSample(diff_summary.all_match,
+                     diff_summary.layout_match,
+                     diff_summary.vertex_match,
+                     diff_summary.spv_match,
+                     diff_summary.legacy_stage_combo,
+                     diff_summary.mirror_stage_combo,
+                     diff_summary.legacy_layout_count,
+                     diff_summary.mirror_layout_count,
+                     diff_summary.legacy_vertex_count,
+                     diff_summary.mirror_vertex_count,
+                     diff_summary.legacy_spv_count,
+                     diff_summary.mirror_spv_count);
 
         if(detail == RendererShaderGenAdapter::DiffLogDetail::Full)
         {
             std::fprintf(stderr,
                 "[RendererShaderGenAdapter][DiffKV] material=%s event=layout legacy_count=%u mirror_count=%u legacy_hash=0x%llx mirror_hash=0x%llx match=%d\n",
                 mat_name,
-                static_cast<unsigned>(legacy_layout.size()),
-                static_cast<unsigned>(mirror_layout.size()),
-                static_cast<unsigned long long>(layout_hash_legacy),
-                static_cast<unsigned long long>(layout_hash_mirror),
-                BoolToInt(layout_match));
+                static_cast<unsigned>(diff_summary.legacy_layout_count),
+                static_cast<unsigned>(diff_summary.mirror_layout_count),
+                static_cast<unsigned long long>(diff_summary.layout_hash_legacy),
+                static_cast<unsigned long long>(diff_summary.layout_hash_mirror),
+                BoolToInt(diff_summary.layout_match));
 
             std::fprintf(stderr,
                 "[RendererShaderGenAdapter][DiffKV] material=%s event=vertex legacy_count=%u mirror_count=%u legacy_hash=0x%llx mirror_hash=0x%llx match=%d\n",
                 mat_name,
-                static_cast<unsigned>(legacy_vertex.size()),
-                static_cast<unsigned>(mirror_vertex.size()),
-                static_cast<unsigned long long>(vertex_hash_legacy),
-                static_cast<unsigned long long>(vertex_hash_mirror),
-                BoolToInt(vertex_match));
+                static_cast<unsigned>(diff_summary.legacy_vertex_count),
+                static_cast<unsigned>(diff_summary.mirror_vertex_count),
+                static_cast<unsigned long long>(diff_summary.vertex_hash_legacy),
+                static_cast<unsigned long long>(diff_summary.vertex_hash_mirror),
+                BoolToInt(diff_summary.vertex_match));
 
             std::fprintf(stderr,
                 "[RendererShaderGenAdapter][DiffKV] material=%s event=spv legacy_count=%u mirror_count=%u legacy_hash=0x%llx mirror_hash=0x%llx legacy_stages=%s mirror_stages=%s match=%d\n",
                 mat_name,
-                static_cast<unsigned>(legacy_spv.size()),
-                static_cast<unsigned>(mirror_spv.size()),
-                static_cast<unsigned long long>(spv_hash_legacy),
-                static_cast<unsigned long long>(spv_hash_mirror),
-                legacy_stage_summary.c_str(),
-                mirror_stage_summary.c_str(),
-                BoolToInt(spv_match));
+                static_cast<unsigned>(diff_summary.legacy_spv_count),
+                static_cast<unsigned>(diff_summary.mirror_spv_count),
+                static_cast<unsigned long long>(diff_summary.spv_hash_legacy),
+                static_cast<unsigned long long>(diff_summary.spv_hash_mirror),
+                diff_summary.legacy_stage_summary.c_str(),
+                diff_summary.mirror_stage_summary.c_str(),
+                BoolToInt(diff_summary.spv_match));
         }
 
-        if (!all_match && out_report)
+        if (!diff_summary.all_match && out_report)
         {
             char msg[512] = {};
             std::snprintf(msg,
                 sizeof(msg),
                 "material=%s legacy/mirror diff mismatch: layout=%d vertex=%d spv=%d legacy_stages=%s mirror_stages=%s",
                 mat_name,
-                BoolToInt(layout_match),
-                BoolToInt(vertex_match),
-                BoolToInt(spv_match),
-                legacy_stage_summary.c_str(),
-                mirror_stage_summary.c_str());
+                BoolToInt(diff_summary.layout_match),
+                BoolToInt(diff_summary.vertex_match),
+                BoolToInt(diff_summary.spv_match),
+                diff_summary.legacy_stage_summary.c_str(),
+                diff_summary.mirror_stage_summary.c_str());
             AddError(*out_report, msg);
             out_report->diff_valid = false;
         }
 
-        return all_match;
-    }
-
-    static bool ValidateBindingUniqueness(const mtl::contract::ShaderGenResult &result,
-                                          const char *material_name,
-                                          RendererShaderGenAdapter::ValidationReport *out_report)
-    {
-        std::unordered_set<uint64_t> seen;
-
-        const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
-        bool valid = true;
-
-        for (const auto &binding : result.layout.bindings)
-        {
-            const uint64_t key = (static_cast<uint64_t>(binding.set) << 32) | static_cast<uint64_t>(binding.binding);
-            if (!seen.insert(key).second)
-            {
-                if (out_report)
-                {
-                    char msg[256] = {};
-                    std::snprintf(msg,
-                        sizeof(msg),
-                        "material=%s duplicate binding in mirror layout (set=%u, binding=%u)",
-                        mat_name,
-                        binding.set,
-                        binding.binding);
-                    AddError(*out_report, msg);
-                }
-                valid = false;
-            }
-        }
-
-        return valid;
+        return diff_summary.all_match;
     }
 
     RendererShaderGenAdapter::ValidationReport RendererShaderGenAdapter::ValidateResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const
     {
-        const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
         ValidationReport report;
         report.result_valid = true;
 
-        if (result.contract_version != mtl::contract::kShaderGenContractVersion)
-        {
-            char msg[256] = {};
-            std::snprintf(msg,
-                sizeof(msg),
-                "material=%s contract_version mismatch (result=%u, expected=%u)",
-                mat_name,
-                result.contract_version,
-                mtl::contract::kShaderGenContractVersion);
-            AddError(report, msg);
-            report.result_valid = false;
-        }
+        const auto contract_check = mtl::contract::ValidateShaderGenResult(result, material_name);
+        report.result_valid = contract_check.valid;
 
-        if (result.spv_per_stage.empty())
-        {
-            char msg[256] = {};
-            std::snprintf(msg,
-                sizeof(msg),
-                "material=%s mirror has no stage SPV blobs",
-                mat_name);
-            AddWarning(report, msg);
-        }
+        report.warning_count += contract_check.warning_count;
+        report.error_count += contract_check.error_count;
+        report.warnings.insert(report.warnings.end(), contract_check.warnings.begin(), contract_check.warnings.end());
+        report.errors.insert(report.errors.end(), contract_check.errors.begin(), contract_check.errors.end());
 
-        for (const auto &blob : result.spv_per_stage)
-        {
-            if (blob.words.empty())
-            {
-                char msg[256] = {};
-                std::snprintf(msg,
-                    sizeof(msg),
-                    "material=%s empty SPV blob for stage_mask=%u",
-                    mat_name,
-                    blob.stage_mask);
-                AddError(report, msg);
-                report.result_valid = false;
-            }
-        }
-
-        if (!ValidateBindingUniqueness(result, mat_name, &report))
-            report.result_valid = false;
-
-        for (const auto &warn : result.diagnostics.warnings)
-            AddWarning(report, std::string("material=") + mat_name + " shader diagnostics warning: " + warn);
-
-        for (const auto &err : result.diagnostics.errors)
-        {
-            AddError(report, std::string("material=") + mat_name + " shader diagnostics error: " + err);
-            report.result_valid = false;
-        }
+        if (!contract_check.valid)
+            report.overall_valid = false;
 
         return report;
     }

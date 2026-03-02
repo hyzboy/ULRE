@@ -20,4 +20,7 @@ namespace hgl::graph::mtl::contract
     ShaderGenContractValidationResult ValidateShaderGenRequestResult(const ShaderGenRequest &request,
                                                                      const ShaderGenResult &result,
                                                                      const char *material_name = nullptr);
+
+    ShaderGenContractValidationResult ValidateShaderGenResult(const ShaderGenResult &result,
+                                                              const char *material_name = nullptr);
 }

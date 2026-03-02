@@ -114,12 +114,14 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/FixedMaterialDef.h
                     ${SHADERGEN_INCLUDE_PATH}/DescriptorBindingContract.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContract.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContractValidator.h
+                    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenMirrorDiff.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenRequestBuilder.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenResultBuilder.h
                     ShaderPermutationKey.cpp
                     ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
                     ResourceLayoutGenerator.cpp
                     contract/ShaderGenContractValidator.cpp
+                    contract/ShaderGenMirrorDiff.cpp
                     contract/ShaderGenRequestBuilder.cpp
                     contract/ShaderGenResultBuilder.cpp
 )

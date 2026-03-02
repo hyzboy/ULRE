@@ -1,4 +1,5 @@
 #include <hgl/shadergen/contract/ShaderGenContractValidator.h>
+#include <unordered_set>
 
 namespace hgl::graph::mtl::contract
 {
@@ -95,6 +96,68 @@ namespace hgl::graph::mtl::contract
             AddWarning(out,
                        std::string("material=") + mat_name +
                        " request/result note: no vertex requirements and no vertex attributes in mirror result");
+        }
+
+        return out;
+    }
+
+    ShaderGenContractValidationResult ValidateShaderGenResult(const ShaderGenResult &result,
+                                                              const char *material_name)
+    {
+        ShaderGenContractValidationResult out;
+
+        const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
+
+        if (result.contract_version != kShaderGenContractVersion)
+        {
+            AddError(out,
+                     std::string("material=") + mat_name +
+                     " contract_version mismatch (result=" + std::to_string(result.contract_version) +
+                     ", expected=" + std::to_string(kShaderGenContractVersion) + ")");
+        }
+
+        if (result.spv_per_stage.empty())
+        {
+            AddWarning(out,
+                       std::string("material=") + mat_name +
+                       " mirror has no stage SPV blobs");
+        }
+
+        for (const auto &blob : result.spv_per_stage)
+        {
+            if (blob.words.empty())
+            {
+                AddError(out,
+                         std::string("material=") + mat_name +
+                         " empty SPV blob for stage_mask=" + std::to_string(blob.stage_mask));
+            }
+        }
+
+        std::unordered_set<uint64_t> seen;
+        for (const auto &binding : result.layout.bindings)
+        {
+            const uint64_t key = (static_cast<uint64_t>(binding.set) << 32) | static_cast<uint64_t>(binding.binding);
+            if (!seen.insert(key).second)
+            {
+                AddError(out,
+                         std::string("material=") + mat_name +
+                         " duplicate binding in mirror layout (set=" + std::to_string(binding.set) +
+                         ", binding=" + std::to_string(binding.binding) + ")");
+            }
+        }
+
+        for (const auto &warn : result.diagnostics.warnings)
+        {
+            AddWarning(out,
+                       std::string("material=") + mat_name +
+                       " shader diagnostics warning: " + warn);
+        }
+
+        for (const auto &err : result.diagnostics.errors)
+        {
+            AddError(out,
+                     std::string("material=") + mat_name +
+                     " shader diagnostics error: " + err);
         }
 
         return out;
