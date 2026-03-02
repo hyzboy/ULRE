@@ -117,6 +117,10 @@ public: // Override Release from GraphModule - cleanup all resources
 public: //Shader
 
     const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name, const ShaderCreateInfo *);
+    const ShaderModule *CreateShaderModuleFromSPV(const AnsiString &shader_module_name,
+                                                  const VkShaderStageFlagBits stage,
+                                                  const uint32_t *spv_data,
+                                                  const size_t spv_size);
 
 public: //ShaderGen Profiler (debug entry, collect-only)
 

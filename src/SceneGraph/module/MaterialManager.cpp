@@ -89,6 +89,49 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     return sm;
 }
 
+const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString &sm_name,
+                                                                const VkShaderStageFlagBits stage,
+                                                                const uint32_t *spv_data,
+                                                                const size_t spv_size)
+{
+    VulkanDevice *device = GetDevice();
+    if(!device)return(nullptr);
+    if(sm_name.IsEmpty())return(nullptr);
+    if(!spv_data||spv_size==0)return(nullptr);
+
+    const int bit_offset=GetBitOffset((uint32_t)stage);
+
+    if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)return(nullptr);
+
+    ShaderModule *sm;
+
+    ShaderModuleMapByName &sm_map=shader_module_by_name[bit_offset];
+
+    if(sm_map.Get(sm_name,sm))
+        return sm;
+
+    sm=device->CreateShaderModule(stage,spv_data,spv_size);
+
+    if(!sm)
+        return(nullptr);
+
+    sm_map.Add(sm_name,sm);
+
+    #ifdef _DEBUG
+        {
+            DebugUtils *du=device->GetDebugUtils();
+
+            if(du)
+            {
+                AnsiString shader_name = "Shader:" + sm_name + AnsiString(":") + GetShaderStageName(stage);
+                du->SetShaderModule(*sm, shader_name);
+            }
+        }
+    #endif//_DEBUG
+
+    return sm;
+}
+
 PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
 {
     VulkanDevice *device = GetDevice();
@@ -235,14 +278,57 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     {
         const ShaderModule *sm;
 
-        for(auto [stage, sci_ptr] : sci_map)
+        const bool prefer_mirror_spv_build = require_mirror_valid && mirror_result;
+
+        if(prefer_mirror_spv_build)
         {
-            sm=CreateShaderModule(mtl_name, sci_ptr);
+            for(const auto &blob : mirror_result->spv_per_stage)
+            {
+                if(blob.words.empty())
+                {
+                    std::fprintf(stderr,
+                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: empty spv blob stage_mask=0x%X\n",
+                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                        static_cast<unsigned>(blob.stage_mask));
+                    return nullptr;
+                }
 
-            if(!sm)
-                return(nullptr);
+                sm=CreateShaderModuleFromSPV(mtl_name,
+                                             (VkShaderStageFlagBits)blob.stage_mask,
+                                             blob.words.data(),
+                                             blob.words.size()*sizeof(uint32_t));
 
-            mtl->shader_maps->Add(sm);
+                if(!sm)
+                {
+                    std::fprintf(stderr,
+                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: failed create shader module stage_mask=0x%X\n",
+                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                        static_cast<unsigned>(blob.stage_mask));
+                    return nullptr;
+                }
+
+                mtl->shader_maps->Add(sm);
+            }
+
+            if(mtl->shader_maps->GetCount()<2)
+            {
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: insufficient shader stages from mirror result\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+                return nullptr;
+            }
+        }
+        else
+        {
+            for(auto [stage, sci_ptr] : sci_map)
+            {
+                sm=CreateShaderModule(mtl_name, sci_ptr);
+
+                if(!sm)
+                    return(nullptr);
+
+                mtl->shader_maps->Add(sm);
+            }
         }
     }
 

@@ -1,12 +1,12 @@
 # ShaderGen 与渲染器彻底分离重构计划（可行性 + 执行方案）
 
-**版本**：v1.2  
-**日期**：2026-03-02  
-**状态**：执行中（Phase 2 基本落地，待构建回归）
+**版本**：v1.3  
+**日期**：2026-03-03  
+**状态**：执行中（Phase 2 已完成收敛，进入 Phase 3 切主路径准备）
 
 ---
 
-## 0. 当前进展（2026-03-02）
+## 0. 当前进展（2026-03-03）
 
 已完成：
 
@@ -61,17 +61,24 @@
     - 已扩展多组示例入口透传 `argc/argv`（Texture/GUI/Geometry/Gizmo/Environment）
     - 已完成一轮 22 个剩余示例入口批量迁移（`os_main` 参数透传到 `RunFramework`）
 - 相关 ShaderGen/测试链路已完成一轮稳定化回归（近邻测试通过），可作为后续 Phase 1 的安全基线
+- 2026-03-03 收敛更新（Adapter 职责与 API 面精简）
+  - `MaterialManager` 不再手工拼接 `ValidationReport`，改为统一调用 `ValidateMaterialContractReadOnly(...)`
+  - 旧 bool 风格消费接口已删除：`ConsumeMaterialReadOnly/ConsumePairReadOnly/ConsumeRequestResultReadOnly/ConsumeResultReadOnly`
+  - `ValidateResultReadOnly/ValidatePairReadOnly/ValidateRequestResultReadOnly` 已收敛为 adapter 内部私有分层接口
+  - `RendererShaderGenAdapter` 内部存储已拆分为 profiler storage 与 validation-report storage（独立 mutex）
+  - `ValidateMaterialContractReadOnly` 与 contract-check 到 report 的字段映射已完成去重（无行为变更）
+  - 全量 CMake 构建已连续通过，关键链路无新增编译错误
 
 当前阻塞：
 
-  - 本机 CMake Tools 在执行构建时返回空错误（result code = -1 且无 stdout/stderr），导致本轮“最后 22 文件迁移”的构建回归暂未完成；代码级静态错误已清零。
+  - 运行态示例在本机普遍以 `exit code = 1` 退出（`mirror-validate` 模式），但当前关键 grep 未观察到新增 contract/validation 关键错误；需单独定位运行时退出根因。
 
 下一步（建议本周）：
 
-  1. 在新机器恢复 CMake Tools 构建能力并完成示例抽样 + `test_ShaderGenPathMode` 回归验证
-  2. 在验证通过后，补齐剩余示例入口透传覆盖（如仍有漏网）并做一次全量检索确认
-  3. 将 diff 输出接入可筛选日志通道（按材质/阶段聚合）
-  4. 将 `ShaderGenPathPolicy` 挂接到更高层配置源（命令行/配置文件），由应用启动阶段一次注入
+  1. Phase 3：推进主路径切换开关（默认走 `ShaderGenResult`，legacy 保留 fallback）并补齐回退策略验证
+  2. 针对 `mirror-preferred` 增加端到端严格失败路径回归用例
+  3. 对示例运行时 `exit code = 1` 做专项排查并沉淀最小复现清单
+  4. 按材质/stage 聚合输出 validation/profiler（日志通道或可视化入口）
 
   ### 0.1 换机接手清单（可直接执行）
 
@@ -96,9 +103,9 @@
 
   ### 0.2 当前代码状态结论（交接摘要）
 
-  - 已完成：Contract/Mirror/Adapter/PathPolicy/CLI 注入链路贯通，示例入口大面积透传。
-  - 未完成：最后一批入口改动后的构建回归（受本机 CMake Tools 异常阻塞）。
-  - 风险等级：**中低**（代码侧静态错误已清零；主要风险在“未完成最终编译验收”）。
+  - 已完成：Contract/Mirror/Adapter/PathPolicy/CLI 注入链路贯通，Adapter API 与内部职责收敛，全量构建回归恢复正常。
+  - 未完成：Phase 3 主路径切换与运行态退出码问题定位。
+  - 风险等级：**中低**（编译链路稳定；主要风险转为运行态与主路径切换验收）。
 
 ---
 
