@@ -9,6 +9,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKMaterial.h>
+#include<hgl/vk/VKBuffer.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -146,6 +147,125 @@ namespace hgl::ecs
 
         if (view_desc_binding)
             cmd->SetDescriptorBinding(view_desc_binding);
+
+        ApplyContractBindings();
+    }
+
+    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO(graph::IRenderTarget *rt,const char *preferred_name) const
+    {
+        if (!rt)
+            return nullptr;
+
+        auto *db = rt->GetDescriptorBinding();
+        if (!db)
+            return nullptr;
+
+        if (preferred_name && *preferred_name)
+        {
+            if (const auto *gpu = db->GetUBO(preferred_name))
+                return gpu;
+        }
+
+        if (const auto *gpu = db->GetUBO("viewport"))
+            return gpu;
+
+        return db->GetUBO("ViewportInfo");
+    }
+
+    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveCameraUBO() const
+    {
+        if (!context)
+            return nullptr;
+
+        auto camera_system = context->GetSystem<CameraSystem>();
+        if (!camera_system)
+            return nullptr;
+
+        auto *camera_ubo = camera_system->GetCameraUBO();
+        if (!camera_ubo)
+            return nullptr;
+
+        return camera_ubo->GetGPUBuffer();
+    }
+
+    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveSkyUBO()
+    {
+        if (!context)
+            return nullptr;
+
+        auto environment_system = context->GetSystem<EnvironmentSystem>();
+        if (!environment_system)
+        {
+            environment_system = context->RegisterRenderSystem<EnvironmentSystem>();
+            if (environment_system && context->IsActive())
+            {
+                environment_system->OnDependenciesReady();
+                environment_system->Initialize();
+            }
+        }
+
+        if (!environment_system)
+            return nullptr;
+
+        environment_system->EditSkyInfo();
+
+        auto *sky_ubo = environment_system->GetSkyUBO();
+        if (!sky_ubo)
+            return nullptr;
+
+        return sky_ubo->GetGPUBuffer();
+    }
+
+    void RenderDescriptorBindingSystem::ApplyContractBindings()
+    {
+        if (!context)
+            return;
+
+        auto *rt = context->GetRenderTarget();
+        const auto *camera_ubo = ResolveCameraUBO();
+        const auto *sky_ubo = ResolveSkyUBO();
+
+        const auto &cache = context->GetRenderFrameCache();
+
+        for (const auto &pair : cache.materialBatches)
+        {
+            graph::Material *material = pair.first.material;
+            if (!material)
+                continue;
+
+            const auto &contract = material->GetBindingContract();
+
+            for (const auto &req : contract.requirements)
+            {
+                if (!req.name || !*req.name)
+                    continue;
+
+                switch (req.semantic)
+                {
+                case graph::mtl::DescriptorSemantic::ViewportInfo:
+                {
+                    const auto *ubo = ResolveViewportUBO(rt, req.name);
+                    if (ubo)
+                        material->BindUBO(req.set_type, req.name, ubo, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::CameraInfo:
+                {
+                    if (camera_ubo)
+                        material->BindUBO(req.set_type, req.name, camera_ubo, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::SkyInfo:
+                {
+                    if (sky_ubo)
+                        material->BindUBO(req.set_type, req.name, sky_ubo, false);
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+        }
     }
 
     bool RenderDescriptorBindingSystem::IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const

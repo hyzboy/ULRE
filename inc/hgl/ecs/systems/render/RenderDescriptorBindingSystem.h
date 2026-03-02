@@ -11,6 +11,8 @@ namespace hgl::graph
     class DescriptorBinding;
     class RenderCmdBuffer;
     class Material;
+    class IRenderTarget;
+    class IGPUBuffer;
 }
 
 namespace hgl::ecs
@@ -75,6 +77,10 @@ namespace hgl::ecs
 
         void RegisterDefaultSources();
         void EnsureViewBinding();
+        void ApplyContractBindings();
+        const graph::IGPUBuffer *ResolveViewportUBO(graph::IRenderTarget *rt,const char *preferred_name) const;
+        const graph::IGPUBuffer *ResolveCameraUBO() const;
+        const graph::IGPUBuffer *ResolveSkyUBO();
         void ValidateContractsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };
