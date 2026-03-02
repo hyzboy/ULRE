@@ -13,6 +13,7 @@ namespace hgl::graph
     {
     public:
 
+        bool ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         bool ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         bool ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name) const;
     };

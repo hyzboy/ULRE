@@ -367,6 +367,13 @@ namespace hgl::graph
         return valid;
     }
 
+    bool RendererShaderGenAdapter::ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name) const
+    {
+        const bool diff_ok = PrintLegacyMirrorDiff(mci, result, material_name);
+        const bool validate_ok = ConsumeResultReadOnly(result, material_name);
+        return diff_ok && validate_ok;
+    }
+
     bool RendererShaderGenAdapter::ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name) const
     {
         mtl::contract::ShaderGenResult result;
@@ -379,9 +386,6 @@ namespace hgl::graph
             return false;
         }
 
-        const bool diff_ok = PrintLegacyMirrorDiff(mci, result, material_name);
-
-        const bool validate_ok = ConsumeResultReadOnly(result, material_name);
-        return diff_ok && validate_ok;
+        return ConsumePairReadOnly(mci, result, material_name);
     }
 }//namespace hgl::graph

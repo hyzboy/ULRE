@@ -31,6 +31,13 @@
 - Phase 2 并行入口已增加
   - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 新增 contract-aware 私有入口：可显式接收预构建 `ShaderGenResult`
   - 现有 `CreateMaterial` 已改为“先尝试预构建 mirror result，再转发到并行入口”，为后续主路径切换预留开关点
+  - 新增运行时路径模式开关 `ULRE_SHADERGEN_PATH_MODE`：
+    - `legacy-only`：禁用 mirror 校验，仅走旧路径
+    - `mirror-validate`（默认）：mirror 诊断并行执行，失败不阻断
+    - `mirror-preferred`：mirror 预构建/校验失败时中止材质创建（严格模式）
+- Phase 2 回归补齐
+  - 新增 [inc/hgl/graph/module/ShaderGenPathMode.h](inc/hgl/graph/module/ShaderGenPathMode.h) 统一模式解析/命名函数
+  - 新增 [test/ShaderGenPathModeTest.cpp](test/ShaderGenPathModeTest.cpp) 覆盖模式解析回归（已通过）
 - 相关 ShaderGen/测试链路已完成一轮稳定化回归（近邻测试通过），可作为后续 Phase 1 的安全基线
 
 当前阻塞：
@@ -41,7 +48,7 @@
 
 1. 恢复 CMake Tools 构建能力并完成 `ULRE.ShaderGen` 与材质测试回归验证
 2. 将 diff 输出接入可筛选日志通道（按材质/阶段聚合）
-3. 在 `MaterialManager` 增加可配置开关：`mirror-only-validate` / `mirror-preferred` / `legacy-only`
+3. 在 `MaterialManager` 暴露统一配置入口（环境变量 -> 引擎配置对象）以替代直接读取进程环境
 
 ---
 

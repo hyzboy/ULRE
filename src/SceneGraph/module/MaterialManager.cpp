@@ -10,6 +10,7 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
+#include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
@@ -19,10 +20,16 @@
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 #include<cstdio>
+#include<cstdlib>
 
 namespace hgl::graph{
 namespace
 {
+    static ShaderGenPathMode GetShaderGenPathMode()
+    {
+        return ParseShaderGenPathMode(std::getenv("ULRE_SHADERGEN_PATH_MODE"));
+    }
+
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -134,34 +141,48 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     if(!mci)
         return(nullptr);
 
-    mtl::contract::ShaderGenResult mirror_result;
-    const mtl::contract::ShaderGenResult *mirror_ptr=nullptr;
+    const ShaderGenPathMode path_mode = GetShaderGenPathMode();
+    const bool enable_mirror_validation = path_mode != ShaderGenPathMode::LegacyOnly;
+    const bool require_mirror_valid = path_mode == ShaderGenPathMode::MirrorPreferred;
 
-    if(mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(*mci,mirror_result))
+    mtl::contract::ShaderGenResult mirror_result;
+    const mtl::contract::ShaderGenResult *mirror_ptr = nullptr;
+
+    if(enable_mirror_validation && mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(*mci,mirror_result))
     {
-        mirror_ptr=&mirror_result;
+        mirror_ptr = &mirror_result;
     }
-    else
+    else if(enable_mirror_validation)
     {
         std::fprintf(stderr,
-            "[RendererShaderGenAdapter] material=%s failed to prebuild mirror result, fallback to legacy-only validation\n",
-            mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+            "[RendererShaderGenAdapter] material=%s failed to prebuild mirror result (mode=%s)\n",
+            mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+            GetShaderGenPathModeName(path_mode));
     }
 
-    return CreateMaterialWithContract(mtl_name,mci,mirror_ptr);
+    if(require_mirror_valid && !mirror_ptr)
+    {
+        std::fprintf(stderr,
+            "[RendererShaderGenAdapter] material=%s creation aborted: mirror-preferred requires valid mirror result\n",
+            mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+        return nullptr;
+    }
+
+    return CreateMaterialWithContract(mtl_name,mci,mirror_ptr,enable_mirror_validation,require_mirror_valid);
 }
 
-Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenResult *mirror_result)
+Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid)
 {
     if(!mci)
         return(nullptr);
 
+    if(enable_mirror_validation)
     {
         RendererShaderGenAdapter adapter;
 
         bool consume_ok=false;
         if(mirror_result)
-            consume_ok=adapter.ConsumeResultReadOnly(*mirror_result,mtl_name.c_str());
+            consume_ok=adapter.ConsumePairReadOnly(*mci,*mirror_result,mtl_name.c_str());
         else
             consume_ok=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str());
 
@@ -170,6 +191,14 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
             std::fprintf(stderr,
                 "[RendererShaderGenAdapter] material=%s read-only consume detected structural issues\n",
                 mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+
+            if(require_mirror_valid)
+            {
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s creation aborted due to mirror-preferred strict mode\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+                return nullptr;
+            }
         }
     }
 

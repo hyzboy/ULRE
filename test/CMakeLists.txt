@@ -226,6 +226,11 @@ target_include_directories(test_SkyMinimalTemplateConformance
 
 CreateTestProject(15 test_SkyMinimalTemplateConformance)
 
+add_executable(test_ShaderGenPathMode
+    ShaderGenPathModeTest.cpp)
+
+CreateTestProject(16 test_ShaderGenPathMode)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -272,6 +277,9 @@ if(BUILD_TESTING)
 
     add_test(NAME test_SkyMinimalTemplateConformance
              COMMAND test_SkyMinimalTemplateConformance)
+
+    add_test(NAME test_ShaderGenPathMode
+             COMMAND test_ShaderGenPathMode)
 endif()
 
 # 需要时可直接运行：
