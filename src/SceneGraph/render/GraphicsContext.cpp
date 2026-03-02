@@ -123,4 +123,20 @@ namespace hgl::graph
         return device ? device->GetDevice() : VK_NULL_HANDLE;
     }
 
+    void GraphicsContext::ResetShaderGenProfiler()
+    {
+        if (material_manager)
+            material_manager->ResetShaderGenProfiler();
+        else
+            RendererShaderGenAdapter::ResetProfiler();
+    }
+
+    RendererShaderGenAdapter::ProfilerSnapshot GraphicsContext::GetShaderGenProfilerSnapshot() const
+    {
+        if (material_manager)
+            return material_manager->GetShaderGenProfilerSnapshot();
+
+        return RendererShaderGenAdapter::GetProfilerSnapshot();
+    }
+
 } // namespace hgl::graph

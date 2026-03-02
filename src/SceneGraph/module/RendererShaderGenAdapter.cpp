@@ -8,9 +8,25 @@
 #include <vector>
 #include <cstdint>
 #include <cstdio>
+#include <mutex>
 
 namespace hgl::graph
 {
+    namespace
+    {
+        struct ShaderGenProfilerStorage
+        {
+            RendererShaderGenAdapter::ProfilerSnapshot snapshot;
+            std::mutex mutex;
+        };
+
+        ShaderGenProfilerStorage &GetShaderGenProfilerStorage()
+        {
+            static ShaderGenProfilerStorage storage;
+            return storage;
+        }
+    }//namespace
+
     static constexpr uint64_t kFnvOffset = 1469598103934665603ull;
     static constexpr uint64_t kFnvPrime = 1099511628211ull;
 
@@ -233,6 +249,49 @@ namespace hgl::graph
         return out;
     }
 
+    static uint32_t BuildStageComboMask(const std::vector<SpvSig> &sigs)
+    {
+        uint32_t combo = 0;
+        for (const auto &s : sigs)
+            combo |= s.stage_mask;
+        return combo;
+    }
+
+    static void RecordProfilerSample(const bool all_match,
+                                     const bool layout_match,
+                                     const bool vertex_match,
+                                     const bool spv_match,
+                                     const uint32_t legacy_stage_combo,
+                                     const uint32_t mirror_stage_combo,
+                                     const size_t legacy_layout_count,
+                                     const size_t mirror_layout_count,
+                                     const size_t legacy_vertex_count,
+                                     const size_t mirror_vertex_count,
+                                     const size_t legacy_spv_count,
+                                     const size_t mirror_spv_count)
+    {
+        auto &storage = GetShaderGenProfilerStorage();
+        std::lock_guard<std::mutex> lock(storage.mutex);
+
+        auto &snapshot = storage.snapshot;
+        ++snapshot.sample_count;
+
+        if (all_match) ++snapshot.all_match_count;
+        if (layout_match) ++snapshot.layout_match_count;
+        if (vertex_match) ++snapshot.vertex_match_count;
+        if (spv_match) ++snapshot.spv_match_count;
+
+        snapshot.legacy_layout_count_sum += static_cast<uint64_t>(legacy_layout_count);
+        snapshot.mirror_layout_count_sum += static_cast<uint64_t>(mirror_layout_count);
+        snapshot.legacy_vertex_count_sum += static_cast<uint64_t>(legacy_vertex_count);
+        snapshot.mirror_vertex_count_sum += static_cast<uint64_t>(mirror_vertex_count);
+        snapshot.legacy_spv_count_sum += static_cast<uint64_t>(legacy_spv_count);
+        snapshot.mirror_spv_count_sum += static_cast<uint64_t>(mirror_spv_count);
+
+        ++snapshot.legacy_stage_combo_histogram[legacy_stage_combo];
+        ++snapshot.mirror_stage_combo_histogram[mirror_stage_combo];
+    }
+
     static uint64_t HashSpv(std::vector<SpvSig> sigs)
     {
         std::sort(sigs.begin(), sigs.end());
@@ -312,6 +371,21 @@ namespace hgl::graph
 
         const std::string legacy_stage_summary = BuildStageMaskSummary(legacy_spv);
         const std::string mirror_stage_summary = BuildStageMaskSummary(mirror_spv);
+        const uint32_t legacy_stage_combo = BuildStageComboMask(legacy_spv);
+        const uint32_t mirror_stage_combo = BuildStageComboMask(mirror_spv);
+
+        RecordProfilerSample(all_match,
+                     layout_match,
+                     vertex_match,
+                     spv_match,
+                     legacy_stage_combo,
+                     mirror_stage_combo,
+                     legacy_layout.size(),
+                     mirror_layout.size(),
+                     legacy_vertex.size(),
+                     mirror_vertex.size(),
+                     legacy_spv.size(),
+                     mirror_spv.size());
 
         if(detail == RendererShaderGenAdapter::DiffLogDetail::Full)
         {
@@ -344,21 +418,6 @@ namespace hgl::graph
                 mirror_stage_summary.c_str(),
                 BoolToInt(spv_match));
         }
-
-        std::fprintf(stderr,
-            "[RendererShaderGenAdapter][AggregateKV] material=%s legacy_stages=%s mirror_stages=%s layout_match=%d vertex_match=%d spv_match=%d legacy_layout_count=%u mirror_layout_count=%u legacy_vertex_count=%u mirror_vertex_count=%u legacy_spv_count=%u mirror_spv_count=%u\n",
-            mat_name,
-            legacy_stage_summary.c_str(),
-            mirror_stage_summary.c_str(),
-            BoolToInt(layout_match),
-            BoolToInt(vertex_match),
-            BoolToInt(spv_match),
-            static_cast<unsigned>(legacy_layout.size()),
-            static_cast<unsigned>(mirror_layout.size()),
-            static_cast<unsigned>(legacy_vertex.size()),
-            static_cast<unsigned>(mirror_vertex.size()),
-            static_cast<unsigned>(legacy_spv.size()),
-            static_cast<unsigned>(mirror_spv.size()));
 
         std::fprintf(stderr,
             "[RendererShaderGenAdapter][DiffKV] material=%s event=summary match=%d\n",
@@ -440,6 +499,20 @@ namespace hgl::graph
         const bool diff_ok = PrintLegacyMirrorDiff(mci, result, material_name, detail);
         const bool validate_ok = ConsumeResultReadOnly(result, material_name);
         return diff_ok && validate_ok;
+    }
+
+    void RendererShaderGenAdapter::ResetProfiler()
+    {
+        auto &storage = GetShaderGenProfilerStorage();
+        std::lock_guard<std::mutex> lock(storage.mutex);
+        storage.snapshot = ProfilerSnapshot{};
+    }
+
+    RendererShaderGenAdapter::ProfilerSnapshot RendererShaderGenAdapter::GetProfilerSnapshot()
+    {
+        auto &storage = GetShaderGenProfilerStorage();
+        std::lock_guard<std::mutex> lock(storage.mutex);
+        return storage.snapshot;
     }
 
     bool RendererShaderGenAdapter::ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name, DiffLogDetail detail) const

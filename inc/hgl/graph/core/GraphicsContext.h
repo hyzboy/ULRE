@@ -20,6 +20,7 @@
 
 #include <hgl/vk/VKDevice.h>
 #include <hgl/graph/module/ShaderGenPathMode.h>
+#include <hgl/graph/module/RendererShaderGenAdapter.h>
 
 namespace hgl::graph
 {
@@ -123,6 +124,10 @@ namespace hgl::graph
         // 扩展访问（不常用）
         GraphModuleManager *GetModuleManager() { return module_manager; }
         RenderTargetManager *GetRenderTargetManager() { return rt_manager; }
+
+        // ShaderGen Profiler debug entry (collect-only, no default output)
+        void ResetShaderGenProfiler();
+        RendererShaderGenAdapter::ProfilerSnapshot GetShaderGenProfilerSnapshot() const;
     };
 
     // 向后兼容别名

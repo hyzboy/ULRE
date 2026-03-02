@@ -118,6 +118,18 @@ public: //Shader
 
     const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name, const ShaderCreateInfo *);
 
+public: //ShaderGen Profiler (debug entry, collect-only)
+
+    void ResetShaderGenProfiler()
+    {
+        RendererShaderGenAdapter::ResetProfiler();
+    }
+
+    RendererShaderGenAdapter::ProfilerSnapshot GetShaderGenProfilerSnapshot() const
+    {
+        return RendererShaderGenAdapter::GetProfilerSnapshot();
+    }
+
 public: //Material
 
     Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
