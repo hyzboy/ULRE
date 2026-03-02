@@ -14,7 +14,6 @@
 #include <hgl/shadergen/ShaderLogic.h>
 #include <hgl/shadergen/ResourceLayoutGenerator.h>
 #include <hgl/shadergen/BuiltinHelpers.h>
-#include <hgl/type/String.h>
 #include <hgl/graph/mtl/StdMaterial.h>
 #include "common/MFSkyLight.h"  // SKYLIGHT_GLSL_HEADER, GetSkyLightModelImplGLSL
 #include <string>

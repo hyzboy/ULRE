@@ -28,7 +28,6 @@
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/vk/VKPrimitiveType.h>
-#include<hgl/type/String.h>
 #include <string>
 
 namespace hgl::graph::mtl{

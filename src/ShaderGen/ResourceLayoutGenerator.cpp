@@ -4,7 +4,6 @@
 #include<hgl/shadergen/FixedMaterialDef.h>
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKDescriptorSetType.h>
-#include<hgl/type/String.h>
 #include<stdarg.h>
 #include<stdio.h>
 #include<assert.h>

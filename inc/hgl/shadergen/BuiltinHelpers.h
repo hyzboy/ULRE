@@ -1,6 +1,5 @@
 #pragma once
 
-#include <hgl/type/String.h>
 #include <hgl/shadergen/FixedMaterialDef.h>
 #include <string>
 

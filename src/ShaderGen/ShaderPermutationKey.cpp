@@ -1,7 +1,6 @@
 /// ShaderPermutationKey.cpp — 排列 key → GLSL #define 映射实现
 
 #include<hgl/shadergen/FixedMaterialDef.h>
-#include<hgl/type/String.h>
 #include<stdio.h>
 #include <string>
 

@@ -13,7 +13,6 @@
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/vk/VKDeviceAttribute.h>
-#include <hgl/type/String.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
