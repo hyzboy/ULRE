@@ -52,17 +52,13 @@ enum class DescriptorSetType
 
     World,              ///<场景世界数据，基本不怎么刷新的的数据(如天空球、太阳/月亮等)
 
-    Static,             ///<静态数据，基本上是不会变的
-
     Global,             ///<全局参数，不确定什么时候更新，但一般不怎么更新(如太阳光), 不会在RenderCollector中处理刷新
 
     PerFrame,           ///<固定每帧刷新一次(如摄像机位置等)
 
     PerMaterial,        ///<材质参数
 
-    Instance,           ///<手动Instance绘制用数据
-
-    ENUM_CLASS_RANGE(Unknow,Instance)
+    ENUM_CLASS_RANGE(Unknow,PerMaterial)
 };//
 
 constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
@@ -77,11 +73,9 @@ constexpr const char *DescriptSetTypeName[]=
 
     "World",
 
-    "Static",
     "Global",
     "PerFrame",
-    "PerMaterial",
-    "Instance"
+    "PerMaterial"
 };
 
 inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
