@@ -42,18 +42,6 @@ struct ResourceDependency {
     const char* resource_type;  // 类型提示：buffer/uniform/sampler/image
 };
 
-/**
- * 辅助函数依赖
- * 业务逻辑可能调用框架提供的高级函数（如光照计算、特效等）
- * 
- * 注意：基础数据（MaterialInstance 等）框架会自动提取并作为参数传入，
- *      不需要在这里声明依赖，也不需要在业务代码中手动调用 GetMI() 等
- */
-struct HelperFunctionDependency {
-    const char* name;           // 函数名，如 "ComputeLighting", "ApplyFog"
-    const char* category;       // 类别：transform/lighting/output/utility
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 纯业务逻辑块（不包含资源声明）
 // ─────────────────────────────────────────────────────────────────────────────

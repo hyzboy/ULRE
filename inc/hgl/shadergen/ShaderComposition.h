@@ -267,26 +267,6 @@ struct ShaderComposeResult {
 // 光照计算委托（框架根据 ShaderPermutationKey 生成）
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * 光照计算段（由框架自动生成，不需用户手写）
- *
- * 输入：
- *   - normal:  世界坐标法线
- *   - albedo:  表面基础色
- *   - view_dir: 指向观察者的方向
- *   - roughness/metallic: PBR 参数（若使用 PBR 模式）
- *
- * 输出：
- *   - diffuse:  漫反射颜色
- *   - specular: 高光颜色
- *
- * 典型调用（框架自动插入）：
- *   LightingOutput lighting = ComputeLighting(normal, albedo, view_dir);
- */
-struct LightingShaderSegment {
-    const char *code;  ///< 光照计算函数（由框架根据 ShaderPermutationKey 填入）
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 合成描述符（材质开发者定义）
 // ─────────────────────────────────────────────────────────────────────────────
