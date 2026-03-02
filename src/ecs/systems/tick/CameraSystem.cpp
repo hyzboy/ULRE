@@ -293,8 +293,13 @@ namespace hgl::ecs
 
     void CameraSystem::SyncCameraUBO()
     {
-        if (camera_ubo)
-            camera_ubo->MarkDirty();
+        if (!camera_ubo)
+            return;
+
+        if (camera_info)
+            camera_ubo->Update(*camera_info);
+
+        camera_ubo->MarkDirty();
     }
 
     void CameraSystem::Update(float deltaTime)
@@ -303,6 +308,13 @@ namespace hgl::ecs
             return;
 
         EnsureCameraResources();
+
+        if (!viewport_info)
+        {
+            auto *rt = context->GetRenderTarget();
+            if (rt)
+                viewport_info = rt->GetViewportInfo();
+        }
 
         // 获取InputSystem（首次调用时查找）
         if (!input_system)
@@ -342,13 +354,16 @@ namespace hgl::ecs
             // 更新位置和目标
             UpdateTransform(camera_comp.get());
 
-            const bool was_dirty = camera_comp->matrix_dirty;
-
             // 更新矩阵
             UpdateMatrices(camera_comp.get());
 
-            if (was_dirty && camera_comp.get() == main_camera && camera_ubo)
+            // Always commit main camera UBO once per frame to guarantee
+            // camera data availability on render-only paths.
+            if (camera_comp.get() == main_camera && camera_ubo && camera_comp->camera_info)
+            {
+                camera_ubo->Update(*camera_comp->camera_info);
                 camera_ubo->MarkDirty();
+            }
 
             // 上传到GPU
             UploadToGPU(camera_comp.get());
@@ -544,9 +559,13 @@ namespace hgl::ecs
         if (!camera_info && camera_ubo)
             camera_info = camera_ubo->Data();
 
+        if (!viewport_info && camera->viewport_info)
+            viewport_info = camera->viewport_info;
+
         camera->camera_data = &camera_data;
         camera->camera_info = camera_info;
-        camera->viewport_info = viewport_info;
+        if (viewport_info)
+            camera->viewport_info = viewport_info;
         camera->camera_ubo = camera_ubo;
     }
 

@@ -5,19 +5,16 @@
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
-#include<hgl/ecs/core/RenderItem.h>
-#include<hgl/ecs/core/Entity.h>
-#include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKMaterial.h>
-#include<hgl/vk/VKTexture.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
+#include<cstdlib>
 
 namespace hgl::ecs
 {
@@ -31,6 +28,12 @@ namespace hgl::ecs
         AddDependency<CameraSystem>();
 
         RegisterDefaultSources();
+
+        if (const char *env = std::getenv("HGL_ECS_DISABLE_LEGACY_BINDING_FALLBACK"))
+        {
+            if (*env == '1' || *env == 'y' || *env == 'Y' || *env == 't' || *env == 'T')
+                enable_legacy_material_binding_fallback = false;
+        }
     }
 
     RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
@@ -135,13 +138,25 @@ namespace hgl::ecs
 
     void RenderDescriptorBindingSystem::Update(float /*deltaTime*/)
     {
+        SyncBindingsForCurrentCommand(true);
+    }
+
+    void RenderDescriptorBindingSystem::Render(graph::RenderCmdBuffer * /*cmd*/, float /*deltaTime*/)
+    {
+        // Critical for RenderDrawOnly path: Update() is not called there.
+        SyncBindingsForCurrentCommand(false);
+    }
+
+    void RenderDescriptorBindingSystem::SyncBindingsForCurrentCommand(bool run_contract_diagnostics)
+    {
         if (!context)
             return;
 
-        ValidateContractsSideChannel();
+        if (run_contract_diagnostics)
+            ValidateContractsSideChannel();
 
-        auto *cmd = context->GetCurrentRenderCmd();
-        if (!cmd)
+        auto *active_cmd = context->GetCurrentRenderCmd();
+        if (!active_cmd)
             return;
 
         EnsureViewBinding();
@@ -149,11 +164,11 @@ namespace hgl::ecs
         for (const auto &source : binding_sources)
         {
             if (source)
-                source(context, cmd, view_desc_binding);
+                source(context, active_cmd, view_desc_binding);
         }
 
         if (view_desc_binding)
-            cmd->SetDescriptorBinding(view_desc_binding);
+            active_cmd->SetDescriptorBinding(view_desc_binding);
 
         ApplyContractBindings();
     }
@@ -223,43 +238,6 @@ namespace hgl::ecs
         return sky_ubo->GetGPUBuffer();
     }
 
-    bool RenderDescriptorBindingSystem::ResolveBatchTextureSampler(const MaterialBatch *batch,
-                                                                   graph::Texture2D *&out_texture,
-                                                                   graph::Sampler *&out_sampler) const
-    {
-        out_texture = nullptr;
-        out_sampler = nullptr;
-
-        if (!batch)
-            return false;
-
-        for (auto *item : batch->items)
-        {
-            if (!item)
-                continue;
-
-            Entity *entity = item->GetEntity();
-            if (!entity)
-                continue;
-
-            auto quad = entity->GetComponent<QuadComponent>();
-            if (!quad)
-                continue;
-
-            auto *texture = quad->GetTexture();
-            auto *sampler = quad->GetSampler();
-
-            if (!texture)
-                continue;
-
-            out_texture = texture;
-            out_sampler = sampler;
-            return true;
-        }
-
-        return false;
-    }
-
     void RenderDescriptorBindingSystem::ApplyContractBindings()
     {
         if (!context)
@@ -273,8 +251,6 @@ namespace hgl::ecs
 
         std::unordered_set<graph::Material *> l2w_bound_materials;
         std::unordered_set<graph::Material *> mi_bound_materials;
-        std::unordered_set<graph::Material *> texture_bound_materials;
-        std::unordered_set<graph::Material *> sampler_bound_materials;
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -283,9 +259,6 @@ namespace hgl::ecs
                 continue;
 
             const MaterialBatch *batch = pair.second.get();
-            graph::Texture2D *batch_texture = nullptr;
-            graph::Sampler *batch_sampler = nullptr;
-            const bool has_batch_texture = ResolveBatchTextureSampler(batch, batch_texture, batch_sampler);
 
             const auto &contract = material->GetBindingContract();
 
@@ -340,28 +313,8 @@ namespace hgl::ecs
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
-                {
-                    if (has_batch_texture
-                     && req.name && *req.name
-                     && !texture_bound_materials.contains(material))
-                    {
-                        material->BindTexture(req.set_type, req.name, batch_texture);
-                        texture_bound_materials.insert(material);
-                    }
-                    break;
-                }
                 case graph::mtl::DescriptorSemantic::MaterialSampler:
-                {
-                    if (has_batch_texture
-                     && batch_sampler
-                     && req.name && *req.name
-                     && !sampler_bound_materials.contains(material))
-                    {
-                        material->BindTextureSampler(req.set_type, req.name, batch_texture, batch_sampler);
-                        sampler_bound_materials.insert(material);
-                    }
                     break;
-                }
                 default:
                     break;
                 }

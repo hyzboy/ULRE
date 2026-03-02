@@ -5,10 +5,12 @@
 #include<hgl/ecs/components/QuadComponent.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/SamplerName.h>
+#include<hgl/graph/mesh/Primitive.h>
+#include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
-
 
 namespace hgl::ecs
 {
@@ -80,8 +82,9 @@ namespace hgl::ecs
             return false;
 
         auto* material_manager = graphics_context->GetMaterialManager();
+        auto* primitive_manager = graphics_context->GetPrimitiveManager();
         auto* texture_manager = graphics_context->GetTextureManager();
-        if (!material_manager || !texture_manager)
+        if (!material_manager || !primitive_manager || !texture_manager)
             return false;
 
         // Load texture
@@ -104,11 +107,59 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
-        // Bind texture to material (keep explicit binding for compatibility).
-        if (!mi->GetMaterial()->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
-                                                   graph::mtl::SamplerName::BaseColor,
-                                                   texture,
-                                                   shared_sampler))
+        auto *render_context = world->GetRenderContext();
+        auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
+        auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        if (!render_pass)
+            return false;
+
+        auto *pipeline = render_pass->CreatePipeline(mi, graph::InlinePipeline::Solid3D);
+        if (!pipeline)
+            return false;
+
+        graph::Primitive *current_primitive = quad->GetPrimitive();
+        graph::Geometry *geometry = current_primitive ? current_primitive->GetGeometry() : nullptr;
+        if (!geometry)
+        {
+            auto *shared_primitive = QuadResourcePrepareSystem::GetSharedPrimitive();
+            geometry = shared_primitive ? shared_primitive->GetGeometry() : nullptr;
+        }
+
+        if (!geometry)
+            return false;
+
+        graph::Primitive *shared_primitive = QuadResourcePrepareSystem::GetSharedPrimitive();
+        graph::Primitive *quad_primitive = nullptr;
+
+        if (current_primitive
+         && current_primitive->GetMaterial() == mi->GetMaterial())
+        {
+            current_primitive->UpdatePipeline(pipeline);
+            if (!current_primitive->ChangeMaterialInstance(mi))
+                return false;
+
+            quad_primitive = current_primitive;
+        }
+        else
+        {
+            quad_primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
+            if (!quad_primitive)
+                return false;
+
+            if (current_primitive && current_primitive != shared_primitive)
+                primitive_manager->Release(current_primitive);
+        }
+
+        graph::Material *material = mi->GetMaterial();
+        if (!material)
+        {
+            return false;
+        }
+
+        if (!material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
+                                          graph::mtl::SamplerName::BaseColor,
+                                          texture,
+                                          shared_sampler))
         {
             return false;
         }
@@ -118,6 +169,7 @@ namespace hgl::ecs
         mi->WriteMIData(texture_size);
 
         // Update quad component
+        quad->SetPrimitive(quad_primitive);
         quad->SetOverrideMaterial(mi);
         quad->SetTextureObjects(texture, shared_sampler);
         quad->SetAppliedTexturePath(texture_path);

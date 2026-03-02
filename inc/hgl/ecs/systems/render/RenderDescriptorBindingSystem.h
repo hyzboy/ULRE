@@ -13,8 +13,6 @@ namespace hgl::graph
     class Material;
     class IRenderTarget;
     class IGPUBuffer;
-    class Texture2D;
-    class Sampler;
 }
 
 namespace hgl::ecs
@@ -69,6 +67,7 @@ namespace hgl::ecs
         ~RenderDescriptorBindingSystem() override;
 
         void Update(float deltaTime) override;
+        void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
         void RegisterBindingSource(BindingSource source);
         bool GetContractDiagnosticsStats(uint32_t &materials_checked,
                                         uint32_t &materials_unresolved,
@@ -82,8 +81,8 @@ namespace hgl::ecs
 
         void RegisterDefaultSources();
         void EnsureViewBinding();
+        void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);
         void ApplyContractBindings();
-        bool ResolveBatchTextureSampler(const class MaterialBatch *batch,graph::Texture2D *&out_texture,graph::Sampler *&out_sampler) const;
         const graph::IGPUBuffer *ResolveViewportUBO(graph::IRenderTarget *rt,const char *preferred_name) const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();

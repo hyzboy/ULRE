@@ -10,6 +10,8 @@
 // Old Cull/Sort/Build/Finalize/Submit systems replaced by PrimitiveRenderPipelineGroup
 #include<hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include<hgl/graph/CameraInfo.h>
+#include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -33,9 +35,37 @@ namespace hgl::ecs
             const graph::CameraInfo* parent_camera_info = nullptr;
             graph::VulkanDevice* parent_device_from_system = parent_context->GetGPUDevice();
 
+            std::shared_ptr<CameraSystem> parent_camera_system;
+            std::shared_ptr<CameraSystem> child_camera_system;
+
+            parent_camera_system = parent_context->GetSystem<CameraSystem>();
+            child_camera_system = child_context->GetSystem<CameraSystem>();
+
             if (auto parent_collect = parent_context->GetSystem<RenderPrimitiveCollectSystem>())
             {
                 parent_camera_info = parent_collect->GetCameraInfo();
+            }
+
+            if (!parent_camera_info && parent_camera_system)
+                parent_camera_info = parent_camera_system->GetCameraInfo();
+
+            if (child_camera_system)
+            {
+                child_camera_system->SetRenderContext(parent_context->GetRenderContext());
+
+                if (parent_camera_system && parent_camera_system->GetViewportInfo())
+                    child_camera_system->SetViewportInfo(parent_camera_system->GetViewportInfo());
+                else if (auto *rt = parent_context->GetRenderTarget())
+                    child_camera_system->SetViewportInfo(rt->GetViewportInfo());
+
+                if (parent_camera_info)
+                {
+                    if (auto *child_camera_ubo = child_camera_system->GetCameraUBO())
+                    {
+                        child_camera_ubo->Update(*parent_camera_info);
+                        child_camera_ubo->MarkDirty();
+                    }
+                }
             }
 
             if (auto child_collect = child_context->GetSystem<RenderPrimitiveCollectSystem>())
