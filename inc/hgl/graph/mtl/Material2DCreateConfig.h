@@ -43,7 +43,7 @@ public:
         return position_format <=> cfg.position_format;
     }
 
-    const AnsiString ToHashString() override;
+    std::string ToHashStdString() override;
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
 DECLARE_MATERIAL_CREATOR(VertexColor2D,         const Material2DCreateConfig)

@@ -4,13 +4,7 @@
 #include<string>
 
 namespace hgl::graph::mtl{
-
-static const char *AsCStr(const AnsiString &text)
-{
-    return text.c_str()?text.c_str():"";
-}
-
-const AnsiString MaterialCreateConfig::ToHashString()
+std::string MaterialCreateConfig::ToHashStdString()
 {
     std::string hash;
     hash.reserve(128);
@@ -62,12 +56,12 @@ const AnsiString MaterialCreateConfig::ToHashString()
         }
     }
 
-    return AnsiString(hash.c_str());
+    return hash;
 }
 
-const AnsiString Material2DCreateConfig::ToHashString()
+std::string Material2DCreateConfig::ToHashStdString()
 {
-    std::string hash=AsCStr(MaterialCreateConfig::ToHashString());
+    std::string hash=MaterialCreateConfig::ToHashStdString();
 
     hash+=GetCoordinateSystem2DName(coordinate_system);
 
@@ -77,12 +71,12 @@ const AnsiString Material2DCreateConfig::ToHashString()
     hash+="_";
     hash+=GetVertexAttribName(&position_format);
 
-    return AnsiString(hash.c_str());
+    return hash;
 }
 
-const AnsiString Material3DCreateConfig::ToHashString()
+std::string Material3DCreateConfig::ToHashStdString()
 {
-    std::string hash=AsCStr(MaterialCreateConfig::ToHashString());
+    std::string hash=MaterialCreateConfig::ToHashStdString();
 
     if(camera)
         hash+="_Camera";
@@ -100,6 +94,7 @@ const AnsiString Material3DCreateConfig::ToHashString()
     hash+="_";
     hash+=GetVertexAttribName(&position_format);
 
-    return AnsiString(hash.c_str());
+    return hash;
 }
+
 }//namespace hgl::graph::mtl

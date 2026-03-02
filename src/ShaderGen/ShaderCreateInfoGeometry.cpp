@@ -42,7 +42,7 @@ namespace hgl
             return count;
         }
 
-        int ShaderCreateInfoGeometry::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
+        int ShaderCreateInfoGeometry::AddOutput(const SVType &type,const std::string &name,Interpolation inter)
         {
             ShaderVariable sv;
 
@@ -54,7 +54,7 @@ namespace hgl
             return gsdi.AddOutput(sv);
         }
 
-        void ShaderCreateInfoGeometry::GetOutputStrcutString(AnsiString &str)
+        void ShaderCreateInfoGeometry::GetOutputStrcutString(std::string &str)
         {
             gsdi.GetOutput().ToString(str);
         }
@@ -63,11 +63,11 @@ namespace hgl
         {
             std::string block;
             block += "layout(";
-            block += input_prim.c_str()?input_prim.c_str():"";
+            block += input_prim;
             block += ") in;\n";
 
             block += "layout(";
-            block += output_prim.c_str()?output_prim.c_str():"";
+            block += output_prim;
             block += ", max_vertices = ";
             const std::string max_vertices_str=std::to_string(max_vertices);
             block += max_vertices_str;

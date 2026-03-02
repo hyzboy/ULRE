@@ -737,7 +737,7 @@ MaterialCreateInfo *CompileFixedMaterial(
 
                 // 自定义结构体（要求 entry.struct_name 在其它地方已注册完整代码）
                 if (!mci->AddUBO(stage_bits, set_type,
-                                 AnsiString(entry.struct_name), AnsiString(entry.name)))
+                                 entry.struct_name, entry.name))
                 {
                     delete mci;
                     return nullptr;
@@ -778,7 +778,7 @@ MaterialCreateInfo *CompileFixedMaterial(
                 }
 
                 if (!mci->AddSSBO(stage_bits, set_type,
-                                  AnsiString(entry.struct_name), AnsiString(entry.name)))
+                                  entry.struct_name, entry.name))
                 {
                     delete mci;
                     return nullptr;
@@ -806,7 +806,7 @@ MaterialCreateInfo *CompileFixedMaterial(
                     tt = TextureType::Texture2D;  // fallback
 
                 mci->AddTexture(ShaderStage(stage_bits), set_type, tt,
-                               AnsiString(entry.name));
+                               entry.name);
             }
             break;
 
@@ -831,7 +831,7 @@ MaterialCreateInfo *CompileFixedMaterial(
                     st = SamplerType::Sampler2D;
                 }
 
-                mci->AddTextureSampler(ShaderStage(stage_bits), set_type, st, AnsiString(entry.name));
+                mci->AddTextureSampler(ShaderStage(stage_bits), set_type, st, entry.name);
             }
             break;
         }
@@ -888,7 +888,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
     {
         mci->SetMaterialInstance(
-            AnsiString(def.mi_glsl_codes),
+            def.mi_glsl_codes,
             def.mi_struct_bytes,
             mi_stage_bits);
     }

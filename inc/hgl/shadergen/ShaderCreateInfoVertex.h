@@ -13,7 +13,7 @@ namespace hgl::graph
         bool ProcInput(ShaderCreateInfo *) override;
 
         bool IsEmptyOutput()const override{return vsdi.IsEmptyOutput();}
-        void GetOutputStrcutString(AnsiString &str) override;
+        void GetOutputStrcutString(std::string &str) override;
 
     public:
 
@@ -27,13 +27,21 @@ namespace hgl::graph
         ~ShaderCreateInfoVertex()override=default;
 
         int AddInput(VIAList &);
-        int AddInput(const VAType &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
-        int AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const VAType &type,const std::string &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const char *type,const std::string &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const VAType &type,const char *name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic)
+        {
+            return AddInput(type,std::string(name?name:""),input_rate,group);
+        }
 
         int hasInput(const char *);
 
         int AddOutput(SVList &);
-        int AddOutput(const SVType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
+        int AddOutput(const SVType &type,const std::string &name,Interpolation inter=Interpolation::Smooth);
+        int AddOutput(const SVType &type,const char *name,Interpolation inter=Interpolation::Smooth)
+        {
+            return AddOutput(type,std::string(name?name:""),inter);
+        }
         void AddMaterialInstanceOutput() override;
 
         void AddAssignTransform();

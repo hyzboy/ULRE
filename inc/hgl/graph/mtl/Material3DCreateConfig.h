@@ -61,7 +61,7 @@ public:
         return position_format <=> cfg.position_format;
     }
 
-    const AnsiString ToHashString() override;
+    std::string ToHashStdString() override;
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
 DECLARE_MATERIAL_CREATOR(PureColor3D,       Material3DCreateConfig)

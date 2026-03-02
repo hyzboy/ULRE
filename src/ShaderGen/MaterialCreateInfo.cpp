@@ -16,15 +16,9 @@ static bool HasShaderStageBit(const uint32_t flag_bits,const ShaderStage stage)
     return (flag_bits & uint32_t(stage)) != 0;
 }
 
-static AnsiString ToAnsiString(const uint32_t value)
-{
-    const std::string text=std::to_string(value);
-    return AnsiString(text.c_str());
-}
-
 template<typename Func>
 static void ForEachShaderByStage(
-    UnorderedMap<ShaderStage,ShaderCreateInfo *> &shader_map,
+    ShaderCreateInfoMap &shader_map,
     const uint32_t stage_bits,
     Func &&func)
 {
@@ -37,7 +31,7 @@ static void ForEachShaderByStage(
 
 template<typename Func>
 static bool ExecuteOnShadersByStage(
-    UnorderedMap<ShaderStage,ShaderCreateInfo *> &shader_map,
+    ShaderCreateInfoMap &shader_map,
     const uint32_t stage_bits,
     Func &&func)
 {
@@ -59,14 +53,14 @@ static const UBODescriptor *ResolveUBODescriptor(
     MaterialDescriptorInfo &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
-    const AnsiString &struct_name,
-    const AnsiString &name)
+    const std::string &struct_name,
+    const std::string &name)
 {
     UBODescriptor *ubo=mdi.GetUBO(name);
 
     if(ubo)
     {
-        if(ubo->type!=struct_name)
+        if(std::strcmp(ubo->type.c_str()?ubo->type.c_str():"",struct_name.c_str())!=0)
             return nullptr;
 
         ubo->stage_flag|=(uint32_t)flag_bit;
@@ -74,8 +68,8 @@ static const UBODescriptor *ResolveUBODescriptor(
     }
 
     ubo=new UBODescriptor();
-    ubo->type=struct_name;
-    hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
+    ubo->type=struct_name.c_str();
+    hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
     return mdi.AddUBO((uint32_t)flag_bit,set_type,ubo);
 }
@@ -84,14 +78,14 @@ static const SSBODescriptor *ResolveSSBODescriptor(
     MaterialDescriptorInfo &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
-    const AnsiString &struct_name,
-    const AnsiString &name)
+    const std::string &struct_name,
+    const std::string &name)
 {
     SSBODescriptor *ssbo=mdi.GetSSBO(name);
 
     if(ssbo)
     {
-        if(ssbo->type!=struct_name)
+        if(std::strcmp(ssbo->type.c_str()?ssbo->type.c_str():"",struct_name.c_str())!=0)
             return nullptr;
 
         ssbo->stage_flag|=(uint32_t)flag_bit;
@@ -99,8 +93,8 @@ static const SSBODescriptor *ResolveSSBODescriptor(
     }
 
     ssbo=new SSBODescriptor();
-    ssbo->type=struct_name;
-    hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
+    ssbo->type=struct_name.c_str();
+    hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
     return mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
 }
@@ -109,14 +103,14 @@ static const TextureDescriptor *ResolveTextureDescriptor(
     MaterialDescriptorInfo &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
-    const AnsiString &type_name,
-    const AnsiString &name)
+    const std::string &type_name,
+    const std::string &name)
 {
     TextureDescriptor *texture=mdi.GetTexture(name);
 
     if(texture)
     {
-        if(texture->type!=type_name)
+        if(std::strcmp(texture->type.c_str()?texture->type.c_str():"",type_name.c_str())!=0)
             return nullptr;
 
         texture->stage_flag|=(uint32_t)flag_bit;
@@ -124,8 +118,8 @@ static const TextureDescriptor *ResolveTextureDescriptor(
     }
 
     texture=new TextureDescriptor();
-    texture->type=type_name;
-    hgl::strcpy(texture->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
+    texture->type=type_name.c_str();
+    hgl::strcpy(texture->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
     return mdi.AddTexture((uint32_t)flag_bit,set_type,texture);
 }
@@ -134,14 +128,14 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     MaterialDescriptorInfo &mdi,
     const ShaderStage flag_bit,
     const DescriptorSetType set_type,
-    const AnsiString &type_name,
-    const AnsiString &name)
+    const std::string &type_name,
+    const std::string &name)
 {
     TextureSamplerDescriptor *image_sampler=mdi.GetTextureSampler(name);
 
     if(image_sampler)
     {
-        if(image_sampler->type!=type_name)
+        if(std::strcmp(image_sampler->type.c_str()?image_sampler->type.c_str():"",type_name.c_str())!=0)
             return nullptr;
 
         image_sampler->stage_flag|=(uint32_t)flag_bit;
@@ -149,8 +143,8 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     }
 
     image_sampler=new TextureSamplerDescriptor();
-    image_sampler->type=type_name;
-    hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
+    image_sampler->type=type_name.c_str();
+    hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
     return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
 }
@@ -197,15 +191,15 @@ MaterialCreateInfo::~MaterialCreateInfo()
     shader_map.Clear();
 }
 
-bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
+bool MaterialCreateInfo::AddStruct(const std::string &struct_name,const std::string &codes)
 {
-    if(struct_name.IsEmpty()||codes.IsEmpty())
+    if(struct_name.empty()||codes.empty())
         return(false);
 
     return mdi.AddStruct(struct_name,codes);
 }
 
-bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -225,7 +219,7 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
     return sc->AddUBO(set_type,ubo);
 }
 
-bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
@@ -247,7 +241,7 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
-bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -267,7 +261,7 @@ bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetT
     return sc->AddSSBO(set_type,ssbo);
 }
 
-bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
@@ -289,7 +283,7 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBuff
     return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
-bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name)
+bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -301,7 +295,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorS
     if(!sc)
         return(false);
 
-    const AnsiString st_name(GetTextureTypeName(tt));        //这里可能需要根据纹理类型，在前面增加i/u的前缀
+    const std::string st_name(GetTextureTypeName(tt));        //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     const TextureDescriptor *texture=ResolveTextureDescriptor(mdi,flag_bit,set_type,st_name,name);
     if(!texture)
@@ -310,7 +304,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorS
     return sc->AddTexture(set_type,texture);
 }
 
-bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
+bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -322,7 +316,7 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Desc
     if(!sc)
         return(false);
 
-    const AnsiString st_name(GetSamplerTypeName(st));      //这里可能需要根据纹理类型，在前面增加i/u的前缀
+    const std::string st_name(GetSamplerTypeName(st));      //这里可能需要根据纹理类型，在前面增加i/u的前缀
 
     const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(mdi,flag_bit,set_type,st_name,name);
     if(!image_sampler)
@@ -338,13 +332,13 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Desc
 * @param shader_stage_flag_bits   具体使用材质实例的shader
 * @return 是否设置成功
 */
-bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
+bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
 {
     if(mi_data_bytes>0)return(false);           //已经有数据了
 
     if(shader_stage_flag_bits==0)return(false);
 
-    if(data_bytes>0&&glsl_codes.Length()<4)return(false);
+    if(data_bytes>0&&glsl_codes.size()<4)return(false);
 
     mi_data_bytes=data_bytes;
 
@@ -369,7 +363,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     mdi.AddUBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,mi_ubo);
 #endif
 
-    const AnsiString MI_MAX_COUNT_STRING=ToAnsiString(mi_max_count);
+    const std::string MI_MAX_COUNT_STRING=std::to_string(mi_max_count);
 
     ForEachShaderByStage(shader_map,shader_stage_flag_bits,
         [&](ShaderCreateInfo &shader,ShaderStage)
@@ -408,7 +402,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     mdi.AddUBO(shader_stage_flag_bits,SBS_LocalToWorld.set_type,l2w_ubo);
 #endif
 
-    const AnsiString L2W_MAX_COUNT_STRING=ToAnsiString(l2w_max_count);
+    const std::string L2W_MAX_COUNT_STRING=std::to_string(l2w_max_count);
 
     ForEachShaderByStage(shader_map,shader_stage_flag_bits,
         [&](ShaderCreateInfo &shader,ShaderStage)

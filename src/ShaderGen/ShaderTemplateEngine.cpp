@@ -58,11 +58,11 @@ ShaderTemplate *ShaderTemplateEngine::LoadTemplate(const std::string &template_p
 {
 
     // 先查缓存
-    if (template_cache.ContainsKey(template_path))
+    if (template_cache.contains(template_path))
     {
-        ShaderTemplate **cached = template_cache.GetValuePointer(template_path);
-        if (cached && *cached)
-            return *cached;
+        auto iter = template_cache.find(template_path);
+        if (iter != template_cache.end() && iter->second)
+            return iter->second;
     }
 
     // 从文件读取
@@ -84,11 +84,11 @@ ShaderRecipe *ShaderTemplateEngine::LoadRecipe(const std::string &recipe_path)
 {
 
     // 先查缓存
-    if (recipe_cache.ContainsKey(recipe_path))
+    if (recipe_cache.contains(recipe_path))
     {
-        ShaderRecipe **cached = recipe_cache.GetValuePointer(recipe_path);
-        if (cached && *cached)
-            return *cached;
+        auto iter = recipe_cache.find(recipe_path);
+        if (iter != recipe_cache.end() && iter->second)
+            return iter->second;
     }
 
     // 从文件读取
@@ -127,12 +127,12 @@ void ShaderTemplateEngine::Reset()
     for (auto [path, tmpl] : template_cache)
         if (tmpl)
             delete tmpl;
-    template_cache.Clear();
+    template_cache.clear();
 
     for (auto [path, recipe] : recipe_cache)
         if (recipe)
             delete recipe;
-    recipe_cache.Clear();
+    recipe_cache.clear();
 }
 
 }  // namespace hgl::graph::mtl

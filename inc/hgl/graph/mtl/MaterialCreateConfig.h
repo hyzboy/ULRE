@@ -121,6 +121,6 @@ public:
         return shader_stage_flag_bit<=>cfg.shader_stage_flag_bit;
     }
 
-    virtual const AnsiString ToHashString();
+    virtual std::string ToHashStdString();
 };//struct MaterialCreateConfig
 }//namespace hgl::graph::mtl

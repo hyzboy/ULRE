@@ -8,9 +8,10 @@ ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
     mem_zero(push_constant);
 }
 
-void ShaderDescriptorInfo::AddStruct(const AnsiString &name)
+ShaderDescriptorInfo::~ShaderDescriptorInfo()
 {
-    struct_list.AddUnique(name);
+    for(auto *p:const_value_list)
+        delete p;
 }
 
 bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ubo)
@@ -18,9 +19,9 @@ bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ub
     if(!ubo)
         return(false);
 
-    struct_list.AddUnique(ubo->type);
+    struct_list.emplace(ubo->type.c_str()?ubo->type.c_str():"");
 
-    ubo_list.Add(ubo);
+    ubo_list.push_back(ubo);
     return true;
 }
 
@@ -29,9 +30,9 @@ bool ShaderDescriptorInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *
     if(!ssbo)
         return(false);
 
-    struct_list.AddUnique(ssbo->type);
+    struct_list.emplace(ssbo->type.c_str()?ssbo->type.c_str():"");
 
-    ssbo_list.Add(ssbo);
+    ssbo_list.push_back(ssbo);
     return true;
 }
 
@@ -40,7 +41,7 @@ bool ShaderDescriptorInfo::AddTexture(DescriptorSetType type,const TextureDescri
     if(!sd)
         return(false);
 
-    texture_list.Add(sd);
+    texture_list.push_back(sd);
     return true;
 }
 
@@ -49,7 +50,7 @@ bool ShaderDescriptorInfo::AddTextureSampler(DescriptorSetType type,const Textur
     if(!sampler)
         return(false);
 
-    texture_sampler_list.Add(sampler);
+    texture_sampler_list.push_back(sampler);
     return true;
 }
 
@@ -61,30 +62,37 @@ bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
         if(p->name.Comp(sd->name)==0)
             return(false);
 
-    sd->constant_id=const_value_list.Add(sd);
+    sd->constant_id=static_cast<int>(const_value_list.size());
+    const_value_list.push_back(sd);
     return(true);
 }
 
-bool VertexShaderDescriptorInfo::AddSubpassInput(const AnsiString &name,uint8_t index)
+VertexShaderDescriptorInfo::~VertexShaderDescriptorInfo()
+{
+    for(auto *p:subpass_input)
+        delete p;
+}
+
+bool VertexShaderDescriptorInfo::AddSubpassInput(const std::string &name,uint8_t index)
 {
     for(auto *si:subpass_input)
     {
         if(si->input_attachment_index==index)return(false);
-        if(si->name.Comp(name))return(false);
+        if(si->name.Comp(name.c_str())==0)return(false);
     }
 
     SubpassInputDescriptor *ssi=new SubpassInputDescriptor;
 
-    ssi->name=name;
+    ssi->name=name.c_str();
     ssi->input_attachment_index=index;
 
-    subpass_input.Add(ssi);
+    subpass_input.push_back(ssi);
     return(true);
 }
 
-void ShaderDescriptorInfo::SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size)
+void ShaderDescriptorInfo::SetPushConstant(const std::string &name,uint8_t offset,uint8_t size)
 {
-    push_constant.name  =name;
+    push_constant.name  =name.c_str();
     push_constant.offset=offset;
     push_constant.size  =size;
 }

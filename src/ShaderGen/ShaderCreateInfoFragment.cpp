@@ -21,7 +21,7 @@ int ShaderCreateInfoFragment::AddOutput(VIAList &via_list)
     return count;
 }
 
-int ShaderCreateInfoFragment::AddOutput(const VAType &type,const AnsiString &name,Interpolation inter)
+int ShaderCreateInfoFragment::AddOutput(const VAType &type,const std::string &name,Interpolation inter)
 {
     VertexInputAttribute via;
 
@@ -34,11 +34,11 @@ int ShaderCreateInfoFragment::AddOutput(const VAType &type,const AnsiString &nam
     return fsdi.AddOutput(via);
 }
 
-int ShaderCreateInfoFragment::AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter)
+int ShaderCreateInfoFragment::AddOutput(const char *type,const std::string &name,Interpolation inter)
 {
     VAType vat;
 
-    if(name.IsEmpty())
+    if(name.empty())
         return -1;
 
     if(!ParseVertexAttribType(&vat,type))

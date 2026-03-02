@@ -172,7 +172,9 @@ namespace hgl
 
             if(!result)
             {
-                GLogError("Compile shader failed, error info: "+AnsiString(spv->log));
+                std::string err="Compile shader failed, error info: ";
+                err+=spv->log?spv->log:"";
+                GLogError(err.c_str());
 
                 FreeSPVData(spv);
                 return(nullptr);

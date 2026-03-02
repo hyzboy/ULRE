@@ -224,7 +224,7 @@ Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::
 
     AnsiString hash_name=mtl::GetInlineMaterialName(mtl_id);
     hash_name+="?";
-    hash_name+=cfg->ToHashString();
+    hash_name+=cfg->ToHashStdString().c_str();
 
     return this->CreateMaterial(hash_name,mci);
 }
@@ -243,7 +243,7 @@ Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::
 
     AnsiString hash_name=mtl::GetInlineMaterialName(mtl_id);
     hash_name+="?";
-    hash_name+=cfg->ToHashString();
+    hash_name+=cfg->ToHashStdString().c_str();
 
     return this->CreateMaterial(hash_name,mci);
 }

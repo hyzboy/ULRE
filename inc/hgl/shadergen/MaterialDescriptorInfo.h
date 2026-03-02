@@ -2,7 +2,8 @@
 
 #include<hgl/vk/VKShaderDescriptorSet.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
-#include<hgl/type/UnorderedMap.h>
+#include<ankerl/unordered_dense.h>
+#include<string>
 
 namespace hgl{namespace graph{
 /**
@@ -14,21 +15,45 @@ class MaterialDescriptorInfo
     uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
-    UnorderedMap<AnsiString,AnsiString> struct_map;
-    UnorderedMap<AnsiString,UBODescriptor *> ubo_map;
-    UnorderedMap<AnsiString,SSBODescriptor *> ssbo_map;
-    UnorderedMap<AnsiString,TextureDescriptor *> texture_map;
-    UnorderedMap<AnsiString,TextureSamplerDescriptor *> texture_sampler_map;
+    ankerl::unordered_dense::map<std::string,std::string> struct_map;
+    ankerl::unordered_dense::map<std::string,UBODescriptor *> ubo_map;
+    ankerl::unordered_dense::map<std::string,SSBODescriptor *> ssbo_map;
+    ankerl::unordered_dense::map<std::string,TextureDescriptor *> texture_map;
+    ankerl::unordered_dense::map<std::string,TextureSamplerDescriptor *> texture_sampler_map;
+
+private:
+
+    static std::string KeyFrom(const std::string &text)
+    {
+        return text;
+    }
+
+    static std::string KeyFrom(const char *text)
+    {
+        return std::string(text?text:"");
+    }
 
 public:
 
     MaterialDescriptorInfo();
     ~MaterialDescriptorInfo()=default;
 
-    bool AddStruct(const AnsiString &name,const AnsiString &code)
+    bool AddStruct(const std::string &name,const std::string &code)
     {
-           struct_map[name] = code;
+        struct_map[KeyFrom(name)] = KeyFrom(code);
         return(true);
+    }
+    bool AddStruct(const char *name,const char *code)
+    {
+        return AddStruct(KeyFrom(name),KeyFrom(code));
+    }
+    bool AddStruct(const char *name,const std::string &code)
+    {
+        return AddStruct(KeyFrom(name),code);
+    }
+    bool AddStruct(const std::string &name,const char *code)
+    {
+        return AddStruct(name,KeyFrom(code));
     }
 
     bool AddStruct(const ShaderBufferSource &ss)
@@ -36,20 +61,23 @@ public:
         return(AddStruct(ss.struct_name,ss.codes));
     }
 
-    bool GetStruct(const AnsiString &name,AnsiString &code)
+    bool GetStruct(const std::string &name,std::string &code)
     {
-        const AnsiString* value_ptr = struct_map.GetValuePointer(name);
-        if(value_ptr)
-        {
-            code = *value_ptr;
-            return true;
-        }
-        return false;
+        const auto iter=struct_map.find(name);
+        if(iter==struct_map.end())
+            return false;
+
+        code=iter->second;
+        return true;
     }
 
-    bool hasStruct(const AnsiString &name) const
+    bool hasStruct(const std::string &name) const
     {
-        return struct_map.ContainsKey(name);
+        return struct_map.contains(name);
+    }
+    bool hasStruct(const char *name) const
+    {
+        return struct_map.contains(KeyFrom(name));
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
@@ -57,12 +85,20 @@ public:
     const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
     const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
-    UBODescriptor *GetUBO(const AnsiString &name);
-    SSBODescriptor *GetSSBO(const AnsiString &name);
-    TextureDescriptor *GetTexture(const AnsiString &name);
-    TextureSamplerDescriptor *GetTextureSampler(const AnsiString &name);
+    UBODescriptor *GetUBO(const std::string &name);
+    SSBODescriptor *GetSSBO(const std::string &name);
+    TextureDescriptor *GetTexture(const std::string &name);
+    TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
+    UBODescriptor *GetUBO(const char *name){return GetUBO(std::string(name?name:""));}
+    SSBODescriptor *GetSSBO(const char *name){return GetSSBO(std::string(name?name:""));}
+    TextureDescriptor *GetTexture(const char *name){return GetTexture(std::string(name?name:""));}
+    TextureSamplerDescriptor *GetTextureSampler(const char *name){return GetTextureSampler(std::string(name?name:""));}
 
-    const DescriptorSetType GetSetType(const AnsiString &)const;
+    const DescriptorSetType GetSetType(const std::string &name)const;
+    const DescriptorSetType GetSetType(const char *name)const
+    {
+        return GetSetType(std::string(name?name:""));
+    }
 
     void Resort();      //排序产生set号与binding号
 

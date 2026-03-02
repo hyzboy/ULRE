@@ -8,8 +8,8 @@
 #pragma once
 
 #include <hgl/type/String.h>
-#include <hgl/type/UnorderedMap.h>
 #include <hgl/type/ValueArray.h>
+#include <ankerl/unordered_dense.h>
 #include <string>
 
 namespace hgl::graph::mtl {
@@ -57,8 +57,8 @@ public:
     void Reset();
 
 private:
-    UnorderedMap<std::string, ShaderTemplate *> template_cache;
-    UnorderedMap<std::string, ShaderRecipe *> recipe_cache;
+    ankerl::unordered_dense::map<std::string, ShaderTemplate *> template_cache;
+    ankerl::unordered_dense::map<std::string, ShaderRecipe *> recipe_cache;
 
     // 辅助方法
     std::string ReadFile(const std::string &path);

@@ -7,6 +7,7 @@
 #include<hgl/vk/VKInterpolation.h>
 #include<hgl/vk/VKSamplerType.h>
 #include<hgl/vk/VKImageType.h>
+#include<string>
 
 namespace hgl::graph{
 enum class ShaderVariableBaseType:uint8
@@ -389,6 +390,35 @@ public:
     }
 
     void ToString(AnsiString &output_string)
+    {
+        if(IsEmpty())
+            return;
+
+        const ShaderVariable *sv=items;
+
+        for(uint i=0;i<count;i++)
+        {
+            output_string+="    ";
+
+            if(sv->interpolation!=Interpolation::Smooth)
+            {
+                if(RangeCheck(sv->interpolation))
+                {
+                    output_string+=InterpolationName[size_t(sv->interpolation)];
+                    output_string+=" ";
+                }
+            }
+
+            output_string+=sv->type.GetTypename();
+            output_string+=" ";
+            output_string+=sv->name;
+            output_string+=";\n";
+
+            ++sv;
+        }
+    }
+
+    void ToString(std::string &output_string)
     {
         if(IsEmpty())
             return;

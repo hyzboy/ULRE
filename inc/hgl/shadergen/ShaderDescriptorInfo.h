@@ -6,15 +6,18 @@
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
+#include<ankerl/unordered_dense.h>
+#include<vector>
+#include<string>
 
 namespace hgl{namespace graph
 {
-using UBODescriptorList=ValueArray<const UBODescriptor *>;
-using SSBODescriptorList=ValueArray<const SSBODescriptor *>;
-using TextureDescriptorList = ValueArray<const TextureDescriptor *>;
-using TextureSamplerDescriptorList=ValueArray<const TextureSamplerDescriptor *>;
-using ConstValueDescriptorList=ManagedArray<ConstValueDescriptor>;
-using SubpassInputDescriptorList=ManagedArray<SubpassInputDescriptor>;
+using UBODescriptorList=std::vector<const UBODescriptor *>;
+using SSBODescriptorList=std::vector<const SSBODescriptor *>;
+using TextureDescriptorList = std::vector<const TextureDescriptor *>;
+using TextureSamplerDescriptorList=std::vector<const TextureSamplerDescriptor *>;
+using ConstValueDescriptorList=std::vector<ConstValueDescriptor *>;
+using SubpassInputDescriptorList=std::vector<SubpassInputDescriptor *>;
 
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计
@@ -25,7 +28,7 @@ protected:
 
     ShaderStage                         stage_flag;
 
-    AnsiStringList                      struct_list;        //用到的结构列表
+    ankerl::unordered_dense::set<std::string> struct_list;  //用到的结构列表(去重)
 
     //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdi中的用于产生set/binding号，这里的用于产生shader
     UBODescriptorList                   ubo_list;
@@ -40,15 +43,25 @@ protected:
 public:
 
     ShaderDescriptorInfo(ShaderStage);
-    virtual ~ShaderDescriptorInfo()=default;
+    virtual ~ShaderDescriptorInfo();
 
     const ShaderStage                   GetShaderStage()const { return stage_flag; }
     const VkShaderStageFlagBits         GetVkShaderStage()const { return (VkShaderStageFlagBits)stage_flag; }
-    const AnsiString                    GetStageName()const { return AnsiString(GetShaderStageName((VkShaderStageFlagBits)stage_flag)); }
+    std::string                         GetStageName()const { return GetShaderStageName((VkShaderStageFlagBits)stage_flag); }
 
 public:
 
-    const AnsiStringList &              GetStructList()const{return struct_list;}
+    const ankerl::unordered_dense::set<std::string> &GetStructList()const{return struct_list;}
+    std::vector<std::string>            GetStructNameList()const
+    {
+        std::vector<std::string> names;
+        names.reserve(struct_list.size());
+
+        for(const auto &name:struct_list)
+            names.emplace_back(name);
+
+        return names;
+    }
 
     const UBODescriptorList &           GetUBOList()const{return ubo_list;}
     const SSBODescriptorList &          GetSSBOList()const{return ssbo_list;}
@@ -58,7 +71,8 @@ public:
 
 public:
 
-    void AddStruct(const AnsiString &);
+    void AddStruct(const std::string &name){struct_list.emplace(name);}
+    void AddStruct(const char *name){struct_list.emplace(name?name:"");}
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
@@ -66,7 +80,11 @@ public:
 
     bool AddConstValue(ConstValueDescriptor *sd);
 
-    void SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size);
+    void SetPushConstant(const std::string &name,uint8_t offset,uint8_t size);
+    void SetPushConstant(const char *name,uint8_t offset,uint8_t size)
+    {
+        SetPushConstant(std::string(name?name:""),offset,size);
+    }
 };//class ShaderDescriptorInfo
 
 template<ShaderStage SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderDescriptorInfo
@@ -104,9 +122,13 @@ public:
 public:
 
     using CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable>::CustomShaderDescriptorInfo;
-    ~VertexShaderDescriptorInfo()override=default;
+    ~VertexShaderDescriptorInfo()override;
 
-    bool AddSubpassInput(const AnsiString &name,uint8_t index);
+    bool AddSubpassInput(const std::string &name,uint8_t index);
+    bool AddSubpassInput(const char *name,uint8_t index)
+    {
+        return AddSubpassInput(std::string(name?name:""),index);
+    }
 };//class VertexShaderDescriptorInfo
 
 using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessControl, SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;

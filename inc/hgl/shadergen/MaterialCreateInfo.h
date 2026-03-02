@@ -11,6 +11,7 @@
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/vk/VKTextureType.h>
 #include<hgl/vk/VKSamplerType.h>
+#include<string>
 
 namespace hgl::graph
 {
@@ -30,7 +31,7 @@ namespace hgl::graph
 
             MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
 
-            AnsiString mi_codes;                                    ///<MaterialInstance代码
+            std::string mi_codes;                                   ///<MaterialInstance代码
             uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
             uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
             uint32_t mi_max_count;
@@ -93,25 +94,57 @@ namespace hgl::graph
 
             void SetDevice(const VulkanDevAttr *dev_attr);
 
-            bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
+            bool SetMaterialInstance(const std::string &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
+            bool SetMaterialInstance(const char *mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits)
+            {
+                return SetMaterialInstance(std::string(mi_glsl_codes?mi_glsl_codes:""),mi_struct_bytes,shader_stage_flag_bits);
+            }
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
             //bool SetWorldPosition(const uint32_t shader_stage_flag_bits);
 
-            bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
+            bool AddStruct(const std::string &ubo_typename,const std::string &codes);
+            bool AddStruct(const char *ubo_typename,const char *codes)
+            {
+                return AddStruct(std::string(ubo_typename?ubo_typename:""),std::string(codes?codes:""));
+            }
 
-            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
-            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
+            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
+            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
+            {
+                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
+            {
+                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
 
             bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
-            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
-            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
+            {
+                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
+            {
+                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
 
             bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
-            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const AnsiString &name);
-            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
+            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const std::string &name);
+            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const std::string &name);
+            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const char *name)
+            {
+                return AddTexture(flag_bits,set_type,tt,std::string(name?name:""));
+            }
+            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const char *name)
+            {
+                return AddTextureSampler(flag_bits,set_type,st,std::string(name?name:""));
+            }
 
             bool CreateShader();
         };//class MaterialCreateInfo

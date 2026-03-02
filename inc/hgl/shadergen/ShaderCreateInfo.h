@@ -60,7 +60,7 @@ protected:
     virtual bool ProcInput(ShaderCreateInfo *);
 
     virtual bool IsEmptyOutput()const=0;
-    virtual void GetOutputStrcutString(AnsiString &){}
+    virtual void GetOutputStrcutString(std::string &){}
     virtual bool ProcOutput();
 
     virtual bool ProcStruct();
@@ -90,17 +90,20 @@ public:
     virtual ~ShaderCreateInfo();
 
     bool AddDefine(const std::string &m,const std::string &v);
-    bool AddDefine(const AnsiString &m,const AnsiString &v)
+    bool AddDefine(const char *m,const char *v)
     {
-        return AddDefine(std::string(m.c_str()?m.c_str():""),
-                         std::string(v.c_str()?v.c_str():""));
+        return AddDefine(std::string(m?m:""),std::string(v?v:""));
     }
     bool AddDefineFromStdString(const std::string &m,const std::string &v)
     {
         return AddDefine(m,v);
     }
 
-    void AddStruct(const AnsiString &);
+    void AddStruct(const std::string &);
+    void AddStruct(const char *name)
+    {
+        AddStruct(std::string(name?name:""));
+    }
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
@@ -119,19 +122,10 @@ public:
     {
         SetMaterialInstance(ssbo,std::string(mi?mi:""));
     }
-    void SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
-    {
-        SetMaterialInstance(ubo,std::string(mi.c_str()?mi.c_str():""));
-    }
-    void SetMaterialInstance(SSBODescriptor *ssbo,const AnsiString &mi)
-    {
-        SetMaterialInstance(ssbo,std::string(mi.c_str()?mi.c_str():""));
-    }
     virtual void AddMaterialInstanceOutput()=0;
 
     void SetMain(const std::string &str){main_function=str;}
     void SetMain(const char *str){main_function=str?str:"";}
-    void SetMain(const AnsiString &str){main_function=str.c_str()?str.c_str():"";}
     void SetMainFromStdString(const std::string &str)
     {
         main_function=str;
