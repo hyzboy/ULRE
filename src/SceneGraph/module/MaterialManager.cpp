@@ -13,6 +13,7 @@
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/contract/ShaderGenRequestBuilder.h>
 #include<hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
@@ -21,6 +22,7 @@
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 #include<cstdio>
+#include<vector>
 
 namespace hgl::graph{
 namespace
@@ -145,7 +147,14 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         : RendererShaderGenAdapter::DiffLogDetail::SummaryOnly;
 
     mtl::contract::ShaderGenResult mirror_result;
+    mtl::contract::ShaderGenRequest request_result;
+    const mtl::contract::ShaderGenRequest *request_ptr = nullptr;
     const mtl::contract::ShaderGenResult *mirror_ptr = nullptr;
+
+    if(path_policy.enable_mirror_validation && mtl::contract::BuildShaderGenRequestFromMaterialCreateInfo(*mci,request_result,mtl_name.c_str()))
+    {
+        request_ptr = &request_result;
+    }
 
     if(path_policy.enable_mirror_validation && mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(*mci,mirror_result))
     {
@@ -167,10 +176,10 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         return nullptr;
     }
 
-    return CreateMaterialWithContract(mtl_name,mci,mirror_ptr,path_policy.enable_mirror_validation,path_policy.require_mirror_valid,diff_log_detail);
+    return CreateMaterialWithContract(mtl_name,mci,request_ptr,mirror_ptr,path_policy.enable_mirror_validation,path_policy.require_mirror_valid,diff_log_detail);
 }
 
-Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid,const RendererShaderGenAdapter::DiffLogDetail diff_log_detail)
+Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenRequest *request_result,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid,const RendererShaderGenAdapter::DiffLogDetail diff_log_detail)
 {
     if(!mci)
         return(nullptr);
@@ -184,6 +193,9 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
             consume_ok=adapter.ConsumePairReadOnly(*mci,*mirror_result,mtl_name.c_str(),diff_log_detail);
         else
             consume_ok=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str(),diff_log_detail);
+
+        if(consume_ok && request_result && mirror_result)
+            consume_ok=adapter.ConsumeRequestResultReadOnly(*request_result,*mirror_result,mtl_name.c_str());
 
         if(!consume_ok)
         {
@@ -248,7 +260,25 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
         const auto &mdi=mci->GetMDI();
 
         if(mdi.GetCount()>0)
-            mtl->desc_manager=new MaterialDescriptorManager(mtl_name,mdi.Get());
+        {
+            const auto &sds_array = mdi.Get();
+
+            std::vector<ShaderDescriptor> descriptors;
+            descriptors.reserve(mdi.GetCount());
+
+            for(size_t i=0;i<DESCRIPTOR_SET_TYPE_COUNT;i++)
+            {
+                std::vector<ShaderDescriptor *> values;
+                sds_array[i].descriptor_map.GetValueArray(values);
+
+                for(auto *sd:values)
+                    if(sd)
+                        descriptors.emplace_back(*sd);
+            }
+
+            if(!descriptors.empty())
+                mtl->desc_manager=new MaterialDescriptorManager(mtl_name,descriptors.data(),static_cast<uint>(descriptors.size()));
+        }
     }
 
     mtl->pipeline_layout_data=CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);

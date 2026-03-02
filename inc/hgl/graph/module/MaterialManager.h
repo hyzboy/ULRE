@@ -50,7 +50,7 @@ private:
 private: // Helper methods with integrated DebugUtils
 
     Material *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
-    Material *CreateMaterialWithContract(const AnsiString &, const mtl::MaterialCreateInfo *, const mtl::contract::ShaderGenResult *, bool enable_mirror_validation, bool require_mirror_valid, const RendererShaderGenAdapter::DiffLogDetail diff_log_detail);
+    Material *CreateMaterialWithContract(const AnsiString &, const mtl::MaterialCreateInfo *, const mtl::contract::ShaderGenRequest *, const mtl::contract::ShaderGenResult *, bool enable_mirror_validation, bool require_mirror_valid, const RendererShaderGenAdapter::DiffLogDetail diff_log_detail);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
 

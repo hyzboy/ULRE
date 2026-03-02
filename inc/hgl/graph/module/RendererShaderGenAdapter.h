@@ -44,6 +44,7 @@ namespace hgl::graph
         static void ResetProfiler();
         static ProfilerSnapshot GetProfilerSnapshot();
 
+        bool ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         bool ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
         bool ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;
         bool ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;

@@ -113,10 +113,12 @@ SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/FixedMaterialDef.h
                     ${SHADERGEN_INCLUDE_PATH}/DescriptorBindingContract.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContract.h
+                    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenRequestBuilder.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenResultBuilder.h
                     ShaderPermutationKey.cpp
                     ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
                     ResourceLayoutGenerator.cpp
+                    contract/ShaderGenRequestBuilder.cpp
                     contract/ShaderGenResultBuilder.cpp
 )
 

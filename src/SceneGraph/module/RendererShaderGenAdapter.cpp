@@ -501,6 +501,91 @@ namespace hgl::graph
         return diff_ok && validate_ok;
     }
 
+    bool RendererShaderGenAdapter::ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const
+    {
+        const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
+
+        bool valid = true;
+
+        if (request.contract_version != mtl::contract::kShaderGenContractVersion)
+        {
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter] material=%s request contract_version mismatch (request=%u, expected=%u)\n",
+                mat_name,
+                request.contract_version,
+                mtl::contract::kShaderGenContractVersion);
+            valid = false;
+        }
+
+        if (result.contract_version != request.contract_version)
+        {
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter] material=%s request/result contract_version mismatch (request=%u, result=%u)\n",
+                mat_name,
+                request.contract_version,
+                result.contract_version);
+            valid = false;
+        }
+
+        for (const auto &req : request.required_resources)
+        {
+            if (!req.required)
+                continue;
+
+            bool found = false;
+            for (const auto &binding : result.layout.bindings)
+            {
+                if (binding.name != req.name)
+                    continue;
+
+                if (req.resource_class != mtl::contract::ResourceClass::Unknown
+                    && binding.resource_class != req.resource_class)
+                    continue;
+
+                found = true;
+                break;
+            }
+
+            if (!found)
+            {
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s request/result mismatch: missing required resource name=%s class=%u\n",
+                    mat_name,
+                    req.name.c_str(),
+                    static_cast<unsigned>(req.resource_class));
+                valid = false;
+            }
+        }
+
+        for (const auto &vre : request.vertex_requirements)
+        {
+            bool found = false;
+            for (const auto &attr : result.vertex_layout.attributes)
+            {
+                if (attr.location != vre.location)
+                    continue;
+
+                if (attr.semantic != vre.semantic)
+                    continue;
+
+                found = true;
+                break;
+            }
+
+            if (!found)
+            {
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s request/result mismatch: missing vertex requirement semantic=%s location=%u\n",
+                    mat_name,
+                    vre.semantic.c_str(),
+                    static_cast<unsigned>(vre.location));
+                valid = false;
+            }
+        }
+
+        return valid;
+    }
+
     void RendererShaderGenAdapter::ResetProfiler()
     {
         auto &storage = GetShaderGenProfilerStorage();
