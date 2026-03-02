@@ -1,5 +1,6 @@
 #include <hgl/graph/module/RendererShaderGenAdapter.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/contract/ShaderGenContractValidator.h>
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include <unordered_set>
 #include <algorithm>
@@ -607,98 +608,19 @@ namespace hgl::graph
 
     RendererShaderGenAdapter::ValidationReport RendererShaderGenAdapter::ValidateRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const
     {
-        const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
-
         ValidationReport report;
         report.request_result_valid = true;
 
-        if (request.contract_version != mtl::contract::kShaderGenContractVersion)
-        {
-            char msg[256] = {};
-            std::snprintf(msg,
-                sizeof(msg),
-                "material=%s request contract_version mismatch (request=%u, expected=%u)",
-                mat_name,
-                request.contract_version,
-                mtl::contract::kShaderGenContractVersion);
-            AddError(report, msg);
-            report.request_result_valid = false;
-        }
+        const auto contract_check = mtl::contract::ValidateShaderGenRequestResult(request, result, material_name);
+        report.request_result_valid = contract_check.valid;
 
-        if (result.contract_version != request.contract_version)
-        {
-            char msg[256] = {};
-            std::snprintf(msg,
-                sizeof(msg),
-                "material=%s request/result contract_version mismatch (request=%u, result=%u)",
-                mat_name,
-                request.contract_version,
-                result.contract_version);
-            AddError(report, msg);
-            report.request_result_valid = false;
-        }
+        report.warning_count += contract_check.warning_count;
+        report.error_count += contract_check.error_count;
+        report.warnings.insert(report.warnings.end(), contract_check.warnings.begin(), contract_check.warnings.end());
+        report.errors.insert(report.errors.end(), contract_check.errors.begin(), contract_check.errors.end());
 
-        for (const auto &req : request.required_resources)
-        {
-            if (!req.required)
-                continue;
-
-            bool found = false;
-            for (const auto &binding : result.layout.bindings)
-            {
-                if (binding.name != req.name)
-                    continue;
-
-                if (req.resource_class != mtl::contract::ResourceClass::Unknown
-                    && binding.resource_class != req.resource_class)
-                    continue;
-
-                found = true;
-                break;
-            }
-
-            if (!found)
-            {
-                char msg[512] = {};
-                std::snprintf(msg,
-                    sizeof(msg),
-                    "material=%s request/result mismatch: missing required resource name=%s class=%u",
-                    mat_name,
-                    req.name.c_str(),
-                    static_cast<unsigned>(req.resource_class));
-                AddError(report, msg);
-                report.request_result_valid = false;
-            }
-        }
-
-        for (const auto &vre : request.vertex_requirements)
-        {
-            bool found = false;
-            for (const auto &attr : result.vertex_layout.attributes)
-            {
-                if (attr.location != vre.location)
-                    continue;
-
-                if (attr.semantic != vre.semantic)
-                    continue;
-
-                found = true;
-                break;
-            }
-
-            if (!found)
-            {
-                char msg[512] = {};
-                std::snprintf(msg,
-                    sizeof(msg),
-                    "material=%s request/result mismatch: missing vertex requirement semantic=%s location=%u",
-                    mat_name,
-                    vre.semantic.c_str(),
-                    static_cast<unsigned>(vre.location));
-                AddError(report, msg);
-                report.request_result_valid = false;
-            }
-        }
+        if (!contract_check.valid)
+            report.overall_valid = false;
 
         report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
         StoreValidationReport(material_name, report);

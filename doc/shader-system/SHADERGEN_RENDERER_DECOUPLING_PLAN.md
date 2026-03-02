@@ -38,6 +38,7 @@
   - 现有 `CreateMaterial` 已改为“先尝试预构建 mirror result，再转发到并行入口”，为后续主路径切换预留开关点
   - 新增 `ShaderGenRequestBuilder`（`MaterialCreateInfo -> ShaderGenRequest`）并接入 `MaterialManager`，形成 Request/Result 双 DTO 并行链路
   - `RendererShaderGenAdapter` 新增 `ConsumeRequestResultReadOnly(...)`：对 `required_resources` 与 `vertex_requirements` 做 request/result 一致性校验（non-blocking）
+  - request/result 一致性校验逻辑已下沉到 ShaderGen contract 层：新增 `ShaderGenContractValidator`（`ValidateShaderGenRequestResult`），渲染器适配层改为调用该 contract API
   - 新增运行时路径模式（应用层显式配置）：
     - `legacy-only`：禁用 mirror 校验，仅走旧路径
     - `mirror-validate`（默认）：mirror 诊断并行执行，失败不阻断
