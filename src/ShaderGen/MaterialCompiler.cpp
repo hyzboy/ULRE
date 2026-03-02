@@ -9,6 +9,7 @@
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/DescriptorBindingContract.h>
+#include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include <hgl/shadergen/ShaderDescriptorInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
@@ -527,6 +528,54 @@ static void PrintComposedBusinessDiagnosticsJson(
     std::fprintf(stderr, "]}\n");
 }
 
+static void ValidateShaderGenMirrorConsistency(
+    const MaterialCreateInfo &mci,
+    const contract::ShaderGenResult &mirror,
+    const char *material_name)
+{
+    const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
+
+    const uint32_t legacy_desc_count = mci.GetMDI().GetCount();
+    const uint32_t mirror_desc_count = static_cast<uint32_t>(mirror.layout.bindings.size());
+
+    if (legacy_desc_count != mirror_desc_count)
+    {
+        std::fprintf(stderr,
+            "[ShaderGenMirror] material=%s descriptor_count mismatch (legacy=%u, mirror=%u)\n",
+            mat_name,
+            legacy_desc_count,
+            mirror_desc_count);
+    }
+
+    const uint32_t legacy_stage_count = static_cast<uint32_t>(mci.GetShaderMap().GetCount());
+    const uint32_t mirror_stage_count = static_cast<uint32_t>(mirror.spv_per_stage.size());
+    if (legacy_stage_count != mirror_stage_count)
+    {
+        std::fprintf(stderr,
+            "[ShaderGenMirror] material=%s stage_count mismatch (legacy=%u, mirror_spv=%u)\n",
+            mat_name,
+            legacy_stage_count,
+            mirror_stage_count);
+    }
+
+    uint32_t legacy_vertex_input_count = 0;
+    if (auto *vsc = mci.GetVS())
+        legacy_vertex_input_count = vsc->GetInput().count;
+
+    const uint32_t mirror_vertex_input_count = static_cast<uint32_t>(mirror.vertex_layout.attributes.size());
+    if (legacy_vertex_input_count != mirror_vertex_input_count)
+    {
+        std::fprintf(stderr,
+            "[ShaderGenMirror] material=%s vertex_input_count mismatch (legacy=%u, mirror=%u)\n",
+            mat_name,
+            legacy_vertex_input_count,
+            mirror_vertex_input_count);
+    }
+
+    for (const auto &warn : mirror.diagnostics.warnings)
+        std::fprintf(stderr, "[ShaderGenMirror] material=%s warning: %s\n", mat_name, warn.c_str());
+}
+
 bool ValidateFSMainBusinessHelperConsistency(
     const ComposedMaterialDef &def,
     const std::string &generated_fs)
@@ -953,6 +1002,20 @@ MaterialCreateInfo *CompileFixedMaterial(
     {
         delete mci;
         return nullptr;
+    }
+
+    {
+        contract::ShaderGenResult mirror;
+        if (!contract::BuildShaderGenResultFromMaterialCreateInfo(*mci, mirror))
+        {
+            std::fprintf(stderr,
+                "[ShaderGenMirror] material=%s failed to build mirror result\n",
+                def.name ? def.name : "<unnamed-material>");
+        }
+        else
+        {
+            ValidateShaderGenMirrorConsistency(*mci, mirror, def.name);
+        }
     }
 
     return mci;

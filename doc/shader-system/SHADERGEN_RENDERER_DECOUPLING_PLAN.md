@@ -1,8 +1,47 @@
 # ShaderGen 与渲染器彻底分离重构计划（可行性 + 执行方案）
 
-**版本**：v1.0  
+**版本**：v1.1  
 **日期**：2026-03-02  
-**状态**：建议执行（分阶段）
+**状态**：执行中（Phase 0 已启动）
+
+---
+
+## 0. 当前进展（2026-03-02）
+
+已完成：
+
+- 新增契约头文件 [inc/hgl/shadergen/contract/ShaderGenContract.h](inc/hgl/shadergen/contract/ShaderGenContract.h)
+  - 提供 `ShaderGenRequest` / `ShaderGenResult` 及配套 DTO（layout、vertex input、buffer struct、diagnostics、cache key）
+  - 该头文件不依赖渲染器实现对象（无 `VulkanDevAttr` / `MaterialManager` 等）
+- 新增镜像构建器并接入编译路径
+  - [inc/hgl/shadergen/contract/ShaderGenResultBuilder.h](inc/hgl/shadergen/contract/ShaderGenResultBuilder.h)
+  - [src/ShaderGen/contract/ShaderGenResultBuilder.cpp](src/ShaderGen/contract/ShaderGenResultBuilder.cpp)
+  - [src/ShaderGen/MaterialCompiler.cpp](src/ShaderGen/MaterialCompiler.cpp) 在 `CompileFixedMaterial` 成功后并行导出 `ShaderGenResult`，执行 descriptor/stage/vertex-input 数量一致性诊断（non-blocking）
+- Phase 1 镜像字段已扩展
+  - `ShaderGenResultBuilder` 已导出 `vertex_layout.attributes`（来自 VS 输入）
+  - `ShaderGenResultBuilder` 已导出 `spv_per_stage`（来自 `shader_map` + `GetSPVData/GetSPVSize`）
+  - mirror diagnostics warning 已接入统一日志输出
+- Phase 2 起步：Renderer adapter 骨架已落地（只读消费）
+  - 新增 [inc/hgl/graph/module/RendererShaderGenAdapter.h](inc/hgl/graph/module/RendererShaderGenAdapter.h)
+  - 新增 [src/SceneGraph/module/RendererShaderGenAdapter.cpp](src/SceneGraph/module/RendererShaderGenAdapter.cpp)
+  - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 已接入 non-blocking 只读消费调用，旧建材路径保持不变
+- Phase 2 补充：双轨 diff 文本化输出已接入
+  - `RendererShaderGenAdapter` 现输出 legacy vs mirror 的 `layout/vertex/spv` 对照摘要：`count/hash/match`
+  - mismatch 不阻断旧路径，仅用于诊断与验收证据收集
+- Phase 2 并行入口已增加
+  - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 新增 contract-aware 私有入口：可显式接收预构建 `ShaderGenResult`
+  - 现有 `CreateMaterial` 已改为“先尝试预构建 mirror result，再转发到并行入口”，为后续主路径切换预留开关点
+- 相关 ShaderGen/测试链路已完成一轮稳定化回归（近邻测试通过），可作为后续 Phase 1 的安全基线
+
+当前阻塞：
+
+- 本机 CMake Tools 在执行构建时返回空错误（result code = -1 且无 stdout/stderr），导致本轮“刚落地改动”的自动构建验证暂未完成；代码级静态错误已清零。
+
+下一步（建议本周）：
+
+1. 恢复 CMake Tools 构建能力并完成 `ULRE.ShaderGen` 与材质测试回归验证
+2. 将 diff 输出接入可筛选日志通道（按材质/阶段聚合）
+3. 在 `MaterialManager` 增加可配置开关：`mirror-only-validate` / `mirror-preferred` / `legacy-only`
 
 ---
 
@@ -223,7 +262,7 @@ struct ShaderGenResult {
 
 ## 9. 建议新增文件（执行期）
 
-- `inc/hgl/shadergen/contract/ShaderGenContract.h`
+- `inc/hgl/shadergen/contract/ShaderGenContract.h` ✅（已创建）
 - `src/ShaderGen/contract/ShaderGenResultBuilder.cpp`
 - `inc/hgl/graph/module/RendererShaderGenAdapter.h`
 - `src/SceneGraph/module/RendererShaderGenAdapter.cpp`

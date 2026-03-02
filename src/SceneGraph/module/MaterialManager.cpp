@@ -9,13 +9,16 @@
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
+#include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
+#include<cstdio>
 
 namespace hgl::graph{
 namespace
@@ -130,6 +133,45 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
 
     if(!mci)
         return(nullptr);
+
+    mtl::contract::ShaderGenResult mirror_result;
+    const mtl::contract::ShaderGenResult *mirror_ptr=nullptr;
+
+    if(mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(*mci,mirror_result))
+    {
+        mirror_ptr=&mirror_result;
+    }
+    else
+    {
+        std::fprintf(stderr,
+            "[RendererShaderGenAdapter] material=%s failed to prebuild mirror result, fallback to legacy-only validation\n",
+            mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+    }
+
+    return CreateMaterialWithContract(mtl_name,mci,mirror_ptr);
+}
+
+Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenResult *mirror_result)
+{
+    if(!mci)
+        return(nullptr);
+
+    {
+        RendererShaderGenAdapter adapter;
+
+        bool consume_ok=false;
+        if(mirror_result)
+            consume_ok=adapter.ConsumeResultReadOnly(*mirror_result,mtl_name.c_str());
+        else
+            consume_ok=adapter.ConsumeMaterialReadOnly(*mci,mtl_name.c_str());
+
+        if(!consume_ok)
+        {
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter] material=%s read-only consume detected structural issues\n",
+                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+        }
+    }
 
     {
         Material *mtl;

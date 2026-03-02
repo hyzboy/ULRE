@@ -16,6 +16,11 @@ namespace mtl
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
     class MaterialCreateInfo;
+
+    namespace contract
+    {
+        struct ShaderGenResult;
+    }
 }//namespace mtl
 
 using MaterialID            = int;
@@ -44,6 +49,7 @@ private:
 private: // Helper methods with integrated DebugUtils
 
     Material *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
+    Material *CreateMaterialWithContract(const AnsiString &, const mtl::MaterialCreateInfo *, const mtl::contract::ShaderGenResult *);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
 

@@ -23,6 +23,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/TextureManager.h
                         ${SG_INCLUDE_PATH}/module/SamplerManager.h
                         ${SG_INCLUDE_PATH}/module/MaterialManager.h
+                        ${SG_INCLUDE_PATH}/module/RendererShaderGenAdapter.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
@@ -35,6 +36,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/TextureManager.cpp
                         module/SamplerManager.cpp
                         module/MaterialManager.cpp
+                        module/RendererShaderGenAdapter.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp
