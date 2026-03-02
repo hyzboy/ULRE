@@ -79,9 +79,5 @@ namespace hgl::graph
                                  const char *material_name,
                                  DiffLogDetail detail = DiffLogDetail::Full) const;
 
-        bool ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
-        bool ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
-        bool ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;
-        bool ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
     };
 }//namespace hgl::graph

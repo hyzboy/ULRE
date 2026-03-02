@@ -314,25 +314,6 @@ namespace hgl::graph
         return report;
     }
 
-    bool RendererShaderGenAdapter::ConsumeResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const
-    {
-        const ValidationReport report = ValidateResultReadOnly(result, material_name);
-        StoreValidationReport(material_name, report);
-        return report.overall_valid;
-    }
-
-    bool RendererShaderGenAdapter::ConsumePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail) const
-    {
-        const ValidationReport report = ValidatePairReadOnly(mci, result, material_name, detail);
-        return report.overall_valid;
-    }
-
-    bool RendererShaderGenAdapter::ConsumeRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const
-    {
-        const ValidationReport report = ValidateRequestResultReadOnly(request, result, material_name);
-        return report.overall_valid;
-    }
-
     void RendererShaderGenAdapter::ResetProfiler()
     {
         auto &storage = GetShaderGenProfilerStorage();
@@ -403,18 +384,4 @@ namespace hgl::graph
         return grouped;
     }
 
-    bool RendererShaderGenAdapter::ConsumeMaterialReadOnly(const mtl::MaterialCreateInfo &mci, const char *material_name, DiffLogDetail detail) const
-    {
-        mtl::contract::ShaderGenResult result;
-        if (!mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(mci, result))
-        {
-            const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s failed to build mirror result\n",
-                mat_name);
-            return false;
-        }
-
-        return ConsumePairReadOnly(mci, result, material_name, detail);
-    }
 }//namespace hgl::graph
