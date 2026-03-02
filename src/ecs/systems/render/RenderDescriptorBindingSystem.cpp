@@ -5,12 +5,15 @@
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/core/MaterialBatch.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
+#include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/log/Log.h>
+#include<unordered_set>
 
 namespace hgl::ecs
 {
@@ -227,11 +230,16 @@ namespace hgl::ecs
 
         const auto &cache = context->GetRenderFrameCache();
 
+        std::unordered_set<graph::Material *> l2w_bound_materials;
+        std::unordered_set<graph::Material *> mi_bound_materials;
+
         for (const auto &pair : cache.materialBatches)
         {
             graph::Material *material = pair.first.material;
             if (!material)
                 continue;
+
+            const MaterialBatch *batch = pair.second.get();
 
             const auto &contract = material->GetBindingContract();
 
@@ -261,9 +269,54 @@ namespace hgl::ecs
                         material->BindUBO(req.set_type, req.name, sky_ubo, false);
                     break;
                 }
+                case graph::mtl::DescriptorSemantic::LocalToWorld:
+                {
+                    if (batch
+                     && batch->transform_buffer
+                     && material->hasLocalToWorld()
+                     && !l2w_bound_materials.contains(material))
+                    {
+                        batch->transform_buffer->BindTransform(material);
+                        l2w_bound_materials.insert(material);
+                    }
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialInstance:
+                {
+                    if (batch
+                     && batch->mi_buffer
+                     && material->hasMI()
+                     && !mi_bound_materials.contains(material))
+                    {
+                        batch->mi_buffer->BindMaterialInstance(material);
+                        mi_bound_materials.insert(material);
+                    }
+                    break;
+                }
                 default:
                     break;
                 }
+            }
+
+            // Legacy compatibility fallback:
+            // Some existing materials may still rely on hasLocalToWorld/hasMI flags
+            // without fully populated contract semantics.
+            if (batch
+             && batch->transform_buffer
+             && material->hasLocalToWorld()
+             && !l2w_bound_materials.contains(material))
+            {
+                batch->transform_buffer->BindTransform(material);
+                l2w_bound_materials.insert(material);
+            }
+
+            if (batch
+             && batch->mi_buffer
+             && material->hasMI()
+             && !mi_bound_materials.contains(material))
+            {
+                batch->mi_buffer->BindMaterialInstance(material);
+                mi_bound_materials.insert(material);
             }
         }
     }

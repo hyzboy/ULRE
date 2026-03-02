@@ -61,7 +61,7 @@ namespace hgl::ecs
         }
 
         // 如果有ECS Transform分配缓冲，绑定Transform索引VAB
-        if (transform_vab != VK_NULL_HANDLE)
+        if (transform_vab != VK_NULL_HANDLE && !vab_list->IsFull())
         {
             if (!vab_list->Add(transform_vab, 0))
             {
@@ -81,7 +81,7 @@ namespace hgl::ecs
             }
             else
             {
-                if (!vab_list->Add(mi_vab, 0))
+                if (!vab_list->IsFull() && !vab_list->Add(mi_vab, 0))
                 {
                     std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS MI VAB!" << std::endl;
                     return false;
@@ -231,24 +231,12 @@ namespace hgl::ecs
         indirect_draw_count = 0;
         first_indirect_draw_index = -1;
 
-        // 绑定ECS Transform分配缓冲（如果有）
-        if (material->hasLocalToWorld())
+        // L2W / MI descriptor binding is unified in RenderDescriptorBindingSystem.
+        // PipelineMaterialRenderer only handles VAB/IBO and draw submission here.
+        if (!material->hasLocalToWorld())
         {
-            if(transform_buffer)
-            {
-                transform_buffer->BindTransform(material);
-            }
-        }
-        else
-        {
-            transform_buffer=nullptr;       // 如果材质不需要LocalToWorld，就不绑定Transform分配缓冲,否则传入了还会判定有问题
+            transform_buffer=nullptr;
             transform_vab=nullptr;
-        }
-
-        // 绑定ECS MaterialInstance分配缓冲（如果有）
-        if (mi_buffer)
-        {
-            mi_buffer->BindMaterialInstance(material);
         }
 
         // 绑定材质描述符集
