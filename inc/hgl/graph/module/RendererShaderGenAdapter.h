@@ -70,14 +70,16 @@ namespace hgl::graph
         static std::vector<ValidationReportRecord> GetRecentValidationReports(uint32_t max_count = 64);
         static std::map<std::string, std::vector<ValidationReportRecord>> GetRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128);
 
-        ValidationReport ValidateRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
-        ValidationReport ValidateResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;
-        ValidationReport ValidatePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
         ValidationReport ValidateMaterialContractReadOnly(const mtl::MaterialCreateInfo &mci,
                                  const mtl::contract::ShaderGenRequest *request,
                                  const mtl::contract::ShaderGenResult *result,
                                  const char *material_name,
                                  DiffLogDetail detail = DiffLogDetail::Full) const;
+
+    private:
+        ValidationReport ValidateRequestResultReadOnly(const mtl::contract::ShaderGenRequest &request, const mtl::contract::ShaderGenResult &result, const char *material_name) const;
+        ValidationReport ValidateResultReadOnly(const mtl::contract::ShaderGenResult &result, const char *material_name) const;
+        ValidationReport ValidatePairReadOnly(const mtl::MaterialCreateInfo &mci, const mtl::contract::ShaderGenResult &result, const char *material_name, DiffLogDetail detail = DiffLogDetail::Full) const;
 
     };
 }//namespace hgl::graph

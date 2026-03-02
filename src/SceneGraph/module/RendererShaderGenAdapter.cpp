@@ -18,6 +18,11 @@ namespace hgl::graph
         struct ShaderGenProfilerStorage
         {
             RendererShaderGenAdapter::ProfilerSnapshot snapshot;
+            std::mutex mutex;
+        };
+
+        struct ShaderGenValidationReportStorage
+        {
             RendererShaderGenAdapter::ValidationReport last_report;
             std::string last_report_material_name;
             bool has_last_report = false;
@@ -29,6 +34,12 @@ namespace hgl::graph
         ShaderGenProfilerStorage &GetShaderGenProfilerStorage()
         {
             static ShaderGenProfilerStorage storage;
+            return storage;
+        }
+
+        ShaderGenValidationReportStorage &GetShaderGenValidationReportStorage()
+        {
+            static ShaderGenValidationReportStorage storage;
             return storage;
         }
 
@@ -47,7 +58,7 @@ namespace hgl::graph
 
         void StoreValidationReport(const char *material_name, const RendererShaderGenAdapter::ValidationReport &report)
         {
-            auto &storage = GetShaderGenProfilerStorage();
+            auto &storage = GetShaderGenValidationReportStorage();
             std::lock_guard<std::mutex> lock(storage.mutex);
 
             const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
@@ -76,6 +87,42 @@ namespace hgl::graph
 
             dst.warnings.insert(dst.warnings.end(), src.warnings.begin(), src.warnings.end());
             dst.errors.insert(dst.errors.end(), src.errors.begin(), src.errors.end());
+        }
+
+        void ApplyContractValidationResult(RendererShaderGenAdapter::ValidationReport &report,
+                                           const mtl::contract::ShaderGenContractValidationResult &contract_check,
+                                           bool &valid_field)
+        {
+            valid_field = contract_check.valid;
+
+            report.warning_count += contract_check.warning_count;
+            report.error_count += contract_check.error_count;
+            report.warnings.insert(report.warnings.end(), contract_check.warnings.begin(), contract_check.warnings.end());
+            report.errors.insert(report.errors.end(), contract_check.errors.begin(), contract_check.errors.end());
+
+            if (!contract_check.valid)
+                report.overall_valid = false;
+        }
+
+        std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> BuildRecentValidationReportsByMaterial(
+            const std::vector<RendererShaderGenAdapter::ValidationReportRecord> &recent,
+            uint32_t max_per_material)
+        {
+            std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> grouped;
+
+            if (max_per_material == 0)
+                return grouped;
+
+            for (const auto &record : recent)
+            {
+                auto &bucket = grouped[record.material_name];
+                if (bucket.size() >= max_per_material)
+                    continue;
+
+                bucket.emplace_back(record);
+            }
+
+            return grouped;
         }
     }//namespace
 
@@ -199,15 +246,7 @@ namespace hgl::graph
         report.result_valid = true;
 
         const auto contract_check = mtl::contract::ValidateShaderGenResult(result, material_name);
-        report.result_valid = contract_check.valid;
-
-        report.warning_count += contract_check.warning_count;
-        report.error_count += contract_check.error_count;
-        report.warnings.insert(report.warnings.end(), contract_check.warnings.begin(), contract_check.warnings.end());
-        report.errors.insert(report.errors.end(), contract_check.errors.begin(), contract_check.errors.end());
-
-        if (!contract_check.valid)
-            report.overall_valid = false;
+        ApplyContractValidationResult(report, contract_check, report.result_valid);
 
         return report;
     }
@@ -238,15 +277,7 @@ namespace hgl::graph
         report.request_result_valid = true;
 
         const auto contract_check = mtl::contract::ValidateShaderGenRequestResult(request, result, material_name);
-        report.request_result_valid = contract_check.valid;
-
-        report.warning_count += contract_check.warning_count;
-        report.error_count += contract_check.error_count;
-        report.warnings.insert(report.warnings.end(), contract_check.warnings.begin(), contract_check.warnings.end());
-        report.errors.insert(report.errors.end(), contract_check.errors.begin(), contract_check.errors.end());
-
-        if (!contract_check.valid)
-            report.overall_valid = false;
+        ApplyContractValidationResult(report, contract_check, report.request_result_valid);
 
         report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
         StoreValidationReport(material_name, report);
@@ -263,46 +294,35 @@ namespace hgl::graph
 
         const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
 
-        if (result)
+        mtl::contract::ShaderGenResult built_result;
+        const mtl::contract::ShaderGenResult *resolved_result = result;
+
+        if (!resolved_result)
         {
-            report = ValidatePairReadOnly(mci, *result, mat_name, detail);
-
-            if (request)
+            if (!mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(mci, built_result))
             {
-                const ValidationReport req_report = ValidateRequestResultReadOnly(*request, *result, mat_name);
-
-                report.request_result_valid = req_report.request_result_valid;
-                MergeValidationReport(report, req_report);
-                report.overall_valid = report.diff_valid && report.result_valid && report.request_result_valid && report.error_count == 0;
-
+                char msg[256] = {};
+                std::snprintf(msg,
+                              sizeof(msg),
+                              "material=%s failed to build mirror result",
+                              mat_name);
+                AddError(report, msg);
+                report.diff_valid = false;
+                report.result_valid = false;
+                report.request_result_valid = (request == nullptr);
+                report.overall_valid = false;
                 StoreValidationReport(mat_name, report);
+                return report;
             }
 
-            return report;
+            resolved_result = &built_result;
         }
 
-        mtl::contract::ShaderGenResult built_result;
-        if (!mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(mci, built_result))
-        {
-            char msg[256] = {};
-            std::snprintf(msg,
-                          sizeof(msg),
-                          "material=%s failed to build mirror result",
-                          mat_name);
-            AddError(report, msg);
-            report.diff_valid = false;
-            report.result_valid = false;
-            report.request_result_valid = (request == nullptr);
-            report.overall_valid = false;
-            StoreValidationReport(mat_name, report);
-            return report;
-        }
-
-        report = ValidatePairReadOnly(mci, built_result, mat_name, detail);
+        report = ValidatePairReadOnly(mci, *resolved_result, mat_name, detail);
 
         if (request)
         {
-            const ValidationReport req_report = ValidateRequestResultReadOnly(*request, built_result, mat_name);
+            const ValidationReport req_report = ValidateRequestResultReadOnly(*request, *resolved_result, mat_name);
 
             report.request_result_valid = req_report.request_result_valid;
             MergeValidationReport(report, req_report);
@@ -330,7 +350,7 @@ namespace hgl::graph
 
     bool RendererShaderGenAdapter::GetLastValidationReport(ValidationReport &out_report, std::string *out_material_name)
     {
-        auto &storage = GetShaderGenProfilerStorage();
+        auto &storage = GetShaderGenValidationReportStorage();
         std::lock_guard<std::mutex> lock(storage.mutex);
 
         if (!storage.has_last_report)
@@ -346,7 +366,7 @@ namespace hgl::graph
 
     std::vector<RendererShaderGenAdapter::ValidationReportRecord> RendererShaderGenAdapter::GetRecentValidationReports(uint32_t max_count)
     {
-        auto &storage = GetShaderGenProfilerStorage();
+        auto &storage = GetShaderGenValidationReportStorage();
         std::lock_guard<std::mutex> lock(storage.mutex);
 
         std::vector<ValidationReportRecord> out;
@@ -365,23 +385,11 @@ namespace hgl::graph
 
     std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(uint32_t max_per_material, uint32_t max_total)
     {
-        std::map<std::string, std::vector<ValidationReportRecord>> grouped;
-
         if (max_per_material == 0 || max_total == 0)
-            return grouped;
+            return {};
 
         const auto recent = GetRecentValidationReports(max_total);
-
-        for (const auto &record : recent)
-        {
-            auto &bucket = grouped[record.material_name];
-            if (bucket.size() >= max_per_material)
-                continue;
-
-            bucket.emplace_back(record);
-        }
-
-        return grouped;
+        return BuildRecentValidationReportsByMaterial(recent, max_per_material);
     }
 
 }//namespace hgl::graph
