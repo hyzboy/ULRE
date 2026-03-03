@@ -101,6 +101,16 @@
     - `mirror-preferred`：关键 pattern 同样 0 命中，进程退出码 `-1073741819`。
     - 两模式日志尾部均停在 RenderPass 创建后，当前可判定“该崩溃暂未体现为 ShaderGen contract 校验/descriptor 门禁错误”。
   - 本地定向构建 `ULRE.SceneGraph` 通过；`05_Billboard --shadergen-path-mode=mirror-validate` 运行仍崩溃（`exit code=-1073741819`），与“运行态退出根因待定位”阻塞项一致，未新增 descriptor 关键错误 grep 命中。
+  - 已将 `MaterialManager` 内 descriptor contract helper 抽离为独立适配器：
+    - [inc/hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h](inc/hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h)
+    - [src/SceneGraph/module/ShaderGenDescriptorLayoutAdapter.cpp](src/SceneGraph/module/ShaderGenDescriptorLayoutAdapter.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 已改为调用 `ValidateContractDescriptorLayoutAgainstLegacy(...)` / `BuildShaderDescriptorsFromContractLayout(...)`。
+  - 新增回归测试 [test/ShaderGenDescriptorLayoutAdapterTest.cpp](test/ShaderGenDescriptorLayoutAdapterTest.cpp)，覆盖：
+    - descriptor 关键字段对齐校验通过路径（`set/binding/type/stage/name`）；
+    - descriptor type 不匹配失败路径；
+    - `set_type` 继承 legacy 与按 set index fallback 规则。
+  - [test/CMakeLists.txt](test/CMakeLists.txt) 已接入 `test_ShaderGenDescriptorLayoutAdapter`，本地 Debug 构建与执行通过。
+  - 最新定向回归：`02_auto_instance` 与 `03_BasicLitSunDirectionECS` 重新构建并短时运行，关键 pattern（`not found VAB "TransformID"` / `FATAL ERROR` / `Validation Error` / `vkCmdCopyBufferToImage`）均为 0 命中。
 
 当前阻塞：
 
