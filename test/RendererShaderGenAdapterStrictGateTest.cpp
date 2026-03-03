@@ -140,6 +140,35 @@ int main()
         }
     }
 
+    {
+        const auto matrix = RendererShaderGenAdapter::GetRecentValidationMaterialCategoryMatrix(16);
+
+        auto count_of = [&matrix](const char *material, const char *category) -> uint32_t
+        {
+            auto it_m = matrix.find(material);
+            if (it_m == matrix.end())
+                return 0;
+
+            auto it_c = it_m->second.find(category);
+            if (it_c == it_m->second.end())
+                return 0;
+
+            return it_c->second;
+        };
+
+        if (count_of("StrictMatA", "StrictGate.Vertex") != 1
+         || count_of("StrictMatA", "StrictGate.Descriptor") != 1
+         || count_of("StrictMatB", "StrictGate.Prebuild") != 1)
+        {
+            std::fprintf(stderr,
+                         "[FAIL] Material-category matrix mismatch (A/Vertex=%u A/Descriptor=%u B/Prebuild=%u)\n",
+                         count_of("StrictMatA", "StrictGate.Vertex"),
+                         count_of("StrictMatA", "StrictGate.Descriptor"),
+                         count_of("StrictMatB", "StrictGate.Prebuild"));
+            ++failed;
+        }
+    }
+
     if (failed != 0)
     {
         std::fprintf(stderr, "RendererShaderGenAdapterStrictGateTest FAILED (%d)\n", failed);

@@ -420,6 +420,24 @@ namespace hgl::graph
         return histogram;
     }
 
+    std::map<std::string, std::map<std::string, uint32_t>> RendererShaderGenAdapter::GetRecentValidationMaterialCategoryMatrix(uint32_t max_count)
+    {
+        std::map<std::string, std::map<std::string, uint32_t>> matrix;
+        if (max_count == 0)
+            return matrix;
+
+        const auto recent = GetRecentValidationReports(max_count);
+        for (const auto &record : recent)
+        {
+            const std::string material = record.material_name.empty() ? "<unnamed-material>" : record.material_name;
+            const std::string category = record.report.category.empty() ? "Uncategorized" : record.report.category;
+
+            ++matrix[material][category];
+        }
+
+        return matrix;
+    }
+
     void RendererShaderGenAdapter::RecordExternalValidationError(const char *material_name, const char *message, const char *category)
     {
         ValidationReport report;

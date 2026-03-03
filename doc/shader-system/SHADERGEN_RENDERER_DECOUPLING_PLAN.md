@@ -76,7 +76,13 @@
   - `descriptor set_type` 差异已降级为非阻断（warning 语义），严格门禁仅对 Vulkan 关键字段生效：`set/binding/descriptor_type/stage/name`
 - 2026-03-04 Phase 3 回归补强（严格失败链路）
   - [inc/hgl/graph/module/RendererShaderGenAdapter.h](inc/hgl/graph/module/RendererShaderGenAdapter.h) / [src/SceneGraph/module/RendererShaderGenAdapter.cpp](src/SceneGraph/module/RendererShaderGenAdapter.cpp) 新增 `ResetValidationReports()`，用于清空 validation 历史并保证回归测试可重复。
+  - 新增 `GetRecentValidationMaterialCategoryMatrix(max_count)` 聚合接口，输出最近 validation 的“材质 × 分类”计数矩阵，便于按材质维度查看 `StrictGate.*` 分布。
   - 新增 [test/RendererShaderGenAdapterStrictGateTest.cpp](test/RendererShaderGenAdapterStrictGateTest.cpp)，覆盖 `StrictGate.Prebuild/Vertex/Descriptor` 三类错误的记录、最近历史顺序、按材质分组与分类直方图。
+  - 同一测试已扩展覆盖“材质 × 分类”聚合矩阵正确性（`StrictMatA/StrictMatB`）。
+  - [inc/hgl/ecs/core/Context.h](inc/hgl/ecs/core/Context.h) / [src/ecs/core/ContextDebug.cpp](src/ecs/core/ContextDebug.cpp) 新增 ECS Debug 桥接查询：
+    - `GetShaderGenValidationCategoryHistogram(...)`
+    - `GetShaderGenValidationMaterialCategoryMatrix(...)`
+  - [src/ecs/core/Context.cpp](src/ecs/core/Context.cpp) 已在 `descriptor_contract_diag_log_enabled` 周期日志中接入 strict gate 摘要输出（`strict_total/prebuild/spv/vertex/descriptor/strict_materials`）。
   - [test/CMakeLists.txt](test/CMakeLists.txt) 已接入 `test_RendererShaderGenAdapterStrictGate`，本地 Debug 构建与执行通过。
 
 当前阻塞：

@@ -73,6 +73,7 @@ namespace hgl::graph
         static std::vector<ValidationReportRecord> GetRecentValidationReports(uint32_t max_count = 64);
         static std::map<std::string, std::vector<ValidationReportRecord>> GetRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128);
         static std::map<std::string, uint32_t> GetRecentValidationReportCategoryHistogram(uint32_t max_count = 128);
+        static std::map<std::string, std::map<std::string, uint32_t>> GetRecentValidationMaterialCategoryMatrix(uint32_t max_count = 128);
         static void RecordExternalValidationError(const char *material_name, const char *message, const char *category = nullptr);
 
         ValidationReport ValidateMaterialContractReadOnly(const mtl::MaterialCreateInfo &mci,
