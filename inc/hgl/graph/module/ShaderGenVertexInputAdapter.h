@@ -7,7 +7,13 @@
 
 namespace hgl::graph
 {
+    class ShaderCreateInfoVertex;
+
     VertexInputGroup ResolveVertexInputGroupBySemantic(std::string_view semantic);
+
+    bool ValidateContractVertexLayoutAgainstLegacy(ShaderCreateInfoVertex *legacy_vertex,
+                                                   const mtl::contract::VertexInputLayout &contract_layout,
+                                                   std::string &reason);
 
     bool BuildVertexInputFromContractLayout(const mtl::contract::VertexInputLayout &layout,
                                             VIAArray &out_input,

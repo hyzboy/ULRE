@@ -1,5 +1,6 @@
 #include <hgl/graph/module/ShaderGenVertexInputAdapter.h>
 #include <hgl/vk/VKRenderAssign.h>
+#include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <cstdio>
 #include <vector>
 
@@ -20,6 +21,72 @@ namespace hgl::graph
             return VertexInputGroup::JointWeight;
 
         return VertexInputGroup::Basic;
+    }
+
+    bool ValidateContractVertexLayoutAgainstLegacy(ShaderCreateInfoVertex *legacy_vertex,
+                                                   const mtl::contract::VertexInputLayout &contract_layout,
+                                                   std::string &reason)
+    {
+        const uint32_t legacy_count = legacy_vertex ? legacy_vertex->GetInput().count : 0u;
+        const uint32_t contract_count = static_cast<uint32_t>(contract_layout.attributes.size());
+
+        if (legacy_count != contract_count)
+        {
+            reason = "vertex attribute count mismatch";
+            return false;
+        }
+
+        if (!legacy_vertex)
+            return true;
+
+        const auto &legacy_input = legacy_vertex->GetInput();
+        for (uint32_t i = 0; i < legacy_input.count; ++i)
+        {
+            const auto &legacy_attr = legacy_input.items[i];
+
+            const mtl::contract::VertexAttributeDesc *contract_attr = nullptr;
+            for (const auto &candidate : contract_layout.attributes)
+            {
+                if (candidate.location == legacy_attr.location)
+                {
+                    contract_attr = &candidate;
+                    break;
+                }
+            }
+
+            if (!contract_attr)
+            {
+                reason = "missing mirror vertex location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            if (contract_attr->semantic != legacy_attr.name)
+            {
+                reason = "vertex semantic mismatch at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            if (contract_attr->input_rate != legacy_attr.input_rate)
+            {
+                reason = "vertex input_rate mismatch at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            VAType parsed_type;
+            if (!ParseVertexAttribType(&parsed_type, contract_attr->type_name.c_str()))
+            {
+                reason = "unrecognized mirror vertex type_name at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+
+            if (parsed_type.basetype != (VABaseType)legacy_attr.basetype || parsed_type.vec_size != legacy_attr.vec_size)
+            {
+                reason = "vertex type mismatch at location=" + std::to_string(legacy_attr.location);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool BuildVertexInputFromContractLayout(const mtl::contract::VertexInputLayout &layout,

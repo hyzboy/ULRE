@@ -30,72 +30,6 @@
 namespace hgl::graph{
 namespace
 {
-    static bool ValidateMirrorPreferredVertexLayout(ShaderCreateInfoVertex *vert,
-                                                    const mtl::contract::ShaderGenResult &mirror_result,
-                                                    std::string &reason)
-    {
-        const uint32_t legacy_count = vert ? vert->GetInput().count : 0u;
-        const uint32_t mirror_count = static_cast<uint32_t>(mirror_result.vertex_layout.attributes.size());
-
-        if(legacy_count != mirror_count)
-        {
-            reason = "vertex attribute count mismatch";
-            return false;
-        }
-
-        if(!vert)
-            return true;
-
-        const auto &legacy_input = vert->GetInput();
-        for(uint32_t i = 0; i < legacy_input.count; ++i)
-        {
-            const auto &legacy_attr = legacy_input.items[i];
-
-            const mtl::contract::VertexAttributeDesc *mirror_attr = nullptr;
-            for(const auto &candidate : mirror_result.vertex_layout.attributes)
-            {
-                if(candidate.location == legacy_attr.location)
-                {
-                    mirror_attr = &candidate;
-                    break;
-                }
-            }
-
-            if(!mirror_attr)
-            {
-                reason = "missing mirror vertex location=" + std::to_string(legacy_attr.location);
-                return false;
-            }
-
-            if(mirror_attr->semantic != legacy_attr.name)
-            {
-                reason = "vertex semantic mismatch at location=" + std::to_string(legacy_attr.location);
-                return false;
-            }
-
-            if(mirror_attr->input_rate != legacy_attr.input_rate)
-            {
-                reason = "vertex input_rate mismatch at location=" + std::to_string(legacy_attr.location);
-                return false;
-            }
-
-            VAType parsed_type;
-            if(!ParseVertexAttribType(&parsed_type, mirror_attr->type_name.c_str()))
-            {
-                reason = "unrecognized mirror vertex type_name at location=" + std::to_string(legacy_attr.location);
-                return false;
-            }
-
-            if(parsed_type.basetype != (VABaseType)legacy_attr.basetype || parsed_type.vec_size != legacy_attr.vec_size)
-            {
-                reason = "vertex type mismatch at location=" + std::to_string(legacy_attr.location);
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     static void RecordStrictAbortReport(const AnsiString &mtl_name, const std::string &reason, const char *category)
     {
         RendererShaderGenAdapter::RecordExternalValidationError(
@@ -453,7 +387,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
         if(use_mirror_vertex_input && vert && !mirror_spv_build_used)
         {
             std::string reason;
-            if(!ValidateMirrorPreferredVertexLayout(vert, *mirror_result, reason))
+            if(!ValidateContractVertexLayoutAgainstLegacy(vert, mirror_result->vertex_layout, reason))
             {
                 use_mirror_vertex_input = false;
 
@@ -477,7 +411,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
         if(mirror_spv_build_used)
         {
             std::string reason;
-            if(!ValidateMirrorPreferredVertexLayout(vert, *mirror_result, reason))
+            if(!ValidateContractVertexLayoutAgainstLegacy(vert, mirror_result->vertex_layout, reason))
             {
                 RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
                 std::fprintf(stderr,
