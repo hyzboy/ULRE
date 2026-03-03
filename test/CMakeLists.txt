@@ -249,6 +249,22 @@ target_include_directories(test_MaterialPresetExhaustiveCompile
 
 CreateTestProject(17 test_MaterialPresetExhaustiveCompile)
 
+add_executable(test_RendererShaderGenAdapterStrictGate
+    RendererShaderGenAdapterStrictGateTest.cpp)
+
+target_link_libraries(test_RendererShaderGenAdapterStrictGate
+    PRIVATE ULRE.SceneGraph
+            ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_RendererShaderGenAdapterStrictGate
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(18 test_RendererShaderGenAdapterStrictGate)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -301,6 +317,9 @@ if(BUILD_TESTING)
 
     add_test(NAME test_MaterialPresetExhaustiveCompile
              COMMAND test_MaterialPresetExhaustiveCompile)
+
+    add_test(NAME test_RendererShaderGenAdapterStrictGate
+             COMMAND test_RendererShaderGenAdapterStrictGate)
 
     set_tests_properties(test_MaterialPresetExhaustiveCompile PROPERTIES
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")

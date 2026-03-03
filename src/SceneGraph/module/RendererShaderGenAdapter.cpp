@@ -341,6 +341,18 @@ namespace hgl::graph
         storage.snapshot = ProfilerSnapshot{};
     }
 
+    void RendererShaderGenAdapter::ResetValidationReports()
+    {
+        auto &storage = GetShaderGenValidationReportStorage();
+        std::lock_guard<std::mutex> lock(storage.mutex);
+
+        storage.last_report = ValidationReport{};
+        storage.last_report_material_name.clear();
+        storage.has_last_report = false;
+        storage.report_sequence = 0;
+        storage.history_reports.clear();
+    }
+
     RendererShaderGenAdapter::ProfilerSnapshot RendererShaderGenAdapter::GetProfilerSnapshot()
     {
         auto &storage = GetShaderGenProfilerStorage();

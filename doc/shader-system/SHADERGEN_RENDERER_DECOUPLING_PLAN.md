@@ -74,6 +74,10 @@
   - 在 `mirror-preferred` 下，mirror SPV 构建失败保持严格失败并中止材质创建（blocking）
   - 顶点布局/descriptor 严格一致性校验仅在“实际使用 mirror SPV 构建成功”后执行，避免 fallback 路径误报
   - `descriptor set_type` 差异已降级为非阻断（warning 语义），严格门禁仅对 Vulkan 关键字段生效：`set/binding/descriptor_type/stage/name`
+- 2026-03-04 Phase 3 回归补强（严格失败链路）
+  - [inc/hgl/graph/module/RendererShaderGenAdapter.h](inc/hgl/graph/module/RendererShaderGenAdapter.h) / [src/SceneGraph/module/RendererShaderGenAdapter.cpp](src/SceneGraph/module/RendererShaderGenAdapter.cpp) 新增 `ResetValidationReports()`，用于清空 validation 历史并保证回归测试可重复。
+  - 新增 [test/RendererShaderGenAdapterStrictGateTest.cpp](test/RendererShaderGenAdapterStrictGateTest.cpp)，覆盖 `StrictGate.Prebuild/Vertex/Descriptor` 三类错误的记录、最近历史顺序、按材质分组与分类直方图。
+  - [test/CMakeLists.txt](test/CMakeLists.txt) 已接入 `test_RendererShaderGenAdapterStrictGate`，本地 Debug 构建与执行通过。
 
 当前阻塞：
 
@@ -83,7 +87,7 @@
 下一步（建议本周）：
 
   1. Phase 3：推进主路径切换开关（默认走 `ShaderGenResult`，legacy 保留 fallback）并补齐回退策略验证
-  2. 针对 `mirror-preferred` 增加端到端严格失败路径回归用例
+  2. 在现有 `StrictGate` 单测基础上，补齐 `MaterialManager::CreateMaterial` 入口级端到端严格失败路径回归用例
   3. 对示例运行时 `exit code = 1` 做专项排查并沉淀最小复现清单
   4. 按材质/stage 聚合输出 validation/profiler（日志通道或可视化入口）
 

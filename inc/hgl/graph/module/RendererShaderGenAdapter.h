@@ -67,6 +67,7 @@ namespace hgl::graph
         };
 
         static void ResetProfiler();
+        static void ResetValidationReports();
         static ProfilerSnapshot GetProfilerSnapshot();
         static bool GetLastValidationReport(ValidationReport &out_report, std::string *out_material_name = nullptr);
         static std::vector<ValidationReportRecord> GetRecentValidationReports(uint32_t max_count = 64);
