@@ -91,9 +91,16 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         return(nullptr);
     }
 
-    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(input_count,geom->GetIBO(),geom->GetVDM());
-
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
+
+    uint32_t max_binding=0;
+    for(uint i=0;i<input_count;i++)
+    {
+        if(vif[i].binding>max_binding)
+            max_binding=vif[i].binding;
+    }
+
+    GeometryDataBuffer *geom_data_buffer=new GeometryDataBuffer(max_binding+1,geom->GetIBO(),geom->GetVDM());
 
     VAB *vab;
 
@@ -130,8 +137,9 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
             return(nullptr);
         }
 
-        geom_data_buffer->vab_list[i]=vab->GetVkBuffer();
-        geom_data_buffer->vab_offset[i]=0;
+        const uint32_t bind_index=vif->binding;
+        geom_data_buffer->vab_list[bind_index]=vab->GetVkBuffer();
+        geom_data_buffer->vab_offset[bind_index]=0;
         ++vif;
     }
 
@@ -146,12 +154,22 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
     ibo=geom->GetIBO();
     vdm=geom->GetVDM();
 
-    const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
-
     for(uint i=0;i<vab_count;i++)
     {
-        vab_list[i]=geom->GetVkBuffer(vif->name);
+        vab_list[i]=VK_NULL_HANDLE;
         vab_offset[i]=0;
+    }
+
+    const uint32_t input_count=vil->GetVertexAttribCount(VertexInputGroup::Basic);
+    const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
+
+    for(uint i=0;i<input_count;i++)
+    {
+        if(vif->binding<vab_count)
+        {
+            vab_list[vif->binding]=geom->GetVkBuffer(vif->name);
+            vab_offset[vif->binding]=0;
+        }
 
         ++vif;
     }
