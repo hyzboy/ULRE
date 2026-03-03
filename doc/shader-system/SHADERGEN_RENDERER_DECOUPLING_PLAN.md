@@ -84,6 +84,11 @@
     - `GetShaderGenValidationMaterialCategoryMatrix(...)`
   - [src/ecs/core/Context.cpp](src/ecs/core/Context.cpp) 已在 `descriptor_contract_diag_log_enabled` 周期日志中接入 strict gate 摘要输出（`strict_total/prebuild/spv/vertex/descriptor/strict_materials`）。
   - [test/CMakeLists.txt](test/CMakeLists.txt) 已接入 `test_RendererShaderGenAdapterStrictGate`，本地 Debug 构建与执行通过。
+- 2026-03-04 Phase 3 主路径推进（descriptor/pipeline layout）
+  - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 的 descriptor 构建已调整为“**mirror result 优先**”：只要 `ShaderGenResult` 可用且与当前 SPV 路径兼容，即优先使用 contract 结果驱动 `MaterialDescriptorManager`/pipeline layout。
+  - 对 legacy SPV 回退路径新增安全策略：当 mirror descriptor 校验或构建失败时，`mirror-validate` 自动回退 legacy descriptor layout，`mirror-preferred` 保持严格失败（`StrictGate.Descriptor`）。
+  - `MaterialManager` 的 vertex input 构建已同步调整为“**mirror result 优先**”：新增 `BuildVertexInputFromMirrorResult(...)`，在 mirror 可用且兼容时优先使用 contract 顶点布局；`mirror-validate` 下失败自动回退 legacy vertex input，`mirror-preferred` / mirror SPV 主路径保持严格失败（`StrictGate.Vertex`）。
+  - 本地定向构建 `ULRE.SceneGraph` 通过；`05_Billboard --shadergen-path-mode=mirror-validate` 运行仍崩溃（`exit code=-1073741819`），与“运行态退出根因待定位”阻塞项一致，未新增 descriptor 关键错误 grep 命中。
 
 当前阻塞：
 

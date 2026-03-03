@@ -9,6 +9,7 @@
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
+#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
@@ -28,6 +29,23 @@
 namespace hgl::graph{
 namespace
 {
+    static VertexInputGroup ResolveVertexInputGroupBySemantic(const std::string &semantic)
+    {
+        if(semantic == Assign::TransformID::VIS_NAME)
+            return VertexInputGroup::TransformID;
+
+        if(semantic == Assign::MaterialInstanceID::VIS_NAME)
+            return VertexInputGroup::MaterialInstanceID;
+
+        if(semantic == VAN::JointID)
+            return VertexInputGroup::JointID;
+
+        if(semantic == VAN::JointWeight)
+            return VertexInputGroup::JointWeight;
+
+        return VertexInputGroup::Basic;
+    }
+
     static VkDescriptorType ToVkDescriptorType(const mtl::contract::ResourceClass rc)
     {
         switch(rc)
@@ -103,6 +121,85 @@ namespace
                 reason = "vertex type mismatch at location=" + std::to_string(legacy_attr.location);
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    static bool BuildVertexInputFromMirrorResult(const mtl::contract::ShaderGenResult &mirror_result,
+                                                 VIAArray &out_input,
+                                                 std::string &reason)
+    {
+        out_input.Clear();
+
+        const uint32_t mirror_count = static_cast<uint32_t>(mirror_result.vertex_layout.attributes.size());
+        if(mirror_count == 0)
+        {
+            reason = "mirror result has no vertex attributes";
+            return false;
+        }
+
+        if(!out_input.Init(mirror_count))
+        {
+            reason = "failed to allocate mirror vertex input array";
+            return false;
+        }
+
+        std::vector<uint8_t> location_seen(256, 0);
+
+        for(uint32_t i = 0; i < mirror_count; ++i)
+        {
+            const auto &src_attr = mirror_result.vertex_layout.attributes[i];
+
+            if(src_attr.location > 255)
+            {
+                reason = "mirror vertex location overflow";
+                return false;
+            }
+
+            if(src_attr.input_rate > 255)
+            {
+                reason = "mirror vertex input_rate overflow";
+                return false;
+            }
+
+            if(src_attr.semantic.empty())
+            {
+                reason = "mirror vertex semantic is empty";
+                return false;
+            }
+
+            if(src_attr.semantic.size() >= VERTEX_ATTRIB_NAME_MAX_LENGTH)
+            {
+                reason = "mirror vertex semantic is too long";
+                return false;
+            }
+
+            const uint8_t loc = static_cast<uint8_t>(src_attr.location);
+            if(location_seen[loc])
+            {
+                reason = "mirror vertex location duplicated";
+                return false;
+            }
+            location_seen[loc] = 1;
+
+            VAType parsed_type;
+            if(!ParseVertexAttribType(&parsed_type, src_attr.type_name.c_str()))
+            {
+                reason = "unrecognized mirror vertex type_name";
+                return false;
+            }
+
+            VIA dst{};
+            std::snprintf(dst.name, sizeof(dst.name), "%s", src_attr.semantic.c_str());
+            dst.location = loc;
+            dst.basetype = static_cast<uint8_t>(parsed_type.basetype);
+            dst.vec_size = parsed_type.vec_size;
+            dst.input_rate = static_cast<uint8_t>(src_attr.input_rate);
+            dst.group = ResolveVertexInputGroupBySemantic(src_attr.semantic);
+            dst.interpolation = Interpolation::Smooth;
+
+            out_input.items[i] = dst;
         }
 
         return true;
@@ -561,6 +658,32 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     {
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
+        bool use_mirror_vertex_input = (mirror_result != nullptr);
+
+        if(use_mirror_vertex_input && vert && !mirror_spv_build_used)
+        {
+            std::string reason;
+            if(!ValidateMirrorPreferredVertexLayout(vert, *mirror_result, reason))
+            {
+                use_mirror_vertex_input = false;
+
+                if(require_mirror_valid)
+                {
+                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
+                    std::fprintf(stderr,
+                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                        reason.c_str());
+                    return nullptr;
+                }
+
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s mirror vertex layout mismatch (%s), fallback to legacy vertex input\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                    reason.c_str());
+            }
+        }
+
         if(mirror_spv_build_used)
         {
             std::string reason;
@@ -575,7 +698,34 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
             }
         }
 
-        if(vert)
+        if(use_mirror_vertex_input)
+        {
+            VIAArray mirror_input;
+            std::string reason;
+            if(!BuildVertexInputFromMirrorResult(*mirror_result, mirror_input, reason))
+            {
+                if(require_mirror_valid || mirror_spv_build_used)
+                {
+                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
+                    std::fprintf(stderr,
+                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                        reason.c_str());
+                    return nullptr;
+                }
+
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s mirror vertex input build failed (%s), fallback to legacy vertex input\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                    reason.c_str());
+            }
+            else
+            {
+                mtl->vertex_input = GetVertexInput(mirror_input);
+            }
+        }
+
+        if(!mtl->vertex_input && vert)
             mtl->vertex_input=GetVertexInput(vert->GetInput());
     }
 
@@ -602,12 +752,17 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
         std::vector<ShaderDescriptor> descriptors;
 
-        if(mirror_spv_build_used)
+        const bool has_mirror_result = (mirror_result != nullptr);
+        bool can_use_mirror_descriptor_layout = has_mirror_result;
+
+        if(has_mirror_result && !legacy_descriptors.empty())
         {
-            if(!legacy_descriptors.empty())
+            std::string reason;
+            if(!ValidateMirrorPreferredDescriptorLayout(legacy_descriptors, *mirror_result, reason))
             {
-                std::string reason;
-                if(!ValidateMirrorPreferredDescriptorLayout(legacy_descriptors, *mirror_result, reason))
+                can_use_mirror_descriptor_layout = false;
+
+                if(require_mirror_valid || mirror_spv_build_used)
                 {
                     RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
                     std::fprintf(stderr,
@@ -616,21 +771,41 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
                         reason.c_str());
                     return nullptr;
                 }
-            }
 
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s mirror descriptor layout mismatch (%s), fallback to legacy descriptor layout\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                    reason.c_str());
+            }
+        }
+
+        if(can_use_mirror_descriptor_layout)
+        {
             std::string reason;
             if(!BuildDescriptorsFromMirrorResult(*mirror_result, legacy_descriptors, descriptors, reason))
             {
-                RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
+                if(require_mirror_valid || mirror_spv_build_used)
+                {
+                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
+                    std::fprintf(stderr,
+                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                        reason.c_str());
+                    return nullptr;
+                }
+
                 std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                    "[RendererShaderGenAdapter] material=%s mirror descriptor layout build failed (%s), fallback to legacy descriptor layout\n",
                     mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
                     reason.c_str());
-                return nullptr;
+
+                descriptors = std::move(legacy_descriptors);
             }
         }
         else
+        {
             descriptors = std::move(legacy_descriptors);
+        }
 
         if(!descriptors.empty())
             mtl->desc_manager=new MaterialDescriptorManager(mtl_name,descriptors.data(),static_cast<uint>(descriptors.size()));
