@@ -8,6 +8,50 @@
 namespace hgl::graph{
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
+namespace
+{
+    static bool ComputeBCLevelBytesByFormat(const VkFormat format,
+                                            const uint32_t width,
+                                            const uint32_t height,
+                                            uint32_t &out_level_bytes)
+    {
+        uint32_t block_bytes = 0;
+
+        switch(format)
+        {
+            case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+            case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+            case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+            case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+            case VK_FORMAT_BC4_UNORM_BLOCK:
+            case VK_FORMAT_BC4_SNORM_BLOCK:
+                block_bytes = 8;
+                break;
+
+            case VK_FORMAT_BC2_UNORM_BLOCK:
+            case VK_FORMAT_BC2_SRGB_BLOCK:
+            case VK_FORMAT_BC3_UNORM_BLOCK:
+            case VK_FORMAT_BC3_SRGB_BLOCK:
+            case VK_FORMAT_BC5_UNORM_BLOCK:
+            case VK_FORMAT_BC5_SNORM_BLOCK:
+            case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+            case VK_FORMAT_BC6H_SFLOAT_BLOCK:
+            case VK_FORMAT_BC7_UNORM_BLOCK:
+            case VK_FORMAT_BC7_SRGB_BLOCK:
+                block_bytes = 16;
+                break;
+
+            default:
+                return false;
+        }
+
+        const uint32_t blocks_x = (width  + 3u) / 4u;
+        const uint32_t blocks_y = (height + 3u) / 4u;
+        out_level_bytes = blocks_x * blocks_y * block_bytes;
+        return true;
+    }
+}
+
 Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
 {
     if(!tex_data)
@@ -129,6 +173,7 @@ bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,VkBuffer buf,const Vk
 
     uint32_t width=extent.width;
     uint32_t height=extent.height;
+    uint32_t rolling_level_bytes = total_bytes;
 
     buffer_image_copy.zero();
 
@@ -148,13 +193,27 @@ bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,VkBuffer buf,const Vk
         bic.imageExtent.height= height;
         bic.imageExtent.depth = 1;
 
-        if(total_bytes<8)
-            offset+=8;
-        else
-            offset+=total_bytes;
+        const bool can_half_width  = (width  > 1);
+        const bool can_half_height = (height > 1);
 
-        if(width>1){width>>=1;total_bytes>>=1;}
-        if(height>1){height>>=1;total_bytes>>=1;}
+        uint32_t level_bytes = 0;
+        if(ComputeBCLevelBytesByFormat(tex->GetFormat(), width, height, level_bytes))
+        {
+            offset += level_bytes;
+        }
+        else
+        {
+            if(rolling_level_bytes < 8)
+                offset += 8;
+            else
+                offset += rolling_level_bytes;
+
+            if(can_half_width)  rolling_level_bytes >>= 1;
+            if(can_half_height) rolling_level_bytes >>= 1;
+        }
+
+        if(can_half_width)  width  >>= 1;
+        if(can_half_height) height >>= 1;
     }
 
     return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);

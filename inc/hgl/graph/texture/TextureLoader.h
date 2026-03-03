@@ -65,6 +65,7 @@ namespace hgl::graph
     const uint32 ComputeMipmapBytes1D(uint32 length,uint32 bytes,uint mip_level);
     const uint32 ComputeMipmapBytes2D(uint32 width,uint32 height,uint32 bytes,uint mip_level);
     const uint32 ComputeMipmapBytes3D(uint32 width,uint32 height,uint32 depth,uint32 bytes,uint mip_level);
+    const uint32 ComputeTexture2DMipmapChainBytes(const TexPixelFormat &pixel_format,uint32 width,uint32 height,uint32 mipmap_zero_bytes,uint mip_level);
 
     class TextureLoader
     {
@@ -148,10 +149,11 @@ namespace hgl::graph
             if(file_header.mipmaps<=1)
                 return mipmap_zero_total_bytes;
             else
-                return ComputeMipmapBytes2D(file_header.width,
-                                            file_header.height,
-                                            mipmap_zero_total_bytes,
-                                            file_header.mipmaps);
+                return ComputeTexture2DMipmapChainBytes(file_header.pixel_format,
+                                                        file_header.width,
+                                                        file_header.height,
+                                                        mipmap_zero_total_bytes,
+                                                        file_header.mipmaps);
         }
 
     public:
@@ -199,10 +201,11 @@ namespace hgl::graph
             if(file_header.mipmaps<=1)
                 return mipmap_zero_total_bytes*6;
             else
-                return ComputeMipmapBytes2D(file_header.width,
-                                            file_header.height,
-                                            mipmap_zero_total_bytes,
-                                            file_header.mipmaps)*6;
+                return ComputeTexture2DMipmapChainBytes(file_header.pixel_format,
+                                                        file_header.width,
+                                                        file_header.height,
+                                                        mipmap_zero_total_bytes,
+                                                        file_header.mipmaps)*6;
         }
 
     public:
@@ -248,10 +251,11 @@ namespace hgl::graph
             if(file_header.mipmaps<=1)
                 return mipmap_zero_total_bytes*file_header.layers;
             else
-                return ComputeMipmapBytes2D(file_header.width,
-                                            file_header.height,
-                                            mipmap_zero_total_bytes,
-                                            file_header.mipmaps)*file_header.layers;
+                return ComputeTexture2DMipmapChainBytes(file_header.pixel_format,
+                                                        file_header.width,
+                                                        file_header.height,
+                                                        mipmap_zero_total_bytes,
+                                                        file_header.mipmaps)*file_header.layers;
         }
 
     public:
@@ -273,10 +277,11 @@ namespace hgl::graph
             if(file_header.mipmaps<=1)
                 return mipmap_zero_total_bytes*6*file_header.layers;
             else
-                return ComputeMipmapBytes2D(file_header.width,
-                                            file_header.height,
-                                            mipmap_zero_total_bytes,
-                                            file_header.mipmaps)*6*file_header.layers;
+                return ComputeTexture2DMipmapChainBytes(file_header.pixel_format,
+                                                        file_header.width,
+                                                        file_header.height,
+                                                        mipmap_zero_total_bytes,
+                                                        file_header.mipmaps)*6*file_header.layers;
         }
 
     public:

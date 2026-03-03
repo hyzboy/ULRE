@@ -96,6 +96,10 @@
     - contract 顶点布局转换成功路径；
     - duplicated location 失败路径。
   - `auto_instance` 的 `not found VAB "TransformID"` 报错已回归验证为 0 命中（`FATAL_MATCH_COUNT=0`）。
+  - 对 [example/Environment/BasicLitSunDirectionECS.cpp](example/Environment/BasicLitSunDirectionECS.cpp) 完成双模式运行回归：
+    - `mirror-validate`：关键 pattern（`read-only validation failed` / `mirror-preferred build aborted` / descriptor 更新错误）0 命中，进程退出码 `-1073741819`。
+    - `mirror-preferred`：关键 pattern 同样 0 命中，进程退出码 `-1073741819`。
+    - 两模式日志尾部均停在 RenderPass 创建后，当前可判定“该崩溃暂未体现为 ShaderGen contract 校验/descriptor 门禁错误”。
   - 本地定向构建 `ULRE.SceneGraph` 通过；`05_Billboard --shadergen-path-mode=mirror-validate` 运行仍崩溃（`exit code=-1073741819`），与“运行态退出根因待定位”阻塞项一致，未新增 descriptor 关键错误 grep 命中。
 
 当前阻塞：

@@ -36,6 +36,19 @@ namespace hgl::graph
 
         constexpr uint32 CompressFormatCount=sizeof(CompressFormatList)/sizeof(VkFormat);
 
+        constexpr uint32_t ComputeBCBlockBytes(const uint32_t bits_per_pixel)
+        {
+            return bits_per_pixel <= 4 ? 8u : 16u;
+        }
+
+        constexpr uint32_t ComputeBCLevelBytes2D(const uint32_t width,const uint32_t height,const uint32_t bits_per_pixel)
+        {
+            const uint32_t block_bytes = ComputeBCBlockBytes(bits_per_pixel);
+            const uint32_t blocks_x = (width  + 3u) / 4u;
+            const uint32_t blocks_y = (height + 3u) / 4u;
+            return blocks_x * blocks_y * block_bytes;
+        }
+
         const int GetCompressFormat(const char *name)
         {
             const size_t len =hgl::strlen(name);
@@ -130,6 +143,38 @@ namespace hgl::graph
         }
 
         return total;
+    }
+
+    const uint32 ComputeTexture2DMipmapChainBytes(const TexPixelFormat &pixel_format,
+                                                  uint32 width,
+                                                  uint32 height,
+                                                  uint32 mipmap_zero_bytes,
+                                                  uint mip_level)
+    {
+        if(mip_level == 0)
+            return 0;
+
+        if(pixel_format.channels == 0)
+        {
+            uint32_t total = 0;
+            const uint32_t bits = pixel_format.pixel_bits();
+
+            while(width >= 1 && height >= 1 && mip_level > 0)
+            {
+                --mip_level;
+                total += ComputeBCLevelBytes2D(width, height, bits);
+
+                if(width == 1 && height == 1)
+                    break;
+
+                if(width  > 1) width  >>= 1;
+                if(height > 1) height >>= 1;
+            }
+
+            return total;
+        }
+
+        return ComputeMipmapBytes2D(width, height, mipmap_zero_bytes, mip_level);
     }
 
     struct VulkanTexturePixelFormat
@@ -256,7 +301,10 @@ namespace hgl::graph
         }
 
         //计算0级mipmap图像的字节数
-        mipmap_zero_total_bytes=(GetPixelsCount()*file_header.pixel_format.pixel_bits())>>3;
+        if(file_header.pixel_format.channels==0)
+            mipmap_zero_total_bytes = ComputeTexture2DMipmapChainBytes(file_header.pixel_format, file_header.width, file_header.height, 0, 1);
+        else
+            mipmap_zero_total_bytes = (GetPixelsCount()*file_header.pixel_format.pixel_bits())>>3;
 
         total_bytes=GetTotalBytes();
 
