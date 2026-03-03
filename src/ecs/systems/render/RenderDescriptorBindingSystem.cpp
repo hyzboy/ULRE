@@ -331,12 +331,15 @@ namespace hgl::ecs
 
         std::unordered_set<graph::Material *> l2w_bound_materials;
         std::unordered_set<graph::Material *> mi_bound_materials;
+        std::unordered_set<const graph::Material *> active_materials;
 
         for (const auto &pair : cache.materialBatches)
         {
             graph::Material *material = pair.first.material;
             if (!material)
                 continue;
+
+            active_materials.insert(material);
 
             const MaterialBatch *batch = pair.second.get();
 
@@ -434,6 +437,22 @@ namespace hgl::ecs
                     mi_bound_materials.insert(material);
                 }
             }
+        }
+
+        for (auto it = material_resource_bindings.begin(); it != material_resource_bindings.end();)
+        {
+            if (active_materials.find(it->first) == active_materials.end())
+                it = material_resource_bindings.erase(it);
+            else
+                ++it;
+        }
+
+        for (auto it = contract_last_ok.begin(); it != contract_last_ok.end();)
+        {
+            if (active_materials.find(it->first) == active_materials.end())
+                it = contract_last_ok.erase(it);
+            else
+                ++it;
         }
     }
 
