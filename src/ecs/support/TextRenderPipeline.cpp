@@ -101,6 +101,7 @@ namespace hgl::ecs
         auto* material_manager = graphics_context ? graphics_context->GetMaterialManager() : nullptr;
         auto* sampler_manager = graphics_context ? graphics_context->GetSamplerManager() : nullptr;
         auto* buffer_manager = graphics_context ? graphics_context->GetBufferManager() : nullptr;
+        auto descriptor_binding_system = world ? world->GetSystem<RenderDescriptorBindingSystem>() : nullptr;
 
         for (auto& pair : resources_by_font)
         {
@@ -126,6 +127,9 @@ namespace hgl::ecs
 
             if (res.material && material_manager)
             {
+                if (descriptor_binding_system)
+                    descriptor_binding_system->ClearMaterialBindings(res.material);
+
                 material_manager->Release(res.material);
                 res.material = nullptr;
             }

@@ -13,6 +13,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
+#include<hgl/vk/VKMaterialInstance.h>
 
 namespace hgl::ecs
 {
@@ -109,6 +110,10 @@ namespace hgl::ecs
         if (!mi)
             return false;
 
+        graph::Material *previous_material = nullptr;
+        if (auto *previous_mi = quad->GetOverrideMaterial())
+            previous_material = previous_mi->GetMaterial();
+
         auto *render_context = world->GetRenderContext();
         auto *render_target = render_context ? render_context->GetCurrentRenderTarget() : nullptr;
         auto *render_pass = render_target ? render_target->GetRenderPass() : nullptr;
@@ -174,6 +179,9 @@ namespace hgl::ecs
 
         if (auto descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>())
         {
+            if (previous_material && previous_material != material)
+                descriptor_binding_system->ClearMaterialBindings(previous_material);
+
             descriptor_binding_system->RegisterMaterialTextureSampler(material,
                                                                       graph::mtl::SamplerName::BaseColor,
                                                                       texture,
