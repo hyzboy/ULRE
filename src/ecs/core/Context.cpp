@@ -1099,6 +1099,20 @@ namespace hgl
                                                                   fallback_hits);
         }
 
+        bool ECSContext::GetMaterialBindingRegistryStats(uint32_t &materials_registered,
+                                                         uint32_t &binding_entries) const
+        {
+            materials_registered = 0;
+            binding_entries = 0;
+
+            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
+            if (!descriptor_system)
+                return false;
+
+            return descriptor_system->GetMaterialBindingRegistryStats(materials_registered,
+                                                                      binding_entries);
+        }
+
         bool ECSContext::RemoveSystemByKey(size_t key)
         {
             auto remove_from = [&](auto &sys_map,

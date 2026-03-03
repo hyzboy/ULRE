@@ -87,6 +87,18 @@ namespace hgl::ecs
         return true;
     }
 
+    bool RenderDescriptorBindingSystem::GetMaterialBindingRegistryStats(uint32_t &materials_registered,
+                                                                        uint32_t &binding_entries) const
+    {
+        materials_registered = static_cast<uint32_t>(material_resource_bindings.size());
+        binding_entries = 0;
+
+        for (const auto &pair : material_resource_bindings)
+            binding_entries += static_cast<uint32_t>(pair.second.size());
+
+        return true;
+    }
+
     bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::Material *material,
                                                                 const AnsiString &name,
                                                                 graph::Texture *texture)

@@ -84,6 +84,8 @@ namespace hgl::ecs
                                         uint32_t &required_missing,
                                         uint32_t &optional_missing,
                                         uint32_t &fallback_hits) const;
+        bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
+                             uint32_t &binding_entries) const;
         bool RegisterMaterialTexture(graph::Material *material,
                          const AnsiString &name,
                          graph::Texture *texture);

@@ -325,6 +325,9 @@ namespace hgl
                                                  uint32_t &optional_missing,
                                                  uint32_t &fallback_hits) const;
 
+            bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
+                                                 uint32_t &binding_entries) const;
+
             void SetDescriptorContractDiagnosticsLogEnabled(bool enabled) { descriptor_contract_diag_log_enabled = enabled; }
             bool IsDescriptorContractDiagnosticsLogEnabled() const { return descriptor_contract_diag_log_enabled; }
 
