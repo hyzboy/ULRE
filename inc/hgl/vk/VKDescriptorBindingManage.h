@@ -4,6 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKBufferAccessBase.h>
+#include<hgl/vk/VKSampler.h>
 
 namespace hgl::graph{
 
@@ -18,11 +19,18 @@ class MaterialParameters;
  */
 class DescriptorBinding
 {
+    struct TextureSamplerBinding
+    {
+        Texture *texture=nullptr;
+        Sampler *sampler=nullptr;
+    };
+
     DescriptorSetType set_type;                     ///<描述符合集类型
 
     UnorderedMap<AnsiString,const IGPUBuffer *> ubo_map;
     UnorderedMap<AnsiString,const IGPUBuffer *> ssbo_map;
     UnorderedMap<AnsiString,Texture *> texture_map;
+    UnorderedMap<AnsiString,TextureSamplerBinding> texture_sampler_map;
 
 public:
 
@@ -126,11 +134,41 @@ public:
         if(name.IsEmpty())return;
 
         texture_map.DeleteByKey(name);
+        texture_sampler_map.DeleteByKey(name);
+    }
+
+    bool AddTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
+    {
+        if(!tex||!sampler)return(false);
+        if(name.IsEmpty())return(false);
+
+        TextureSamplerBinding tsb;
+        tsb.texture=tex;
+        tsb.sampler=sampler;
+
+        return texture_sampler_map.Add(name,tsb);
+    }
+
+    const TextureSamplerBinding *GetTextureSampler(const AnsiString &name)
+    {
+        if(name.IsEmpty())return(nullptr);
+
+        return texture_sampler_map.GetValuePointer(name);
+    }
+
+    void RemoveTextureSampler(const AnsiString &name)
+    {
+        if(name.IsEmpty())return;
+
+        texture_sampler_map.DeleteByKey(name);
     }
 
 private:
 
     void BindUBO(MaterialParameters *,const BindingMap &,bool dynamic);
+    void BindSSBO(MaterialParameters *,const BindingMap &,bool dynamic);
+    void BindTexture(MaterialParameters *,const BindingMap &);
+    void BindTextureSampler(MaterialParameters *,const BindingMap &);
 
 public:
 
