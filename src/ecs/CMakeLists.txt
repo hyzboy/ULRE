@@ -1,5 +1,7 @@
 ﻿SET(ECS_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/ecs)
 
+option(ULRE_ECS_DEBUG_API "Enable ECS debug API surface" ON)
+
 set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/Object.h
     ${ECS_INCLUDE_PATH}/core/Component.h
@@ -28,7 +30,6 @@ set(ECS_CORE_FILES
     core/System.cpp
     core/SystemProfiler.cpp
     core/Context.cpp
-    core/ContextDebug.cpp
     core/RenderGraph.cpp
     core/SystemGroup.cpp
     core/World.cpp
@@ -136,8 +137,17 @@ set(ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES
 set(ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderDescriptorBindingSystem.h
     systems/render/RenderDescriptorBindingSystem.cpp
-    systems/render/RenderDescriptorBindingSystemDebugAPI.cpp
 )
+
+if(ULRE_ECS_DEBUG_API)
+    list(APPEND ECS_CORE_FILES
+        core/ContextDebug.cpp
+    )
+
+    list(APPEND ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
+        systems/render/RenderDescriptorBindingSystemDebugAPI.cpp
+    )
+endif()
 
 set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderPrimitiveCollectSystem.h
@@ -363,3 +373,9 @@ source_group("ECS\\Serialization" FILES ${ECS_SERIALIZATION_FILES})
 
 add_cm_library(ULRE.ECS "ULRE" ${ECS_INCLUDE_PATH}
 ${ECS_SOURCE})
+
+if(ULRE_ECS_DEBUG_API)
+    target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=1)
+else()
+    target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=0)
+endif()
