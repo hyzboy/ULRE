@@ -1,6 +1,7 @@
 #include<hgl/ecs/support/TextRenderPipeline.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/components/TextComponent.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/core/GraphicsContext.h>
@@ -332,6 +333,17 @@ namespace hgl::ecs
 
         if (!material_binding.Bind(guard.material))
             return nullptr;
+
+        if (world)
+        {
+            if (auto descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>())
+            {
+                descriptor_binding_system->RegisterMaterialTextureSampler(guard.material,
+                                                                          graph::mtl::SamplerName::Text,
+                                                                          guard.tile_font->GetTexture(),
+                                                                          guard.sampler);
+            }
+        }
 
         resources.tile_font = guard.tile_font.release();
         resources.material = guard.material;

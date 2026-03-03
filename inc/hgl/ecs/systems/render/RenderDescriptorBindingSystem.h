@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/shadergen/DescriptorBindingContract.h>
+#include<hgl/type/String.h>
 #include<vector>
 #include<functional>
 #include<unordered_map>
@@ -13,6 +14,8 @@ namespace hgl::graph
     class Material;
     class IRenderTarget;
     class IGPUBuffer;
+    class Texture;
+    class Sampler;
 }
 
 namespace hgl::ecs
@@ -31,6 +34,12 @@ namespace hgl::ecs
         using BindingSource = std::function<void(ECSContext *, graph::RenderCmdBuffer *, graph::DescriptorBinding *)>;
 
     private:
+
+        struct MaterialResourceBinding
+        {
+            graph::Texture *texture = nullptr;
+            graph::Sampler *sampler = nullptr;
+        };
 
         struct ContractDiagStats
         {
@@ -58,6 +67,7 @@ namespace hgl::ecs
         graph::DescriptorBinding* view_desc_binding = nullptr;
         std::vector<BindingSource> binding_sources;
         std::unordered_map<const graph::Material *, bool> contract_last_ok;
+        std::unordered_map<const graph::Material *, std::unordered_map<std::string, MaterialResourceBinding>> material_resource_bindings;
         bool contract_diagnostics_enabled = true;
         bool enable_legacy_material_binding_fallback = true;
         ContractDiagStats last_contract_stats{};
@@ -74,6 +84,15 @@ namespace hgl::ecs
                                         uint32_t &required_missing,
                                         uint32_t &optional_missing,
                                         uint32_t &fallback_hits) const;
+        bool RegisterMaterialTexture(graph::Material *material,
+                         const AnsiString &name,
+                         graph::Texture *texture);
+        bool RegisterMaterialTextureSampler(graph::Material *material,
+                            const AnsiString &name,
+                            graph::Texture *texture,
+                            graph::Sampler *sampler);
+        void RemoveMaterialBinding(graph::Material *material, const AnsiString &name);
+        void ClearMaterialBindings(graph::Material *material);
         void SetLegacyMaterialBindingFallbackEnabled(bool enabled) { enable_legacy_material_binding_fallback = enabled; }
         bool IsLegacyMaterialBindingFallbackEnabled() const { return enable_legacy_material_binding_fallback; }
 
@@ -86,6 +105,7 @@ namespace hgl::ecs
         const graph::IGPUBuffer *ResolveViewportUBO(graph::IRenderTarget *rt,const char *preferred_name) const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
+        const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, const char *name) const;
         void ValidateContractsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };

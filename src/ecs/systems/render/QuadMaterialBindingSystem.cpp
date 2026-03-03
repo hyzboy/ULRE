@@ -1,5 +1,6 @@
 #include<hgl/ecs/systems/render/QuadMaterialBindingSystem.h>
 #include<hgl/ecs/systems/render/QuadResourcePrepareSystem.h>
+#include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/QuadComponent.h>
@@ -169,6 +170,14 @@ namespace hgl::ecs
         if (!material_binding.Bind(material))
         {
             return false;
+        }
+
+        if (auto descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>())
+        {
+            descriptor_binding_system->RegisterMaterialTextureSampler(material,
+                                                                      graph::mtl::SamplerName::BaseColor,
+                                                                      texture,
+                                                                      shared_sampler);
         }
 
         // Write texture size to material instance data

@@ -15,9 +15,23 @@
 #include<hgl/log/Log.h>
 #include<unordered_set>
 #include<cstdlib>
+#include<string>
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        std::string ToBindingKey(const char *name)
+        {
+            return name ? std::string(name) : std::string();
+        }
+
+        std::string ToBindingKey(const AnsiString &name)
+        {
+            return ToBindingKey(name.c_str());
+        }
+    }
+
     RenderDescriptorBindingSystem::RenderDescriptorBindingSystem(const std::string& name)
         : System(name)
     {
@@ -71,6 +85,72 @@ namespace hgl::ecs
         optional_missing = last_contract_stats.optional_missing;
         fallback_hits = last_contract_stats.fallback_hits;
         return true;
+    }
+
+    bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::Material *material,
+                                                                const AnsiString &name,
+                                                                graph::Texture *texture)
+    {
+        if (!material || name.IsEmpty() || !texture)
+            return false;
+
+        auto &slot = material_resource_bindings[material][ToBindingKey(name)];
+        slot.texture = texture;
+        return true;
+    }
+
+    bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::Material *material,
+                                                                       const AnsiString &name,
+                                                                       graph::Texture *texture,
+                                                                       graph::Sampler *sampler)
+    {
+        if (!RegisterMaterialTexture(material, name, texture))
+            return false;
+
+        if (!sampler)
+            return false;
+
+        auto &slot = material_resource_bindings[material][ToBindingKey(name)];
+        slot.sampler = sampler;
+        return true;
+    }
+
+    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::Material *material, const AnsiString &name)
+    {
+        if (!material || name.IsEmpty())
+            return;
+
+        auto material_it = material_resource_bindings.find(material);
+        if (material_it == material_resource_bindings.end())
+            return;
+
+        material_it->second.erase(ToBindingKey(name));
+        if (material_it->second.empty())
+            material_resource_bindings.erase(material_it);
+    }
+
+    void RenderDescriptorBindingSystem::ClearMaterialBindings(graph::Material *material)
+    {
+        if (!material)
+            return;
+
+        material_resource_bindings.erase(material);
+    }
+
+    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material, const char *name) const
+    {
+        if (!material || !name || !*name)
+            return nullptr;
+
+        auto material_it = material_resource_bindings.find(material);
+        if (material_it == material_resource_bindings.end())
+            return nullptr;
+
+        auto resource_it = material_it->second.find(ToBindingKey(name));
+        if (resource_it == material_it->second.end())
+            return nullptr;
+
+        return &resource_it->second;
     }
 
     void RenderDescriptorBindingSystem::RegisterDefaultSources()
@@ -313,8 +393,19 @@ namespace hgl::ecs
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
-                case graph::mtl::DescriptorSemantic::MaterialSampler:
+                {
+                    const auto *binding = FindMaterialResourceBinding(material, req.name);
+                    if (binding && binding->texture)
+                        material->BindTexture(req.set_type, req.name, binding->texture);
                     break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialSampler:
+                {
+                    const auto *binding = FindMaterialResourceBinding(material, req.name);
+                    if (binding && binding->texture && binding->sampler)
+                        material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                    break;
+                }
                 default:
                     break;
                 }
