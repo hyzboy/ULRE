@@ -11,6 +11,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/vk/VKDescriptorBindingManage.h>
 
 namespace hgl::ecs
 {
@@ -156,10 +157,16 @@ namespace hgl::ecs
             return false;
         }
 
-        if (!material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
-                                          graph::mtl::SamplerName::BaseColor,
-                                          texture,
-                                          shared_sampler))
+        graph::DescriptorBinding material_binding(graph::DescriptorSetType::PerMaterial);
+
+        if (!material_binding.AddTextureSampler(graph::mtl::SamplerName::BaseColor,
+                                                texture,
+                                                shared_sampler))
+        {
+            return false;
+        }
+
+        if (!material_binding.Bind(material))
         {
             return false;
         }

@@ -23,6 +23,7 @@
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>
@@ -322,10 +323,14 @@ namespace hgl::ecs
             guard.material_instance_buffer = nullptr;
         }
 
-        if (!guard.material->BindTextureSampler(graph::DescriptorSetType::PerMaterial,
-                                                graph::mtl::SamplerName::Text,
+        graph::DescriptorBinding material_binding(graph::DescriptorSetType::PerMaterial);
+
+        if (!material_binding.AddTextureSampler(graph::mtl::SamplerName::Text,
                                                 guard.tile_font->GetTexture(),
                                                 guard.sampler))
+            return nullptr;
+
+        if (!material_binding.Bind(guard.material))
             return nullptr;
 
         resources.tile_font = guard.tile_font.release();
