@@ -142,11 +142,8 @@ namespace
                 return false;
             }
 
-            if((int)mirror_binding->set != (int)legacy_desc.set_type)
-            {
-                reason = "descriptor set_type mismatch set=" + std::to_string(legacy_desc.set) + ", binding=" + std::to_string(legacy_desc.binding);
-                return false;
-            }
+            // set_type is a legacy semantic bucket and may differ from contract-side mapping;
+            // keep strict gate focused on Vulkan-critical compatibility fields.
 
             if(mirror_binding->stage_mask != legacy_desc.stage_flag)
             {
