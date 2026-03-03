@@ -176,14 +176,42 @@ public:
 
 struct ColorTextureCreateInfo:public TextureCreateInfo
 {
-    ColorTextureCreateInfo():TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT){}
-    ColorTextureCreateInfo(const VkFormat format,const VkExtent2D &ext):TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,format,ext){}
+    ColorTextureCreateInfo(const U8String &n)
+        :TextureCreateInfo(   VK_IMAGE_ASPECT_COLOR_BIT,
+                              VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                              ImageTiling::Optimal,
+                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                              n){}
+
+    ColorTextureCreateInfo(const VkFormat format,const VkExtent2D &ext,const U8String &n)
+        :TextureCreateInfo(   VK_IMAGE_ASPECT_COLOR_BIT,
+                              format,
+                              ext,
+                              VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                              ImageTiling::Optimal,
+                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                              n){}
+
 };//struct ColorTextureCreateInfo:public TextureCreateInfo
 
 struct DepthTextureCreateInfo:public TextureCreateInfo
 {
-    DepthTextureCreateInfo():TextureCreateInfo(VK_IMAGE_ASPECT_DEPTH_BIT){}
-    DepthTextureCreateInfo(const VkFormat format,const VkExtent2D &ext):TextureCreateInfo(VK_IMAGE_ASPECT_COLOR_BIT,format,ext){}
+    DepthTextureCreateInfo(const U8String &n)
+        :TextureCreateInfo(   VK_IMAGE_ASPECT_DEPTH_BIT,
+                              VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                              ImageTiling::Optimal,
+                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                              n){}
+
+    DepthTextureCreateInfo(const VkFormat format,const VkExtent2D &ext,const U8String &n)
+        :TextureCreateInfo(   VK_IMAGE_ASPECT_DEPTH_BIT,
+                              format,
+                              ext,
+                              VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                              ImageTiling::Optimal,
+                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                              n){}
+
 };//struct DepthTextureCreateInfo:public TextureCreateInfo
 
 struct DepthStencilTextureCreateInfo:public TextureCreateInfo
@@ -193,7 +221,8 @@ struct DepthStencilTextureCreateInfo:public TextureCreateInfo
 
 struct AttachmentTextureCreateInfo:public TextureCreateInfo
 {
-    AttachmentTextureCreateInfo(const uint32_t aspect_bit,const uint32_t u,const VkImageLayout il):TextureCreateInfo(aspect_bit,u,ImageTiling::Optimal,il){}
+    AttachmentTextureCreateInfo(const uint32_t aspect_bit,const uint32_t u,const VkImageLayout il,const U8String &n)
+        :TextureCreateInfo(aspect_bit,u,ImageTiling::Optimal,il,n){}
 };//struct AttachmentTextureCreateInfo:public TextureCreateInfo
 
 struct ColorAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
@@ -206,7 +235,8 @@ struct ColorAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
                                         |VK_IMAGE_USAGE_TRANSFER_DST_BIT
                                         |VK_IMAGE_USAGE_SAMPLED_BIT,
 
-                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL){}
+                                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                        U8String((const u8char*)u8"ColorAttachment")){}
 
     ColorAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext,const U8String &n=U8String((const u8char*)u8"ColorAttachment")):ColorAttachmentTextureCreateInfo()
     {
@@ -235,7 +265,8 @@ struct DepthAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
                                         |VK_IMAGE_USAGE_TRANSFER_DST_BIT
                                         |VK_IMAGE_USAGE_SAMPLED_BIT,
 
-                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL){}
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        U8String((const u8char*)u8"DepthAttachment")){}
 
     DepthAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext,const U8String &n=U8String((const u8char*)u8"DepthAttachment")):DepthAttachmentTextureCreateInfo()
     {
@@ -256,7 +287,7 @@ struct DepthAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
 
 struct DepthStencilAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
 {
-    DepthStencilAttachmentTextureCreateInfo()
+    DepthStencilAttachmentTextureCreateInfo(const U8String &n)
         :AttachmentTextureCreateInfo(   VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
 
                                         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
@@ -264,16 +295,17 @@ struct DepthStencilAttachmentTextureCreateInfo:public AttachmentTextureCreateInf
                                         |VK_IMAGE_USAGE_TRANSFER_DST_BIT
                                         |VK_IMAGE_USAGE_SAMPLED_BIT,
 
-                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL){}
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        n){}
 
-    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext,const U8String &n=U8String((const u8char*)u8"DepthStencilAttachment")):DepthStencilAttachmentTextureCreateInfo()
+    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent3D &ext,const U8String &n):DepthStencilAttachmentTextureCreateInfo(n)
     {
         format=fmt;
         extent=ext;
         name=n;
     }
 
-    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n=U8String((const u8char*)u8"DepthStencilAttachment")):DepthStencilAttachmentTextureCreateInfo()
+    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext,const U8String &n):DepthStencilAttachmentTextureCreateInfo(n)
     {
         format=fmt;
         extent.width=ext.width;

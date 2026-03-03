@@ -69,12 +69,12 @@ TileData *TextureManager::CreateTileData(const VkFormat format,const uint width,
 
     if(RangeCheck(vf->color))
     {
-        tex=CreateTexture2D(new ColorTextureCreateInfo(format,extent));
+        tex=CreateTexture2D(new ColorTextureCreateInfo(format,extent,U8String((const u8char*)u8"TileColor")));
     }
     else
     if(RangeCheck(vf->depth))
     {
-        tex=CreateTexture2D(new DepthTextureCreateInfo(format,extent));
+        tex=CreateTexture2D(new DepthTextureCreateInfo(format,extent,U8String((const u8char*)u8"TileDepth")));
     }
     else
         return(nullptr);
