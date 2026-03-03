@@ -61,7 +61,7 @@ private:
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
 
-        material = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
         if(!material)return(false);
 
         VILConfig vil_config;

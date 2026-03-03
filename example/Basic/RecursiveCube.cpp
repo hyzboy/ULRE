@@ -114,7 +114,7 @@ private:
         if (!material_manager)
             return false;
 
-        material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
         if (!material)
             return false;
 

@@ -158,7 +158,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D,&cfg);
+        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
 
         return InitMaterialInstance(&solid);
     }
@@ -178,7 +178,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
-        wire.material=material_manager->CreateMaterial(mtl::InlineMaterial::PureColor3D,&cfg);
+        wire.material=material_manager->CreateMaterial(mtl::MaterialPreset::PureColor3D,&cfg);
 
         return InitMaterialInstance(&wire);
     }

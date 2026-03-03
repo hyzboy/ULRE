@@ -60,7 +60,7 @@ private:
 
         cfg.local_to_world=true;
 
-        material_instance=material_manager->CreateMaterialInstance(mtl::InlineMaterial::VertexColor3D,&cfg);
+        material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor3D,&cfg);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;

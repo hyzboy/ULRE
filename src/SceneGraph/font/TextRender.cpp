@@ -168,7 +168,7 @@ namespace hgl::graph
     {
         mtl::Text2DMaterialCreateConfig mtl_cfg;
 
-        mtl_fs=mtl_manager->CreateMaterial(mtl::InlineMaterial::Text2D,&mtl_cfg);
+        mtl_fs=mtl_manager->CreateMaterial(mtl::MaterialPreset::Text2D,&mtl_cfg);
         if(!mtl_fs)return(false);
 
         //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RG16I格式

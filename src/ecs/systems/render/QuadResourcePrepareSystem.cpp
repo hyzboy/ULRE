@@ -77,7 +77,7 @@ namespace hgl::ecs
         graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
         cfg.fixed_size = true;
 
-        shared_material_instance = material_manager->CreateMaterialInstance(graph::mtl::InlineMaterial::Billboard2D, &cfg);
+        shared_material_instance = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!shared_material_instance)
             return false;
 

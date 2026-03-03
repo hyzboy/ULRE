@@ -145,7 +145,7 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig cfg;
-        sky_material_instance = material_manager->CreateMaterialInstance(mtl::InlineMaterial::SkyMinimal, &cfg);
+        sky_material_instance = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg);
         if (!sky_material_instance)
             return false;
 
@@ -190,7 +190,7 @@ private:
             return false;
 
         mtl::BasicLitMaterialCreateConfig cfg(false);
-        material = material_manager->CreateMaterial(mtl::InlineMaterial::BasicLit, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::BasicLit, &cfg);
         if (!material)
             return false;
 

@@ -59,7 +59,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        material=material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D,&cfg);
+        material=material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D,&cfg);
 
         Color4f color=GetColor4f(COLOR::BlenderAxisRed);
 

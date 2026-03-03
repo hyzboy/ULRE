@@ -84,7 +84,7 @@ private:
 
             vil_config.Add(VAN::Color,VF_V4UN8);
 
-            material_instance=material_manager->CreateMaterialInstance(mtl::InlineMaterial::VertexColor2D,&cfg,&vil_config);
+            material_instance=material_manager->CreateMaterialInstance(mtl::MaterialPreset::VertexColor2D,&cfg,&vil_config);
         }
 
         if(!material_instance)

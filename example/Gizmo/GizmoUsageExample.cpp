@@ -89,7 +89,7 @@ private:
             cfg.local_to_world = true;
             cfg.position_format = VAT_VEC2;
 
-            grid_material = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
+            grid_material = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!grid_material)
                 return false;
 
@@ -127,7 +127,7 @@ private:
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-            cube_material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg);
+            cube_material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
             if(!cube_material)
                 return false;
 

@@ -232,7 +232,7 @@ public:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::Without);
 
-        mtl = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg3d);
+        mtl = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg3d);
         if (!mtl) return false;
 
         auto* render_pass = rt ? rt->GetRenderPass() : nullptr;
@@ -409,7 +409,7 @@ private:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::With);
 
-        cube_mtl = material_manager->CreateMaterial(mtl::InlineMaterial::TextureBlinnPhong, &cfg3d);
+        cube_mtl = material_manager->CreateMaterial(mtl::MaterialPreset::TextureBlinnPhong, &cfg3d);
         if (!cube_mtl) return false;
 
         cube_sampler = sampler_manager->CreateSampler();

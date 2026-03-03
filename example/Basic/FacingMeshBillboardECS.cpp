@@ -107,7 +107,7 @@ private:
             return false;
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        solid.material = material_manager->CreateMaterial(mtl::InlineMaterial::Gizmo3D, &cfg);
+        solid.material = material_manager->CreateMaterial(mtl::MaterialPreset::Gizmo3D, &cfg);
         if (!solid.material)
             return false;
 

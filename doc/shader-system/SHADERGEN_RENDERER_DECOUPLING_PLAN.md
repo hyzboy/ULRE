@@ -172,7 +172,7 @@ struct ShaderGenRequest {
     uint32_t contract_version;
 
     // 材质与变体
-    InlineMaterial material_id;
+    MaterialPreset material_id;
     MaterialCreateConfigLite material_cfg;
     ShaderPermutationKey permutation;
     PipelineMode pipeline_mode;

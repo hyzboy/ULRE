@@ -103,7 +103,7 @@ private:
                                         mtl::WithLocalToWorld::With,
                                         mtl::WithSky::With);
 
-        material = material_manager->CreateMaterial(mtl::InlineMaterial::TextureBlinnPhong, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::TextureBlinnPhong, &cfg);
         if (!material)
             return false;
 

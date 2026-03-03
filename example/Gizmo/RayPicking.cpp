@@ -102,7 +102,7 @@ private:
         {
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
+            mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_plane_grid)return(false);
 
             mi_plane_grid=material_manager->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
@@ -117,7 +117,7 @@ private:
         {
             cfg.position_format=VAT_VEC3;
 
-            mtl_line = material_manager->CreateMaterial(mtl::InlineMaterial::VertexLuminance3D, &cfg);
+            mtl_line = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
             if(!mtl_line)return(false);
 
             mi_line=material_manager->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);

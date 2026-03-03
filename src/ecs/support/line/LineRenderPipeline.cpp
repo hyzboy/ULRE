@@ -291,7 +291,7 @@ namespace hgl::ecs
         if (!mat_mgr)
             return false;
 
-        material_ = mat_mgr->CreateMaterial(graph::mtl::InlineMaterial::VertexPattleColor3D, &cfg);
+        material_ = mat_mgr->CreateMaterial(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
         if (!material_)
             return false;
 

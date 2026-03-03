@@ -58,7 +58,7 @@ private:
             return false;
 
         mtl::SkyMinimalCreateConfig cfg;
-        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::InlineMaterial::SkyMinimal, &cfg);
+        mi_sky_sphere = material_manager->CreateMaterialInstance(mtl::MaterialPreset::SkyMinimal, &cfg);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;

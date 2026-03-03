@@ -130,7 +130,7 @@ private:
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::With);
 
-        material=material_manager->CreateMaterial(mtl::InlineMaterial::RectTexture2DArray,&cfg);
+        material=material_manager->CreateMaterial(mtl::MaterialPreset::RectTexture2DArray,&cfg);
 
         if(!material)
             return(false);

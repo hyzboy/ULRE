@@ -108,7 +108,7 @@ private:
                                             CoordinateSystem2D::NDC,
                                             mtl::WithLocalToWorld::With);
 
-            material = material_manager->CreateMaterial(mtl::InlineMaterial::PureColor2D, &cfg);
+            material = material_manager->CreateMaterial(mtl::MaterialPreset::PureColor2D, &cfg);
 
             if (!material)
                 return false;

@@ -117,7 +117,7 @@ namespace
             cfg.local_to_world=true;
             cfg.material_instance=true;
 
-            gizmo_triangle.mtl=gizmo_mtl_manager->CreateMaterial(mtl::InlineMaterial::PureColor3D,&cfg);
+            gizmo_triangle.mtl=gizmo_mtl_manager->CreateMaterial(mtl::MaterialPreset::PureColor3D,&cfg);
             if(!gizmo_triangle.mtl)
                 return(false);
 

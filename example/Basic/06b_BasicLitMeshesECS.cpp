@@ -99,7 +99,7 @@ private:
             return false;
 
         mtl::BasicLitMaterialCreateConfig cfg(false);
-        material = material_manager->CreateMaterial(mtl::InlineMaterial::BasicLit, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::BasicLit, &cfg);
         if (!material)
             return false;
 

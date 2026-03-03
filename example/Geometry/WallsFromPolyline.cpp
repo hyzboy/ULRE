@@ -140,7 +140,7 @@ public:
         mi_data.fresnel=0.04f;
         mi_data.ibl_intensity=0.0f;
 
-        material = material_manager->CreateMaterial(mtl::InlineMaterial::BasicLit, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::BasicLit, &cfg);
         if(!material) return false;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);

@@ -5,7 +5,7 @@
 
 namespace hgl::graph::mtl{
 
-enum class InlineMaterial:uint8
+enum class MaterialPreset:uint8
 {
     VertexColor2D,
     PureColor2D,
@@ -38,8 +38,8 @@ inline MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr)  \
     return Create##name(dev_attr,&cfg);  \
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const InlineMaterial mtl_id,MaterialCreateConfig *cfg);
-const char *GetInlineMaterialName(const InlineMaterial mtl_id);
+MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialPreset mtl_id,MaterialCreateConfig *cfg);
+const char *GetInlineMaterialName(const MaterialPreset mtl_id);
 
 }//namespace hgl::graph::mtl
 

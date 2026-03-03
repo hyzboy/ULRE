@@ -13,7 +13,7 @@ namespace hgl::graph{
 
 namespace mtl
 {
-    enum class InlineMaterial:uint8;
+    enum class MaterialPreset:uint8;
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
     class MaterialCreateInfo;
@@ -156,8 +156,8 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
 public: //Material
 
-    Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
-    Material *          CreateMaterial  (const mtl::InlineMaterial, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
+    Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
+    Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
 
 public: //MaterialInstance
 
@@ -180,14 +180,14 @@ public: //MaterialInstance
         return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
     }
 
-    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
     }
 
-    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
-    MaterialInstance *  CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
     }

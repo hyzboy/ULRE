@@ -16,13 +16,13 @@
 
 ### 2.1 材质创建路径
 
-- 唯一受支持入口：`InlineMaterial + CreateConfig`
-- `MaterialLibrary::CreateMaterialCreateInfo(InlineMaterial, cfg)` 已是直分发（switch -> CreateXXX）
-- `MaterialManager` 仅保留 InlineMaterial / Material* 路径
+- 唯一受支持入口：`MaterialPreset + CreateConfig`
+- `MaterialLibrary::CreateMaterialCreateInfo(MaterialPreset, cfg)` 已是直分发（switch -> CreateXXX）
+- `MaterialManager` 仅保留 MaterialPreset / Material* 路径
 
 ### 2.2 运行边界（当前约束）
 
-- 仅允许 `InlineMaterial + CreateConfig` 路径
+- 仅允许 `MaterialPreset + CreateConfig` 路径
 - 不允许引入额外材质创建入口
 - 不允许引入运行时按名称分发或文件解析分发
 
@@ -35,9 +35,9 @@
 ## 3. 开发强约束（必须遵守）
 
 1. 新增内置材质必须走以下流程：
-   - 在 `InlineMaterial` 增加枚举项
+   - 在 `MaterialPreset` 增加枚举项
    - 在对应 CreateConfig 头声明 `CreateXxx`
-   - 在 `MaterialLibrary.cpp` 的 InlineMaterial 分发中接入 `CreateXxx`
+   - 在 `MaterialLibrary.cpp` 的 MaterialPreset 分发中接入 `CreateXxx`
 
 2. 禁止新增以下形式：
    - 字符串材质名创建

@@ -571,7 +571,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     return mtl.Finish();
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *cfg)
+Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -590,7 +590,7 @@ Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::
     return this->CreateMaterial(hash_name,mci);
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *cfg)
+Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -713,7 +713,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
     return mi;
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
@@ -725,7 +725,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::InlineMater
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
 }
 
-MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::InlineMaterial mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
+MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const uint32 data_size)
 {
     HGL_CAPTURE_SCOPE();
 
