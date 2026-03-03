@@ -161,6 +161,54 @@ namespace
         return true;
     }
 
+    static bool BuildDescriptorsFromMirrorResult(const mtl::contract::ShaderGenResult &mirror_result,
+                                                 const std::vector<ShaderDescriptor> &legacy_descriptors,
+                                                 std::vector<ShaderDescriptor> &descriptors,
+                                                 std::string &reason)
+    {
+        descriptors.clear();
+        descriptors.reserve(mirror_result.layout.bindings.size());
+
+        for(const auto &binding : mirror_result.layout.bindings)
+        {
+            const VkDescriptorType vk_desc_type = ToVkDescriptorType(binding.resource_class);
+            if(vk_desc_type == VK_DESCRIPTOR_TYPE_MAX_ENUM)
+            {
+                reason = "unknown descriptor resource_class in mirror layout set=" + std::to_string(binding.set) + ", binding=" + std::to_string(binding.binding);
+                return false;
+            }
+
+            ShaderDescriptor desc;
+            std::snprintf(desc.name, sizeof(desc.name), "%s", binding.name.c_str());
+            desc.desc_type = vk_desc_type;
+
+            desc.set_type = DescriptorSetType::Unknow;
+            for (const auto &legacy_desc : legacy_descriptors)
+            {
+                if (legacy_desc.set == static_cast<int>(binding.set) &&
+                    legacy_desc.binding == static_cast<int>(binding.binding))
+                {
+                    desc.set_type = legacy_desc.set_type;
+                    break;
+                }
+            }
+
+            if(desc.set_type == DescriptorSetType::Unknow)
+            {
+                if(binding.set < DESCRIPTOR_SET_TYPE_COUNT)
+                    desc.set_type = static_cast<DescriptorSetType>(binding.set);
+            }
+
+            desc.set = static_cast<int>(binding.set);
+            desc.binding = static_cast<int>(binding.binding);
+            desc.stage_flag = binding.stage_mask;
+
+            descriptors.emplace_back(desc);
+        }
+
+        return true;
+    }
+
     static void RecordStrictAbortReport(const AnsiString &mtl_name, const std::string &reason, const char *category)
     {
         RendererShaderGenAdapter::RecordExternalValidationError(
@@ -534,12 +582,12 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     {
         const auto &mdi=mci->GetMDI();
 
+        std::vector<ShaderDescriptor> legacy_descriptors;
         if(mdi.GetCount()>0)
         {
             const auto &sds_array = mdi.Get();
 
-            std::vector<ShaderDescriptor> descriptors;
-            descriptors.reserve(mdi.GetCount());
+            legacy_descriptors.reserve(mdi.GetCount());
 
             for(size_t i=0;i<DESCRIPTOR_SET_TYPE_COUNT;i++)
             {
@@ -548,13 +596,18 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
                 for(auto *sd:values)
                     if(sd)
-                        descriptors.emplace_back(*sd);
+                        legacy_descriptors.emplace_back(*sd);
             }
+        }
 
-            if(mirror_spv_build_used)
+        std::vector<ShaderDescriptor> descriptors;
+
+        if(mirror_spv_build_used)
+        {
+            if(!legacy_descriptors.empty())
             {
                 std::string reason;
-                if(!ValidateMirrorPreferredDescriptorLayout(descriptors, *mirror_result, reason))
+                if(!ValidateMirrorPreferredDescriptorLayout(legacy_descriptors, *mirror_result, reason))
                 {
                     RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
                     std::fprintf(stderr,
@@ -565,9 +618,22 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
                 }
             }
 
-            if(!descriptors.empty())
-                mtl->desc_manager=new MaterialDescriptorManager(mtl_name,descriptors.data(),static_cast<uint>(descriptors.size()));
+            std::string reason;
+            if(!BuildDescriptorsFromMirrorResult(*mirror_result, legacy_descriptors, descriptors, reason))
+            {
+                RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
+                std::fprintf(stderr,
+                    "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                    reason.c_str());
+                return nullptr;
+            }
         }
+        else
+            descriptors = std::move(legacy_descriptors);
+
+        if(!descriptors.empty())
+            mtl->desc_manager=new MaterialDescriptorManager(mtl_name,descriptors.data(),static_cast<uint>(descriptors.size()));
     }
 
     mtl->pipeline_layout_data=CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);

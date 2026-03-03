@@ -73,6 +73,7 @@
   - 在 `mirror-validate` 下，若 mirror SPV 构建失败将自动回退 legacy 路径（non-blocking）
   - 在 `mirror-preferred` 下，mirror SPV 构建失败保持严格失败并中止材质创建（blocking）
   - 顶点布局/descriptor 严格一致性校验仅在“实际使用 mirror SPV 构建成功”后执行，避免 fallback 路径误报
+  - `descriptor set_type` 差异已降级为非阻断（warning 语义），严格门禁仅对 Vulkan 关键字段生效：`set/binding/descriptor_type/stage/name`
 
 当前阻塞：
 
