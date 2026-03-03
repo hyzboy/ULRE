@@ -325,8 +325,22 @@ namespace hgl
                                                  uint32_t &optional_missing,
                                                  uint32_t &fallback_hits) const;
 
+            bool GetDescriptorContractDiagnosticsExtended(uint32_t &materials_checked,
+                                                         uint32_t &materials_unresolved,
+                                                         uint32_t &required_missing,
+                                                         uint32_t &optional_missing,
+                                                         uint32_t &fallback_hits,
+                                                         uint32_t &materials_registered,
+                                                         uint32_t &binding_entries) const;
+
             bool GetMaterialBindingRegistryStats(uint32_t &materials_registered,
                                                  uint32_t &binding_entries) const;
+
+            bool GetMaterialBindingKeys(const hgl::graph::Material *material,
+                                        std::vector<std::string> &out_keys) const;
+
+            bool GetMaterialBindingKeysByName(const AnsiString &material_name,
+                                              std::vector<std::string> &out_keys) const;
 
             void SetDescriptorContractDiagnosticsLogEnabled(bool enabled) { descriptor_contract_diag_log_enabled = enabled; }
             bool IsDescriptorContractDiagnosticsLogEnabled() const { return descriptor_contract_diag_log_enabled; }
