@@ -1,8 +1,8 @@
 # ShaderGen 与渲染器彻底分离重构计划（可行性 + 执行方案）
 
-**版本**：v1.4  
+**版本**：v1.5  
 **日期**：2026-03-03  
-**状态**：执行中（Phase 2 已完成收敛，进入 Phase 3 切主路径准备）
+**状态**：执行中（Phase 3 主路径切换进行中；已明确 Phase 6 目标为 ShaderGen 独立程序化）
 
 ---
 
@@ -281,6 +281,146 @@ struct ShaderGenResult {
 
 **验收**：文档、代码、CI 规则一致。
 
+## Phase 6：独立程序化与离线产物链路（下一阶段，不在本期强制落地）
+
+目标（North Star）：**运行时引擎不再包含 ShaderGen 与 GLSLCompiler**。
+
+- 主引擎输出“渲染需求配置 + 画质/平台配置”到文件（本地/云端统一文件协议）
+- `shadergen-cli`（独立可执行程序）读取配置文件，生成：
+  - `ShaderGenResult` 材质信息包（descriptor/vertex/UBO-SSBO/diagnostics/cache key）
+  - 按 stage 的 SPV 包（可拆分或聚合）
+  - manifest（版本/平台/质量档/hash/依赖）
+- 主引擎运行时仅加载上述产物包并创建渲染资源，不链接 ShaderGen/GLSLCompiler
+
+建议分解：
+
+1. `ShaderGenRequest/Result` 文件协议定版（JSON 或二进制 + schema version）
+2. 新增 `shadergen-cli`：`input request file -> output package`（支持本地与云端任务）
+3. 引擎新增 `ShaderPackageLoader`（消费包，不回调 ShaderGen）
+4. 构建系统剥离运行时对 `ULRE.ShaderGen/GLSLCompiler` 的强依赖（仅工具链依赖）
+5. CI 增加“离线包回放”验收：同一 request 在本地/云端产物 hash 一致
+
+**验收**：示例与游戏运行路径在不链接 ShaderGen/GLSLCompiler 的前提下可启动并正确加载材质包。
+
+### 6.1 子任务拆单（可直接排期）
+
+#### Task A：Request/Result 文件协议定版
+
+- 定义 `shadergen-request.schema.json`（或二进制等价 schema）
+  - `contract_version`
+  - `material_id/material_cfg/permutation/pipeline_mode`
+  - `required_resources/vertex_requirements`
+  - `platform_tier/quality_level`
+  - `compiler_options`（debug/fallback/opt-level）
+- 定义 `shadergen-result.schema.json`
+  - `spv_per_stage`（stage mask + blob hash + byte size）
+  - `layout/vertex_layout/buffer_structs`
+  - `diagnostics/cache_key`
+- 增加 schema 版本升级规则（forward/backward 兼容策略）
+
+**Task A 验收**：同一 request 在工具链中可稳定序列化/反序列化，字段无丢失。
+
+#### Task B：Shader Package 格式与 Manifest
+
+- 定义包目录与命名规范（示例）
+  - `manifest.json`
+  - `materials/<material_key>/layout.json`
+  - `materials/<material_key>/vertex.json`
+  - `materials/<material_key>/spv_stage_0x*.spv`
+- `manifest` 必含字段
+  - `package_version`
+  - `contract_version`
+  - `target_platform/quality`
+  - `request_hash/result_hash/content_hash`
+  - `generator_version/build_time`
+- 增加完整性校验（hash/size）与可选签名字段（云端分发预留）
+
+**Task B 验收**：引擎可仅凭 manifest + 包内容完成加载，不访问 ShaderGen。
+
+#### Task C：`shadergen-cli` 工具化
+
+- 命令行协议（建议）
+  - `shadergen-cli generate --request <in> --out <dir>`
+  - `shadergen-cli pack --in <result-dir> --out <package>`
+  - `shadergen-cli verify --package <pkg>`
+- 输出退出码与错误分类
+  - `0` 成功
+  - `2` 输入协议错误
+  - `3` 编译失败
+  - `4` 包校验失败
+- 产出结构化日志（JSONL 或 key=value）便于云端采集
+
+**Task C 验收**：本地脚本与 CI 可无引擎进程参与完成 generate/pack/verify 全流程。
+
+#### Task D：引擎侧 `ShaderPackageLoader`
+
+- 只依赖 contract DTO 与 package 读取器
+- 加载流程：manifest 校验 -> 布局构建 -> SPV module 创建 -> pipeline 绑定
+- 缺失/损坏包的 fallback 策略（按模式：严格失败或加载内置保底材质）
+
+**Task D 验收**：运行时二进制不链接 `ULRE.ShaderGen` 与 `GLSLCompiler` 仍可渲染。
+
+#### Task E：云端任务协议（与本地同构）
+
+- 上传 request 文件 + 目标平台参数
+- 云端返回 package + manifest + 构建日志
+- 使用同一 schema/version 规则，禁止“云端私有字段漂移”
+
+**Task E 验收**：同 request 在本地与云端生成的 `result_hash/content_hash` 一致。
+
+### 6.2 当前阶段（Phase 3~5）对齐原则
+
+为避免返工，当前解耦改造需持续满足：
+
+1. **可序列化优先**：新增 contract 字段必须可稳定落盘（避免仅内存临时结构）
+2. **构建可重放**：同一 request 可重复生成同一 SPV/hash（控制非确定性）
+3. **运行时禁反向依赖**：新增运行时代码禁止回调 ShaderGen 编译流程
+4. **失败可诊断**：所有关键失败输出 machine-readable 原因（便于云端聚合）
+
+### 6.3 里程碑建议（下期排程）
+
+- M1（协议周）：完成 Task A + Task B，冻结 v1 schema 与 manifest
+- M2（工具周）：完成 Task C，打通本地离线 generate/pack/verify
+- M3（接入周）：完成 Task D，示例运行时切换到 package-only
+- M4（云端周）：完成 Task E，本地/云端 hash 一致性纳入 CI
+
+### 6.4 MiniPack 接入规划（Shader 包统一单文件）
+
+目标：将当前“材质信息 + SPV 散文件目录”统一封装为单个 `*.pack`，并由运行时通过 MiniPack 读取。
+
+已分析的 MiniPack 现状（可直接复用）：
+
+- 工具与库能力完整：已提供打包 CLI（目录/文件列表 -> 单 pack）与读写库接口
+  - 入口： [src/Tools/MiniPack/main.cpp](src/Tools/MiniPack/main.cpp)
+  - 写入 API： [src/Tools/MiniPack/mini_pack_builder.h](src/Tools/MiniPack/mini_pack_builder.h)
+  - 读取 API： [src/Tools/MiniPack/pack_reader_io.h](src/Tools/MiniPack/pack_reader_io.h)
+- 文件名以相对路径存储，天然适配 `materials/<id>/...` 结构
+- 支持 `--index-only`，可用于云端预检/索引校验场景
+
+当前与 Shader 包场景的差距（建议补齐）：
+
+1. 需增加“按文件名快速查找 entry”能力（避免运行时线性扫描）
+2. 需增加 package 级 metadata 约定（`manifest.json` 仍保留为标准入口）
+3. 需增加完整性校验流程（content hash 与 entry size 校验）
+4. 需确认 writer/reader 对 magic 与版本字段的一致性测试覆盖，防止跨版本读取失败
+
+MiniPack 落地步骤（并入 Phase 6 子任务）：
+
+- MP-1：定义 Shader 包目录规范并固定到 manifest
+  - `manifest.json`
+  - `materials/<material_key>/layout.json`
+  - `materials/<material_key>/vertex.json`
+  - `materials/<material_key>/spv_stage_0x*.spv`
+- MP-2：`shadergen-cli` 输出散文件后，调用 MiniPack 统一打包为 `shader_package.pack`
+- MP-3：引擎侧 `ShaderPackageLoader` 基于 MiniPack reader 加载 manifest 与目标材质 SPV
+- MP-4：CI 增加“目录产物 vs MiniPack 产物”一致性回放（hash + 运行结果）
+
+MiniPack 接入验收：
+
+- 同一批 request 生成的散文件目录与 `shader_package.pack` 在运行时加载结果一致
+- 运行时加载链路仅依赖 MiniPack reader，不依赖 ShaderGen/GLSLCompiler
+- 包损坏或 manifest 不匹配时可输出 machine-readable 错误并按策略回退/失败
+
 ---
 
 ## 6. 迁移风险与控制
@@ -345,6 +485,7 @@ struct ShaderGenResult {
 - **是可行的**，而且值得做。  
 - 建议采用“**双轨镜像 -> 适配器切换 -> 拆除旧耦合**”路线，不要一步到位硬切。  
 - 保持你现有规范（Logic/Binding/Whitelist）不变，只重构边界与交付形态。
+- 将“独立程序化（文件进/文件出）”作为下一阶段总目标：当前解耦阶段优先保证 contract 可序列化、产物可复现、运行时仅消费包。
 
 ---
 
