@@ -420,53 +420,84 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
         return(nullptr);
 
     AutoDelete<Material> mtl=new Material(mtl_name,mci);
-    const bool prefer_mirror_spv_build = require_mirror_valid && mirror_result;
+    const bool prefer_mirror_spv_build = mirror_result != nullptr;
+    bool mirror_spv_build_used = false;
 
     {
         const ShaderModule *sm;
+        bool mirror_spv_build_failed = false;
+        std::string mirror_spv_fail_reason;
 
         if(prefer_mirror_spv_build)
         {
-            for(const auto &blob : mirror_result->spv_per_stage)
+            std::vector<const ShaderModule *> mirror_modules;
+            mirror_modules.reserve(mirror_result->spv_per_stage.size());
+
+            if(mirror_result->spv_per_stage.empty())
             {
-                if(blob.words.empty())
+                mirror_spv_build_failed = true;
+                mirror_spv_fail_reason = "mirror result has no spv_per_stage";
+            }
+            else
+            {
+                for(const auto &blob : mirror_result->spv_per_stage)
                 {
-                    RecordStrictAbortReport(mtl_name, "mirror-preferred build aborted: empty spv blob", "StrictGate.Spv");
-                    std::fprintf(stderr,
-                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: empty spv blob stage_mask=0x%X\n",
-                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                        static_cast<unsigned>(blob.stage_mask));
-                    return nullptr;
+                    if(blob.words.empty())
+                    {
+                        mirror_spv_build_failed = true;
+                        mirror_spv_fail_reason = "empty spv blob";
+                        break;
+                    }
+
+                    sm=CreateShaderModuleFromSPV(mtl_name,
+                                                 (VkShaderStageFlagBits)blob.stage_mask,
+                                                 blob.words.data(),
+                                                 blob.words.size()*sizeof(uint32_t));
+
+                    if(!sm)
+                    {
+                        mirror_spv_build_failed = true;
+                        mirror_spv_fail_reason = "failed create shader module from mirror spv";
+                        break;
+                    }
+
+                    mirror_modules.push_back(sm);
                 }
 
-                sm=CreateShaderModuleFromSPV(mtl_name,
-                                             (VkShaderStageFlagBits)blob.stage_mask,
-                                             blob.words.data(),
-                                             blob.words.size()*sizeof(uint32_t));
-
-                if(!sm)
+                if(!mirror_spv_build_failed && mirror_modules.size()<2)
                 {
-                    RecordStrictAbortReport(mtl_name, "mirror-preferred build aborted: failed create shader module", "StrictGate.Spv");
-                    std::fprintf(stderr,
-                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: failed create shader module stage_mask=0x%X\n",
-                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                        static_cast<unsigned>(blob.stage_mask));
-                    return nullptr;
+                    mirror_spv_build_failed = true;
+                    mirror_spv_fail_reason = "insufficient shader stages from mirror result";
                 }
-
-                mtl->shader_maps->Add(sm);
             }
 
-            if(mtl->shader_maps->GetCount()<2)
+            if(!mirror_spv_build_failed)
             {
-                RecordStrictAbortReport(mtl_name, "mirror-preferred build aborted: insufficient shader stages from mirror result", "StrictGate.Spv");
+                for(const auto *module : mirror_modules)
+                    mtl->shader_maps->Add(module);
+
+                mirror_spv_build_used = true;
+            }
+            else
+            {
+                if(require_mirror_valid)
+                {
+                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + mirror_spv_fail_reason, "StrictGate.Spv");
+                    std::fprintf(stderr,
+                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                        mirror_spv_fail_reason.c_str());
+                    return nullptr;
+                }
+
                 std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: insufficient shader stages from mirror result\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
-                return nullptr;
+                    "[RendererShaderGenAdapter] material=%s mirror SPV build failed (%s), fallback to legacy path\n",
+                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                    mirror_spv_fail_reason.c_str());
             }
         }
-        else
+
+        if(!mirror_spv_build_used)
         {
             for(auto [stage, sci_ptr] : sci_map)
             {
@@ -485,7 +516,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     {
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
-        if(prefer_mirror_spv_build)
+        if(mirror_spv_build_used)
         {
             std::string reason;
             if(!ValidateMirrorPreferredVertexLayout(vert, *mirror_result, reason))
@@ -523,7 +554,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
                         descriptors.emplace_back(*sd);
             }
 
-            if(prefer_mirror_spv_build)
+            if(mirror_spv_build_used)
             {
                 std::string reason;
                 if(!ValidateMirrorPreferredDescriptorLayout(descriptors, *mirror_result, reason))

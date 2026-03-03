@@ -1,6 +1,6 @@
 # ShaderGen 与渲染器彻底分离重构计划（可行性 + 执行方案）
 
-**版本**：v1.3  
+**版本**：v1.4  
 **日期**：2026-03-03  
 **状态**：执行中（Phase 2 已完成收敛，进入 Phase 3 切主路径准备）
 
@@ -68,10 +68,16 @@
   - `RendererShaderGenAdapter` 内部存储已拆分为 profiler storage 与 validation-report storage（独立 mutex）
   - `ValidateMaterialContractReadOnly` 与 contract-check 到 report 的字段映射已完成去重（无行为变更）
   - 全量 CMake 构建已连续通过，关键链路无新增编译错误
+- 2026-03-03 Phase 3 推进（主路径切换首段）
+  - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 已将 shader module 构建逻辑切为“**优先使用 `ShaderGenResult.spv_per_stage`**”
+  - 在 `mirror-validate` 下，若 mirror SPV 构建失败将自动回退 legacy 路径（non-blocking）
+  - 在 `mirror-preferred` 下，mirror SPV 构建失败保持严格失败并中止材质创建（blocking）
+  - 顶点布局/descriptor 严格一致性校验仅在“实际使用 mirror SPV 构建成功”后执行，避免 fallback 路径误报
 
 当前阻塞：
 
   - 运行态示例在本机普遍以 `exit code = 1` 退出（`mirror-validate` 模式），但当前关键 grep 未观察到新增 contract/validation 关键错误；需单独定位运行时退出根因。
+  - Phase 3 仍未完成“descriptor/pipeline layout 全量由 contract 结果驱动构建”，当前仍保留 legacy MDI 作为主来源并做一致性守卫。
 
 下一步（建议本周）：
 

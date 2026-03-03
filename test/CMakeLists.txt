@@ -231,6 +231,24 @@ add_executable(test_ShaderGenPathMode
 
 CreateTestProject(16 test_ShaderGenPathMode)
 
+add_executable(test_MaterialPresetExhaustiveCompile
+    MaterialPresetExhaustiveCompileTest.cpp)
+
+set_target_properties(test_MaterialPresetExhaustiveCompile PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+target_link_libraries(test_MaterialPresetExhaustiveCompile
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_MaterialPresetExhaustiveCompile
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(17 test_MaterialPresetExhaustiveCompile)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -280,6 +298,12 @@ if(BUILD_TESTING)
 
     add_test(NAME test_ShaderGenPathMode
              COMMAND test_ShaderGenPathMode)
+
+    add_test(NAME test_MaterialPresetExhaustiveCompile
+             COMMAND test_MaterialPresetExhaustiveCompile)
+
+    set_tests_properties(test_MaterialPresetExhaustiveCompile PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 endif()
 
 # 需要时可直接运行：

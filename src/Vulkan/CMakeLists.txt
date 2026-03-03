@@ -318,3 +318,9 @@ add_cm_library(ULRE.Vulkan "ULRE"   ${VK_INCLUDE_PATH}
                                     ${VULKAN_ALL_FILES}
                                     ${VK_DEVICE_PLATFORM_FILES}
 )
+
+if(TARGET Vulkan::Vulkan)
+    target_link_libraries(ULRE.Vulkan PUBLIC Vulkan::Vulkan)
+elseif(WIN32)
+    target_link_libraries(ULRE.Vulkan PUBLIC vulkan-1)
+endif()

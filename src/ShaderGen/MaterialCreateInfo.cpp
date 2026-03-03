@@ -452,6 +452,13 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
 void MaterialCreateInfo::SetDevice(const VulkanDevAttr *dev_attr)
 {
+    if(!dev_attr||!dev_attr->physical_device)
+    {
+        ubo_range=0;
+        ssbo_range=0;
+        return;
+    }
+
     ubo_range=dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
     ssbo_range=dev_attr->physical_device->GetSSBORange();
 }

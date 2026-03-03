@@ -45,16 +45,11 @@ namespace hgl
 
         void SetShaderCompilerVersion(const VulkanPhyDevice *pd)
         {
-            const auto &pdp=pd->GetProperties();
+            compile_info.vulkan_version = VK_API_VERSION_1_0;
+            compile_info.spv_version = SPV_VERSION_1_0;
 
-            compile_info.vulkan_version =pdp.apiVersion;
-
-            if(pdp.apiVersion>=VK_API_VERSION_1_3)compile_info.spv_version=SPV_VERSION_1_6;else
-            if(pdp.apiVersion>=VK_API_VERSION_1_2)compile_info.spv_version=SPV_VERSION_1_5;else
-            if(pd->CheckExtensionSupport(VK_KHR_SPIRV_1_4_EXTENSION_NAME))
-                                                  compile_info.spv_version=SPV_VERSION_1_4;else
-            if(pdp.apiVersion>=VK_API_VERSION_1_1)compile_info.spv_version=SPV_VERSION_1_3;else
-                                                  compile_info.spv_version=SPV_VERSION_1_0;
+            if(!pd)
+                return;
         }
 
         struct SPVParseData;
@@ -94,12 +89,20 @@ namespace hgl
             OSString glsl_compiler_fullname;
 
             if(!filesystem::GetCurrentPath(cur_path))
+            {
+                std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot get current path\n");
                 return(false);
+            }
             glsl_compiler_fullname=filesystem::JoinPathWithFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
 
             gsi_module=LoadExternalModule(glsl_compiler_fullname);
 
-            if(!gsi_module)return(false);
+            if(!gsi_module)
+            {
+                std::fprintf(stderr,
+                    "[GLSLCompiler] Init failed: cannot load GLSLCompiler plugin module\n");
+                return(false);
+            }
 
             GetInterfaceFUNC get_func;
 
@@ -112,7 +115,17 @@ namespace hgl
                 {
                     if(gsi->Init())
                         return(true);
+
+                    std::fprintf(stderr,"[GLSLCompiler] Init failed: plugin interface init returned false\n");
                 }
+                else
+                {
+                    std::fprintf(stderr,"[GLSLCompiler] Init failed: GetInterface returned null\n");
+                }
+            }
+            else
+            {
+                std::fprintf(stderr,"[GLSLCompiler] Init failed: cannot resolve GetInterface symbol\n");
             }
 
             delete gsi_module;
@@ -154,7 +167,11 @@ namespace hgl
         SPVData *CompileShader(const uint32_t type,const char *source)
         {
             if(!gsi)
+            {
+                std::fprintf(stderr,
+                    "[GLSLCompiler] CompileShader failed: compiler not initialized (GLSLCompiler plugin unavailable?)\n");
                 return(nullptr);
+            }
 
             ByteOrderMask bom=CheckBOM(source);
 
@@ -162,11 +179,18 @@ namespace hgl
                 source+=3;
             else
             if(bom!=ByteOrderMask::NONE)
+            {
+                std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: unsupported BOM\n");
                 return(nullptr);
+            }
 
             SPVData *spv=gsi->Compile(type,source,&compile_info);
 
-            if(!spv)return(nullptr);
+            if(!spv)
+            {
+                std::fprintf(stderr,"[GLSLCompiler] CompileShader failed: gsi->Compile returned null\n");
+                return(nullptr);
+            }
 
             const bool result=spv->result;
 

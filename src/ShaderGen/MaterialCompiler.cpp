@@ -684,7 +684,11 @@ MaterialCreateInfo *CompileFixedMaterial(
     const Material3DCreateConfig *config)
 {
     if (!dev_attr)
-        return nullptr;
+    {
+        std::fprintf(stderr,
+            "[CompileFixedMaterial] material=%s dev_attr is null, continue in offline mode\n",
+            def.name ? def.name : "<unnamed-material>");
+    }
 
     // Contract validation (phase 1 skeleton): diagnostics only, no behavior changes yet.
     BindingContract binding_contract = BuildBindingContract(def);
@@ -732,8 +736,19 @@ MaterialCreateInfo *CompileFixedMaterial(
     // ─────────────────────────────────────────────────────────────────────────
 
     MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
-    mci->SetDevice(dev_attr);
+    if(dev_attr)
+        mci->SetDevice(dev_attr);
     mci->SetBindingContract(binding_contract);
+
+    auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
+    {
+        std::fprintf(stderr,
+            "[CompileFixedMaterial] material=%s failed: %s\n",
+            def.name ? def.name : "<unnamed-material>",
+            reason ? reason : "<unknown>");
+        delete mci;
+        return nullptr;
+    };
 
     bool has_camera_descriptor = false;
     bool has_local_to_world_descriptor = false;
@@ -790,14 +805,12 @@ MaterialCreateInfo *CompileFixedMaterial(
                 {
                     if (entry.set_type != sbs->set_type)
                     {
-                        delete mci;
-                        return nullptr;
+                        return FailAfterMci("descriptor set_type mismatch for private UBO source");
                     }
 
                     if (!mci->AddUBOStruct(stage_bits, *sbs))
                     {
-                        delete mci;
-                        return nullptr;
+                        return FailAfterMci("AddUBOStruct(private source) failed");
                     }
                     break;
                 }
@@ -806,8 +819,7 @@ MaterialCreateInfo *CompileFixedMaterial(
                 if (!mci->AddUBO(stage_bits, set_type,
                                  entry.struct_name, entry.name))
                 {
-                    delete mci;
-                    return nullptr;
+                    return FailAfterMci("AddUBO(custom struct) failed");
                 }
             }
             break;
@@ -832,14 +844,12 @@ MaterialCreateInfo *CompileFixedMaterial(
                 {
                     if (entry.set_type != sbs->set_type)
                     {
-                        delete mci;
-                        return nullptr;
+                        return FailAfterMci("descriptor set_type mismatch for private SSBO source");
                     }
 
                     if (!mci->AddSSBOStruct(stage_bits, *sbs))
                     {
-                        delete mci;
-                        return nullptr;
+                        return FailAfterMci("AddSSBOStruct(private source) failed");
                     }
                     break;
                 }
@@ -847,8 +857,7 @@ MaterialCreateInfo *CompileFixedMaterial(
                 if (!mci->AddSSBO(stage_bits, set_type,
                                   entry.struct_name, entry.name))
                 {
-                    delete mci;
-                    return nullptr;
+                    return FailAfterMci("AddSSBO(custom struct) failed");
                 }
             }
             break;
@@ -1000,8 +1009,7 @@ MaterialCreateInfo *CompileFixedMaterial(
 
     if (!mci->CreateShader())
     {
-        delete mci;
-        return nullptr;
+        return FailAfterMci("CreateShader() failed (check GLSLCompiler and shader compile log)");
     }
 
     {
