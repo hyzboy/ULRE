@@ -7,6 +7,10 @@
 #include<functional>
 #include<unordered_map>
 
+#ifndef ULRE_ECS_DEBUG_API
+#define ULRE_ECS_DEBUG_API 1
+#endif
+
 namespace hgl::graph
 {
     class DescriptorBinding;

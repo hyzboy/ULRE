@@ -28,6 +28,7 @@ set(ECS_CORE_FILES
     core/System.cpp
     core/SystemProfiler.cpp
     core/Context.cpp
+    core/ContextDebug.cpp
     core/RenderGraph.cpp
     core/SystemGroup.cpp
     core/World.cpp
@@ -135,6 +136,7 @@ set(ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES
 set(ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/render/RenderDescriptorBindingSystem.h
     systems/render/RenderDescriptorBindingSystem.cpp
+    systems/render/RenderDescriptorBindingSystemDebugAPI.cpp
 )
 
 set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES

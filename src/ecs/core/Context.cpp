@@ -631,6 +631,7 @@ namespace hgl
 
             RunRenderPhaseUpdates(ExecutionPhase::RenderFrameSync, deltaTime);
 
+        #if ULRE_ECS_DEBUG_API
             if (descriptor_contract_diag_log_enabled)
             {
                 using namespace std::chrono;
@@ -667,6 +668,7 @@ namespace hgl
                     descriptor_contract_diag_last_log_ms = now_ms;
                 }
             }
+        #endif
         }
 
         void ECSContext::PrepareRenderPassSetup(uint32_t frameIndex, float deltaTime)
@@ -1081,116 +1083,6 @@ namespace hgl
             }
 
             return false;
-        }
-
-        bool ECSContext::GetDescriptorContractDiagnostics(uint32_t &materials_checked,
-                                                          uint32_t &materials_unresolved,
-                                                          uint32_t &required_missing,
-                                                          uint32_t &optional_missing,
-                                                          uint32_t &fallback_hits) const
-        {
-            materials_checked = 0;
-            materials_unresolved = 0;
-            required_missing = 0;
-            optional_missing = 0;
-            fallback_hits = 0;
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
-                return false;
-
-            return descriptor_system->GetContractDiagnosticsStats(materials_checked,
-                                                                  materials_unresolved,
-                                                                  required_missing,
-                                                                  optional_missing,
-                                                                  fallback_hits);
-        }
-
-        bool ECSContext::GetDescriptorContractDiagnosticsExtended(uint32_t &materials_checked,
-                                                                  uint32_t &materials_unresolved,
-                                                                  uint32_t &required_missing,
-                                                                  uint32_t &optional_missing,
-                                                                  uint32_t &fallback_hits,
-                                                                  uint32_t &materials_registered,
-                                                                  uint32_t &binding_entries) const
-        {
-            materials_checked = 0;
-            materials_unresolved = 0;
-            required_missing = 0;
-            optional_missing = 0;
-            fallback_hits = 0;
-            materials_registered = 0;
-            binding_entries = 0;
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
-                return false;
-
-            if (!descriptor_system->GetContractDiagnosticsStats(materials_checked,
-                                                                materials_unresolved,
-                                                                required_missing,
-                                                                optional_missing,
-                                                                fallback_hits))
-                return false;
-
-            descriptor_system->GetMaterialBindingRegistryStats(materials_registered,
-                                                               binding_entries);
-            return true;
-        }
-
-        bool ECSContext::GetMaterialBindingRegistryStats(uint32_t &materials_registered,
-                                                         uint32_t &binding_entries) const
-        {
-            materials_registered = 0;
-            binding_entries = 0;
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
-                return false;
-
-            return descriptor_system->GetMaterialBindingRegistryStats(materials_registered,
-                                                                      binding_entries);
-        }
-
-        bool ECSContext::GetMaterialBindingKeys(const hgl::graph::Material *material,
-                                                std::vector<std::string> &out_keys) const
-        {
-            out_keys.clear();
-
-            auto descriptor_system = GetSystem<RenderDescriptorBindingSystem>();
-            if (!descriptor_system)
-                return false;
-
-            return descriptor_system->GetMaterialBindingKeys(material, out_keys);
-        }
-
-        bool ECSContext::GetMaterialBindingKeysByName(const AnsiString &material_name,
-                                                      std::vector<std::string> &out_keys) const
-        {
-            out_keys.clear();
-
-            if (material_name.IsEmpty())
-                return false;
-
-            const hgl::graph::Material *matched_material = nullptr;
-
-            for (const auto &pair : render_frame_cache.materialBatches)
-            {
-                const hgl::graph::Material *material = pair.first.material;
-                if (!material)
-                    continue;
-
-                if (material->GetName() == material_name)
-                {
-                    matched_material = material;
-                    break;
-                }
-            }
-
-            if (!matched_material)
-                return false;
-
-            return GetMaterialBindingKeys(matched_material, out_keys);
         }
 
         bool ECSContext::RemoveSystemByKey(size_t key)

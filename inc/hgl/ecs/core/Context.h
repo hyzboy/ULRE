@@ -21,6 +21,10 @@
 #include<hgl/ecs/core/MaterialPipelineKey.h>
 #include<hgl/color/Color4f.h>
 
+#ifndef ULRE_ECS_DEBUG_API
+#define ULRE_ECS_DEBUG_API 1
+#endif
+
 namespace hgl {
     namespace graph {
         class RenderCmdBuffer;
@@ -121,6 +125,7 @@ namespace hgl
             uint32_t frame_index = 0;
             bool descriptor_contract_diag_log_enabled = false;
             uint64_t descriptor_contract_diag_last_log_ms = 0;
+            bool material_binding_query_log_enabled = false;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
@@ -341,6 +346,9 @@ namespace hgl
 
             bool GetMaterialBindingKeysByName(const AnsiString &material_name,
                                               std::vector<std::string> &out_keys) const;
+
+            void SetMaterialBindingQueryLogEnabled(bool enabled) { material_binding_query_log_enabled = enabled; }
+            bool IsMaterialBindingQueryLogEnabled() const { return material_binding_query_log_enabled; }
 
             void SetDescriptorContractDiagnosticsLogEnabled(bool enabled) { descriptor_contract_diag_log_enabled = enabled; }
             bool IsDescriptorContractDiagnosticsLogEnabled() const { return descriptor_contract_diag_log_enabled; }
