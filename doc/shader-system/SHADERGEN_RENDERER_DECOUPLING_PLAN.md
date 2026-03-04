@@ -134,6 +134,7 @@
     - [inc/hgl/graph/module/ShaderGenContractPathContext.h](inc/hgl/graph/module/ShaderGenContractPathContext.h)
     - [src/SceneGraph/module/ShaderGenContractPathContext.cpp](src/SceneGraph/module/ShaderGenContractPathContext.cpp)
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为通过 `BuildShaderGenContractPathContext(...)` 统一获取 mode/policy/diff_log_detail/request/mirror 指针与 prebuild 状态。
+  - `CreateMaterialWithContract` 主体已进一步收敛为 orchestrator：内部内联流程拆分为 `BuildShaderModulesFlow(...)` 与 `BuildMaterialBindingsFlow(...)` 两段静态流程函数，分别负责模块构建与 vertex/descriptor 绑定决策。
   - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
 
 当前阻塞：
