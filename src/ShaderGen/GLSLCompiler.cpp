@@ -5,11 +5,9 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<vulkan/vulkan.h>
 #include<hgl/vk/VKPhysicalDevice.h>
-#include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/log/Logger.h>
 #include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
 #include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileJson.h>
-#include <vector>
 
 namespace hgl
 {
@@ -48,40 +46,6 @@ namespace hgl
 
         static mtl::contract::PhysicalDeviceProfileLite g_pd_profile{};
         static bool g_pd_profile_valid = false;
-
-        struct ShaderCompilerCompileContextStorage
-        {
-            const VulkanDevAttr *dev_attr = nullptr;
-            const mtl::contract::PhysicalDeviceProfileLite *profile = nullptr;
-        };
-
-        static thread_local std::vector<ShaderCompilerCompileContextStorage> g_compile_context_stack;
-
-        void PushShaderCompilerCompileContext(const VulkanDevAttr *dev_attr,
-                                              const mtl::contract::PhysicalDeviceProfileLite *profile)
-        {
-            g_compile_context_stack.push_back({dev_attr, profile});
-        }
-
-        void PopShaderCompilerCompileContext()
-        {
-            if(!g_compile_context_stack.empty())
-                g_compile_context_stack.pop_back();
-        }
-
-        bool GetShaderCompilerCompileContext(ShaderCompilerCompileContext &out_context)
-        {
-            if(g_compile_context_stack.empty())
-            {
-                out_context = ShaderCompilerCompileContext{};
-                return false;
-            }
-
-            const auto &ctx = g_compile_context_stack.back();
-            out_context.dev_attr = ctx.dev_attr;
-            out_context.profile = ctx.profile;
-            return true;
-        }
 
         static CompileInfo compile_info;
 

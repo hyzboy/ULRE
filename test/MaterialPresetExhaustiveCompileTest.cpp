@@ -210,7 +210,9 @@ namespace
             variant_name,
             [preset, cfg_copy]() mutable -> MaterialCreateInfo *
             {
-                return CreateMaterialCreateInfo(nullptr, preset, &cfg_copy);
+                using CreateMaterialCreateInfo3Arg = MaterialCreateInfo *(*)(const VulkanDevAttr *, const MaterialPreset, MaterialCreateConfig *);
+                constexpr CreateMaterialCreateInfo3Arg kCreateMCI = &CreateMaterialCreateInfo;
+                return kCreateMCI(nullptr, preset, &cfg_copy);
             }
         });
     }
