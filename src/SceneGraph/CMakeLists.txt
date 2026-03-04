@@ -27,6 +27,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenVertexInputAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenVertexPolicyAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenDescriptorLayoutAdapter.h
+                        ${SG_INCLUDE_PATH}/module/ShaderGenDescriptorPolicyAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenSPVModuleAdapter.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
@@ -44,6 +45,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/ShaderGenVertexInputAdapter.cpp
                         module/ShaderGenVertexPolicyAdapter.cpp
                         module/ShaderGenDescriptorLayoutAdapter.cpp
+                        module/ShaderGenDescriptorPolicyAdapter.cpp
                         module/ShaderGenSPVModuleAdapter.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp

@@ -121,6 +121,10 @@
     - [inc/hgl/graph/module/ShaderGenVertexPolicyAdapter.h](inc/hgl/graph/module/ShaderGenVertexPolicyAdapter.h)
     - [src/SceneGraph/module/ShaderGenVertexPolicyAdapter.cpp](src/SceneGraph/module/ShaderGenVertexPolicyAdapter.cpp)
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为通过 `BuildVertexInputByContractPolicy(...)` 统一处理 `UseMirror/UseLegacy/StrictAbort` 决策，减少内联分支复杂度。
+  - descriptor 策略分支已抽离为独立适配器：
+    - [inc/hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h](inc/hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h)
+    - [src/SceneGraph/module/ShaderGenDescriptorPolicyAdapter.cpp](src/SceneGraph/module/ShaderGenDescriptorPolicyAdapter.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为通过 `BuildDescriptorsByContractPolicy(...)` 统一处理 `UseMirror/UseLegacy/StrictAbort`，并保留 layout/build 两类 fallback 语义。
   - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
 
 当前阻塞：

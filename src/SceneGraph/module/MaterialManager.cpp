@@ -14,6 +14,7 @@
 #include<hgl/graph/module/ShaderGenVertexInputAdapter.h>
 #include<hgl/graph/module/ShaderGenVertexPolicyAdapter.h>
 #include<hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h>
+#include<hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h>
 #include<hgl/graph/module/ShaderGenSPVModuleAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
@@ -416,60 +417,38 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
         }
 
         std::vector<ShaderDescriptor> descriptors;
+        ContractDescriptorFallbackPhase descriptor_phase = ContractDescriptorFallbackPhase::None;
+        std::string descriptor_reason;
+        const ContractDescriptorDecision descriptor_decision = BuildDescriptorsByContractPolicy(
+            legacy_descriptors,
+            mirror_result,
+            mirror_spv_build_used,
+            require_mirror_valid,
+            descriptors,
+            descriptor_phase,
+            descriptor_reason);
 
-        const bool has_mirror_result = (mirror_result != nullptr);
-        bool can_use_mirror_descriptor_layout = has_mirror_result;
-
-        if(has_mirror_result && !legacy_descriptors.empty())
+        if(descriptor_decision == ContractDescriptorDecision::StrictAbort)
         {
-            std::string reason;
-            if(!ValidateContractDescriptorLayoutAgainstLegacy(legacy_descriptors, *mirror_result, reason))
-            {
-                can_use_mirror_descriptor_layout = false;
-
-                if(require_mirror_valid || mirror_spv_build_used)
-                {
-                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
-                    std::fprintf(stderr,
-                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                        reason.c_str());
-                    return nullptr;
-                }
-
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror descriptor layout mismatch (%s), fallback to legacy descriptor layout\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                    reason.c_str());
-            }
+            RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + descriptor_reason, "StrictGate.Descriptor");
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                descriptor_reason.c_str());
+            return nullptr;
         }
 
-        if(can_use_mirror_descriptor_layout)
+        if(descriptor_decision == ContractDescriptorDecision::UseLegacy && !descriptor_reason.empty())
         {
-            std::string reason;
-            if(!BuildShaderDescriptorsFromContractLayout(*mirror_result, legacy_descriptors, descriptors, reason))
-            {
-                if(require_mirror_valid || mirror_spv_build_used)
-                {
-                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Descriptor");
-                    std::fprintf(stderr,
-                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                        reason.c_str());
-                    return nullptr;
-                }
+            const char *fallback_phase_text = (descriptor_phase == ContractDescriptorFallbackPhase::LayoutMismatch)
+                                              ? "layout mismatch"
+                                              : "layout build failed";
 
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror descriptor layout build failed (%s), fallback to legacy descriptor layout\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                    reason.c_str());
-
-                descriptors = std::move(legacy_descriptors);
-            }
-        }
-        else
-        {
-            descriptors = std::move(legacy_descriptors);
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter] material=%s mirror descriptor %s (%s), fallback to legacy descriptor layout\n",
+                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                fallback_phase_text,
+                descriptor_reason.c_str());
         }
 
         if(!descriptors.empty())
