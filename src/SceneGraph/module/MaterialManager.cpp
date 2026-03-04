@@ -203,6 +203,15 @@ void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString 
         mtl->mi_data_manager = new ActiveMemoryBlockManager(mtl->mi_data_bytes);
 }
 
+Material *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
+{
+    Material *cached = nullptr;
+    if(material_by_name.Get(name, cached))
+        return cached;
+
+    return nullptr;
+}
+
 Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     HGL_CAPTURE_SCOPE();
@@ -259,14 +268,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
         mci,
         mtl_name,
-        [&](const AnsiString &name)->Material *
-        {
-            Material *cached = nullptr;
-            if(material_by_name.Get(name, cached))
-                return cached;
-
-            return nullptr;
-        },
+        [&](const AnsiString &name)->Material * { return TryGetCachedMaterial(name); },
         precheck_result);
 
     if(precheck_decision == MaterialCreatePrecheckDecision::UseCached)
