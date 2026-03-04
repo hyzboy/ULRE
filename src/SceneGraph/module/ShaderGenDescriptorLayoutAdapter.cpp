@@ -6,6 +6,25 @@ namespace hgl::graph
 {
     namespace
     {
+        static DescriptorSetType ResolveDescriptorSetTypeWithCompatibility(
+            const mtl::contract::DescriptorBindingDesc &binding,
+            const std::vector<ShaderDescriptor> &legacy_descriptors)
+        {
+            for (const auto &legacy_desc : legacy_descriptors)
+            {
+                if (legacy_desc.set == static_cast<int>(binding.set) &&
+                    legacy_desc.binding == static_cast<int>(binding.binding))
+                {
+                    return legacy_desc.set_type;
+                }
+            }
+
+            if (binding.set < DESCRIPTOR_SET_TYPE_COUNT)
+                return static_cast<DescriptorSetType>(binding.set);
+
+            return DescriptorSetType::Unknow;
+        }
+
         static VkDescriptorType ToVkDescriptorType(const mtl::contract::ResourceClass rc)
         {
             switch (rc)
@@ -91,23 +110,7 @@ namespace hgl::graph
             ShaderDescriptor desc;
             std::snprintf(desc.name, sizeof(desc.name), "%s", binding.name.c_str());
             desc.desc_type = vk_desc_type;
-
-            desc.set_type = DescriptorSetType::Unknow;
-            for (const auto &legacy_desc : legacy_descriptors)
-            {
-                if (legacy_desc.set == static_cast<int>(binding.set) &&
-                    legacy_desc.binding == static_cast<int>(binding.binding))
-                {
-                    desc.set_type = legacy_desc.set_type;
-                    break;
-                }
-            }
-
-            if (desc.set_type == DescriptorSetType::Unknow)
-            {
-                if (binding.set < DESCRIPTOR_SET_TYPE_COUNT)
-                    desc.set_type = static_cast<DescriptorSetType>(binding.set);
-            }
+            desc.set_type = ResolveDescriptorSetTypeWithCompatibility(binding, legacy_descriptors);
 
             desc.set = static_cast<int>(binding.set);
             desc.binding = static_cast<int>(binding.binding);

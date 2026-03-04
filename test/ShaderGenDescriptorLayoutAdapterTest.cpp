@@ -119,6 +119,24 @@ int main()
         }
     }
 
+    {
+        mtl::contract::ShaderGenResult unknown_set_result;
+        unknown_set_result.layout.bindings.push_back(MakeBinding(99, 1, mtl::contract::ResourceClass::UniformBuffer, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "out_of_range_set"));
+
+        std::vector<ShaderDescriptor> out;
+        std::string reason;
+        if (!BuildShaderDescriptorsFromContractLayout(unknown_set_result, legacy, out, reason))
+        {
+            std::fprintf(stderr, "[FAIL] build out-of-range set_type failed: %s\n", reason.c_str());
+            ++failed;
+        }
+        else if (out.size() != 1 || out[0].set_type != DescriptorSetType::Unknow)
+        {
+            std::fprintf(stderr, "[FAIL] out-of-range set_type should fallback to Unknow\n");
+            ++failed;
+        }
+    }
+
     if (failed != 0)
     {
         std::fprintf(stderr, "ShaderGenDescriptorLayoutAdapterTest FAILED (%d)\n", failed);

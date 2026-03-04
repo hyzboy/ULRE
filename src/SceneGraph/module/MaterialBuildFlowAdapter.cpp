@@ -20,11 +20,9 @@ namespace hgl::graph
                                        const char *reason)
         {
             RecordShaderGenContractPathDecision(decision_key);
-
-            const std::string abort_reason = BuildMirrorPreferredAbortReason(reason);
             ReportMirrorPreferredStrictAbort(material_name.c_str(),
                                              strict_gate_category,
-                                             abort_reason.c_str());
+                                             reason);
             return false;
         }
 

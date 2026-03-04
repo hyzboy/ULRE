@@ -5,10 +5,12 @@
 
 namespace hgl::graph
 {
-    void BuildShaderGenContractPathContext(ShaderGenContractPathContext &ctx,
-                                           const GraphicsContext *graphics_context,
-                                           const mtl::MaterialCreateInfo &mci,
-                                           const char *material_name)
+    void BuildShaderGenContractPathContextWithBuilders(ShaderGenContractPathContext &ctx,
+                                                       const GraphicsContext *graphics_context,
+                                                       const mtl::MaterialCreateInfo &mci,
+                                                       const char *material_name,
+                                                       const ShaderGenRequestBuilderFn &request_builder,
+                                                       const ShaderGenResultBuilderFn &result_builder)
     {
         ctx.mode = graphics_context ? graphics_context->GetShaderGenPathMode() : ShaderGenPathMode::MirrorValidate;
         ctx.policy = graphics_context ? graphics_context->GetShaderGenPathPolicy() : MakeShaderGenPathPolicy(ctx.mode);
@@ -21,13 +23,15 @@ namespace hgl::graph
         ctx.mirror_prebuild_failed = false;
 
         if (ctx.policy.enable_mirror_validation &&
-            mtl::contract::BuildShaderGenRequestFromMaterialCreateInfo(mci, ctx.request_storage, material_name))
+            request_builder &&
+            request_builder(mci, ctx.request_storage, material_name))
         {
             ctx.request = &ctx.request_storage;
         }
 
         if (ctx.policy.enable_mirror_validation &&
-            mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(mci, ctx.mirror_storage))
+            result_builder &&
+            result_builder(mci, ctx.mirror_storage))
         {
             ctx.mirror = &ctx.mirror_storage;
         }
@@ -35,5 +39,28 @@ namespace hgl::graph
         {
             ctx.mirror_prebuild_failed = true;
         }
+    }
+
+    void BuildShaderGenContractPathContext(ShaderGenContractPathContext &ctx,
+                                           const GraphicsContext *graphics_context,
+                                           const mtl::MaterialCreateInfo &mci,
+                                           const char *material_name)
+    {
+        BuildShaderGenContractPathContextWithBuilders(
+            ctx,
+            graphics_context,
+            mci,
+            material_name,
+            [](const mtl::MaterialCreateInfo &src,
+               mtl::contract::ShaderGenRequest &request,
+               const char *name)->bool
+            {
+                return mtl::contract::BuildShaderGenRequestFromMaterialCreateInfo(src, request, name);
+            },
+            [](const mtl::MaterialCreateInfo &src,
+               mtl::contract::ShaderGenResult &result)->bool
+            {
+                return mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(src, result);
+            });
     }
 }

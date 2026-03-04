@@ -34,7 +34,10 @@ namespace hgl::graph::mtl::contract
         return hash;
     }
 
-    bool BuildShaderGenRequestFromMaterialCreateInfo(const MaterialCreateInfo &mci, ShaderGenRequest &request, const char *material_name)
+    bool BuildShaderGenRequestFromMaterialCreateInfo(const MaterialCreateInfo &mci,
+                                                     const PhysicalDeviceProfileLite *physical_device_profile,
+                                                     ShaderGenRequest &request,
+                                                     const char *material_name)
     {
         request = ShaderGenRequest{};
         request.contract_version = kShaderGenContractVersion;
@@ -74,6 +77,22 @@ namespace hgl::graph::mtl::contract
             }
         }
 
+        if (physical_device_profile)
+        {
+            request.has_physical_device_profile = true;
+            request.physical_device_profile = *physical_device_profile;
+        }
+
         return true;
+    }
+
+    bool BuildShaderGenRequestFromMaterialCreateInfo(const MaterialCreateInfo &mci,
+                                                     ShaderGenRequest &request,
+                                                     const char *material_name)
+    {
+        return BuildShaderGenRequestFromMaterialCreateInfo(mci,
+                                                           nullptr,
+                                                           request,
+                                                           material_name);
     }
 }

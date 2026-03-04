@@ -297,6 +297,71 @@ target_include_directories(test_ShaderGenDescriptorLayoutAdapter
 
 CreateTestProject(20 test_ShaderGenDescriptorLayoutAdapter)
 
+add_executable(test_MaterialBuildStrictGatePolicyMatrix
+    MaterialBuildStrictGatePolicyMatrixTest.cpp)
+
+target_link_libraries(test_MaterialBuildStrictGatePolicyMatrix
+    PRIVATE ULRE.SceneGraph
+            ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_MaterialBuildStrictGatePolicyMatrix
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(21 test_MaterialBuildStrictGatePolicyMatrix)
+
+add_executable(test_ShaderGenContractPathContext
+    ShaderGenContractPathContextTest.cpp)
+
+target_link_libraries(test_ShaderGenContractPathContext
+    PRIVATE ULRE.SceneGraph
+            ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore
+            CMMath
+            CMCoreType)
+
+target_include_directories(test_ShaderGenContractPathContext
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(22 test_ShaderGenContractPathContext)
+
+add_executable(test_VulkanPhysicalDeviceProfileCollector
+    VulkanPhysicalDeviceProfileCollector.cpp)
+
+target_link_libraries(test_VulkanPhysicalDeviceProfileCollector
+    PRIVATE ULRE.Vulkan
+            CMCore
+            CMMath
+            CMCoreType)
+
+target_include_directories(test_VulkanPhysicalDeviceProfileCollector
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(23 test_VulkanPhysicalDeviceProfileCollector)
+
+add_executable(test_ShaderGenPhysicalDeviceProfileJsonPath
+    ShaderGenPhysicalDeviceProfileJsonPathTest.cpp)
+
+target_link_libraries(test_ShaderGenPhysicalDeviceProfileJsonPath
+    PRIVATE ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_ShaderGenPhysicalDeviceProfileJsonPath
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(24 test_ShaderGenPhysicalDeviceProfileJsonPath)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -358,6 +423,15 @@ if(BUILD_TESTING)
 
     add_test(NAME test_ShaderGenDescriptorLayoutAdapter
              COMMAND test_ShaderGenDescriptorLayoutAdapter)
+
+    add_test(NAME test_MaterialBuildStrictGatePolicyMatrix
+             COMMAND test_MaterialBuildStrictGatePolicyMatrix)
+
+    add_test(NAME test_ShaderGenContractPathContext
+             COMMAND test_ShaderGenContractPathContext)
+
+    add_test(NAME test_ShaderGenPhysicalDeviceProfileJsonPath
+             COMMAND test_ShaderGenPhysicalDeviceProfileJsonPath)
 
     set_tests_properties(test_MaterialPresetExhaustiveCompile PROPERTIES
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")

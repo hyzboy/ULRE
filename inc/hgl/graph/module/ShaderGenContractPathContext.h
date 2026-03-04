@@ -3,6 +3,7 @@
 #include <hgl/graph/module/ShaderGenDiffLogDetail.h>
 #include <hgl/graph/module/ShaderGenPathMode.h>
 #include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <functional>
 
 namespace hgl::graph
 {
@@ -27,6 +28,20 @@ namespace hgl::graph
 
         bool mirror_prebuild_failed = false;
     };
+
+    using ShaderGenRequestBuilderFn = std::function<bool(const mtl::MaterialCreateInfo &,
+                                                         mtl::contract::ShaderGenRequest &,
+                                                         const char *material_name)>;
+
+    using ShaderGenResultBuilderFn = std::function<bool(const mtl::MaterialCreateInfo &,
+                                                        mtl::contract::ShaderGenResult &)>;
+
+    void BuildShaderGenContractPathContextWithBuilders(ShaderGenContractPathContext &ctx,
+                                                       const GraphicsContext *graphics_context,
+                                                       const mtl::MaterialCreateInfo &mci,
+                                                       const char *material_name,
+                                                       const ShaderGenRequestBuilderFn &request_builder,
+                                                       const ShaderGenResultBuilderFn &result_builder);
 
     void BuildShaderGenContractPathContext(ShaderGenContractPathContext &ctx,
                                            const GraphicsContext *graphics_context,

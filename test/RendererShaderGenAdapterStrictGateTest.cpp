@@ -1,5 +1,6 @@
 #include <hgl/graph/module/RendererShaderGenAdapter.h>
 #include <hgl/graph/module/ShaderGenValidationTypes.h>
+#include <hgl/graph/module/ShaderGenValidationStorageService.h>
 #include <cstdio>
 #include <cstdint>
 #include <string>
@@ -12,17 +13,17 @@ int main()
 
     RendererShaderGenAdapter::ResetValidationReports();
 
-    RendererShaderGenAdapter::RecordExternalValidationError(
+    StoreExternalShaderGenValidationError(
         "StrictMatA",
         "mirror-preferred build aborted: vertex attribute count mismatch",
         "StrictGate.Vertex");
 
-    RendererShaderGenAdapter::RecordExternalValidationError(
+    StoreExternalShaderGenValidationError(
         "StrictMatA",
         "mirror-preferred build aborted: descriptor count mismatch",
         "StrictGate.Descriptor");
 
-    RendererShaderGenAdapter::RecordExternalValidationError(
+    StoreExternalShaderGenValidationError(
         "StrictMatB",
         "creation aborted: mirror-preferred requires valid mirror result",
         "StrictGate.Prebuild");

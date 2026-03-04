@@ -153,7 +153,7 @@
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为统一调用 `RunMaterialCreatePrecheck(...)` 处理 cache hit 与输入合法性短路。
   - `MaterialManager` 内 finalize 应用步骤已收敛为私有成员 `ApplyMaterialFinalizePlan(...)`（调用 `BuildMaterialFinalizePlan` 并统一应用 `pipeline/mp/mi`），`CreateMaterialWithContract` 主体进一步缩短。
   - `MaterialManager` 新增私有缓存查询助手 `TryGetCachedMaterial(...)`，替代 `CreateMaterialWithContract` 内联查询 lambda，进一步强化“阶段编排 + helper 调用”的函数形态。
- 2026-03-04 运行态状态更新（用户侧 VS Rebuild 复核）
+- 2026-03-04 运行态状态更新（用户侧 VS Rebuild 复核）
   - 用户在 Visual Studio 完整 Rebuild 后反馈：示例均可正常运行、画面正常。
   - 当前“VSCode 直接启动返回错误”更可能与启动链路/调试环境差异相关，暂不再将其单独归因到 ShaderGen contract 主路径逻辑错误。
   - 仍保留“偶发日志报错”作为后续清理项，并继续以关键 pattern 统计做回归守卫。
@@ -229,18 +229,43 @@
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `ResolveDescriptorsByContractPolicy(...)`，将 descriptor 决策的 strict-abort/fallback/计数从 `BuildMaterialBindingsFlow(...)` 主体中抽离，实现与 vertex 分支对称的 helper 化编排结构。
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `TryBuildMirrorShaderModules(...)` / `BuildLegacyShaderModules(...)`，将 `BuildShaderModulesFlow(...)` 中 mirror/legacy 两段模块构建逻辑对称抽离，主流程收敛为高层编排与回退门禁控制。
   - 当前全仓已无 `#include <hgl/shadergen/FixedMaterialDef.h>` 直接引用，`shadergen/FixedMaterialDef.h` 仅保留兼容入口职责。
+  - 严格门禁回归补齐（2026-03-04）：
+    - [test/RendererShaderGenAdapterStrictGateTest.cpp](test/RendererShaderGenAdapterStrictGateTest.cpp) 已跟随新 API 更新为 `StoreExternalShaderGenValidationError(...)` 路径并重新通过。
+    - 新增 [test/MaterialBuildStrictGatePolicyMatrixTest.cpp](test/MaterialBuildStrictGatePolicyMatrixTest.cpp)，覆盖 `StrictGate.Prebuild/Spv/Vertex/Descriptor` 的 policy/上报矩阵与 histogram/material-category 聚合校验。
+    - `test_RendererShaderGenAdapterStrictGate` 与 `test_MaterialBuildStrictGatePolicyMatrix` 本地 Debug 构建与执行通过。
+  - descriptor `set_type` 兼容策略已冻结（2026-03-04）：
+    - [src/SceneGraph/module/ShaderGenDescriptorLayoutAdapter.cpp](src/SceneGraph/module/ShaderGenDescriptorLayoutAdapter.cpp) 新增 `ResolveDescriptorSetTypeWithCompatibility(...)`，明确规则为“优先复用 legacy 对齐；否则按 set index 映射；越界回落 `DescriptorSetType::Unknow`”。
+    - [test/ShaderGenDescriptorLayoutAdapterTest.cpp](test/ShaderGenDescriptorLayoutAdapterTest.cpp) 已补充越界 set 回落 `Unknow` 的边界用例，Debug 构建与执行通过。
+  - 入口 strict-prebuild 语义可测性补齐（2026-03-04）：
+    - [inc/hgl/graph/module/ShaderGenContractPathContext.h](inc/hgl/graph/module/ShaderGenContractPathContext.h) / [src/SceneGraph/module/ShaderGenContractPathContext.cpp](src/SceneGraph/module/ShaderGenContractPathContext.cpp) 新增可注入 builder 的 `BuildShaderGenContractPathContextWithBuilders(...)`，默认 API 行为保持不变。
+    - 新增 [test/ShaderGenContractPathContextTest.cpp](test/ShaderGenContractPathContextTest.cpp)，覆盖 `mirror-preferred + mirror prebuild failed` 路径下 `request/mirror/mirror_prebuild_failed` 状态断言，Debug 构建与执行通过。
+  - Vulkan 物理设备能力标准采集入口已落地（2026-03-08）：
+    - 新增 [test/VulkanPhysicalDeviceProfileCollector.cpp](test/VulkanPhysicalDeviceProfileCollector.cpp)（无窗口采集路径，直接基于 Vulkan instance + physical device 枚举）。
+    - 新增 `test_VulkanPhysicalDeviceProfileCollector` 构建目标（[test/CMakeLists.txt](test/CMakeLists.txt)）。
+    - 当前行为为**直接向标准输出打印 JSON 文本**（完整结构，含 queue family 明细），由调用侧通过 shell 重定向为文件。
+    - 字段口径：`device identity + tier + limits + features + queue_family_count`，用于后续“高配/中配/低配”运行配置降级策略消费。
 
 当前阻塞：
 
   - VSCode 直接启动链路偶发返回错误（含历史 `exit code = 1/-1073741819`），但用户在 Visual Studio Rebuild 后示例可稳定运行且画面正常；当前优先级调整为“环境/启动链路差异排查 + 日志噪声治理”，不再作为主阻塞。
-  - Phase 3 仍未完成“descriptor/pipeline layout 全量由 contract 结果驱动构建”，当前仍保留 legacy MDI 作为主来源并做一致性守卫。
+  - Phase 3 收口仍有尾项：当前构建路径已是 mirror-first + policy fallback，但 descriptor `set_type` 仍允许 legacy 对齐/推断，且严格失败路径的入口级端到端回归仍需补齐。
 
 下一步（建议本周）：
 
-  1. Phase 3：推进主路径切换开关（默认走 `ShaderGenResult`，legacy 保留 fallback）并补齐回退策略验证
+  1. Phase 3：完成收口 checklist（SPV/Vertex/Descriptor/Layout source-of-truth 明确化），并补齐 mirror-preferred 下的入口级严格失败回归
   2. 在现有 `StrictGate` 单测基础上，补齐 `MaterialManager::CreateMaterial` 入口级端到端严格失败路径回归用例
   3. 对 VSCode 启动链路差异与偶发日志报错做专项排查并沉淀最小复现清单（与 VS Rebuild 结果对照）
   4. 按材质/stage 聚合输出 validation/profiler（日志通道或可视化入口）
+
+  ### 0.3 Phase 3 收口 Checklist（2026-03-04 代码实况）
+
+  - ✅ **SPV source-of-truth**：`BuildShaderModulesFlow(...)` 已是 mirror-first；`mirror-validate` 自动 fallback，`mirror-preferred` strict-abort。
+  - ✅ **Vertex source-of-truth**：`BuildVertexInputByContractPolicy(...)` 已按 mirror-first 决策；当 mirror SPV 已实际采用时，vertex mismatch 会 strict-abort。
+  - ✅ **Descriptor source-of-truth**：`BuildDescriptorsByContractPolicy(...)` 已优先 contract layout 构建；layout mismatch/build failed 在 strict 模式可中止。
+  - ✅ **PipelineLayout source-of-truth**：`CreateMaterialPipelineLayoutData(...)` 基于最终 `desc_manager` 构建，随 descriptor 决策链一致。
+  - ✅ **尾项 A（语义纯化）**：已决定保留 descriptor `set_type` 兼容策略（legacy 对齐 + set index fallback），并以测试用例冻结当前行为。
+  - ⚠️ **尾项 B（验收证据）**：strict-fail policy/report 矩阵已补齐，且 strict-prebuild 入口语义已可测试；`MaterialManager::CreateMaterial` 设备依赖入口的端到端 strict-fail 用例仍建议补一组集成回归（`StrictGate.Spv/Vertex/Descriptor`）。
+  - ✅ **回归状态（用户复核）**：用户在 VS2026 全量 Rebuild + 测试运行通过，可作为本阶段稳定性证据；VSCode 启动差异转为环境专项。
 
   ### 0.1 换机接手清单（可直接执行）
 
@@ -266,7 +291,7 @@
   ### 0.2 当前代码状态结论（交接摘要）
 
   - 已完成：Contract/Mirror/Adapter/PathPolicy/CLI 注入链路贯通，Adapter API 与内部职责收敛，全量构建回归恢复正常。
-  - 未完成：Phase 3 主路径切换与运行态退出码问题定位。
+  - 未完成：Phase 3 收口尾项（descriptor 语义纯化与入口级 strict-fail 回归矩阵）；运行态问题当前降级为“VSCode 启动链路差异排查 + 偶发日志噪声治理”。
   - 风险等级：**中低**（编译链路稳定；主要风险转为运行态与主路径切换验收）。
 
 ---
