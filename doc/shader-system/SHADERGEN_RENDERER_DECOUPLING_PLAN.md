@@ -139,6 +139,10 @@
     - [inc/hgl/graph/module/MaterialBuildFlowAdapter.h](inc/hgl/graph/module/MaterialBuildFlowAdapter.h)
     - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp)
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 已删除本地实现并改为调用 adapter。
+  - read-only validation 入口已独立为 gate 适配器：
+    - [inc/hgl/graph/module/ShaderGenReadOnlyValidationGate.h](inc/hgl/graph/module/ShaderGenReadOnlyValidationGate.h)
+    - [src/SceneGraph/module/ShaderGenReadOnlyValidationGate.cpp](src/SceneGraph/module/ShaderGenReadOnlyValidationGate.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为统一调用 `RunReadOnlyValidationGate(...)`。
   - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
 
 当前阻塞：

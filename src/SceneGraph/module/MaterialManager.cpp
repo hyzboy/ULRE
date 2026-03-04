@@ -18,6 +18,7 @@
 #include<hgl/graph/module/ShaderGenContractGateReporter.h>
 #include<hgl/graph/module/ShaderGenContractPathContext.h>
 #include<hgl/graph/module/MaterialBuildFlowAdapter.h>
+#include<hgl/graph/module/ShaderGenReadOnlyValidationGate.h>
 #include<hgl/graph/module/ShaderGenSPVModuleAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
@@ -225,32 +226,15 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     if(!mci)
         return(nullptr);
 
-    if(enable_mirror_validation)
+    if(!RunReadOnlyValidationGate(*mci,
+                                  request_result,
+                                  mirror_result,
+                                  mtl_name.c_str(),
+                                  enable_mirror_validation,
+                                  require_mirror_valid,
+                                  diff_log_detail))
     {
-        RendererShaderGenAdapter adapter;
-        const RendererShaderGenAdapter::ValidationReport consume_report=
-            adapter.ValidateMaterialContractReadOnly(*mci,
-                                                    request_result,
-                                                    mirror_result,
-                                                    mtl_name.c_str(),
-                                                    diff_log_detail);
-
-        if(!consume_report.overall_valid)
-        {
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s read-only validation failed (errors=%u, warnings=%u)\n",
-                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                consume_report.error_count,
-                consume_report.warning_count);
-
-            if(require_mirror_valid)
-            {
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s creation aborted due to mirror-preferred strict mode\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
-                return nullptr;
-            }
-        }
+        return nullptr;
     }
 
     {
