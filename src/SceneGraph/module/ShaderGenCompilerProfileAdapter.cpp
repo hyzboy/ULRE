@@ -1,10 +1,9 @@
 #include <hgl/graph/module/ShaderGenCompilerProfileAdapter.h>
 #include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/shadergen/ShaderCompilerProfileAPI.h>
 
 namespace hgl::graph
 {
-    void SetShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile);
-
     void ApplyShaderCompilerProfile(const mtl::contract::PhysicalDeviceProfileLite *profile)
     {
         if (!profile)

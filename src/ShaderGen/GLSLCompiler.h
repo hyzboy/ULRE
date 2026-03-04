@@ -2,13 +2,11 @@
 #define HGL_GLSL_COMPILER_INCLUDE
 
 #include<hgl/type/DataType.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<hgl/shadergen/ShaderCompilerProfileAPI.h>
 namespace hgl
 {
     namespace graph
     {
-        class VulkanPhyDevice;
-
         struct SPVData
         {
             bool result;
@@ -21,11 +19,6 @@ namespace hgl
 
         bool        InitShaderCompiler();
         void        CloseShaderCompiler();
-
-        void        SetShaderCompilerVersion(const VulkanPhyDevice *pd);
-        void        SetShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile);
-        bool        SetShaderCompilerPhysicalDeviceProfileFromJson(const char *json_text);
-        void        GetShaderCompilerTargetVersions(uint32 &vulkan_version,uint32 &spv_version);
 
         SPVData *   CompileShader   (const uint32 type,const char *source);
         void        FreeSPVData     (SPVData *spv_data);

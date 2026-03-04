@@ -113,6 +113,7 @@ SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
 SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/FixedMaterialDef.h
                     ${SHADERGEN_INCLUDE_PATH}/DescriptorBindingContract.h
+                    ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContract.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContractValidator.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenMirrorDiff.h

@@ -8,13 +8,12 @@
 #include<hgl/vk/VKDeviceCreater.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKSurface.h>
+#include<hgl/shadergen/ShaderCompilerProfileAPI.h>
 
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
-
-void SetShaderCompilerVersion(const VulkanPhyDevice *);
 
 #ifdef _DEBUG
 DebugUtils *CreateDebugUtils(VkDevice);
