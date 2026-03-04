@@ -30,6 +30,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenDescriptorPolicyAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenContractGateReporter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenContractPathContext.h
+                        ${SG_INCLUDE_PATH}/module/MaterialBuildFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenSPVModuleAdapter.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
@@ -50,6 +51,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/ShaderGenDescriptorPolicyAdapter.cpp
                         module/ShaderGenContractGateReporter.cpp
                         module/ShaderGenContractPathContext.cpp
+                        module/MaterialBuildFlowAdapter.cpp
                         module/ShaderGenSPVModuleAdapter.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
