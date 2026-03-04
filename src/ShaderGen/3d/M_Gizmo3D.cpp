@@ -6,7 +6,7 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     ShaderPermutationKey key;
 
@@ -14,7 +14,7 @@ MaterialCreateInfo *CreateGizmo3D(const VulkanDevAttr *dev_attr,Material3DCreate
         cfg->material_instance=true;
 
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
-        dev_attr,
+        profile,
         GIZMO_3D_DEF,
         GIZMO_3D_COMPOSED_DEF,
         GIZMO_3D_LOGIC,

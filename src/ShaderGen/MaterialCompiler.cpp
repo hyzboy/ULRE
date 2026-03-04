@@ -15,9 +15,7 @@
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
 #include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/shadergen/ShaderLogic.h>
-#include <hgl/shadergen/ShaderCompilerProfileAPI.h>
 #include <hgl/graph/mtl/UBOCommon.h>
-#include <hgl/vk/VKDeviceAttribute.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
@@ -678,7 +676,7 @@ bool ValidateFSMainBusinessHelperConsistency(
  *   4. 若 def.mi_glsl_codes 非空，设置 MaterialInstance
  */
 MaterialCreateInfo *CompileFixedMaterial(
-    const VulkanDevAttr *       dev_attr,
+    const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,
     const char *                vert_glsl,
     const char *                frag_glsl,
@@ -686,10 +684,10 @@ MaterialCreateInfo *CompileFixedMaterial(
     const ShaderPermutationKey &key,
     const Material3DCreateConfig *config)
 {
-    if (!dev_attr)
+    if (!profile)
     {
         std::fprintf(stderr,
-            "[CompileFixedMaterial] material=%s dev_attr is null, continue in offline mode\n",
+            "[CompileFixedMaterial] material=%s profile is null, continue in offline mode\n",
             def.name ? def.name : "<unnamed-material>");
     }
 
@@ -740,8 +738,8 @@ MaterialCreateInfo *CompileFixedMaterial(
     // ─────────────────────────────────────────────────────────────────────────
 
     MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
-    if(dev_attr)
-        mci->SetDevice(dev_attr);
+    if(profile)
+        mci->SetDevice(profile);
     mci->SetBindingContract(binding_contract);
 
     auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
@@ -1034,7 +1032,7 @@ MaterialCreateInfo *CompileFixedMaterial(
 }
 
 MaterialCreateInfo *CompileComposedBusinessMaterial(
-    const VulkanDevAttr *       dev_attr,
+    const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    base_fixed_def,
     const ComposedMaterialDef & base_composed_def,
     const MaterialLogicDef &    logic,
@@ -1101,7 +1099,7 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
         }
     }
 
-    return CompileFixedMaterial(dev_attr, base_fixed_def,
+    return CompileFixedMaterial(profile, base_fixed_def,
         generated_vs.c_str(), generated_fs.c_str(), nullptr,
         key, config);
 }

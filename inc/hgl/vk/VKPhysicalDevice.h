@@ -50,8 +50,8 @@ class VulkanPhyDevice
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
 
-    ValueArray<VkLayerProperties>        layer_properties;
-    ValueArray<VkExtensionProperties>    extension_properties;
+    ValueArray<VkLayerProperties>       layer_properties;
+    ValueArray<VkExtensionProperties>   extension_properties;
 
     VkQueueFamilyPropertiesList         queue_family_properties;
 

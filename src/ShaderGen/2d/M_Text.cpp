@@ -71,9 +71,9 @@ void main()
     };//class MaterialText
 }//namespace
 
-MaterialCreateInfo *CreateText2D(const VulkanDevAttr *dev_attr,const Text2DMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *profile,const Text2DMaterialCreateConfig *cfg)
 {
-    if(!dev_attr||!cfg)
+    if(!profile||!cfg)
         return(nullptr);
 
     Text2DMaterialCreateConfig new_cfg=*cfg;
@@ -83,6 +83,6 @@ MaterialCreateInfo *CreateText2D(const VulkanDevAttr *dev_attr,const Text2DMater
 
     MaterialText2D mt2d(&new_cfg);
 
-    return mt2d.Create(dev_attr);
+    return mt2d.Create(profile);
 }
 }//namespace hgl::graph::mtl

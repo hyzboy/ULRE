@@ -75,7 +75,7 @@ namespace
 }
 
 // Factory
-MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateTextureBlinnPhong(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
 {
     Material3DCreateConfig cfg_with_mi = cfg ? *cfg : Material3DCreateConfig();
     cfg_with_mi.material_instance = true;
@@ -109,7 +109,7 @@ MaterialCreateInfo *CreateTextureBlinnPhong(const VulkanDevAttr *dev_attr, const
     dynamic_composed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
 
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
-        dev_attr,
+        profile,
         dynamic_fixed_def,
         dynamic_composed_def,
         dynamic_logic,

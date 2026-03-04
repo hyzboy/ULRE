@@ -7,11 +7,11 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreatePureColor3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     ShaderPermutationKey key;
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
-        dev_attr,
+        profile,
         PURE_COLOR_3D_DEF,
         PURE_COLOR_3D_COMPOSED_DEF,
         PURE_COLOR_3D_LOGIC,

@@ -13,7 +13,7 @@
 
 #include<hgl/graph/mtl/FixedMaterialDef.h>
 #include<hgl/graph/mtl/ShaderPermutationKey.h>
-#include<hgl/vk/VKDeviceAttribute.h>
+#include<hgl/shadergen/contract/ShaderGenContract.h>
 #include <string>
 
 namespace hgl::graph::mtl{
@@ -26,7 +26,7 @@ class MaterialCreateInfo;
 /**
  * 编译一个 FixedMaterialDef 排列，返回 MaterialCreateInfo*。
  *
- * @param dev_attr  Vulkan 设备能力（用于判断 SSBO 对齐等限制）
+ * @param profile   设备能力 profile（限制与特性快照）
  * @param def       编译期材质定义（constexpr 常量，描述符布局 + 顶点输入）
  * @param vert_glsl 完整 vertex shader 源码（含 void main()）
  * @param frag_glsl 完整 fragment shader 源码（含 void main()）
@@ -36,7 +36,7 @@ class MaterialCreateInfo;
  * @return          编译好的 MaterialCreateInfo*，调用方负责 delete；失败返回 nullptr
  */
 MaterialCreateInfo *CompileFixedMaterial(
-    const VulkanDevAttr *       dev_attr,
+    const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,
     const char *                vert_glsl,
     const char *                frag_glsl,
@@ -52,7 +52,7 @@ MaterialCreateInfo *CompileFixedMaterial(
  * 失败返回 nullptr；调用方可回退到 legacy 材质路径。
  */
 MaterialCreateInfo *CompileComposedBusinessMaterial(
-    const VulkanDevAttr *       dev_attr,
+    const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    base_fixed_def,
     const ComposedMaterialDef & base_composed_def,
     const MaterialLogicDef &    logic,
@@ -75,17 +75,17 @@ bool ValidateFSMainBusinessHelperConsistency(
  * 先尝试从 recipe 文件加载（file-driven），文件不存在时用 hardcode def。
  * 在 M_Xxx.cpp 工厂函数中使用：
  *
- *   COMPILE_WITH_RECIPE_FALLBACK(dev_attr, BASIC_LIT_BASE_DEF, key,
+ *   COMPILE_WITH_RECIPE_FALLBACK(profile, BASIC_LIT_BASE_DEF, key,
  *                                "recipes/uber/uber_3d.json", "pc_high")
  *
  * 注：此宏的实现需要完成 ShaderTemplateEngine 与配方驱动编译入口。
  * 当前版本保留宏定义但注释掉，避免前向引用错误。
  */
-// #define COMPILE_WITH_RECIPE_FALLBACK(dev_attr_, def_, key_, recipe_path_, quality_) \
+// #define COMPILE_WITH_RECIPE_FALLBACK(profile_, def_, key_, recipe_path_, quality_) \
 //     ([&]() -> MaterialCreateInfo* { \
-//         MaterialCreateInfo *_mci = CreateMaterialFromRecipe(dev_attr_, recipe_path_, quality_, def_); \
+//         MaterialCreateInfo *_mci = CreateMaterialFromRecipe(profile_, recipe_path_, quality_, def_); \
 //         if(_mci) return _mci; \
-//         return CompileFixedMaterial(dev_attr_, def_, key_); \
+//         return CompileFixedMaterial(profile_, def_, key_); \
 //     }())
 
 }//namespace hgl::graph::mtl

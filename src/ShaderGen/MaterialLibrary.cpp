@@ -29,7 +29,7 @@ const char *GetInlineMaterialName(const MaterialPreset mtl_id)
     }
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,
+MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg)
 {
@@ -38,23 +38,23 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,
 
     switch(mtl_id)
     {
-        case MaterialPreset::VertexColor2D:         return CreateVertexColor2D      (dev_attr,(const Material2DCreateConfig *)cfg);
-        case MaterialPreset::PureColor2D:           return CreatePureColor2D        (dev_attr,(Material2DCreateConfig *)cfg);
-        case MaterialPreset::PureTexture2D:         return CreatePureTexture2D      (dev_attr,(const Material2DCreateConfig *)cfg);
-        case MaterialPreset::RectTexture2D:         return CreateRectTexture2D      (dev_attr,(Material2DCreateConfig *)cfg);
-        case MaterialPreset::RectTexture2DArray:    return CreateRectTexture2DArray (dev_attr,(Material2DCreateConfig *)cfg);
-        case MaterialPreset::Text2D:                return CreateText2D             (dev_attr,(const Text2DMaterialCreateConfig *)cfg);
+        case MaterialPreset::VertexColor2D:         return CreateVertexColor2D      (profile,(const Material2DCreateConfig *)cfg);
+        case MaterialPreset::PureColor2D:           return CreatePureColor2D        (profile,(Material2DCreateConfig *)cfg);
+        case MaterialPreset::PureTexture2D:         return CreatePureTexture2D      (profile,(const Material2DCreateConfig *)cfg);
+        case MaterialPreset::RectTexture2D:         return CreateRectTexture2D      (profile,(Material2DCreateConfig *)cfg);
+        case MaterialPreset::RectTexture2DArray:    return CreateRectTexture2DArray (profile,(Material2DCreateConfig *)cfg);
+        case MaterialPreset::Text2D:                return CreateText2D             (profile,(const Text2DMaterialCreateConfig *)cfg);
 
-        case MaterialPreset::PureColor3D:           return CreatePureColor3D        (dev_attr,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::VertexColor3D:         return CreateVertexColor3D      (dev_attr,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::VertexLuminance3D:     return CreateVertexLuminance3D  (dev_attr,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::VertexPattleColor3D:   return CreateVertexPattleColor3D(dev_attr,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::Gizmo3D:               return CreateGizmo3D            (dev_attr,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::TextureBlinnPhong:     return CreateTextureBlinnPhong  (dev_attr,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::TerrainGrid:           return CreateTerrainGrid        (dev_attr,(const TerrainGridCreateConfig *)cfg);
-        case MaterialPreset::SkyMinimal:            return CreateSkyMinimal         (dev_attr,(const SkyMinimalCreateConfig *)cfg);
-        case MaterialPreset::Billboard2D:           return CreateBillboard2D        (dev_attr,(BillboardMaterialCreateConfig *)cfg);
-        case MaterialPreset::BasicLit:              return CreateBasicLit           (dev_attr,(BasicLitMaterialCreateConfig *)cfg);
+        case MaterialPreset::PureColor3D:           return CreatePureColor3D        (profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexColor3D:         return CreateVertexColor3D      (profile,(const Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexLuminance3D:     return CreateVertexLuminance3D  (profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
+        case MaterialPreset::Gizmo3D:               return CreateGizmo3D            (profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::TextureBlinnPhong:     return CreateTextureBlinnPhong  (profile,(const Material3DCreateConfig *)cfg);
+        case MaterialPreset::TerrainGrid:           return CreateTerrainGrid        (profile,(const TerrainGridCreateConfig *)cfg);
+        case MaterialPreset::SkyMinimal:            return CreateSkyMinimal         (profile,(const SkyMinimalCreateConfig *)cfg);
+        case MaterialPreset::Billboard2D:           return CreateBillboard2D        (profile,(BillboardMaterialCreateConfig *)cfg);
+        case MaterialPreset::BasicLit:              return CreateBasicLit           (profile,(BasicLitMaterialCreateConfig *)cfg);
 
         default:                                    return nullptr;
     }

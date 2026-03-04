@@ -67,7 +67,7 @@ void main()
     };//class MaterialBillboard2DFixedSize:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DFixedSize(const VulkanDevAttr *dev_attr,mtl::BillboardMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -78,6 +78,6 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const VulkanDevAttr *dev_attr,mtl
 
     MaterialBillboard2DFixedSize mtl_billbard_2d_fixed_size(cfg);
 
-    return mtl_billbard_2d_fixed_size.Create(dev_attr);
+    return mtl_billbard_2d_fixed_size.Create(profile);
 }
 }//namespace hgl::graph::mtl

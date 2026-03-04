@@ -11,6 +11,11 @@ class RenderTargetManager;
 class RenderPassManager;
 class GraphicsContext;
 
+namespace mtl::contract
+{
+    struct PhysicalDeviceProfileLite;
+}
+
 class GraphModule
 {
     GraphicsContext *graphics_context=nullptr;
@@ -27,6 +32,7 @@ public:
                 VulkanDevice *      GetDevice           ();                                             ///<取得GPU设备
                 VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
         const   VulkanPhyDevice *   GetPhyDevice        ()const;                                        ///<取得物理设备
+            const   mtl::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile()const;             ///<取得物理设备Profile
                 VulkanDevAttr *     GetDevAttr          ()const;                                        ///<取得设备属性
                 VulkanSurface *     GetSurface          ()const;                                        ///<取得表面
                 VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache

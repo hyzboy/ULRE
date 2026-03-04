@@ -147,8 +147,6 @@ public: //ShaderGen Profiler (debug entry, collect-only)
 
     std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReports(const uint32_t max_count = 64) const;
 
-    std::map<std::string, std::vector<ShaderGenValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(const uint32_t max_per_material = 4, const uint32_t max_total = 128) const;
-
     std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const;
 
 public: //Material

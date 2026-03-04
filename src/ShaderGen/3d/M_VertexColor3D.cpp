@@ -7,12 +7,12 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateVertexColor3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
     ShaderPermutationKey key;
 
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
-        dev_attr,
+        profile,
         VERTEX_COLOR_3D_DEF,
         VERTEX_COLOR_3D_COMPOSED_DEF,
         VERTEX_COLOR_3D_LOGIC,

@@ -60,29 +60,22 @@ private:
         if(!graphics_context)
             return;
 
-        auto grouped = graphics_context->GetShaderGenRecentValidationReportsByMaterial(2, 32);
+        auto reports = graphics_context->GetShaderGenRecentValidationReports(32);
 
-        std::fprintf(stderr,"[ShaderGenValidationSample] material_groups=%zu\n",grouped.size());
+        std::fprintf(stderr,"[ShaderGenValidationSample] report_count=%zu\n",reports.size());
 
         size_t printed = 0;
-        for(const auto &kv : grouped)
+        for(const auto &record : reports)
         {
             if(printed >= 5)
                 break;
 
-            const auto &material_name = kv.first;
-            const auto &records = kv.second;
-            if(records.empty())
-                continue;
-
-            const auto &latest = records.front();
             std::fprintf(stderr,
-                         "[ShaderGenValidationSample] material=%s seq=%llu valid=%d errors=%u warnings=%u\n",
-                         material_name.c_str(),
-                         static_cast<unsigned long long>(latest.sequence),
-                         latest.report.overall_valid ? 1 : 0,
-                         latest.report.error_count,
-                         latest.report.warning_count);
+                         "[ShaderGenValidationSample] seq=%llu valid=%d errors=%u warnings=%u\n",
+                         static_cast<unsigned long long>(record.sequence),
+                         record.report.overall_valid ? 1 : 0,
+                         record.report.error_count,
+                         record.report.warning_count);
 
             ++printed;
         }

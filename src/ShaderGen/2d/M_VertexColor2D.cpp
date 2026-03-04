@@ -54,11 +54,11 @@ void main()
     };//class MaterialVertexColor2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexColor2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const Material2DCreateConfig *cfg)
 {
     MaterialVertexColor2D mvc2d(cfg);
 
-    return mvc2d.Create(dev_attr);
+    return mvc2d.Create(profile);
 }
 
 }//namespace hgl::graph::mtl

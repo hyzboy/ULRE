@@ -53,7 +53,7 @@ void main()
     };//class MaterialBillboard2DDynamicSize:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DDynamic(const VulkanDevAttr *dev_attr,mtl::BillboardMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -62,6 +62,6 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const VulkanDevAttr *dev_attr,mtl::
 
     MaterialBillboard2DDynamicSize mtl_billbard_2d(cfg);
 
-    return mtl_billbard_2d.Create(dev_attr);
+    return mtl_billbard_2d.Create(profile);
 }
 }//namespace hgl::graph::mtl

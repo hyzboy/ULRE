@@ -16,8 +16,8 @@
 ///
 /// 使用方式：
 ///   1. 在 M_Xxx.cpp 中定义 constexpr FixedMaterialDef MATERIAL_XXX_DEF { … }
-///   2. 调用 CompileComposedBusinessMaterial(dev_attr, DEF, COMPOSED_DEF, LOGIC, key, cfg) 得到 MaterialCreateInfo*
-///      （若需直接传 GLSL 源码，则调用 CompileFixedMaterial(dev_attr, DEF, vert_glsl, frag_glsl, key)）
+///   2. 调用 CompileComposedBusinessMaterial(profile, DEF, COMPOSED_DEF, LOGIC, key, cfg) 得到 MaterialCreateInfo*
+///      （若需直接传 GLSL 源码，则调用 CompileFixedMaterial(profile, DEF, vert_glsl, frag_glsl, key)）
 ///
 /// 渐进迁移路径：
 ///   - 现有 Std2DMaterial / Std3DMaterial / ShaderCreateInfo 体系继续工作

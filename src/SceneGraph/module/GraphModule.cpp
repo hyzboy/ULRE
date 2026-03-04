@@ -7,6 +7,10 @@ namespace hgl::graph{
         VulkanDevice *      GraphModule::GetDevice          ()      {return graphics_context?graphics_context->GetDevice():nullptr;}
         VkDevice            GraphModule::GetVkDevice        ()const {return graphics_context?graphics_context->GetVkDevice():VK_NULL_HANDLE;}
 const   VulkanPhyDevice *   GraphModule::GetPhyDevice       ()const {return graphics_context?graphics_context->GetPhyDevice():nullptr;}
+const   mtl::contract::PhysicalDeviceProfileLite *GraphModule::GetPhysicalDeviceProfile()const
+{
+        return graphics_context?graphics_context->GetPhysicalDeviceProfile():nullptr;
+}
         VulkanDevAttr *     GraphModule::GetDevAttr         ()const {return graphics_context?graphics_context->GetDevAttr():nullptr;}
         VulkanSurface *     GraphModule::GetSurface         ()const
         {

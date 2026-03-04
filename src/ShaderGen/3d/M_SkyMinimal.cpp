@@ -7,12 +7,12 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateSkyMinimal(const VulkanDevAttr *dev_attr, const SkyMinimalCreateConfig *cfg)
+MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
 {
     ShaderPermutationKey key;
 
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
-        dev_attr,
+        profile,
         SKY_MINIMAL_DEF,
         SKY_MINIMAL_COMPOSED_DEF,
         SKY_MINIMAL_LOGIC,

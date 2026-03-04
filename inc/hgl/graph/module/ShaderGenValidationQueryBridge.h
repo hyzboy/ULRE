@@ -16,8 +16,5 @@ namespace hgl::graph
 
     std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReportsFallback(uint32_t max_count = 64);
 
-    std::map<std::string, std::vector<ShaderGenValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterialFallback(uint32_t max_per_material = 4,
-                                                                                                                               uint32_t max_total = 128);
-
     std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogramFallback(uint32_t max_count = 128);
 }

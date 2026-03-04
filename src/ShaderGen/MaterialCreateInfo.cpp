@@ -3,9 +3,10 @@
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
+#include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/vk/VKDeviceAttribute.h>
 #include<string>
+#include<limits>
 #include"common/MFCommon.h"
 #include"common/MFGetPosition.h"
 
@@ -447,17 +448,21 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 //    return(true);
 //}
 
-void MaterialCreateInfo::SetDevice(const VulkanDevAttr *dev_attr)
+void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *profile)
 {
-    if(!dev_attr||!dev_attr->physical_device)
+    if(!profile)
     {
         ubo_range=0;
         ssbo_range=0;
         return;
     }
 
-    ubo_range=dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
-    ssbo_range=dev_attr->physical_device->GetSSBORange();
+    const uint64_t max_u32=std::numeric_limits<uint32_t>::max();
+    const uint64_t profile_ubo=profile->limits.max_uniform_buffer_range;
+    const uint64_t profile_ssbo=profile->limits.max_storage_buffer_range;
+
+    ubo_range=static_cast<uint32_t>((profile_ubo>max_u32)?max_u32:profile_ubo);
+    ssbo_range=static_cast<uint32_t>((profile_ssbo>max_u32)?max_u32:profile_ssbo);
 }
 
 bool MaterialCreateInfo::CreateShader()

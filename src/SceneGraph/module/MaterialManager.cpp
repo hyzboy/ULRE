@@ -29,6 +29,7 @@
 #include<cstdio>
 
 namespace hgl::graph{
+
 namespace
 {
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
@@ -349,7 +350,9 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!cfg)
         return(nullptr);
 
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_id,cfg);
+    const auto *profile=GetPhysicalDeviceProfile();
+
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
 
     if(!mci)
         return(nullptr);
@@ -381,11 +384,6 @@ std::vector<ShaderGenValidationReportRecord> MaterialManager::GetShaderGenRecent
     return RendererShaderGenAdapter::GetRecentValidationReports(max_count);
 }
 
-std::map<std::string, std::vector<ShaderGenValidationReportRecord>> MaterialManager::GetShaderGenRecentValidationReportsByMaterial(const uint32_t max_per_material, const uint32_t max_total) const
-{
-    return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
-}
-
 std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
 {
     return RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
@@ -398,7 +396,9 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!cfg)
         return(nullptr);
 
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_id,cfg);
+    const auto *profile=GetPhysicalDeviceProfile();
+
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
 
     if(!mci)
         return(nullptr);

@@ -1,14 +1,13 @@
 ﻿#pragma once
 
 #include<hgl/type/String.h>
+#include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 
 namespace hgl::graph
 {
-    struct VulkanDevAttr;
-
     namespace mtl
     {
         enum class WithSky:uint8
@@ -53,7 +52,7 @@ namespace hgl::graph
             StdMaterial(const MaterialCreateConfig *);
             virtual ~StdMaterial()=default;
 
-            virtual MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr);
+            virtual MaterialCreateInfo *Create(const contract::PhysicalDeviceProfileLite *profile);
         };//class StdMaterial
     }//namespace mtl
 }//namespace hgl::graph

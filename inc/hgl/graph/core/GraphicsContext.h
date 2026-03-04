@@ -24,6 +24,11 @@
 
 namespace hgl::graph
 {
+    namespace mtl::contract
+    {
+        struct PhysicalDeviceProfileLite;
+    }
+
     // Forward declarations
     class GraphModuleManager;
     class RenderPassManager;
@@ -102,6 +107,7 @@ namespace hgl::graph
         VulkanDevice *GetDevice() const { return device; }
         VulkanDevAttr *GetDevAttr() const;
         VulkanPhyDevice *GetPhyDevice() const;
+        const mtl::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile() const;
         VkDevice GetVkDevice() const;
 
         ShaderGenPathMode GetShaderGenPathMode() const { return shadergen_path_mode; }
@@ -132,7 +138,6 @@ namespace hgl::graph
         // ShaderGen Validation report query entry (collect-only, no default output)
         bool GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name = nullptr) const;
         std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReports(uint32_t max_count = 64) const;
-        std::map<std::string, std::vector<ShaderGenValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128) const;
         std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count = 128) const;
     };
 

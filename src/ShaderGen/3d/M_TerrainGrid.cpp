@@ -102,9 +102,9 @@ void main()
     };
 }
 
-MaterialCreateInfo *CreateTerrainGrid(const VulkanDevAttr *dev_attr, const TerrainGridCreateConfig *cfg)
+MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg)
 {
     MaterialTerrainGrid m(cfg);
-    return m.Create(dev_attr);
+    return m.Create(profile);
 }
 }//namespace hgl::graph::mtl

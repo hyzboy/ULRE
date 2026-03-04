@@ -7,7 +7,7 @@
 
 namespace hgl::graph::mtl{
 
-MaterialCreateInfo *CreateVertexLuminance3D(const VulkanDevAttr *dev_attr,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     cfg->material_instance=true;
 
@@ -23,9 +23,8 @@ MaterialCreateInfo *CreateVertexLuminance3D(const VulkanDevAttr *dev_attr,Materi
         : VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3;
 
     const MaterialLogicDef &logic_def = VERTEX_LUMINANCE_3D_LOGIC;
-
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
-        dev_attr,
+        profile,
         fixed_def,
         composed_def,
         logic_def,

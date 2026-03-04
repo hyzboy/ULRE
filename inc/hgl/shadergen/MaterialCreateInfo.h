@@ -10,7 +10,6 @@
 
 namespace hgl::graph
 {
-    struct VulkanDevAttr;
     struct UBODescriptor;
     struct SSBODescriptor;
     struct ShaderBufferSource;
@@ -21,6 +20,11 @@ namespace hgl::graph
 
     namespace mtl
     {
+        namespace contract
+        {
+            struct PhysicalDeviceProfileLite;
+        }
+
         class MaterialCreateInfo
         {
         protected:
@@ -90,7 +94,7 @@ namespace hgl::graph
             MaterialCreateInfo(const MaterialCreateConfig *);
             ~MaterialCreateInfo();  // Need explicit destructor to properly clean up shader_map
 
-            void SetDevice(const VulkanDevAttr *dev_attr);
+            void SetDevice(const contract::PhysicalDeviceProfileLite *profile);
 
             bool SetMaterialInstance(const std::string &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
             bool SetMaterialInstance(const char *mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits)

@@ -1,5 +1,6 @@
 ﻿#include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/vk/VKDevice.h>
+#include <hgl/vk/VKPhysicalDevice.h>
 #include <hgl/graph/module/GraphModuleManager.h>
 #include <hgl/graph/module/RenderPassManager.h>
 #include <hgl/graph/module/TextureManager.h>
@@ -119,6 +120,12 @@ namespace hgl::graph
         return device ? const_cast<VulkanPhyDevice *>(device->GetPhyDevice()) : nullptr;
     }
 
+    const mtl::contract::PhysicalDeviceProfileLite *GraphicsContext::GetPhysicalDeviceProfile() const
+    {
+        auto *pd = GetPhyDevice();
+        return pd ? &pd->GetPhysicalDeviceProfile() : nullptr;
+    }
+
     VkDevice GraphicsContext::GetVkDevice() const
     {
         return device ? device->GetDevice() : VK_NULL_HANDLE;
@@ -154,14 +161,6 @@ namespace hgl::graph
             return material_manager->GetShaderGenRecentValidationReports(max_count);
 
         return GetShaderGenRecentValidationReportsFallback(max_count);
-    }
-
-    std::map<std::string, std::vector<ShaderGenValidationReportRecord>> GraphicsContext::GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material, uint32_t max_total) const
-    {
-        if (material_manager)
-            return material_manager->GetShaderGenRecentValidationReportsByMaterial(max_per_material, max_total);
-
-        return GetShaderGenRecentValidationReportsByMaterialFallback(max_per_material, max_total);
     }
 
     std::map<std::string, uint32_t> GraphicsContext::GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count) const

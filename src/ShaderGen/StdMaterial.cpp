@@ -8,10 +8,10 @@ StdMaterial::StdMaterial(const MaterialCreateConfig *mcc)
     mci=new MaterialCreateInfo(mcc);
 }
 
-MaterialCreateInfo *StdMaterial::Create(const VulkanDevAttr *dev_attr)
+MaterialCreateInfo *StdMaterial::Create(const contract::PhysicalDeviceProfileLite *profile)
 {
-    if(dev_attr)
-        mci->SetDevice(dev_attr);
+    if(profile)
+        mci->SetDevice(profile);
 
     if(!BeginCustomShader())
         return(nullptr);

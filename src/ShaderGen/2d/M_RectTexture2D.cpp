@@ -52,9 +52,9 @@ void main()
     };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateRectTexture2D(const VulkanDevAttr *dev_attr,mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLite *profile,mtl::Material2DCreateConfig *cfg)
 {
-    if(!dev_attr||!cfg)
+    if(!profile||!cfg)
         return(nullptr);
 
     cfg->prim=PrimitiveType::Triangles;
@@ -63,6 +63,6 @@ MaterialCreateInfo *CreateRectTexture2D(const VulkanDevAttr *dev_attr,mtl::Mater
 
     MaterialRectTexture2D mvc2d(cfg);
 
-    return mvc2d.Create(dev_attr);
+    return mvc2d.Create(profile);
 }
 }//namespace hgl::graph::mtl

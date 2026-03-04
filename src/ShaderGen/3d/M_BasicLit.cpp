@@ -79,7 +79,7 @@ namespace
 
 }
 
-MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBasicLit(const contract::PhysicalDeviceProfileLite *profile, BasicLitMaterialCreateConfig *cfg)
 {
     if(cfg)
         cfg->material_instance=true;
@@ -113,7 +113,7 @@ MaterialCreateInfo *CreateBasicLit(const VulkanDevAttr *dev_attr, BasicLitMateri
     dynamic_composed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
 
     MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
-        dev_attr,
+        profile,
         dynamic_fixed_def,
         dynamic_composed_def,
         dynamic_logic,

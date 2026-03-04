@@ -69,7 +69,7 @@ void main()
     };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateRectTexture2DArray(const VulkanDevAttr *dev_attr,mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,mtl::Material2DCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -81,6 +81,6 @@ MaterialCreateInfo *CreateRectTexture2DArray(const VulkanDevAttr *dev_attr,mtl::
 
     MaterialRectTexture2D mvc2d(cfg);
 
-    return mvc2d.Create(dev_attr);
+    return mvc2d.Create(profile);
 }
 }//namespace hgl::graph::mtl
