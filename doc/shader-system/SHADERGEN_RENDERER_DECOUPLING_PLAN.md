@@ -211,6 +211,9 @@
   - [src/SceneGraph/CMakeLists.txt](src/SceneGraph/CMakeLists.txt) 已纳入 `ShaderGenMirrorDiffPresenter` 头/源文件。
   - [src/SceneGraph/module/RendererShaderGenAdapter.cpp](src/SceneGraph/module/RendererShaderGenAdapter.cpp) 已移除 `StoreValidationReport(...)` 薄包装与匿名命名空间残留，改为直接调用 `StoreShaderGenValidationReport(...)`。
   - [src/SceneGraph/module/RendererShaderGenAdapter.cpp](src/SceneGraph/module/RendererShaderGenAdapter.cpp) 已新增文件内 `FinalizeAndStoreShaderGenValidationReport(...)` 小助手，统一 `RecomputeShaderGenValidationOverallValid + StoreShaderGenValidationReport`，减少 adapter 内重复尾处理片段（无行为变更）。
+  - [src/SceneGraph/module/RendererShaderGenAdapter.cpp](src/SceneGraph/module/RendererShaderGenAdapter.cpp) 已进一步抽离 `NormalizeShaderGenValidationMaterialName(...)` 与 `BuildMirrorPrebuildFailureValidationReport(...)`，减少 `ValidateMaterialContractReadOnly(...)` 内联分支与文本拼装，adapter 主流程继续向编排职责收敛。
+  - [src/SceneGraph/module/RendererShaderGenAdapter.cpp](src/SceneGraph/module/RendererShaderGenAdapter.cpp) 已新增 `BuildExternalValidationErrorReport(...)` 并用于 `RecordExternalValidationError(...)`，外部错误报告构造路径与主验证路径风格统一。
+  - 为 Phase 3 主路径切换增加可观测性：`ShaderGenProfilerSnapshot` 新增 `contract_path_decision_histogram`，并在 [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 对 `spv/vertex/descriptor` 的 `use_mirror/use_legacy/strict_abort` 决策进行计数上报（仅统计，不改变构建行为）。
   - 当前全仓已无 `#include <hgl/shadergen/FixedMaterialDef.h>` 直接引用，`shadergen/FixedMaterialDef.h` 仅保留兼容入口职责。
 
 当前阻塞：

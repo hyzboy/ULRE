@@ -20,6 +20,8 @@ namespace hgl::graph
                                        size_t legacy_spv_count,
                                        size_t mirror_spv_count);
 
+    void RecordShaderGenContractPathDecision(const char *decision_key);
+
     void StoreShaderGenValidationReport(const char *material_name,
                                         const ShaderGenValidationReport &report);
 

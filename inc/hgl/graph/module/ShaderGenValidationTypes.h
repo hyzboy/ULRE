@@ -48,5 +48,6 @@ namespace hgl::graph
 
         std::map<uint32_t, uint64_t> legacy_stage_combo_histogram;
         std::map<uint32_t, uint64_t> mirror_stage_combo_histogram;
+        std::map<std::string, uint64_t> contract_path_decision_histogram;
     };
 }

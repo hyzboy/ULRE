@@ -92,6 +92,17 @@ namespace hgl::graph
         ++snapshot.mirror_stage_combo_histogram[mirror_stage_combo];
     }
 
+    void RecordShaderGenContractPathDecision(const char *decision_key)
+    {
+        if (!decision_key || !decision_key[0])
+            return;
+
+        auto &storage = GetShaderGenProfilerStorage();
+        std::lock_guard<std::mutex> lock(storage.mutex);
+
+        ++storage.snapshot.contract_path_decision_histogram[decision_key];
+    }
+
     void StoreShaderGenValidationReport(const char *material_name,
                                         const ShaderGenValidationReport &report)
     {

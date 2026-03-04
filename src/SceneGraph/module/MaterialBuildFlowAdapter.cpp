@@ -4,6 +4,7 @@
 #include <hgl/graph/module/ShaderGenVertexPolicyAdapter.h>
 #include <hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h>
 #include <hgl/graph/module/ShaderGenContractGateReporter.h>
+#include <hgl/graph/module/ShaderGenValidationStorageService.h>
 #include <hgl/vk/VKVertexInput.h>
 #include <hgl/vk/VKMaterialDescriptorManager.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
@@ -42,17 +43,20 @@ namespace hgl::graph
                     shader_maps->Add(module);
 
                 mirror_spv_build_used = true;
+                RecordShaderGenContractPathDecision("spv.use_mirror");
             }
             else
             {
                 if (require_mirror_valid)
                 {
+                    RecordShaderGenContractPathDecision("spv.strict_abort");
                     ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
                                                      "StrictGate.Spv",
                                                      (std::string("mirror-preferred build aborted: ") + mirror_spv_fail_reason).c_str());
                     return false;
                 }
 
+                RecordShaderGenContractPathDecision("spv.use_legacy_fallback");
                 ReportMirrorSPVFallback(mtl_name.c_str(), mirror_spv_fail_reason.c_str());
             }
         }
@@ -76,6 +80,9 @@ namespace hgl::graph
 
             for (const auto *module : legacy_modules)
                 shader_maps->Add(module);
+
+            if (!prefer_mirror_spv_build)
+                RecordShaderGenContractPathDecision("spv.use_legacy_direct");
         }
 
         return true;
@@ -106,6 +113,7 @@ namespace hgl::graph
 
         if (vertex_decision == ContractVertexInputDecision::StrictAbort)
         {
+            RecordShaderGenContractPathDecision("vertex.strict_abort");
             ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
                                              "StrictGate.Vertex",
                                              (std::string("mirror-preferred build aborted: ") + reason).c_str());
@@ -114,6 +122,11 @@ namespace hgl::graph
 
         if (vertex_decision == ContractVertexInputDecision::UseLegacy && !reason.empty())
             ReportMirrorVertexFallback(mtl_name.c_str(), reason.c_str());
+
+        if (vertex_decision == ContractVertexInputDecision::UseLegacy)
+            RecordShaderGenContractPathDecision("vertex.use_legacy");
+        else
+            RecordShaderGenContractPathDecision("vertex.use_mirror");
 
         if (vertex_decision == ContractVertexInputDecision::UseMirror)
             out_vertex_input = GetVertexInput(mirror_input);
@@ -155,6 +168,7 @@ namespace hgl::graph
 
         if (descriptor_decision == ContractDescriptorDecision::StrictAbort)
         {
+            RecordShaderGenContractPathDecision("descriptor.strict_abort");
             ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
                                              "StrictGate.Descriptor",
                                              (std::string("mirror-preferred build aborted: ") + descriptor_reason).c_str());
@@ -169,6 +183,11 @@ namespace hgl::graph
 
             ReportMirrorDescriptorFallback(mtl_name.c_str(), fallback_phase_text, descriptor_reason.c_str());
         }
+
+        if (descriptor_decision == ContractDescriptorDecision::UseLegacy)
+            RecordShaderGenContractPathDecision("descriptor.use_legacy");
+        else
+            RecordShaderGenContractPathDecision("descriptor.use_mirror");
 
         if (!descriptors.empty())
             out_desc_manager = new MaterialDescriptorManager(mtl_name, descriptors.data(), static_cast<uint>(descriptors.size()));

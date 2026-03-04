@@ -11,6 +11,45 @@ namespace hgl::graph
 {
     namespace
     {
+        inline const char *NormalizeShaderGenValidationMaterialName(const char *material_name)
+        {
+            return (material_name && material_name[0]) ? material_name : "<unnamed-material>";
+        }
+
+        inline ShaderGenValidationReport BuildMirrorPrebuildFailureValidationReport(const char *material_name, bool request_is_null)
+        {
+            ShaderGenValidationReport report;
+
+            char msg[256] = {};
+            std::snprintf(msg,
+                          sizeof(msg),
+                          "material=%s failed to build mirror result",
+                          material_name);
+
+            AddShaderGenValidationError(report, msg);
+            report.diff_valid = false;
+            report.result_valid = false;
+            report.request_result_valid = request_is_null;
+            report.overall_valid = false;
+
+            return report;
+        }
+
+        inline ShaderGenValidationReport BuildExternalValidationErrorReport(const char *message, const char *category)
+        {
+            ShaderGenValidationReport report;
+            report.overall_valid = false;
+            report.diff_valid = false;
+            report.result_valid = false;
+            report.request_result_valid = false;
+            report.category = (category && category[0]) ? category : "External";
+
+            const char *msg = (message && message[0]) ? message : "external validation error";
+            AddShaderGenValidationError(report, msg);
+
+            return report;
+        }
+
         inline void FinalizeAndStoreShaderGenValidationReport(const char *material_name, ShaderGenValidationReport &report)
         {
             RecomputeShaderGenValidationOverallValid(report);
@@ -67,7 +106,7 @@ namespace hgl::graph
     {
         ShaderGenValidationReport report;
 
-        const char *mat_name = (material_name && material_name[0]) ? material_name : "<unnamed-material>";
+        const char *mat_name = NormalizeShaderGenValidationMaterialName(material_name);
 
         mtl::contract::ShaderGenResult built_result;
         const mtl::contract::ShaderGenResult *resolved_result = result;
@@ -76,16 +115,7 @@ namespace hgl::graph
         {
             if (!mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(mci, built_result))
             {
-                char msg[256] = {};
-                std::snprintf(msg,
-                              sizeof(msg),
-                              "material=%s failed to build mirror result",
-                              mat_name);
-                AddShaderGenValidationError(report, msg);
-                report.diff_valid = false;
-                report.result_valid = false;
-                report.request_result_valid = (request == nullptr);
-                report.overall_valid = false;
+                report = BuildMirrorPrebuildFailureValidationReport(mat_name, request == nullptr);
                 StoreShaderGenValidationReport(mat_name, report);
                 return report;
             }
@@ -149,15 +179,7 @@ namespace hgl::graph
 
     void RendererShaderGenAdapter::RecordExternalValidationError(const char *material_name, const char *message, const char *category)
     {
-        ShaderGenValidationReport report;
-        report.overall_valid = false;
-        report.diff_valid = false;
-        report.result_valid = false;
-        report.request_result_valid = false;
-        report.category = (category && category[0]) ? category : "External";
-
-        const char *msg = (message && message[0]) ? message : "external validation error";
-        AddShaderGenValidationError(report, msg);
+        ShaderGenValidationReport report = BuildExternalValidationErrorReport(message, category);
 
         StoreShaderGenValidationReport(material_name, report);
     }
