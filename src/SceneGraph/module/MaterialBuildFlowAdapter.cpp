@@ -12,6 +12,216 @@
 
 namespace hgl::graph
 {
+    namespace
+    {
+        bool ReportStrictAbortDecision(const AnsiString &material_name,
+                                       const char *decision_key,
+                                       const char *strict_gate_category,
+                                       const char *reason)
+        {
+            RecordShaderGenContractPathDecision(decision_key);
+
+            const std::string abort_reason = BuildMirrorPreferredAbortReason(reason);
+            ReportMirrorPreferredStrictAbort(material_name.c_str(),
+                                             strict_gate_category,
+                                             abort_reason.c_str());
+            return false;
+        }
+
+        void RecordBinaryDecision(const bool use_legacy,
+                                  const char *legacy_decision_key,
+                                  const char *mirror_decision_key)
+        {
+            RecordShaderGenContractPathDecision(use_legacy ? legacy_decision_key : mirror_decision_key);
+        }
+
+        void AppendShaderModules(ShaderModuleMap *shader_maps,
+                                 const std::vector<const ShaderModule *> &modules)
+        {
+            if (!shader_maps)
+                return;
+
+            for (const auto *module : modules)
+                shader_maps->Add(module);
+        }
+
+        std::vector<ShaderDescriptor> CollectLegacyDescriptors(const mtl::MaterialCreateInfo *mci)
+        {
+            std::vector<ShaderDescriptor> legacy_descriptors;
+            if (!mci)
+                return legacy_descriptors;
+
+            const auto &mdi = mci->GetMDI();
+            if (mdi.GetCount() == 0)
+                return legacy_descriptors;
+
+            const auto &sds_array = mdi.Get();
+            legacy_descriptors.reserve(mdi.GetCount());
+
+            for (size_t i = 0; i < DESCRIPTOR_SET_TYPE_COUNT; i++)
+            {
+                std::vector<ShaderDescriptor *> values;
+                sds_array[i].descriptor_map.GetValueArray(values);
+
+                for (auto *sd : values)
+                {
+                    if (sd)
+                        legacy_descriptors.emplace_back(*sd);
+                }
+            }
+
+            return legacy_descriptors;
+        }
+
+        bool ResolveVertexInputByContractPolicy(const AnsiString &material_name,
+                                                ShaderCreateInfoVertex *vert,
+                                                const mtl::contract::ShaderGenResult *mirror_result,
+                                                const bool mirror_spv_build_used,
+                                                const bool require_mirror_valid,
+                                                VertexInput *&out_vertex_input)
+        {
+            VIAArray mirror_input;
+            std::string reason;
+            const ContractVertexInputDecision vertex_decision = BuildVertexInputByContractPolicy(
+                vert,
+                mirror_result,
+                mirror_spv_build_used,
+                require_mirror_valid,
+                mirror_input,
+                reason);
+
+            if (vertex_decision == ContractVertexInputDecision::StrictAbort)
+            {
+                return ReportStrictAbortDecision(material_name,
+                                                 kShaderGenPathDecisionVertexStrictAbort,
+                                                 kShaderGenStrictGateVertexCategory,
+                                                 reason.c_str());
+            }
+
+            if (vertex_decision == ContractVertexInputDecision::UseLegacy && !reason.empty())
+                ReportMirrorVertexFallback(material_name.c_str(), reason.c_str());
+
+            RecordBinaryDecision(vertex_decision == ContractVertexInputDecision::UseLegacy,
+                                 kShaderGenPathDecisionVertexUseLegacy,
+                                 kShaderGenPathDecisionVertexUseMirror);
+
+            if (vertex_decision == ContractVertexInputDecision::UseMirror)
+                out_vertex_input = GetVertexInput(mirror_input);
+
+            if (!out_vertex_input && vert)
+                out_vertex_input = GetVertexInput(vert->GetInput());
+
+            return true;
+        }
+
+        bool ResolveDescriptorsByContractPolicy(const AnsiString &material_name,
+                                                const std::vector<ShaderDescriptor> &legacy_descriptors,
+                                                const mtl::contract::ShaderGenResult *mirror_result,
+                                                const bool mirror_spv_build_used,
+                                                const bool require_mirror_valid,
+                                                std::vector<ShaderDescriptor> &out_descriptors)
+        {
+            ContractDescriptorFallbackPhase descriptor_phase = ContractDescriptorFallbackPhase::None;
+            std::string descriptor_reason;
+            const ContractDescriptorDecision descriptor_decision = BuildDescriptorsByContractPolicy(
+                legacy_descriptors,
+                mirror_result,
+                mirror_spv_build_used,
+                require_mirror_valid,
+                out_descriptors,
+                descriptor_phase,
+                descriptor_reason);
+
+            if (descriptor_decision == ContractDescriptorDecision::StrictAbort)
+            {
+                return ReportStrictAbortDecision(material_name,
+                                                 kShaderGenPathDecisionDescriptorStrictAbort,
+                                                 kShaderGenStrictGateDescriptorCategory,
+                                                 descriptor_reason.c_str());
+            }
+
+            if (descriptor_decision == ContractDescriptorDecision::UseLegacy && !descriptor_reason.empty())
+            {
+                const char *fallback_phase_text = (descriptor_phase == ContractDescriptorFallbackPhase::LayoutMismatch)
+                                                    ? kShaderGenDescriptorFallbackPhaseLayoutMismatch
+                                                    : kShaderGenDescriptorFallbackPhaseBuildFailed;
+
+                ReportMirrorDescriptorFallback(material_name.c_str(), fallback_phase_text, descriptor_reason.c_str());
+            }
+
+            RecordBinaryDecision(descriptor_decision == ContractDescriptorDecision::UseLegacy,
+                                 kShaderGenPathDecisionDescriptorUseLegacy,
+                                 kShaderGenPathDecisionDescriptorUseMirror);
+
+            return true;
+        }
+
+        bool TryBuildMirrorShaderModules(const AnsiString &material_name,
+                                         MaterialManager *manager,
+                                         const mtl::contract::ShaderGenResult &mirror_result,
+                                         const bool require_mirror_valid,
+                                         ShaderModuleMap *shader_maps,
+                                         bool &mirror_spv_build_used)
+        {
+            std::vector<const ShaderModule *> mirror_modules;
+            std::string mirror_spv_fail_reason;
+
+            const bool mirror_spv_build_ok = BuildShaderModulesFromContractSPV(
+                mirror_result,
+                [&](VkShaderStageFlagBits stage, const uint32_t *spv_data, size_t spv_size) -> const ShaderModule *
+                {
+                    return manager->CreateShaderModuleFromSPV(material_name, stage, spv_data, spv_size);
+                },
+                mirror_modules,
+                mirror_spv_fail_reason);
+
+            if (mirror_spv_build_ok)
+            {
+                AppendShaderModules(shader_maps, mirror_modules);
+
+                mirror_spv_build_used = true;
+                RecordShaderGenContractPathDecision(kShaderGenPathDecisionSpvUseMirror);
+                return true;
+            }
+
+            if (require_mirror_valid)
+            {
+                return ReportStrictAbortDecision(material_name,
+                                                 kShaderGenPathDecisionSpvStrictAbort,
+                                                 kShaderGenStrictGateSpvCategory,
+                                                 mirror_spv_fail_reason.c_str());
+            }
+
+            RecordShaderGenContractPathDecision(kShaderGenPathDecisionSpvUseLegacyFallback);
+            ReportMirrorSPVFallback(material_name.c_str(), mirror_spv_fail_reason.c_str());
+            return true;
+        }
+
+        bool BuildLegacyShaderModules(const AnsiString &material_name,
+                                      MaterialManager *manager,
+                                      const ShaderCreateInfoMap &sci_map,
+                                      ShaderModuleMap *shader_maps)
+        {
+            std::vector<const ShaderModule *> legacy_modules;
+            std::string legacy_spv_fail_reason;
+
+            if (!BuildShaderModulesFromLegacySCIMap(
+                    sci_map,
+                    [&](ShaderCreateInfo *sci_ptr) -> const ShaderModule *
+                    {
+                        return manager->CreateShaderModule(material_name, sci_ptr);
+                    },
+                    legacy_modules,
+                    legacy_spv_fail_reason))
+            {
+                return false;
+            }
+
+            AppendShaderModules(shader_maps, legacy_modules);
+            return true;
+        }
+    }//namespace
+
     bool BuildShaderModulesFlow(MaterialManager *manager,
                                 const AnsiString &mtl_name,
                                 const ShaderCreateInfoMap &sci_map,
@@ -25,64 +235,29 @@ namespace hgl::graph
 
         if (prefer_mirror_spv_build)
         {
-            std::vector<const ShaderModule *> mirror_modules;
-            std::string mirror_spv_fail_reason;
-
-            const bool mirror_spv_build_ok = BuildShaderModulesFromContractSPV(
-                *mirror_result,
-                [&](VkShaderStageFlagBits stage, const uint32_t *spv_data, size_t spv_size) -> const ShaderModule *
-                {
-                    return manager->CreateShaderModuleFromSPV(mtl_name, stage, spv_data, spv_size);
-                },
-                mirror_modules,
-                mirror_spv_fail_reason);
-
-            if (mirror_spv_build_ok)
+            if (!TryBuildMirrorShaderModules(mtl_name,
+                                             manager,
+                                             *mirror_result,
+                                             require_mirror_valid,
+                                             shader_maps,
+                                             mirror_spv_build_used))
             {
-                for (const auto *module : mirror_modules)
-                    shader_maps->Add(module);
-
-                mirror_spv_build_used = true;
-                RecordShaderGenContractPathDecision("spv.use_mirror");
-            }
-            else
-            {
-                if (require_mirror_valid)
-                {
-                    RecordShaderGenContractPathDecision("spv.strict_abort");
-                    ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
-                                                     "StrictGate.Spv",
-                                                     (std::string("mirror-preferred build aborted: ") + mirror_spv_fail_reason).c_str());
-                    return false;
-                }
-
-                RecordShaderGenContractPathDecision("spv.use_legacy_fallback");
-                ReportMirrorSPVFallback(mtl_name.c_str(), mirror_spv_fail_reason.c_str());
+                return false;
             }
         }
 
         if (!mirror_spv_build_used)
         {
-            std::vector<const ShaderModule *> legacy_modules;
-            std::string legacy_spv_fail_reason;
-
-            if (!BuildShaderModulesFromLegacySCIMap(
-                    sci_map,
-                    [&](ShaderCreateInfo *sci_ptr) -> const ShaderModule *
-                    {
-                        return manager->CreateShaderModule(mtl_name, sci_ptr);
-                    },
-                    legacy_modules,
-                    legacy_spv_fail_reason))
+            if (!BuildLegacyShaderModules(mtl_name,
+                                          manager,
+                                          sci_map,
+                                          shader_maps))
             {
                 return false;
             }
 
-            for (const auto *module : legacy_modules)
-                shader_maps->Add(module);
-
             if (!prefer_mirror_spv_build)
-                RecordShaderGenContractPathDecision("spv.use_legacy_direct");
+                RecordShaderGenContractPathDecision(kShaderGenPathDecisionSpvUseLegacyDirect);
         }
 
         return true;
@@ -100,94 +275,28 @@ namespace hgl::graph
         out_desc_manager = nullptr;
 
         ShaderCreateInfoVertex *vert = mci->GetVS();
-
-        VIAArray mirror_input;
-        std::string reason;
-        const ContractVertexInputDecision vertex_decision = BuildVertexInputByContractPolicy(
-            vert,
-            mirror_result,
-            mirror_spv_build_used,
-            require_mirror_valid,
-            mirror_input,
-            reason);
-
-        if (vertex_decision == ContractVertexInputDecision::StrictAbort)
+        if (!ResolveVertexInputByContractPolicy(mtl_name,
+                                                vert,
+                                                mirror_result,
+                                                mirror_spv_build_used,
+                                                require_mirror_valid,
+                                                out_vertex_input))
         {
-            RecordShaderGenContractPathDecision("vertex.strict_abort");
-            ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
-                                             "StrictGate.Vertex",
-                                             (std::string("mirror-preferred build aborted: ") + reason).c_str());
             return false;
         }
 
-        if (vertex_decision == ContractVertexInputDecision::UseLegacy && !reason.empty())
-            ReportMirrorVertexFallback(mtl_name.c_str(), reason.c_str());
-
-        if (vertex_decision == ContractVertexInputDecision::UseLegacy)
-            RecordShaderGenContractPathDecision("vertex.use_legacy");
-        else
-            RecordShaderGenContractPathDecision("vertex.use_mirror");
-
-        if (vertex_decision == ContractVertexInputDecision::UseMirror)
-            out_vertex_input = GetVertexInput(mirror_input);
-
-        if (!out_vertex_input && vert)
-            out_vertex_input = GetVertexInput(vert->GetInput());
-
-        const auto &mdi = mci->GetMDI();
-
-        std::vector<ShaderDescriptor> legacy_descriptors;
-        if (mdi.GetCount() > 0)
-        {
-            const auto &sds_array = mdi.Get();
-
-            legacy_descriptors.reserve(mdi.GetCount());
-
-            for (size_t i = 0; i < DESCRIPTOR_SET_TYPE_COUNT; i++)
-            {
-                std::vector<ShaderDescriptor *> values;
-                sds_array[i].descriptor_map.GetValueArray(values);
-
-                for (auto *sd : values)
-                    if (sd)
-                        legacy_descriptors.emplace_back(*sd);
-            }
-        }
+        std::vector<ShaderDescriptor> legacy_descriptors = CollectLegacyDescriptors(mci);
 
         std::vector<ShaderDescriptor> descriptors;
-        ContractDescriptorFallbackPhase descriptor_phase = ContractDescriptorFallbackPhase::None;
-        std::string descriptor_reason;
-        const ContractDescriptorDecision descriptor_decision = BuildDescriptorsByContractPolicy(
-            legacy_descriptors,
-            mirror_result,
-            mirror_spv_build_used,
-            require_mirror_valid,
-            descriptors,
-            descriptor_phase,
-            descriptor_reason);
-
-        if (descriptor_decision == ContractDescriptorDecision::StrictAbort)
+        if (!ResolveDescriptorsByContractPolicy(mtl_name,
+                                                legacy_descriptors,
+                                                mirror_result,
+                                                mirror_spv_build_used,
+                                                require_mirror_valid,
+                                                descriptors))
         {
-            RecordShaderGenContractPathDecision("descriptor.strict_abort");
-            ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
-                                             "StrictGate.Descriptor",
-                                             (std::string("mirror-preferred build aborted: ") + descriptor_reason).c_str());
             return false;
         }
-
-        if (descriptor_decision == ContractDescriptorDecision::UseLegacy && !descriptor_reason.empty())
-        {
-            const char *fallback_phase_text = (descriptor_phase == ContractDescriptorFallbackPhase::LayoutMismatch)
-                                                ? "layout mismatch"
-                                                : "layout build failed";
-
-            ReportMirrorDescriptorFallback(mtl_name.c_str(), fallback_phase_text, descriptor_reason.c_str());
-        }
-
-        if (descriptor_decision == ContractDescriptorDecision::UseLegacy)
-            RecordShaderGenContractPathDecision("descriptor.use_legacy");
-        else
-            RecordShaderGenContractPathDecision("descriptor.use_mirror");
 
         if (!descriptors.empty())
             out_desc_manager = new MaterialDescriptorManager(mtl_name, descriptors.data(), static_cast<uint>(descriptors.size()));

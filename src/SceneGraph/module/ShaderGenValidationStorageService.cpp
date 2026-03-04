@@ -1,4 +1,5 @@
 #include <hgl/graph/module/ShaderGenValidationStorageService.h>
+#include <hgl/graph/module/ShaderGenValidationReportUtils.h>
 #include <algorithm>
 #include <deque>
 #include <mutex>
@@ -125,6 +126,23 @@ namespace hgl::graph
         constexpr size_t kMaxValidationHistory = 512;
         while (storage.history_reports.size() > kMaxValidationHistory)
             storage.history_reports.pop_front();
+    }
+
+    void StoreExternalShaderGenValidationError(const char *material_name,
+                                               const char *message,
+                                               const char *category)
+    {
+        ShaderGenValidationReport report;
+        report.overall_valid = false;
+        report.diff_valid = false;
+        report.result_valid = false;
+        report.request_result_valid = false;
+        report.category = (category && category[0]) ? category : "External";
+
+        const char *msg = (message && message[0]) ? message : "external validation error";
+        AddShaderGenValidationError(report, msg);
+
+        StoreShaderGenValidationReport(material_name, report);
     }
 
     void ResetShaderGenProfilerStorage()

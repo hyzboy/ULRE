@@ -7,6 +7,19 @@
 
 namespace hgl::graph
 {
+    inline constexpr const char *kShaderGenPathDecisionSpvUseMirror = "spv.use_mirror";
+    inline constexpr const char *kShaderGenPathDecisionSpvStrictAbort = "spv.strict_abort";
+    inline constexpr const char *kShaderGenPathDecisionSpvUseLegacyFallback = "spv.use_legacy_fallback";
+    inline constexpr const char *kShaderGenPathDecisionSpvUseLegacyDirect = "spv.use_legacy_direct";
+
+    inline constexpr const char *kShaderGenPathDecisionVertexStrictAbort = "vertex.strict_abort";
+    inline constexpr const char *kShaderGenPathDecisionVertexUseLegacy = "vertex.use_legacy";
+    inline constexpr const char *kShaderGenPathDecisionVertexUseMirror = "vertex.use_mirror";
+
+    inline constexpr const char *kShaderGenPathDecisionDescriptorStrictAbort = "descriptor.strict_abort";
+    inline constexpr const char *kShaderGenPathDecisionDescriptorUseLegacy = "descriptor.use_legacy";
+    inline constexpr const char *kShaderGenPathDecisionDescriptorUseMirror = "descriptor.use_mirror";
+
     void RecordShaderGenProfilerSample(bool all_match,
                                        bool layout_match,
                                        bool vertex_match,
@@ -24,6 +37,10 @@ namespace hgl::graph
 
     void StoreShaderGenValidationReport(const char *material_name,
                                         const ShaderGenValidationReport &report);
+
+    void StoreExternalShaderGenValidationError(const char *material_name,
+                                               const char *message,
+                                               const char *category = nullptr);
 
     void ResetShaderGenProfilerStorage();
     void ResetShaderGenValidationReportStorage();

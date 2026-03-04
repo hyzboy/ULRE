@@ -277,7 +277,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     if(path_context.policy.require_mirror_valid && !path_context.mirror)
     {
         ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
-                                         "StrictGate.Prebuild",
+                                         kShaderGenStrictGatePrebuildCategory,
                                          "creation aborted: mirror-preferred requires valid mirror result");
         return nullptr;
     }

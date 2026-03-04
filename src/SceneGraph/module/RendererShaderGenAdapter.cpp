@@ -35,21 +35,6 @@ namespace hgl::graph
             return report;
         }
 
-        inline ShaderGenValidationReport BuildExternalValidationErrorReport(const char *message, const char *category)
-        {
-            ShaderGenValidationReport report;
-            report.overall_valid = false;
-            report.diff_valid = false;
-            report.result_valid = false;
-            report.request_result_valid = false;
-            report.category = (category && category[0]) ? category : "External";
-
-            const char *msg = (message && message[0]) ? message : "external validation error";
-            AddShaderGenValidationError(report, msg);
-
-            return report;
-        }
-
         inline void FinalizeAndStoreShaderGenValidationReport(const char *material_name, ShaderGenValidationReport &report)
         {
             RecomputeShaderGenValidationOverallValid(report);
@@ -175,13 +160,6 @@ namespace hgl::graph
     std::map<std::string, std::map<std::string, uint32_t>> RendererShaderGenAdapter::GetRecentValidationMaterialCategoryMatrix(uint32_t max_count)
     {
         return GetRecentShaderGenValidationMaterialCategoryMatrixStorage(max_count);
-    }
-
-    void RendererShaderGenAdapter::RecordExternalValidationError(const char *material_name, const char *message, const char *category)
-    {
-        ShaderGenValidationReport report = BuildExternalValidationErrorReport(message, category);
-
-        StoreShaderGenValidationReport(material_name, report);
     }
 
 }//namespace hgl::graph
