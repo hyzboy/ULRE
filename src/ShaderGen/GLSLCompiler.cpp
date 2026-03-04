@@ -215,11 +215,6 @@ namespace hgl
             spv_version=compile_info.spv_version;
         }
 
-        uint32 GetShaderCompilerLegacyVersionApiCallCount()
-        {
-            return 0;
-        }
-
         static ExternalModule *gsi_module=nullptr;
 
         typedef GLSLCompilerInterface *(*GetInterfaceFUNC)();
