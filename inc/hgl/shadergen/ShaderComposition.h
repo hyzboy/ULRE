@@ -18,8 +18,10 @@
 
 #pragma once
 
-#include <hgl/graph/mtl/FixedMaterialDef.h>
+#include <hgl/graph/mtl/FixedVertexEntry.h>
+#include <hgl/graph/mtl/FixedDescriptorEntry.h>
 #include <hgl/graph/mtl/ShaderPermutationKey.h>
+#include <hgl/vk/VKPrimitiveType.h>
 #include <hgl/type/String.h>
 #include <string>
 #include <vector>

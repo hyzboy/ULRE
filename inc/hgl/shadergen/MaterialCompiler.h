@@ -13,15 +13,15 @@
 
 #include<hgl/graph/mtl/FixedMaterialDef.h>
 #include<hgl/graph/mtl/ShaderPermutationKey.h>
-#include<hgl/shadergen/ShaderComposition.h>
-#include<hgl/shadergen/ShaderLogic.h>
-#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include <string>
 
 namespace hgl::graph::mtl{
 
 struct Material3DCreateConfig;
+struct ComposedMaterialDef;
+struct MaterialLogicDef;
+class MaterialCreateInfo;
 
 /**
  * 编译一个 FixedMaterialDef 排列，返回 MaterialCreateInfo*。

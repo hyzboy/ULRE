@@ -173,6 +173,8 @@
   - [inc/hgl/shadergen/FixedMaterialDef.h](inc/hgl/shadergen/FixedMaterialDef.h) 已改为纯兼容聚合头（中立布局头 + 中立 `ShaderPermutationKey` 契约），保持旧 include 路径可用。
   - 新增中立排列键契约 [inc/hgl/graph/mtl/ShaderPermutationKey.h](inc/hgl/graph/mtl/ShaderPermutationKey.h)，`LightModel/SpecularChannel/ShadowReceive/ShaderPermutationKey` 已下沉到 `graph/mtl`。
   - include 面继续收敛：`src/ShaderGen`、`ShaderComposition.h`、`BuiltinHelpers.h`、`MaterialCompiler.h` 等调用侧已切到 `graph/mtl` 中立头。
+  - [inc/hgl/shadergen/ShaderComposition.h](inc/hgl/shadergen/ShaderComposition.h) 已进一步去除对 `FixedMaterialDef.h` 的聚合依赖，改为按需包含 `FixedVertexEntry.h` / `FixedDescriptorEntry.h` / `VKPrimitiveType.h` / `ShaderPermutationKey.h`。
+  - [inc/hgl/shadergen/MaterialCompiler.h](inc/hgl/shadergen/MaterialCompiler.h) 已去除对 `ShaderComposition.h` / `ShaderLogic.h` / `MaterialCreateInfo.h` 的头级直接 include，改为前置声明（`ComposedMaterialDef` / `MaterialLogicDef` / `MaterialCreateInfo`），进一步压缩传递依赖面。
   - 当前全仓已无 `#include <hgl/shadergen/FixedMaterialDef.h>` 直接引用，`shadergen/FixedMaterialDef.h` 仅保留兼容入口职责。
 
 当前阻塞：
