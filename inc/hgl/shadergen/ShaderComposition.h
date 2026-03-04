@@ -18,7 +18,8 @@
 
 #pragma once
 
-#include <hgl/shadergen/FixedMaterialDef.h>
+#include <hgl/graph/mtl/FixedMaterialDef.h>
+#include <hgl/graph/mtl/ShaderPermutationKey.h>
 #include <hgl/type/String.h>
 #include <string>
 #include <vector>

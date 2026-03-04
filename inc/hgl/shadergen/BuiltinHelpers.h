@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/shadergen/FixedMaterialDef.h>
+#include <hgl/graph/mtl/ShaderPermutationKey.h>
 #include <string>
 
 namespace hgl::graph::mtl {

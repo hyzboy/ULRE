@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/shadergen/FixedMaterialDef.h>
+#include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/vk/VKRenderAssign.h>
 

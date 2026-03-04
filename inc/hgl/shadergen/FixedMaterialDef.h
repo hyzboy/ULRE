@@ -28,6 +28,7 @@
 #include<hgl/graph/mtl/FixedDescriptorEntry.h>
 #include<hgl/graph/mtl/FixedVertexEntry.h>
 #include<hgl/graph/mtl/FixedMaterialDef.h>
+#include<hgl/graph/mtl/ShaderPermutationKey.h>
 #include<hgl/vk/VertexAttrib.h>
 #include <string>
 
@@ -42,65 +43,6 @@ namespace hgl::graph::mtl{
 // ─────────────────────────────────────────────────────────────────────────────────
 
 // SkyLightAmbientModel 定义在 SkyLight.h（通过文件头 include 已引入）
-
-/// 直接光照模型轴
-enum class LightModel : uint8
-{
-    Unlit       = 0,    ///<无光照（UI、天空、Gizmo）
-    Lambert,            ///<纯漫反射（手机低配）
-    BlinnPhong,         ///<Blinn-Phong（手机高配 / PC 低配）
-    PBR_Lite,           ///<简化 PBR（GGX diffuse + 近似 specular，无 split-sum）
-    PBR_Full,           ///<完整 PBR（GGX + split-sum IBL，仅 PC 高配）
-    CelShading,         ///<卡通渲染（threshold 漫反射 + rim light）
-
-    ENUM_CLASS_RANGE(Unlit, CelShading)
-};
-
-/// 高光拆分轴（仅对 BlinnPhong / PBR 有意义）
-enum class SpecularChannel : uint8
-{
-    Combined    = 0,    ///<漫反射 + 高光合并输出（单 RT，手机默认）
-    Separated,          ///<漫反射 / 高光分离输出（双 RT，延迟渲染前向 G-Buffer pass）
-
-    ENUM_CLASS_RANGE(Combined, Separated)
-};
-
-/// 阴影接收轴
-enum class ShadowReceive : uint8
-{
-    None        = 0,    ///<不接收阴影
-    PCF,                ///<PCF 软阴影
-    PCSS,               ///<PCSS 接触软化（仅 PC 高配）
-
-    ENUM_CLASS_RANGE(None, PCSS)
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ShaderPermutationKey：所有轴的组合，唯一标识一个 SPV 变体
-// ─────────────────────────────────────────────────────────────────────────────
-struct ShaderPermutationKey
-{
-    SkyLightAmbientModel ambient = SkyLightAmbientModel::Simple;
-    LightModel      light       = LightModel::BlinnPhong;
-    SpecularChannel specular    = SpecularChannel::Combined;
-    ShadowReceive   shadow      = ShadowReceive::None;
-
-    /// 转换为 uint32_t 用于哈希/缓存 key
-    uint32_t ToU32() const
-    {
-        return  (uint32_t(ambient)  <<  0) |
-                (uint32_t(light)    <<  8) |
-                (uint32_t(specular) << 16) |
-                (uint32_t(shadow)   << 24);
-    }
-
-    bool operator==(const ShaderPermutationKey &o) const { return ToU32() == o.ToU32(); }
-    bool operator!=(const ShaderPermutationKey &o) const { return !(*this == o); }
-    bool operator< (const ShaderPermutationKey &o) const { return ToU32() <  o.ToU32(); }
-
-    /// 生成对应的 GLSL #define 列表，写入 defines_out（格式："#define MACRO_NAME value\n"）
-    void AppendGLSLDefines(std::string &defines_out) const;
-};//struct ShaderPermutationKey
 
 }//namespace hgl::graph::mtl
 

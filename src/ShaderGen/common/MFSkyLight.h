@@ -9,7 +9,8 @@
 // 选择 GetSkyLightModelImplGLSL(key.ambient) 返回的实现字符串并注入 FS 前部。
 
 #include<hgl/graph/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
-#include<hgl/shadergen/FixedMaterialDef.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
+#include<hgl/graph/mtl/FixedDescriptorEntry.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
+#include<hgl/vk/VK.h>
 #include<vector>
 #include<cstring>
 

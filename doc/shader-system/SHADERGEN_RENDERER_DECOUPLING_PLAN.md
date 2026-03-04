@@ -170,7 +170,10 @@
   - 新增中立描述符条目定义 [inc/hgl/graph/mtl/FixedDescriptorEntry.h](inc/hgl/graph/mtl/FixedDescriptorEntry.h)，并将 `DescriptorKind/FixedDescriptorEntry` 从 [inc/hgl/shadergen/FixedMaterialDef.h](inc/hgl/shadergen/FixedMaterialDef.h) 下沉到该中立头。
   - [inc/hgl/graph/mtl/DescriptorBindingContract.h](inc/hgl/graph/mtl/DescriptorBindingContract.h) 的 `BuildBindingContract(...)` 已去除对 `FixedMaterialDef` 直接依赖，改为消费 `(FixedDescriptorEntry*, count)`；调用点 [src/ShaderGen/MaterialCompiler.cpp](src/ShaderGen/MaterialCompiler.cpp) 已同步更新。
   - 继续下沉纯布局类型：新增 [inc/hgl/graph/mtl/FixedVertexEntry.h](inc/hgl/graph/mtl/FixedVertexEntry.h) 与 [inc/hgl/graph/mtl/FixedMaterialDef.h](inc/hgl/graph/mtl/FixedMaterialDef.h)，`FixedVertexEntry/FixedMaterialDef` 数据结构已迁入中立层。
-  - [inc/hgl/shadergen/FixedMaterialDef.h](inc/hgl/shadergen/FixedMaterialDef.h) 已改为聚合中立布局头 + 保留 `ShaderPermutationKey` 等生成侧语义，向“数据契约与生成逻辑分层”继续收敛。
+  - [inc/hgl/shadergen/FixedMaterialDef.h](inc/hgl/shadergen/FixedMaterialDef.h) 已改为纯兼容聚合头（中立布局头 + 中立 `ShaderPermutationKey` 契约），保持旧 include 路径可用。
+  - 新增中立排列键契约 [inc/hgl/graph/mtl/ShaderPermutationKey.h](inc/hgl/graph/mtl/ShaderPermutationKey.h)，`LightModel/SpecularChannel/ShadowReceive/ShaderPermutationKey` 已下沉到 `graph/mtl`。
+  - include 面继续收敛：`src/ShaderGen`、`ShaderComposition.h`、`BuiltinHelpers.h`、`MaterialCompiler.h` 等调用侧已切到 `graph/mtl` 中立头。
+  - 当前全仓已无 `#include <hgl/shadergen/FixedMaterialDef.h>` 直接引用，`shadergen/FixedMaterialDef.h` 仅保留兼容入口职责。
 
 当前阻塞：
 

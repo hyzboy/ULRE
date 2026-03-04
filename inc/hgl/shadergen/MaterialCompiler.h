@@ -11,7 +11,8 @@
 ///
 /// 与现有 Std3DMaterial 体系互不干扰，可渐进迁移。
 
-#include<hgl/shadergen/FixedMaterialDef.h>
+#include<hgl/graph/mtl/FixedMaterialDef.h>
+#include<hgl/graph/mtl/ShaderPermutationKey.h>
 #include<hgl/shadergen/ShaderComposition.h>
 #include<hgl/shadergen/ShaderLogic.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
