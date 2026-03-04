@@ -98,6 +98,81 @@ namespace hgl::graph::mtl::contract
                        " request/result note: no vertex requirements and no vertex attributes in mirror result");
         }
 
+        if (request.has_physical_device_profile)
+        {
+            const auto &profile = request.physical_device_profile;
+
+            if (profile.limits.max_vertex_input_attributes > 0)
+            {
+                const size_t attr_count = result.vertex_layout.attributes.size();
+                if (attr_count > static_cast<size_t>(profile.limits.max_vertex_input_attributes))
+                {
+                    AddError(out,
+                             std::string("material=") + mat_name +
+                             " profile limit exceeded: vertex attributes=" + std::to_string(attr_count) +
+                             ", max=" + std::to_string(profile.limits.max_vertex_input_attributes));
+                }
+            }
+
+            if (profile.limits.max_bound_descriptor_sets > 0)
+            {
+                uint32_t max_set_plus_one = 0;
+                for (const auto &binding : result.layout.bindings)
+                {
+                    const uint32_t set_plus_one = binding.set + 1;
+                    if (set_plus_one > max_set_plus_one)
+                        max_set_plus_one = set_plus_one;
+                }
+
+                if (max_set_plus_one > profile.limits.max_bound_descriptor_sets)
+                {
+                    AddError(out,
+                             std::string("material=") + mat_name +
+                             " profile limit exceeded: descriptor set count=" + std::to_string(max_set_plus_one) +
+                             ", max=" + std::to_string(profile.limits.max_bound_descriptor_sets));
+                }
+            }
+
+            for (const auto &buffer : result.buffer_structs)
+            {
+                if (buffer.resource_class == ResourceClass::UniformBuffer &&
+                    profile.limits.max_uniform_buffer_range > 0 &&
+                    static_cast<uint64_t>(buffer.byte_size) > profile.limits.max_uniform_buffer_range)
+                {
+                    AddError(out,
+                             std::string("material=") + mat_name +
+                             " profile limit exceeded: UBO byte_size=" + std::to_string(buffer.byte_size) +
+                             ", max=" + std::to_string(profile.limits.max_uniform_buffer_range) +
+                             ", struct=" + buffer.struct_name);
+                }
+
+                if (buffer.resource_class == ResourceClass::StorageBuffer &&
+                    profile.limits.max_storage_buffer_range > 0 &&
+                    static_cast<uint64_t>(buffer.byte_size) > profile.limits.max_storage_buffer_range)
+                {
+                    AddError(out,
+                             std::string("material=") + mat_name +
+                             " profile limit exceeded: SSBO byte_size=" + std::to_string(buffer.byte_size) +
+                             ", max=" + std::to_string(profile.limits.max_storage_buffer_range) +
+                             ", struct=" + buffer.struct_name);
+                }
+            }
+
+            if (!profile.features.geometry_shader)
+            {
+                for (const auto &blob : result.spv_per_stage)
+                {
+                    if (blob.stage_mask == uint32_t(ShaderStageMask::Geometry))
+                    {
+                        AddError(out,
+                                 std::string("material=") + mat_name +
+                                 " profile feature mismatch: geometry shader stage present but device feature is disabled");
+                        break;
+                    }
+                }
+            }
+        }
+
         return out;
     }
 

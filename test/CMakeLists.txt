@@ -362,6 +362,36 @@ target_include_directories(test_ShaderGenPhysicalDeviceProfileJsonPath
 
 CreateTestProject(24 test_ShaderGenPhysicalDeviceProfileJsonPath)
 
+add_executable(test_ShaderGenContractValidatorProfile
+    ShaderGenContractValidatorProfileTest.cpp)
+
+target_link_libraries(test_ShaderGenContractValidatorProfile
+    PRIVATE ULRE.ShaderGen
+            CMCore)
+
+target_include_directories(test_ShaderGenContractValidatorProfile
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(25 test_ShaderGenContractValidatorProfile)
+
+add_executable(test_RendererShaderGenAdapterProfileCategory
+    RendererShaderGenAdapterProfileCategoryTest.cpp)
+
+target_link_libraries(test_RendererShaderGenAdapterProfileCategory
+    PRIVATE ULRE.SceneGraph
+            ULRE.ShaderGen
+            ULRE.Vulkan
+            CMCore)
+
+target_include_directories(test_RendererShaderGenAdapterProfileCategory
+    PRIVATE ${CMAKE_SOURCE_DIR}/src
+            ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
+
+CreateTestProject(26 test_RendererShaderGenAdapterProfileCategory)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -432,6 +462,12 @@ if(BUILD_TESTING)
 
     add_test(NAME test_ShaderGenPhysicalDeviceProfileJsonPath
              COMMAND test_ShaderGenPhysicalDeviceProfileJsonPath)
+
+    add_test(NAME test_ShaderGenContractValidatorProfile
+             COMMAND test_ShaderGenContractValidatorProfile)
+
+    add_test(NAME test_RendererShaderGenAdapterProfileCategory
+             COMMAND test_RendererShaderGenAdapterProfileCategory)
 
     set_tests_properties(test_MaterialPresetExhaustiveCompile PROPERTIES
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")

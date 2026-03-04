@@ -20,6 +20,9 @@ namespace hgl::graph
         ShaderGenPathPolicy policy = MakeShaderGenPathPolicy(ShaderGenPathMode::MirrorValidate);
         ShaderGenDiffLogDetail diff_log_detail = ShaderGenDiffLogDetail::SummaryOnly;
 
+        mtl::contract::PhysicalDeviceProfileLite physical_device_profile_storage;
+        const mtl::contract::PhysicalDeviceProfileLite *physical_device_profile = nullptr;
+
         mtl::contract::ShaderGenRequest request_storage;
         mtl::contract::ShaderGenResult mirror_storage;
 

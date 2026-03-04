@@ -9,6 +9,7 @@ namespace hgl::graph
     inline constexpr const char *kShaderGenStrictGateSpvCategory = "StrictGate.Spv";
     inline constexpr const char *kShaderGenStrictGateVertexCategory = "StrictGate.Vertex";
     inline constexpr const char *kShaderGenStrictGateDescriptorCategory = "StrictGate.Descriptor";
+    inline constexpr const char *kShaderGenStrictGateProfileCategory = "StrictGate.Profile";
 
     inline constexpr const char *kShaderGenDescriptorFallbackPhaseLayoutMismatch = "layout mismatch";
     inline constexpr const char *kShaderGenDescriptorFallbackPhaseBuildFailed = "layout build failed";

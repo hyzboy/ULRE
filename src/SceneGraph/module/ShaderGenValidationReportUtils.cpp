@@ -1,4 +1,5 @@
 #include <hgl/graph/module/ShaderGenValidationReportUtils.h>
+#include <hgl/graph/module/ShaderGenContractGateReporter.h>
 #include <hgl/shadergen/contract/ShaderGenContractValidator.h>
 
 namespace hgl::graph
@@ -25,6 +26,9 @@ namespace hgl::graph
         dst.warning_count += src.warning_count;
         dst.error_count += src.error_count;
 
+        if (dst.category.empty() && !src.category.empty())
+            dst.category = src.category;
+
         dst.warnings.insert(dst.warnings.end(), src.warnings.begin(), src.warnings.end());
         dst.errors.insert(dst.errors.end(), src.errors.begin(), src.errors.end());
     }
@@ -49,6 +53,21 @@ namespace hgl::graph
         report.errors.insert(report.errors.end(), contract_check.errors.begin(), contract_check.errors.end());
 
         if (!contract_check.valid)
+        {
+            if (report.category.empty())
+            {
+                for (const auto &err : contract_check.errors)
+                {
+                    if (err.find("profile limit exceeded") != std::string::npos ||
+                        err.find("profile feature mismatch") != std::string::npos)
+                    {
+                        report.category = kShaderGenStrictGateProfileCategory;
+                        break;
+                    }
+                }
+            }
+
             report.overall_valid = false;
+        }
     }
 }

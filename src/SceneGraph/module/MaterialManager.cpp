@@ -18,6 +18,7 @@
 #include<hgl/graph/module/ShaderGenReadOnlyValidationGate.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
+#include<hgl/graph/module/ShaderGenCompilerProfileAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
@@ -265,6 +266,8 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     const GraphicsContext *graphics_context = GetGraphicsContext();
     ShaderGenContractPathContext path_context;
     BuildShaderGenContractPathContext(path_context, graphics_context, *mci, mtl_name.c_str());
+
+    ApplyShaderCompilerProfile(path_context.physical_device_profile);
 
     if(path_context.mirror_prebuild_failed)
     {

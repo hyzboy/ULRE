@@ -35,6 +35,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/MaterialFinalizeFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenReadOnlyValidationGate.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenSPVModuleAdapter.h
+                        ${SG_INCLUDE_PATH}/module/ShaderGenCompilerProfileAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenValidationQueryBridge.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenMirrorDiffPresenter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenValidationReportUtils.h
@@ -63,6 +64,7 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/MaterialFinalizeFlowAdapter.cpp
                         module/ShaderGenReadOnlyValidationGate.cpp
                         module/ShaderGenSPVModuleAdapter.cpp
+                        module/ShaderGenCompilerProfileAdapter.cpp
                         module/ShaderGenValidationQueryBridge.cpp
                         module/ShaderGenMirrorDiffPresenter.cpp
                         module/ShaderGenValidationReportUtils.cpp

@@ -2,6 +2,8 @@
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/shadergen/contract/ShaderGenRequestBuilder.h>
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
+#include <hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
+#include <hgl/vk/VKDeviceAttribute.h>
 
 namespace hgl::graph
 {
@@ -17,6 +19,18 @@ namespace hgl::graph
         ctx.diff_log_detail = ctx.policy.full_diff_log
                             ? ShaderGenDiffLogDetail::Full
                             : ShaderGenDiffLogDetail::SummaryOnly;
+
+        ctx.physical_device_profile = nullptr;
+        if (graphics_context)
+        {
+            const VulkanDevAttr *dev_attr = graphics_context->GetDevAttr();
+            if (dev_attr && dev_attr->physical_device)
+            {
+                ctx.physical_device_profile_storage =
+                    mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*dev_attr->physical_device);
+                ctx.physical_device_profile = &ctx.physical_device_profile_storage;
+            }
+        }
 
         ctx.request = nullptr;
         ctx.mirror = nullptr;
@@ -51,11 +65,14 @@ namespace hgl::graph
             graphics_context,
             mci,
             material_name,
-            [](const mtl::MaterialCreateInfo &src,
+            [&ctx](const mtl::MaterialCreateInfo &src,
                mtl::contract::ShaderGenRequest &request,
                const char *name)->bool
             {
-                return mtl::contract::BuildShaderGenRequestFromMaterialCreateInfo(src, request, name);
+                return mtl::contract::BuildShaderGenRequestFromMaterialCreateInfo(src,
+                                                                                  ctx.physical_device_profile,
+                                                                                  request,
+                                                                                  name);
             },
             [](const mtl::MaterialCreateInfo &src,
                mtl::contract::ShaderGenResult &result)->bool
