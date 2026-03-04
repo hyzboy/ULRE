@@ -12,7 +12,8 @@ namespace hgl::graph
                                                        const mtl::MaterialCreateInfo &mci,
                                                        const char *material_name,
                                                        const ShaderGenRequestBuilderFn &request_builder,
-                                                       const ShaderGenResultBuilderFn &result_builder)
+                                                       const ShaderGenResultBuilderFn &result_builder,
+                                                       const mtl::contract::PhysicalDeviceProfileLite *preferred_profile)
     {
         ctx.mode = graphics_context ? graphics_context->GetShaderGenPathMode() : ShaderGenPathMode::MirrorValidate;
         ctx.policy = graphics_context ? graphics_context->GetShaderGenPathPolicy() : MakeShaderGenPathPolicy(ctx.mode);
@@ -21,7 +22,12 @@ namespace hgl::graph
                             : ShaderGenDiffLogDetail::SummaryOnly;
 
         ctx.physical_device_profile = nullptr;
-        if (graphics_context)
+        if (preferred_profile)
+        {
+            ctx.physical_device_profile_storage = *preferred_profile;
+            ctx.physical_device_profile = &ctx.physical_device_profile_storage;
+        }
+        else if (graphics_context)
         {
             const VulkanDevAttr *dev_attr = graphics_context->GetDevAttr();
             if (dev_attr && dev_attr->physical_device)
@@ -40,6 +46,12 @@ namespace hgl::graph
             request_builder &&
             request_builder(mci, ctx.request_storage, material_name))
         {
+            if (ctx.physical_device_profile && !ctx.request_storage.has_physical_device_profile)
+            {
+                ctx.request_storage.has_physical_device_profile = true;
+                ctx.request_storage.physical_device_profile = *ctx.physical_device_profile;
+            }
+
             ctx.request = &ctx.request_storage;
         }
 
@@ -78,6 +90,7 @@ namespace hgl::graph
                mtl::contract::ShaderGenResult &result)->bool
             {
                 return mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(src, result);
-            });
+            },
+            nullptr);
     }
 }

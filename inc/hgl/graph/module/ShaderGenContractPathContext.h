@@ -44,7 +44,8 @@ namespace hgl::graph
                                                        const mtl::MaterialCreateInfo &mci,
                                                        const char *material_name,
                                                        const ShaderGenRequestBuilderFn &request_builder,
-                                                       const ShaderGenResultBuilderFn &result_builder);
+                                                       const ShaderGenResultBuilderFn &result_builder,
+                                                       const mtl::contract::PhysicalDeviceProfileLite *preferred_profile = nullptr);
 
     void BuildShaderGenContractPathContext(ShaderGenContractPathContext &ctx,
                                            const GraphicsContext *graphics_context,

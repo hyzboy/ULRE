@@ -15,6 +15,11 @@ int main()
 
     GraphicsContext gc(nullptr, ShaderGenPathMode::MirrorPreferred);
 
+    mtl::contract::PhysicalDeviceProfileLite profile;
+    profile.name = "InjectedProfile";
+    profile.api_version = 1;
+    profile.limits.max_vertex_input_attributes = 8;
+
     ShaderGenContractPathContext ctx;
     BuildShaderGenContractPathContextWithBuilders(
         ctx,
@@ -31,7 +36,8 @@ int main()
            mtl::contract::ShaderGenResult &) -> bool
         {
             return false;
-        });
+        },
+        &profile);
 
     if (ctx.mode != ShaderGenPathMode::MirrorPreferred)
     {
@@ -49,6 +55,19 @@ int main()
     {
         std::fprintf(stderr, "[FAIL] request should be available when request builder succeeds\n");
         ++failed;
+    }
+    else
+    {
+        if (!ctx.request->has_physical_device_profile)
+        {
+            std::fprintf(stderr, "[FAIL] request should be injected with preferred profile\n");
+            ++failed;
+        }
+        else if (ctx.request->physical_device_profile.name != "InjectedProfile")
+        {
+            std::fprintf(stderr, "[FAIL] injected profile name mismatch\n");
+            ++failed;
+        }
     }
 
     if (ctx.mirror != nullptr)
