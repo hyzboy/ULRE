@@ -1,4 +1,5 @@
 #include <hgl/graph/module/RendererShaderGenAdapter.h>
+#include <hgl/graph/module/ShaderGenValidationTypes.h>
 #include <cstdio>
 #include <cstdint>
 #include <string>
@@ -27,7 +28,7 @@ int main()
         "StrictGate.Prebuild");
 
     {
-        RendererShaderGenAdapter::ValidationReport last;
+        ShaderGenValidationReport last;
         std::string material_name;
 
         if (!RendererShaderGenAdapter::GetLastValidationReport(last, &material_name))

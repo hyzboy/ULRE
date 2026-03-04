@@ -1,11 +1,10 @@
 ﻿#pragma once
 
-#include<hgl/type/StringList.h>
 #include<hgl/vk/VK.h>
+#include<hgl/vk/VKShaderDescriptor.h>
 #include<hgl/vk/VKVertexInputAttribute.h>
 #include<hgl/vk/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
-#include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<ankerl/unordered_dense.h>
 #include<vector>
 #include<string>

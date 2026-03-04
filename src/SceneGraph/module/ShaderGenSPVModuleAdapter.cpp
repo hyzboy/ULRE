@@ -1,4 +1,5 @@
 #include <hgl/graph/module/ShaderGenSPVModuleAdapter.h>
+#include <hgl/shadergen/ShaderCreateInfoMap.h>
 
 namespace hgl::graph
 {

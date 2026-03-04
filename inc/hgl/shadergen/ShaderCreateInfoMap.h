@@ -1,9 +1,13 @@
 ﻿#pragma once
 
-#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<cstdint>
 #include<ankerl/unordered_dense.h>
 
 namespace hgl{namespace graph{
+enum class ShaderStage:uint32_t;
+
+class ShaderCreateInfo;
+
 class ShaderCreateInfoMap
 {
     using MapType=ankerl::unordered_dense::map<ShaderStage,ShaderCreateInfo *>;
@@ -37,18 +41,7 @@ public:
         return true;
     }
 
-    bool Add(ShaderCreateInfo *sc)
-    {
-        if(!sc)return(false);
-
-        ShaderStage flag=sc->GetShaderStage();
-
-        if(ContainsKey(flag))
-            return(false);
-
-        map.emplace(flag,sc);
-        return(true);
-    }
+    bool Add(ShaderCreateInfo *sc);
 
     // operator[] for accessing elements by key
     ShaderCreateInfo* operator[](const ShaderStage& key)

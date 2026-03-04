@@ -6,7 +6,11 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
-#include<hgl/graph/module/RendererShaderGenAdapter.h>
+#include<hgl/graph/module/ShaderGenDiffLogDetail.h>
+#include<hgl/graph/module/ShaderGenValidationTypes.h>
+#include <map>
+#include <string>
+#include <vector>
 
 namespace hgl::graph{
 
@@ -53,7 +57,7 @@ private:
 private: // Helper methods with integrated DebugUtils
 
     Material *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
-    Material *CreateMaterialWithContract(const AnsiString &, const mtl::MaterialCreateInfo *, const mtl::contract::ShaderGenRequest *, const mtl::contract::ShaderGenResult *, bool enable_mirror_validation, bool require_mirror_valid, const RendererShaderGenAdapter::DiffLogDetail diff_log_detail);
+    Material *CreateMaterialWithContract(const AnsiString &, const mtl::MaterialCreateInfo *, const mtl::contract::ShaderGenRequest *, const mtl::contract::ShaderGenResult *, bool enable_mirror_validation, bool require_mirror_valid, const ShaderGenDiffLogDetail diff_log_detail);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(Material *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
@@ -135,35 +139,17 @@ public: //Shader
 
 public: //ShaderGen Profiler (debug entry, collect-only)
 
-    void ResetShaderGenProfiler()
-    {
-        RendererShaderGenAdapter::ResetProfiler();
-    }
+    void ResetShaderGenProfiler();
 
-    RendererShaderGenAdapter::ProfilerSnapshot GetShaderGenProfilerSnapshot() const
-    {
-        return RendererShaderGenAdapter::GetProfilerSnapshot();
-    }
+    ShaderGenProfilerSnapshot GetShaderGenProfilerSnapshot() const;
 
-    bool GetShaderGenLastValidationReport(RendererShaderGenAdapter::ValidationReport &out_report, std::string *out_material_name = nullptr) const
-    {
-        return RendererShaderGenAdapter::GetLastValidationReport(out_report, out_material_name);
-    }
+    bool GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name = nullptr) const;
 
-    std::vector<RendererShaderGenAdapter::ValidationReportRecord> GetShaderGenRecentValidationReports(const uint32_t max_count = 64) const
-    {
-        return RendererShaderGenAdapter::GetRecentValidationReports(max_count);
-    }
+    std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReports(const uint32_t max_count = 64) const;
 
-    std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(const uint32_t max_per_material = 4, const uint32_t max_total = 128) const
-    {
-        return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
-    }
+    std::map<std::string, std::vector<ShaderGenValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(const uint32_t max_per_material = 4, const uint32_t max_total = 128) const;
 
-    std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const
-    {
-        return RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
-    }
+    std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count = 128) const;
 
 public: //Material
 

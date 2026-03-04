@@ -12,6 +12,7 @@ SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoCompute.h)
 
 SET(SHADER_CREATER_SOURCE_FILES ShaderCreateInfo.cpp
+                                ShaderCreateInfoMap.cpp
                                 ShaderCreateInfoVertex.cpp
                                 ShaderCreateInfoGeometry.cpp
                                 ShaderCreateInfoFragment.cpp

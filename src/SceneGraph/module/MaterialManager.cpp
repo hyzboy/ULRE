@@ -17,7 +17,9 @@
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include<hgl/graph/module/ShaderGenReadOnlyValidationGate.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
+#include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
@@ -289,7 +291,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
                                       path_context.diff_log_detail);
 }
 
-Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenRequest *request_result,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid,const RendererShaderGenAdapter::DiffLogDetail diff_log_detail)
+Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenRequest *request_result,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid,const ShaderGenDiffLogDetail diff_log_detail)
 {
     if(!mci)
         return(nullptr);
@@ -354,6 +356,36 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     hash_name+=cfg->ToHashStdString().c_str();
 
     return this->CreateMaterial(hash_name,mci);
+}
+
+void MaterialManager::ResetShaderGenProfiler()
+{
+    RendererShaderGenAdapter::ResetProfiler();
+}
+
+ShaderGenProfilerSnapshot MaterialManager::GetShaderGenProfilerSnapshot() const
+{
+    return RendererShaderGenAdapter::GetProfilerSnapshot();
+}
+
+bool MaterialManager::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
+{
+    return RendererShaderGenAdapter::GetLastValidationReport(out_report, out_material_name);
+}
+
+std::vector<ShaderGenValidationReportRecord> MaterialManager::GetShaderGenRecentValidationReports(const uint32_t max_count) const
+{
+    return RendererShaderGenAdapter::GetRecentValidationReports(max_count);
+}
+
+std::map<std::string, std::vector<ShaderGenValidationReportRecord>> MaterialManager::GetShaderGenRecentValidationReportsByMaterial(const uint32_t max_per_material, const uint32_t max_total) const
+{
+    return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
+}
+
+std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
+{
+    return RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
 }
 
 Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)

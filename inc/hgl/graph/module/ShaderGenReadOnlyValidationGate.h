@@ -1,6 +1,6 @@
 #pragma once
 
-#include <hgl/graph/module/RendererShaderGenAdapter.h>
+#include <hgl/graph/module/ShaderGenDiffLogDetail.h>
 
 namespace hgl::graph
 {
@@ -21,5 +21,5 @@ namespace hgl::graph
                                    const char *material_name,
                                    bool enable_mirror_validation,
                                    bool require_mirror_valid,
-                                   RendererShaderGenAdapter::DiffLogDetail diff_log_detail);
+                                   ShaderGenDiffLogDetail diff_log_detail);
 }

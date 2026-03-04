@@ -13,6 +13,8 @@
 #include <hgl/shadergen/ShaderDescriptorInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
+#include <hgl/shadergen/ShaderComposition.h>
+#include <hgl/shadergen/ShaderLogic.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/vk/VKDeviceAttribute.h>
 #include <cstring>

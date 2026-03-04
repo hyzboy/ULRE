@@ -1,6 +1,9 @@
 #pragma once
 
-#include <hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h>
+#include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/vk/VKShaderDescriptor.h>
+#include <string>
+#include <vector>
 
 namespace hgl::graph
 {

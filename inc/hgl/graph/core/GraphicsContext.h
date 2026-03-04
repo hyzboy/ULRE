@@ -20,7 +20,7 @@
 
 #include <hgl/vk/VKDevice.h>
 #include <hgl/graph/module/ShaderGenPathMode.h>
-#include <hgl/graph/module/RendererShaderGenAdapter.h>
+#include <hgl/graph/module/ShaderGenValidationTypes.h>
 
 namespace hgl::graph
 {
@@ -127,12 +127,12 @@ namespace hgl::graph
 
         // ShaderGen Profiler debug entry (collect-only, no default output)
         void ResetShaderGenProfiler();
-        RendererShaderGenAdapter::ProfilerSnapshot GetShaderGenProfilerSnapshot() const;
+        ShaderGenProfilerSnapshot GetShaderGenProfilerSnapshot() const;
 
         // ShaderGen Validation report query entry (collect-only, no default output)
-        bool GetShaderGenLastValidationReport(RendererShaderGenAdapter::ValidationReport &out_report, std::string *out_material_name = nullptr) const;
-        std::vector<RendererShaderGenAdapter::ValidationReportRecord> GetShaderGenRecentValidationReports(uint32_t max_count = 64) const;
-        std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128) const;
+        bool GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name = nullptr) const;
+        std::vector<ShaderGenValidationReportRecord> GetShaderGenRecentValidationReports(uint32_t max_count = 64) const;
+        std::map<std::string, std::vector<ShaderGenValidationReportRecord>> GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material = 4, uint32_t max_total = 128) const;
         std::map<std::string, uint32_t> GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count = 128) const;
     };
 

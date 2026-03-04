@@ -1,4 +1,6 @@
 #include <hgl/graph/module/ShaderGenReadOnlyValidationGate.h>
+#include <hgl/graph/module/RendererShaderGenAdapter.h>
+#include <hgl/graph/module/ShaderGenValidationTypes.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <cstdio>
 
@@ -10,7 +12,7 @@ namespace hgl::graph
                                    const char *material_name,
                                    bool enable_mirror_validation,
                                    bool require_mirror_valid,
-                                   RendererShaderGenAdapter::DiffLogDetail diff_log_detail)
+                                   ShaderGenDiffLogDetail diff_log_detail)
     {
         if (!enable_mirror_validation)
             return true;
@@ -18,7 +20,7 @@ namespace hgl::graph
         const char *safe_material = material_name ? material_name : "<unnamed-material>";
 
         RendererShaderGenAdapter adapter;
-        const RendererShaderGenAdapter::ValidationReport consume_report =
+        const ShaderGenValidationReport consume_report =
             adapter.ValidateMaterialContractReadOnly(mci,
                                                      request_result,
                                                      mirror_result,

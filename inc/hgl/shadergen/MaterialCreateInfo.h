@@ -2,14 +2,8 @@
 
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<hgl/graph/mtl/DescriptorBindingContract.h>
-#include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
-#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/graph/render/RenderOptions.h>
-#include<hgl/graph/render/RenderTargetOutputConfig.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
-#include<hgl/graph/mtl/ShaderBufferSource.h>
 #include<hgl/vk/VKTextureType.h>
 #include<hgl/vk/VKSamplerType.h>
 #include<string>
@@ -19,6 +13,11 @@ namespace hgl::graph
     struct VulkanDevAttr;
     struct UBODescriptor;
     struct SSBODescriptor;
+    struct ShaderBufferSource;
+
+    class ShaderCreateInfoVertex;
+    class ShaderCreateInfoGeometry;
+    class ShaderCreateInfoFragment;
 
     namespace mtl
     {
@@ -37,19 +36,13 @@ namespace hgl::graph
             uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
             uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
             uint32_t mi_max_count;
-        #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
             SSBODescriptor *mi_ssbo;
-        #else
             UBODescriptor *mi_ubo;
-        #endif
 
             uint32_t l2w_max_count;
             uint32_t l2w_shader_stage;
-        #if defined(HGL_L2W_USE_SSBO)
             SSBODescriptor *l2w_ssbo;
-        #else
             UBODescriptor *l2w_ubo;
-        #endif
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 

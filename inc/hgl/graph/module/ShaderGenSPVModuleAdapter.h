@@ -1,14 +1,17 @@
 #pragma once
 
 #include <hgl/shadergen/contract/ShaderGenContract.h>
-#include <hgl/shadergen/ShaderCreateInfoMap.h>
-#include <hgl/vk/VKShaderModule.h>
+#include <hgl/vk/VK.h>
 #include <functional>
 #include <string>
 #include <vector>
 
 namespace hgl::graph
 {
+    class ShaderModule;
+    class ShaderCreateInfo;
+    class ShaderCreateInfoMap;
+
     using CreateShaderModuleFromContractSPVCallback = std::function<const ShaderModule *(VkShaderStageFlagBits stage,
                                                                                            const uint32_t *spv_data,
                                                                                            size_t spv_size)>;

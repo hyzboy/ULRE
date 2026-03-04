@@ -10,6 +10,7 @@
 #include <hgl/graph/module/GeometryManager.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/ShaderGenPathMode.h>
+#include <hgl/graph/module/ShaderGenValidationQueryBridge.h>
 
 namespace hgl::graph
 {
@@ -128,39 +129,39 @@ namespace hgl::graph
         if (material_manager)
             material_manager->ResetShaderGenProfiler();
         else
-            RendererShaderGenAdapter::ResetProfiler();
+            ResetShaderGenProfilerFallback();
     }
 
-    RendererShaderGenAdapter::ProfilerSnapshot GraphicsContext::GetShaderGenProfilerSnapshot() const
+    ShaderGenProfilerSnapshot GraphicsContext::GetShaderGenProfilerSnapshot() const
     {
         if (material_manager)
             return material_manager->GetShaderGenProfilerSnapshot();
 
-        return RendererShaderGenAdapter::GetProfilerSnapshot();
+        return GetShaderGenProfilerSnapshotFallback();
     }
 
-    bool GraphicsContext::GetShaderGenLastValidationReport(RendererShaderGenAdapter::ValidationReport &out_report, std::string *out_material_name) const
+    bool GraphicsContext::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
     {
         if (material_manager)
             return material_manager->GetShaderGenLastValidationReport(out_report, out_material_name);
 
-        return RendererShaderGenAdapter::GetLastValidationReport(out_report, out_material_name);
+        return GetShaderGenLastValidationReportFallback(out_report, out_material_name);
     }
 
-    std::vector<RendererShaderGenAdapter::ValidationReportRecord> GraphicsContext::GetShaderGenRecentValidationReports(uint32_t max_count) const
+    std::vector<ShaderGenValidationReportRecord> GraphicsContext::GetShaderGenRecentValidationReports(uint32_t max_count) const
     {
         if (material_manager)
             return material_manager->GetShaderGenRecentValidationReports(max_count);
 
-        return RendererShaderGenAdapter::GetRecentValidationReports(max_count);
+        return GetShaderGenRecentValidationReportsFallback(max_count);
     }
 
-    std::map<std::string, std::vector<RendererShaderGenAdapter::ValidationReportRecord>> GraphicsContext::GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material, uint32_t max_total) const
+    std::map<std::string, std::vector<ShaderGenValidationReportRecord>> GraphicsContext::GetShaderGenRecentValidationReportsByMaterial(uint32_t max_per_material, uint32_t max_total) const
     {
         if (material_manager)
             return material_manager->GetShaderGenRecentValidationReportsByMaterial(max_per_material, max_total);
 
-        return RendererShaderGenAdapter::GetRecentValidationReportsByMaterial(max_per_material, max_total);
+        return GetShaderGenRecentValidationReportsByMaterialFallback(max_per_material, max_total);
     }
 
     std::map<std::string, uint32_t> GraphicsContext::GetShaderGenRecentValidationCategoryHistogram(uint32_t max_count) const
@@ -168,7 +169,7 @@ namespace hgl::graph
         if (material_manager)
             return material_manager->GetShaderGenRecentValidationCategoryHistogram(max_count);
 
-        return RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
+        return GetShaderGenRecentValidationCategoryHistogramFallback(max_count);
     }
 
 } // namespace hgl::graph

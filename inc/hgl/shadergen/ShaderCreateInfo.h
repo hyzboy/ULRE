@@ -4,8 +4,6 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/VKInterpolation.h>
 #include<hgl/vk/VKDescriptorSetType.h>
-#include<hgl/graph/mtl/ShaderVariableType.h>
-#include<hgl/type/StringList.h>
 #include<hgl/log/Log.h>
 #include <ankerl/unordered_dense.h>
 #include<string>

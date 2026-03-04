@@ -13,8 +13,8 @@ namespace hgl::graph
         ctx.mode = graphics_context ? graphics_context->GetShaderGenPathMode() : ShaderGenPathMode::MirrorValidate;
         ctx.policy = graphics_context ? graphics_context->GetShaderGenPathPolicy() : MakeShaderGenPathPolicy(ctx.mode);
         ctx.diff_log_detail = ctx.policy.full_diff_log
-                            ? RendererShaderGenAdapter::DiffLogDetail::Full
-                            : RendererShaderGenAdapter::DiffLogDetail::SummaryOnly;
+                            ? ShaderGenDiffLogDetail::Full
+                            : ShaderGenDiffLogDetail::SummaryOnly;
 
         ctx.request = nullptr;
         ctx.mirror = nullptr;

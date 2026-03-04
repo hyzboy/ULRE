@@ -1,4 +1,5 @@
 #include <hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h>
+#include <hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h>
 
 namespace hgl::graph
 {

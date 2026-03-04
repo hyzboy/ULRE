@@ -1,6 +1,5 @@
 #include <hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/shadergen/ShaderCreateInfoMap.h>
 
 namespace hgl::graph
 {

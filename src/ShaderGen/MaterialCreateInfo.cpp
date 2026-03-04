@@ -1,5 +1,8 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<string>
@@ -163,18 +166,12 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         mi_data_bytes=0;
         mi_shader_stage=0;
         mi_max_count=0;
-    #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
         mi_ssbo=nullptr;
-    #else
         mi_ubo=nullptr;
-    #endif
     }
 
-#if defined(HGL_L2W_USE_SSBO)
     l2w_ssbo=nullptr;
-#else
     l2w_ubo=nullptr;
-#endif
 
     has_l2w_matrix=config.local_to_world;
 }

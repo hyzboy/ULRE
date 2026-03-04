@@ -1,12 +1,12 @@
 ﻿#pragma once
 
 #include<hgl/type/String.h>
+#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 
 namespace hgl::graph
 {
-    class ShaderCreateInfoVertex;
-    class ShaderCreateInfoGeometry;
-    class ShaderCreateInfoFragment;
     struct VulkanDevAttr;
 
     namespace mtl
