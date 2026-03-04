@@ -109,6 +109,8 @@ namespace hgl::graph::mtl::contract
         uint32_t vendor_id = 0;
         uint32_t device_id = 0;
         uint32_t api_version = 0;
+        uint32_t target_vulkan_version = 0;
+        uint32_t target_spv_version = 0;
         uint32_t queue_family_count = 0;
 
         PhysicalDeviceLimitsLite limits;

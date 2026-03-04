@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <hgl/vk/VKPhysicalDevice.h>
 
 namespace hgl::graph::mtl::contract
@@ -58,6 +59,12 @@ namespace hgl::graph::mtl::contract
         profile.vendor_id = props.vendorID;
         profile.device_id = props.deviceID;
         profile.api_version = pd.GetVulkanVersion();
+
+        ResolveShaderTargetVersionsFromApi(profile.api_version,
+                           pd.CheckExtensionSupport(VK_KHR_SPIRV_1_4_EXTENSION_NAME),
+                           profile.target_vulkan_version,
+                           profile.target_spv_version);
+
         profile.queue_family_count = static_cast<uint32_t>(pd.GetQueueFamilyProperties().GetCount());
 
         profile.limits.max_image_dimension_2d = limits.maxImageDimension2D;

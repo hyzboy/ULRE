@@ -3,25 +3,14 @@
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<vulkan/vulkan.h>
-#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/log/Logger.h>
-#include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
+#include<hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileJson.h>
 
 namespace hgl
 {
     namespace graph
     {
-        // ?????EShTargetLanguageVersion
-        constexpr const uint32_t SPV_VERSION_1_0 = (1 << 16);                     // SPIR-V 1.0
-        constexpr const uint32_t SPV_VERSION_1_1 = (1 << 16) | (1 << 8);          // SPIR-V 1.1
-        constexpr const uint32_t SPV_VERSION_1_2 = (1 << 16) | (2 << 8);          // SPIR-V 1.2
-        constexpr const uint32_t SPV_VERSION_1_3 = (1 << 16) | (3 << 8);          // SPIR-V 1.3
-        constexpr const uint32_t SPV_VERSION_1_4 = (1 << 16) | (4 << 8);          // SPIR-V 1.4
-        constexpr const uint32_t SPV_VERSION_1_5 = (1 << 16) | (5 << 8);          // SPIR-V 1.5
-        constexpr const uint32_t SPV_VERSION_1_6 = (1 << 16) | (6 << 8);          // SPIR-V 1.6
-
         enum class ShaderLanguageType
         {
             GLSL=0,
@@ -40,8 +29,8 @@ namespace hgl
 
             const char *        preamble        = nullptr;
 
-                  uint32_t      vulkan_version  = VK_API_VERSION_1_0;
-                  uint32_t      spv_version     = SPV_VERSION_1_0;
+                  uint32_t      vulkan_version  = mtl::contract::MakeVkVersion(1, 0);
+                  uint32_t      spv_version     = mtl::contract::SPV_VERSION_1_0;
         };
 
         static mtl::contract::PhysicalDeviceProfileLite g_pd_profile{};
@@ -136,64 +125,27 @@ namespace hgl
             gsi->SetLimit(&bir, sizeof(TBuiltInResourceCompat));
         }
 
-        static void SelectCompileTargets(const uint32_t api_version,const bool has_spirv_1_4_extension)
-        {
-            compile_info.vulkan_version = VK_API_VERSION_1_0;
-            compile_info.spv_version = SPV_VERSION_1_0;
-
-            if(api_version >= VK_API_VERSION_1_3)
-            {
-                compile_info.vulkan_version = VK_API_VERSION_1_3;
-                compile_info.spv_version = SPV_VERSION_1_6;
-            }
-            else
-            if(api_version >= VK_API_VERSION_1_2)
-            {
-                compile_info.vulkan_version = VK_API_VERSION_1_2;
-                compile_info.spv_version = SPV_VERSION_1_5;
-            }
-            else
-            if(api_version >= VK_API_VERSION_1_1)
-            {
-                compile_info.vulkan_version = VK_API_VERSION_1_1;
-                compile_info.spv_version = has_spirv_1_4_extension ? SPV_VERSION_1_4 : SPV_VERSION_1_3;
-            }
-        }
-
-        static void ApplyShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile,const bool has_spirv_1_4_extension)
+        static void ApplyShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile)
         {
             g_pd_profile = profile;
             g_pd_profile_valid = true;
 
-            SelectCompileTargets(profile.api_version,has_spirv_1_4_extension);
+            mtl::contract::ResolveShaderTargetVersions(profile,
+                                                       compile_info.vulkan_version,
+                                                       compile_info.spv_version);
 
             GLogInfo("[GLSLCompiler] target vulkan=%u.%u spv=%u.%u",
-                     VK_VERSION_MAJOR(compile_info.vulkan_version),
-                     VK_VERSION_MINOR(compile_info.vulkan_version),
+                     mtl::contract::VkVersionMajor(compile_info.vulkan_version),
+                     mtl::contract::VkVersionMinor(compile_info.vulkan_version),
                      (compile_info.spv_version >> 16) & 0xff,
                      (compile_info.spv_version >> 8) & 0xff);
 
             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
         }
 
-        void SetShaderCompilerPhysicalDeviceProfileFromRuntimeDevice(const VulkanPhyDevice *pd)
-        {
-            compile_info.vulkan_version = VK_API_VERSION_1_0;
-            compile_info.spv_version = SPV_VERSION_1_0;
-
-            g_pd_profile_valid = false;
-            g_pd_profile = mtl::contract::PhysicalDeviceProfileLite{};
-
-            if(!pd)
-                return;
-
-            const auto profile=mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*pd);
-            ApplyShaderCompilerPhysicalDeviceProfile(profile,pd->CheckExtensionSupport(VK_KHR_SPIRV_1_4_EXTENSION_NAME));
-        }
-
         void SetShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile)
         {
-            ApplyShaderCompilerPhysicalDeviceProfile(profile,false);
+            ApplyShaderCompilerPhysicalDeviceProfile(profile);
         }
 
         bool SetShaderCompilerPhysicalDeviceProfileFromJson(const char *json_text)

@@ -5,11 +5,6 @@
 
 namespace hgl::graph
 {
-    class VulkanPhyDevice;
-
-    // Preferred runtime entry (profile-first).
-    void SetShaderCompilerPhysicalDeviceProfileFromRuntimeDevice(const VulkanPhyDevice *pd);
-
     void SetShaderCompilerPhysicalDeviceProfile(const mtl::contract::PhysicalDeviceProfileLite &profile);
     bool SetShaderCompilerPhysicalDeviceProfileFromJson(const char *json_text);
     void GetShaderCompilerTargetVersions(uint32 &vulkan_version, uint32 &spv_version);

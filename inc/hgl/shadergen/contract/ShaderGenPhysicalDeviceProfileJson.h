@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/shadergen/contract/ShaderGenContract.h>
+#include <hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include <cctype>
 #include <cstdint>
 #include <string>
@@ -164,6 +165,16 @@ namespace hgl::graph::mtl::contract
             if (detail::ReadJsonUint64(json, "maxBoundDescriptorSets", v)) out_profile.limits.max_bound_descriptor_sets = static_cast<uint32_t>(v);
             if (detail::ReadJsonUint64(json, "maxUniformBufferRange", v)) out_profile.limits.max_uniform_buffer_range = v;
             if (detail::ReadJsonUint64(json, "maxStorageBufferRange", v)) out_profile.limits.max_storage_buffer_range = v;
+        }
+
+        ResolveShaderTargetVersions(out_profile,
+                                    out_profile.target_vulkan_version,
+                                    out_profile.target_spv_version);
+
+        {
+            uint64_t v = 0;
+            if (detail::ReadJsonUint64(json, "target_vulkan_version", v)) out_profile.target_vulkan_version = static_cast<uint32_t>(v);
+            if (detail::ReadJsonUint64(json, "target_spv_version", v)) out_profile.target_spv_version = static_cast<uint32_t>(v);
         }
 
         detail::ReadJsonBool(json, "geometryShader", out_profile.features.geometry_shader);
