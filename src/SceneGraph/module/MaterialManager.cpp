@@ -15,6 +15,7 @@
 #include<hgl/graph/module/ShaderGenVertexPolicyAdapter.h>
 #include<hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h>
 #include<hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h>
+#include<hgl/graph/module/ShaderGenContractGateReporter.h>
 #include<hgl/graph/module/ShaderGenSPVModuleAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
@@ -33,14 +34,6 @@
 namespace hgl::graph{
 namespace
 {
-    static void RecordStrictAbortReport(const AnsiString &mtl_name, const std::string &reason, const char *category)
-    {
-        RendererShaderGenAdapter::RecordExternalValidationError(
-            mtl_name.c_str() ? mtl_name.c_str() : "<unnamed-material>",
-            reason.c_str(),
-            category);
-    }
-
     void CreateShaderStageList(ValueArray<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
     {
         const ShaderModule *sm;
@@ -227,10 +220,9 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
 
     if(path_policy.require_mirror_valid && !mirror_ptr)
     {
-        RecordStrictAbortReport(mtl_name, "creation aborted: mirror-preferred requires valid mirror result", "StrictGate.Prebuild");
-        std::fprintf(stderr,
-            "[RendererShaderGenAdapter] material=%s creation aborted: mirror-preferred requires valid mirror result\n",
-            mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>");
+        ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
+                                         "StrictGate.Prebuild",
+                                         "creation aborted: mirror-preferred requires valid mirror result");
         return nullptr;
     }
 
@@ -318,18 +310,13 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
             {
                 if(require_mirror_valid)
                 {
-                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + mirror_spv_fail_reason, "StrictGate.Spv");
-                    std::fprintf(stderr,
-                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                        mirror_spv_fail_reason.c_str());
+                    ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
+                                                     "StrictGate.Spv",
+                                                     (std::string("mirror-preferred build aborted: ") + mirror_spv_fail_reason).c_str());
                     return nullptr;
                 }
 
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror SPV build failed (%s), fallback to legacy path\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                    mirror_spv_fail_reason.c_str());
+                ReportMirrorSPVFallback(mtl_name.c_str(), mirror_spv_fail_reason.c_str());
             }
         }
 
@@ -372,20 +359,15 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
         if(vertex_decision == ContractVertexInputDecision::StrictAbort)
         {
-            RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                reason.c_str());
+            ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
+                                             "StrictGate.Vertex",
+                                             (std::string("mirror-preferred build aborted: ") + reason).c_str());
             return nullptr;
         }
 
         if(vertex_decision == ContractVertexInputDecision::UseLegacy && !reason.empty())
         {
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s mirror vertex fallback (%s), use legacy vertex input\n",
-                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                reason.c_str());
+            ReportMirrorVertexFallback(mtl_name.c_str(), reason.c_str());
         }
 
         if(vertex_decision == ContractVertexInputDecision::UseMirror)
@@ -430,11 +412,9 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
         if(descriptor_decision == ContractDescriptorDecision::StrictAbort)
         {
-            RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + descriptor_reason, "StrictGate.Descriptor");
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                descriptor_reason.c_str());
+            ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
+                                             "StrictGate.Descriptor",
+                                             (std::string("mirror-preferred build aborted: ") + descriptor_reason).c_str());
             return nullptr;
         }
 
@@ -444,11 +424,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
                                               ? "layout mismatch"
                                               : "layout build failed";
 
-            std::fprintf(stderr,
-                "[RendererShaderGenAdapter] material=%s mirror descriptor %s (%s), fallback to legacy descriptor layout\n",
-                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                fallback_phase_text,
-                descriptor_reason.c_str());
+            ReportMirrorDescriptorFallback(mtl_name.c_str(), fallback_phase_text, descriptor_reason.c_str());
         }
 
         if(!descriptors.empty())
