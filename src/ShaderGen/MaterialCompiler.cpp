@@ -15,6 +15,7 @@
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
 #include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/shadergen/ShaderLogic.h>
+#include <hgl/shadergen/ShaderCompilerProfileAPI.h>
 #include <hgl/graph/mtl/UBOCommon.h>
 #include <hgl/vk/VKDeviceAttribute.h>
 #include <cstring>
@@ -683,7 +684,8 @@ MaterialCreateInfo *CompileFixedMaterial(
     const char *                frag_glsl,
     const char *                geom_glsl,
     const ShaderPermutationKey &key,
-    const Material3DCreateConfig *config)
+    const Material3DCreateConfig *config,
+    const contract::PhysicalDeviceProfileLite *profile)
 {
     if (!dev_attr)
     {
@@ -1010,6 +1012,15 @@ MaterialCreateInfo *CompileFixedMaterial(
     // Step 7: 调用 CreateShader() 编译到 SPV
     // ─────────────────────────────────────────────────────────────────────────
 
+    if (profile)
+    {
+        SetShaderCompilerPhysicalDeviceProfile(*profile);
+    }
+    else if (dev_attr && dev_attr->physical_device)
+    {
+        SetShaderCompilerPhysicalDeviceProfileFromRuntimeDevice(dev_attr->physical_device);
+    }
+
     if (!mci->CreateShader())
     {
         return FailAfterMci("CreateShader() failed (check GLSLCompiler and shader compile log)");
@@ -1038,7 +1049,8 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
     const ComposedMaterialDef & base_composed_def,
     const MaterialLogicDef &    logic,
     const ShaderPermutationKey &key,
-    const Material3DCreateConfig *config)
+    const Material3DCreateConfig *config,
+    const contract::PhysicalDeviceProfileLite *profile)
 {
     // Phase B: 校验 MaterialLogicDef 是否符合规范约束
     if (!ValidateMaterialLogicDef(logic))
@@ -1102,7 +1114,7 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
 
     return CompileFixedMaterial(dev_attr, base_fixed_def,
         generated_vs.c_str(), generated_fs.c_str(), nullptr,
-        key, config);
+        key, config, profile);
 }
 
 }  // namespace hgl::graph::mtl
