@@ -10,11 +10,6 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/RendererShaderGenAdapter.h>
-#include<hgl/graph/module/ShaderGenVertexInputAdapter.h>
-#include<hgl/graph/module/ShaderGenVertexPolicyAdapter.h>
-#include<hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h>
-#include<hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h>
 #include<hgl/graph/module/ShaderGenContractGateReporter.h>
 #include<hgl/graph/module/ShaderGenContractPathContext.h>
 #include<hgl/graph/module/MaterialBuildFlowAdapter.h>
