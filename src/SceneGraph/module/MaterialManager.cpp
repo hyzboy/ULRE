@@ -18,6 +18,8 @@
 #include<hgl/graph/module/ShaderGenContractGateReporter.h>
 #include<hgl/graph/module/ShaderGenContractPathContext.h>
 #include<hgl/graph/module/MaterialBuildFlowAdapter.h>
+#include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
+#include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include<hgl/graph/module/ShaderGenReadOnlyValidationGate.h>
 #include<hgl/graph/module/ShaderGenSPVModuleAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
@@ -237,23 +239,27 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
         return nullptr;
     }
 
-    {
-        Material *mtl;
+    MaterialCreatePrecheckResult precheck_result;
+    const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
+        mci,
+        mtl_name,
+        [&](const AnsiString &name)->Material *
+        {
+            Material *cached = nullptr;
+            if(material_by_name.Get(name, cached))
+                return cached;
 
-        if(material_by_name.Get(mtl_name,mtl))
-            return mtl;
-    }
+            return nullptr;
+        },
+        precheck_result);
 
-    VulkanDevice *device = GetDevice();
+    if(precheck_decision == MaterialCreatePrecheckDecision::UseCached)
+        return precheck_result.cached_material;
 
-    const ShaderCreateInfoMap &sci_map=mci->GetShaderMap();
-    const uint sci_count=sci_map.GetCount();
+    if(precheck_decision != MaterialCreatePrecheckDecision::Proceed)
+        return nullptr;
 
-    if(sci_count<2)
-        return(nullptr);
-
-    if(!mci->GetFS())
-        return(nullptr);
+    const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
     AutoDelete<Material> mtl=new Material(mtl_name,mci);
     bool mirror_spv_build_used = false;
@@ -288,21 +294,18 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     mtl->vertex_input = resolved_vertex_input;
     mtl->desc_manager = resolved_desc_manager;
 
+    MaterialFinalizePlan finalize_plan;
+    BuildMaterialFinalizePlan(mtl->desc_manager, *mci, finalize_plan);
+
     mtl->pipeline_layout_data=CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);
 
-    if(mtl->desc_manager)
+    for(const auto set_type : finalize_plan.mp_set_types)
     {
-        ENUM_CLASS_FOR(DescriptorSetType,int,dst)
-        {
-            if(mtl->desc_manager->hasSet((DescriptorSetType)dst))
-            {
-                mtl->mp_array[dst]=CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, (DescriptorSetType)dst);
-            }
-        }
+        mtl->mp_array[(int)set_type]=CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
     }
 
-    mtl->mi_data_bytes =mci->GetMIDataBytes();
-    mtl->mi_max_count  =mci->GetMIMaxCount();
+    mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
+    mtl->mi_max_count  = finalize_plan.mi_max_count;
 
     if(mtl->mi_data_bytes>0)
     {

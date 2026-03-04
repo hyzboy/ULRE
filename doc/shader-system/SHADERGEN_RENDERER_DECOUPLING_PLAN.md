@@ -143,6 +143,14 @@
     - [inc/hgl/graph/module/ShaderGenReadOnlyValidationGate.h](inc/hgl/graph/module/ShaderGenReadOnlyValidationGate.h)
     - [src/SceneGraph/module/ShaderGenReadOnlyValidationGate.cpp](src/SceneGraph/module/ShaderGenReadOnlyValidationGate.cpp)
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为统一调用 `RunReadOnlyValidationGate(...)`。
+  - finalize 阶段计划生成已抽离为独立适配器：
+    - [inc/hgl/graph/module/MaterialFinalizeFlowAdapter.h](inc/hgl/graph/module/MaterialFinalizeFlowAdapter.h)
+    - [src/SceneGraph/module/MaterialFinalizeFlowAdapter.cpp](src/SceneGraph/module/MaterialFinalizeFlowAdapter.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为先 `BuildMaterialFinalizePlan(...)` 再应用 `pipeline/mp/mi` 初始化。
+  - 前置输入/缓存短路检查已抽离为独立适配器：
+    - [inc/hgl/graph/module/MaterialCreatePrecheckAdapter.h](inc/hgl/graph/module/MaterialCreatePrecheckAdapter.h)
+    - [src/SceneGraph/module/MaterialCreatePrecheckAdapter.cpp](src/SceneGraph/module/MaterialCreatePrecheckAdapter.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为统一调用 `RunMaterialCreatePrecheck(...)` 处理 cache hit 与输入合法性短路。
   - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
 
 当前阻塞：
