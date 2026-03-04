@@ -1,12 +1,12 @@
 #pragma once
 
 #include <hgl/type/String.h>
-#include <hgl/shadergen/ShaderCreateInfoMap.h>
 #include <functional>
 
 namespace hgl::graph
 {
     class Material;
+    class ShaderCreateInfoMap;
 
     namespace mtl
     {

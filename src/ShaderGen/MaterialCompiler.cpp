@@ -8,7 +8,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/shadergen/DescriptorBindingContract.h>
+#include <hgl/graph/mtl/DescriptorBindingContract.h>
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include <hgl/shadergen/ShaderDescriptorInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
@@ -691,7 +691,8 @@ MaterialCreateInfo *CompileFixedMaterial(
     }
 
     // Contract validation (phase 1 skeleton): diagnostics only, no behavior changes yet.
-    BindingContract binding_contract = BuildBindingContract(def);
+    BindingContract binding_contract = BuildBindingContract(def.descriptor_entries,
+                                   def.descriptor_entry_count);
     {
         std::vector<std::string> diagnostics;
 

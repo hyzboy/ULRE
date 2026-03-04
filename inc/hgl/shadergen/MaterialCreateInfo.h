@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
-#include<hgl/shadergen/DescriptorBindingContract.h>
+#include<hgl/graph/mtl/DescriptorBindingContract.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>

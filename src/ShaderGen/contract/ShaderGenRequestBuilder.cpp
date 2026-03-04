@@ -1,6 +1,6 @@
 #include <hgl/shadergen/contract/ShaderGenRequestBuilder.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/shadergen/DescriptorBindingContract.h>
+#include <hgl/graph/mtl/DescriptorBindingContract.h>
 #include <hgl/vk/VKVertexInputAttribute.h>
 #include <cstring>
 

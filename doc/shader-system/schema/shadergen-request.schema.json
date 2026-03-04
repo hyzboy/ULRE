@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ulre.shadergen.request.v1",
+  "title": "ShaderGenRequest",
+  "description": "Schema for offline/remote ShaderGen request payload.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "material_id",
+    "material_cfg",
+    "permutation",
+    "pipeline_mode",
+    "required_resources",
+    "vertex_requirements",
+    "platform_tier",
+    "quality_level",
+    "compiler_options"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "material_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "material_cfg": {
+      "type": "object",
+      "description": "Material preset config. Structure is material-specific.",
+      "additionalProperties": true
+    },
+    "permutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "defines": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "integer" },
+              { "type": "number" },
+              { "type": "boolean" }
+            ]
+          }
+        },
+        "features": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "pipeline_mode": {
+      "type": "string",
+      "enum": [
+        "forward",
+        "deferred",
+        "shadow",
+        "depth_prepass",
+        "postprocess",
+        "compute",
+        "custom"
+      ]
+    },
+    "required_resources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resource_requirement" }
+    },
+    "vertex_requirements": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/vertex_requirement" }
+    },
+    "platform_tier": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "ultra", "custom"]
+    },
+    "quality_level": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "ultra", "cinematic", "custom"]
+    },
+    "compiler_options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["debug_info", "fallback", "optimization_level"],
+      "properties": {
+        "debug_info": { "type": "boolean" },
+        "fallback": { "type": "boolean" },
+        "optimization_level": {
+          "type": "string",
+          "enum": ["O0", "O1", "O2", "O3", "Os"]
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "graphics_api": {
+          "type": "string",
+          "enum": ["vulkan", "dx12", "metal", "gles", "custom"]
+        },
+        "os": {
+          "type": "string",
+          "enum": ["windows", "linux", "macos", "android", "ios", "custom"]
+        },
+        "arch": {
+          "type": "string",
+          "enum": ["x86_64", "arm64", "custom"]
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "resource_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "set",
+        "binding",
+        "name",
+        "resource_class",
+        "stage_mask"
+      ],
+      "properties": {
+        "set": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "binding": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "name": { "type": "string", "minLength": 1 },
+        "resource_class": {
+          "type": "string",
+          "enum": [
+            "UniformBuffer",
+            "StorageBuffer",
+            "SampledImage",
+            "Sampler",
+            "CombinedImageSampler",
+            "InputAttachment",
+            "StorageImage"
+          ]
+        },
+        "type_name": { "type": "string" },
+        "stage_mask": { "type": "integer", "minimum": 0 },
+        "array_count": { "type": "integer", "minimum": 1, "default": 1 }
+      }
+    },
+    "vertex_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["location", "semantic", "type_name", "input_rate"],
+      "properties": {
+        "location": { "type": "integer", "minimum": 0, "maximum": 1023 },
+        "semantic": { "type": "string", "minLength": 1 },
+        "type_name": { "type": "string", "minLength": 1 },
+        "input_rate": { "type": "string", "enum": ["vertex", "instance"] },
+        "group": { "type": "string" }
+      }
+    }
+  }
+}

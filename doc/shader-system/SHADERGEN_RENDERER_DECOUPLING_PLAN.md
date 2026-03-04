@@ -158,6 +158,20 @@
   - 当前“VSCode 直接启动返回错误”更可能与启动链路/调试环境差异相关，暂不再将其单独归因到 ShaderGen contract 主路径逻辑错误。
   - 仍保留“偶发日志报错”作为后续清理项，并继续以关键 pattern 统计做回归守卫。
 
+- 2026-03-04 头文件解耦收敛（渲染公共头去除 ShaderGen 实现依赖）
+  - [inc/hgl/graph/module/MaterialManager.h](inc/hgl/graph/module/MaterialManager.h) 已移除对 `MaterialCreateInfo.h` 的直接 include，改为 `ShaderCreateInfo/ShaderCreateInfoMap` 与 contract 类型前置声明。
+  - [inc/hgl/graph/module/MaterialCreatePrecheckAdapter.h](inc/hgl/graph/module/MaterialCreatePrecheckAdapter.h) 已移除对 `ShaderCreateInfoMap.h` 的直接 include，改为前置声明；具体依赖下沉到 [src/SceneGraph/module/MaterialCreatePrecheckAdapter.cpp](src/SceneGraph/module/MaterialCreatePrecheckAdapter.cpp)。
+  - [inc/hgl/graph/mtl/Material3DCreateConfig.h](inc/hgl/graph/mtl/Material3DCreateConfig.h) 已将 `FixedMaterialDef.h` 依赖替换为中立头 `SkyLight.h`，避免 mtl 公共配置头经由 ShaderGen 头链传递耦合。
+  - 新增中立契约入口 [inc/hgl/graph/mtl/BindingContract.h](inc/hgl/graph/mtl/BindingContract.h)，渲染侧公共头已改为通过该入口引用 binding contract：
+    - [inc/hgl/vk/VKMaterial.h](inc/hgl/vk/VKMaterial.h)
+    - [inc/hgl/ecs/systems/render/RenderDescriptorBindingSystem.h](inc/hgl/ecs/systems/render/RenderDescriptorBindingSystem.h)
+  - 当前 `DescriptorBindingContract` 的 `shadergen` 直接 include 仅剩 ShaderGen 内部入口 [inc/hgl/shadergen/MaterialCreateInfo.h](inc/hgl/shadergen/MaterialCreateInfo.h)，渲染/ECS 公共头已无该直连路径。
+  - 已完成 `DescriptorBindingContract` 归属迁移：新增 canonical 头 [inc/hgl/graph/mtl/DescriptorBindingContract.h](inc/hgl/graph/mtl/DescriptorBindingContract.h)，旧路径 [inc/hgl/shadergen/DescriptorBindingContract.h](inc/hgl/shadergen/DescriptorBindingContract.h) 已改为兼容转发（避免一次性破坏存量 include）。
+  - 新增中立描述符条目定义 [inc/hgl/graph/mtl/FixedDescriptorEntry.h](inc/hgl/graph/mtl/FixedDescriptorEntry.h)，并将 `DescriptorKind/FixedDescriptorEntry` 从 [inc/hgl/shadergen/FixedMaterialDef.h](inc/hgl/shadergen/FixedMaterialDef.h) 下沉到该中立头。
+  - [inc/hgl/graph/mtl/DescriptorBindingContract.h](inc/hgl/graph/mtl/DescriptorBindingContract.h) 的 `BuildBindingContract(...)` 已去除对 `FixedMaterialDef` 直接依赖，改为消费 `(FixedDescriptorEntry*, count)`；调用点 [src/ShaderGen/MaterialCompiler.cpp](src/ShaderGen/MaterialCompiler.cpp) 已同步更新。
+  - 继续下沉纯布局类型：新增 [inc/hgl/graph/mtl/FixedVertexEntry.h](inc/hgl/graph/mtl/FixedVertexEntry.h) 与 [inc/hgl/graph/mtl/FixedMaterialDef.h](inc/hgl/graph/mtl/FixedMaterialDef.h)，`FixedVertexEntry/FixedMaterialDef` 数据结构已迁入中立层。
+  - [inc/hgl/shadergen/FixedMaterialDef.h](inc/hgl/shadergen/FixedMaterialDef.h) 已改为聚合中立布局头 + 保留 `ShaderPermutationKey` 等生成侧语义，向“数据契约与生成逻辑分层”继续收敛。
+
 当前阻塞：
 
   - VSCode 直接启动链路偶发返回错误（含历史 `exit code = 1/-1073741819`），但用户在 Visual Studio Rebuild 后示例可稳定运行且画面正常；当前优先级调整为“环境/启动链路差异排查 + 日志噪声治理”，不再作为主阻塞。
@@ -390,6 +404,11 @@ struct ShaderGenResult {
 
 #### Task A：Request/Result 文件协议定版
 
+当前草案（已落地，可评审）：
+
+- [doc/shader-system/schema/shadergen-request.schema.json](doc/shader-system/schema/shadergen-request.schema.json)
+- [doc/shader-system/schema/shadergen-result.schema.json](doc/shader-system/schema/shadergen-result.schema.json)
+
 - 定义 `shadergen-request.schema.json`（或二进制等价 schema）
   - `contract_version`
   - `material_id/material_cfg/permutation/pipeline_mode`
@@ -405,6 +424,12 @@ struct ShaderGenResult {
 **Task A 验收**：同一 request 在工具链中可稳定序列化/反序列化，字段无丢失。
 
 #### Task B：Shader Package 格式与 Manifest
+
+当前草案（已落地，可评审）：
+
+- [doc/shader-system/schema/shader-package-manifest.schema.json](doc/shader-system/schema/shader-package-manifest.schema.json)
+- [doc/shader-system/schema/examples/shader-package.manifest.example.json](doc/shader-system/schema/examples/shader-package.manifest.example.json)
+- [doc/shader-system/SHADER_PACKAGE_LAYOUT_SPEC.md](doc/shader-system/SHADER_PACKAGE_LAYOUT_SPEC.md)
 
 - 定义包目录与命名规范（示例）
   - `manifest.json`
@@ -422,6 +447,12 @@ struct ShaderGenResult {
 **Task B 验收**：引擎可仅凭 manifest + 包内容完成加载，不访问 ShaderGen。
 
 #### Task C：`shadergen-cli` 工具化
+
+当前草案（已落地，可评审）：
+
+- [doc/shader-system/SHADERGEN_CLI_SPEC.md](doc/shader-system/SHADERGEN_CLI_SPEC.md)
+- [doc/shader-system/schema/shadergen-cli-log.schema.json](doc/shader-system/schema/shadergen-cli-log.schema.json)
+- [doc/shader-system/schema/examples/shadergen-cli.log.example.jsonl](doc/shader-system/schema/examples/shadergen-cli.log.example.jsonl)
 
 - 命令行协议（建议）
   - `shadergen-cli generate --request <in> --out <dir>`

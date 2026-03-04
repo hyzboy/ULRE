@@ -6,6 +6,8 @@
 #include <hgl/graph/module/ShaderGenContractGateReporter.h>
 #include <hgl/vk/VKVertexInput.h>
 #include <hgl/vk/VKMaterialDescriptorManager.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/ShaderCreateInfoVertex.h>
 
 namespace hgl::graph
 {

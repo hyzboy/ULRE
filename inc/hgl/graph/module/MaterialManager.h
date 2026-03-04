@@ -6,10 +6,12 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
-#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
 
 namespace hgl::graph{
+
+class ShaderCreateInfo;
+class ShaderCreateInfoMap;
 
 namespace mtl
 {
@@ -20,6 +22,7 @@ namespace mtl
 
     namespace contract
     {
+        struct ShaderGenRequest;
         struct ShaderGenResult;
     }
 }//namespace mtl

@@ -25,47 +25,13 @@
 ///   - 旧材质逐步迁移；全部迁移完成后删除旧体系
 
 #include<hgl/graph/mtl/SkyLight.h>
+#include<hgl/graph/mtl/FixedDescriptorEntry.h>
+#include<hgl/graph/mtl/FixedVertexEntry.h>
+#include<hgl/graph/mtl/FixedMaterialDef.h>
 #include<hgl/vk/VertexAttrib.h>
-#include<hgl/vk/VKDescriptorSetType.h>
-#include<hgl/vk/VKPrimitiveType.h>
 #include <string>
 
 namespace hgl::graph::mtl{
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 描述符类别
-// ─────────────────────────────────────────────────────────────────────────────
-enum class DescriptorKind : uint8
-{
-    UBO,            ///<uniform buffer
-    SSBO,           ///<storage buffer
-    Texture,        ///<sampled image（无采样器）
-    TextureSampler, ///<combined image sampler
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 单个描述符项（编译期常量，sizeof=32 字节）
-// ─────────────────────────────────────────────────────────────────────────────
-struct FixedDescriptorEntry
-{
-    DescriptorSetType   set_type;       ///<所属 descriptor set 类型
-    DescriptorKind      kind;           ///<UBO / SSBO / Texture / TextureSampler
-    uint32_t            stage_flags;    ///<VkShaderStageFlagBits 组合
-    const char *        name;           ///<绑定名称（binding=N 解析用，仅 debug 时字符串查找）
-    const char *        struct_name;    ///<GLSL 结构体名称（UBO/SSBO 用），Texture 类型填 nullptr
-    const char *        glsl_type;      ///<GLSL 采样器类型（Texture 用），UBO/SSBO 类型填 nullptr
-};//struct FixedDescriptorEntry
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 单个顶点输入项（编译期常量）
-// ─────────────────────────────────────────────────────────────────────────────
-struct FixedVertexEntry
-{
-    VAType              type;           ///<顶点属性类型（VAT_VEC3 等）
-    VertexInputGroup    group;          ///<分组（Basic / TransformID / MaterialInstanceID 等）
-    VkVertexInputRate   input_rate;     ///<VK_VERTEX_INPUT_RATE_VERTEX 或 _INSTANCE
-    const char *        name;           ///<顶点属性名称（VAN::Position 等）
-};//struct FixedVertexEntry
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shader 排列轴（Permutation Axis）
@@ -135,30 +101,6 @@ struct ShaderPermutationKey
     /// 生成对应的 GLSL #define 列表，写入 defines_out（格式："#define MACRO_NAME value\n"）
     void AppendGLSLDefines(std::string &defines_out) const;
 };//struct ShaderPermutationKey
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 完整材质定义（编译期常量结构体）
-// ─────────────────────────────────────────────────────────────────────────────
-struct FixedMaterialDef
-{
-    // ── 标识 ──────────────────────────────────────────────────────────────────
-    const char *                name;                   ///<材质名称（调试用）
-
-    // ── 图元类型 ──────────────────────────────────────────────────────────────
-    PrimitiveType               primitive_type;
-
-    // ── 顶点输入 ──────────────────────────────────────────────────────────────
-    const FixedVertexEntry *    vertex_entries;         ///<顶点输入数组
-    uint32_t                    vertex_entry_count;     ///<顶点输入数量
-
-    // ── 描述符布局 ────────────────────────────────────────────────────────────
-    const FixedDescriptorEntry *descriptor_entries;     ///<描述符数组（按 set_type 分组，组内按 binding 序）
-    uint32_t                    descriptor_entry_count; ///<描述符数量
-
-    // ── MaterialInstance 数据 ─────────────────────────────────────────────────
-    const char *                mi_glsl_codes;          ///<GLSL struct 成员代码；nullptr = 无 MI
-    uint32_t                    mi_struct_bytes;        ///<sizeof(MIData)；0 = 无 MI
-};//struct FixedMaterialDef
 
 }//namespace hgl::graph::mtl
 
