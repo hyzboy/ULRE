@@ -55,6 +55,12 @@ private: // Helper methods with integrated DebugUtils
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(Material *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
     Material *TryGetCachedMaterial(const AnsiString &name);
+    bool ExecuteMaterialBuildPipeline(Material *mtl,
+                                      const AnsiString &mtl_name,
+                                      const mtl::MaterialCreateInfo *mci,
+                                      const ShaderCreateInfoMap &sci_map,
+                                      const mtl::contract::ShaderGenResult *mirror_result,
+                                      bool require_mirror_valid);
 
 public: //Add
 

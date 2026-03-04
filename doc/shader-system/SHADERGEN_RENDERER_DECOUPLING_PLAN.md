@@ -153,6 +153,7 @@
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为统一调用 `RunMaterialCreatePrecheck(...)` 处理 cache hit 与输入合法性短路。
   - `MaterialManager` 内 finalize 应用步骤已收敛为私有成员 `ApplyMaterialFinalizePlan(...)`（调用 `BuildMaterialFinalizePlan` 并统一应用 `pipeline/mp/mi`），`CreateMaterialWithContract` 主体进一步缩短。
   - `MaterialManager` 新增私有缓存查询助手 `TryGetCachedMaterial(...)`，替代 `CreateMaterialWithContract` 内联查询 lambda，进一步强化“阶段编排 + helper 调用”的函数形态。
+  - `MaterialManager` 新增私有流水线入口 `ExecuteMaterialBuildPipeline(...)`，将“module flow + binding flow + finalize apply”串行步骤整体收拢；`CreateMaterialWithContract` 当前已收敛为 `gate -> precheck -> execute -> register` 形态。
   - `MaterialManager.cpp` 已移除一组下沉后不再使用的 include（request/result builder、descriptor layout/policy 等），降低编译依赖噪音。
   - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
 

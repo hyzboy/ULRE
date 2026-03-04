@@ -212,6 +212,52 @@ Material *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
     return nullptr;
 }
 
+bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
+                                                   const AnsiString &mtl_name,
+                                                   const mtl::MaterialCreateInfo *mci,
+                                                   const ShaderCreateInfoMap &sci_map,
+                                                   const mtl::contract::ShaderGenResult *mirror_result,
+                                                   bool require_mirror_valid)
+{
+    if(!mtl || !mci)
+        return false;
+
+    bool mirror_spv_build_used = false;
+    if(!BuildShaderModulesFlow(this,
+                               mtl_name,
+                               sci_map,
+                               mirror_result,
+                               require_mirror_valid,
+                               mtl->shader_maps,
+                               mirror_spv_build_used))
+    {
+        return false;
+    }
+
+    CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
+
+    VertexInput *resolved_vertex_input = nullptr;
+    MaterialDescriptorManager *resolved_desc_manager = nullptr;
+
+    if(!BuildMaterialBindingsFlow(mtl_name,
+                                  mci,
+                                  mirror_result,
+                                  mirror_spv_build_used,
+                                  require_mirror_valid,
+                                  resolved_vertex_input,
+                                  resolved_desc_manager))
+    {
+        return false;
+    }
+
+    mtl->vertex_input = resolved_vertex_input;
+    mtl->desc_manager = resolved_desc_manager;
+
+    ApplyMaterialFinalizePlan(mtl, mtl_name, *mci);
+
+    return true;
+}
+
 Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     HGL_CAPTURE_SCOPE();
@@ -280,39 +326,13 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
     AutoDelete<Material> mtl=new Material(mtl_name,mci);
-    bool mirror_spv_build_used = false;
-
-    if(!BuildShaderModulesFlow(this,
-                               mtl_name,
-                               sci_map,
-                               mirror_result,
-                               require_mirror_valid,
-                               mtl->shader_maps,
-                               mirror_spv_build_used))
-    {
+    if(!ExecuteMaterialBuildPipeline(mtl,
+                                     mtl_name,
+                                     mci,
+                                     sci_map,
+                                     mirror_result,
+                                     require_mirror_valid))
         return nullptr;
-    }
-
-    CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
-
-    VertexInput *resolved_vertex_input = nullptr;
-    MaterialDescriptorManager *resolved_desc_manager = nullptr;
-
-    if(!BuildMaterialBindingsFlow(mtl_name,
-                                  mci,
-                                  mirror_result,
-                                  mirror_spv_build_used,
-                                  require_mirror_valid,
-                                  resolved_vertex_input,
-                                  resolved_desc_manager))
-    {
-        return nullptr;
-    }
-
-    mtl->vertex_input = resolved_vertex_input;
-    mtl->desc_manager = resolved_desc_manager;
-
-    ApplyMaterialFinalizePlan(mtl, mtl_name, *mci);
 
     Add(mtl);
 
