@@ -21,20 +21,14 @@
 #include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include<hgl/graph/module/ShaderGenReadOnlyValidationGate.h>
-#include<hgl/graph/module/ShaderGenSPVModuleAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/contract/ShaderGenRequestBuilder.h>
-#include<hgl/shadergen/contract/ShaderGenResultBuilder.h>
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 #include<cstdio>
-#include<vector>
-#include<string>
 
 namespace hgl::graph{
 namespace
@@ -187,6 +181,28 @@ MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name
     return mp;
 }
 
+void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci)
+{
+    if(!mtl)
+        return;
+
+    MaterialFinalizePlan finalize_plan;
+    BuildMaterialFinalizePlan(mtl->desc_manager, mci, finalize_plan);
+
+    mtl->pipeline_layout_data = CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);
+
+    for(const auto set_type : finalize_plan.mp_set_types)
+    {
+        mtl->mp_array[(int)set_type] = CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
+    }
+
+    mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
+    mtl->mi_max_count  = finalize_plan.mi_max_count;
+
+    if(mtl->mi_data_bytes > 0)
+        mtl->mi_data_manager = new ActiveMemoryBlockManager(mtl->mi_data_bytes);
+}
+
 Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     HGL_CAPTURE_SCOPE();
@@ -294,23 +310,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     mtl->vertex_input = resolved_vertex_input;
     mtl->desc_manager = resolved_desc_manager;
 
-    MaterialFinalizePlan finalize_plan;
-    BuildMaterialFinalizePlan(mtl->desc_manager, *mci, finalize_plan);
-
-    mtl->pipeline_layout_data=CreateMaterialPipelineLayoutData(mtl_name, mtl->desc_manager);
-
-    for(const auto set_type : finalize_plan.mp_set_types)
-    {
-        mtl->mp_array[(int)set_type]=CreateMaterialMP(mtl_name, mtl->desc_manager, mtl->pipeline_layout_data, set_type);
-    }
-
-    mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
-    mtl->mi_max_count  = finalize_plan.mi_max_count;
-
-    if(mtl->mi_data_bytes>0)
-    {
-        mtl->mi_data_manager=new ActiveMemoryBlockManager(mtl->mi_data_bytes);
-    }
+    ApplyMaterialFinalizePlan(mtl, mtl_name, *mci);
 
     Add(mtl);
 
