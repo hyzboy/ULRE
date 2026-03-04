@@ -16,6 +16,12 @@ int main()
 {
     int failed = 0;
 
+  if (GetShaderCompilerLegacyVersionApiCallCount() != 0)
+  {
+    std::fprintf(stderr, "[FAIL] legacy version API should not be called before profile-first test\n");
+    ++failed;
+  }
+
     const char *json_v12 = R"JSON(
 {
   "status":"PASS",
@@ -126,6 +132,12 @@ int main()
     {
         std::fprintf(stderr, "[FAIL] invalid JSON should be rejected\n");
         ++failed;
+    }
+
+    if (GetShaderCompilerLegacyVersionApiCallCount() != 0)
+    {
+      std::fprintf(stderr, "[FAIL] profile-first path should not increment legacy version API counter\n");
+      ++failed;
     }
 
     if (failed != 0)

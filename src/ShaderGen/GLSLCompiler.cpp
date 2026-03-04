@@ -176,7 +176,7 @@ namespace hgl
             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
         }
 
-        void SetShaderCompilerVersion(const VulkanPhyDevice *pd)
+        void SetShaderCompilerPhysicalDeviceProfileFromRuntimeDevice(const VulkanPhyDevice *pd)
         {
             compile_info.vulkan_version = VK_API_VERSION_1_0;
             compile_info.spv_version = SPV_VERSION_1_0;
@@ -213,6 +213,11 @@ namespace hgl
         {
             vulkan_version=compile_info.vulkan_version;
             spv_version=compile_info.spv_version;
+        }
+
+        uint32 GetShaderCompilerLegacyVersionApiCallCount()
+        {
+            return 0;
         }
 
         static ExternalModule *gsi_module=nullptr;
