@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/shadergen/contract/ShaderGenContract.h>
 
 namespace hgl::graph::mtl{
 
@@ -28,7 +29,9 @@ const char *GetInlineMaterialName(const MaterialPreset mtl_id)
     }
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialPreset mtl_id,MaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,
+                                             const MaterialPreset mtl_id,
+                                             MaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -56,5 +59,4 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const
         default:                                    return nullptr;
     }
 }
-
 }//namespace hgl::graph::mtl

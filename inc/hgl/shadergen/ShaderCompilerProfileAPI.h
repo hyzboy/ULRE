@@ -5,7 +5,34 @@
 
 namespace hgl::graph
 {
+    struct VulkanDevAttr;
     class VulkanPhyDevice;
+
+    struct ShaderCompilerCompileContext
+    {
+        const VulkanDevAttr *dev_attr = nullptr;
+        const mtl::contract::PhysicalDeviceProfileLite *profile = nullptr;
+    };
+
+    void PushShaderCompilerCompileContext(const VulkanDevAttr *dev_attr,
+                                          const mtl::contract::PhysicalDeviceProfileLite *profile);
+    void PopShaderCompilerCompileContext();
+    bool GetShaderCompilerCompileContext(ShaderCompilerCompileContext &out_context);
+
+    class ScopedShaderCompilerCompileContext
+    {
+    public:
+        ScopedShaderCompilerCompileContext(const VulkanDevAttr *dev_attr,
+                                           const mtl::contract::PhysicalDeviceProfileLite *profile)
+        {
+            PushShaderCompilerCompileContext(dev_attr, profile);
+        }
+
+        ~ScopedShaderCompilerCompileContext()
+        {
+            PopShaderCompilerCompileContext();
+        }
+    };
 
     // Preferred runtime entry (profile-first).
     void SetShaderCompilerPhysicalDeviceProfileFromRuntimeDevice(const VulkanPhyDevice *pd);

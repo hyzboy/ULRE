@@ -1,5 +1,6 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include"S_PureColor3D.h"
 #include"S_PureColor3D_Logic.h"
 #include<cstdio>

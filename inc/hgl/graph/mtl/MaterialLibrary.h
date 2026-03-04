@@ -38,7 +38,9 @@ inline MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr)  \
     return Create##name(dev_attr,&cfg);  \
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialPreset mtl_id,MaterialCreateConfig *cfg);
+MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,
+                                             const MaterialPreset mtl_id,
+                                             MaterialCreateConfig *cfg);
 const char *GetInlineMaterialName(const MaterialPreset mtl_id);
 
 }//namespace hgl::graph::mtl

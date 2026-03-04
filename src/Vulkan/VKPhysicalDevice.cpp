@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKInstance.h>
 #include<hgl/log/Log.h>
+#include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileAdapter.h>
 #include"DebugOutProperties.h"
 
 namespace hgl::graph{
@@ -252,6 +253,8 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
         support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
 
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
+
+    physical_device_profile = mtl::contract::BuildPhysicalDeviceProfileFromVulkanPhyDevice(*this);
 
 }
 

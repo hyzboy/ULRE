@@ -18,11 +18,6 @@
 
 namespace hgl::graph::mtl{
 
-namespace contract
-{
-    struct PhysicalDeviceProfileLite;
-}
-
 struct Material3DCreateConfig;
 struct ComposedMaterialDef;
 struct MaterialLogicDef;
@@ -47,8 +42,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     const char *                frag_glsl,
     const char *                geom_glsl     = nullptr,
     const ShaderPermutationKey &key           = ShaderPermutationKey{},
-    const Material3DCreateConfig *config      = nullptr,
-    const contract::PhysicalDeviceProfileLite *profile = nullptr);
+    const Material3DCreateConfig *config      = nullptr);
 
 /**
  * 使用 ComposedMaterialDef + MaterialLogicDef 生成业务驱动的 VS/FS main，
@@ -63,8 +57,7 @@ MaterialCreateInfo *CompileComposedBusinessMaterial(
     const ComposedMaterialDef & base_composed_def,
     const MaterialLogicDef &    logic,
     const ShaderPermutationKey &key = ShaderPermutationKey{},
-    const Material3DCreateConfig *config = nullptr,
-    const contract::PhysicalDeviceProfileLite *profile = nullptr);
+    const Material3DCreateConfig *config = nullptr);
 
 /**
  * 校验生成阶段 FS 入口代码（fs_main）与 FragmentShaderBusiness 所需 helper 是否一致。

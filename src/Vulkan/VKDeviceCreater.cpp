@@ -484,7 +484,7 @@ VulkanDevice *VulkanDeviceCreater::Create()
         OutputPhysicalDeviceCaps(physical_device);
     #endif//_DEBUG
 
-    SetShaderCompilerPhysicalDeviceProfileFromRuntimeDevice(physical_device);
+    SetShaderCompilerPhysicalDeviceProfile(physical_device->GetPhysicalDeviceProfile());
 
     if(!RequirementCheck())
         return(nullptr);
