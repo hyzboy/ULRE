@@ -112,6 +112,15 @@
   - [test/CMakeLists.txt](test/CMakeLists.txt) 已接入 `test_ShaderGenDescriptorLayoutAdapter`，本地 Debug 构建与执行通过。
   - 最新定向回归：`02_auto_instance` 与 `03_BasicLitSunDirectionECS` 重新构建并短时运行，关键 pattern（`not found VAB "TransformID"` / `FATAL ERROR` / `Validation Error` / `vkCmdCopyBufferToImage`）均为 0 命中。
   - 进一步职责下沉：`MaterialManager` 内部的 mirror vertex 严格一致性校验逻辑已迁移至 [src/SceneGraph/module/ShaderGenVertexInputAdapter.cpp](src/SceneGraph/module/ShaderGenVertexInputAdapter.cpp) 的 `ValidateContractVertexLayoutAgainstLegacy(...)`，`MaterialManager` 仅保留流程编排与门禁策略。
+  - 继续职责下沉：`MaterialManager` 内联的 mirror SPV 模块构建流程已迁移至独立适配器：
+    - [inc/hgl/graph/module/ShaderGenSPVModuleAdapter.h](inc/hgl/graph/module/ShaderGenSPVModuleAdapter.h)
+    - [src/SceneGraph/module/ShaderGenSPVModuleAdapter.cpp](src/SceneGraph/module/ShaderGenSPVModuleAdapter.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为调用 `BuildShaderModulesFromContractSPV(...)`。
+  - 同一适配器已扩展承接 legacy fallback SPV 组装：新增 `BuildShaderModulesFromLegacySCIMap(...)`，`MaterialManager` 的 legacy 循环创建逻辑已移除，进一步收敛为流程编排。
+  - 顶点输入策略分支已抽离为独立适配器：
+    - [inc/hgl/graph/module/ShaderGenVertexPolicyAdapter.h](inc/hgl/graph/module/ShaderGenVertexPolicyAdapter.h)
+    - [src/SceneGraph/module/ShaderGenVertexPolicyAdapter.cpp](src/SceneGraph/module/ShaderGenVertexPolicyAdapter.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为通过 `BuildVertexInputByContractPolicy(...)` 统一处理 `UseMirror/UseLegacy/StrictAbort` 决策，减少内联分支复杂度。
   - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
 
 当前阻塞：

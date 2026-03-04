@@ -38,6 +38,7 @@
 #include<glm/gtc/quaternion.hpp>
 #include<iostream>
 #include<memory>
+#include<cmath>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -273,73 +274,41 @@ private:
             grid_primitive->SetVisible(true);
         }
 
-        // Create near billboard (closest to camera, will appear largest)
-        std::cout << "\n[BillboardPerspective] Creating Near Billboard..." << std::endl;
+        std::cout << "\n[BillboardPerspective] Creating spiral billboards (count=100, Z=0)..." << std::endl;
         {
-            billboard_near = ecs_world->CreateEntity<Entity>("BillboardNear");
-            std::cout << "  -> BillboardNear entity created" << std::endl;
+            constexpr int kBillboardCount = 100;
+            constexpr float kAngleStep = 0.45f;
+            constexpr float kRadiusStart = 2.0f;
+            constexpr float kRadiusStep = 0.6f;
+            constexpr float kCenterY = 5.0f;
 
-            auto transform = billboard_near->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(-15.0f, 5.0f, 10.0f));  // Closer position
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
+            for (int i = 0; i < kBillboardCount; ++i)
+            {
+                const float angle = kAngleStep * static_cast<float>(i);
+                const float radius = kRadiusStart + kRadiusStep * angle;
 
-            auto billboard = billboard_near->AddComponent<BillboardComponent>();
-            billboard->SetVisible(true);
+                const float x = std::cos(angle) * radius;
+                const float y = kCenterY + std::sin(angle) * radius;
+                const float z = 0.0f;
 
-            // KEY: Use world-space size for perspective effect
-            billboard->SetFixedPixelSize(false);
-            std::cout << "  -> SetFixedPixelSize(false) - perspective enabled" << std::endl;
+                const std::string name = "BillboardSpiral_" + std::to_string(i);
+                Entity* billboard_entity = ecs_world->CreateEntity<Entity>(name.c_str());
+                if (!billboard_entity)
+                    return false;
 
-            billboard->SetWorldSize(8.0f, 8.0f);  // 8x8 world units
-            std::cout << "  -> SetWorldSize(8, 8)" << std::endl;
+                auto transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
+                transform->SetLocalPosition(glm::vec3(x, y, z));
+                transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+                transform->SetMovable(false);
 
-            billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-            billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
-            std::cout << "  -> Near billboard configured at position (-15, 5, 10)" << std::endl;
-        }
-
-        // Create mid-distance billboard
-        std::cout << "\n[BillboardPerspective] Creating Mid Billboard..." << std::endl;
-        {
-            billboard_mid = ecs_world->CreateEntity<Entity>("BillboardMid");
-            std::cout << "  -> BillboardMid entity created" << std::endl;
-
-            auto transform = billboard_mid->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(0.0f, 5.0f, 0.0f));  // Mid position
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
-
-            auto billboard = billboard_mid->AddComponent<BillboardComponent>();
-            billboard->SetVisible(true);
-            billboard->SetFixedPixelSize(false);  // Perspective
-            billboard->SetWorldSize(8.0f, 8.0f);
-            billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-            billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
-            std::cout << "  -> Mid billboard configured at position (0, 5, 0)" << std::endl;
-        }
-
-        // Create far billboard (farthest from camera, will appear smallest)
-        std::cout << "\n[BillboardPerspective] Creating Far Billboard..." << std::endl;
-        {
-            billboard_far = ecs_world->CreateEntity<Entity>("BillboardFar");
-            std::cout << "  -> BillboardFar entity created" << std::endl;
-
-            auto transform = billboard_far->AddComponent<TransformComponent>(Mobility::Static);
-            transform->SetLocalPosition(glm::vec3(15.0f, 5.0f, -10.0f));  // Farther position
-            transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-            transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-            transform->SetMovable(false);
-
-            auto billboard = billboard_far->AddComponent<BillboardComponent>();
-            billboard->SetVisible(true);
-            billboard->SetFixedPixelSize(false);  // Perspective
-            billboard->SetWorldSize(8.0f, 8.0f);
-            billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-            billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
-            std::cout << "  -> Far billboard configured at position (15, 5, -10)" << std::endl;
+                auto billboard = billboard_entity->AddComponent<BillboardComponent>();
+                billboard->SetVisible(true);
+                billboard->SetFixedPixelSize(false);
+                billboard->SetWorldSize(8.0f, 8.0f);
+                billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
+                billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
+            }
         }
 
         std::cout << "\n[BillboardPerspective] Final entity count: " << ecs_world->GetEntityCount() << std::endl;

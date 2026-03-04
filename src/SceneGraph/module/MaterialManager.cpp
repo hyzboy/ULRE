@@ -12,7 +12,9 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/graph/module/ShaderGenVertexInputAdapter.h>
+#include<hgl/graph/module/ShaderGenVertexPolicyAdapter.h>
 #include<hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h>
+#include<hgl/graph/module/ShaderGenSPVModuleAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/contract/ShaderGenRequestBuilder.h>
@@ -290,54 +292,21 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     bool mirror_spv_build_used = false;
 
     {
-        const ShaderModule *sm;
-        bool mirror_spv_build_failed = false;
-        std::string mirror_spv_fail_reason;
-
         if(prefer_mirror_spv_build)
         {
             std::vector<const ShaderModule *> mirror_modules;
-            mirror_modules.reserve(mirror_result->spv_per_stage.size());
+            std::string mirror_spv_fail_reason;
 
-            if(mirror_result->spv_per_stage.empty())
-            {
-                mirror_spv_build_failed = true;
-                mirror_spv_fail_reason = "mirror result has no spv_per_stage";
-            }
-            else
-            {
-                for(const auto &blob : mirror_result->spv_per_stage)
+            const bool mirror_spv_build_ok = BuildShaderModulesFromContractSPV(
+                *mirror_result,
+                [&](VkShaderStageFlagBits stage, const uint32_t *spv_data, size_t spv_size)->const ShaderModule *
                 {
-                    if(blob.words.empty())
-                    {
-                        mirror_spv_build_failed = true;
-                        mirror_spv_fail_reason = "empty spv blob";
-                        break;
-                    }
+                    return CreateShaderModuleFromSPV(mtl_name, stage, spv_data, spv_size);
+                },
+                mirror_modules,
+                mirror_spv_fail_reason);
 
-                    sm=CreateShaderModuleFromSPV(mtl_name,
-                                                 (VkShaderStageFlagBits)blob.stage_mask,
-                                                 blob.words.data(),
-                                                 blob.words.size()*sizeof(uint32_t));
-
-                    if(!sm)
-                    {
-                        mirror_spv_build_failed = true;
-                        mirror_spv_fail_reason = "failed create shader module from mirror spv";
-                        break;
-                    }
-
-                    mirror_modules.push_back(sm);
-                }
-
-                if(!mirror_spv_build_failed && mirror_modules.size()<2)
-                {
-                    mirror_spv_build_failed = true;
-                    mirror_spv_fail_reason = "insufficient shader stages from mirror result";
-                }
-            }
-
-            if(!mirror_spv_build_failed)
+            if(mirror_spv_build_ok)
             {
                 for(const auto *module : mirror_modules)
                     mtl->shader_maps->Add(module);
@@ -365,15 +334,23 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
 
         if(!mirror_spv_build_used)
         {
-            for(auto [stage, sci_ptr] : sci_map)
+            std::vector<const ShaderModule *> legacy_modules;
+            std::string legacy_spv_fail_reason;
+
+            if(!BuildShaderModulesFromLegacySCIMap(
+                    sci_map,
+                    [&](ShaderCreateInfo *sci_ptr)->const ShaderModule *
+                    {
+                        return CreateShaderModule(mtl_name, sci_ptr);
+                    },
+                    legacy_modules,
+                    legacy_spv_fail_reason))
             {
-                sm=CreateShaderModule(mtl_name, sci_ptr);
-
-                if(!sm)
-                    return(nullptr);
-
-                mtl->shader_maps->Add(sm);
+                return nullptr;
             }
+
+            for(const auto *module : legacy_modules)
+                mtl->shader_maps->Add(module);
         }
     }
 
@@ -382,72 +359,36 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     {
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
-        bool use_mirror_vertex_input = (mirror_result != nullptr);
+        VIAArray mirror_input;
+        std::string reason;
+        const ContractVertexInputDecision vertex_decision = BuildVertexInputByContractPolicy(
+            vert,
+            mirror_result,
+            mirror_spv_build_used,
+            require_mirror_valid,
+            mirror_input,
+            reason);
 
-        if(use_mirror_vertex_input && vert && !mirror_spv_build_used)
+        if(vertex_decision == ContractVertexInputDecision::StrictAbort)
         {
-            std::string reason;
-            if(!ValidateContractVertexLayoutAgainstLegacy(vert, mirror_result->vertex_layout, reason))
-            {
-                use_mirror_vertex_input = false;
-
-                if(require_mirror_valid)
-                {
-                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
-                    std::fprintf(stderr,
-                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                        reason.c_str());
-                    return nullptr;
-                }
-
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror vertex layout mismatch (%s), fallback to legacy vertex input\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                    reason.c_str());
-            }
+            RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
+                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                reason.c_str());
+            return nullptr;
         }
 
-        if(mirror_spv_build_used)
+        if(vertex_decision == ContractVertexInputDecision::UseLegacy && !reason.empty())
         {
-            std::string reason;
-            if(!ValidateContractVertexLayoutAgainstLegacy(vert, mirror_result->vertex_layout, reason))
-            {
-                RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                    reason.c_str());
-                return nullptr;
-            }
+            std::fprintf(stderr,
+                "[RendererShaderGenAdapter] material=%s mirror vertex fallback (%s), use legacy vertex input\n",
+                mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
+                reason.c_str());
         }
 
-        if(use_mirror_vertex_input)
-        {
-            VIAArray mirror_input;
-            std::string reason;
-            if(!BuildVertexInputFromContractLayout(mirror_result->vertex_layout, mirror_input, reason))
-            {
-                if(require_mirror_valid || mirror_spv_build_used)
-                {
-                    RecordStrictAbortReport(mtl_name, std::string("mirror-preferred build aborted: ") + reason, "StrictGate.Vertex");
-                    std::fprintf(stderr,
-                        "[RendererShaderGenAdapter] material=%s mirror-preferred build aborted: %s\n",
-                        mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                        reason.c_str());
-                    return nullptr;
-                }
-
-                std::fprintf(stderr,
-                    "[RendererShaderGenAdapter] material=%s mirror vertex input build failed (%s), fallback to legacy vertex input\n",
-                    mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-                    reason.c_str());
-            }
-            else
-            {
-                mtl->vertex_input = GetVertexInput(mirror_input);
-            }
-        }
+        if(vertex_decision == ContractVertexInputDecision::UseMirror)
+            mtl->vertex_input = GetVertexInput(mirror_input);
 
         if(!mtl->vertex_input && vert)
             mtl->vertex_input=GetVertexInput(vert->GetInput());
