@@ -130,6 +130,10 @@
     - [src/SceneGraph/module/ShaderGenContractGateReporter.cpp](src/SceneGraph/module/ShaderGenContractGateReporter.cpp)
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为统一调用 `ReportMirrorPreferredStrictAbort(...)`，移除重复的 `RecordExternalValidationError + fprintf` 片段。
   - fallback 日志文本拼接已进一步下沉到 reporter：新增 `ReportMirrorSPVFallback(...)` / `ReportMirrorVertexFallback(...)` / `ReportMirrorDescriptorFallback(...)`，`MaterialManager` 不再内联 fallback 日志格式化。
+  - `CreateMaterial` 前置路径判定已抽离为 `ContractPathContext`：
+    - [inc/hgl/graph/module/ShaderGenContractPathContext.h](inc/hgl/graph/module/ShaderGenContractPathContext.h)
+    - [src/SceneGraph/module/ShaderGenContractPathContext.cpp](src/SceneGraph/module/ShaderGenContractPathContext.cpp)
+    - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为通过 `BuildShaderGenContractPathContext(...)` 统一获取 mode/policy/diff_log_detail/request/mirror 指针与 prebuild 状态。
   - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
 
 当前阻塞：

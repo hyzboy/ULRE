@@ -16,6 +16,7 @@
 #include<hgl/graph/module/ShaderGenDescriptorLayoutAdapter.h>
 #include<hgl/graph/module/ShaderGenDescriptorPolicyAdapter.h>
 #include<hgl/graph/module/ShaderGenContractGateReporter.h>
+#include<hgl/graph/module/ShaderGenContractPathContext.h>
 #include<hgl/graph/module/ShaderGenSPVModuleAdapter.h>
 #include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
@@ -189,36 +190,18 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         return(nullptr);
 
     const GraphicsContext *graphics_context = GetGraphicsContext();
-    const ShaderGenPathMode path_mode = graphics_context ? graphics_context->GetShaderGenPathMode() : ShaderGenPathMode::MirrorValidate;
-    const ShaderGenPathPolicy path_policy = graphics_context ? graphics_context->GetShaderGenPathPolicy() : MakeShaderGenPathPolicy(path_mode);
-    const RendererShaderGenAdapter::DiffLogDetail diff_log_detail =
-        path_policy.full_diff_log
-        ? RendererShaderGenAdapter::DiffLogDetail::Full
-        : RendererShaderGenAdapter::DiffLogDetail::SummaryOnly;
+    ShaderGenContractPathContext path_context;
+    BuildShaderGenContractPathContext(path_context, graphics_context, *mci, mtl_name.c_str());
 
-    mtl::contract::ShaderGenResult mirror_result;
-    mtl::contract::ShaderGenRequest request_result;
-    const mtl::contract::ShaderGenRequest *request_ptr = nullptr;
-    const mtl::contract::ShaderGenResult *mirror_ptr = nullptr;
-
-    if(path_policy.enable_mirror_validation && mtl::contract::BuildShaderGenRequestFromMaterialCreateInfo(*mci,request_result,mtl_name.c_str()))
-    {
-        request_ptr = &request_result;
-    }
-
-    if(path_policy.enable_mirror_validation && mtl::contract::BuildShaderGenResultFromMaterialCreateInfo(*mci,mirror_result))
-    {
-        mirror_ptr = &mirror_result;
-    }
-    else if(path_policy.enable_mirror_validation)
+    if(path_context.mirror_prebuild_failed)
     {
         std::fprintf(stderr,
             "[RendererShaderGenAdapter] material=%s failed to prebuild mirror result (mode=%s)\n",
             mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-            GetShaderGenPathModeName(path_mode));
+            GetShaderGenPathModeName(path_context.mode));
     }
 
-    if(path_policy.require_mirror_valid && !mirror_ptr)
+    if(path_context.policy.require_mirror_valid && !path_context.mirror)
     {
         ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
                                          "StrictGate.Prebuild",
@@ -226,7 +209,13 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         return nullptr;
     }
 
-    return CreateMaterialWithContract(mtl_name,mci,request_ptr,mirror_ptr,path_policy.enable_mirror_validation,path_policy.require_mirror_valid,diff_log_detail);
+    return CreateMaterialWithContract(mtl_name,
+                                      mci,
+                                      path_context.request,
+                                      path_context.mirror,
+                                      path_context.policy.enable_mirror_validation,
+                                      path_context.policy.require_mirror_valid,
+                                      path_context.diff_log_detail);
 }
 
 Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenRequest *request_result,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid,const RendererShaderGenAdapter::DiffLogDetail diff_log_detail)
