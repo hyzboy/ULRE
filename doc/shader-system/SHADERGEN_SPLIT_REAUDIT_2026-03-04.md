@@ -22,13 +22,12 @@
 - `MaterialManager` 主路径已 mirror-first + strict gate policy。
 - 物理设备采集器已可输出 JSON（纯 JSON stdout，支持 shell 重定向）。
 - `GLSLCompiler` 调用端已恢复以 `GetLimit/SetLimit` 为标准入口（不强绑扩展接口）。
-- `SetShaderCompilerVersion(pd)` 已恢复“按 Vulkan 版本/扩展选择 SPV 版本”。
+- 设备初始化阶段已改为一次性 profile 下发：`VulkanPhyDevice` 构造缓存 profile，`VKDeviceCreater` 启动时下发到编译器。
 
 仍缺：
 
-- `ShaderGenRequest` 中 physical profile 的“统一写入与消费链路”尚未完全贯通到编译策略层。
-- `collector JSON -> profile DTO -> GLSLCompiler limits` 仍缺一条端到端示例路径。
-- ABI 面仍有“可选扩展接口”残留，需明确长期策略（保留兼容或移除）。
+- 运行时 profile 与 JSON profile 的“同输入一致性”基线文档尚未固化为长期回归基准。
+- profile 驱动策略矩阵已成文，但尚未接入自动校验（目前为人工核对文档）。
 
 ---
 
@@ -155,3 +154,26 @@ P2：
 - ShaderGen 编译限制仅通过 profile DTO 驱动。
 - runtime/json 双来源可互换，行为一致。
 - `MaterialManager` 仅保留渲染职责，不承载 ShaderGen 设备细节逻辑。
+
+---
+
+## 8. 执行进度（2026-03-05 更新）
+
+### 已完成
+
+- [x] Phase A：统一 `GetLimit/SetLimit` 入口，profile DTO 成为编译限制主输入。
+- [x] Phase B：runtime/json 双来源均可落入同一 profile 应用链路。
+- [x] Phase C：validator/strict gate 已消费 profile 关键字段并形成可观测分类。
+- [x] `MaterialManager` 已回归渲染职责；材质创建路径不再进行 profile 设定/传递。
+- [x] 编译上下文临时栈（push/pop scope）已移除，避免再次出现每材质切换 profile。
+
+### 进行中
+
+- [ ] Phase D 文档收口：沉淀“runtime vs JSON 一致性基线”并固定回归检查清单。
+
+### 当前主链路（落地状态）
+
+1. `VulkanPhyDevice` 初始化时生成并缓存 `PhysicalDeviceProfileLite`。
+2. `VKDeviceCreater` 在设备创建时一次性下发 profile 到 GLSLCompiler。
+3. ShaderGen 编译阶段按已下发 profile 选择 Vulkan/SPV 目标并应用 limits。
+4. 材质工厂链路仅传递 `VulkanDevAttr`，不承载 profile 参数。

@@ -392,6 +392,36 @@ target_include_directories(test_RendererShaderGenAdapterProfileCategory
 
 CreateTestProject(26 test_RendererShaderGenAdapterProfileCategory)
 
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    set(SHADERGEN_PARITY_PYTHON "${Python3_EXECUTABLE}")
+else()
+    set(SHADERGEN_PARITY_PYTHON "python")
+endif()
+
+add_custom_target(test_ShaderGenProfileParitySmoke
+    COMMAND ${SHADERGEN_PARITY_PYTHON} ${CMAKE_SOURCE_DIR}/tools/shadergen_profile_parity_runner.py
+            --bin-dir ${CMAKE_BINARY_DIR}/out/Windows_64_$<CONFIG>
+            --output ${CMAKE_SOURCE_DIR}/doc/shader-system/baseline/shadergen_profile_parity_latest.json
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DEPENDS test_ShaderGenPhysicalDeviceProfileJsonPath
+            test_ShaderGenContractValidatorProfile
+    COMMENT "Run ShaderGen profile parity smoke baseline"
+)
+
+add_custom_target(test_ShaderGenProfileParityExtended
+    COMMAND ${SHADERGEN_PARITY_PYTHON} ${CMAKE_SOURCE_DIR}/tools/shadergen_profile_parity_runner.py
+            --extended
+            --bin-dir ${CMAKE_BINARY_DIR}/out/Windows_64_$<CONFIG>
+            --output ${CMAKE_SOURCE_DIR}/doc/shader-system/baseline/shadergen_profile_parity_extended_latest.json
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DEPENDS test_ShaderGenPhysicalDeviceProfileJsonPath
+            test_ShaderGenContractValidatorProfile
+            test_RendererShaderGenAdapterProfileCategory
+            test_MaterialPresetExhaustiveCompile
+    COMMENT "Run ShaderGen profile parity extended baseline"
+)
+
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME test_ComposedShaderGenerator
@@ -469,8 +499,27 @@ if(BUILD_TESTING)
     add_test(NAME test_RendererShaderGenAdapterProfileCategory
              COMMAND test_RendererShaderGenAdapterProfileCategory)
 
+    add_test(NAME test_ShaderGenProfileParitySmoke
+             COMMAND ${SHADERGEN_PARITY_PYTHON} ${CMAKE_SOURCE_DIR}/tools/shadergen_profile_parity_runner.py
+                     --bin-dir ${CMAKE_BINARY_DIR}/out/Windows_64_$<CONFIG>
+                     --output ${CMAKE_SOURCE_DIR}/doc/shader-system/baseline/shadergen_profile_parity_latest.json)
+
+        add_test(NAME test_ShaderGenProfileParityExtended
+             COMMAND ${SHADERGEN_PARITY_PYTHON} ${CMAKE_SOURCE_DIR}/tools/shadergen_profile_parity_runner.py
+                 --extended
+                 --bin-dir ${CMAKE_BINARY_DIR}/out/Windows_64_$<CONFIG>
+                 --output ${CMAKE_SOURCE_DIR}/doc/shader-system/baseline/shadergen_profile_parity_extended_latest.json)
+
     set_tests_properties(test_MaterialPresetExhaustiveCompile PROPERTIES
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+    set_tests_properties(test_ShaderGenProfileParitySmoke PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+    set_tests_properties(test_ShaderGenProfileParityExtended PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        LABELS "extended;parity"
+        DISABLED TRUE)
 endif()
 
 # 需要时可直接运行：
