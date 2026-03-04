@@ -153,20 +153,21 @@
     - [src/SceneGraph/module/MaterialManager.cpp](src/SceneGraph/module/MaterialManager.cpp) 改为统一调用 `RunMaterialCreatePrecheck(...)` 处理 cache hit 与输入合法性短路。
   - `MaterialManager` 内 finalize 应用步骤已收敛为私有成员 `ApplyMaterialFinalizePlan(...)`（调用 `BuildMaterialFinalizePlan` 并统一应用 `pipeline/mp/mi`），`CreateMaterialWithContract` 主体进一步缩短。
   - `MaterialManager` 新增私有缓存查询助手 `TryGetCachedMaterial(...)`，替代 `CreateMaterialWithContract` 内联查询 lambda，进一步强化“阶段编排 + helper 调用”的函数形态。
-  - `MaterialManager` 新增私有流水线入口 `ExecuteMaterialBuildPipeline(...)`，将“module flow + binding flow + finalize apply”串行步骤整体收拢；`CreateMaterialWithContract` 当前已收敛为 `gate -> precheck -> execute -> register` 形态。
-  - `MaterialManager.cpp` 已移除一组下沉后不再使用的 include（request/result builder、descriptor layout/policy 等），降低编译依赖噪音。
-  - 本轮仅执行重构编译校验：`ULRE.SceneGraph` Debug 目标构建通过（未执行测试，按“测试后置”策略）。
+ 2026-03-04 运行态状态更新（用户侧 VS Rebuild 复核）
+  - 用户在 Visual Studio 完整 Rebuild 后反馈：示例均可正常运行、画面正常。
+  - 当前“VSCode 直接启动返回错误”更可能与启动链路/调试环境差异相关，暂不再将其单独归因到 ShaderGen contract 主路径逻辑错误。
+  - 仍保留“偶发日志报错”作为后续清理项，并继续以关键 pattern 统计做回归守卫。
 
 当前阻塞：
 
-  - 运行态示例在本机普遍以 `exit code = 1` 退出（`mirror-validate` 模式），但当前关键 grep 未观察到新增 contract/validation 关键错误；需单独定位运行时退出根因。
+  - VSCode 直接启动链路偶发返回错误（含历史 `exit code = 1/-1073741819`），但用户在 Visual Studio Rebuild 后示例可稳定运行且画面正常；当前优先级调整为“环境/启动链路差异排查 + 日志噪声治理”，不再作为主阻塞。
   - Phase 3 仍未完成“descriptor/pipeline layout 全量由 contract 结果驱动构建”，当前仍保留 legacy MDI 作为主来源并做一致性守卫。
 
 下一步（建议本周）：
 
   1. Phase 3：推进主路径切换开关（默认走 `ShaderGenResult`，legacy 保留 fallback）并补齐回退策略验证
   2. 在现有 `StrictGate` 单测基础上，补齐 `MaterialManager::CreateMaterial` 入口级端到端严格失败路径回归用例
-  3. 对示例运行时 `exit code = 1` 做专项排查并沉淀最小复现清单
+  3. 对 VSCode 启动链路差异与偶发日志报错做专项排查并沉淀最小复现清单（与 VS Rebuild 结果对照）
   4. 按材质/stage 聚合输出 validation/profiler（日志通道或可视化入口）
 
   ### 0.1 换机接手清单（可直接执行）
