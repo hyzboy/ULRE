@@ -1,6 +1,4 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/vk/VertexAttrib.h>
-#include<hgl/vk/VKVertexInputAttribute.h>
 #include<hgl/graph/shared/RenderAssignDef.h>
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
