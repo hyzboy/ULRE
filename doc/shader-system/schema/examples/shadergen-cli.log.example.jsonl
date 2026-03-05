@@ -1,4 +1,0 @@
-{"ts_utc":"2026-03-04T10:00:00Z","level":"info","code":"generate.start","command":"generate","message":"start generating shader artifacts","context":{"request":"requests/basiclit.json","out":"out/basiclit"}}
-{"ts_utc":"2026-03-04T10:00:01Z","level":"info","code":"spv.compiled","command":"generate","message":"compiled stage","material_key":"basiclit","context":{"stage_mask":1,"spv_file":"materials/basiclit/spv_stage_0x1.spv","byte_size":4096}}
-{"ts_utc":"2026-03-04T10:00:01Z","level":"info","code":"pack.done","command":"pack","message":"package created","context":{"package":"out/basiclit.pack","content_hash":"A51D9B4B59D6492E8E8D4AA7F66D1C4E"},"duration_ms":212}
-{"ts_utc":"2026-03-04T10:00:02Z","level":"error","code":"verify.hash_mismatch","command":"verify","message":"artifact hash mismatch","path":"materials/basiclit/spv_stage_0x10.spv","context":{"expected":"8F7E6D5C4B3A29100112233445566778","actual":"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"}}
