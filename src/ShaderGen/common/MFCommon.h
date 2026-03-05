@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/graph/mtl/StdMaterial.h>

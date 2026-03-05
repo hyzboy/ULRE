@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/vk/VKShaderDescriptor.h>
 #include<cstring>
 

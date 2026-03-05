@@ -1,4 +1,4 @@
-/// ShaderComposition_Examples.h — 合成着色器系统使用示例
+﻿/// ShaderComposition_Examples.h — 合成着色器系统使用示例
 ///
 /// 对比：
 ///   [旧方式] FixedMaterialDef（S_PureColor3D.h）
@@ -57,15 +57,15 @@ constexpr const char EX_PURE_COLOR_3D_MI_GLSL[] = R"(
 
 // 顶点输入（position + instance ID）
 constexpr FixedVertexEntry EX_PURE_COLOR_3D_VERTEX[] = {
-    {VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "Position"},
+    {VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, "Position"},
 };
 
 // 描述符（视图矩阵、相机矩阵、L2W矩阵、材质数据）
 constexpr FixedDescriptorEntry EX_PURE_COLOR_3D_DESCRIPTORS[] = {
-    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr},
-    {DescriptorSetType::Camera,       DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",   nullptr},
-    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorld", nullptr},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mtl",      "MaterialInstanceData", nullptr},
+    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,  ShaderGenStageAllGraphics, "viewport", "ViewportInfo", nullptr},
+    {DescriptorSetType::Camera,       DescriptorKind::UBO,  ShaderGenStageAllGraphics, "camera",   "CameraInfo",   nullptr},
+    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,  ShaderGenStageAllGraphics, "l2w",      "LocalToWorld", nullptr},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO, ShaderGenStageVertex,      "mtl",      "MaterialInstanceData", nullptr},
 };
 
 constexpr VertexShaderBusiness EX_PURE_COLOR_3D_VERTEX_BUSINESS { EX_PURE_COLOR_3D_VS_BUSINESS };
@@ -142,19 +142,19 @@ constexpr const char EX_BASIC_LIT_MI_GLSL[] = R"(
 )";
 
 constexpr FixedVertexEntry EX_BASIC_LIT_VERTEX[] = {
-    {VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "Position"},
-    {VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "Normal"},
-    {VAT_VEC2, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, "TexCoord"},
+    {VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, "Position"},
+    {VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, "Normal"},
+    {VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, "TexCoord"},
 };
 
 constexpr FixedDescriptorEntry EX_BASIC_LIT_DESCRIPTORS[] = {
-    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr},
-    {DescriptorSetType::Camera,       DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",   nullptr},
-    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorld", nullptr},
-    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "light",    "LightData",    nullptr},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::Texture,        uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "BaseColorMap", nullptr, "sampler2D"},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "LinearSampler", nullptr, "sampler2D"},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO,           uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mtl",      "MaterialInstanceData", nullptr},
+    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,            ShaderGenStageAllGraphics, "viewport", "ViewportInfo", nullptr},
+    {DescriptorSetType::Camera,       DescriptorKind::UBO,            ShaderGenStageAllGraphics, "camera",   "CameraInfo",   nullptr},
+    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            ShaderGenStageAllGraphics, "l2w",      "LocalToWorld", nullptr},
+    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            ShaderGenStageAllGraphics, "light",    "LightData",    nullptr},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::Texture,        ShaderGenStageFragment, "BaseColorMap", nullptr, "sampler2D"},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::TextureSampler, ShaderGenStageFragment, "LinearSampler", nullptr, "sampler2D"},
+    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO,           ShaderGenStageVertex,   "mtl",      "MaterialInstanceData", nullptr},
 };
 
 constexpr VertexShaderBusiness EX_BASIC_LIT_VERTEX_BUSINESS { EX_BASIC_LIT_VS_BUSINESS };
@@ -247,3 +247,4 @@ const ComposedMaterialDef EX_FX_EMISSION_COMPOSED {
 };
 
 }  // namespace hgl::graph::mtl
+

@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>

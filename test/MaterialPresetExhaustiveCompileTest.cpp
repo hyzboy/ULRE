@@ -210,7 +210,7 @@ namespace
             variant_name,
             [preset, cfg_copy]() mutable -> MaterialCreateInfo *
             {
-                using CreateMaterialCreateInfo3Arg = MaterialCreateInfo *(*)(const VulkanDevAttr *, const MaterialPreset, MaterialCreateConfig *);
+                using CreateMaterialCreateInfo3Arg = MaterialCreateInfo *(*)(const contract::PhysicalDeviceProfileLite *, const MaterialPreset, MaterialCreateConfig *);
                 constexpr CreateMaterialCreateInfo3Arg kCreateMCI = &CreateMaterialCreateInfo;
                 return kCreateMCI(nullptr, preset, &cfg_copy);
             }

@@ -1,4 +1,4 @@
-﻿#ifndef HGL_GLSL_COMPILER_INCLUDE
+#ifndef HGL_GLSL_COMPILER_INCLUDE
 #define HGL_GLSL_COMPILER_INCLUDE
 
 #include<hgl/type/DataType.h>

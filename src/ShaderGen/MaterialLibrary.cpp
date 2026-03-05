@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/mtl/MaterialLibrary.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>

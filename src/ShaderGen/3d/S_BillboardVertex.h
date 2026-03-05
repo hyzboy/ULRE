@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include<hgl/graph/mtl/StdMaterial.h>
 
 namespace hgl::graph::mtl{

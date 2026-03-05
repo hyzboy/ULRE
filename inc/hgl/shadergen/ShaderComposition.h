@@ -28,6 +28,10 @@
 
 namespace hgl::graph::mtl {
 
+constexpr uint32_t ShaderGenStageVertex = 0x00000001u;
+constexpr uint32_t ShaderGenStageFragment = 0x00000010u;
+constexpr uint32_t ShaderGenStageAllGraphics = 0x0000001Fu;
+
 struct MaterialLogicDef;
 
 // ─────────────────────────────────────────────────────────────────────────────

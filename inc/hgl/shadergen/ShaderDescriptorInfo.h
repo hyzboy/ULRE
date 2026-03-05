@@ -45,8 +45,7 @@ public:
     virtual ~ShaderDescriptorInfo();
 
     const ShaderStage                   GetShaderStage()const { return stage_flag; }
-    const VkShaderStageFlagBits         GetVkShaderStage()const { return (VkShaderStageFlagBits)stage_flag; }
-    std::string                         GetStageName()const { return GetShaderStageName((VkShaderStageFlagBits)stage_flag); }
+    std::string                         GetStageName()const;
 
 public:
 

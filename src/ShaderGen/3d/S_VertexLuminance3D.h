@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
@@ -11,17 +11,17 @@ constexpr const char VERTEX_LUMINANCE_3D_MI_CODES[] = "vec4 Color;";
 constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
 
 constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC3[] = {
-    { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
-    { VAT_FLOAT, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Luminance },
-    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::TransformID::VIS_NAME },
-    { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::MaterialInstanceID::VIS_NAME },
+    { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+    { VAT_FLOAT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Luminance },
+    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+    { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
 };
 
 constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX_VEC2[] = {
-    { VAT_VEC2, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
-    { VAT_FLOAT, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Luminance },
-    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::TransformID::VIS_NAME },
-    { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::MaterialInstanceID::VIS_NAME },
+    { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+    { VAT_FLOAT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Luminance },
+    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+    { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
 };
 
 #if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
@@ -116,3 +116,5 @@ const ComposedMaterialDef VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2 {
 
 }
 }
+
+

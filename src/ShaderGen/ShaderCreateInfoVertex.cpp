@@ -20,7 +20,7 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
 
     for(VIA &via:via_list)
     {
-        via.input_rate=VK_VERTEX_INPUT_RATE_VERTEX;
+        via.input_rate=uint8_t(VertexInputRate::Vertex);
         via.group=VertexInputGroup::Basic;
 
         if(vsdi.AddInput(via))
@@ -30,7 +30,7 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
     return count;
 }
 
-int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
+int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name,const VertexInputRate input_rate,const VertexInputGroup &group)
 {
     VIA via;
 
@@ -39,7 +39,7 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name,
     via.basetype=(uint8) type.basetype;
     via.vec_size=        type.vec_size;
 
-    via.input_rate      =input_rate;
+    via.input_rate      =uint8_t(input_rate);
     via.group           =group;
 
     via.interpolation   =Interpolation::Smooth;
@@ -47,7 +47,7 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name,
     return vsdi.AddInput(via);
 }
 
-int ShaderCreateInfoVertex::AddInput(const char *type,const std::string &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
+int ShaderCreateInfoVertex::AddInput(const char *type,const std::string &name,const VertexInputRate input_rate,const VertexInputGroup &group)
 {
     VAType vat;
 
@@ -91,8 +91,8 @@ int ShaderCreateInfoVertex::AddOutput(const SVType &type,const std::string &name
 
 void ShaderCreateInfoVertex::AddJoint()
 {
-    AddInput(VAT_UVEC4, VAN::JointID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointID);
-    AddInput(VAT_VEC4,  VAN::JointWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointWeight);
+    AddInput(VAT_UVEC4, VAN::JointID,    VertexInputRate::Vertex,VertexInputGroup::JointID);
+    AddInput(VAT_VEC4,  VAN::JointWeight,VertexInputRate::Vertex,VertexInputGroup::JointWeight);
 }
 
 void ShaderCreateInfoVertex::AddAssignTransform()
@@ -100,7 +100,7 @@ void ShaderCreateInfoVertex::AddAssignTransform()
     // 添加Transform索引输入
     AddInput(   Assign::TransformID::VAT_FMT,
                 Assign::TransformID::VIS_NAME,
-                VK_VERTEX_INPUT_RATE_INSTANCE,
+                VertexInputRate::Instance,
                 VertexInputGroup::TransformID);
 
     AddFunction(hgl::graph::mtl::func::MF_GetLocalToWorld_ByAssign);
@@ -111,7 +111,7 @@ void ShaderCreateInfoVertex::AddAssignMaterialInstance()
     // 添加MaterialInstance索引输入
     AddInput(   Assign::MaterialInstanceID::VAT_FMT,
                 Assign::MaterialInstanceID::VIS_NAME,
-                VK_VERTEX_INPUT_RATE_INSTANCE,
+                VertexInputRate::Instance,
                 VertexInputGroup::MaterialInstanceID);
 }
 
@@ -185,3 +185,4 @@ void ShaderCreateInfoVertex::GetOutputStrcutString(std::string &str)
     vsdi.GetOutput().ToString(str);
 }
 }//namespace hgl::graph
+

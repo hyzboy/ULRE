@@ -11,7 +11,7 @@ int ShaderCreateInfoFragment::AddOutput(VIAList &via_list)
     for(VIA &via:via_list)
     {
         //都输出了，没这些值
-        //via.input_rate=VK_VERTEX_INPUT_RATE_VERTEX;
+        //via.input_rate=VertexInputRate::Vertex;
         //via.group=VertexInputGroup::Basic;
 
         if(fsdi.AddOutput(via))
@@ -75,3 +75,5 @@ bool ShaderCreateInfoFragment::ProcOutput()
     return(true);
 }
 }}//namespace hgl::graph
+
+

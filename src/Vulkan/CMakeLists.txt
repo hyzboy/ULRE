@@ -29,6 +29,7 @@ SET(VK_DEVICE_PHYSICAL_FILES    ${VK_INCLUDE_PATH}/VKPhysicalDevice.h
                                 ${VK_INCLUDE_PATH}/VKSurface.h
                                 ${VK_INCLUDE_PATH}/VKSurfaceExtensionName.h
                                 VKPhysicalDevice.cpp
+                                ShaderGenPhysicalDeviceProfileAdapter.cpp
                                 VKProperties.cpp
                                 DebugOutProperties.h
                                 Debug/VKPhysicalDeviceCapsOutput.cpp

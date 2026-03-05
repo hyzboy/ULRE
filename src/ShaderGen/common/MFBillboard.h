@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include"MFCamera.h"
 #include<hgl/graph/mtl/ShaderBufferSource.h>

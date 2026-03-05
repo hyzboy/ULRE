@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<string>
 #include"common/MFCommon.h"
 

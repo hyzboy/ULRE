@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/MaterialDescriptorInfo.h>
+#include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<vector>
 #include<algorithm>
 

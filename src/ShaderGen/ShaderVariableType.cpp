@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/mtl/ShaderVariableType.h>
+#include<hgl/graph/mtl/ShaderVariableType.h>
 
 namespace hgl::graph{
 

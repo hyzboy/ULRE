@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/ShaderCreateInfoCompute.h>
+#include<hgl/shadergen/ShaderCreateInfoCompute.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<string>
 #include"GLSLCompiler.h"

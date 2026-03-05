@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
 ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
@@ -12,6 +12,23 @@ ShaderDescriptorInfo::~ShaderDescriptorInfo()
 {
     for(auto *p:const_value_list)
         delete p;
+}
+
+std::string ShaderDescriptorInfo::GetStageName()const
+{
+    switch(stage_flag)
+    {
+        case ShaderStage::Vertex: return "Vertex";
+        case ShaderStage::TessControl: return "TessControl";
+        case ShaderStage::TessEval: return "TessEval";
+        case ShaderStage::Geometry: return "Geometry";
+        case ShaderStage::Fragment: return "Fragment";
+        case ShaderStage::Compute: return "Compute";
+        case ShaderStage::Task: return "Task";
+        case ShaderStage::Mesh: return "Mesh";
+        case ShaderStage::ClusterCulling: return "ClusterCulling";
+        default: return "Unknown";
+    }
 }
 
 bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ubo)

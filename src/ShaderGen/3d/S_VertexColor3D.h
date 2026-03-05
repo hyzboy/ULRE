@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
@@ -8,9 +8,9 @@ namespace hgl::graph::mtl {
 namespace {
 
 constexpr FixedVertexEntry VERTEX_COLOR_3D_VERTEX[] = {
-    { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
-    { VAT_VEC4, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Color },
-    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::TransformID::VIS_NAME },
+    { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+    { VAT_VEC4, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color },
+    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
 };
 
 #if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
@@ -71,3 +71,5 @@ const ComposedMaterialDef VERTEX_COLOR_3D_COMPOSED_DEF {
 
 }
 }
+
+

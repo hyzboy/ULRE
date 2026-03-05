@@ -1,4 +1,4 @@
-﻿#include"Std2DMaterial.h"
+#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include"common/MFRectPrimitive.h"

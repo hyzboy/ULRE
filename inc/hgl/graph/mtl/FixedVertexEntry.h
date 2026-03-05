@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/vk/VK.h>
+#include<hgl/vk/VKVertexInputAttribute.h>
 #include<hgl/vk/VertexAttrib.h>
 
 namespace hgl::graph::mtl{
@@ -9,7 +9,7 @@ struct FixedVertexEntry
 {
     VAType              type;
     VertexInputGroup    group;
-    VkVertexInputRate   input_rate;
+    VertexInputRate     input_rate;
     const char *        name;
 };
 

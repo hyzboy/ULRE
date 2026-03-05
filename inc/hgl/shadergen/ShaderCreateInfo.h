@@ -76,7 +76,6 @@ public:
 
     virtual ShaderDescriptorInfo *GetSDI()=0;
     const ShaderStage GetShaderStage()const{return shader_stage;}
-    const VkShaderStageFlagBits GetVkShaderStage()const{return (VkShaderStageFlagBits)shader_stage;}
 
 protected:
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
@@ -11,9 +11,9 @@ constexpr const char pure_color_3d_mi_codes[] = "vec4 Color;";
 constexpr const uint32_t pure_color_3d_mi_bytes = 16;
 
 constexpr FixedVertexEntry PURE_COLOR_3D_VERTEX[] = {
-    { VAT_VEC3, VertexInputGroup::Basic, VK_VERTEX_INPUT_RATE_VERTEX, VAN::Position },
-    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::TransformID::VIS_NAME },
-    { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VK_VERTEX_INPUT_RATE_INSTANCE, Assign::MaterialInstanceID::VIS_NAME },
+    { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+    { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+    { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
 };
 
 #if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
@@ -81,3 +81,4 @@ const ComposedMaterialDef PURE_COLOR_3D_COMPOSED_DEF {
 
 }
 }
+

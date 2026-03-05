@@ -27,9 +27,9 @@ namespace hgl::graph
         ~ShaderCreateInfoVertex()override=default;
 
         int AddInput(VIAList &);
-        int AddInput(const VAType &type,const std::string &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
-        int AddInput(const char *type,const std::string &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
-        int AddInput(const VAType &type,const char *name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic)
+        int AddInput(const VAType &type,const std::string &name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const char *type,const std::string &name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const VAType &type,const char *name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic)
         {
             return AddInput(type,std::string(name?name:""),input_rate,group);
         }
