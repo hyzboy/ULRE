@@ -201,3 +201,268 @@ This breakdown keeps each PR reviewable and reduces regression risk.
 2. Do not mix runtime refactor tasks into this split batch.
 3. If build failures occur, fix include boundary first, then symbol mapping, then behavior.
 4. Keep a temporary compatibility window, but enforce boundary checks early.
+
+## 12. Minimal First-Batch Change List (File-Level)
+
+This section is the executable checklist for the first landing batch. Goal: remove direct `VK.h` path leakage from ShaderGen public headers before touching deep implementation behavior.
+
+### 12.1 Batch-1 Scope
+
+1. Only public headers and pure definition extraction.
+2. No runtime logic change.
+3. No descriptor binding algorithm change.
+
+### 12.2 New Shared Headers to Create in Batch-1
+
+1. `inc/hgl/graph/shared/ShaderStageDef.h`
+2. `inc/hgl/graph/shared/DescriptorSetTypeDef.h`
+3. `inc/hgl/graph/shared/VertexAttribDef.h`
+4. `inc/hgl/graph/shared/VertexInputDef.h`
+5. `inc/hgl/graph/shared/InterpolationDef.h`
+6. `inc/hgl/graph/shared/TextureSamplerTypeDef.h`
+7. `inc/hgl/graph/shared/PrimitiveTypeDef.h`
+8. `inc/hgl/graph/shared/ShaderDescriptorDef.h`
+
+### 12.3 Public Header Replacement Matrix (Must Do)
+
+| File | Current include(s) | Replace to | Notes |
+|---|---|---|---|
+| `inc/hgl/shadergen/ShaderCreateInfo.h` | `VertexAttrib.h`, `VK.h`, `VKInterpolation.h`, `VKDescriptorSetType.h` | `VertexAttribDef.h`, `ShaderStageDef.h`, `InterpolationDef.h`, `DescriptorSetTypeDef.h` | Highest priority, used transitively everywhere |
+| `inc/hgl/shadergen/ShaderDescriptorInfo.h` | `VK.h`, `VKShaderDescriptor.h`, `VKVertexInputAttribute.h`, `VKDescriptorSetType.h` | `ShaderStageDef.h`, `ShaderDescriptorDef.h`, `VertexInputDef.h`, `DescriptorSetTypeDef.h` | Remove all direct vk umbrella coupling |
+| `inc/hgl/shadergen/MaterialCreateInfo.h` | `VKTextureType.h`, `VKSamplerType.h` | `TextureSamplerTypeDef.h` | Keep function signatures unchanged |
+| `inc/hgl/shadergen/MaterialDescriptorInfo.h` | `VKShaderDescriptorSet.h` | `ShaderDescriptorDef.h` | If `ShaderDescriptorSet` needed, add minimal shared set struct |
+| `inc/hgl/shadergen/FixedMaterialDef.h` | `VertexAttrib.h` | `VertexAttribDef.h` | Must remain POD-only |
+| `inc/hgl/shadergen/ShaderComposition.h` | `VKPrimitiveType.h` | `PrimitiveTypeDef.h` | No behavior change |
+
+### 12.4 Compatibility Wrapper Updates (Same PR)
+
+Keep old vk headers source-compatible for one transition window:
+
+1. `inc/hgl/vk/VKDescriptorSetType.h` includes `DescriptorSetTypeDef.h`.
+2. `inc/hgl/vk/VertexAttrib.h` includes `VertexAttribDef.h` and `VertexInputDef.h`.
+3. `inc/hgl/vk/VKVertexInputAttribute.h` includes `VertexInputDef.h` and `InterpolationDef.h`.
+4. `inc/hgl/vk/VKTextureType.h` and `inc/hgl/vk/VKSamplerType.h` include `TextureSamplerTypeDef.h`.
+5. `inc/hgl/vk/VKPrimitiveType.h` includes `PrimitiveTypeDef.h`.
+6. `inc/hgl/vk/VKShaderDescriptor.h` and `inc/hgl/vk/VKShaderDescriptorSet.h` include `ShaderDescriptorDef.h`.
+
+### 12.5 Batch-1 Explicit Non-Goals
+
+1. Do not split `VKRenderAssign.h` in this batch.
+2. Do not replace `VK_*` shader stage constants in `.cpp` files yet.
+3. Do not migrate contract mirror/request/result conversion logic in this batch.
+
+### 12.6 Build and Boundary Gate for Batch-1
+
+Run:
+
+```powershell
+cmake --preset windows-msvc-debug
+cmake --build --preset windows-msvc-debug --config Debug --parallel 16
+```
+
+Boundary check:
+
+```powershell
+Get-ChildItem inc/hgl/shadergen -Recurse -File -Include *.h,*.hpp |
+   Select-String '#include\s*<hgl/vk/VK.h>'
+```
+
+Pass condition:
+
+1. No hit from boundary check.
+2. Full debug build succeeds.
+3. No signature change visible to existing ShaderGen callers.
+
+### 12.7 Batch-2 Preview (for next PR)
+
+1. Split `VKRenderAssign.h` into shared assign names/types and renderer-only Vulkan format map.
+2. Replace `VKRenderAssign.h` usage in `src/ShaderGen/3d/*.h` and `src/ShaderGen/3d/*.cpp`.
+3. Replace `VKRenderAssign.h` usage in `src/ShaderGen/common/MFCommon.h`.
+4. Replace `VKRenderAssign.h` usage in `src/ShaderGen/common/MFSkyLight.h`.
+5. Move `VK_DESCRIPTOR_TYPE_*` mapping glue to adapter boundary.
+
+## 13. Symbol-Level Migration Map (PR-1)
+
+This table is the concrete symbol migration baseline for PR-1. Keep names unchanged where possible to minimize caller impact.
+
+### 13.1 `ShaderStageDef.h`
+
+Source symbols now in `VK.h`:
+
+1. `enum class ShaderStage:uint32_t`
+2. combined values inside `ShaderStage`:
+   - `VertexFragment`
+   - `VertexGeometryFragment`
+   - `Tessellation`
+   - `TaskMesh`
+   - `TaskMeshFragment`
+   - `AllGraphics`
+
+Target:
+
+1. Move full enum definition and combined values to `inc/hgl/graph/shared/ShaderStageDef.h`.
+2. `VK.h` keeps compatibility by including `ShaderStageDef.h`.
+
+### 13.2 `DescriptorSetTypeDef.h`
+
+Source symbols now in `VKDescriptorSetType.h`:
+
+1. `enum class DescriptorSetType`
+2. `DESCRIPTOR_SET_TYPE_COUNT`
+3. `DescriptSetTypeName[]`
+4. `GetDescriptorSetTypeName(...)`
+5. `GetDescriptorSetType(...)`
+
+Target:
+
+1. Move these to `inc/hgl/graph/shared/DescriptorSetTypeDef.h`.
+2. Keep string compatibility mapping in the shared header for now.
+
+### 13.3 `VertexAttribDef.h`
+
+Source symbols now in `VertexAttrib.h`:
+
+1. `enum class VertexInputGroup`
+2. `VertexInputGroupName[]`
+3. `GetVertexInputGroupName(...)`
+4. `enum class VertexAttribBaseType`
+5. `struct VertexAttribType` and alias `VAType`
+6. `VAT_*` constexpr constants
+7. `VERTEX_ATTRIB_NAME_MAX_LENGTH`
+8. `namespace VertexAttribName` and alias `VAN`
+9. `ParseVertexAttribType(...)`
+10. `GetVertexAttribName(...)`
+
+Target:
+
+1. Move to `inc/hgl/graph/shared/VertexAttribDef.h`.
+2. Keep function declarations in shared header; function definitions can remain in existing cpp implementation.
+
+### 13.4 `VertexInputDef.h`
+
+Source symbols now in `VKVertexInputAttribute.h`:
+
+1. `enum class VertexInputRate:uint8_t`
+2. `struct VertexInputAttribute` / alias `VIA`
+3. `using VIAList`
+4. `struct VertexInputAttributeArray` / alias `VIAArray`
+5. `GetShaderAttributeTypename(...)`
+
+Target:
+
+1. Move POD types and aliases to `inc/hgl/graph/shared/VertexInputDef.h`.
+2. Keep Vulkan-format-specific helper declarations (`GetVulkanFormat`) in vk-side header.
+
+### 13.5 `InterpolationDef.h`
+
+Source symbols now in `VKInterpolation.h`:
+
+1. `enum class Interpolation:uint8`
+2. `InterpolationName[]`
+3. `GetInterpolationName(...)`
+
+Target:
+
+1. Move to `inc/hgl/graph/shared/InterpolationDef.h`.
+
+### 13.6 `TextureSamplerTypeDef.h`
+
+Source symbols now in `VKTextureType.h` and `VKSamplerType.h`:
+
+1. `enum class TextureType`
+2. `TextureTypeName[]`
+3. `GetTextureTypeName(...)`
+4. `ParseTextureType(...)`
+5. `enum class SamplerType`
+6. `SamplerTypeName[]`
+7. `GetSamplerTypeName(...)`
+8. `ParseSamplerType(...)`
+
+Target:
+
+1. Move enums and name/parse helpers to `inc/hgl/graph/shared/TextureSamplerTypeDef.h`.
+2. Keep `VkImageViewType` mapping arrays on vk-side for PR-1 (reduce risk).
+
+### 13.7 `PrimitiveTypeDef.h`
+
+Source symbols now in `VKPrimitiveType.h`:
+
+1. `enum class PrimitiveType:uint32`
+2. `GetPrimName(...)`
+3. `ParsePrimitiveType(...)`
+4. `CheckGeometryShaderIn(...)`
+5. `CheckGeometryShaderOut(...)`
+
+Target:
+
+1. Move enum and declarations to `inc/hgl/graph/shared/PrimitiveTypeDef.h`.
+2. Keep implementations in current cpp for compatibility.
+
+### 13.8 `ShaderDescriptorDef.h`
+
+Source symbols now in `VKShaderDescriptor.h` (+ set wrapper in `VKShaderDescriptorSet.h`):
+
+1. `DESCRIPTOR_NAME_MAX_LENGTH`
+2. `struct ShaderDescriptor`
+3. `struct UBODescriptor`
+4. `struct SSBODescriptor`
+5. `struct TextureDescriptor`
+6. `struct TextureSamplerDescriptor`
+7. `struct ShaderObjectData`
+8. `struct ConstValueDescriptor`
+9. `struct SubpassInputDescriptor`
+10. `struct ShaderPushConstant`
+
+Target:
+
+1. Move descriptor structs to `inc/hgl/graph/shared/ShaderDescriptorDef.h`.
+2. Keep `VkDescriptorType` field as-is (allowed Vulkan SDK dependency).
+3. Keep `ShaderDescriptorSet` move optional in PR-1; include if compile boundary requires it.
+
+## 14. PR-1 Execution Checklist (Step-by-Step)
+
+### 14.1 Preparation
+
+1. Create a branch dedicated to split-only work.
+2. Do not mix unrelated formatting or behavior edits.
+
+### 14.2 Add shared headers
+
+1. Create all headers listed in 12.2.
+2. Copy symbols according to section 13.
+3. Keep API names stable in PR-1.
+
+### 14.3 Add compatibility includes in old vk headers
+
+1. Old vk headers include new shared headers.
+2. Keep old include paths valid for callers outside ShaderGen.
+
+### 14.4 Replace ShaderGen public header includes
+
+1. Apply replacement matrix in 12.3 exactly.
+2. Ensure `inc/hgl/shadergen/**` no longer includes `VK.h` directly.
+
+### 14.5 Compile and boundary gate
+
+1. Run build commands from 12.6.
+2. Run boundary check from 12.6.
+3. If failed, fix include graph before fixing behavior.
+
+### 14.6 Commit policy
+
+1. Commit-1: shared headers + compatibility wrappers.
+2. Commit-2: ShaderGen public include replacement.
+3. Commit-3: compile fixes only (no extra refactor).
+
+## 15. Fast Triage Rules on New Machine
+
+1. Error `unknown type ShaderStage`:
+   - Missing `ShaderStageDef.h` include or include order issue.
+2. Error `unknown type DescriptorSetType`:
+   - `DescriptorSetTypeDef.h` not included in transitive path.
+3. Error in `ShaderDescriptor*` symbols:
+   - `ShaderDescriptorDef.h` not visible or incomplete symbol migration.
+4. Error in `VAT_*` or `VAType`:
+   - `VertexAttribDef.h` not included where old `VertexAttrib.h` was removed.
+5. Boundary check still finds `VK.h`:
+   - Inspect `ShaderCreateInfo.h` and `ShaderDescriptorInfo.h` first.
