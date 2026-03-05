@@ -1,9 +1,9 @@
 ﻿#pragma once
 
-#include<hgl/vk/VertexAttrib.h>
-#include<hgl/vk/VK.h>
-#include<hgl/vk/VKInterpolation.h>
-#include<hgl/vk/VKDescriptorSetType.h>
+#include <hgl/graph/shared/VertexAttribDef.h>
+#include <hgl/graph/shared/ShaderStageDef.h>
+#include <hgl/graph/shared/InterpolationDef.h>
+#include <hgl/graph/shared/DescriptorSetTypeDef.h>
 #include<hgl/log/Log.h>
 #include <ankerl/unordered_dense.h>
 #include<string>

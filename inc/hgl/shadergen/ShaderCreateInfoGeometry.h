@@ -5,6 +5,8 @@
 
 namespace hgl::graph
 {
+    enum class PrimitiveType :uint32;
+
     class ShaderCreateInfoGeometry:public ShaderCreateInfo
     {
         GeometryShaderDescriptorInfo gsdi;

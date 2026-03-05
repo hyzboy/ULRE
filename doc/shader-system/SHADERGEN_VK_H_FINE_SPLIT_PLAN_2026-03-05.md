@@ -10,6 +10,39 @@ This document defines a focused split plan for `inc/hgl/vk/VK.h` to support:
 
 This is a refinement plan for type/enum/struct extraction only. It does not include runtime behavior rewrites.
 
+### 1.1 Progress Update (runtime sync)
+
+已落地（当前机器最新代码）：
+
+1. 已创建首批 shared 定义头：
+   - `ShaderStageDef.h`
+   - `DescriptorSetTypeDef.h`
+   - `VertexAttribDef.h`
+   - `VertexInputDef.h`
+   - `InterpolationDef.h`
+   - `TextureSamplerTypeDef.h`
+   - `PrimitiveTypeDef.h`
+   - `ShaderDescriptorDef.h`
+2. 已完成 Batch-1 replacement matrix 的核心公共头替换：
+   - `ShaderCreateInfo.h`
+   - `ShaderDescriptorInfo.h`
+   - `MaterialCreateInfo.h`
+   - `MaterialDescriptorInfo.h`
+   - `FixedMaterialDef.h`
+   - `ShaderComposition.h`
+3. 已完成旧 vk 头兼容转发（wrapper）以避免双定义冲突：
+   - `VKDescriptorSetType.h`
+   - `VertexAttrib.h`
+   - `VKVertexInputAttribute.h`
+   - `VKInterpolation.h`
+   - `VKPrimitiveType.h`
+   - `VKTextureType.h`
+   - `VKSamplerType.h`
+   - `VKShaderDescriptor.h`
+   - `VKShaderDescriptorSet.h`
+4. `VK.h` 中 `ShaderStage` 已改为复用 shared 定义，避免重复定义。
+5. 边界结果：`inc/hgl/shadergen/**` 中已无 `#include <hgl/vk/VK.h>`，当前仅剩 `ShaderComposition_Examples.h` 对 `VKRenderAssign.h` 的直连（属于 Batch-2 非目标）。
+
 ## 2. Why VK.h Must Be Split First
 
 `VK.h` is currently a mixed umbrella header that contains:

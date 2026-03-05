@@ -228,6 +228,7 @@
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `ResolveVertexInputByContractPolicy(...)`，将 vertex 决策的 strict-abort/fallback/计数/输出选择从 `BuildMaterialBindingsFlow(...)` 主体中抽离，提升编排可读性。
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `ResolveDescriptorsByContractPolicy(...)`，将 descriptor 决策的 strict-abort/fallback/计数从 `BuildMaterialBindingsFlow(...)` 主体中抽离，实现与 vertex 分支对称的 helper 化编排结构。
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `TryBuildMirrorShaderModules(...)` / `BuildLegacyShaderModules(...)`，将 `BuildShaderModulesFlow(...)` 中 mirror/legacy 两段模块构建逻辑对称抽离，主流程收敛为高层编排与回退门禁控制。
+  - 已启动 `VK.h` 细粒度拆分 Batch-1：新增 `inc/hgl/graph/shared/*Def.h` 首批定义头并完成 ShaderGen 公共头替换（`ShaderCreateInfo/ShaderDescriptorInfo/MaterialCreateInfo/MaterialDescriptorInfo/FixedMaterialDef/ShaderComposition`）；当前 `inc/hgl/shadergen/**` 已无 `#include <hgl/vk/VK.h>` 直连，`hgl/vk/*` 仅剩 `ShaderComposition_Examples.h -> VKRenderAssign.h`（Batch-2 范围）。
   - 当前全仓已无 `#include <hgl/shadergen/FixedMaterialDef.h>` 直接引用，`shadergen/FixedMaterialDef.h` 仅保留兼容入口职责。
   - 严格门禁回归补齐（2026-03-04）：
     - [test/RendererShaderGenAdapterStrictGateTest.cpp](test/RendererShaderGenAdapterStrictGateTest.cpp) 已跟随新 API 更新为 `StoreExternalShaderGenValidationError(...)` 路径并重新通过。

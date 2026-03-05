@@ -1,9 +1,9 @@
 ﻿#pragma once
 
-#include<hgl/vk/VK.h>
-#include<hgl/vk/VKShaderDescriptor.h>
-#include<hgl/vk/VKVertexInputAttribute.h>
-#include<hgl/vk/VKDescriptorSetType.h>
+#include <hgl/graph/shared/ShaderStageDef.h>
+#include <hgl/graph/shared/ShaderDescriptorDef.h>
+#include <hgl/graph/shared/VertexInputDef.h>
+#include <hgl/graph/shared/DescriptorSetTypeDef.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<ankerl/unordered_dense.h>
 #include<vector>
