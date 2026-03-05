@@ -43,6 +43,13 @@ This is a refinement plan for type/enum/struct extraction only. It does not incl
 4. `VK.h` 中 `ShaderStage` 已改为复用 shared 定义，避免重复定义。
 5. 边界结果：`inc/hgl/shadergen/**` 中已无 `#include <hgl/vk/VK.h>`，当前仅剩 `ShaderComposition_Examples.h` 对 `VKRenderAssign.h` 的直连（属于 Batch-2 非目标）。
 
+2026-03-05 追加进展：
+
+1. 已新增 `inc/hgl/graph/shared/RenderAssignDef.h`，承载 `Assign::TransformID/MaterialInstanceID` 纯定义。
+2. `inc/hgl/vk/VKRenderAssign.h` 已改为兼容转发 wrapper（仅 include shared def）。
+3. ShaderGen 侧（`inc/hgl/shadergen` + `src/ShaderGen/**`）已完成 `VKRenderAssign.h -> graph/shared/RenderAssignDef.h` include 替换。
+4. `tools/shadergen_boundary_allowlist.txt` 已清空，边界守卫在 0 allowlist 例外下通过。
+
 ## 2. Why VK.h Must Be Split First
 
 `VK.h` is currently a mixed umbrella header that contains:
@@ -208,6 +215,33 @@ Expected:
 
 1. First command returns no result.
 2. Second command only returns explicitly approved transitional includes (if any).
+
+推荐使用自动化边界守卫脚本（与上面 grep 互补）：
+
+```powershell
+python tools/check_shadergen_boundary.py --repo-root .
+```
+
+白名单已外置（2026-03-05）：
+
+1. 文件：`tools/shadergen_boundary_allowlist.txt`
+2. 语义：仅允许“精确 include 路径”过渡例外（当前为 `hgl/vk/VKRenderAssign.h`）
+3. 后续 Batch-2 移除该依赖时，只需更新该白名单并确保检查通过。
+
+已接入 CMake（2026-03-05）：
+
+```powershell
+cmake --build --preset windows-msvc-debug --config Debug --target check_shadergen_boundary
+ctest --preset windows-msvc-debug -C Debug -R check_shadergen_boundary
+```
+
+说明：若环境缺少 Python3 解释器，CMake 会给出 warning 并跳过该 target。
+
+当前规则（2026-03-05）：
+
+1. 扫描范围：`inc/hgl/shadergen/**` 公共头。
+2. 禁止依赖：`hgl/vk/VK.h`、`hgl/graph/module/*`、`hgl/graph/core/*`、以及 `VKDevice/VKInstance/Swapchain/RenderTarget/RenderPass/pipeline` 等运行时头。
+3. 允许过渡白名单：`hgl/vk/VKRenderAssign.h`（Batch-2 目标，后续应移除）。
 
 ## 9. Workload Estimate for This Variant
 

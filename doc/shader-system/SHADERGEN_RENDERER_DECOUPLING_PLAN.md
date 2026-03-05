@@ -228,6 +228,9 @@
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `ResolveVertexInputByContractPolicy(...)`，将 vertex 决策的 strict-abort/fallback/计数/输出选择从 `BuildMaterialBindingsFlow(...)` 主体中抽离，提升编排可读性。
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `ResolveDescriptorsByContractPolicy(...)`，将 descriptor 决策的 strict-abort/fallback/计数从 `BuildMaterialBindingsFlow(...)` 主体中抽离，实现与 vertex 分支对称的 helper 化编排结构。
   - [src/SceneGraph/module/MaterialBuildFlowAdapter.cpp](src/SceneGraph/module/MaterialBuildFlowAdapter.cpp) 已新增 `TryBuildMirrorShaderModules(...)` / `BuildLegacyShaderModules(...)`，将 `BuildShaderModulesFlow(...)` 中 mirror/legacy 两段模块构建逻辑对称抽离，主流程收敛为高层编排与回退门禁控制。
+  - 新增自动边界守卫脚本 [tools/check_shadergen_boundary.py](tools/check_shadergen_boundary.py)：扫描 `inc/hgl/shadergen/**` 公共头并阻止渲染运行时头耦合（当前保留 `VKRenderAssign.h` 过渡白名单）；本机执行已通过（26 头文件，0 违规）。
+  - 边界守卫已接入 CMake：新增 `check_shadergen_boundary` target，并在 `BUILD_TESTING` 下注册同名 `ctest` 用例，支持构建链路与测试链路统一执行边界检查。
+  - 过渡白名单已外置为 [tools/shadergen_boundary_allowlist.txt](tools/shadergen_boundary_allowlist.txt)，`check_shadergen_boundary.py` 与 CMake target/ctest 均改为读取该文件；Batch-2 仅需收敛名单即可完成例外移除。
   - 已启动 `VK.h` 细粒度拆分 Batch-1：新增 `inc/hgl/graph/shared/*Def.h` 首批定义头并完成 ShaderGen 公共头替换（`ShaderCreateInfo/ShaderDescriptorInfo/MaterialCreateInfo/MaterialDescriptorInfo/FixedMaterialDef/ShaderComposition`）；当前 `inc/hgl/shadergen/**` 已无 `#include <hgl/vk/VK.h>` 直连，`hgl/vk/*` 仅剩 `ShaderComposition_Examples.h -> VKRenderAssign.h`（Batch-2 范围）。
   - 当前全仓已无 `#include <hgl/shadergen/FixedMaterialDef.h>` 直接引用，`shadergen/FixedMaterialDef.h` 仅保留兼容入口职责。
   - 严格门禁回归补齐（2026-03-04）：

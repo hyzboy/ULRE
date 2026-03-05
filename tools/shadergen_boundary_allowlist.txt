@@ -1,0 +1,4 @@
+# ShaderGen boundary checker exact-include allowlist
+# One include path per line. Comment lines start with '#'.
+#
+# (empty for now)

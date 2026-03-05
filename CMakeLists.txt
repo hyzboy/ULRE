@@ -52,3 +52,21 @@ add_subdirectory(src)
 add_subdirectory(test)
 
 add_subdirectory(example)
+
+find_package(Python3 QUIET COMPONENTS Interpreter)
+
+if(Python3_Interpreter_FOUND)
+    add_custom_target(check_shadergen_boundary
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_shadergen_boundary.py --repo-root ${CMAKE_CURRENT_SOURCE_DIR} --allowlist-file ${CMAKE_CURRENT_SOURCE_DIR}/tools/shadergen_boundary_allowlist.txt
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Running ShaderGen public-header boundary check"
+        VERBATIM)
+
+    if(BUILD_TESTING)
+        add_test(
+            NAME check_shadergen_boundary
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_shadergen_boundary.py --repo-root ${CMAKE_CURRENT_SOURCE_DIR} --allowlist-file ${CMAKE_CURRENT_SOURCE_DIR}/tools/shadergen_boundary_allowlist.txt)
+    endif()
+else()
+    message(WARNING "Python3 interpreter not found; check_shadergen_boundary target is disabled")
+endif()

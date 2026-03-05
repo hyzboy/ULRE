@@ -4,7 +4,7 @@
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/graph/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
-#include <hgl/vk/VKRenderAssign.h>
+#include <hgl/graph/shared/RenderAssignDef.h>
 #include <cstdio>
 #include <vector>
 

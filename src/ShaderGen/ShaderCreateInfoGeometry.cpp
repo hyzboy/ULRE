@@ -1,4 +1,5 @@
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include <hgl/graph/shared/PrimitiveTypeDef.h>
 #include<string>
 #include"common/MFCommon.h"
 
