@@ -19,7 +19,6 @@
  */
 
 #include <hgl/vk/VKDevice.h>
-#include <hgl/graph/module/ShaderGenPathMode.h>
 #include <hgl/graph/module/ShaderGenValidationTypes.h>
 
 namespace hgl::graph
@@ -60,9 +59,6 @@ namespace hgl::graph
     private:
         VulkanDevice *device = nullptr;
 
-        ShaderGenPathMode shadergen_path_mode = ShaderGenPathMode::LegacyOnly;
-        ShaderGenPathPolicy shadergen_path_policy{};
-
         GraphModuleManager *module_manager = nullptr;
 
         RenderPassManager *rp_manager = nullptr;
@@ -75,7 +71,7 @@ namespace hgl::graph
         PrimitiveManager *primitive_manager = nullptr;
 
     public:
-        explicit GraphicsContext(VulkanDevice *dev, ShaderGenPathMode shadergen_mode = ShaderGenPathMode::LegacyOnly);
+        explicit GraphicsContext(VulkanDevice *dev);
         ~GraphicsContext();
 
         // Disable copy
@@ -109,14 +105,6 @@ namespace hgl::graph
         VulkanPhyDevice *GetPhyDevice() const;
         const mtl::contract::PhysicalDeviceProfileLite *GetPhysicalDeviceProfile() const;
         VkDevice GetVkDevice() const;
-
-        ShaderGenPathMode GetShaderGenPathMode() const { return shadergen_path_mode; }
-        const ShaderGenPathPolicy &GetShaderGenPathPolicy() const { return shadergen_path_policy; }
-        void SetShaderGenPathMode(const ShaderGenPathMode mode)
-        {
-            shadergen_path_mode = mode;
-            shadergen_path_policy = MakeShaderGenPathPolicy(shadergen_path_mode);
-        }
 
         // 模块管理器访问
         RenderPassManager *GetRenderPassManager() { return rp_manager; }
