@@ -10,15 +10,10 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/ShaderGenContractGateReporter.h>
-#include<hgl/graph/module/ShaderGenContractPathContext.h>
 #include<hgl/graph/module/MaterialBuildFlowAdapter.h>
 #include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
-#include<hgl/graph/module/ShaderGenReadOnlyValidationGate.h>
-#include<hgl/graph/module/ShaderGenPathMode.h>
 #include<hgl/graph/module/RendererShaderGenAdapter.h>
-#include<hgl/graph/module/ShaderGenCompilerProfileAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
@@ -214,9 +209,7 @@ Material *MaterialManager::TryGetCachedMaterial(const AnsiString &name)
 bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
                                                    const AnsiString &mtl_name,
                                                    const mtl::MaterialCreateInfo *mci,
-                                                   const ShaderCreateInfoMap &sci_map,
-                                                   const mtl::contract::ShaderGenResult *mirror_result,
-                                                   bool require_mirror_valid)
+                                                   const ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !mci)
         return false;
@@ -225,8 +218,8 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
     if(!BuildShaderModulesFlow(this,
                                mtl_name,
                                sci_map,
-                               mirror_result,
-                               require_mirror_valid,
+                               nullptr,
+                               false,
                                mtl->shader_maps,
                                mirror_spv_build_used))
     {
@@ -240,9 +233,9 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
 
     if(!BuildMaterialBindingsFlow(mtl_name,
                                   mci,
-                                  mirror_result,
+                                  nullptr,
                                   mirror_spv_build_used,
-                                  require_mirror_valid,
+                                  false,
                                   resolved_vertex_input,
                                   resolved_desc_manager))
     {
@@ -264,53 +257,6 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     if(!mci)
         return(nullptr);
 
-    const GraphicsContext *graphics_context = GetGraphicsContext();
-    ShaderGenContractPathContext path_context;
-    BuildShaderGenContractPathContext(path_context, graphics_context, *mci, mtl_name.c_str());
-
-    ApplyShaderCompilerProfile(path_context.physical_device_profile);
-
-    if(path_context.mirror_prebuild_failed)
-    {
-        std::fprintf(stderr,
-            "[RendererShaderGenAdapter] material=%s failed to prebuild mirror result (mode=%s)\n",
-            mtl_name.c_str()?mtl_name.c_str():"<unnamed-material>",
-            GetShaderGenPathModeName(path_context.mode));
-    }
-
-    if(path_context.policy.require_mirror_valid && !path_context.mirror)
-    {
-        ReportMirrorPreferredStrictAbort(mtl_name.c_str(),
-                                         kShaderGenStrictGatePrebuildCategory,
-                                         "creation aborted: mirror-preferred requires valid mirror result");
-        return nullptr;
-    }
-
-    return CreateMaterialWithContract(mtl_name,
-                                      mci,
-                                      path_context.request,
-                                      path_context.mirror,
-                                      path_context.policy.enable_mirror_validation,
-                                      path_context.policy.require_mirror_valid,
-                                      path_context.diff_log_detail);
-}
-
-Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const mtl::contract::ShaderGenRequest *request_result,const mtl::contract::ShaderGenResult *mirror_result,bool enable_mirror_validation,bool require_mirror_valid,const ShaderGenDiffLogDetail diff_log_detail)
-{
-    if(!mci)
-        return(nullptr);
-
-    if(!RunReadOnlyValidationGate(*mci,
-                                  request_result,
-                                  mirror_result,
-                                  mtl_name.c_str(),
-                                  enable_mirror_validation,
-                                  require_mirror_valid,
-                                  diff_log_detail))
-    {
-        return nullptr;
-    }
-
     MaterialCreatePrecheckResult precheck_result;
     const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
         mci,
@@ -330,9 +276,7 @@ Material *MaterialManager::CreateMaterialWithContract(const AnsiString &mtl_name
     if(!ExecuteMaterialBuildPipeline(mtl,
                                      mtl_name,
                                      mci,
-                                     sci_map,
-                                     mirror_result,
-                                     require_mirror_valid))
+                                     sci_map))
         return nullptr;
 
     Add(mtl);

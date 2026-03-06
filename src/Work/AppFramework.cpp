@@ -82,10 +82,10 @@ namespace hgl
                     app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
                 else
                 if (value_view == kValidate)
-                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorValidate);
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
                 else
                 if (value_view == kPreferred)
-                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorPreferred);
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
 
                 ++i;
                 continue;
@@ -101,10 +101,10 @@ namespace hgl
                     app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
                 else
                 if (value_view == kValidate)
-                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorValidate);
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
                 else
                 if (value_view == kPreferred)
-                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::MirrorPreferred);
+                    app->SetShaderGenPathMode(graph::ShaderGenPathMode::LegacyOnly);
             }
         }
     }

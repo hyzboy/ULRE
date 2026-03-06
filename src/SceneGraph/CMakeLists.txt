@@ -29,13 +29,10 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenDescriptorLayoutAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenDescriptorPolicyAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenContractGateReporter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenContractPathContext.h
                         ${SG_INCLUDE_PATH}/module/MaterialBuildFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/MaterialCreatePrecheckAdapter.h
                         ${SG_INCLUDE_PATH}/module/MaterialFinalizeFlowAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenReadOnlyValidationGate.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenSPVModuleAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenCompilerProfileAdapter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenValidationQueryBridge.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenMirrorDiffPresenter.h
                         ${SG_INCLUDE_PATH}/module/ShaderGenValidationReportUtils.h
@@ -58,13 +55,10 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/ShaderGenDescriptorLayoutAdapter.cpp
                         module/ShaderGenDescriptorPolicyAdapter.cpp
                         module/ShaderGenContractGateReporter.cpp
-                        module/ShaderGenContractPathContext.cpp
                         module/MaterialBuildFlowAdapter.cpp
                         module/MaterialCreatePrecheckAdapter.cpp
                         module/MaterialFinalizeFlowAdapter.cpp
-                        module/ShaderGenReadOnlyValidationGate.cpp
                         module/ShaderGenSPVModuleAdapter.cpp
-                        module/ShaderGenCompilerProfileAdapter.cpp
                         module/ShaderGenValidationQueryBridge.cpp
                         module/ShaderGenMirrorDiffPresenter.cpp
                         module/ShaderGenValidationReportUtils.cpp

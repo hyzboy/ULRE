@@ -14,7 +14,7 @@ namespace hgl::graph
     inline ShaderGenPathMode ParseShaderGenPathMode(const char *mode)
     {
         if (!mode || !mode[0])
-            return ShaderGenPathMode::MirrorValidate;
+            return ShaderGenPathMode::LegacyOnly;
 
         if (std::strcmp(mode, "legacy-only") == 0)
             return ShaderGenPathMode::LegacyOnly;
@@ -22,7 +22,7 @@ namespace hgl::graph
         if (std::strcmp(mode, "mirror-preferred") == 0)
             return ShaderGenPathMode::MirrorPreferred;
 
-        return ShaderGenPathMode::MirrorValidate;
+        return ShaderGenPathMode::LegacyOnly;
     }
 
     inline const char *GetShaderGenPathModeName(const ShaderGenPathMode mode)

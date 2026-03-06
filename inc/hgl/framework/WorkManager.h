@@ -40,12 +40,12 @@ namespace hgl
                 }
                 if (value_view == kValidate)
                 {
-                    out_mode = graph::ShaderGenPathMode::MirrorValidate;
+                    out_mode = graph::ShaderGenPathMode::LegacyOnly;
                     return true;
                 }
                 if (value_view == kPreferred)
                 {
-                    out_mode = graph::ShaderGenPathMode::MirrorPreferred;
+                    out_mode = graph::ShaderGenPathMode::LegacyOnly;
                     return true;
                 }
 
@@ -63,12 +63,12 @@ namespace hgl
                 }
                 if (value_view == kValidate)
                 {
-                    out_mode = graph::ShaderGenPathMode::MirrorValidate;
+                    out_mode = graph::ShaderGenPathMode::LegacyOnly;
                     return true;
                 }
                 if (value_view == kPreferred)
                 {
-                    out_mode = graph::ShaderGenPathMode::MirrorPreferred;
+                    out_mode = graph::ShaderGenPathMode::LegacyOnly;
                     return true;
                 }
             }

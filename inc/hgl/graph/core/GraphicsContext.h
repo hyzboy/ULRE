@@ -60,7 +60,7 @@ namespace hgl::graph
     private:
         VulkanDevice *device = nullptr;
 
-        ShaderGenPathMode shadergen_path_mode = ShaderGenPathMode::MirrorValidate;
+        ShaderGenPathMode shadergen_path_mode = ShaderGenPathMode::LegacyOnly;
         ShaderGenPathPolicy shadergen_path_policy{};
 
         GraphModuleManager *module_manager = nullptr;
@@ -75,7 +75,7 @@ namespace hgl::graph
         PrimitiveManager *primitive_manager = nullptr;
 
     public:
-        explicit GraphicsContext(VulkanDevice *dev, ShaderGenPathMode shadergen_mode = ShaderGenPathMode::MirrorValidate);
+        explicit GraphicsContext(VulkanDevice *dev, ShaderGenPathMode shadergen_mode = ShaderGenPathMode::LegacyOnly);
         ~GraphicsContext();
 
         // Disable copy

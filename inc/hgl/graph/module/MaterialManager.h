@@ -57,7 +57,6 @@ private:
 private: // Helper methods with integrated DebugUtils
 
     Material *CreateMaterial(const AnsiString &, const mtl::MaterialCreateInfo *);
-    Material *CreateMaterialWithContract(const AnsiString &, const mtl::MaterialCreateInfo *, const mtl::contract::ShaderGenRequest *, const mtl::contract::ShaderGenResult *, bool enable_mirror_validation, bool require_mirror_valid, const ShaderGenDiffLogDetail diff_log_detail);
     class PipelineLayoutData *CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager);
     class MaterialParameters *CreateMaterialMP(const AnsiString &mtl_name, const class MaterialDescriptorManager *desc_manager, const class PipelineLayoutData *pld, const DescriptorSetType &desc_set_type);
     void ApplyMaterialFinalizePlan(Material *mtl, const AnsiString &mtl_name, const mtl::MaterialCreateInfo &mci);
@@ -65,9 +64,7 @@ private: // Helper methods with integrated DebugUtils
     bool ExecuteMaterialBuildPipeline(Material *mtl,
                                       const AnsiString &mtl_name,
                                       const mtl::MaterialCreateInfo *mci,
-                                      const ShaderCreateInfoMap &sci_map,
-                                      const mtl::contract::ShaderGenResult *mirror_result,
-                                      bool require_mirror_valid);
+                                      const ShaderCreateInfoMap &sci_map);
 
 public: //Add
 

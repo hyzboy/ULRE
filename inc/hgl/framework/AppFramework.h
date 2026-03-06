@@ -59,7 +59,7 @@ namespace hgl
         graph::GraphicsContext *graphics_context = nullptr;
         graph::SwapchainModule *sc_module = nullptr;
 
-        graph::ShaderGenPathMode shadergen_path_mode = graph::ShaderGenPathMode::MirrorValidate;
+        graph::ShaderGenPathMode shadergen_path_mode = graph::ShaderGenPathMode::LegacyOnly;
         bool shadergen_path_mode_overridden = false;
 
         ecs::ECSContext *default_ecs_context = nullptr;
