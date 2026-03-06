@@ -5,6 +5,7 @@
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<hgl/math/Matrix.h>
 #include<string>
 #include<limits>
 #include"common/MFCommon.h"

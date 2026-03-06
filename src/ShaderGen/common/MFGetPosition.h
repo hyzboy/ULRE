@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/mtl/StdMaterial.h>
-#include<hgl/graph/data/CoordinateSystem.h>
+#include<hgl/common/CoordinateSystem.h>
 namespace hgl::graph::mtl{
 namespace func
 {

@@ -2,7 +2,7 @@
 
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
-#include<hgl/graph/data/CoordinateSystem.h>
+#include<hgl/common/CoordinateSystem.h>
 #include<hgl/vk/VertexAttrib.h>
 
 namespace hgl::graph::mtl{
