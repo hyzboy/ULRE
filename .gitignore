@@ -16,16 +16,9 @@
 *.ninja
 *.check_cache
 /out
-src/ecs/test_ecs
 /.vscode
 CMakeFiles
 /build_new
 /build_test
 /other_engines
 /shadergen_materialpreset_dump
-
-# Local generated shader/log artifacts
-/generated_fs.glsl
-/generated_vs.glsl
-/run_stack.txt
-/run_watch.txt
