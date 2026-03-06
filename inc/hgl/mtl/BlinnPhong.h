@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/mtl/StdMaterial.h>
+#include<hgl/mtl/ShaderBufferSource.h>
 #include<hgl/math/Vector.h>
 namespace hgl::graph::mtl{
 namespace blinnphong

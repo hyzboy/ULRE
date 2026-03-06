@@ -8,7 +8,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKRenderAssign.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 
 namespace hgl::ecs

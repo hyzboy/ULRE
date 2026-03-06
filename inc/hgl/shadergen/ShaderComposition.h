@@ -18,9 +18,9 @@
 
 #pragma once
 
-#include <hgl/graph/mtl/FixedVertexEntry.h>
-#include <hgl/graph/mtl/FixedDescriptorEntry.h>
-#include <hgl/graph/mtl/ShaderPermutationKey.h>
+#include <hgl/mtl/FixedVertexEntry.h>
+#include <hgl/mtl/FixedDescriptorEntry.h>
+#include <hgl/mtl/ShaderPermutationKey.h>
 #include <hgl/graph/shared/PrimitiveTypeDef.h>
 #include <hgl/type/String.h>
 #include <string>

@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/graph/render/RenderOptions.h>
-#include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/mtl/StdMaterial.h>
+#include<hgl/mtl/ShaderBufferSource.h>
 
 namespace hgl::graph{
 struct UBODescriptor;

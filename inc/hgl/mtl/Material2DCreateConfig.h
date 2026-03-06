@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/mtl/MaterialLibrary.h>
-#include<hgl/graph/mtl/MaterialCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/data/CoordinateSystem.h>
 #include<hgl/vk/VertexAttrib.h>
 

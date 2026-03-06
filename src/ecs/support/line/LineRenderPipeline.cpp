@@ -13,8 +13,8 @@
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/geo/GeometryCreater.h>
 #include <hgl/graph/mesh/Primitive.h>
-#include <hgl/graph/mtl/Material3DCreateConfig.h>
-#include <hgl/graph/mtl/UBOCommon.h>
+#include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/UBOCommon.h>
 #include <hgl/vk/VKDevice.h>
 #include <hgl/vk/VKMaterial.h>
 #include <hgl/vk/VKBuffer.h>

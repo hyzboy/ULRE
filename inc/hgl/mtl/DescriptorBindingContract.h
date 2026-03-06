@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/mtl/FixedDescriptorEntry.h>
+#include<hgl/mtl/FixedDescriptorEntry.h>
 #include<vector>
 #include<string>
 #include<cstring>

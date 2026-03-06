@@ -1,8 +1,8 @@
 ﻿#include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/graph/mtl/UBOCommon.h>
+#include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
-#include <hgl/graph/mtl/Material3DCreateConfig.h>
-#include <hgl/graph/mtl/FixedMaterialDef.h>
+#include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/graph/shared/RenderAssignDef.h>
 #include <cstdio>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/mtl/StdMaterial.h>
 
 namespace hgl::graph::mtl{
 namespace func

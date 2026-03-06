@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
-#include<hgl/graph/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/DescriptorBindingContract.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/graph/mtl/MaterialCreateConfig.h>
+#include<hgl/mtl/MaterialCreateConfig.h>
 #include <hgl/graph/shared/TextureSamplerTypeDef.h>
 #include<string>
 

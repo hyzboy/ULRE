@@ -1,7 +1,7 @@
 #pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/StdMaterial.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
 

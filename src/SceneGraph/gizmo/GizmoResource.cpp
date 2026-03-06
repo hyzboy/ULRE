@@ -3,7 +3,7 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/GeometryCreater.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/color/Color.h>

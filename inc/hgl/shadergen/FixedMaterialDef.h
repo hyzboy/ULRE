@@ -24,11 +24,11 @@
 ///   - 新材质优先使用 FixedMaterialDef
 ///   - 旧材质逐步迁移；全部迁移完成后删除旧体系
 
-#include<hgl/graph/mtl/SkyLight.h>
-#include<hgl/graph/mtl/FixedDescriptorEntry.h>
-#include<hgl/graph/mtl/FixedVertexEntry.h>
-#include<hgl/graph/mtl/FixedMaterialDef.h>
-#include<hgl/graph/mtl/ShaderPermutationKey.h>
+#include<hgl/mtl/SkyLight.h>
+#include<hgl/mtl/FixedDescriptorEntry.h>
+#include<hgl/mtl/FixedVertexEntry.h>
+#include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/mtl/ShaderPermutationKey.h>
 #include <hgl/graph/shared/VertexAttribDef.h>
 #include <string>
 

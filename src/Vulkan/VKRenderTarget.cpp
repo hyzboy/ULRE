@@ -8,7 +8,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 
-#include<hgl/graph/mtl/UBOCommon.h>     //未来UBO统合看能不能不引用
+#include<hgl/mtl/UBOCommon.h>     //未来UBO统合看能不能不引用
 
 namespace hgl::graph{
 

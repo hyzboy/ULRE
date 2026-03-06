@@ -3,8 +3,8 @@
 #include<hgl/ecs/core/System.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/graph/env/SkyInfo.h>
-#include<hgl/graph/mtl/SkyLight.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/SkyLight.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl
 {

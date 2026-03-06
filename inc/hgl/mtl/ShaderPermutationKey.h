@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/mtl/SkyLight.h>
+#include<hgl/mtl/SkyLight.h>
 #include <string>
 
 namespace hgl::graph::mtl{

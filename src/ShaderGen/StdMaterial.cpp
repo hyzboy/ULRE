@@ -1,4 +1,4 @@
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/mtl/StdMaterial.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 namespace hgl::graph::mtl{

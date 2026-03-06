@@ -4,7 +4,7 @@
 #include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/geo/VKGeometry.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>

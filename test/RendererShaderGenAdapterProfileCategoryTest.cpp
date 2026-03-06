@@ -1,7 +1,7 @@
 #include <hgl/graph/module/RendererShaderGenAdapter.h>
 #include <hgl/graph/module/ShaderGenContractGateReporter.h>
 #include <hgl/graph/module/ShaderGenDiffLogDetail.h>
-#include <hgl/graph/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/contract/ShaderGenContract.h>
 

@@ -4,7 +4,7 @@
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/mtl/UBOCommon.h>
 #include<string>
 #include<limits>
 #include"common/MFCommon.h"

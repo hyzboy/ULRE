@@ -1,6 +1,6 @@
-#include <hgl/graph/mtl/MaterialLibrary.h>
-#include <hgl/graph/mtl/Material2DCreateConfig.h>
-#include <hgl/graph/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/MaterialLibrary.h>
+#include <hgl/mtl/Material2DCreateConfig.h>
+#include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/contract/ShaderGenRequestBuilder.h>
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>

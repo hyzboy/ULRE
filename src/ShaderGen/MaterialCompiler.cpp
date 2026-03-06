@@ -6,16 +6,16 @@
 ///   3. 使用 ShaderPermutationKey 的宏前缀编译 GLSL + 设置 MI 代码
 
 #include <hgl/shadergen/MaterialCompiler.h>
-#include <hgl/graph/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/graph/mtl/DescriptorBindingContract.h>
+#include <hgl/mtl/DescriptorBindingContract.h>
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include <hgl/shadergen/ShaderDescriptorInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderCreateInfoFragment.h>
 #include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/shadergen/ShaderLogic.h>
-#include <hgl/graph/mtl/UBOCommon.h>
+#include <hgl/mtl/UBOCommon.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>

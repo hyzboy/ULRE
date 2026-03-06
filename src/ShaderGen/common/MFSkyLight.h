@@ -8,8 +8,8 @@
 // 合成器（ComposedShaderGenerator）根据 SkyLightAmbientModel 枚举值，
 // 选择 GetSkyLightModelImplGLSL(key.ambient) 返回的实现字符串并注入 FS 前部。
 
-#include<hgl/graph/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
-#include<hgl/graph/mtl/FixedDescriptorEntry.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
+#include<hgl/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
+#include<hgl/mtl/FixedDescriptorEntry.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
 #include <vulkan/vulkan.h>
 #include<vector>
 #include<cstring>

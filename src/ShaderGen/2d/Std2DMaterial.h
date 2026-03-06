@@ -1,3 +1,3 @@
 #pragma once
 
-#include<hgl/graph/mtl/Std2DMaterial.h>
+#include<hgl/mtl/Std2DMaterial.h>

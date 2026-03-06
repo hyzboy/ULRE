@@ -8,7 +8,7 @@
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKMaterial.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/log/Log.h>

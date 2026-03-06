@@ -1,7 +1,7 @@
 #include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/UBOCommon.h>
 #include"common/MFGetPosition.h"
 #include"common/MFGetNormal.h"
 

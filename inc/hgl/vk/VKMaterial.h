@@ -3,8 +3,8 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/graph/mtl/BindingContract.h>
-#include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/mtl/BindingContract.h>
+#include<hgl/mtl/ShaderBufferSource.h>
 #include<hgl/log/Log.h>
 #include<unordered_set>
 

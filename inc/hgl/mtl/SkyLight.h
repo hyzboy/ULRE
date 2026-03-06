@@ -6,7 +6,7 @@
 /// 中的硬编码映射表，并作为 MFSkyLight.h 的公共依赖。
 ///
 /// 文件用途：
-///   - 公共头文件（inc/），C++ 侧均通过 #include<hgl/graph/mtl/SkyLight.h> 引用
+///   - 公共头文件（inc/），C++ 侧均通过 #include<hgl/mtl/SkyLight.h> 引用
 ///   - GLSL 侧由合成器注入 SKYLIGHT_GLSL_HEADER + GetSkyLightModelImplGLSL() 提供宏常量与模型实现（详见 MFSkyLight.h）
 ///
 /// GLSL 数值与 C++ 枚举的对应关系（保持两侧同步）：

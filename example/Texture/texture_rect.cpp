@@ -1,7 +1,7 @@
 // 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/GeometryManager.h>

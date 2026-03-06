@@ -9,7 +9,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>

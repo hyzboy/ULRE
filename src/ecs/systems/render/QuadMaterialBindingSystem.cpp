@@ -4,8 +4,8 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/QuadComponent.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/mtl/SamplerName.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/SamplerName.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>

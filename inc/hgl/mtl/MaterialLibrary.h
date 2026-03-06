@@ -2,7 +2,7 @@
 
 #include<hgl/vk/VK.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/mtl/StdMaterial.h>
 
 namespace hgl::graph::mtl{
 

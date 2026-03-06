@@ -1,11 +1,11 @@
 ﻿#pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/mtl/StdMaterial.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/render/RenderTargetOutputConfig.h>
 #include<hgl/vk/VK.h>
-#include<hgl/graph/mtl/SamplerName.h>
-#include<hgl/graph/mtl/ShaderBufferSource.h>
+#include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/ShaderBufferSource.h>
 #include<cstring>
 
 namespace hgl::graph::mtl{

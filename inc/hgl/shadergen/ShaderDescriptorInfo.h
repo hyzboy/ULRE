@@ -4,7 +4,7 @@
 #include <hgl/graph/shared/ShaderDescriptorDef.h>
 #include <hgl/graph/shared/VertexInputDef.h>
 #include <hgl/graph/shared/DescriptorSetTypeDef.h>
-#include<hgl/graph/mtl/ShaderVariableType.h>
+#include<hgl/mtl/ShaderVariableType.h>
 #include<ankerl/unordered_dense.h>
 #include<vector>
 #include<string>

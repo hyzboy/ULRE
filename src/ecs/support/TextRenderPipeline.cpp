@@ -10,7 +10,7 @@
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKVertexInputConfig.h>
@@ -25,7 +25,7 @@
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/mtl/UBOCommon.h>
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>

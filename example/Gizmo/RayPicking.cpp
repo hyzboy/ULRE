@@ -16,8 +16,8 @@
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/math/geometry/Ray.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/mtl/MaterialLibrary.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/vk/VKVertexInputConfig.h>
 #include<hgl/graph/module/GeometryManager.h>

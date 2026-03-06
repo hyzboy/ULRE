@@ -11,7 +11,7 @@
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<ctime>
 #include<chrono>

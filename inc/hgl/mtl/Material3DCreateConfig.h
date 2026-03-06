@@ -1,8 +1,8 @@
 #pragma once
 
-#include<hgl/graph/mtl/SkyLight.h>
-#include<hgl/graph/mtl/MaterialLibrary.h>
-#include<hgl/graph/mtl/MaterialCreateConfig.h>
+#include<hgl/mtl/SkyLight.h>
+#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialCreateConfig.h>
 #include<hgl/vk/VertexAttrib.h>
 
 namespace hgl::graph::mtl{

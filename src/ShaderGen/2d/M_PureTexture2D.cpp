@@ -1,7 +1,7 @@
 #include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/graph/mtl/SamplerName.h>
+#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/SamplerName.h>
 
 namespace hgl::graph::mtl{
 namespace

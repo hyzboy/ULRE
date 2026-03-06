@@ -5,7 +5,7 @@
 #include<hgl/graph/font/TextLayoutEngine.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/framework/AppFramework.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/MaterialManager.h>

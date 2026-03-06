@@ -1,7 +1,7 @@
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
-#include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/mtl/UBOCommon.h>
 #include<cstring>
 #include<cstdio>
 #include<string>

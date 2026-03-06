@@ -1,7 +1,7 @@
 #pragma once
 
-#include<hgl/graph/mtl/FixedVertexEntry.h>
-#include<hgl/graph/mtl/FixedDescriptorEntry.h>
+#include<hgl/mtl/FixedVertexEntry.h>
+#include<hgl/mtl/FixedDescriptorEntry.h>
 #include<hgl/vk/VKPrimitiveType.h>
 
 namespace hgl::graph::mtl{

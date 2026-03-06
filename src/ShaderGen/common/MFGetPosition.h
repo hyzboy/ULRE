@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/mtl/StdMaterial.h>
 #include<hgl/graph/data/CoordinateSystem.h>
 namespace hgl::graph::mtl{
 namespace func

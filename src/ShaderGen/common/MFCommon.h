@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/graph/shared/RenderAssignDef.h>
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/mtl/StdMaterial.h>
 
 namespace hgl::graph::mtl::func
 {
