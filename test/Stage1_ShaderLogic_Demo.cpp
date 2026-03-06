@@ -116,7 +116,7 @@ void PrintNextSteps()
     printf("   - GetWorldPos() 的 GLSL 代码生成\n");
     printf("   - 根据 permutation key 选择性注入\n\n");
     
-    printf("4. 重构 ComposedShaderGenerator:\n");
+    printf("4. 重构 ShaderComposition 组装管线:\n");
     printf("   - 使用 MaterialLogicDef + FixedMaterialDef\n");
     printf("   - 调用 ResourceLayoutGenerator 生成布局\n");
     printf("   - 调用 BuiltinHelpers 注入辅助函数\n");

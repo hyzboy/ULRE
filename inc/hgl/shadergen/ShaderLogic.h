@@ -214,7 +214,7 @@ MaterialLogicDef PURE_COLOR_LOGIC = {
 // Step 4: 与资源布局配合使用
 // FixedMaterialDef 依然定义 vertex_entries/descriptors（资源布局）
 // MaterialLogicDef 定义业务逻辑
-// ComposedShaderGenerator 合并两者生成最终 GLSL
+// Shader composition bridge 将两者合并为最终 GLSL 输入
 
 */
 

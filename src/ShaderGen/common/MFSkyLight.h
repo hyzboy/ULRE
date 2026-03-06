@@ -5,7 +5,7 @@
 // C++ 排列枚举与映射常量见 SkyLight.h（公共头）。
 //
 // 设计原则：GLSL 侧不使用 #if/#elif 分支，每个模型提供各自独立的函数实现。
-// 合成器（ComposedShaderGenerator）根据 SkyLightAmbientModel 枚举值，
+// Shader composition pipeline 根据 SkyLightAmbientModel 枚举值，
 // 选择 GetSkyLightModelImplGLSL(key.ambient) 返回的实现字符串并注入 FS 前部。
 
 #include<hgl/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量

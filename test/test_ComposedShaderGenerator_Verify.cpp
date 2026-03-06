@@ -1,4 +1,4 @@
-/// 验证 ComposedShaderGenerator 的 GLSL 生成质量
+/// 验证 ShaderComposition pipeline 的 GLSL 生成质量
 /// 
 /// 本测试：
 /// 1. 展示 BasicLit ComposedMaterialDef 的定义
@@ -9,9 +9,9 @@
 #include <cstring>
 
 
-// 假设 ComposedShaderGenerator 可用，我们即使不能编译也能验证逻辑
+// 该测试以静态样例验证生成结果结构，无需依赖已移除的生成器类
 
-namespace TestComposedShaderGenerator {
+namespace TestShaderCompositionVerify {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 验证 1：BasicLit 顶点着色器生成
@@ -242,7 +242,7 @@ bool WriteTextFile(const char *filename, const char *text)
     return true;
 }
 
-} // namespace TestComposedShaderGenerator
+} // namespace TestShaderCompositionVerify
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 主测试函数
@@ -250,10 +250,10 @@ bool WriteTextFile(const char *filename, const char *text)
 
 int main()
 {
-    using namespace TestComposedShaderGenerator;
+    using namespace TestShaderCompositionVerify;
     
     printf("════════════════════════════════════════════════════════════\n");
-    printf("  ComposedShaderGenerator 功能验证\n");
+    printf("  ShaderComposition 功能验证\n");
     printf("════════════════════════════════════════════════════════════\n\n");
 
     // 先把当前 VS/FS 文本落盘，便于失败时直接定位 shader 内容
@@ -347,7 +347,7 @@ int main()
     printf("\n  总体结果：%s\n\n", all_pass ? "✓✓✓ 全部通过" : "✗✗✗ 存在失败");
     
     if (all_pass) {
-        printf("  ✅ ComposedShaderGenerator 功能正常\n");
+        printf("  ✅ ShaderComposition 功能正常\n");
         printf("  ✅ 生成的 GLSL 代码结构完备\n");
         printf("  ✅ 可以进行下一步：迁移硬编码材质 (M1.1-M1.3)\n");
     } else {

@@ -8,14 +8,14 @@ macro(CreateTestProject index name)
     endif()
 endmacro()
 
-add_executable(test_ComposedShaderGenerator_Verify
-    test_ComposedShaderGenerator_Verify.cpp)
+add_executable(test_ShaderCompositionVerify
+    ShaderCompositionVerifyTest.cpp)
 
-target_include_directories(test_ComposedShaderGenerator_Verify
+target_include_directories(test_ShaderCompositionVerify
     PRIVATE ${CMAKE_SOURCE_DIR}/other_engines/niagara/extern/glm
             ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include)
 
-CreateTestProject(02 test_ComposedShaderGenerator_Verify)
+CreateTestProject(02 test_ShaderCompositionVerify)
 
 add_executable(test_DescriptorSetLifecycleRegression
     test_DescriptorSetLifecycleRegression.cpp)
@@ -247,8 +247,8 @@ add_custom_target(test_ShaderGenProfileParityExtended
 
 include(CTest)
 if(BUILD_TESTING)
-    add_test(NAME test_ComposedShaderGenerator_Verify
-             COMMAND test_ComposedShaderGenerator_Verify)
+    add_test(NAME test_ShaderCompositionVerify
+             COMMAND test_ShaderCompositionVerify)
 
     add_test(NAME test_DescriptorSetLifecycleRegression
              COMMAND test_DescriptorSetLifecycleRegression)
@@ -311,34 +311,30 @@ if(BUILD_TESTING)
 endif()
 
 # 需要时可直接运行：
-#   cmake --build <build_dir> --target test_ComposedShaderGenerator
-#   cmake --build <build_dir> --target test_ComposedShaderGenerator_Verify
-#   cmake --build <build_dir> --target test_FSHelperConsistencyValidation
+#   cmake --build <build_dir> --target test_ShaderCompositionVerify
 #   cmake --build <build_dir> --target test_DescriptorSetLifecycleRegression
 #   cmake --build <build_dir> --target test_ShaderLogicValidation
-#   cmake --build <build_dir> --target test_BridgeValidation3Materials
-#   cmake --build <build_dir> --target test_HelperInjectionConflict
-#   cmake --build <build_dir> --target test_HelperInjectionConflictMatrix
-#   cmake --build <build_dir> --target test_ComposedDiagnosticsAggregation
-#   cmake --build <build_dir> --target test_TextureBlinnPhongTemplateConformance
-#   cmake --build <build_dir> --target test_BasicLitTemplateConformance
-#   cmake --build <build_dir> --target test_Gizmo3DTemplateConformance
-#   cmake --build <build_dir> --target test_VertexLuminance3DTemplateConformance
-#   cmake --build <build_dir> --target test_VertexPattleColor3DTemplateConformance
-#   cmake --build <build_dir> --target test_SkyMinimalTemplateConformance
+#   cmake --build <build_dir> --target test_ShaderGenPathMode
+#   cmake --build <build_dir> --target test_MaterialPresetExhaustiveCompile
+#   cmake --build <build_dir> --target test_RendererShaderGenAdapterStrictGate
+#   cmake --build <build_dir> --target test_ShaderGenVertexInputAdapter
+#   cmake --build <build_dir> --target test_ShaderGenDescriptorLayoutAdapter
+#   cmake --build <build_dir> --target test_MaterialBuildStrictGatePolicyMatrix
+#   cmake --build <build_dir> --target test_ShaderGenContractPathContext
+#   cmake --build <build_dir> --target test_ShaderGenPhysicalDeviceProfileJsonPath
+#   cmake --build <build_dir> --target test_ShaderGenContractValidatorProfile
+#   cmake --build <build_dir> --target test_RendererShaderGenAdapterProfileCategory
 # 在生成目录执行：
-#   .\\test\\Debug\\test_ComposedShaderGenerator.exe
-#   .\\test\\Debug\\test_ComposedShaderGenerator_Verify.exe
-#   .\\test\\Debug\\test_FSHelperConsistencyValidation.exe
+#   .\\test\\Debug\\test_ShaderCompositionVerify.exe
 #   .\\test\\Debug\\test_DescriptorSetLifecycleRegression.exe
 #   .\\test\\Debug\\test_ShaderLogicValidation.exe
-#   .\\test\\Debug\\test_BridgeValidation3Materials.exe
-#   .\\test\\Debug\\test_HelperInjectionConflict.exe
-#   .\\test\\Debug\\test_HelperInjectionConflictMatrix.exe
-#   .\\test\\Debug\\test_ComposedDiagnosticsAggregation.exe
-#   .\\test\\Debug\\test_TextureBlinnPhongTemplateConformance.exe
-#   .\\test\\Debug\\test_BasicLitTemplateConformance.exe
-#   .\\test\\Debug\\test_Gizmo3DTemplateConformance.exe
-#   .\\test\\Debug\\test_VertexLuminance3DTemplateConformance.exe
-#   .\\test\\Debug\\test_VertexPattleColor3DTemplateConformance.exe
-#   .\\test\\Debug\\test_SkyMinimalTemplateConformance.exe
+#   .\\test\\Debug\\test_ShaderGenPathMode.exe
+#   .\\test\\Debug\\test_MaterialPresetExhaustiveCompile.exe
+#   .\\test\\Debug\\test_RendererShaderGenAdapterStrictGate.exe
+#   .\\test\\Debug\\test_ShaderGenVertexInputAdapter.exe
+#   .\\test\\Debug\\test_ShaderGenDescriptorLayoutAdapter.exe
+#   .\\test\\Debug\\test_MaterialBuildStrictGatePolicyMatrix.exe
+#   .\\test\\Debug\\test_ShaderGenContractPathContext.exe
+#   .\\test\\Debug\\test_ShaderGenPhysicalDeviceProfileJsonPath.exe
+#   .\\test\\Debug\\test_ShaderGenContractValidatorProfile.exe
+#   .\\test\\Debug\\test_RendererShaderGenAdapterProfileCategory.exe
