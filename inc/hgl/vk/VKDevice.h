@@ -13,7 +13,7 @@
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKShaderModuleMap.h>
-#include<hgl/vk/VKDescriptorSetType.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
 #include<hgl/log/Log.h>
 #include<hgl/object/ObjectTracker.h>

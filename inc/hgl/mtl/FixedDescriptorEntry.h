@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/CoreType.h>
-#include<hgl/vk/VKDescriptorSetType.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 
 namespace hgl::graph::mtl{
 

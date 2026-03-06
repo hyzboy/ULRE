@@ -4,7 +4,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
 #include<hgl/vk/VKDescriptorSet.h>
-#include<hgl/vk/VKDescriptorSetType.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{

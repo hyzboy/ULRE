@@ -1,5 +1,5 @@
 ﻿#include<hgl/vk/VKMaterialDescriptorManager.h>
-#include<hgl/vk/VKDescriptorSetType.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/type/EnumUtil.h>
 #include<vector>
 

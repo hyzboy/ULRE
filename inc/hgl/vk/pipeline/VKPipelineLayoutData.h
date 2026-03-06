@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VK.h>
-#include<hgl/vk/VKDescriptorSetType.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/type/UnorderedMap.h>
 
 namespace hgl::graph{

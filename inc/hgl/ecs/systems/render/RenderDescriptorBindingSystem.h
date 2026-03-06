@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/ecs/core/System.h>
-#include <hgl/mtl/BindingContract.h>
+#include<hgl/mtl/DescriptorBindingContract.h>
 #include<hgl/type/String.h>
 #include<vector>
 #include<functional>
