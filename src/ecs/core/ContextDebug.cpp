@@ -1,6 +1,5 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
-#include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/vk/VKMaterial.h>
 #include<algorithm>
 
@@ -181,26 +180,18 @@ namespace hgl
                                                                  uint32_t max_count) const
         {
             out_histogram.clear();
+            (void)max_count;
 
-        #if !ULRE_ECS_DEBUG_API
             return false;
-        #else
-            out_histogram = hgl::graph::RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
-            return true;
-        #endif
         }
 
         bool ECSContext::GetShaderGenValidationMaterialCategoryMatrix(std::map<std::string, std::map<std::string, uint32_t>> &out_matrix,
                                                                       uint32_t max_count) const
         {
             out_matrix.clear();
+            (void)max_count;
 
-        #if !ULRE_ECS_DEBUG_API
             return false;
-        #else
-            out_matrix = hgl::graph::RendererShaderGenAdapter::GetRecentValidationMaterialCategoryMatrix(max_count);
-            return true;
-        #endif
         }
     }
 }

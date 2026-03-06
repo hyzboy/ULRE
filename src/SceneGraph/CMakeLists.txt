@@ -23,20 +23,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         ${SG_INCLUDE_PATH}/module/TextureManager.h
                         ${SG_INCLUDE_PATH}/module/SamplerManager.h
                         ${SG_INCLUDE_PATH}/module/MaterialManager.h
-                        ${SG_INCLUDE_PATH}/module/RendererShaderGenAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenVertexInputAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenVertexPolicyAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenDescriptorLayoutAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenDescriptorPolicyAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenContractGateReporter.h
-                        ${SG_INCLUDE_PATH}/module/MaterialBuildFlowAdapter.h
                         ${SG_INCLUDE_PATH}/module/MaterialCreatePrecheckAdapter.h
                         ${SG_INCLUDE_PATH}/module/MaterialFinalizeFlowAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenSPVModuleAdapter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenValidationQueryBridge.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenMirrorDiffPresenter.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenValidationReportUtils.h
-                        ${SG_INCLUDE_PATH}/module/ShaderGenValidationStorageService.h
                         ${SG_INCLUDE_PATH}/module/BufferManager.h
                         ${SG_INCLUDE_PATH}/module/RenderTargetManager.h
                         ${SG_INCLUDE_PATH}/module/GeometryManager.h
@@ -49,20 +37,8 @@ SET(GRAPH_MODULE_FILES  ${SG_INCLUDE_PATH}/module/GraphModule.h
                         module/TextureManager.cpp
                         module/SamplerManager.cpp
                         module/MaterialManager.cpp
-                        module/RendererShaderGenAdapter.cpp
-                        module/ShaderGenVertexInputAdapter.cpp
-                        module/ShaderGenVertexPolicyAdapter.cpp
-                        module/ShaderGenDescriptorLayoutAdapter.cpp
-                        module/ShaderGenDescriptorPolicyAdapter.cpp
-                        module/ShaderGenContractGateReporter.cpp
-                        module/MaterialBuildFlowAdapter.cpp
                         module/MaterialCreatePrecheckAdapter.cpp
                         module/MaterialFinalizeFlowAdapter.cpp
-                        module/ShaderGenSPVModuleAdapter.cpp
-                        module/ShaderGenValidationQueryBridge.cpp
-                        module/ShaderGenMirrorDiffPresenter.cpp
-                        module/ShaderGenValidationReportUtils.cpp
-                        module/ShaderGenValidationStorageService.cpp
                         module/BufferManager.cpp
                         module/RenderTargetManager.cpp
                         module/GeometryManager.cpp

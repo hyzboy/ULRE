@@ -10,10 +10,8 @@
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/graph/core/GraphicsContext.h>
-#include<hgl/graph/module/MaterialBuildFlowAdapter.h>
 #include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
-#include<hgl/graph/module/RendererShaderGenAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
@@ -21,7 +19,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
-#include<cstdio>
+#include<vector>
 
 namespace hgl::graph{
 
@@ -43,6 +41,62 @@ namespace
 
             ++p;
         }
+    }
+
+    bool BuildLegacyShaderModules(MaterialManager *manager,
+                                  const AnsiString &mtl_name,
+                                  const ShaderCreateInfoMap &sci_map,
+                                  ShaderModuleMap *shader_maps)
+    {
+        if (!manager || !shader_maps)
+            return false;
+
+        if (sci_map.GetCount() < 2)
+            return false;
+
+        for (auto [stage, sci_ptr] : sci_map)
+        {
+            (void)stage;
+
+            if (!sci_ptr)
+                return false;
+
+            const ShaderModule *module = manager->CreateShaderModule(mtl_name, sci_ptr);
+            if (!module)
+                return false;
+
+            shader_maps->Add(module);
+        }
+
+        return true;
+    }
+
+    std::vector<ShaderDescriptor> CollectLegacyDescriptors(const mtl::MaterialCreateInfo *mci)
+    {
+        std::vector<ShaderDescriptor> legacy_descriptors;
+        if (!mci)
+            return legacy_descriptors;
+
+        const auto &mdi = mci->GetMDI();
+        if (mdi.GetCount() == 0)
+            return legacy_descriptors;
+
+        const auto &sds_array = mdi.Get();
+        legacy_descriptors.reserve(mdi.GetCount());
+
+        for (size_t i = 0; i < DESCRIPTOR_SET_TYPE_COUNT; i++)
+        {
+            std::vector<ShaderDescriptor *> values;
+            sds_array[i].descriptor_map.GetValueArray(values);
+
+            for (auto *sd : values)
+            {
+                if (sd)
+                    legacy_descriptors.emplace_back(*sd);
+            }
+        }
+
+        return legacy_descriptors;
     }
 
 }//namespace
@@ -214,36 +268,24 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
     if(!mtl || !mci)
         return false;
 
-    bool mirror_spv_build_used = false;
-    if(!BuildShaderModulesFlow(this,
-                               mtl_name,
-                               sci_map,
-                               nullptr,
-                               false,
-                               mtl->shader_maps,
-                               mirror_spv_build_used))
+    if(!BuildLegacyShaderModules(this,
+                                 mtl_name,
+                                 sci_map,
+                                 mtl->shader_maps))
     {
         return false;
     }
 
     CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
 
-    VertexInput *resolved_vertex_input = nullptr;
-    MaterialDescriptorManager *resolved_desc_manager = nullptr;
+    ShaderCreateInfoVertex *vert = mci->GetVS();
+    mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
 
-    if(!BuildMaterialBindingsFlow(mtl_name,
-                                  mci,
-                                  nullptr,
-                                  mirror_spv_build_used,
-                                  false,
-                                  resolved_vertex_input,
-                                  resolved_desc_manager))
-    {
-        return false;
-    }
-
-    mtl->vertex_input = resolved_vertex_input;
-    mtl->desc_manager = resolved_desc_manager;
+    std::vector<ShaderDescriptor> descriptors = CollectLegacyDescriptors(mci);
+    if(!descriptors.empty())
+        mtl->desc_manager = new MaterialDescriptorManager(mtl_name, descriptors.data(), static_cast<uint>(descriptors.size()));
+    else
+        mtl->desc_manager = nullptr;
 
     ApplyMaterialFinalizePlan(mtl, mtl_name, *mci);
 
@@ -310,27 +352,32 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
 
 void MaterialManager::ResetShaderGenProfiler()
 {
-    RendererShaderGenAdapter::ResetProfiler();
+    // Legacy-only mode keeps ShaderGen debug APIs as no-op for compatibility.
 }
 
 ShaderGenProfilerSnapshot MaterialManager::GetShaderGenProfilerSnapshot() const
 {
-    return RendererShaderGenAdapter::GetProfilerSnapshot();
+    return {};
 }
 
 bool MaterialManager::GetShaderGenLastValidationReport(ShaderGenValidationReport &out_report, std::string *out_material_name) const
 {
-    return RendererShaderGenAdapter::GetLastValidationReport(out_report, out_material_name);
+    out_report = {};
+    if (out_material_name)
+        out_material_name->clear();
+    return false;
 }
 
 std::vector<ShaderGenValidationReportRecord> MaterialManager::GetShaderGenRecentValidationReports(const uint32_t max_count) const
 {
-    return RendererShaderGenAdapter::GetRecentValidationReports(max_count);
+    (void)max_count;
+    return {};
 }
 
 std::map<std::string, uint32_t> MaterialManager::GetShaderGenRecentValidationCategoryHistogram(const uint32_t max_count) const
 {
-    return RendererShaderGenAdapter::GetRecentValidationReportCategoryHistogram(max_count);
+    (void)max_count;
+    return {};
 }
 
 Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::Material3DCreateConfig *cfg)
