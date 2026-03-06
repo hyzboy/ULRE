@@ -23,3 +23,9 @@ CMakeFiles
 /build_test
 /other_engines
 /shadergen_materialpreset_dump
+
+# Local generated shader/log artifacts
+/generated_fs.glsl
+/generated_vs.glsl
+/run_stack.txt
+/run_watch.txt
