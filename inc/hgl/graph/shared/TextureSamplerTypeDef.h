@@ -1,6 +1,5 @@
 #pragma once
 
-#include <hgl/vk/VKNamespace.h>
 #include <hgl/type/EnumUtil.h>
 #include <hgl/type/StrChar.h>
 

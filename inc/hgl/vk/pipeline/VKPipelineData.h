@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKNamespace.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<hgl/vk/VKVertexInputLayout.h>
 #include<hgl/type/ValueArray.h>

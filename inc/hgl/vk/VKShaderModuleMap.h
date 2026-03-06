@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKNamespace.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 

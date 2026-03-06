@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKNamespace.h>
 #include<hgl/type/String.h>
 #include<hgl/core/ObjectType.h>
 #include<cstdint>

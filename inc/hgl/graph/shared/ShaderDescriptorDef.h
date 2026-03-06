@@ -3,7 +3,7 @@
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/UnorderedMap.h>
-#include <hgl/vk/VKNamespace.h>
+#include <vulkan/vulkan.h>
 #include <hgl/graph/shared/DescriptorSetTypeDef.h>
 
 namespace hgl::graph

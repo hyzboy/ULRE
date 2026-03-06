@@ -10,7 +10,7 @@
 
 #include<hgl/graph/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
 #include<hgl/graph/mtl/FixedDescriptorEntry.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
-#include <hgl/vk/VKNamespace.h>
+#include <vulkan/vulkan.h>
 #include<vector>
 #include<cstring>
 

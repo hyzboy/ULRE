@@ -1,4 +1,5 @@
-﻿#include<hgl/graph/module/SwapchainModule.h>
+﻿#include <vulkan/vulkan.h>
+#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
@@ -7,7 +8,6 @@
 #include<hgl/vk/VKSwapchain.h>
 #include<hgl/vk/VKDeviceAttribute.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include <hgl/vk/VKNamespace.h>
 #include <hgl/vk/VKRenderbufferInfo.h>
 #include <hgl/vk/VKRenderTargetData.h>
 #include <hgl/vk/VKTexture.h>

@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include<hgl/vk/VKNamespace.h>
 #include<hgl/CoreType.h>
 namespace hgl::graph{
 /**

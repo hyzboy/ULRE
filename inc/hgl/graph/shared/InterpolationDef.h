@@ -1,6 +1,7 @@
 #pragma once
 
-#include <hgl/vk/VKNamespace.h>
+#include <vulkan/vulkan.h>
+#include <hgl/type/EnumUtil.h>
 
 namespace hgl::graph
 {

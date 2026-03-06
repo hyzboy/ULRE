@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include<hgl/type/String.h>
-#include<hgl/vk/VKNamespace.h>
 
 namespace hgl::graph{
 template<typename T>

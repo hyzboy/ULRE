@@ -3,8 +3,7 @@
 #include<hgl/type/ValueArray.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/String.h>
-#include <hgl/graph/shared/ShaderStageDef.h>
-#include<hgl/vk/VKNamespace.h>
+#include<hgl/graph/shared/ShaderStageDef.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<hgl/vk/VKStruct.h>

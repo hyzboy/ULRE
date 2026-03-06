@@ -1,18 +1,21 @@
 ﻿#pragma once
-#include<hgl/vk/VKNamespace.h>
+
+#include<vulkan/vulkan.h>
 #include<hgl/vk/VertexAttrib.h>
-namespace hgl::graph{
-struct VertexInputFormat
+
+namespace hgl::graph
 {
-    VkFormat    format;
-    uint        vec_size;
-    uint        stride;
+    struct VertexInputFormat
+    {
+        VkFormat    format;
+        uint        vec_size;
+        uint        stride;
 
-    const char *        name;
-    int                 binding;
-    VkVertexInputRate   input_rate;
-    VertexInputGroup    group;
-};//struct VertexInputFormat
+        const char *        name;
+        int                 binding;
+        VkVertexInputRate   input_rate;
+        VertexInputGroup    group;
+    };//struct VertexInputFormat
 
-using VIF=VertexInputFormat;
+    using VIF=VertexInputFormat;
 }//namespace hgl::graph

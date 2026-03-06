@@ -1,9 +1,7 @@
-﻿#ifndef __VK_FRAME_DATA_H__
-#define __VK_FRAME_DATA_H__
+﻿#pragma once
 
 #include<vulkan/vulkan.h>
 #include<vector>
-#include<hgl/vk/VKNamespace.h>
 
 namespace hgl::graph{
 
@@ -96,5 +94,3 @@ struct FrameResources
 using FrameData = FrameResources;
 
 }//namespace hgl::graph
-
-#endif // __VK_FRAME_DATA_H__

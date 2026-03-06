@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/vk/VKNamespace.h>
 #include<vulkan/vulkan.h>
 
 namespace hgl::graph{

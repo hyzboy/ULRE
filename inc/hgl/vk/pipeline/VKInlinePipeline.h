@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/type/EnumUtil.h>
-#include<hgl/vk/VKNamespace.h>
 
 namespace hgl::graph{
 enum class InlinePipeline

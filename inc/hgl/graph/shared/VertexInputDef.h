@@ -4,7 +4,6 @@
 #include <hgl/graph/shared/InterpolationDef.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/String.h>
-#include <hgl/vk/VKNamespace.h>
 #include <compare>
 
 namespace hgl::graph
