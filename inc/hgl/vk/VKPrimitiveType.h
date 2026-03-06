@@ -1,2 +1,2 @@
 ﻿#pragma once
-#include <hgl/graph/shared/PrimitiveTypeDef.h>
+#include <hgl/common/PrimitiveTypeDef.h>

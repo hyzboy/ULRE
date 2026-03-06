@@ -29,7 +29,7 @@
 #include<hgl/mtl/FixedVertexEntry.h>
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/mtl/ShaderPermutationKey.h>
-#include <hgl/graph/shared/VertexAttribDef.h>
+#include <hgl/common/VertexAttribDef.h>
 #include <string>
 
 namespace hgl::graph::mtl{

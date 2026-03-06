@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/shared/RenderAssignDef.h>
+#include<hgl/common/RenderAssignDef.h>
 #include<hgl/mtl/StdMaterial.h>
 
 namespace hgl::graph::mtl::func

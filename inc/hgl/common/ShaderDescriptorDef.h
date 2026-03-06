@@ -4,7 +4,7 @@
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/UnorderedMap.h>
 #include <vulkan/vulkan.h>
-#include <hgl/graph/shared/DescriptorSetTypeDef.h>
+#include <hgl/common/DescriptorSetTypeDef.h>
 
 namespace hgl::graph
 {

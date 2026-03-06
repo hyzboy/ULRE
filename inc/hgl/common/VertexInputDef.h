@@ -1,7 +1,7 @@
 #pragma once
 
-#include <hgl/graph/shared/VertexAttribDef.h>
-#include <hgl/graph/shared/InterpolationDef.h>
+#include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/InterpolationDef.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/String.h>
 #include <compare>

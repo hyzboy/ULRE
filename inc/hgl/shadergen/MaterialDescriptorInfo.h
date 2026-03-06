@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <hgl/graph/shared/ShaderDescriptorDef.h>
+#include <hgl/common/ShaderDescriptorDef.h>
 #include<hgl/mtl/ShaderBufferSource.h>
 #include<ankerl/unordered_dense.h>
 #include<string>

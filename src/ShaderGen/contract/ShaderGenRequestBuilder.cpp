@@ -2,7 +2,7 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/mtl/DescriptorBindingContract.h>
-#include <hgl/graph/shared/VertexAttribDef.h>
+#include <hgl/common/VertexAttribDef.h>
 #include <cstring>
 
 namespace hgl::graph::mtl::contract

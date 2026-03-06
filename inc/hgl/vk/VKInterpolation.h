@@ -1,2 +1,2 @@
 ﻿#pragma once
-#include <hgl/graph/shared/InterpolationDef.h>
+#include <hgl/common/InterpolationDef.h>

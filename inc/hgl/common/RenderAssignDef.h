@@ -1,7 +1,7 @@
 #pragma once
 
-#include <hgl/graph/render/RenderOptions.h>
-#include <hgl/graph/shared/VertexAttribDef.h>
+#include <hgl/common/RenderOptions.h>
+#include <hgl/common/VertexAttribDef.h>
 #include <vulkan/vulkan.h>
 #include <cstdint>
 

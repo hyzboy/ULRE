@@ -4,7 +4,7 @@
 #include<hgl/mtl/DescriptorBindingContract.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
-#include <hgl/graph/shared/TextureSamplerTypeDef.h>
+#include <hgl/common/TextureSamplerTypeDef.h>
 #include<string>
 
 namespace hgl::graph

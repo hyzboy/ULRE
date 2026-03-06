@@ -1,2 +1,2 @@
 ﻿#pragma once
-#include <hgl/graph/shared/ShaderDescriptorDef.h>
+#include <hgl/common/ShaderDescriptorDef.h>

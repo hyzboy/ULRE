@@ -3,8 +3,8 @@
 #include<hgl/shadergen/ResourceLayoutGenerator.h>
 #include<hgl/mtl/FixedDescriptorEntry.h>
 #include<hgl/mtl/FixedVertexEntry.h>
-#include <hgl/graph/shared/VertexAttribDef.h>
-#include <hgl/graph/shared/DescriptorSetTypeDef.h>
+#include <hgl/common/VertexAttribDef.h>
+#include <hgl/common/DescriptorSetTypeDef.h>
 #include<stdarg.h>
 #include<stdio.h>
 #include<assert.h>

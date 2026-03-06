@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include <hgl/graph/shared/TextureSamplerTypeDef.h>
+#include <hgl/common/TextureSamplerTypeDef.h>
 
 namespace hgl::graph{
 

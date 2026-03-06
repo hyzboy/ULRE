@@ -1,2 +1,2 @@
 ﻿#pragma once
-#include <hgl/graph/shared/VertexAttribDef.h>
+#include <hgl/common/VertexAttribDef.h>

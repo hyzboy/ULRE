@@ -1,2 +1,2 @@
 ﻿#pragma once
-#include <hgl/graph/shared/VertexInputDef.h>
+#include <hgl/common/VertexInputDef.h>

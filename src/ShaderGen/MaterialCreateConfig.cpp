@@ -1,7 +1,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include <hgl/graph/shared/PrimitiveTypeDef.h>
-#include <hgl/graph/shared/VertexAttribDef.h>
+#include <hgl/common/PrimitiveTypeDef.h>
+#include <hgl/common/VertexAttribDef.h>
 #include<string>
 
 namespace hgl::graph::mtl{

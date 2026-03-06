@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/vk/VK.h>
+#include<hgl/CoreType.h>
 
 namespace hgl::graph{
 

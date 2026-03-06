@@ -2,7 +2,7 @@
 
 #include <hgl/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
-#include <hgl/graph/shared/RenderAssignDef.h>
+#include <hgl/common/RenderAssignDef.h>
 
 namespace hgl::graph::mtl {
 namespace {

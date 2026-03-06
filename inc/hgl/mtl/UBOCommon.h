@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/render/RenderOptions.h>
+#include<hgl/common/RenderOptions.h>
 #include<hgl/mtl/StdMaterial.h>
 #include<hgl/mtl/ShaderBufferSource.h>
 

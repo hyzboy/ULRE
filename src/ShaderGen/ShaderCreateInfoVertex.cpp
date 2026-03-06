@@ -1,5 +1,5 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/graph/shared/RenderAssignDef.h>
+#include<hgl/common/RenderAssignDef.h>
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
 #include<string>

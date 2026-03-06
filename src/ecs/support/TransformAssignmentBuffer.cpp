@@ -2,7 +2,7 @@
  * TransformAssignmentBuffer.cpp - ECS Transform 分配缓冲实现
  */
 
-#include<hgl/graph/render/RenderOptions.h>
+#include<hgl/common/RenderOptions.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>

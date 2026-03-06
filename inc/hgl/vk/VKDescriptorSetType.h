@@ -1,2 +1,2 @@
 ﻿#pragma once
-#include <hgl/graph/shared/DescriptorSetTypeDef.h>
+#include <hgl/common/DescriptorSetTypeDef.h>

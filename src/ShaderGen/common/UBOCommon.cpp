@@ -1,5 +1,5 @@
 #include<hgl/mtl/UBOCommon.h>
-#include <hgl/graph/shared/ShaderDescriptorDef.h>
+#include <hgl/common/ShaderDescriptorDef.h>
 #include<cstring>
 
 namespace hgl::graph::mtl{

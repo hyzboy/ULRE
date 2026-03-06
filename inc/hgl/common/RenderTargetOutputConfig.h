@@ -1,7 +1,6 @@
-﻿#ifndef HGL_GRAPH_RT_OUTPUT_CONFIG_INCLUDE
-#define HGL_GRAPH_RT_OUTPUT_CONFIG_INCLUDE
+﻿#pragma once
 
-#include<hgl/type/DataType.h>
+#include<hgl/CoreType.h>
 
 namespace hgl
 {
@@ -15,4 +14,3 @@ namespace hgl
         };
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_RT_OUTPUT_CONFIG_INCLUDE
