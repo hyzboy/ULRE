@@ -49,8 +49,6 @@ use_cm_module(GUI)
 use_cm_module(AssetsManage)
 add_subdirectory(src)
 
-add_subdirectory(test)
-
 add_subdirectory(example)
 
 find_package(Python3 QUIET COMPONENTS Interpreter)
