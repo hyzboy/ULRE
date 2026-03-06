@@ -5,9 +5,7 @@
 #include <vulkan/vulkan.h>
 #include <cstdint>
 
-namespace hgl::graph
-{
-namespace Assign
+namespace hgl::graph::Assign
 {
     namespace TransformID
     {
@@ -30,5 +28,4 @@ namespace Assign
         constexpr VAType            VAT_FMT         = VAT_UINT;
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(uint16_t);
     }
-}
 }
