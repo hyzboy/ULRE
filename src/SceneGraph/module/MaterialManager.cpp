@@ -343,7 +343,7 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!mci)
         return(nullptr);
 
-    AnsiString hash_name=mtl::GetInlineMaterialName(mtl_id);
+    AnsiString hash_name=mtl::GetMaterialPresetName(mtl_id);
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
@@ -394,7 +394,7 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!mci)
         return(nullptr);
 
-    AnsiString hash_name=mtl::GetInlineMaterialName(mtl_id);
+    AnsiString hash_name=mtl::GetMaterialPresetName(mtl_id);
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 

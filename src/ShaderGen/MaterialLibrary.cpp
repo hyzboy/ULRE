@@ -5,7 +5,7 @@
 
 namespace hgl::graph::mtl{
 
-const char *GetInlineMaterialName(const MaterialPreset mtl_id)
+const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 {
     switch(mtl_id)
     {

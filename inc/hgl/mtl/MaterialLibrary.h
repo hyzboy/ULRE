@@ -42,7 +42,8 @@ inline MaterialCreateInfo *Create##name(const contract::PhysicalDeviceProfileLit
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg);
-const char *GetInlineMaterialName(const MaterialPreset mtl_id);
+
+const char *GetMaterialPresetName(const MaterialPreset mtl_id);
 
 }//namespace hgl::graph::mtl
 
