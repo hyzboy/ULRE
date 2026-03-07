@@ -40,6 +40,7 @@ namespace hgl
 {
     namespace ecs
     {
+        class CameraSystem;
     class RenderSystemCore;
         class RenderPipelineBase;
         class MaterialBatch;
@@ -533,6 +534,10 @@ namespace hgl
                 if (entity_manager)
                     entity_manager->GetAllEntityPointers(out_entities);
             }
+
+            /// Ensure CameraSystem exists in this context.
+            /// If created after context activation, it is initialized immediately.
+            std::shared_ptr<CameraSystem> EnsureCameraSystem();
 
             /// Register a system
             /// @param is_render true则放入渲染系统列表，否则为逻辑更新系统

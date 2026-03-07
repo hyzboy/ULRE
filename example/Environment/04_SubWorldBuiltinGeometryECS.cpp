@@ -18,28 +18,9 @@ private:
     std::unique_ptr<example::modules::ISubWorldModule> geometry_module;
 
 private:
-    bool EnsureCameraSystem()
-    {
-        if (!root_context)
-            return false;
-
-        auto camera_system = root_context->GetSystem<CameraSystem>();
-        if (!camera_system)
-        {
-            camera_system = root_context->RegisterTickSystem<CameraSystem>(root_context);
-            if (root_context->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool InitRootCamera()
     {
-        if (!EnsureCameraSystem())
+        if (!root_context || !root_context->EnsureCameraSystem())
             return false;
 
         camera_entity = root_context->CreateEntity<Entity>("MainCamera");

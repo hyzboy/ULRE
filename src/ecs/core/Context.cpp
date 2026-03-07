@@ -221,6 +221,26 @@ namespace hgl
             OnCreate();
         }
 
+        std::shared_ptr<CameraSystem> ECSContext::EnsureCameraSystem()
+        {
+            auto camera_system = GetSystem<CameraSystem>();
+            if (!camera_system)
+            {
+                camera_system = RegisterTickSystem<CameraSystem>(this);
+            }
+
+            if (!camera_system)
+                return nullptr;
+
+            if (active)
+            {
+                camera_system->OnDependenciesReady();
+                camera_system->Initialize();
+            }
+
+            return camera_system;
+        }
+
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
             auto it = render_pipelines.find(name);
