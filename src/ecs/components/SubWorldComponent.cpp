@@ -205,12 +205,24 @@ namespace hgl::ecs
 
     void SubWorldComponent::SetRenderShared(bool value)
     {
+        if (!value && !logic_isolated)
+        {
+            LogWarning("[SubWorldComponent] Reject invalid policy: render_shared=false requires logic_isolated=true");
+            return;
+        }
+
         render_shared = value;
         SyncModeFromPolicy();
     }
 
     void SubWorldComponent::SetLogicIsolated(bool value)
     {
+        if (!render_shared && !value)
+        {
+            LogWarning("[SubWorldComponent] Reject invalid policy: render_shared=false with logic_isolated=false is not supported");
+            return;
+        }
+
         logic_isolated = value;
         SyncModeFromPolicy();
     }
@@ -506,13 +518,7 @@ namespace hgl::ecs
             return;
         }
 
-        if (!asset_path.empty())
-        {
-            InstantiateAssetToParent();
-            return;
-        }
-
-        // Create sub-world if not already created
+        // Create local sub-world context first when local logic/render isolation is required.
         if (!sub_world)
         {
             std::string sub_world_name = owner_entity ? owner_entity->GetName() + "_SubWorld" : "SubWorld";
@@ -527,6 +533,10 @@ namespace hgl::ecs
 
             Initialize(parent_context);
         }
+
+        // Asset instancing remains parent-side, but must not bypass local-context setup.
+        if (!asset_path.empty())
+            InstantiateAssetToParent();
     }
 
     void SubWorldComponent::OnDetach()

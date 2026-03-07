@@ -311,6 +311,8 @@ namespace hgl
 
             tick_systems.Clear();
             render_systems.Clear();
+            global_render_system_count = 0;
+            local_gameplay_system_count = 0;
 
             // Destroy all entities
             if (entity_manager)
@@ -1155,6 +1157,16 @@ namespace hgl
             auto& order_list = effective_is_render ? render_system_order : tick_system_order;
             auto& dirty_flag = effective_is_render ? render_order_dirty : tick_order_dirty;
             auto& deps = effective_is_render ? render_dependencies : tick_dependencies;
+            const bool is_new_registration = (sys_map.GetValuePointer(key) == nullptr);
+
+            if (is_new_registration)
+            {
+                if (effective_is_render && context_role == ContextRole::RootShared)
+                    ++global_render_system_count;
+
+                if (!effective_is_render && context_role == ContextRole::LocalSubWorld)
+                    ++local_gameplay_system_count;
+            }
 
             sys_map[key] = system;
 
@@ -1262,6 +1274,7 @@ namespace hgl
                     return false;
 
                 const auto removed_system = *holder;
+                const int removed_phase = removed_system ? static_cast<int>(removed_system->GetExecutionPhase()) : -1;
 
                 if (*holder)
                     (*holder)->Shutdown();
@@ -1285,6 +1298,14 @@ namespace hgl
 
                 if (removed_system)
                 {
+                    const bool removed_is_render = removed_phase >= static_cast<int>(ExecutionPhase::RenderSwapchainNextImage);
+
+                    if (removed_is_render && context_role == ContextRole::RootShared && global_render_system_count > 0)
+                        --global_render_system_count;
+
+                    if (!removed_is_render && context_role == ContextRole::LocalSubWorld && local_gameplay_system_count > 0)
+                        --local_gameplay_system_count;
+
                     for (auto it = systems_by_element_type.begin(); it != systems_by_element_type.end();)
                     {
                         auto& vec = it->second;

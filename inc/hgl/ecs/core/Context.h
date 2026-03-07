@@ -140,6 +140,8 @@ namespace hgl
             bool allow_render_system_registration = true;
             uint32_t rejected_render_system_registration_count = 0;
             bool rejected_render_system_registration_logged = false;
+            uint32_t global_render_system_count = 0;
+            uint32_t local_gameplay_system_count = 0;
 
             RenderFrameCache render_frame_cache;
             SystemProfiler profiler;
@@ -723,10 +725,18 @@ namespace hgl
 
             /// Diagnostics: count how many render-system registration attempts were rejected.
             uint32_t GetRejectedRenderSystemRegistrationCount() const { return rejected_render_system_registration_count; }
+            uint32_t GetGlobalRenderSystemCount() const { return global_render_system_count; }
+            uint32_t GetLocalGameplaySystemCount() const { return local_gameplay_system_count; }
             void ResetRejectedRenderSystemRegistrationCount()
             {
                 rejected_render_system_registration_count = 0;
                 rejected_render_system_registration_logged = false;
+            }
+            void ResetHybridRegistrationDiagnostics()
+            {
+                ResetRejectedRenderSystemRegistrationCount();
+                global_render_system_count = 0;
+                local_gameplay_system_count = 0;
             }
 
             /// 获取指定类型的组件列表（自动清理已失效的弱引用）
