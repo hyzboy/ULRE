@@ -35,7 +35,7 @@ using namespace hgl::ecs;
 class RecursiveCubeApp:public WorkObject
 {
 private:
-    ECSContext *ecs_world = nullptr;
+    ECSContext *ecs_context = nullptr;
     Entity *camera_entity = nullptr;
 
     Material *material = nullptr;
@@ -165,35 +165,16 @@ private:
         return true;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if (!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if (!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if (ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     Entity *CreateCubeEntity(const glm::vec3 &local_pos,
                              float scale,
                              const char *name,
                              bool animate,
                              EntityID parent_id)
     {
-        if (!ecs_world || !primitive_manager || !geometry || !mi || !pipeline)
+        if (!ecs_context || !primitive_manager || !geometry || !mi || !pipeline)
             return nullptr;
 
-        auto *entity = ecs_world->CreateEntity<Entity>(name);
+        auto *entity = ecs_context->CreateEntity<Entity>(name);
         auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
         if (parent_id.IsValid())
             transform->SetParent(parent_id);
@@ -246,11 +227,9 @@ private:
 
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if (!ecs_world)
-            return false;
+        ecs_context = GetECSContext();
 
-        if (!EnsureCameraSystem())
+        if (!ecs_context)
             return false;
 
         auto *render_context = GetRenderContext();
@@ -292,10 +271,10 @@ private:
 
     bool InitCamera()
     {
-        if (!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;

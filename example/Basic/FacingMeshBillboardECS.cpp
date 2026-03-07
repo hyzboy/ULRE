@@ -81,7 +81,7 @@ private:
         }
     };
 
-    ECSContext* ecs_world = nullptr;
+    ECSContext* ecs_context = nullptr;
 
     MaterialData solid;
     VertexDataManager* mesh_vdm = nullptr;
@@ -276,38 +276,19 @@ private:
         return true;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if (!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if (!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if (ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool EnsureFacingSystem()
     {
-        if (!ecs_world)
+        if (!ecs_context)
             return false;
 
-        auto facing_system = ecs_world->GetSystem<FacingTransformSystem>();
+        auto facing_system = ecs_context->GetSystem<FacingTransformSystem>();
         if (!facing_system)
         {
-            facing_system = ecs_world->RegisterTickSystem<FacingTransformSystem>();
-            facing_system->SetWorld(ecs_world);
+            facing_system = ecs_context->RegisterTickSystem<FacingTransformSystem>();
+            facing_system->SetWorld(ecs_context);
             facing_system->SetCameraInfo(GetCameraInfo());
 
-            if (ecs_world->IsActive())
+            if (ecs_context->IsActive())
             {
                 facing_system->OnDependenciesReady();
                 facing_system->Initialize();
@@ -319,7 +300,7 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_world || render_meshes.empty())
+        if (!ecs_context || render_meshes.empty())
             return false;
 
         const size_t mesh_count = render_meshes.size();
@@ -330,7 +311,7 @@ private:
             if (!rm)
                 continue;
 
-            rm->entity = ecs_world->CreateEntity<Entity>("FacingMesh_" + std::to_string(i));
+            rm->entity = ecs_context->CreateEntity<Entity>("FacingMesh_" + std::to_string(i));
             rm->transform = rm->entity->AddComponent<TransformComponent>(Mobility::Static);
             rm->primitive_comp = rm->entity->AddComponent<PrimitiveComponent>();
             rm->facing_comp = rm->entity->AddComponent<FacingTransformComponent>();
@@ -357,11 +338,8 @@ private:
 
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if (!ecs_world)
-            return false;
-
-        if (!EnsureCameraSystem())
+        ecs_context = GetECSContext();
+        if (!ecs_context)
             return false;
 
         if (!EnsureFacingSystem())
@@ -378,10 +356,10 @@ private:
 
     bool InitCamera()
     {
-        if (!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;

@@ -26,7 +26,7 @@ class TestApp:public WorkObject
 {
 private:
 
-    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
     mtl::BasicLitMaterialInstance mi_data;
@@ -45,31 +45,12 @@ public:
         SAFE_CLEAR(mesh_vdm)
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
 
         camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
@@ -89,7 +70,7 @@ public:
 
     bool InitECSScene()
     {
-        if(!ecs_world)
+        if(!ecs_context)
             return false;
 
         for(size_t i = 0; i < wall_meshes.size(); ++i)
@@ -98,7 +79,7 @@ public:
             if(!primitive)
                 continue;
 
-            auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
+            auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Wall_" + std::to_string(i));
             auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -312,8 +293,8 @@ public:
 
         delete pc;
 
-        ecs_world = GetECSContext();
-        if(!ecs_world) return false;
+        ecs_context = GetECSContext();
+        if(!ecs_context) return false;
 
 
         if(!InitECSScene())

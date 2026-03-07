@@ -50,7 +50,7 @@ class BillboardECSApp : public WorkObject
 {
 private:
 
-    ECSContext* ecs_world = nullptr;
+    ECSContext* ecs_context = nullptr;
 
     // Entities
     Entity* grid_entity = nullptr;
@@ -157,27 +157,6 @@ private:
     }
 
     /**
-     * Ensure camera system is registered and initialized
-     */
-    bool EnsureCameraSystem()
-    {
-        if (!ecs_world) return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if (!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if (ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
-    /**
      * Ensure render systems are registered
      * - QuadResourcePrepareSystem: Prepares shared resources (geometry, material, sampler)
      * - QuadMaterialBindingSystem: Binds textures per quad entity
@@ -185,19 +164,19 @@ private:
      */
     bool EnsureRenderSystems()
     {
-        if (!ecs_world) return false;
+        if (!ecs_context) return false;
 
         // Register QuadResourcePrepareSystem (shared resources)
-        auto quad_prepare_system = ecs_world->GetSystem<QuadResourcePrepareSystem>();
+        auto quad_prepare_system = ecs_context->GetSystem<QuadResourcePrepareSystem>();
         if (!quad_prepare_system)
         {
             std::cout << "[BillboardECS] Creating QuadResourcePrepareSystem..." << std::endl;
-            quad_prepare_system = ecs_world->RegisterRenderSystem<QuadResourcePrepareSystem>();
-            quad_prepare_system->SetWorld(ecs_world);
+            quad_prepare_system = ecs_context->RegisterRenderSystem<QuadResourcePrepareSystem>();
+            quad_prepare_system->SetWorld(ecs_context);
 
             std::cout << "[BillboardECS] QuadResourcePrepareSystem created" << std::endl;
 
-            if (ecs_world->IsActive())
+            if (ecs_context->IsActive())
             {
                 quad_prepare_system->OnDependenciesReady();
                 quad_prepare_system->Initialize();
@@ -206,16 +185,16 @@ private:
         }
 
         // Register QuadMaterialBindingSystem (per-entity texture binding)
-        auto quad_binding_system = ecs_world->GetSystem<QuadMaterialBindingSystem>();
+        auto quad_binding_system = ecs_context->GetSystem<QuadMaterialBindingSystem>();
         if (!quad_binding_system)
         {
             std::cout << "[BillboardECS] Creating QuadMaterialBindingSystem..." << std::endl;
-            quad_binding_system = ecs_world->RegisterRenderSystem<QuadMaterialBindingSystem>();
-            quad_binding_system->SetWorld(ecs_world);
+            quad_binding_system = ecs_context->RegisterRenderSystem<QuadMaterialBindingSystem>();
+            quad_binding_system->SetWorld(ecs_context);
 
             std::cout << "[BillboardECS] QuadMaterialBindingSystem created" << std::endl;
 
-            if (ecs_world->IsActive())
+            if (ecs_context->IsActive())
             {
                 quad_binding_system->OnDependenciesReady();
                 quad_binding_system->Initialize();
@@ -224,17 +203,17 @@ private:
         }
 
         // Register FacingTransformSystem (handles camera-facing rotation)
-        auto facing_system = ecs_world->GetSystem<FacingTransformSystem>();
+        auto facing_system = ecs_context->GetSystem<FacingTransformSystem>();
         if (!facing_system)
         {
             std::cout << "[BillboardECS] Creating FacingTransformSystem..." << std::endl;
-            facing_system = ecs_world->RegisterTickSystem<FacingTransformSystem>();
-            facing_system->SetWorld(ecs_world);
+            facing_system = ecs_context->RegisterTickSystem<FacingTransformSystem>();
+            facing_system->SetWorld(ecs_context);
             facing_system->SetCameraInfo(GetCameraInfo());
 
             std::cout << "[BillboardECS] FacingTransformSystem created at " << (void*)facing_system.get() << std::endl;
 
-            if (ecs_world->IsActive())
+            if (ecs_context->IsActive())
             {
                 facing_system->OnDependenciesReady();
                 facing_system->Initialize();
@@ -250,20 +229,19 @@ private:
      */
     bool InitializeECS()
     {
-        ecs_world = GetECSContext();
-        if (!ecs_world) return false;
+        ecs_context = GetECSContext();
+        if (!ecs_context) return false;
 
         std::cout << "\n[BillboardECS] === ECS INITIALIZATION START ===" << std::endl;
-        std::cout << "[BillboardECS] ECSContext pointer: " << (void*)ecs_world << std::endl;
-        std::cout << "[BillboardECS] Initial entity count: " << ecs_world->GetEntityCount() << std::endl;
+        std::cout << "[BillboardECS] ECSContext pointer: " << (void*)ecs_context << std::endl;
+        std::cout << "[BillboardECS] Initial entity count: " << ecs_context->GetEntityCount() << std::endl;
 
-        if (!EnsureCameraSystem()) return false;
         if (!EnsureRenderSystems()) return false;
 
         std::cout << "\n[BillboardECS] Creating PlaneGrid entity..." << std::endl;
         // Create plane grid entity
         {
-            grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
+            grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
             std::cout << "  -> PlaneGrid entity created at " << (void*)grid_entity << std::endl;
 
             auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -287,7 +265,7 @@ private:
         // - QuadComponent (for quad rendering)
         // - FacingTransformComponent (for camera-facing rotation)
         {
-            billboard_entity = ecs_world->CreateEntity<Entity>("Billboard");
+            billboard_entity = ecs_context->CreateEntity<Entity>("Billboard");
             std::cout << "  -> Billboard entity created at " << (void*)billboard_entity << std::endl;
 
             auto billboard_transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -327,7 +305,7 @@ private:
         /*
         std::cout << "\n[BillboardECS] Creating Static Quad entity..." << std::endl;
         {
-            auto quad_entity = ecs_world->CreateEntity<Entity>("StaticQuad");
+            auto quad_entity = ecs_context->CreateEntity<Entity>("StaticQuad");
             std::cout << "  -> StaticQuad entity created" << std::endl;
 
             auto quad_transform = quad_entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -351,7 +329,7 @@ private:
         /*
         std::cout << "\n[BillboardECS] Creating Look-At-Target entity..." << std::endl;
         {
-            auto target_entity = ecs_world->CreateEntity<Entity>("LookAtTarget");
+            auto target_entity = ecs_context->CreateEntity<Entity>("LookAtTarget");
             std::cout << "  -> LookAtTarget entity created" << std::endl;
 
             auto target_transform = target_entity->AddComponent<TransformComponent>(Mobility::Static);
@@ -369,7 +347,7 @@ private:
         }
         */
 
-        std::cout << "\n[BillboardECS] Final entity count: " << ecs_world->GetEntityCount() << std::endl;
+        std::cout << "\n[BillboardECS] Final entity count: " << ecs_context->GetEntityCount() << std::endl;
         std::cout << "[BillboardECS] === ECS INITIALIZATION COMPLETE ===\n" << std::endl;
 
         return true;
@@ -380,9 +358,10 @@ private:
      */
     bool InitializeCamera()
     {
-        if (!EnsureCameraSystem()) return false;
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
+            return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;
@@ -431,9 +410,9 @@ public:
         if (frame_count <= 3)
         {
             std::cout << "\n[BillboardECS] Frame " << frame_count << " starting..." << std::endl;
-            if (ecs_world)
+            if (ecs_context)
             {
-                std::cout << "  -> Entity count: " << ecs_world->GetEntityCount() << std::endl;
+                std::cout << "  -> Entity count: " << ecs_context->GetEntityCount() << std::endl;
             }
         }
 

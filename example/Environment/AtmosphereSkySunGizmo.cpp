@@ -31,7 +31,7 @@ using namespace hgl::graph;
 class TestApp:public WorkObject
 {
 private:
-    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *sky_entity = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
@@ -97,28 +97,9 @@ private:
         return prim_sky_sphere != nullptr;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool InitECSScene()
     {
-        if(!ecs_world || !prim_sky_sphere || !mi_sky_sphere || !mtl_pipeline)
+        if(!ecs_context || !prim_sky_sphere || !mi_sky_sphere || !mtl_pipeline)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -137,7 +118,7 @@ private:
         if(!ri)
             return false;
 
-        sky_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("SkySphere");
+        sky_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("SkySphere");
         auto transform = sky_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = sky_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -154,10 +135,10 @@ private:
 
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
 
         camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
@@ -177,13 +158,14 @@ private:
 
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
+        ecs_context = GetECSContext();
+
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        environment_system = ecs_world->GetSystem<hgl::ecs::EnvironmentSystem>();
+        environment_system = ecs_context->GetSystem<hgl::ecs::EnvironmentSystem>();
         if (!environment_system)
-            environment_system = ecs_world->RegisterRenderSystem<hgl::ecs::EnvironmentSystem>();
+            environment_system = ecs_context->RegisterRenderSystem<hgl::ecs::EnvironmentSystem>();
 
         if (environment_system)
         {
@@ -195,9 +177,9 @@ private:
             environment_system->SyncSkyUBO();
         }
 
-        sun_gizmo_system = ecs_world->GetSystem<hgl::graph::SunDirectionControlSystem>();
+        sun_gizmo_system = ecs_context->GetSystem<hgl::graph::SunDirectionControlSystem>();
         if (!sun_gizmo_system)
-            sun_gizmo_system = ecs_world->RegisterTickSystem<hgl::graph::SunDirectionControlSystem>();
+            sun_gizmo_system = ecs_context->RegisterTickSystem<hgl::graph::SunDirectionControlSystem>();
 
         if (!sun_gizmo_system)
             return false;

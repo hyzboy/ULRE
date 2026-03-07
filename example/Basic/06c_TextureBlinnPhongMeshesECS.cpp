@@ -44,7 +44,7 @@ private:
         }
     };
 
-    ECSContext* ecs_world = nullptr;
+    ECSContext* ecs_context = nullptr;
     Entity* camera_entity = nullptr;
 
     Material* material = nullptr;
@@ -62,25 +62,6 @@ private:
     std::vector<std::unique_ptr<RenderMesh>> meshes;
 
 private:
-
-    bool EnsureCameraSystem()
-    {
-        if (!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if (!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if (ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
 
     bool InitMaterial()
     {
@@ -419,11 +400,11 @@ private:
 
     bool InitSceneEntities()
     {
-        if (!ecs_world || !rm_floor)
+        if (!ecs_context || !rm_floor)
             return false;
 
         {
-            auto* entity = ecs_world->CreateEntity<Entity>("Floor");
+            auto* entity = ecs_context->CreateEntity<Entity>("Floor");
             auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
@@ -446,7 +427,7 @@ private:
             if (!rm || rm == rm_floor)
                 continue;
 
-            auto* entity = ecs_world->CreateEntity<Entity>("Mesh_" + std::to_string(index));
+            auto* entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             auto transform = entity->AddComponent<TransformComponent>(Mobility::Static);
             auto primitive_comp = entity->AddComponent<PrimitiveComponent>();
 
@@ -470,11 +451,8 @@ private:
 
     bool InitScene()
     {
-        ecs_world = GetECSContext();
-        if (!ecs_world)
-            return false;
-
-        if (!EnsureCameraSystem())
+        ecs_context = GetECSContext();
+        if (!ecs_context)
             return false;
 
         if (!InitVDM())
@@ -488,10 +466,10 @@ private:
 
     bool InitCamera()
     {
-        if (!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;

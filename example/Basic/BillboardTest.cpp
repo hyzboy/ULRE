@@ -85,7 +85,7 @@ private:
 
 private:
 
-    ECSContext *  ecs_world      = nullptr;
+    ECSContext *  ecs_context      = nullptr;
     Entity *      grid_entity    = nullptr;
     Entity *      billboard_entity = nullptr;
     Entity *      camera_entity  = nullptr;
@@ -296,35 +296,13 @@ private:
         return true;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
+        ecs_context = GetECSContext();
+        if(!ecs_context)
             return false;
 
-        if(!EnsureCameraSystem())
-            return false;
-
-        grid_entity = ecs_world->CreateEntity<Entity>("PlaneGrid");
+        grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
         auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto grid_primitive = grid_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -336,7 +314,7 @@ private:
         grid_primitive->SetPrimitive(prim_plane_grid);
         grid_primitive->SetVisible(true);
 
-        billboard_entity = ecs_world->CreateEntity<Entity>("Billboard");
+        billboard_entity = ecs_context->CreateEntity<Entity>("Billboard");
         auto billboard_transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto billboard_primitive = billboard_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -353,10 +331,10 @@ private:
 
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;

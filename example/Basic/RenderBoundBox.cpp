@@ -99,7 +99,7 @@ private:
         std::shared_ptr<PrimitiveComponent> primitive_comp;
     };
 
-    ECSContext *  ecs_world      = nullptr;
+    ECSContext *  ecs_context      = nullptr;
 
     MaterialData solid;
     MaterialData wire;
@@ -538,32 +538,10 @@ private:
         return bbox_primitive != nullptr;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
-            return false;
-
-        if(!EnsureCameraSystem())
+        ecs_context = GetECSContext();
+        if(!ecs_context)
             return false;
 
         if(!CreateGeometryMesh())
@@ -583,14 +561,14 @@ private:
 
     bool InitScene()
     {
-        if(!ecs_world)
+        if(!ecs_context)
             return false;
 
         if(!rm_floor)
             return false;
 
         {
-            rm_floor->entity = ecs_world->CreateEntity<Entity>("Floor");
+            rm_floor->entity = ecs_context->CreateEntity<Entity>("Floor");
             rm_floor->transform = rm_floor->entity->AddComponent<TransformComponent>(Mobility::Static);
             rm_floor->primitive_comp = rm_floor->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -613,7 +591,7 @@ private:
             if(!rm || rm == rm_floor)
                 continue;
 
-            rm->entity = ecs_world->CreateEntity<Entity>("Mesh_" + std::to_string(index));
+            rm->entity = ecs_context->CreateEntity<Entity>("Mesh_" + std::to_string(index));
             rm->transform = rm->entity->AddComponent<TransformComponent>(Mobility::Static);
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -652,7 +630,7 @@ private:
                 continue;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
-            bbox->entity = ecs_world->CreateEntity<Entity>("BBox_" + std::to_string(i));
+            bbox->entity = ecs_context->CreateEntity<Entity>("BBox_" + std::to_string(i));
             bbox->transform = bbox->entity->AddComponent<TransformComponent>(Mobility::Static);
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -678,10 +656,10 @@ private:
 
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;

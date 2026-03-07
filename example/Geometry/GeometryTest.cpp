@@ -54,7 +54,7 @@ class TestApp:public WorkObject
 {
 private:
 
-    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
     struct MaterialData
@@ -291,7 +291,7 @@ private:
                 continue;
 
             auto bbox = std::make_unique<BoundingBoxMesh>();
-            bbox->entity = ecs_world->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
+            bbox->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("BBox_" + std::to_string(i));
             bbox->transform = bbox->entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             bbox->primitive_comp = bbox->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -315,28 +315,9 @@ private:
         return true;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool InitScene()
     {
-        if(!ecs_world)
+        if(!ecs_context)
             return false;
 
         const size_t mesh_count = render_mesh.empty() ? 1 : render_mesh.size();
@@ -347,7 +328,7 @@ private:
             if(!rm || !rm->primitive)
                 continue;
 
-            rm->entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
+            rm->entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Mesh_" + std::to_string(i));
             rm->transform = rm->entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
             rm->primitive_comp = rm->entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -370,10 +351,10 @@ private:
 
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
 
         camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
@@ -393,12 +374,9 @@ private:
 
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
-            return false;
+        ecs_context = GetECSContext();
 
-
-        if(!EnsureCameraSystem())
+        if(!ecs_context)
             return false;
 
         if(!InitScene())

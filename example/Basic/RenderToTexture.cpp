@@ -60,7 +60,7 @@ class OffscreenSceneECS
 {
 public:
     IRenderTarget *   rt          = nullptr;
-    ECSContext *      ecs_world   = nullptr;
+    ECSContext *      ecs_context   = nullptr;
     std::unique_ptr<hgl::ecs::RenderSystemCore> render_core;
 
     RenderContext *   render_context = nullptr;
@@ -80,12 +80,12 @@ public:
     {
         render_core.reset();
 
-        // Cleanup resources that depend on graphics_context BEFORE deleting ecs_world
-        if (render_context || ecs_world)
+        // Cleanup resources that depend on graphics_context BEFORE deleting ecs_context
+        if (render_context || ecs_context)
         {
             auto *graphics_context = render_context ? render_context->GetGraphicsContext() : nullptr;
-            if (!graphics_context && ecs_world)
-                graphics_context = ecs_world->GetGraphicsContext();
+            if (!graphics_context && ecs_context)
+                graphics_context = ecs_context->GetGraphicsContext();
 
             if (graphics_context)
             {
@@ -111,14 +111,14 @@ public:
             }
         }
 
-        // Delete RT before deleting ecs_world to ensure proper cleanup order
+        // Delete RT before deleting ecs_context to ensure proper cleanup order
         delete rt;
 
-        // Delete ecs_world last (it holds a pointer to rt, but Shutdown() doesn't access it)
-        if(ecs_world)
+        // Delete ecs_context last (it holds a pointer to rt, but Shutdown() doesn't access it)
+        if(ecs_context)
         {
-            ecs_world->Shutdown();
-            delete ecs_world;
+            ecs_context->Shutdown();
+            delete ecs_context;
         }
 
         primitive = nullptr;
@@ -155,39 +155,39 @@ public:
 
         LogTextureInfo("offscreen_rt_color0_init", rt->GetColorTexture(0));
 
-        ecs_world = new ECSContext("OffscreenECSWorld");
-        if (!ecs_world) return false;
+        ecs_context = new ECSContext("OffscreenECSWorld");
+        if (!ecs_context) return false;
 
         // 设置资源命名前缀：从最高层应用开始追踪
         // 这样创建的资源会被标记为来自 RenderToTexture:OffscreenRT
-        ecs_world->SetResourceNamePrefix("RenderToTexture:OffscreenRT");
+        ecs_context->SetResourceNamePrefix("RenderToTexture:OffscreenRT");
 
-        ecs_world->SetRenderContext(owner->GetRenderContext());
-        ecs_world->InitializeGraphics(owner->GetDevice(), rt);
+        ecs_context->SetRenderContext(owner->GetRenderContext());
+        ecs_context->InitializeGraphics(owner->GetDevice(), rt);
 
-        auto render_target_system = ecs_world->RegisterRenderSystem<RenderTargetSystem>();
-        auto render_collect_system = ecs_world->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
-        auto render_cull_system = ecs_world->RegisterRenderSystem<RenderPrimitiveCullSystem>();
-        auto render_sort_system = ecs_world->RegisterRenderSystem<RenderPrimitiveSortSystem>();
-        auto render_batch_build_system = ecs_world->RegisterRenderSystem<RenderPrimitiveBatchBuildSystem>();
-        auto render_batch_finalize_system = ecs_world->RegisterRenderSystem<RenderPrimitiveBatchFinalizeSystem>();
-        auto render_submit_system = ecs_world->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
-        ecs_world->RegisterTickSystem<InputSystem>();
-        auto camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
+        auto render_target_system = ecs_context->RegisterRenderSystem<RenderTargetSystem>();
+        auto render_collect_system = ecs_context->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
+        auto render_cull_system = ecs_context->RegisterRenderSystem<RenderPrimitiveCullSystem>();
+        auto render_sort_system = ecs_context->RegisterRenderSystem<RenderPrimitiveSortSystem>();
+        auto render_batch_build_system = ecs_context->RegisterRenderSystem<RenderPrimitiveBatchBuildSystem>();
+        auto render_batch_finalize_system = ecs_context->RegisterRenderSystem<RenderPrimitiveBatchFinalizeSystem>();
+        auto render_submit_system = ecs_context->RegisterRenderSystem<RenderPrimitiveSubmitSystem>();
+        ecs_context->RegisterTickSystem<InputSystem>();
+        auto camera_system = ecs_context->RegisterTickSystem<CameraSystem>(ecs_context);
 
         render_target_system->SetRenderContext(owner->GetRenderContext());
         render_target_system->SetRenderTarget(rt);
 
-        render_collect_system->SetWorld(ecs_world);
+        render_collect_system->SetWorld(ecs_context);
 
         (void)render_cull_system;
         (void)render_sort_system;
         (void)render_batch_build_system;
         (void)render_batch_finalize_system;
 
-        render_submit_system->SetWorld(ecs_world);
+        render_submit_system->SetWorld(ecs_context);
 
-        ecs_world->Initialize();
+        ecs_context->Initialize();
 
         if (camera_system)
         {
@@ -198,7 +198,7 @@ public:
         const auto *camera_info = camera_system ? camera_system->GetCameraInfo() : nullptr;
         render_collect_system->SetCameraInfo(camera_info);
 
-        render_core = std::make_unique<hgl::ecs::RenderSystemCore>(ecs_world);
+        render_core = std::make_unique<hgl::ecs::RenderSystemCore>(ecs_context);
         if (!render_core || !render_core->Initialize())
             return false;
 
@@ -207,7 +207,7 @@ public:
 
     bool BuildSphere(WorkObject *owner)
     {
-        if(!owner || !ecs_world) return false;
+        if(!owner || !ecs_context) return false;
 
         auto* render_context = owner->GetRenderContext();
         if (!render_context)
@@ -258,7 +258,7 @@ public:
         primitive = primitive_manager->CreatePrimitive(geometry, mi, pipeline);
         if (!primitive) return false;
 
-        sphere_entity = ecs_world->CreateEntity<Entity>("OffscreenSphere");
+        sphere_entity = ecs_context->CreateEntity<Entity>("OffscreenSphere");
         auto transform = sphere_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto prim_comp = sphere_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -270,7 +270,7 @@ public:
         prim_comp->SetPrimitive(primitive);
         prim_comp->SetVisible(true);
 
-        camera_entity = ecs_world->CreateEntity<Entity>("OffscreenCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("OffscreenCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;
@@ -281,7 +281,7 @@ public:
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
+        auto camera_system = ecs_context->GetSystem<CameraSystem>();
         camera->camera_data = camera_system ? camera_system->GetCamera() : nullptr;
         camera->camera_info = const_cast<graph::CameraInfo *>(camera_system ? camera_system->GetCameraInfo() : nullptr);
         camera->viewport_info = camera_system ? camera_system->GetViewportInfo() : nullptr;
@@ -291,16 +291,16 @@ public:
 
     bool RenderOnce()
     {
-        if(!render_core || !ecs_world) return false;
+        if(!render_core || !ecs_context) return false;
 
 //        LogTextureInfo("offscreen_before_render", rt ? rt->GetColorTexture(0) : nullptr);
-        ecs_world->Tick(0.0f);
+        ecs_context->Tick(0.0f);
 
         render_core->SetClearColor(GetColor4f(COLOR::DarkSlateBlue, 1.0f));
         if (!render_core->BeginFrame())
             return false;
 
-        ecs_world->Render(render_core->GetRenderCmd(), 0.0f);
+        ecs_context->Render(render_core->GetRenderCmd(), 0.0f);
         render_core->EndFrame();
 
         const bool ok = true;
@@ -314,7 +314,7 @@ class RenderToTextureApp final: public WorkObject
 private:
     OffscreenSceneECS *      offscreen          = nullptr;
 
-    ECSContext *             ecs_world          = nullptr;
+    ECSContext *             ecs_context        = nullptr;
     Entity *                 cube_entity        = nullptr;
     Entity *                 camera_entity      = nullptr;
 
@@ -329,31 +329,13 @@ private:
     float                    cube_theta          = 0.0f;
 
 private:
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
 
     bool SetupMainCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;
@@ -422,8 +404,8 @@ private:
         LogTextureInfo("onscreen_bind_basecolor", offscreen && offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr);
 
         auto* render_target = render_context->GetCurrentRenderTarget();
-        if (!render_target && ecs_world)
-            render_target = ecs_world->GetRenderTarget();
+        if (!render_target && ecs_context)
+            render_target = ecs_context->GetRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
         cube_pipeline = render_pass ? render_pass->CreatePipeline(cube_mtl, InlinePipeline::Solid3D) : nullptr;
         if (!cube_pipeline) return false;
@@ -450,7 +432,7 @@ private:
         cube_primitive = primitive_manager->CreatePrimitive(geometry, cube_mi, cube_pipeline);
         if (!cube_primitive) return false;
 
-        cube_entity = ecs_world->CreateEntity<Entity>("RotatingCube");
+        cube_entity = ecs_context->CreateEntity<Entity>("RotatingCube");
         cube_transform = cube_entity->AddComponent<TransformComponent>(Mobility::Static);
         auto cube_prim_comp = cube_entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -504,17 +486,17 @@ public:
 
     bool Init() override
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
+        ecs_context = GetECSContext();
+        if(!ecs_context)
             return false;
 
         // 设置资源命名前缀：从最高层应用开始追踪
         // 主场景的资源会被标记为来自 RenderToTexture:MainScene
-        ecs_world->SetResourceNamePrefix("RenderToTexture:MainScene");
+        ecs_context->SetResourceNamePrefix("RenderToTexture:MainScene");
 
-        auto environment_system = ecs_world->GetSystem<EnvironmentSystem>();
+        auto environment_system = ecs_context->GetSystem<EnvironmentSystem>();
         if (!environment_system)
-            environment_system = ecs_world->RegisterRenderSystem<EnvironmentSystem>();
+            environment_system = ecs_context->RegisterRenderSystem<EnvironmentSystem>();
 
         if (environment_system)
         {

@@ -30,7 +30,7 @@ class ExtrudedPolygonTestApp : public WorkObject
 {
 private:
 
-    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
     Material *          material            = nullptr;
@@ -149,28 +149,9 @@ private:
         return prim_rect_cube && prim_circle_cylinder && prim_triangle && prim_pentagon;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool CreateMeshEntity(const char *name, Geometry *geometry, const glm::vec3 &pos)
     {
-        if(!ecs_world || !geometry || !material_instance || !pipeline)
+        if(!ecs_context || !geometry || !material_instance || !pipeline)
             return false;
 
         auto* render_context = GetRenderContext();
@@ -189,7 +170,7 @@ private:
         if(!mesh)
             return false;
 
-        auto entity = ecs_world->CreateEntity<hgl::ecs::Entity>(name);
+        auto entity = ecs_context->CreateEntity<hgl::ecs::Entity>(name);
         auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
@@ -206,7 +187,7 @@ private:
 
     bool InitECSScene()
     {
-        if(!ecs_world)
+        if(!ecs_context)
             return false;
 
         if(!CreateMeshEntity("RectCube", prim_rect_cube, glm::vec3(-3.0f, 0.0f, 0.0f)))
@@ -226,10 +207,10 @@ private:
 
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
 
         camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
@@ -249,8 +230,8 @@ private:
 
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
+        ecs_context = GetECSContext();
+        if(!ecs_context)
             return false;
 
 

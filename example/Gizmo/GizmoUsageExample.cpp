@@ -41,7 +41,7 @@ const math::Vector3f GizmoPosition(0, 0, 0);
 class GizmoExampleApp : public WorkObject
 {
 private:
-    hgl::ecs::ECSContext *ecs_world = nullptr;
+    hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
     hgl::ecs::Entity *plane_entity = nullptr;
     hgl::ecs::Entity *cube_entity = nullptr;
@@ -163,10 +163,10 @@ private:
 
     bool InitSceneEntities()
     {
-        if(!ecs_world || !grid_primitive || !cube_primitive || !gizmo_system)
+        if(!ecs_context || !grid_primitive || !cube_primitive || !gizmo_system)
             return false;
 
-        plane_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("PlaneGrid");
+        plane_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("PlaneGrid");
         if(!plane_entity)
             return false;
 
@@ -177,7 +177,7 @@ private:
         plane_primitive_comp->SetPrimitive(grid_primitive);
         plane_primitive_comp->SetVisible(true);
 
-        cube_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("Cube");
+        cube_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("Cube");
         if(!cube_entity)
             return false;
 
@@ -191,43 +191,24 @@ private:
         return true;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<hgl::ecs::CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<hgl::ecs::CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     hgl::ecs::CameraSystem *GetCameraSystem() const
     {
-        if(!ecs_world)
+        if(!ecs_context)
             return nullptr;
 
-        return ecs_world->GetSystem<hgl::ecs::CameraSystem>().get();
+        return ecs_context->GetSystem<hgl::ecs::CameraSystem>().get();
     }
 
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
         auto *camera_system = GetCameraSystem();
         if(!camera_system)
             return false;
 
-        camera_entity = ecs_world->CreateEntity<hgl::ecs::Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<hgl::ecs::Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<hgl::ecs::CameraComponent>();
 
         camera->control_mode = hgl::ecs::CameraComponent::ControlMode::ViewModel;
@@ -247,12 +228,12 @@ private:
 
     bool InitGizmos()
     {
-        if(!ecs_world)
+        if(!ecs_context)
             return false;
 
-        gizmo_system = ecs_world->GetSystem<TransformGizmoSystem>();
+        gizmo_system = ecs_context->GetSystem<TransformGizmoSystem>();
         if(!gizmo_system)
-            gizmo_system = ecs_world->RegisterTickSystem<TransformGizmoSystem>();
+            gizmo_system = ecs_context->RegisterTickSystem<TransformGizmoSystem>();
 
         if(!gizmo_system)
             return false;
@@ -294,8 +275,8 @@ private:
 
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
+        ecs_context = GetECSContext();
+        if(!ecs_context)
             return false;
 
         if(!InitSceneResources())
@@ -344,10 +325,10 @@ public:
 
     void Tick(double delta) override
     {
-        if(!ecs_world)
+        if(!ecs_context)
             return;
 
-        auto input_system = ecs_world->GetSystem<hgl::ecs::InputSystem>();
+        auto input_system = ecs_context->GetSystem<hgl::ecs::InputSystem>();
         if(!input_system)
             return;
 

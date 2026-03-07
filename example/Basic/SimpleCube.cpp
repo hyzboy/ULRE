@@ -37,7 +37,7 @@ class TestApp:public WorkObject
 {
 private:
 
-    ECSContext *  ecs_world      =nullptr;
+    ECSContext *  ecs_context      =nullptr;
     Entity *      cube_entity    =nullptr;
     Entity *      camera_entity  =nullptr;
 
@@ -139,32 +139,13 @@ private:
         return primitive != nullptr;
     }
 
-    bool EnsureCameraSystem()
-    {
-        if(!ecs_world)
-            return false;
-
-        auto camera_system = ecs_world->GetSystem<CameraSystem>();
-        if(!camera_system)
-        {
-            camera_system = ecs_world->RegisterTickSystem<CameraSystem>(ecs_world);
-            if(ecs_world->IsActive())
-            {
-                camera_system->OnDependenciesReady();
-                camera_system->Initialize();
-            }
-        }
-
-        return camera_system != nullptr;
-    }
-
     bool InitECS()
     {
-        ecs_world = GetECSContext();
-        if(!ecs_world)
+        ecs_context = GetECSContext();
+        if(!ecs_context)
             return false;
 
-        cube_entity = ecs_world->CreateEntity<Entity>("CubeEntity");
+        cube_entity = ecs_context->CreateEntity<Entity>("CubeEntity");
 
         auto transform = cube_entity->AddComponent<TransformComponent>(Mobility::Static);
         transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -181,10 +162,10 @@ private:
 
     bool InitCamera()
     {
-        if(!EnsureCameraSystem())
+        if (!ecs_context || !ecs_context->EnsureCameraSystem())
             return false;
 
-        camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
+        camera_entity = ecs_context->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;
