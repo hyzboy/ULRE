@@ -32,6 +32,9 @@ namespace hgl
                 World* world = nullptr;
                 ECSContext* context = nullptr;
                 ECSContext* parent_context = nullptr;
+                size_t subworld_component_count = 0;
+                uint64_t subworld_policy_signature = 0;
+                bool lists_valid = false;
                 std::vector<SubWorldComponent*> logic_subworlds;
                 std::vector<SubWorldComponent*> bridge_subworlds;
                 std::vector<SubWorldComponent*> isolated_render_subworlds;
@@ -45,7 +48,7 @@ namespace hgl
 
         private:
             void FlattenWorldTree(World* root, ECSContext* parent_context);
-            void CollectSubWorldLists(FlatWorldRecord& record);
+            bool RefreshSubWorldListsIfNeeded(FlatWorldRecord& record);
 
         public:
             void MarkTopologyDirty() { topology_dirty = true; }

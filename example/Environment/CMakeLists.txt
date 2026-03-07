@@ -17,4 +17,6 @@ CreateProject(02_AtmosphereSkySunGizmo          AtmosphereSkySunGizmo.cpp)
 
 CreateProject(03_BasicLitSunDirectionECS        BasicLitSunDirectionECS.cpp)
 
+CreateProject(04_SubWorldBuiltinGeometryECS      04_SubWorldBuiltinGeometryECS.cpp ../common/SubWorldModuleBase.cpp ../common/SubWorldAnimatedGeometryModule.cpp)
+
 
