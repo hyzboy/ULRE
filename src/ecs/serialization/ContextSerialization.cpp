@@ -7,6 +7,8 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/components/SubSceneMembershipComponent.h>
+#include<hgl/ecs/components/AssetInstanceComponent.h>
+#include<hgl/ecs/components/AssetNodeMotionComponent.h>
 #include<hgl/ecs/core/ComponentRecords.h>
 
 #include<cereal/archives/json.hpp>
@@ -138,7 +140,15 @@ namespace hgl::ecs
             }
         };
 
-        using ComponentPayload = std::variant<TransformRecord, BoundingBoxRecord, RenderableRecord, PrimitiveRecord, CameraRecord, SubWorldComponentRecord, SubSceneMembershipRecord>;
+        using ComponentPayload = std::variant<TransformRecord,
+                              BoundingBoxRecord,
+                              RenderableRecord,
+                              PrimitiveRecord,
+                              CameraRecord,
+                              SubWorldComponentRecord,
+                              SubSceneMembershipRecord,
+                              AssetInstanceComponentRecord,
+                              AssetNodeMotionComponentRecord>;
 
         struct SerializableComponentRecord
         {
@@ -197,6 +207,10 @@ namespace hgl::ecs
                     result.payload = std::any_cast<SubWorldComponentRecord>(record.payload);
                 else if (record.type == "SubSceneMembership")
                     result.payload = std::any_cast<SubSceneMembershipRecord>(record.payload);
+                else if (record.type == "AssetInstance")
+                    result.payload = std::any_cast<AssetInstanceComponentRecord>(record.payload);
+                else if (record.type == "AssetNodeMotion")
+                    result.payload = std::any_cast<AssetNodeMotionComponentRecord>(record.payload);
                 else
                     result.payload = RenderableRecord{}; // fallback
             }
@@ -255,6 +269,16 @@ namespace hgl::ecs
                 if (auto value = std::get_if<SubSceneMembershipRecord>(&record.payload))
                     result.payload = *value;
             }
+            else if (record.type == "AssetInstance")
+            {
+                if (auto value = std::get_if<AssetInstanceComponentRecord>(&record.payload))
+                    result.payload = *value;
+            }
+            else if (record.type == "AssetNodeMotion")
+            {
+                if (auto value = std::get_if<AssetNodeMotionComponentRecord>(&record.payload))
+                    result.payload = *value;
+            }
 
             if (!result.payload.has_value())
             {
@@ -289,6 +313,8 @@ namespace hgl::ecs
                 {CameraComponent::GetSerializationType(), CameraComponent::SerializeToRecord, CameraComponent::DeserializeFromRecord},
                 {SubWorldComponent::GetSerializationType(), SubWorldComponent::SerializeToRecord, SubWorldComponent::DeserializeFromRecord},
                 {SubSceneMembershipComponent::GetSerializationType(), SubSceneMembershipComponent::SerializeToRecord, SubSceneMembershipComponent::DeserializeFromRecord},
+                {AssetInstanceComponent::GetSerializationType(), AssetInstanceComponent::SerializeToRecord, AssetInstanceComponent::DeserializeFromRecord},
+                {AssetNodeMotionComponent::GetSerializationType(), AssetNodeMotionComponent::SerializeToRecord, AssetNodeMotionComponent::DeserializeFromRecord},
             };
             return registry;
         }

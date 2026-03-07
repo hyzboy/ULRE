@@ -9,6 +9,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/EntityHandle.h
     ${ECS_INCLUDE_PATH}/core/EntityManager.h
     ${ECS_INCLUDE_PATH}/core/EntityQuery.h
+    ${ECS_INCLUDE_PATH}/core/AssetTypes.h
     ${ECS_INCLUDE_PATH}/core/System.h
     ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
     ${ECS_INCLUDE_PATH}/core/Context.h
@@ -45,8 +46,12 @@ set(ECS_CORE_FILES
 set(ECS_COMPONENT_FILES
     ${ECS_INCLUDE_PATH}/components/SubWorldComponent.h
     ${ECS_INCLUDE_PATH}/components/SubSceneMembershipComponent.h
+    ${ECS_INCLUDE_PATH}/components/AssetInstanceComponent.h
+    ${ECS_INCLUDE_PATH}/components/AssetNodeMotionComponent.h
     components/SubWorldComponent.cpp
     components/SubSceneMembershipComponent.cpp
+    components/AssetInstanceComponent.cpp
+    components/AssetNodeMotionComponent.cpp
 )
 
 set(ECS_SYS_00_RenderSystemCore_FILES
@@ -405,3 +410,25 @@ target_link_libraries(ECS_SubWorldSerializationRegression
         ${Vulkan_LIBRARIES})
 
 set_property(TARGET ECS_SubWorldSerializationRegression PROPERTY FOLDER "ULRE/ECS/Tests")
+
+add_executable(ECS_AssetInstanceSerializationSmoke
+    tests/AssetInstanceSerializationSmokeTest.cpp)
+
+target_link_libraries(ECS_AssetInstanceSerializationSmoke
+    PRIVATE
+        CMCoreType
+        CMMath
+        CMCore
+        CMAssetsManage
+        CMUtil
+        CM2D
+        ULRE.ECS
+        ULRE.Vulkan
+        ULRE.ShaderGen
+        ULRE.SceneGraph
+        ULRE.InlineGeometry
+        ${HGL_MATH_LIB}
+        ${RENDER_LIBRARY}
+        ${Vulkan_LIBRARIES})
+
+set_property(TARGET ECS_AssetInstanceSerializationSmoke PROPERTY FOLDER "ULRE/ECS/Tests")
