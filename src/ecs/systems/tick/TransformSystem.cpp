@@ -53,6 +53,10 @@ namespace hgl::ecs
         {
             if (auto comp = weak_comp.lock())
             {
+                Entity* owner = comp->GetOwner();
+                if (owner && !world->IsEntityTickEnabled(owner))
+                    continue;
+
                 ++total_movable;
                 if (comp->IsDirty())
                     ++dirty_movable;
@@ -112,6 +116,10 @@ namespace hgl::ecs
     void TransformSystem::UpdateStaticTransformRecursive(const std::shared_ptr<TransformComponent>& comp)
     {
         if (!comp)
+            return;
+
+        Entity* owner = comp->GetOwner();
+        if (owner && !world->IsEntityTickEnabled(owner))
             return;
 
         auto parent = comp->GetParent();

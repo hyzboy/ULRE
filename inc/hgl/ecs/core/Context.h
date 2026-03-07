@@ -46,6 +46,13 @@ namespace hgl
         class MaterialBatch;
         class PrimitiveRenderItem;
 
+        struct SubSceneState
+        {
+            bool paused = false;
+            bool tick_enabled = true;
+            bool render_enabled = true;
+        };
+
         struct RenderFrameCache
         {
             std::vector<std::unique_ptr<PrimitiveRenderItem>> renderItems;
@@ -151,6 +158,8 @@ namespace hgl
             bool descriptor_contract_diag_log_enabled = false;
             uint64_t descriptor_contract_diag_last_log_ms = 0;
             bool material_binding_query_log_enabled = false;
+            std::unordered_map<uint64_t, SubSceneState> subscene_states;
+            uint32_t filtered_entity_count_last_frame = 0;
 
             /// Unified render pipeline registry: name → RenderPipelineBase
             /// Managed by SystemGroup installers (e.g., InstallPrimitiveGroup, InstallLineGroup)
@@ -208,6 +217,7 @@ namespace hgl
             void RunRenderSystemsInRange(ExecutionPhase minPhase, ExecutionPhase maxPhase, float deltaTime);
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
+            uint64_t ResolveEntitySubsceneID(const Entity* entity) const;
 
         public:
 
@@ -534,6 +544,16 @@ namespace hgl
                 if (entity_manager)
                     entity_manager->GetAllEntityPointers(out_entities);
             }
+
+            void SetSubsceneState(uint64_t subscene_id, bool paused, bool tick_enabled, bool render_enabled);
+            bool GetSubsceneState(uint64_t subscene_id, SubSceneState& out_state) const;
+            void RemoveSubsceneState(uint64_t subscene_id);
+            bool IsSubsceneTickEnabled(uint64_t subscene_id) const;
+            bool IsSubsceneRenderEnabled(uint64_t subscene_id) const;
+            bool IsEntityTickEnabled(const Entity* entity) const;
+            bool IsEntityRenderEnabled(const Entity* entity) const;
+            uint32_t GetActiveSubSceneCount() const { return static_cast<uint32_t>(subscene_states.size()); }
+            uint32_t GetFilteredEntityCountLastFrame() const { return filtered_entity_count_last_frame; }
 
             /// Ensure CameraSystem exists in this context.
             /// If created after context activation, it is initialized immediately.

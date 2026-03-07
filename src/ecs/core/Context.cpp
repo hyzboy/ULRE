@@ -6,6 +6,7 @@
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
+#include<hgl/ecs/components/SubSceneMembershipComponent.h>
 #include<hgl/ecs/components/RenderableComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
@@ -241,6 +242,84 @@ namespace hgl
             return camera_system;
         }
 
+        uint64_t ECSContext::ResolveEntitySubsceneID(const Entity* entity) const
+        {
+            if (!entity)
+                return 0;
+
+            auto membership = entity->GetComponent<SubSceneMembershipComponent>();
+            if (!membership)
+                return 0;
+
+            return membership->GetSubsceneID();
+        }
+
+        void ECSContext::SetSubsceneState(uint64_t subscene_id, bool paused, bool tick_enabled, bool render_enabled)
+        {
+            if (subscene_id == 0)
+                return;
+
+            SubSceneState state;
+            state.paused = paused;
+            state.tick_enabled = tick_enabled;
+            state.render_enabled = render_enabled;
+            subscene_states[subscene_id] = state;
+        }
+
+        bool ECSContext::GetSubsceneState(uint64_t subscene_id, SubSceneState& out_state) const
+        {
+            auto it = subscene_states.find(subscene_id);
+            if (it == subscene_states.end())
+                return false;
+
+            out_state = it->second;
+            return true;
+        }
+
+        void ECSContext::RemoveSubsceneState(uint64_t subscene_id)
+        {
+            if (subscene_id == 0)
+                return;
+
+            subscene_states.erase(subscene_id);
+        }
+
+        bool ECSContext::IsSubsceneTickEnabled(uint64_t subscene_id) const
+        {
+            if (subscene_id == 0)
+                return true;
+
+            auto it = subscene_states.find(subscene_id);
+            if (it == subscene_states.end())
+                return true;
+
+            const auto& state = it->second;
+            return !state.paused && state.tick_enabled;
+        }
+
+        bool ECSContext::IsSubsceneRenderEnabled(uint64_t subscene_id) const
+        {
+            if (subscene_id == 0)
+                return true;
+
+            auto it = subscene_states.find(subscene_id);
+            if (it == subscene_states.end())
+                return true;
+
+            const auto& state = it->second;
+            return !state.paused && state.render_enabled;
+        }
+
+        bool ECSContext::IsEntityTickEnabled(const Entity* entity) const
+        {
+            return IsSubsceneTickEnabled(ResolveEntitySubsceneID(entity));
+        }
+
+        bool ECSContext::IsEntityRenderEnabled(const Entity* entity) const
+        {
+            return IsSubsceneRenderEnabled(ResolveEntitySubsceneID(entity));
+        }
+
         RenderPipelineBase* ECSContext::GetRenderPipeline(const std::string& name)
         {
             auto it = render_pipelines.find(name);
@@ -361,6 +440,8 @@ namespace hgl
             if (!active)
                 return;
 
+            filtered_entity_count_last_frame = 0;
+
             SortTickSystems();
 
             // Update non-render systems
@@ -378,7 +459,15 @@ namespace hgl
                 for (auto entity : entities)
                 {
                     if (entity)
+                    {
+                        if (!IsEntityTickEnabled(entity))
+                        {
+                            ++filtered_entity_count_last_frame;
+                            continue;
+                        }
+
                         entity->OnUpdate(deltaTime);
+                    }
                 }
             }
 

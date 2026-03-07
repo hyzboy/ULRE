@@ -45,6 +45,9 @@ namespace hgl::ecs
                 continue;
             }
 
+            if (!world->IsEntityTickEnabled(owner))
+                continue;
+
             auto primitive = owner->GetComponent<PrimitiveComponent>();
             if (!primitive)
             {

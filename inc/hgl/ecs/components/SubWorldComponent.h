@@ -6,6 +6,7 @@
 #include<vector>
 #include<cstdint>
 #include<hgl/log/Log.h>
+#include<hgl/type/UnorderedMap.h>
 
 namespace hgl::ecs
 {
@@ -21,6 +22,8 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
+    struct ComponentRecord;
+    class TransformComponent;
     enum class SubWorldMode : uint8_t
     {
         SharedContext = 0,
@@ -96,7 +99,9 @@ namespace hgl::ecs
         bool IsLogicIsolated() const { return logic_isolated; }
 
         uint64_t GetSubsceneID() const { return subscene_id; }
+        void SetSubsceneID(uint64_t id);
         EntityID GetRootEntityID() const { return root_entity_id; }
+        void SetRootEntityID(EntityID id) { root_entity_id = id; }
 
         /// Update sub-world systems
         void UpdateSubWorld(float delta_time);
@@ -145,14 +150,14 @@ namespace hgl::ecs
 
         /// Pause both Tick and Render for this sub-world.
         /// Parent world can continue running while this sub-world is paused.
-        void SetPaused(bool value) { paused = value; }
+        void SetPaused(bool value);
         bool IsPaused() const { return paused; }
 
         /// Fine-grained control for tick/render scheduling
-        void SetTickEnabled(bool value) { tick_enabled = value; }
+        void SetTickEnabled(bool value);
         bool IsTickEnabled() const { return tick_enabled; }
 
-        void SetRenderEnabled(bool value) { render_enabled = value; }
+        void SetRenderEnabled(bool value);
         bool IsRenderEnabled() const { return render_enabled; }
 
     public:
@@ -160,10 +165,19 @@ namespace hgl::ecs
         void OnAttach() override;
         void OnDetach() override;
 
+        static const char* GetSerializationType();
+        static bool SerializeToRecord(const std::shared_ptr<Component>& component,
+                          const hgl::UnorderedMap<EntityID, int32_t>& entity_index,
+                          ComponentRecord& out_record);
+        static void DeserializeFromRecord(const ComponentRecord& record,
+                          Entity* entity,
+                          std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>& pending_parents);
+
     private:
 
         void SyncPolicyFromMode();
         void SyncModeFromPolicy();
+        void SyncSubsceneStateToParentContext();
         bool RequiresLocalContext() const { return logic_isolated || !render_shared; }
 
         /// Setup visibility inheritance linkage

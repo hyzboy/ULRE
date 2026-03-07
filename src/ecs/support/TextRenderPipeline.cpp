@@ -405,6 +405,10 @@ namespace hgl::ecs
             if (!text_comp || text_comp->GetText().IsEmpty())
                 continue;
 
+            Entity* owner = text_comp->GetOwner();
+            if (owner && world && !world->IsEntityRenderEnabled(owner))
+                continue;
+
             auto* font_source = text_comp->GetFontSource();
             if (!font_source)
                 continue;

@@ -44,7 +44,9 @@ set(ECS_CORE_FILES
 
 set(ECS_COMPONENT_FILES
     ${ECS_INCLUDE_PATH}/components/SubWorldComponent.h
+    ${ECS_INCLUDE_PATH}/components/SubSceneMembershipComponent.h
     components/SubWorldComponent.cpp
+    components/SubSceneMembershipComponent.cpp
 )
 
 set(ECS_SYS_00_RenderSystemCore_FILES

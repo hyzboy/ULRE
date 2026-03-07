@@ -429,6 +429,9 @@ namespace hgl::ecs
             Entity* owner = comp->GetOwner();
             if (!owner) continue;
 
+            if (context_ && !context_->IsEntityRenderEnabled(owner))
+                continue;
+
             // VisibilityComponent check
             if (auto vis = owner->GetComponent<VisibilityComponent>())
             {

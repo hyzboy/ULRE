@@ -5,6 +5,8 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
+#include<hgl/ecs/components/SubWorldComponent.h>
+#include<hgl/ecs/components/SubSceneMembershipComponent.h>
 #include<hgl/ecs/core/ComponentRecords.h>
 
 #include<cereal/archives/json.hpp>
@@ -135,7 +137,59 @@ namespace hgl::ecs
             }
         };
 
-        using ComponentPayload = std::variant<TransformRecord, BoundingBoxRecord, RenderableRecord, PrimitiveRecord, CameraRecord>;
+        struct EntityIDRecord
+        {
+            uint32_t index = UINT32_MAX;
+            uint16_t generation = 0;
+
+            template<class Archive>
+            void serialize(Archive& ar)
+            {
+                ar(CEREAL_NVP(index), CEREAL_NVP(generation));
+            }
+        };
+
+        struct SubWorldRecord
+        {
+            uint8_t mode = 0;
+            bool render_shared = true;
+            bool logic_isolated = false;
+            uint64_t subscene_id = 0;
+            EntityIDRecord root_entity_id{};
+            bool paused = false;
+            bool tick_enabled = true;
+            bool render_enabled = true;
+            std::string asset_path;
+            bool asset_binary = false;
+
+            template<class Archive>
+            void serialize(Archive& ar)
+            {
+                ar(CEREAL_NVP(mode),
+                   CEREAL_NVP(render_shared),
+                   CEREAL_NVP(logic_isolated),
+                   CEREAL_NVP(subscene_id),
+                   CEREAL_NVP(root_entity_id),
+                   CEREAL_NVP(paused),
+                   CEREAL_NVP(tick_enabled),
+                   CEREAL_NVP(render_enabled),
+                   CEREAL_NVP(asset_path),
+                   CEREAL_NVP(asset_binary));
+            }
+        };
+
+        struct SubSceneMembershipRecord
+        {
+            uint64_t subscene_id = 0;
+
+            template<class Archive>
+            void serialize(Archive& ar)
+            {
+                ar(CEREAL_NVP(subscene_id));
+            }
+        };
+
+        using ComponentPayload = std::variant<TransformRecord, BoundingBoxRecord, RenderableRecord, PrimitiveRecord, CameraRecord, SubWorldRecord, SubSceneMembershipRecord>;
 
         struct SerializableComponentRecord
         {
@@ -188,6 +242,10 @@ namespace hgl::ecs
                 result.payload = std::any_cast<PrimitiveRecord>(record.payload);
             else if (record.type == "Camera")
                 result.payload = std::any_cast<CameraRecord>(record.payload);
+            else if (record.type == "SubWorld")
+                result.payload = std::any_cast<SubWorldRecord>(record.payload);
+            else if (record.type == "SubSceneMembership")
+                result.payload = std::any_cast<SubSceneMembershipRecord>(record.payload);
             else
                 result.payload = RenderableRecord{}; // fallback
 
@@ -224,6 +282,8 @@ namespace hgl::ecs
                 {PrimitiveComponent::GetSerializationType(), PrimitiveComponent::SerializeToRecord, PrimitiveComponent::DeserializeFromRecord},
                 {RenderableComponent::GetSerializationType(), RenderableComponent::SerializeToRecord, RenderableComponent::DeserializeFromRecord},
                 {CameraComponent::GetSerializationType(), CameraComponent::SerializeToRecord, CameraComponent::DeserializeFromRecord},
+                {SubWorldComponent::GetSerializationType(), SubWorldComponent::SerializeToRecord, SubWorldComponent::DeserializeFromRecord},
+                {SubSceneMembershipComponent::GetSerializationType(), SubSceneMembershipComponent::SerializeToRecord, SubSceneMembershipComponent::DeserializeFromRecord},
             };
             return registry;
         }

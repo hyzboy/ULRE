@@ -83,6 +83,9 @@ namespace hgl::ecs
                 continue;
             }
 
+            if (!world->IsEntityRenderEnabled(entity))
+                continue;
+
             auto transform = entity->GetComponent<TransformComponent>();
             if (!transform)
             {

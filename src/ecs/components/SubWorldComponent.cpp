@@ -1,4 +1,6 @@
 ﻿#include<hgl/ecs/components/SubWorldComponent.h>
+#include<hgl/ecs/components/SubSceneMembershipComponent.h>
+#include<hgl/ecs/core/ComponentRecords.h>
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
@@ -20,6 +22,42 @@ namespace hgl::ecs
 {
     namespace
     {
+        struct EntityIDRecord
+        {
+            uint32_t index = UINT32_MAX;
+            uint16_t generation = 0;
+        };
+
+        struct SubWorldRecord
+        {
+            uint8_t mode = static_cast<uint8_t>(SubWorldMode::SharedContext);
+            bool render_shared = true;
+            bool logic_isolated = false;
+            uint64_t subscene_id = 0;
+            EntityIDRecord root_entity_id{};
+            bool paused = false;
+            bool tick_enabled = true;
+            bool render_enabled = true;
+            std::string asset_path;
+            bool asset_binary = false;
+        };
+
+        EntityIDRecord ToEntityIDRecord(const EntityID& id)
+        {
+            EntityIDRecord rec;
+            rec.index = id.index;
+            rec.generation = id.generation;
+            return rec;
+        }
+
+        EntityID FromEntityIDRecord(const EntityIDRecord& rec)
+        {
+            if (rec.index == UINT32_MAX)
+                return EntityID::Invalid();
+
+            return EntityID(rec.index, rec.generation);
+        }
+
         uint64_t NextSubsceneID()
         {
             static std::atomic<uint64_t> next_id{1};
@@ -109,6 +147,30 @@ namespace hgl::ecs
 
                 if (!transform->GetParentID().IsValid())
                     transform->SetParent(owner_id);
+            }
+        }
+
+        void TagEntitiesWithSubscene(ECSContext* parent_context,
+                                     const std::vector<EntityID>& created_ids,
+                                     uint64_t subscene_id)
+        {
+            if (!parent_context || subscene_id == 0)
+                return;
+
+            for (const auto& id : created_ids)
+            {
+                if (!id.IsValid())
+                    continue;
+
+                Entity* entity = parent_context->GetEntity(id);
+                if (!entity)
+                    continue;
+
+                auto membership = entity->GetComponent<SubSceneMembershipComponent>();
+                if (!membership)
+                    membership = entity->AddComponent<SubSceneMembershipComponent>(subscene_id);
+                else
+                    membership->SetSubsceneID(subscene_id);
             }
         }
 
@@ -202,6 +264,20 @@ namespace hgl::ecs
     {
         mode = m;
         SyncPolicyFromMode();
+        SyncSubsceneStateToParentContext();
+    }
+
+    void SubWorldComponent::SetSubsceneID(uint64_t id)
+    {
+        if (id == 0 || subscene_id == id)
+            return;
+
+        ECSContext* parent_context = owner_entity ? owner_entity->GetContext() : nullptr;
+        if (parent_context)
+            parent_context->RemoveSubsceneState(subscene_id);
+
+        subscene_id = id;
+        SyncSubsceneStateToParentContext();
     }
 
     void SubWorldComponent::SetRenderShared(bool value)
@@ -214,6 +290,7 @@ namespace hgl::ecs
 
         render_shared = value;
         SyncModeFromPolicy();
+        SyncSubsceneStateToParentContext();
     }
 
     void SubWorldComponent::SetLogicIsolated(bool value)
@@ -226,6 +303,46 @@ namespace hgl::ecs
 
         logic_isolated = value;
         SyncModeFromPolicy();
+        SyncSubsceneStateToParentContext();
+    }
+
+    void SubWorldComponent::SetPaused(bool value)
+    {
+        if (paused == value)
+            return;
+
+        paused = value;
+        SyncSubsceneStateToParentContext();
+    }
+
+    void SubWorldComponent::SetTickEnabled(bool value)
+    {
+        if (tick_enabled == value)
+            return;
+
+        tick_enabled = value;
+        SyncSubsceneStateToParentContext();
+    }
+
+    void SubWorldComponent::SetRenderEnabled(bool value)
+    {
+        if (render_enabled == value)
+            return;
+
+        render_enabled = value;
+        SyncSubsceneStateToParentContext();
+    }
+
+    void SubWorldComponent::SyncSubsceneStateToParentContext()
+    {
+        if (!owner_entity)
+            owner_entity = GetOwner();
+
+        ECSContext* parent_context = owner_entity ? owner_entity->GetContext() : nullptr;
+        if (!parent_context)
+            return;
+
+        parent_context->SetSubsceneState(subscene_id, paused, tick_enabled, render_enabled);
     }
 
     ECSContext* SubWorldComponent::GetSubContext() const
@@ -502,6 +619,7 @@ namespace hgl::ecs
         }
 
         ParentImportedRoots(owner_entity, parent_context, created_ids);
+        TagEntitiesWithSubscene(parent_context, created_ids, subscene_id);
         instanced_entity_ids = std::move(created_ids);
 
         root_entity_id = owner_entity ? owner_entity->GetID() : EntityID();
@@ -546,6 +664,8 @@ namespace hgl::ecs
 
         if (!RequiresLocalContext())
         {
+            SyncSubsceneStateToParentContext();
+
             if (!asset_path.empty())
                 InstantiateAssetToParent();
 
@@ -571,6 +691,8 @@ namespace hgl::ecs
         // Asset instancing remains parent-side, but must not bypass local-context setup.
         if (!asset_path.empty())
             InstantiateAssetToParent();
+
+        SyncSubsceneStateToParentContext();
     }
 
     void SubWorldComponent::OnDetach()
@@ -589,6 +711,70 @@ namespace hgl::ecs
         {
             sub_world.reset();
         }
+
+        if (!owner_entity)
+            owner_entity = GetOwner();
+
+        ECSContext* parent_context = owner_entity ? owner_entity->GetContext() : nullptr;
+        if (parent_context)
+            parent_context->RemoveSubsceneState(subscene_id);
+    }
+
+    const char* SubWorldComponent::GetSerializationType()
+    {
+        return "SubWorld";
+    }
+
+    bool SubWorldComponent::SerializeToRecord(const std::shared_ptr<Component>& component,
+                                              const hgl::UnorderedMap<EntityID, int32_t>&,
+                                              ComponentRecord& out_record)
+    {
+        auto sub_world = std::dynamic_pointer_cast<SubWorldComponent>(component);
+        if (!sub_world)
+            return false;
+
+        SubWorldRecord data{};
+        data.mode = static_cast<uint8_t>(sub_world->GetMode());
+        data.render_shared = sub_world->IsRenderShared();
+        data.logic_isolated = sub_world->IsLogicIsolated();
+        data.subscene_id = sub_world->GetSubsceneID();
+        data.root_entity_id = ToEntityIDRecord(sub_world->GetRootEntityID());
+        data.paused = sub_world->IsPaused();
+        data.tick_enabled = sub_world->IsTickEnabled();
+        data.render_enabled = sub_world->IsRenderEnabled();
+        data.asset_path = sub_world->GetAssetPath();
+        data.asset_binary = sub_world->IsAssetBinary();
+
+        out_record.type = GetSerializationType();
+        out_record.payload = data;
+        return true;
+    }
+
+    void SubWorldComponent::DeserializeFromRecord(const ComponentRecord& record,
+                                                  Entity* entity,
+                                                  std::vector<std::pair<std::shared_ptr<TransformComponent>, int32_t>>&)
+    {
+        if (!entity)
+            return;
+
+        const auto& data = std::any_cast<const SubWorldRecord&>(record.payload);
+
+        auto sub_world = std::make_shared<SubWorldComponent>(
+            static_cast<SubWorldMode>(data.mode));
+
+        sub_world->SetRenderShared(data.render_shared);
+        sub_world->SetLogicIsolated(data.logic_isolated);
+
+        if (data.subscene_id != 0)
+            sub_world->SetSubsceneID(data.subscene_id);
+
+        sub_world->SetRootEntityID(FromEntityIDRecord(data.root_entity_id));
+        sub_world->SetAssetPath(data.asset_path, data.asset_binary);
+        sub_world->SetPaused(data.paused);
+        sub_world->SetTickEnabled(data.tick_enabled);
+        sub_world->SetRenderEnabled(data.render_enabled);
+
+        entity->AddComponentInstance(sub_world);
     }
 
     void SubWorldComponent::SetupVisibilityInheritance()
