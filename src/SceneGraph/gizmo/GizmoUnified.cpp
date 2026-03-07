@@ -260,7 +260,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         move_transform->SetParent(gizmo->root->GetID());
 
-        auto sub_world = gizmo->move_entity->AddComponent<hgl::ecs::SubWorldComponent>();
+        auto sub_world = gizmo->move_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
         gizmo->move_subworld = sub_world;
         gizmo->move_world = sub_world->GetSubWorld();
 
@@ -294,7 +294,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         rotate_transform->SetParent(gizmo->root->GetID());
 
-        auto sub_world = gizmo->rotate_entity->AddComponent<hgl::ecs::SubWorldComponent>();
+        auto sub_world = gizmo->rotate_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
         gizmo->rotate_subworld = sub_world;
         gizmo->rotate_world = sub_world->GetSubWorld();
 
@@ -328,7 +328,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         scale_transform->SetParent(gizmo->root->GetID());
 
-        auto sub_world = gizmo->scale_entity->AddComponent<hgl::ecs::SubWorldComponent>();
+        auto sub_world = gizmo->scale_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
         gizmo->scale_subworld = sub_world;
         gizmo->scale_world = sub_world->GetSubWorld();
 

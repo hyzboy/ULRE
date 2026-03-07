@@ -31,6 +31,74 @@
 #include<algorithm>
 #include<chrono>
 
+namespace
+{
+    struct SubWorldDispatchStats
+    {
+        uint32_t shared_count = 0;
+        uint32_t isolated_count = 0;
+        uint32_t dispatched_count = 0;
+    };
+
+    template<typename Fn>
+    SubWorldDispatchStats DispatchLocalLogicSubWorldComponents(hgl::ecs::ECSContext* context, Fn&& fn)
+    {
+        SubWorldDispatchStats stats;
+
+        if (!context)
+            return stats;
+
+        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
+        context->GetComponents(sub_worlds);
+        for (const auto& sub_world : sub_worlds)
+        {
+            if (!sub_world)
+                continue;
+
+            if (!sub_world->IsLogicIsolated())
+            {
+                ++stats.shared_count;
+                continue;
+            }
+
+            ++stats.isolated_count;
+            fn(*sub_world);
+            ++stats.dispatched_count;
+        }
+
+        return stats;
+    }
+
+    template<typename Fn>
+    SubWorldDispatchStats DispatchLocalRenderSubWorldComponents(hgl::ecs::ECSContext* context, Fn&& fn)
+    {
+        SubWorldDispatchStats stats;
+
+        if (!context)
+            return stats;
+
+        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
+        context->GetComponents(sub_worlds);
+        for (const auto& sub_world : sub_worlds)
+        {
+            if (!sub_world)
+                continue;
+
+            if (sub_world->IsRenderShared())
+            {
+                ++stats.shared_count;
+                continue;
+            }
+
+            ++stats.isolated_count;
+            fn(*sub_world);
+            ++stats.dispatched_count;
+        }
+
+        return stats;
+    }
+}
+
 namespace hgl
 {
     namespace ecs
@@ -295,13 +363,24 @@ namespace hgl
             // Update sub-worlds attached via SubWorldComponent
             if (sub_world_auto_update)
             {
-                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
-                GetComponents(sub_worlds);
-                for (const auto& sub_world : sub_worlds)
+                const auto stats = DispatchLocalLogicSubWorldComponents(
+                    this,
+                    [deltaTime](SubWorldComponent& sub_world)
+                    {
+                        sub_world.UpdateSubWorld(deltaTime);
+                    });
+
+#if ULRE_ECS_DEBUG_API
+                static bool logged_once = false;
+                if (!logged_once && stats.shared_count > 0)
                 {
-                    if (sub_world)
-                        sub_world->UpdateSubWorld(deltaTime);
+                    logged_once = true;
+                    LogDebug("[ECSContext] Tick auto sub-world dispatch: shared=%u isolated=%u dispatched=%u",
+                             stats.shared_count,
+                             stats.isolated_count,
+                             stats.dispatched_count);
                 }
+#endif
             }
 
             if (auto input_system = GetSystem<InputSystem>())
@@ -369,13 +448,24 @@ namespace hgl
             // Render sub-worlds attached via SubWorldComponent
             if (sub_world_auto_update)
             {
-                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
-                GetComponents(sub_worlds);
-                for (const auto& sub_world : sub_worlds)
+                const auto stats = DispatchLocalRenderSubWorldComponents(
+                    this,
+                    [cmd, deltaTime](SubWorldComponent& sub_world)
+                    {
+                        sub_world.RenderSubWorld(cmd, deltaTime);
+                    });
+
+#if ULRE_ECS_DEBUG_API
+                static bool logged_once = false;
+                if (!logged_once && stats.shared_count > 0)
                 {
-                    if (sub_world)
-                        sub_world->RenderSubWorld(cmd, deltaTime);
+                    logged_once = true;
+                    LogDebug("[ECSContext] Render auto sub-world dispatch: shared=%u isolated=%u dispatched=%u",
+                             stats.shared_count,
+                             stats.isolated_count,
+                             stats.dispatched_count);
                 }
+#endif
             }
 
             // (Phase 1) 清除当前命令缓冲区（如果是我们设置的）
@@ -417,13 +507,24 @@ namespace hgl
             // Recurse into nested sub-worlds (draw-only — they were also Prepare'd before the pass)
             if (sub_world_auto_update)
             {
-                std::vector<std::shared_ptr<SubWorldComponent>> sub_worlds;
-                GetComponents(sub_worlds);
-                for (const auto& sub_world : sub_worlds)
+                const auto stats = DispatchLocalRenderSubWorldComponents(
+                    this,
+                    [cmd, deltaTime](SubWorldComponent& sub_world)
+                    {
+                        sub_world.DrawSubWorld(cmd, deltaTime);
+                    });
+
+#if ULRE_ECS_DEBUG_API
+                static bool logged_once = false;
+                if (!logged_once && stats.shared_count > 0)
                 {
-                    if (sub_world)
-                        sub_world->DrawSubWorld(cmd, deltaTime);
+                    logged_once = true;
+                    LogDebug("[ECSContext] RenderDrawOnly auto sub-world dispatch: shared=%u isolated=%u dispatched=%u",
+                             stats.shared_count,
+                             stats.isolated_count,
+                             stats.dispatched_count);
                 }
+#endif
             }
 
             if (current_render_cmd == cmd)

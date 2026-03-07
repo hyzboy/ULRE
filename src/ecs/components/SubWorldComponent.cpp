@@ -13,11 +13,18 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/log/Log.h>
+#include<atomic>
 
 namespace hgl::ecs
 {
     namespace
     {
+        uint64_t NextSubsceneID()
+        {
+            static std::atomic<uint64_t> next_id{1};
+            return next_id.fetch_add(1, std::memory_order_relaxed);
+        }
+
         void SyncSubWorldRuntimeResources(ECSContext* parent_context, ECSContext* child_context)
         {
             if (!parent_context || !child_context)
@@ -155,8 +162,57 @@ namespace hgl::ecs
     }
 
     SubWorldComponent::SubWorldComponent(const std::string& name)
+        : SubWorldComponent(SubWorldMode::SharedContext, name)
+    {
+    }
+
+    SubWorldComponent::SubWorldComponent(SubWorldMode init_mode, const std::string& name)
         : Component(name)
     {
+        mode = init_mode;
+        SyncPolicyFromMode();
+        subscene_id = NextSubsceneID();
+    }
+
+    void SubWorldComponent::SyncPolicyFromMode()
+    {
+        if (mode == SubWorldMode::SharedContext)
+        {
+            render_shared = true;
+            logic_isolated = false;
+            return;
+        }
+
+        render_shared = false;
+        logic_isolated = true;
+    }
+
+    void SubWorldComponent::SyncModeFromPolicy()
+    {
+        // Keep policy matrix valid; pure "none" mode is not supported.
+        if (!render_shared && !logic_isolated)
+            render_shared = true;
+
+        // Mode remains as a compatibility surface for existing callers.
+        mode = logic_isolated ? SubWorldMode::IsolatedContext : SubWorldMode::SharedContext;
+    }
+
+    void SubWorldComponent::SetMode(SubWorldMode m)
+    {
+        mode = m;
+        SyncPolicyFromMode();
+    }
+
+    void SubWorldComponent::SetRenderShared(bool value)
+    {
+        render_shared = value;
+        SyncModeFromPolicy();
+    }
+
+    void SubWorldComponent::SetLogicIsolated(bool value)
+    {
+        logic_isolated = value;
+        SyncModeFromPolicy();
     }
 
     ECSContext* SubWorldComponent::GetSubContext() const
@@ -166,14 +222,20 @@ namespace hgl::ecs
 
     SubWorldComponent::~SubWorldComponent()
     {
-        if (auto* ctx = GetSubContext())
+        if (RequiresLocalContext())
         {
-            ctx->Shutdown();
+            if (auto* ctx = GetSubContext())
+            {
+                ctx->Shutdown();
+            }
         }
     }
 
     bool SubWorldComponent::Initialize(ECSContext* parent_context)
     {
+        if (!RequiresLocalContext())
+            return parent_context != nullptr;
+
         ECSContext* child_context = GetSubContext();
         if (!parent_context || !child_context)
             return false;
@@ -183,17 +245,18 @@ namespace hgl::ecs
         child_context->SetSubWorldAutoUpdate(false);
 
         const graph::CameraInfo* parent_camera_info = nullptr;
-        graph::VulkanDevice* parent_device = parent_context->GetGPUDevice();
 
         if (auto parent_collect = parent_context->GetSystem<RenderPrimitiveCollectSystem>())
         {
             parent_camera_info = parent_collect->GetCameraInfo();
         }
 
-        // Register required systems for sub-world rendering
+        // Register required local gameplay systems.
         auto camera_system = child_context->RegisterTickSystem<CameraSystem>(child_context);
         auto bbox_system = child_context->RegisterTickSystem<BoundingBoxUpdateSystem>();
-        auto render_collect_system = child_context->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
+        std::shared_ptr<RenderPrimitiveCollectSystem> render_collect_system;
+        if (!render_shared)
+            render_collect_system = child_context->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
 
         if (bbox_system)
             bbox_system->SetWorld(child_context);
@@ -204,9 +267,12 @@ namespace hgl::ecs
             render_collect_system->SetCameraInfo(parent_camera_info);
         }
 
-        // New unified pipeline group replaces Cull/Sort/Build/Finalize/Submit systems
-        hgl::ecs::PrimitiveRenderPipelineGroup group;
-        group.Initialize(child_context);
+        if (!render_shared)
+        {
+            // New unified pipeline group replaces Cull/Sort/Build/Finalize/Submit systems
+            hgl::ecs::PrimitiveRenderPipelineGroup group;
+            group.Initialize(child_context);
+        }
 
         // Initialize sub-world systems
         child_context->Initialize();
@@ -217,8 +283,19 @@ namespace hgl::ecs
         return true;
     }
 
+    bool SubWorldComponent::IsInitialized() const
+    {
+        if (!RequiresLocalContext())
+            return owner_entity && owner_entity->GetContext();
+
+        return GetSubContext() != nullptr;
+    }
+
     void SubWorldComponent::UpdateSubWorld(float delta_time)
     {
+        if (!logic_isolated)
+            return;
+
         ECSContext* child_context = GetSubContext();
         if (!child_context || !child_context->IsActive())
             return;
@@ -252,6 +329,9 @@ namespace hgl::ecs
 
     void SubWorldComponent::RenderSubWorld(graph::RenderCmdBuffer* cmd, float delta_time)
     {
+        if (render_shared)
+            return;
+
         ECSContext* child_context = GetSubContext();
         if (!child_context || !child_context->IsActive())
             return;
@@ -285,6 +365,9 @@ namespace hgl::ecs
 
     void SubWorldComponent::PrepareSubWorld(float delta_time)
     {
+        if (render_shared)
+            return;
+
         ECSContext* child_context = GetSubContext();
         if (!child_context || !child_context->IsActive())
             return;
@@ -312,6 +395,9 @@ namespace hgl::ecs
 
     void SubWorldComponent::DrawSubWorld(graph::RenderCmdBuffer* cmd, float delta_time)
     {
+        if (render_shared)
+            return;
+
         ECSContext* child_context = GetSubContext();
         if (!child_context || !child_context->IsActive())
             return;
@@ -326,6 +412,9 @@ namespace hgl::ecs
 
     void SubWorldComponent::ClearSubWorld()
     {
+        if (!RequiresLocalContext())
+            return;
+
         if (auto* ctx = GetSubContext())
         {
             ctx->ClearEntities();
@@ -362,6 +451,17 @@ namespace hgl::ecs
 
         ParentImportedRoots(owner_entity, parent_context, created_ids);
         instanced_entity_ids = std::move(created_ids);
+
+        root_entity_id = owner_entity ? owner_entity->GetID() : EntityID();
+        for (const auto& id : instanced_entity_ids)
+        {
+            if (id.IsValid())
+            {
+                root_entity_id = id;
+                break;
+            }
+        }
+
         return true;
     }
 
@@ -384,12 +484,21 @@ namespace hgl::ecs
         }
 
         instanced_entity_ids.clear();
+        root_entity_id = EntityID();
     }
 
     void SubWorldComponent::OnAttach()
     {
         if (!owner_entity)
             owner_entity = GetOwner();
+
+        if (!RequiresLocalContext())
+        {
+            if (!asset_path.empty())
+                InstantiateAssetToParent();
+
+            return;
+        }
 
         if (!asset_path.empty())
         {
@@ -418,9 +527,12 @@ namespace hgl::ecs
     {
         ClearInstancedAssetEntities();
 
-        if (auto* ctx = GetSubContext())
+        if (RequiresLocalContext())
         {
-            ctx->Shutdown();
+            if (auto* ctx = GetSubContext())
+            {
+                ctx->Shutdown();
+            }
         }
 
         if (sub_world)

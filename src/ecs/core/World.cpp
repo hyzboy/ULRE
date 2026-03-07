@@ -3,6 +3,71 @@
 
 namespace
 {
+    struct SubWorldDispatchStats
+    {
+        uint32_t shared_count = 0;
+        uint32_t isolated_count = 0;
+        uint32_t dispatched_count = 0;
+    };
+
+    template<typename Fn>
+    SubWorldDispatchStats DispatchLocalLogicSubWorldComponents(hgl::ecs::ECSContext* context, Fn&& fn)
+    {
+        SubWorldDispatchStats stats;
+
+        if (!context)
+            return stats;
+
+        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
+        context->GetComponents(sub_worlds);
+        for (const auto& sub_world : sub_worlds)
+        {
+            if (!sub_world)
+                continue;
+
+            if (!sub_world->IsLogicIsolated())
+            {
+                ++stats.shared_count;
+                continue;
+            }
+
+            ++stats.isolated_count;
+            fn(*sub_world);
+            ++stats.dispatched_count;
+        }
+
+        return stats;
+    }
+
+    template<typename Fn>
+    SubWorldDispatchStats DispatchLocalRenderSubWorldComponents(hgl::ecs::ECSContext* context, Fn&& fn)
+    {
+        SubWorldDispatchStats stats;
+
+        if (!context)
+            return stats;
+
+        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
+        context->GetComponents(sub_worlds);
+        for (const auto& sub_world : sub_worlds)
+        {
+            if (!sub_world)
+                continue;
+
+            if (sub_world->IsRenderShared())
+            {
+                ++stats.shared_count;
+                continue;
+            }
+
+            ++stats.isolated_count;
+            fn(*sub_world);
+            ++stats.dispatched_count;
+        }
+
+        return stats;
+    }
+
     void SyncChildFrameIndex(hgl::ecs::ECSContext* parent_context, hgl::ecs::ECSContext* child_context)
     {
         if (!parent_context || !child_context)
@@ -12,37 +77,51 @@ namespace
         const uint32_t child_frame = child_context->GetFrameIndex();
 
         if (parent_frame != child_frame)
-        {
             child_context->SetFrameIndex(parent_frame);
-        }
     }
 
     void TickSubWorldComponents(hgl::ecs::ECSContext* context, float delta_time)
     {
-        if (!context)
-            return;
+        const auto stats = DispatchLocalLogicSubWorldComponents(
+            context,
+            [delta_time](hgl::ecs::SubWorldComponent& sub_world)
+            {
+                sub_world.UpdateSubWorld(delta_time);
+            });
 
-        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
-        context->GetComponents(sub_worlds);
-        for (const auto& sub_world : sub_worlds)
+#if ULRE_ECS_DEBUG_API
+        static bool logged_once = false;
+        if (!logged_once && stats.shared_count > 0)
         {
-            if (sub_world)
-                sub_world->UpdateSubWorld(delta_time);
+            logged_once = true;
+            GLogDebug("[World] TickSubWorldComponents: shared=%u isolated=%u dispatched=%u",
+                     stats.shared_count,
+                     stats.isolated_count,
+                     stats.dispatched_count);
         }
+#endif
     }
 
     void RenderSubWorldComponents(hgl::ecs::ECSContext* context, hgl::graph::RenderCmdBuffer* cmd, float delta_time)
     {
-        if (!context)
-            return;
+        const auto stats = DispatchLocalRenderSubWorldComponents(
+            context,
+            [cmd, delta_time](hgl::ecs::SubWorldComponent& sub_world)
+            {
+                sub_world.RenderSubWorld(cmd, delta_time);
+            });
 
-        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
-        context->GetComponents(sub_worlds);
-        for (const auto& sub_world : sub_worlds)
+#if ULRE_ECS_DEBUG_API
+        static bool logged_once = false;
+        if (!logged_once && stats.shared_count > 0)
         {
-            if (sub_world)
-                sub_world->RenderSubWorld(cmd, delta_time);
+            logged_once = true;
+            GLogDebug("[World] RenderSubWorldComponents: shared=%u isolated=%u dispatched=%u",
+                     stats.shared_count,
+                     stats.isolated_count,
+                     stats.dispatched_count);
         }
+#endif
     }
 }
 

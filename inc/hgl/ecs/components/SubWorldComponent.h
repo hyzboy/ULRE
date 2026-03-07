@@ -4,6 +4,7 @@
 #include<memory>
 #include<string>
 #include<vector>
+#include<cstdint>
 #include<hgl/log/Log.h>
 
 namespace hgl::ecs
@@ -20,6 +21,12 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
+    enum class SubWorldMode : uint8_t
+    {
+        SharedContext = 0,
+        IsolatedContext = 1
+    };
+
     /**
      * SubWorldComponent - Hierarchical ECS worlds
      *
@@ -46,6 +53,11 @@ namespace hgl::ecs
     private:
         std::shared_ptr<World> sub_world;
         Entity* owner_entity = nullptr;
+        SubWorldMode mode = SubWorldMode::SharedContext;
+        bool render_shared = true;
+        bool logic_isolated = false;
+        uint64_t subscene_id = 0;
+        EntityID root_entity_id;
         std::string asset_path;
         bool asset_binary = false;
         std::vector<EntityID> instanced_entity_ids;
@@ -56,6 +68,7 @@ namespace hgl::ecs
 
     public:
         SubWorldComponent(const std::string& name = "SubWorld");
+        SubWorldComponent(SubWorldMode init_mode, const std::string& name = "SubWorld");
         ~SubWorldComponent() override;
 
     public:
@@ -72,6 +85,18 @@ namespace hgl::ecs
 
         /// Get the sub-world object as shared_ptr (for ownership management)
         std::shared_ptr<World> GetSubWorldShared() const { return sub_world; }
+
+        void SetMode(SubWorldMode m);
+        SubWorldMode GetMode() const { return mode; }
+
+        void SetRenderShared(bool value);
+        bool IsRenderShared() const { return render_shared; }
+
+        void SetLogicIsolated(bool value);
+        bool IsLogicIsolated() const { return logic_isolated; }
+
+        uint64_t GetSubsceneID() const { return subscene_id; }
+        EntityID GetRootEntityID() const { return root_entity_id; }
 
         /// Update sub-world systems
         void UpdateSubWorld(float delta_time);
@@ -90,7 +115,7 @@ namespace hgl::ecs
         void RenderSubWorld(graph::RenderCmdBuffer* cmd, float delta_time);
 
         /// Check if sub-world is initialized
-        bool IsInitialized() const { return GetSubContext() != nullptr; }
+        bool IsInitialized() const;
 
         /// Destroy all entities in sub-world but keep the context
         void ClearSubWorld();
@@ -132,6 +157,10 @@ namespace hgl::ecs
         void OnDetach() override;
 
     private:
+
+        void SyncPolicyFromMode();
+        void SyncModeFromPolicy();
+        bool RequiresLocalContext() const { return logic_isolated || !render_shared; }
 
         /// Setup visibility inheritance linkage
         void SetupVisibilityInheritance();
