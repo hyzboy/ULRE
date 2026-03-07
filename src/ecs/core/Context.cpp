@@ -1135,6 +1135,22 @@ namespace hgl
                            effective_is_render ? "render" : "tick");
             }
 
+            if (effective_is_render && !allow_render_system_registration)
+            {
+                ++rejected_render_system_registration_count;
+
+            #if ULRE_ECS_DEBUG_API
+                if (!rejected_render_system_registration_logged)
+                {
+                    rejected_render_system_registration_logged = true;
+                    LogWarning("[ECS] Render system registration rejected in context '%s'. Example system='%s'",
+                               GetName().c_str(),
+                               system->GetName().c_str());
+                }
+            #endif
+                return;
+            }
+
             auto& sys_map = effective_is_render ? render_systems : tick_systems;
             auto& order_list = effective_is_render ? render_system_order : tick_system_order;
             auto& dirty_flag = effective_is_render ? render_order_dirty : tick_order_dirty;

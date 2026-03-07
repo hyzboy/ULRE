@@ -243,6 +243,7 @@ namespace hgl::ecs
         SyncSubWorldRuntimeResources(parent_context, child_context);
 
         child_context->SetSubWorldAutoUpdate(false);
+        child_context->SetRenderSystemRegistrationAllowed(!render_shared);
 
         const graph::CameraInfo* parent_camera_info = nullptr;
 

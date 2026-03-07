@@ -118,6 +118,9 @@ namespace hgl
             bool active = false;
             bool shutdown_in_progress = false;
             bool sub_world_auto_update = true;
+            bool allow_render_system_registration = true;
+            uint32_t rejected_render_system_registration_count = 0;
+            bool rejected_render_system_registration_logged = false;
 
             RenderFrameCache render_frame_cache;
             SystemProfiler profiler;
@@ -614,6 +617,18 @@ namespace hgl
             /// When using World as the scheduler, this should be disabled and driven by World instead.
             void SetSubWorldAutoUpdate(bool value) { sub_world_auto_update = value; }
             bool IsSubWorldAutoUpdateEnabled() const { return sub_world_auto_update; }
+
+            /// Gate for local render-system registration. Used by hybrid SubWorld policy.
+            void SetRenderSystemRegistrationAllowed(bool value) { allow_render_system_registration = value; }
+            bool IsRenderSystemRegistrationAllowed() const { return allow_render_system_registration; }
+
+            /// Diagnostics: count how many render-system registration attempts were rejected.
+            uint32_t GetRejectedRenderSystemRegistrationCount() const { return rejected_render_system_registration_count; }
+            void ResetRejectedRenderSystemRegistrationCount()
+            {
+                rejected_render_system_registration_count = 0;
+                rejected_render_system_registration_logged = false;
+            }
 
             /// 获取指定类型的组件列表（自动清理已失效的弱引用）
             template<typename T>
