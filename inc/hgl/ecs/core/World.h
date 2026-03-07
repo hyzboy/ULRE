@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/Object.h>
 #include<hgl/ecs/core/Context.h>
+#include<hgl/ecs/core/WorldScheduler.h>
 #include<hgl/log/Log.h>
 #include<memory>
 #include<vector>
@@ -31,6 +32,7 @@ namespace hgl
 
             std::shared_ptr<ECSContext> context;
             std::vector<std::shared_ptr<World>> children;
+            std::unique_ptr<WorldScheduler> scheduler;
 
             bool active = true;
             bool is_ticking = false;
@@ -47,13 +49,20 @@ namespace hgl
             ECSContext* GetContext() { return context.get(); }
             const ECSContext* GetContext() const { return context.get(); }
 
-            void SetContext(const std::shared_ptr<ECSContext>& ctx) { context = ctx; }
+            void SetContext(const std::shared_ptr<ECSContext>& ctx);
 
             bool IsActive() const { return active; }
             void SetActive(bool value) { active = value; }
 
             bool IsTicking() const { return is_ticking; }
             bool IsRendering() const { return is_rendering; }
+            WorldScheduler::SchedulerStats GetSchedulerStats() const
+            {
+                if (!scheduler)
+                    return {};
+
+                return scheduler->GetStats();
+            }
 
         public:
 
