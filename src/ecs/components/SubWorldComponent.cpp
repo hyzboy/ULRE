@@ -4,6 +4,7 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/components/VisibilityComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/systems/tick/TransformSystem.h>
 #include<hgl/ecs/systems/tick/BoundingBoxUpdateSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
@@ -379,6 +380,39 @@ namespace hgl::ecs
 
         child_context->Render(cmd, delta_time);
         RenderNestedSubWorlds(child_context, cmd, delta_time);
+    }
+
+    void SubWorldComponent::SyncSharedRenderBridge(float delta_time)
+    {
+        (void)delta_time;
+
+        // Bridge only applies to hybrid mode: local gameplay with global render.
+        if (!logic_isolated || !render_shared)
+            return;
+
+        ECSContext* child_context = GetSubContext();
+        if (!child_context || !child_context->IsActive())
+            return;
+
+        if (paused || !render_enabled)
+            return;
+
+        ECSContext* parent_context = owner_entity ? owner_entity->GetContext() : nullptr;
+        SyncSubWorldRuntimeResources(parent_context, child_context);
+
+        if (SyncSubWorldFrameIndex(owner_entity, child_context))
+        {
+            static bool frame_sync_warned_bridge = false;
+            if (!frame_sync_warned_bridge)
+            {
+                frame_sync_warned_bridge = true;
+                LogWarning("[SubWorldComponent] Bridge frame index drift detected and synchronized");
+            }
+        }
+
+        // Ensure latest transform payload is visible before root render collect phase.
+        if (auto transform_system = child_context->GetSystem<TransformSystem>())
+            transform_system->SubmitTransformUpdates();
     }
 
     void SubWorldComponent::PrepareSubWorld(float delta_time)

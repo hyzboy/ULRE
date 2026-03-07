@@ -68,6 +68,36 @@ namespace
         return stats;
     }
 
+    template<typename Fn>
+    SubWorldDispatchStats DispatchHybridBridgeSubWorldComponents(hgl::ecs::ECSContext* context, Fn&& fn)
+    {
+        SubWorldDispatchStats stats;
+
+        if (!context)
+            return stats;
+
+        std::vector<std::shared_ptr<hgl::ecs::SubWorldComponent>> sub_worlds;
+        context->GetComponents(sub_worlds);
+        for (const auto& sub_world : sub_worlds)
+        {
+            if (!sub_world)
+                continue;
+
+            const bool is_hybrid_bridge = sub_world->IsLogicIsolated() && sub_world->IsRenderShared();
+            if (!is_hybrid_bridge)
+            {
+                ++stats.shared_count;
+                continue;
+            }
+
+            ++stats.isolated_count;
+            fn(*sub_world);
+            ++stats.dispatched_count;
+        }
+
+        return stats;
+    }
+
     void SyncChildFrameIndex(hgl::ecs::ECSContext* parent_context, hgl::ecs::ECSContext* child_context)
     {
         if (!parent_context || !child_context)
@@ -117,6 +147,28 @@ namespace
         {
             logged_once = true;
             GLogDebug("[World] RenderSubWorldComponents: shared=%u isolated=%u dispatched=%u",
+                     stats.shared_count,
+                     stats.isolated_count,
+                     stats.dispatched_count);
+        }
+#endif
+    }
+
+    void SyncSharedRenderBridgeSubWorldComponents(hgl::ecs::ECSContext* context, float delta_time)
+    {
+        const auto stats = DispatchHybridBridgeSubWorldComponents(
+            context,
+            [delta_time](hgl::ecs::SubWorldComponent& sub_world)
+            {
+                sub_world.SyncSharedRenderBridge(delta_time);
+            });
+
+#if ULRE_ECS_DEBUG_API
+        static bool logged_once = false;
+        if (!logged_once && stats.dispatched_count > 0)
+        {
+            logged_once = true;
+            GLogDebug("[World] SyncSharedRenderBridgeSubWorldComponents: non_hybrid=%u hybrid=%u dispatched=%u",
                      stats.shared_count,
                      stats.isolated_count,
                      stats.dispatched_count);
@@ -210,6 +262,11 @@ namespace hgl::ecs
         if (context)
         {
             context->SetSubWorldAutoUpdate(false);
+
+            // H3 sync point: bridge hybrid local-logic state into shared render input
+            // before root render systems begin collect/batch.
+            SyncSharedRenderBridgeSubWorldComponents(context.get(), delta_time);
+
             context->Render(cmd, delta_time);
             RenderSubWorldComponents(context.get(), cmd, delta_time);
         }

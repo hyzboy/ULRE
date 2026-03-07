@@ -114,6 +114,10 @@ namespace hgl::ecs
         /// Prefer PrepareSubWorld() + DrawSubWorld() for correct non-ReBAR support.
         void RenderSubWorld(graph::RenderCmdBuffer* cmd, float delta_time);
 
+        /// H3 bridge sync point for hybrid mode (render_shared=true + logic_isolated=true).
+        /// Called before root render collection so local gameplay state is visible to global render.
+        void SyncSharedRenderBridge(float delta_time);
+
         /// Check if sub-world is initialized
         bool IsInitialized() const;
 
