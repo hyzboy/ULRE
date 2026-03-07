@@ -383,3 +383,25 @@ if(ULRE_ECS_DEBUG_API)
 else()
     target_compile_definitions(ULRE.ECS PUBLIC ULRE_ECS_DEBUG_API=0)
 endif()
+
+add_executable(ECS_SubWorldSerializationRegression
+    tests/SubWorldSerializationRegressionTest.cpp)
+
+target_link_libraries(ECS_SubWorldSerializationRegression
+    PRIVATE
+        CMCoreType
+        CMMath
+        CMCore
+        CMAssetsManage
+        CMUtil
+        CM2D
+        ULRE.ECS
+        ULRE.Vulkan
+        ULRE.ShaderGen
+        ULRE.SceneGraph
+        ULRE.InlineGeometry
+        ${HGL_MATH_LIB}
+        ${RENDER_LIBRARY}
+        ${Vulkan_LIBRARIES})
+
+set_property(TARGET ECS_SubWorldSerializationRegression PROPERTY FOLDER "ULRE/ECS/Tests")

@@ -4,14 +4,6 @@
 
 namespace hgl::ecs
 {
-	namespace
-	{
-		struct SubSceneMembershipRecord
-		{
-			uint64_t subscene_id = 0;
-		};
-	}
-
 	const char* SubSceneMembershipComponent::GetSerializationType()
 	{
 		return "SubSceneMembership";

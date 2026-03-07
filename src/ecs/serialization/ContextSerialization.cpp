@@ -26,6 +26,7 @@
 #include<variant>
 #include<vector>
 #include<unordered_set>
+#include<stdexcept>
 
 namespace hgl::ecs
 {
@@ -137,59 +138,7 @@ namespace hgl::ecs
             }
         };
 
-        struct EntityIDRecord
-        {
-            uint32_t index = UINT32_MAX;
-            uint16_t generation = 0;
-
-            template<class Archive>
-            void serialize(Archive& ar)
-            {
-                ar(CEREAL_NVP(index), CEREAL_NVP(generation));
-            }
-        };
-
-        struct SubWorldRecord
-        {
-            uint8_t mode = 0;
-            bool render_shared = true;
-            bool logic_isolated = false;
-            uint64_t subscene_id = 0;
-            EntityIDRecord root_entity_id{};
-            bool paused = false;
-            bool tick_enabled = true;
-            bool render_enabled = true;
-            std::string asset_path;
-            bool asset_binary = false;
-
-            template<class Archive>
-            void serialize(Archive& ar)
-            {
-                ar(CEREAL_NVP(mode),
-                   CEREAL_NVP(render_shared),
-                   CEREAL_NVP(logic_isolated),
-                   CEREAL_NVP(subscene_id),
-                   CEREAL_NVP(root_entity_id),
-                   CEREAL_NVP(paused),
-                   CEREAL_NVP(tick_enabled),
-                   CEREAL_NVP(render_enabled),
-                   CEREAL_NVP(asset_path),
-                   CEREAL_NVP(asset_binary));
-            }
-        };
-
-        struct SubSceneMembershipRecord
-        {
-            uint64_t subscene_id = 0;
-
-            template<class Archive>
-            void serialize(Archive& ar)
-            {
-                ar(CEREAL_NVP(subscene_id));
-            }
-        };
-
-        using ComponentPayload = std::variant<TransformRecord, BoundingBoxRecord, RenderableRecord, PrimitiveRecord, CameraRecord, SubWorldRecord, SubSceneMembershipRecord>;
+        using ComponentPayload = std::variant<TransformRecord, BoundingBoxRecord, RenderableRecord, PrimitiveRecord, CameraRecord, SubWorldComponentRecord, SubSceneMembershipRecord>;
 
         struct SerializableComponentRecord
         {
@@ -232,22 +181,33 @@ namespace hgl::ecs
             SerializableComponentRecord result;
             result.type = record.type;
 
-            if (record.type == "Transform")
-                result.payload = std::any_cast<TransformRecord>(record.payload);
-            else if (record.type == "BoundingBox")
-                result.payload = std::any_cast<BoundingBoxRecord>(record.payload);
-            else if (record.type == "Renderable")
-                result.payload = std::any_cast<RenderableRecord>(record.payload);
-            else if (record.type == "Primitive")
-                result.payload = std::any_cast<PrimitiveRecord>(record.payload);
-            else if (record.type == "Camera")
-                result.payload = std::any_cast<CameraRecord>(record.payload);
-            else if (record.type == "SubWorld")
-                result.payload = std::any_cast<SubWorldRecord>(record.payload);
-            else if (record.type == "SubSceneMembership")
-                result.payload = std::any_cast<SubSceneMembershipRecord>(record.payload);
-            else
-                result.payload = RenderableRecord{}; // fallback
+            try
+            {
+                if (record.type == "Transform")
+                    result.payload = std::any_cast<TransformRecord>(record.payload);
+                else if (record.type == "BoundingBox")
+                    result.payload = std::any_cast<BoundingBoxRecord>(record.payload);
+                else if (record.type == "Renderable")
+                    result.payload = std::any_cast<RenderableRecord>(record.payload);
+                else if (record.type == "Primitive")
+                    result.payload = std::any_cast<PrimitiveRecord>(record.payload);
+                else if (record.type == "Camera")
+                    result.payload = std::any_cast<CameraRecord>(record.payload);
+                else if (record.type == "SubWorld")
+                    result.payload = std::any_cast<SubWorldComponentRecord>(record.payload);
+                else if (record.type == "SubSceneMembership")
+                    result.payload = std::any_cast<SubSceneMembershipRecord>(record.payload);
+                else
+                    result.payload = RenderableRecord{}; // fallback
+            }
+            catch (const std::bad_any_cast&)
+            {
+                throw std::runtime_error(std::string("ToSerializable bad_any_cast type='") +
+                                         record.type +
+                                         "' payload='" +
+                                         record.payload.type().name() +
+                                         "'");
+            }
 
             return result;
         }
@@ -257,7 +217,52 @@ namespace hgl::ecs
         {
             ComponentRecord result;
             result.type = record.type;
-            result.payload = record.payload; // std::any can hold std::variant
+
+            // Rebuild the concrete payload type expected by each component's
+            // DeserializeFromRecord() implementation.
+            if (record.type == "Transform")
+            {
+                if (auto value = std::get_if<TransformRecord>(&record.payload))
+                    result.payload = *value;
+            }
+            else if (record.type == "BoundingBox")
+            {
+                if (auto value = std::get_if<BoundingBoxRecord>(&record.payload))
+                    result.payload = *value;
+            }
+            else if (record.type == "Renderable")
+            {
+                if (auto value = std::get_if<RenderableRecord>(&record.payload))
+                    result.payload = *value;
+            }
+            else if (record.type == "Primitive")
+            {
+                if (auto value = std::get_if<PrimitiveRecord>(&record.payload))
+                    result.payload = *value;
+            }
+            else if (record.type == "Camera")
+            {
+                if (auto value = std::get_if<CameraRecord>(&record.payload))
+                    result.payload = *value;
+            }
+            else if (record.type == "SubWorld")
+            {
+                if (auto value = std::get_if<SubWorldComponentRecord>(&record.payload))
+                    result.payload = *value;
+            }
+            else if (record.type == "SubSceneMembership")
+            {
+                if (auto value = std::get_if<SubSceneMembershipRecord>(&record.payload))
+                    result.payload = *value;
+            }
+
+            if (!result.payload.has_value())
+            {
+                throw std::runtime_error(std::string("FromSerializable payload mismatch type='") +
+                                         record.type +
+                                         "'");
+            }
+
             return result;
         }
         using SerializeFn = bool (*)(const std::shared_ptr<Component>&,

@@ -22,26 +22,6 @@ namespace hgl::ecs
 {
     namespace
     {
-        struct EntityIDRecord
-        {
-            uint32_t index = UINT32_MAX;
-            uint16_t generation = 0;
-        };
-
-        struct SubWorldRecord
-        {
-            uint8_t mode = static_cast<uint8_t>(SubWorldMode::SharedContext);
-            bool render_shared = true;
-            bool logic_isolated = false;
-            uint64_t subscene_id = 0;
-            EntityIDRecord root_entity_id{};
-            bool paused = false;
-            bool tick_enabled = true;
-            bool render_enabled = true;
-            std::string asset_path;
-            bool asset_binary = false;
-        };
-
         EntityIDRecord ToEntityIDRecord(const EntityID& id)
         {
             EntityIDRecord rec;
@@ -662,6 +642,15 @@ namespace hgl::ecs
         if (!owner_entity)
             owner_entity = GetOwner();
 
+#if ULRE_ECS_DEBUG_API
+        LogDebug("[SubWorldComponent] OnAttach owner='%s' subscene=%llu mode=%u render_shared=%d logic_isolated=%d",
+                 owner_entity ? owner_entity->GetName().c_str() : "<null>",
+                 static_cast<unsigned long long>(subscene_id),
+                 static_cast<unsigned>(mode),
+                 render_shared ? 1 : 0,
+                 logic_isolated ? 1 : 0);
+#endif
+
         if (!RequiresLocalContext())
         {
             SyncSubsceneStateToParentContext();
@@ -697,6 +686,12 @@ namespace hgl::ecs
 
     void SubWorldComponent::OnDetach()
     {
+#if ULRE_ECS_DEBUG_API
+        LogDebug("[SubWorldComponent] OnDetach begin subscene=%llu instanced_count=%zu",
+                 static_cast<unsigned long long>(subscene_id),
+                 instanced_entity_ids.size());
+#endif
+
         ClearInstancedAssetEntities();
 
         if (RequiresLocalContext())
@@ -717,7 +712,15 @@ namespace hgl::ecs
 
         ECSContext* parent_context = owner_entity ? owner_entity->GetContext() : nullptr;
         if (parent_context)
+        {
             parent_context->RemoveSubsceneState(subscene_id);
+
+    #if ULRE_ECS_DEBUG_API
+            LogDebug("[SubWorldComponent] OnDetach remove subscene=%llu from context='%s'",
+                 static_cast<unsigned long long>(subscene_id),
+                 parent_context->GetName().c_str());
+    #endif
+        }
     }
 
     const char* SubWorldComponent::GetSerializationType()
@@ -733,7 +736,7 @@ namespace hgl::ecs
         if (!sub_world)
             return false;
 
-        SubWorldRecord data{};
+        SubWorldComponentRecord data{};
         data.mode = static_cast<uint8_t>(sub_world->GetMode());
         data.render_shared = sub_world->IsRenderShared();
         data.logic_isolated = sub_world->IsLogicIsolated();
@@ -757,7 +760,7 @@ namespace hgl::ecs
         if (!entity)
             return;
 
-        const auto& data = std::any_cast<const SubWorldRecord&>(record.payload);
+        const auto& data = std::any_cast<const SubWorldComponentRecord&>(record.payload);
 
         auto sub_world = std::make_shared<SubWorldComponent>(
             static_cast<SubWorldMode>(data.mode));
@@ -768,13 +771,16 @@ namespace hgl::ecs
         if (data.subscene_id != 0)
             sub_world->SetSubsceneID(data.subscene_id);
 
-        sub_world->SetRootEntityID(FromEntityIDRecord(data.root_entity_id));
         sub_world->SetAssetPath(data.asset_path, data.asset_binary);
         sub_world->SetPaused(data.paused);
         sub_world->SetTickEnabled(data.tick_enabled);
         sub_world->SetRenderEnabled(data.render_enabled);
 
         entity->AddComponentInstance(sub_world);
+
+        // OnAttach may perform asset-instancing prep that clears runtime root id.
+        // Restore the serialized root id as authoritative persisted state.
+        sub_world->SetRootEntityID(FromEntityIDRecord(data.root_entity_id));
     }
 
     void SubWorldComponent::SetupVisibilityInheritance()

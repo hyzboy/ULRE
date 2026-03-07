@@ -1,5 +1,6 @@
 ﻿#include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/Context.h>
+#include<hgl/log/Log.h>
 
 namespace hgl
 {
@@ -93,10 +94,25 @@ namespace hgl
 
         void Entity::DetachAllComponents(bool notify_systems)
         {
+#if ULRE_ECS_DEBUG_API
+             GLogDebug("[Entity] DetachAllComponents entity='%s' id=(%u,%u) component_count=%zu notify=%d",
+                     GetName().c_str(),
+                     id.index,
+                     id.generation,
+                     static_cast<size_t>(components.GetCount()),
+                     notify_systems ? 1 : 0);
+#endif
+
             for (auto& pair : components)
             {
                 if (!pair.second)
                     continue;
+
+#if ULRE_ECS_DEBUG_API
+                GLogDebug("[Entity] Detach component entity='%s' comp='%s'",
+                          GetName().c_str(),
+                          pair.second->GetName().c_str());
+#endif
 
                 if (notify_systems)
                     NotifyComponentRemoved(std::type_index(typeid(*pair.second)));

@@ -58,6 +58,14 @@ namespace hgl::ecs
         slot.alive = true;
         slot.generation = generation;
 
+    #if ULRE_ECS_DEBUG_API
+        LogDebug("[EntityManager] CreateEntity name='%s' id=(%u,%u) alive_count=%u",
+             slot.entity ? slot.entity->GetName().c_str() : "<null>",
+             id.index,
+             id.generation,
+             GetEntityCount());
+    #endif
+
         return id;
     }
 
@@ -72,6 +80,12 @@ namespace hgl::ecs
         }
 
         EntitySlot& slot = slots[id.index];
+    #if ULRE_ECS_DEBUG_API
+        LogDebug("[EntityManager] DestroyEntity id=(%u,%u) has_entity=%d",
+             id.index,
+             id.generation,
+             slot.entity ? 1 : 0);
+    #endif
         if (slot.entity)
         {
             if (auto *ctx = slot.entity->GetContext())
@@ -164,6 +178,12 @@ namespace hgl::ecs
 
     void EntityManager::Clear()
     {
+        size_t detach_count = 0;
+
+    #if ULRE_ECS_DEBUG_API
+        LogDebug("[EntityManager] Clear begin slots=%zu", slots.size());
+    #endif
+
         for (auto& slot : slots)
         {
             if (slot.entity)
@@ -173,6 +193,7 @@ namespace hgl::ecs
 
                 slot.entity->DetachAllComponents(true);
                 slot.entity->OnDestroy();
+                ++detach_count;
             }
             slot.entity.reset();
             slot.alive = false;
@@ -180,6 +201,10 @@ namespace hgl::ecs
         slots.clear();
         free_indices.clear();
         next_index = 0;
+
+    #if ULRE_ECS_DEBUG_API
+        LogDebug("[EntityManager] Clear end detached=%zu", detach_count);
+    #endif
     }
 
     void EntityManager::ExpandSlots(uint32_t new_capacity)

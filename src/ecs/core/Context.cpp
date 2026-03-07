@@ -264,6 +264,16 @@ namespace hgl
             state.tick_enabled = tick_enabled;
             state.render_enabled = render_enabled;
             subscene_states[subscene_id] = state;
+
+#if ULRE_ECS_DEBUG_API
+            LogDebug("[ECSContext] SetSubsceneState context='%s' subscene=%llu paused=%d tick=%d render=%d size=%zu",
+                     GetName().c_str(),
+                     static_cast<unsigned long long>(subscene_id),
+                     paused ? 1 : 0,
+                     tick_enabled ? 1 : 0,
+                     render_enabled ? 1 : 0,
+                     subscene_states.size());
+#endif
         }
 
         bool ECSContext::GetSubsceneState(uint64_t subscene_id, SubSceneState& out_state) const
@@ -281,7 +291,16 @@ namespace hgl
             if (subscene_id == 0)
                 return;
 
-            subscene_states.erase(subscene_id);
+            const size_t erased = subscene_states.erase(subscene_id);
+
+#if ULRE_ECS_DEBUG_API
+            LogDebug("[ECSContext] RemoveSubsceneState context='%s' subscene=%llu erased=%zu size=%zu shutdown=%d",
+                     GetName().c_str(),
+                     static_cast<unsigned long long>(subscene_id),
+                     erased,
+                     subscene_states.size(),
+                     shutdown_in_progress ? 1 : 0);
+#endif
         }
 
         bool ECSContext::IsSubsceneTickEnabled(uint64_t subscene_id) const
@@ -379,7 +398,29 @@ namespace hgl
 
             if (!active)
             {
-                // 即使未激活，也要清空materialBatches以释放GPU资源
+                // Even when inactive, clear entities/components now so component OnDetach
+                // does not run later during member destruction after maps are already destroyed.
+                if (entity_manager)
+                {
+                    LogDebug("[ECSContext] Shutdown(inactive) - clearing entities before member teardown");
+                    entity_manager->Clear();
+                }
+
+                tick_systems.Clear();
+                render_systems.Clear();
+                tick_system_order.clear();
+                render_system_order.clear();
+                component_registry.Clear();
+                systems_by_element_type.clear();
+                tick_dependencies.Clear();
+                render_dependencies.Clear();
+                system_group_component_counts.clear();
+                known_system_groups.clear();
+                installed_system_groups.clear();
+                static_transforms.clear();
+                movable_transforms.clear();
+                subscene_states.clear();
+
                 LogDebug("[ECSContext] Shutdown(inactive) - releasing %zu material batches",
                          render_frame_cache.materialBatches.GetCount());
                 render_frame_cache.materialBatches.Clear();
@@ -425,6 +466,7 @@ namespace hgl
             installed_system_groups.clear();
             static_transforms.clear();
             movable_transforms.clear();
+            subscene_states.clear();
 
             // Finally, clear materialBatches after all systems/entities are destroyed
             LogDebug("[ECSContext] Shutdown - releasing %zu material batches",
