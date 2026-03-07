@@ -64,6 +64,24 @@ namespace hgl
          */
         class ECSContext : public Object
         {
+        public:
+
+            ECSContext(const std::string& name = "World");
+            ~ECSContext() override;
+
+            enum class SystemOwnershipScope : uint8_t
+            {
+                Auto = 0,
+                GlobalShared = 1,
+                LocalIsolated = 2
+            };
+
+            enum class ContextRole : uint8_t
+            {
+                RootShared = 0,
+                LocalSubWorld = 1
+            };
+
         private:
             OBJECT_LOGGER
 
@@ -118,6 +136,7 @@ namespace hgl
             bool active = false;
             bool shutdown_in_progress = false;
             bool sub_world_auto_update = true;
+            ContextRole context_role = ContextRole::RootShared;
             bool allow_render_system_registration = true;
             uint32_t rejected_render_system_registration_count = 0;
             bool rejected_render_system_registration_logged = false;
@@ -187,15 +206,10 @@ namespace hgl
             void RunSystemUpdate(System *system, float deltaTime);
             void RegisterComponentInstanceInternal(size_t type_hash, const std::shared_ptr<Component>& comp);
 
-        public:
-
             struct AssetInstance
             {
                 std::vector<EntityID> entity_ids;
             };
-
-            ECSContext(const std::string& name = "World");
-            ~ECSContext() override;
 
         public:
 
@@ -531,13 +545,93 @@ namespace hgl
             template<typename T, typename... Args>
             std::shared_ptr<T> RegisterTickSystem(Args&&... args)
             {
-                return RegisterSystem<T>(false, std::forward<Args>(args)...);
+                return RegisterTickSystemScoped<T>(SystemOwnershipScope::Auto, std::forward<Args>(args)...);
             }
 
             /// Register a render system
             template<typename T, typename... Args>
             std::shared_ptr<T> RegisterRenderSystem(Args&&... args)
             {
+                return RegisterRenderSystemScoped<T>(SystemOwnershipScope::Auto, std::forward<Args>(args)...);
+            }
+
+            template<typename T, typename... Args>
+            std::shared_ptr<T> RegisterTickSystemScoped(SystemOwnershipScope scope, Args&&... args)
+            {
+                if (scope == SystemOwnershipScope::GlobalShared && context_role == ContextRole::LocalSubWorld)
+                {
+                #if ULRE_ECS_DEBUG_API
+                    LogWarning("[ECS] Tick system registration rejected by scope. context='%s' scope=GlobalShared system_type='%s'",
+                               GetName().c_str(),
+                               typeid(T).name());
+                #endif
+                    return nullptr;
+                }
+
+                if (scope == SystemOwnershipScope::LocalIsolated && context_role == ContextRole::RootShared)
+                {
+                #if ULRE_ECS_DEBUG_API
+                    LogWarning("[ECS] Tick system registration rejected by scope. context='%s' scope=LocalIsolated system_type='%s'",
+                               GetName().c_str(),
+                               typeid(T).name());
+                #endif
+                    return nullptr;
+                }
+
+                return RegisterSystem<T>(false, std::forward<Args>(args)...);
+            }
+
+            template<typename T, typename... Args>
+            std::shared_ptr<T> RegisterRenderSystemScoped(SystemOwnershipScope scope, Args&&... args)
+            {
+                if (scope == SystemOwnershipScope::GlobalShared && context_role == ContextRole::LocalSubWorld)
+                {
+                    ++rejected_render_system_registration_count;
+
+                #if ULRE_ECS_DEBUG_API
+                    if (!rejected_render_system_registration_logged)
+                    {
+                        rejected_render_system_registration_logged = true;
+                        LogWarning("[ECS] Render system registration rejected by scope. context='%s' scope=GlobalShared system_type='%s'",
+                                   GetName().c_str(),
+                                   typeid(T).name());
+                    }
+                #endif
+                    return nullptr;
+                }
+
+                if (scope == SystemOwnershipScope::LocalIsolated && context_role == ContextRole::RootShared)
+                {
+                    ++rejected_render_system_registration_count;
+
+                #if ULRE_ECS_DEBUG_API
+                    if (!rejected_render_system_registration_logged)
+                    {
+                        rejected_render_system_registration_logged = true;
+                        LogWarning("[ECS] Render system registration rejected by scope. context='%s' scope=LocalIsolated system_type='%s'",
+                                   GetName().c_str(),
+                                   typeid(T).name());
+                    }
+                #endif
+                    return nullptr;
+                }
+
+                if (!allow_render_system_registration)
+                {
+                    ++rejected_render_system_registration_count;
+
+                #if ULRE_ECS_DEBUG_API
+                    if (!rejected_render_system_registration_logged)
+                    {
+                        rejected_render_system_registration_logged = true;
+                        LogWarning("[ECS] Render system registration rejected before instantiate. context='%s' system_type='%s'",
+                                   GetName().c_str(),
+                                   typeid(T).name());
+                    }
+                #endif
+                    return nullptr;
+                }
+
                 return RegisterSystem<T>(true, std::forward<Args>(args)...);
             }
 
@@ -621,6 +715,11 @@ namespace hgl
             /// Gate for local render-system registration. Used by hybrid SubWorld policy.
             void SetRenderSystemRegistrationAllowed(bool value) { allow_render_system_registration = value; }
             bool IsRenderSystemRegistrationAllowed() const { return allow_render_system_registration; }
+
+            /// Context role used by scoped ownership registration checks.
+            void SetContextRole(ContextRole value) { context_role = value; }
+            ContextRole GetContextRole() const { return context_role; }
+            bool IsLocalSubWorldContext() const { return context_role == ContextRole::LocalSubWorld; }
 
             /// Diagnostics: count how many render-system registration attempts were rejected.
             uint32_t GetRejectedRenderSystemRegistrationCount() const { return rejected_render_system_registration_count; }

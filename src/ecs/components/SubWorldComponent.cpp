@@ -243,6 +243,7 @@ namespace hgl::ecs
         SyncSubWorldRuntimeResources(parent_context, child_context);
 
         child_context->SetSubWorldAutoUpdate(false);
+        child_context->SetContextRole(ECSContext::ContextRole::LocalSubWorld);
         child_context->SetRenderSystemRegistrationAllowed(!render_shared);
 
         const graph::CameraInfo* parent_camera_info = nullptr;
@@ -253,11 +254,15 @@ namespace hgl::ecs
         }
 
         // Register required local gameplay systems.
-        auto camera_system = child_context->RegisterTickSystem<CameraSystem>(child_context);
-        auto bbox_system = child_context->RegisterTickSystem<BoundingBoxUpdateSystem>();
+        auto camera_system = child_context->RegisterTickSystemScoped<CameraSystem>(
+            ECSContext::SystemOwnershipScope::LocalIsolated,
+            child_context);
+        auto bbox_system = child_context->RegisterTickSystemScoped<BoundingBoxUpdateSystem>(
+            ECSContext::SystemOwnershipScope::LocalIsolated);
         std::shared_ptr<RenderPrimitiveCollectSystem> render_collect_system;
         if (!render_shared)
-            render_collect_system = child_context->RegisterRenderSystem<RenderPrimitiveCollectSystem>();
+            render_collect_system = child_context->RegisterRenderSystemScoped<RenderPrimitiveCollectSystem>(
+                ECSContext::SystemOwnershipScope::LocalIsolated);
 
         if (bbox_system)
             bbox_system->SetWorld(child_context);
