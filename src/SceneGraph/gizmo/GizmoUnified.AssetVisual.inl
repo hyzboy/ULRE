@@ -153,21 +153,18 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
     gizmo->asset_hovered_visual_index = -1;
 }
 
-static void UpdateAssetVisualHover(GizmoECS *gizmo,
-                                   const math::Vector2i &mouse_coord,
-                                   const CameraInfo *camera_info,
-                                   const ViewportInfo *viewport_info)
+static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimitive> &items,
+                                    GizmoECS *gizmo,
+                                    const math::Vector2i &mouse_coord,
+                                    const CameraInfo *camera_info,
+                                    const ViewportInfo *viewport_info)
 {
-    if (!gizmo)
-        return;
-
-    auto *items = GetActiveAssetVisualList(gizmo);
-    if (!items || items->empty() || !camera_info || !viewport_info)
-        return;
+    if (!gizmo || items.empty() || !camera_info || !viewport_info)
+        return -1;
 
     const math::Vector2u viewport_size = viewport_info->GetViewport();
     if (viewport_size.x == 0 || viewport_size.y == 0)
-        return;
+        return -1;
 
     constexpr float kPointHoverRadiusPx = 30.0f;
     constexpr float kSegmentHoverRadiusPx = 22.0f;
@@ -178,7 +175,7 @@ static void UpdateAssetVisualHover(GizmoECS *gizmo,
     float best_score = 1e9f;
 
     if (!gizmo->root_transform)
-        return;
+        return -1;
 
     gizmo->root_transform->UpdateIfDirty();
     const math::Vector3f root_world_pos = gizmo->root_transform->GetWorldPosition();
@@ -220,9 +217,9 @@ static void UpdateAssetVisualHover(GizmoECS *gizmo,
         }
     };
 
-    for (size_t i = 0; i < items->size(); ++i)
+    for (size_t i = 0; i < items.size(); ++i)
     {
-        auto &entry = (*items)[i];
+        auto &entry = items[i];
         if (!entry.transform || !entry.primitive || !entry.primitive->IsVisible())
             continue;
 
@@ -306,7 +303,79 @@ static void UpdateAssetVisualHover(GizmoECS *gizmo,
         }
     }
 
+    return best_index;
+}
+
+static int PickMoveAssetVisualIndex(GizmoECS *gizmo,
+                                    const math::Vector2i &mouse_coord,
+                                    const CameraInfo *camera_info,
+                                    const ViewportInfo *viewport_info)
+{
+    return PickBestAssetVisualIndex(gizmo->move_primitives, gizmo, mouse_coord, camera_info, viewport_info);
+}
+
+static int PickRotateAssetVisualIndex(GizmoECS *gizmo,
+                                      const math::Vector2i &mouse_coord,
+                                      const CameraInfo *camera_info,
+                                      const ViewportInfo *viewport_info)
+{
+    return PickBestAssetVisualIndex(gizmo->rotate_primitives, gizmo, mouse_coord, camera_info, viewport_info);
+}
+
+static int PickScaleAssetVisualIndex(GizmoECS *gizmo,
+                                     const math::Vector2i &mouse_coord,
+                                     const CameraInfo *camera_info,
+                                     const ViewportInfo *viewport_info)
+{
+    return PickBestAssetVisualIndex(gizmo->scale_primitives, gizmo, mouse_coord, camera_info, viewport_info);
+}
+
+static void UpdateAssetVisualHover(GizmoECS *gizmo,
+                                   const math::Vector2i &mouse_coord,
+                                   const CameraInfo *camera_info,
+                                   const ViewportInfo *viewport_info)
+{
+    if (!gizmo)
+        return;
+
+    int best_index = -1;
+    switch (gizmo->current_mode)
+    {
+    case GizmoMode::MoveWorld:
+    case GizmoMode::MoveLocal:
+        best_index = PickMoveAssetVisualIndex(gizmo, mouse_coord, camera_info, viewport_info);
+        break;
+    case GizmoMode::RotateWorld:
+    case GizmoMode::RotateLocal:
+        best_index = PickRotateAssetVisualIndex(gizmo, mouse_coord, camera_info, viewport_info);
+        break;
+    case GizmoMode::ScaleLocal:
+        best_index = PickScaleAssetVisualIndex(gizmo, mouse_coord, camera_info, viewport_info);
+        break;
+    }
+
     ApplyAssetVisualHighlightByIndex(gizmo, best_index);
+
+    auto &channel = GetAssetChannelState(gizmo, gizmo->current_mode);
+    if (best_index >= 0)
+    {
+        auto *items = GetActiveAssetVisualList(gizmo);
+        if (items && best_index < static_cast<int>(items->size()))
+        {
+            const auto &entry = (*items)[best_index];
+            channel.pick_index = best_index;
+            channel.pick_group = entry.group_id;
+            channel.pick_shape = entry.shape;
+            channel.pick_plane_normal_axis = GetScalePlaneNormalAxisFromEntry(entry);
+        }
+    }
+    else
+    {
+        channel.pick_index = -1;
+        channel.pick_group = -1;
+        channel.pick_plane_normal_axis = -1;
+        channel.pick_shape = GizmoShape::Sphere;
+    }
 }
 
 static void BuildMoveAssetVisual(GizmoECS *gizmo, hgl::ecs::Entity *parent)
