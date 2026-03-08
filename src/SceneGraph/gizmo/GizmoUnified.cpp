@@ -271,6 +271,7 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                           bool left_released);
 
 static void SyncAllSubGizmoTransforms(GizmoECS *gizmo);
+static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo);
 
 static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
 {
@@ -322,6 +323,39 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
         if (entry.primitive)
             entry.primitive->SetVisible(scale_active);
     }
+}
+
+static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
+{
+    if (!gizmo || !gizmo->root_transform)
+        return;
+
+    if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+        return;
+
+    const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
+    const glm::quat inv_root_rot = glm::inverse(root_rot);
+    const glm::quat identity(1.0f, 0.0f, 0.0f, 0.0f);
+
+    auto set_child_rotation = [&](hgl::ecs::Entity *entity, const glm::quat &q)
+    {
+        if (!entity)
+            return;
+
+        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
+        if (t)
+            t->SetLocalRotation(q);
+    };
+
+    const bool move_local = (gizmo->current_mode == GizmoMode::MoveLocal);
+    const bool rotate_local = (gizmo->current_mode == GizmoMode::RotateLocal);
+
+    // Child world rotation = root_rot * child_local_rot.
+    // World mode wants axis fixed in world space -> child_local_rot = inverse(root_rot).
+    // Local mode wants axis follow object/root space -> child_local_rot = identity.
+    set_child_rotation(gizmo->move_entity, move_local ? identity : inv_root_rot);
+    set_child_rotation(gizmo->rotate_entity, rotate_local ? identity : inv_root_rot);
+    set_child_rotation(gizmo->scale_entity, identity);
 }
 
 static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
@@ -1302,6 +1336,7 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
         gizmo->scale_subworld->SetPaused(mode != GizmoMode::ScaleLocal);
 
     SyncGizmoAssetModeBindings(gizmo);
+    SyncAssetSubGizmoLocalTransforms(gizmo);
     EndAssetMouseCapture(gizmo);
     gizmo->asset_dragging = false;
     gizmo->asset_drag_pick_index = -1;
@@ -1437,6 +1472,8 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                                                has_view_context ? math::Vector3f(1.0f)
                                                                 : target_transform->GetLocalScale());
         }
+
+        SyncAssetSubGizmoLocalTransforms(gizmo);
 
         const math::Vector3f prev_pos = target_transform ? target_transform->GetLocalPosition()
                                                          : gizmo->root_transform->GetLocalPosition();
