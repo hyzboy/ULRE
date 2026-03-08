@@ -4,16 +4,16 @@
 Migrate gizmo runtime from `SubWorldComponent`-centric isolation to AssetWorld/AssetInstance bridge architecture while preserving current editor interaction behavior.
 
 ## Progress Dashboard (2026-03-08)
-- Overall completion: `78%`
+- Overall completion: `86%`
 - GZ1 Backend Split: `100%` (`Done`)
 - GZ2 Asset IDs/Registry: `100%` (`Done`)
 - GZ3 Asset Create Path: `100%` (`Done`)
-- GZ4 Interaction/Render Parity: `82%` (`Interaction done`, `runtime visual consumer v1 landed`)
-- GZ5 Legacy Sunset: `20%` (`validation gates not yet met`)
+- GZ4 Interaction/Render Parity: `90%` (`Interaction done`, `runtime visual consumer v2 landed`)
+- GZ5 Legacy Sunset: `55%` (`asset default restored, transition validation in progress`)
 
 Current blocker:
-- Full parity runtime render consumer (feature-complete visual topology equivalent to legacy move/rotate/scale gizmo subgraphs) is not finished yet.
-- Current v1 runtime visual consumer restores asset-path visibility using per-mode primitive proxies; further refinement is still required before default switch.
+- Full feature parity for hover/pick-highlight visuals and camera-facing white ring behavior in asset visual path still needs refinement.
+- Transition-cycle validation across editor workflows is still pending before legacy code removal.
 
 ## Current State
 - `src/SceneGraph/gizmo/GizmoUnified.cpp` creates three subworld-backed gizmo branches:
@@ -121,9 +121,9 @@ Remaining for GZ4 completion:
 - Run non-headless parity and visual checks in all three samples.
 
 Completion:
-- `82%`.
+- `90%`.
 - `Interaction parity`: `Done`.
-- `Runtime visual parity`: `In progress` (v1 proxy rendering landed).
+- `Runtime visual parity`: `In progress` (v2 multi-part visual topology landed).
 
 Newly landed (2026-03-08, step6):
 - `src/SceneGraph/gizmo/GizmoUnified.cpp` now attaches minimal runtime-visible primitives in asset backend:
@@ -132,6 +132,14 @@ Newly landed (2026-03-08, step6):
 - Scale mode entity: cube proxy
 - Asset mode entities now enable fixed-pixel sizing parameters to keep gizmo proxies visible at editor camera distances.
 - Proxy primitive visibility is synchronized with mode selection and root visibility through `SyncGizmoAssetModeBindings`.
+
+Newly landed (2026-03-08, step7):
+- Asset backend visual topology upgraded from single primitive proxy to multi-part gizmo composition:
+- Move: center sphere + colored axis cylinders/cones + plane handles.
+- Rotate: RGB axis torus rings + white torus ring.
+- Scale: center cube + colored axis cylinders/cube tips + plane handles.
+- Asset visual child entities are tracked and cleaned up with gizmo destroy path.
+- Default backend policy is now switched back to asset; explicit `ULRE_GIZMO_BACKEND=legacy` rollback remains available during transition.
 
 ## Phase GZ5: Legacy Sunset
 1. Make asset backend default.
