@@ -59,10 +59,14 @@ public:
     void SetAllowNegativeScale(bool enabled);
     bool IsAllowNegativeScale() const { return allow_negative_scale; }
 
+    void SetFixedPixelDiameter(float pixel_diameter);
+    float GetFixedPixelDiameter() const { return fixed_pixel_diameter; }
+
 private:
     bool EnsureGizmo();
     bool resource_registered = false;
     bool allow_negative_scale = true;
+    float fixed_pixel_diameter = 640.0f;
 };
 
 }//namespace hgl::graph

@@ -13,6 +13,20 @@
 
 namespace hgl::graph{
 
+namespace
+{
+    static float SanitizeFixedPixelDiameter(float pixel_diameter)
+    {
+        if (pixel_diameter < 16.0f)
+            return 16.0f;
+
+        if (pixel_diameter > 4096.0f)
+            return 4096.0f;
+
+        return pixel_diameter;
+    }
+}
+
 TransformGizmoSystem::TransformGizmoSystem()
     : hgl::ecs::System("TransformGizmoSystem")
     , default_mode(GizmoMode::MoveWorld)
@@ -88,6 +102,7 @@ bool TransformGizmoSystem::EnsureGizmo()
         BindTransformGizmoTargetEntity(gizmo, target_entity);
 
     SetTransformGizmoAllowNegativeScale(gizmo, allow_negative_scale);
+    SetTransformGizmoFixedPixelDiameter(gizmo, fixed_pixel_diameter);
 
     if (changed_callback)
         SetTransformGizmoChangedCallback(gizmo, changed_callback);
@@ -135,6 +150,14 @@ void TransformGizmoSystem::SetAllowNegativeScale(bool enabled)
     allow_negative_scale = enabled;
     if (gizmo)
         SetTransformGizmoAllowNegativeScale(gizmo, enabled);
+}
+
+void TransformGizmoSystem::SetFixedPixelDiameter(float pixel_diameter)
+{
+    fixed_pixel_diameter = SanitizeFixedPixelDiameter(pixel_diameter);
+
+    if (gizmo)
+        SetTransformGizmoFixedPixelDiameter(gizmo, fixed_pixel_diameter);
 }
 
 GizmoMode TransformGizmoSystem::GetCurrentMode() const

@@ -34,6 +34,8 @@ hgl::ecs::Entity *GetTransformGizmoTargetEntity(const TransformGizmo *gizmo);
 void SetTransformGizmoChangedCallback(TransformGizmo *gizmo, GizmoChangedCallback callback);
 void SetTransformGizmoAllowNegativeScale(TransformGizmo *gizmo, bool enabled);
 bool IsTransformGizmoAllowNegativeScale(const TransformGizmo *gizmo);
+void SetTransformGizmoFixedPixelDiameter(TransformGizmo *gizmo, float pixel_diameter);
+float GetTransformGizmoFixedPixelDiameter(const TransformGizmo *gizmo);
 void UpdateTransformGizmo(TransformGizmo *gizmo,
                           const math::Vector2i &mouse_coord,
                           const CameraInfo *camera_info,

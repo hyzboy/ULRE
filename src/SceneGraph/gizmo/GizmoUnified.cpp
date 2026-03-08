@@ -153,6 +153,7 @@ struct GizmoECS
     hgl::ecs::Entity* root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
     Backend backend = Backend::LegacySubWorld;
+    float fixed_pixel_diameter = GIZMO_FIXED_PIXEL_DIAMETER;
 
     // 保存各个 Gizmo 的内部指针（内部实现使用）
     void* move_impl = nullptr;     // MoveGizmoImpl*
@@ -262,6 +263,8 @@ hgl::ecs::Entity *GetTransformGizmoTargetEntity(const GizmoECS *gizmo);
 void SetTransformGizmoChangedCallback(GizmoECS *gizmo, GizmoChangedCallback callback);
 void SetTransformGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled);
 bool IsTransformGizmoAllowNegativeScale(const GizmoECS *gizmo);
+void SetTransformGizmoFixedPixelDiameter(GizmoECS *gizmo, float pixel_diameter);
+float GetTransformGizmoFixedPixelDiameter(const GizmoECS *gizmo);
 void UpdateTransformGizmo(GizmoECS *gizmo,
                           const math::Vector2i &mouse_coord,
                           const CameraInfo *camera_info,
@@ -273,6 +276,50 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
 
 static void SyncAllSubGizmoTransforms(GizmoECS *gizmo);
 static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo);
+static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
+                                             const CameraInfo *camera_info,
+                                             const ViewportInfo *viewport_info);
+
+static float SanitizeFixedPixelDiameter(float pixel_diameter)
+{
+    if (pixel_diameter < 16.0f)
+        return 16.0f;
+
+    if (pixel_diameter > 4096.0f)
+        return 4096.0f;
+
+    return pixel_diameter;
+}
+
+static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
+{
+    if (!gizmo || gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+        return;
+
+    constexpr float kReferenceWorldDiameter = GIZMO_ARROW_LENGTH * 2.0f;
+    constexpr float kMinScale = 0.01f;
+
+    const auto apply_to_entity = [gizmo](hgl::ecs::Entity *entity,
+                                         const float reference_world_diameter,
+                                         const float min_scale)
+    {
+        if (!entity)
+            return;
+
+        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
+        if (!t)
+            return;
+
+        t->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+                                         reference_world_diameter,
+                                         min_scale);
+        t->SetFixedPixelSizingEnabled(true);
+    };
+
+    apply_to_entity(gizmo->move_entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->rotate_entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->scale_entity, kReferenceWorldDiameter, kMinScale);
+}
 
 static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
 {
@@ -357,6 +404,31 @@ static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
     set_child_rotation(gizmo->move_entity, move_local ? identity : inv_root_rot);
     set_child_rotation(gizmo->rotate_entity, rotate_local ? identity : inv_root_rot);
     set_child_rotation(gizmo->scale_entity, identity);
+}
+
+static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
+                                             const CameraInfo *camera_info,
+                                             const ViewportInfo *viewport_info)
+{
+    if (!gizmo || gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+        return;
+
+    if (!camera_info || !viewport_info)
+        return;
+
+    auto apply_ctx = [&](hgl::ecs::Entity *entity)
+    {
+        if (!entity)
+            return;
+
+        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
+        if (t && t->IsFixedPixelSizingEnabled())
+            t->SetFixedPixelSizingContext(camera_info, viewport_info);
+    };
+
+    apply_ctx(gizmo->move_entity);
+    apply_ctx(gizmo->rotate_entity);
+    apply_ctx(gizmo->scale_entity);
 }
 
 static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
@@ -1107,7 +1179,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         move_transform->SetParent(gizmo->root->GetID());
         if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
         {
-            move_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+            move_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                           GIZMO_ARROW_LENGTH * 2.0f,
                                                           0.01f);
             move_transform->SetFixedPixelSizingEnabled(true);
@@ -1159,7 +1231,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         rotate_transform->SetParent(gizmo->root->GetID());
         if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
         {
-            rotate_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+            rotate_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                             GIZMO_ARROW_LENGTH * 2.0f,
                                                             0.01f);
             rotate_transform->SetFixedPixelSizingEnabled(true);
@@ -1211,7 +1283,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         scale_transform->SetParent(gizmo->root->GetID());
         if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
         {
-            scale_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+            scale_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
                                                            GIZMO_ARROW_LENGTH * 2.0f,
                                                            0.01f);
             scale_transform->SetFixedPixelSizingEnabled(true);
@@ -1445,6 +1517,20 @@ void SetTransformGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled)
     ApplyScalePolicyToTargetIfNeeded(gizmo);
 }
 
+void SetTransformGizmoFixedPixelDiameter(GizmoECS *gizmo, float pixel_diameter)
+{
+    if (!gizmo)
+        return;
+
+    gizmo->fixed_pixel_diameter = SanitizeFixedPixelDiameter(pixel_diameter);
+    ApplyAssetFixedPixelSizingParameters(gizmo);
+}
+
+float GetTransformGizmoFixedPixelDiameter(const GizmoECS *gizmo)
+{
+    return gizmo ? gizmo->fixed_pixel_diameter : GIZMO_FIXED_PIXEL_DIAMETER;
+}
+
 bool IsTransformGizmoAllowNegativeScale(const GizmoECS *gizmo)
 {
     return gizmo ? gizmo->allow_negative_scale : true;
@@ -1481,6 +1567,7 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                                                                 : target_transform->GetLocalScale());
         }
 
+        SyncAssetFixedPixelSizingContext(gizmo, camera_info, viewport_info);
         SyncAssetSubGizmoLocalTransforms(gizmo);
 
         const math::Vector3f prev_pos = target_transform ? target_transform->GetLocalPosition()
