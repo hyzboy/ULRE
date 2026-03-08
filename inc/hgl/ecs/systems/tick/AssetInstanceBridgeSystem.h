@@ -35,6 +35,7 @@ namespace hgl::ecs
             uint32_t dirty_count = 0;
             uint32_t rebuild_count_frame = 0;
             uint32_t runtime_state_count = 0;
+            uint32_t reclaimed_state_count_frame = 0;
         };
 
     private:

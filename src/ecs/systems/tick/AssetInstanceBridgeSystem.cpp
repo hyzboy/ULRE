@@ -3,6 +3,8 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/AssetInstanceComponent.h>
 
+#include <unordered_set>
+
 namespace hgl::ecs
 {
     const AssetInstanceBridgeSystem::RuntimeState* AssetInstanceBridgeSystem::FindRuntimeState(InstanceId id) const
@@ -39,6 +41,7 @@ namespace hgl::ecs
         stats.dirty_count = 0;
         stats.rebuild_count_frame = 0;
         stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
+        stats.reclaimed_state_count_frame = 0;
         pending_rebuild.clear();
 
         if (!world)
@@ -46,6 +49,8 @@ namespace hgl::ecs
 
         std::vector<std::shared_ptr<AssetInstanceComponent>> components;
         world->GetComponents(components);
+        std::unordered_set<InstanceId> live_instance_ids;
+        live_instance_ids.reserve(components.size());
 
         stats.instance_count = static_cast<uint32_t>(components.size());
 
@@ -54,9 +59,18 @@ namespace hgl::ecs
             if (!comp)
                 continue;
 
+            if (comp->GetInstanceID() != 0)
+                live_instance_ids.insert(comp->GetInstanceID());
+
             const bool resolved = registry && registry->Exists(comp->GetAssetWorldID());
             if (!resolved)
+            {
                 ++stats.unresolved_count;
+
+                // Drop stale runtime state when asset definition is unavailable.
+                if (runtime_states.erase(comp->GetInstanceID()) > 0)
+                    ++stats.reclaimed_state_count_frame;
+            }
 
             const bool dirty = comp->GetChangeMask() != 0;
             if (dirty)
@@ -64,6 +78,20 @@ namespace hgl::ecs
 
             if (dirty && resolved)
                 pending_rebuild.push_back(comp);
+        }
+
+        // Drop states whose instance no longer exists in the world.
+        for (auto it = runtime_states.begin(); it != runtime_states.end();)
+        {
+            if (live_instance_ids.find(it->first) == live_instance_ids.end())
+            {
+                it = runtime_states.erase(it);
+                ++stats.reclaimed_state_count_frame;
+            }
+            else
+            {
+                ++it;
+            }
         }
 
         stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
