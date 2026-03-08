@@ -76,6 +76,12 @@ namespace
             return false;
         if (!CheckOrLog(s1.emitted_draw_packet_count_frame == 2u, "s1 emitted_draw_packet_count_frame"))
             return false;
+        if (!CheckOrLog(s1.order_matches_previous_frame == 0u, "s1 order_matches_previous_frame"))
+            return false;
+        if (!CheckOrLog(s1.stable_order_match_count_total == 0u, "s1 stable_order_match_count_total"))
+            return false;
+        if (!CheckOrLog(s1.order_changed_count_total == 0u, "s1 order_changed_count_total"))
+            return false;
 
         bridge.Update(0.016f);
         auto s2 = bridge.GetStats();
@@ -88,6 +94,12 @@ namespace
         if (!CheckOrLog(s2.runtime_state_count == 4u, "s2 runtime_state_count"))
             return false;
         if (!CheckOrLog(s2.emitted_draw_packet_count_frame == 4u, "s2 emitted_draw_packet_count_frame"))
+            return false;
+        if (!CheckOrLog(s2.order_matches_previous_frame == 0u, "s2 order_matches_previous_frame"))
+            return false;
+        if (!CheckOrLog(s2.stable_order_match_count_total == 0u, "s2 stable_order_match_count_total"))
+            return false;
+        if (!CheckOrLog(s2.order_changed_count_total == 1u, "s2 order_changed_count_total"))
             return false;
 
         bridge.Update(0.016f);
@@ -103,6 +115,12 @@ namespace
         if (!CheckOrLog(s3.runtime_state_peak_count == 5u, "s3 runtime_state_peak_count"))
             return false;
         if (!CheckOrLog(s3.emitted_draw_packet_count_frame == 5u, "s3 emitted_draw_packet_count_frame"))
+            return false;
+        if (!CheckOrLog(s3.order_matches_previous_frame == 0u, "s3 order_matches_previous_frame"))
+            return false;
+        if (!CheckOrLog(s3.stable_order_match_count_total == 0u, "s3 stable_order_match_count_total"))
+            return false;
+        if (!CheckOrLog(s3.order_changed_count_total == 2u, "s3 order_changed_count_total"))
             return false;
 
         bridge.Update(0.016f);
@@ -120,6 +138,12 @@ namespace
         if (!CheckOrLog(s4.runtime_state_peak_count == 5u, "s4 runtime_state_peak_count"))
             return false;
         if (!CheckOrLog(s4.emitted_draw_packet_count_frame == 5u, "s4 emitted_draw_packet_count_frame"))
+            return false;
+        if (!CheckOrLog(s4.order_matches_previous_frame == 1u, "s4 order_matches_previous_frame"))
+            return false;
+        if (!CheckOrLog(s4.stable_order_match_count_total == 1u, "s4 stable_order_match_count_total"))
+            return false;
+        if (!CheckOrLog(s4.order_changed_count_total == 2u, "s4 order_changed_count_total"))
             return false;
 
         const auto* state3 = bridge.FindRuntimeState(3ull);

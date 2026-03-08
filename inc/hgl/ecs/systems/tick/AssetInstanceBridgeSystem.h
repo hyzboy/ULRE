@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -52,6 +53,9 @@ namespace hgl::ecs
             uint32_t version_refresh_count_frame = 0;
             uint32_t emitted_draw_packet_count_frame = 0;
             uint32_t sorted_draw_packet_count_frame = 0;
+            uint32_t order_matches_previous_frame = 0;
+            uint32_t stable_order_match_count_total = 0;
+            uint32_t order_changed_count_total = 0;
             uint32_t emitted_bucket_count_frame = 0;
             uint32_t emitted_secondary_bucket_count_frame = 0;
         };
@@ -68,6 +72,8 @@ namespace hgl::ecs
         std::vector<DrawPacket> draw_packets;
         std::unordered_map<AssetWorldId, uint32_t> draw_packet_bucket_counts;
         std::unordered_map<uint64_t, uint32_t> draw_packet_secondary_bucket_counts;
+        uint64_t last_draw_order_hash = 0;
+        bool has_last_draw_order_hash = false;
 
     public:
         explicit AssetInstanceBridgeSystem(const std::string& name = "AssetInstanceBridgeSystem");
@@ -85,6 +91,9 @@ namespace hgl::ecs
         const std::vector<DrawPacket>& GetDrawPackets() const { return draw_packets; }
         uint32_t GetDrawPacketCountForAsset(AssetWorldId id) const;
         uint32_t GetDrawPacketCountForSecondaryBucket(uint16_t render_pass_id, uint64_t material_bucket_key) const;
+        void SetDiagnosticsLogEnabled(bool enabled) { diagnostics_log_enabled = enabled; }
+        bool IsDiagnosticsLogEnabled() const { return diagnostics_log_enabled; }
+        std::string BuildStatsReport() const;
 
         void Initialize() override;
         void Update(float deltaTime) override;
@@ -95,5 +104,8 @@ namespace hgl::ecs
         void Collect(float deltaTime);
         void Rebuild(float deltaTime, uint32_t max_instances_per_frame);
         void SyncRender(float deltaTime);
+
+    private:
+        bool diagnostics_log_enabled = false;
     };
 }

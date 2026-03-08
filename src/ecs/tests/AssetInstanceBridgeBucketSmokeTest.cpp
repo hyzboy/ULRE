@@ -6,6 +6,7 @@
 
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 using namespace hgl::ecs;
@@ -31,7 +32,9 @@ namespace
             return false;
 
         ECSContext ctx("BridgeBucketSmoke");
+        std::shared_ptr<AssetInstanceComponent> jitter_target;
 
+        const InstanceId house_instance_ids[3] = {2u, 1u, 3u};
         for (uint32_t i = 0; i < 3; ++i)
         {
             Entity* e = ctx.CreateEntity<Entity>("House_" + std::to_string(i));
@@ -43,7 +46,7 @@ namespace
                 return false;
 
             c->SetAssetWorldID(3001ull);
-            c->SetInstanceID(static_cast<InstanceId>(i + 1));
+            c->SetInstanceID(house_instance_ids[i]);
 
             // Two pass/material groups inside the same asset bucket.
             if (i < 2)
@@ -61,9 +64,14 @@ namespace
                 ref.payload_ref = 7002ull;
                 ref.revision = 1u;
                 c->SetOverrideRef(ref);
+
+                // Keep one component handle for later bucket jitter simulation.
+                if (house_instance_ids[i] == 3u)
+                    jitter_target = c;
             }
         }
 
+        const InstanceId tree_instance_ids[2] = {101u, 100u};
         for (uint32_t i = 0; i < 2; ++i)
         {
             Entity* e = ctx.CreateEntity<Entity>("Tree_" + std::to_string(i));
@@ -75,7 +83,7 @@ namespace
                 return false;
 
             c->SetAssetWorldID(3002ull);
-            c->SetInstanceID(static_cast<InstanceId>(100 + i));
+            c->SetInstanceID(tree_instance_ids[i]);
             c->SetFlags(1u);
             AssetOverrideRef ref{};
             ref.payload_ref = 9001ull;
@@ -119,6 +127,12 @@ namespace
 
         if (stats.sorted_draw_packet_count_frame != 5u)
             return false;
+        if (stats.order_matches_previous_frame != 0u)
+            return false;
+        if (stats.stable_order_match_count_total != 0u)
+            return false;
+        if (stats.order_changed_count_total != 0u)
+            return false;
 
         if (bridge.GetDrawPacketCountForAsset(3001ull) != 3u)
             return false;
@@ -144,6 +158,12 @@ namespace
             return false;
         if (stats2.sorted_draw_packet_count_frame != 5u)
             return false;
+        if (stats2.order_matches_previous_frame != 1u)
+            return false;
+        if (stats2.stable_order_match_count_total != 1u)
+            return false;
+        if (stats2.order_changed_count_total != 0u)
+            return false;
 
         std::vector<InstanceId> ordered_instances_frame2;
         ordered_instances_frame2.reserve(bridge.GetDrawPackets().size());
@@ -151,6 +171,47 @@ namespace
             ordered_instances_frame2.push_back(packet.instance_id);
 
         if (ordered_instances_frame2 != ordered_instances)
+            return false;
+
+        if (!jitter_target)
+            return false;
+
+        // Move only one instance into a different secondary bucket and verify order delta.
+        jitter_target->SetFlags(1u);
+        AssetOverrideRef jitter_ref{};
+        jitter_ref.payload_ref = 7001ull;
+        jitter_ref.revision = 2u;
+        jitter_target->SetOverrideRef(jitter_ref);
+
+        bridge.Update(0.016f);
+        const auto &stats3 = bridge.GetStats();
+        if (stats3.rebuild_count_frame != 1u)
+            return false;
+        if (stats3.order_matches_previous_frame != 0u)
+            return false;
+        if (stats3.stable_order_match_count_total != 1u)
+            return false;
+        if (stats3.order_changed_count_total != 1u)
+            return false;
+
+        std::vector<InstanceId> ordered_instances_frame3;
+        ordered_instances_frame3.reserve(bridge.GetDrawPackets().size());
+        for (const auto &packet : bridge.GetDrawPackets())
+            ordered_instances_frame3.push_back(packet.instance_id);
+
+        const std::vector<InstanceId> expected_after_jitter = {1u, 2u, 3u, 100u, 101u};
+        if (ordered_instances_frame3 != expected_after_jitter)
+            return false;
+
+        bridge.Update(0.016f);
+        const auto &stats4 = bridge.GetStats();
+        if (stats4.rebuild_count_frame != 0u)
+            return false;
+        if (stats4.order_matches_previous_frame != 1u)
+            return false;
+        if (stats4.stable_order_match_count_total != 2u)
+            return false;
+        if (stats4.order_changed_count_total != 1u)
             return false;
 
         return true;

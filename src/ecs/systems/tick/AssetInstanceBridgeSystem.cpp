@@ -4,6 +4,8 @@
 #include <hgl/ecs/components/AssetInstanceComponent.h>
 
 #include <algorithm>
+#include <iostream>
+#include <sstream>
 #include <unordered_set>
 
 namespace hgl::ecs
@@ -13,6 +15,13 @@ namespace hgl::ecs
         uint64_t ComposeSecondaryBucketKey(const uint16_t render_pass_id, const uint64_t material_bucket_key)
         {
             return (static_cast<uint64_t>(render_pass_id) << 48) ^ (material_bucket_key & 0x0000FFFFFFFFFFFFull);
+        }
+
+        void HashCombine(uint64_t &seed, uint64_t value)
+        {
+            constexpr uint64_t kMul = 1099511628211ull;
+            seed ^= value;
+            seed *= kMul;
         }
     }
 
@@ -60,6 +69,33 @@ namespace hgl::ecs
         Collect(deltaTime);
         Rebuild(deltaTime, rebuild_budget);
         SyncRender(deltaTime);
+
+        if (diagnostics_log_enabled)
+            std::cout << BuildStatsReport() << std::endl;
+    }
+
+    std::string AssetInstanceBridgeSystem::BuildStatsReport() const
+    {
+        std::ostringstream oss;
+        oss << "[AssetInstanceBridgeSystem]"
+            << " instance=" << stats.instance_count
+            << " invalid=" << stats.invalid_instance_id_count_frame
+            << " unresolved=" << stats.unresolved_count
+            << " dirty=" << stats.dirty_count
+            << " rebuild=" << stats.rebuild_count_frame
+            << " runtime=" << stats.runtime_state_count
+            << " runtime_peak=" << stats.runtime_state_peak_count
+            << " reclaimed=" << stats.reclaimed_state_count_frame
+            << " refresh=" << stats.version_refresh_count_frame
+            << " packets=" << stats.emitted_draw_packet_count_frame
+            << " sorted_packets=" << stats.sorted_draw_packet_count_frame
+            << " buckets=" << stats.emitted_bucket_count_frame
+            << " secondary_buckets=" << stats.emitted_secondary_bucket_count_frame
+            << " order_match_prev=" << stats.order_matches_previous_frame
+            << " stable_total=" << stats.stable_order_match_count_total
+            << " changed_total=" << stats.order_changed_count_total;
+
+        return oss.str();
     }
 
     void AssetInstanceBridgeSystem::OnAssetWorldUpdated(AssetWorldId id, AssetVersion)
@@ -98,6 +134,7 @@ namespace hgl::ecs
         stats.version_refresh_count_frame = 0;
         stats.emitted_draw_packet_count_frame = 0;
         stats.sorted_draw_packet_count_frame = 0;
+        stats.order_matches_previous_frame = 0;
         stats.emitted_bucket_count_frame = 0;
         stats.emitted_secondary_bucket_count_frame = 0;
         pending_rebuild.clear();
@@ -284,6 +321,32 @@ namespace hgl::ecs
                 return lhs.asset_world_id < rhs.asset_world_id;
             return lhs.instance_id < rhs.instance_id;
         });
+
+        // Hash the sorted packet stream to track cross-frame ordering stability.
+        uint64_t order_hash = 1469598103934665603ull;
+        for (const auto &packet : draw_packets)
+        {
+            HashCombine(order_hash, packet.instance_id);
+            HashCombine(order_hash, packet.asset_world_id);
+            HashCombine(order_hash, packet.render_pass_id);
+            HashCombine(order_hash, packet.material_bucket_key);
+        }
+
+        if (has_last_draw_order_hash)
+        {
+            if (last_draw_order_hash == order_hash)
+            {
+                stats.order_matches_previous_frame = 1;
+                ++stats.stable_order_match_count_total;
+            }
+            else
+            {
+                ++stats.order_changed_count_total;
+            }
+        }
+
+        last_draw_order_hash = order_hash;
+        has_last_draw_order_hash = true;
 
         stats.emitted_draw_packet_count_frame = static_cast<uint32_t>(draw_packets.size());
         stats.sorted_draw_packet_count_frame = static_cast<uint32_t>(draw_packets.size());

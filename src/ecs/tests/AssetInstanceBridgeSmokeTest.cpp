@@ -6,6 +6,7 @@
 
 #include <exception>
 #include <iostream>
+#include <string>
 
 using namespace hgl::ecs;
 
@@ -49,6 +50,7 @@ namespace
         bridge.SetWorld(&ctx);
         bridge.SetRegistry(&registry);
         bridge.SetRebuildBudget(8);
+        bridge.SetDiagnosticsLogEnabled(true);
         bridge.Initialize();
         bridge.Update(0.016f);
 
@@ -67,6 +69,18 @@ namespace
         if (stats.runtime_state_peak_count != 1u)
             return false;
         if (stats.emitted_draw_packet_count_frame != 1u)
+            return false;
+        if (stats.order_matches_previous_frame != 0u)
+            return false;
+        if (stats.stable_order_match_count_total != 0u)
+            return false;
+        if (stats.order_changed_count_total != 0u)
+            return false;
+
+        const std::string report = bridge.BuildStatsReport();
+        if (report.find("AssetInstanceBridgeSystem") == std::string::npos)
+            return false;
+        if (report.find("order_match_prev=") == std::string::npos)
             return false;
 
         const auto* resolved_state = bridge.FindRuntimeState(1ull);
@@ -92,6 +106,12 @@ namespace
             return false;
         if (stats_second.emitted_draw_packet_count_frame != 1u)
             return false;
+        if (stats_second.order_matches_previous_frame != 1u)
+            return false;
+        if (stats_second.stable_order_match_count_total != 1u)
+            return false;
+        if (stats_second.order_changed_count_total != 0u)
+            return false;
 
         // Asset definition updated: should trigger refresh rebuild even when component is clean.
         AssetWorldDef refreshed_def = def;
@@ -107,6 +127,12 @@ namespace
         if (stats_refresh.rebuild_count_frame != 1u)
             return false;
         if (stats_refresh.emitted_draw_packet_count_frame != 1u)
+            return false;
+        if (stats_refresh.order_matches_previous_frame != 1u)
+            return false;
+        if (stats_refresh.stable_order_match_count_total != 2u)
+            return false;
+        if (stats_refresh.order_changed_count_total != 0u)
             return false;
 
         const auto* refreshed_state = bridge.FindRuntimeState(1ull);
