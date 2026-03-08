@@ -119,3 +119,4 @@ Implemented (2026-03-08):
 - validates target transform synchronization and change callback firing
 - validates deterministic post-drag position/rotation/scale expectations
 - validates bridge runtime/draw packet stats around mode switches and interactions
+- validates deterministic replay: same synthetic input sequence yields identical final transform in repeated runs

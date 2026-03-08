@@ -89,6 +89,44 @@ namespace
             ++changed_count;
         });
 
+        auto run_interaction_sequence = [&](const math::Vector3f &start_pos,
+                                            const glm::quat &start_rot,
+                                            const math::Vector3f &start_scale)
+        {
+            target_transform->SetLocalTRS(start_pos, start_rot, start_scale);
+            root_transform->SetLocalTRS(start_pos, start_rot, start_scale);
+
+            SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
+            UpdateTransformGizmo(gizmo, math::Vector2i(100, 100), nullptr, nullptr, nullptr, true, true, false);
+            UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, true, false, false);
+            UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, false, false, true);
+
+            SetTransformGizmoMode(gizmo, GizmoMode::RotateLocal);
+            UpdateTransformGizmo(gizmo, math::Vector2i(200, 200), nullptr, nullptr, nullptr, true, true, false);
+            UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, true, false, false);
+            UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, false, false, true);
+
+            SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
+            UpdateTransformGizmo(gizmo, math::Vector2i(300, 200), nullptr, nullptr, nullptr, true, true, false);
+            UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, true, false, false);
+            UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, false, false, true);
+
+            struct Result
+            {
+                math::Vector3f position;
+                glm::quat rotation;
+                math::Vector3f scale;
+                uint32_t changed_count_total = 0;
+            };
+
+            Result r{};
+            r.position = root_transform->GetLocalPosition();
+            r.rotation = root_transform->GetLocalRotation();
+            r.scale = root_transform->GetLocalScale();
+            r.changed_count_total = changed_count;
+            return r;
+        };
+
         Entity *move = FindEntityByName(ctx, "Gizmo_Move");
         Entity *rotate = FindEntityByName(ctx, "Gizmo_Rotate");
         Entity *scale = FindEntityByName(ctx, "Gizmo_Scale");
@@ -152,47 +190,38 @@ namespace
         if (!CheckOrLog(rotate_ai->GetVisibilityMask() == ~0ull, "rotate restored by root visible"))
             return false;
 
-        // Minimal interaction smoke for asset backend mapping.
-        SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
-        const math::Vector3f pos_before_move = root_transform->GetLocalPosition();
-        UpdateTransformGizmo(gizmo, math::Vector2i(100, 100), nullptr, nullptr, nullptr, true, true, false);
-        UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, true, false, false);
-        UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, false, false, true);
-        const math::Vector3f pos_after_move = root_transform->GetLocalPosition();
-        if (!CheckOrLog(glm::length(pos_after_move - pos_before_move) > 1e-5f, "move interaction changes root position"))
-            return false;
-        if (!CheckOrLog(glm::length(target_transform->GetLocalPosition() - pos_after_move) <= 1e-5f, "target follows move"))
+        // Deterministic interaction smoke: run identical input sequence twice.
+        const auto result1 = run_interaction_sequence(math::Vector3f(5.0f, 6.0f, 7.0f),
+                                                      glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                                                      math::Vector3f(1.0f, 1.0f, 1.0f));
+
+        if (!CheckOrLog(glm::length(target_transform->GetLocalPosition() - result1.position) <= 1e-5f, "target follows sequence result1"))
             return false;
 
         const math::Vector3f expected_pos(5.4f, 5.8f, 7.0f);
-        if (!CheckOrLog(glm::length(pos_after_move - expected_pos) <= 1e-4f, "move interaction deterministic position"))
-            return false;
-
-        SetTransformGizmoMode(gizmo, GizmoMode::RotateLocal);
-        const glm::quat rot_before = root_transform->GetLocalRotation();
-        UpdateTransformGizmo(gizmo, math::Vector2i(200, 200), nullptr, nullptr, nullptr, true, true, false);
-        UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, true, false, false);
-        UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, false, false, true);
-        const glm::quat rot_after = root_transform->GetLocalRotation();
-        if (!CheckOrLog(std::fabs(glm::dot(rot_before, rot_after)) < 0.9999f, "rotate interaction changes root rotation"))
+        if (!CheckOrLog(glm::length(result1.position - expected_pos) <= 1e-4f, "result1 deterministic position"))
             return false;
 
         const glm::quat expected_rot = glm::normalize(
             glm::angleAxis(-60.0f * 0.005f, math::AxisVector::Y)
-            * glm::angleAxis(30.0f * 0.005f, math::AxisVector::X)
-            * rot_before);
-        if (!CheckOrLog(std::fabs(glm::dot(expected_rot, rot_after)) > 0.9995f, "rotate interaction deterministic quaternion"))
+            * glm::angleAxis(30.0f * 0.005f, math::AxisVector::X));
+        if (!CheckOrLog(std::fabs(glm::dot(expected_rot, result1.rotation)) > 0.9995f, "result1 deterministic quaternion"))
             return false;
 
-        SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
-        const math::Vector3f scale_before = root_transform->GetLocalScale();
-        UpdateTransformGizmo(gizmo, math::Vector2i(300, 200), nullptr, nullptr, nullptr, true, true, false);
-        UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, true, false, false);
-        UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, false, false, true);
-        const math::Vector3f scale_after = root_transform->GetLocalScale();
-        if (!CheckOrLog(glm::length(scale_after - scale_before) > 1e-5f, "scale interaction changes root scale"))
+        if (!CheckOrLog(glm::length(result1.scale - math::Vector3f(1.4f, 1.4f, 1.4f)) <= 1e-4f, "result1 deterministic scale"))
             return false;
-        if (!CheckOrLog(glm::length(scale_after - math::Vector3f(1.4f, 1.4f, 1.4f)) <= 1e-4f, "scale interaction deterministic scale"))
+
+        const auto result2 = run_interaction_sequence(math::Vector3f(5.0f, 6.0f, 7.0f),
+                                                      glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                                                      math::Vector3f(1.0f, 1.0f, 1.0f));
+
+        if (!CheckOrLog(glm::length(result2.position - result1.position) <= 1e-6f, "replay deterministic position"))
+            return false;
+        if (!CheckOrLog(std::fabs(glm::dot(result2.rotation, result1.rotation)) > 0.999999f, "replay deterministic rotation"))
+            return false;
+        if (!CheckOrLog(glm::length(result2.scale - result1.scale) <= 1e-6f, "replay deterministic scale"))
+            return false;
+        if (!CheckOrLog(result2.changed_count_total > result1.changed_count_total, "replay callback increment"))
             return false;
 
         if (!CheckOrLog(changed_count > 0u, "changed callback fired"))
