@@ -1,0 +1,205 @@
+static float SanitizeFixedPixelDiameter(float pixel_diameter)
+{
+    if (pixel_diameter < 16.0f)
+        return 16.0f;
+
+    if (pixel_diameter > 4096.0f)
+        return 4096.0f;
+
+    return pixel_diameter;
+}
+
+static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
+{
+    if (!gizmo || gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+        return;
+
+    constexpr float kReferenceWorldDiameter = GIZMO_ARROW_LENGTH * 2.0f;
+    constexpr float kMinScale = 0.01f;
+
+    const auto apply_to_entity = [gizmo](hgl::ecs::Entity *entity,
+                                         const float reference_world_diameter,
+                                         const float min_scale)
+    {
+        if (!entity)
+            return;
+
+        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
+        if (!t)
+            return;
+
+        t->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+                                         reference_world_diameter,
+                                         min_scale);
+        t->SetFixedPixelSizingEnabled(true);
+    };
+
+    apply_to_entity(gizmo->move_entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->rotate_entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->scale_entity, kReferenceWorldDiameter, kMinScale);
+}
+
+static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
+{
+    if (!gizmo)
+        return;
+
+    const bool move_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal);
+    const bool rotate_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal);
+    const bool scale_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::ScaleLocal);
+
+    const uint32_t mode_code = static_cast<uint32_t>(gizmo->current_mode);
+
+    auto apply_active = [gizmo, mode_code](const std::shared_ptr<hgl::ecs::AssetInstanceComponent> &comp,
+                                           bool active,
+                                           uint64_t base_payload)
+    {
+        if (!comp)
+            return;
+
+        // Keep pass id in low 8 bits; use high bit as an active marker for future backend policies.
+        comp->SetFlags(active ? (1u | (1u << 31)) : 1u);
+        comp->SetVisibilityMask(active ? ~0ull : 0ull);
+
+        // Encode mode/active as payload metadata and bump revision so bridge can observe mode transitions.
+        hgl::ecs::AssetOverrideRef ref = comp->GetOverrideRef();
+        ref.payload_ref = base_payload ^ (static_cast<uint64_t>(mode_code) << 8) ^ (active ? 1ull : 0ull);
+        ref.revision = ++gizmo->asset_mode_revision_counter;
+        comp->SetOverrideRef(ref);
+    };
+
+    apply_active(gizmo->move_asset_instance, move_active, kGizmoMoveOverrideRef);
+    apply_active(gizmo->rotate_asset_instance, rotate_active, kGizmoRotateOverrideRef);
+    apply_active(gizmo->scale_asset_instance, scale_active, kGizmoScaleOverrideRef);
+
+    for (auto &entry : gizmo->move_primitives)
+    {
+        if (entry.primitive)
+            entry.primitive->SetVisible(move_active);
+    }
+
+    for (auto &entry : gizmo->rotate_primitives)
+    {
+        if (entry.primitive)
+            entry.primitive->SetVisible(rotate_active);
+    }
+
+    for (auto &entry : gizmo->scale_primitives)
+    {
+        if (entry.primitive)
+            entry.primitive->SetVisible(scale_active);
+    }
+}
+
+static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
+{
+    if (!gizmo || !gizmo->root_transform)
+        return;
+
+    if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+        return;
+
+    const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
+    const glm::quat inv_root_rot = glm::inverse(root_rot);
+    const glm::quat identity(1.0f, 0.0f, 0.0f, 0.0f);
+
+    auto set_child_rotation = [&](hgl::ecs::Entity *entity, const glm::quat &q)
+    {
+        if (!entity)
+            return;
+
+        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
+        if (t)
+            t->SetLocalRotation(q);
+    };
+
+    const bool move_local = (gizmo->current_mode == GizmoMode::MoveLocal);
+    const bool rotate_local = (gizmo->current_mode == GizmoMode::RotateLocal);
+
+    // Child world rotation = root_rot * child_local_rot.
+    // World mode wants axis fixed in world space -> child_local_rot = inverse(root_rot).
+    // Local mode wants axis follow object/root space -> child_local_rot = identity.
+    set_child_rotation(gizmo->move_entity, move_local ? identity : inv_root_rot);
+    set_child_rotation(gizmo->rotate_entity, rotate_local ? identity : inv_root_rot);
+    set_child_rotation(gizmo->scale_entity, identity);
+}
+
+static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
+                                             const CameraInfo *camera_info,
+                                             const ViewportInfo *viewport_info)
+{
+    if (!gizmo || gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+        return;
+
+    if (!camera_info || !viewport_info)
+        return;
+
+    auto apply_ctx = [&](hgl::ecs::Entity *entity)
+    {
+        if (!entity)
+            return;
+
+        auto t = entity->GetComponent<hgl::ecs::TransformComponent>();
+        if (t && t->IsFixedPixelSizingEnabled())
+            t->SetFixedPixelSizingContext(camera_info, viewport_info);
+    };
+
+    apply_ctx(gizmo->move_entity);
+    apply_ctx(gizmo->rotate_entity);
+    apply_ctx(gizmo->scale_entity);
+}
+
+static bool BeginAssetMouseCapture(GizmoECS *gizmo, hgl::ecs::InputSystem *input_system)
+{
+    if (!gizmo)
+        return false;
+
+    if (!input_system)
+        return true;
+
+    if (gizmo->asset_mouse_captured)
+    {
+        if (gizmo->asset_capture_input_system == input_system)
+            return true;
+
+        if (gizmo->asset_capture_input_system)
+            gizmo->asset_capture_input_system->EndMouseCapture(gizmo);
+
+        gizmo->asset_mouse_captured = false;
+        gizmo->asset_capture_input_system = nullptr;
+    }
+
+    if (!input_system->BeginMouseCapture(gizmo))
+        return false;
+
+    gizmo->asset_mouse_captured = true;
+    gizmo->asset_capture_input_system = input_system;
+    return true;
+}
+
+static void EndAssetMouseCapture(GizmoECS *gizmo)
+{
+    if (!gizmo || !gizmo->asset_mouse_captured)
+        return;
+
+    if (gizmo->asset_capture_input_system)
+        gizmo->asset_capture_input_system->EndMouseCapture(gizmo);
+
+    gizmo->asset_mouse_captured = false;
+    gizmo->asset_capture_input_system = nullptr;
+}
+
+static int GetScalePlaneNormalAxisFromEntry(const GizmoECS::AssetVisualPrimitive &entry)
+{
+    if (!entry.transform || entry.shape != GizmoShape::Square)
+        return -1;
+
+    const math::Vector3f lp = entry.transform->GetLocalPosition();
+    const float ax = std::fabs(lp.x);
+    const float ay = std::fabs(lp.y);
+    const float az = std::fabs(lp.z);
+
+    if (ax <= ay && ax <= az) return 0; // YZ plane
+    if (ay <= ax && ay <= az) return 1; // XZ plane
+    return 2;                            // XY plane
+}
