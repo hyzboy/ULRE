@@ -108,3 +108,10 @@ Acceptance:
 - `GizmoAssetBackendCreateSmoke`: create/destroy/bind target in asset backend.
 - `GizmoTransformParitySmoke`: compare transform deltas against legacy baseline.
 - Existing bridge smoke tests stay as lower-level protection.
+
+Implemented (2026-03-08):
+- `ECS_GizmoAssetBackendSmoke` (under `src/ecs/tests/GizmoAssetBackendSmokeTest.cpp`):
+- enables `ULRE_GIZMO_BACKEND=asset`
+- validates no `SubWorldComponent` on mode entities
+- validates mode visibility transitions and override revision bumps
+- validates root visibility gating and destroy cleanup
