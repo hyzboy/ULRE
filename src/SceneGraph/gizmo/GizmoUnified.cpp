@@ -15,30 +15,131 @@
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
+#include<hgl/ecs/core/AssetWorldRegistry.h>
+#include<hgl/ecs/components/AssetInstanceComponent.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/VisibilityComponent.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/systems/tick/AssetInstanceBridgeSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/io/event/KeyboardEvent.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/geometric.hpp>
+#include<cstdlib>
+#include<cstring>
 #include<iostream>
 #include<utility>
 
 namespace hgl::graph{
+
+namespace
+{
+    constexpr hgl::ecs::AssetVersion kGizmoAssetWorldVersion = 1u;
+    constexpr hgl::ecs::AssetWorldId kGizmoMoveAssetWorldId   = 0x47495A4D4F000001ull; // "GIZMO" + 1
+    constexpr hgl::ecs::AssetWorldId kGizmoRotateAssetWorldId = 0x47495A4D4F000002ull; // "GIZMO" + 2
+    constexpr hgl::ecs::AssetWorldId kGizmoScaleAssetWorldId  = 0x47495A4D4F000003ull; // "GIZMO" + 3
+    constexpr uint64_t kGizmoMoveOverrideRef = 0x47495A4D4F4D4F56ull;     // "GIZMOMOV"
+    constexpr uint64_t kGizmoRotateOverrideRef = 0x47495A4D4F524F54ull;   // "GIZMOROT"
+    constexpr uint64_t kGizmoScaleOverrideRef = 0x47495A4D4F534341ull;    // "GIZMOSCA"
+
+    hgl::ecs::AssetWorldDef MakeGizmoAssetWorldDef(hgl::ecs::AssetWorldId id, const char *name)
+    {
+        hgl::ecs::AssetWorldDef def{};
+        def.id = id;
+        def.version = kGizmoAssetWorldVersion;
+        def.name = name ? name : "GizmoAsset";
+        return def;
+    }
+
+    bool EnsureGizmoAssetWorldDefinitions(hgl::ecs::ECSContext *world)
+    {
+        if (!world)
+            return false;
+
+        auto bridge = world->GetSystem<hgl::ecs::AssetInstanceBridgeSystem>();
+        if (!bridge)
+        {
+            std::cout << "[GizmoECS] Asset bridge not ready, skip gizmo asset definition publish" << std::endl;
+            return false;
+        }
+
+        static hgl::ecs::AssetWorldRegistry s_gizmo_asset_registry;
+        if (!bridge->GetRegistry())
+            bridge->SetRegistry(&s_gizmo_asset_registry);
+
+        auto *registry = bridge->GetRegistry();
+        if (!registry)
+        {
+            std::cout << "[GizmoECS] Asset bridge has no registry, skip gizmo asset definition publish" << std::endl;
+            return false;
+        }
+
+        const bool move_ok = registry->Register(MakeGizmoAssetWorldDef(kGizmoMoveAssetWorldId, "GizmoMove"));
+        const bool rotate_ok = registry->Register(MakeGizmoAssetWorldDef(kGizmoRotateAssetWorldId, "GizmoRotate"));
+        const bool scale_ok = registry->Register(MakeGizmoAssetWorldDef(kGizmoScaleAssetWorldId, "GizmoScale"));
+
+        if (move_ok && rotate_ok && scale_ok)
+            std::cout << "[GizmoECS] Published gizmo AssetWorld definitions (move/rotate/scale)" << std::endl;
+
+        return move_ok && rotate_ok && scale_ok;
+    }
+
+    hgl::ecs::InstanceId ComposeGizmoInstanceId(const hgl::ecs::EntityID root_id, const uint8_t mode_tag)
+    {
+        // Keep ids deterministic per root + mode in current scene lifetime.
+        const uint64_t base = (static_cast<uint64_t>(root_id.index) << 16) | static_cast<uint64_t>(root_id.generation);
+        return (base << 8) | static_cast<uint64_t>(mode_tag);
+    }
+
+    std::shared_ptr<hgl::ecs::AssetInstanceComponent> AttachGizmoAssetInstance(hgl::ecs::Entity *entity,
+                                                                                const hgl::ecs::AssetWorldId world_id,
+                                                                                const hgl::ecs::InstanceId instance_id,
+                                                                                const uint64_t override_ref)
+    {
+        if (!entity)
+            return nullptr;
+
+        auto asset_instance = entity->GetComponent<hgl::ecs::AssetInstanceComponent>();
+        if (!asset_instance)
+            asset_instance = entity->AddComponent<hgl::ecs::AssetInstanceComponent>();
+
+        if (!asset_instance)
+            return nullptr;
+
+        asset_instance->SetAssetWorldID(world_id);
+        asset_instance->SetInstanceID(instance_id);
+        asset_instance->SetExpectedVersion(kGizmoAssetWorldVersion);
+        asset_instance->SetFlags(1u); // render pass id 1 for gizmo overlay route
+
+        hgl::ecs::AssetOverrideRef ref{};
+        ref.payload_ref = override_ref;
+        ref.revision = 1u;
+        asset_instance->SetOverrideRef(ref);
+        asset_instance->SetVisibilityMask(~0ull);
+
+        return asset_instance;
+    }
+}
 
 // Global resident state definition - declared in GizmoInternal.h
 GizmoSystemResidentState g_gizmo_resident_state;
 
 struct GizmoECS
 {
+    enum class Backend : uint8_t
+    {
+        LegacySubWorld = 0,
+        AssetWorldBridge = 1,
+    };
+
     hgl::ecs::ECSContext* world = nullptr;
     hgl::ecs::Entity* root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
+    Backend backend = Backend::LegacySubWorld;
 
     // 保存各个 Gizmo 的内部指针（内部实现使用）
     void* move_impl = nullptr;     // MoveGizmoImpl*
@@ -53,6 +154,9 @@ struct GizmoECS
     std::shared_ptr<hgl::ecs::SubWorldComponent> move_subworld;
     std::shared_ptr<hgl::ecs::SubWorldComponent> rotate_subworld;
     std::shared_ptr<hgl::ecs::SubWorldComponent> scale_subworld;
+    std::shared_ptr<hgl::ecs::AssetInstanceComponent> move_asset_instance;
+    std::shared_ptr<hgl::ecs::AssetInstanceComponent> rotate_asset_instance;
+    std::shared_ptr<hgl::ecs::AssetInstanceComponent> scale_asset_instance;
 
     hgl::ecs::World* move_world = nullptr;
     hgl::ecs::World* rotate_world = nullptr;
@@ -73,6 +177,31 @@ struct GizmoECS
     hgl::ecs::Entity* target_entity = nullptr;
     GizmoChangedCallback on_changed;
 };
+
+static GizmoECS::Backend ResolveGizmoBackend()
+{
+    const char *env = std::getenv("ULRE_GIZMO_BACKEND");
+    if (!env || !*env)
+        return GizmoECS::Backend::LegacySubWorld;
+
+    // Planned values: "legacy" or "asset". Unknown values fallback safely.
+    if (std::strcmp(env, "asset") == 0)
+        return GizmoECS::Backend::AssetWorldBridge;
+
+    return GizmoECS::Backend::LegacySubWorld;
+}
+
+static GizmoECS::Backend SelectSupportedBackend()
+{
+    const auto requested = ResolveGizmoBackend();
+    if (requested == GizmoECS::Backend::AssetWorldBridge)
+    {
+        std::cout << "[GizmoECS] ULRE_GIZMO_BACKEND=asset requested, fallback to legacy (asset backend WIP)" << std::endl;
+        return GizmoECS::Backend::LegacySubWorld;
+    }
+
+    return GizmoECS::Backend::LegacySubWorld;
+}
 
 // Legacy internal entry points (implementation body kept unchanged).
 GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
@@ -97,6 +226,30 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                           bool left_released);
 
 static void SyncAllSubGizmoTransforms(GizmoECS *gizmo);
+
+static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
+{
+    if (!gizmo)
+        return;
+
+    const bool move_active = (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal);
+    const bool rotate_active = (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal);
+    const bool scale_active = (gizmo->current_mode == GizmoMode::ScaleLocal);
+
+    auto apply_active = [](const std::shared_ptr<hgl::ecs::AssetInstanceComponent> &comp, bool active)
+    {
+        if (!comp)
+            return;
+
+        // Keep pass id in low 8 bits; use high bit as an active marker for future backend policies.
+        comp->SetFlags(active ? (1u | (1u << 31)) : 1u);
+        comp->SetVisibilityMask(active ? ~0ull : 0ull);
+    };
+
+    apply_active(gizmo->move_asset_instance, move_active);
+    apply_active(gizmo->rotate_asset_instance, rotate_active);
+    apply_active(gizmo->scale_asset_instance, scale_active);
+}
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
 {
@@ -228,6 +381,8 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     auto *gizmo = new GizmoECS;
     gizmo->world = world;
+    gizmo->backend = SelectSupportedBackend();
+    EnsureGizmoAssetWorldDefinitions(world);
     std::cout << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo") << std::endl;
 
     // Create root entity for entire Gizmo
@@ -278,6 +433,11 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
+
+        gizmo->move_asset_instance = AttachGizmoAssetInstance(gizmo->move_entity,
+                                                               kGizmoMoveAssetWorldId,
+                                                               ComposeGizmoInstanceId(gizmo->root->GetID(), 1u),
+                                                               kGizmoMoveOverrideRef);
     }
 
     // Rotate Gizmo
@@ -312,6 +472,11 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
+
+        gizmo->rotate_asset_instance = AttachGizmoAssetInstance(gizmo->rotate_entity,
+                                                                 kGizmoRotateAssetWorldId,
+                                                                 ComposeGizmoInstanceId(gizmo->root->GetID(), 2u),
+                                                                 kGizmoRotateOverrideRef);
     }
 
     // Scale Gizmo
@@ -346,6 +511,11 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
+
+        gizmo->scale_asset_instance = AttachGizmoAssetInstance(gizmo->scale_entity,
+                                                                kGizmoScaleAssetWorldId,
+                                                                ComposeGizmoInstanceId(gizmo->root->GetID(), 3u),
+                                                                kGizmoScaleOverrideRef);
     }
 
     // Initialize with Move mode active
@@ -431,6 +601,8 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
         gizmo->rotate_subworld->SetPaused(!rotate_active);
     if (gizmo->scale_subworld)
         gizmo->scale_subworld->SetPaused(mode != GizmoMode::ScaleLocal);
+
+    SyncGizmoAssetModeBindings(gizmo);
 
     gizmo->last_rotate_angle = 0.0f;
     gizmo->last_scale_value = 1.0f;
