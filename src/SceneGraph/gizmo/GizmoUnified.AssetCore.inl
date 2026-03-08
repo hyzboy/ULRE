@@ -53,9 +53,9 @@ static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
         t->SetFixedPixelSizingEnabled(true);
     };
 
-    apply_to_entity(gizmo->move_entity, kReferenceWorldDiameter, kMinScale);
-    apply_to_entity(gizmo->rotate_entity, kReferenceWorldDiameter, kMinScale);
-    apply_to_entity(gizmo->scale_entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->MoveChannel().entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->RotateChannel().entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->ScaleChannel().entity, kReferenceWorldDiameter, kMinScale);
 }
 
 static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
@@ -87,23 +87,23 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
         comp->SetOverrideRef(ref);
     };
 
-    apply_active(gizmo->move_asset_instance, move_active, kGizmoMoveOverrideRef);
-    apply_active(gizmo->rotate_asset_instance, rotate_active, kGizmoRotateOverrideRef);
-    apply_active(gizmo->scale_asset_instance, scale_active, kGizmoScaleOverrideRef);
+    apply_active(gizmo->MoveChannel().asset_instance, move_active, kGizmoMoveOverrideRef);
+    apply_active(gizmo->RotateChannel().asset_instance, rotate_active, kGizmoRotateOverrideRef);
+    apply_active(gizmo->ScaleChannel().asset_instance, scale_active, kGizmoScaleOverrideRef);
 
-    for (auto &entry : gizmo->move_primitives)
+    for (auto &entry : gizmo->MoveChannel().primitives)
     {
         if (entry.primitive)
             entry.primitive->SetVisible(move_active);
     }
 
-    for (auto &entry : gizmo->rotate_primitives)
+    for (auto &entry : gizmo->RotateChannel().primitives)
     {
         if (entry.primitive)
             entry.primitive->SetVisible(rotate_active);
     }
 
-    for (auto &entry : gizmo->scale_primitives)
+    for (auto &entry : gizmo->ScaleChannel().primitives)
     {
         if (entry.primitive)
             entry.primitive->SetVisible(scale_active);
@@ -135,9 +135,9 @@ static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
     // Child world rotation = root_rot * child_local_rot.
     // World mode wants axis fixed in world space -> child_local_rot = inverse(root_rot).
     // Local mode wants axis follow object/root space -> child_local_rot = identity.
-    set_child_rotation(gizmo->move_entity, move_local ? identity : inv_root_rot);
-    set_child_rotation(gizmo->rotate_entity, rotate_local ? identity : inv_root_rot);
-    set_child_rotation(gizmo->scale_entity, identity);
+    set_child_rotation(gizmo->MoveChannel().entity, move_local ? identity : inv_root_rot);
+    set_child_rotation(gizmo->RotateChannel().entity, rotate_local ? identity : inv_root_rot);
+    set_child_rotation(gizmo->ScaleChannel().entity, identity);
 }
 
 static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
@@ -160,9 +160,9 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
             t->SetFixedPixelSizingContext(camera_info, viewport_info);
     };
 
-    apply_ctx(gizmo->move_entity);
-    apply_ctx(gizmo->rotate_entity);
-    apply_ctx(gizmo->scale_entity);
+    apply_ctx(gizmo->MoveChannel().entity);
+    apply_ctx(gizmo->RotateChannel().entity);
+    apply_ctx(gizmo->ScaleChannel().entity);
 }
 
 static bool BeginAssetMouseCapture(GizmoECS *gizmo, hgl::ecs::InputSystem *input_system)
@@ -219,3 +219,4 @@ static int GetScalePlaneNormalAxisFromEntry(const GizmoECS::AssetVisualPrimitive
     if (ay <= ax && ay <= az) return 1; // XZ plane
     return 2;                            // XY plane
 }
+

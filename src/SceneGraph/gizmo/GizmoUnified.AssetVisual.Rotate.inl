@@ -31,7 +31,7 @@ static void BuildRotateAssetVisual(GizmoECS *gizmo, hgl::ecs::Entity *parent)
                                                   rotation,
                                                   math::Vector3f(GIZMO_ARROW_LENGTH) * kAssetVisualScale))
         {
-            AttachAssetModePrimitive(gizmo->rotate_primitives, torus, GizmoShape::Torus, cfg.color, i);
+            AttachAssetModePrimitive(gizmo->RotateChannel().primitives, torus, GizmoShape::Torus, cfg.color, i);
         }
     }
 
@@ -41,8 +41,8 @@ static void BuildRotateAssetVisual(GizmoECS *gizmo, hgl::ecs::Entity *parent)
                                                     math::Vector3f(0.0f),
                                                     glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                                                     math::Vector3f(13.0f) * kAssetVisualScale,
-                                                    &gizmo->rotate_white_ring_transform))
+                                                    &gizmo->RotateChannel().aux_transform))
     {
-        AttachAssetModePrimitive(gizmo->rotate_primitives, white_torus, GizmoShape::Torus, GizmoColor::White, 3);
+        AttachAssetModePrimitive(gizmo->RotateChannel().primitives, white_torus, GizmoShape::Torus, GizmoColor::White, 3);
     }
 }

@@ -67,19 +67,7 @@ static std::vector<GizmoECS::AssetVisualPrimitive> *GetActiveAssetVisualList(Giz
     if (!gizmo)
         return nullptr;
 
-    switch (gizmo->current_mode)
-    {
-    case GizmoMode::MoveWorld:
-    case GizmoMode::MoveLocal:
-        return &gizmo->move_primitives;
-    case GizmoMode::RotateWorld:
-    case GizmoMode::RotateLocal:
-        return &gizmo->rotate_primitives;
-    case GizmoMode::ScaleLocal:
-        return &gizmo->scale_primitives;
-    }
-
-    return nullptr;
+    return &GetActiveChannelRuntime(gizmo).primitives;
 }
 
 static void ApplyAssetVisualHighlightByIndex(GizmoECS *gizmo, int best_index)
@@ -134,20 +122,7 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
         }
     };
 
-    switch (gizmo->current_mode)
-    {
-    case GizmoMode::MoveWorld:
-    case GizmoMode::MoveLocal:
-        apply(gizmo->move_primitives);
-        break;
-    case GizmoMode::RotateWorld:
-    case GizmoMode::RotateLocal:
-        apply(gizmo->rotate_primitives);
-        break;
-    case GizmoMode::ScaleLocal:
-        apply(gizmo->scale_primitives);
-        break;
-    }
+    apply(GetActiveChannelRuntime(gizmo).primitives);
 
     gizmo->asset_visual_highlighted = highlighted;
     gizmo->asset_hovered_visual_index = -1;
@@ -311,7 +286,7 @@ static int PickMoveAssetVisualIndex(GizmoECS *gizmo,
                                     const CameraInfo *camera_info,
                                     const ViewportInfo *viewport_info)
 {
-    return PickBestAssetVisualIndex(gizmo->move_primitives, gizmo, mouse_coord, camera_info, viewport_info);
+    return PickBestAssetVisualIndex(gizmo->MoveChannel().primitives, gizmo, mouse_coord, camera_info, viewport_info);
 }
 
 static int PickRotateAssetVisualIndex(GizmoECS *gizmo,
@@ -319,7 +294,7 @@ static int PickRotateAssetVisualIndex(GizmoECS *gizmo,
                                       const CameraInfo *camera_info,
                                       const ViewportInfo *viewport_info)
 {
-    return PickBestAssetVisualIndex(gizmo->rotate_primitives, gizmo, mouse_coord, camera_info, viewport_info);
+    return PickBestAssetVisualIndex(gizmo->RotateChannel().primitives, gizmo, mouse_coord, camera_info, viewport_info);
 }
 
 static int PickScaleAssetVisualIndex(GizmoECS *gizmo,
@@ -327,7 +302,7 @@ static int PickScaleAssetVisualIndex(GizmoECS *gizmo,
                                      const CameraInfo *camera_info,
                                      const ViewportInfo *viewport_info)
 {
-    return PickBestAssetVisualIndex(gizmo->scale_primitives, gizmo, mouse_coord, camera_info, viewport_info);
+    return PickBestAssetVisualIndex(gizmo->ScaleChannel().primitives, gizmo, mouse_coord, camera_info, viewport_info);
 }
 
 static void UpdateAssetVisualHover(GizmoECS *gizmo,
@@ -381,3 +356,4 @@ static void UpdateAssetVisualHover(GizmoECS *gizmo,
 #include "GizmoUnified.AssetVisual.Move.inl"
 #include "GizmoUnified.AssetVisual.Rotate.inl"
 #include "GizmoUnified.AssetVisual.Scale.inl"
+

@@ -10,6 +10,7 @@
 */
 
 #include"Gizmo.h"
+#include"GizmoController.h"
 #include"GizmoInternal.h"
 #include"GizmoResource.h"
 #include<hgl/ecs/core/Context.h>
@@ -31,6 +32,7 @@
 #include<hgl/io/event/KeyboardEvent.h>
 #include<glm/gtc/quaternion.hpp>
 #include<glm/geometric.hpp>
+#include<array>
 #include<cstdlib>
 #include<cstring>
 #include<iostream>
@@ -148,21 +150,34 @@ struct GizmoECS
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
     float fixed_pixel_diameter = GIZMO_FIXED_PIXEL_DIAMETER;
 
-    // Asset backend entities
-    hgl::ecs::Entity* move_entity = nullptr;
-    hgl::ecs::Entity* rotate_entity = nullptr;
-    hgl::ecs::Entity* scale_entity = nullptr;
-    std::shared_ptr<hgl::ecs::AssetInstanceComponent> move_asset_instance;
-    std::shared_ptr<hgl::ecs::AssetInstanceComponent> rotate_asset_instance;
-    std::shared_ptr<hgl::ecs::AssetInstanceComponent> scale_asset_instance;
-    std::vector<AssetVisualPrimitive> move_primitives;
-    std::vector<AssetVisualPrimitive> rotate_primitives;
-    std::vector<AssetVisualPrimitive> scale_primitives;
+    enum class ChannelKind : uint8_t
+    {
+        Move = 0,
+        Rotate = 1,
+        Scale = 2,
+    };
+
+    struct ChannelRuntime
+    {
+        hgl::ecs::Entity *entity = nullptr;
+        std::shared_ptr<hgl::ecs::AssetInstanceComponent> asset_instance;
+        std::vector<AssetVisualPrimitive> primitives;
+        // Optional channel-specific transform handle (used by rotate view ring).
+        std::shared_ptr<hgl::ecs::TransformComponent> aux_transform;
+    };
+
+    std::array<ChannelRuntime, 3> channels;
     std::vector<hgl::ecs::EntityID> asset_visual_entity_ids;
-    std::shared_ptr<hgl::ecs::TransformComponent> rotate_white_ring_transform;
     uint32_t asset_mode_revision_counter = 1u;
     bool asset_visual_highlighted = false;
     int asset_hovered_visual_index = -1;
+
+    ChannelRuntime &MoveChannel() { return channels[static_cast<size_t>(ChannelKind::Move)]; }
+    ChannelRuntime &RotateChannel() { return channels[static_cast<size_t>(ChannelKind::Rotate)]; }
+    ChannelRuntime &ScaleChannel() { return channels[static_cast<size_t>(ChannelKind::Scale)]; }
+    const ChannelRuntime &MoveChannel() const { return channels[static_cast<size_t>(ChannelKind::Move)]; }
+    const ChannelRuntime &RotateChannel() const { return channels[static_cast<size_t>(ChannelKind::Rotate)]; }
+    const ChannelRuntime &ScaleChannel() const { return channels[static_cast<size_t>(ChannelKind::Scale)]; }
 
     // Asset backend interaction state, split by logical channel.
     struct AssetDragState
@@ -204,6 +219,7 @@ struct GizmoECS
 
     hgl::ecs::Entity* target_entity = nullptr;
     GizmoChangedCallback on_changed;
+    GizmoController channel_controller;
 };
 
 // Asset backend initialization
@@ -235,6 +251,24 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
                                              const CameraInfo *camera_info,
                                              const ViewportInfo *viewport_info);
 static void NormalizeScaleByPolicy(glm::vec3 &scale, bool allow_negative_scale);
+
+static GizmoECS::ChannelRuntime &GetActiveChannelRuntime(GizmoECS *gizmo)
+{
+    if (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal)
+        return gizmo->MoveChannel();
+    if (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal)
+        return gizmo->RotateChannel();
+    return gizmo->ScaleChannel();
+}
+
+static const GizmoECS::ChannelRuntime &GetActiveChannelRuntime(const GizmoECS *gizmo)
+{
+    if (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal)
+        return gizmo->MoveChannel();
+    if (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal)
+        return gizmo->RotateChannel();
+    return gizmo->ScaleChannel();
+}
 
 #include "GizmoUnified.AssetCore.inl"
 #include "GizmoUnified.AssetVisual.inl"
@@ -334,6 +368,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     auto *gizmo = new GizmoECS;
     gizmo->world = world;
+    gizmo->channel_controller.InitializeDefaultChannels();
     EnsureGizmoAssetWorldDefinitions(world);
     std::cout << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo") << std::endl;
 
@@ -355,15 +390,15 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     // Move Gizmo
     {
-        gizmo->move_entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Move");
-        if (!gizmo->move_entity)
+        gizmo->MoveChannel().entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Move");
+        if (!gizmo->MoveChannel().entity)
         {
             std::cout << "[GizmoECS] Create move entity failed" << std::endl;
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
-        auto move_transform = gizmo->move_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+        auto move_transform = gizmo->MoveChannel().entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         move_transform->SetParent(gizmo->root->GetID());
         move_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
@@ -371,24 +406,24 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                       0.01f);
         move_transform->SetFixedPixelSizingEnabled(true);
 
-        gizmo->move_asset_instance = AttachGizmoAssetInstance(gizmo->move_entity,
+        gizmo->MoveChannel().asset_instance = AttachGizmoAssetInstance(gizmo->MoveChannel().entity,
                                                                kGizmoMoveAssetWorldId,
                                                                ComposeGizmoInstanceId(gizmo->root->GetID(), 1u),
                                                                kGizmoMoveOverrideRef);
-        BuildMoveAssetVisual(gizmo, gizmo->move_entity);
+        BuildMoveAssetVisual(gizmo, gizmo->MoveChannel().entity);
     }
 
     // Rotate Gizmo
     {
-        gizmo->rotate_entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Rotate");
-        if (!gizmo->rotate_entity)
+        gizmo->RotateChannel().entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Rotate");
+        if (!gizmo->RotateChannel().entity)
         {
             std::cout << "[GizmoECS] Create rotate entity failed" << std::endl;
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
-        auto rotate_transform = gizmo->rotate_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+        auto rotate_transform = gizmo->RotateChannel().entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         rotate_transform->SetParent(gizmo->root->GetID());
         rotate_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
@@ -396,24 +431,24 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                         0.01f);
         rotate_transform->SetFixedPixelSizingEnabled(true);
 
-        gizmo->rotate_asset_instance = AttachGizmoAssetInstance(gizmo->rotate_entity,
+        gizmo->RotateChannel().asset_instance = AttachGizmoAssetInstance(gizmo->RotateChannel().entity,
                                                                  kGizmoRotateAssetWorldId,
                                                                  ComposeGizmoInstanceId(gizmo->root->GetID(), 2u),
                                                                  kGizmoRotateOverrideRef);
-        BuildRotateAssetVisual(gizmo, gizmo->rotate_entity);
+        BuildRotateAssetVisual(gizmo, gizmo->RotateChannel().entity);
     }
 
     // Scale Gizmo
     {
-        gizmo->scale_entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Scale");
-        if (!gizmo->scale_entity)
+        gizmo->ScaleChannel().entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Scale");
+        if (!gizmo->ScaleChannel().entity)
         {
             std::cout << "[GizmoECS] Create scale entity failed" << std::endl;
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
-        auto scale_transform = gizmo->scale_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+        auto scale_transform = gizmo->ScaleChannel().entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         scale_transform->SetParent(gizmo->root->GetID());
         scale_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
@@ -421,11 +456,11 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                        0.01f);
         scale_transform->SetFixedPixelSizingEnabled(true);
 
-        gizmo->scale_asset_instance = AttachGizmoAssetInstance(gizmo->scale_entity,
+        gizmo->ScaleChannel().asset_instance = AttachGizmoAssetInstance(gizmo->ScaleChannel().entity,
                                                                 kGizmoScaleAssetWorldId,
                                                                 ComposeGizmoInstanceId(gizmo->root->GetID(), 3u),
                                                                 kGizmoScaleOverrideRef);
-        BuildScaleAssetVisual(gizmo, gizmo->scale_entity);
+        BuildScaleAssetVisual(gizmo, gizmo->ScaleChannel().entity);
     }
 
     // Initialize with Move mode active
@@ -466,12 +501,12 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
                 gizmo->world->DestroyEntity(id);
         }
 
-        if (gizmo->move_entity)
-            gizmo->world->DestroyEntity(gizmo->move_entity->GetID());
-        if (gizmo->rotate_entity)
-            gizmo->world->DestroyEntity(gizmo->rotate_entity->GetID());
-        if (gizmo->scale_entity)
-            gizmo->world->DestroyEntity(gizmo->scale_entity->GetID());
+        if (gizmo->MoveChannel().entity)
+            gizmo->world->DestroyEntity(gizmo->MoveChannel().entity->GetID());
+        if (gizmo->RotateChannel().entity)
+            gizmo->world->DestroyEntity(gizmo->RotateChannel().entity->GetID());
+        if (gizmo->ScaleChannel().entity)
+            gizmo->world->DestroyEntity(gizmo->ScaleChannel().entity->GetID());
         if (gizmo->root)
             gizmo->world->DestroyEntity(gizmo->root->GetID());
     }
@@ -484,6 +519,9 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
 {
     if (!gizmo)
         return;
+
+    // Phase 1: centralize mode-to-channel mapping through controller skeleton.
+    (void)gizmo->channel_controller.GetChannelForMode(mode);
 
     gizmo->current_mode = mode;
     std::cout << "[GizmoECS] Set mode=" << static_cast<int>(mode) << std::endl;
@@ -774,7 +812,7 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
             }
         }
 
-        if (gizmo->rotate_white_ring_transform && camera_info)
+        if (gizmo->RotateChannel().aux_transform && camera_info)
         {
             const math::Vector3f forward = glm::normalize(math::Vector3f(camera_info->view[0][2],
                                                                           camera_info->view[1][2],
@@ -797,9 +835,9 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
             // White view ring must stay camera-facing in world space.
             // Compensate parent world rotation so local/world rotate modes behave the same.
             glm::quat parent_world_rot(1.0f, 0.0f, 0.0f, 0.0f);
-            if (gizmo->rotate_entity)
+            if (gizmo->RotateChannel().entity)
             {
-                auto rotate_entity_transform = gizmo->rotate_entity->GetComponent<hgl::ecs::TransformComponent>();
+                auto rotate_entity_transform = gizmo->RotateChannel().entity->GetComponent<hgl::ecs::TransformComponent>();
                 if (rotate_entity_transform)
                 {
                     rotate_entity_transform->UpdateIfDirty();
@@ -807,7 +845,7 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                 }
             }
 
-            gizmo->rotate_white_ring_transform->SetLocalRotation(glm::inverse(parent_world_rot) * facing);
+            gizmo->RotateChannel().aux_transform->SetLocalRotation(glm::inverse(parent_world_rot) * facing);
         }
 
         const math::Vector3f cur_pos = gizmo->root_transform->GetLocalPosition();
@@ -912,6 +950,7 @@ math::Vector3f RotationToDirection(const glm::quat &rot)
 }
 
 }//namespace hgl::graph
+
 
 
 

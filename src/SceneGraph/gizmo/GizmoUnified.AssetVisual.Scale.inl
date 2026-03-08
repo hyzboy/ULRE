@@ -10,7 +10,7 @@ static void BuildScaleAssetVisual(GizmoECS *gizmo, hgl::ecs::Entity *parent)
                                                glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
                                                math::Vector3f(GIZMO_CENTER_SPHERE_RADIUS * 2.0f) * kAssetVisualScale))
     {
-        AttachAssetModePrimitive(gizmo->scale_primitives, center, GizmoShape::Cube, GizmoColor::White);
+        AttachAssetModePrimitive(gizmo->ScaleChannel().primitives, center, GizmoShape::Cube, GizmoColor::White);
     }
 
     struct AxisConfig
@@ -43,7 +43,7 @@ static void BuildScaleAssetVisual(GizmoECS *gizmo, hgl::ecs::Entity *parent)
                                                 rotation,
                                                 math::Vector3f(GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_HALF_LENGTH) * kAssetVisualScale))
         {
-            AttachAssetModePrimitive(gizmo->scale_primitives, cyl, GizmoShape::Cylinder, cfg.color, i);
+            AttachAssetModePrimitive(gizmo->ScaleChannel().primitives, cyl, GizmoShape::Cylinder, cfg.color, i);
         }
 
         if (auto *tip = CreateAssetVisualEntity(gizmo,
@@ -53,7 +53,7 @@ static void BuildScaleAssetVisual(GizmoECS *gizmo, hgl::ecs::Entity *parent)
                                                 rotation,
                                                 math::Vector3f(1.0f) * kAssetVisualScale))
         {
-            AttachAssetModePrimitive(gizmo->scale_primitives, tip, GizmoShape::Cube, cfg.color, i);
+            AttachAssetModePrimitive(gizmo->ScaleChannel().primitives, tip, GizmoShape::Cube, cfg.color, i);
         }
 
         if (auto *plane = CreateAssetVisualEntity(gizmo,
@@ -63,7 +63,7 @@ static void BuildScaleAssetVisual(GizmoECS *gizmo, hgl::ecs::Entity *parent)
                                                   rotation,
                                                   math::Vector3f(2.0f) * kAssetVisualScale))
         {
-            AttachAssetModePrimitive(gizmo->scale_primitives, plane, GizmoShape::Square, cfg.color);
+            AttachAssetModePrimitive(gizmo->ScaleChannel().primitives, plane, GizmoShape::Square, cfg.color);
         }
     }
 }
