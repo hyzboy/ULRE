@@ -18,6 +18,14 @@ namespace hgl::ecs
     class AssetInstanceBridgeSystem : public System
     {
     public:
+        struct DrawPacket
+        {
+            InstanceId instance_id = 0;
+            AssetWorldId asset_world_id = 0;
+            AssetVersion resolved_version = 0;
+            uint64_t proxy_handle = 0;
+        };
+
         struct RuntimeState
         {
             InstanceId instance_id = 0;
@@ -41,6 +49,7 @@ namespace hgl::ecs
             uint32_t reclaimed_state_count_frame = 0;
             uint32_t version_refresh_count_frame = 0;
             uint32_t emitted_draw_packet_count_frame = 0;
+            uint32_t emitted_bucket_count_frame = 0;
         };
 
     private:
@@ -52,6 +61,8 @@ namespace hgl::ecs
         std::vector<std::weak_ptr<AssetInstanceComponent>> pending_rebuild;
         std::unordered_map<InstanceId, RuntimeState> runtime_states;
         std::unordered_set<AssetWorldId> pending_refresh_assets;
+        std::vector<DrawPacket> draw_packets;
+        std::unordered_map<AssetWorldId, uint32_t> draw_packet_bucket_counts;
 
     public:
         explicit AssetInstanceBridgeSystem(const std::string& name = "AssetInstanceBridgeSystem");
@@ -66,6 +77,8 @@ namespace hgl::ecs
         const Stats& GetStats() const { return stats; }
         size_t GetRuntimeStateCount() const { return runtime_states.size(); }
         const RuntimeState* FindRuntimeState(InstanceId id) const;
+        const std::vector<DrawPacket>& GetDrawPackets() const { return draw_packets; }
+        uint32_t GetDrawPacketCountForAsset(AssetWorldId id) const;
 
         void Initialize() override;
         void Update(float deltaTime) override;

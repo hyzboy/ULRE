@@ -7,6 +7,15 @@
 
 namespace hgl::ecs
 {
+    uint32_t AssetInstanceBridgeSystem::GetDrawPacketCountForAsset(AssetWorldId id) const
+    {
+        auto it = draw_packet_bucket_counts.find(id);
+        if (it == draw_packet_bucket_counts.end())
+            return 0;
+
+        return it->second;
+    }
+
     const AssetInstanceBridgeSystem::RuntimeState* AssetInstanceBridgeSystem::FindRuntimeState(InstanceId id) const
     {
         auto it = runtime_states.find(id);
@@ -69,6 +78,7 @@ namespace hgl::ecs
         stats.reclaimed_state_count_frame = 0;
         stats.version_refresh_count_frame = 0;
         stats.emitted_draw_packet_count_frame = 0;
+        stats.emitted_bucket_count_frame = 0;
         pending_rebuild.clear();
 
         if (!world)
@@ -185,7 +195,27 @@ namespace hgl::ecs
 
     void AssetInstanceBridgeSystem::SyncRender(float)
     {
-        // Placeholder stub: one runtime state corresponds to one emitted draw packet.
-        stats.emitted_draw_packet_count_frame = static_cast<uint32_t>(runtime_states.size());
+        draw_packets.clear();
+        draw_packet_bucket_counts.clear();
+        draw_packets.reserve(runtime_states.size());
+
+        for (const auto& pair : runtime_states)
+        {
+            const RuntimeState& state = pair.second;
+            if (state.instance_id == 0)
+                continue;
+
+            DrawPacket packet{};
+            packet.instance_id = state.instance_id;
+            packet.asset_world_id = state.asset_world_id;
+            packet.resolved_version = state.resolved_version;
+            packet.proxy_handle = state.proxy_handle;
+            draw_packets.push_back(packet);
+
+            ++draw_packet_bucket_counts[state.asset_world_id];
+        }
+
+        stats.emitted_draw_packet_count_frame = static_cast<uint32_t>(draw_packets.size());
+        stats.emitted_bucket_count_frame = static_cast<uint32_t>(draw_packet_bucket_counts.size());
     }
 }
