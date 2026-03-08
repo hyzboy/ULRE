@@ -19,6 +19,7 @@
 #include<hgl/ecs/components/AssetInstanceComponent.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
+#include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/VisibilityComponent.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
@@ -157,6 +158,9 @@ struct GizmoECS
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> move_asset_instance;
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> rotate_asset_instance;
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> scale_asset_instance;
+    std::shared_ptr<hgl::ecs::PrimitiveComponent> move_primitive;
+    std::shared_ptr<hgl::ecs::PrimitiveComponent> rotate_primitive;
+    std::shared_ptr<hgl::ecs::PrimitiveComponent> scale_primitive;
     uint32_t asset_mode_revision_counter = 1u;
 
     hgl::ecs::World* move_world = nullptr;
@@ -206,7 +210,11 @@ static GizmoECS::Backend SelectSupportedBackend(hgl::ecs::ECSContext *world)
     const auto requested = ResolveGizmoBackend();
     if (requested == GizmoECS::Backend::AssetWorldBridge)
     {
-        if (!world || !world->GetSystem<hgl::ecs::AssetInstanceBridgeSystem>())
+        auto bridge = world ? world->GetSystem<hgl::ecs::AssetInstanceBridgeSystem>() : nullptr;
+        if (!bridge && world)
+            bridge = world->RegisterTickSystem<hgl::ecs::AssetInstanceBridgeSystem>();
+
+        if (!bridge)
         {
             std::cout << "[GizmoECS] ULRE_GIZMO_BACKEND=asset requested, but bridge is unavailable; fallback to legacy" << std::endl;
             return GizmoECS::Backend::LegacySubWorld;
@@ -275,6 +283,34 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
     apply_active(gizmo->move_asset_instance, move_active, kGizmoMoveOverrideRef);
     apply_active(gizmo->rotate_asset_instance, rotate_active, kGizmoRotateOverrideRef);
     apply_active(gizmo->scale_asset_instance, scale_active, kGizmoScaleOverrideRef);
+
+    if (gizmo->move_primitive)
+        gizmo->move_primitive->SetVisible(move_active);
+    if (gizmo->rotate_primitive)
+        gizmo->rotate_primitive->SetVisible(rotate_active);
+    if (gizmo->scale_primitive)
+        gizmo->scale_primitive->SetVisible(scale_active);
+}
+
+static std::shared_ptr<hgl::ecs::PrimitiveComponent> AttachAssetModePrimitive(hgl::ecs::Entity *entity,
+                                                                               const GizmoShape shape,
+                                                                               const GizmoColor color)
+{
+    if (!entity)
+        return nullptr;
+
+    auto primitive = GetGizmoMeshPrimitive(shape);
+    if (!primitive)
+        return nullptr;
+
+    auto prim_comp = entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+    if (!prim_comp)
+        return nullptr;
+
+    prim_comp->SetPrimitive(primitive);
+    prim_comp->SetOverrideMaterial(GetGizmoMI3D(color));
+    prim_comp->SetVisible(false);
+    return prim_comp;
 }
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
@@ -446,6 +482,13 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         auto move_transform = gizmo->move_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         move_transform->SetParent(gizmo->root->GetID());
+        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
+        {
+            move_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+                                                          GIZMO_ARROW_LENGTH * 2.0f,
+                                                          0.01f);
+            move_transform->SetFixedPixelSizingEnabled(true);
+        }
 
         if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
         {
@@ -473,6 +516,9 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                                kGizmoMoveAssetWorldId,
                                                                ComposeGizmoInstanceId(gizmo->root->GetID(), 1u),
                                                                kGizmoMoveOverrideRef);
+
+        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
+            gizmo->move_primitive = AttachAssetModePrimitive(gizmo->move_entity, GizmoShape::Sphere, GizmoColor::White);
     }
 
     // Rotate Gizmo
@@ -488,6 +534,13 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         auto rotate_transform = gizmo->rotate_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         rotate_transform->SetParent(gizmo->root->GetID());
+        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
+        {
+            rotate_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+                                                            GIZMO_ARROW_LENGTH * 2.0f,
+                                                            0.01f);
+            rotate_transform->SetFixedPixelSizingEnabled(true);
+        }
 
         if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
         {
@@ -515,6 +568,9 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                                  kGizmoRotateAssetWorldId,
                                                                  ComposeGizmoInstanceId(gizmo->root->GetID(), 2u),
                                                                  kGizmoRotateOverrideRef);
+
+        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
+            gizmo->rotate_primitive = AttachAssetModePrimitive(gizmo->rotate_entity, GizmoShape::Torus, GizmoColor::White);
     }
 
     // Scale Gizmo
@@ -530,6 +586,13 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         auto scale_transform = gizmo->scale_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         scale_transform->SetParent(gizmo->root->GetID());
+        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
+        {
+            scale_transform->SetFixedPixelSizingParameters(GIZMO_FIXED_PIXEL_DIAMETER,
+                                                           GIZMO_ARROW_LENGTH * 2.0f,
+                                                           0.01f);
+            scale_transform->SetFixedPixelSizingEnabled(true);
+        }
 
         if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
         {
@@ -557,6 +620,9 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                                 kGizmoScaleAssetWorldId,
                                                                 ComposeGizmoInstanceId(gizmo->root->GetID(), 3u),
                                                                 kGizmoScaleOverrideRef);
+
+        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
+            gizmo->scale_primitive = AttachAssetModePrimitive(gizmo->scale_entity, GizmoShape::Cube, GizmoColor::White);
     }
 
     // Initialize with Move mode active
