@@ -6,6 +6,7 @@
 
 #include <exception>
 #include <iostream>
+#include <vector>
 
 using namespace hgl::ecs;
 
@@ -107,6 +108,18 @@ namespace
         if (bridge.GetDrawPackets().size() != 5u)
             return false;
 
+        std::vector<InstanceId> ordered_instances;
+        ordered_instances.reserve(bridge.GetDrawPackets().size());
+        for (const auto &packet : bridge.GetDrawPackets())
+            ordered_instances.push_back(packet.instance_id);
+
+        const std::vector<InstanceId> expected_order = {1u, 2u, 100u, 101u, 3u};
+        if (ordered_instances != expected_order)
+            return false;
+
+        if (stats.sorted_draw_packet_count_frame != 5u)
+            return false;
+
         if (bridge.GetDrawPacketCountForAsset(3001ull) != 3u)
             return false;
         if (bridge.GetDrawPacketCountForAsset(3002ull) != 2u)
@@ -121,6 +134,23 @@ namespace
         if (bridge.GetDrawPacketCountForSecondaryBucket(1u, 9001ull) != 2u)
             return false;
         if (bridge.GetDrawPacketCountForSecondaryBucket(3u, 7001ull) != 0u)
+            return false;
+
+        bridge.Update(0.016f);
+        const auto &stats2 = bridge.GetStats();
+        if (stats2.rebuild_count_frame != 0u)
+            return false;
+        if (stats2.emitted_draw_packet_count_frame != 5u)
+            return false;
+        if (stats2.sorted_draw_packet_count_frame != 5u)
+            return false;
+
+        std::vector<InstanceId> ordered_instances_frame2;
+        ordered_instances_frame2.reserve(bridge.GetDrawPackets().size());
+        for (const auto &packet : bridge.GetDrawPackets())
+            ordered_instances_frame2.push_back(packet.instance_id);
+
+        if (ordered_instances_frame2 != ordered_instances)
             return false;
 
         return true;

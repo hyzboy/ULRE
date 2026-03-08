@@ -51,6 +51,7 @@ namespace hgl::ecs
             uint32_t reclaimed_state_count_frame = 0;
             uint32_t version_refresh_count_frame = 0;
             uint32_t emitted_draw_packet_count_frame = 0;
+            uint32_t sorted_draw_packet_count_frame = 0;
             uint32_t emitted_bucket_count_frame = 0;
             uint32_t emitted_secondary_bucket_count_frame = 0;
         };

@@ -3,6 +3,7 @@
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/components/AssetInstanceComponent.h>
 
+#include <algorithm>
 #include <unordered_set>
 
 namespace hgl::ecs
@@ -96,6 +97,7 @@ namespace hgl::ecs
         stats.reclaimed_state_count_frame = 0;
         stats.version_refresh_count_frame = 0;
         stats.emitted_draw_packet_count_frame = 0;
+        stats.sorted_draw_packet_count_frame = 0;
         stats.emitted_bucket_count_frame = 0;
         stats.emitted_secondary_bucket_count_frame = 0;
         pending_rebuild.clear();
@@ -271,7 +273,20 @@ namespace hgl::ecs
             ++draw_packet_secondary_bucket_counts[ComposeSecondaryBucketKey(render_pass_id, material_bucket_key)];
         }
 
+        // Keep submission order deterministic to avoid frame-to-frame packet churn.
+        std::sort(draw_packets.begin(), draw_packets.end(), [](const DrawPacket &lhs, const DrawPacket &rhs)
+        {
+            if (lhs.render_pass_id != rhs.render_pass_id)
+                return lhs.render_pass_id < rhs.render_pass_id;
+            if (lhs.material_bucket_key != rhs.material_bucket_key)
+                return lhs.material_bucket_key < rhs.material_bucket_key;
+            if (lhs.asset_world_id != rhs.asset_world_id)
+                return lhs.asset_world_id < rhs.asset_world_id;
+            return lhs.instance_id < rhs.instance_id;
+        });
+
         stats.emitted_draw_packet_count_frame = static_cast<uint32_t>(draw_packets.size());
+        stats.sorted_draw_packet_count_frame = static_cast<uint32_t>(draw_packets.size());
         stats.emitted_bucket_count_frame = static_cast<uint32_t>(draw_packet_bucket_counts.size());
         stats.emitted_secondary_bucket_count_frame = static_cast<uint32_t>(draw_packet_secondary_bucket_counts.size());
     }
