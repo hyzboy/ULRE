@@ -793,7 +793,6 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
             switch (gizmo->asset_drag_mode)
             {
             case GizmoMode::MoveWorld:
-            case GizmoMode::MoveLocal:
                 {
                     glm::vec3 p = gizmo->asset_drag_start_position;
                     p.x += dx * kMoveSensitivity;
@@ -801,12 +800,28 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                     gizmo->root_transform->SetLocalPosition(p);
                 }
                 break;
+            case GizmoMode::MoveLocal:
+                {
+                    const glm::vec3 local_delta(dx * kMoveSensitivity, -dy * kMoveSensitivity, 0.0f);
+                    const glm::vec3 world_delta = gizmo->asset_drag_start_rotation * local_delta;
+                    gizmo->root_transform->SetLocalPosition(gizmo->asset_drag_start_position + world_delta);
+                }
+                break;
             case GizmoMode::RotateWorld:
-            case GizmoMode::RotateLocal:
                 {
                     const glm::quat yaw = glm::angleAxis(-dx * kRotateSensitivity, math::AxisVector::Y);
                     const glm::quat pitch = glm::angleAxis(-dy * kRotateSensitivity, math::AxisVector::X);
                     gizmo->root_transform->SetLocalRotation(glm::normalize(yaw * pitch * gizmo->asset_drag_start_rotation));
+                }
+                break;
+            case GizmoMode::RotateLocal:
+                {
+                    const glm::vec3 local_x = gizmo->asset_drag_start_rotation * math::AxisVector::X;
+                    const glm::vec3 local_y = gizmo->asset_drag_start_rotation * math::AxisVector::Y;
+
+                    const glm::quat yaw_local = glm::angleAxis(-dx * kRotateSensitivity, local_y);
+                    const glm::quat pitch_local = glm::angleAxis(-dy * kRotateSensitivity, local_x);
+                    gizmo->root_transform->SetLocalRotation(glm::normalize(yaw_local * pitch_local * gizmo->asset_drag_start_rotation));
                 }
                 break;
             case GizmoMode::ScaleLocal:

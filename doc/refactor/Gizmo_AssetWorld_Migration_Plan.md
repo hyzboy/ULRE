@@ -83,6 +83,11 @@ Status (2026-03-08):
 - Rotate mode: screen delta -> yaw/pitch quaternion delta.
 - Scale mode: screen Y delta -> uniform local scale ratio with policy clamp.
 - Target transform sync and `GizmoChangedCallback` are preserved in asset mode.
+- Step3 landed: world/local semantics are now separated in asset backend interaction mapping.
+- `MoveWorld`: screen delta on world XY plane.
+- `MoveLocal`: screen delta interpreted in local frame then rotated by start rotation.
+- `RotateWorld`: yaw/pitch around world Y/X axes.
+- `RotateLocal`: yaw/pitch around start local Y/X axes.
 
 ## Phase GZ5: Legacy Sunset
 1. Make asset backend default.
