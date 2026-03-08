@@ -43,6 +43,24 @@ namespace
 
             c->SetAssetWorldID(3001ull);
             c->SetInstanceID(static_cast<InstanceId>(i + 1));
+
+            // Two pass/material groups inside the same asset bucket.
+            if (i < 2)
+            {
+                c->SetFlags(1u);
+                AssetOverrideRef ref{};
+                ref.payload_ref = 7001ull;
+                ref.revision = 1u;
+                c->SetOverrideRef(ref);
+            }
+            else
+            {
+                c->SetFlags(2u);
+                AssetOverrideRef ref{};
+                ref.payload_ref = 7002ull;
+                ref.revision = 1u;
+                c->SetOverrideRef(ref);
+            }
         }
 
         for (uint32_t i = 0; i < 2; ++i)
@@ -57,6 +75,11 @@ namespace
 
             c->SetAssetWorldID(3002ull);
             c->SetInstanceID(static_cast<InstanceId>(100 + i));
+            c->SetFlags(1u);
+            AssetOverrideRef ref{};
+            ref.payload_ref = 9001ull;
+            ref.revision = 1u;
+            c->SetOverrideRef(ref);
         }
 
         AssetInstanceBridgeSystem bridge;
@@ -78,6 +101,8 @@ namespace
             return false;
         if (stats.emitted_bucket_count_frame != 2u)
             return false;
+        if (stats.emitted_secondary_bucket_count_frame != 3u)
+            return false;
 
         if (bridge.GetDrawPackets().size() != 5u)
             return false;
@@ -87,6 +112,15 @@ namespace
         if (bridge.GetDrawPacketCountForAsset(3002ull) != 2u)
             return false;
         if (bridge.GetDrawPacketCountForAsset(9999ull) != 0u)
+            return false;
+
+        if (bridge.GetDrawPacketCountForSecondaryBucket(1u, 7001ull) != 2u)
+            return false;
+        if (bridge.GetDrawPacketCountForSecondaryBucket(2u, 7002ull) != 1u)
+            return false;
+        if (bridge.GetDrawPacketCountForSecondaryBucket(1u, 9001ull) != 2u)
+            return false;
+        if (bridge.GetDrawPacketCountForSecondaryBucket(3u, 7001ull) != 0u)
             return false;
 
         return true;

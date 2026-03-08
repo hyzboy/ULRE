@@ -7,6 +7,24 @@
 
 namespace hgl::ecs
 {
+    namespace
+    {
+        uint64_t ComposeSecondaryBucketKey(const uint16_t render_pass_id, const uint64_t material_bucket_key)
+        {
+            return (static_cast<uint64_t>(render_pass_id) << 48) ^ (material_bucket_key & 0x0000FFFFFFFFFFFFull);
+        }
+    }
+
+    uint32_t AssetInstanceBridgeSystem::GetDrawPacketCountForSecondaryBucket(uint16_t render_pass_id, uint64_t material_bucket_key) const
+    {
+        const uint64_t key = ComposeSecondaryBucketKey(render_pass_id, material_bucket_key);
+        auto it = draw_packet_secondary_bucket_counts.find(key);
+        if (it == draw_packet_secondary_bucket_counts.end())
+            return 0;
+
+        return it->second;
+    }
+
     uint32_t AssetInstanceBridgeSystem::GetDrawPacketCountForAsset(AssetWorldId id) const
     {
         auto it = draw_packet_bucket_counts.find(id);
@@ -79,6 +97,7 @@ namespace hgl::ecs
         stats.version_refresh_count_frame = 0;
         stats.emitted_draw_packet_count_frame = 0;
         stats.emitted_bucket_count_frame = 0;
+        stats.emitted_secondary_bucket_count_frame = 0;
         pending_rebuild.clear();
 
         if (!world)
@@ -197,7 +216,28 @@ namespace hgl::ecs
     {
         draw_packets.clear();
         draw_packet_bucket_counts.clear();
+        draw_packet_secondary_bucket_counts.clear();
         draw_packets.reserve(runtime_states.size());
+
+        std::unordered_map<InstanceId, std::shared_ptr<AssetInstanceComponent>> instance_components;
+        if (world)
+        {
+            std::vector<std::shared_ptr<AssetInstanceComponent>> components;
+            world->GetComponents(components);
+            instance_components.reserve(components.size());
+
+            for (const auto& comp : components)
+            {
+                if (!comp)
+                    continue;
+
+                const InstanceId instance_id = comp->GetInstanceID();
+                if (instance_id == 0)
+                    continue;
+
+                instance_components[instance_id] = comp;
+            }
+        }
 
         for (const auto& pair : runtime_states)
         {
@@ -205,17 +245,34 @@ namespace hgl::ecs
             if (state.instance_id == 0)
                 continue;
 
+            uint16_t render_pass_id = 0;
+            uint64_t material_bucket_key = state.asset_world_id;
+
+            auto comp_it = instance_components.find(state.instance_id);
+            if (comp_it != instance_components.end() && comp_it->second)
+            {
+                const auto& comp = comp_it->second;
+                render_pass_id = static_cast<uint16_t>(comp->GetFlags() & 0xFFu);
+                material_bucket_key = comp->GetOverrideRef().payload_ref != 0
+                                      ? comp->GetOverrideRef().payload_ref
+                                      : state.asset_world_id;
+            }
+
             DrawPacket packet{};
             packet.instance_id = state.instance_id;
             packet.asset_world_id = state.asset_world_id;
             packet.resolved_version = state.resolved_version;
             packet.proxy_handle = state.proxy_handle;
+            packet.render_pass_id = render_pass_id;
+            packet.material_bucket_key = material_bucket_key;
             draw_packets.push_back(packet);
 
             ++draw_packet_bucket_counts[state.asset_world_id];
+            ++draw_packet_secondary_bucket_counts[ComposeSecondaryBucketKey(render_pass_id, material_bucket_key)];
         }
 
         stats.emitted_draw_packet_count_frame = static_cast<uint32_t>(draw_packets.size());
         stats.emitted_bucket_count_frame = static_cast<uint32_t>(draw_packet_bucket_counts.size());
+        stats.emitted_secondary_bucket_count_frame = static_cast<uint32_t>(draw_packet_secondary_bucket_counts.size());
     }
 }
