@@ -1,3 +1,22 @@
+static GizmoECS::AssetDragState::ChannelState &GetAssetChannelState(GizmoECS *gizmo, GizmoMode mode)
+{
+    if (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal)
+        return gizmo->asset_drag.move;
+
+    if (mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal)
+        return gizmo->asset_drag.rotate;
+
+    return gizmo->asset_drag.scale;
+}
+
+static void ResetAssetActivePickState(GizmoECS *gizmo)
+{
+    gizmo->asset_drag.pick_index = -1;
+    gizmo->asset_drag.pick_group = -1;
+    gizmo->asset_drag.pick_plane_normal_axis = -1;
+    gizmo->asset_drag.pick_shape = GizmoShape::Sphere;
+}
+
 static float SanitizeFixedPixelDiameter(float pixel_diameter)
 {
     if (pixel_diameter < 16.0f)
@@ -157,36 +176,36 @@ static bool BeginAssetMouseCapture(GizmoECS *gizmo, hgl::ecs::InputSystem *input
     if (!input_system)
         return true;
 
-    if (gizmo->asset_mouse_captured)
+    if (gizmo->asset_drag.mouse_captured)
     {
-        if (gizmo->asset_capture_input_system == input_system)
+        if (gizmo->asset_drag.capture_input_system == input_system)
             return true;
 
-        if (gizmo->asset_capture_input_system)
-            gizmo->asset_capture_input_system->EndMouseCapture(gizmo);
+        if (gizmo->asset_drag.capture_input_system)
+            gizmo->asset_drag.capture_input_system->EndMouseCapture(gizmo);
 
-        gizmo->asset_mouse_captured = false;
-        gizmo->asset_capture_input_system = nullptr;
+        gizmo->asset_drag.mouse_captured = false;
+        gizmo->asset_drag.capture_input_system = nullptr;
     }
 
     if (!input_system->BeginMouseCapture(gizmo))
         return false;
 
-    gizmo->asset_mouse_captured = true;
-    gizmo->asset_capture_input_system = input_system;
+    gizmo->asset_drag.mouse_captured = true;
+    gizmo->asset_drag.capture_input_system = input_system;
     return true;
 }
 
 static void EndAssetMouseCapture(GizmoECS *gizmo)
 {
-    if (!gizmo || !gizmo->asset_mouse_captured)
+    if (!gizmo || !gizmo->asset_drag.mouse_captured)
         return;
 
-    if (gizmo->asset_capture_input_system)
-        gizmo->asset_capture_input_system->EndMouseCapture(gizmo);
+    if (gizmo->asset_drag.capture_input_system)
+        gizmo->asset_drag.capture_input_system->EndMouseCapture(gizmo);
 
-    gizmo->asset_mouse_captured = false;
-    gizmo->asset_capture_input_system = nullptr;
+    gizmo->asset_drag.mouse_captured = false;
+    gizmo->asset_drag.capture_input_system = nullptr;
 }
 
 static int GetScalePlaneNormalAxisFromEntry(const GizmoECS::AssetVisualPrimitive &entry)
