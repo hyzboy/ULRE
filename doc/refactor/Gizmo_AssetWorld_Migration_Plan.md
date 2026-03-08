@@ -71,6 +71,14 @@ Acceptance:
 - Functional parity on gizmo editing workflow.
 - No regressions in current gizmo samples.
 
+Status (2026-03-08):
+- Step1 landed: mode switch now updates asset backend binding state in `GizmoUnified` with bridge-observable metadata changes.
+- For each mode entity (`Move/Rotate/Scale`):
+- `visibility_mask` toggles active/inactive.
+- `flags` keep render-pass base and active marker bit.
+- `override_ref.payload_ref` encodes current mode + active state.
+- `override_ref.revision` increments on mode sync to force deterministic bridge-visible state transitions.
+
 ## Phase GZ5: Legacy Sunset
 1. Make asset backend default.
 2. Keep `legacy` backend behind explicit opt-in for one transition cycle.

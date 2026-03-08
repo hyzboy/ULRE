@@ -157,6 +157,7 @@ struct GizmoECS
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> move_asset_instance;
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> rotate_asset_instance;
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> scale_asset_instance;
+    uint32_t asset_mode_revision_counter = 1u;
 
     hgl::ecs::World* move_world = nullptr;
     hgl::ecs::World* rotate_world = nullptr;
@@ -242,7 +243,11 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
     const bool rotate_active = (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal);
     const bool scale_active = (gizmo->current_mode == GizmoMode::ScaleLocal);
 
-    auto apply_active = [](const std::shared_ptr<hgl::ecs::AssetInstanceComponent> &comp, bool active)
+    const uint32_t mode_code = static_cast<uint32_t>(gizmo->current_mode);
+
+    auto apply_active = [gizmo, mode_code](const std::shared_ptr<hgl::ecs::AssetInstanceComponent> &comp,
+                                           bool active,
+                                           uint64_t base_payload)
     {
         if (!comp)
             return;
@@ -250,11 +255,17 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
         // Keep pass id in low 8 bits; use high bit as an active marker for future backend policies.
         comp->SetFlags(active ? (1u | (1u << 31)) : 1u);
         comp->SetVisibilityMask(active ? ~0ull : 0ull);
+
+        // Encode mode/active as payload metadata and bump revision so bridge can observe mode transitions.
+        hgl::ecs::AssetOverrideRef ref = comp->GetOverrideRef();
+        ref.payload_ref = base_payload ^ (static_cast<uint64_t>(mode_code) << 8) ^ (active ? 1ull : 0ull);
+        ref.revision = ++gizmo->asset_mode_revision_counter;
+        comp->SetOverrideRef(ref);
     };
 
-    apply_active(gizmo->move_asset_instance, move_active);
-    apply_active(gizmo->rotate_asset_instance, rotate_active);
-    apply_active(gizmo->scale_asset_instance, scale_active);
+    apply_active(gizmo->move_asset_instance, move_active, kGizmoMoveOverrideRef);
+    apply_active(gizmo->rotate_asset_instance, rotate_active, kGizmoRotateOverrideRef);
+    apply_active(gizmo->scale_asset_instance, scale_active, kGizmoScaleOverrideRef);
 }
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
