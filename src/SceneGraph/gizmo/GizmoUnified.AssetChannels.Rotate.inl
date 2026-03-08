@@ -15,7 +15,7 @@ static void ApplyAssetRotateDragChannel(GizmoECS *gizmo,
 
         if (gizmo->asset_drag.pick_group < 3)
         {
-            const bool local_space = (gizmo->asset_drag.mode == GizmoMode::RotateLocal);
+            const bool local_space = GizmoController::IsRotateMode(gizmo->asset_drag.mode) && GizmoController::IsLocalMode(gizmo->asset_drag.mode);
             axis = AssetAxisFromIndex(gizmo, gizmo->asset_drag.pick_group, local_space);
         }
         else if (camera_info)
@@ -31,7 +31,7 @@ static void ApplyAssetRotateDragChannel(GizmoECS *gizmo,
     }
 
     // Headless/no-pick fallback to previous deterministic drag behavior.
-    if (gizmo->asset_drag.mode == GizmoMode::RotateWorld)
+    if (GizmoController::IsRotateMode(gizmo->asset_drag.mode) && GizmoController::IsWorldMode(gizmo->asset_drag.mode))
     {
         const glm::quat yaw = glm::angleAxis(-dx * rotate_sensitivity, math::AxisVector::Y);
         const glm::quat pitch = glm::angleAxis(-dy * rotate_sensitivity, camera_right);

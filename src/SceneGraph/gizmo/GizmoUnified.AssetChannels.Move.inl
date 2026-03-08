@@ -10,7 +10,7 @@ static void ApplyAssetMoveDragChannel(GizmoECS *gizmo,
 {
     if (gizmo->asset_drag.pick_group >= 0 && gizmo->asset_drag.pick_group < 3)
     {
-        const bool local_space = (gizmo->asset_drag.mode == GizmoMode::MoveLocal);
+        const bool local_space = GizmoController::IsMoveMode(gizmo->asset_drag.mode) && GizmoController::IsLocalMode(gizmo->asset_drag.mode);
         const glm::vec3 move_axis = AssetAxisFromIndex(gizmo, gizmo->asset_drag.pick_group, local_space);
         float delta_world = AssetProjectMouseDeltaToAxisPixels(gizmo, mouse_coord, camera_info, viewport_info, move_axis);
 
@@ -35,7 +35,7 @@ static void ApplyAssetMoveDragChannel(GizmoECS *gizmo,
         gizmo->asset_drag.pick_plane_normal_axis >= 0 &&
         camera_info && viewport_info)
     {
-        const bool local_space = (gizmo->asset_drag.mode == GizmoMode::MoveLocal);
+        const bool local_space = GizmoController::IsMoveMode(gizmo->asset_drag.mode) && GizmoController::IsLocalMode(gizmo->asset_drag.mode);
         int u_axis = 0;
         int v_axis = 1;
         AssetPlaneAxesFromNormal(gizmo->asset_drag.pick_plane_normal_axis, u_axis, v_axis);
@@ -80,10 +80,11 @@ static void ApplyAssetMoveDragChannel(GizmoECS *gizmo,
     }
 
     // Center/plane fallback: move in camera-aligned screen plane.
-    const glm::vec3 drag_right = (gizmo->asset_drag.mode == GizmoMode::MoveLocal)
+    const bool move_local = GizmoController::IsMoveMode(gizmo->asset_drag.mode) && GizmoController::IsLocalMode(gizmo->asset_drag.mode);
+    const glm::vec3 drag_right = move_local
                                ? glm::normalize(gizmo->asset_drag.start_rotation * math::AxisVector::X)
                                : camera_right;
-    const glm::vec3 drag_up = (gizmo->asset_drag.mode == GizmoMode::MoveLocal)
+    const glm::vec3 drag_up = move_local
                             ? glm::normalize(gizmo->asset_drag.start_rotation * math::AxisVector::Y)
                             : camera_up;
 

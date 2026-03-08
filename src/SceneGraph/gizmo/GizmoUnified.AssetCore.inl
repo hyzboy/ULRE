@@ -1,9 +1,9 @@
-static GizmoECS::AssetDragState::ChannelState &GetAssetChannelState(GizmoECS *gizmo, GizmoMode mode)
+static GizmoPickState &GetAssetChannelState(GizmoECS *gizmo, GizmoMode mode)
 {
     switch (GizmoController::SlotForMode(mode))
     {
     case GizmoController::ChannelSlot::Move:
-        return gizmo->asset_drag.move;
+        return gizmo->move_mode.pick_state;  // Phase 2: Move pick state lives in move_mode
     case GizmoController::ChannelSlot::Rotate:
         return gizmo->asset_drag.rotate;
     case GizmoController::ChannelSlot::Scale:
@@ -18,6 +18,46 @@ static void ResetAssetActivePickState(GizmoECS *gizmo)
     gizmo->asset_drag.pick_group = -1;
     gizmo->asset_drag.pick_plane_normal_axis = -1;
     gizmo->asset_drag.pick_shape = GizmoShape::Sphere;
+}
+
+static void SetAssetActivePickState(GizmoECS *gizmo,
+                                    int pick_index,
+                                    int pick_group,
+                                    int pick_plane_normal_axis,
+                                    GizmoShape pick_shape)
+{
+    if (!gizmo)
+        return;
+
+    gizmo->asset_drag.pick_index = pick_index;
+    gizmo->asset_drag.pick_group = pick_group;
+    gizmo->asset_drag.pick_plane_normal_axis = pick_plane_normal_axis;
+    gizmo->asset_drag.pick_shape = pick_shape;
+}
+
+static void SyncAssetChannelPickFromActive(GizmoECS *gizmo, GizmoMode mode)
+{
+    if (!gizmo)
+        return;
+
+    auto &channel = GetAssetChannelState(gizmo, mode);
+    channel.pick_index = gizmo->asset_drag.pick_index;
+    channel.pick_group = gizmo->asset_drag.pick_group;
+    channel.pick_plane_normal_axis = gizmo->asset_drag.pick_plane_normal_axis;
+    channel.pick_shape = gizmo->asset_drag.pick_shape;
+}
+
+static void SyncAssetActivePickFromChannel(GizmoECS *gizmo, GizmoMode mode)
+{
+    if (!gizmo)
+        return;
+
+    const auto &channel = GetAssetChannelState(gizmo, mode);
+    SetAssetActivePickState(gizmo,
+                            channel.pick_index,
+                            channel.pick_group,
+                            channel.pick_plane_normal_axis,
+                            channel.pick_shape);
 }
 
 static float SanitizeFixedPixelDiameter(float pixel_diameter)

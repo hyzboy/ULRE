@@ -67,7 +67,16 @@ static std::vector<GizmoECS::AssetVisualPrimitive> *GetActiveAssetVisualList(Giz
     if (!gizmo)
         return nullptr;
 
-    return &GetActiveChannelRuntime(gizmo).primitives;
+    switch (GizmoController::SlotForMode(gizmo->current_mode))
+    {
+    case GizmoController::ChannelSlot::Move:
+        return &gizmo->move_mode.primitives;
+    case GizmoController::ChannelSlot::Rotate:
+        return &gizmo->rotate_channel.primitives;
+    case GizmoController::ChannelSlot::Scale:
+    default:
+        return &gizmo->scale_channel.primitives;
+    }
 }
 
 static void ApplyAssetVisualHighlightByIndex(GizmoECS *gizmo, int best_index)
@@ -122,7 +131,8 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
         }
     };
 
-    apply(GetActiveChannelRuntime(gizmo).primitives);
+    if (auto *items = GetActiveAssetVisualList(gizmo))
+        apply(*items);
 
     gizmo->asset_visual_highlighted = highlighted;
     gizmo->asset_hovered_visual_index = -1;

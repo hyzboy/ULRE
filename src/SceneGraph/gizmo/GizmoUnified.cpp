@@ -13,6 +13,10 @@
 #include"GizmoController.h"
 #include"GizmoInternal.h"
 #include"GizmoResource.h"
+#include"modes/GizmoModeRuntime.h"
+#include"modes/MoveGizmoMode.h"
+#include"modes/RotateGizmoMode.h"
+#include"modes/ScaleGizmoMode.h"
 #include<hgl/ecs/core/Context.h>
 #include<hgl/ecs/core/World.h>
 #include<hgl/ecs/core/Entity.h>
@@ -136,60 +140,45 @@ GizmoSystemResidentState g_gizmo_resident_state;
 
 struct GizmoECS
 {
-    struct AssetVisualPrimitive
-    {
-        std::shared_ptr<hgl::ecs::PrimitiveComponent> primitive;
-        std::shared_ptr<hgl::ecs::TransformComponent> transform;
-        MaterialInstance *base_material = nullptr;
-        GizmoShape shape = GizmoShape::Sphere;
-        int group_id = -1; ///< axis group: cylinder+cone/cube of same axis share same id; -1 = ungrouped
-    };
+    // Type alias so existing code (AssetVisual.inl etc.) using GizmoECS::AssetVisualPrimitive compiles unchanged.
+    using AssetVisualPrimitive = GizmoVisualPrimitive;
 
     hgl::ecs::ECSContext* world = nullptr;
     hgl::ecs::Entity* root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
     float fixed_pixel_diameter = GIZMO_FIXED_PIXEL_DIAMETER;
 
+    // Rotate and Scale keep the old ChannelRuntime layout; Move data now lives in move_mode.
     struct ChannelRuntime
     {
         hgl::ecs::Entity *entity = nullptr;
         std::shared_ptr<hgl::ecs::AssetInstanceComponent> asset_instance;
         std::vector<AssetVisualPrimitive> primitives;
-        // Optional channel-specific transform handle (used by rotate view ring).
+        // Optional transform handle (only used by RotateChannel for the view ring).
         std::shared_ptr<hgl::ecs::TransformComponent> aux_transform;
     };
 
-    std::array<ChannelRuntime, 3> channels;
+    ChannelRuntime rotate_channel;
+    ChannelRuntime scale_channel;
+
     std::vector<hgl::ecs::EntityID> asset_visual_entity_ids;
     uint32_t asset_mode_revision_counter = 1u;
     bool asset_visual_highlighted = false;
     int asset_hovered_visual_index = -1;
 
-    ChannelRuntime &Channel(const GizmoController::ChannelSlot slot)
-    {
-        return channels[static_cast<size_t>(slot)];
-    }
-    const ChannelRuntime &Channel(const GizmoController::ChannelSlot slot) const
-    {
-        return channels[static_cast<size_t>(slot)];
-    }
-    ChannelRuntime &MoveChannel() { return Channel(GizmoController::ChannelSlot::Move); }
-    ChannelRuntime &RotateChannel() { return Channel(GizmoController::ChannelSlot::Rotate); }
-    ChannelRuntime &ScaleChannel() { return Channel(GizmoController::ChannelSlot::Scale); }
-    const ChannelRuntime &MoveChannel() const { return Channel(GizmoController::ChannelSlot::Move); }
-    const ChannelRuntime &RotateChannel() const { return Channel(GizmoController::ChannelSlot::Rotate); }
-    const ChannelRuntime &ScaleChannel() const { return Channel(GizmoController::ChannelSlot::Scale); }
+    // Move data now lives in move_mode; provide same accessor name so call sites are unchanged.
+    MoveGizmoMode   &MoveChannel()       { return move_mode; }
+    const MoveGizmoMode &MoveChannel() const { return move_mode; }
+    ChannelRuntime  &RotateChannel()       { return rotate_channel; }
+    const ChannelRuntime &RotateChannel() const { return rotate_channel; }
+    ChannelRuntime  &ScaleChannel()        { return scale_channel; }
+    const ChannelRuntime &ScaleChannel() const { return scale_channel; }
 
     // Asset backend interaction state, split by logical channel.
     struct AssetDragState
     {
-        struct ChannelState
-        {
-            int pick_index = -1;
-            int pick_group = -1;
-            int pick_plane_normal_axis = -1;
-            GizmoShape pick_shape = GizmoShape::Sphere;
-        };
+        // Type alias so GetAssetChannelState can return GizmoPickState& for all modes.
+        using ChannelState = GizmoPickState;
 
         bool dragging = false;
         GizmoMode mode = GizmoMode::MoveWorld;
@@ -206,8 +195,7 @@ struct GizmoECS
         int pick_plane_normal_axis = -1;
         GizmoShape pick_shape = GizmoShape::Sphere;
 
-        // Per-channel pick snapshots for clearer state ownership.
-        ChannelState move;
+        // Per-channel pick snapshots: Move's is now in GizmoECS::move_mode.pick_state.
         ChannelState rotate;
         ChannelState scale;
     };
@@ -221,6 +209,11 @@ struct GizmoECS
     hgl::ecs::Entity* target_entity = nullptr;
     GizmoChangedCallback on_changed;
     GizmoController channel_controller;
+
+    // Mode objects: Move owns its visual+pick data; Rotate/Scale skeletons for Phase 4.
+    MoveGizmoMode   move_mode;
+    RotateGizmoMode rotate_mode;
+    ScaleGizmoMode  scale_mode;
 };
 
 // Asset backend initialization
@@ -343,17 +336,23 @@ static void DispatchActiveAssetDragChannel(GizmoECS *gizmo,
 
 static GizmoECS::ChannelRuntime &GetActiveChannelRuntime(GizmoECS *gizmo)
 {
-    return gizmo->Channel(GizmoController::SlotForMode(gizmo->current_mode));
+    // Move data now lives in move_mode; only Rotate/Scale use ChannelRuntime.
+    if (GizmoController::IsRotateMode(gizmo->current_mode))
+        return gizmo->rotate_channel;
+    return gizmo->scale_channel;
 }
 
 static const GizmoECS::ChannelRuntime &GetActiveChannelRuntime(const GizmoECS *gizmo)
 {
-    return gizmo->Channel(GizmoController::SlotForMode(gizmo->current_mode));
+    if (GizmoController::IsRotateMode(gizmo->current_mode))
+        return gizmo->rotate_channel;
+    return gizmo->scale_channel;
 }
 
 #include "GizmoUnified.AssetCore.inl"
 #include "GizmoUnified.AssetVisual.inl"
 #include "GizmoUnified.AssetChannels.inl"
+#include "channels/MoveGizmoChannel.Runtime.inl"
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
 {
@@ -601,8 +600,9 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     if (!gizmo)
         return;
 
-    // Phase 1: centralize mode-to-channel mapping through controller skeleton.
-    (void)gizmo->channel_controller.GetChannelForMode(mode);
+    // Phase-in OOP hook: notify active channel on mode activation.
+    if (auto *channel = gizmo->channel_controller.GetChannelForMode(mode))
+        channel->OnModeActivated(gizmo, mode);
 
     gizmo->current_mode = mode;
     std::cout << "[GizmoECS] Set mode=" << static_cast<int>(mode) << std::endl;
