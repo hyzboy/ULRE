@@ -795,34 +795,44 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
             constexpr float kRotateSensitivity = 0.005f;
             constexpr float kScaleSensitivity = 0.01f;
 
+            math::Vector3f camera_right = math::AxisVector::X;
+            math::Vector3f camera_up = math::AxisVector::Y;
+            if (camera_info)
+            {
+                camera_right = glm::normalize(math::Vector3f(camera_info->view[0][0], camera_info->view[1][0], camera_info->view[2][0]));
+                camera_up = glm::normalize(math::Vector3f(camera_info->view[0][1], camera_info->view[1][1], camera_info->view[2][1]));
+            }
+
             switch (gizmo->asset_drag_mode)
             {
             case GizmoMode::MoveWorld:
                 {
-                    glm::vec3 p = gizmo->asset_drag_start_position;
-                    p.x += dx * kMoveSensitivity;
-                    p.y -= dy * kMoveSensitivity;
+                    const glm::vec3 world_delta = camera_right * (dx * kMoveSensitivity)
+                                                + camera_up * (-dy * kMoveSensitivity);
+                    glm::vec3 p = gizmo->asset_drag_start_position + world_delta;
                     gizmo->root_transform->SetLocalPosition(p);
                 }
                 break;
             case GizmoMode::MoveLocal:
                 {
-                    const glm::vec3 local_delta(dx * kMoveSensitivity, -dy * kMoveSensitivity, 0.0f);
-                    const glm::vec3 world_delta = gizmo->asset_drag_start_rotation * local_delta;
+                    const glm::vec3 local_right = gizmo->asset_drag_start_rotation * math::AxisVector::X;
+                    const glm::vec3 local_up = gizmo->asset_drag_start_rotation * math::AxisVector::Y;
+                    const glm::vec3 world_delta = local_right * (dx * kMoveSensitivity)
+                                                + local_up * (-dy * kMoveSensitivity);
                     gizmo->root_transform->SetLocalPosition(gizmo->asset_drag_start_position + world_delta);
                 }
                 break;
             case GizmoMode::RotateWorld:
                 {
                     const glm::quat yaw = glm::angleAxis(-dx * kRotateSensitivity, math::AxisVector::Y);
-                    const glm::quat pitch = glm::angleAxis(-dy * kRotateSensitivity, math::AxisVector::X);
+                    const glm::quat pitch = glm::angleAxis(-dy * kRotateSensitivity, camera_right);
                     gizmo->root_transform->SetLocalRotation(glm::normalize(yaw * pitch * gizmo->asset_drag_start_rotation));
                 }
                 break;
             case GizmoMode::RotateLocal:
                 {
-                    const glm::vec3 local_x = gizmo->asset_drag_start_rotation * math::AxisVector::X;
-                    const glm::vec3 local_y = gizmo->asset_drag_start_rotation * math::AxisVector::Y;
+                    const glm::vec3 local_x = gizmo->asset_drag_start_rotation * camera_right;
+                    const glm::vec3 local_y = gizmo->asset_drag_start_rotation * camera_up;
 
                     const glm::quat yaw_local = glm::angleAxis(-dx * kRotateSensitivity, local_y);
                     const glm::quat pitch_local = glm::angleAxis(-dy * kRotateSensitivity, local_x);

@@ -89,6 +89,10 @@ Status (2026-03-08):
 - `RotateWorld`: yaw/pitch around world Y/X axes.
 - `RotateLocal`: yaw/pitch around start local Y/X axes.
 - Step4 landed: root visibility now gates all asset mode instances (`Move/Rotate/Scale`) in sync with mode selection, preventing hidden gizmo from being reactivated by mode switch.
+- Step5 landed: asset backend drag mapping now uses camera-space basis for world interaction:
+- Move uses camera right/up vectors.
+- Rotate world mode uses world-up yaw + camera-right pitch.
+- Local modes derive axes from start rotation combined with camera basis.
 
 ## Phase GZ5: Legacy Sunset
 1. Make asset backend default.
