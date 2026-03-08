@@ -120,3 +120,7 @@ Implemented (2026-03-08):
 - validates deterministic post-drag position/rotation/scale expectations
 - validates bridge runtime/draw packet stats around mode switches and interactions
 - validates deterministic replay: same synthetic input sequence yields identical final transform in repeated runs
+
+- `ECS_GizmoTransformParitySmoke` (under `src/ecs/tests/GizmoTransformParitySmokeTest.cpp`):
+- attempts legacy-vs-asset parity on deterministic non-interactive API sequence
+- in headless/no-render-resource environments, legacy path is explicitly skipped and asset sanity remains validated

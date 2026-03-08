@@ -551,3 +551,25 @@ target_link_libraries(ECS_GizmoAssetBackendSmoke
         ${Vulkan_LIBRARIES})
 
 set_property(TARGET ECS_GizmoAssetBackendSmoke PROPERTY FOLDER "ULRE/ECS/Tests")
+
+add_executable(ECS_GizmoTransformParitySmoke
+    tests/GizmoTransformParitySmokeTest.cpp)
+
+target_link_libraries(ECS_GizmoTransformParitySmoke
+    PRIVATE
+        CMCoreType
+        CMMath
+        CMCore
+        CMAssetsManage
+        CMUtil
+        CM2D
+        ULRE.ECS
+        ULRE.Vulkan
+        ULRE.ShaderGen
+        ULRE.SceneGraph
+        ULRE.InlineGeometry
+        ${HGL_MATH_LIB}
+        ${RENDER_LIBRARY}
+        ${Vulkan_LIBRARIES})
+
+set_property(TARGET ECS_GizmoTransformParitySmoke PROPERTY FOLDER "ULRE/ECS/Tests")
