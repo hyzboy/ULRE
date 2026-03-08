@@ -62,6 +62,59 @@ namespace
             return false;
         if (stats.rebuild_count_frame != 1u)
             return false;
+        if (stats.runtime_state_count != 1u)
+            return false;
+
+        const auto* resolved_state = bridge.FindRuntimeState(1ull);
+        if (!resolved_state)
+            return false;
+        if (resolved_state->asset_world_id != 1001ull)
+            return false;
+        if (resolved_state->resolved_version != 1u)
+            return false;
+
+        // Dirty-only path: resolved instance should now be clean; unresolved one remains dirty.
+        bridge.Update(0.016f);
+        const auto& stats_second = bridge.GetStats();
+        if (stats_second.instance_count != 2u)
+            return false;
+        if (stats_second.unresolved_count != 1u)
+            return false;
+        if (stats_second.dirty_count != 1u)
+            return false;
+        if (stats_second.rebuild_count_frame != 0u)
+            return false;
+        if (stats_second.runtime_state_count != 1u)
+            return false;
+
+        // Unresolved becomes resolved later.
+        AssetWorldDef late_def{};
+        late_def.id = 9999ull;
+        late_def.version = 2u;
+        late_def.name = "LateResolved";
+        if (!registry.Register(late_def))
+            return false;
+
+        bridge.Update(0.016f);
+        const auto& stats_third = bridge.GetStats();
+        if (stats_third.instance_count != 2u)
+            return false;
+        if (stats_third.unresolved_count != 0u)
+            return false;
+        if (stats_third.dirty_count != 1u)
+            return false;
+        if (stats_third.rebuild_count_frame != 1u)
+            return false;
+        if (stats_third.runtime_state_count != 2u)
+            return false;
+
+        const auto* late_state = bridge.FindRuntimeState(2ull);
+        if (!late_state)
+            return false;
+        if (late_state->asset_world_id != 9999ull)
+            return false;
+        if (late_state->resolved_version != 2u)
+            return false;
 
         return true;
     }

@@ -5,6 +5,15 @@
 
 namespace hgl::ecs
 {
+    const AssetInstanceBridgeSystem::RuntimeState* AssetInstanceBridgeSystem::FindRuntimeState(InstanceId id) const
+    {
+        auto it = runtime_states.find(id);
+        if (it == runtime_states.end())
+            return nullptr;
+
+        return &it->second;
+    }
+
     AssetInstanceBridgeSystem::AssetInstanceBridgeSystem(const std::string& name)
         : System(name)
     {
@@ -29,6 +38,7 @@ namespace hgl::ecs
         stats.unresolved_count = 0;
         stats.dirty_count = 0;
         stats.rebuild_count_frame = 0;
+        stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
         pending_rebuild.clear();
 
         if (!world)
@@ -55,6 +65,8 @@ namespace hgl::ecs
             if (dirty && resolved)
                 pending_rebuild.push_back(comp);
         }
+
+        stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
     }
 
     void AssetInstanceBridgeSystem::Rebuild(float, uint32_t max_instances_per_frame)
@@ -72,12 +84,27 @@ namespace hgl::ecs
             if (!comp)
                 continue;
 
-            // Placeholder for runtime proxy build/patch in later G2/G3 steps.
+            const auto* def = registry ? registry->Get(comp->GetAssetWorldID()) : nullptr;
+            if (!def)
+                continue;
+
+            RuntimeState& state = runtime_states[comp->GetInstanceID()];
+            if (state.instance_id == 0)
+            {
+                state.instance_id = comp->GetInstanceID();
+                state.proxy_handle = next_proxy_handle++;
+            }
+
+            state.asset_world_id = comp->GetAssetWorldID();
+            state.resolved_version = def->version;
+            ++state.rebuild_generation;
+
             comp->ClearAllChanges();
             ++processed;
         }
 
         stats.rebuild_count_frame = processed;
+        stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
     }
 
     void AssetInstanceBridgeSystem::SyncRender(float)

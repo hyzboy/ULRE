@@ -2,10 +2,12 @@
 
 #include <hgl/ecs/core/System.h>
 #include <hgl/ecs/core/AssetWorldRegistry.h>
+#include <hgl/ecs/core/AssetTypes.h>
 
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <unordered_map>
 
 namespace hgl::ecs
 {
@@ -15,12 +17,22 @@ namespace hgl::ecs
     class AssetInstanceBridgeSystem : public System
     {
     public:
+        struct RuntimeState
+        {
+            InstanceId instance_id = 0;
+            AssetWorldId asset_world_id = 0;
+            AssetVersion resolved_version = 0;
+            uint64_t proxy_handle = 0;
+            uint32_t rebuild_generation = 0;
+        };
+
         struct Stats
         {
             uint32_t instance_count = 0;
             uint32_t unresolved_count = 0;
             uint32_t dirty_count = 0;
             uint32_t rebuild_count_frame = 0;
+            uint32_t runtime_state_count = 0;
         };
 
     private:
@@ -28,7 +40,9 @@ namespace hgl::ecs
         IAssetWorldRegistry* registry = nullptr;
         uint32_t rebuild_budget = 256;
         Stats stats{};
+        uint64_t next_proxy_handle = 1;
         std::vector<std::weak_ptr<AssetInstanceComponent>> pending_rebuild;
+        std::unordered_map<InstanceId, RuntimeState> runtime_states;
 
     public:
         explicit AssetInstanceBridgeSystem(const std::string& name = "AssetInstanceBridgeSystem");
@@ -41,6 +55,8 @@ namespace hgl::ecs
         uint32_t GetRebuildBudget() const { return rebuild_budget; }
 
         const Stats& GetStats() const { return stats; }
+        size_t GetRuntimeStateCount() const { return runtime_states.size(); }
+        const RuntimeState* FindRuntimeState(InstanceId id) const;
 
         void Initialize() override;
         void Update(float deltaTime) override;
