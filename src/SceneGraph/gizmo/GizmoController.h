@@ -21,11 +21,36 @@ public:
         Scale = 2,
     };
 
+    static bool IsMoveMode(GizmoMode mode)
+    {
+        return mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal;
+    }
+
+    static bool IsRotateMode(GizmoMode mode)
+    {
+        return mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal;
+    }
+
+    static bool IsScaleMode(GizmoMode mode)
+    {
+        return mode == GizmoMode::ScaleLocal;
+    }
+
+    static bool IsLocalMode(GizmoMode mode)
+    {
+        return mode == GizmoMode::MoveLocal || mode == GizmoMode::RotateLocal || mode == GizmoMode::ScaleLocal;
+    }
+
+    static bool IsWorldMode(GizmoMode mode)
+    {
+        return mode == GizmoMode::MoveWorld || mode == GizmoMode::RotateWorld;
+    }
+
     static ChannelSlot SlotForMode(GizmoMode mode)
     {
-        if (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal)
+        if (IsMoveMode(mode))
             return ChannelSlot::Move;
-        if (mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal)
+        if (IsRotateMode(mode))
             return ChannelSlot::Rotate;
         return ChannelSlot::Scale;
     }

@@ -281,30 +281,6 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimi
     return best_index;
 }
 
-static int PickMoveAssetVisualIndex(GizmoECS *gizmo,
-                                    const math::Vector2i &mouse_coord,
-                                    const CameraInfo *camera_info,
-                                    const ViewportInfo *viewport_info)
-{
-    return PickBestAssetVisualIndex(gizmo->MoveChannel().primitives, gizmo, mouse_coord, camera_info, viewport_info);
-}
-
-static int PickRotateAssetVisualIndex(GizmoECS *gizmo,
-                                      const math::Vector2i &mouse_coord,
-                                      const CameraInfo *camera_info,
-                                      const ViewportInfo *viewport_info)
-{
-    return PickBestAssetVisualIndex(gizmo->RotateChannel().primitives, gizmo, mouse_coord, camera_info, viewport_info);
-}
-
-static int PickScaleAssetVisualIndex(GizmoECS *gizmo,
-                                     const math::Vector2i &mouse_coord,
-                                     const CameraInfo *camera_info,
-                                     const ViewportInfo *viewport_info)
-{
-    return PickBestAssetVisualIndex(gizmo->ScaleChannel().primitives, gizmo, mouse_coord, camera_info, viewport_info);
-}
-
 static void UpdateAssetVisualHover(GizmoECS *gizmo,
                                    const math::Vector2i &mouse_coord,
                                    const CameraInfo *camera_info,
@@ -314,27 +290,15 @@ static void UpdateAssetVisualHover(GizmoECS *gizmo,
         return;
 
     int best_index = -1;
-    switch (gizmo->current_mode)
-    {
-    case GizmoMode::MoveWorld:
-    case GizmoMode::MoveLocal:
-        best_index = PickMoveAssetVisualIndex(gizmo, mouse_coord, camera_info, viewport_info);
-        break;
-    case GizmoMode::RotateWorld:
-    case GizmoMode::RotateLocal:
-        best_index = PickRotateAssetVisualIndex(gizmo, mouse_coord, camera_info, viewport_info);
-        break;
-    case GizmoMode::ScaleLocal:
-        best_index = PickScaleAssetVisualIndex(gizmo, mouse_coord, camera_info, viewport_info);
-        break;
-    }
+    auto *items = GetActiveAssetVisualList(gizmo);
+    if (items)
+        best_index = PickBestAssetVisualIndex(*items, gizmo, mouse_coord, camera_info, viewport_info);
 
     ApplyAssetVisualHighlightByIndex(gizmo, best_index);
 
     auto &channel = GetAssetChannelState(gizmo, gizmo->current_mode);
     if (best_index >= 0)
     {
-        auto *items = GetActiveAssetVisualList(gizmo);
         if (items && best_index < static_cast<int>(items->size()))
         {
             const auto &entry = (*items)[best_index];

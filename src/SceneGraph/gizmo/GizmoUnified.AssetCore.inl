@@ -1,12 +1,15 @@
 static GizmoECS::AssetDragState::ChannelState &GetAssetChannelState(GizmoECS *gizmo, GizmoMode mode)
 {
-    if (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal)
+    switch (GizmoController::SlotForMode(mode))
+    {
+    case GizmoController::ChannelSlot::Move:
         return gizmo->asset_drag.move;
-
-    if (mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal)
+    case GizmoController::ChannelSlot::Rotate:
         return gizmo->asset_drag.rotate;
-
-    return gizmo->asset_drag.scale;
+    case GizmoController::ChannelSlot::Scale:
+    default:
+        return gizmo->asset_drag.scale;
+    }
 }
 
 static void ResetAssetActivePickState(GizmoECS *gizmo)
@@ -63,9 +66,9 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
     if (!gizmo)
         return;
 
-    const bool move_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal);
-    const bool rotate_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal);
-    const bool scale_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::ScaleLocal);
+    const bool move_active = gizmo->root_visible && GizmoController::IsMoveMode(gizmo->current_mode);
+    const bool rotate_active = gizmo->root_visible && GizmoController::IsRotateMode(gizmo->current_mode);
+    const bool scale_active = gizmo->root_visible && GizmoController::IsScaleMode(gizmo->current_mode);
 
     const uint32_t mode_code = static_cast<uint32_t>(gizmo->current_mode);
 
@@ -129,8 +132,8 @@ static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
             t->SetLocalRotation(q);
     };
 
-    const bool move_local = (gizmo->current_mode == GizmoMode::MoveLocal);
-    const bool rotate_local = (gizmo->current_mode == GizmoMode::RotateLocal);
+    const bool move_local = GizmoController::IsMoveMode(gizmo->current_mode) && GizmoController::IsLocalMode(gizmo->current_mode);
+    const bool rotate_local = GizmoController::IsRotateMode(gizmo->current_mode) && GizmoController::IsLocalMode(gizmo->current_mode);
 
     // Child world rotation = root_rot * child_local_rot.
     // World mode wants axis fixed in world space -> child_local_rot = inverse(root_rot).

@@ -94,6 +94,7 @@ SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
                             gizmo/GizmoInternal.h
                             gizmo/GizmoResource.h
                             gizmo/GizmoResource.cpp
+                            gizmo/GizmoUnified.AssetUpdate.inl
                             gizmo/channels/IGizmoChannel.h
                             gizmo/channels/MoveGizmoChannel.h
                             gizmo/channels/RotateGizmoChannel.h
