@@ -10,6 +10,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/EntityManager.h
     ${ECS_INCLUDE_PATH}/core/EntityQuery.h
     ${ECS_INCLUDE_PATH}/core/AssetTypes.h
+    ${ECS_INCLUDE_PATH}/core/AssetWorldRegistry.h
     ${ECS_INCLUDE_PATH}/core/System.h
     ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
     ${ECS_INCLUDE_PATH}/core/Context.h
@@ -29,6 +30,7 @@ set(ECS_CORE_FILES
     core/Entity.cpp
     core/EntityManager.cpp
     core/EntityQuery.cpp
+    core/AssetWorldRegistry.cpp
     core/System.cpp
     core/SystemProfiler.cpp
     core/Context.cpp
@@ -69,6 +71,11 @@ set(ECS_SYS_02_TickTransform_TransformSystem_FILES
     systems/tick/TransformSystem.cpp
     ${ECS_INCLUDE_PATH}/components/TransformComponent.h
     components/TransformComponent.cpp
+)
+
+set(ECS_SYS_02C_TickTransform_AssetInstanceBridgeSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/tick/AssetInstanceBridgeSystem.h
+    systems/tick/AssetInstanceBridgeSystem.cpp
 )
 
 set(ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES
@@ -308,6 +315,7 @@ set(ECS_SOURCE
     ${ECS_SYS_00_RenderSystemCore_FILES}
     ${ECS_SYS_01_TickInput_InputSystem_FILES}
     ${ECS_SYS_02_TickTransform_TransformSystem_FILES}
+    ${ECS_SYS_02C_TickTransform_AssetInstanceBridgeSystem_FILES}
     ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES}
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
@@ -348,6 +356,7 @@ source_group("ECS\\Components" FILES ${ECS_COMPONENT_FILES})
 source_group("ECS\\Systems\\00 RenderSystemCore" FILES ${ECS_SYS_00_RenderSystemCore_FILES})
 source_group("ECS\\Systems\\01 TickInput_InputSystem" FILES ${ECS_SYS_01_TickInput_InputSystem_FILES})
 source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02_TickTransform_TransformSystem_FILES})
+source_group("ECS\\Systems\\02C TickTransform_AssetInstanceBridgeSystem" FILES ${ECS_SYS_02C_TickTransform_AssetInstanceBridgeSystem_FILES})
 source_group("ECS\\Systems\\03 TickTransform_BoundingBoxUpdateSystem" FILES ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES})
 source_group("ECS\\Systems\\04 TickTransform_VisibilitySystem" FILES ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})
@@ -432,3 +441,25 @@ target_link_libraries(ECS_AssetInstanceSerializationSmoke
         ${Vulkan_LIBRARIES})
 
 set_property(TARGET ECS_AssetInstanceSerializationSmoke PROPERTY FOLDER "ULRE/ECS/Tests")
+
+add_executable(ECS_AssetInstanceBridgeSmoke
+    tests/AssetInstanceBridgeSmokeTest.cpp)
+
+target_link_libraries(ECS_AssetInstanceBridgeSmoke
+    PRIVATE
+        CMCoreType
+        CMMath
+        CMCore
+        CMAssetsManage
+        CMUtil
+        CM2D
+        ULRE.ECS
+        ULRE.Vulkan
+        ULRE.ShaderGen
+        ULRE.SceneGraph
+        ULRE.InlineGeometry
+        ${HGL_MATH_LIB}
+        ${RENDER_LIBRARY}
+        ${Vulkan_LIBRARIES})
+
+set_property(TARGET ECS_AssetInstanceBridgeSmoke PROPERTY FOLDER "ULRE/ECS/Tests")
