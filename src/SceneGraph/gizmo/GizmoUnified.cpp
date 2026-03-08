@@ -172,6 +172,14 @@ struct GizmoECS
     int last_scale_axis = -1;
     int last_move_axis = -1;
 
+    // Asset backend minimal interaction state (GZ4 step2).
+    bool asset_dragging = false;
+    GizmoMode asset_drag_mode = GizmoMode::MoveWorld;
+    math::Vector2i asset_drag_start_mouse{0, 0};
+    math::Vector3f asset_drag_start_position{0.0f, 0.0f, 0.0f};
+    glm::quat asset_drag_start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
+    math::Vector3f asset_drag_start_scale{1.0f, 1.0f, 1.0f};
+
     GizmoMode current_mode = GizmoMode::MoveWorld;
     bool allow_negative_scale = true;
 
@@ -742,13 +750,101 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
 
     if (gizmo->backend != GizmoECS::Backend::LegacySubWorld)
     {
-        if (gizmo->target_entity && gizmo->root_transform)
+        if (!gizmo->root_transform)
+            return;
+
+        if (gizmo->target_entity && !gizmo->asset_dragging)
         {
             auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
             if (target_transform)
                 gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
                                                    target_transform->GetLocalRotation(),
                                                    target_transform->GetLocalScale());
+        }
+
+        const math::Vector3f prev_pos = gizmo->root_transform->GetLocalPosition();
+        const glm::quat prev_rot = gizmo->root_transform->GetLocalRotation();
+        const math::Vector3f prev_scale = gizmo->root_transform->GetLocalScale();
+
+        if (left_pressed)
+        {
+            gizmo->asset_dragging = true;
+            gizmo->asset_drag_mode = gizmo->current_mode;
+            gizmo->asset_drag_start_mouse = mouse_coord;
+            gizmo->asset_drag_start_position = prev_pos;
+            gizmo->asset_drag_start_rotation = prev_rot;
+            gizmo->asset_drag_start_scale = prev_scale;
+        }
+
+        if (left_released)
+        {
+            gizmo->asset_dragging = false;
+        }
+
+        if (gizmo->asset_dragging && left_down)
+        {
+            const float dx = static_cast<float>(mouse_coord.x - gizmo->asset_drag_start_mouse.x);
+            const float dy = static_cast<float>(mouse_coord.y - gizmo->asset_drag_start_mouse.y);
+
+            constexpr float kMoveSensitivity = 0.01f;
+            constexpr float kRotateSensitivity = 0.005f;
+            constexpr float kScaleSensitivity = 0.01f;
+
+            switch (gizmo->asset_drag_mode)
+            {
+            case GizmoMode::MoveWorld:
+            case GizmoMode::MoveLocal:
+                {
+                    glm::vec3 p = gizmo->asset_drag_start_position;
+                    p.x += dx * kMoveSensitivity;
+                    p.y -= dy * kMoveSensitivity;
+                    gizmo->root_transform->SetLocalPosition(p);
+                }
+                break;
+            case GizmoMode::RotateWorld:
+            case GizmoMode::RotateLocal:
+                {
+                    const glm::quat yaw = glm::angleAxis(-dx * kRotateSensitivity, math::AxisVector::Y);
+                    const glm::quat pitch = glm::angleAxis(-dy * kRotateSensitivity, math::AxisVector::X);
+                    gizmo->root_transform->SetLocalRotation(glm::normalize(yaw * pitch * gizmo->asset_drag_start_rotation));
+                }
+                break;
+            case GizmoMode::ScaleLocal:
+                {
+                    const float scale_delta = 1.0f + (-dy) * kScaleSensitivity;
+                    const float ratio = std::clamp(scale_delta, 0.05f, 10.0f);
+                    glm::vec3 s = gizmo->asset_drag_start_scale * ratio;
+                    NormalizeScaleByPolicy(s, gizmo->allow_negative_scale);
+                    gizmo->root_transform->SetLocalScale(s);
+                }
+                break;
+            }
+        }
+
+        const math::Vector3f cur_pos = gizmo->root_transform->GetLocalPosition();
+        const glm::quat cur_rot = gizmo->root_transform->GetLocalRotation();
+        const math::Vector3f cur_scale = gizmo->root_transform->GetLocalScale();
+        const bool changed = IsTransformChanged(prev_pos, prev_rot, prev_scale,
+                                                cur_pos, cur_rot, cur_scale);
+
+        if (gizmo->target_entity)
+        {
+            auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
+            if (target_transform && changed)
+                target_transform->SetLocalTRS(cur_pos, cur_rot, cur_scale);
+        }
+
+        if (changed && gizmo->on_changed)
+        {
+            GizmoTransformChange change;
+            change.previous_position = prev_pos;
+            change.current_position = cur_pos;
+            change.previous_rotation = prev_rot;
+            change.current_rotation = cur_rot;
+            change.previous_scale = prev_scale;
+            change.current_scale = cur_scale;
+            change.mode = gizmo->current_mode;
+            gizmo->on_changed(change);
         }
 
         return;

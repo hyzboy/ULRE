@@ -78,6 +78,11 @@ Status (2026-03-08):
 - `flags` keep render-pass base and active marker bit.
 - `override_ref.payload_ref` encodes current mode + active state.
 - `override_ref.revision` increments on mode sync to force deterministic bridge-visible state transitions.
+- Step2 landed: asset backend now has a minimal drag interaction mapping in `UpdateTransformGizmo`.
+- Move mode: screen delta -> root local position.
+- Rotate mode: screen delta -> yaw/pitch quaternion delta.
+- Scale mode: screen Y delta -> uniform local scale ratio with policy clamp.
+- Target transform sync and `GizmoChangedCallback` are preserved in asset mode.
 
 ## Phase GZ5: Legacy Sunset
 1. Make asset backend default.
