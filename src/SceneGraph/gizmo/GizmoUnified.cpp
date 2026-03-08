@@ -143,31 +143,15 @@ struct GizmoECS
         int group_id = -1; ///< axis group: cylinder+cone/cube of same axis share same id; -1 = ungrouped
     };
 
-    enum class Backend : uint8_t
-    {
-        LegacySubWorld = 0,
-        AssetWorldBridge = 1,
-    };
-
     hgl::ecs::ECSContext* world = nullptr;
     hgl::ecs::Entity* root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
-    Backend backend = Backend::LegacySubWorld;
     float fixed_pixel_diameter = GIZMO_FIXED_PIXEL_DIAMETER;
 
-    // 保存各个 Gizmo 的内部指针（内部实现使用）
-    void* move_impl = nullptr;     // MoveGizmoImpl*
-    void* rotate_impl = nullptr;   // RotateGizmoImpl*
-    void* scale_impl = nullptr;    // ScaleGizmoImpl*
-
-    // 对应的 SubWorld 和 Entity
+    // Asset backend entities
     hgl::ecs::Entity* move_entity = nullptr;
     hgl::ecs::Entity* rotate_entity = nullptr;
     hgl::ecs::Entity* scale_entity = nullptr;
-
-    std::shared_ptr<hgl::ecs::SubWorldComponent> move_subworld;
-    std::shared_ptr<hgl::ecs::SubWorldComponent> rotate_subworld;
-    std::shared_ptr<hgl::ecs::SubWorldComponent> scale_subworld;
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> move_asset_instance;
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> rotate_asset_instance;
     std::shared_ptr<hgl::ecs::AssetInstanceComponent> scale_asset_instance;
@@ -179,19 +163,6 @@ struct GizmoECS
     uint32_t asset_mode_revision_counter = 1u;
     bool asset_visual_highlighted = false;
     int asset_hovered_visual_index = -1;
-
-    hgl::ecs::World* move_world = nullptr;
-    hgl::ecs::World* rotate_world = nullptr;
-    hgl::ecs::World* scale_world = nullptr;
-
-    float last_rotate_angle = 0.0f;
-    float last_scale_value = 1.0f;
-    float last_scale_value_u = 1.0f;
-    float last_scale_value_v = 1.0f;
-    float last_move_dist = 0.0f;
-    int last_rotate_axis = -1;
-    int last_scale_axis = -1;
-    int last_move_axis = -1;
 
     // Asset backend interaction state, split by logical channel.
     struct AssetDragState
@@ -235,42 +206,7 @@ struct GizmoECS
     GizmoChangedCallback on_changed;
 };
 
-static GizmoECS::Backend ResolveGizmoBackend()
-{
-    const char *env = std::getenv("ULRE_GIZMO_BACKEND");
-    if (!env || !*env)
-        return GizmoECS::Backend::AssetWorldBridge;
-
-    // Planned values: "legacy" or "asset". Unknown values fallback safely.
-    if (std::strcmp(env, "asset") == 0)
-        return GizmoECS::Backend::AssetWorldBridge;
-
-    return GizmoECS::Backend::LegacySubWorld;
-}
-
-static GizmoECS::Backend SelectSupportedBackend(hgl::ecs::ECSContext *world)
-{
-    const auto requested = ResolveGizmoBackend();
-    if (requested == GizmoECS::Backend::AssetWorldBridge)
-    {
-        auto bridge = world ? world->GetSystem<hgl::ecs::AssetInstanceBridgeSystem>() : nullptr;
-        if (!bridge && world)
-            bridge = world->RegisterTickSystem<hgl::ecs::AssetInstanceBridgeSystem>();
-
-        if (!bridge)
-        {
-            std::cout << "[GizmoECS] ULRE_GIZMO_BACKEND=asset requested, but bridge is unavailable; fallback to legacy" << std::endl;
-            return GizmoECS::Backend::LegacySubWorld;
-        }
-
-        std::cout << "[GizmoECS] ULRE_GIZMO_BACKEND=asset enabled" << std::endl;
-        return GizmoECS::Backend::AssetWorldBridge;
-    }
-
-    return GizmoECS::Backend::LegacySubWorld;
-}
-
-// Legacy internal entry points (implementation body kept unchanged).
+// Asset backend initialization
 GizmoECS *CreateGizmoECS(hgl::ecs::ECSContext *world,
                          const char *name,
                          const math::Vector3f &position);
@@ -294,7 +230,6 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                           bool left_pressed,
                           bool left_released);
 
-static void SyncAllSubGizmoTransforms(GizmoECS *gizmo);
 static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo);
 static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
                                              const CameraInfo *camera_info,
@@ -372,10 +307,6 @@ static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
             {
                 target_transform->SetLocalScale(scale);
                 updated = true;
-
-                // Asset backend keeps gizmo visual scale independent from target scale.
-                if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
-                    gizmo->root_transform->SetLocalScale(scale);
             }
         }
     }
@@ -391,66 +322,6 @@ static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
             updated = true;
         }
     }
-
-    if (updated)
-    {
-        SyncAllSubGizmoTransforms(gizmo);
-    }
-}
-
-static void SyncAllSubGizmoTransforms(GizmoECS *gizmo)
-{
-    if(!gizmo || !gizmo->root_transform)
-        return;
-
-    if(gizmo->backend != GizmoECS::Backend::LegacySubWorld)
-        return;
-
-    const math::Vector3f root_pos = gizmo->root_transform->GetLocalPosition();
-    const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
-
-    SetMoveGizmoPosition((MoveGizmoImpl*)gizmo->move_impl, root_pos);
-    SetMoveGizmoRotation((MoveGizmoImpl*)gizmo->move_impl,
-                         gizmo->current_mode == GizmoMode::MoveLocal ? root_rot : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-
-    SetRotateGizmoPosition((RotateGizmoImpl*)gizmo->rotate_impl, root_pos);
-    SetRotateGizmoRotation((RotateGizmoImpl*)gizmo->rotate_impl,
-                          gizmo->current_mode == GizmoMode::RotateLocal ? root_rot : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-
-    SetScaleGizmoPosition((ScaleGizmoImpl*)gizmo->scale_impl, root_pos);
-    SetScaleGizmoRotation((ScaleGizmoImpl*)gizmo->scale_impl, root_rot);
-}
-
-static bool IsCurrentModeDragging(const GizmoECS *gizmo)
-{
-    if(!gizmo)
-        return false;
-
-    if(gizmo->backend != GizmoECS::Backend::LegacySubWorld)
-        return false;
-
-    switch(gizmo->current_mode)
-    {
-    case GizmoMode::MoveWorld:
-    case GizmoMode::MoveLocal:
-        {
-            MoveGizmoInteractionState state;
-            return GetMoveGizmoInteractionState((const MoveGizmoImpl*)gizmo->move_impl, state) && state.dragging;
-        }
-    case GizmoMode::RotateWorld:
-    case GizmoMode::RotateLocal:
-        {
-            RotateGizmoInteractionState state;
-            return GetRotateGizmoInteractionState((const RotateGizmoImpl*)gizmo->rotate_impl, state) && state.dragging;
-        }
-    case GizmoMode::ScaleLocal:
-        {
-            ScaleGizmoInteractionState state;
-            return GetScaleGizmoInteractionState((const ScaleGizmoImpl*)gizmo->scale_impl, state) && state.dragging;
-        }
-    }
-
-    return false;
 }
 
 
@@ -463,7 +334,6 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     auto *gizmo = new GizmoECS;
     gizmo->world = world;
-    gizmo->backend = SelectSupportedBackend(world);
     EnsureGizmoAssetWorldDefinitions(world);
     std::cout << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo") << std::endl;
 
@@ -496,43 +366,16 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         auto move_transform = gizmo->move_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         move_transform->SetParent(gizmo->root->GetID());
-        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
-        {
-            move_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
-                                                          GIZMO_ARROW_LENGTH * 2.0f,
-                                                          0.01f);
-            move_transform->SetFixedPixelSizingEnabled(true);
-        }
-
-        if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
-        {
-            auto sub_world = gizmo->move_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
-            gizmo->move_subworld = sub_world;
-            gizmo->move_world = sub_world->GetSubWorld();
-
-            if (!gizmo->move_world)
-            {
-                std::cout << "[GizmoECS] Move subworld is null" << std::endl;
-                DestroyTransformGizmo(gizmo);
-                return nullptr;
-            }
-
-            gizmo->move_impl = (void*)CreateMoveGizmoImpl(gizmo->move_world, "GizmoMove", math::Vector3f(0, 0, 0));
-            if (!gizmo->move_impl)
-            {
-                std::cout << "[GizmoECS] Create move gizmo failed" << std::endl;
-                DestroyTransformGizmo(gizmo);
-                return nullptr;
-            }
-        }
+        move_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+                                                      GIZMO_ARROW_LENGTH * 2.0f,
+                                                      0.01f);
+        move_transform->SetFixedPixelSizingEnabled(true);
 
         gizmo->move_asset_instance = AttachGizmoAssetInstance(gizmo->move_entity,
                                                                kGizmoMoveAssetWorldId,
                                                                ComposeGizmoInstanceId(gizmo->root->GetID(), 1u),
                                                                kGizmoMoveOverrideRef);
-
-        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
-            BuildMoveAssetVisual(gizmo, gizmo->move_entity);
+        BuildMoveAssetVisual(gizmo, gizmo->move_entity);
     }
 
     // Rotate Gizmo
@@ -548,43 +391,16 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         auto rotate_transform = gizmo->rotate_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         rotate_transform->SetParent(gizmo->root->GetID());
-        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
-        {
-            rotate_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
-                                                            GIZMO_ARROW_LENGTH * 2.0f,
-                                                            0.01f);
-            rotate_transform->SetFixedPixelSizingEnabled(true);
-        }
-
-        if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
-        {
-            auto sub_world = gizmo->rotate_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
-            gizmo->rotate_subworld = sub_world;
-            gizmo->rotate_world = sub_world->GetSubWorld();
-
-            if (!gizmo->rotate_world)
-            {
-                std::cout << "[GizmoECS] Rotate subworld is null" << std::endl;
-                DestroyTransformGizmo(gizmo);
-                return nullptr;
-            }
-
-            gizmo->rotate_impl = (void*)CreateRotateGizmoImpl(gizmo->rotate_world, "GizmoRotate", math::Vector3f(0, 0, 0));
-            if (!gizmo->rotate_impl)
-            {
-                std::cout << "[GizmoECS] Create rotate gizmo failed" << std::endl;
-                DestroyTransformGizmo(gizmo);
-                return nullptr;
-            }
-        }
+        rotate_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+                                                        GIZMO_ARROW_LENGTH * 2.0f,
+                                                        0.01f);
+        rotate_transform->SetFixedPixelSizingEnabled(true);
 
         gizmo->rotate_asset_instance = AttachGizmoAssetInstance(gizmo->rotate_entity,
                                                                  kGizmoRotateAssetWorldId,
                                                                  ComposeGizmoInstanceId(gizmo->root->GetID(), 2u),
                                                                  kGizmoRotateOverrideRef);
-
-        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
-            BuildRotateAssetVisual(gizmo, gizmo->rotate_entity);
+        BuildRotateAssetVisual(gizmo, gizmo->rotate_entity);
     }
 
     // Scale Gizmo
@@ -600,48 +416,20 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         auto scale_transform = gizmo->scale_entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         scale_transform->SetParent(gizmo->root->GetID());
-        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
-        {
-            scale_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
-                                                           GIZMO_ARROW_LENGTH * 2.0f,
-                                                           0.01f);
-            scale_transform->SetFixedPixelSizingEnabled(true);
-        }
-
-        if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
-        {
-            auto sub_world = gizmo->scale_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
-            gizmo->scale_subworld = sub_world;
-            gizmo->scale_world = sub_world->GetSubWorld();
-
-            if (!gizmo->scale_world)
-            {
-                std::cout << "[GizmoECS] Scale subworld is null" << std::endl;
-                DestroyTransformGizmo(gizmo);
-                return nullptr;
-            }
-
-            gizmo->scale_impl = (void*)CreateScaleGizmoImpl(gizmo->scale_world, "GizmoScale", math::Vector3f(0, 0, 0));
-            if (!gizmo->scale_impl)
-            {
-                std::cout << "[GizmoECS] Create scale gizmo failed" << std::endl;
-                DestroyTransformGizmo(gizmo);
-                return nullptr;
-            }
-        }
+        scale_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
+                                                       GIZMO_ARROW_LENGTH * 2.0f,
+                                                       0.01f);
+        scale_transform->SetFixedPixelSizingEnabled(true);
 
         gizmo->scale_asset_instance = AttachGizmoAssetInstance(gizmo->scale_entity,
                                                                 kGizmoScaleAssetWorldId,
                                                                 ComposeGizmoInstanceId(gizmo->root->GetID(), 3u),
                                                                 kGizmoScaleOverrideRef);
-
-        if (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
-            BuildScaleAssetVisual(gizmo, gizmo->scale_entity);
+        BuildScaleAssetVisual(gizmo, gizmo->scale_entity);
     }
 
     // Initialize with Move mode active
     SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
-    SyncAllSubGizmoTransforms(gizmo);
     std::cout << "[GizmoECS] Create done" << std::endl;
 
     return gizmo;
@@ -669,21 +457,6 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
     std::cout << "[GizmoECS] Destroy begin" << std::endl;
 
     EndAssetMouseCapture(gizmo);
-
-    if (gizmo->move_impl)
-    {
-        DestroyMoveGizmoImpl((MoveGizmoImpl*)gizmo->move_impl);
-    }
-
-    if (gizmo->rotate_impl)
-    {
-        DestroyRotateGizmoImpl((RotateGizmoImpl*)gizmo->rotate_impl);
-    }
-
-    if (gizmo->scale_impl)
-    {
-        DestroyScaleGizmoImpl((ScaleGizmoImpl*)gizmo->scale_impl);
-    }
 
     if (gizmo->world)
     {
@@ -715,25 +488,6 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     gizmo->current_mode = mode;
     std::cout << "[GizmoECS] Set mode=" << static_cast<int>(mode) << std::endl;
 
-    // Set visibility based on mode
-    const bool move_active = (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal);
-    const bool rotate_active = (mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal);
-
-    if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
-    {
-        SetMoveGizmoVisible((MoveGizmoImpl*)gizmo->move_impl, move_active);
-        SetRotateGizmoVisible((RotateGizmoImpl*)gizmo->rotate_impl, rotate_active);
-        SetScaleGizmoVisible((ScaleGizmoImpl*)gizmo->scale_impl, mode == GizmoMode::ScaleLocal);
-    }
-
-    // Pause non-active sub-worlds to avoid concurrent rendering/update artifacts
-    if (gizmo->move_subworld)
-        gizmo->move_subworld->SetPaused(!move_active);
-    if (gizmo->rotate_subworld)
-        gizmo->rotate_subworld->SetPaused(!rotate_active);
-    if (gizmo->scale_subworld)
-        gizmo->scale_subworld->SetPaused(mode != GizmoMode::ScaleLocal);
-
     SyncGizmoAssetModeBindings(gizmo);
     SyncAssetSubGizmoLocalTransforms(gizmo);
     EndAssetMouseCapture(gizmo);
@@ -741,17 +495,6 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     ResetAssetActivePickState(gizmo);
     SetAssetVisualHighlight(gizmo, false);
     gizmo->asset_hovered_visual_index = -1;
-
-    gizmo->last_rotate_angle = 0.0f;
-    gizmo->last_scale_value = 1.0f;
-    gizmo->last_scale_value_u = 1.0f;
-    gizmo->last_scale_value_v = 1.0f;
-    gizmo->last_move_dist = 0.0f;
-    gizmo->last_rotate_axis = -1;
-    gizmo->last_scale_axis = -1;
-    gizmo->last_move_axis = -1;
-
-    SyncAllSubGizmoTransforms(gizmo);
 }
 
 GizmoMode GetTransformGizmoMode(const GizmoECS *gizmo)
@@ -800,14 +543,9 @@ bool BindTransformGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_en
     if(!target_transform)
         return false;
 
-    const math::Vector3f gizmo_scale = (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
-                                     ? math::Vector3f(1.0f)
-                                     : target_transform->GetLocalScale();
-
     gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
                                        target_transform->GetLocalRotation(),
-                                       gizmo_scale);
-    SyncAllSubGizmoTransforms(gizmo);
+                                       math::Vector3f(1.0f));
 
     return true;
 }
@@ -862,14 +600,10 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                     bool left_pressed,
                     bool left_released)
 {
-    if (!gizmo)
+    if (!gizmo || !gizmo->root_transform)
         return;
 
-    if (gizmo->backend != GizmoECS::Backend::LegacySubWorld)
     {
-        if (!gizmo->root_transform)
-            return;
-
         std::shared_ptr<hgl::ecs::TransformComponent> target_transform;
         if (gizmo->target_entity)
             target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
@@ -1104,224 +838,6 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
 
         return;
     }
-
-    if(gizmo->target_entity && gizmo->root_transform && !IsCurrentModeDragging(gizmo))
-    {
-        auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
-        if(target_transform)
-        {
-            gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
-                                               target_transform->GetLocalRotation(),
-                                               target_transform->GetLocalScale());
-            SyncAllSubGizmoTransforms(gizmo);
-        }
-    }
-
-    math::Vector3f prev_pos(0.0f);
-    glm::quat prev_rot(1.0f, 0.0f, 0.0f, 0.0f);
-    math::Vector3f prev_scale(1.0f);
-    if(gizmo->root_transform)
-    {
-        prev_pos = gizmo->root_transform->GetLocalPosition();
-        prev_rot = gizmo->root_transform->GetLocalRotation();
-        prev_scale = gizmo->root_transform->GetLocalScale();
-    }
-
-    // Update only the active mode
-    switch (gizmo->current_mode)
-    {
-    case GizmoMode::MoveWorld:
-    case GizmoMode::MoveLocal:
-    {
-        UpdateMoveGizmoImpl((MoveGizmoImpl*)gizmo->move_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
-        if(gizmo->root_transform)
-        {
-            math::Vector3f move_pos;
-            if(GetMoveGizmoPosition((MoveGizmoImpl*)gizmo->move_impl, move_pos))
-                gizmo->root_transform->SetLocalPosition(glm::vec3(move_pos));
-        }
-        break;
-    }
-    case GizmoMode::RotateWorld:
-    case GizmoMode::RotateLocal:
-    {
-        UpdateRotateGizmoImpl((RotateGizmoImpl*)gizmo->rotate_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
-        if(gizmo->root_transform)
-        {
-            RotateGizmoInteractionState state;
-            if(GetRotateGizmoInteractionState((RotateGizmoImpl*)gizmo->rotate_impl, state))
-            {
-                if(state.dragging && state.pick_axis >= 0 && state.pick_axis <= 3)
-                {
-                    if(gizmo->last_rotate_axis != state.pick_axis)
-                    {
-                        gizmo->last_rotate_axis = state.pick_axis;
-                        gizmo->last_rotate_angle = state.cur_angle;
-                    }
-
-                    const float delta = state.cur_angle - gizmo->last_rotate_angle;
-                    if(std::fabs(delta) > 1e-6f)
-                    {
-                        math::Vector3f axis;
-                        if(state.pick_axis < 3)
-                        {
-                            // Get base axis in world space
-                            axis = math::GetAxisVector(math::AXIS(state.pick_axis));
-                            
-                            // For local rotation, transform axis to local space
-                            if(gizmo->current_mode == GizmoMode::RotateLocal)
-                            {
-                                const glm::quat cur_rotation = gizmo->root_transform->GetLocalRotation();
-                                axis = glm::vec3(cur_rotation * glm::vec4(axis, 0.0f));
-                            }
-                        }
-                        else if(camera_info)
-                        {
-                            axis = glm::normalize(math::Vector3f(camera_info->view[0][2], camera_info->view[1][2], camera_info->view[2][2]));
-                        }
-                        else
-                        {
-                            axis = math::AxisVector::Z;
-                        }
-
-                        const glm::quat dq = glm::angleAxis(delta, glm::vec3(axis));
-                        const glm::quat cur = gizmo->root_transform->GetLocalRotation();
-                        gizmo->root_transform->SetLocalRotation(glm::normalize(dq * cur));
-                    }
-
-                    gizmo->last_rotate_angle = state.cur_angle;
-                }
-                else
-                {
-                    gizmo->last_rotate_axis = -1;
-                    gizmo->last_rotate_angle = 0.0f;
-                }
-            }
-        }
-        break;
-    }
-    case GizmoMode::ScaleLocal:
-    {
-        UpdateScaleGizmoImpl((ScaleGizmoImpl*)gizmo->scale_impl, mouse_coord, camera_info, viewport_info, input_system, left_down, left_pressed, left_released);
-        if(gizmo->root_transform)
-        {
-            ScaleGizmoInteractionState state;
-            if(GetScaleGizmoInteractionState((ScaleGizmoImpl*)gizmo->scale_impl, state))
-            {
-                if(state.dragging && state.pick_axis >= 0)
-                {
-                    if(gizmo->last_scale_axis != state.pick_axis)
-                    {
-                        gizmo->last_scale_axis = state.pick_axis;
-                        gizmo->last_scale_value = state.cur_scale;
-                        gizmo->last_scale_value_u = state.cur_scale_u;
-                        gizmo->last_scale_value_v = state.cur_scale_v;
-                    }
-
-                    float base = gizmo->last_scale_value;
-                    if(std::fabs(base) < 1e-6f)
-                        base = 1.0f;
-
-                    const float ratio = state.cur_scale / base;
-                    if(state.pick_axis < 3)
-                    {
-                        if(std::fabs(ratio - 1.0f) > 1e-6f)
-                        {
-                            glm::vec3 cur = gizmo->root_transform->GetLocalScale();
-                            cur[state.pick_axis] *= ratio;
-                            NormalizeScaleByPolicy(cur, gizmo->allow_negative_scale);
-                            gizmo->root_transform->SetLocalScale(cur);
-                        }
-                    }
-                    else if(state.pick_axis < 6)
-                    {
-                        float base_u = gizmo->last_scale_value_u;
-                        float base_v = gizmo->last_scale_value_v;
-
-                        if(std::fabs(base_u) < 1e-6f)
-                            base_u = 1.0f;
-                        if(std::fabs(base_v) < 1e-6f)
-                            base_v = 1.0f;
-
-                        const float ratio_u = state.cur_scale_u / base_u;
-                        const float ratio_v = state.cur_scale_v / base_v;
-
-                        if(std::fabs(ratio_u - 1.0f) > 1e-6f || std::fabs(ratio_v - 1.0f) > 1e-6f)
-                        {
-                            glm::vec3 cur = gizmo->root_transform->GetLocalScale();
-                            static const int plane_axes[3][2] =
-                            {
-                                {1, 2}, // YZ
-                                {0, 2}, // XZ
-                                {0, 1}  // XY
-                            };
-
-                            const int plane_index = state.pick_axis - 3;
-                            cur[plane_axes[plane_index][0]] *= ratio_u;
-                            cur[plane_axes[plane_index][1]] *= ratio_v;
-
-                            NormalizeScaleByPolicy(cur, gizmo->allow_negative_scale);
-                            gizmo->root_transform->SetLocalScale(cur);
-                        }
-                    }
-
-                    gizmo->last_scale_value = state.cur_scale;
-                    gizmo->last_scale_value_u = state.cur_scale_u;
-                    gizmo->last_scale_value_v = state.cur_scale_v;
-                }
-                else
-                {
-                    gizmo->last_scale_axis = -1;
-                    gizmo->last_scale_value = 1.0f;
-                    gizmo->last_scale_value_u = 1.0f;
-                    gizmo->last_scale_value_v = 1.0f;
-                }
-            }
-        }
-        break;
-    }
-    }
-
-    SyncAllSubGizmoTransforms(gizmo);
-
-    if(gizmo->root_transform)
-    {
-        const math::Vector3f cur_pos = gizmo->root_transform->GetLocalPosition();
-        const glm::quat cur_rot = gizmo->root_transform->GetLocalRotation();
-        const math::Vector3f cur_scale = gizmo->root_transform->GetLocalScale();
-        const bool changed = IsTransformChanged(prev_pos, prev_rot, prev_scale,
-                                                cur_pos, cur_rot, cur_scale);
-
-        if(gizmo->target_entity)
-        {
-            auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
-            if(target_transform)
-            {
-                if(IsTransformChanged(target_transform->GetLocalPosition(),
-                                      target_transform->GetLocalRotation(),
-                                      target_transform->GetLocalScale(),
-                                      cur_pos,
-                                      cur_rot,
-                                      cur_scale))
-                {
-                    target_transform->SetLocalTRS(cur_pos, cur_rot, cur_scale);
-                }
-            }
-        }
-
-        if(changed && gizmo->on_changed)
-        {
-            GizmoTransformChange change;
-            change.previous_position = prev_pos;
-            change.current_position = cur_pos;
-            change.previous_rotation = prev_rot;
-            change.current_rotation = cur_rot;
-            change.previous_scale = prev_scale;
-            change.current_scale = cur_scale;
-            change.mode = gizmo->current_mode;
-            gizmo->on_changed(change);
-        }
-    }
 }
 
 bool EnsureGizmoSystemResources(hgl::ecs::ECSContext *world)
@@ -1396,6 +912,7 @@ math::Vector3f RotationToDirection(const glm::quat &rot)
 }
 
 }//namespace hgl::graph
+
 
 
 

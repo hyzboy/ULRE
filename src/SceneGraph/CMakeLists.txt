@@ -95,10 +95,7 @@ SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
                             gizmo/GizmoResource.cpp
                             gizmo/GizmoUnified.cpp
                             gizmo/TransformGizmoSystem.cpp
-                            gizmo/SunDirectionControlSystem.cpp
-                            gizmo/Gizmo3DMove.cpp
-                            gizmo/Gizmo3DRotate.cpp
-                            gizmo/Gizmo3DScale.cpp)
+                            gizmo/SunDirectionControlSystem.cpp)
 
 SET(GIZMO_ALL_FILES ${GIZMO_PUBLIC_HEADERS} ${GIZMO_INTERNAL_FILES})
 

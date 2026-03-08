@@ -30,7 +30,7 @@ static float SanitizeFixedPixelDiameter(float pixel_diameter)
 
 static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
 {
-    if (!gizmo || gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+    if (!gizmo)
         return;
 
     constexpr float kReferenceWorldDiameter = GIZMO_ARROW_LENGTH * 2.0f;
@@ -115,9 +115,6 @@ static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
     if (!gizmo || !gizmo->root_transform)
         return;
 
-    if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
-        return;
-
     const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
     const glm::quat inv_root_rot = glm::inverse(root_rot);
     const glm::quat identity(1.0f, 0.0f, 0.0f, 0.0f);
@@ -147,7 +144,7 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
                                              const CameraInfo *camera_info,
                                              const ViewportInfo *viewport_info)
 {
-    if (!gizmo || gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+    if (!gizmo)
         return;
 
     if (!camera_info || !viewport_info)
