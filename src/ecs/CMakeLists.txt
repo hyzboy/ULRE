@@ -507,3 +507,25 @@ target_link_libraries(ECS_AssetInstanceBridgeBucketSmoke
         ${Vulkan_LIBRARIES})
 
 set_property(TARGET ECS_AssetInstanceBridgeBucketSmoke PROPERTY FOLDER "ULRE/ECS/Tests")
+
+add_executable(ECS_AssetInstanceBridgeStress10kSmoke
+    tests/AssetInstanceBridgeStress10kSmokeTest.cpp)
+
+target_link_libraries(ECS_AssetInstanceBridgeStress10kSmoke
+    PRIVATE
+        CMCoreType
+        CMMath
+        CMCore
+        CMAssetsManage
+        CMUtil
+        CM2D
+        ULRE.ECS
+        ULRE.Vulkan
+        ULRE.ShaderGen
+        ULRE.SceneGraph
+        ULRE.InlineGeometry
+        ${HGL_MATH_LIB}
+        ${RENDER_LIBRARY}
+        ${Vulkan_LIBRARIES})
+
+set_property(TARGET ECS_AssetInstanceBridgeStress10kSmoke PROPERTY FOLDER "ULRE/ECS/Tests")
