@@ -117,3 +117,5 @@ Implemented (2026-03-08):
 - validates root visibility gating and destroy cleanup
 - validates minimal move/rotate/scale drag updates in asset backend
 - validates target transform synchronization and change callback firing
+- validates deterministic post-drag position/rotation/scale expectations
+- validates bridge runtime/draw packet stats around mode switches and interactions

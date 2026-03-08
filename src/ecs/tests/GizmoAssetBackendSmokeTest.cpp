@@ -8,6 +8,7 @@
 #include "../../SceneGraph/gizmo/GizmoInternal.h"
 
 #include <cstdlib>
+#include <cmath>
 #include <exception>
 #include <iostream>
 #include <vector>
@@ -100,6 +101,13 @@ namespace
         if (!CheckOrLog(move_ai && rotate_ai && scale_ai, "asset instance components exist"))
             return false;
 
+        bridge->Update(0.016f);
+        const auto s0 = bridge->GetStats();
+        if (!CheckOrLog(s0.runtime_state_count == 3u, "bridge runtime states after create"))
+            return false;
+        if (!CheckOrLog(s0.emitted_draw_packet_count_frame == 3u, "bridge draw packets after create"))
+            return false;
+
         if (!CheckOrLog(!move->HasComponent<SubWorldComponent>(), "move has no subworld"))
             return false;
         if (!CheckOrLog(!rotate->HasComponent<SubWorldComponent>(), "rotate has no subworld"))
@@ -127,6 +135,11 @@ namespace
         if (!CheckOrLog(move_ai->GetOverrideRef().revision > rev_move_before, "move revision bumped"))
             return false;
 
+        bridge->Update(0.016f);
+        const auto s1 = bridge->GetStats();
+        if (!CheckOrLog(s1.rebuild_count_frame >= 1u, "bridge rebuilds after mode switch"))
+            return false;
+
         SetTransformGizmoVisible(gizmo, false);
         if (!CheckOrLog(move_ai->GetVisibilityMask() == 0ull, "move hidden by root"))
             return false;
@@ -151,6 +164,10 @@ namespace
         if (!CheckOrLog(glm::length(target_transform->GetLocalPosition() - pos_after_move) <= 1e-5f, "target follows move"))
             return false;
 
+        const math::Vector3f expected_pos(5.4f, 5.8f, 7.0f);
+        if (!CheckOrLog(glm::length(pos_after_move - expected_pos) <= 1e-4f, "move interaction deterministic position"))
+            return false;
+
         SetTransformGizmoMode(gizmo, GizmoMode::RotateLocal);
         const glm::quat rot_before = root_transform->GetLocalRotation();
         UpdateTransformGizmo(gizmo, math::Vector2i(200, 200), nullptr, nullptr, nullptr, true, true, false);
@@ -158,6 +175,13 @@ namespace
         UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, false, false, true);
         const glm::quat rot_after = root_transform->GetLocalRotation();
         if (!CheckOrLog(std::fabs(glm::dot(rot_before, rot_after)) < 0.9999f, "rotate interaction changes root rotation"))
+            return false;
+
+        const glm::quat expected_rot = glm::normalize(
+            glm::angleAxis(-60.0f * 0.005f, math::AxisVector::Y)
+            * glm::angleAxis(30.0f * 0.005f, math::AxisVector::X)
+            * rot_before);
+        if (!CheckOrLog(std::fabs(glm::dot(expected_rot, rot_after)) > 0.9995f, "rotate interaction deterministic quaternion"))
             return false;
 
         SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
@@ -168,8 +192,17 @@ namespace
         const math::Vector3f scale_after = root_transform->GetLocalScale();
         if (!CheckOrLog(glm::length(scale_after - scale_before) > 1e-5f, "scale interaction changes root scale"))
             return false;
+        if (!CheckOrLog(glm::length(scale_after - math::Vector3f(1.4f, 1.4f, 1.4f)) <= 1e-4f, "scale interaction deterministic scale"))
+            return false;
 
         if (!CheckOrLog(changed_count > 0u, "changed callback fired"))
+            return false;
+
+        bridge->Update(0.016f);
+        const auto s2 = bridge->GetStats();
+        if (!CheckOrLog(s2.runtime_state_count == 3u, "bridge runtime states after interactions"))
+            return false;
+        if (!CheckOrLog(s2.emitted_draw_packet_count_frame == 3u, "bridge draw packets after interactions"))
             return false;
 
         DestroyTransformGizmo(gizmo);
