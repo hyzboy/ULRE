@@ -2,6 +2,7 @@
 #include <hgl/ecs/core/Entity.h>
 #include <hgl/ecs/components/AssetInstanceComponent.h>
 #include <hgl/ecs/components/SubWorldComponent.h>
+#include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/ecs/systems/tick/AssetInstanceBridgeSystem.h>
 
 #include "../../SceneGraph/gizmo/GizmoInternal.h"
@@ -62,6 +63,31 @@ namespace
         if (!CheckOrLog(root != nullptr, "root exists"))
             return false;
 
+        auto root_transform = root->GetComponent<TransformComponent>();
+        if (!CheckOrLog(root_transform != nullptr, "root transform exists"))
+            return false;
+
+        Entity *target = ctx.CreateEntity<Entity>("GizmoTarget");
+        if (!CheckOrLog(target != nullptr, "create target"))
+            return false;
+
+        auto target_transform = target->AddComponent<TransformComponent>(Mobility::Movable);
+        if (!CheckOrLog(target_transform != nullptr, "target transform exists"))
+            return false;
+
+        target_transform->SetLocalTRS(math::Vector3f(5.0f, 6.0f, 7.0f),
+                                      glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                                      math::Vector3f(1.0f, 1.0f, 1.0f));
+
+        if (!CheckOrLog(BindTransformGizmoTargetEntity(gizmo, target), "bind target"))
+            return false;
+
+        uint32_t changed_count = 0;
+        SetTransformGizmoChangedCallback(gizmo, [&changed_count](const GizmoTransformChange&)
+        {
+            ++changed_count;
+        });
+
         Entity *move = FindEntityByName(ctx, "Gizmo_Move");
         Entity *rotate = FindEntityByName(ctx, "Gizmo_Rotate");
         Entity *scale = FindEntityByName(ctx, "Gizmo_Scale");
@@ -111,6 +137,39 @@ namespace
 
         SetTransformGizmoVisible(gizmo, true);
         if (!CheckOrLog(rotate_ai->GetVisibilityMask() == ~0ull, "rotate restored by root visible"))
+            return false;
+
+        // Minimal interaction smoke for asset backend mapping.
+        SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
+        const math::Vector3f pos_before_move = root_transform->GetLocalPosition();
+        UpdateTransformGizmo(gizmo, math::Vector2i(100, 100), nullptr, nullptr, nullptr, true, true, false);
+        UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, true, false, false);
+        UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, false, false, true);
+        const math::Vector3f pos_after_move = root_transform->GetLocalPosition();
+        if (!CheckOrLog(glm::length(pos_after_move - pos_before_move) > 1e-5f, "move interaction changes root position"))
+            return false;
+        if (!CheckOrLog(glm::length(target_transform->GetLocalPosition() - pos_after_move) <= 1e-5f, "target follows move"))
+            return false;
+
+        SetTransformGizmoMode(gizmo, GizmoMode::RotateLocal);
+        const glm::quat rot_before = root_transform->GetLocalRotation();
+        UpdateTransformGizmo(gizmo, math::Vector2i(200, 200), nullptr, nullptr, nullptr, true, true, false);
+        UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, true, false, false);
+        UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, false, false, true);
+        const glm::quat rot_after = root_transform->GetLocalRotation();
+        if (!CheckOrLog(std::fabs(glm::dot(rot_before, rot_after)) < 0.9999f, "rotate interaction changes root rotation"))
+            return false;
+
+        SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
+        const math::Vector3f scale_before = root_transform->GetLocalScale();
+        UpdateTransformGizmo(gizmo, math::Vector2i(300, 200), nullptr, nullptr, nullptr, true, true, false);
+        UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, true, false, false);
+        UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, false, false, true);
+        const math::Vector3f scale_after = root_transform->GetLocalScale();
+        if (!CheckOrLog(glm::length(scale_after - scale_before) > 1e-5f, "scale interaction changes root scale"))
+            return false;
+
+        if (!CheckOrLog(changed_count > 0u, "changed callback fired"))
             return false;
 
         DestroyTransformGizmo(gizmo);

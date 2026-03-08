@@ -115,3 +115,5 @@ Implemented (2026-03-08):
 - validates no `SubWorldComponent` on mode entities
 - validates mode visibility transitions and override revision bumps
 - validates root visibility gating and destroy cleanup
+- validates minimal move/rotate/scale drag updates in asset backend
+- validates target transform synchronization and change callback firing
