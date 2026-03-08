@@ -1,15 +1,9 @@
-#include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipeline.h>
 #include <hgl/ecs/core/Context.h>
 #include <hgl/ecs/core/MaterialBatch.h>
 #include <hgl/ecs/support/PipelineMaterialRenderer.h>
-#include <hgl/ecs/support/TransformAssignmentBuffer.h>
-#include <hgl/ecs/components/TransformComponent.h>
-#include <hgl/ecs/support/TransformDataStorage.h>
 #include <hgl/vk/VKCommandBuffer.h>
-#include <hgl/log/Log.h>
-#include <algorithm>
-#include <vector>
 
 namespace hgl::ecs
 {
@@ -24,26 +18,25 @@ namespace hgl::ecs
             if (!pd || !pd->depth_stencil)
                 return false;
 
-            // Overlay-style depth state: pass regardless of depth and do not write depth.
             return pd->depth_stencil->depthCompareOp == VK_COMPARE_OP_ALWAYS
                 && pd->depth_stencil->depthWriteEnable == VK_FALSE;
         }
     }
 
-    PrimitiveRenderSystem::PrimitiveRenderSystem(const std::string& name)
+    PrimitiveOverlayRenderSystem::PrimitiveOverlayRenderSystem(const std::string& name)
         : RenderPipelineDrawSystem(name)
     {
         SetSystemType(SystemType::RenderSubmit);
-        SetExecutionOrder(ExecutionPhase::RenderDrawSubmit);
+        SetExecutionOrder(ExecutionPhase::RenderDebug);
         SetRenderElementType("Primitive");
     }
 
-    RenderPipelineBase* PrimitiveRenderSystem::GetPipeline(ECSContext* context)
+    RenderPipelineBase* PrimitiveOverlayRenderSystem::GetPipeline(ECSContext* context)
     {
         return context->GetRenderPipeline("Primitive");
     }
 
-    void PrimitiveRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)
+    void PrimitiveOverlayRenderSystem::OnRender(RenderPipelineBase* /*pipeline*/, hgl::graph::RenderCmdBuffer* cmdBuffer)
     {
         if (!context || !cmdBuffer)
             return;
@@ -52,24 +45,13 @@ namespace hgl::ecs
         if (cache.renderableCount == 0)
             return;
 
-        std::vector<MaterialBatch*> ordered_batches;
-        ordered_batches.reserve(cache.materialBatches.GetCount());
-
         for (auto& pair : cache.materialBatches)
         {
             MaterialBatch* batch = pair.second.get();
             if (!batch || batch->items.empty())
                 continue;
 
-            ordered_batches.push_back(batch);
-        }
-
-        for (MaterialBatch* batch : ordered_batches)
-        {
-            if (!batch || batch->items.empty())
-                continue;
-
-            if (IsOverlayLikeBatch(batch))
+            if (!IsOverlayLikeBatch(batch))
                 continue;
 
             const auto& key = batch->key;

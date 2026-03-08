@@ -4,6 +4,7 @@
 #include <hgl/ecs/support/primitive/PrimitiveSortSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveBuildSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderSystem.h>
+#include <hgl/ecs/support/primitive/PrimitiveOverlayRenderSystem.h>
 #include <hgl/ecs/core/Context.h>
 
 namespace hgl::ecs
@@ -26,6 +27,7 @@ namespace hgl::ecs
         context->RegisterRenderSystem<PrimitiveSortSystem>();
         context->RegisterRenderSystem<PrimitiveBuildSystem>();
         context->RegisterRenderSystem<PrimitiveRenderSystem>();
+        context->RegisterRenderSystem<PrimitiveOverlayRenderSystem>();
 
         return true;
     }

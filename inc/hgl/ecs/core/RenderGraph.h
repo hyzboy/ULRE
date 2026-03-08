@@ -125,7 +125,7 @@ namespace hgl
             {
                 return active_render_groups.find(group_name) != active_render_groups.end();
             }
-            
+
             // Returns a hash for caching decisions
             uint64_t GetHash() const
             {
