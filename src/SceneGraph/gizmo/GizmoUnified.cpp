@@ -191,13 +191,19 @@ static GizmoECS::Backend ResolveGizmoBackend()
     return GizmoECS::Backend::LegacySubWorld;
 }
 
-static GizmoECS::Backend SelectSupportedBackend()
+static GizmoECS::Backend SelectSupportedBackend(hgl::ecs::ECSContext *world)
 {
     const auto requested = ResolveGizmoBackend();
     if (requested == GizmoECS::Backend::AssetWorldBridge)
     {
-        std::cout << "[GizmoECS] ULRE_GIZMO_BACKEND=asset requested, fallback to legacy (asset backend WIP)" << std::endl;
-        return GizmoECS::Backend::LegacySubWorld;
+        if (!world || !world->GetSystem<hgl::ecs::AssetInstanceBridgeSystem>())
+        {
+            std::cout << "[GizmoECS] ULRE_GIZMO_BACKEND=asset requested, but bridge is unavailable; fallback to legacy" << std::endl;
+            return GizmoECS::Backend::LegacySubWorld;
+        }
+
+        std::cout << "[GizmoECS] ULRE_GIZMO_BACKEND=asset enabled" << std::endl;
+        return GizmoECS::Backend::AssetWorldBridge;
     }
 
     return GizmoECS::Backend::LegacySubWorld;
@@ -327,6 +333,9 @@ static void SyncAllSubGizmoTransforms(GizmoECS *gizmo)
     if(!gizmo || !gizmo->root_transform)
         return;
 
+    if(gizmo->backend != GizmoECS::Backend::LegacySubWorld)
+        return;
+
     const math::Vector3f root_pos = gizmo->root_transform->GetLocalPosition();
     const glm::quat root_rot = gizmo->root_transform->GetLocalRotation();
 
@@ -345,6 +354,9 @@ static void SyncAllSubGizmoTransforms(GizmoECS *gizmo)
 static bool IsCurrentModeDragging(const GizmoECS *gizmo)
 {
     if(!gizmo)
+        return false;
+
+    if(gizmo->backend != GizmoECS::Backend::LegacySubWorld)
         return false;
 
     switch(gizmo->current_mode)
@@ -381,7 +393,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     auto *gizmo = new GizmoECS;
     gizmo->world = world;
-    gizmo->backend = SelectSupportedBackend();
+    gizmo->backend = SelectSupportedBackend(world);
     EnsureGizmoAssetWorldDefinitions(world);
     std::cout << "[GizmoECS] Create begin name=" << (name ? name : "Gizmo") << std::endl;
 
@@ -399,7 +411,7 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
     gizmo->root_transform->SetLocalTRS(glm::vec3(position), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
     gizmo->root_transform->SetMovable(true);
 
-    // Create three child entities with SubWorldComponent for each Gizmo mode
+    // Create three child entities for each Gizmo mode.
 
     // Move Gizmo
     {
@@ -415,23 +427,26 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         move_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         move_transform->SetParent(gizmo->root->GetID());
 
-        auto sub_world = gizmo->move_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
-        gizmo->move_subworld = sub_world;
-        gizmo->move_world = sub_world->GetSubWorld();
-
-        if (!gizmo->move_world)
+        if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
         {
-            std::cout << "[GizmoECS] Move subworld is null" << std::endl;
-            DestroyTransformGizmo(gizmo);
-            return nullptr;
-        }
+            auto sub_world = gizmo->move_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
+            gizmo->move_subworld = sub_world;
+            gizmo->move_world = sub_world->GetSubWorld();
 
-        gizmo->move_impl = (void*)CreateMoveGizmoImpl(gizmo->move_world, "GizmoMove", math::Vector3f(0, 0, 0));
-        if (!gizmo->move_impl)
-        {
-            std::cout << "[GizmoECS] Create move gizmo failed" << std::endl;
-            DestroyTransformGizmo(gizmo);
-            return nullptr;
+            if (!gizmo->move_world)
+            {
+                std::cout << "[GizmoECS] Move subworld is null" << std::endl;
+                DestroyTransformGizmo(gizmo);
+                return nullptr;
+            }
+
+            gizmo->move_impl = (void*)CreateMoveGizmoImpl(gizmo->move_world, "GizmoMove", math::Vector3f(0, 0, 0));
+            if (!gizmo->move_impl)
+            {
+                std::cout << "[GizmoECS] Create move gizmo failed" << std::endl;
+                DestroyTransformGizmo(gizmo);
+                return nullptr;
+            }
         }
 
         gizmo->move_asset_instance = AttachGizmoAssetInstance(gizmo->move_entity,
@@ -454,23 +469,26 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         rotate_transform->SetParent(gizmo->root->GetID());
 
-        auto sub_world = gizmo->rotate_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
-        gizmo->rotate_subworld = sub_world;
-        gizmo->rotate_world = sub_world->GetSubWorld();
-
-        if (!gizmo->rotate_world)
+        if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
         {
-            std::cout << "[GizmoECS] Rotate subworld is null" << std::endl;
-            DestroyTransformGizmo(gizmo);
-            return nullptr;
-        }
+            auto sub_world = gizmo->rotate_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
+            gizmo->rotate_subworld = sub_world;
+            gizmo->rotate_world = sub_world->GetSubWorld();
 
-        gizmo->rotate_impl = (void*)CreateRotateGizmoImpl(gizmo->rotate_world, "GizmoRotate", math::Vector3f(0, 0, 0));
-        if (!gizmo->rotate_impl)
-        {
-            std::cout << "[GizmoECS] Create rotate gizmo failed" << std::endl;
-            DestroyTransformGizmo(gizmo);
-            return nullptr;
+            if (!gizmo->rotate_world)
+            {
+                std::cout << "[GizmoECS] Rotate subworld is null" << std::endl;
+                DestroyTransformGizmo(gizmo);
+                return nullptr;
+            }
+
+            gizmo->rotate_impl = (void*)CreateRotateGizmoImpl(gizmo->rotate_world, "GizmoRotate", math::Vector3f(0, 0, 0));
+            if (!gizmo->rotate_impl)
+            {
+                std::cout << "[GizmoECS] Create rotate gizmo failed" << std::endl;
+                DestroyTransformGizmo(gizmo);
+                return nullptr;
+            }
         }
 
         gizmo->rotate_asset_instance = AttachGizmoAssetInstance(gizmo->rotate_entity,
@@ -493,23 +511,26 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         scale_transform->SetParent(gizmo->root->GetID());
 
-        auto sub_world = gizmo->scale_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
-        gizmo->scale_subworld = sub_world;
-        gizmo->scale_world = sub_world->GetSubWorld();
-
-        if (!gizmo->scale_world)
+        if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
         {
-            std::cout << "[GizmoECS] Scale subworld is null" << std::endl;
-            DestroyTransformGizmo(gizmo);
-            return nullptr;
-        }
+            auto sub_world = gizmo->scale_entity->AddComponent<hgl::ecs::SubWorldComponent>(hgl::ecs::SubWorldMode::IsolatedContext);
+            gizmo->scale_subworld = sub_world;
+            gizmo->scale_world = sub_world->GetSubWorld();
 
-        gizmo->scale_impl = (void*)CreateScaleGizmoImpl(gizmo->scale_world, "GizmoScale", math::Vector3f(0, 0, 0));
-        if (!gizmo->scale_impl)
-        {
-            std::cout << "[GizmoECS] Create scale gizmo failed" << std::endl;
-            DestroyTransformGizmo(gizmo);
-            return nullptr;
+            if (!gizmo->scale_world)
+            {
+                std::cout << "[GizmoECS] Scale subworld is null" << std::endl;
+                DestroyTransformGizmo(gizmo);
+                return nullptr;
+            }
+
+            gizmo->scale_impl = (void*)CreateScaleGizmoImpl(gizmo->scale_world, "GizmoScale", math::Vector3f(0, 0, 0));
+            if (!gizmo->scale_impl)
+            {
+                std::cout << "[GizmoECS] Create scale gizmo failed" << std::endl;
+                DestroyTransformGizmo(gizmo);
+                return nullptr;
+            }
         }
 
         gizmo->scale_asset_instance = AttachGizmoAssetInstance(gizmo->scale_entity,
@@ -590,9 +611,12 @@ void SetTransformGizmoMode(GizmoECS *gizmo, GizmoMode mode)
     const bool move_active = (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal);
     const bool rotate_active = (mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal);
 
-    SetMoveGizmoVisible((MoveGizmoImpl*)gizmo->move_impl, move_active);
-    SetRotateGizmoVisible((RotateGizmoImpl*)gizmo->rotate_impl, rotate_active);
-    SetScaleGizmoVisible((ScaleGizmoImpl*)gizmo->scale_impl, mode == GizmoMode::ScaleLocal);
+    if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+    {
+        SetMoveGizmoVisible((MoveGizmoImpl*)gizmo->move_impl, move_active);
+        SetRotateGizmoVisible((RotateGizmoImpl*)gizmo->rotate_impl, rotate_active);
+        SetScaleGizmoVisible((ScaleGizmoImpl*)gizmo->scale_impl, mode == GizmoMode::ScaleLocal);
+    }
 
     // Pause non-active sub-worlds to avoid concurrent rendering/update artifacts
     if (gizmo->move_subworld)
@@ -704,6 +728,20 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
 {
     if (!gizmo)
         return;
+
+    if (gizmo->backend != GizmoECS::Backend::LegacySubWorld)
+    {
+        if (gizmo->target_entity && gizmo->root_transform)
+        {
+            auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
+            if (target_transform)
+                gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
+                                                   target_transform->GetLocalRotation(),
+                                                   target_transform->GetLocalScale());
+        }
+
+        return;
+    }
 
     if(gizmo->target_entity && gizmo->root_transform && !IsCurrentModeDragging(gizmo))
     {

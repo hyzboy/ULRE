@@ -57,9 +57,10 @@ Status (2026-03-08):
 - Mode entities now attach `AssetInstanceComponent` with stable gizmo `AssetWorldId` bindings.
 - Per-mode instance ids are generated deterministically from gizmo root `EntityID` + mode tag.
 - Mode switches now also synchronize asset-instance active state (`flags` + `visibility_mask`).
-- Legacy subworld path still performs interaction/render and remains default.
+- `ULRE_GIZMO_BACKEND=asset` now uses an initial asset create path that skips `SubWorldComponent` and skips `Create*GizmoImpl` creation.
+- Legacy subworld path still performs full interaction/render and remains default.
 - Remaining for GZ3 completion:
-- `asset` backend path needs to create/update without `SubWorldComponent` and without `Create*GizmoImpl` dependency.
+- Asset backend still lacks full move/rotate/scale interaction parity; current asset mode focuses on stable create/switch/destroy and target-transform following.
 
 ## Phase GZ4: Render/Interaction Parity
 1. Map mode visibility and active state to instance flags/visibility mask.
