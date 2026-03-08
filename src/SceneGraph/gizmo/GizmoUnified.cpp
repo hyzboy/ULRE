@@ -924,21 +924,43 @@ static void ApplyScalePolicyToTargetIfNeeded(GizmoECS *gizmo)
     if (!gizmo || !gizmo->root_transform)
         return;
 
-    glm::vec3 scale = gizmo->root_transform->GetLocalScale();
-    const glm::vec3 original_scale = scale;
-    NormalizeScaleByPolicy(scale, gizmo->allow_negative_scale);
+    bool updated = false;
 
-    if (glm::length(scale - original_scale) > 1e-6f)
+    if (gizmo->target_entity)
     {
-        gizmo->root_transform->SetLocalScale(scale);
-
-        if (gizmo->target_entity)
+        auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
+        if (target_transform)
         {
-            auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
-            if (target_transform)
-                target_transform->SetLocalScale(scale);
-        }
+            glm::vec3 scale = target_transform->GetLocalScale();
+            const glm::vec3 original_scale = scale;
+            NormalizeScaleByPolicy(scale, gizmo->allow_negative_scale);
 
+            if (glm::length(scale - original_scale) > 1e-6f)
+            {
+                target_transform->SetLocalScale(scale);
+                updated = true;
+
+                // Asset backend keeps gizmo visual scale independent from target scale.
+                if (gizmo->backend == GizmoECS::Backend::LegacySubWorld)
+                    gizmo->root_transform->SetLocalScale(scale);
+            }
+        }
+    }
+    else
+    {
+        glm::vec3 scale = gizmo->root_transform->GetLocalScale();
+        const glm::vec3 original_scale = scale;
+        NormalizeScaleByPolicy(scale, gizmo->allow_negative_scale);
+
+        if (glm::length(scale - original_scale) > 1e-6f)
+        {
+            gizmo->root_transform->SetLocalScale(scale);
+            updated = true;
+        }
+    }
+
+    if (updated)
+    {
         SyncAllSubGizmoTransforms(gizmo);
     }
 }
@@ -1346,9 +1368,13 @@ bool BindTransformGizmoTargetEntity(GizmoECS *gizmo, hgl::ecs::Entity *target_en
     if(!target_transform)
         return false;
 
+    const math::Vector3f gizmo_scale = (gizmo->backend == GizmoECS::Backend::AssetWorldBridge)
+                                     ? math::Vector3f(1.0f)
+                                     : target_transform->GetLocalScale();
+
     gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
                                        target_transform->GetLocalRotation(),
-                                       target_transform->GetLocalScale());
+                                       gizmo_scale);
     SyncAllSubGizmoTransforms(gizmo);
 
     return true;
@@ -1398,18 +1424,27 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
         if (!gizmo->root_transform)
             return;
 
-        if (gizmo->target_entity && !gizmo->asset_dragging)
+        std::shared_ptr<hgl::ecs::TransformComponent> target_transform;
+        if (gizmo->target_entity)
+            target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
+
+        const bool has_view_context = (camera_info && viewport_info);
+
+        if (target_transform && !gizmo->asset_dragging)
         {
-            auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
-            if (target_transform)
-                gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
-                                                   target_transform->GetLocalRotation(),
-                                                   target_transform->GetLocalScale());
+            gizmo->root_transform->SetLocalTRS(target_transform->GetLocalPosition(),
+                                               target_transform->GetLocalRotation(),
+                                               has_view_context ? math::Vector3f(1.0f)
+                                                                : target_transform->GetLocalScale());
         }
 
-        const math::Vector3f prev_pos = gizmo->root_transform->GetLocalPosition();
-        const glm::quat prev_rot = gizmo->root_transform->GetLocalRotation();
-        const math::Vector3f prev_scale = gizmo->root_transform->GetLocalScale();
+        const math::Vector3f prev_pos = target_transform ? target_transform->GetLocalPosition()
+                                                         : gizmo->root_transform->GetLocalPosition();
+        const glm::quat prev_rot = target_transform ? target_transform->GetLocalRotation()
+                                                    : gizmo->root_transform->GetLocalRotation();
+        const math::Vector3f prev_scale = target_transform ? target_transform->GetLocalScale()
+                                                            : gizmo->root_transform->GetLocalScale();
+        math::Vector3f cur_effective_scale = prev_scale;
 
         if (!gizmo->asset_dragging)
         {
@@ -1426,7 +1461,6 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
 
             const int picked = gizmo->asset_hovered_visual_index;
             auto *items = GetActiveAssetVisualList(gizmo);
-            const bool has_view_context = (camera_info && viewport_info);
 
             if (gizmo->root_visible && items && picked >= 0 && picked < static_cast<int>(items->size()))
             {
@@ -1742,7 +1776,14 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                     }
 
                     NormalizeScaleByPolicy(s, gizmo->allow_negative_scale);
-                    gizmo->root_transform->SetLocalScale(s);
+                    if (target_transform)
+                    {
+                        cur_effective_scale = s;
+                        if (!has_view_context)
+                            gizmo->root_transform->SetLocalScale(s);
+                    }
+                    else
+                        gizmo->root_transform->SetLocalScale(s);
                 }
                 break;
             }
@@ -1773,14 +1814,14 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
 
         const math::Vector3f cur_pos = gizmo->root_transform->GetLocalPosition();
         const glm::quat cur_rot = gizmo->root_transform->GetLocalRotation();
-        const math::Vector3f cur_scale = gizmo->root_transform->GetLocalScale();
+        const math::Vector3f cur_scale = target_transform ? cur_effective_scale
+                                                          : gizmo->root_transform->GetLocalScale();
         const bool changed = IsTransformChanged(prev_pos, prev_rot, prev_scale,
                                                 cur_pos, cur_rot, cur_scale);
 
-        if (gizmo->target_entity)
+        if (target_transform)
         {
-            auto target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
-            if (target_transform && changed)
+            if (changed)
                 target_transform->SetLocalTRS(cur_pos, cur_rot, cur_scale);
         }
 
