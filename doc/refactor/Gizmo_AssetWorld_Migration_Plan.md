@@ -88,6 +88,7 @@ Status (2026-03-08):
 - `MoveLocal`: screen delta interpreted in local frame then rotated by start rotation.
 - `RotateWorld`: yaw/pitch around world Y/X axes.
 - `RotateLocal`: yaw/pitch around start local Y/X axes.
+- Step4 landed: root visibility now gates all asset mode instances (`Move/Rotate/Scale`) in sync with mode selection, preventing hidden gizmo from being reactivated by mode switch.
 
 ## Phase GZ5: Legacy Sunset
 1. Make asset backend default.

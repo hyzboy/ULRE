@@ -182,6 +182,7 @@ struct GizmoECS
 
     GizmoMode current_mode = GizmoMode::MoveWorld;
     bool allow_negative_scale = true;
+    bool root_visible = true;
 
     hgl::ecs::Entity* target_entity = nullptr;
     GizmoChangedCallback on_changed;
@@ -247,9 +248,9 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
     if (!gizmo)
         return;
 
-    const bool move_active = (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal);
-    const bool rotate_active = (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal);
-    const bool scale_active = (gizmo->current_mode == GizmoMode::ScaleLocal);
+    const bool move_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal);
+    const bool rotate_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal);
+    const bool scale_active = gizmo->root_visible && (gizmo->current_mode == GizmoMode::ScaleLocal);
 
     const uint32_t mode_code = static_cast<uint32_t>(gizmo->current_mode);
 
@@ -669,6 +670,8 @@ void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
     if (!gizmo || !gizmo->root)
         return;
 
+    gizmo->root_visible = visible;
+
     auto vis_comp = gizmo->root->GetComponent<hgl::ecs::VisibilityComponent>();
     if (!vis_comp)
     {
@@ -680,6 +683,8 @@ void SetTransformGizmoVisible(GizmoECS *gizmo, bool visible)
         vis_comp->SetVisible(visible);
         std::cout << "[GizmoECS] Set root visible=" << (visible ? 1 : 0) << std::endl;
     }
+
+    SyncGizmoAssetModeBindings(gizmo);
 }
 
 hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo)
