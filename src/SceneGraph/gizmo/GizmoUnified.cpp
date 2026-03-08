@@ -150,13 +150,6 @@ struct GizmoECS
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;
     float fixed_pixel_diameter = GIZMO_FIXED_PIXEL_DIAMETER;
 
-    enum class ChannelKind : uint8_t
-    {
-        Move = 0,
-        Rotate = 1,
-        Scale = 2,
-    };
-
     struct ChannelRuntime
     {
         hgl::ecs::Entity *entity = nullptr;
@@ -172,12 +165,20 @@ struct GizmoECS
     bool asset_visual_highlighted = false;
     int asset_hovered_visual_index = -1;
 
-    ChannelRuntime &MoveChannel() { return channels[static_cast<size_t>(ChannelKind::Move)]; }
-    ChannelRuntime &RotateChannel() { return channels[static_cast<size_t>(ChannelKind::Rotate)]; }
-    ChannelRuntime &ScaleChannel() { return channels[static_cast<size_t>(ChannelKind::Scale)]; }
-    const ChannelRuntime &MoveChannel() const { return channels[static_cast<size_t>(ChannelKind::Move)]; }
-    const ChannelRuntime &RotateChannel() const { return channels[static_cast<size_t>(ChannelKind::Rotate)]; }
-    const ChannelRuntime &ScaleChannel() const { return channels[static_cast<size_t>(ChannelKind::Scale)]; }
+    ChannelRuntime &Channel(const GizmoController::ChannelSlot slot)
+    {
+        return channels[static_cast<size_t>(slot)];
+    }
+    const ChannelRuntime &Channel(const GizmoController::ChannelSlot slot) const
+    {
+        return channels[static_cast<size_t>(slot)];
+    }
+    ChannelRuntime &MoveChannel() { return Channel(GizmoController::ChannelSlot::Move); }
+    ChannelRuntime &RotateChannel() { return Channel(GizmoController::ChannelSlot::Rotate); }
+    ChannelRuntime &ScaleChannel() { return Channel(GizmoController::ChannelSlot::Scale); }
+    const ChannelRuntime &MoveChannel() const { return Channel(GizmoController::ChannelSlot::Move); }
+    const ChannelRuntime &RotateChannel() const { return Channel(GizmoController::ChannelSlot::Rotate); }
+    const ChannelRuntime &ScaleChannel() const { return Channel(GizmoController::ChannelSlot::Scale); }
 
     // Asset backend interaction state, split by logical channel.
     struct AssetDragState
@@ -251,23 +252,105 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
                                              const CameraInfo *camera_info,
                                              const ViewportInfo *viewport_info);
 static void NormalizeScaleByPolicy(glm::vec3 &scale, bool allow_negative_scale);
+static void ApplyAssetMoveDragChannel(GizmoECS *gizmo,
+                                      const math::Vector2i &mouse_coord,
+                                      const CameraInfo *camera_info,
+                                      const ViewportInfo *viewport_info,
+                                      const glm::vec3 &camera_right,
+                                      const glm::vec3 &camera_up,
+                                      float dx,
+                                      float dy,
+                                      float move_sensitivity);
+static void ApplyAssetRotateDragChannel(GizmoECS *gizmo,
+                                        const math::Vector2i &mouse_coord,
+                                        const CameraInfo *camera_info,
+                                        const ViewportInfo *viewport_info,
+                                        const glm::vec3 &camera_right,
+                                        const glm::vec3 &camera_up,
+                                        float dx,
+                                        float dy,
+                                        float rotate_sensitivity);
+static void ApplyAssetScaleDragChannel(GizmoECS *gizmo,
+                                       const math::Vector2i &mouse_coord,
+                                       const CameraInfo *camera_info,
+                                       const ViewportInfo *viewport_info,
+                                       float dy,
+                                       float scale_sensitivity,
+                                       const std::shared_ptr<hgl::ecs::TransformComponent> &target_transform,
+                                       bool has_view_context,
+                                       math::Vector3f &cur_effective_scale);
+
+static void DispatchActiveAssetDragChannel(GizmoECS *gizmo,
+                                           const math::Vector2i &mouse_coord,
+                                           const CameraInfo *camera_info,
+                                           const ViewportInfo *viewport_info,
+                                           const std::shared_ptr<hgl::ecs::TransformComponent> &target_transform,
+                                           bool has_view_context,
+                                           math::Vector3f &cur_effective_scale)
+{
+    const float dx = static_cast<float>(mouse_coord.x - gizmo->asset_drag.start_mouse.x);
+    const float dy = static_cast<float>(mouse_coord.y - gizmo->asset_drag.start_mouse.y);
+
+    constexpr float kMoveSensitivity = 0.01f;
+    constexpr float kRotateSensitivity = 0.005f;
+    constexpr float kScaleSensitivity = 0.01f;
+
+    math::Vector3f camera_right = math::AxisVector::X;
+    math::Vector3f camera_up = math::AxisVector::Y;
+    if (camera_info)
+    {
+        camera_right = glm::normalize(math::Vector3f(camera_info->view[0][0], camera_info->view[1][0], camera_info->view[2][0]));
+        camera_up = glm::normalize(math::Vector3f(camera_info->view[0][1], camera_info->view[1][1], camera_info->view[2][1]));
+    }
+
+    switch (gizmo->asset_drag.mode)
+    {
+    case GizmoMode::MoveWorld:
+    case GizmoMode::MoveLocal:
+        ApplyAssetMoveDragChannel(gizmo,
+                                  mouse_coord,
+                                  camera_info,
+                                  viewport_info,
+                                  camera_right,
+                                  camera_up,
+                                  dx,
+                                  dy,
+                                  kMoveSensitivity);
+        break;
+    case GizmoMode::RotateWorld:
+    case GizmoMode::RotateLocal:
+        ApplyAssetRotateDragChannel(gizmo,
+                                    mouse_coord,
+                                    camera_info,
+                                    viewport_info,
+                                    camera_right,
+                                    camera_up,
+                                    dx,
+                                    dy,
+                                    kRotateSensitivity);
+        break;
+    case GizmoMode::ScaleLocal:
+        ApplyAssetScaleDragChannel(gizmo,
+                                   mouse_coord,
+                                   camera_info,
+                                   viewport_info,
+                                   dy,
+                                   kScaleSensitivity,
+                                   target_transform,
+                                   has_view_context,
+                                   cur_effective_scale);
+        break;
+    }
+}
 
 static GizmoECS::ChannelRuntime &GetActiveChannelRuntime(GizmoECS *gizmo)
 {
-    if (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal)
-        return gizmo->MoveChannel();
-    if (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal)
-        return gizmo->RotateChannel();
-    return gizmo->ScaleChannel();
+    return gizmo->Channel(GizmoController::SlotForMode(gizmo->current_mode));
 }
 
 static const GizmoECS::ChannelRuntime &GetActiveChannelRuntime(const GizmoECS *gizmo)
 {
-    if (gizmo->current_mode == GizmoMode::MoveWorld || gizmo->current_mode == GizmoMode::MoveLocal)
-        return gizmo->MoveChannel();
-    if (gizmo->current_mode == GizmoMode::RotateWorld || gizmo->current_mode == GizmoMode::RotateLocal)
-        return gizmo->RotateChannel();
-    return gizmo->ScaleChannel();
+    return gizmo->Channel(GizmoController::SlotForMode(gizmo->current_mode));
 }
 
 #include "GizmoUnified.AssetCore.inl"
@@ -757,59 +840,13 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
             gizmo->asset_drag.pick_plane_normal_axis = active_channel.pick_plane_normal_axis;
             gizmo->asset_drag.pick_shape = active_channel.pick_shape;
 
-            const float dx = static_cast<float>(mouse_coord.x - gizmo->asset_drag.start_mouse.x);
-            const float dy = static_cast<float>(mouse_coord.y - gizmo->asset_drag.start_mouse.y);
-
-            constexpr float kMoveSensitivity = 0.01f;
-            constexpr float kRotateSensitivity = 0.005f;
-            constexpr float kScaleSensitivity = 0.01f;
-
-            math::Vector3f camera_right = math::AxisVector::X;
-            math::Vector3f camera_up = math::AxisVector::Y;
-            if (camera_info)
-            {
-                camera_right = glm::normalize(math::Vector3f(camera_info->view[0][0], camera_info->view[1][0], camera_info->view[2][0]));
-                camera_up = glm::normalize(math::Vector3f(camera_info->view[0][1], camera_info->view[1][1], camera_info->view[2][1]));
-            }
-
-            switch (gizmo->asset_drag.mode)
-            {
-            case GizmoMode::MoveWorld:
-            case GizmoMode::MoveLocal:
-                ApplyAssetMoveDragChannel(gizmo,
-                                          mouse_coord,
-                                          camera_info,
-                                          viewport_info,
-                                          camera_right,
-                                          camera_up,
-                                          dx,
-                                          dy,
-                                          kMoveSensitivity);
-                break;
-            case GizmoMode::RotateWorld:
-            case GizmoMode::RotateLocal:
-                ApplyAssetRotateDragChannel(gizmo,
-                                            mouse_coord,
-                                            camera_info,
-                                            viewport_info,
-                                            camera_right,
-                                            camera_up,
-                                            dx,
-                                            dy,
-                                            kRotateSensitivity);
-                break;
-            case GizmoMode::ScaleLocal:
-                ApplyAssetScaleDragChannel(gizmo,
+            DispatchActiveAssetDragChannel(gizmo,
                                            mouse_coord,
                                            camera_info,
                                            viewport_info,
-                                           dy,
-                                           kScaleSensitivity,
                                            target_transform,
                                            has_view_context,
                                            cur_effective_scale);
-                break;
-            }
         }
 
         if (gizmo->RotateChannel().aux_transform && camera_info)

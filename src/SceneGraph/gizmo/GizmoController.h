@@ -14,6 +14,22 @@ namespace hgl::graph
 class GizmoController
 {
 public:
+    enum class ChannelSlot : uint8_t
+    {
+        Move = 0,
+        Rotate = 1,
+        Scale = 2,
+    };
+
+    static ChannelSlot SlotForMode(GizmoMode mode)
+    {
+        if (mode == GizmoMode::MoveWorld || mode == GizmoMode::MoveLocal)
+            return ChannelSlot::Move;
+        if (mode == GizmoMode::RotateWorld || mode == GizmoMode::RotateLocal)
+            return ChannelSlot::Rotate;
+        return ChannelSlot::Scale;
+    }
+
     void InitializeDefaultChannels()
     {
         channels_[0] = std::make_unique<MoveGizmoChannel>();
