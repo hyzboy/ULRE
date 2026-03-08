@@ -46,6 +46,18 @@ namespace
             c->SetInstanceID(static_cast<InstanceId>(i + 1));
         }
 
+        // Add one invalid-id instance; bridge should count and skip it.
+        Entity* invalid_entity = ctx.CreateEntity<Entity>("InvalidInstance");
+        if (!CheckOrLog(invalid_entity != nullptr, "create invalid entity"))
+            return false;
+
+        auto invalid_comp = invalid_entity->AddComponent<AssetInstanceComponent>();
+        if (!CheckOrLog(invalid_comp != nullptr, "add invalid asset instance component"))
+            return false;
+
+        invalid_comp->SetAssetWorldID(2001ull);
+        invalid_comp->SetInstanceID(0ull);
+
         AssetInstanceBridgeSystem bridge;
         bridge.SetWorld(&ctx);
         bridge.SetRegistry(&registry);
@@ -54,40 +66,60 @@ namespace
 
         bridge.Update(0.016f);
         auto s1 = bridge.GetStats();
-        if (!CheckOrLog(s1.instance_count == kInstanceCount, "s1 instance_count"))
+        if (!CheckOrLog(s1.instance_count == kInstanceCount + 1u, "s1 instance_count"))
+            return false;
+        if (!CheckOrLog(s1.invalid_instance_id_count_frame == 1u, "s1 invalid_instance_id_count_frame"))
             return false;
         if (!CheckOrLog(s1.rebuild_count_frame == 2u, "s1 rebuild_count_frame"))
             return false;
         if (!CheckOrLog(s1.runtime_state_count == 2u, "s1 runtime_state_count"))
             return false;
+        if (!CheckOrLog(s1.emitted_draw_packet_count_frame == 2u, "s1 emitted_draw_packet_count_frame"))
+            return false;
 
         bridge.Update(0.016f);
         auto s2 = bridge.GetStats();
-        if (!CheckOrLog(s2.instance_count == kInstanceCount, "s2 instance_count"))
+        if (!CheckOrLog(s2.instance_count == kInstanceCount + 1u, "s2 instance_count"))
+            return false;
+        if (!CheckOrLog(s2.invalid_instance_id_count_frame == 1u, "s2 invalid_instance_id_count_frame"))
             return false;
         if (!CheckOrLog(s2.rebuild_count_frame == 2u, "s2 rebuild_count_frame"))
             return false;
         if (!CheckOrLog(s2.runtime_state_count == 4u, "s2 runtime_state_count"))
             return false;
+        if (!CheckOrLog(s2.emitted_draw_packet_count_frame == 4u, "s2 emitted_draw_packet_count_frame"))
+            return false;
 
         bridge.Update(0.016f);
         auto s3 = bridge.GetStats();
-        if (!CheckOrLog(s3.instance_count == kInstanceCount, "s3 instance_count"))
+        if (!CheckOrLog(s3.instance_count == kInstanceCount + 1u, "s3 instance_count"))
+            return false;
+        if (!CheckOrLog(s3.invalid_instance_id_count_frame == 1u, "s3 invalid_instance_id_count_frame"))
             return false;
         if (!CheckOrLog(s3.rebuild_count_frame == 1u, "s3 rebuild_count_frame"))
             return false;
         if (!CheckOrLog(s3.runtime_state_count == 5u, "s3 runtime_state_count"))
             return false;
+        if (!CheckOrLog(s3.runtime_state_peak_count == 5u, "s3 runtime_state_peak_count"))
+            return false;
+        if (!CheckOrLog(s3.emitted_draw_packet_count_frame == 5u, "s3 emitted_draw_packet_count_frame"))
+            return false;
 
         bridge.Update(0.016f);
         auto s4 = bridge.GetStats();
-        if (!CheckOrLog(s4.instance_count == kInstanceCount, "s4 instance_count"))
+        if (!CheckOrLog(s4.instance_count == kInstanceCount + 1u, "s4 instance_count"))
+            return false;
+        if (!CheckOrLog(s4.invalid_instance_id_count_frame == 1u, "s4 invalid_instance_id_count_frame"))
             return false;
         if (!CheckOrLog(s4.dirty_count == 0u, "s4 dirty_count"))
             return false;
         if (!CheckOrLog(s4.rebuild_count_frame == 0u, "s4 rebuild_count_frame"))
             return false;
         if (!CheckOrLog(s4.runtime_state_count == 5u, "s4 runtime_state_count"))
+            return false;
+        if (!CheckOrLog(s4.runtime_state_peak_count == 5u, "s4 runtime_state_peak_count"))
+            return false;
+        if (!CheckOrLog(s4.emitted_draw_packet_count_frame == 5u, "s4 emitted_draw_packet_count_frame"))
             return false;
 
         const auto* state3 = bridge.FindRuntimeState(3ull);

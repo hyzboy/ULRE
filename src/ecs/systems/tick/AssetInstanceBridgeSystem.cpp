@@ -61,12 +61,14 @@ namespace hgl::ecs
     void AssetInstanceBridgeSystem::Collect(float)
     {
         stats.instance_count = 0;
+        stats.invalid_instance_id_count_frame = 0;
         stats.unresolved_count = 0;
         stats.dirty_count = 0;
         stats.rebuild_count_frame = 0;
         stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
         stats.reclaimed_state_count_frame = 0;
         stats.version_refresh_count_frame = 0;
+        stats.emitted_draw_packet_count_frame = 0;
         pending_rebuild.clear();
 
         if (!world)
@@ -84,8 +86,14 @@ namespace hgl::ecs
             if (!comp)
                 continue;
 
-            if (comp->GetInstanceID() != 0)
-                live_instance_ids.insert(comp->GetInstanceID());
+            const InstanceId instance_id = comp->GetInstanceID();
+            if (instance_id == 0)
+            {
+                ++stats.invalid_instance_id_count_frame;
+                continue;
+            }
+
+            live_instance_ids.insert(instance_id);
 
             const bool resolved = registry && registry->Exists(comp->GetAssetWorldID());
             if (!resolved)
@@ -93,7 +101,7 @@ namespace hgl::ecs
                 ++stats.unresolved_count;
 
                 // Drop stale runtime state when asset definition is unavailable.
-                if (runtime_states.erase(comp->GetInstanceID()) > 0)
+                if (runtime_states.erase(instance_id) > 0)
                     ++stats.reclaimed_state_count_frame;
             }
 
@@ -124,6 +132,8 @@ namespace hgl::ecs
         }
 
         stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
+        if (stats.runtime_state_count > stats.runtime_state_peak_count)
+            stats.runtime_state_peak_count = stats.runtime_state_count;
         pending_refresh_assets.clear();
     }
 
@@ -142,14 +152,18 @@ namespace hgl::ecs
             if (!comp)
                 continue;
 
+            const InstanceId instance_id = comp->GetInstanceID();
+            if (instance_id == 0)
+                continue;
+
             const auto* def = registry ? registry->Get(comp->GetAssetWorldID()) : nullptr;
             if (!def)
                 continue;
 
-            RuntimeState& state = runtime_states[comp->GetInstanceID()];
+            RuntimeState& state = runtime_states[instance_id];
             if (state.instance_id == 0)
             {
-                state.instance_id = comp->GetInstanceID();
+                state.instance_id = instance_id;
                 state.proxy_handle = next_proxy_handle++;
             }
 
@@ -165,10 +179,13 @@ namespace hgl::ecs
 
         stats.rebuild_count_frame = processed;
         stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
+        if (stats.runtime_state_count > stats.runtime_state_peak_count)
+            stats.runtime_state_peak_count = stats.runtime_state_count;
     }
 
     void AssetInstanceBridgeSystem::SyncRender(float)
     {
-        // Placeholder: render-domain synchronization is introduced in later phases.
+        // Placeholder stub: one runtime state corresponds to one emitted draw packet.
+        stats.emitted_draw_packet_count_frame = static_cast<uint32_t>(runtime_states.size());
     }
 }

@@ -64,6 +64,10 @@ namespace
             return false;
         if (stats.runtime_state_count != 1u)
             return false;
+        if (stats.runtime_state_peak_count != 1u)
+            return false;
+        if (stats.emitted_draw_packet_count_frame != 1u)
+            return false;
 
         const auto* resolved_state = bridge.FindRuntimeState(1ull);
         if (!resolved_state)
@@ -86,6 +90,8 @@ namespace
             return false;
         if (stats_second.runtime_state_count != 1u)
             return false;
+        if (stats_second.emitted_draw_packet_count_frame != 1u)
+            return false;
 
         // Asset definition updated: should trigger refresh rebuild even when component is clean.
         AssetWorldDef refreshed_def = def;
@@ -99,6 +105,8 @@ namespace
         if (stats_refresh.version_refresh_count_frame != 1u)
             return false;
         if (stats_refresh.rebuild_count_frame != 1u)
+            return false;
+        if (stats_refresh.emitted_draw_packet_count_frame != 1u)
             return false;
 
         const auto* refreshed_state = bridge.FindRuntimeState(1ull);
@@ -127,7 +135,11 @@ namespace
             return false;
         if (stats_third.runtime_state_count != 2u)
             return false;
+        if (stats_third.runtime_state_peak_count != 2u)
+            return false;
         if (stats_third.reclaimed_state_count_frame != 0u)
+            return false;
+        if (stats_third.emitted_draw_packet_count_frame != 2u)
             return false;
 
         const auto* late_state = bridge.FindRuntimeState(2ull);
@@ -150,6 +162,8 @@ namespace
             return false;
         if (stats_fourth.reclaimed_state_count_frame < 1u)
             return false;
+        if (stats_fourth.emitted_draw_packet_count_frame != 1u)
+            return false;
         if (bridge.FindRuntimeState(2ull) != nullptr)
             return false;
 
@@ -167,6 +181,8 @@ namespace
         if (stats_fifth.runtime_state_count != 0u)
             return false;
         if (stats_fifth.reclaimed_state_count_frame != 0u)
+            return false;
+        if (stats_fifth.emitted_draw_packet_count_frame != 0u)
             return false;
         if (bridge.FindRuntimeState(1ull) != nullptr)
             return false;

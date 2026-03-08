@@ -32,12 +32,15 @@ namespace hgl::ecs
         struct Stats
         {
             uint32_t instance_count = 0;
+            uint32_t invalid_instance_id_count_frame = 0;
             uint32_t unresolved_count = 0;
             uint32_t dirty_count = 0;
             uint32_t rebuild_count_frame = 0;
             uint32_t runtime_state_count = 0;
+            uint32_t runtime_state_peak_count = 0;
             uint32_t reclaimed_state_count_frame = 0;
             uint32_t version_refresh_count_frame = 0;
+            uint32_t emitted_draw_packet_count_frame = 0;
         };
 
     private:
