@@ -1941,7 +1941,20 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
                 facing = glm::angleAxis(angle, axis);
             }
 
-            gizmo->rotate_white_ring_transform->SetLocalRotation(facing);
+            // White view ring must stay camera-facing in world space.
+            // Compensate parent world rotation so local/world rotate modes behave the same.
+            glm::quat parent_world_rot(1.0f, 0.0f, 0.0f, 0.0f);
+            if (gizmo->rotate_entity)
+            {
+                auto rotate_entity_transform = gizmo->rotate_entity->GetComponent<hgl::ecs::TransformComponent>();
+                if (rotate_entity_transform)
+                {
+                    rotate_entity_transform->UpdateIfDirty();
+                    parent_world_rot = rotate_entity_transform->GetWorldRotation();
+                }
+            }
+
+            gizmo->rotate_white_ring_transform->SetLocalRotation(glm::inverse(parent_world_rot) * facing);
         }
 
         const math::Vector3f cur_pos = gizmo->root_transform->GetLocalPosition();
