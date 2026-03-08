@@ -34,6 +34,30 @@ namespace hgl::ecs
         SyncRender(deltaTime);
     }
 
+    void AssetInstanceBridgeSystem::OnAssetWorldUpdated(AssetWorldId id, AssetVersion)
+    {
+        if (id == 0)
+            return;
+
+        pending_refresh_assets.insert(id);
+    }
+
+    void AssetInstanceBridgeSystem::OnAssetWorldEvicted(AssetWorldId id)
+    {
+        if (id == 0)
+            return;
+
+        for (auto it = runtime_states.begin(); it != runtime_states.end();)
+        {
+            if (it->second.asset_world_id == id)
+                it = runtime_states.erase(it);
+            else
+                ++it;
+        }
+
+        pending_refresh_assets.erase(id);
+    }
+
     void AssetInstanceBridgeSystem::Collect(float)
     {
         stats.instance_count = 0;
@@ -42,6 +66,7 @@ namespace hgl::ecs
         stats.rebuild_count_frame = 0;
         stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
         stats.reclaimed_state_count_frame = 0;
+        stats.version_refresh_count_frame = 0;
         pending_rebuild.clear();
 
         if (!world)
@@ -73,10 +98,14 @@ namespace hgl::ecs
             }
 
             const bool dirty = comp->GetChangeMask() != 0;
+            const bool refresh_requested = pending_refresh_assets.find(comp->GetAssetWorldID()) != pending_refresh_assets.end();
             if (dirty)
                 ++stats.dirty_count;
 
-            if (dirty && resolved)
+            if (refresh_requested && resolved)
+                ++stats.version_refresh_count_frame;
+
+            if ((dirty || refresh_requested) && resolved)
                 pending_rebuild.push_back(comp);
         }
 
@@ -95,6 +124,7 @@ namespace hgl::ecs
         }
 
         stats.runtime_state_count = static_cast<uint32_t>(runtime_states.size());
+        pending_refresh_assets.clear();
     }
 
     void AssetInstanceBridgeSystem::Rebuild(float, uint32_t max_instances_per_frame)

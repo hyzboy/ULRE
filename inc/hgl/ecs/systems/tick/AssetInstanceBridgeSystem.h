@@ -8,6 +8,7 @@
 #include <memory>
 #include <cstdint>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace hgl::ecs
 {
@@ -36,6 +37,7 @@ namespace hgl::ecs
             uint32_t rebuild_count_frame = 0;
             uint32_t runtime_state_count = 0;
             uint32_t reclaimed_state_count_frame = 0;
+            uint32_t version_refresh_count_frame = 0;
         };
 
     private:
@@ -46,6 +48,7 @@ namespace hgl::ecs
         uint64_t next_proxy_handle = 1;
         std::vector<std::weak_ptr<AssetInstanceComponent>> pending_rebuild;
         std::unordered_map<InstanceId, RuntimeState> runtime_states;
+        std::unordered_set<AssetWorldId> pending_refresh_assets;
 
     public:
         explicit AssetInstanceBridgeSystem(const std::string& name = "AssetInstanceBridgeSystem");
@@ -63,6 +66,9 @@ namespace hgl::ecs
 
         void Initialize() override;
         void Update(float deltaTime) override;
+
+        void OnAssetWorldUpdated(AssetWorldId id, AssetVersion version);
+        void OnAssetWorldEvicted(AssetWorldId id);
 
         void Collect(float deltaTime);
         void Rebuild(float deltaTime, uint32_t max_instances_per_frame);

@@ -11,6 +11,14 @@ using namespace hgl::ecs;
 
 namespace
 {
+    bool CheckOrLog(bool condition, const char* message)
+    {
+        if (!condition)
+            std::cerr << "CHECK FAILED: " << message << std::endl;
+
+        return condition;
+    }
+
     bool RunBudgetSmoke()
     {
         AssetWorldRegistry registry;
@@ -18,7 +26,7 @@ namespace
         def.id = 2001ull;
         def.version = 5u;
         def.name = "BudgetAsset";
-        if (!registry.Register(def))
+        if (!CheckOrLog(registry.Register(def), "register def"))
             return false;
 
         ECSContext ctx("BridgeBudgetSmoke");
@@ -27,11 +35,11 @@ namespace
         for (uint32_t i = 0; i < kInstanceCount; ++i)
         {
             Entity* e = ctx.CreateEntity<Entity>("Instance" + std::to_string(i));
-            if (!e)
+            if (!CheckOrLog(e != nullptr, "create entity"))
                 return false;
 
             auto c = e->AddComponent<AssetInstanceComponent>();
-            if (!c)
+            if (!CheckOrLog(c != nullptr, "add asset instance component"))
                 return false;
 
             c->SetAssetWorldID(2001ull);
@@ -46,30 +54,50 @@ namespace
 
         bridge.Update(0.016f);
         auto s1 = bridge.GetStats();
-        if (s1.instance_count != kInstanceCount || s1.rebuild_count_frame != 2u || s1.runtime_state_count != 2u)
+        if (!CheckOrLog(s1.instance_count == kInstanceCount, "s1 instance_count"))
+            return false;
+        if (!CheckOrLog(s1.rebuild_count_frame == 2u, "s1 rebuild_count_frame"))
+            return false;
+        if (!CheckOrLog(s1.runtime_state_count == 2u, "s1 runtime_state_count"))
             return false;
 
         bridge.Update(0.016f);
         auto s2 = bridge.GetStats();
-        if (s2.instance_count != kInstanceCount || s2.rebuild_count_frame != 2u || s2.runtime_state_count != 4u)
+        if (!CheckOrLog(s2.instance_count == kInstanceCount, "s2 instance_count"))
+            return false;
+        if (!CheckOrLog(s2.rebuild_count_frame == 2u, "s2 rebuild_count_frame"))
+            return false;
+        if (!CheckOrLog(s2.runtime_state_count == 4u, "s2 runtime_state_count"))
             return false;
 
         bridge.Update(0.016f);
         auto s3 = bridge.GetStats();
-        if (s3.instance_count != kInstanceCount || s3.rebuild_count_frame != 1u || s3.runtime_state_count != 5u)
+        if (!CheckOrLog(s3.instance_count == kInstanceCount, "s3 instance_count"))
+            return false;
+        if (!CheckOrLog(s3.rebuild_count_frame == 1u, "s3 rebuild_count_frame"))
+            return false;
+        if (!CheckOrLog(s3.runtime_state_count == 5u, "s3 runtime_state_count"))
             return false;
 
         bridge.Update(0.016f);
         auto s4 = bridge.GetStats();
-        if (s4.instance_count != kInstanceCount || s4.dirty_count != 0u || s4.rebuild_count_frame != 0u || s4.runtime_state_count != 5u)
+        if (!CheckOrLog(s4.instance_count == kInstanceCount, "s4 instance_count"))
+            return false;
+        if (!CheckOrLog(s4.dirty_count == 0u, "s4 dirty_count"))
+            return false;
+        if (!CheckOrLog(s4.rebuild_count_frame == 0u, "s4 rebuild_count_frame"))
+            return false;
+        if (!CheckOrLog(s4.runtime_state_count == 5u, "s4 runtime_state_count"))
             return false;
 
         const auto* state3 = bridge.FindRuntimeState(3ull);
-        if (!state3)
+        if (!CheckOrLog(state3 != nullptr, "state3 exists"))
             return false;
-        if (state3->asset_world_id != 2001ull || state3->resolved_version != 5u)
+        if (!CheckOrLog(state3->asset_world_id == 2001ull, "state3 asset_world_id"))
             return false;
-        if (state3->last_observed_change_mask == 0u)
+        if (!CheckOrLog(state3->resolved_version == 5u, "state3 resolved_version"))
+            return false;
+        if (!CheckOrLog(state3->last_observed_change_mask != 0u, "state3 last_observed_change_mask"))
             return false;
 
         return true;

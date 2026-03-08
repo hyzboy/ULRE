@@ -87,6 +87,26 @@ namespace
         if (stats_second.runtime_state_count != 1u)
             return false;
 
+        // Asset definition updated: should trigger refresh rebuild even when component is clean.
+        AssetWorldDef refreshed_def = def;
+        refreshed_def.version = 3u;
+        if (!registry.Register(refreshed_def))
+            return false;
+
+        bridge.OnAssetWorldUpdated(1001ull, 3u);
+        bridge.Update(0.016f);
+        const auto& stats_refresh = bridge.GetStats();
+        if (stats_refresh.version_refresh_count_frame != 1u)
+            return false;
+        if (stats_refresh.rebuild_count_frame != 1u)
+            return false;
+
+        const auto* refreshed_state = bridge.FindRuntimeState(1ull);
+        if (!refreshed_state)
+            return false;
+        if (refreshed_state->resolved_version != 3u)
+            return false;
+
         // Unresolved becomes resolved later.
         AssetWorldDef late_def{};
         late_def.id = 9999ull;
@@ -133,6 +153,11 @@ namespace
         if (bridge.FindRuntimeState(2ull) != nullptr)
             return false;
 
+        // Explicit eviction event should clear all states bound to the asset.
+        bridge.OnAssetWorldEvicted(1001ull);
+        if (bridge.FindRuntimeState(1ull) != nullptr)
+            return false;
+
         // Destroying entity should reclaim runtime state in subsequent collect.
         ctx.DestroyEntity(resolved_entity->GetID());
         bridge.Update(0.016f);
@@ -141,7 +166,7 @@ namespace
             return false;
         if (stats_fifth.runtime_state_count != 0u)
             return false;
-        if (stats_fifth.reclaimed_state_count_frame < 1u)
+        if (stats_fifth.reclaimed_state_count_frame != 0u)
             return false;
         if (bridge.FindRuntimeState(1ull) != nullptr)
             return false;
