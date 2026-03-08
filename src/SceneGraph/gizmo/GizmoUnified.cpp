@@ -25,6 +25,7 @@
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/AssetInstanceBridgeSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
+#include<hgl/math/geometry/Ray.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/io/event/KeyboardEvent.h>
@@ -599,6 +600,10 @@ static void UpdateAssetVisualHover(GizmoECS *gizmo,
     const math::Vector3f root_world_pos = gizmo->root_transform->GetWorldPosition();
     const math::Vector2i root_screen_pos = WorldPositionToScreen(root_world_pos, camera_info, viewport_size);
     const glm::vec2 mouse_pt(static_cast<float>(mouse_coord.x), static_cast<float>(mouse_coord.y));
+    const float world_units_per_pixel = gizmo->root_transform->ComputeWorldUnitsPerPixel(camera_info, viewport_info);
+
+    math::Ray mouse_ray;
+    mouse_ray.SetFromViewportPoint(mouse_coord, camera_info, viewport_size);
 
     auto point_segment_distance = [](const glm::vec2 &p, const glm::vec2 &a, const glm::vec2 &b) -> float
     {
@@ -648,31 +653,34 @@ static void UpdateAssetVisualHover(GizmoECS *gizmo,
         {
             const glm::vec3 center = wp;
             const glm::quat ring_rot = entry.transform->GetWorldRotation();
-            glm::vec3 ring_normal = glm::normalize(ring_rot * math::AxisVector::X);
-            glm::vec3 camera_forward = glm::normalize(math::Vector3f(camera_info->view[0][2],
-                                                                      camera_info->view[1][2],
-                                                                      camera_info->view[2][2]));
-
-            glm::vec3 tangent = glm::cross(ring_normal, camera_forward);
-            if (glm::length(tangent) < 1e-4f)
-                tangent = glm::cross(ring_normal, math::AxisVector::Y);
-            if (glm::length(tangent) < 1e-4f)
-                tangent = math::AxisVector::Z;
-            tangent = glm::normalize(tangent);
-
+            const glm::vec3 ring_normal = glm::normalize(ring_rot * math::AxisVector::X);
             const float world_radius = std::max(entry.transform->GetWorldScale().x, 1e-3f);
-            const math::Vector3f edge_world = center + tangent * world_radius;
-            const math::Vector2i edge_sp = WorldPositionToScreen(edge_world, camera_info, viewport_size);
 
-            const glm::vec2 center_pt(static_cast<float>(sp.x), static_cast<float>(sp.y));
-            const glm::vec2 edge_pt(static_cast<float>(edge_sp.x), static_cast<float>(edge_sp.y));
-            const float ring_radius_px = glm::length(edge_pt - center_pt);
-            const float d = std::fabs(glm::length(mouse_pt - center_pt) - ring_radius_px);
-
-            if (d <= kRingHoverRadiusPx)
+            // Robust ring hit test: intersect mouse ray with ring plane and check
+            // the radial distance error in world space. This remains accurate for
+            // oblique rings (ellipse in screen space), not only front-facing rings.
+            const float denom = glm::dot(mouse_ray.direction, ring_normal);
+            if (std::fabs(denom) > 1e-6f)
             {
-                candidate = true;
-                score = d;
+                const float t = glm::dot(center - mouse_ray.origin, ring_normal) / denom;
+                if (t >= 0.0f)
+                {
+                    const math::Vector3f hit_point = mouse_ray.origin + mouse_ray.direction * t;
+                    const float ring_error_world = std::fabs(glm::distance(hit_point, center) - world_radius);
+
+                    const bool is_white_view_ring = (entry.group_id == 3);
+                    const float legacy_ratio = is_white_view_ring ? (1.0f / 13.0f) : (0.5f / 10.0f);
+                    float ring_threshold_world = world_radius * legacy_ratio;
+
+                    if (world_units_per_pixel > 0.0f)
+                        ring_threshold_world = std::max(ring_threshold_world, kRingHoverRadiusPx * world_units_per_pixel * 0.5f);
+
+                    if (ring_error_world <= ring_threshold_world)
+                    {
+                        candidate = true;
+                        score = ring_error_world / std::max(ring_threshold_world, 1e-5f);
+                    }
+                }
             }
         }
         else if (entry.shape == GizmoShape::Cylinder || entry.shape == GizmoShape::Cone)
