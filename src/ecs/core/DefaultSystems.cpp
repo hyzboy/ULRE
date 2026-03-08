@@ -3,6 +3,7 @@
 #include <hgl/ecs/core/SystemGroup.h>
 #include <hgl/ecs/systems/tick/InputSystem.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
+#include <hgl/ecs/systems/tick/AssetInstanceBridgeSystem.h>
 #include <hgl/ecs/systems/tick/LineBoundsUpdateSystem.h>
 #include <hgl/ecs/support/text/TextRenderPipelineGroup.h>
 #include <hgl/ecs/support/line/LineRenderPipelineGroup.h>
@@ -156,6 +157,7 @@ namespace hgl::ecs
 
         auto input_system = EnsureTickSystem<ecs::InputSystem>(ctx);
         auto camera_system = EnsureTickSystem<ecs::CameraSystem>(ctx);
+        auto asset_instance_bridge_system = EnsureTickSystem<ecs::AssetInstanceBridgeSystem>(ctx);
         auto environment_system = EnsureRenderSystem<ecs::EnvironmentSystem>(ctx);
         auto render_target_system = EnsureRenderSystem<ecs::RenderTargetSystem>(ctx);
         auto swapchain_next_image_system = EnsureRenderSystem<ecs::SwapchainNextImageSystem>(ctx);
@@ -164,6 +166,7 @@ namespace hgl::ecs
         auto render_descriptor_binding_system = EnsureRenderSystem<ecs::RenderDescriptorBindingSystem>(ctx);
 
         (void)input_system;
+        (void)asset_instance_bridge_system;
         (void)swapchain_next_image_system;
         (void)swapchain_submit_system;
         (void)render_frame_business_sync_system;
@@ -176,6 +179,11 @@ namespace hgl::ecs
         {
             camera_system->SetRenderContext(rc);
             camera_system->SetViewportInfo(default_rt ? default_rt->GetViewportInfo() : nullptr);
+        }
+
+        if (asset_instance_bridge_system)
+        {
+            asset_instance_bridge_system->SetWorld(ctx);
         }
 
         if (render_target_system)
@@ -219,6 +227,7 @@ namespace hgl::ecs
 
         systems.input_system = ctx->GetSystem<ecs::InputSystem>();
         systems.camera_system = ctx->GetSystem<ecs::CameraSystem>();
+        systems.asset_instance_bridge_system = ctx->GetSystem<ecs::AssetInstanceBridgeSystem>();
         systems.line_bounds_update_system = ctx->GetSystem<ecs::LineBoundsUpdateSystem>();
         systems.line_collect_system = ctx->GetSystem<ecs::LineCollectSystem>();
         systems.line_render_system = ctx->GetSystem<ecs::LineRenderSystem>();

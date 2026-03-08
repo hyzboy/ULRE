@@ -24,6 +24,8 @@ namespace hgl::ecs
             AssetVersion resolved_version = 0;
             uint64_t proxy_handle = 0;
             uint32_t rebuild_generation = 0;
+            uint32_t last_observed_change_mask = 0;
+            uint32_t last_update_frame_index = 0;
         };
 
         struct Stats

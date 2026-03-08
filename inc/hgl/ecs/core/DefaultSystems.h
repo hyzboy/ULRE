@@ -15,6 +15,7 @@ namespace hgl
         class ECSContext;
         class InputSystem;
         class CameraSystem;
+        class AssetInstanceBridgeSystem;
         class LineBoundsUpdateSystem;
         class LineCollectSystem;
         class LineRenderSystem;
@@ -24,6 +25,7 @@ namespace hgl
         {
             std::shared_ptr<InputSystem> input_system;
             std::shared_ptr<CameraSystem> camera_system;
+            std::shared_ptr<AssetInstanceBridgeSystem> asset_instance_bridge_system;
             std::shared_ptr<LineBoundsUpdateSystem> line_bounds_update_system;
             std::shared_ptr<LineCollectSystem> line_collect_system;
             std::shared_ptr<LineRenderSystem> line_render_system;

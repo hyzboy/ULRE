@@ -97,6 +97,8 @@ namespace hgl::ecs
 
             state.asset_world_id = comp->GetAssetWorldID();
             state.resolved_version = def->version;
+            state.last_observed_change_mask = comp->GetChangeMask();
+            state.last_update_frame_index = world ? world->GetFrameIndex() : 0;
             ++state.rebuild_generation;
 
             comp->ClearAllChanges();
