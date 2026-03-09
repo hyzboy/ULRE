@@ -15,6 +15,7 @@
 #include <hgl/ecs/systems/render/RenderTargetSystem.h>
 #include <hgl/ecs/systems/render/RenderPrimitiveCollectSystem.h>
 #include <hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
+#include <hgl/ecs/support/terrain/TerrainRenderPipelineGroup.h>
 #include <hgl/ecs/systems/render/RenderBufferUploadSystem.h>
 #include <hgl/ecs/systems/render/SwapchainNextImageSystem.h>
 #include <hgl/ecs/systems/render/SwapchainSubmitSystem.h>
@@ -108,6 +109,17 @@ namespace
         return true;
     }
 
+    bool InstallTerrainGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
+    {
+        if (!ctx)
+            return false;
+
+        hgl::ecs::TerrainRenderPipelineGroup group;
+        group.Initialize(ctx);
+
+        return true;
+    }
+
     bool InstallLineGroup(hgl::ecs::ECSContext* ctx, hgl::graph::IRenderTarget* /*default_rt*/)
     {
         if (!ctx)
@@ -139,6 +151,7 @@ namespace
         registry.RegisterGroupInstaller("Text", InstallTextGroup);
         registry.RegisterGroupInstaller("Billboard", InstallBillboardGroup);
         registry.RegisterGroupInstaller("Line", InstallLineGroup);
+        registry.RegisterGroupInstaller("Terrain", InstallTerrainGroup);
 
         registered = true;
     }
