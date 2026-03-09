@@ -109,6 +109,8 @@ SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
                             gizmo/modes/MoveGizmoMode.Visual.inl
                             gizmo/modes/MoveGizmoMode.Input.inl
                             gizmo/modes/RotateGizmoMode.h
+                            gizmo/modes/RotateGizmoMode.Visual.inl
+                            gizmo/modes/RotateGizmoMode.Input.inl
                             gizmo/modes/ScaleGizmoMode.h
                             gizmo/GizmoUnified.cpp
                             gizmo/TransformGizmoSystem.cpp

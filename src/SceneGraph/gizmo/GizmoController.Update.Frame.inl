@@ -100,6 +100,12 @@ bool GizmoController::RunDragUpdateStage(GizmoECS *gizmo,
             gizmo->move_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
                                        gizmo->root_transform);
         }
+        // Phase 4: Rotate drag dispatched directly through RotateGizmoMode.
+        else if (GizmoController::IsRotateMode(gizmo->asset_drag.mode))
+        {
+            gizmo->rotate_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
+                                         gizmo->root_transform);
+        }
         else
         {
             bool handled_by_channel = false;

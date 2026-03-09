@@ -16,6 +16,16 @@ void GizmoController::RefreshHoverState(GizmoECS *gizmo,
         return;
     }
 
+    // Phase 4: Rotate bypasses the channel — call mode directly.
+    if (GizmoController::IsRotateMode(gizmo->current_mode))
+    {
+        if (gizmo->root_visible)
+            gizmo->rotate_mode.UpdateHover(mouse_coord, camera_info, viewport_info, gizmo->root_transform);
+        else
+            SetAssetVisualHighlight(gizmo, false);
+        return;
+    }
+
     if (IGizmoChannel *channel = gizmo->channel_controller.GetChannelForMode(gizmo->current_mode))
     {
         bool handled = false;
@@ -86,6 +96,27 @@ bool GizmoController::BeginDragIfNeeded(GizmoECS *gizmo,
             gizmo->asset_drag.mode     = gizmo->current_mode;
             // Also sync pick into active-pick so channel helpers still work for Move.
             const auto &p = gizmo->move_mode.drag.pick;
+            SetAssetActivePickState(gizmo, p.pick_index, p.pick_group,
+                                    p.pick_plane_normal_axis, p.pick_shape);
+        }
+        return abort;
+    }
+
+    // Phase 4: Rotate bypasses the channel — delegate entirely to rotate_mode.
+    if (GizmoController::IsRotateMode(gizmo->current_mode))
+    {
+        const bool abort = gizmo->rotate_mode.TryBeginDrag(
+            mouse_coord, camera_info, viewport_info,
+            input_system, has_view_context,
+            prev_pos, prev_rot, prev_scale,
+            gizmo->current_mode, gizmo->root_visible);
+
+        // Sync shared drag metadata so EndDrag/Recover can identify the active mode.
+        if (gizmo->rotate_mode.drag.active)
+        {
+            gizmo->asset_drag.dragging = true;
+            gizmo->asset_drag.mode     = gizmo->current_mode;
+            const auto &p = gizmo->rotate_mode.drag.pick;
             SetAssetActivePickState(gizmo, p.pick_index, p.pick_group,
                                     p.pick_plane_normal_axis, p.pick_shape);
         }
@@ -166,6 +197,16 @@ void GizmoController::EndDragIfNeeded(GizmoECS *gizmo,
         return;
     }
 
+    // Phase 4: Rotate bypasses the channel — mode handles its own cleanup.
+    if (GizmoController::IsRotateMode(gizmo->asset_drag.mode))
+    {
+        gizmo->rotate_mode.EndDrag();
+        gizmo->asset_drag.dragging = false;
+        ResetAssetActivePickState(gizmo);
+        GizmoController::RefreshHoverState(gizmo, mouse_coord, camera_info, viewport_info);
+        return;
+    }
+
     if (IGizmoChannel *channel = gizmo->channel_controller.GetChannelForMode(gizmo->asset_drag.mode))
     {
         bool handled = false;
@@ -187,6 +228,15 @@ void GizmoController::RecoverDragIfReleaseMissed(GizmoECS *gizmo)
     if (GizmoController::IsMoveMode(gizmo->asset_drag.mode))
     {
         gizmo->move_mode.EndDrag();
+        gizmo->asset_drag.dragging = false;
+        ResetAssetActivePickState(gizmo);
+        return;
+    }
+
+    // Phase 4: Rotate bypasses the channel.
+    if (GizmoController::IsRotateMode(gizmo->asset_drag.mode))
+    {
+        gizmo->rotate_mode.EndDrag();
         gizmo->asset_drag.dragging = false;
         ResetAssetActivePickState(gizmo);
         return;

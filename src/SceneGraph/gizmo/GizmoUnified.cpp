@@ -336,16 +336,12 @@ static void DispatchActiveAssetDragChannel(GizmoECS *gizmo,
 
 static GizmoECS::ChannelRuntime &GetActiveChannelRuntime(GizmoECS *gizmo)
 {
-    // Move data now lives in move_mode; only Rotate/Scale use ChannelRuntime.
-    if (GizmoController::IsRotateMode(gizmo->current_mode))
-        return gizmo->rotate_channel;
+    // Rotate data now lives in rotate_mode; only Scale uses ChannelRuntime.
     return gizmo->scale_channel;
 }
 
 static const GizmoECS::ChannelRuntime &GetActiveChannelRuntime(const GizmoECS *gizmo)
 {
-    if (GizmoController::IsRotateMode(gizmo->current_mode))
-        return gizmo->rotate_channel;
     return gizmo->scale_channel;
 }
 
@@ -355,6 +351,8 @@ static const GizmoECS::ChannelRuntime &GetActiveChannelRuntime(const GizmoECS *g
 #include "channels/MoveGizmoChannel.Runtime.inl"
 #include "modes/MoveGizmoMode.Visual.inl"
 #include "modes/MoveGizmoMode.Input.inl"
+#include "modes/RotateGizmoMode.Visual.inl"
+#include "modes/RotateGizmoMode.Input.inl"
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
 {
@@ -498,15 +496,15 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     // Rotate Gizmo
     {
-        gizmo->RotateChannel().entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Rotate");
-        if (!gizmo->RotateChannel().entity)
+        gizmo->rotate_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Rotate");
+        if (!gizmo->rotate_mode.entity)
         {
             std::cout << "[GizmoECS] Create rotate entity failed" << std::endl;
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
-        auto rotate_transform = gizmo->RotateChannel().entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+        auto rotate_transform = gizmo->rotate_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         rotate_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         rotate_transform->SetParent(gizmo->root->GetID());
         rotate_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
@@ -514,11 +512,12 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                         0.01f);
         rotate_transform->SetFixedPixelSizingEnabled(true);
 
-        gizmo->RotateChannel().asset_instance = AttachGizmoAssetInstance(gizmo->RotateChannel().entity,
+        gizmo->rotate_mode.asset_instance = AttachGizmoAssetInstance(gizmo->rotate_mode.entity,
                                                                  kGizmoRotateAssetWorldId,
                                                                  ComposeGizmoInstanceId(gizmo->root->GetID(), 2u),
                                                                  kGizmoRotateOverrideRef);
-        BuildRotateAssetVisual(gizmo, gizmo->RotateChannel().entity);
+        gizmo->rotate_mode.BuildVisual(gizmo->world, gizmo->rotate_mode.entity,
+                                       gizmo->asset_visual_entity_ids);
     }
 
     // Scale Gizmo
@@ -586,8 +585,8 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
 
         if (gizmo->MoveChannel().entity)
             gizmo->world->DestroyEntity(gizmo->MoveChannel().entity->GetID());
-        if (gizmo->RotateChannel().entity)
-            gizmo->world->DestroyEntity(gizmo->RotateChannel().entity->GetID());
+        if (gizmo->rotate_mode.entity)
+            gizmo->world->DestroyEntity(gizmo->rotate_mode.entity->GetID());
         if (gizmo->ScaleChannel().entity)
             gizmo->world->DestroyEntity(gizmo->ScaleChannel().entity->GetID());
         if (gizmo->root)

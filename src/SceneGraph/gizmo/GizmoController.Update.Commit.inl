@@ -1,6 +1,6 @@
 void GizmoController::UpdateRotateViewRingFacingToCamera(GizmoECS *gizmo, const CameraInfo *camera_info)
 {
-    if (!gizmo || !gizmo->RotateChannel().aux_transform || !camera_info)
+    if (!gizmo || !gizmo->rotate_mode.aux_transform || !camera_info)
         return;
 
     const math::Vector3f forward = glm::normalize(math::Vector3f(camera_info->view[0][2],
@@ -24,9 +24,9 @@ void GizmoController::UpdateRotateViewRingFacingToCamera(GizmoECS *gizmo, const 
     // White view ring must stay camera-facing in world space.
     // Compensate parent world rotation so local/world rotate modes behave the same.
     glm::quat parent_world_rot(1.0f, 0.0f, 0.0f, 0.0f);
-    if (gizmo->RotateChannel().entity)
+    if (gizmo->rotate_mode.entity)
     {
-        auto rotate_entity_transform = gizmo->RotateChannel().entity->GetComponent<hgl::ecs::TransformComponent>();
+        auto rotate_entity_transform = gizmo->rotate_mode.entity->GetComponent<hgl::ecs::TransformComponent>();
         if (rotate_entity_transform)
         {
             rotate_entity_transform->UpdateIfDirty();
@@ -34,7 +34,7 @@ void GizmoController::UpdateRotateViewRingFacingToCamera(GizmoECS *gizmo, const 
         }
     }
 
-    gizmo->RotateChannel().aux_transform->SetLocalRotation(glm::inverse(parent_world_rot) * facing);
+    gizmo->rotate_mode.aux_transform->SetLocalRotation(glm::inverse(parent_world_rot) * facing);
 }
 
 void GizmoController::CommitTransformChanges(GizmoECS *gizmo,

@@ -89,7 +89,7 @@ static std::vector<GizmoECS::AssetVisualPrimitive> *GetActiveAssetVisualList(Giz
     case GizmoController::ChannelSlot::Move:
         return &gizmo->move_mode.primitives;
     case GizmoController::ChannelSlot::Rotate:
-        return &gizmo->rotate_channel.primitives;
+        return &gizmo->rotate_mode.primitives;  // Phase 4
     case GizmoController::ChannelSlot::Scale:
     default:
         return &gizmo->scale_channel.primitives;

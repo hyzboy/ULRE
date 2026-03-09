@@ -61,4 +61,24 @@ struct MoveDragState
     GizmoMode mode = GizmoMode::MoveWorld;
 };
 
+// Full drag state owned by RotateGizmoMode.
+struct RotateDragState
+{
+    bool       active               = false;
+    bool       mouse_captured       = false;
+    hgl::ecs::InputSystem* capture_input_sys = nullptr;
+
+    // Pick snapshot captured at drag-begin.
+    GizmoPickState pick;
+
+    // Transform snapshot captured at drag-begin.
+    hgl::math::Vector2i  start_mouse;
+    hgl::math::Vector3f  start_position;
+    glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
+    hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
+
+    // GizmoMode active at drag-begin (used by ApplyDrag to check IsLocalMode/IsWorldMode).
+    GizmoMode mode = GizmoMode::RotateWorld;
+};
+
 } // namespace hgl::graph
