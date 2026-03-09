@@ -182,7 +182,22 @@ void RotateGizmoMode::ApplyDrag(const math::Vector2i &mouse,
                                                  cam->view[2][2]));
         }
 
-        const glm::quat dq = glm::angleAxis(delta_angle, glm::normalize(axis));
+        // Sign correction: compute_delta_angle() is positive for CW screen drag
+        // (screen Y is down, so cross_z > 0 = CW). glm::angleAxis(+θ, axis) is
+        // CCW when viewed from the positive end of axis (right-hand rule).
+        // (view[0][2], view[1][2], view[2][2]) = row 2 of view = camera forward
+        // (toward scene, AWAY from viewer). When dot(axis, cam_forward) < 0 the
+        // axis tip faces toward the viewer, so CW drag → CCW rotation → need flip.
+        float signed_angle = delta_angle;
+        if (cam)
+        {
+            const glm::vec3 cam_forward = glm::normalize(math::Vector3f(
+                cam->view[0][2], cam->view[1][2], cam->view[2][2]));
+            if (glm::dot(glm::normalize(axis), cam_forward) < 0.0f)
+                signed_angle = -delta_angle;
+        }
+
+        const glm::quat dq = glm::angleAxis(signed_angle, glm::normalize(axis));
         root_transform->SetLocalRotation(glm::normalize(dq * drag.start_rotation));
         return;
     }
