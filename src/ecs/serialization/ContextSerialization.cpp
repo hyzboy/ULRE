@@ -7,7 +7,6 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/components/SubSceneMembershipComponent.h>
-#include<hgl/ecs/components/AssetInstanceComponent.h>
 #include<hgl/ecs/core/ComponentRecords.h>
 
 #include<cereal/archives/json.hpp>
@@ -312,7 +311,6 @@ namespace hgl::ecs
                 {CameraComponent::GetSerializationType(), CameraComponent::SerializeToRecord, CameraComponent::DeserializeFromRecord},
                 {SubWorldComponent::GetSerializationType(), SubWorldComponent::SerializeToRecord, SubWorldComponent::DeserializeFromRecord},
                 {SubSceneMembershipComponent::GetSerializationType(), SubSceneMembershipComponent::SerializeToRecord, SubSceneMembershipComponent::DeserializeFromRecord},
-                {AssetInstanceComponent::GetSerializationType(), AssetInstanceComponent::SerializeToRecord, AssetInstanceComponent::DeserializeFromRecord},
             };
             return registry;
         }

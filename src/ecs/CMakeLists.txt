@@ -9,8 +9,6 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/EntityHandle.h
     ${ECS_INCLUDE_PATH}/core/EntityManager.h
     ${ECS_INCLUDE_PATH}/core/EntityQuery.h
-    ${ECS_INCLUDE_PATH}/core/AssetTypes.h
-    ${ECS_INCLUDE_PATH}/core/AssetWorldRegistry.h
     ${ECS_INCLUDE_PATH}/core/System.h
     ${ECS_INCLUDE_PATH}/core/SystemProfiler.h
     ${ECS_INCLUDE_PATH}/core/Context.h
@@ -30,7 +28,6 @@ set(ECS_CORE_FILES
     core/Entity.cpp
     core/EntityManager.cpp
     core/EntityQuery.cpp
-    core/AssetWorldRegistry.cpp
     core/System.cpp
     core/SystemProfiler.cpp
     core/Context.cpp
@@ -48,10 +45,8 @@ set(ECS_CORE_FILES
 set(ECS_COMPONENT_FILES
     ${ECS_INCLUDE_PATH}/components/SubWorldComponent.h
     ${ECS_INCLUDE_PATH}/components/SubSceneMembershipComponent.h
-    ${ECS_INCLUDE_PATH}/components/AssetInstanceComponent.h
     components/SubWorldComponent.cpp
     components/SubSceneMembershipComponent.cpp
-    components/AssetInstanceComponent.cpp
 )
 
 set(ECS_SYS_00_RenderSystemCore_FILES

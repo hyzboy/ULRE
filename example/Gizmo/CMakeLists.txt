@@ -16,4 +16,3 @@ CreateProject(03_RayPicking RayPicking.cpp)
 
 CreateProject(05_GizmoUsageExample GizmoUsageExample.cpp)
 
-CreateProject(06_PrefabAssetInstanceExample PrefabAssetInstanceExample.cpp)

@@ -26,7 +26,7 @@ class ScaleGizmoMode
 public:
     // ─── Visual entities (owned, not in GizmoECS) ─────────────────────────
     hgl::ecs::Entity                                    *entity        = nullptr;
-    std::shared_ptr<hgl::ecs::AssetInstanceComponent>   asset_instance;
+    
     std::vector<GizmoVisualPrimitive>                    primitives;
 
     // ─── Hover state ──────────────────────────────────────────────────────
