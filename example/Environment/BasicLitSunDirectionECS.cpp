@@ -15,7 +15,6 @@
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
-#include<hgl/ecs/systems/tick/AssetInstanceBridgeSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 
 #include<hgl/graph/gizmo/SunDirectionControlSystem.h>
@@ -78,13 +77,6 @@ private:
     bool InitEnvironmentControl()
     {
         if (!ecs_context)
-            return false;
-
-        auto bridge_system = ecs_context->GetSystem<AssetInstanceBridgeSystem>();
-        if (!bridge_system)
-            bridge_system = ecs_context->RegisterTickSystem<AssetInstanceBridgeSystem>();
-
-        if (!bridge_system)
             return false;
 
         environment_system = ecs_context->GetSystem<EnvironmentSystem>();

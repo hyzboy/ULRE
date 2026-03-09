@@ -11,6 +11,7 @@
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 #include<glm/gtc/quaternion.hpp>
+#include<hgl/math/Quaternion.h>
 
 namespace hgl::graph{
 
@@ -113,7 +114,7 @@ void SunDirectionControlSystem::Initialize()
                                          sky->sun_direction.z);
 
             proxy_transform->SetLocalPosition(glm::vec3(gizmo_position));
-            proxy_transform->SetLocalRotation(DirectionToRotation(sun_dir));
+            proxy_transform->SetLocalRotation(hgl::math::DirectionToRotation(sun_dir));
         }
     }
 }
@@ -220,7 +221,7 @@ void SunDirectionControlSystem::Update(float)
                 auto gizmo_root_transform = gizmo_root->GetComponent<hgl::ecs::TransformComponent>();
                 if (gizmo_root_transform)
                 {
-                    dir = RotationToDirection(gizmo_root_transform->GetLocalRotation());
+                    dir = hgl::math::RotationToDirection(gizmo_root_transform->GetLocalRotation());
 
                     if (proxy_transform)
                         proxy_transform->SetLocalRotation(gizmo_root_transform->GetLocalRotation());

@@ -88,6 +88,4 @@ namespace hgl::graph
 
     // 辅助函数
     hgl::ecs::Entity *GetGizmoRootEntity(const GizmoECS *gizmo);
-    glm::quat DirectionToRotation(const math::Vector3f &dir);
-    math::Vector3f RotationToDirection(const glm::quat &rot);
-}//namespace hgl::graph
+    }//namespace hgl::graph

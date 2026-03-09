@@ -495,12 +495,6 @@ bool IsGizmoSystemResourcesResident()
     return g_gizmo_resident_state.resources_ready;
 }
 
-math::Vector3f RotationToDirection(const glm::quat &rot)
-{
-    const math::Vector3f forward = glm::normalize(rot * math::AxisVector::Z);
-    return forward;
-}
-
 }//namespace hgl::graph
 
 
