@@ -21,7 +21,6 @@
 #include<hgl/ecs/core/Entity.h>
 #include<hgl/ecs/core/AssetWorldRegistry.h>
 #include<hgl/ecs/components/AssetInstanceComponent.h>
-#include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/components/PrimitiveComponent.h>
 #include<hgl/ecs/components/VisibilityComponent.h>
@@ -595,29 +594,6 @@ void ForceReleaseGizmoSystemResources()
 bool IsGizmoSystemResourcesResident()
 {
     return g_gizmo_resident_state.resources_ready;
-}
-
-glm::quat DirectionToRotation(const math::Vector3f &dir)
-{
-    const float len2 = glm::dot(dir, dir);
-    const math::Vector3f forward = (len2 > 1e-8f) ? glm::normalize(dir) : math::AxisVector::Z;
-
-    const math::Vector3f world_up = math::AxisVector::Y;
-    math::Vector3f right = glm::cross(world_up, forward);
-    if (glm::dot(right, right) < 1e-8f)
-    {
-        const math::Vector3f fallback_up = math::AxisVector::X;
-        right = glm::cross(fallback_up, forward);
-    }
-
-    right = glm::normalize(right);
-    const math::Vector3f up = glm::normalize(glm::cross(forward, right));
-
-    glm::mat3 basis(1.0f);
-    basis[0] = right;
-    basis[1] = up;
-    basis[2] = forward;
-    return glm::normalize(glm::quat_cast(basis));
 }
 
 math::Vector3f RotationToDirection(const glm::quat &rot)
