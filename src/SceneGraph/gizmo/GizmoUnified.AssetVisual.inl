@@ -84,51 +84,11 @@ static std::vector<GizmoECS::AssetVisualPrimitive> *GetActiveAssetVisualList(Giz
     if (!gizmo)
         return nullptr;
 
-    switch (GizmoController::SlotForMode(gizmo->current_mode))
-    {
-    case GizmoController::ChannelSlot::Move:
+    if (IsMoveMode(gizmo->current_mode))
         return &gizmo->move_mode.primitives;
-    case GizmoController::ChannelSlot::Rotate:
-        return &gizmo->rotate_mode.primitives;  // Phase 4
-    case GizmoController::ChannelSlot::Scale:
-    default:
-        return &gizmo->scale_mode.primitives;  // Phase 4b
-    }
-}
-
-static void ApplyAssetVisualHighlightByIndex(GizmoECS *gizmo, int best_index)
-{
-    if (!gizmo)
-        return;
-
-    auto *items = GetActiveAssetVisualList(gizmo);
-    if (!items)
-    {
-        gizmo->asset_hovered_visual_index = -1;
-        gizmo->asset_visual_highlighted = false;
-        return;
-    }
-
-    gizmo->asset_hovered_visual_index = best_index;
-
-    const int best_group = (best_index >= 0 && best_index < static_cast<int>(items->size()))
-                         ? (*items)[best_index].group_id
-                         : -1;
-
-    for (size_t i = 0; i < items->size(); ++i)
-    {
-        auto &entry = (*items)[i];
-        if (!entry.primitive)
-            continue;
-
-        const bool in_group = (best_group >= 0 && entry.group_id == best_group);
-        if (static_cast<int>(i) == best_index || in_group)
-            entry.primitive->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::Yellow));
-        else
-            entry.primitive->SetOverrideMaterial(entry.base_material);
-    }
-
-    gizmo->asset_visual_highlighted = (best_index >= 0);
+    if (IsRotateMode(gizmo->current_mode))
+        return &gizmo->rotate_mode.primitives;
+    return &gizmo->scale_mode.primitives;
 }
 
 static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
@@ -150,9 +110,6 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
 
     if (auto *items = GetActiveAssetVisualList(gizmo))
         apply(*items);
-
-    gizmo->asset_visual_highlighted = highlighted;
-    gizmo->asset_hovered_visual_index = -1;
 }
 
 // Base overload: takes root_transform explicitly — usable from MoveGizmoMode methods.
@@ -316,42 +273,6 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimi
     if (!gizmo)
         return -1;
     return PickBestAssetVisualIndex(items, gizmo->root_transform, mouse_coord, camera_info, viewport_info);
-}
-
-static void UpdateAssetVisualHover(GizmoECS *gizmo,
-                                   const math::Vector2i &mouse_coord,
-                                   const CameraInfo *camera_info,
-                                   const ViewportInfo *viewport_info)
-{
-    if (!gizmo)
-        return;
-
-    int best_index = -1;
-    auto *items = GetActiveAssetVisualList(gizmo);
-    if (items)
-        best_index = PickBestAssetVisualIndex(*items, gizmo, mouse_coord, camera_info, viewport_info);
-
-    ApplyAssetVisualHighlightByIndex(gizmo, best_index);
-
-    auto &channel = GetAssetChannelState(gizmo, gizmo->current_mode);
-    if (best_index >= 0)
-    {
-        if (items && best_index < static_cast<int>(items->size()))
-        {
-            const auto &entry = (*items)[best_index];
-            channel.pick_index = best_index;
-            channel.pick_group = entry.group_id;
-            channel.pick_shape = entry.shape;
-            channel.pick_plane_normal_axis = GetScalePlaneNormalAxisFromEntry(entry);
-        }
-    }
-    else
-    {
-        channel.pick_index = -1;
-        channel.pick_group = -1;
-        channel.pick_plane_normal_axis = -1;
-        channel.pick_shape = GizmoShape::Sphere;
-    }
 }
 
 #include "GizmoUnified.AssetVisual.Move.inl"

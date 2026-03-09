@@ -90,20 +90,10 @@ SET(GIZMO_PUBLIC_HEADERS    ${SG_INCLUDE_PATH}/gizmo/GizmoTypes.h
                             ${SG_INCLUDE_PATH}/gizmo/SunDirectionControlSystem.h)
 
 SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
-                            gizmo/GizmoController.h
                             gizmo/GizmoInternal.h
                             gizmo/GizmoResource.h
                             gizmo/GizmoResource.cpp
-                            gizmo/GizmoController.Update.inl
-                            gizmo/GizmoController.Update.Lifecycle.inl
-                            gizmo/GizmoController.Update.Frame.inl
-                            gizmo/GizmoController.Update.Commit.inl
                             gizmo/GizmoUnified.AssetUpdate.inl
-                            gizmo/channels/IGizmoChannel.h
-                            gizmo/channels/MoveGizmoChannel.h
-                            gizmo/channels/MoveGizmoChannel.Runtime.inl
-                            gizmo/channels/RotateGizmoChannel.h
-                            gizmo/channels/ScaleGizmoChannel.h
                             gizmo/modes/GizmoModeRuntime.h
                             gizmo/modes/MoveGizmoMode.h
                             gizmo/modes/MoveGizmoMode.Visual.inl

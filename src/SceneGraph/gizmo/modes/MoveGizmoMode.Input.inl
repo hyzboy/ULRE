@@ -119,8 +119,8 @@ void MoveGizmoMode::ApplyDrag(const math::Vector2i &mouse,
 
     constexpr float kMoveSensitivity = 0.01f;
 
-    const bool local_space = GizmoController::IsMoveMode(drag.mode)
-                           && GizmoController::IsLocalMode(drag.mode);
+    const bool local_space = IsMoveMode(drag.mode)
+                           && IsLocalMode(drag.mode);
 
     // Helper: world-space axis for axis_index (0=X,1=Y,2=Z).
     auto axis_from_index = [&](int axis_index) -> glm::vec3

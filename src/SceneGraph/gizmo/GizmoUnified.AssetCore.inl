@@ -1,65 +1,3 @@
-static GizmoPickState &GetAssetChannelState(GizmoECS *gizmo, GizmoMode mode)
-{
-    switch (GizmoController::SlotForMode(mode))
-    {
-    case GizmoController::ChannelSlot::Move:
-        return gizmo->move_mode.drag.pick;  // Phase 3: pick state lives in move_mode.drag
-    case GizmoController::ChannelSlot::Rotate:
-        return gizmo->rotate_mode.drag.pick;  // Phase 4: pick state lives in rotate_mode.drag
-    case GizmoController::ChannelSlot::Scale:
-    default:
-        return gizmo->scale_mode.drag.pick;  // Phase 4b: pick state lives in scale_mode.drag
-    }
-}
-
-static void ResetAssetActivePickState(GizmoECS *gizmo)
-{
-    gizmo->asset_drag.pick_index = -1;
-    gizmo->asset_drag.pick_group = -1;
-    gizmo->asset_drag.pick_plane_normal_axis = -1;
-    gizmo->asset_drag.pick_shape = GizmoShape::Sphere;
-}
-
-static void SetAssetActivePickState(GizmoECS *gizmo,
-                                    int pick_index,
-                                    int pick_group,
-                                    int pick_plane_normal_axis,
-                                    GizmoShape pick_shape)
-{
-    if (!gizmo)
-        return;
-
-    gizmo->asset_drag.pick_index = pick_index;
-    gizmo->asset_drag.pick_group = pick_group;
-    gizmo->asset_drag.pick_plane_normal_axis = pick_plane_normal_axis;
-    gizmo->asset_drag.pick_shape = pick_shape;
-}
-
-static void SyncAssetChannelPickFromActive(GizmoECS *gizmo, GizmoMode mode)
-{
-    if (!gizmo)
-        return;
-
-    auto &channel = GetAssetChannelState(gizmo, mode);
-    channel.pick_index = gizmo->asset_drag.pick_index;
-    channel.pick_group = gizmo->asset_drag.pick_group;
-    channel.pick_plane_normal_axis = gizmo->asset_drag.pick_plane_normal_axis;
-    channel.pick_shape = gizmo->asset_drag.pick_shape;
-}
-
-static void SyncAssetActivePickFromChannel(GizmoECS *gizmo, GizmoMode mode)
-{
-    if (!gizmo)
-        return;
-
-    const auto &channel = GetAssetChannelState(gizmo, mode);
-    SetAssetActivePickState(gizmo,
-                            channel.pick_index,
-                            channel.pick_group,
-                            channel.pick_plane_normal_axis,
-                            channel.pick_shape);
-}
-
 static float SanitizeFixedPixelDiameter(float pixel_diameter)
 {
     if (pixel_diameter < 16.0f)
@@ -96,7 +34,7 @@ static void ApplyAssetFixedPixelSizingParameters(GizmoECS *gizmo)
         t->SetFixedPixelSizingEnabled(true);
     };
 
-    apply_to_entity(gizmo->MoveChannel().entity, kReferenceWorldDiameter, kMinScale);
+    apply_to_entity(gizmo->move_mode.entity, kReferenceWorldDiameter, kMinScale);
     apply_to_entity(gizmo->rotate_mode.entity, kReferenceWorldDiameter, kMinScale);
     apply_to_entity(gizmo->scale_mode.entity, kReferenceWorldDiameter, kMinScale);
 }
@@ -106,9 +44,9 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
     if (!gizmo)
         return;
 
-    const bool move_active = gizmo->root_visible && GizmoController::IsMoveMode(gizmo->current_mode);
-    const bool rotate_active = gizmo->root_visible && GizmoController::IsRotateMode(gizmo->current_mode);
-    const bool scale_active = gizmo->root_visible && GizmoController::IsScaleMode(gizmo->current_mode);
+    const bool move_active = gizmo->root_visible && IsMoveMode(gizmo->current_mode);
+    const bool rotate_active = gizmo->root_visible && IsRotateMode(gizmo->current_mode);
+    const bool scale_active = gizmo->root_visible && IsScaleMode(gizmo->current_mode);
 
     const uint32_t mode_code = static_cast<uint32_t>(gizmo->current_mode);
 
@@ -130,11 +68,11 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
         comp->SetOverrideRef(ref);
     };
 
-    apply_active(gizmo->MoveChannel().asset_instance, move_active, kGizmoMoveOverrideRef);
+    apply_active(gizmo->move_mode.asset_instance, move_active, kGizmoMoveOverrideRef);
     apply_active(gizmo->rotate_mode.asset_instance, rotate_active, kGizmoRotateOverrideRef);
     apply_active(gizmo->scale_mode.asset_instance, scale_active, kGizmoScaleOverrideRef);
 
-    for (auto &entry : gizmo->MoveChannel().primitives)
+    for (auto &entry : gizmo->move_mode.primitives)
     {
         if (entry.primitive)
             entry.primitive->SetVisible(move_active);
@@ -172,13 +110,10 @@ static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo)
             t->SetLocalRotation(q);
     };
 
-    const bool move_local = GizmoController::IsMoveMode(gizmo->current_mode) && GizmoController::IsLocalMode(gizmo->current_mode);
-    const bool rotate_local = GizmoController::IsRotateMode(gizmo->current_mode) && GizmoController::IsLocalMode(gizmo->current_mode);
+    const bool move_local = IsMoveMode(gizmo->current_mode) && IsLocalMode(gizmo->current_mode);
+    const bool rotate_local = IsRotateMode(gizmo->current_mode) && IsLocalMode(gizmo->current_mode);
 
-    // Child world rotation = root_rot * child_local_rot.
-    // World mode wants axis fixed in world space -> child_local_rot = inverse(root_rot).
-    // Local mode wants axis follow object/root space -> child_local_rot = identity.
-    set_child_rotation(gizmo->MoveChannel().entity, move_local ? identity : inv_root_rot);
+    set_child_rotation(gizmo->move_mode.entity, move_local ? identity : inv_root_rot);
     set_child_rotation(gizmo->rotate_mode.entity, rotate_local ? identity : inv_root_rot);
     set_child_rotation(gizmo->scale_mode.entity, identity);
 }
@@ -203,49 +138,20 @@ static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,
             t->SetFixedPixelSizingContext(camera_info, viewport_info);
     };
 
-    apply_ctx(gizmo->MoveChannel().entity);
+    apply_ctx(gizmo->move_mode.entity);
     apply_ctx(gizmo->rotate_mode.entity);
     apply_ctx(gizmo->scale_mode.entity);
 }
 
 static bool BeginAssetMouseCapture(GizmoECS *gizmo, hgl::ecs::InputSystem *input_system)
 {
-    if (!gizmo)
-        return false;
-
-    if (!input_system)
-        return true;
-
-    if (gizmo->asset_drag.mouse_captured)
-    {
-        if (gizmo->asset_drag.capture_input_system == input_system)
-            return true;
-
-        if (gizmo->asset_drag.capture_input_system)
-            gizmo->asset_drag.capture_input_system->EndMouseCapture(gizmo);
-
-        gizmo->asset_drag.mouse_captured = false;
-        gizmo->asset_drag.capture_input_system = nullptr;
-    }
-
-    if (!input_system->BeginMouseCapture(gizmo))
-        return false;
-
-    gizmo->asset_drag.mouse_captured = true;
-    gizmo->asset_drag.capture_input_system = input_system;
-    return true;
+    (void)gizmo; (void)input_system;
+    return true;  // Modes manage their own mouse capture; this stub satisfies any lingering call sites.
 }
 
 static void EndAssetMouseCapture(GizmoECS *gizmo)
 {
-    if (!gizmo || !gizmo->asset_drag.mouse_captured)
-        return;
-
-    if (gizmo->asset_drag.capture_input_system)
-        gizmo->asset_drag.capture_input_system->EndMouseCapture(gizmo);
-
-    gizmo->asset_drag.mouse_captured = false;
-    gizmo->asset_drag.capture_input_system = nullptr;
+    (void)gizmo; // Modes manage their own mouse capture.
 }
 
 static int GetScalePlaneNormalAxisFromEntry(const GizmoECS::AssetVisualPrimitive &entry)
@@ -261,5 +167,16 @@ static int GetScalePlaneNormalAxisFromEntry(const GizmoECS::AssetVisualPrimitive
     if (ax <= ay && ax <= az) return 0; // YZ plane
     if (ay <= ax && ay <= az) return 1; // XZ plane
     return 2;                            // XY plane
+}
+
+static void AssetPlaneAxesFromNormal(int normal_axis, int &u_axis, int &v_axis)
+{
+    switch (normal_axis)
+    {
+    case 0: u_axis = 1; v_axis = 2; break; // YZ plane
+    case 1: u_axis = 0; v_axis = 2; break; // XZ plane
+    case 2: u_axis = 0; v_axis = 1; break; // XY plane
+    default: u_axis = 0; v_axis = 1; break;
+    }
 }
 

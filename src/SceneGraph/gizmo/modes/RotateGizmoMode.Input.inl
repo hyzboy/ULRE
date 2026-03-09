@@ -126,8 +126,8 @@ void RotateGizmoMode::ApplyDrag(const math::Vector2i &mouse,
         camera_up    = glm::normalize(math::Vector3f(cam->view[0][1], cam->view[1][1], cam->view[2][1]));
     }
 
-    const bool local_space = GizmoController::IsRotateMode(drag.mode)
-                          && GizmoController::IsLocalMode(drag.mode);
+    const bool local_space = IsRotateMode(drag.mode)
+                          && IsLocalMode(drag.mode);
 
     // Helper: axis in world space from axis_index (0=X, 1=Y, 2=Z), respecting local mode.
     auto axis_from_index = [&](int axis_index) -> glm::vec3
@@ -188,7 +188,7 @@ void RotateGizmoMode::ApplyDrag(const math::Vector2i &mouse,
     }
 
     // ─── No pick (headless / degenerate): screen-space tumble ────────────
-    if (GizmoController::IsRotateMode(drag.mode) && GizmoController::IsWorldMode(drag.mode))
+    if (IsRotateMode(drag.mode) && IsWorldMode(drag.mode))
     {
         const glm::quat yaw   = glm::angleAxis(-dx * kRotateSensitivity, math::AxisVector::Y);
         const glm::quat pitch = glm::angleAxis(-dy * kRotateSensitivity, camera_right);
