@@ -1,35 +1,3 @@
-// Base overload: no GizmoECS dependency — usable from MoveGizmoMode methods.
-static hgl::ecs::Entity *CreateAssetVisualEntity(hgl::ecs::ECSContext *world,
-                                                  std::vector<hgl::ecs::EntityID> &entity_ids,
-                                                  hgl::ecs::Entity *parent,
-                                                  const char *name,
-                                                  const math::Vector3f &position,
-                                                  const glm::quat &rotation,
-                                                  const math::Vector3f &scale,
-                                                  std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr)
-{
-    if (!world || !parent)
-        return nullptr;
-
-    auto *entity = world->CreateEntity<hgl::ecs::Entity>(name ? name : "GizmoAssetVisual");
-    if (!entity)
-        return nullptr;
-
-    auto transform = entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
-    if (!transform)
-        return nullptr;
-
-    transform->SetLocalTRS(glm::vec3(position), rotation, glm::vec3(scale));
-    transform->SetParent(parent->GetID());
-
-    if (out_transform)
-        *out_transform = transform;
-
-    entity_ids.push_back(entity->GetID());
-    return entity;
-}
-
-// GizmoECS convenience wrapper — delegates to base overload.
 static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
                                                   hgl::ecs::Entity *parent,
                                                   const char *name,
@@ -38,10 +6,15 @@ static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
                                                   const math::Vector3f &scale,
                                                   std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr)
 {
-    if (!gizmo)
+    if (!gizmo || !parent)
         return nullptr;
-    return CreateAssetVisualEntity(gizmo->world, gizmo->asset_visual_entity_ids,
-                                   parent, name, position, rotation, scale, out_transform);
+
+    hgl::ecs::ECSContext::ChildEntityDesc desc;
+    desc.name     = name ? name : "GizmoAssetVisual";
+    desc.position = glm::vec3(position);
+    desc.rotation = rotation;
+    desc.scale    = glm::vec3(scale);
+    return gizmo->world->CreateChildEntity(parent, desc, &gizmo->asset_visual_entity_ids, out_transform);
 }
 
 static bool AttachAssetModePrimitive(std::vector<GizmoECS::AssetVisualPrimitive> &out_list,
@@ -77,6 +50,27 @@ static bool AttachAssetModePrimitive(std::vector<GizmoECS::AssetVisualPrimitive>
     item.group_id = group_id;
     out_list.push_back(item);
     return true;
+}
+
+static bool MakeAndAttachPrimitive(std::vector<GizmoECS::AssetVisualPrimitive> &primitives,
+                                    hgl::ecs::ECSContext *world,
+                                    hgl::ecs::Entity *parent,
+                                    std::vector<hgl::ecs::EntityID> &entity_ids,
+                                    const char *name,
+                                    const math::Vector3f &pos,
+                                    const glm::quat &rot,
+                                    const math::Vector3f &scale,
+                                    GizmoShape shape,
+                                    GizmoColor color,
+                                    int group_id = -1,
+                                    std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr)
+{
+    hgl::ecs::ECSContext::ChildEntityDesc d;
+    d.name = name; d.position = glm::vec3(pos); d.rotation = rot; d.scale = glm::vec3(scale);
+    auto *entity = world->CreateChildEntity(parent, d, &entity_ids, out_transform);
+    if (!entity)
+        return false;
+    return AttachAssetModePrimitive(primitives, entity, shape, color, group_id);
 }
 
 static std::vector<GizmoECS::AssetVisualPrimitive> *GetActiveAssetVisualList(GizmoECS *gizmo)

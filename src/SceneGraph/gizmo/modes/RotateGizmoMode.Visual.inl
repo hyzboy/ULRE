@@ -34,28 +34,21 @@ void RotateGizmoMode::BuildVisual(hgl::ecs::ECSContext *world,
         if (cfg.rotation_deg != 0.0f)
             rotation = glm::angleAxis(glm::radians(cfg.rotation_deg), glm::vec3(cfg.rotation_axis));
 
-        if (auto *torus = CreateAssetVisualEntity(world, entity_ids,
-                                                  parent,
-                                                  "GizmoAssetRotate_Torus",
-                                                  math::Vector3f(0.0f),
-                                                  rotation,
-                                                  math::Vector3f(GIZMO_ARROW_LENGTH) * kAssetVisualScale))
-        {
-            AttachAssetModePrimitive(primitives, torus, GizmoShape::Torus, cfg.color, i);
-        }
+        MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
+                               "GizmoAssetRotate_Torus",
+                               math::Vector3f(0.0f),
+                               rotation,
+                               math::Vector3f(GIZMO_ARROW_LENGTH) * kAssetVisualScale,
+                               GizmoShape::Torus, cfg.color, i);
     }
 
     // White view-facing ring (group_id = 3, larger scale, aux_transform captured).
-    if (auto *white_torus = CreateAssetVisualEntity(world, entity_ids,
-                                                    parent,
-                                                    "GizmoAssetRotate_WhiteTorus",
-                                                    math::Vector3f(0.0f),
-                                                    glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                                    math::Vector3f(13.0f) * kAssetVisualScale,
-                                                    &aux_transform))
-    {
-        AttachAssetModePrimitive(primitives, white_torus, GizmoShape::Torus, GizmoColor::White, 3);
-    }
+    MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
+                           "GizmoAssetRotate_WhiteTorus",
+                           math::Vector3f(0.0f),
+                           glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                           math::Vector3f(13.0f) * kAssetVisualScale,
+                           GizmoShape::Torus, GizmoColor::White, 3, &aux_transform);
 }
 
 void RotateGizmoMode::DestroyVisual()

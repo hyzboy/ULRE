@@ -10,15 +10,12 @@ void ScaleGizmoMode::BuildVisual(hgl::ecs::ECSContext *world,
         return;
 
     // Center cube (white, group -1 = uniform scale on no-pick path).
-    if (auto *center = CreateAssetVisualEntity(world, entity_ids,
-                                               parent,
-                                               "GizmoAssetScale_Center",
-                                               math::Vector3f(0.0f),
-                                               glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                                               math::Vector3f(GIZMO_CENTER_SPHERE_RADIUS * 2.0f) * kAssetVisualScale))
-    {
-        AttachAssetModePrimitive(primitives, center, GizmoShape::Cube, GizmoColor::White);
-    }
+    MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
+                           "GizmoAssetScale_Center",
+                           math::Vector3f(0.0f),
+                           glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                           math::Vector3f(GIZMO_CENTER_SPHERE_RADIUS * 2.0f) * kAssetVisualScale,
+                           GizmoShape::Cube, GizmoColor::White);
 
     struct AxisConfig
     {
@@ -43,35 +40,26 @@ void ScaleGizmoMode::BuildVisual(hgl::ecs::ECSContext *world,
         if (cfg.rotation_deg != 0.0f)
             rotation = glm::angleAxis(glm::radians(cfg.rotation_deg), glm::vec3(cfg.rotation_axis));
 
-        if (auto *cyl = CreateAssetVisualEntity(world, entity_ids,
-                                                parent,
-                                                "GizmoAssetScale_Cylinder",
-                                                cfg.axis * GIZMO_CYLINDER_OFFSET * kAssetVisualScale,
-                                                rotation,
-                                                math::Vector3f(GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_HALF_LENGTH) * kAssetVisualScale))
-        {
-            AttachAssetModePrimitive(primitives, cyl, GizmoShape::Cylinder, cfg.color, i);
-        }
+        MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
+                               "GizmoAssetScale_Cylinder",
+                               cfg.axis * GIZMO_CYLINDER_OFFSET * kAssetVisualScale,
+                               rotation,
+                               math::Vector3f(GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_RADIUS, GIZMO_CYLINDER_HALF_LENGTH) * kAssetVisualScale,
+                               GizmoShape::Cylinder, cfg.color, i);
 
-        if (auto *tip = CreateAssetVisualEntity(world, entity_ids,
-                                                parent,
-                                                "GizmoAssetScale_CubeTip",
-                                                cfg.axis * GIZMO_CONE_OFFSET * kAssetVisualScale,
-                                                rotation,
-                                                math::Vector3f(1.0f) * kAssetVisualScale))
-        {
-            AttachAssetModePrimitive(primitives, tip, GizmoShape::Cube, cfg.color, i);
-        }
+        MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
+                               "GizmoAssetScale_CubeTip",
+                               cfg.axis * GIZMO_CONE_OFFSET * kAssetVisualScale,
+                               rotation,
+                               math::Vector3f(1.0f) * kAssetVisualScale,
+                               GizmoShape::Cube, cfg.color, i);
 
-        if (auto *plane = CreateAssetVisualEntity(world, entity_ids,
-                                                  parent,
-                                                  "GizmoAssetScale_Plane",
-                                                  cfg.plane_pos * kAssetVisualScale,
-                                                  rotation,
-                                                  math::Vector3f(2.0f) * kAssetVisualScale))
-        {
-            AttachAssetModePrimitive(primitives, plane, GizmoShape::Square, cfg.color);
-        }
+        MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
+                               "GizmoAssetScale_Plane",
+                               cfg.plane_pos * kAssetVisualScale,
+                               rotation,
+                               math::Vector3f(2.0f) * kAssetVisualScale,
+                               GizmoShape::Square, cfg.color);
     }
 }
 
