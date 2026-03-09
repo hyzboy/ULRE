@@ -39,11 +39,16 @@ static void UpdateRotateViewRingFacingToCamera(GizmoECS *gizmo, const CameraInfo
     gizmo->rotate_mode.aux_transform->SetLocalRotation(glm::inverse(parent_world_rot) * facing);
 }
 
+struct GizmoPrevTransform
+{
+    math::Vector3f  pos;
+    glm::quat       rot{1.0f, 0.0f, 0.0f, 0.0f};
+    math::Vector3f  scale{1.0f, 1.0f, 1.0f};
+};
+
 static void CommitTransformChanges(GizmoECS *gizmo,
                                    const std::shared_ptr<hgl::ecs::TransformComponent> &target_transform,
-                                   const math::Vector3f &prev_pos,
-                                   const glm::quat &prev_rot,
-                                   const math::Vector3f &prev_scale,
+                                   const GizmoPrevTransform &prev,
                                    const math::Vector3f &cur_effective_scale)
 {
     if (!gizmo || !gizmo->root_transform)
@@ -53,7 +58,7 @@ static void CommitTransformChanges(GizmoECS *gizmo,
     const glm::quat cur_rot = gizmo->root_transform->GetLocalRotation();
     const math::Vector3f cur_scale = target_transform ? cur_effective_scale
                                                       : gizmo->root_transform->GetLocalScale();
-    const bool changed = IsTransformChanged(prev_pos, prev_rot, prev_scale,
+    const bool changed = IsTransformChanged(prev.pos, prev.rot, prev.scale,
                                             cur_pos, cur_rot, cur_scale);
 
     if (target_transform && changed)
@@ -62,11 +67,11 @@ static void CommitTransformChanges(GizmoECS *gizmo,
     if (changed && gizmo->on_changed)
     {
         GizmoTransformChange change;
-        change.previous_position = prev_pos;
+        change.previous_position = prev.pos;
         change.current_position  = cur_pos;
-        change.previous_rotation = prev_rot;
+        change.previous_rotation = prev.rot;
         change.current_rotation  = cur_rot;
-        change.previous_scale    = prev_scale;
+        change.previous_scale    = prev.scale;
         change.current_scale     = cur_scale;
         change.mode              = gizmo->current_mode;
         gizmo->on_changed(change);
@@ -75,35 +80,26 @@ static void CommitTransformChanges(GizmoECS *gizmo,
 
 template <typename Mode>
 static void DispatchGizmoMode(Mode &mode, GizmoECS *gizmo,
-                               const math::Vector2i &mouse, const CameraInfo *cam,
-                               const ViewportInfo *vp, hgl::ecs::InputSystem *input_sys,
-                               bool left_down, bool left_pressed, bool left_released,
-                               const math::Vector3f &prev_pos, const glm::quat &prev_rot,
-                               const math::Vector3f &prev_scale, bool root_visible,
-                               GizmoMode current_mode, bool has_view_context)
+                               const GizmoFrameInput &input,
+                               const GizmoPrevTransform &prev)
 {
     if (!mode.IsDragging())
-        mode.UpdateHover(mouse, cam, vp, gizmo->root_transform);
+        mode.UpdateHover(input.mouse_coord, input.camera_info, input.viewport_info, gizmo->root_transform);
 
-    if (left_pressed && !mode.IsDragging())
-        mode.TryBeginDrag(mouse, cam, vp, input_sys, has_view_context,
-                          prev_pos, prev_rot, prev_scale, current_mode, root_visible);
+    const bool has_view = (input.camera_info && input.viewport_info);
+    if (input.left_pressed && !mode.IsDragging())
+        mode.TryBeginDrag(input.mouse_coord, input.camera_info, input.viewport_info, input.input_system,
+                          has_view, prev.pos, prev.rot, prev.scale,
+                          gizmo->current_mode, gizmo->root_visible);
 
-    if (left_released && mode.IsDragging())
+    if (input.left_released && mode.IsDragging())
         mode.EndDrag();
 
-    if (!left_down && mode.IsDragging())
-        mode.RecoverIfOrphaned(left_down);
+    if (!input.left_down && mode.IsDragging())
+        mode.RecoverIfOrphaned(input.left_down);
 }
 
-void UpdateTransformGizmo(GizmoECS *gizmo,
-                          const math::Vector2i &mouse_coord,
-                          const CameraInfo *camera_info,
-                          const ViewportInfo *viewport_info,
-                          hgl::ecs::InputSystem *input_system,
-                          bool left_down,
-                          bool left_pressed,
-                          bool left_released)
+void UpdateTransformGizmo(GizmoECS *gizmo, const GizmoFrameInput &input)
 {
     if (!gizmo || !gizmo->root_transform)
         return;
@@ -112,7 +108,7 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
     if (gizmo->target_entity)
         target_transform = gizmo->target_entity->GetComponent<hgl::ecs::TransformComponent>();
 
-    const bool has_view = (camera_info && viewport_info);
+    const bool has_view = (input.camera_info && input.viewport_info);
 
     // 1. Sync target → root when idle
     if (!IsAnyModeDragging(gizmo) && target_transform)
@@ -123,49 +119,41 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
             has_view ? math::Vector3f(1.0f) : target_transform->GetLocalScale());
     }
 
-    SyncAssetFixedPixelSizingContext(gizmo, camera_info, viewport_info);
+    SyncAssetFixedPixelSizingContext(gizmo, input.camera_info, input.viewport_info);
     SyncAssetSubGizmoLocalTransforms(gizmo);
 
-    const math::Vector3f prev_pos = target_transform ? target_transform->GetLocalPosition()
-                                                      : gizmo->root_transform->GetLocalPosition();
-    const glm::quat prev_rot = target_transform ? target_transform->GetLocalRotation()
-                                                 : gizmo->root_transform->GetLocalRotation();
-    const math::Vector3f prev_scale = target_transform ? target_transform->GetLocalScale()
-                                                        : gizmo->root_transform->GetLocalScale();
-    math::Vector3f cur_effective_scale = prev_scale;
+    GizmoPrevTransform prev;
+    prev.pos   = target_transform ? target_transform->GetLocalPosition()
+                                  : gizmo->root_transform->GetLocalPosition();
+    prev.rot   = target_transform ? target_transform->GetLocalRotation()
+                                  : gizmo->root_transform->GetLocalRotation();
+    prev.scale = target_transform ? target_transform->GetLocalScale()
+                                  : gizmo->root_transform->GetLocalScale();
+    math::Vector3f cur_effective_scale = prev.scale;
 
     // 2. Dispatch to active mode
     switch (gizmo->current_mode)
     {
     case GizmoMode::MoveWorld:
     case GizmoMode::MoveLocal:
-        DispatchGizmoMode(gizmo->move_mode, gizmo, mouse_coord, camera_info, viewport_info,
-                          input_system, left_down, left_pressed, left_released,
-                          prev_pos, prev_rot, prev_scale, gizmo->root_visible,
-                          gizmo->current_mode, has_view);
-        if (gizmo->move_mode.IsDragging() && left_down)
-            gizmo->move_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
+        DispatchGizmoMode(gizmo->move_mode, gizmo, input, prev);
+        if (gizmo->move_mode.IsDragging() && input.left_down)
+            gizmo->move_mode.ApplyDrag(input.mouse_coord, input.camera_info, input.viewport_info,
                                        gizmo->root_transform);
         break;
 
     case GizmoMode::RotateWorld:
     case GizmoMode::RotateLocal:
-        DispatchGizmoMode(gizmo->rotate_mode, gizmo, mouse_coord, camera_info, viewport_info,
-                          input_system, left_down, left_pressed, left_released,
-                          prev_pos, prev_rot, prev_scale, gizmo->root_visible,
-                          gizmo->current_mode, has_view);
-        if (gizmo->rotate_mode.IsDragging() && left_down)
-            gizmo->rotate_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
+        DispatchGizmoMode(gizmo->rotate_mode, gizmo, input, prev);
+        if (gizmo->rotate_mode.IsDragging() && input.left_down)
+            gizmo->rotate_mode.ApplyDrag(input.mouse_coord, input.camera_info, input.viewport_info,
                                          gizmo->root_transform);
         break;
 
     case GizmoMode::ScaleLocal:
-        DispatchGizmoMode(gizmo->scale_mode, gizmo, mouse_coord, camera_info, viewport_info,
-                          input_system, left_down, left_pressed, left_released,
-                          prev_pos, prev_rot, prev_scale, gizmo->root_visible,
-                          gizmo->current_mode, has_view);
-        if (gizmo->scale_mode.IsDragging() && left_down)
-            gizmo->scale_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
+        DispatchGizmoMode(gizmo->scale_mode, gizmo, input, prev);
+        if (gizmo->scale_mode.IsDragging() && input.left_down)
+            gizmo->scale_mode.ApplyDrag(input.mouse_coord, input.camera_info, input.viewport_info,
                                         gizmo->allow_negative_scale,
                                         target_transform, has_view,
                                         gizmo->root_transform, cur_effective_scale);
@@ -173,6 +161,6 @@ void UpdateTransformGizmo(GizmoECS *gizmo,
     }
 
     // 3. Post-frame
-    UpdateRotateViewRingFacingToCamera(gizmo, camera_info);
-    CommitTransformChanges(gizmo, target_transform, prev_pos, prev_rot, prev_scale, cur_effective_scale);
+    UpdateRotateViewRingFacingToCamera(gizmo, input.camera_info);
+    CommitTransformChanges(gizmo, target_transform, prev, cur_effective_scale);
 }

@@ -230,14 +230,15 @@ void TransformGizmoSystem::Update(float)
         last_key_5 = key_5;
     }
 
-    UpdateTransformGizmo(gizmo,
-                   mouse_coord,
-                   camera_info,
-                   viewport_info,
-                   input_system.get(),
-                   left_down,
-                   left_pressed,
-                   left_released);
+    GizmoFrameInput frame_input;
+    frame_input.mouse_coord   = mouse_coord;
+    frame_input.camera_info   = camera_info;
+    frame_input.viewport_info = viewport_info;
+    frame_input.input_system  = input_system.get();
+    frame_input.left_down     = left_down;
+    frame_input.left_pressed  = left_pressed;
+    frame_input.left_released = left_released;
+    UpdateTransformGizmo(gizmo, frame_input);
 }
 
 }//namespace hgl::graph

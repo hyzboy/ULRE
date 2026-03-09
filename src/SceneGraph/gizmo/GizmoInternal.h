@@ -36,14 +36,19 @@ namespace hgl::graph
     bool IsTransformGizmoAllowNegativeScale(const TransformGizmo *gizmo);
     void SetTransformGizmoFixedPixelDiameter(TransformGizmo *gizmo, float pixel_diameter);
     float GetTransformGizmoFixedPixelDiameter(const TransformGizmo *gizmo);
-    void UpdateTransformGizmo(TransformGizmo *gizmo,
-                              const math::Vector2i &mouse_coord,
-                              const CameraInfo *camera_info,
-                              const ViewportInfo *viewport_info,
-                              ::hgl::ecs::InputSystem *input_system,
-                              bool left_down,
-                              bool left_pressed,
-                              bool left_released);
+
+    struct GizmoFrameInput
+    {
+        math::Vector2i           mouse_coord;
+        const CameraInfo        *camera_info   = nullptr;
+        const ViewportInfo      *viewport_info = nullptr;
+        ::hgl::ecs::InputSystem *input_system  = nullptr;
+        bool                     left_down     = false;
+        bool                     left_pressed  = false;
+        bool                     left_released = false;
+    };
+
+    void UpdateTransformGizmo(TransformGizmo *gizmo, const GizmoFrameInput &input);
 
     enum class GizmoColor:uint
     {

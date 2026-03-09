@@ -97,19 +97,67 @@ namespace
             root_transform->SetLocalTRS(start_pos, start_rot, start_scale);
 
             SetTransformGizmoMode(gizmo, GizmoMode::MoveWorld);
-            UpdateTransformGizmo(gizmo, math::Vector2i(100, 100), nullptr, nullptr, nullptr, true, true, false);
-            UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, true, false, false);
-            UpdateTransformGizmo(gizmo, math::Vector2i(140, 120), nullptr, nullptr, nullptr, false, false, true);
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord  = math::Vector2i(100, 100);
+                fi.left_down    = true;
+                fi.left_pressed = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord = math::Vector2i(140, 120);
+                fi.left_down   = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord   = math::Vector2i(140, 120);
+                fi.left_released = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
 
             SetTransformGizmoMode(gizmo, GizmoMode::RotateLocal);
-            UpdateTransformGizmo(gizmo, math::Vector2i(200, 200), nullptr, nullptr, nullptr, true, true, false);
-            UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, true, false, false);
-            UpdateTransformGizmo(gizmo, math::Vector2i(260, 170), nullptr, nullptr, nullptr, false, false, true);
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord  = math::Vector2i(200, 200);
+                fi.left_down    = true;
+                fi.left_pressed = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord = math::Vector2i(260, 170);
+                fi.left_down   = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord   = math::Vector2i(260, 170);
+                fi.left_released = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
 
             SetTransformGizmoMode(gizmo, GizmoMode::ScaleLocal);
-            UpdateTransformGizmo(gizmo, math::Vector2i(300, 200), nullptr, nullptr, nullptr, true, true, false);
-            UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, true, false, false);
-            UpdateTransformGizmo(gizmo, math::Vector2i(300, 160), nullptr, nullptr, nullptr, false, false, true);
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord  = math::Vector2i(300, 200);
+                fi.left_down    = true;
+                fi.left_pressed = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord = math::Vector2i(300, 160);
+                fi.left_down   = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
+            {
+                GizmoFrameInput fi;
+                fi.mouse_coord   = math::Vector2i(300, 160);
+                fi.left_released = true;
+                UpdateTransformGizmo(gizmo, fi);
+            }
 
             struct Result
             {

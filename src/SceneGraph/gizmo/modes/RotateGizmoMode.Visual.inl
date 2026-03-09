@@ -34,21 +34,27 @@ void RotateGizmoMode::BuildVisual(hgl::ecs::ECSContext *world,
         if (cfg.rotation_deg != 0.0f)
             rotation = glm::angleAxis(glm::radians(cfg.rotation_deg), glm::vec3(cfg.rotation_axis));
 
-        MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
-                               "GizmoAssetRotate_Torus",
-                               math::Vector3f(0.0f),
-                               rotation,
-                               math::Vector3f(GIZMO_ARROW_LENGTH) * kAssetVisualScale,
-                               GizmoShape::Torus, cfg.color, i);
+        PrimitiveDesc torus;
+        torus.name     = "GizmoAssetRotate_Torus";
+        torus.pos      = math::Vector3f(0.0f);
+        torus.rot      = rotation;
+        torus.scale    = math::Vector3f(GIZMO_ARROW_LENGTH) * kAssetVisualScale;
+        torus.shape    = GizmoShape::Torus;
+        torus.color    = cfg.color;
+        torus.group_id = i;
+        MakeAndAttachPrimitive(primitives, world, parent, entity_ids, torus);
     }
 
     // White view-facing ring (group_id = 3, larger scale, aux_transform captured).
-    MakeAndAttachPrimitive(primitives, world, parent, entity_ids,
-                           "GizmoAssetRotate_WhiteTorus",
-                           math::Vector3f(0.0f),
-                           glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
-                           math::Vector3f(13.0f) * kAssetVisualScale,
-                           GizmoShape::Torus, GizmoColor::White, 3, &aux_transform);
+    PrimitiveDesc white_torus;
+    white_torus.name          = "GizmoAssetRotate_WhiteTorus";
+    white_torus.pos           = math::Vector3f(0.0f);
+    white_torus.scale         = math::Vector3f(13.0f) * kAssetVisualScale;
+    white_torus.shape         = GizmoShape::Torus;
+    white_torus.color         = GizmoColor::White;
+    white_torus.group_id      = 3;
+    white_torus.out_transform = &aux_transform;
+    MakeAndAttachPrimitive(primitives, world, parent, entity_ids, white_torus);
 }
 
 void RotateGizmoMode::DestroyVisual()

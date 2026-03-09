@@ -180,14 +180,7 @@ void SetTransformGizmoAllowNegativeScale(GizmoECS *gizmo, bool enabled);
 bool IsTransformGizmoAllowNegativeScale(const GizmoECS *gizmo);
 void SetTransformGizmoFixedPixelDiameter(GizmoECS *gizmo, float pixel_diameter);
 float GetTransformGizmoFixedPixelDiameter(const GizmoECS *gizmo);
-void UpdateTransformGizmo(GizmoECS *gizmo,
-                          const math::Vector2i &mouse_coord,
-                          const CameraInfo *camera_info,
-                          const ViewportInfo *viewport_info,
-                          hgl::ecs::InputSystem *input_system,
-                          bool left_down,
-                          bool left_pressed,
-                          bool left_released);
+void UpdateTransformGizmo(GizmoECS *gizmo, const GizmoFrameInput &input);
 
 static void SyncAssetSubGizmoLocalTransforms(GizmoECS *gizmo);
 static void SyncAssetFixedPixelSizingContext(GizmoECS *gizmo,

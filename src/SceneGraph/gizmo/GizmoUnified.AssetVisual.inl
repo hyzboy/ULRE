@@ -17,6 +17,18 @@ static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
     return gizmo->world->CreateChildEntity(parent, desc, &gizmo->asset_visual_entity_ids, out_transform);
 }
 
+struct PrimitiveDesc
+{
+    const char        *name;
+    math::Vector3f     pos;
+    glm::quat          rot           = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+    math::Vector3f     scale;
+    GizmoShape         shape;
+    GizmoColor         color;
+    int                group_id      = -1;
+    std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr;
+};
+
 static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list,
                                      hgl::ecs::Entity *entity,
                                      const GizmoShape shape,
@@ -56,21 +68,14 @@ static bool MakeAndAttachPrimitive(std::vector<GizmoVisualPrimitive> &primitives
                                     hgl::ecs::ECSContext *world,
                                     hgl::ecs::Entity *parent,
                                     std::vector<hgl::ecs::EntityID> &entity_ids,
-                                    const char *name,
-                                    const math::Vector3f &pos,
-                                    const glm::quat &rot,
-                                    const math::Vector3f &scale,
-                                    GizmoShape shape,
-                                    GizmoColor color,
-                                    int group_id = -1,
-                                    std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr)
+                                    const PrimitiveDesc &desc)
 {
     hgl::ecs::ECSContext::ChildEntityDesc d;
-    d.name = name; d.position = glm::vec3(pos); d.rotation = rot; d.scale = glm::vec3(scale);
-    auto *entity = world->CreateChildEntity(parent, d, &entity_ids, out_transform);
+    d.name = desc.name; d.position = glm::vec3(desc.pos); d.rotation = desc.rot; d.scale = glm::vec3(desc.scale);
+    auto *entity = world->CreateChildEntity(parent, d, &entity_ids, desc.out_transform);
     if (!entity)
         return false;
-    return AttachAssetModePrimitive(primitives, entity, shape, color, group_id);
+    return AttachAssetModePrimitive(primitives, entity, desc.shape, desc.color, desc.group_id);
 }
 
 static void SetPrimitivesVisible(std::vector<GizmoVisualPrimitive> &primitives, bool visible)
