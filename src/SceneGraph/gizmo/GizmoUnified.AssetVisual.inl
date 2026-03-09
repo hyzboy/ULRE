@@ -120,13 +120,14 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
         apply(*items);
 }
 
-// Base overload: takes root_transform explicitly — usable from MoveGizmoMode methods.
+// Base overload: takes root_transform explicitly — usable from mode methods.
 static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &items,
                                     const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform,
-                                    const math::Vector2i &mouse_coord,
-                                    const CameraInfo *camera_info,
-                                    const ViewportInfo *viewport_info)
+                                    const GizmoFrameInput &input)
 {
+    const math::Vector2i &mouse_coord   = input.mouse_coord;
+    const CameraInfo    *camera_info   = input.camera_info;
+    const ViewportInfo  *viewport_info = input.viewport_info;
     if (!root_transform || items.empty() || !camera_info || !viewport_info)
         return -1;
 
@@ -274,12 +275,10 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &ite
 // GizmoECS convenience wrapper.
 static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &items,
                                     GizmoECS *gizmo,
-                                    const math::Vector2i &mouse_coord,
-                                    const CameraInfo *camera_info,
-                                    const ViewportInfo *viewport_info)
+                                    const GizmoFrameInput &input)
 {
     if (!gizmo)
         return -1;
-    return PickBestAssetVisualIndex(items, gizmo->root_transform, mouse_coord, camera_info, viewport_info);
+    return PickBestAssetVisualIndex(items, gizmo->root_transform, input);
 }
 

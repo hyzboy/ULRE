@@ -2,12 +2,10 @@
 // Included as part of GizmoUnified.cpp (single-TU pattern), so static helpers
 // from GizmoUnified.AssetVisual.inl and GizmoUnified.AssetChannels.inl are in scope.
 
-void MoveGizmoMode::UpdateHover(const math::Vector2i &mouse,
-                                 const CameraInfo *cam,
-                                 const ViewportInfo *vp,
+void MoveGizmoMode::UpdateHover(const GizmoFrameInput &input,
                                  const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform)
 {
-    const int best_index = PickBestAssetVisualIndex(primitives, root_transform, mouse, cam, vp);
+    const int best_index = PickBestAssetVisualIndex(primitives, root_transform, input);
     hovered_index = best_index;
 
     // Update pre-computed pick state so TryBeginDrag can read it instantly.
@@ -42,20 +40,15 @@ void MoveGizmoMode::UpdateHover(const math::Vector2i &mouse,
     }
 }
 
-bool MoveGizmoMode::TryBeginDrag(const math::Vector2i &mouse,
-                                  const CameraInfo *cam,
-                                  const ViewportInfo *vp,
-                                  hgl::ecs::InputSystem *input_sys,
-                                  bool has_view_context,
-                                  const math::Vector3f &prev_pos,
-                                  const glm::quat &prev_rot,
-                                  const math::Vector3f &prev_scale,
+bool MoveGizmoMode::TryBeginDrag(const GizmoFrameInput &input,
+                                  const GizmoPrevTransform &prev,
                                   GizmoMode current_mode,
                                   bool root_visible)
 {
     if (drag.active)
         return false;
 
+    const bool has_view_context = (input.camera_info && input.viewport_info);
     const bool can_pick = (root_visible
                            && hovered_index >= 0
                            && hovered_index < static_cast<int>(primitives.size()));
@@ -64,11 +57,11 @@ bool MoveGizmoMode::TryBeginDrag(const math::Vector2i &mouse,
         return false;  // Nothing to drag
 
     // Attempt mouse capture.
-    if (input_sys)
+    if (input.input_system)
     {
         if (drag.mouse_captured)
         {
-            if (drag.capture_input_sys == input_sys)
+            if (drag.capture_input_sys == input.input_system)
             {
                 // Already captured — proceed.
             }
@@ -83,21 +76,21 @@ bool MoveGizmoMode::TryBeginDrag(const math::Vector2i &mouse,
 
         if (!drag.mouse_captured)
         {
-            if (!input_sys->BeginMouseCapture(this))
+            if (!input.input_system->BeginMouseCapture(this))
                 return true;  // Capture failed → abort begin-drag
 
             drag.mouse_captured = true;
-            drag.capture_input_sys = input_sys;
+            drag.capture_input_sys = input.input_system;
         }
     }
 
     // Snapshot transform at drag-begin.
     drag.active         = true;
     drag.mode           = current_mode;
-    drag.start_mouse    = mouse;
-    drag.start_position = prev_pos;
-    drag.start_rotation = prev_rot;
-    drag.start_scale    = prev_scale;
+    drag.start_mouse    = input.mouse_coord;
+    drag.start_position = prev.pos;
+    drag.start_rotation = prev.rot;
+    drag.start_scale    = prev.scale;
 
     if (!can_pick)
     {
@@ -109,11 +102,12 @@ bool MoveGizmoMode::TryBeginDrag(const math::Vector2i &mouse,
     return false;
 }
 
-void MoveGizmoMode::ApplyDrag(const math::Vector2i &mouse,
-                               const CameraInfo *cam,
-                               const ViewportInfo *vp,
+void MoveGizmoMode::ApplyDrag(const GizmoFrameInput &input,
                                const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform)
 {
+    const math::Vector2i &mouse = input.mouse_coord;
+    const CameraInfo    *cam   = input.camera_info;
+    const ViewportInfo  *vp    = input.viewport_info;
     if (!root_transform || !drag.active)
         return;
 

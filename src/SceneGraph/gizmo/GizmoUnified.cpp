@@ -213,20 +213,16 @@ static bool IsNearlyEqualRotation(const glm::quat &a, const glm::quat &b, float 
     return std::fabs(1.0f - d) <= epsilon;
 }
 
-static bool IsTransformChanged(const math::Vector3f &prev_pos,
-                               const glm::quat &prev_rot,
-                               const math::Vector3f &prev_scale,
-                               const math::Vector3f &cur_pos,
-                               const glm::quat &cur_rot,
-                               const math::Vector3f &cur_scale)
+static bool IsTransformChanged(const GizmoPrevTransform &prev,
+                               const GizmoPrevTransform &cur)
 {
-    if(!IsNearlyEqual(prev_pos, cur_pos))
+    if (!IsNearlyEqual(prev.pos, cur.pos))
         return true;
 
-    if(!IsNearlyEqualRotation(prev_rot, cur_rot))
+    if (!IsNearlyEqualRotation(prev.rot, cur.rot))
         return true;
 
-    if(!IsNearlyEqual(prev_scale, cur_scale))
+    if (!IsNearlyEqual(prev.scale, cur.scale))
         return true;
 
     return false;

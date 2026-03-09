@@ -48,29 +48,19 @@ public:
 
     // ─── Per-frame update ─────────────────────────────────────────────────
     // Compute hover pick, update hovered_index + drag.pick, apply visual highlight.
-    void UpdateHover(const hgl::math::Vector2i &mouse,
-                     const CameraInfo *cam,
-                     const ViewportInfo *vp,
+    void UpdateHover(const GizmoFrameInput &input,
                      const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
 
     // ─── Drag lifecycle ───────────────────────────────────────────────────
     // Attempt to begin a drag from the current hover state.
     // Returns true if mouse capture failed and the caller should abort.
-    bool TryBeginDrag(const hgl::math::Vector2i &mouse,
-                      const CameraInfo *cam,
-                      const ViewportInfo *vp,
-                      hgl::ecs::InputSystem *input_sys,
-                      bool has_view_context,
-                      const hgl::math::Vector3f &prev_pos,
-                      const glm::quat &prev_rot,
-                      const hgl::math::Vector3f &prev_scale,
+    bool TryBeginDrag(const GizmoFrameInput &input,
+                      const GizmoPrevTransform &prev,
                       GizmoMode current_mode,
                       bool root_visible);
 
     // Apply current drag delta, writing the new position into root_transform.
-    void ApplyDrag(const hgl::math::Vector2i &mouse,
-                   const CameraInfo *cam,
-                   const ViewportInfo *vp,
+    void ApplyDrag(const GizmoFrameInput &input,
                    const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
 
     // Release mouse capture and reset all drag state.

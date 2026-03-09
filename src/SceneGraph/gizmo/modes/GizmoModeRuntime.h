@@ -59,4 +59,12 @@ namespace hgl::graph
         // 拖拽开始时的 `GizmoMode`（由 `ApplyDrag` 用于检查模式）。
         GizmoMode mode = GizmoMode::MoveWorld;
     };
+
+    // 在拖拽开始时捕获的变换快照（传给 TryBeginDrag）。
+    struct GizmoPrevTransform
+    {
+        hgl::math::Vector3f  pos;
+        glm::quat            rot{1.0f, 0.0f, 0.0f, 0.0f};
+        hgl::math::Vector3f  scale{1.0f, 1.0f, 1.0f};
+    };
 } // namespace hgl::graph
