@@ -275,7 +275,3 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimi
     return PickBestAssetVisualIndex(items, gizmo->root_transform, mouse_coord, camera_info, viewport_info);
 }
 
-#include "GizmoUnified.AssetVisual.Move.inl"
-#include "GizmoUnified.AssetVisual.Rotate.inl"
-#include "GizmoUnified.AssetVisual.Scale.inl"
-

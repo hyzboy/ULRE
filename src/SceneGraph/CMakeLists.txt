@@ -93,6 +93,8 @@ SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
                             gizmo/GizmoInternal.h
                             gizmo/GizmoResource.h
                             gizmo/GizmoResource.cpp
+                            gizmo/GizmoUnified.AssetCore.inl
+                            gizmo/GizmoUnified.AssetVisual.inl
                             gizmo/GizmoUnified.AssetUpdate.inl
                             gizmo/modes/GizmoModeRuntime.h
                             gizmo/modes/MoveGizmoMode.h
