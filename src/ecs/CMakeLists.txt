@@ -49,11 +49,9 @@ set(ECS_COMPONENT_FILES
     ${ECS_INCLUDE_PATH}/components/SubWorldComponent.h
     ${ECS_INCLUDE_PATH}/components/SubSceneMembershipComponent.h
     ${ECS_INCLUDE_PATH}/components/AssetInstanceComponent.h
-    ${ECS_INCLUDE_PATH}/components/AssetNodeMotionComponent.h
     components/SubWorldComponent.cpp
     components/SubSceneMembershipComponent.cpp
     components/AssetInstanceComponent.cpp
-    components/AssetNodeMotionComponent.cpp
 )
 
 set(ECS_SYS_00_RenderSystemCore_FILES

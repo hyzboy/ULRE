@@ -8,7 +8,6 @@
 #include<hgl/ecs/components/SubWorldComponent.h>
 #include<hgl/ecs/components/SubSceneMembershipComponent.h>
 #include<hgl/ecs/components/AssetInstanceComponent.h>
-#include<hgl/ecs/components/AssetNodeMotionComponent.h>
 #include<hgl/ecs/core/ComponentRecords.h>
 
 #include<cereal/archives/json.hpp>
@@ -314,7 +313,6 @@ namespace hgl::ecs
                 {SubWorldComponent::GetSerializationType(), SubWorldComponent::SerializeToRecord, SubWorldComponent::DeserializeFromRecord},
                 {SubSceneMembershipComponent::GetSerializationType(), SubSceneMembershipComponent::SerializeToRecord, SubSceneMembershipComponent::DeserializeFromRecord},
                 {AssetInstanceComponent::GetSerializationType(), AssetInstanceComponent::SerializeToRecord, AssetInstanceComponent::DeserializeFromRecord},
-                {AssetNodeMotionComponent::GetSerializationType(), AssetNodeMotionComponent::SerializeToRecord, AssetNodeMotionComponent::DeserializeFromRecord},
             };
             return registry;
         }
