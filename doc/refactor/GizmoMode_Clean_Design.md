@@ -361,7 +361,7 @@ src/SceneGraph/gizmo/
 - [x] Phase 2：Move 数据迁移，编译 + smoke PASS
 - [x] Phase 3：Move 行为迁移，编译 + smoke PASS
 - [x] Phase 4：Rotate 数据+行为迁移，编译 + smoke PASS
-- [ ] Phase 4b：Scale 数据+行为迁移，编译 + smoke PASS
+- [x] Phase 4b：Scale 数据+行为迁移，编译 + smoke PASS
 - [ ] Phase 5：清理主循环、删除废弃文件，编译 + smoke PASS
 - [ ] 确认 `MoveGizmoMode.Input.cpp` 不含任何 `GizmoECS*` 参数
 - [ ] 确认主更新函数无 `switch` 嵌套超过 1 层

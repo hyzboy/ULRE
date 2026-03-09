@@ -336,7 +336,8 @@ static void DispatchActiveAssetDragChannel(GizmoECS *gizmo,
 
 static GizmoECS::ChannelRuntime &GetActiveChannelRuntime(GizmoECS *gizmo)
 {
-    // Rotate data now lives in rotate_mode; only Scale uses ChannelRuntime.
+    // Move/Rotate/Scale data now lives in their respective mode objects.
+    // scale_channel is kept for Phase 5 cleanup; this function is dead code after Phase 4b.
     return gizmo->scale_channel;
 }
 
@@ -353,6 +354,8 @@ static const GizmoECS::ChannelRuntime &GetActiveChannelRuntime(const GizmoECS *g
 #include "modes/MoveGizmoMode.Input.inl"
 #include "modes/RotateGizmoMode.Visual.inl"
 #include "modes/RotateGizmoMode.Input.inl"
+#include "modes/ScaleGizmoMode.Visual.inl"
+#include "modes/ScaleGizmoMode.Input.inl"
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
 {
@@ -522,15 +525,15 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
 
     // Scale Gizmo
     {
-        gizmo->ScaleChannel().entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Scale");
-        if (!gizmo->ScaleChannel().entity)
+        gizmo->scale_mode.entity = world->CreateEntity<hgl::ecs::Entity>("Gizmo_Scale");
+        if (!gizmo->scale_mode.entity)
         {
             std::cout << "[GizmoECS] Create scale entity failed" << std::endl;
             DestroyTransformGizmo(gizmo);
             return nullptr;
         }
 
-        auto scale_transform = gizmo->ScaleChannel().entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+        auto scale_transform = gizmo->scale_mode.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
         scale_transform->SetLocalTRS(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
         scale_transform->SetParent(gizmo->root->GetID());
         scale_transform->SetFixedPixelSizingParameters(gizmo->fixed_pixel_diameter,
@@ -538,11 +541,12 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                        0.01f);
         scale_transform->SetFixedPixelSizingEnabled(true);
 
-        gizmo->ScaleChannel().asset_instance = AttachGizmoAssetInstance(gizmo->ScaleChannel().entity,
+        gizmo->scale_mode.asset_instance = AttachGizmoAssetInstance(gizmo->scale_mode.entity,
                                                                 kGizmoScaleAssetWorldId,
                                                                 ComposeGizmoInstanceId(gizmo->root->GetID(), 3u),
                                                                 kGizmoScaleOverrideRef);
-        BuildScaleAssetVisual(gizmo, gizmo->ScaleChannel().entity);
+        gizmo->scale_mode.BuildVisual(gizmo->world, gizmo->scale_mode.entity,
+                                       gizmo->asset_visual_entity_ids);
     }
 
     // Initialize with Move mode active
@@ -587,8 +591,8 @@ void DestroyTransformGizmo(GizmoECS *gizmo)
             gizmo->world->DestroyEntity(gizmo->MoveChannel().entity->GetID());
         if (gizmo->rotate_mode.entity)
             gizmo->world->DestroyEntity(gizmo->rotate_mode.entity->GetID());
-        if (gizmo->ScaleChannel().entity)
-            gizmo->world->DestroyEntity(gizmo->ScaleChannel().entity->GetID());
+        if (gizmo->scale_mode.entity)
+            gizmo->world->DestroyEntity(gizmo->scale_mode.entity->GetID());
         if (gizmo->root)
             gizmo->world->DestroyEntity(gizmo->root->GetID());
     }

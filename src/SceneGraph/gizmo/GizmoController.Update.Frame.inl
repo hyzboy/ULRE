@@ -106,6 +106,14 @@ bool GizmoController::RunDragUpdateStage(GizmoECS *gizmo,
             gizmo->rotate_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
                                          gizmo->root_transform);
         }
+        // Phase 4b: Scale drag dispatched directly through ScaleGizmoMode.
+        else if (GizmoController::IsScaleMode(gizmo->asset_drag.mode))
+        {
+            gizmo->scale_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
+                                         gizmo->allow_negative_scale,
+                                         state.target_transform, state.has_view_context,
+                                         gizmo->root_transform, state.cur_effective_scale);
+        }
         else
         {
             bool handled_by_channel = false;

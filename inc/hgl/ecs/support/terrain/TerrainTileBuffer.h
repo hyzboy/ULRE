@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/vk/VKIndirectCommandBuffer.h>
+#include <hgl/log/Log.h>
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <cstdint>
@@ -49,6 +50,8 @@ namespace hgl::ecs
      */
     class TerrainTileBuffer
     {
+        OBJECT_LOGGER
+
         hgl::graph::VulkanDevice*  device_         = nullptr;
         hgl::graph::BufferManager* buffer_manager_ = nullptr;
 

@@ -3,6 +3,7 @@
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/ecs/components/TerrainTileComponent.h>
 #include <hgl/ecs/support/terrain/TerrainTileBuffer.h>
+#include <hgl/log/Log.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -25,6 +26,8 @@ namespace hgl::ecs
      */
     class TerrainRenderPipeline : public RenderPipelineBase
     {
+        OBJECT_LOGGER
+
     public:
         static const std::string kName;  ///< "Terrain"
 

@@ -112,6 +112,8 @@ SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
                             gizmo/modes/RotateGizmoMode.Visual.inl
                             gizmo/modes/RotateGizmoMode.Input.inl
                             gizmo/modes/ScaleGizmoMode.h
+                            gizmo/modes/ScaleGizmoMode.Visual.inl
+                            gizmo/modes/ScaleGizmoMode.Input.inl
                             gizmo/GizmoUnified.cpp
                             gizmo/TransformGizmoSystem.cpp
                             gizmo/SunDirectionControlSystem.cpp)

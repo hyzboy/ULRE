@@ -8,7 +8,7 @@ namespace hgl::ecs
     TerrainBuildSystem::TerrainBuildSystem(const std::string& name)
         : BuildSystem(name)
     {
-        SetSystemType(SystemType::RenderBuild);
+        SetSystemType(SystemType::RenderBatch);
         SetExecutionOrder(ExecutionPhase::RenderBatch);
         SetRenderElementType("Terrain");
         AddDependency<TerrainCollectSystem>();
