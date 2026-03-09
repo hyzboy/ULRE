@@ -353,6 +353,8 @@ static const GizmoECS::ChannelRuntime &GetActiveChannelRuntime(const GizmoECS *g
 #include "GizmoUnified.AssetVisual.inl"
 #include "GizmoUnified.AssetChannels.inl"
 #include "channels/MoveGizmoChannel.Runtime.inl"
+#include "modes/MoveGizmoMode.Visual.inl"
+#include "modes/MoveGizmoMode.Input.inl"
 
 static bool IsNearlyEqual(const math::Vector3f &a, const math::Vector3f &b, float epsilon = 1e-5f)
 {
@@ -490,7 +492,8 @@ GizmoECS *CreateTransformGizmo(hgl::ecs::ECSContext *world,
                                                                kGizmoMoveAssetWorldId,
                                                                ComposeGizmoInstanceId(gizmo->root->GetID(), 1u),
                                                                kGizmoMoveOverrideRef);
-        BuildMoveAssetVisual(gizmo, gizmo->MoveChannel().entity);
+        gizmo->move_mode.BuildVisual(gizmo->world, gizmo->MoveChannel().entity,
+                                      gizmo->asset_visual_entity_ids);
     }
 
     // Rotate Gizmo

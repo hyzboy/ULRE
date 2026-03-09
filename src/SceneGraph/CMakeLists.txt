@@ -106,6 +106,8 @@ SET(GIZMO_INTERNAL_FILES    gizmo/Gizmo.h
                             gizmo/channels/ScaleGizmoChannel.h
                             gizmo/modes/GizmoModeRuntime.h
                             gizmo/modes/MoveGizmoMode.h
+                            gizmo/modes/MoveGizmoMode.Visual.inl
+                            gizmo/modes/MoveGizmoMode.Input.inl
                             gizmo/modes/RotateGizmoMode.h
                             gizmo/modes/ScaleGizmoMode.h
                             gizmo/GizmoUnified.cpp

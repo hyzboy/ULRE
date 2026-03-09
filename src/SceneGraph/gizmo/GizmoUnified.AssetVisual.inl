@@ -1,15 +1,17 @@
-static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
-                                                 hgl::ecs::Entity *parent,
-                                                 const char *name,
-                                                 const math::Vector3f &position,
-                                                 const glm::quat &rotation,
-                                                 const math::Vector3f &scale,
-                                                 std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr)
+// Base overload: no GizmoECS dependency — usable from MoveGizmoMode methods.
+static hgl::ecs::Entity *CreateAssetVisualEntity(hgl::ecs::ECSContext *world,
+                                                  std::vector<hgl::ecs::EntityID> &entity_ids,
+                                                  hgl::ecs::Entity *parent,
+                                                  const char *name,
+                                                  const math::Vector3f &position,
+                                                  const glm::quat &rotation,
+                                                  const math::Vector3f &scale,
+                                                  std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr)
 {
-    if (!gizmo || !gizmo->world || !parent)
+    if (!world || !parent)
         return nullptr;
 
-    auto *entity = gizmo->world->CreateEntity<hgl::ecs::Entity>(name ? name : "GizmoAssetVisual");
+    auto *entity = world->CreateEntity<hgl::ecs::Entity>(name ? name : "GizmoAssetVisual");
     if (!entity)
         return nullptr;
 
@@ -23,8 +25,23 @@ static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
     if (out_transform)
         *out_transform = transform;
 
-    gizmo->asset_visual_entity_ids.push_back(entity->GetID());
+    entity_ids.push_back(entity->GetID());
     return entity;
+}
+
+// GizmoECS convenience wrapper — delegates to base overload.
+static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
+                                                  hgl::ecs::Entity *parent,
+                                                  const char *name,
+                                                  const math::Vector3f &position,
+                                                  const glm::quat &rotation,
+                                                  const math::Vector3f &scale,
+                                                  std::shared_ptr<hgl::ecs::TransformComponent> *out_transform = nullptr)
+{
+    if (!gizmo)
+        return nullptr;
+    return CreateAssetVisualEntity(gizmo->world, gizmo->asset_visual_entity_ids,
+                                   parent, name, position, rotation, scale, out_transform);
 }
 
 static bool AttachAssetModePrimitive(std::vector<GizmoECS::AssetVisualPrimitive> &out_list,
@@ -138,13 +155,14 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
     gizmo->asset_hovered_visual_index = -1;
 }
 
+// Base overload: takes root_transform explicitly — usable from MoveGizmoMode methods.
 static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimitive> &items,
-                                    GizmoECS *gizmo,
+                                    const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform,
                                     const math::Vector2i &mouse_coord,
                                     const CameraInfo *camera_info,
                                     const ViewportInfo *viewport_info)
 {
-    if (!gizmo || items.empty() || !camera_info || !viewport_info)
+    if (!root_transform || items.empty() || !camera_info || !viewport_info)
         return -1;
 
     const math::Vector2u viewport_size = viewport_info->GetViewport();
@@ -159,14 +177,11 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimi
     int best_priority = 99;
     float best_score = 1e9f;
 
-    if (!gizmo->root_transform)
-        return -1;
-
-    gizmo->root_transform->UpdateIfDirty();
-    const math::Vector3f root_world_pos = gizmo->root_transform->GetWorldPosition();
+    root_transform->UpdateIfDirty();
+    const math::Vector3f root_world_pos = root_transform->GetWorldPosition();
     const math::Vector2i root_screen_pos = WorldPositionToScreen(root_world_pos, camera_info, viewport_size);
     const glm::vec2 mouse_pt(static_cast<float>(mouse_coord.x), static_cast<float>(mouse_coord.y));
-    const float world_units_per_pixel = gizmo->root_transform->ComputeWorldUnitsPerPixel(camera_info, viewport_info);
+    const float world_units_per_pixel = root_transform->ComputeWorldUnitsPerPixel(camera_info, viewport_info);
 
     math::Ray mouse_ray;
     mouse_ray.SetFromViewportPoint(mouse_coord, camera_info, viewport_size);
@@ -289,6 +304,18 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimi
     }
 
     return best_index;
+}
+
+// GizmoECS convenience wrapper.
+static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimitive> &items,
+                                    GizmoECS *gizmo,
+                                    const math::Vector2i &mouse_coord,
+                                    const CameraInfo *camera_info,
+                                    const ViewportInfo *viewport_info)
+{
+    if (!gizmo)
+        return -1;
+    return PickBestAssetVisualIndex(items, gizmo->root_transform, mouse_coord, camera_info, viewport_info);
 }
 
 static void UpdateAssetVisualHover(GizmoECS *gizmo,

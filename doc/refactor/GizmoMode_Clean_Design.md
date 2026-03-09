@@ -357,9 +357,9 @@ src/SceneGraph/gizmo/
 
 ## 8. 执行检查清单
 
-- [ ] Phase 1：建立 Mode 结构骨架，编译 + smoke PASS
-- [ ] Phase 2：Move 数据迁移，编译 + smoke PASS
-- [ ] Phase 3：Move 行为迁移，编译 + smoke PASS
+- [x] Phase 1：建立 Mode 结构骨架，编译 + smoke PASS
+- [x] Phase 2：Move 数据迁移，编译 + smoke PASS
+- [x] Phase 3：Move 行为迁移，编译 + smoke PASS
 - [ ] Phase 4：Rotate 数据+行为迁移，编译 + smoke PASS
 - [ ] Phase 4b：Scale 数据+行为迁移，编译 + smoke PASS
 - [ ] Phase 5：清理主循环、删除废弃文件，编译 + smoke PASS

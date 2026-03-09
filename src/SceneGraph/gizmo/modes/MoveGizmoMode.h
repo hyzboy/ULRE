@@ -7,14 +7,21 @@
 namespace hgl::ecs
 {
 class AssetInstanceComponent;
+class ECSContext;
 class Entity;
+class EntityID;
+class InputSystem;
+class TransformComponent;
 } // namespace hgl::ecs
 
 namespace hgl::graph
 {
 
-// Owns all visual + pick state for the Move gizmo mode.
-// Behavior methods will be added in Phase 3.
+struct CameraInfo;
+struct ViewportInfo;
+
+// Owns all visual + drag state for the Move gizmo mode.
+// No method here takes GizmoECS* — all dependencies pass through explicit parameters.
 class MoveGizmoMode
 {
 public:
@@ -26,8 +33,53 @@ public:
     // ─── Hover state ──────────────────────────────────────────────────────
     int hovered_index = -1;
 
-    // ─── Pick snapshot captured at drag-begin ─────────────────────────────
-    GizmoPickState pick_state;
+    // ─── Full drag state (replaces GizmoECS::AssetDragState for Move) ─────
+    MoveDragState drag;
+
+    // ─── Lifecycle ────────────────────────────────────────────────────────
+    // Build child visual entities under `parent`.
+    // `entity_ids` receives the IDs of all created entities for batch cleanup.
+    void BuildVisual(hgl::ecs::ECSContext *world,
+                     hgl::ecs::Entity *parent,
+                     std::vector<hgl::ecs::EntityID> &entity_ids);
+
+    void DestroyVisual();
+    void SetVisible(bool visible);
+
+    // ─── Per-frame update ─────────────────────────────────────────────────
+    // Compute hover pick, update hovered_index + drag.pick, apply visual highlight.
+    void UpdateHover(const hgl::math::Vector2i &mouse,
+                     const CameraInfo *cam,
+                     const ViewportInfo *vp,
+                     const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
+
+    // ─── Drag lifecycle ───────────────────────────────────────────────────
+    // Attempt to begin a drag from the current hover state.
+    // Returns true if mouse capture failed and the caller should abort.
+    bool TryBeginDrag(const hgl::math::Vector2i &mouse,
+                      const CameraInfo *cam,
+                      const ViewportInfo *vp,
+                      hgl::ecs::InputSystem *input_sys,
+                      bool has_view_context,
+                      const hgl::math::Vector3f &prev_pos,
+                      const glm::quat &prev_rot,
+                      const hgl::math::Vector3f &prev_scale,
+                      GizmoMode current_mode,
+                      bool root_visible);
+
+    // Apply current drag delta, writing the new position into root_transform.
+    void ApplyDrag(const hgl::math::Vector2i &mouse,
+                   const CameraInfo *cam,
+                   const ViewportInfo *vp,
+                   const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform);
+
+    // Release mouse capture and reset all drag state.
+    void EndDrag();
+
+    // If left button is up while drag is still active, we missed the release — end it.
+    void RecoverIfOrphaned(bool left_down);
+
+    bool IsDragging() const { return drag.active; }
 };
 
 } // namespace hgl::graph

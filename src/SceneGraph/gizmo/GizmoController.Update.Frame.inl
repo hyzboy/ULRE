@@ -94,27 +94,36 @@ bool GizmoController::RunDragUpdateStage(GizmoECS *gizmo,
     {
         GizmoController::SyncActivePickFromChannelForDrag(gizmo);
 
-        bool handled_by_channel = false;
-        if (IGizmoChannel *drag_channel = gizmo->channel_controller.GetChannelForMode(gizmo->asset_drag.mode))
+        // Phase 3: Move drag dispatched directly through MoveGizmoMode.
+        if (GizmoController::IsMoveMode(gizmo->asset_drag.mode))
         {
-            handled_by_channel = drag_channel->DispatchDrag(gizmo,
-                                                            mouse_coord,
-                                                            camera_info,
-                                                            viewport_info,
-                                                            state.target_transform,
-                                                            state.has_view_context,
-                                                            state.cur_effective_scale);
+            gizmo->move_mode.ApplyDrag(mouse_coord, camera_info, viewport_info,
+                                       gizmo->root_transform);
         }
-
-        if (!handled_by_channel)
+        else
         {
-            DispatchActiveAssetDragChannel(gizmo,
-                                           mouse_coord,
-                                           camera_info,
-                                           viewport_info,
-                                           state.target_transform,
-                                           state.has_view_context,
-                                           state.cur_effective_scale);
+            bool handled_by_channel = false;
+            if (IGizmoChannel *drag_channel = gizmo->channel_controller.GetChannelForMode(gizmo->asset_drag.mode))
+            {
+                handled_by_channel = drag_channel->DispatchDrag(gizmo,
+                                                                mouse_coord,
+                                                                camera_info,
+                                                                viewport_info,
+                                                                state.target_transform,
+                                                                state.has_view_context,
+                                                                state.cur_effective_scale);
+            }
+
+            if (!handled_by_channel)
+            {
+                DispatchActiveAssetDragChannel(gizmo,
+                                               mouse_coord,
+                                               camera_info,
+                                               viewport_info,
+                                               state.target_transform,
+                                               state.has_view_context,
+                                               state.cur_effective_scale);
+            }
         }
 
         snapshot.scale = state.cur_effective_scale;

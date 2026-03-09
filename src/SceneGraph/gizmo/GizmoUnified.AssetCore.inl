@@ -3,7 +3,7 @@ static GizmoPickState &GetAssetChannelState(GizmoECS *gizmo, GizmoMode mode)
     switch (GizmoController::SlotForMode(mode))
     {
     case GizmoController::ChannelSlot::Move:
-        return gizmo->move_mode.pick_state;  // Phase 2: Move pick state lives in move_mode
+        return gizmo->move_mode.drag.pick;  // Phase 3: pick state lives in move_mode.drag
     case GizmoController::ChannelSlot::Rotate:
         return gizmo->asset_drag.rotate;
     case GizmoController::ChannelSlot::Scale:
