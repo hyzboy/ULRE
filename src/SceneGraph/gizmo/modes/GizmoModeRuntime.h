@@ -2,103 +2,101 @@
 
 #include <memory>
 #include <vector>
-#include "../GizmoInternal.h"  // GizmoShape
+#include "../GizmoInternal.h"  // 引入 GizmoShape
 
-// Forward declarations for ECS types used in GizmoVisualPrimitive.
-// Full types are required only at instantiation sites (GizmoUnified.cpp).
+// 用于 `GizmoVisualPrimitive` 的 ECS 类型的前向声明。
+// 完整类型仅在实例化位置需要（`GizmoUnified.cpp`）。
 namespace hgl::ecs
 {
-class PrimitiveComponent;
-class TransformComponent;
-class AssetInstanceComponent;
-class Entity;
+    class PrimitiveComponent;
+    class TransformComponent;
+    class AssetInstanceComponent;
+    class Entity;
 } // namespace hgl::ecs
 
 namespace hgl::graph
 {
+    class MaterialInstance;
 
-class MaterialInstance;
+    // 由 `GizmoMode` 对象拥有的可视原语条目。
+    // （原为 `GizmoECS::AssetVisualPrimitive` — 已提取以便各 Mode 类可以拥有自己的列表。）
+    struct GizmoVisualPrimitive
+    {
+        std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive;
+        std::shared_ptr<hgl::ecs::TransformComponent>  transform;
+        MaterialInstance *base_material = nullptr;
+        GizmoShape        shape         = GizmoShape::Sphere;
+        int               group_id      = -1;
+    };
 
-// Visual primitive entry owned by a GizmoMode object.
-// (Was GizmoECS::AssetVisualPrimitive — extracted so Mode classes can own their own lists.)
-struct GizmoVisualPrimitive
-{
-    std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive;
-    std::shared_ptr<hgl::ecs::TransformComponent>  transform;
-    MaterialInstance *base_material = nullptr;
-    GizmoShape        shape         = GizmoShape::Sphere;
-    int               group_id      = -1;
-};
+    // 每个模式在拖拽开始时捕获的拾取快照。
+    // （原为 `GizmoECS::AssetDragState::ChannelState` — 已提取以便各 Mode 类可以拥有自己的状态。）
+    struct GizmoPickState
+    {
+        int        pick_index            = -1;
+        int        pick_group            = -1;
+        int        pick_plane_normal_axis = -1;
+        GizmoShape pick_shape            = GizmoShape::Sphere;
+    };
 
-// Per-mode pick snapshot captured at drag-begin time.
-// (Was GizmoECS::AssetDragState::ChannelState — extracted so Mode classes can own their own state.)
-struct GizmoPickState
-{
-    int        pick_index            = -1;
-    int        pick_group            = -1;
-    int        pick_plane_normal_axis = -1;
-    GizmoShape pick_shape            = GizmoShape::Sphere;
-};
+    // 由 `MoveGizmoMode` 拥有的完整拖拽状态。
+    // 替代分散在 `GizmoECS::AssetDragState` 中的 Move 特定字段。
+    struct MoveDragState
+    {
+        bool       active               = false;
+        bool       mouse_captured       = false;
+        hgl::ecs::InputSystem* capture_input_sys = nullptr;
 
-// Full drag state owned by MoveGizmoMode.
-// Replaces the Move-specific fields that were scattered across GizmoECS::AssetDragState.
-struct MoveDragState
-{
-    bool       active               = false;
-    bool       mouse_captured       = false;
-    hgl::ecs::InputSystem* capture_input_sys = nullptr;
+        // 在拖拽开始时捕获的拾取快照（等同于 `GizmoPickState`）。
+        GizmoPickState pick;
 
-    // Pick snapshot captured at drag-begin (equivalent to GizmoPickState).
-    GizmoPickState pick;
+        // 在拖拽开始时捕获的变换快照。
+        hgl::math::Vector2i  start_mouse;
+        hgl::math::Vector3f  start_position;
+        glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
+        hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
 
-    // Transform snapshot captured at drag-begin.
-    hgl::math::Vector2i  start_mouse;
-    hgl::math::Vector3f  start_position;
-    glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
-    hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
+        // 拖拽开始时的 `GizmoMode`（由 `ApplyDrag` 用于检查是否为本地模式）。
+        GizmoMode mode = GizmoMode::MoveWorld;
+    };
 
-    // GizmoMode active at drag-begin (used by ApplyDrag to check IsLocalMode).
-    GizmoMode mode = GizmoMode::MoveWorld;
-};
+    // 由 `RotateGizmoMode` 拥有的完整拖拽状态。
+    struct RotateDragState
+    {
+        bool       active               = false;
+        bool       mouse_captured       = false;
+        hgl::ecs::InputSystem* capture_input_sys = nullptr;
 
-// Full drag state owned by RotateGizmoMode.
-struct RotateDragState
-{
-    bool       active               = false;
-    bool       mouse_captured       = false;
-    hgl::ecs::InputSystem* capture_input_sys = nullptr;
+        // 在拖拽开始时捕获的拾取快照。
+        GizmoPickState pick;
 
-    // Pick snapshot captured at drag-begin.
-    GizmoPickState pick;
+        // 在拖拽开始时捕获的变换快照。
+        hgl::math::Vector2i  start_mouse;
+        hgl::math::Vector3f  start_position;
+        glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
+        hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
 
-    // Transform snapshot captured at drag-begin.
-    hgl::math::Vector2i  start_mouse;
-    hgl::math::Vector3f  start_position;
-    glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
-    hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
+        // 拖拽开始时的 `GizmoMode`（由 `ApplyDrag` 用于检查是本地模式还是世界模式）。
+        GizmoMode mode = GizmoMode::RotateWorld;
+    };
 
-    // GizmoMode active at drag-begin (used by ApplyDrag to check IsLocalMode/IsWorldMode).
-    GizmoMode mode = GizmoMode::RotateWorld;
-};
+    // 由 `ScaleGizmoMode` 拥有的完整拖拽状态。
+    struct ScaleDragState
+    {
+        bool       active               = false;
+        bool       mouse_captured       = false;
+        hgl::ecs::InputSystem* capture_input_sys = nullptr;
 
-// Full drag state owned by ScaleGizmoMode.
-struct ScaleDragState
-{
-    bool       active               = false;
-    bool       mouse_captured       = false;
-    hgl::ecs::InputSystem* capture_input_sys = nullptr;
+        // 在拖拽开始时捕获的拾取快照。
+        GizmoPickState pick;
 
-    // Pick snapshot captured at drag-begin.
-    GizmoPickState pick;
+        // 在拖拽开始时捕获的变换快照。
+        hgl::math::Vector2i  start_mouse;
+        hgl::math::Vector3f  start_position;
+        glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
+        hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
 
-    // Transform snapshot captured at drag-begin.
-    hgl::math::Vector2i  start_mouse;
-    hgl::math::Vector3f  start_position;
-    glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
-    hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
-
-    // GizmoMode active at drag-begin (always ScaleLocal for scale).
-    GizmoMode mode = GizmoMode::ScaleLocal;
-};
-
+        // 拖拽开始时的 `GizmoMode`（对缩放始终为 `ScaleLocal`）。
+        GizmoMode mode = GizmoMode::ScaleLocal;
+    };
 } // namespace hgl::graph
