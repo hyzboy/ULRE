@@ -39,15 +39,15 @@ namespace hgl::graph
         GizmoShape pick_shape            = GizmoShape::Sphere;
     };
 
-    // 由 `MoveGizmoMode` 拥有的完整拖拽状态。
-    // 替代分散在 `GizmoECS::AssetDragState` 中的 Move 特定字段。
-    struct MoveDragState
+    // 所有三种 Gizmo 模式共享的拖拽状态。
+    // （合并自 MoveDragState / RotateDragState / ScaleDragState — 三者字段完全相同。）
+    struct GizmoDragState
     {
         bool       active               = false;
         bool       mouse_captured       = false;
         hgl::ecs::InputSystem* capture_input_sys = nullptr;
 
-        // 在拖拽开始时捕获的拾取快照（等同于 `GizmoPickState`）。
+        // 在拖拽开始时捕获的拾取快照。
         GizmoPickState pick;
 
         // 在拖拽开始时捕获的变换快照。
@@ -56,47 +56,7 @@ namespace hgl::graph
         glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
         hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
 
-        // 拖拽开始时的 `GizmoMode`（由 `ApplyDrag` 用于检查是否为本地模式）。
+        // 拖拽开始时的 `GizmoMode`（由 `ApplyDrag` 用于检查模式）。
         GizmoMode mode = GizmoMode::MoveWorld;
-    };
-
-    // 由 `RotateGizmoMode` 拥有的完整拖拽状态。
-    struct RotateDragState
-    {
-        bool       active               = false;
-        bool       mouse_captured       = false;
-        hgl::ecs::InputSystem* capture_input_sys = nullptr;
-
-        // 在拖拽开始时捕获的拾取快照。
-        GizmoPickState pick;
-
-        // 在拖拽开始时捕获的变换快照。
-        hgl::math::Vector2i  start_mouse;
-        hgl::math::Vector3f  start_position;
-        glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
-        hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
-
-        // 拖拽开始时的 `GizmoMode`（由 `ApplyDrag` 用于检查是本地模式还是世界模式）。
-        GizmoMode mode = GizmoMode::RotateWorld;
-    };
-
-    // 由 `ScaleGizmoMode` 拥有的完整拖拽状态。
-    struct ScaleDragState
-    {
-        bool       active               = false;
-        bool       mouse_captured       = false;
-        hgl::ecs::InputSystem* capture_input_sys = nullptr;
-
-        // 在拖拽开始时捕获的拾取快照。
-        GizmoPickState pick;
-
-        // 在拖拽开始时捕获的变换快照。
-        hgl::math::Vector2i  start_mouse;
-        hgl::math::Vector3f  start_position;
-        glm::quat            start_rotation{1.0f, 0.0f, 0.0f, 0.0f};
-        hgl::math::Vector3f  start_scale{1.0f, 1.0f, 1.0f};
-
-        // 拖拽开始时的 `GizmoMode`（对缩放始终为 `ScaleLocal`）。
-        GizmoMode mode = GizmoMode::ScaleLocal;
     };
 } // namespace hgl::graph

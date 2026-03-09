@@ -17,7 +17,7 @@ static hgl::ecs::Entity *CreateAssetVisualEntity(GizmoECS *gizmo,
     return gizmo->world->CreateChildEntity(parent, desc, &gizmo->asset_visual_entity_ids, out_transform);
 }
 
-static bool AttachAssetModePrimitive(std::vector<GizmoECS::AssetVisualPrimitive> &out_list,
+static bool AttachAssetModePrimitive(std::vector<GizmoVisualPrimitive> &out_list,
                                      hgl::ecs::Entity *entity,
                                      const GizmoShape shape,
                                      const GizmoColor color,
@@ -42,7 +42,7 @@ static bool AttachAssetModePrimitive(std::vector<GizmoECS::AssetVisualPrimitive>
     prim_comp->SetOverrideMaterial(base_material);
     prim_comp->SetVisible(false);
 
-    GizmoECS::AssetVisualPrimitive item;
+    GizmoVisualPrimitive item;
     item.primitive = prim_comp;
     item.transform = entity->GetComponent<hgl::ecs::TransformComponent>();
     item.base_material = base_material;
@@ -52,7 +52,7 @@ static bool AttachAssetModePrimitive(std::vector<GizmoECS::AssetVisualPrimitive>
     return true;
 }
 
-static bool MakeAndAttachPrimitive(std::vector<GizmoECS::AssetVisualPrimitive> &primitives,
+static bool MakeAndAttachPrimitive(std::vector<GizmoVisualPrimitive> &primitives,
                                     hgl::ecs::ECSContext *world,
                                     hgl::ecs::Entity *parent,
                                     std::vector<hgl::ecs::EntityID> &entity_ids,
@@ -73,7 +73,16 @@ static bool MakeAndAttachPrimitive(std::vector<GizmoECS::AssetVisualPrimitive> &
     return AttachAssetModePrimitive(primitives, entity, shape, color, group_id);
 }
 
-static std::vector<GizmoECS::AssetVisualPrimitive> *GetActiveAssetVisualList(GizmoECS *gizmo)
+static void SetPrimitivesVisible(std::vector<GizmoVisualPrimitive> &primitives, bool visible)
+{
+    for (auto &entry : primitives)
+    {
+        if (entry.primitive)
+            entry.primitive->SetVisible(visible);
+    }
+}
+
+static std::vector<GizmoVisualPrimitive> *GetActiveAssetVisualList(GizmoECS *gizmo)
 {
     if (!gizmo)
         return nullptr;
@@ -90,7 +99,7 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
     if (!gizmo)
         return;
 
-    auto apply = [highlighted](std::vector<GizmoECS::AssetVisualPrimitive> &items)
+    auto apply = [highlighted](std::vector<GizmoVisualPrimitive> &items)
     {
         for (auto &entry : items)
         {
@@ -107,7 +116,7 @@ static void SetAssetVisualHighlight(GizmoECS *gizmo, bool highlighted)
 }
 
 // Base overload: takes root_transform explicitly — usable from MoveGizmoMode methods.
-static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimitive> &items,
+static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &items,
                                     const std::shared_ptr<hgl::ecs::TransformComponent> &root_transform,
                                     const math::Vector2i &mouse_coord,
                                     const CameraInfo *camera_info,
@@ -258,7 +267,7 @@ static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimi
 }
 
 // GizmoECS convenience wrapper.
-static int PickBestAssetVisualIndex(const std::vector<GizmoECS::AssetVisualPrimitive> &items,
+static int PickBestAssetVisualIndex(const std::vector<GizmoVisualPrimitive> &items,
                                     GizmoECS *gizmo,
                                     const math::Vector2i &mouse_coord,
                                     const CameraInfo *camera_info,

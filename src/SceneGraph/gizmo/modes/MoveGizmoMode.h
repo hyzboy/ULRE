@@ -34,7 +34,7 @@ public:
     int hovered_index = -1;
 
     // ─── Full drag state (replaces GizmoECS::AssetDragState for Move) ─────
-    MoveDragState drag;
+    GizmoDragState drag;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────
     // Build child visual entities under `parent`.

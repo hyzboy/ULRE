@@ -68,14 +68,10 @@ void MoveGizmoMode::DestroyVisual()
     asset_instance.reset();
     entity = nullptr;
     hovered_index = -1;
-    drag = MoveDragState{};
+    drag = GizmoDragState{};
 }
 
 void MoveGizmoMode::SetVisible(bool visible)
 {
-    for (auto &entry : primitives)
-    {
-        if (entry.primitive)
-            entry.primitive->SetVisible(visible);
-    }
+    SetPrimitivesVisible(primitives, visible);
 }

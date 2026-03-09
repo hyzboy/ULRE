@@ -224,7 +224,7 @@ void RotateGizmoMode::EndDrag()
     if (drag.mouse_captured && drag.capture_input_sys)
         drag.capture_input_sys->EndMouseCapture(this);
 
-    drag = RotateDragState{};
+    drag = GizmoDragState{};
     hovered_index = -1;
 }
 

@@ -37,7 +37,7 @@ public:
     int hovered_index = -1;
 
     // ─── Full drag state ──────────────────────────────────────────────────
-    RotateDragState drag;
+    GizmoDragState drag;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────
     void BuildVisual(hgl::ecs::ECSContext *world,

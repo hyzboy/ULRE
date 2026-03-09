@@ -145,9 +145,6 @@ GizmoSystemResidentState g_gizmo_resident_state;
 
 struct GizmoECS
 {
-    // Type alias so existing code (AssetVisual.inl etc.) using GizmoECS::AssetVisualPrimitive compiles unchanged.
-    using AssetVisualPrimitive = GizmoVisualPrimitive;
-
     hgl::ecs::ECSContext* world = nullptr;
     hgl::ecs::Entity* root = nullptr;
     std::shared_ptr<hgl::ecs::TransformComponent> root_transform;

@@ -154,7 +154,7 @@ static void EndAssetMouseCapture(GizmoECS *gizmo)
     (void)gizmo; // Modes manage their own mouse capture.
 }
 
-static int GetScalePlaneNormalAxisFromEntry(const GizmoECS::AssetVisualPrimitive &entry)
+static int GetScalePlaneNormalAxisFromEntry(const GizmoVisualPrimitive &entry)
 {
     if (!entry.transform || entry.shape != GizmoShape::Square)
         return -1;

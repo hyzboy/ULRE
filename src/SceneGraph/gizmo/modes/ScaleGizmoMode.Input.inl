@@ -204,7 +204,7 @@ void ScaleGizmoMode::EndDrag()
     if (drag.mouse_captured && drag.capture_input_sys)
         drag.capture_input_sys->EndMouseCapture(this);
 
-    drag = ScaleDragState{};
+    drag = GizmoDragState{};
     hovered_index = -1;
 }
 
