@@ -61,7 +61,6 @@ void RotateGizmoMode::DestroyVisual()
 {
     primitives.clear();
     aux_transform.reset();
-    asset_instance.reset();
     entity = nullptr;
     hovered_index = -1;
     drag = GizmoDragState{};

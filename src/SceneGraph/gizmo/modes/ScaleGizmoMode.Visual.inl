@@ -75,7 +75,6 @@ void ScaleGizmoMode::BuildVisual(hgl::ecs::ECSContext *world,
 void ScaleGizmoMode::DestroyVisual()
 {
     primitives.clear();
-    asset_instance.reset();
     entity = nullptr;
     hovered_index = -1;
     drag = GizmoDragState{};

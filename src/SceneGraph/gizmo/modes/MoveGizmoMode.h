@@ -6,7 +6,6 @@
 
 namespace hgl::ecs
 {
-class AssetInstanceComponent;
 class ECSContext;
 class Entity;
 class EntityID;

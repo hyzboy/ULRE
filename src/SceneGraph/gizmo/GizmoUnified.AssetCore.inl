@@ -48,30 +48,6 @@ static void SyncGizmoAssetModeBindings(GizmoECS *gizmo)
     const bool rotate_active = gizmo->root_visible && IsRotateMode(gizmo->current_mode);
     const bool scale_active = gizmo->root_visible && IsScaleMode(gizmo->current_mode);
 
-    const uint32_t mode_code = static_cast<uint32_t>(gizmo->current_mode);
-
-    auto apply_active = [gizmo, mode_code](const std::shared_ptr<hgl::ecs::AssetInstanceComponent> &comp,
-                                           bool active,
-                                           uint64_t base_payload)
-    {
-        if (!comp)
-            return;
-
-        // Keep pass id in low 8 bits; use high bit as an active marker for future backend policies.
-        comp->SetFlags(active ? (1u | (1u << 31)) : 1u);
-        comp->SetVisibilityMask(active ? ~0ull : 0ull);
-
-        // Encode mode/active as payload metadata and bump revision so bridge can observe mode transitions.
-        hgl::ecs::AssetOverrideRef ref = comp->GetOverrideRef();
-        ref.payload_ref = base_payload ^ (static_cast<uint64_t>(mode_code) << 8) ^ (active ? 1ull : 0ull);
-        ref.revision = ++gizmo->asset_mode_revision_counter;
-        comp->SetOverrideRef(ref);
-    };
-
-    apply_active(gizmo->move_mode.asset_instance, move_active, kGizmoMoveOverrideRef);
-    apply_active(gizmo->rotate_mode.asset_instance, rotate_active, kGizmoRotateOverrideRef);
-    apply_active(gizmo->scale_mode.asset_instance, scale_active, kGizmoScaleOverrideRef);
-
     for (auto &entry : gizmo->move_mode.primitives)
     {
         if (entry.primitive)
