@@ -71,11 +71,6 @@ set(ECS_SYS_02_TickTransform_TransformSystem_FILES
     components/TransformComponent.cpp
 )
 
-set(ECS_SYS_02C_TickTransform_AssetInstanceBridgeSystem_FILES
-    ${ECS_INCLUDE_PATH}/systems/tick/AssetInstanceBridgeSystem.h
-    systems/tick/AssetInstanceBridgeSystem.cpp
-)
-
 set(ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES
     ${ECS_INCLUDE_PATH}/systems/tick/BoundingBoxUpdateSystem.h
     systems/tick/BoundingBoxUpdateSystem.cpp
@@ -330,7 +325,6 @@ set(ECS_SOURCE
     ${ECS_SYS_00_RenderSystemCore_FILES}
     ${ECS_SYS_01_TickInput_InputSystem_FILES}
     ${ECS_SYS_02_TickTransform_TransformSystem_FILES}
-    ${ECS_SYS_02C_TickTransform_AssetInstanceBridgeSystem_FILES}
     ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES}
     ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES}
     ${ECS_SYS_05_TickCamera_CameraSystem_FILES}
@@ -372,7 +366,6 @@ source_group("ECS\\Components" FILES ${ECS_COMPONENT_FILES})
 source_group("ECS\\Systems\\00 RenderSystemCore" FILES ${ECS_SYS_00_RenderSystemCore_FILES})
 source_group("ECS\\Systems\\01 TickInput_InputSystem" FILES ${ECS_SYS_01_TickInput_InputSystem_FILES})
 source_group("ECS\\Systems\\02 TickTransform_TransformSystem" FILES ${ECS_SYS_02_TickTransform_TransformSystem_FILES})
-source_group("ECS\\Systems\\02C TickTransform_AssetInstanceBridgeSystem" FILES ${ECS_SYS_02C_TickTransform_AssetInstanceBridgeSystem_FILES})
 source_group("ECS\\Systems\\03 TickTransform_BoundingBoxUpdateSystem" FILES ${ECS_SYS_03_TickTransform_BoundingBoxUpdateSystem_FILES})
 source_group("ECS\\Systems\\04 TickTransform_VisibilitySystem" FILES ${ECS_SYS_04_TickTransform_VisibilitySystem_FILES})
 source_group("ECS\\Systems\\05 TickCamera_CameraSystem" FILES ${ECS_SYS_05_TickCamera_CameraSystem_FILES})

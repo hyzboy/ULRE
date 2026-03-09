@@ -27,7 +27,6 @@
 #include<hgl/ecs/components/CameraComponent.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
 #include<hgl/ecs/systems/tick/InputSystem.h>
-#include<hgl/ecs/systems/tick/AssetInstanceBridgeSystem.h>
 
 #include<glm/glm.hpp>
 #include<iostream>
@@ -230,13 +229,6 @@ private:
     bool InitGizmos()
     {
         if(!ecs_context)
-            return false;
-
-        auto bridge_system = ecs_context->GetSystem<hgl::ecs::AssetInstanceBridgeSystem>();
-        if(!bridge_system)
-            bridge_system = ecs_context->RegisterTickSystem<hgl::ecs::AssetInstanceBridgeSystem>();
-
-        if(!bridge_system)
             return false;
 
         gizmo_system = ecs_context->GetSystem<TransformGizmoSystem>();
