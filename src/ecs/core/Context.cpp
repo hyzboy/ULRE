@@ -723,6 +723,10 @@ namespace hgl
                 LogInfo("[ECSContext] OnResize: %s %ux%u",
                     GetName().c_str(), extent.width, extent.height);
 
+            // Ensure render target viewport/UBO are updated immediately for this extent.
+            if (render_target)
+                render_target->OnResize(extent);
+
             // Notify RenderTargetSystem to sync viewport and dependent systems
             auto render_target_system = GetSystem<RenderTargetSystem>();
             if (render_target_system)

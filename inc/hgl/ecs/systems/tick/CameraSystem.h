@@ -151,6 +151,7 @@ namespace hgl
             CameraComponent* SelectMainCamera(const std::vector<std::shared_ptr<CameraComponent>>& cameras) const;
             void BindCameraResources(CameraComponent* camera);
             void EnsureCameraResources();
+            void MarkAllCameraMatricesDirty();
 
             // === 数学辅助函数 / Math helper functions ===
 

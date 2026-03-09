@@ -278,7 +278,27 @@ namespace hgl::ecs
 
     void CameraSystem::SetViewportInfo(const graph::ViewportInfo* vp)
     {
+        uint old_w = 0;
+        uint old_h = 0;
+        if (viewport_info)
+        {
+            old_w = viewport_info->GetViewportWidth();
+            old_h = viewport_info->GetViewportHeight();
+        }
+
+        uint new_w = 0;
+        uint new_h = 0;
+        if (vp)
+        {
+            new_w = vp->GetViewportWidth();
+            new_h = vp->GetViewportHeight();
+        }
+
+        const bool viewport_changed = (viewport_info != vp) || (old_w != new_w) || (old_h != new_h);
         viewport_info = vp;
+
+        if (viewport_changed)
+            MarkAllCameraMatricesDirty();
     }
 
     graph::Camera* CameraSystem::GetCamera()
@@ -601,6 +621,21 @@ namespace hgl::ecs
                 camera_ubo_managed = true;
             if (camera_ubo)
                 camera_info = camera_ubo->Data();
+        }
+    }
+
+    void CameraSystem::MarkAllCameraMatricesDirty()
+    {
+        if (!context)
+            return;
+
+        std::vector<std::shared_ptr<CameraComponent>> cameras;
+        context->GetComponents<CameraComponent>(cameras);
+
+        for (const auto& camera : cameras)
+        {
+            if (camera)
+                camera->matrix_dirty = true;
         }
     }
 
