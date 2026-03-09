@@ -501,6 +501,24 @@ namespace hgl
                 return static_cast<T*>(entity);
             }
 
+            /// Descriptor for creating a child entity with a TransformComponent.
+            struct ChildEntityDesc
+            {
+                const char *name     = nullptr;
+                glm::vec3   position = glm::vec3(0.0f);
+                glm::quat   rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+                glm::vec3   scale    = glm::vec3(1.0f);
+                Mobility    mobility = Mobility::Movable;
+            };
+
+            /// Create a named child entity with a TransformComponent already set up.
+            /// Appends the new EntityID to out_entity_ids when provided.
+            /// Returns the TransformComponent via out_transform when provided.
+            Entity* CreateChildEntity(Entity *parent,
+                                      const ChildEntityDesc &desc,
+                                      std::vector<EntityID> *out_entity_ids = nullptr,
+                                      std::shared_ptr<TransformComponent> *out_transform = nullptr);
+
             /// Get entity by ID
             Entity* GetEntity(EntityID id)
             {

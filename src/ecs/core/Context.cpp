@@ -222,6 +222,34 @@ namespace hgl
             OnCreate();
         }
 
+        Entity* ECSContext::CreateChildEntity(Entity *parent,
+                                               const ChildEntityDesc &desc,
+                                               std::vector<EntityID> *out_entity_ids,
+                                               std::shared_ptr<TransformComponent> *out_transform)
+        {
+            if (!parent)
+                return nullptr;
+
+            auto *entity = CreateEntity<Entity>(desc.name ? desc.name : "Entity");
+            if (!entity)
+                return nullptr;
+
+            auto transform = entity->AddComponent<TransformComponent>(desc.mobility);
+            if (!transform)
+                return nullptr;
+
+            transform->SetLocalTRS(desc.position, desc.rotation, desc.scale);
+            transform->SetParent(parent->GetID());
+
+            if (out_transform)
+                *out_transform = transform;
+
+            if (out_entity_ids)
+                out_entity_ids->push_back(entity->GetID());
+
+            return entity;
+        }
+
         std::shared_ptr<CameraSystem> ECSContext::EnsureCameraSystem()
         {
             auto camera_system = GetSystem<CameraSystem>();
