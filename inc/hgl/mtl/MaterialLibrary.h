@@ -25,8 +25,9 @@ enum class MaterialPreset:uint8
     SkyMinimal,
     Billboard2D,
     BasicLit,
+    PBRColor3D,
 
-    ENUM_CLASS_RANGE(VertexColor2D,BasicLit)
+    ENUM_CLASS_RANGE(VertexColor2D,PBRColor3D)
 };
 
 /// 仅声明材质创建函数，不产生任何注册或全局常量副作用。

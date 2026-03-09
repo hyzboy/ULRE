@@ -123,6 +123,28 @@ struct BasicLitMaterialInstance
 
 constexpr const size_t BasicLitMaterialInstanceBytes=sizeof(BasicLitMaterialInstance);
 
+struct PBRColor3DMaterialInstance
+{
+    uint32 base_color;      ///<基础颜色 (RGBA packed, unpackUnorm4x8 in shader)
+    float  metallic;        ///<金属度 [0, 1]
+    float  roughness;       ///<粗糙度 [0.04, 1]
+};
+
+constexpr const size_t PBRColor3DMaterialInstanceBytes = sizeof(PBRColor3DMaterialInstance);
+
+struct PBRColor3DMaterialCreateConfig : public Material3DCreateConfig
+{
+public:
+    PBRColor3DMaterialCreateConfig()
+        :Material3DCreateConfig(PrimitiveType::Triangles,
+                                WithCamera::With,
+                                WithLocalToWorld::With,
+                                WithSky::With)
+    {}
+};
+
+DECLARE_MATERIAL_CREATOR(PBRColor3D, PBRColor3DMaterialCreateConfig)
+
 struct TextureBlinnPhongMaterialInstance
 {
     float  normal_strength = DefaultNormalStrength; ///<法线强度(运行时可调)

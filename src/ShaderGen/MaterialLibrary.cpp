@@ -25,6 +25,7 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
         case MaterialPreset::SkyMinimal:            return "SkyMinimal";
         case MaterialPreset::Billboard2D:           return "Billboard2D";
         case MaterialPreset::BasicLit:              return "BasicLit";
+        case MaterialPreset::PBRColor3D:            return "PBRColor3D";
         default:                                    return nullptr;
     }
 }
@@ -55,6 +56,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         case MaterialPreset::SkyMinimal:            return CreateSkyMinimal         (profile,(const SkyMinimalCreateConfig *)cfg);
         case MaterialPreset::Billboard2D:           return CreateBillboard2D        (profile,(BillboardMaterialCreateConfig *)cfg);
         case MaterialPreset::BasicLit:              return CreateBasicLit           (profile,(BasicLitMaterialCreateConfig *)cfg);
+        case MaterialPreset::PBRColor3D:            return CreatePBRColor3D         (profile,(PBRColor3DMaterialCreateConfig *)cfg);
 
         default:                                    return nullptr;
     }
