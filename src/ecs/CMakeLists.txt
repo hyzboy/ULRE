@@ -157,12 +157,8 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/components/PrimitiveComponent.h
     components/PrimitiveComponent.cpp
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
-    ${ECS_INCLUDE_PATH}/components/StaticMeshComponent.h
-    components/StaticMeshComponent.cpp
     ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
     components/BillboardComponent.cpp
-    ${ECS_INCLUDE_PATH}/components/StaticMesh.h
-    components/StaticMesh.cpp
 )
 
 set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
