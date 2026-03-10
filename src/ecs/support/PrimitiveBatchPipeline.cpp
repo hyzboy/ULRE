@@ -122,7 +122,7 @@ namespace hgl::ecs
 
         for (auto& itemPtr : cache.renderItems)
         {
-            PrimitiveRenderItem* item = itemPtr.get();
+            RenderItem* item = itemPtr.get();
             if (!item || !item->isVisible)
                 continue;
 
@@ -145,7 +145,7 @@ namespace hgl::ecs
         }
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithWorldAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
+    bool PrimitiveBatchPipeline::TestFrustumWithWorldAABB(RenderItem* item, const BoundingBoxComponent* bbox)
     {
         const auto& world_aabb = bbox->GetWorldAABB();
         const glm::vec3 world_center = world_aabb.GetCenter();
@@ -155,7 +155,7 @@ namespace hgl::ecs
         return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithLocalAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox)
+    bool PrimitiveBatchPipeline::TestFrustumWithLocalAABB(RenderItem* item, const BoundingBoxComponent* bbox)
     {
         const glm::vec3 local_center = bbox->GetCenter();
         const glm::vec3 local_extents = bbox->GetExtents();
@@ -167,9 +167,12 @@ namespace hgl::ecs
         return frustum.SphereIn(world_center, radius) != math::Frustum::Scope::OUTSIDE;
     }
 
-    bool PrimitiveBatchPipeline::TestFrustumWithBoundingSphere(PrimitiveRenderItem* item)
+    bool PrimitiveBatchPipeline::TestFrustumWithBoundingSphere(RenderItem* item)
     {
-        auto primitiveComp = item->GetPrimitiveComponent();
+        auto* prim_item = dynamic_cast<PrimitiveRenderItem*>(item);
+        if (!prim_item)
+            return true;  // No bounding sphere data for this item type — keep visible
+        auto primitiveComp = prim_item->GetPrimitiveComponent();
         if (!primitiveComp)
             return false;
 
@@ -194,7 +197,7 @@ namespace hgl::ecs
         auto& cache = world->GetRenderFrameCache();
 
         std::sort(cache.renderItems.begin(), cache.renderItems.end(),
-            [](const std::unique_ptr<PrimitiveRenderItem>& a, const std::unique_ptr<PrimitiveRenderItem>& b) {
+            [](const std::unique_ptr<RenderItem>& a, const std::unique_ptr<RenderItem>& b) {
                 return a->distanceToCamera < b->distanceToCamera;
             });
     }
@@ -593,7 +596,7 @@ namespace hgl::ecs
 
         for (auto& itemPtr : cache.renderItems)
         {
-            PrimitiveRenderItem* item = itemPtr.get();
+            RenderItem* item = itemPtr.get();
             if (!item || !item->isVisible)
                 continue;
 

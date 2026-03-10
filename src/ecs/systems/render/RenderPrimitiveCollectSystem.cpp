@@ -102,7 +102,7 @@ namespace hgl::ecs
 
             item->UpdateWorldMatrix();
 
-            cache.renderItems.push_back(std::move(item));
+            cache.renderItems.push_back(std::unique_ptr<RenderItem>(std::move(item)));
             cache.renderableCount++;
             ++added;
         }

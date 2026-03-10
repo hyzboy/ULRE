@@ -21,6 +21,7 @@ set(ECS_CORE_FILES
     ${ECS_INCLUDE_PATH}/core/MaterialPipelineKey.h
     ${ECS_INCLUDE_PATH}/core/RenderItem.h
     ${ECS_INCLUDE_PATH}/core/PrimitiveRenderItem.h
+    ${ECS_INCLUDE_PATH}/core/AssetPrimitiveRenderItem.h
     ${ECS_INCLUDE_PATH}/systems/render/RenderSystemCore.h
     core/Object.cpp
     core/Component.cpp
@@ -37,6 +38,7 @@ set(ECS_CORE_FILES
     core/MaterialBatch.cpp
     core/RenderItem.cpp
     core/PrimitiveRenderItem.cpp
+    core/AssetPrimitiveRenderItem.cpp
     systems/render/RenderSystemCore.cpp
 )
 
@@ -159,6 +161,13 @@ set(ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES
     ${ECS_INCLUDE_PATH}/components/RenderableComponent.h
     ${ECS_INCLUDE_PATH}/components/BillboardComponent.h
     components/BillboardComponent.cpp
+)
+
+set(ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES
+    ${ECS_INCLUDE_PATH}/systems/render/AssetInstanceCollectSystem.h
+    systems/render/AssetInstanceCollectSystem.cpp
+    ${ECS_INCLUDE_PATH}/components/AssetInstanceComponent.h
+    components/AssetInstanceComponent.cpp
 )
 
 set(ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES
@@ -328,6 +337,7 @@ set(ECS_SOURCE
     ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES}
     ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES}
     ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES}
+    ${ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES}
     ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES}
     ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES}
     ${ECS_SYS_18B_RenderCollect_LineCollectSystem_FILES}
@@ -368,6 +378,7 @@ source_group("ECS\\Systems\\14 RenderBufferUpload_RenderBufferUploadSystem" FILE
 source_group("ECS\\Systems\\15 RenderFrameSync_RenderFrameBusinessSyncSystem" FILES ${ECS_SYS_15_RenderFrameSync_RenderFrameBusinessSyncSystem_FILES})
 source_group("ECS\\Systems\\15B RenderFrameSync_RenderDescriptorBindingSystem" FILES ${ECS_SYS_15B_RenderFrameSync_RenderDescriptorBindingSystem_FILES})
 source_group("ECS\\Systems\\16 RenderCollect_RenderPrimitiveCollectSystem" FILES ${ECS_SYS_16_RenderCollect_RenderPrimitiveCollectSystem_FILES})
+source_group("ECS\\Systems\\16B RenderCollect_AssetInstanceCollectSystem" FILES ${ECS_SYS_16B_RenderCollect_AssetInstanceCollectSystem_FILES})
 source_group("ECS\\Systems\\17 RenderCollect_RenderPrimitiveCullSystem" FILES ${ECS_SYS_17_RenderCollect_RenderPrimitiveCullSystem_FILES})
 source_group("ECS\\Systems\\18 RenderCollect_TextCollectSystem" FILES ${ECS_SYS_18_RenderCollect_TextCollectSystem_FILES})
 source_group("ECS\\Systems\\19 RenderBatch_RenderPrimitiveSortSystem" FILES ${ECS_SYS_19_RenderBatch_RenderPrimitiveSortSystem_FILES})

@@ -33,6 +33,7 @@ namespace hgl {
         class GraphicsContext;  // 图形资源管理器（原IGraphicsContext）
         class VulkanDevice;
         class RenderContext;
+        class AssetWorldRegistry;
     }
 }
 
@@ -44,7 +45,7 @@ namespace hgl
     class RenderSystemCore;
         class RenderPipelineBase;
         class MaterialBatch;
-        class PrimitiveRenderItem;
+        class RenderItem;
 
         struct SubSceneState
         {
@@ -55,7 +56,7 @@ namespace hgl
 
         struct RenderFrameCache
         {
-            std::vector<std::unique_ptr<PrimitiveRenderItem>> renderItems;
+            std::vector<std::unique_ptr<RenderItem>> renderItems;
             hgl::UnorderedMap<MaterialPipelineKey, std::unique_ptr<MaterialBatch>> materialBatches;
             const graph::CameraInfo* cameraInfo = nullptr;
             uint32_t renderableCount = 0;
@@ -193,6 +194,9 @@ namespace hgl
             /// Graphics context adapter (Phase 2) - now raw pointer
             hgl::graph::GraphicsContext* graphics_context = nullptr;
             hgl::graph::RenderContext* render_context = nullptr;
+
+            /// Asset definition registry (non-owning; assigned by the Application)
+            hgl::graph::AssetWorldRegistry* asset_registry = nullptr;
 
             /// Resource naming prefix for hierarchical tracking (e.g., "RenderToTexture:OffscreenRT")
             /// Used by systems when creating GPU resources for better leak tracking
@@ -424,6 +428,11 @@ namespace hgl
             void SetRenderContext(hgl::graph::RenderContext* ctx) { render_context = ctx; }
             hgl::graph::RenderContext* GetRenderContext() { return render_context; }
             const hgl::graph::RenderContext* GetRenderContext() const { return render_context; }
+
+            /// Asset world registry (Phase 3)
+            void SetAssetWorldRegistry(hgl::graph::AssetWorldRegistry* reg) { asset_registry = reg; }
+            hgl::graph::AssetWorldRegistry* GetAssetWorldRegistry() { return asset_registry; }
+            const hgl::graph::AssetWorldRegistry* GetAssetWorldRegistry() const { return asset_registry; }
 
             /// Unified render pipeline registry
             /// Get a pipeline by name (e.g., "Primitive", "Text", "Line", "Quad")

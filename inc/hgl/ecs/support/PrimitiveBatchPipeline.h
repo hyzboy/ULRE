@@ -22,6 +22,7 @@ namespace hgl::ecs
 {
     class ECSContext;
     class TransformSystem;
+    class RenderItem;
     class PrimitiveRenderItem;
     class BoundingBoxComponent;
 
@@ -47,9 +48,9 @@ namespace hgl::ecs
     private:
         void PerformFrustumCulling();
 
-        bool TestFrustumWithWorldAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox);
-        bool TestFrustumWithLocalAABB(PrimitiveRenderItem* item, const BoundingBoxComponent* bbox);
-        bool TestFrustumWithBoundingSphere(PrimitiveRenderItem* item);
+        bool TestFrustumWithWorldAABB(RenderItem* item, const BoundingBoxComponent* bbox);
+        bool TestFrustumWithLocalAABB(RenderItem* item, const BoundingBoxComponent* bbox);
+        bool TestFrustumWithBoundingSphere(RenderItem* item);
 
         void SortByDistance();
         void AssignTransformIndices(TransformSystem* transform_system);
