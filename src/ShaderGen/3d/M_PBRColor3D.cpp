@@ -17,15 +17,18 @@ namespace
     //   uint  base_color  — RGBA packed, recovered via unpackUnorm4x8
     //   float metallic    — [0, 1]
     //   float roughness   — [0.04, 1]
+    //   uint  texture_id  — Texture2DArray layer index
     constexpr const char mi_codes[] = R"(
         uint  base_color;
         float metallic;
         float roughness;
+        uint  texture_id;
     )";
-    constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
+    constexpr const uint32_t mi_bytes = sizeof(uint32_t) * 2 + sizeof(float) * 2;
 
     constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::Position },
+        { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::TexCoord },
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::Normal   },
         { Assign::TransformID::VAT_FMT,        VertexInputGroup::TransformID,        VertexInputRate::Instance, Assign::TransformID::VIS_NAME        },
         { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
@@ -43,6 +46,7 @@ namespace
         { DescriptorSetType::Camera,       DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky",      "SkyInfo",             nullptr },
         { DescriptorSetType::PerFrame,     PBR_COLOR_3D_L2W_KIND,uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorldData",    nullptr },
         { DescriptorSetType::PerMaterial,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData",nullptr },
+        { DescriptorSetType::PerMaterial,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2DArray" },
     };
 
     constexpr VertexShaderBusiness   PBR_COLOR_3D_VERTEX_BUSINESS   { PBR_COLOR_3D_VS_BUSINESS };

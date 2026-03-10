@@ -15,6 +15,7 @@ namespace hgl::graph::mtl {
 constexpr const char PBR_COLOR_3D_VS_BUSINESS[] = R"(
 vec4 VertexShaderBusiness(const VertexInput vi)
 {
+    Output.TexCoord = vi.TexCoord;
     Output.Normal   = normalize(mat3(GetLocalToWorld()) * vi.Normal);
     Output.Position = GetLocalToWorld() * vec4(vi.Position, 1.0);
     return vec4(vi.Position, 1.0);
@@ -22,12 +23,13 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 )";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fragment Shader — Cook-Torrance PBR BRDF (no textures, pure MI color)
+// Fragment Shader — Cook-Torrance PBR BRDF (Texture2DArray diffuse + MI color tint)
 //
 // MI layout (must match mi_codes in M_PBRColor3D.cpp):
 //   uint  base_color   — RGBA packed (unpackUnorm4x8 to recover vec4)
 //   float metallic     — [0, 1]
 //   float roughness    — [0.04, 1]
+//   uint  texture_id   — Texture2DArray layer index
 //
 // Lighting model:
 //   NDF  : GGX / Trowbridge-Reitz
@@ -73,7 +75,10 @@ vec4 FragmentShaderBusiness()
 {
     MaterialInstance mi = GetMI();
 
-    vec4  albedo    = unpackUnorm4x8(mi.base_color);
+    vec2 uv = fract(abs(Input.TexCoord));
+    vec4 tex_albedo = texture(TextureBaseColor, vec3(uv, float(mi.texture_id)));
+    vec4 mi_albedo  = unpackUnorm4x8(mi.base_color);
+    vec4 albedo     = tex_albedo * mi_albedo;
     float metallic  = clamp(mi.metallic,  0.0,  1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
@@ -102,14 +107,21 @@ vec4 FragmentShaderBusiness()
     vec3 kD      = (vec3(1.0) - F) * (1.0 - metallic);
     vec3 diffuse = kD * albedo.rgb / PBR_PI;
 
-    vec3 sunColor   = max(ULRE_GetSkyLightColor(), vec3(0.15));
-    vec3 skyAmbient = ULRE_GetSkyAmbientColor();
+    vec3 skyBase    = max(sky.base_sky_color.rgb, vec3(0.08));
+    vec3 sunColor   = max(ULRE_GetSkyLightColor(), sky.sun_color.rgb * max(sky.sun_intensity, 0.35));
+    sunColor        = max(sunColor, vec3(0.30));
+    vec3 skyAmbient = max(ULRE_GetSkyAmbientColor(), skyBase * 0.75);
 
     // Direct lighting
-    vec3 color = (diffuse + specular) * sunColor * NdotL;
+    float wrappedNdotL = NdotL * 0.62 + 0.38;
+    vec3 color = (diffuse + specular) * sunColor * wrappedNdotL;
 
     // Ambient approximation (IBL-less fallback)
-    color += skyAmbient * albedo.rgb * (1.0 - metallic) * 0.25;
+    color += skyAmbient * albedo.rgb * (1.0 - metallic) * 0.85;
+    color += skyBase * F0 * 0.16;
+
+    // Presentation mode: lift exposure to make material differences easier to read.
+    color *= 1.18;
 
     return vec4(color, 1.0);
 }
@@ -127,7 +139,8 @@ constexpr const char* PBR_COLOR_3D_VERTEX_RESOURCES[] = {
 constexpr const char* PBR_COLOR_3D_FRAGMENT_RESOURCES[] = {
     "camera",
     "sky",
-    "mtl"
+    "mtl",
+    "TextureBaseColor"
 };
 
 constexpr const char* PBR_COLOR_3D_FRAGMENT_HELPERS[] = {
@@ -154,7 +167,7 @@ const FragmentShaderLogic PBR_COLOR_3D_FRAGMENT_SHADER_LOGIC = {
         PBR_COLOR_3D_FS_BUSINESS,
         nullptr,
         PBR_COLOR_3D_FRAGMENT_RESOURCES,
-        3,
+        4,
         PBR_COLOR_3D_FRAGMENT_HELPERS,
         1
     }
