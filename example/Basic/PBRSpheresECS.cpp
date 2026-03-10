@@ -1,8 +1,8 @@
 // 该范例演示 10x10 的 PBR 网格：
-// X 轴为 10 种内置几何体，Y 轴为 10 张 Texture2DArray 纹理层。
+// X 轴为 10 种内置几何体，Y 轴为 10 组 PBR 材质层（baseColor + normal）。
 // 同时保留 metallic/roughness 渐变以观察材质响应。
 // This example renders a 10x10 PBR grid:
-// X-axis uses 10 built-in geometries, Y-axis uses 10 Texture2DArray layers.
+// X-axis uses 10 built-in geometries, Y-axis uses 10 PBR material layers (baseColor + normal).
 // Metallic/roughness gradients are still applied for material response comparison.
 
 #include<hgl/framework/WorkManager.h>
@@ -11,6 +11,7 @@
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/filesystem/Filename.h>
+#include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
@@ -41,19 +42,19 @@ static constexpr float SPHERE_SPACING = 2.5f;  // center-to-center distance
 // 10 built-in geometries, one per column
 static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 
-// 10 icon textures, one per row
-constexpr const os_char *FREEPIK_TEX_FILENAME[GRID_SIZE]=
+// 10 PBR material folders under res/image/pbr, one per row
+constexpr const os_char *PBR_FOLDER_NAME[GRID_SIZE]=
 {
-    OS_TEXT("001-online resume.Tex2D"),
-    OS_TEXT("002-salary.Tex2D"),
-    OS_TEXT("003-application.Tex2D"),
-    OS_TEXT("004-job interview.Tex2D"),
-    OS_TEXT("005-investment.Tex2D"),
-    OS_TEXT("006-job seeker.Tex2D"),
-    OS_TEXT("007-file.Tex2D"),
-    OS_TEXT("008-Cooperation.Tex2D"),
-    OS_TEXT("009-CV.Tex2D"),
-    OS_TEXT("010-personal data.Tex2D")
+    OS_TEXT("Concrete_Plain"),
+    OS_TEXT("Concrete_Planks"),
+    OS_TEXT("Concrete_Tiles"),
+    OS_TEXT("Fresco_Decor_Wallpaper"),
+    OS_TEXT("TH_Brown_Leather"),
+    OS_TEXT("TH_Cobblestone_Color"),
+    OS_TEXT("TH_Large_Square_Pattern"),
+    OS_TEXT("TH_Sandstone_Blocks"),
+    OS_TEXT("TH_Sidewalk_Brick_Floor"),
+    OS_TEXT("TH_Square_Floor_Pattern")
 };
 
 // Base albedo for all spheres (classic gray PBR test chart color)
@@ -70,7 +71,8 @@ private:
 
     Material *          material  = nullptr;
     Pipeline *          pipeline  = nullptr;
-    Texture2DArray *    texture_array = nullptr;
+    Texture2DArray *    base_color_array = nullptr;
+    Texture2DArray *    normal_array = nullptr;
     Sampler *           sampler = nullptr;
 
     VertexDataManager * mesh_vdm = nullptr;
@@ -129,7 +131,7 @@ private:
 
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !sampler_manager || !texture_array)
+        if (!material_manager || !sampler_manager || !base_color_array || !normal_array)
             return false;
 
         mtl::PBRColor3DMaterialCreateConfig cfg;
@@ -143,7 +145,13 @@ private:
 
         if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
                                           mtl::SamplerName::BaseColor,
-                                          texture_array,
+                                          base_color_array,
+                                          sampler))
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+                                          "TextureNormal",
+                                          normal_array,
                                           sampler))
             return false;
 
@@ -168,21 +176,42 @@ private:
         if (!texture_manager)
             return false;
 
-        texture_array = texture_manager->CreateTexture2DArray("freepik icons pbr",
-                                                               512,
-                                                               512,
-                                                               GRID_SIZE,
-                                                               PF_BC7UN,
-                                                               false);
-        if (!texture_array)
+        base_color_array = texture_manager->CreateTexture2DArray("pbr baseColor",
+                                                                  1024,
+                                                                  1024,
+                                                                  GRID_SIZE,
+                                                                  PF_BC7UN,
+                                                                  false);
+        if (!base_color_array)
+            return false;
+
+        normal_array = texture_manager->CreateTexture2DArray("pbr normal",
+                                                              1024,
+                                                              1024,
+                                                              GRID_SIZE,
+                                                              PF_BC7UN,
+                                                              false);
+        if (!normal_array)
             return false;
 
         for (uint i = 0; i < GRID_SIZE; ++i)
         {
-            OSString filename = filesystem::JoinPathWithFilename(OS_TEXT("res/image/icon/freepik"),
-                                                                  FREEPIK_TEX_FILENAME[i]);
+            OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"),
+                                                                PBR_FOLDER_NAME[i]);
 
-            if (!texture_manager->LoadTexture2DArray(texture_array, i, filename))
+            OSString base_color_filename = filesystem::JoinPathWithFilename(folder,
+                                                                             OS_TEXT("baseColor.Tex2D"));
+
+            OSString normal_filename = filesystem::JoinPathWithFilename(folder,
+                                                                         OS_TEXT("normal.Tex2D"));
+
+            if (!filesystem::FileExist(normal_filename))
+                normal_filename = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
+
+            if (!texture_manager->LoadTexture2DArray(base_color_array, i, base_color_filename))
+                return false;
+
+            if (!texture_manager->LoadTexture2DArray(normal_array, i, normal_filename))
                 return false;
         }
 
@@ -467,7 +496,8 @@ public:
         }
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(texture_array)
+        SAFE_CLEAR(base_color_array)
+        SAFE_CLEAR(normal_array)
         SAFE_CLEAR(sampler)
     }
 
@@ -532,5 +562,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("PBR BuiltinGeometry x TextureArray 10x10 (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<TestApp>(OS_TEXT("PBR BuiltinGeometry x BaseColor+Normal Array 10x10 (ECS)"), argc, argv, 1280, 720);
 }

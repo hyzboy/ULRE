@@ -23,7 +23,7 @@ vec4 VertexShaderBusiness(const VertexInput vi)
 )";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fragment Shader — Cook-Torrance PBR BRDF (Texture2DArray diffuse + MI color tint)
+// Fragment Shader — Cook-Torrance PBR BRDF (Texture2DArray baseColor + normal)
 //
 // MI layout (must match mi_codes in M_PBRColor3D.cpp):
 //   uint  base_color   — RGBA packed (unpackUnorm4x8 to recover vec4)
@@ -71,19 +71,37 @@ vec3 PBR_F(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+// Build a TBN frame from derivatives, so tangent-space normal maps can be
+// applied without requiring explicit vertex tangents.
+vec3 PBR_ApplyNormalMap(vec2 uv, vec3 n_geom, vec3 normal_ts)
+{
+    vec3 dp1 = dFdx(Input.Position.xyz);
+    vec3 dp2 = dFdy(Input.Position.xyz);
+    vec2 duv1 = dFdx(uv);
+    vec2 duv2 = dFdy(uv);
+
+    float inv_det = 1.0 / max(duv1.x * duv2.y - duv1.y * duv2.x, 1e-8);
+    vec3 t = normalize((dp1 * duv2.y - dp2 * duv1.y) * inv_det);
+    vec3 b = normalize((dp2 * duv1.x - dp1 * duv2.x) * inv_det);
+
+    mat3 tbn = mat3(t, b, normalize(n_geom));
+    return normalize(tbn * normal_ts);
+}
+
 vec4 FragmentShaderBusiness()
 {
     MaterialInstance mi = GetMI();
 
     vec2 uv = fract(abs(Input.TexCoord));
     vec4 tex_albedo = texture(TextureBaseColor, vec3(uv, float(mi.texture_id)));
+    vec3 tex_normal = texture(TextureNormal, vec3(uv, float(mi.texture_id))).xyz * 2.0 - 1.0;
     vec4 mi_albedo  = unpackUnorm4x8(mi.base_color);
     vec4 albedo     = tex_albedo * mi_albedo;
     float metallic  = clamp(mi.metallic,  0.0,  1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
     // All vectors in world space
-    vec3 N = normalize(Input.Normal);
+    vec3 N = PBR_ApplyNormalMap(uv, normalize(Input.Normal), normalize(tex_normal));
     vec3 V = normalize(camera.pos - Input.Position.xyz);
     vec3 L = normalize(ULRE_GetSkyLightDir());
     vec3 H = normalize(V + L);
@@ -140,7 +158,8 @@ constexpr const char* PBR_COLOR_3D_FRAGMENT_RESOURCES[] = {
     "camera",
     "sky",
     "mtl",
-    "TextureBaseColor"
+    "TextureBaseColor",
+    "TextureNormal"
 };
 
 constexpr const char* PBR_COLOR_3D_FRAGMENT_HELPERS[] = {
@@ -167,7 +186,7 @@ const FragmentShaderLogic PBR_COLOR_3D_FRAGMENT_SHADER_LOGIC = {
         PBR_COLOR_3D_FS_BUSINESS,
         nullptr,
         PBR_COLOR_3D_FRAGMENT_RESOURCES,
-        4,
+        5,
         PBR_COLOR_3D_FRAGMENT_HELPERS,
         1
     }

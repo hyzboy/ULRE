@@ -47,6 +47,7 @@ namespace
         { DescriptorSetType::PerFrame,     PBR_COLOR_3D_L2W_KIND,uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorldData",    nullptr },
         { DescriptorSetType::PerMaterial,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData",nullptr },
         { DescriptorSetType::PerMaterial,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2DArray" },
+        { DescriptorSetType::PerMaterial,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal",    nullptr, "sampler2DArray" },
     };
 
     constexpr VertexShaderBusiness   PBR_COLOR_3D_VERTEX_BUSINESS   { PBR_COLOR_3D_VS_BUSINESS };
