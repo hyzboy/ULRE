@@ -5,14 +5,12 @@ namespace hgl::ecs
     World::World(const std::string& name)
         : Object(name)
         , context(std::make_shared<ECSContext>(name + "_Context"))
-        , scheduler(std::make_unique<WorldScheduler>())
     {
     }
 
     World::World(std::shared_ptr<ECSContext> ctx, const std::string& name)
         : Object(name)
         , context(std::move(ctx))
-        , scheduler(std::make_unique<WorldScheduler>())
     {
         if (!context)
             context = std::make_shared<ECSContext>(name + "_Context");
@@ -21,11 +19,6 @@ namespace hgl::ecs
     void World::SetContext(const std::shared_ptr<ECSContext>& ctx)
     {
         context = ctx;
-
-        if (!scheduler)
-            scheduler = std::make_unique<WorldScheduler>();
-
-        scheduler->MarkTopologyDirty();
     }
 
     void World::Initialize()
@@ -60,14 +53,6 @@ namespace hgl::ecs
             return;
         }
 
-        is_ticking = true;
-
-        if (!scheduler)
-            scheduler = std::make_unique<WorldScheduler>();
-
-        scheduler->Rebuild(this);
-        scheduler->Tick(delta_time);
-
         is_ticking = false;
     }
 
@@ -81,14 +66,6 @@ namespace hgl::ecs
             LogWarning("[World] Render re-entry blocked: %s", GetName().c_str());
             return;
         }
-
-        is_rendering = true;
-
-        if (!scheduler)
-            scheduler = std::make_unique<WorldScheduler>();
-
-        scheduler->Rebuild(this);
-        scheduler->Render(cmd, delta_time);
 
         is_rendering = false;
     }
@@ -105,9 +82,6 @@ namespace hgl::ecs
         }
 
         children.push_back(child);
-
-        if (scheduler)
-            scheduler->MarkTopologyDirty();
     }
 
     bool World::RemoveChild(World* child)
@@ -124,8 +98,6 @@ namespace hgl::ecs
                         children.end());
 
         const bool changed = children.size() != old_size;
-        if (changed && scheduler)
-            scheduler->MarkTopologyDirty();
 
         return changed;
     }
@@ -133,8 +105,5 @@ namespace hgl::ecs
     void World::ClearChildren()
     {
         children.clear();
-
-        if (scheduler)
-            scheduler->MarkTopologyDirty();
     }
 }
