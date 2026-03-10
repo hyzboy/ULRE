@@ -3,8 +3,7 @@
 SET(CM_SG_HEADER    ${SG_INCLUDE_PATH}/data/BitmapData.h
                     ${SG_INCLUDE_PATH}/data/ImageRegion.h
                     ${SG_INCLUDE_PATH}/camera/TransformFaceToCamera.h
-                    ${SG_INCLUDE_PATH}/camera/ViewportInfo.h
-                    ${SG_INCLUDE_PATH}/mesh/Mesh.h)
+                    ${SG_INCLUDE_PATH}/camera/ViewportInfo.h)
 
 source_group("SceneGraph" FILES ${CM_SG_HEADER})
 
