@@ -25,11 +25,7 @@ public:
 
         coordinate_system=cs;
 
-        if(prim==PrimitiveType::SolidRectangles
-         ||prim==PrimitiveType::WireRectangles)
-            position_format=VAT_VEC4;
-        else
-            position_format=VAT_VEC2;
+        position_format=VAT_VEC2;
     }
 
     std::strong_ordering operator<=>(const Material2DCreateConfig &cfg)const
@@ -50,14 +46,14 @@ DECLARE_MATERIAL_CREATOR(VertexColor2D,         const Material2DCreateConfig)
 DECLARE_MATERIAL_CREATOR(PureColor2D,           Material2DCreateConfig)
 
 DECLARE_MATERIAL_CREATOR(PureTexture2D,         const Material2DCreateConfig)
-DECLARE_MATERIAL_CREATOR(RectTexture2D,         Material2DCreateConfig)
-DECLARE_MATERIAL_CREATOR(RectTexture2DArray,    Material2DCreateConfig)
+DECLARE_MATERIAL_CREATOR(RectTexture2D,         const Material2DCreateConfig)
+DECLARE_MATERIAL_CREATOR(RectTexture2DArray,    const Material2DCreateConfig)
 
 struct Text2DMaterialCreateConfig:public Material2DCreateConfig
 {
 public:
 
-    Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::SolidRectangles,CoordinateSystem2D::Ortho,WithLocalToWorld::Without)
+    Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::Triangles,CoordinateSystem2D::Ortho,WithLocalToWorld::Without)
     {
         material_instance=true;        //包含材质实例
 

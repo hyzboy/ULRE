@@ -74,7 +74,7 @@ private:
         if (!material_manager || !sampler_manager || !tex_manager)
             return false;
 
-        mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
+        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::Without);
 
