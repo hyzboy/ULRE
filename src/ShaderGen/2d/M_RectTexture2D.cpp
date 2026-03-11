@@ -52,16 +52,17 @@ void main()
     };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLite *profile,mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
 {
     if(!profile||!cfg)
         return(nullptr);
 
-    cfg->prim=PrimitiveType::Triangles;
-    cfg->position_format=VAT_VEC2;
-    cfg->shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
+    mtl::Material2DCreateConfig inner=*cfg;
+    inner.prim=PrimitiveType::Triangles;
+    inner.position_format=VAT_VEC2;
+    inner.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
-    MaterialRectTexture2D mvc2d(cfg);
+    MaterialRectTexture2D mvc2d(&inner);
 
     return mvc2d.Create(profile);
 }
