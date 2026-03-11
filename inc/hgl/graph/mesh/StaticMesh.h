@@ -4,8 +4,31 @@
 #include <hgl/type/OrderedSet.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/graph/mesh/Primitive.h>
+#include <string>
+#include <vector>
+#include <cstdint>
 
 namespace hgl::graph{
+
+/**
+ * StaticMeshNode - 场景树节点
+ * 描述一个场景节点的变换、包围体和引用到primitive_list的图元索引
+ */
+struct StaticMeshNode
+{
+    std::string          name;
+    int32_t              parentIndex     = -1;              ///< -1 表示根节点
+    std::vector<int32_t> children;                          ///< 子节点在 nodes_ 中的索引
+    Matrix4f             localMatrix     { 1.0f };          ///< 本地变换矩阵
+    Matrix4f             worldMatrix     { 1.0f };          ///< 世界变换矩阵
+    bool                 hasTRS          = false;
+    Vector3f             translation     {};
+    Quatf                rotation        { 1.0f, 0.0f, 0.0f, 0.0f };  ///< w,x,y,z
+    Vector3f             scale           { 1.0f, 1.0f, 1.0f };
+    BoundingVolumes      nodeBounds;
+    bool                 boundsValid     = false;
+    std::vector<int32_t> primitiveIndices;                  ///< 引用 StaticMesh::primitive_list 的下标
+};//struct StaticMeshNode
 
 using GeometryPtrSet        =OrderedSet<Geometry *>;
 using MaterialInstanceSet   =OrderedSet<MaterialInstance *>;
@@ -26,6 +49,10 @@ class StaticMesh
     PrimitiveList           primitive_list;                                                                             ///< Primitive列表
 
     BoundingVolumes   bounding_volumes;                                                                           ///< 所有 Primitive 合并的本地包围体
+
+    // 场景树
+    std::vector<StaticMeshNode> nodes_;
+    std::vector<int32_t>        rootNodes_;                                                                       ///< nodes_ 中根节点的下标
 
 public:
 
@@ -64,5 +91,15 @@ public: // 包围盒
 private:
 
     void                        RebuildResourceSets ();
+
+public: // 场景树
+
+    int32_t                                 AddNode         (StaticMeshNode &&node);            ///< 追加节点，返回其在 nodes_ 里的下标
+    void                                    SetRootNodes    (std::vector<int32_t> roots){ rootNodes_ = std::move(roots); }
+
+    bool                                    HasSceneTree    ()const{ return !nodes_.empty(); }
+    const std::vector<StaticMeshNode> &     GetNodes        ()const{ return nodes_; }
+    const std::vector<int32_t> &            GetRootNodes    ()const{ return rootNodes_; }
+
 };//class StaticMesh
 }//namespace hgl::graph

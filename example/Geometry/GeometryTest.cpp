@@ -8,6 +8,9 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/color/Color.h>
 #include<hgl/math/geometry/AABB.h>
+#include<hgl/graph/mesh/StaticMesh.h>
+#include<hgl/graph/mesh/LoadStaticMesh.h>
+#include<filesystem>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -96,6 +99,17 @@ private:
 
     std::vector<std::unique_ptr<RenderMesh>> render_mesh;
     std::vector<std::unique_ptr<BoundingBoxMesh>> bounding_boxes;
+
+    // Scene-tree loading path (populated by TryLoadStaticMeshScene)
+    struct SceneEntity
+    {
+        hgl::ecs::Entity *entity = nullptr;
+        std::shared_ptr<hgl::ecs::TransformComponent> transform;
+        std::shared_ptr<hgl::ecs::PrimitiveComponent>  primitive_comp;
+    };
+
+    StaticMesh                    *scene_mesh_     = nullptr;
+    std::vector<SceneEntity>       scene_entities_;
 
     Geometry *bbox_geometry = nullptr;
     Primitive *bbox_primitive = nullptr;
@@ -248,6 +262,53 @@ private:
         return result;
     }
 
+    /**
+     * TryLoadStaticMeshScene - 尝试从 .scene minipack 加载完整场景树
+     * 搜索 res/model/Chess/ABeautifulGame.StaticMesh/ 目录下的第一个 .scene 文件
+     * 成功返回 true，失败或文件不存在返回 false
+     */
+    bool TryLoadStaticMeshScene()
+    {
+        using std::filesystem::path;
+        using std::filesystem::exists;
+        using std::filesystem::directory_iterator;
+
+        const path scene_dir("res/model/Chess/ABeautifulGame.StaticMesh");
+        if (!exists(scene_dir))
+            return false;
+
+        // Find first .scene file in the directory
+        path scene_path;
+        for (const auto &entry : directory_iterator(scene_dir))
+        {
+            if (entry.path().extension() == ".scene")
+            {
+                scene_path = entry.path();
+                break;
+            }
+        }
+        if (scene_path.empty())
+            return false;
+
+        auto *render_context = GetRenderContext();
+        if (!render_context) return false;
+        auto *gfx_ctx = render_context->GetGraphicsContext();
+        if (!gfx_ctx) return false;
+        auto *device    = gfx_ctx->GetDevice();
+        auto *geo_mgr   = gfx_ctx->GetGeometryManager();
+        if (!device || !geo_mgr) return false;
+
+        const OSString pack_path = hgl::ToOSString(scene_path.string());
+        const OSString base_dir  = hgl::ToOSString(scene_dir.string());
+
+        scene_mesh_ = LoadStaticMeshScene(
+            device, geo_mgr,
+            solid.vil, solid.mi[0], solid.pipeline,
+            pack_path, base_dir);
+
+        return scene_mesh_ != nullptr;
+    }
+
     bool CreateGeometryMesh()
     {
         int count=0;
@@ -320,6 +381,54 @@ private:
         if(!ecs_context)
             return false;
 
+        // --- Scene-tree path (from LoadStaticMeshScene) ---
+        if (scene_mesh_ && scene_mesh_->HasSceneTree())
+        {
+            const auto &nodes     = scene_mesh_->GetNodes();
+            const auto &prim_list = scene_mesh_->GetPrimitiveList();
+            size_t entity_idx = 0;
+
+            for (const auto &node : nodes)
+            {
+                for (int32_t pi : node.primitiveIndices)
+                {
+                    if (pi < 0 || pi >= prim_list.GetCount())
+                        continue;
+                    Primitive *prim = prim_list[pi];
+                    if (!prim)
+                        continue;
+
+                    SceneEntity se;
+                    se.entity       = ecs_context->CreateEntity<hgl::ecs::Entity>("SceneNode_" + std::to_string(entity_idx++));
+                    se.transform    = se.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
+                    se.primitive_comp = se.entity->AddComponent<hgl::ecs::PrimitiveComponent>();
+
+                    if (node.hasTRS)
+                    {
+                        se.transform->SetLocalPosition(node.translation);
+                        se.transform->SetLocalRotation(node.rotation);
+                        se.transform->SetLocalScale(node.scale);
+                    }
+                    else
+                    {
+                        // Extract translation from world matrix column 3
+                        se.transform->SetLocalPosition(glm::vec3(node.worldMatrix[3]));
+                        se.transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                        se.transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
+                    }
+                    se.transform->SetMovable(false);
+
+                    se.primitive_comp->SetPrimitive(prim);
+                    se.primitive_comp->SetVisible(true);
+
+                    scene_entities_.push_back(std::move(se));
+                }
+            }
+
+            return true;
+        }
+
+        // --- Per-geometry fallback path ---
         const size_t mesh_count = render_mesh.empty() ? 1 : render_mesh.size();
 
         for(size_t i = 0; i < render_mesh.size(); ++i)
@@ -394,6 +503,8 @@ private:
 public:
     ~TestApp()
     {
+        scene_entities_.clear();
+        delete scene_mesh_;
         delete bbox_primitive;
         delete bbox_geometry;
     }
@@ -406,8 +517,12 @@ public:
         if(!InitWireMDP())
             return(false);
 
-        if(!CreateGeometryMesh())
-            return(false);
+        // Try scene-tree loading first; fall back to per-geometry if no .scene file found
+        if(!TryLoadStaticMeshScene())
+        {
+            if(!CreateGeometryMesh())
+                return(false);
+        }
 
         if(!CreateBoundingBoxMesh())
             return(false);

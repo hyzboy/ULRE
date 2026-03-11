@@ -136,4 +136,11 @@ void StaticMesh::RebuildResourceSets()
     }
 }
 
+int32_t StaticMesh::AddNode(StaticMeshNode &&node)
+{
+    const int32_t idx = static_cast<int32_t>(nodes_.size());
+    nodes_.push_back(std::move(node));
+    return idx;
+}
+
 }//namespace hgl::graph
