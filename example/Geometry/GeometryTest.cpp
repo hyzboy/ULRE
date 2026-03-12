@@ -10,6 +10,7 @@
 #include<hgl/math/geometry/AABB.h>
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/mesh/LoadStaticMesh.h>
+#include<hgl/type/StdString.h>
 #include<filesystem>
 
 // ECS headers
@@ -271,24 +272,12 @@ private:
     {
         using std::filesystem::path;
         using std::filesystem::exists;
-        using std::filesystem::directory_iterator;
 
-        const path scene_dir("res/model/Chess/ABeautifulGame.StaticMesh");
-        if (!exists(scene_dir))
+        const path scene_path("res/ABeautifulGame.StaticMesh/ABeautifulGame.Scene.scene");
+        if (!exists(scene_path))
             return false;
 
-        // Find first .scene file in the directory
-        path scene_path;
-        for (const auto &entry : directory_iterator(scene_dir))
-        {
-            if (entry.path().extension() == ".scene")
-            {
-                scene_path = entry.path();
-                break;
-            }
-        }
-        if (scene_path.empty())
-            return false;
+        const path scene_dir = scene_path.parent_path();
 
         auto *render_context = GetRenderContext();
         if (!render_context) return false;
@@ -303,7 +292,7 @@ private:
 
         scene_mesh_ = LoadStaticMeshScene(
             device, geo_mgr,
-            solid.vil, solid.mi[0], solid.pipeline,
+            solid.vil, solid.mi, (int)COLOR_COUNT, solid.pipeline,
             pack_path, base_dir);
 
         return scene_mesh_ != nullptr;
@@ -405,13 +394,16 @@ private:
 
                     if (node.hasTRS)
                     {
+                        // The GLTFImporter already calls RotateNodeLocalTransformsYUpToZUp()
+                        // GLTFConvert already performs proper Y-up→Z-up conversion
+                        // (conjugation: R_zup = Rx90 * R_yup * Rx90^-1), so use TRS directly.
                         se.transform->SetLocalPosition(node.translation);
                         se.transform->SetLocalRotation(node.rotation);
                         se.transform->SetLocalScale(node.scale);
                     }
                     else
                     {
-                        // Extract translation from world matrix column 3
+                        // Board has identity transform — leave it completely unchanged so it stays flat.
                         se.transform->SetLocalPosition(glm::vec3(node.worldMatrix[3]));
                         se.transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
                         se.transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));

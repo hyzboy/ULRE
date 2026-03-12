@@ -24,6 +24,7 @@ namespace hgl::graph
 
 // LoadGeometry 在同一可执行文件的 LoadGeometry.cpp 中定义
 Geometry *LoadGeometry(VulkanDevice *device, const VIL *vil, const OSString &filename);
+Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device, const VIL *vil, const void *bytes, const uint32 size, const OSString &debug_name);
 
 namespace
 {
@@ -32,15 +33,509 @@ namespace
 
 #pragma pack(push, 1)
 // Mirrors exporters::TRS (glm::vec3 + glm::quat + glm::vec3 = 40 bytes)
+// Use plain float arrays to avoid GLM_FORCE_DEFAULT_ALIGNED_GENTYPES padding.
 struct PackedTRS
 {
-    math::Vector3f translation;
-    math::Quatf    rotation;        // binary: x, y, z, w
-    math::Vector3f scale;
+    float translation[3];   // 12 bytes
+    float rotation[4];      // 16 bytes
+    float scale[3];         // 12 bytes
 };
 static_assert(sizeof(PackedTRS) == 40, "PackedTRS size mismatch");
+
+constexpr uint32_t kScenePackV2Magic = 0x324E4353u; // 'SCN2'
+
+enum class SceneV2TableType : uint32_t
+{
+    NameTable      = 1,
+    NodeTable      = 2,
+    NodePrimIndex  = 3,
+    NodeChildIndex = 4,
+    RootIndex      = 5,
+    TRSTable       = 6,
+    MatrixTable    = 7,
+    BoundsTable    = 8,
+    PrimitiveTable = 9,
+    MaterialTable  = 10,
+    GeometryTable  = 11,
+    StringPool     = 12,
+    GeometryViewTable = 13,
+    GeometryBlob      = 14,
+};
+
+struct ScenePackV2Header
+{
+    uint32_t magic;
+    uint16_t version_major;
+    uint16_t version_minor;
+    uint32_t flags;
+    int32_t  scene_name_index;
+
+    uint32_t node_count;
+    uint32_t root_count;
+    uint32_t primitive_count;
+    uint32_t material_count;
+    uint32_t geometry_count;
+
+    uint32_t dir_offset;
+    uint32_t dir_count;
+    uint32_t payload_size;
+    uint32_t reserved;
+};
+
+struct SceneV2TableDesc
+{
+    uint32_t type;
+    uint32_t offset;
+    uint32_t size;
+    uint32_t stride;
+};
+
+struct PackedNodeV2
+{
+    int32_t original_index;
+    int32_t name_index;
+    int32_t local_matrix_index;
+    int32_t world_matrix_index;
+    int32_t trs_index;
+    int32_t bounds_index;
+    int32_t first_primitive;
+    int32_t primitive_count;
+    int32_t first_child;
+    int32_t child_count;
+};
+
+struct PackedPrimitiveV2
+{
+    int32_t  original_index;
+    int32_t  geometry_index;
+    int32_t  material_index;
+    uint32_t geometry_file_offset;
+    uint32_t geometry_file_length;
+};
+
+struct PackedGeometryViewV2
+{
+    int32_t  original_index;
+    uint32_t blob_offset;
+    uint32_t blob_size;
+    uint32_t blob_align;
+};
+
 #pragma pack(pop)
 
+std::vector<std::string> ParseNameTable(const void *raw, uint32_t bytes);
+
+static const SceneV2TableDesc *FindTableDesc(const SceneV2TableDesc *dir, uint32_t dir_count, SceneV2TableType type)
+{
+    const uint32_t t = static_cast<uint32_t>(type);
+    for (uint32_t i = 0; i < dir_count; ++i)
+    {
+        if (dir[i].type == t)
+            return dir + i;
+    }
+    return nullptr;
+}
+
+static bool TryGetTableRange(const uint8_t *payload, uint32_t payload_size, const SceneV2TableDesc *td, const uint8_t *&ptr, uint32_t &size)
+{
+    if (!td)
+        return false;
+    if (td->offset > payload_size || td->size > payload_size || td->offset + td->size > payload_size)
+        return false;
+    ptr = payload + td->offset;
+    size = td->size;
+    return true;
+}
+
+static bool TryLoadSceneV2(
+    hgl::io::minipack::MiniPackMemory *mpm,
+    VulkanDevice             *device,
+    GeometryManager          *geo_mgr,
+    const VIL                *vil,
+    MaterialInstance * const *mi_array,
+    int                       mi_count,
+    Pipeline                 *default_pipeline,
+    const OSString           &pack_path,
+    const OSString           &base_dir,
+    std::vector<Primitive *> &prim_list,
+    std::vector<StaticMeshNode> &scene_nodes,
+    std::vector<int32_t> &root_nodes)
+{
+    const int32 header_idx = mpm->FindFile(AnsiStringView("SceneHeaderV2"));
+    const int32 payload_idx = mpm->FindFile(AnsiStringView("ScenePayloadV2"));
+
+    if (header_idx < 0 || payload_idx < 0)
+        return false;
+
+    const void *header_raw = mpm->Map(header_idx);
+    const uint32 header_len = mpm->GetFileLength(header_idx);
+    const uint8_t *payload = reinterpret_cast<const uint8_t *>(mpm->Map(payload_idx));
+    const uint32 payload_len = mpm->GetFileLength(payload_idx);
+
+    if (!header_raw || header_len < sizeof(ScenePackV2Header) || !payload)
+        return false;
+
+    ScenePackV2Header h{};
+    std::memcpy(&h, header_raw, sizeof(ScenePackV2Header));
+
+    if (h.magic != kScenePackV2Magic)
+        return false;
+    if (h.version_major != 2)
+        return false;
+    if (h.payload_size > payload_len)
+        return false;
+    if (h.dir_offset > h.payload_size || h.dir_count * sizeof(SceneV2TableDesc) > h.payload_size || h.dir_offset + h.dir_count * sizeof(SceneV2TableDesc) > h.payload_size)
+        return false;
+
+    const auto *dir = reinterpret_cast<const SceneV2TableDesc *>(payload + h.dir_offset);
+
+    const SceneV2TableDesc *name_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NameTable);
+    const SceneV2TableDesc *node_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NodeTable);
+    const SceneV2TableDesc *node_prim_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NodePrimIndex);
+    const SceneV2TableDesc *node_child_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NodeChildIndex);
+    const SceneV2TableDesc *root_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::RootIndex);
+    const SceneV2TableDesc *trs_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::TRSTable);
+    const SceneV2TableDesc *matrix_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::MatrixTable);
+    const SceneV2TableDesc *bounds_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::BoundsTable);
+    const SceneV2TableDesc *primitive_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::PrimitiveTable);
+    const SceneV2TableDesc *string_pool_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::StringPool);
+    const SceneV2TableDesc *geo_view_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::GeometryViewTable);
+    const SceneV2TableDesc *geo_blob_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::GeometryBlob);
+
+    if (!node_td || !primitive_td || !string_pool_td)
+        return false;
+
+    MLogInfo(LoadStaticMesh, OS_TEXT("[V2] ") + pack_path
+        + OS_TEXT(" v") + OSString::numberOf(h.version_major)
+        + OS_TEXT(".") + OSString::numberOf(h.version_minor)
+        + OS_TEXT(" nodes=") + OSString::numberOf(h.node_count)
+        + OS_TEXT(" prims=") + OSString::numberOf(h.primitive_count)
+        + OS_TEXT(" geos=") + OSString::numberOf(h.geometry_count)
+        + OS_TEXT(" dirs=") + OSString::numberOf(h.dir_count));
+    for (uint32_t _di = 0; _di < h.dir_count; ++_di)
+        MLogInfo(LoadStaticMesh,
+            OS_TEXT("[V2]  dir[") + OSString::numberOf(_di)
+            + OS_TEXT("] type=") + OSString::numberOf(dir[_di].type)
+            + OS_TEXT(" off=") + OSString::numberOf(dir[_di].offset)
+            + OS_TEXT(" sz=") + OSString::numberOf(dir[_di].size));
+
+    std::vector<std::string> names;
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (TryGetTableRange(payload, h.payload_size, name_td, ptr, size))
+            names = ParseNameTable(ptr, size);
+    }
+
+    const math::Matrix4f *matrices = nullptr;
+    uint32_t matrix_count = 0;
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (TryGetTableRange(payload, h.payload_size, matrix_td, ptr, size))
+        {
+            matrices = reinterpret_cast<const math::Matrix4f *>(ptr);
+            matrix_count = size / static_cast<uint32_t>(sizeof(math::Matrix4f));
+        }
+    }
+
+    const PackedTRS *trs_arr = nullptr;
+    uint32_t trs_count = 0;
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (TryGetTableRange(payload, h.payload_size, trs_td, ptr, size))
+        {
+            trs_arr = reinterpret_cast<const PackedTRS *>(ptr);
+            trs_count = size / static_cast<uint32_t>(sizeof(PackedTRS));
+        }
+    }
+
+    const math::BoundingVolumesData *bounds_arr = nullptr;
+    uint32_t bounds_count = 0;
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (TryGetTableRange(payload, h.payload_size, bounds_td, ptr, size))
+        {
+            bounds_arr = reinterpret_cast<const math::BoundingVolumesData *>(ptr);
+            bounds_count = size / static_cast<uint32_t>(sizeof(math::BoundingVolumesData));
+        }
+    }
+
+    root_nodes.clear();
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (TryGetTableRange(payload, h.payload_size, root_td, ptr, size))
+        {
+            const int32_t *ri = reinterpret_cast<const int32_t *>(ptr);
+            const uint32_t cnt = size / static_cast<uint32_t>(sizeof(int32_t));
+            root_nodes.assign(ri, ri + cnt);
+        }
+    }
+
+    const uint8_t *string_pool = nullptr;
+    uint32_t string_pool_size = 0;
+    if (string_pool_td)
+    {
+        if (!TryGetTableRange(payload, h.payload_size, string_pool_td, string_pool, string_pool_size))
+            return false;
+    }
+
+    auto read_pool_string = [&](uint32_t off, uint32_t len, std::string &out) -> bool
+    {
+        if (!string_pool)
+            return false;
+        if (off > string_pool_size || len > string_pool_size || off + len > string_pool_size)
+            return false;
+        out.assign(reinterpret_cast<const char *>(string_pool + off), len);
+        return true;
+    };
+
+    std::vector<Geometry *> geometry_by_index;
+    if (geo_view_td && geo_blob_td)
+    {
+        const uint8_t *gv_ptr = nullptr;
+        uint32_t gv_size = 0;
+        const uint8_t *gb_ptr = nullptr;
+        uint32_t gb_size = 0;
+
+        if (!TryGetTableRange(payload, h.payload_size, geo_view_td, gv_ptr, gv_size))
+            return false;
+        if (!TryGetTableRange(payload, h.payload_size, geo_blob_td, gb_ptr, gb_size))
+            return false;
+        if (gv_size % sizeof(PackedGeometryViewV2) != 0)
+            return false;
+
+        const auto *gv = reinterpret_cast<const PackedGeometryViewV2 *>(gv_ptr);
+        const uint32_t gv_count = gv_size / static_cast<uint32_t>(sizeof(PackedGeometryViewV2));
+
+        geometry_by_index.resize(gv_count, nullptr);
+        MLogInfo(LoadStaticMesh, OS_TEXT("[V2] GeometryViewTable: gv_count=") + OSString::numberOf(gv_count)
+            + OS_TEXT(" blob_size=") + OSString::numberOf(gb_size));
+
+        // Batch path: payload read is once, then each geometry is sliced from the same memory block.
+        for (uint32_t i = 0; i < gv_count; ++i)
+        {
+            if (gv[i].blob_offset > gb_size || gv[i].blob_size > gb_size || gv[i].blob_offset + gv[i].blob_size > gb_size)
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: invalid GeometryBlob range in ") + pack_path);
+                continue;
+            }
+
+            const void *geo_blob = gb_ptr + gv[i].blob_offset;
+
+            const OSString geo_debug_name =
+                pack_path + OS_TEXT("#GeometryBlob[") + OSString::numberOf(i) + OS_TEXT("]");
+
+            Geometry *geo = LoadGeometryFromMiniPackBytes(device, vil, geo_blob, gv[i].blob_size, geo_debug_name);
+            if (!geo)
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load inlined geometry #") + OSString::numberOf(i) + OS_TEXT(" from ") + pack_path);
+                continue;
+            }
+
+            geo_mgr->Add(geo);
+            geometry_by_index[i] = geo;
+        }
+        {
+            uint32_t _geo_ok = 0;
+            for (Geometry *_g : geometry_by_index) if (_g) ++_geo_ok;
+            MLogInfo(LoadStaticMesh, OS_TEXT("[V2] Geometries loaded from blob: ")
+                + OSString::numberOf(_geo_ok) + OS_TEXT("/") + OSString::numberOf((uint32_t)geometry_by_index.size()));
+        }
+    }
+
+    prim_list.clear();
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (!TryGetTableRange(payload, h.payload_size, primitive_td, ptr, size))
+            return false;
+        if (size % sizeof(PackedPrimitiveV2) != 0)
+            return false;
+
+        const auto *pp = reinterpret_cast<const PackedPrimitiveV2 *>(ptr);
+        const uint32_t pcount = size / static_cast<uint32_t>(sizeof(PackedPrimitiveV2));
+        prim_list.reserve(pcount);
+        MLogInfo(LoadStaticMesh, OS_TEXT("[V2] PrimitiveTable: count=") + OSString::numberOf(pcount)
+            + OS_TEXT(" raw_size=") + OSString::numberOf(size)
+            + OS_TEXT(" entry_size=") + OSString::numberOf((uint32_t)sizeof(PackedPrimitiveV2)));
+        for (uint32_t _pi = 0, _plim = pcount < 8u ? pcount : 8u; _pi < _plim; ++_pi)
+            MLogInfo(LoadStaticMesh,
+                OS_TEXT("[V2]  pp[") + OSString::numberOf(_pi)
+                + OS_TEXT("] orig=") + OSString::numberOf(pp[_pi].original_index)
+                + OS_TEXT(" geo=") + OSString::numberOf(pp[_pi].geometry_index)
+                + OS_TEXT(" mat=") + OSString::numberOf(pp[_pi].material_index)
+                + OS_TEXT(" foff=") + OSString::numberOf(pp[_pi].geometry_file_offset)
+                + OS_TEXT(" flen=") + OSString::numberOf(pp[_pi].geometry_file_length));
+
+        std::vector<Geometry *> fallback_geometry_cache;
+
+        for (uint32_t i = 0; i < pcount; ++i)
+        {
+            Geometry *geo = nullptr;
+
+            if (!geometry_by_index.empty()
+             && pp[i].geometry_index >= 0
+             && static_cast<uint32_t>(pp[i].geometry_index) < geometry_by_index.size())
+            {
+                geo = geometry_by_index[pp[i].geometry_index];
+            }
+            else
+            {
+                // Fallback for early V2 packs without GeometryBlob/GeometryView.
+                if (pp[i].geometry_index >= 0)
+                {
+                    const uint32_t gi = static_cast<uint32_t>(pp[i].geometry_index);
+                    if (fallback_geometry_cache.size() <= gi)
+                        fallback_geometry_cache.resize(gi + 1, nullptr);
+
+                    geo = fallback_geometry_cache[gi];
+                    if (!geo)
+                    {
+                        std::string geo_file;
+                        if (!read_pool_string(pp[i].geometry_file_offset, pp[i].geometry_file_length, geo_file))
+                        {
+                            MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: invalid V2 geometry filename range in ") + pack_path);
+                            prim_list.push_back(nullptr);
+                            continue;
+                        }
+
+                        const OSString geo_path = base_dir + OS_TEXT("/") + hgl::ToOSString(geo_file);
+
+                        geo = LoadGeometry(device, vil, geo_path);
+                        if (!geo)
+                        {
+                            MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: failed to load geometry: ") + geo_path);
+                            prim_list.push_back(nullptr);
+                            continue;
+                        }
+
+                        geo_mgr->Add(geo);
+                        fallback_geometry_cache[gi] = geo;
+                    }
+                }
+            }
+
+            if (!geo)
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: missing geometry for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
+                prim_list.push_back(nullptr);
+                continue;
+            }
+
+            MaterialInstance *mi = mi_array[(pp[i].material_index >= 0 ? pp[i].material_index : 0) % mi_count];
+            Primitive *prim = DirectCreatePrimitive(geo, mi, default_pipeline);
+            if (!prim)
+            {
+                MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: DirectCreatePrimitive failed for primitive #") + OSString::numberOf(i) + OS_TEXT(" in ") + pack_path);
+                prim_list.push_back(nullptr);
+                continue;
+            }
+
+            prim_list.push_back(prim);
+        }
+    }
+
+    const int32_t *node_prim = nullptr;
+    uint32_t node_prim_count = 0;
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (TryGetTableRange(payload, h.payload_size, node_prim_td, ptr, size))
+        {
+            node_prim = reinterpret_cast<const int32_t *>(ptr);
+            node_prim_count = size / static_cast<uint32_t>(sizeof(int32_t));
+        }
+    }
+
+    const int32_t *node_child = nullptr;
+    uint32_t node_child_count = 0;
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (TryGetTableRange(payload, h.payload_size, node_child_td, ptr, size))
+        {
+            node_child = reinterpret_cast<const int32_t *>(ptr);
+            node_child_count = size / static_cast<uint32_t>(sizeof(int32_t));
+        }
+    }
+
+    scene_nodes.clear();
+    {
+        const uint8_t *ptr = nullptr;
+        uint32_t size = 0;
+        if (!TryGetTableRange(payload, h.payload_size, node_td, ptr, size))
+            return false;
+        if (size % sizeof(PackedNodeV2) != 0)
+            return false;
+
+        const auto *pn = reinterpret_cast<const PackedNodeV2 *>(ptr);
+        const uint32_t ncount = size / static_cast<uint32_t>(sizeof(PackedNodeV2));
+        scene_nodes.reserve(ncount);
+
+        for (uint32_t i = 0; i < ncount; ++i)
+        {
+            StaticMeshNode node;
+
+            if (pn[i].name_index >= 0 && pn[i].name_index < static_cast<int32_t>(names.size()))
+                node.name = names[pn[i].name_index];
+
+            if (pn[i].local_matrix_index >= 0 && pn[i].local_matrix_index < static_cast<int32_t>(matrix_count))
+                node.localMatrix = matrices[pn[i].local_matrix_index];
+
+            if (pn[i].world_matrix_index >= 0 && pn[i].world_matrix_index < static_cast<int32_t>(matrix_count))
+                node.worldMatrix = matrices[pn[i].world_matrix_index];
+
+            if (pn[i].trs_index >= 0 && pn[i].trs_index < static_cast<int32_t>(trs_count))
+            {
+                const PackedTRS &t = trs_arr[pn[i].trs_index];
+                node.hasTRS = true;
+                node.translation = math::Vector3f(t.translation[0], t.translation[1], t.translation[2]);
+                node.rotation    = math::Quatf(t.rotation[3], t.rotation[0], t.rotation[1], t.rotation[2]);
+                node.scale       = math::Vector3f(t.scale[0], t.scale[1], t.scale[2]);
+            }
+
+            if (pn[i].bounds_index >= 0 && pn[i].bounds_index < static_cast<int32_t>(bounds_count))
+            {
+                math::BoundingVolumesData bvd = bounds_arr[pn[i].bounds_index];
+                bvd.To(&node.nodeBounds);
+                node.boundsValid = true;
+            }
+
+            if (pn[i].first_primitive >= 0 && pn[i].primitive_count >= 0)
+            {
+                const uint32_t first = static_cast<uint32_t>(pn[i].first_primitive);
+                const uint32_t count = static_cast<uint32_t>(pn[i].primitive_count);
+                if (first <= node_prim_count && count <= node_prim_count - first)
+                    node.primitiveIndices.assign(node_prim + first, node_prim + first + count);
+            }
+
+            if (pn[i].first_child >= 0 && pn[i].child_count >= 0)
+            {
+                const uint32_t first = static_cast<uint32_t>(pn[i].first_child);
+                const uint32_t count = static_cast<uint32_t>(pn[i].child_count);
+                if (first <= node_child_count && count <= node_child_count - first)
+                    node.children.assign(node_child + first, node_child + first + count);
+            }
+
+            scene_nodes.push_back(std::move(node));
+        }
+    }
+
+    for (int32_t i = 0; i < static_cast<int32_t>(scene_nodes.size()); ++i)
+    {
+        for (int32_t c : scene_nodes[i].children)
+        {
+            if (c >= 0 && c < static_cast<int32_t>(scene_nodes.size()))
+                scene_nodes[c].parentIndex = i;
+        }
+    }
+
+    return true;
+}
 // ---- NameTable parser -------------------------------------------------------
 // Format written by write_string_list():
 //   uint32_t count | uint8_t lengths[count] | per-string: char[len] + '\0'
@@ -134,9 +629,9 @@ std::vector<StaticMeshNode> ParseNodeList(
         {
             const PackedTRS &t = trs_arr[trsIndex];
             node.hasTRS      = true;
-            node.translation = t.translation;
-            node.rotation    = t.rotation;
-            node.scale       = t.scale;
+            node.translation = math::Vector3f(t.translation[0], t.translation[1], t.translation[2]);
+            node.rotation    = math::Quatf(t.rotation[3], t.rotation[0], t.rotation[1], t.rotation[2]);
+            node.scale       = math::Vector3f(t.scale[0], t.scale[1], t.scale[2]);
         }
 
         // Bounds
@@ -194,18 +689,19 @@ std::vector<StaticMeshNode> ParseNodeList(
 // ---- Public API -------------------------------------------------------------
 
 StaticMesh *LoadStaticMeshScene(
-    VulkanDevice     *device,
-    GeometryManager  *geo_mgr,
-    const VIL        *vil,
-    MaterialInstance *default_mi,
-    Pipeline         *default_pipeline,
-    const OSString   &pack_path,
-    const OSString   &base_dir)
+    VulkanDevice             *device,
+    GeometryManager          *geo_mgr,
+    const VIL                *vil,
+    MaterialInstance * const *mi_array,
+    int                       mi_count,
+    Pipeline                 *default_pipeline,
+    const OSString           &pack_path,
+    const OSString           &base_dir)
 {
     using namespace hgl::io::minipack;
     using namespace hgl::math;
 
-    if (!device || !geo_mgr || !vil || !default_mi || !default_pipeline)
+    if (!device || !geo_mgr || !vil || !mi_array || mi_count <= 0 || !default_pipeline)
     {
         MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: null argument"));
         return nullptr;
@@ -217,6 +713,48 @@ StaticMesh *LoadStaticMeshScene(
         MLogError(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: cannot open pack: ") + pack_path);
         return nullptr;
     }
+
+    // ---- Fast path: ScenePackV2 (header + payload) -------------------------
+    {
+        std::vector<Primitive *>   v2_prim_list;
+        std::vector<StaticMeshNode> v2_scene_nodes;
+        std::vector<int32_t>       v2_root_nodes;
+
+        if (TryLoadSceneV2(
+                mpm,
+                device,
+                geo_mgr,
+                vil,
+                mi_array,
+                mi_count,
+                default_pipeline,
+                pack_path,
+                base_dir,
+                v2_prim_list,
+                v2_scene_nodes,
+                v2_root_nodes))
+        {
+            delete mpm;
+
+            StaticMesh *sm = new StaticMesh();
+
+            for (Primitive *prim : v2_prim_list)
+            {
+                if (prim)
+                    sm->AddPrimitive(prim);
+            }
+
+            for (StaticMeshNode &node : v2_scene_nodes)
+                sm->AddNode(std::move(node));
+
+            if (!v2_root_nodes.empty())
+                sm->SetRootNodes(std::move(v2_root_nodes));
+
+            return sm;
+        }
+    }
+
+    MLogInfo(LoadStaticMesh, OS_TEXT("LoadStaticMeshScene: ScenePackV2 not available, fallback to V1"));
 
     // ---- 1. NameTable -------------------------------------------------------
     std::vector<std::string> names;
@@ -325,7 +863,8 @@ StaticMesh *LoadStaticMeshScene(
 
                 geo_mgr->Add(geo);
 
-                Primitive *prim = DirectCreatePrimitive(geo, default_mi, default_pipeline);
+                MaterialInstance *mi = mi_array[(matIndex >= 0 ? matIndex : 0) % mi_count];
+                Primitive *prim = DirectCreatePrimitive(geo, mi, default_pipeline);
                 if (!prim)
                 {
                     MLogError(LoadStaticMesh,

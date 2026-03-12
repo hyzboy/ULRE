@@ -9,6 +9,7 @@
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/io/MiniPack.h>
+#include<hgl/io/MemoryInputStream.h>
 
 DEFINE_LOGGER_MODULE(LoadGeometry)
 
@@ -361,6 +362,57 @@ namespace
     }
 }
 
+static Geometry *LoadGeometryFromReader(VulkanDevice *device,const VIL *vil,hgl::io::minipack::MiniPackReader *mpr,const OSString &debug_name)
+{
+    // 1) Read GeometryHeader
+    GeometryHeader header{};
+    if(!ReadGeometryHeader(mpr, header, debug_name))
+        return nullptr;
+
+    // 2) Read BoundingVolumes
+    math::BoundingVolumes bounding_volumes;
+
+    if(!ReadBoundingVolumes(mpr, bounding_volumes, debug_name))
+        return nullptr;
+
+    // 3) Create GeometryData and VABs
+    GeometryData *geo_data=CreateGeometryData(device,vil,header.vertexCount);
+
+    if(!geo_data)
+    {
+        MLogError(LoadGeometry,OS_TEXT("Cannot create GeometryData for source ") + debug_name);
+        return(nullptr);
+    }
+
+    if(!geo_data->CreateAllVAB())
+    {
+        MLogError(LoadGeometry,OS_TEXT("Cannot create VAB for source ") + debug_name);
+        delete geo_data;
+        return(nullptr);
+    }
+
+    // 4) Read attributes and indices into GeometryData
+    if(!ReadGeometryData(mpr, geo_data, vil, header, debug_name))
+    {
+        delete geo_data;
+        return nullptr;
+    }
+
+    const U8String geo_name=ToU8String(debug_name);
+
+    Geometry *geometry = new Geometry((char *)geo_name.c_str(),geo_data);
+
+    if(!geometry)
+    {
+        MLogError(LoadGeometry,OS_TEXT("Cannot create Geometry object for source ") + debug_name);
+        delete geo_data;
+        return(nullptr);
+    }
+
+    geometry->SetBoundingVolumes(bounding_volumes);
+    return geometry;
+}
+
 Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filename)
 {
     using namespace hgl::io::minipack;
@@ -373,65 +425,42 @@ Geometry *LoadGeometry(VulkanDevice *device,const VIL *vil,const OSString &filen
         return(nullptr);
     }
 
-    // 1) Read GeometryHeader
-    GeometryHeader header{};
-    if(!ReadGeometryHeader(mpr, header, filename))
-    {
-        delete mpr;
-        return nullptr;
-    }
-
-    // 2) Read BoundingVolumes
-    math::BoundingVolumes bounding_volumes;
-
-    if(!ReadBoundingVolumes(mpr, bounding_volumes, filename))
-    {
-        delete mpr;
-        return nullptr;
-    }
-
-    // 3) Create GeometryData and VABs
-    GeometryData *geo_data=CreateGeometryData(device,vil,header.vertexCount);
-
-    if(!geo_data)
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot create GeometryData for file ") + filename);
-        delete mpr;
-        return(nullptr);
-    }
-
-    if(!geo_data->CreateAllVAB())
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot create VAB for file ") + filename);
-        delete geo_data;
-        delete mpr;
-        return(nullptr);
-    }
-
-    // 4) Read attributes and indices into GeometryData
-    if(!ReadGeometryData(mpr, geo_data, vil, header, filename))
-    {
-        delete geo_data;
-        delete mpr;
-        return nullptr;
-    }
-
-    const U8String geo_name=ToU8String(filename);
-
-    Geometry *geometry = new Geometry((char *)geo_name.c_str(),geo_data);
-
-    if(!geometry)
-    {
-        MLogError(LoadGeometry,OS_TEXT("Cannot create Geometry object for file ") + filename);
-        delete geo_data;
-        delete mpr;
-        return(nullptr);
-    }
-
-    geometry->SetBoundingVolumes(bounding_volumes);
+    Geometry *geometry = LoadGeometryFromReader(device,vil,mpr,filename);
 
     delete mpr;
+    return geometry;
+}
 
+Geometry *LoadGeometryFromMiniPackBytes(VulkanDevice *device,const VIL *vil,const void *bytes,const uint32 size,const OSString &debug_name)
+{
+    using namespace hgl::io;
+    using namespace hgl::io::minipack;
+
+    if(!bytes || size == 0)
+    {
+        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromMiniPackBytes: empty source for ") + debug_name);
+        return nullptr;
+    }
+
+    MemoryInputStream *mis = new MemoryInputStream;
+    if(!mis->Link(bytes,size))
+    {
+        delete mis;
+        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromMiniPackBytes: cannot link memory stream for ") + debug_name);
+        return nullptr;
+    }
+
+    MiniPackReader *mpr = GetMiniPackReader(static_cast<InputStream *>(mis));
+    if(!mpr)
+    {
+        delete mis;
+        MLogError(LoadGeometry,OS_TEXT("LoadGeometryFromMiniPackBytes: cannot parse minipack from memory for ") + debug_name);
+        return nullptr;
+    }
+
+    Geometry *geometry = LoadGeometryFromReader(device,vil,mpr,debug_name);
+
+    delete mpr;
     return geometry;
 }
 }//namespace hgl::graph
