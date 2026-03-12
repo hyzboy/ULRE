@@ -120,7 +120,7 @@ Pass 3 - Post-Processing（可选）:
 │    - VS 只做 MVP 变换，无 FS 或空 FS                                │
 │    - Alpha-Test 物体使用简易 FS（采样 Albedo.a 做 discard）          │
 │    - High+: vkCmdDrawIndexedIndirectCount (meshlet 级 Indirect)    │
-│    - 输出: Depth RT (D32_SFLOAT 或 D24_UNORM_S8_UINT)             │
+│    - 输出: Depth RT (D32_SFLOAT 优先, 详见 §2.10 Reversed-Z)      │
 │    - 目的: 让后续 Forward Pass 受益于 Early-Z Rejection，减少 overdraw │
 ├────────────────────────────────────────────────────────────────────┤
 │ 2b. HZB Generation (Compute, High+)                    ← ★ 新增   │
@@ -1278,6 +1278,112 @@ public:
 > 大的 GPU SSBO 中（类似 UE5 的 GPUScene 概念），通过 meshlet 的 vertexOffset/indexOffset
 > 定位。这消除了频繁 bind VBO 的开销，且配合 Indirect Draw 实现零 CPU 绑定切换。
 
+### 2.10 Reversed-Z 与无限远平面 ★
+
+#### 2.10.1 设计动机
+
+标准 OpenGL/Vulkan 深度映射（近=0, 远=1, 线性 NDC 映射）在远距离场景中
+深度精度急剧下降——1000m 处两个相距 10cm 的物体可能映射到**同一个深度值**，
+导致 Z-fighting 闪烁。这对大世界/开放世界场景不可接受。
+
+**Reversed-Z**（近=1.0, 远=0.0）+ **浮点深度缓冲**（D32_SFLOAT）利用 IEEE 754 浮点数
+在接近 0.0 时指数间距变密的特性，将高精度重新分配到远处：
+
+| 深度映射 | 近平面精度 | 100m 精度 | 1000m 精度 | 10km 精度 |
+|---|---|---|---|---|
+| 标准 Z (D24) | 极高 | 中等 | 极差 (Z-fighting) | 不可用 |
+| Reversed-Z (D32F) | 极高 | 极高 | 高 | 中等 (可用) |
+| Reversed-Z + Infinite Far (D32F) | 极高 | 极高 | 高 | 中等 (可用, 无远平面裁切) |
+
+#### 2.10.2 投影矩阵
+
+引擎统一使用 **Reversed-Z Infinite Far Plane** 投影矩阵（Vulkan NDC: depth ∈ [0, 1]）：
+
+```cpp
+// Reversed-Z Infinite Far Plane Projection
+// near = 近平面距离 (如 0.1m)
+// fov = 垂直视场角, aspect = 宽/高
+mat4 MakeInfiniteReversedZProj(float fov, float aspect, float near)
+{
+    float f = 1.0f / tan(fov * 0.5f);
+    // Vulkan clip: depth [0, 1], Y flip
+    return mat4(
+        f / aspect, 0,  0,     0,
+        0,         -f,  0,     0,       // -f: Vulkan Y flip
+        0,          0,  0,    -1,       // perspective divide: w = -z
+        0,          0,  near,  0        // z → near/z (Reversed: near→1.0, ∞→0.0)
+    );
+}
+```
+
+> **无限远平面**：远平面 = +∞，深度值在 ∞ 处趋近 0.0（但永远 > 0）。
+> 天空 / 远景无需担心被裁切——只要 near 合理设置（0.05~0.2m），
+> 10km 外物体仍有足够的深度精度。
+
+#### 2.10.3 深度缓冲格式
+
+| 平台 | 深度格式 | 说明 |
+|------|---------|------|
+| PC | **D32_SFLOAT** | 纯 32-bit 浮点，最高精度，PC 无性能损失 |
+| Apple | **D32_SFLOAT** | Apple Silicon 原生支持，推荐 |
+| Android High | **D32_SFLOAT** | 高端 Adreno/Mali 支持 |
+| Android Mid/Low | **D24_UNORM_S8_UINT** | 低端不支持 D32F 时回退；仍使用 Reversed-Z |
+
+> **Android 回退**：即使是 D24，Reversed-Z 的精度分布仍优于标准 Z。
+> 运行时通过 `vkGetPhysicalDeviceFormatProperties()` 检测 D32_SFLOAT 支持，
+> 不支持时自动降级到 D24_UNORM_S8_UINT。
+
+#### 2.10.4 全管线影响
+
+所有使用深度的模块必须统一 Reversed-Z 约定：
+
+| 模块 | 标准 Z 行为 | Reversed-Z 行为 |
+|------|-----------|----------------|
+| **VkPipelineDepthStencilState** | depthCompareOp = LESS | depthCompareOp = **GREATER** |
+| **Clear Depth** | clear = 1.0 | clear = **0.0** |
+| **Early-Z / Z-Prepass** | less → reject | **greater** → reject |
+| **HZB Downsample** | max = 最远 | **min** = 最远 (已实现, §2.6) |
+| **HZB Occlusion Test** | meshlet depth < hzb → visible | meshlet depth **>** hzb → visible |
+| **ShadowMap** | 独立投影，可用标准 Z 或 Reversed-Z (独立选择) | 推荐 Reversed-Z for consistency |
+| **线性化深度** | `linearZ = near*far / (far - z*(far-near))` | `linearZ = near / z` (无限远简化) |
+| **SSR Hi-Z Trace** | step compare < | step compare **>** |
+| **SSAO** | depth → viewZ 转换公式需匹配 | 统一使用 `near / z` |
+| **天空 Pass** | depth = 1.0 (最远) | depth = **0.0** (最远) |
+
+```glsl
+// common/depth_utils.glsl
+// Reversed-Z Infinite Far: 线性化深度极其简洁
+float LinearizeDepth(float d) {
+    return ULRE_NEAR_PLANE / d;   // d ∈ (0, 1], near=1.0, ∞=0.0
+}
+
+// 重建世界空间位置 (从 NDC + depth)
+vec3 ReconstructWorldPos(vec2 ndc, float depth) {
+    vec4 clipPos = vec4(ndc, depth, 1.0);
+    vec4 viewPos = ULRE_INV_PROJ * clipPos;
+    viewPos /= viewPos.w;
+    return (ULRE_INV_VIEW * viewPos).xyz;
+}
+```
+
+#### 2.10.5 超远距离绘制支持
+
+Reversed-Z + Infinite Far Plane 组合使得引擎可以渲染**任意远**的物体：
+
+| 距离 | 典型内容 | 精度表现 |
+|------|---------|---------|
+| 0 ~ 100m | 角色、室内、近景物体 | 极高精度 |
+| 100m ~ 1km | 建筑、中景地形 | 高精度 |
+| 1km ~ 10km | 远景山体、城市天际线 | 中等精度（足够） |
+| 10km ~ 100km | 地平线、远山轮廓 | 低精度（可见但不 Z-fight） |
+| 100km+ | 云层、日月、太空 | 趋近 0.0（不裁切，正常渲染） |
+
+> **与 LOD 配合**：超远物体本身三角形数极少（meshlet DAG 最粗级），
+> Z-fighting 风险低；Reversed-Z 提供的精度绰绰有余。
+
+> **与阴影配合**：ShadowMap 使用独立的正交投影矩阵，不受主相机 Reversed-Z 影响。
+> Far Cached SM (§3.6.3) 覆盖 ~200m，超出阴影范围的远景自然无阴影（符合视觉预期）。
+
 ---
 
 ## 3. 画质档位与光照模型
@@ -1981,7 +2087,7 @@ enum class PassType : uint8_t
 | ID | 预设名 | 用途 | 美术可调 |
 |----|--------|------|---------|
 | 30 | Sky | 天空球 | SkyInfo UBO（程序控制） |
-| 31 | Terrain | 地形 | HeightMap, NormalMap, SplatMap, LayerTextures[4] |
+| 31 | Terrain | 地形 | TerrainLayerSSBO + Texture2DArray (Albedo/Normal/MR) + SplatMap, 理论 256 层 — 详见 §5.5 |
 
 ### 5.2 Standard Surface 详解（重点）
 
@@ -2421,15 +2527,247 @@ struct MI_ClearCoat {
 ```glsl
 // [30] Sky — 无 MI，使用 SkyInfo UBO
 
-// [31] Terrain
+// [31] Terrain — 多层 Splat + Texture2DArray 架构（详见 §5.5）
+//
+// ★ 地形不使用 Standard 的 PerMaterial binding，而是专用布局：
+//   - 所有 TerrainLayer 的材质属性打包在一个 SSBO/UBO 中
+//   - 所有地形纹理堆叠为 texture2DArray（Albedo / Normal / MR 各一个 Array）
+//   - SplatMap（权重图）决定像素级混合
+//
+// TerrainLayer — 单层地形材质参数
+struct TerrainLayerParams {
+    uint  albedo_array_index;   // 4B, 在 TerrainAlbedoArray 中的 layer 索引
+    uint  normal_array_index;   // 4B, 在 TerrainNormalArray 中的 layer 索引
+    uint  mr_array_index;       // 4B, 在 TerrainMRArray 中的 layer 索引 (Medium+, 否则 0xFFFF)
+    float uv_scale;             // 4B, 本层 UV 平铺密度
+    uint  tint_color;           // 4B, RGBA packed 色调叠加
+    float roughness_bias;       // 4B, 粗糙度偏移 [-1,1]
+    float metallic_bias;        // 4B, 金属度偏移 [-1,1]
+    float height_blend_sharpness; // 4B, height-based blending 锐度
+};                              // 32 bytes per layer
+
+// MI_Terrain — 地形全局参数
 struct MI_Terrain {
-    float tile_scale;           // 4 bytes, 纹理平铺密度
-    float height_scale;         // 4 bytes, 高度缩放
-    uint  splat_layer_count;    // 4 bytes, 实际使用的 Splat 层数
-    uint  _padding;             // 4 bytes
-};
-// 纹理槽: TextureHeightMap, TextureNormalMap, TextureSplatMap, TextureLayer[4]
+    float tile_scale;           // 4B, 全局 UV 缩放基数
+    float height_scale;         // 4B, 高度缩放
+    uint  layer_count;          // 4B, 实际使用的层数 (1~256)
+    uint  splat_channels;       // 4B, SplatMap 通道数 (layer_count / 4, 向上取整)
+    float blend_range;          // 4B, 层间混合过渡带宽度
+    float normal_strength;      // 4B, 全局法线强度
+    uint  flags;                // 4B, bit0: triplanar, bit1: height_blend, bit2: tessellation
+    uint  _padding;             // 4B
+};                              // 32 bytes
+//
+// GPU 资源布局:
+//   Set 2, binding 0:  TerrainGlobalUBO     (MI_Terrain, 32 bytes)
+//   Set 2, binding 1:  TerrainLayerSSBO     (TerrainLayerParams[layer_count], ≤ 256×32 = 8KB)
+//   Set 2, binding 2:  TerrainAlbedoArray   (texture2DArray, 最多 256 层)
+//   Set 2, binding 3:  TerrainNormalArray   (texture2DArray, 最多 256 层)
+//   Set 2, binding 4:  TerrainMRArray       (texture2DArray, Medium+, 最多 256 层)
+//   Set 2, binding 5:  TerrainSplatMap      (texture2DArray, ceil(layer_count/4) 层, RGBA8 权重)
+//   Set 2, binding 6:  TerrainHeightMap     (sampler2D, R16 全局高度图)
+//   Set 2, binding 7:  TerrainNormalMapGlobal (sampler2D, 地形整体法线图)
 ```
+
+### 5.5 Terrain Surface 详细设计 ★
+
+地形（`SurfaceType::Terrain`, Preset ID=31）是专用渲染路径——不走 Standard 的 PerMaterial 纹理槽，
+而是以 **Texture2DArray + SSBO** 实现**理论 256 层地形混合**。
+
+#### 5.5.1 设计动机
+
+| 传统方案（4 层 Splat） | 新方案（Texture2DArray N 层） |
+|---|---|
+| 每层独占一个纹理槽 → 最多 4~8 层 | Albedo / Normal / MR 各一个 Texture2DArray → 层数仅受 GPU 限制 |
+| 增加层数需增加 DrawCall 或 Shader 变体 | 同一 DrawCall / Compute 内循环所有权重 >0 的层 |
+| 每层材质参数硬编码在 Shader 或分散 Uniform | 统一 `TerrainLayerSSBO`，运行时可增删层，无需重编译 |
+| 扩展困难（加雪/加泥需新 Shader） | 加层 = 添加一组纹理到 Array + 在 SSBO 追加一个 `TerrainLayerParams` |
+
+> **Vulkan 保证**：`maxImageArrayLayers ≥ 256`（所有 Vulkan 1.0 设备）。
+> 实际使用的层数 `layer_count` 由地形编辑器管理，运行时写入 `MI_Terrain.layer_count`。
+
+#### 5.5.2 SplatMap 编码
+
+SplatMap 使用 **texture2DArray, RGBA8** 格式——每层 4 通道存储 4 个地形层的权重：
+
+```
+SplatMap layer 0 (RGBA8):  层 0/1/2/3   的权重
+SplatMap layer 1 (RGBA8):  层 4/5/6/7   的权重
+SplatMap layer 2 (RGBA8):  层 8/9/10/11  的权重
+...
+SplatMap layer N (RGBA8):  层 4N/4N+1/4N+2/4N+3 的权重
+
+总层数: ceil(layer_count / 4)
+```
+
+> **归一化约束**：所有层权重之和 = 1.0，由编辑器在笔刷绘制时保证。
+> Shader 中不做归一化（节省 ALU），相信编辑器输出。
+
+对于典型场景（8~16 层），SplatMap 仅需 2~4 个 Array Layer，内存开销极小。
+
+#### 5.5.3 渲染路径 — VBuffer
+
+在 VBuffer 路径中，地形渲染分为两个阶段：
+
+**阶段一：VBuffer ID Pass**
+
+```
+地形 mesh 绘制时:
+  - SurfaceType = Terrain (编码进 VBuffer.x 高 4 位)
+  - PresetID = 31
+  - InstanceID = terrain patch ID
+  - 与普通几何体共用同一个 VBuffer ID Pass（只写 ID，不采样地形纹理）
+```
+
+**阶段二：VBuffer Resolve（Compute）— 地形专用 Dispatch**
+
+```
+Tile Classification 已识别出 terrain tile → 走 Terrain 专用 resolve kernel:
+
+for each pixel in tile:
+    if (pixel.SurfaceType != Terrain) → 走通用 resolve
+    
+    // 1. 重建 UV、worldPos
+    vec2 terrainUV = ReconstructTerrainUV(worldPos);
+    
+    // 2. 采样 SplatMap → 获取各层权重
+    //    只遍历权重 > threshold 的层（典型 2~4 层有效，skip 0 权重层）
+    SurfaceOutput blended = {};
+    for (uint i = 0; i < layer_count_ceil4; i++) {
+        vec4 weights = texture(TerrainSplatMap, vec3(terrainUV, float(i)));
+        for (int c = 0; c < 4; c++) {
+            uint layerIdx = i * 4 + c;
+            if (layerIdx >= layer_count) break;
+            float w = weights[c];
+            if (w < 0.004) continue;  // skip 权重 < 1/255
+            
+            TerrainLayerParams layer = TerrainLayerSSBO[layerIdx];
+            vec2 layerUV = terrainUV * layer.uv_scale;
+            
+            // 3. 采样该层的 Albedo/Normal/MR (从 Texture2DArray)
+            vec3 albedo = texture(TerrainAlbedoArray,
+                                  vec3(layerUV, float(layer.albedo_array_index))).rgb;
+            // ... Normal, MR 同理
+            
+            // 4. 加权累加
+            blended.baseColor += albedo * w;
+            blended.normal    += layerNormal * w;
+            blended.roughness += layerR * w;
+            blended.metallic  += layerM * w;
+        }
+    }
+    
+    // 5. Height-Based Blending（可选，增强地形层过渡自然度）
+    //    使用各层高度图值调制权重 → 高处岩石自然覆盖低处泥土
+    
+    // 6. 走标准 EvalLighting() 光照
+    vec3 litColor = EvalLighting(blended, ...);
+```
+
+> **关键优化**：绝大多数像素仅有 2~4 层权重 > 0，Texture2DArray 的 `texture()` 调用
+> 在 GPU 缓存命中率高（相邻像素访问相同 Array Index + 相近 UV）。
+> `TerrainLayerSSBO` 极小（≤8KB），完全在 L1 缓存内。
+
+**Dither 混合（VBuffer Terrain-Contact Dither 变体）**：
+
+> 当地形与其他物体（树根、岩石）接触时，VBuffer Resolve 可用 Bayer dither
+> 在像素级切换 Terrain MaterialInstance 和物体 MaterialInstance（详见 §2.8.5）。
+> 具体决策：检测到 `MESHLET_FLAG_TERRAIN_CONTACT` 的像素进入 dither 路径，
+> blendFactor < dither → 使用 Terrain 材质，否则使用物体材质。
+
+#### 5.5.4 渲染路径 — Forward
+
+Forward 路径使用**同样的 Texture2DArray + SSBO 方案**，只是在 FS 中实时执行多层混合：
+
+```glsl
+// surface/terrain_surface.glsl — Terrain Forward Surface Function
+
+#include "common/surface_interface.glsl"
+#include "common/terrain_common.glsl"
+
+// Terrain 专用 bindings
+layout(set = 2, binding = 0) uniform TerrainGlobalUBO { MI_Terrain terrain; };
+layout(set = 2, binding = 1) readonly buffer TerrainLayerBuffer {
+    TerrainLayerParams layers[];
+} TerrainLayerSSBO;
+layout(set = 2, binding = 2) uniform sampler2DArray TerrainAlbedoArray;
+layout(set = 2, binding = 3) uniform sampler2DArray TerrainNormalArray;
+#if QUALITY_TIER >= 2  // Medium+
+layout(set = 2, binding = 4) uniform sampler2DArray TerrainMRArray;
+#endif
+layout(set = 2, binding = 5) uniform sampler2DArray TerrainSplatMap;
+
+SurfaceOutput EvalSurface(SurfaceInput si)
+{
+    SurfaceOutput o = SurfaceOutput(vec3(0), vec3(0,1,0), 0.0, 0.5, 1.0, vec3(0));
+    vec2 terrainUV = si.uv;    // 地形 UV (世界空间 XZ → 归一化)
+
+    uint layerGroupCount = (terrain.layer_count + 3u) >> 2u;
+
+    for (uint g = 0; g < layerGroupCount; g++) {
+        vec4 weights = texture(TerrainSplatMap, vec3(terrainUV, float(g)));
+        for (int c = 0; c < 4; c++) {
+            uint idx = g * 4u + uint(c);
+            if (idx >= terrain.layer_count) break;
+
+            float w = weights[c];
+            if (w < 0.004) continue;
+
+            TerrainLayerParams lp = TerrainLayerSSBO.layers[idx];
+            vec2 luv = terrainUV * lp.uv_scale * terrain.tile_scale;
+
+            vec3 albedo = texture(TerrainAlbedoArray,
+                                  vec3(luv, float(lp.albedo_array_index))).rgb;
+            albedo *= unpackUnorm4x8(lp.tint_color).rgb;
+
+            vec3 nrm = texture(TerrainNormalArray,
+                               vec3(luv, float(lp.normal_array_index))).xyz * 2.0 - 1.0;
+
+            o.baseColor += albedo * w;
+            o.normal    += nrm * w;
+
+#if QUALITY_TIER >= 2  // Medium+: MR 纹理
+            vec2 mr = texture(TerrainMRArray,
+                              vec3(luv, float(lp.mr_array_index))).bg;
+            o.roughness += (mr.y + lp.roughness_bias) * w;
+            o.metallic  += (mr.x + lp.metallic_bias) * w;
+#else
+            o.roughness += (0.5 + lp.roughness_bias) * w;
+            o.metallic  += lp.metallic_bias * w;
+#endif
+        }
+    }
+
+    o.normal = normalize(o.normal) * terrain.normal_strength;
+    o.ao = 1.0;
+    return o;
+}
+
+float EvalAlpha(vec2 uv) { return 1.0; }  // 地形完全不透明
+```
+
+#### 5.5.5 画质档位降级
+
+| 档位 | 纹理采样 | 最大有效层数 | 额外特性 |
+|------|---------|------------|---------|
+| Lowest | Albedo only (顶点法线) | 4 | — |
+| Low | Albedo + Normal | 8 | — |
+| Medium | Albedo + Normal + MR | 16 | Height-Based Blending |
+| High | 全纹理 | 64 | Height-Based + Triplanar (可选) |
+| Ultra | 全纹理 | 128 | Tessellation 可选 |
+| Cinematic | 全纹理 | 256 | Tessellation + Micro-Detail |
+
+> **低端限制**：Android Low / Lowest 档位将 SplatMap 采样限制在前 1~2 个 Array Layer
+> （4~8 层），且跳过 MR 纹理采样，以控制 texel fetch 开销。
+
+#### 5.5.6 与 Tile Classification 的交互
+
+在 VBuffer 路径中，Terrain 像素的 `SurfaceType == Terrain`，Tile Classification
+会将纯 Terrain tile 归类为单一 SurfaceType tile—— dispatch Terrain 专用 resolve kernel。
+混合 tile（Terrain + 角色/植被边缘）走通用 multi-SurfaceType 路径。
+
+> **性能特征**：开阔地形场景 70%+ tile 是纯 Terrain，走无分支的 Terrain resolve，
+> Texture2DArray 的连续访问模式对 GPU 纹理缓存非常友好。
 
 ---
 
@@ -2559,6 +2897,7 @@ Set 1 — PerObject（每物体/每 DrawCall）
   binding 0: LocalToWorld        (UBO 或 SSBO, 支持 instancing)
 
 Set 2 — PerMaterial（每材质切换时绑定）
+  ── 通用布局（Standard / Special Surface）──
   binding 0: MaterialInstance    (UBO 或 SSBO)
   binding 1-12: 纹理槽          (CombinedImageSampler)
     ── Standard Surface 纹理槽 ──
@@ -2569,12 +2908,21 @@ Set 2 — PerMaterial（每材质切换时绑定）
       binding 5: TextureEmissive          (High+)
       binding 6: TextureDetailNormal      (Ultra, 预留)
     ── Special Surface 扩展纹理槽 ──
-      binding 7: TextureExtra0   (Skin: SubsurfaceColor / Hair: Direction / Terrain: SplatMap)
-      binding 8: TextureExtra1   (Skin: Thickness / Hair: Shift / Terrain: Layer0)
-      binding 9: TextureExtra2   (ClearCoat: CoatNormal / Terrain: Layer1)
-      binding 10: TextureExtra3  (Terrain: Layer2)
-      binding 11: TextureExtra4  (Terrain: Layer3)
+      binding 7: TextureExtra0   (Skin: SubsurfaceColor / Hair: Direction)
+      binding 8: TextureExtra1   (Skin: Thickness / Hair: Shift)
+      binding 9: TextureExtra2   (ClearCoat: CoatNormal)
+      binding 10: TextureExtra3  (预留)
+      binding 11: TextureExtra4  (预留)
       binding 12: TextureExtra5  (预留)
+  ── Terrain 专用布局（SurfaceType == Terrain 时替换整个 Set 2）── ★
+  binding 0: TerrainGlobalUBO         (UBO, MI_Terrain, 32B)
+  binding 1: TerrainLayerSSBO         (SSBO, TerrainLayerParams[N], ≤256×32=8KB)
+  binding 2: TerrainAlbedoArray       (sampler2DArray, ≤256 层)
+  binding 3: TerrainNormalArray       (sampler2DArray, ≤256 层)
+  binding 4: TerrainMRArray           (sampler2DArray, Medium+, ≤256 层)
+  binding 5: TerrainSplatMap          (sampler2DArray, ceil(N/4) 层, RGBA8 权重)
+  binding 6: TerrainHeightMap         (sampler2D, R16 全局高度图)
+  binding 7: TerrainNormalMapGlobal   (sampler2D, 地形整体法线图)
 
 Set 3 — Environment（环境/全局光照资源 + 管线 RT）
   binding 0: ColorPalette        (UBO, PaletteColor3D 专用)
@@ -3876,87 +4224,536 @@ struct VertexLayout_PosTexNormTan {
 26. 实现 StandardColor 和 StandardVertexColor 的 Surface Function 变体
 
 ### Phase 5：场景材质
-27. 移植 Sky, Terrain（可保留独立 main() 或改为 Surface Function）
+27. 移植 Sky（可保留独立 main() 或改为 Surface Function）
+28. 实现 Terrain Surface Function（`surface/terrain_surface.glsl`：多层 TerrainLayerSSBO 混合 + SplatMap 权重采样，§5.5）
+29. 实现 Terrain GPU 资源管理：TerrainGlobalUBO + TerrainLayerSSBO + Texture2DArray(Albedo/Normal/MR) 上传与绑定
+30. 实现 SplatMap 编码工具：地形编辑器 → RGBA8 Texture2DArray，ceil(layer_count/4) 层
+31. 实现 Terrain VBuffer Resolve 专用 Compute Kernel（per-pixel 多层 Dither 混合 → MaterialInstance ID，§5.5.3）
+32. 实现 Terrain Forward Path（`EvalSurface()` 循环采样 TerrainLayerSSBO + weight threshold skip，§5.5.4）
 
 ### Phase 6：VBuffer 路径（SSBO 平台专属）
-28. 实现 VBuffer ID Pass（`compositor/main_vbuffer_id.frag.glsl`，SSBO 路径）
-29. 实现 Tile SurfaceType Classification Compute Shader
+33. 实现 VBuffer ID Pass（`compositor/main_vbuffer_id.frag.glsl`，SSBO 路径）
+34. 实现 Tile SurfaceType Classification Compute Shader
     - TileSurfaceMask (R32UI image)、TileList (SSBO)、TileDispatchArgs (SSBO)
     - Indirect dispatch args 填充 shader
-30. 实现 VBuffer Resolve — 单一 SurfaceType tile 快速路径（内部 `#include` Surface Function）
-31. 实现 VBuffer Resolve — 多 SurfaceType tile 通用路径
-32. 实现 LitColor RT 管理和后期处理衔接
-33. 实现 Forward / VBuffer 路径自动切换（VBO 平台强制 Forward Only）
-34. (可选) Tile-based SSAO/ShadowMask 屏蔽优化
-35. (可选) Tile Complexity Debug 可视化热力图
+35. 实现 VBuffer Resolve — 单一 SurfaceType tile 快速路径（内部 `#include` Surface Function）
+36. 实现 VBuffer Resolve — 多 SurfaceType tile 通用路径
+37. 实现 LitColor RT 管理和后期处理衔接
+38. 实现 Forward / VBuffer 路径自动切换（VBO 平台强制 Forward Only）
+39. (可选) Tile-based SSAO/ShadowMask 屏蔽优化
+40. (可选) Tile Complexity Debug 可视化热力图
 
 ### Phase 7：Meshlet 几何管线（SSBO 平台 High+）
-36. 集成 meshoptimizer 库（meshlet 构建 + mesh simplification）
-37. 实现离线 Meshlet 预处理工具（Mesh → MeshletBuffer + LOD DAG + Flags）
-38. 定义 MeshletGPU 结构体 + 引擎二进制格式 (.ulm)
-39. 实现 Instance Cull Compute Shader（视锥 + 粗 HZB）
-40. 实现 Meshlet LOD Select + Cull Compute Shader（DAG 遍历 + Frustum + Cone + HZB）
-41. 集成 vkCmdDrawIndexedIndirectCount (meshlet 粒度 Indirect Draw，从全局 SSBO 读取)
-42. 实现 Two-Phase Meshlet Occlusion Culling
-43. 实现 Terrain-Contact Dither 混合（Compositor `TERRAIN_CONTACT_DITHER` PassType）
-44. 实现 MESHLET_FLAG_ALPHA_TEST / WIND_ANIM 变体支持
-45. (可选) 实现 Mesh Shader 加速路径（VK_EXT_mesh_shader: Task + Mesh Shader, PC only）
-46. 实现 Lowest/Low/Medium SSBO 回退路径（离散 LOD mesh 从 DAG 导出，仍走 SSBO 顶点获取）
-47. 实现 VBO 平台回退路径（离散 LOD mesh + CPU Frustum Cull + vkCmdDrawIndexed）
+41. 集成 meshoptimizer 库（meshlet 构建 + mesh simplification）
+42. 实现离线 Meshlet 预处理工具（Mesh → MeshletBuffer + LOD DAG + Flags）
+43. 定义 MeshletGPU 结构体 + 引擎二进制格式 (.ulm)
+44. 实现 Instance Cull Compute Shader（视锥 + 粗 HZB）
+45. 实现 Meshlet LOD Select + Cull Compute Shader（DAG 遍历 + Frustum + Cone + HZB）
+46. 集成 vkCmdDrawIndexedIndirectCount (meshlet 粒度 Indirect Draw，从全局 SSBO 读取)
+47. 实现 Two-Phase Meshlet Occlusion Culling
+48. 实现 Terrain-Contact Dither 混合（Compositor `TERRAIN_CONTACT_DITHER` PassType）
+49. 实现 MESHLET_FLAG_ALPHA_TEST / WIND_ANIM 变体支持
+50. (可选) 实现 Mesh Shader 加速路径（VK_EXT_mesh_shader: Task + Mesh Shader, PC only）
+51. 实现 Lowest/Low/Medium SSBO 回退路径（离散 LOD mesh 从 DAG 导出，仍走 SSBO 顶点获取）
+52. 实现 VBO 平台回退路径（离散 LOD mesh + CPU Frustum Cull + vkCmdDrawIndexed）
+
+### Phase 7.5：Reversed-Z 管线集成 ★
+53. 实现 `MakeInfiniteReversedZProj()` 投影矩阵（§2.10.2）
+54. 切换全管线 DepthStencilState: depthCompareOp = GREATER, clearDepth = 0.0
+55. 适配 HZB Downsample（min = 最远）、SSR Hi-Z Trace（compare > ）、SSAO depth linearization
+56. 实现 `depth_utils.glsl`（`LinearizeDepth()` = near/d, `ReconstructWorldPos()`, §2.10.4）
+57. 运行时 D32_SFLOAT 格式检测 + D24 回退（§2.10.3）
+58. 全 Pass 深度约定验证：Z-Prepass / Shadow / VBuffer / Forward / Sky = 0.0 最远
 
 ### Phase 8：渲染管线扩展 — 阴影 & 后处理 & 光照
-48. 实现双层 ShadowMap 架构: Near Dynamic Cascade (每帧全量) + Far Cached Cascade (环形滚动, §3.6.3)
-49. 实现 Toroidal Scrolling 逻辑: tile dirty mask + 增量渲染 + fract() UV 采样
-50. 实现 ShadowMask Compose Pass: Near+Far 距离混合 + Capsule Shadow (G) + Contact Shadow (B) → RGBA8
-51. 实现 Capsule Shadow: CapsuleShadowData SSBO + per-pixel 解析遮挡计算 (§3.6.4)
-52. 实现 Blob Shadow 回退: 贴地 quad + 衰减纹理 (低端动态物体用)
-53. 实现 Contact Shadow: 屏幕空间 ray-march, High+ (§3.6.5)
-54. 实现 ShadowConfig 可调参数体系 (§3.6.7) + DeviceQualityProfile 默认值映射
-55. 实现 HZB 降采样 Compute Shader（Depth RT → HZB Pyramid，SSBO 平台 High+）
-56. 实现 Clustered Shading（Cluster 预计算 + Light Assignment Compute + **Compositor `EvalLighting()` 集成**，SSBO High+）
-57. 实现 Auto Exposure（Luminance Histogram Compute + Average + Temporal Smooth）
-58. 实现 SSR（Hi-Z Ray March Compute, PC/Apple High+ only）
-59. 实现 Fog 内联计算（FogParams UBO + `ApplyFog()` 集成到 **Compositor 模板** / VBuffer Resolve）
-60. 实现 Color Grading / 3D LUT（Compute Pass, 在 ToneMap 之后）
-61. 实现 CAS / Sharpening（Compute Pass）
-62. (可选) 实现 DOF Compute Shader（CoC 计算 + 散景模糊，PC/Apple High+）
-63. (可选) 实现 Per-Pixel Motion Blur Compute Shader（PC Ultra only）
-64. 实现 Decal Pass（Screen-Space Decal: OBB mesh + Depth 反算 + 投影采样，SSBO High+）
-65. 实现 Outline / Selection Highlight（Stencil + Dilate 或 JFA）
+59. 实现双层 ShadowMap 架构: Near Dynamic Cascade (每帧全量) + Far Cached Cascade (环形滚动, §3.6.3)
+60. 实现 Toroidal Scrolling 逻辑: tile dirty mask + 增量渲染 + fract() UV 采样
+61. 实现 ShadowMask Compose Pass: Near+Far 距离混合 + Capsule Shadow (G) + Contact Shadow (B) → RGBA8
+62. 实现 Capsule Shadow: CapsuleShadowData SSBO + per-pixel 解析遮挡计算 (§3.6.4)
+63. 实现 Blob Shadow 回退: 贴地 quad + 衰减纹理 (低端动态物体用)
+64. 实现 Contact Shadow: 屏幕空间 ray-march, High+ (§3.6.5)
+65. 实现 ShadowConfig 可调参数体系 (§3.6.7) + DeviceQualityProfile 默认值映射
+66. 实现 HZB 降采样 Compute Shader（Depth RT → HZB Pyramid，SSBO 平台 High+）
+67. 实现 Clustered Shading（Cluster 预计算 + Light Assignment Compute + **Compositor `EvalLighting()` 集成**，SSBO High+）
+68. 实现 Auto Exposure（Luminance Histogram Compute + Average + Temporal Smooth）
+69. 实现 SSR（Hi-Z Ray March Compute, PC/Apple High+ only）
+70. 实现 Fog 内联计算（FogParams UBO + `ApplyFog()` 集成到 **Compositor 模板** / VBuffer Resolve）
+71. 实现 Color Grading / 3D LUT（Compute Pass, 在 ToneMap 之后）
+72. 实现 CAS / Sharpening（Compute Pass）
+73. (可选) 实现 DOF Compute Shader（CoC 计算 + 散景模糊，PC/Apple High+）
+74. (可选) 实现 Per-Pixel Motion Blur Compute Shader（PC Ultra only）
+75. 实现 Decal Pass（Screen-Space Decal: OBB mesh + Depth 反算 + 投影采样，SSBO High+）
+76. 实现 Outline / Selection Highlight（Stencil + Dilate 或 JFA）
 
 ### Phase 9：Material LOD + Special Surface ★★★
-66. 实现 `CalcObjectLODTier()` 函数：屏幕空间面积估算 + 阈值表 + `importanceBias` 偏移（§3.5.3）
-67. 实现 `ResolveSPVFallback()` 函数：根据 `MaterialPresetDef.fallback_surface_type` + `unique_feature_min_tier` 路由 SPV（§3.5.6）
-68. 渲染排序支持 `EffectiveTier` 分组：`(SurfaceType, EffectiveTier, PassType)` 排序键，减少 Pipeline 切换
-69. 扩展 `SurfaceOutput` 支持 `SurfaceOutputExt`（SSS / Anisotropy / Caustic 等 Special Surface 专属字段）
-70. 实现 Skin Surface Function（`surface/skin_surface.glsl`，Ultra: 全 SSS + Detail Normal + 曲率 AO，High: 简化 SSS，Medium/Low: fallback Standard）
-71. 实现 Eye Surface Function（`surface/eye_surface.glsl`，Ultra: Parallax Refraction + 焦散 + 角膜 SSS，High: 单层 Parallax + CubeMap，Medium: 平面纹理 PBR，Low: Albedo + Phong）
-72. 实现 Hair Surface Function（Ultra: Marschner 双高光，High: Kajiya-Kay，Medium: 单高光 PBR，Low: BlinnPhong）
-73. 实现 Cloth Surface Function（Sheen + Charlie Model，Medium: 简化 wrap lighting，Low: Standard）
-74. 实现 ClearCoat Surface Function（High+: 双层 BRDF，Med: 单层近似，Low: 高 specular BlinnPhong）
-75. 实现 Foliage Surface Function（High+: Thin Translucency + Wind，Med: Wrap + 简化 Wind，Low: 静态 AlphaTest）
-76. 实现 `EvalLighting_Skin()` / `EvalLighting_Eye()` 等 Compositor lighting 模块（配合 SurfaceOutputExt 处理 SSS / Anisotropy）
-77. 验证 SPV fallback 等价性：Skin@Medium == Standard@Medium SPV 输出完全一致
-78. 实现 `ObjectImportance` 游戏接口：对话镜头 → MainNPC(+1), 过场特写 → Hero(+2), 群演 → BackgroundNPC(-1)
+77. 实现 `CalcObjectLODTier()` 函数：屏幕空间面积估算 + 阈值表 + `importanceBias` 偏移（§3.5.3）
+78. 实现 `ResolveSPVFallback()` 函数：根据 `MaterialPresetDef.fallback_surface_type` + `unique_feature_min_tier` 路由 SPV（§3.5.6）
+79. 渲染排序支持 `EffectiveTier` 分组：`(SurfaceType, EffectiveTier, PassType)` 排序键，减少 Pipeline 切换
+80. 扩展 `SurfaceOutput` 支持 `SurfaceOutputExt`（SSS / Anisotropy / Caustic 等 Special Surface 专属字段）
+81. 实现 Skin Surface Function（`surface/skin_surface.glsl`，Ultra: 全 SSS + Detail Normal + 曲率 AO，High: 简化 SSS，Medium/Low: fallback Standard）
+82. 实现 Eye Surface Function（`surface/eye_surface.glsl`，Ultra: Parallax Refraction + 焦散 + 角膜 SSS，High: 单层 Parallax + CubeMap，Medium: 平面纹理 PBR，Low: Albedo + Phong）
+83. 实现 Hair Surface Function（Ultra: Marschner 双高光，High: Kajiya-Kay，Medium: 单高光 PBR，Low: BlinnPhong）
+84. 实现 Cloth Surface Function（Sheen + Charlie Model，Medium: 简化 wrap lighting，Low: Standard）
+85. 实现 ClearCoat Surface Function（High+: 双层 BRDF，Med: 单层近似，Low: 高 specular BlinnPhong）
+86. 实现 Foliage Surface Function（High+: Thin Translucency + Wind，Med: Wrap + 简化 Wind，Low: 静态 AlphaTest）
+87. 实现 `EvalLighting_Skin()` / `EvalLighting_Eye()` 等 Compositor lighting 模块（配合 SurfaceOutputExt 处理 SSS / Anisotropy）
+88. 验证 SPV fallback 等价性：Skin@Medium == Standard@Medium SPV 输出完全一致
+89. 实现 `ObjectImportance` 游戏接口：对话镜头 → MainNPC(+1), 过场特写 → Hero(+2), 群演 → BackgroundNPC(-1)
 
 ### Phase 10：Android 适配与测试 ★
-79. Android VBO 路径端到端集成测试（Lowest/Low/Medium 材质 × 传统 DrawCall）
-80. Android High SSBO 路径验证（Adreno 7xx / Mali-G7xx 真机测试）
-81. Android 动态分辨率实现（0.5× ~ 1.0× 根据 GPU 负载调节）
-82. Android GPU 能力检测阈值调优（SSBO vs VBO 分界线校准）
-83. Android 特性裁剪验证（确认 §2.9.4 中被砍特性的 shader 变体不被加载）
-84. Android Cached SM + Capsule Shadow 联调测试
-85. Android Material LOD 阈值调优（§3.5.3 各平台阈值表验证）
+90. Android VBO 路径端到端集成测试（Lowest/Low/Medium 材质 × 传统 DrawCall）
+91. Android High SSBO 路径验证（Adreno 7xx / Mali-G7xx 真机测试）
+92. Android 动态分辨率实现（0.5× ~ 1.0× 根据 GPU 负载调节）
+93. Android GPU 能力检测阈值调优（SSBO vs VBO 分界线校准）
+94. Android 特性裁剪验证（确认 §2.9.4 中被砍特性的 shader 变体不被加载）
+95. Android Cached SM + Capsule Shadow 联调测试
+96. Android Material LOD 阈值调优（§3.5.3 各平台阈值表验证）
 
 ### Phase 11：清理
-86. 删除旧的 ShaderComposition / Logic / Bridge 代码
-87. 删除传统 GBuffer 相关代码和枚举
-88. 更新 Pipeline 创建逻辑使用固定 Layout（SSBO: 空 VertexInput / VBO: 标准 VertexInput）
-89. 更新编辑器 UI（Material Instance 编辑面板 — 含 BlendMode 选择 + ObjectImportance 预览）
+97. 删除旧的 ShaderComposition / Logic / Bridge 代码
+98. 删除传统 GBuffer 相关代码和枚举
+99. 更新 Pipeline 创建逻辑使用固定 Layout（SSBO: 空 VertexInput / VBO: 标准 VertexInput）
+100. 更新编辑器 UI（Material Instance 编辑面板 — 含 BlendMode 选择 + ObjectImportance 预览）
 
 ---
 
-## 附录 A：预设材质与旧代码对应关系
+## 14. 现有引擎对比分析与详细推进计划
+
+本节基于 ULRE 引擎 `inc/`、`src/`、`example/`、`ShaderLibrary/` 的**完整代码审查**，
+逐项对比设计文档的目标架构与现有实现的差距，给出每一步的**具体重构/新增方案**。
+
+---
+
+### 14.1 现有引擎能力清单
+
+#### 14.1.1 已具备的基础设施（可直接复用）
+
+| 能力 | 现有实现 | 对应代码 | 可复用程度 |
+|------|---------|---------|-----------|
+| Vulkan 设备/队列/内存管理 | 完整 | `src/Vulkan/VKInstance,Device,Memory` | ★★★★★ 直接使用 |
+| 渲染命令录制 | 完整 | `VKCommandBuffer/Render` | ★★★★★ |
+| Swapchain/RenderTarget | 完整（含离屏+多帧） | `VKRenderTarget*,VKSwapchain` | ★★★★★ |
+| Pipeline State 管理 | 完整（含序列化/Hash/Cache） | `VKPipelineData,PipelineHash,PipelineCache` | ★★★★★ |
+| Compute Pipeline | 基础类存在 | `VKComputePipeline` | ★★★★☆ 需扩展 |
+| Descriptor Set 管理 | 完整 | `VKDescriptorSet,BindingManage` | ★★★★☆ 需调整 Set 布局 |
+| Shader Module 编译 | glslang → SPV 完整 | `GLSLCompiler,ShaderModule` | ★★★★★ |
+| Buffer 体系 | 完整(Staged/Ring/Indirect/ReBAR) | `VKBuffer*,IndirectCommandBuffer` | ★★★★★ |
+| Vertex Input 系统 | VBO 完整, SSBO 定义完成 | `VKVertexInput*,VertexDataManager` | ★★★★☆ SSBO 路径需激活 |
+| ECS 架构 | 完整(Entity/Component/System/World) | `inc/hgl/ecs/` | ★★★★★ |
+| MaterialInstance 数组模式 | 完整(UBO/SSBO 数组 + MI_ID) | `VKMaterialInstance,ActiveMemoryBlockManager` | ★★★★★ 核心可复用 |
+| Indirect Draw | Buffer 类完整 | `IndirectDraw(Indexed)Buffer` | ★★★★☆ GPU 填充未实现 |
+| Texture 加载 | 完整 | `VKTexture,TextureLoader` | ★★★★★ |
+| 骨骼动画 Joint 矩阵 | GLSL 已有 | `ShaderLibrary/GetJointMatrix.glsl` | ★★★☆☆ 需整合 |
+
+#### 14.1.2 已有材质（需重构为 Surface Function）
+
+| 旧材质 | 新设计对应 | 重构方案 |
+|--------|-----------|---------|
+| `PureColor2D` (M_PureColor2D) | Unlit/PureColor2D (preset 0) | 保留独立 main()，调整 Set Layout |
+| `PureTexture2D` (M_PureTexture2D) | Unlit/Texture2D (preset 1) | 同上 |
+| `RectTexture2D` | 合并入 Texture2D | 删除，作为 Texture2D 参数变体 |
+| `RectTexture2DArray` | 合并入 Texture2D | 删除 |
+| `Text2D` (M_Text2D) | Unlit/Text2D (preset 2) | 保留独立 main()，调整 Set Layout |
+| `PureColor3D` (M_PureColor3D) | Unlit/PureColor3D (preset 3) | 保留，调整 Set Layout |
+| `VertexColor3D` (M_VertexColor3D) | Unlit/VertexColor3D (preset 4) | 保留 |
+| `VertexPattleColor3D` | Unlit/PaletteColor3D (preset 5) | 保留 |
+| `Gizmo3D` (M_Gizmo3D) | Unlit/Gizmo3D (preset 6) | 保留 |
+| `TextureBlinnPhong` | **Standard Surface** (preset 20) | ★ **核心重构** — 删除独立 main()，改为 `EvalSurface()` |
+| `BasicLit` | **Standard Surface** | ★ 合并入 StandardTexture |
+| `PBRColor3D` | **Standard Surface** 变体 | ★ 合并 |
+| `TerrainGrid` | **Terrain Surface** (preset 31) | ★★ **重写** — 新架构 §5.5 |
+| `SkyMinimal` | Sky (preset 32) | 保留独立 main()，调整 |
+| `Billboard2D` | Billboard (preset 33) | 保留 |
+
+#### 14.1.3 已有但需大幅重构的系统
+
+| 系统 | 现状 | 差距 |
+|------|------|------|
+| **ShaderPermutationKey** | 4 轴: ambient(5)×light(6)×specular(2)×shadow(3) | 需改为设计文档的 16-bit packed key: surface(4)+quality(3)+shadow(2)+flags(3)+platform(2)+reserved(2) |
+| **DescriptorSet 布局** | 7 个 Set (RenderTarget/Camera/World/Global/PerFrame/PerMaterial/Unknown) | 需简化为 4 个 Set (PerScene/PerView/PerDraw/PerMaterial) §6.3 |
+| **Shader 组合系统** | ComposedMaterialDef + ShaderLogic + Bridge 三层 | **全部删除** — 改为 Surface Function + Compositor Template §9 |
+| **GLSL 模组系统** | ShaderLibrary/ 的 modules + templates + recipes (JSON+inja) | 保留 GLSL 模组内容，删除 inja 模板引擎——改为 Compositor 直接 `#include` |
+| **RenderFlowDef** | 25 个 RenderStage 枚举 + 10 个 Flow Preset | 已过度设计——简化为 Forward + VBuffer 两条路径 |
+| **GBuffer 系统** | 完整枚举 + Format 规格 + Quality Preset | **全部删除** — 设计文档明确不做 GBuffer 延迟 |
+| **Binding Contract** | Contract/Validator/MirrorDiff 等验证层 | 简化——固定 4-Set Layout 无需运行时验证 |
+
+#### 14.1.4 完全缺失的系统（需从零实现）
+
+| 系统 | 设计文档章节 | 复杂度 |
+|------|------------|--------|
+| **Compositor 模板引擎** (自动生成 main()) | §9 | ★★★★★ |
+| **Surface Function 架构** | §9.2 | ★★★★☆ |
+| **ShadowMap 渲染** (Near Dynamic + Far Cached) | §3.6 | ★★★★★ |
+| **HZB 生成 + 遮挡剔除** | §2.6, §2.7 | ★★★★☆ |
+| **Meshlet 管线** (GPU Cull + LOD Select + Indirect) | §2.8 | ★★★★★ |
+| **VBuffer ID Pass + Tile Resolve** | §8 | ★★★★★ |
+| **Material LOD 系统** | §3.5 | ★★★☆☆ |
+| **Reversed-Z + Infinite Far** | §2.10 | ★★☆☆☆ |
+| **SPV 离线缓存** (构建期全编译) | §12 | ★★★☆☆ |
+| **后处理链** (Bloom/TAA/ToneMap/FXAA...) | 未详细设计 | ★★★★☆ |
+| **Clustered Shading** | 未详细设计 | ★★★★☆ |
+| **Terrain 256 层系统** | §5.5 | ★★★★☆ |
+| **Special Surface** (Skin/Eye/Hair/Cloth...) | §5.3 | ★★★★☆ |
+
+---
+
+### 14.2 详细推进计划
+
+以下按**依赖关系**编排，每个 Sprint 内的任务可并行。预估基于单人全职开发。
+
+---
+
+#### Sprint 0：准备工作 — 代码清理与基础对齐
+
+**目标：** 清除旧系统中与新设计冲突的代码，建立新目录结构。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 0.1 | 清理 GBuffer 系统 | 删除 `GBufferChannel`, `GBufferFormatLevel`, `GBufferQualityPreset`, `GBufferConfiguration` 及所有引用。保留 `PipelineRenderPath::Forward` 和 `VBufferDeferred`，删除 `GBufferDeferred`, `MobileSubpassGBufferDeferred`. | `RenderFlowDef.h` | 精简后的 RenderFlowDef |
+| 0.2 | 简化 RenderStage | 保留: `EarlyZ_Solid/Masked`, `ShadowMap_*`, `VisibilityBuffer_Fill`, `Forward_*`, `HZB_*`, `PostProcess_*`, `Debug_Visualization`。删除: `GBuffer_*`, `Deferred_Lighting*`. | `RenderFlowDef.h` | |
+| 0.3 | 精简 RenderFlow Preset | 保留: `Forward_Basic`, `Forward_WithEarlyZ`, `ForwardPlus_SingleHZB`, `VisibilityBuffer_Deferred`, `Mobile_Forward`。删除其余。 | `RenderFlowDef.h` | |
+| 0.4 | 建立新目录结构 | 创建 `ShaderLibrary/surface/`, `ShaderLibrary/compositor/`, `ShaderLibrary/common/` (如不存在), `ShaderLibrary/pass/` | 文件系统 | Surface Function + Compositor 存放位置 |
+| 0.5 | 冻结旧材质测试基线 | 确保所有现有 example 编译运行正常，截图保存作为回归基线。编写自动化 smoke test。 | `example/*/` | 回归测试基线 |
+
+---
+
+#### Sprint 1：核心类型重定义 — SurfaceType / QualityTier / 新 PermutationKey
+
+**目标：** 建立新的材质类型体系，替换旧的 `MaterialPreset` + `LightModel` 枚举。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 1.1 | 定义 `SurfaceType` 枚举 | 11 个表面类型: `PureColor2D=0..Terrain=10`，替代旧 `MaterialPreset` | 新建 `inc/hgl/mtl/SurfaceType.h` | SurfaceType 枚举 |
+| 1.2 | 定义 `QualityTier` 枚举 | 6 级: `Lowest=0..Cinematic=5` | 新建 `inc/hgl/mtl/QualityTier.h` | QualityTier 枚举 |
+| 1.3 | 定义 `BlendMode` 枚举 | `Opaque, Masked, AlphaTest_Dither, Transparent, Additive`，替代旧 `PipelineCoverageMode` + `ShaderOutputMode` | 新建 `inc/hgl/mtl/BlendMode.h` | BlendMode 枚举 |
+| 1.4 | 定义 `PassType` 枚举 | `Forward_Opaque, Forward_Masked, ..., VBuffer_ID, Shadow_Opaque, Shadow_Masked` 共 10 个 | 新建 `inc/hgl/mtl/PassType.h` | PassType 枚举 |
+| 1.5 | 定义 `PlatformBackend` 枚举 | `PC_SSBO, Apple_SSBO, Android_VBO` | 新建 `inc/hgl/mtl/PlatformBackend.h` | PlatformBackend 枚举 |
+| 1.6 | 重写 `ShaderPermutationKey` | 16-bit packed: surface(4)+quality(3)+shadow(2)+flags(3)+platform(2)+reserved(2)。实现 `AppendGLSLDefines()` 生成 `#define SURFACE_TYPE N`, `#define QUALITY_TIER N` 等 | 重写 `inc/hgl/mtl/ShaderPermutationKey.h`, `src/ShaderGen/ShaderPermutationKey.cpp` | 新 PermutationKey |
+| 1.7 | 定义 `MaterialPresetDef` | 结构体: `{preset_id, surface_type, name, mi_struct, mi_size, texture_slots[], fallback_surface_type, unique_feature_min_tier}` | 新建 `inc/hgl/mtl/MaterialPresetDef.h` | 预设定义结构体 |
+| 1.8 | 实现 `DeviceQualityProfile` | GPU 检测逻辑: vendor/device → `{qualityTier, platformBackend, geometryFetchMode, featureMask}`。**复用**现有 `VKPhysicalDevice` 的 properties/features 查询 | 新建 `inc/hgl/mtl/DeviceQualityProfile.h`, 实现 `.cpp` | 自动档位检测 |
+| 1.9 | 迁移 `PipelineInputMode` | 保留 `LegacyVABVBO`, `SSBOVertexInput`，删除 Hybrid/Auto；改为 `PlatformBackend` 驱动选择 | 修改 `RenderFlowDef.h` | |
+
+**验证：** 新枚举可编译，`DeviceQualityProfile::Detect()` 在现有设备上正确返回档位。
+
+---
+
+#### Sprint 2：Descriptor Set Layout 重构 — 4-Set 固定布局
+
+**目标：** 从 7 个语义 Set 收敛到 4 个固定 Set，统一全引擎。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 2.1 | 定义新 4-Set 布局 | Set 0: PerScene (SceneUBO, ShadowCascadeUBO, LightSSBO, ShadowMask, EnvCubeMap...)。Set 1: PerView (CameraUBO, FogUBO)。Set 2: PerMaterial (MI SSBO/UBO, textures, per-surface-type 布局)。Set 3: PerDraw (LocalToWorld SSBO, VertexData SSBO, IndexData SSBO, MeshletBuffer SSBO...) | 新建 `inc/hgl/mtl/DescriptorSetLayout.h` | 4-Set 完整定义 |
+| 2.2 | 重构 `DescriptorSetType` | 从 7 个(`Unknow/RenderTarget/Camera/World/Global/PerFrame/PerMaterial`)合并为 4 个(`PerScene/PerView/PerMaterial/PerDraw`) | 修改 `DescriptorSetTypeDef.h`，全局搜索替换引用 | |
+| 2.3 | 重写 `ResourceLayoutGenerator` | 根据新 4-Set 定义生成 `layout(set=N, binding=M)`。**删除**旧的语义名查找逻辑——改为固定 binding number 查表 | 重写 `src/ShaderGen/ResourceLayoutGenerator.cpp` | |
+| 2.4 | 更新 `PipelineLayoutData` | 从 7 个 `VkDescriptorSetLayout` 改为 4 个。更新 `VkPipelineLayout` 创建逻辑 | 修改 `VKPipelineLayoutData.h/.cpp` | |
+| 2.5 | 迁移旧材质的 Descriptor 引用 | 所有现有 `FixedDescriptorEntry[]` 数组 → 映射到新 Set/Binding 编号 | 修改所有 `M_*.cpp` 工厂文件 | |
+| 2.6 | 定义 Terrain 专用 Set 2 | 当 `SurfaceType==Terrain` 时, Set 2 使用 §5.5 定义的 Terrain 专用 binding 0-7 | `DescriptorSetLayout.h` | dual-layout Set 2 |
+
+**验证：** 所有现有 example 用新 4-Set Layout 编译运行，渲染结果与 Sprint 0 基线一致。
+
+---
+
+#### Sprint 3：Surface Function 架构 + Compositor 模板引擎
+
+**目标：** 这是设计文档的**核心创新** — Surface Function 只写业务逻辑，Compositor 自动生成 main()。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 3.1 | 定义 `SurfaceInput` / `SurfaceOutput` | GLSL 结构体: SurfaceInput{worldPos, worldNormal, uv0, uv1, vertexColor, viewDir, screenPos}; SurfaceOutput{baseColor, normal, metallic, roughness, ao, emissive, alpha, ...} | 新建 `ShaderLibrary/common/surface_interface.glsl` | 公共接口 |
+| 3.2 | 定义 `SurfaceOutputExt` | Special Surface 扩展: {subsurfaceColor, subsurfacePower, thickness, sheenColor, sheenRoughness, clearCoat, clearCoatRoughness, clearCoatNormal, anisotropy, anisotropyDirection} | `surface_interface.glsl` 追加 | |
+| 3.3 | 编写 Standard Surface Function | `EvalSurface(SurfaceInput) → SurfaceOutput` + `EvalAlpha(SurfaceInput) → float`。**合并** TextureBlinnPhong + BasicLit + PBRColor3D 的采样逻辑。使用 `#if QUALITY_TIER >= N` 分支控制纹理采样数量 | 新建 `ShaderLibrary/surface/standard_surface.glsl` | 核心 Surface Function |
+| 3.4 | 实现 Compositor VS 模板 | 前向不透明: `main_forward_opaque.vert.glsl` — MVP 变换 + 法线传递 + UV 传递。使用 `#if PLATFORM_SSBO` 分支选择顶点获取方式 | 新建 `ShaderLibrary/compositor/main_forward_opaque.vert.glsl` | |
+| 3.5 | 实现 Compositor FS 模板 | 前向不透明: `main_forward_opaque.frag.glsl` — `#include` Surface Function → 调用 `EvalSurface()` → 调用 `EvalLighting()` → 输出 Color。**删除**旧的手写 main() | 新建 `ShaderLibrary/compositor/main_forward_opaque.frag.glsl` | |
+| 3.6 | 实现 `EvalLighting()` 统一光照入口 | 合并现有 `ShaderLibrary/lighting/*.glsl` + `specular/*.glsl` + `ambient/*.glsl`。`#if QUALITY_TIER` 分支: 0=SimpleLambert, 1=HalfLambert+Phong, 2=BlinnPhong+IBL, 3-4=CookTorrance+IBL, 5=Full PBR+SSR | 新建 `ShaderLibrary/common/lighting.glsl`，**复用**现有 `pbr_functions.glsl`, `ggx.glsl` 等 | |
+| 3.7 | 实现更多 Compositor 模板 | `main_forward_masked.frag.glsl` (+ discard), `main_forward_transparent.frag.glsl` (+ alpha blend), `main_forward_dither.frag.glsl`, `main_forward_a2c.frag.glsl`, `main_shadow_opaque.vert.glsl`, `main_shadow_masked.frag.glsl` | `ShaderLibrary/compositor/` | |
+| 3.8 | 实现 `CompositorAssembler` | C++ 类: 输入 `(SurfaceType, BlendMode, PassType, QualityTier, PlatformBackend)` → 查表选择 VS/FS Compositor 模板 → 注入 `#define` + `#include "surface/xxx_surface.glsl"` → 生成完整 GLSL | 新建 `src/ShaderGen/CompositorAssembler.cpp/.h` | Compositor 核心 |
+| 3.9 | 实现 `PresetShaderCompiler` | 遍历所有 `MaterialPresetDef` × 有效 `ShaderPermutationKey` 组合 → `CompositorAssembler` → glslang → SPV | 新建 `src/ShaderGen/PresetShaderCompiler.cpp/.h` | 离线编译器 |
+| 3.10 | 实现 `SPVCache` | 键: `{preset_id, tier, shadow, flags, platform, pass_type}` → 值: `SPVData*`。**构建期**全量编译写入二进制文件，**运行时**只读查表 | 新建 `src/ShaderGen/SPVCache.cpp/.h` | SPV 缓存 |
+
+**验证：** Standard Surface 通过 Compositor 生成的 SPV 渲染结果 == 旧 TextureBlinnPhong/BasicLit/PBRColor3D 的视觉等价。
+
+---
+
+#### Sprint 4：Reversed-Z + 深度管线统一
+
+**目标：** 全管线切换 Reversed-Z + D32_SFLOAT + Infinite Far Plane。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 4.1 | 实现 Reversed-Z 投影矩阵 | `MakeInfiniteReversedZProj(fov, aspect, near)` — §2.10.2。**替换**现有 Camera 的投影矩阵计算 | 修改 `Camera.cpp` 或等价位置 | |
+| 4.2 | 切换 DepthStencilState | 全局默认 `depthCompareOp = VK_COMPARE_OP_GREATER`, `depthClearValue = 0.0` | 修改 `VKPipelineData.cpp` 默认值, `VKRenderPass` clear 值 | |
+| 4.3 | D32_SFLOAT 格式检测 | 运行时 `vkGetPhysicalDeviceFormatProperties(D32_SFLOAT)` → 不支持则降级 D24 | 修改 `DeviceQualityProfile` 或 `VKPhysicalDevice` | |
+| 4.4 | 实现 `depth_utils.glsl` | `LinearizeDepth(d)=near/d`, `ReconstructWorldPos(ndc,depth)` | 新建 `ShaderLibrary/common/depth_utils.glsl` | |
+| 4.5 | 天空 Pass 深度 | Sky material 输出 depth = 0.0（Reversed-Z 最远值） | 修改 SkyMinimal FS | |
+| 4.6 | 全 Pass 验证 | Z-Prepass/Forward/Shadow 的 depthCompare 一致性检查 | 各 Compositor 模板 | |
+
+**验证：** 远景物体不再 Z-fighting，近景精度不变，天空正确渲染在最远处。
+
+---
+
+#### Sprint 5：平台几何后端 — SSBO 顶点获取激活
+
+**目标：** 激活已定义但未实现的 SSBO 顶点获取路径。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 5.1 | 实现全局 VertexDataBuffer SSBO | 单个大 SSBO 存储所有 mesh 的顶点数据，通过 offset 定位。**利用**现有 `VKStagedBuffer` + `VKRingBufferWrapper` | 新建 `VertexDataBufferManager.cpp/.h` | |
+| 5.2 | 实现全局 IndexDataBuffer SSBO | 同上，索引数据 | 同上 | |
+| 5.3 | 实现 `vertex_fetch_ssbo.glsl` | `#if PLATFORM_SSBO` 分支: `GetPosition() = VertexDataBuffer[vertexOffset + gl_VertexIndex].pos` | 新建 `ShaderLibrary/common/vertex_fetch_ssbo.glsl` | |
+| 5.4 | 实现 `vertex_fetch_vbo.glsl` | `#if PLATFORM_VBO` 分支: 标准 `layout(location=N) in vec3 Position` | 新建 `ShaderLibrary/common/vertex_fetch_vbo.glsl` | |
+| 5.5 | Compositor VS 模板集成 | `main_forward_opaque.vert.glsl` 使用 `#include "vertex_fetch_ssbo.glsl"` 或 `"vertex_fetch_vbo.glsl"` | 修改 Sprint 3 产出 | |
+| 5.6 | Pipeline 创建分支 | SSBO 路径: `VkPipelineVertexInputStateCreateInfo` 为空(无 VAB) + Set 3 绑定 VertexData SSBO。VBO 路径: 标准 VIL | 修改 Pipeline 创建逻辑 | |
+| 5.7 | Mesh 上传管理 | Mesh 加载时 → SSBO 分配 offset → 记录 `{vertexOffset, indexOffset, vertexCount, indexCount}` | | |
+
+**验证：** PC (SSBO) 和 Android (VBO) 路径渲染结果一致。
+
+---
+
+#### Sprint 6：Forward 渲染完善 — Unlit + Standard 全通
+
+**目标：** 所有 Unlit 和 Standard Surface 材质通过新 Compositor 系统渲染。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 6.1 | 迁移 Unlit 2D 材质 | PureColor2D / Texture2D / Text2D 适配新 Set Layout。这些保留独立 main() (不经过 Compositor) | 修改现有 M_*.cpp | |
+| 6.2 | 迁移 Unlit 3D 材质 | PureColor3D / VertexColor3D / PaletteColor3D / Gizmo3D / Emissive3D / Billboard 适配新 Set Layout | 修改现有 M_*.cpp | |
+| 6.3 | Standard Surface 全 Pass 验证 | 验证 `standard_surface.glsl` × 6 个 QualityTier × 5 个 BlendMode × Forward Pass = 所有变体正确渲染 | | |
+| 6.4 | 实现 StandardColor Surface Function | 纯参数材质(无纹理)，`EvalSurface()` 直接从 MI 读取 base_color/metallic/roughness | 新建 `ShaderLibrary/surface/standard_color_surface.glsl` | |
+| 6.5 | 实现 StandardVertexColor Surface | 顶点色 + 光照 | 新建 `ShaderLibrary/surface/standard_vertexcolor_surface.glsl` | |
+| 6.6 | 删除旧 Shader 组合层 | 删除 `ComposedMaterialDef`, `MaterialLogicDef`, `ShaderLogic.h`, `ShaderCompositionBridge.cpp`, `ShaderComposition.h`。所有材质要么独立 main() (Unlit)，要么 Surface Function + Compositor | 删除文件 | |
+| 6.7 | 删除旧 ShaderLibrary 模板引擎 | 删除 `ShaderLibrary/templates/*.tmpl`, `ShaderLibrary/recipes/`, inja JSON 驱动系统 | 删除文件 | |
+
+**验证：** 所有 example 渲染正确。旧代码删除后无编译错误。
+
+---
+
+#### Sprint 7：阴影系统
+
+**目标：** 实现 §3.6 的双层 ShadowMap 架构。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 7.1 | Shadow Pass Compositor | `main_shadow_opaque.vert.glsl` (MVP only), `main_shadow_masked.frag.glsl` (+ alpha test discard) | `ShaderLibrary/compositor/` | |
+| 7.2 | Near Dynamic Cascade | 2 级 Cascade (0.5m~8m, 8m~30m)，每帧全量渲染。`ShadowCascadeUBO` 放入 Set 0 | 新建 `ShadowMapManager.cpp` | |
+| 7.3 | Far Cached Cascade | 环形滚动 SM (30m~200m)，只更新 dirty tile。实现 Toroidal Scrolling + fract() UV 采样 | | |
+| 7.4 | ShadowMask Compose Pass | Compute shader: Near+Far 距离混合 → ShadowMask(R)。考虑现有 `ObjectDynamicShadowPolicy` 枚举的 Capsule(G) + Contact(B) 通道 | | |
+| 7.5 | PCF/PCSS 采样 | 实现现有 `ShadowReceive` 枚举中 PCF/PCSS 的 GLSL 实现 | `ShaderLibrary/common/shadow_sampling.glsl` | |
+| 7.6 | 光照集成 | `EvalLighting()` 中采样 ShadowMask RT | 修改 `lighting.glsl` | |
+
+**验证：** Forward 路径有正确的级联阴影，Near→Far 过渡平滑。
+
+---
+
+#### Sprint 8：HZB + 遮挡剔除
+
+**目标：** 实现 §2.6-2.7 的 HZB 生成和 GPU 遮挡剔除。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 8.1 | HZB Downsample Compute | Depth RT → 逐级 min downsample (Reversed-Z)。现有设计文档 §2.6 已有 GLSL 代码 | 新建 `ShaderLibrary/pass/hzb_downsample.comp.glsl` | |
+| 8.2 | HZB RT 管理 | R32F, log2(max(w,h)) 级 mip chain。通过 `ResourceAllocator` 分配 | | |
+| 8.3 | Instance Cull (CPU fallback) | 视锥剔除 — **复用**现有 `Culler`/`VisibilityComponent` ECS 组件 | | |
+| 8.4 | Instance Cull (GPU, SSBO 平台) | Compute shader: 视锥 + 粗 HZB → 输出可见 Instance list | | |
+
+**验证：** GPU 剔除后 Draw Call 数显著减少，渲染结果无遗漏。
+
+---
+
+#### Sprint 9：VBuffer 渲染路径
+
+**目标：** 实现 §8 的 Visibility Buffer 路径。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 9.1 | VBuffer ID Pass | `main_vbuffer_id.frag.glsl` — 输出 `{instanceId(16), materialPresetId(8), triangleId(8)}`。**SSBO 平台专属** | `ShaderLibrary/compositor/` | |
+| 9.2 | Tile Classification Compute | 16×16 tile → 累计 SurfaceType mask → 生成 TileList per SurfaceType + DispatchArgs | | |
+| 9.3 | VBuffer Resolve — 单一 Surface Tile | Compute shader: 解包 VBuffer → 重心插值 UV/Normal → `#include` Surface Function → `EvalSurface()` → `EvalLighting()` → 输出 LitColor | | |
+| 9.4 | VBuffer Resolve — 混合 Tile | 通用路径: 分支处理多 SurfaceType | | |
+| 9.5 | Forward / VBuffer 自动切换 | VBO 平台强制 Forward; SSBO 平台根据 `DeviceQualityProfile` 选择 | | |
+
+**验证：** VBuffer 路径渲染结果 == Forward 路径（像素级对比）。
+
+---
+
+#### Sprint 10：Meshlet 管线
+
+**目标：** 实现 §2.8 的 GPU-Driven Meshlet 渲染。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 10.1 | 集成 meshoptimizer | Mesh → meshlet 构建 + simplification + LOD DAG。离线工具 | `3rdpty/meshoptimizer/`, 新建 `src/Tools/MeshletBuilder` | |
+| 10.2 | 定义 MeshletGPU 结构体 | `{vertexOffset, indexOffset, vertexCount, triangleCount, boundingSphere, normalCone, lodLevel, flags}` | `inc/hgl/graph/MeshletGPU.h` | |
+| 10.3 | 引擎二进制格式 (.ulm) | 序列化 MeshletBuffer + LOD DAG + Flags | | |
+| 10.4 | Meshlet LOD Select + Cull Compute | DAG 遍历 + Frustum + Cone + HZB → 输出 IndirectDraw commands | | |
+| 10.5 | Two-Phase Occlusion | Phase 1: cull by last-frame HZB. Phase 2: re-cull by current HZB | | |
+| 10.6 | `vkCmdDrawIndexedIndirectCount` 集成 | meshlet 粒度 Indirect Draw，从全局 SSBO 读取。**复用**现有 `IndirectDrawIndexedBuffer` | | |
+| 10.7 | Terrain-Contact Dither | §2.8.5 toggleable Terrain-Contact Dither 路径 | | |
+| 10.8 | VBO 平台回退 | 离散 LOD mesh 从 DAG 导出，CPU Frustum Cull + `vkCmdDrawIndexed` | | |
+
+**验证：** GPU Drawcall 从 N 降至 < N/10（大场景），渲染无错。
+
+---
+
+#### Sprint 11：Terrain 256 层系统
+
+**目标：** 实现 §5.5 的完整 Terrain 渲染架构。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 11.1 | 重写 Terrain Surface Function | `terrain_surface.glsl` — `EvalSurface()` 循环采样 TerrainLayerSSBO + Texture2DArray。**替换**旧 `M_TerrainGrid.cpp` 的硬编码 FS | `ShaderLibrary/surface/terrain_surface.glsl` | |
+| 11.2 | TerrainLayerSSBO + MI_Terrain | §5.4 定义的 GPU 数据结构: `TerrainLayerParams[256]` (32B/layer) + `MI_Terrain` (32B global) | | |
+| 11.3 | SplatMap 编码 | RGBA8 Texture2DArray, ceil(N/4) 层，每层存 4 个地形层权重 | | |
+| 11.4 | Terrain VBuffer Resolve | 专用 Compute Kernel — per-pixel 多层 Dither 混合 | | |
+| 11.5 | Terrain Forward Path | `EvalSurface` 循环采样 + weight threshold skip + QualityTier 层数限制 | | |
+| 11.6 | Terrain LOD / Clipmap | 地形几何 LOD (quad-tree 或 clipmap) — 旧 TerrainGrid 的 VS 方案可作为基础扩展 | | |
+
+**验证：** 256 层地形渲染无闪烁，SplatMap 权重正确混合。
+
+---
+
+#### Sprint 12：Material LOD + Special Surface
+
+**目标：** 实现 §3.5 Material LOD 自动降级 + §5.3 特殊表面材质。
+
+| # | 任务 | 具体操作 | 涉及文件 | 产出 |
+|---|------|---------|---------|------|
+| 12.1 | `CalcObjectLODTier()` | 屏幕空间面积估算 + 阈值表 + `importanceBias` 偏移 → `objectLODTier` | | |
+| 12.2 | `EffectiveTier` 计算 | `min(deviceTier, objectLODTier, surfaceLODCap)` → 运行时选择 SPV 变体 | | |
+| 12.3 | `ResolveSPVFallback()` | 根据 `fallback_surface_type` + `unique_feature_min_tier` 路由 SPV | | |
+| 12.4 | Skin Surface Function | Ultra: 全 SSS + Detail Normal + 曲率 AO; High: 简化 SSS; Med/Low: fallback Standard | `surface/skin_surface.glsl` | |
+| 12.5 | Hair Surface Function | Ultra: Marschner; High: Kajiya-Kay; Med: 单高光 PBR; Low: BlinnPhong | `surface/hair_surface.glsl` | |
+| 12.6 | Cloth Surface Function | Sheen + Charlie Model; Med: 简化 wrap; Low: Standard | `surface/cloth_surface.glsl` | |
+| 12.7 | ClearCoat Surface Function | High+: 双层 BRDF; Med: 单层近似; Low: 高 specular BlinnPhong | `surface/clearcoat_surface.glsl` | |
+| 12.8 | Foliage Surface Function | High+: Thin Translucency + Wind; Med: Wrap + 简化 Wind; Low: 静态 AlphaTest | `surface/foliage_surface.glsl` | |
+
+**验证：** 远处 Skin 材质无缝降级为 Standard，无视觉跳变。
+
+---
+
+#### Sprint 13：后处理管线
+
+**目标：** 基本后处理链。
+
+| # | 任务 | 具体操作 |
+|---|------|---------|
+| 13.1 | ToneMapping | Compute Pass, ACES/Filmic tone curve |
+| 13.2 | Bloom | Downsample chain + Gaussian blur + upsample additive blend |
+| 13.3 | FXAA | Single compute/FS pass, Low/Medium quality |
+| 13.4 | TAA | Jittered projection + exponential history blend + neighborhood clamping |
+| 13.5 | SSAO | GTAO 或 HBAO, Compute, 利用 HZB mip 加速采样 |
+| 13.6 | Auto Exposure | Luminance histogram compute + temporal smooth |
+| 13.7 | Fog | 内联到 `EvalLighting()` 或独立 Compute pass |
+
+---
+
+#### Sprint 14：Clustered Shading + 高级光照
+
+**目标：** 多光源支持。
+
+| # | 任务 | 具体操作 |
+|---|------|---------|
+| 14.1 | Cluster 空间划分 | 视锥 3D 网格 (X×Y×Z)，Compute 预计算 cluster bounds |
+| 14.2 | Light Assignment Compute | 每个 cluster 分配 light list，输出 light index SSBO |
+| 14.3 | `EvalLighting()` 集成 | 从 cluster light list 遍历灯光 |
+| 14.4 | Capsule Shadow | CapsuleShadowData SSBO + per-pixel 解析遮挡 |
+| 14.5 | Contact Shadow | 屏幕空间 ray-march, High+ |
+| 14.6 | SSR | Hi-Z Ray March Compute, High+ |
+
+---
+
+### 14.3 关键代码映射表
+
+以下列出设计文档各节与现有代码的精确对应、差距与动作：
+
+| 设计文档节 | 现有代码 | 状态 | 动作 |
+|-----------|---------|------|------|
+| §1 设计目标 | — | ✅ 已确认 | — |
+| §2.1 Forward Pass | `RenderStage::Forward_*`, `PipelineRenderPath::Forward` | 🔶 枚举存在，Pass 执行依赖 ECS | 注入 Compositor 模板 |
+| §2.2 VBuffer Pass | `PipelineRenderPath::VBufferDeferred`, `RenderStage::VisibilityBuffer_Fill` | ❌ 仅枚举 | Sprint 9 新增 |
+| §2.3 Z-Prepass | `RenderStage::EarlyZ_Solid/Masked` | 🔶 枚举存在 | Sprint 3 增加 Z-Prepass Compositor 模板 |
+| §2.6 HZB | `RenderStage::HZB_Generation/Culling` | ❌ 仅枚举 | Sprint 8 新增 |
+| §2.7 二阶段 Meshlet | — | ❌ | Sprint 10 新增 |
+| §2.8 Meshlet 管线 | `PipelineTopology::MeshFS`, `ShaderModule::IsTask/IsMesh` | ❌ 仅枚举/flags | Sprint 10 新增 |
+| §2.9 平台后端 | `PipelineInputMode::{LegacyVABVBO, SSBOVertexInput}` | 🔶 定义完成，SSBO 未激活 | Sprint 5 激活 |
+| §2.10 Reversed-Z | — | ❌ | Sprint 4 新增 |
+| §3.5 Material LOD | — | ❌ | Sprint 12 新增 |
+| §3.6 阴影系统 | `ShadowReceive`, `GlobalDynamicShadowPolicy`, `ObjectDynamicShadowPolicy` 枚举 | ❌ 仅枚举 | Sprint 7 新增 |
+| §4.1 SurfaceType | `MaterialPreset` (17 个旧枚举值) | 🔶 需重新映射 | Sprint 1 替换 |
+| §4.2 QualityTier | 无(ShaderPermutationKey 只有 light/ambient/specular/shadow) | ❌ | Sprint 1 新增 |
+| §5.1 预设材质表 | `MaterialPreset` 的 17 个工厂函数 | 🔶 存在但需重构 | Sprint 6 逐个迁移 |
+| §5.2 Standard Surface | TextureBlinnPhong + BasicLit + PBRColor3D 分立 | 🔶 已有完整 GLSL | Sprint 3 合并 |
+| §5.4-5.5 Terrain | `M_TerrainGrid` (简单 VS 生成 + 硬编码 FS) | 🔶 极简实现 | Sprint 11 重写 |
+| §6.3 Descriptor Set | 7 个 Set, 语义驱动 | 🔶 需大改 | Sprint 2 重构 |
+| §9 Compositor | ComposedMaterialDef + ShaderLogic + Bridge | 🔶 架构错误 | Sprint 3 替换 |
+| §12 SPV Cache | 运行时编译(无缓存) | ❌ | Sprint 3.10 新增 |
+
+---
+
+### 14.4 推荐执行顺序与依赖图
+
+```
+Sprint 0 (清理)
+    │
+    ├─── Sprint 1 (类型定义) ──────────────┐
+    │                                       │
+    ├─── Sprint 4 (Reversed-Z) ←───────────┤
+    │                                       │
+    └─── Sprint 2 (Descriptor 重构) ───┐   │
+                                        │   │
+                                        ▼   ▼
+                                Sprint 3 (Compositor + Surface Function)  ★★★ 关键路径
+                                        │
+                        ┌───────────────┼───────────────┐
+                        │               │               │
+                        ▼               ▼               ▼
+                Sprint 5 (SSBO)  Sprint 6 (Forward)  Sprint 7 (Shadow)
+                        │               │               │
+                        └───────┬───────┘               │
+                                │                       │
+                                ▼                       │
+                        Sprint 8 (HZB+Cull) ◄──────────┘
+                                │
+                        ┌───────┴───────┐
+                        ▼               ▼
+                Sprint 9 (VBuffer)  Sprint 10 (Meshlet)
+                        │               │
+                        └───────┬───────┘
+                                ▼
+                        Sprint 11 (Terrain)
+                                │
+                                ▼
+                        Sprint 12 (Material LOD + Special Surface)
+                                │
+                                ▼
+                        Sprint 13 (PostProcess)
+                                │
+                                ▼
+                        Sprint 14 (Clustered + Advanced)
+```
+
+**关键路径**: Sprint 0 → 1 → 2 → 3 → 6 → 7 → 8 → 9/10 → 11 → 12
+
+Sprint 4 (Reversed-Z) 和 Sprint 5 (SSBO) 可与 Sprint 3 并行开发。
+
+---
+
+### 14.5 现有代码复用率估算
+
+| 模块 | 现有代码量(估) | 可复用 | 需重写 | 需删除 |
+|------|-------------|--------|--------|--------|
+| Vulkan 基础层 (`src/Vulkan/`) | ~15000 行 | 95% | 5% (Set Layout) | 0% |
+| ECS 框架 (`inc/hgl/ecs/`) | ~5000 行 | 100% | 0% | 0% |
+| 材质核心 (`VKMaterial*`) | ~3000 行 | 70% | 30% (MI 管理适配) | 0% |
+| ShaderGen 组合层 | ~4000 行 | 0% | 0% | **100% 删除** |
+| GLSL 模组 (`ShaderLibrary/`) | ~2000 行 | 60% (PBR/lighting) | 40% (重组) | 模板引擎删除 |
+| 材质工厂 (`M_*.cpp`) | ~3000 行 | 30% (Unlit) | 70% (Lit → Surface) | 旧 Bridge 删除 |
+| Pipeline 管理 | ~3000 行 | 90% | 10% | 0% |
+| Buffer/Memory | ~4000 行 | 100% | 0% | 0% |
+| **总计** | ~35000 行 | **~70%** | **~20%** | **~10%** |
+
+> **结论：** 引擎底层基础设施（Vulkan 层、ECS、Buffer、Pipeline）非常完善，复用率极高。
+> 主要工作集中在**中间层重构**（ShaderGen 组合 → Compositor，7-Set → 4-Set）和**上层新增**（阴影/HZB/Meshlet/VBuffer/PostProcess）。
 
 | 新预设 | 旧代码 | 迁移备注 |
 |--------|--------|----------|
@@ -3985,7 +4782,8 @@ struct VertexLayout_PosTexNormTan {
 
 - **StandardTexture** 使用独立纹理槽（每个 MaterialInstance 绑定自己的纹理集）
 - **VBuffer Resolve** 阶段如需 Bindless 纹理，使用 `VK_EXT_descriptor_indexing` 扩展
-- 不再将 `Texture2DArray` 作为主要纹理接口（仅 Terrain SplatMap 保留）
+- **Terrain Surface** 使用 `Texture2DArray`（Albedo/Normal/MR 各最多 256 层）+ TerrainLayerSSBO（§5.5）
+- 其他 SurfaceType 不再将 `Texture2DArray` 作为主要纹理接口
 
 ## 附录 C：文件数量对比
 
