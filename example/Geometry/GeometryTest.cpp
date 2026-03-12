@@ -392,22 +392,16 @@ private:
                     se.transform    = se.entity->AddComponent<hgl::ecs::TransformComponent>(hgl::ecs::Mobility::Movable);
                     se.primitive_comp = se.entity->AddComponent<hgl::ecs::PrimitiveComponent>();
 
-                    if (node.hasTRS)
-                    {
-                        // The GLTFImporter already calls RotateNodeLocalTransformsYUpToZUp()
-                        // GLTFConvert already performs proper Y-up→Z-up conversion
-                        // (conjugation: R_zup = Rx90 * R_yup * Rx90^-1), so use TRS directly.
-                        se.transform->SetLocalPosition(node.translation);
-                        se.transform->SetLocalRotation(node.rotation);
-                        se.transform->SetLocalScale(node.scale);
-                    }
-                    else
-                    {
-                        // Board has identity transform — leave it completely unchanged so it stays flat.
-                        se.transform->SetLocalPosition(glm::vec3(node.worldMatrix[3]));
-                        se.transform->SetLocalRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
-                        se.transform->SetLocalScale(glm::vec3(1.0f, 1.0f, 1.0f));
-                    }
+                    // The renderer creates flat ECS entities (no parent-child).
+                    // Use the pre-computed world matrix for all nodes so that
+                    // child nodes (e.g. Pawn_Top inside Pawn_Body) get the full
+                    // composed transform, not just their local offset.
+                    se.transform->SetLocalPosition(glm::vec3(node.worldMatrix[3]));
+                    se.transform->SetLocalRotation(glm::quat_cast(glm::mat3(node.worldMatrix)));
+                    se.transform->SetLocalScale(glm::vec3(
+                        glm::length(glm::vec3(node.worldMatrix[0])),
+                        glm::length(glm::vec3(node.worldMatrix[1])),
+                        glm::length(glm::vec3(node.worldMatrix[2]))));
                     se.transform->SetMovable(false);
 
                     se.primitive_comp->SetPrimitive(prim);
