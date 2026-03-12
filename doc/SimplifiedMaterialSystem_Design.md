@@ -2149,9 +2149,23 @@ struct MI_Standard {
     // Flags
     uint  flags;                // 4B, bit0: alpha_test, bit1: double_sided
                                 //     bit2: has_vertex_color (自动混合)
-                                // 总计 32 bytes
+
+    // Texture Array 索引（引用 Texture2DArray 中的层 — §6.4.4）
+    uint  tex_albedo;           // 4B, Albedo 纹理在 AlbedoArray 中的层索引
+    uint  tex_normal;           // 4B, Normal 纹理在 NormalArray 中的层索引
+    uint  tex_metallic_roughness; // 4B, MetallicRoughness 纹理层索引 (Medium+)
+    uint  tex_ao;               // 4B, AO 纹理层索引 (High+)
+    uint  tex_emissive;         // 4B, Emissive 纹理层索引 (High+)
+    uint  _pad0;                // 4B, 对齐填充
+
+                                // 总计 56 bytes (14 × 4B)，SSBO 中按 std430 自然对齐
 };
 ```
+
+> **为什么需要 texture_id？**\
+> 所有 MI 的纹理统一打包进 `sampler2DArray`（§6.4.4），Material Shader 不再使用独立纹理绑定，\
+> 而是通过 `texture(AlbedoArray, vec3(uv, float(mi.tex_albedo)))` 按 ID 索引纹理层。\
+> 这使得单个 DrawCall 可渲染使用不同纹理的多个实例，是 GPU-Driven 渲染的关键。
 
 #### Standard Surface Function（纯业务逻辑 — 无 main()）
 
@@ -2171,20 +2185,21 @@ struct MI_Standard {
 #include "common/material_instance.glsl"
 #include "common/normal_mapping.glsl"
 
-// ===== 纹理采样（按档位编译期裁剪）=====
-vec4  SampleAlbedo(vec2 uv)            { return texture(TextureAlbedo, uv); }
+// ===== 纹理采样（从 Texture2DArray 按 MI 中的 texture_id 索引 — §6.4.4）=====
+// mi 由 GetMI() 获取，包含各纹理在 Array 中的层索引
+vec4  SampleAlbedo(vec2 uv, MI_Standard mi)            { return texture(AlbedoArray, vec3(uv, float(mi.tex_albedo))); }
 
 #if QUALITY_TIER >= 1  // Low+: Normal Map
-vec3  SampleNormal(vec2 uv)            { return texture(TextureNormal, uv).xyz * 2.0 - 1.0; }
+vec3  SampleNormal(vec2 uv, MI_Standard mi)            { return texture(NormalArray, vec3(uv, float(mi.tex_normal))).xyz * 2.0 - 1.0; }
 #endif
 
 #if QUALITY_TIER >= 2  // Medium+
-vec2  SampleMetallicRoughness(vec2 uv) { return texture(TextureMetallicRoughness, uv).bg; }
+vec2  SampleMetallicRoughness(vec2 uv, MI_Standard mi) { return texture(MetallicRoughnessArray, vec3(uv, float(mi.tex_metallic_roughness))).bg; }
 #endif
 
 #if QUALITY_TIER >= 3  // High+
-float SampleAO(vec2 uv)               { return texture(TextureAO, uv).r; }
-vec3  SampleEmissive(vec2 uv)          { return texture(TextureEmissive, uv).rgb; }
+float SampleAO(vec2 uv, MI_Standard mi)               { return texture(AOArray, vec3(uv, float(mi.tex_ao))).r; }
+vec3  SampleEmissive(vec2 uv, MI_Standard mi)          { return texture(EmissiveArray, vec3(uv, float(mi.tex_emissive))).rgb; }
 #endif
 
 // ===== 完整表面求值 — 供 Forward / VBuffer Resolve 等色彩 Pass 使用 =====
@@ -2194,7 +2209,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     SurfaceOutput o;
 
     // Albedo
-    vec4 albedo = SampleAlbedo(si.uv) * unpackUnorm4x8(mi.base_color);
+    vec4 albedo = SampleAlbedo(si.uv, mi) * unpackUnorm4x8(mi.base_color);
 #if HAS_VERTEX_COLOR
     albedo.rgb *= si.vertexColor.rgb;
 #endif
@@ -2203,7 +2218,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
 
     // Normal（法线贴图后的世界空间法线）
 #if QUALITY_TIER >= 1  // Low+: 有 Normal Map
-    o.normal = ApplyNormalMap(SampleNormal(si.uv), si.worldNormal, si.tangent,
+    o.normal = ApplyNormalMap(SampleNormal(si.uv, mi), si.worldNormal, si.tangent,
                               mi.normal_strength);
 #else
     // Lowest: 仅用顶点法线
@@ -2219,18 +2234,18 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     o.emissive  = vec3(0.0);
 #elif QUALITY_TIER == 2
     // Medium: 有 MR 纹理
-    vec2 mr     = SampleMetallicRoughness(si.uv);
+    vec2 mr     = SampleMetallicRoughness(si.uv, mi);
     o.metallic  = mr.x * mi.metallic_factor;
     o.roughness = mr.y * mi.roughness_factor;
     o.ao        = 1.0;
     o.emissive  = vec3(0.0);
 #else
     // High/Ultra/Cinematic: 完整纹理集
-    vec2 mr     = SampleMetallicRoughness(si.uv);
+    vec2 mr     = SampleMetallicRoughness(si.uv, mi);
     o.metallic  = mr.x * mi.metallic_factor;
     o.roughness = mr.y * mi.roughness_factor;
-    o.ao        = SampleAO(si.uv) * mi.ao_strength;
-    o.emissive  = SampleEmissive(si.uv)
+    o.ao        = SampleAO(si.uv, mi) * mi.ao_strength;
+    o.emissive  = SampleEmissive(si.uv, mi)
                   * unpackUnorm4x8(mi.emissive_color).rgb
                   * mi.emissive_intensity;
 #endif
@@ -2242,7 +2257,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
 float EvalAlpha(vec2 uv)
 {
     MI_Standard mi = GetMI();
-    vec4 albedo = SampleAlbedo(uv) * unpackUnorm4x8(mi.base_color);
+    vec4 albedo = SampleAlbedo(uv, mi) * unpackUnorm4x8(mi.base_color);
     return albedo.a;
 }
 ```
@@ -2894,20 +2909,24 @@ Set 0 — Global（每帧一次绑定）
   binding 3: LightBuffer         (SSBO, 场景灯光列表，未来用)
 
 Set 1 — PerObject（每物体/每 DrawCall）
-  binding 0: LocalToWorld        (UBO 或 SSBO, 支持 instancing)
+  binding 0: LocalToWorld SSBO   (mat4[], 全场景 L2W 矩阵池 —— 由 TransformAssignmentBuffer 管理)
+                                  ★ 通过 Instance-Rate VBO (R16UI) 传入 TransformID，
+                                    VS 中 GetLocalToWorld() 以 TransformID 索引此 SSBO
 
 Set 2 — PerMaterial（每材质切换时绑定）
   ── 通用布局（Standard / Special Surface）──
-  binding 0: MaterialInstance    (UBO 或 SSBO)
-  binding 1-12: 纹理槽          (CombinedImageSampler)
-    ── Standard Surface 纹理槽 ──
-      binding 1: TextureAlbedo            (Low+)
-      binding 2: TextureNormal            (Low+)
-      binding 3: TextureMetallicRoughness (Medium+)
-      binding 4: TextureAO               (High+)
-      binding 5: TextureEmissive          (High+)
-      binding 6: TextureDetailNormal      (Ultra, 预留)
-    ── Special Surface 扩展纹理槽 ──
+  binding 0: MaterialInstance SSBO (MI_Standard[], 全场景 MI 数据池 —— 由 MaterialInstanceAssignmentBuffer 管理)
+                                  ★ 通过 Instance-Rate VBO (R16UI) 传入 MaterialInstanceID，
+                                    FS 中 GetMI() 以 MaterialInstanceID 索引此 SSBO
+  binding 1-6: 纹理数组池        (sampler2DArray — MI 中 texture_id 索引，§6.4.4)
+    ── Standard Surface Texture2DArray 池 ──
+      binding 1: AlbedoArray              (sampler2DArray, Low+)
+      binding 2: NormalArray              (sampler2DArray, Low+)
+      binding 3: MetallicRoughnessArray   (sampler2DArray, Medium+)
+      binding 4: AOArray                  (sampler2DArray, High+)
+      binding 5: EmissiveArray            (sampler2DArray, High+)
+      binding 6: DetailNormalArray        (sampler2DArray, Ultra, 预留)
+    ── Special Surface 扩展纹理数组池 ──
       binding 7: TextureExtra0   (Skin: SubsurfaceColor / Hair: Direction)
       binding 8: TextureExtra1   (Skin: Thickness / Hair: Shift)
       binding 9: TextureExtra2   (ClearCoat: CoatNormal)
@@ -2971,6 +2990,205 @@ Set 3 — Environment（环境/全局光照资源 + 管线 RT）
 | TileDispatchArgs | SSBO (48B) | 48 bytes | indirect dispatch 参数 + 计数器 |
 
 > `maxTileCount = ceil(W/TILE_SIZE) × ceil(H/TILE_SIZE)`，1080p@8×8 tile ≈ 32,400 tiles，内存总计 < 1 MB。
+
+---
+
+### 6.4 Instance ID 分发机制（已有实现，直接复用） ★
+
+本引擎**已完整实现**了一套 Instance ID 分发系统，将 TransformID 和 MaterialInstanceID
+传递给 VS/FS，配合全场景 SSBO 数据池 + Texture2DArray 纹理池实现高效 GPU-Driven 渲染。
+**新材质体系必须保留并延续此架构。**
+
+ID 的传递方式按 **PlatformBackend**（§2.9）分流，与顶点数据获取方式保持一致：
+
+| 平台 | ID 传递方式 | 理由 |
+|------|-----------|------|
+| **PC (SSBO)** | ID 存入 SSBO，VS 内按 `gl_InstanceIndex` 读取 | SSBO 在桌面 GPU 上访问效率极高 |
+| **Apple / PowerVR (SSBO)** | 同上 | Apple Silicon 统一内存架构，SSBO 无额外开销 |
+| **Android Mid/Low (VBO)** | ID 存入 Instance-Rate VBO (R16UI)，传统 vertex attribute 输入 | 非 Apple/PowerVR 的移动 GPU 上，传统 vertex attribute 硬件路径比 SSBO 读取更高效 |
+
+#### 6.4.1 核心数据流
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                    Instance ID 分发架构（双路径）                      │
+│                                                                      │
+│  CPU 侧                                                             │
+│  ┌──────────────────────────┐  ┌──────────────────────────────┐     │
+│  │ TransformAssignmentBuffer│  │ MaterialInstanceAssignment   │     │
+│  │                          │  │ Buffer                       │     │
+│  │  ① L2W 矩阵池 (SSBO)    │  │  ③ MI 数据池 (SSBO)          │     │
+│  │     mat4 mats[N]         │  │     MI_Xxx mi[M]             │     │
+│  │                          │  │                              │     │
+│  │  ② TransformID           │  │  ④ MaterialInstanceID        │     │
+│  │   ┌─ SSBO路径: ID SSBO   │  │   ┌─ SSBO路径: ID SSBO       │     │
+│  │   └─ VBO路径:  R16UI VAB │  │   └─ VBO路径:  R16UI VAB     │     │
+│  └─────────┬────────────────┘  └──────────┬───────────────────┘     │
+│            │                               │                         │
+│  GPU 侧   ▼                               ▼                         │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ Vertex Shader                                                │   │
+│  │  #if PLATFORM_SSBO          │  #else (VBO 路径)              │   │
+│  │   // ID 从 SSBO 读取        │   // ID 从 instance-rate VAB   │   │
+│  │   uint tID = id_ssbo        │   layout(location=N) in uint   │   │
+│  │     .transformIDs            │     TransformID;               │   │
+│  │     [gl_InstanceIndex];      │   uint tID = TransformID;      │   │
+│  │  #endif                     │                                │   │
+│  │   mat4 l2w = l2w_ssbo.mats[tID];                ← SSBO ①    │   │
+│  │   gl_Position = viewProj * l2w * vec4(pos, 1.0);             │   │
+│  │   vs_out.materialInstanceID = miID;                          │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │ Fragment Shader                                              │   │
+│  │   MI_Standard mi = mi_ssbo.mi[materialInstanceID]; ← SSBO ③ │   │
+│  │   vec4 albedo = texture(TextureArray, vec3(uv, mi.tex_albedo));│  │
+│  │                                          ↑ Texture2DArray ⑤  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│  ⑤ Texture2DArray: 所有 MI 用到的纹理打包成纹理数组                   │
+│     MI 数据中存 texture_id → 在 FS 中以 texture_id 索引纹理层         │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+> **注意**：无论哪条路径，L2W 矩阵和 MI 数据始终存储在 SSBO 中（①③ 不变）。
+> 只有 **ID 本身的传递方式**（② ④）随平台分流。
+
+#### 6.4.2 现有代码实现
+
+| 组件 | 文件 | 职责 |
+|------|------|------|
+| `TransformAssignmentBuffer` | `inc/hgl/ecs/support/TransformAssignmentBuffer.h` | 管理 L2W 矩阵 SSBO + R16UI instance-rate VAB；支持 Static/Movable 两种模式；Movable 使用 `RingBufferWrapper` 多帧复用 |
+| `MaterialInstanceAssignmentBuffer` | `inc/hgl/ecs/support/MaterialInstanceAssignmentBuffer.h` | 管理 MI 数据 SSBO + R16UI instance-rate VAB；`MaterialInstanceSet` 对 MI 去重 (UnorderedMap)；Ring buffer 多帧复用 |
+| `GetLocalToWorld()` | `ShaderLibrary/common/transform.glsl` / `MFCommon.h` | GLSL helper：`l2w.mats[TransformID]` |
+| `GetMI()` | `ShaderLibrary/common/material_instance.glsl` / `MFCommon.h` | GLSL helper：`mtl.mi[MaterialInstanceID]` |
+| `HandoverMI()` | `MFCommon.h` | VS→FS 传递 MaterialInstanceID (flat varying) |
+
+#### 6.4.3 ID 传递双路径
+
+##### SSBO 路径（PC / Apple / PowerVR）
+
+ID 与 L2W / MI 数据一样存储在 SSBO 中，VS 内按 `gl_InstanceIndex` 索引读取：
+
+```glsl
+// common/instance_id_fetch_ssbo.glsl
+#define INSTANCE_ID_FETCH_SSBO 1
+
+layout(set = 1, binding = 1) readonly buffer TransformIDBuffer {
+    uint transformIDs[];     // 紧凑 uint 数组
+} _TransformIDBuffer;
+
+layout(set = 2, binding = 13) readonly buffer MaterialInstanceIDBuffer {
+    uint miIDs[];            // 紧凑 uint 数组
+} _MaterialInstanceIDBuffer;
+
+uint GetTransformID()          { return _TransformIDBuffer.transformIDs[gl_InstanceIndex]; }
+uint GetMaterialInstanceID()   { return _MaterialInstanceIDBuffer.miIDs[gl_InstanceIndex]; }
+```
+
+此路径下 **Pipeline 的 `VkPipelineVertexInputStateCreateInfo` 中无 instance-rate binding**
+（与 SSBO 顶点获取路径一致 — 若同时使用 SSBO 顶点获取，则 VertexInput 完全为空）。
+
+**优势**：
+- 零 `vkCmdBindVertexBuffers` 绑定开销（ID SSBO 帧开始时一次性绑定）
+- 与 Indirect Draw / Meshlet 管线天然兼容（`gl_InstanceIndex` 自动递增）
+- 桌面 GPU 和 Apple Silicon 上 SSBO 随机访问效率极高
+
+##### VBO 路径（Android Mid/Low — 非 Apple/PowerVR 移动 GPU）
+
+ID 通过传统 instance-rate Vertex Attribute 输入：
+
+```
+Binding 0: 几何顶点数据 (vertex-rate)
+           — Layout A~E 之一（见 §12）
+           — inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+
+Binding 1: TransformID (instance-rate)        ← TransformAssignmentBuffer 提供
+           — format = VK_FORMAT_R16_UINT
+           — inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
+
+Binding 2: MaterialInstanceID (instance-rate)  ← MaterialInstanceAssignmentBuffer 提供
+           — format = VK_FORMAT_R16_UINT
+           — inputRate = VK_VERTEX_INPUT_RATE_INSTANCE
+```
+
+```glsl
+// common/instance_id_fetch_vbo.glsl
+#define INSTANCE_ID_FETCH_VBO 1
+
+layout(location = 5) in uint inTransformID;         // Binding 1, instance-rate
+layout(location = 6) in uint inMaterialInstanceID;  // Binding 2, instance-rate
+
+uint GetTransformID()          { return inTransformID; }
+uint GetMaterialInstanceID()   { return inMaterialInstanceID; }
+```
+
+仅 2 字节 × 2 = **4 字节/实例**即完成 L2W 矩阵 + MI 完整数据的分发。
+对比传统方案（per-instance 传递完整 mat4 = 64 字节 + MI 数据 32+ 字节），带宽减少 **96%**。
+
+**优势**：
+- 在 Mali / Adreno 等移动 GPU 上，硬件 Vertex Fetch 单元对 vertex attribute 有专用缓存和预取优化，
+  效率高于通用 SSBO 随机访问
+- 无需 `maxStorageBufferRange` 大容量要求
+
+##### 双路径对比
+
+| 维度 | SSBO 路径 (PC/Apple/PowerVR) | VBO 路径 (Android Mid/Low) |
+|------|------------------------------|----------------------------|
+| **ID 存储** | ID SSBO (Set 1 binding 1 / Set 2 binding 13) | R16UI instance-rate VBO |
+| **VS 读取** | `_IDBuffer.ids[gl_InstanceIndex]` | `layout(location=N) in uint` |
+| **Pipeline VertexInput** | 无 instance-rate binding | Binding 1-2 为 instance-rate |
+| **绑定开销** | 帧开始一次性绑定 SSBO | 每 DrawCall `vkCmdBindVertexBuffers` |
+| **GPU 效率** | 桌面/Apple Silicon SSBO 高效 | 移动 GPU vertex fetch 硬件优化 |
+| **Indirect Draw 兼容** | ★★★★★ 天然兼容 | ★★★☆☆ 需确保 VAB 连续性 |
+| **条件** | `maxStorageBufferRange ≥ 128MB` | 所有 Vulkan 设备支持 |
+
+#### 6.4.4 Texture2DArray 纹理池
+
+所有 MaterialInstance 用到的纹理被打包进 `sampler2DArray`，MI 数据结构中存储 `texture_id` 索引：
+
+```glsl
+// MI 数据结构中的纹理索引字段
+struct MI_Standard {
+    ...
+    uint tex_albedo;            // Texture2DArray 中的层索引
+    uint tex_normal;            // Texture2DArray 中的层索引
+    uint tex_metallic_roughness;// Texture2DArray 中的层索引 (Medium+)
+    uint tex_ao;                // Texture2DArray 中的层索引 (High+)
+    uint tex_emissive;          // Texture2DArray 中的层索引 (High+)
+    ...
+};
+
+// Fragment Shader 中按 texture_id 采样
+vec4 albedo = texture(AlbedoArray, vec3(uv, float(mi.tex_albedo)));
+vec3 normal = texture(NormalArray, vec3(uv, float(mi.tex_normal))).xyz * 2.0 - 1.0;
+```
+
+**优势**：
+- 同一个 DrawCall 可渲染使用**不同纹理**的多个实例，无需切换 Descriptor Set
+- 减少 `vkCmdBindDescriptorSets` 调用次数，有利于 GPU-Driven 批量渲染
+- 与 Indirect Draw / Meshlet 管线天然兼容
+
+**注意事项**：
+- 纹理数组中所有层的**分辨率必须一致**（Vulkan 要求），通常通过 Virtual Texture 或分辨率分组解决
+- `texture_id` 使用 `uint` / `uint16` 存储，理论支持 65535 层
+- 当前 PBRColor3D 材质已完整实现此模式（`sampler2DArray` + `mi.texture_id`）
+
+#### 6.4.5 在新材质体系中的角色
+
+| 新设计组件 | Instance-Rate ID 分发的关系 |
+|-----------|---------------------------|
+| §6.3 Set 1 binding 0 (LocalToWorld SSBO) | TransformAssignmentBuffer 填充此 SSBO |
+| §6.3 Set 2 binding 0 (MI SSBO) | MaterialInstanceAssignmentBuffer 填充此 SSBO |
+| §6.3 Set 2 binding 1-6 (纹理槽) | 改用 Texture2DArray，MI 中 texture_id 索引 |
+| §12 per-instance 列中的 TransformID | SSBO 路径: ID SSBO + `gl_InstanceIndex`; VBO 路径: R16UI VAB |
+| §12 per-instance 列中的 MaterialInstanceID | SSBO 路径: ID SSBO + `gl_InstanceIndex`; VBO 路径: R16UI VAB |
+| Surface Function `GetMI()` | 通过 MaterialInstanceID 索引 MI SSBO |
+| Surface Function `GetLocalToWorld()` | 通过 TransformID 索引 L2W SSBO |
+| VBuffer ID Pass | Instance ID 直接编码到 VBuffer，Resolve 阶段同样用 ID 索引 SSBO |
+| Meshlet 管线 | Meshlet GPU Cull 输出的 Indirect Draw 携带 instance offset，自动对应 ID VAB |
+
+> **结论**：Instance-Rate ID 分发是本引擎 GPU-Driven 渲染的**基石**，
+> 新材质体系的所有渲染路径（Forward / VBuffer / Shadow / Meshlet）均依赖此机制。
 
 ---
 
@@ -4169,6 +4387,28 @@ struct VertexLayout_PosTexNormTan {
 > **所有 Lit Surface 统一使用 Layout E**（Position + TexCoord + Normal + Tangent），
 > 这确保 Low→High 档位切换不会改变顶点布局，Pipeline 兼容性最好。
 
+### 12.1 Instance ID 分发与顶点布局的关系
+
+表中 "附加 per-instance 数据" 列的 `TransformID` 和 `MaterialInstanceID` 的传递方式
+按 **PlatformBackend**（§2.9）分流，与顶点数据获取路径保持一致（详见 §6.4.3）：
+
+**SSBO 路径（PC / Apple / PowerVR）**：
+- ID 存储在专用 ID SSBO 中，VS 内通过 `gl_InstanceIndex` 索引读取
+- Pipeline 无需 instance-rate VBO binding（VertexInput 可完全为空）
+- 与 SSBO 顶点获取 + Indirect Draw / Meshlet 管线天然兼容
+
+**VBO 路径（Android Mid/Low — 非 Apple/PowerVR 移动 GPU）**：
+- **Binding 0** — 几何顶点（vertex-rate），对应上表的 Layout A~E
+- **Binding 1** — `TransformID`（instance-rate, R16UI），由 `TransformAssignmentBuffer` 管理
+- **Binding 2** — `MaterialInstanceID`（instance-rate, R16UI），由 `MaterialInstanceAssignmentBuffer` 管理
+- 在 Mali / Adreno 等移动 GPU 上，硬件 vertex fetch 单元对 vertex attribute 有专用优化，效率高于 SSBO
+
+无论哪条路径，VS 中统一通过 `GetTransformID()` / `GetMaterialInstanceID()` 获取 ID，
+再通过 `GetLocalToWorld()` / `GetMI()` 从 SSBO 中读取完整的变换矩阵和材质参数。
+
+整个机制仅消耗 **4 字节/实例**（VBO 路径）或 **0 字节额外顶点带宽**（SSBO 路径），
+即可分发完整的变换矩阵 (64B) + 材质参数 (56B+)。
+
 ### 12.2 SSBO vs VBO 平台差异 ★
 
 | 维度 | SSBO 路径 (PC/Apple/Android High) | VBO 路径 (Android Mid/Low) |
@@ -4341,6 +4581,10 @@ struct VertexLayout_PosTexNormTan {
 | Vertex Input 系统 | VBO 完整, SSBO 定义完成 | `VKVertexInput*,VertexDataManager` | ★★★★☆ SSBO 路径需激活 |
 | ECS 架构 | 完整(Entity/Component/System/World) | `inc/hgl/ecs/` | ★★★★★ |
 | MaterialInstance 数组模式 | 完整(UBO/SSBO 数组 + MI_ID) | `VKMaterialInstance,ActiveMemoryBlockManager` | ★★★★★ 核心可复用 |
+| Instance-Rate ID 分发 (L2W+MI) | **完整** — R16UI instance-rate VAB + SSBO 数据池 | `TransformAssignmentBuffer.h`, `MaterialInstanceAssignmentBuffer.h` | ★★★★★ **直接复用** §6.4 |
+| Texture2DArray + MI texture_id | **完整** — 纹理打包为 Array, MI 中存层索引 | `PBRColor3D` 已实现 `sampler2DArray` + `mi.texture_id` | ★★★★★ **直接复用** §6.4.4 |
+| Ring Buffer 多帧复用 | **完整** — Static/Movable 双模式 | `RingBufferWrapper`, `TransformAssignmentBuffer` | ★★★★★ 直接复用 |
+| MI 去重 (MaterialInstanceSet) | **完整** — UnorderedMap 去重 | `MaterialInstanceAssignmentBuffer.h::MaterialInstanceSet` | ★★★★★ 直接复用 |
 | Indirect Draw | Buffer 类完整 | `IndirectDraw(Indexed)Buffer` | ★★★★☆ GPU 填充未实现 |
 | Texture 加载 | 完整 | `VKTexture,TextureLoader` | ★★★★★ |
 | 骨骼动画 Joint 矩阵 | GLSL 已有 | `ShaderLibrary/GetJointMatrix.glsl` | ★★★☆☆ 需整合 |
@@ -4440,6 +4684,11 @@ struct VertexLayout_PosTexNormTan {
 #### Sprint 2：Descriptor Set Layout 重构 — 4-Set 固定布局
 
 **目标：** 从 7 个语义 Set 收敛到 4 个固定 Set，统一全引擎。
+
+> **⚠️ 保留约束**：现有 Instance-Rate ID 分发机制（TransformAssignmentBuffer / MaterialInstanceAssignmentBuffer）
+> 及 Texture2DArray 纹理池**必须原样保留**（§6.4）。重构仅影响 Descriptor Set 的编号和布局，
+> 不改变 SSBO 数据池和 instance-rate VAB 的工作方式。
+> Set 1 binding 0 (L2W SSBO) 和 Set 2 binding 0 (MI SSBO) 的填充方仍由上述两个 AssignmentBuffer 负责。
 
 | # | 任务 | 具体操作 | 涉及文件 | 产出 |
 |---|------|---------|---------|------|
@@ -4685,6 +4934,8 @@ struct VertexLayout_PosTexNormTan {
 | §5.2 Standard Surface | TextureBlinnPhong + BasicLit + PBRColor3D 分立 | 🔶 已有完整 GLSL | Sprint 3 合并 |
 | §5.4-5.5 Terrain | `M_TerrainGrid` (简单 VS 生成 + 硬编码 FS) | 🔶 极简实现 | Sprint 11 重写 |
 | §6.3 Descriptor Set | 7 个 Set, 语义驱动 | 🔶 需大改 | Sprint 2 重构 |
+| **§6.4 Instance-Rate ID 分发** | **`TransformAssignmentBuffer.h`, `MaterialInstanceAssignmentBuffer.h`** | **✅ 完整实现** | **直接复用 — 无需修改** |
+| **§6.4.4 Texture2DArray 纹理池** | **PBRColor3D `sampler2DArray` + `mi.texture_id`** | **✅ 完整实现** | **扩展至所有 Lit Surface** |
 | §9 Compositor | ComposedMaterialDef + ShaderLogic + Bridge | 🔶 架构错误 | Sprint 3 替换 |
 | §12 SPV Cache | 运行时编译(无缓存) | ❌ | Sprint 3.10 新增 |
 
@@ -4776,14 +5027,38 @@ Sprint 4 (Reversed-Z) 和 Sprint 5 (SSBO) 可与 Sprint 3 并行开发。
 | Cloth | 无 | Sheen + Charlie Model，Material LOD 降级至 Standard |
 | ClearCoat | 无 | 双层 BRDF，Material LOD 降级至单层 PBR |
 
-## 附录 B：Texture2DArray 处理
+## 附录 B：Texture2DArray 纹理池方案（已实现，全面采用）
 
-当前 `PBRColor3D` 使用 `Texture2DArray` 通过 MI 中的 `texture_id` 索引纹理层。在新系统中：
+当前引擎已在 `PBRColor3D` 中**完整实现** Texture2DArray + MI texture_id 模式（§6.4.4）。
+在新材质体系中，**所有 3D Lit Surface** 统一采用此方案：
 
-- **StandardTexture** 使用独立纹理槽（每个 MaterialInstance 绑定自己的纹理集）
-- **VBuffer Resolve** 阶段如需 Bindless 纹理，使用 `VK_EXT_descriptor_indexing` 扩展
-- **Terrain Surface** 使用 `Texture2DArray`（Albedo/Normal/MR 各最多 256 层）+ TerrainLayerSSBO（§5.5）
-- 其他 SurfaceType 不再将 `Texture2DArray` 作为主要纹理接口
+### B.1 工作原理
+
+1. **CPU 侧**：MaterialInstanceAssignmentBuffer 收集当前帧所有可见 MI，对 MI 去重后写入 SSBO
+2. 每个 MI 的纹理提交至 Texture2DArray（按分辨率分组），获得层索引 `texture_id`
+3. `texture_id` 写入 MI 数据结构的 `tex_albedo`, `tex_normal` 等字段
+4. **GPU 侧**：FS 通过 `GetMI()` 读取 MI → 使用 `mi.tex_albedo` 等字段从纹理数组采样
+
+### B.2 各 SurfaceType 纹理池分配
+
+| SurfaceType | 纹理池 | 说明 |
+|-------------|--------|------|
+| Standard (Texture/Color/VertexColor) | `AlbedoArray`, `NormalArray`, `MetallicRoughnessArray`, `AOArray`, `EmissiveArray` | MI 中 `tex_albedo`~`tex_emissive` 索引 |
+| Skin / Hair / Cloth / ClearCoat | 上述 5 个 + `ExtraArray0~2` | `SurfaceOutputExt` 的额外纹理通过扩展槽索引 |
+| Terrain | 独立 `TerrainAlbedoArray` / `TerrainNormalArray` / `TerrainMRArray` | TerrainLayerSSBO 中的 `tex_*` 字段索引（§5.5） |
+| Unlit 2D/3D | 不使用纹理池 | 简单材质直接绑定独立纹理 |
+
+### B.3 分辨率分组策略
+
+Vulkan 要求 Texture2DArray 所有层分辨率一致。解决方案：
+- 按分辨率分组创建多个 Array（如 512², 1024², 2048²）
+- MI 中 `texture_id` 的高位编码 Array 组号，低位编码层索引
+- 或使用 `VK_EXT_descriptor_indexing` 的 bindless 纹理数组（PC/High-end 设备）
+
+### B.4 与 VBuffer 管线的兼容
+
+VBuffer Resolve 阶段从 VBuffer 解包 MaterialInstanceID → 索引 MI SSBO → 读取 texture_id → 从纹理数组采样。
+整个流程与 Forward 路径一致，无需额外适配。
 
 ## 附录 C：文件数量对比
 
