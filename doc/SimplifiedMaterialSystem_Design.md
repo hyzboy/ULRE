@@ -514,7 +514,7 @@ Phase 2: 当前帧 HZB (from Phase1 depth) → 补充 Cull Phase1 存疑的 mesh
 | **Importance 因子** | — | — | — | ✅ | ✅ | ✅ | P1 | SSBO 平台 |
 | Meshlet Indirect Draw | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | P0 | SSBO 平台 |
 | Mesh Shader 路径 (可选) | ❌ | ❌ | ❌ | ✅ 可选 | ✅ 可选 | ✅ 可选 | P2 | PC only (VK_EXT_mesh_shader) |
-| Terrain-Contact Dither | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | P1 | Android Low 不支持 |
+| Terrain-Contact Dither | ❌ | ❌ | ✅ 可关 | ✅ | ✅ | ✅ | P1 | 可开关，Lowest/Low 默认 OFF；Android Low 不编译 (§2.8.5) |
 | Texture Streaming | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | P2 | Android Low 不支持 |
 
 > Android Mid/Low 走 VBO 传统路径，不使用 GPU meshlet 裁剪和 Indirect Draw（详见 §2.9.4）。
@@ -848,6 +848,29 @@ Instance "Tree_Pine_01"
 当一棵树（或岩石、草丛等）的底部 meshlet 与 Terrain 交叉时，硬边裁剪会产生明显的
 "浮空"或"穿插"瑕疵。Terrain-Contact Dither 通过渐变抖动实现柔和过渡。
 
+##### 可开关设计
+
+Terrain-Contact Dither 是 **可开关特性** —— 编译期 `#define` + 运行时 bool 双重门控：
+
+| 维度 | 机制 | 说明 |
+|------|------|------|
+| **编译期** | `#define FEATURE_TERRAIN_CONTACT_DITHER 0或1` | 为 0 时 dither 相关代码完全被预处理器移除，不生成 `TERRAIN_CONTACT_DITHER` 变体，节省二进制体积 |
+| **运行时** | `DeviceQualityProfile::enable_terrain_contact_dither` | 编译期为 1 但运行时关闭时，忽略 `MESHLET_FLAG_TERRAIN_CONTACT` 标志，绘制时跳过 dither 路径，等同普通 meshlet |
+
+平台默认值：
+
+| 平台 / 档位 | 编译期 FEATURE | 运行时默认 | 备注 |
+|--------|---------|---------|------|
+| PC / Apple Lowest~Low | 1 (编译) | **OFF** | 低端档位默认关，程序可手动开启 |
+| PC / Apple Medium+ | 1 | **ON** | 正常开启 |
+| Android High | 1 | **ON** | SSBO 平台，性能充足 |
+| Android Mid | 1 | **OFF** | VBO 前向路径，默认关闭以保性能；可由 TA 手动开启 |
+| Android Low | **0** (不编译) | — | 极低端不编译该变体，节省二进制体积 |
+
+> **前向低端手机回退策略**：当 Terrain-Contact Dither 被关闭（运行时 OFF 或编译期未编译）时，
+> 带 `MESHLET_FLAG_TERRAIN_CONTACT` 的 meshlet 作为普通 meshlet 绘制，不执行 dither / discard。
+> 视觉上树根与地形会有硬边交插，但避免了 HeightMap 采样 + Bayer 计算 + discard 的开销。
+
 ##### Forward 路径
 
 ```
@@ -867,7 +890,9 @@ Terrain-Contact meshlet 在 Forward Lit Pass 中:
 
 ```glsl
 // forward_terrain_contact.glsl — inline 在 Forward Lit FS 中
-// 仅 MESHLET_FLAG_TERRAIN_CONTACT 时启用
+// 仅 FEATURE_TERRAIN_CONTACT_DITHER == 1 且 MESHLET_FLAG_TERRAIN_CONTACT 时启用
+
+#if FEATURE_TERRAIN_CONTACT_DITHER
 
 uniform sampler2D TerrainHeightMap;
 uniform vec4 terrain_world_bounds;  // (minX, minZ, 1/sizeX, 1/sizeZ)
@@ -892,6 +917,8 @@ void ApplyTerrainContactDither(vec3 worldPos, ivec2 pixelCoord)
     if (blend < dither)
         discard;
 }
+
+#endif // FEATURE_TERRAIN_CONTACT_DITHER
 ```
 
 ##### VBuffer 路径
@@ -1186,7 +1213,7 @@ Android 中低端设备砍掉的特性（编译期 `#define` + 运行时能力�
 | **TAA** | ❌ | ✅ | ✅ | |
 | **Auto Exposure** | ❌ | ✅ | ✅ | |
 | **Decals** | ❌ | ❌ | ✅ | |
-| **Terrain-Contact Dither** | ❌ | ✅ | ✅ | |
+| **Terrain-Contact Dither** | ❌ (不编译) | ✅ 默认 OFF | ✅ | 可开关，见 §2.8.5 |
 | **VBuffer Tile Classification** | ❌ | ❌ | ✅ | |
 | **Texture Streaming** | ❌ | ✅ | ✅ | |
 | **最大纹理尺寸** | 1024 | 2048 | 4096 | 降 mip level |
@@ -1204,15 +1231,17 @@ Shader 变体在构建期按 **PlatformBackend × QualityTier × SurfaceType × 
   - Android High:  SSBO + 有限特性 → 编译 SSBO 路径 + Medium/High 变体
   - Android Mid:   VBO + Medium 以下特性 → 编译 VBO 路径 + Low/Medium 变体
   - Android Low:   VBO + Low 特性 → 编译 VBO 路径 + Lowest/Low 变体
+                   FEATURE_TERRAIN_CONTACT_DITHER = 0 → 不编译 Terrain-Contact Dither 变体
 
 编译期 #define 注入:
   #define PLATFORM_PC          / PLATFORM_APPLE     / PLATFORM_ANDROID
   #define GEOMETRY_FETCH_SSBO  / GEOMETRY_FETCH_VBO
   #define QUALITY_LOWEST        / QUALITY_LOW       / QUALITY_MEDIUM   / QUALITY_HIGH / QUALITY_ULTRA / QUALITY_CINEMATIC
-  #define FEATURE_HZB          0 或 1
-  #define FEATURE_CLUSTERED    0 或 1
-  #define FEATURE_VBUFFER      0 或 1
-  #define FEATURE_MESHLET_CULL 0 或 1
+  #define FEATURE_HZB                    0 或 1
+  #define FEATURE_CLUSTERED              0 或 1
+  #define FEATURE_VBUFFER                0 或 1
+  #define FEATURE_MESHLET_CULL           0 或 1
+  #define FEATURE_TERRAIN_CONTACT_DITHER 0 或 1   // ← 可开关，Android Low 固定为 0
 ```
 
 > **ShaderPermutationKey 扩展**（见 §4.2）：增加 `platform : 2` 位（PC/Apple/Android），
@@ -2497,6 +2526,7 @@ ShaderPermutationKey (lighting × ambient × shadow)
 │  bool             supports_compute                        │
 │  bool             supports_meshlet_pipeline               │ ← SSBO + High+
 │  bool             supports_vbuffer                        │ ← SSBO + compute 能力
+│  bool             enable_terrain_contact_dither           │ ← 可开关 (§2.8.5)
 │  uint32_t         max_texture_units                       │
 │  uint32_t         max_ssbo_range                          │ ← maxStorageBufferRange
 │                                                           │
@@ -2980,7 +3010,7 @@ vec3 EvalLighting(SurfaceOutput surf, vec3 worldPos, vec3 V)
 ```
 
 **附加变体规则：**
-- `TERRAIN_CONTACT` flag 为 true 时额外生成 `TERRAIN_CONTACT_DITHER` 变体
+- `TERRAIN_CONTACT` flag 为 true 且 `FEATURE_TERRAIN_CONTACT_DITHER == 1` 时额外生成 `TERRAIN_CONTACT_DITHER` 变体
 - `SKINNED` flag 为 true 时 VS 切换为含骨骼蒙皮的版本（`compositor/main_forward_skinned.vert.glsl`）
 - `VBUFFER_RESOLVE` 由 Compute Shader 通用处理，不需要每个材质生成独立变体（在 Resolve 着色器中 `#include` 对应 Surface Function 并用 switch 分发）
 - Unlit 材质（SurfaceType = Unlit 类）较简单，保留独立完整 VS/FS（不经过 Compositor）
