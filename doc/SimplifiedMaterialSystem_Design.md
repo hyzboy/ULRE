@@ -478,7 +478,7 @@ Phase 2: 当前帧 HZB (from Phase1 depth) → 补充 Cull Phase1 存疑的 mesh
 | 固定常量环境色 | ✅ | — | — | — | — | — | P0 | Constant Ambient |
 | 固定渐变环境色 | — | ✅ | — | — | — | — | P0 | Simple Ambient |
 | FakeAtmosphere | — | — | ✅ | — | — | — | P0 | |
-| IBL (CubeMap) | — | — | — | ✅ | ✅ | ✅ | P1 | Irradiance + Prefiltered |
+| IBL (CubeMap) | — | — | — | ✅ | ✅ | ✅ | P1 | Irradiance + Prefiltered + BRDF LUT 双模式（纹理法/函数近似法 §7.5.1） |
 | Reflection Probes | ❌ | ❌ | ❌ | ✅ 手动放置 | ✅ | ✅ | P2 | 局部 CubeMap 采集 |
 | **SSR** (Screen-Space Reflection) | ❌ | ❌ | ❌ | ✅ Hi-Z Trace | ✅ | ✅ 高精度 | P2 | 利用 HZB 加速 |
 | Light Probes / 间接漫反射 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | P3 | Irradiance Volume / SH Probe |
@@ -2150,7 +2150,8 @@ struct MI_Standard {
     uint  flags;                // 4B, bit0: alpha_test, bit1: double_sided
                                 //     bit2: has_vertex_color (自动混合)
 
-    // Texture Array 索引（引用 Texture2DArray 中的层 — §6.4.4）
+    // Texture Array 索引（仅 TEXTURE_ARRAY 模式使用 — §6.4.4）
+    // 传统纹理模式下这些字段不使用（纹理直接绑定在 binding 1-6 的 sampler2D 上）
     uint  tex_albedo;           // 4B, Albedo 纹理在 AlbedoArray 中的层索引
     uint  tex_normal;           // 4B, Normal 纹理在 NormalArray 中的层索引
     uint  tex_metallic_roughness; // 4B, MetallicRoughness 纹理层索引 (Medium+)
@@ -2162,10 +2163,10 @@ struct MI_Standard {
 };
 ```
 
-> **为什么需要 texture_id？**\
-> 所有 MI 的纹理统一打包进 `sampler2DArray`（§6.4.4），Material Shader 不再使用独立纹理绑定，\
-> 而是通过 `texture(AlbedoArray, vec3(uv, float(mi.tex_albedo)))` 按 ID 索引纹理层。\
-> 这使得单个 DrawCall 可渲染使用不同纹理的多个实例，是 GPU-Driven 渲染的关键。
+> **纹理双模式**：MI_Standard 结构体布局在两种纹理模式下**完全一致**（56B），\
+> 传统纹理模式下 `tex_*` 字段闲置但不影响内存对齐。\
+> 编译期 `#define TEXTURE_ARRAY 0/1` 决定 Surface Function 是从 `sampler2D` 还是 `sampler2DArray` 采样。\
+> 详见 §6.4.4。
 
 #### Standard Surface Function（纯业务逻辑 — 无 main()）
 
@@ -2185,21 +2186,41 @@ struct MI_Standard {
 #include "common/material_instance.glsl"
 #include "common/normal_mapping.glsl"
 
-// ===== 纹理采样（从 Texture2DArray 按 MI 中的 texture_id 索引 — §6.4.4）=====
-// mi 由 GetMI() 获取，包含各纹理在 Array 中的层索引
+// ===== 纹理采样（支持传统纹理和纹理阵列双模式 — §6.4.4）=====
+// 编译期 #define TEXTURE_ARRAY 0/1 切换采样方式
+
+#if TEXTURE_ARRAY
+// 纹理阵列模式：从 sampler2DArray 按 MI 中的 texture_id 索引
 vec4  SampleAlbedo(vec2 uv, MI_Standard mi)            { return texture(AlbedoArray, vec3(uv, float(mi.tex_albedo))); }
+#else
+// 传统纹理模式：直接从 sampler2D 采样
+vec4  SampleAlbedo(vec2 uv, MI_Standard mi)            { return texture(TextureAlbedo, uv); }
+#endif
 
 #if QUALITY_TIER >= 1  // Low+: Normal Map
+  #if TEXTURE_ARRAY
 vec3  SampleNormal(vec2 uv, MI_Standard mi)            { return texture(NormalArray, vec3(uv, float(mi.tex_normal))).xyz * 2.0 - 1.0; }
+  #else
+vec3  SampleNormal(vec2 uv, MI_Standard mi)            { return texture(TextureNormal, uv).xyz * 2.0 - 1.0; }
+  #endif
 #endif
 
 #if QUALITY_TIER >= 2  // Medium+
+  #if TEXTURE_ARRAY
 vec2  SampleMetallicRoughness(vec2 uv, MI_Standard mi) { return texture(MetallicRoughnessArray, vec3(uv, float(mi.tex_metallic_roughness))).bg; }
+  #else
+vec2  SampleMetallicRoughness(vec2 uv, MI_Standard mi) { return texture(TextureMetallicRoughness, uv).bg; }
+  #endif
 #endif
 
 #if QUALITY_TIER >= 3  // High+
+  #if TEXTURE_ARRAY
 float SampleAO(vec2 uv, MI_Standard mi)               { return texture(AOArray, vec3(uv, float(mi.tex_ao))).r; }
 vec3  SampleEmissive(vec2 uv, MI_Standard mi)          { return texture(EmissiveArray, vec3(uv, float(mi.tex_emissive))).rgb; }
+  #else
+float SampleAO(vec2 uv, MI_Standard mi)               { return texture(TextureAO, uv).r; }
+vec3  SampleEmissive(vec2 uv, MI_Standard mi)          { return texture(TextureEmissive, uv).rgb; }
+  #endif
 #endif
 
 // ===== 完整表面求值 — 供 Forward / VBuffer Resolve 等色彩 Pass 使用 =====
@@ -2918,15 +2939,15 @@ Set 2 — PerMaterial（每材质切换时绑定）
   binding 0: MaterialInstance SSBO (MI_Standard[], 全场景 MI 数据池 —— 由 MaterialInstanceAssignmentBuffer 管理)
                                   ★ 通过 Instance-Rate VBO (R16UI) 传入 MaterialInstanceID，
                                     FS 中 GetMI() 以 MaterialInstanceID 索引此 SSBO
-  binding 1-6: 纹理数组池        (sampler2DArray — MI 中 texture_id 索引，§6.4.4)
-    ── Standard Surface Texture2DArray 池 ──
-      binding 1: AlbedoArray              (sampler2DArray, Low+)
-      binding 2: NormalArray              (sampler2DArray, Low+)
-      binding 3: MetallicRoughnessArray   (sampler2DArray, Medium+)
-      binding 4: AOArray                  (sampler2DArray, High+)
-      binding 5: EmissiveArray            (sampler2DArray, High+)
-      binding 6: DetailNormalArray        (sampler2DArray, Ultra, 预留)
-    ── Special Surface 扩展纹理数组池 ──
+  binding 1-6: 纹理槽            (支持传统纹理 sampler2D 和纹理阵列 sampler2DArray 双模式 — §6.4.4)
+    ── Standard Surface 纹理槽（编译期 #define TEXTURE_MODE 选择模式）──
+      binding 1: Albedo               (sampler2D 或 sampler2DArray, Low+)
+      binding 2: Normal               (sampler2D 或 sampler2DArray, Low+)
+      binding 3: MetallicRoughness    (sampler2D 或 sampler2DArray, Medium+)
+      binding 4: AO                   (sampler2D 或 sampler2DArray, High+)
+      binding 5: Emissive             (sampler2D 或 sampler2DArray, High+)
+      binding 6: DetailNormal         (sampler2D 或 sampler2DArray, Ultra, 预留)
+    ── Special Surface 扩展纹理槽 ──
       binding 7: TextureExtra0   (Skin: SubsurfaceColor / Hair: Direction)
       binding 8: TextureExtra1   (Skin: Thickness / Hair: Shift)
       binding 9: TextureExtra2   (ClearCoat: CoatNormal)
@@ -2950,7 +2971,7 @@ Set 3 — Environment（环境/全局光照资源 + 管线 RT）
   binding 3: SSAO_RT             (sampler2D, R8 — SSAO/SSDO Pass 输出)
   binding 4: IBL_Irradiance      (samplerCube)
   binding 5: IBL_Prefiltered     (samplerCube)
-  binding 6: IBL_BRDF_LUT        (sampler2D)
+  binding 6: IBL_BRDF_LUT        (sampler2D — 仅 BRDF_LUT_TEXTURE 模式绑定；函数近似模式下此 binding 闲置)
   binding 7: SSS_LUT             (sampler2D, Skin 预留)
   binding 8: DebugLightingConfig  (UBO — 仅 Gizmo3D/Debug 材质绑定，见 2.5 节)
   binding 9: HZB_Pyramid          (sampler2D, R32F mipmap — SSR Hi-Z Trace 读取) ★
@@ -3142,36 +3163,71 @@ uint GetMaterialInstanceID()   { return inMaterialInstanceID; }
 | **Indirect Draw 兼容** | ★★★★★ 天然兼容 | ★★★☆☆ 需确保 VAB 连续性 |
 | **条件** | `maxStorageBufferRange ≥ 128MB` | 所有 Vulkan 设备支持 |
 
-#### 6.4.4 Texture2DArray 纹理池
+#### 6.4.4 纹理双模式：传统纹理 vs Texture2DArray
 
-所有 MaterialInstance 用到的纹理被打包进 `sampler2DArray`，MI 数据结构中存储 `texture_id` 索引：
+纹理绑定支持**两种模式**，通过编译期 `#define TEXTURE_ARRAY 0/1` 切换。
+两种模式共用相同的 binding 编号（Set 2 binding 1-6），只是 sampler 声明类型不同。
+
+##### 模式 A：传统纹理（sampler2D）
+
+每个 MaterialInstance 绑定自己的独立纹理，切换材质时通过 `vkCmdBindDescriptorSets` 更换 Set 2。
 
 ```glsl
-// MI 数据结构中的纹理索引字段
-struct MI_Standard {
-    ...
-    uint tex_albedo;            // Texture2DArray 中的层索引
-    uint tex_normal;            // Texture2DArray 中的层索引
-    uint tex_metallic_roughness;// Texture2DArray 中的层索引 (Medium+)
-    uint tex_ao;                // Texture2DArray 中的层索引 (High+)
-    uint tex_emissive;          // Texture2DArray 中的层索引 (High+)
-    ...
-};
+// #define TEXTURE_ARRAY 0
+layout(set = 2, binding = 1) uniform sampler2D TextureAlbedo;
+layout(set = 2, binding = 2) uniform sampler2D TextureNormal;
+layout(set = 2, binding = 3) uniform sampler2D TextureMetallicRoughness;
+layout(set = 2, binding = 4) uniform sampler2D TextureAO;
+layout(set = 2, binding = 5) uniform sampler2D TextureEmissive;
 
-// Fragment Shader 中按 texture_id 采样
-vec4 albedo = texture(AlbedoArray, vec3(uv, float(mi.tex_albedo)));
-vec3 normal = texture(NormalArray, vec3(uv, float(mi.tex_normal))).xyz * 2.0 - 1.0;
+// 采样：直接使用 uv
+vec4 albedo = texture(TextureAlbedo, uv);
 ```
 
-**优势**：
-- 同一个 DrawCall 可渲染使用**不同纹理**的多个实例，无需切换 Descriptor Set
-- 减少 `vkCmdBindDescriptorSets` 调用次数，有利于 GPU-Driven 批量渲染
-- 与 Indirect Draw / Meshlet 管线天然兼容
+**适用场景**：
+- 简单材质 / Debug / 编辑器预览
+- 单个物体使用独特纹理、无需批量合并的情况
+- 不支持 Texture2DArray 的极低端设备（理论上）
+- 快速原型开发、单独测试材质效果
 
-**注意事项**：
-- 纹理数组中所有层的**分辨率必须一致**（Vulkan 要求），通常通过 Virtual Texture 或分辨率分组解决
-- `texture_id` 使用 `uint` / `uint16` 存储，理论支持 65535 层
-- 当前 PBRColor3D 材质已完整实现此模式（`sampler2DArray` + `mi.texture_id`）
+##### 模式 B：纹理阵列（sampler2DArray）
+
+所有 MI 的纹理打包进 `sampler2DArray`，MI 数据中存储 `texture_id` 层索引。
+
+```glsl
+// #define TEXTURE_ARRAY 1
+layout(set = 2, binding = 1) uniform sampler2DArray AlbedoArray;
+layout(set = 2, binding = 2) uniform sampler2DArray NormalArray;
+layout(set = 2, binding = 3) uniform sampler2DArray MetallicRoughnessArray;
+layout(set = 2, binding = 4) uniform sampler2DArray AOArray;
+layout(set = 2, binding = 5) uniform sampler2DArray EmissiveArray;
+
+// 采样：uv + MI 中的层索引
+MI_Standard mi = GetMI();
+vec4 albedo = texture(AlbedoArray, vec3(uv, float(mi.tex_albedo)));
+```
+
+**适用场景**：
+- GPU-Driven 批量渲染（单个 DrawCall 渲染多种纹理的实例）
+- 配合 Indirect Draw / Meshlet 管线
+- 大量相似物体（草地、石块、建筑组件等）
+
+##### 双模式对比
+
+| 维度 | 传统纹理 (sampler2D) | 纹理阵列 (sampler2DArray) |
+|------|---------------------|--------------------------|
+| **Descriptor 绑定** | 每个 MI 各自的 DescriptorSet | 全场景共享一个 DescriptorSet |
+| **纹理分辨率** | 每张纹理可独立分辨率 | 同一 Array 内所有层分辨率必须一致 |
+| **DrawCall 合并** | 不同纹理 = 不同 DrawCall | 不同纹理可合并为同一 DrawCall |
+| **MI 结构** | `tex_*` 字段闲置 | `tex_*` 字段存储层索引 |
+| **内存管理** | 各纹理独立分配 | 需预先打包进 Array + 分辨率分组 |
+| **适合规模** | 少量独特材质 | 大量批量渲染的材质 |
+| **编译期控制** | `#define TEXTURE_ARRAY 0` | `#define TEXTURE_ARRAY 1` |
+
+> **运行时选择策略**：引擎可根据场景特征自动选择模式。\
+> 大量同类物体（草/树/石块/建筑）→ 纹理阵列模式，减少 DrawCall。\
+> 少量独特物体（主角/NPC/特殊道具）→ 传统纹理模式，保持灵活性。\
+> 两种模式可在同一帧内混用（不同 DrawCall 使用不同模式的 Pipeline 变体）。
 
 #### 6.4.5 在新材质体系中的角色
 
@@ -3179,7 +3235,7 @@ vec3 normal = texture(NormalArray, vec3(uv, float(mi.tex_normal))).xyz * 2.0 - 1
 |-----------|---------------------------|
 | §6.3 Set 1 binding 0 (LocalToWorld SSBO) | TransformAssignmentBuffer 填充此 SSBO |
 | §6.3 Set 2 binding 0 (MI SSBO) | MaterialInstanceAssignmentBuffer 填充此 SSBO |
-| §6.3 Set 2 binding 1-6 (纹理槽) | 改用 Texture2DArray，MI 中 texture_id 索引 |
+| §6.3 Set 2 binding 1-6 (纹理槽) | 传统纹理 (sampler2D) 或纹理阵列 (sampler2DArray)，编译期 `TEXTURE_ARRAY` 切换 |
 | §12 per-instance 列中的 TransformID | SSBO 路径: ID SSBO + `gl_InstanceIndex`; VBO 路径: R16UI VAB |
 | §12 per-instance 列中的 MaterialInstanceID | SSBO 路径: ID SSBO + `gl_InstanceIndex`; VBO 路径: R16UI VAB |
 | Surface Function `GetMI()` | 通过 MaterialInstanceID 索引 MI SSBO |
@@ -3554,6 +3610,72 @@ vec3 EvalLighting(SurfaceOutput surf, vec3 worldPos, vec3 V)
 ```
 
 > **关键优势**：光照代码中心化——修改 PBR 算法或新增光源只改 `lighting.glsl`，所有 SurfaceType 自动受益。\
+
+#### 7.5.1 BRDF LUT 双模式：纹理法 vs 函数近似法
+
+IBL 环境光计算需要 **Split-Sum Approximation** 的第二项——BRDF 预积分项 `EnvBRDF(F0, roughness, NdotV)`。
+引擎同时支持两种获取方式，通过编译期 `#define BRDF_LUT_TEXTURE 0/1` 切换：
+
+| | 纹理法 (`BRDF_LUT_TEXTURE 1`) | 函数近似法 (`BRDF_LUT_TEXTURE 0`) |
+|--|------|------|
+| 原理 | 离线预计算 BRDF 积分写入 2D LUT 纹理 (RG16F, 512×512)，运行时查表 | 用解析多项式直接在 FS 中计算，无需纹理 |
+| binding | Set 3 binding 6 `IBL_BRDF_LUT` (sampler2D) | 不需要纹理绑定，binding 6 闲置 |
+| 精度 | 高——精确数值积分 | 极好——Karis 2014 拟合误差 < 0.5% |
+| 性能 | 1 次纹理采样（缓存友好，纹理很小） | 几条 ALU 指令，无纹理依赖 |
+| 适用场景 | 默认方案；需要自定义 BRDF 模型时可替换 LUT | 移动端减少纹理 binding / 极简管线 / 不方便预计算 LUT 时 |
+| 资源开销 | 需预计算并上传 512×512 RG16F 纹理 (~512KB) | 零额外资源 |
+
+`ambient.glsl` 中的实现：
+
+```glsl
+// common/ambient.glsl — BRDF 预积分项获取（双模式）
+
+#if BRDF_LUT_TEXTURE
+// ---- 纹理法：从预计算 LUT 中查表 ----
+vec2 EnvBRDF(float NdotV, float roughness)
+{
+    return texture(IBL_BRDF_LUT, vec2(NdotV, roughness)).rg;
+}
+#else
+// ---- 函数近似法（Karis 2014 / Lazarov 2013 拟合）----
+// 参考: Brian Karis, "Real Shading in Unreal Engine 4", SIGGRAPH 2013 Course Notes
+//       Dimitar Lazarov, "Getting More Physical in Call of Duty: Black Ops II"
+vec2 EnvBRDF(float NdotV, float roughness)
+{
+    const vec4 c0 = vec4(-1.0, -0.0275, -0.572, 0.022);
+    const vec4 c1 = vec4( 1.0,  0.0425,  1.04, -0.04);
+    vec4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28 * NdotV)) * r.x + r.y;
+    return vec2(-1.04, 1.04) * a004 + r.zw;
+}
+#endif
+
+// ---- IBL 环境光（使用 EnvBRDF 双模式 — §7.5.1）----
+vec3 GetAmbientIBL(vec3 N, vec3 V, vec3 baseColor, vec3 F0,
+                   float metallic, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+
+    // Diffuse: Irradiance CubeMap
+    vec3 irradiance = texture(IBL_Irradiance, N).rgb;
+    vec3 kD = (1.0 - F0) * (1.0 - metallic);
+    vec3 diffuse = kD * baseColor * irradiance;
+
+    // Specular: Prefiltered CubeMap + EnvBRDF
+    vec3 R = reflect(-V, N);
+    float mipLevel = roughness * float(textureQueryLevels(IBL_Prefiltered) - 1);
+    vec3 prefilteredColor = textureLod(IBL_Prefiltered, R, mipLevel).rgb;
+    vec2 envBRDF = EnvBRDF(NdotV, roughness);
+    vec3 specular = prefilteredColor * (F0 * envBRDF.x + envBRDF.y);
+
+    return diffuse + specular;
+}
+```
+
+> **选择指南**：
+> - **PC / 主机 / Apple 高端**：默认使用纹理法（`BRDF_LUT_TEXTURE 1`），LUT 纹理在引擎启动时一次性预计算
+> - **移动端 / 极简管线**：可选函数近似法（`BRDF_LUT_TEXTURE 0`），省去一个纹理 binding 和预计算步骤
+> - 两种模式输出结果视觉差异极小，可随 `QualityTier` 或 `PlatformBackend` 自动选择\
 > 旧方案光照分散在每个材质模板中，改一处要改 N 份。
 
 ### 7.6 自动变体生成规则
@@ -3610,7 +3732,7 @@ ShaderLibrary/
     lighting_blinnphong.glsl       // 底层 BlinnPhong 实现（被 lighting.glsl 引用）
     lighting_pbr.glsl              // 底层 Cook-Torrance BRDF 实现
     lighting_clustered.glsl        // Clustered Shading 灯光循环 (High+)
-    ambient.glsl                   // 环境光计算 (Simple / FakeAtm / IBL)
+    ambient.glsl                   // 环境光计算 (Simple / FakeAtm / IBL) + BRDF LUT 双模式 (纹理法/函数近似法 §7.5.1)
     shadow.glsl                    // 阴影采样 + PCF/PCSS
     shadow_cached.glsl             // Toroidal Cached SM 采样 §3.6.3
     shadow_contact.glsl            // Contact Shadow 屏幕空间 ray-march §3.6.5
@@ -5027,38 +5149,58 @@ Sprint 4 (Reversed-Z) 和 Sprint 5 (SSBO) 可与 Sprint 3 并行开发。
 | Cloth | 无 | Sheen + Charlie Model，Material LOD 降级至 Standard |
 | ClearCoat | 无 | 双层 BRDF，Material LOD 降级至单层 PBR |
 
-## 附录 B：Texture2DArray 纹理池方案（已实现，全面采用）
+## 附录 B：纹理双模式方案（传统纹理 / Texture2DArray 纹理阵列）
 
-当前引擎已在 `PBRColor3D` 中**完整实现** Texture2DArray + MI texture_id 模式（§6.4.4）。
-在新材质体系中，**所有 3D Lit Surface** 统一采用此方案：
+引擎同时支持**传统纹理（Mode A）**和 **Texture2DArray 纹理阵列（Mode B）**两种纹理绑定模式，
+通过编译期 `#define TEXTURE_ARRAY 0/1` 切换。两种模式可在同一帧内并存（不同 DrawCall 使用不同 Pipeline 变体）。
 
-### B.1 工作原理
+### B.1 两种模式的工作原理
+
+#### Mode A：传统纹理（`TEXTURE_ARRAY 0`）
+
+1. **CPU 侧**：每个 MaterialInstance 持有独立纹理对象（`VkImageView` + `VkSampler`）
+2. 每个 MI 拥有独立的 DescriptorSet，Set 2 binding 1-6 绑定各自的 `sampler2D`
+3. 不同材质需切换 DescriptorSet → 适合材质种类少、无 GPU-Driven 批量合并的场景
+4. **GPU 侧**：FS 直接 `texture(TextureAlbedo, uv)` 采样，无需 MI 中的 `tex_*` 索引字段
+
+#### Mode B：纹理阵列（`TEXTURE_ARRAY 1`）
 
 1. **CPU 侧**：MaterialInstanceAssignmentBuffer 收集当前帧所有可见 MI，对 MI 去重后写入 SSBO
 2. 每个 MI 的纹理提交至 Texture2DArray（按分辨率分组），获得层索引 `texture_id`
 3. `texture_id` 写入 MI 数据结构的 `tex_albedo`, `tex_normal` 等字段
-4. **GPU 侧**：FS 通过 `GetMI()` 读取 MI → 使用 `mi.tex_albedo` 等字段从纹理数组采样
+4. 多个 MI 共享同一组 DescriptorSet（同一纹理阵列），支持大量材质合批绘制
+5. **GPU 侧**：FS 通过 `GetMI()` 读取 MI → 使用 `mi.tex_albedo` 等字段从 `sampler2DArray` 采样
 
-### B.2 各 SurfaceType 纹理池分配
+### B.2 各 SurfaceType 推荐模式
 
-| SurfaceType | 纹理池 | 说明 |
-|-------------|--------|------|
-| Standard (Texture/Color/VertexColor) | `AlbedoArray`, `NormalArray`, `MetallicRoughnessArray`, `AOArray`, `EmissiveArray` | MI 中 `tex_albedo`~`tex_emissive` 索引 |
-| Skin / Hair / Cloth / ClearCoat | 上述 5 个 + `ExtraArray0~2` | `SurfaceOutputExt` 的额外纹理通过扩展槽索引 |
-| Terrain | 独立 `TerrainAlbedoArray` / `TerrainNormalArray` / `TerrainMRArray` | TerrainLayerSSBO 中的 `tex_*` 字段索引（§5.5） |
-| Unlit 2D/3D | 不使用纹理池 | 简单材质直接绑定独立纹理 |
+| SurfaceType | 推荐模式 | 说明 |
+|-------------|----------|------|
+| Standard (Texture/Color/VertexColor) | **Mode B** (纹理阵列) | 数量最多，合批收益最大 |
+| Skin / Hair / Cloth / ClearCoat | **Mode B** (纹理阵列) | 上述 5 槽 + `ExtraArray0~2` 扩展槽；`SurfaceOutputExt` 额外纹理通过扩展槽索引 |
+| Terrain | **Mode B** (纹理阵列, 专用) | 独立 `TerrainAlbedoArray` / `TerrainNormalArray` / `TerrainMRArray`，TerrainLayerSSBO 中 `tex_*` 索引（§5.5） |
+| Unlit 2D/3D | **Mode A** (传统纹理) | 简单材质，数量少，无需纹理阵列开销 |
+| Billboard / Sky / Gizmo3D | **Mode A** (传统纹理) | 特殊材质，各自独立绑定即可 |
+| 任意 SurfaceType (调试/原型) | **Mode A** (传统纹理) | 开发期间快速迭代，跳过纹理阵列打包流程 |
 
-### B.3 分辨率分组策略
+> **注意**：推荐模式仅为默认策略。任何 SurfaceType 均可编译两套 Pipeline 变体（TEXTURE_ARRAY=0 和 1），
+> 在运行时按场景需要选择。例如 Standard 材质在编辑器预览时可使用 Mode A 简化流程。
+
+### B.3 分辨率分组策略（仅 Mode B）
 
 Vulkan 要求 Texture2DArray 所有层分辨率一致。解决方案：
 - 按分辨率分组创建多个 Array（如 512², 1024², 2048²）
 - MI 中 `texture_id` 的高位编码 Array 组号，低位编码层索引
 - 或使用 `VK_EXT_descriptor_indexing` 的 bindless 纹理数组（PC/High-end 设备）
 
+> Mode A 不受此限制——每个 MI 的纹理分辨率可以各不相同。
+
 ### B.4 与 VBuffer 管线的兼容
 
-VBuffer Resolve 阶段从 VBuffer 解包 MaterialInstanceID → 索引 MI SSBO → 读取 texture_id → 从纹理数组采样。
-整个流程与 Forward 路径一致，无需额外适配。
+两种模式均可与 VBuffer 管线配合使用：
+- **Mode B**：VBuffer Resolve 阶段从 VBuffer 解包 MaterialInstanceID → 索引 MI SSBO → 读取 `tex_*` → 从纹理阵列采样
+- **Mode A**：VBuffer Resolve 阶段需按 MaterialInstanceID 查找对应 DescriptorSet，逐 MI 发起采样（效率低于 Mode B）
+
+因此 VBuffer 管线推荐优先使用 Mode B，Mode A 仅在 Forward 管线中效率最优。
 
 ## 附录 C：文件数量对比
 
