@@ -1,4 +1,4 @@
-/// ShaderComposition.h — 合成驱动型着色器体系
+﻿/// ShaderComposition.h — 合成驱动型着色器体系
 ///
 /// 设计原理：
 ///   1. 开发者只写核心算法片段（VertexShader、FragmentShader）
@@ -97,7 +97,7 @@ enum class ShaderOutputMode : uint8 {
     ENUM_CLASS_RANGE(SingleRTAlphaBlend, Custom)
 };
 
-// 渲染流程/管线/覆盖模式等“渲染器 + ShaderGen 共用定义”已迁移到
+// 渲染流程/管线/覆盖模式等"渲染器 + ShaderGen 共用定义"已迁移到
 // `hgl/common/RenderFlowDef.h`，此处仅保留 ShaderComposition 专属定义。
 
 struct ShaderComposeDiagnostics {
@@ -214,52 +214,52 @@ bool BuildComposedMaterialDefFromLogic(
  * 框架根据 ComposedMaterialDef 的信息（顶点输入、描述符、坐标系）
  * 自动生成如下函数，开发者无需关心实现细节，直接调用即可：
  *
- * ┌─────────────────────────────────────────────────────────────┐
+ * ┌──────────────────────────────────────────────────────────────┐
  * │ 坐标变换相关                                                  │
- * ├─────────────────────────────────────────────────────────────┤
+ * ├──────────────────────────────────────────────────────────────┤
  * │ mat4 GetLocalToWorld()                                        │
  * │   来自于 descriptor LocalToWorld (UBO/SSBO)                  │
  * │   自动选择：ByIndex / ByAssign / Fixed                       │
- * │                                                               │
+ * │                                                              │
  * │ mat3 GetNormalMatrix()                                        │
  * │   = transpose(inverse(mat3(ViewMatrix * LocalToWorld)))      │
  * │   框架自动从 LocalToWorld 推导                               │
- * │                                                               │
+ * │                                                              │
  * │ vec4 GetPosition3D()                                          │
  * │   VS: 返回 LocalToWorld * vec4(Position, 1.0)               │
  * │   GS/FS: 返回 插值的 WorldPosition                          │
- * │                                                               │
+ * │                                                              │
  * │ vec4 GetClipPosition()                                        │
  * │   = camera.vp * GetPosition3D()                              │
- * │   框架根据坐标系自动完成                                      │
- * └─────────────────────────────────────────────────────────────┘
+ * │   框架根据坐标系自动完成                                     │
+ * └──────────────────────────────────────────────────────────────┘
  *
- * ┌─────────────────────────────────────────────────────────────┐
+ * ┌──────────────────────────────────────────────────────────────┐
  * │ 法线相关                                                      │
- * ├─────────────────────────────────────────────────────────────┤
+ * ├──────────────────────────────────────────────────────────────┤
  * │ vec3 GetNormal(vec3 local_normal)                            │
  * │ vec3 GetNormal()  [VS 版本，直接用 Normal 输入]             │
  * │   = normalize(GetNormalMatrix() * local_normal)              │
  * │   框架自动选择 VS/GS/FS 版本                                │
- * │                                                               │
+ * │                                                              │
  * │ vec3 GetWorldNormal()  [GS/FS，从 VS 输入]                  │
  * │   = normalize(所插值的 WorldNormal)                         │
- * └─────────────────────────────────────────────────────────────┘
+ * └──────────────────────────────────────────────────────────────┘
  *
- * ┌─────────────────────────────────────────────────────────────┐
+ * ┌──────────────────────────────────────────────────────────────┐
  * │ 材质实例相关                                                  │
- * ├─────────────────────────────────────────────────────────────┤
+ * ├──────────────────────────────────────────────────────────────┤
  * │ MaterialInstance GetMaterialInstance()                        │
  * │ MaterialInstance GetMI()                                      │
  * │   VS: 从 MaterialInstanceID 读取（SSBO 或直接索引）         │
  * │   GS: 从 Input[0].MaterialInstanceID 读取                    │
  * │   FS: 从 Input.MaterialInstanceID 读取（来自 VS 插值）      │
- * │   框架自动选择正确的版本                                      │
- * │                                                               │
+ * │   框架自动选择正确的版本                                     │
+ * │                                                              │
  * │ void HandoverMaterialInstanceID()  [仅用于有 GS 时]         │
  * │   = 在 GS 中转发 MaterialInstanceID                          │
  * │   框架根据 shader stage 决定是否生成                         │
- * └─────────────────────────────────────────────────────────────┘
+ * └──────────────────────────────────────────────────────────────┘
  *
  * 开发者编写业务逻辑时，直接调用这些函数即可：
  *
@@ -286,153 +286,11 @@ struct HelperFunctionLibrary {
 // 预定义配置（编译期常量）
 // ═════════════════════════════════════════════════════════════════════════════
 
-/**
- * GBufferConfigurations — GBuffer 配置预设表
- *
- * 所有画质档位的配置都在此预定义。
- * ShaderGen 遍历此表生成所有 GBuffer 变体的 Shader。
- */
-namespace GBufferConfigurations {
-    // ─── 低/中档配置 ───
-
-    inline const GBufferConfiguration Low = {
-        GBufferQualityPreset::Low,
-        GBufferFormatLevel::MobileLite,
-        GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth,
-        false,  // no motion vector
-        { false, NormalEncodingMode::Octahedral, false, NormalEncodingMode::None, false, NormalEncodingMode::None },
-        ComputeGBufferVariantHash(
-            GBufferQualityPreset::Low,
-            GBufferFormatLevel::MobileLite,
-            GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth,
-            false,
-            { false, NormalEncodingMode::Octahedral, false, NormalEncodingMode::None, false, NormalEncodingMode::None })
-    };
-
-    inline const GBufferConfiguration LowPlus = {
-        GBufferQualityPreset::LowPlus,
-        GBufferFormatLevel::MobileExtended,
-        GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Emissive,
-        false,
-        { true, NormalEncodingMode::Octahedral, false, NormalEncodingMode::None, false, NormalEncodingMode::None },
-        ComputeGBufferVariantHash(
-            GBufferQualityPreset::LowPlus,
-            GBufferFormatLevel::MobileExtended,
-            GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Emissive,
-            false,
-            { true, NormalEncodingMode::Octahedral, false, NormalEncodingMode::None, false, NormalEncodingMode::None })
-    };
-
-    inline const GBufferConfiguration Medium = {
-        GBufferQualityPreset::Medium,
-        GBufferFormatLevel::MobileExtended,
-        GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth |
-        GBufferChannel::Emissive | GBufferChannel::MotionVector,
-        true,
-        { true, NormalEncodingMode::Octahedral, false, NormalEncodingMode::None, true, NormalEncodingMode::Octahedral },
-        ComputeGBufferVariantHash(
-            GBufferQualityPreset::Medium,
-            GBufferFormatLevel::MobileExtended,
-            GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth |
-                GBufferChannel::Emissive | GBufferChannel::MotionVector,
-            true,
-            { true, NormalEncodingMode::Octahedral, false, NormalEncodingMode::None, true, NormalEncodingMode::Octahedral })
-    };
-
-    // ─── 中高/高档配置 ───
-
-    inline const GBufferConfiguration MediumPlus = {
-        GBufferQualityPreset::MediumPlus,
-        GBufferFormatLevel::DesktopStandard,
-        GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Specular,
-        false,
-        { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None },
-        ComputeGBufferVariantHash(
-            GBufferQualityPreset::MediumPlus,
-            GBufferFormatLevel::DesktopStandard,
-            GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Specular,
-            false,
-            { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None })
-    };
-
-    inline const GBufferConfiguration High = {
-        GBufferQualityPreset::High,
-        GBufferFormatLevel::DesktopStandard,
-        GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth |
-        GBufferChannel::Specular | GBufferChannel::Roughness,
-        false,
-        { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None },
-        ComputeGBufferVariantHash(
-            GBufferQualityPreset::High,
-            GBufferFormatLevel::DesktopStandard,
-            GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth |
-                GBufferChannel::Specular | GBufferChannel::Roughness,
-            false,
-            { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None })
-    };
-
-    inline const GBufferConfiguration HighPlus = {
-        GBufferQualityPreset::HighPlus,
-        GBufferFormatLevel::DesktopFull,
-        GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Emissive |
-        GBufferChannel::MotionVector | GBufferChannel::Specular | GBufferChannel::Roughness | GBufferChannel::Metallic,
-        true,
-        { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None },
-        ComputeGBufferVariantHash(
-            GBufferQualityPreset::HighPlus,
-            GBufferFormatLevel::DesktopFull,
-            GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Emissive |
-                GBufferChannel::MotionVector | GBufferChannel::Specular | GBufferChannel::Roughness | GBufferChannel::Metallic,
-            true,
-            { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None })
-    };
-
-    inline const GBufferConfiguration Ultra = {
-        GBufferQualityPreset::Ultra,
-        GBufferFormatLevel::DesktopFull,
-        GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Emissive |
-        GBufferChannel::MotionVector | GBufferChannel::Specular | GBufferChannel::Roughness |
-        GBufferChannel::Metallic | GBufferChannel::AO,
-        true,
-        { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None },
-        ComputeGBufferVariantHash(
-            GBufferQualityPreset::Ultra,
-            GBufferFormatLevel::DesktopFull,
-            GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth | GBufferChannel::Emissive |
-                GBufferChannel::MotionVector | GBufferChannel::Specular | GBufferChannel::Roughness |
-                GBufferChannel::Metallic | GBufferChannel::AO,
-            true,
-            { false, NormalEncodingMode::None, false, NormalEncodingMode::None, false, NormalEncodingMode::None })
-    };
-
-    // ─── 配置索引表 ───
-    inline const GBufferConfiguration* const AllConfigs[] = {
-        &Low,
-        &LowPlus,
-        &Medium,
-        &MediumPlus,
-        &High,
-        &HighPlus,
-        &Ultra,
-    };
-
-    inline constexpr uint32_t ConfigCount = sizeof(AllConfigs) / sizeof(AllConfigs[0]);
-
-    // ─── 查找辅助函数 ───
-    inline const GBufferConfiguration* GetConfig(GBufferQualityPreset preset) {
-        for (uint32_t i = 0; i < ConfigCount; ++i) {
-            if (AllConfigs[i]->preset == preset)
-                return AllConfigs[i];
-        }
-        return nullptr;
-    }
-}
-
+// [已删除 GBufferConfigurations — GBuffer 系统已移除，使用 Forward/VBuffer 路径。]
 /**
  * RenderFlows — 渲染流程预设表
  *
- * 所有渲染流程都在此预定义。
- * ShaderGen 遍历此表，结合 GBufferConfigurations，生成完整的 Shader 变体矩阵。
+ * ShaderGen 遍历此表生成完整的 Shader 变体矩阵。
  */
 namespace RenderFlows {
     // ═════════════════════════════════════════════════════════════════════════
@@ -440,9 +298,9 @@ namespace RenderFlows {
     // ═════════════════════════════════════════════════════════════════════════
 
     inline const RenderPassDefinition Forward_Basic_Passes[] = {
-        { RenderStage::Forward_Opaque,      true,  true,  GBufferChannel::None, GBufferChannel::Color, PipelineCoverageMode::Solid, true },
-        { RenderStage::Forward_Masked,      true,  true,  GBufferChannel::None, GBufferChannel::Color, PipelineCoverageMode::Mask,  true },
-        { RenderStage::Forward_Transparent, true,  false, GBufferChannel::None, GBufferChannel::Color, PipelineCoverageMode::Solid, true },
+        { RenderStage::Forward_Opaque,      true,  true,  RenderChannel::None, RenderChannel::Color, PipelineCoverageMode::Solid, true },
+        { RenderStage::Forward_Masked,      true,  true,  RenderChannel::None, RenderChannel::Color, PipelineCoverageMode::Mask,  true },
+        { RenderStage::Forward_Transparent, true,  false, RenderChannel::None, RenderChannel::Color, PipelineCoverageMode::Solid, true },
     };
 
     inline const RenderFlowDefinition Forward_Basic = {
@@ -450,8 +308,8 @@ namespace RenderFlows {
         RenderFlowPreset::Forward_Basic,
         Forward_Basic_Passes, 3,
         false, false,
-        GBufferQualityPreset::Low,
-        GBufferQualityPreset::Ultra,
+        QualityTier::Low,
+        QualityTier::Ultra,
         { 1, 1, false, false },
         // 迁移初期：保留双路径，默认偏向传统输入
         { VertexInputMigrationStage::DualPathValidation, true, true, true, PipelineInputMode::AutoPreferLegacy }
@@ -462,11 +320,11 @@ namespace RenderFlows {
     // ═════════════════════════════════════════════════════════════════════════
 
     inline const RenderPassDefinition Forward_WithEarlyZ_Passes[] = {
-        { RenderStage::EarlyZ_Solid,        true,  true,  GBufferChannel::None,  GBufferChannel::Depth, PipelineCoverageMode::Solid, true  },
-        { RenderStage::EarlyZ_Masked,       true,  true,  GBufferChannel::None,  GBufferChannel::Depth, PipelineCoverageMode::Mask,  false },
-        { RenderStage::Forward_Opaque,      true,  false, GBufferChannel::Depth, GBufferChannel::Color, PipelineCoverageMode::Solid, true  },
-        { RenderStage::Forward_Masked,      true,  false, GBufferChannel::Depth, GBufferChannel::Color, PipelineCoverageMode::Mask,  true  },
-        { RenderStage::Forward_Transparent, true,  false, GBufferChannel::Depth, GBufferChannel::Color, PipelineCoverageMode::Solid, true  },
+        { RenderStage::EarlyZ_Solid,        true,  true,  RenderChannel::None,  RenderChannel::Depth, PipelineCoverageMode::Solid, true  },
+        { RenderStage::EarlyZ_Masked,       true,  true,  RenderChannel::None,  RenderChannel::Depth, PipelineCoverageMode::Mask,  false },
+        { RenderStage::Forward_Opaque,      true,  false, RenderChannel::Depth, RenderChannel::Color, PipelineCoverageMode::Solid, true  },
+        { RenderStage::Forward_Masked,      true,  false, RenderChannel::Depth, RenderChannel::Color, PipelineCoverageMode::Mask,  true  },
+        { RenderStage::Forward_Transparent, true,  false, RenderChannel::Depth, RenderChannel::Color, PipelineCoverageMode::Solid, true  },
     };
 
     inline const RenderFlowDefinition Forward_WithEarlyZ = {
@@ -474,50 +332,28 @@ namespace RenderFlows {
         RenderFlowPreset::Forward_WithEarlyZ,
         Forward_WithEarlyZ_Passes, 5,
         false, false,
-        GBufferQualityPreset::LowPlus,
-        GBufferQualityPreset::Ultra,
+        QualityTier::LowPlus,
+        QualityTier::Ultra,
         { 1, 1, false, false },
         // 迁移中期：默认优先 SSBO，保留回退
         { VertexInputMigrationStage::PreferSSBO, true, true, true, PipelineInputMode::AutoPreferSSBO }
     };
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Deferred_Standard — 标准延迟渲染
+    // [已删除 Deferred_Standard — GBuffer 延迟渲染已移除]
     // ═════════════════════════════════════════════════════════════════════════
-
-    inline const RenderPassDefinition Deferred_Standard_Passes[] = {
-        { RenderStage::GBuffer_Opaque,      true,  true,  GBufferChannel::None,
-          GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth, PipelineCoverageMode::Solid, true },
-        { RenderStage::GBuffer_Masked,      true,  true,  GBufferChannel::None,
-          GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth, PipelineCoverageMode::Mask,  true },
-        { RenderStage::Deferred_Lighting,   true,  false,
-          GBufferChannel::Color | GBufferChannel::Normal | GBufferChannel::Depth, GBufferChannel::Color, PipelineCoverageMode::Solid, true },
-        { RenderStage::Forward_Transparent, true,  false, GBufferChannel::Depth, GBufferChannel::Color, PipelineCoverageMode::Solid, true },
-    };
-
-    inline const RenderFlowDefinition Deferred_Standard = {
-        "Deferred_Standard",
-        RenderFlowPreset::Deferred_Standard,
-        Deferred_Standard_Passes, 4,
-        false, false,
-        GBufferQualityPreset::High,
-        GBufferQualityPreset::Ultra,
-        { 3, 1, false, false },
-        // 延迟主路径通常优先 SSBO，保留验证回退能力
-        { VertexInputMigrationStage::PreferSSBO, true, true, true, PipelineInputMode::AutoPreferSSBO }
-    };
 
     // ═════════════════════════════════════════════════════════════════════════
     // ForwardPlus_DoubleHZB — 双重 HZB 优化的 Forward+
     // ═════════════════════════════════════════════════════════════════════════
 
     inline const RenderPassDefinition ForwardPlus_DoubleHZB_Passes[] = {
-        { RenderStage::EarlyZ_Solid,        true,  true,  GBufferChannel::None,  GBufferChannel::Depth, PipelineCoverageMode::Solid, true  },
-        { RenderStage::HZB_Generation,      true,  false, GBufferChannel::Depth, GBufferChannel::None,  PipelineCoverageMode::Solid, true  },
-        { RenderStage::HZB_Culling,         false, false, GBufferChannel::None,  GBufferChannel::None,  PipelineCoverageMode::Solid, true  },
-        { RenderStage::Forward_Opaque,      true,  false, GBufferChannel::Depth, GBufferChannel::Color, PipelineCoverageMode::Solid, true  },
-        { RenderStage::HZB_Generation,      true,  false, GBufferChannel::Depth, GBufferChannel::None,  PipelineCoverageMode::Solid, true  },
-        { RenderStage::Forward_Transparent, true,  false, GBufferChannel::Depth, GBufferChannel::Color, PipelineCoverageMode::Solid, true  },
+        { RenderStage::EarlyZ_Solid,        true,  true,  RenderChannel::None,  RenderChannel::Depth, PipelineCoverageMode::Solid, true  },
+        { RenderStage::HZB_Generation,      true,  false, RenderChannel::Depth, RenderChannel::None,  PipelineCoverageMode::Solid, true  },
+        { RenderStage::HZB_Culling,         false, false, RenderChannel::None,  RenderChannel::None,  PipelineCoverageMode::Solid, true  },
+        { RenderStage::Forward_Opaque,      true,  false, RenderChannel::Depth, RenderChannel::Color, PipelineCoverageMode::Solid, true  },
+        { RenderStage::HZB_Generation,      true,  false, RenderChannel::Depth, RenderChannel::None,  PipelineCoverageMode::Solid, true  },
+        { RenderStage::Forward_Transparent, true,  false, RenderChannel::Depth, RenderChannel::Color, PipelineCoverageMode::Solid, true  },
     };
 
     inline const RenderFlowDefinition ForwardPlus_DoubleHZB = {
@@ -525,8 +361,8 @@ namespace RenderFlows {
         RenderFlowPreset::ForwardPlus_DoubleHZB,
         ForwardPlus_DoubleHZB_Passes, 6,
         false, true,  // requires_compute_shader = true
-        GBufferQualityPreset::High,
-        GBufferQualityPreset::Ultra,
+        QualityTier::High,
+        QualityTier::Ultra,
         { 1, 1, true, false },
         // 高阶路径：固定 SSBO，避免双路径维护成本
         { VertexInputMigrationStage::SSBOOnly, false, false, true, PipelineInputMode::SSBOVertexInput }
@@ -537,8 +373,8 @@ namespace RenderFlows {
     // ═════════════════════════════════════════════════════════════════════════
 
     inline const RenderPassDefinition Mobile_Forward_Passes[] = {
-        { RenderStage::Forward_Opaque,      true,  true,  GBufferChannel::None, GBufferChannel::Color, PipelineCoverageMode::Solid, true },
-        { RenderStage::Forward_Transparent, true,  false, GBufferChannel::None, GBufferChannel::Color, PipelineCoverageMode::Solid, true },
+        { RenderStage::Forward_Opaque,      true,  true,  RenderChannel::None, RenderChannel::Color, PipelineCoverageMode::Solid, true },
+        { RenderStage::Forward_Transparent, true,  false, RenderChannel::None, RenderChannel::Color, PipelineCoverageMode::Solid, true },
     };
 
     inline const RenderFlowDefinition Mobile_Forward = {
@@ -546,8 +382,8 @@ namespace RenderFlows {
         RenderFlowPreset::Mobile_Forward,
         Mobile_Forward_Passes, 2,
         true, false,  // mobile_optimized = true
-        GBufferQualityPreset::Low,
-        GBufferQualityPreset::Medium,
+        QualityTier::Low,
+        QualityTier::Medium,
         { 1, 1, false, false },
         // 轻量流：默认传统路径，必要时可切到 SSBO
         { VertexInputMigrationStage::DualPathValidation, true, true, true, PipelineInputMode::AutoPreferLegacy }
@@ -557,7 +393,6 @@ namespace RenderFlows {
     inline const RenderFlowDefinition* const AllFlows[] = {
         &Forward_Basic,
         &Forward_WithEarlyZ,
-        &Deferred_Standard,
         &ForwardPlus_DoubleHZB,
         &Mobile_Forward,
     };

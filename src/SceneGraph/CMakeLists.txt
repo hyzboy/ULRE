@@ -61,7 +61,9 @@ SOURCE_GROUP("2.Scene\\Environment" FILES ${SCENE_ENVIRONMENT_FILES})
 
 SET(CAMERA_FILES    ${SG_INCLUDE_PATH}/camera/Camera.h
                     ${SG_INCLUDE_PATH}/camera/RealityCamera.h
-                    camera/Camera.cpp)
+                    ${SG_INCLUDE_PATH}/camera/ReversedZProj.h
+                    camera/Camera.cpp
+                    camera/ReversedZProj.cpp)
 
 SOURCE_GROUP("3.Camera" FILES ${CAMERA_FILES})
 

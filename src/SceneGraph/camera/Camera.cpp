@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/CameraInfo.h>
 #include<hgl/graph/camera/Camera.h>
+#include<hgl/graph/camera/ReversedZProj.h>
 #include<hgl/math/geometry/Frustum.h>
 #include<hgl/graph/camera/ViewportInfo.h>
 
@@ -8,9 +9,18 @@ namespace hgl::graph
     void RefreshCameraInfo(CameraInfo *ci,const ViewportInfo *vi,const Camera *cam)
     {
         if(!ci || !vi || !cam) return;
-        if(cam->znear <= 0.0f || cam->zfar <= cam->znear) return;
+        if(cam->znear <= 0.0f) return;
 
-        ci->projection             =math::PerspectiveMatrix(cam->fovY,vi->GetAspectRatio(),cam->znear,cam->zfar);
+        if(cam->use_reversed_z)
+        {
+            const float fov_radians = cam->fovY * (3.14159265358979323846f / 180.0f);
+            ci->projection = MakeInfiniteReversedZProj(fov_radians, vi->GetAspectRatio(), cam->znear);
+        }
+        else
+        {
+            if(cam->zfar <= cam->znear) return;
+            ci->projection = math::PerspectiveMatrix(cam->fovY, vi->GetAspectRatio(), cam->znear, cam->zfar);
+        }
 
         ci->inverse_projection     =Inverse(ci->projection);
 
