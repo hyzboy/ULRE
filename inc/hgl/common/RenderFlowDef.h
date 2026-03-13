@@ -67,7 +67,7 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(VSFS, AutoByCapability)
     };
 
-    // 渲染通道标记（原 GBufferChannel，实际用途为通用 RT 通道掩码）
+    // 渲染通道标记（通用 RT 通道掩码）
     enum class RenderChannel : uint32
     {
         None = 0,
@@ -81,9 +81,6 @@ namespace hgl::graph::mtl
         Metallic = 1u << 7,
         AO = 1u << 8,
     };
-
-    // 兼容别名（后续全部替换后删除）
-    using GBufferChannel = RenderChannel;
 
     inline RenderChannel operator|(RenderChannel a, RenderChannel b)
     {
@@ -143,19 +140,19 @@ namespace hgl::graph::mtl
     {
         EarlyZ_Solid = 0,
         EarlyZ_Masked,
-        ShadowMap_Directional,
-        ShadowMap_Spot,
-        ShadowMap_Point,
+        ShadowMap_Dynamic,
+        ShadowMap_Cached,
+        ShadowMap_Cascade,
         VisibilityBuffer_Fill,
         Forward_Opaque,
         Forward_Masked,
         Forward_Transparent,
-        Forward_Additive,
+        Forward_Sky,
         HZB_Generation,
         HZB_Culling,
         PostProcess_TAA,
         PostProcess_Bloom,
-        PostProcess_ToneMapping,
+        PostProcess_ToneMap,
         PostProcess_FXAA,
         PostProcess_MotionBlur,
         PostProcess_DOF,
@@ -179,9 +176,6 @@ namespace hgl::graph::mtl
 
         ENUM_CLASS_RANGE(Low, Ultra)
     };
-
-    // 兼容别名（后续全部替换后删除）
-    using GBufferQualityPreset = QualityTier;
 
     struct RenderPassDefinition
     {

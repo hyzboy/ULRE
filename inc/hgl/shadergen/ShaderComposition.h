@@ -86,11 +86,6 @@ enum class ShaderOutputMode : uint8 {
     /// 输出：finalColor = color + bgColor（适合光效、爆炸）
     SingleRTAdditive,
 
-    /// 双 RT（Forward+ / 延迟渲染 G-Buffer）
-    /// RT0 = diffuse color (RGB)
-    /// RT1 = specular color (RGB)
-    DualRTDeferred,
-
     /// 自定义输出（由特定材质自行决定 RT count）
     Custom,
 
@@ -338,10 +333,6 @@ namespace RenderFlows {
         // 迁移中期：默认优先 SSBO，保留回退
         { VertexInputMigrationStage::PreferSSBO, true, true, true, PipelineInputMode::AutoPreferSSBO }
     };
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // [已删除 Deferred_Standard — GBuffer 延迟渲染已移除]
-    // ═════════════════════════════════════════════════════════════════════════
 
     // ═════════════════════════════════════════════════════════════════════════
     // ForwardPlus_DoubleHZB — 双重 HZB 优化的 Forward+

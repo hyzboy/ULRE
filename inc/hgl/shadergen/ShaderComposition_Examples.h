@@ -176,31 +176,7 @@ const ComposedMaterialDef EX_BASIC_LIT_COMPOSED {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 例 3：前向渲染 vs. 延迟渲染自动切换
-// ═════════════════════════════════════════════════════════════════════════════
-
-/**
- * 场景：BasicLit 同时支持前向渲染（Forward）和延迟渲染（Deferred）
- *
- * 原理：
- *   - 开发者代码完全相同（VertexShaderBusiness + FragmentShaderBusiness）
- *   - 框架根据 RenderPass 信息生成不同的 FS output
- *
- * 前向渲染（输出到单 RT）：
- *   finalColor = albedo * (lighting.diffuse + lighting.specular)
- *   出力：RT[0] = vec4(finalColor, alpha)
- *
- * 延迟渲染（输出到 G-Buffer）：
- *   设置 output_mode = ShaderOutputMode::DualRTDeferred 后：
- *   出力：RT[0] = vec4(albedo, 1.0)         // Diffuse G-Buffer
- *        RT[1] = vec4(normal_encoded, mat_id)  // Normal + Material ID
- *        RT[2] = vec4(roughness, metallic, 0, 0)  // PBR 参数
- *
- * CompostionGenerator 会根据 output_mode 自动选择。
- */
-
-// ═════════════════════════════════════════════════════════════════════════════
-// 例 4：特效材质（Additive 混合）
+// 例 3：特效材质（Additive 混合）
 // ═════════════════════════════════════════════════════════════════════════════
 
 constexpr const char EX_FX_EMISSION_VS_BUSINESS[] = R"(

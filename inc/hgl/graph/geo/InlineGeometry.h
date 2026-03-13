@@ -35,11 +35,6 @@ namespace hgl::graph
         Geometry *CreateRectangle(GeometryCreater *pc,const RectangleCreateInfo *rci);
 
         /**
-            * 创建延迟渲染用全屏平面
-            */
-        Geometry *CreateGBufferCompositionRectangle(GeometryCreater *pc);
-
-        /**
             * 圆角矩形创建信息(扇形/线圈)
             */
         struct RoundRectangleCreateInfo:public RectangleCreateInfo

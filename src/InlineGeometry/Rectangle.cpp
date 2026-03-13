@@ -156,12 +156,4 @@ namespace hgl::graph::inline_geometry
             Vector3f(right, bottom, 0.01f));
     }
 
-    Geometry *CreateGBufferCompositionRectangle(GeometryCreater *pc)
-    {
-        RectangleCreateInfo rci;
-
-        rci.scope.Set(-1,-1,2,2);
-
-        return CreateRectangle(pc,&rci);
-    }
 } // namespace
