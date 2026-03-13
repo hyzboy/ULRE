@@ -49,5 +49,19 @@ namespace hgl::graph
 
         ci->znear                  =cam->znear;
         ci->zfar                   =cam->zfar;
+
+        ci->use_reversed_z         =cam->use_reversed_z ? 1 : 0;
+        ci->_pad_ci0               =0.0f;
+
+        // Camera-Relative Rendering: 记录绝对世界坐标（低精度），供 fog/terrain 等 shader 使用
+        {
+            const Vector3d wp = cam->world_position_double;
+            ci->camera_world_pos = math::Vector3f(static_cast<float>(wp.x),
+                                                   static_cast<float>(wp.y),
+                                                   static_cast<float>(wp.z));
+        }
+
+        // NOTE: Camera-Relative view 矩阵平移归零和 pos=0 暂不启用，
+        // 需等 TransformAssignmentBuffer::SetCameraOffset 完整接入后再启用。
     }
 }//namespace hgl::graph

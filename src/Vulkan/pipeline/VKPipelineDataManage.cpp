@@ -68,7 +68,7 @@ namespace
             pd=new PipelineData(1);
             pd->SetCullMode(VK_CULL_MODE_FRONT_BIT);
             pd->SetDepthWrite(false);
-            pd->SetDepthCompareOp(VK_COMPARE_OP_LESS);
+            pd->SetDepthCompareOp(VK_COMPARE_OP_GREATER_OR_EQUAL);
             inline_pipeline_data.Add(InlinePipeline::Sky,pd);
         }
     }

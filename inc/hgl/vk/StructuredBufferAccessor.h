@@ -263,7 +263,12 @@ public:
      * CN: 标记为 dirty
      * EN: Mark as dirty
      */
-    void MarkDirty() { dirty = true; }
+    void MarkDirty()
+    {
+        dirty = true;
+        if (gpu_buf)
+            gpu_buf->MarkDirty(0, sizeof(T));
+    }
 
     /**
      * CN: 检查是否 dirty

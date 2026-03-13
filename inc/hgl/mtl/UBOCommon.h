@@ -59,7 +59,12 @@ constexpr const ShaderBufferSource SBS_CameraInfo=
     vec3 billboard_up;
     vec3 billboard_right;
 
-    float znear,zfar;)"
+    float znear,zfar;
+
+    uint use_reversed_z;
+    float _pad_ci0;
+
+    vec3 camera_world_pos;)"
 };
 
 constexpr const char LocalToWorldStruct[]="LocalToWorld";

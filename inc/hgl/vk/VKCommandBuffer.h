@@ -110,7 +110,7 @@ public:
         mem_copy<float>(clear_values[index].color.float32,(const float *)&cc,4);
     }
 
-    void SetClearDepthStencil(uint32_t index,float d=1.0f,float s=0)
+    void SetClearDepthStencil(uint32_t index,float d=0.0f,float s=0)
     {
         if(index>=cv_count)return;
 

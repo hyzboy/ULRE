@@ -521,6 +521,12 @@ namespace hgl::ecs
             camera->camera_data->fovY = camera->fov;
             camera->camera_data->znear = camera->near_plane;
             camera->camera_data->zfar = camera->far_plane;
+
+            // Camera-Relative Rendering: 同步 double 精度世界坐标
+            camera->camera_data->world_position_double = math::Vector3d(
+                static_cast<double>(camera->position.x),
+                static_cast<double>(camera->position.y),
+                static_cast<double>(camera->position.z));
         }
 
         // 更新camera_info

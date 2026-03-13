@@ -66,7 +66,7 @@ void RenderCmdBuffer::SetClear()
     {
         clear_values=hgl_align_realloc<VkClearValue>(clear_values,cv_count);
 
-        clear_values[cv_count-1].depthStencil.depth = 1.0f;
+        clear_values[cv_count-1].depthStencil.depth = 0.0f;
         clear_values[cv_count-1].depthStencil.stencil = 0;
     }
     else if(clear_values)

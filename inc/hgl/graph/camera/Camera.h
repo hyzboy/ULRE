@@ -32,7 +32,7 @@ namespace hgl::graph
             , pos(0.0f, 0.0f, 0.0f)
             , world_up(0.0f, 0.0f, 1.0f)
             , viewDirection(1.0f, 0.0f, 0.0f)
-            , use_reversed_z(false)
+            , use_reversed_z(true)
             , world_position_double(0.0, 0.0, 0.0)
         {
         }
