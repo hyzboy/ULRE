@@ -143,6 +143,29 @@ SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES	 MaterialCompiler.cpp
 SOURCE_GROUP("Shader Template Engine" FILES ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
                                             ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES})
 
+set(NEW_MTL_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/mtl/new)
+
+SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
+                        ${NEW_MTL_INCLUDE_PATH}/QualityTier.h
+                        ${NEW_MTL_INCLUDE_PATH}/BlendMode.h
+                        ${NEW_MTL_INCLUDE_PATH}/PassType.h
+                        ${NEW_MTL_INCLUDE_PATH}/PlatformBackend.h
+                        ${NEW_MTL_INCLUDE_PATH}/MaterialCategory.h
+                        ${NEW_MTL_INCLUDE_PATH}/NewShaderPermutationKey.h
+                        ${NEW_MTL_INCLUDE_PATH}/MaterialPresetDef.h
+                        ${NEW_MTL_INCLUDE_PATH}/DeviceQualityProfile.h
+                        ${NEW_MTL_INCLUDE_PATH}/NewDescriptorSetType.h
+                        ${NEW_MTL_INCLUDE_PATH}/DescriptorSetBindings.h
+                        ${NEW_MTL_INCLUDE_PATH}/NewDescriptorSetLayoutFactory.h
+                        ${NEW_MTL_INCLUDE_PATH}/NewDescriptorBinding.h
+                        NewShaderPermutationKey.cpp
+                        DeviceQualityProfile.cpp
+                        NewDescriptorSetLayoutFactory.cpp
+                        NewDescriptorBinding.cpp
+)
+
+SOURCE_GROUP("New Material Types" FILES ${NEW_MTL_TYPE_FILES})
+
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
 
                                         ${DESC_INFO_HEADER_FILES}
@@ -161,4 +184,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${FIXED_MTL_FILES}
                                         ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
                                         ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
+                                        ${NEW_MTL_TYPE_FILES}
 )

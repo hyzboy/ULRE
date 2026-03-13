@@ -45,4 +45,8 @@ namespace hgl::graph
             , max_point_lights(64)
         {}
     };
+
+    class VulkanPhyDevice;
+
+    DeviceQualityProfile DetectDeviceQuality(const VulkanPhyDevice &phy_device);
 }

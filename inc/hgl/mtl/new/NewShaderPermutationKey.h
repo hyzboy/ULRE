@@ -3,6 +3,7 @@
 #include "SurfaceType.h"
 #include "QualityTier.h"
 #include "PlatformBackend.h"
+#include <string>
 
 namespace hgl::graph
 {
@@ -33,5 +34,7 @@ namespace hgl::graph
 
         bool operator==(const NewShaderPermutationKey& o) const { return packed == o.packed; }
         bool operator<(const NewShaderPermutationKey& o) const { return packed < o.packed; }
+
+        void AppendGLSLDefines(std::string &out) const;
     };
 }

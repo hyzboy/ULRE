@@ -4,6 +4,7 @@
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKVertexInputLayout.h>
+#include<hgl/mtl/new/NewDescriptorSetLayoutFactory.h>
 
 namespace hgl
 {
@@ -54,6 +55,9 @@ namespace hgl
         // 当前渲染状态
         RenderCmdBuffer* current_render_cmd_buf = nullptr;
         IRenderTarget* current_render_target = nullptr;
+
+        // 新 4-Set 管线布局 (与旧布局双轨共存)
+        NewPipelineLayoutData* new_pipeline_layout_data_ = nullptr;
 
     public:
         RenderContext() = default;
@@ -110,6 +114,12 @@ namespace hgl
     public:
         void SetGraphicsContext(GraphicsContext* ctx) { graphics_context = ctx; }
         GraphicsContext* GetGraphicsContext() const { return graphics_context; }
+
+    public:
+        // ===== 新 4-Set 管线布局 (双轨共存) =====
+        void SetNewPipelineLayoutData(NewPipelineLayoutData* pld) { new_pipeline_layout_data_ = pld; }
+        NewPipelineLayoutData* GetNewPipelineLayoutData() const { return new_pipeline_layout_data_; }
+        VkPipelineLayout GetNewPipelineLayout() const { return new_pipeline_layout_data_ ? new_pipeline_layout_data_->pipeline_layout : VK_NULL_HANDLE; }
 
         }; // class RenderContext
 
