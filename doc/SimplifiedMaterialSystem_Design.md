@@ -223,9 +223,9 @@ Pass 3 - Post-Processing（可选）:
 │ 2c. Meshlet Cull Phase 2 (Compute, High+, 可选)                   │
 │    - 当前帧 HZB → 补充剔除存疑 meshlet → 追加绘制                    │
 ├────────────────────────────────────────────────────────────────────┤
-│ 3. Tile SurfaceType Classification (Compute)          ← ★ 新增     │
-│    - 每 TILE_SIZE×TILE_SIZE tile 统计 SurfaceType bitmask           │
-│    - 输出 TileSurfaceMask + TileList (empty/single/multi) 三类      │
+│ 3. Tile Material Classification (Compute)                ← ★ 新增     │
+│    - 每 TILE_SIZE×TILE_SIZE tile 统计 MaterialKey bitmask + 唯一材质数  │
+│    - 匹配 FusedComboLUT，输出 TileList (empty/single/fused/multi) 四类 │
 │    - 填充 indirect dispatch args（GPU 驱动，CPU 不回读）             │
 ├────────────────────────────────────────────────────────────────────┤
 │ 4. Clustered Light Assignment (Compute, High+)    ← ★ 新增         │
@@ -237,10 +237,12 @@ Pass 3 - Post-Processing（可选）:
 │    ⤷ 可选优化: 同上                                                 │
 ├────────────────────────────────────────────────────────────────────┤
 │ 7. VBuffer Resolve (Tile-Based Indirect Dispatch)     ← ★ 改进     │
-│    - Dispatch 1: Single-SurfaceType tiles (快速路径, ~60-80%)       │
+│    - Dispatch 1: Single-Material tiles (独占路径, ~50-70%)           │
 │      → workgroup 内零分支发散，SIMD 利用率最优                       │
-│    - Dispatch 2: Multi-SurfaceType tiles  (通用路径, ~10-25%)       │
-│      → per-pixel 解析 SurfaceType，存在分支发散                     │
+│    - Dispatch 2: Fused-Material tiles (融合路径, ~10-25%)    ★ 新增 │
+│      → 2-4 种已知材质组合，预编译融合 shader，极低分支发散            │
+│    - Dispatch 3: Multi-Material tiles  (通用路径, ~5-15%)           │
+│      → per-pixel 解析 MaterialKey，存在分支发散                     │
 │    - 空 tile: 不在任何 list 中，不 dispatch → 零开销                 │
 │    - 读取 ShadowMask + SSAO + ClusterLightList → 光照 + Fog inline │
 │    - 输出: LitColor RT + Motion Vector RT                          │
@@ -1214,7 +1216,7 @@ Android 中低端设备砍掉的特性（编译期 `#define` + 运行时能力�
 | **Auto Exposure** | ❌ | ✅ | ✅ | |
 | **Decals** | ❌ | ❌ | ✅ | |
 | **Terrain-Contact Dither** | ❌ (不编译) | ✅ 默认 OFF | ✅ | 可开关，见 §2.8.5 |
-| **VBuffer Tile Classification** | ❌ | ❌ | ✅ | |
+| **VBuffer Tile Classification** | ❌ | ❌ | ✅ | MaterialKey 级分类 + Fused Combo 匹配（§8.2/§8.5） |
 | **Texture Streaming** | ❌ | ✅ | ✅ | |
 | **最大纹理尺寸** | 1024 | 2048 | 4096 | 降 mip level |
 | **渲染分辨率** | 0.5× ~ 0.75× | 0.75× ~ 1.0× | 1.0× | 动态分辨率 |
@@ -1632,13 +1634,14 @@ Hair  @ Lowest/Low         → 复用 Standard @ Lowest/Low SPV（+ AlphaTest fl
 
 ```cpp
 struct MaterialPresetDef {
-    SurfaceType  surface_type;
-    BlendMode    blend_mode;
-    QualityTier  min_tier;              // 该材质支持的最低档位
-    QualityTier  max_tier;              // 最高档位
+    SurfaceType      surface_type;
+    MaterialCategory material_category;     // ★ 视觉材质类型（§5.1.1）
+    BlendMode        blend_mode;
+    QualityTier      min_tier;              // 该材质支持的最低档位
+    QualityTier      max_tier;              // 最高档位
     // ★ Material LOD 回退
-    SurfaceType  fallback_surface_type; // 低于 unique_feature_min_tier 时回退到此类型
-    QualityTier  unique_feature_min_tier; // 该 SurfaceType 独有特性的最低档位
+    SurfaceType      fallback_surface_type; // 低于 unique_feature_min_tier 时回退到此类型
+    QualityTier      unique_feature_min_tier; // 该 SurfaceType 独有特性的最低档位
     // ... 其他字段
 };
 
@@ -2088,6 +2091,248 @@ enum class PassType : uint8_t
 |----|--------|------|---------|
 | 30 | Sky | 天空球 | SkyInfo UBO（程序控制） |
 | 31 | Terrain | 地形 | TerrainLayerSSBO + Texture2DArray (Albedo/Normal/MR) + SplatMap, 理论 256 层 — 详见 §5.5 |
+
+### 5.1.1 双分类法：SurfaceType vs MaterialCategory
+
+#### 设计动机
+
+引擎内部存在两个**正交但互补**的材质分类维度：
+
+| 维度 | 定义角度 | 决定什么 | 粒度 | 典型数量 |
+|------|----------|---------|------|---------|
+| **SurfaceType** | 光照模型 / BRDF 族 | Shader 管线路径、EvalLighting 分发 | 粗粒度 | 11 种（§4.1） |
+| **MaterialCategory** | 视觉材质种类 | 纹理风格、MI 参数范围、美术语义 | 细粒度 | 引擎内置 4 + 项目扩展 20-60（开放枚举） |
+
+> **类比**：SurfaceType 回答 *"用什么算法照亮"*，MaterialCategory 回答 *"看起来像什么东西"*。
+
+两者是**多对一**关系——多种 MaterialCategory 映射到同一 SurfaceType：
+
+```
+MaterialCategory (视觉种类)              SurfaceType (光照模型)
+─────────────────────────               ──────────────────────
+
+  ┌ 引擎内置（0-3，恒定不变）─────────────────────────────────────┐
+  │ GenericPBR (通用PBR)     ──────────▶  Standard (1)          │
+  │ Sky        (天空/大气)   ──────────▶  Sky (9)               │
+  │ Water      (水体)       ──────────▶  Water (8)             │
+  │ Terrain    (地表)       ──────────▶  Terrain (10)          │
+  └──────────────────────────────────────────────────────────────┘
+
+  ┌ 项目扩展（64+，随项目需求增减）──────────────────────────────┐
+  │ Metal (金属)              ─┐                                │
+  │ Stone (石头)               │                                │
+  │ Wood  (木材)               ├──────▶  Standard (1)           │
+  │ Leather (皮革)             │          Cook-Torrance PBR     │
+  │ Paint (油漆)               │                                │
+  │ Plastic (塑料)             │                                │
+  │ Ceramic (陶瓷)             │                                │
+  │ Concrete (混凝土)         ─┘                                │
+  │                                                             │
+  │ HumanSkin (人类皮肤)      ─┬──────▶  Skin (2)  SSS         │
+  │ CreatureSkin (生物皮肤)    ─┘                                │
+  │                                                             │
+  │ HumanHair (人类头发)       ─┬──────▶  Hair (3)  各向异性    │
+  │ AnimalFur (动物毛发)       ─┘                                │
+  │                                                             │
+  │ Fabric (织物/布料)         ──────────▶  Cloth (4)  Sheen    │
+  │ Eyeball (眼球)             ──────────▶  Eye (5)   折射+SSS  │
+  │ TreeLeaf (树叶)            ─┬──────▶  Foliage (6) 薄层透光  │
+  │ Grass (草)                 ─┘                               │
+  │ CarPaint (车漆)            ─┬──────▶  ClearCoat (7) 双层    │
+  │ Lacquer (瓷釉/清漆)        ─┘                               │
+  │                                                             │
+  │ （项目可自由扩展更多 Category...）                             │
+  └─────────────────────────────────────────────────────────────┘
+```
+
+#### MaterialCategory 枚举
+
+```cpp
+enum class MaterialCategory : uint8_t
+{
+    // ================================================================
+    //  引擎内置 (0-15) — 与 SurfaceType 1:1 的基础类型，跨项目恒定不变
+    // ================================================================
+    GenericPBR      = 0,    // 通用 Standard PBR — 所有 Standard 族 Category 的降级终点
+    Sky             = 1,    // 天空 / 大气         → Sky SurfaceType
+    Water           = 2,    // 水体                → Water SurfaceType
+    Terrain         = 3,    // 地表                → Terrain SurfaceType
+    // 4-15 保留给引擎未来内置扩展
+
+    // ================================================================
+    //  项目扩展 (64-255) — 按项目需求自由定义
+    //  高画质时使用专有 SurfaceType + 独有特效；
+    //  远距离 / 低端设备 → 材质 LOD 退化为 GenericPBR (Standard PBR / BlinnPhong)
+    // ================================================================
+
+    // --- Standard SurfaceType 族 (64-95): 通用 PBR，视觉差异仅靠纹理+参数 ---
+    Metal           = 64,   // 金属（铁、铜、金、铝...）
+    Stone           = 65,   // 石头（岩石、砖块、大理石...）
+    Wood            = 66,   // 木材（木板、树皮、竹子...）
+    Leather         = 67,   // 皮革
+    Paint           = 68,   // 油漆 / 涂层
+    Plastic         = 69,   // 塑料 / 橡胶
+    Ceramic         = 70,   // 陶瓷 / 瓷器
+    Concrete        = 71,   // 混凝土 / 水泥
+    Sand            = 72,   // 沙子 / 泥土
+    Ice             = 73,   // 冰 / 雪
+    Glass           = 74,   // 玻璃（不透明/磨砂 — 透明玻璃走 Transparent 通道）
+    Food            = 75,   // 食物 / 有机物
+    // 76-95 Standard 族预留
+
+    // --- Skin SurfaceType 族 (96-103): 需要 SSS 光照 ---
+    HumanSkin       = 96,   // 人类皮肤            → Skin SurfaceType
+    CreatureSkin    = 97,   // 生物/怪物皮肤        → Skin SurfaceType
+    // 98-103 Skin 族预留
+
+    // --- Hair SurfaceType 族 (104-111): 需要各向异性高光 ---
+    HumanHair       = 104,  // 人类头发             → Hair SurfaceType
+    AnimalFur       = 105,  // 动物毛发             → Hair SurfaceType
+    // 106-111 Hair 族预留
+
+    // --- Cloth SurfaceType 族 (112-115) ---
+    Fabric          = 112,  // 织物/布料            → Cloth SurfaceType
+
+    // --- Eye SurfaceType 族 (116-119) ---
+    Eyeball         = 116,  // 眼球                → Eye SurfaceType
+
+    // --- Foliage SurfaceType 族 (120-127) ---
+    TreeLeaf        = 120,  // 树叶                → Foliage SurfaceType
+    Grass           = 121,  // 草                  → Foliage SurfaceType
+
+    // --- ClearCoat SurfaceType 族 (128-135) ---
+    CarPaint        = 128,  // 车漆                → ClearCoat SurfaceType
+    Lacquer         = 129,  // 瓷釉/清漆           → ClearCoat SurfaceType
+
+    // 136-255 自由扩展
+
+    MAX_CATEGORY
+};
+```
+
+> **编号规则**：
+> - **0-15**：引擎内置，跨项目不变。GenericPBR / Sky / Water / Terrain 是引擎层面的"基底"类型。
+> - **64-255**：项目扩展段，按 SurfaceType 族分组（每族预留 4-8 个空位），方便项目追加。
+> - **16-63**：保留未分配，未来引擎层面若需要新的内置 Category 可使用此段。
+>
+> Metal-Food 等"视觉材质种类"全部在 64+ 段——这些是项目相关的美术语义分类，
+> 不同项目需要的种类完全不同（见下方示例），所以不放在引擎内置范围。
+
+#### 项目特化示例 — 动物主题游戏
+
+不同游戏项目可在 64-255 段**自由增补**符合题材的 MaterialCategory：
+
+```cpp
+// ========= 动物主题游戏：项目扩展 MaterialCategory =========
+// 在基础枚举的空位中追加新类别
+
+// Standard 族扩展 (76-95 预留段)
+constexpr auto BirdFeather       = MaterialCategory(76);  // 鸟类羽毛 → Standard
+constexpr auto AmphibianSkin     = MaterialCategory(77);  // 两栖动物皮肤 → Standard（无需 SSS）
+constexpr auto ReptileScale      = MaterialCategory(78);  // 爬虫鳞片 → Standard
+constexpr auto FishScale         = MaterialCategory(79);  // 鱼类鳞片 → Standard
+constexpr auto Chitin            = MaterialCategory(80);  // 昆虫甲壳 → Standard
+
+// Skin 族扩展 (98-103 预留段)
+constexpr auto AmphibianSkinWet  = MaterialCategory(98);  // 湿润两栖皮肤 → Skin (SSS + 湿润高光)
+constexpr auto WhaleSkin         = MaterialCategory(99);  // 鲸类皮肤 → Skin (SSS)
+
+// Hair 族扩展 (106-111 预留段)
+constexpr auto BirdPlumage       = MaterialCategory(106); // 鸟类绒羽 → Hair (各向异性)
+constexpr auto AnimalWhisker     = MaterialCategory(107); // 动物触须 → Hair
+```
+
+> **关键**：这些项目特化的 MaterialCategory 在**远距离或低端设备上全部退化为 GenericPBR**——
+> 鸟类羽毛的独特光泽、两栖皮肤的湿润高光等效果只在近距离 + 高画质时呈现。
+> 手机上 `deviceTier ≤ Medium`，所有特殊类别都走 Standard PBR 或 BlinnPhong，
+> MaterialCategory 的差异**仅靠纹理和 MI 参数**维持视觉区分。
+
+#### MaterialCategory → SurfaceType 映射表
+
+| MaterialCategory | SurfaceType | Metallic 典型范围 | Roughness 典型范围 | 备注 |
+|-----------------|-------------|------------------|--------------------|------|
+| GenericPBR | Standard | 0.0 – 1.0 | 0.0 – 1.0 | 通用，降级终点 |
+| Sky | Sky | — | — | 程序化散射 |
+| Water | Water | — | — | FFT 波形 |
+| Terrain | Terrain | — | — | 多层 Splat |
+| Metal (64) | Standard | 0.8 – 1.0 | 0.1 – 0.6 | 铁/铜/金/铝 |
+| Stone (65) | Standard | 0.0 – 0.1 | 0.5 – 0.9 | 岩石/砖块/大理石 |
+| Wood (66) | Standard | 0.0 | 0.4 – 0.8 | 木板/树皮 |
+| Leather (67) | Standard | 0.0 | 0.4 – 0.7 | 皮革/皮具 |
+| Paint (68) | Standard | 0.0 – 0.5 | 0.2 – 0.6 | 油漆表面 |
+| Plastic (69) | Standard | 0.0 | 0.3 – 0.7 | 塑料/橡胶 |
+| Ceramic (70) | Standard | 0.0 | 0.1 – 0.4 | 瓷器/釉面 |
+| Concrete (71) | Standard | 0.0 | 0.7 – 1.0 | 混凝土/水泥 |
+| Sand (72) | Standard | 0.0 | 0.8 – 1.0 | 沙/土 |
+| Ice (73) | Standard | 0.0 – 0.2 | 0.0 – 0.3 | 冰面/雪 |
+| Glass (74) | Standard | 0.0 | 0.0 – 0.2 | 磨砂/不透明玻璃 |
+| HumanSkin (96) | Skin | — | 0.3 – 0.6 | SSS, Thickness |
+| CreatureSkin (97) | Skin | — | 0.4 – 0.8 | SSS |
+| HumanHair (104) | Hair | — | 0.3 – 0.6 | 各向异性 Shift |
+| AnimalFur (105) | Hair | — | 0.5 – 0.9 | Kajiya-Kay |
+| Fabric (112) | Cloth | — | 0.6 – 1.0 | Sheen + Charlie |
+| Eyeball (116) | Eye | — | 0.0 – 0.1 | 折射 + SSS |
+| TreeLeaf (120) | Foliage | 0.0 | 0.4 – 0.7 | Thin Translucency |
+| Grass (121) | Foliage | 0.0 | 0.5 – 0.8 | 同上 |
+| CarPaint (128) | ClearCoat | 0.0 – 0.3 | 0.1 – 0.3 | 双层 BRDF |
+| Lacquer (129) | ClearCoat | 0.0 | 0.05 – 0.2 | 高光泽 |
+
+> 此表为**美术参考值域**——MaterialCategory 不强制参数范围，美术可超出，但编辑器可提供参考线。
+> 项目扩展的 Category（如 BirdFeather, ReptileScale 等）由项目自行补充映射表条目。
+
+#### 双维度画质降级
+
+两个分类维度在低画质时**同时收敛**——所有特殊 MaterialCategory 最终退化为 GenericPBR：
+
+```
+高画质 (Cinematic/Ultra/High)              低画质 (Medium/Low/Lowest)
+─────────────────────────                  ───────────────────────────
+MaterialCategory: HumanSkin (96)           MaterialCategory: HumanSkin (96)
+     SurfaceType: Skin                          SurfaceType: Standard (回退)
+        Lighting: Cook-Torrance + SSS              Lighting: Cook-Torrance → BlinnPhong
+      Unique Ftr: SSS + 毛孔法线 + 曲率 AO         Unique Ftr: 无（退化为 GenericPBR）
+
+效果链:
+  Skin@Cinematic ──────▶ 全 SSS + 毛孔 + 曲率 AO
+  Skin@Ultra     ──────▶ Pre-integrated SSS + DetailNormal
+  Skin@High      ──────▶ 简化 SSS
+  Skin@Medium    ──▶ Standard@Medium（Cook-Torrance PBR，无 SSS）  ← SurfaceType 回退点
+  Skin@Low       ──▶ Standard@Low（BlinnPhong FakePBR）
+  Skin@Lowest    ──▶ Standard@Lowest（顶点光照 + Albedo）
+
+项目特化示例（动物主题）:
+  BirdFeather@High    ──▶ Standard@High + 独有各向异性高光贴图     ← 项目定义的特效
+  BirdFeather@Medium  ──▶ Standard@Medium（Cook-Torrance PBR）     ← 退化为通用 PBR
+  BirdFeather@Low     ──▶ Standard@Low（BlinnPhong）               ← 看起来就是普通羽毛纹理
+```
+
+> **回退点由 `MaterialPresetDef::unique_feature_min_tier` 决定**（§3.5.6 回退等价性）。
+> 低于此阈值时，特殊 SurfaceType 回退到 `fallback_surface_type`（通常是 Standard），
+> 此时不同 MaterialCategory 之间的视觉差异**仅靠纹理和 MI 参数**维持——
+> HumanSkin@Low 和 Metal@Low 都走 BlinnPhong，但纹理不同所以看起来仍然不同。
+>
+> **手机端**：`deviceTier ≤ Medium` 时，所有 64+ 段的 MaterialCategory 最高也只走 Standard PBR，
+> 不会触发任何特殊 SurfaceType 的独有效果。MaterialCategory 在此场景下纯粹是**美术标签**，
+> 用于资源管理和编辑器分类，不影响运行时 Shader 路径。
+
+#### 与融合 Shader 的关系（§8.5）
+
+MaterialCategory 为**融合 Combo 注册**提供了语义基础：
+
+```
+传统注册（仅按 MaterialKey）：
+  Register({KEY_PRESET_10, KEY_PRESET_10}, FUSED_ID);  // 含义不直观
+
+语义化注册（按 MaterialCategory 共现模式）：
+  Register(TreeLeaf + Wood,    FUSED_FOREST_CANOPY);    // 森林冠层：树叶 + 树皮/木材
+  Register(Stone + Concrete,   FUSED_BUILDING_WALL);    // 建筑墙面：砖石 + 混凝土
+  Register(Metal + Paint,      FUSED_VEHICLE_BODY);     // 载具车身：金属 + 油漆
+  Register(Grass + Sand,       FUSED_TERRAIN_EDGE);     // 地形边缘：草地 + 沙土
+  Register(HumanSkin + Fabric, FUSED_CHARACTER_EDGE);   // 角色边缘：皮肤 + 衣物
+```
+
+> 场景加载时，引擎根据场景中实际出现的 MaterialCategory 组合自动筛选需要激活的融合 Shader，
+> 避免编译无关组合。`FusedComboRegistry::AutoRecommend()` 也按 MaterialCategory 统计共现频率。
 
 ### 5.2 Standard Surface 详解（重点）
 
@@ -2799,8 +3044,8 @@ float EvalAlpha(vec2 uv) { return 1.0; }  // 地形完全不透明
 #### 5.5.6 与 Tile Classification 的交互
 
 在 VBuffer 路径中，Terrain 像素的 `SurfaceType == Terrain`，Tile Classification
-会将纯 Terrain tile 归类为单一 SurfaceType tile—— dispatch Terrain 专用 resolve kernel。
-混合 tile（Terrain + 角色/植被边缘）走通用 multi-SurfaceType 路径。
+会将纯 Terrain tile 归类为单一材质 tile—— dispatch Terrain 专用 resolve kernel。
+混合 tile（Terrain + 角色/植被边缘）若匹配已注册的融合组合则走融合路径（§8.5），否则走通用 multi-material 路径。
 
 > **性能特征**：开阔地形场景 70%+ tile 是纯 Terrain，走无分支的 Terrain resolve，
 > Texture2DArray 的连续访问模式对 GPU 纹理缓存非常友好。
@@ -2848,6 +3093,7 @@ ShaderPermutationKey (lighting × ambient × shadow)
 │  const char*           name                               │
 │  PresetID              id                                 │
 │  SurfaceType           surface_type                       │
+│  MaterialCategory      material_category                  │ ← 视觉材质种类（§5.1.1）
 │  QualityTier           min_tier, max_tier                 │ ← 支持的档位范围
 │  PrimitiveType         primitive                          │
 │  FixedVertexEntry[]    vertex_entries                     │
@@ -3006,9 +3252,13 @@ Set 3 — Environment（环境/全局光照资源 + 管线 RT）
 | 资源 | 格式 | 大小 | 用途 |
 |------|------|------|------|
 | TileSurfaceMask | R32UI image | tileCountX × tileCountY | 每 tile 的 SurfaceType bitmask |
-| TileList_Single | SSBO (uvec2[]) | maxTileCount × 8B | 单一 SurfaceType tile 坐标列表 |
-| TileList_Multi | SSBO (uvec2[]) | maxTileCount × 8B | 多 SurfaceType tile 坐标列表 |
-| TileDispatchArgs | SSBO (48B) | 48 bytes | indirect dispatch 参数 + 计数器 |
+| TileMaterialKeys | SSBO (uint[4]) | maxTileCount × 16B | 每 tile 至多 4 个 MaterialKey（SurfaceType×PresetID） |
+| TileMaterialCount | R8UI image | tileCountX × tileCountY | 每 tile 的唯一 MaterialKey 计数 |
+| TileList_Single | SSBO (uvec2[]) | maxTileCount × 8B | 单一材质 tile 坐标列表 |
+| TileList_Fused | SSBO (uvec4[]) | maxTileCount × 16B | 融合材质 tile 坐标 + fusedShaderID |
+| TileList_Multi | SSBO (uvec2[]) | maxTileCount × 8B | 多材质 tile 坐标列表 |
+| FusedComboLUT | SSBO | fusedComboCount × 20B | 已注册的融合材质组合 → fusedShaderID 映射表 |
+| TileDispatchArgs | SSBO (72B) | 72 bytes | 3 组 indirect dispatch 参数 + 计数器 |
 
 > `maxTileCount = ceil(W/TILE_SIZE) × ceil(H/TILE_SIZE)`，1080p@8×8 tile ≈ 32,400 tiles，内存总计 < 1 MB。
 
@@ -3805,6 +4055,7 @@ ShaderLibrary/
     vbuffer_tile_classify.comp.glsl
     vbuffer_tile_prepare_args.comp.glsl
     vbuffer_resolve_single.comp.glsl   // 内部 #include 对应 Surface Function
+    vbuffer_resolve_fused.comp.glsl    // 融合 2-4 材质 resolve（§8.5）
     vbuffer_resolve_multi.comp.glsl
   gpudrive/
     hzb_downsample.comp.glsl
@@ -3866,23 +4117,47 @@ void main()
 > VBuffer Resolve（Compute Shader）内部按 SurfaceType 分发，`#include` 对应的 Surface Function
 > 并调用 `EvalSurface()` → `EvalLighting()`，等效于 Compositor 的 `VBUFFER_RESOLVE` PassType。
 
-### 8.2 Tile SurfaceType Classification（Tile 表面类型统计）
+### 8.2 Tile Classification（Tile 材质统计 + 融合匹配）
 
 在 VBuffer ID Pass 写入完成后、Resolve 之前，插入一个 **Tile Classification** 阶段。
-将屏幕划分为固定大小的 tile（如 8×8 或 16×16 像素），统计每个 tile 内出现了哪些 SurfaceType，
-用 bitmask 记录，以便后续 Resolve 按 tile 复杂度分层调度。
+将屏幕划分为固定大小的 tile（如 8×8 或 16×16 像素），统计每个 tile 内出现了哪些
+**MaterialKey**（= SurfaceType × PresetID，8-bit 组合键），以便后续 Resolve 按 tile 复杂度分三层调度。
 
 #### 设计动机
 
-| 场景特征 | tile 内 SurfaceType 数量 | 占比（典型场景估算） |
-|----------|------------------------|--------------------|
-| 大面积墙壁/地面/岩石 | 1 (Standard) | ~60-75% |
-| 天空区域 | 1 (Sky) 或 0 (empty) | ~10-20% |
-| 角色边缘、场景交界 | 2-3 (Standard + Skin/Hair...) | ~10-20% |
-| 极端复杂（植被+角色+场景重叠） | 4+ | <5% |
+仅按 SurfaceType（11 种）分类虽然能区分光照模型差异，但**无法捕捉同一 SurfaceType 内不同
+MaterialPreset 的材质交错**。典型问题场景：
 
-> **绝大多数 tile 只含单一 SurfaceType**，可直接 dispatch 对应的专用 Resolve kernel，
-> 避免 switch/分支开销，且利好 GPU wavefront 的分支一致性（SIMD occupancy）。
+| 场景特征 | tile 内材质组成 | 问题 |
+|----------|----------------|------|
+| 大面积墙壁/地面 | 1 种 Standard | 无问题，Single path |
+| **森林冠层**（树叶 + 树干/树皮） | 2-3 种 Standard（不同 preset） | 同一 SurfaceType，但纹理/参数完全不同 |
+| **城镇街道**（地面 + 建筑外墙 + 招牌） | 2-4 种 Standard | 高交错密度，大量 tile 含多材质 |
+| 角色 + 场景边缘 | Standard + Skin + Hair | 跨 SurfaceType 交错 |
+
+> 若仅按 SurfaceType 分类，森林场景中树叶和树皮同属 Standard → 被归为 "single type"，
+> 但实际上这些 tile 内有 2-3 种不同材质预设（不同纹理集、不同参数）。
+> 虽然 Compute 路径的 switch 不会发散（同一 SurfaceType），但
+> **当需要对每种材质分别 dispatch（opaque/mask 模式）时**，高交错率会导致大量 tile
+> 被推入 mask 路径，严重时接近全屏 mask → 性能灾难。
+>
+> **融合材质着色器（Fused Material Shader）** 通过把 2-4 种常见共现材质编译进一个着色器，
+> 消除逐材质 dispatch 的开销，核心解决此类高交错场景的性能问题（§8.5）。
+
+#### 分类层级
+
+```
+MaterialKey = (SurfaceType << 4) | PresetID     // 8-bit 组合键
+
+Tile Classification 输出四类:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ 1. Empty Tile        — 所有像素 VBuffer == 0（天空/无几何体）  │
+  │ 2. Single-Material   — 仅含 1 种 MaterialKey                │
+  │ 3. Fused-Material    — 含 2-4 种 MaterialKey，且匹配          │
+  │                        已注册的融合材质组合（FusedComboLUT）    │
+  │ 4. Multi-Material    — 含 2+ 种 MaterialKey，无匹配融合组合   │
+  └──────────────────────────────────────────────────────────────┘
+```
 
 #### Tile 大小选择
 
@@ -3892,6 +4167,35 @@ constexpr uint32_t TILE_SIZE = 8;  // 8×8 像素，与 Compute local_size 对�
 // tile 数量 = ceil(screenWidth/TILE_SIZE) × ceil(screenHeight/TILE_SIZE)
 ```
 
+#### FusedComboLUT — 融合材质组合注册表
+
+CPU 侧在场景加载时构建，上传为 SSBO：
+
+```cpp
+struct FusedCombo
+{
+    uint8_t  materialKeys[4];   // 排序后的 MaterialKey（未使用的填 0xFF）
+    uint8_t  keyCount;          // 实际包含的材质数（2-4）
+    uint8_t  fusedShaderID;     // 对应的融合 resolve shader 索引
+    uint16_t _pad;
+};
+
+// 典型注册示例（按 MaterialCategory 共现模式 — §5.1.1）：
+FusedCombo combos[] = {
+    // 森林冠层: TreeLeaf + Wood（都是 Standard，同 SurfaceType 融合）
+    { {KEY_TreeLeaf, KEY_TreeBark, 0xFF, 0xFF},  2, FUSED_FOREST_CANOPY,  0 },
+    // 地形边缘: Grass + Sand + Stone（Standard 族内多材质）
+    { {KEY_Ground, KEY_Grass, KEY_Rock, 0xFF},    3, FUSED_TERRAIN_EDGE,   0 },
+    // 建筑墙面: Stone + Concrete（Standard 族）
+    { {KEY_WallBrick, KEY_WallPlaster, 0xFF, 0xFF}, 2, FUSED_BUILDING_WALL, 0 },
+};
+// fusedComboCount 通常 4-16 条，不超过 64 条
+```
+
+> **注册策略**：由引擎/美术人员根据场景中出现的 MaterialCategory 共现模式注册常见组合（§5.1.1）。
+> 典型方法：开发期通过 Debug 可视化（§8.6）统计 Multi-Material tile 占比最高的 MaterialCategory 组合，
+> 将高频组合注册为 Fused Combo → 编译对应的融合 shader。
+
 #### Phase 1: Tile Classification Compute Shader
 
 ```glsl
@@ -3900,69 +4204,148 @@ layout(local_size_x=TILE_SIZE, local_size_y=TILE_SIZE) in;
 
 layout(set=0, binding=0) uniform usampler2D VBuffer;
 
-// 输出: 每个 tile 一个 uint32，每 bit 对应一种 SurfaceType
-//   bit 0 = Unlit, bit 1 = Standard, bit 2 = Skin, ..., bit 10 = Terrain
-//   bit 31 = empty tile (所有像素 depth=far 或 VBuffer=0)
+// 输出: SurfaceType bitmask（用于 shadow/SSAO 剔空优化）
 layout(set=0, binding=1, r32ui) writeonly uniform uimage2D TileSurfaceMask;
+// 输出: 每 tile 唯一材质数
+layout(set=0, binding=2, r8ui) writeonly uniform uimage2D TileMaterialCount;
+// 输出: 每 tile 排序后的 MaterialKey 列表（至多 4 个）
+layout(set=0, binding=3) buffer TileMaterialKeys { uint tileKeys[]; };
+// maxTileCount × 4 uint (每 tile 4 个 key slot)
 
-// Tile 分类计数输出（可选，用于 indirect dispatch）
-layout(set=0, binding=2) buffer TileDispatchArgs {
-    uint single_type_count;     // 单一 SurfaceType 的 tile 数量
-    uint multi_type_count;      // 多 SurfaceType 的 tile 数量
-    uint empty_count;           // 空 tile 数量
-    uint _pad;
-    // Indirect dispatch args for each category
+layout(set=0, binding=4) buffer TileDispatchArgs {
+    uint single_count;
+    uint fused_count;
+    uint multi_count;
+    uint empty_count;
     uvec4 single_dispatch;      // (num_groups_x, 1, 1, 0)
+    uvec4 fused_dispatch;       // (num_groups_x, 1, 1, 0)
     uvec4 multi_dispatch;       // (num_groups_x, 1, 1, 0)
 };
 
-// Tile 列表（按分类收集 tile 坐标）
-layout(set=0, binding=3) buffer TileList_Single { uvec2 single_tiles[]; };
-layout(set=0, binding=4) buffer TileList_Multi  { uvec2 multi_tiles[];  };
+layout(set=0, binding=5) buffer TileList_Single { uvec2 single_tiles[]; };
+layout(set=0, binding=6) buffer TileList_Fused  { uvec4 fused_tiles[];  };
+// fused_tiles[i] = (tileCoord.x, tileCoord.y, fusedShaderID, keyCount)
+layout(set=0, binding=7) buffer TileList_Multi  { uvec2 multi_tiles[];  };
 
-shared uint s_surfaceMask;  // workgroup 内共享的 bitmask
+// 融合材质组合查找表
+layout(set=0, binding=8) readonly buffer FusedComboLUT {
+    uint fusedComboCount;
+    uint _pad[3];
+    FusedCombo combos[];    // 按 materialKeys 排序，便于二分查找
+};
+
+// Workgroup 共享内存
+shared uint  s_surfaceMask;
+shared uint  s_keyCount;
+shared uint  s_keys[4];        // 至多跟踪 4 个唯一 MaterialKey
 
 void main()
 {
-    // 初始化共享 bitmask
     if (gl_LocalInvocationIndex == 0)
+    {
         s_surfaceMask = 0u;
+        s_keyCount    = 0u;
+        s_keys[0] = s_keys[1] = s_keys[2] = s_keys[3] = 0xFFu;
+    }
     barrier();
 
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     uvec2 vbuf  = texelFetch(VBuffer, pixel, 0).xy;
 
-    if (vbuf.x != 0u)  // 非空像素
+    if (vbuf.x != 0u)
     {
-        uint surfaceType = vbuf.x >> 28;  // 高 4 bit = SurfaceType
+        uint surfaceType = vbuf.x >> 28;
+        uint presetID    = (vbuf.x >> 24) & 0xFu;
+        uint matKey      = (surfaceType << 4) | presetID;
+
         atomicOr(s_surfaceMask, 1u << surfaceType);
+
+        // 尝试将 matKey 加入唯一列表（至多 4 个）
+        // 简单线性查找 + 原子插入
+        bool found = false;
+        for (uint i = 0; i < 4; i++)
+        {
+            uint existing = atomicCompSwap(s_keys[i], 0xFFu, matKey);
+            if (existing == 0xFFu || existing == matKey)
+            {
+                found = true;
+                if (existing == 0xFFu)  // 新插入
+                    atomicAdd(s_keyCount, 1u);
+                break;
+            }
+        }
+        if (!found)  // 超过 4 种材质
+            atomicMax(s_keyCount, 5u);
     }
     barrier();
 
-    // 第一个线程写出结果
     if (gl_LocalInvocationIndex == 0)
     {
         ivec2 tileCoord = ivec2(gl_WorkGroupID.xy);
-        uint mask = s_surfaceMask;
+        uint tileIndex  = gl_WorkGroupID.y * (gl_NumWorkGroups.x) + gl_WorkGroupID.x;
+        uint mask     = s_surfaceMask;
+        uint keyCount = s_keyCount;
+
+        // 写出 SurfaceType bitmask（供 shadow/SSAO 剔空优化）
+        imageStore(TileSurfaceMask, tileCoord,
+                   uvec4(mask == 0u ? 0x80000000u : mask));
+
+        // 写出 MaterialKey 列表
+        for (uint i = 0; i < 4; i++)
+            tileKeys[tileIndex * 4 + i] = s_keys[i];
+        imageStore(TileMaterialCount, tileCoord, uvec4(keyCount));
 
         if (mask == 0u)
         {
-            // 空 tile（天空或无几何体）
-            imageStore(TileSurfaceMask, tileCoord, uvec4(0x80000000u));
-            atomicAdd(empty_count, 1);
+            // ---- Empty ----
+            atomicAdd(empty_count, 1u);
         }
-        else if (bitCount(mask) == 1)
+        else if (keyCount == 1u)
         {
-            // 单一 SurfaceType → 进入快速路径
-            imageStore(TileSurfaceMask, tileCoord, uvec4(mask));
-            uint idx = atomicAdd(single_type_count, 1);
+            // ---- Single-Material ----
+            uint idx = atomicAdd(single_count, 1u);
             single_tiles[idx] = uvec2(tileCoord);
+        }
+        else if (keyCount <= 4u)
+        {
+            // 尝试匹配 FusedComboLUT
+            // 对 s_keys 排序后与 LUT 逐条比对（combo 数量少，线性扫描即可）
+            uint sortedKeys[4];
+            for (uint i = 0; i < 4; i++) sortedKeys[i] = s_keys[i];
+            // 简单冒泡排序（至多 4 元素）
+            for (uint i = 0; i < 3; i++)
+                for (uint j = i + 1; j < 4; j++)
+                    if (sortedKeys[j] < sortedKeys[i])
+                    { uint t = sortedKeys[i]; sortedKeys[i] = sortedKeys[j]; sortedKeys[j] = t; }
+
+            int fusedID = -1;
+            for (uint c = 0; c < fusedComboCount; c++)
+            {
+                if (combos[c].keyCount != keyCount) continue;
+                bool match = true;
+                for (uint k = 0; k < keyCount; k++)
+                    if (combos[c].materialKeys[k] != sortedKeys[k])
+                    { match = false; break; }
+                if (match) { fusedID = int(combos[c].fusedShaderID); break; }
+            }
+
+            if (fusedID >= 0)
+            {
+                // ---- Fused-Material ----
+                uint idx = atomicAdd(fused_count, 1u);
+                fused_tiles[idx] = uvec4(tileCoord, uint(fusedID), keyCount);
+            }
+            else
+            {
+                // ---- Multi-Material（无匹配融合组合）----
+                uint idx = atomicAdd(multi_count, 1u);
+                multi_tiles[idx] = uvec2(tileCoord);
+            }
         }
         else
         {
-            // 多 SurfaceType → 进入通用路径
-            imageStore(TileSurfaceMask, tileCoord, uvec4(mask));
-            uint idx = atomicAdd(multi_type_count, 1);
+            // ---- Multi-Material（超过 4 种材质）----
+            uint idx = atomicAdd(multi_count, 1u);
             multi_tiles[idx] = uvec2(tileCoord);
         }
     }
@@ -3976,19 +4359,20 @@ void main()
 layout(local_size_x=1) in;
 
 layout(set=0, binding=0) buffer TileDispatchArgs {
-    uint single_type_count;
-    uint multi_type_count;
+    uint single_count;
+    uint fused_count;
+    uint multi_count;
     uint empty_count;
-    uint _pad;
     uvec4 single_dispatch;
+    uvec4 fused_dispatch;
     uvec4 multi_dispatch;
 };
 
 void main()
 {
-    // 每个 workgroup 处理一个 tile
-    single_dispatch = uvec4(single_type_count, 1, 1, 0);
-    multi_dispatch  = uvec4(multi_type_count,  1, 1, 0);
+    single_dispatch = uvec4(single_count, 1, 1, 0);
+    fused_dispatch  = uvec4(fused_count,  1, 1, 0);
+    multi_dispatch  = uvec4(multi_count,  1, 1, 0);
 }
 ```
 
@@ -3996,30 +4380,31 @@ void main()
 
 ```
 TileSurfaceMask (R32UI image, tileCountX × tileCountY):
-  每个 texel = uint32 bitmask
-  bit 0  = Unlit        (SurfaceType 0)
-  bit 1  = Standard     (SurfaceType 1)
-  bit 2  = Skin         (SurfaceType 2)
-  bit 3  = Hair         (SurfaceType 3)
-  ...                   ...
-  bit 10 = Terrain      (SurfaceType 10)
-  bit 11-30 = 预留（未来扩展更多 SurfaceType）
-  bit 31 = empty tile
+  每个 texel = uint32 bitmask（SurfaceType 级别，用于 shadow/SSAO 剔空优化）
+  bit 0-10 = SurfaceType 0-10
+  bit 31   = empty tile
 
-TileList_Single[]: 所有单一 SurfaceType 的 tile 坐标 (uvec2)
-TileList_Multi[]:  所有多 SurfaceType 的 tile 坐标 (uvec2)
-TileDispatchArgs:  indirect dispatch 参数（由 GPU 自行填充，CPU 不回读）
+TileMaterialCount (R8UI image, tileCountX × tileCountY):
+  每个 texel = uint8，tile 内唯一 MaterialKey 数量（0=empty, 1=single, 2-4=fused/multi, 5+=multi）
+
+TileMaterialKeys (SSBO, maxTileCount × 4 × uint):
+  每 tile 存储至多 4 个排序后的 MaterialKey（未使用的为 0xFF）
+
+TileList_Single[]: 单一材质 tile 坐标 (uvec2)
+TileList_Fused[]:  融合材质 tile (uvec4: tileCoord + fusedShaderID + keyCount)
+TileList_Multi[]:  多材质 tile 坐标 (uvec2)
+TileDispatchArgs:  3 组 indirect dispatch 参数 + 4 计数器（由 GPU 自行填充，CPU 不回读）
+FusedComboLUT:     已注册融合组合查找表（CPU 上传，帧间稳定）
 ```
 
-> **扩展性**：bitmask 设计天然支持新增 SurfaceType——只需分配新的 bit 位，
-> Classification shader 无需修改逻辑（`atomicOr(1u << surfaceType)` 自动覆盖）。
-> 如果 SurfaceType 未来超过 32 种，可扩展为 uvec2（64 bit）。
+> **扩展性**：SurfaceType bitmask 仍保留供 shadow/SSAO 按 SurfaceType 剔空优化。
+> MaterialKey 分类是对 SurfaceType 分类的**细化**——在同一 SurfaceType 内进一步区分不同 Preset。
 
 ### 8.3 VBuffer Resolve Pass（Tile-Based Dispatch）
 
-Resolve 阶段分为两批 dispatch，由 Classification 阶段的 indirect args 驱动：
+Resolve 阶段分为**三批** dispatch，由 Classification 阶段的 indirect args 驱动：
 
-#### Dispatch 1: 单一 SurfaceType Tile（快速路径）
+#### Dispatch 1: 单一材质 Tile（独占路径 — 最快）
 
 ```glsl
 // vbuffer_resolve_single.comp.glsl
@@ -4073,7 +4458,31 @@ void main()
 > **关键优势**：整个 workgroup（= 一个 tile）内所有线程走同一个 switch 分支，
 > GPU wavefront 没有分支发散（divergence），SIMD 利用率 100%。
 
-#### Dispatch 2: 多 SurfaceType Tile（通用路径）
+#### Dispatch 2: 融合材质 Tile（融合路径 — 中速）— §8.5 详述
+
+```glsl
+// vbuffer_resolve_fused.comp.glsl — 详见 §8.5
+// 每个 workgroup 处理一个融合材质 tile
+layout(local_size_x=TILE_SIZE, local_size_y=TILE_SIZE) in;
+
+// ... 相同的 VBuffer / Depth / LitColor binding ...
+layout(set=0, binding=3) readonly buffer TileListFused { uvec4 tile_data[]; };
+// tile_data[i] = (tileCoord.x, tileCoord.y, fusedShaderID, keyCount)
+
+void main()
+{
+    uvec4 td = tile_data[gl_WorkGroupID.x];
+    uvec2 tileCoord = td.xy;
+    uint fusedID = td.z;
+    // ...
+
+    // ★ 按 fusedShaderID 选择预编译的融合着色路径
+    //   每个 fusedID 对应一个包含 2-4 个 Surface Function 的内联分支
+    //   详见 §8.5 融合材质着色器设计
+}
+```
+
+#### Dispatch 3: 多材质 Tile（通用路径 — 最慢）
 
 ```glsl
 // vbuffer_resolve_multi.comp.glsl
@@ -4091,14 +4500,14 @@ void main()
     uvec2 vbuf = texelFetch(VBuffer, pixel, 0).xy;
     if (vbuf.x == 0u) { return; }
 
-    // 每个像素独立解析自己的 SurfaceType
+    // 每个像素独立解析自己的 MaterialKey
     uint surfaceType = vbuf.x >> 28;
     uint presetID    = (vbuf.x >> 24) & 0xF;
     uint miIndex     = (vbuf.x >> 8)  & 0xFFFF;
     float depth      = texelFetch(DepthBuffer, pixel, 0).r;
     vec3 worldPos    = ReconstructWorldPosition(pixel, depth);
 
-    // ★ 此 tile 内存在分支发散，但只影响 <25% 的 tile
+    // ★ 此 tile 内存在分支发散，但经 Fused 路径分流后仅影响极少量 tile
     vec3 litColor;
     switch(surfaceType)
     {
@@ -4128,11 +4537,18 @@ vkCmdDispatch(cmd, 1, 1, 1);  // 单个 workgroup
 
 vkCmdPipelineBarrier(cmd, ...);  // indirect args barrier
 
-// ===== Dispatch 1: Single-SurfaceType tiles (快速路径) =====
+// ===== Dispatch 1: Single-Material tiles (独占路径) =====
 vkCmdBindPipeline(cmd, resolveSinglePipeline);
 vkCmdDispatchIndirect(cmd, tileDispatchArgs, offsetof(single_dispatch));
 
-// ===== Dispatch 2: Multi-SurfaceType tiles (通用路径) =====
+// ===== Dispatch 2: Fused-Material tiles (融合路径) — §8.5 =====
+// 可能有多个融合 pipeline（每个 fusedShaderID 一个），按 fusedID 分批 dispatch
+// 方案 A：单一 fused pipeline + 内部 switch(fusedID)
+vkCmdBindPipeline(cmd, resolveFusedPipeline);
+vkCmdDispatchIndirect(cmd, tileDispatchArgs, offsetof(fused_dispatch));
+// 方案 B：每个 fusedID 独立 pipeline → 需进一步按 fusedID 子分类（高级优化）
+
+// ===== Dispatch 3: Multi-Material tiles (通用路径) =====
 vkCmdBindPipeline(cmd, resolveMultiPipeline);
 vkCmdDispatchIndirect(cmd, tileDispatchArgs, offsetof(multi_dispatch));
 
@@ -4141,24 +4557,26 @@ vkCmdDispatchIndirect(cmd, tileDispatchArgs, offsetof(multi_dispatch));
 
 #### 性能分析
 
-| 场景特征 | 快速路径 tile 占比 | 通用路径 tile 占比 | 空 tile 占比 |
-|----------|-------------------|--------------------|-------------|
-| 室内简单场景 | ~80% | ~5% | ~15% |
-| 开放世界远景 | ~55% | ~15% | ~30% (天空) |
-| 角色近景特写 | ~40% | ~35% | ~25% |
-| 密集植被城市 | ~35% | ~40% | ~25% |
+| 场景特征 | 独占路径 | 融合路径 | 通用路径 | 空 tile |
+|----------|---------|---------|---------|---------|
+| 室内简单场景 | ~75% | ~5% | ~5% | ~15% |
+| 开放世界远景 | ~50% | ~5% | ~15% | ~30% |
+| 角色近景特写 | ~35% | ~10% | ~30% | ~25% |
+| **密集森林冠层** | ~15% | **~45%** | ~15% | ~25% |
+| 密集植被城市 | ~20% | **~35%** | ~20% | ~25% |
 
-> **空 tile 零开销**：不在任何 tile list 中，不参与 dispatch。
-> **快速路径**：整个 workgroup 走同一 switch 分支，wavefront 无发散。
-> **通用路径**：存在分支发散，但占比小，且每个 wavefront 内通常只有 2-3 种 SurfaceType。
+> **融合路径的核心价值**：在高交错场景（森林、城镇街道）中，原本全部走通用路径的 tile
+> 现在大部分被融合路径接管（~35-45%），通用路径占比从 ~40% 降至 ~15-20%，
+> 整体 GPU 利用率显著提升。
 
 #### 进阶扩展
 
 | 扩展方向 | 方案 | 备注 |
 |----------|------|------|
 | **Per-SurfaceType 专用 kernel** | 为 Standard / Skin / Hair 各编译一个 resolve shader，Classification 阶段额外输出 per-type tile list → 每种类型独立 indirect dispatch | 适合 Special Surface 数量增多后进一步优化 |
+| **Per-FusedID 专用 dispatch** | 每个 fusedShaderID 对应独立 pipeline，fused tile 再按 fusedID 子分类 → 零 switch 开销 | 融合组合数多时性能更优 |
 | **Tile 粒度自适应** | 如果 16×16 粒度下 multi-tile 占比过高，可动态切换到 8×8 以降低发散 | 可通过 Classification 统计结果在 CPU 端决策 |
-| **Debug 可视化** | TileSurfaceMask 直接渲染为颜色热力图（bit count → 冷暖色），用于性能调优 | 加入 Debug Overlay Pass |
+| **Debug 可视化** | TileSurfaceMask / TileMaterialCount 渲染为颜色热力图，fused tile 标绿、multi 标红 → 性能调优 | 加入 Debug Overlay Pass（§8.6）|
 | **Tile-based SSAO/Shadow 屏蔽** | 空 tile 和纯 Unlit tile 跳过 SSAO 采样和 ShadowMask 合成（将 mask 传入对应 pass） | 减少无效计算 |
 | **异步 Compute** | Classification → Single Resolve 可与 ShadowMask/SSAO 的一部分重叠执行 | 需要 async compute queue |
 
@@ -4179,6 +4597,223 @@ vkCmdDispatchIndirect(cmd, tileDispatchArgs, offsetof(multi_dispatch));
 | 存储内容 | 中间量（待光照） | 最终颜色（已光照） |
 | 带宽 | 高（多 RT 读写） | 低（VBuffer 32bit + Depth + 1 RT） |
 | 光照位置 | 单独 Lighting Pass 读 GBuffer | VBuffer Resolve 中直接完成 |
+
+### 8.5 融合材质着色器（Fused Material Shader）
+
+#### 问题陈述
+
+在**高材质交错密度**场景中（典型：森林冠层、城镇街道），相邻像素频繁交替使用不同的
+MaterialPreset（如树叶 vs 树皮、地面 vs 墙砖）。即使它们属于同一 SurfaceType（Standard），
+在通用路径（Dispatch 3）中也会产生以下开销：
+
+```
+典型"森林冠层"tile（8×8 = 64 像素）：
+  ████████
+  ██▓▓▓▓██    ██ = 树叶 (Standard, PresetA)
+  █▓▓▓▓▓▓█    ▓▓ = 树皮 (Standard, PresetB)
+  ▓▓▓▓▓▓▓▓
+  ▓▓████▓▓    两种材质高度交错
+  █████▓▓█    → 若逐材质 mask pass：需 2 次全 tile 遍历
+  ██████▓▓    → 若通用 switch：workgroup 内 2 分支，浪费 ~50% SIMD
+  ████████
+
+融合 shader 方案：1 次遍历，2 条路径内联，per-pixel 选择
+  → SIMD 利用率 ~100%，只需 1 次 dispatch
+```
+
+> **核心思路**：把 2-4 种已知常见共现材质的 Surface Function **内联编译进同一个 Compute Shader**，
+> 每个像素按自己的 MaterialKey 选择路径。因为路径数极少（2-4），GPU 编译器能高效优化
+> （predication / SIMD lanes 复用），远优于通用 N-way switch。
+
+#### 融合 Shader 编译
+
+构建期（§9）Compositor 额外为每个注册的 FusedCombo 编译一个 resolve shader：
+
+```cpp
+// 构建期伪代码 — 融合 shader 生成
+for (const auto& combo : FusedComboRegistry)
+{
+    std::string code = GenerateFusedResolveShader(combo);
+    // 生成的 shader 包含:
+    //   #include "surface/standard_surface.glsl"      // 内联 PresetA 路径
+    //   #include "surface/standard_surface.glsl"      // 内联 PresetB 路径（不同 MI 参数）
+    //   main() 中按 pixel MaterialKey → 选择路径 A/B
+    SPVResult spv = CompileGLSL(code, combo.qualityTier);
+    SPVCache.Store(combo.fusedShaderID, spv);
+}
+```
+
+> **注意**：同一 SurfaceType 内不同 Preset 通常共享相同的 Surface Function（如都是 `standard_surface.glsl`），
+> 区别仅在 MI 中的纹理/参数不同。这种情况下融合 shader 本质上是**同一 Surface Function + 不同 MI 的多路分发**，
+> 编译后的 shader 体积几乎不增加。
+>
+> 当跨 SurfaceType 融合时（如 Standard + Skin），需要内联两个不同的 Surface Function，
+> shader 体积和寄存器占用会增大——建议仅注册确实高频的跨类型组合，且控制在 2-3 种材质。
+
+#### 融合 Resolve 着色器实现
+
+```glsl
+// vbuffer_resolve_fused.comp.glsl
+// 编译期：根据 FusedCombo 注册表生成多个 specialization，或使用 switch(fusedID)
+layout(local_size_x=TILE_SIZE, local_size_y=TILE_SIZE) in;
+
+layout(set=0, binding=0) uniform usampler2D VBuffer;
+layout(set=0, binding=1) uniform sampler2D  DepthBuffer;
+layout(set=0, binding=2, rgba16f) writeonly uniform image2D LitColorOutput;
+layout(set=0, binding=3) readonly buffer TileListFused { uvec4 tile_data[]; };
+
+// --- 内联的 Surface Function（构建期 #include 注入）---
+// 假设此 fusedShaderID = FUSED_FOREST_CANOPY (树叶 + 树皮)
+// 两者都是 Standard SurfaceType，共享 EvalStandard()
+
+// 定义融合组合内的 MaterialKey
+#define FUSED_KEY_A  ((SURFACE_STANDARD << 4) | PRESET_TREE_LEAF)
+#define FUSED_KEY_B  ((SURFACE_STANDARD << 4) | PRESET_TREE_BARK)
+
+void main()
+{
+    uvec4 td = tile_data[gl_WorkGroupID.x];
+    uvec2 tileCoord = td.xy;
+    // uint fusedID = td.z;  // 若多个融合 combo 共用一个 shader 可用
+
+    ivec2 pixel = ivec2(tileCoord * TILE_SIZE + gl_LocalInvocationID.xy);
+    uvec2 vbuf = texelFetch(VBuffer, pixel, 0).xy;
+    if (vbuf.x == 0u) { return; }
+
+    uint surfaceType = vbuf.x >> 28;
+    uint presetID    = (vbuf.x >> 24) & 0xFu;
+    uint matKey      = (surfaceType << 4) | presetID;
+    uint miIndex     = (vbuf.x >> 8) & 0xFFFF;
+    float depth      = texelFetch(DepthBuffer, pixel, 0).r;
+    vec3 worldPos    = ReconstructWorldPosition(pixel, depth);
+
+    // ★ 仅 2 条路径，极低分支发散
+    //   GPU 编译器可将两条路径优化为 predicated execution
+    vec3 litColor;
+    if (matKey == FUSED_KEY_A)
+    {
+        // 树叶：读取 MI_A → EvalSurface → EvalLighting
+        MI_Standard mi = GetMI(miIndex);
+        SurfaceInput si = ReconstructSurfaceInput(pixel, worldPos, vbuf);
+        SurfaceOutput surf = EvalSurface(si, mi);
+        litColor = EvalLighting(surf, worldPos, normalize(camera.pos - worldPos));
+    }
+    else // matKey == FUSED_KEY_B
+    {
+        // 树皮：读取 MI_B → EvalSurface → EvalLighting
+        MI_Standard mi = GetMI(miIndex);
+        SurfaceInput si = ReconstructSurfaceInput(pixel, worldPos, vbuf);
+        SurfaceOutput surf = EvalSurface(si, mi);
+        litColor = EvalLighting(surf, worldPos, normalize(camera.pos - worldPos));
+    }
+
+    imageStore(LitColorOutput, pixel, vec4(litColor, 1.0));
+}
+```
+
+> **同一 SurfaceType 融合的特殊优化**：上例中树叶和树皮都是 Standard，
+> `EvalSurface()` 和 `EvalLighting()` 函数签名完全相同——唯一区别是 MI 中的纹理索引/参数。
+> 因此融合 shader 实际上**不需要 if/else 分支**——直接 `GetMI(miIndex)` 后调用同一条路径即可！
+> 编译器会识别到两条路径完全相同并合并。
+>
+> 真正需要 if/else 分支的是**跨 SurfaceType 融合**（如 Standard + Skin），
+> 此时两条路径调用不同的 `EvalSurface_Standard()` vs `EvalSurface_Skin()`。
+
+#### 跨 SurfaceType 融合示例
+
+```glsl
+// 融合 shader: Standard + Skin（角色近景 tile 常见组合）
+#define FUSED_KEY_A  ((SURFACE_STANDARD << 4) | PRESET_DEFAULT)
+#define FUSED_KEY_B  ((SURFACE_SKIN     << 4) | PRESET_HUMAN_SKIN)
+
+// 内联两个 Surface Function
+#include "surface/standard_surface.glsl"    // EvalSurface_Standard()
+#include "surface/skin_surface.glsl"        // EvalSurface_Skin()
+
+void main()
+{
+    // ... 同上解包像素 ...
+
+    vec3 litColor;
+    if (matKey == FUSED_KEY_A)
+    {
+        SurfaceOutput surf = EvalSurface_Standard(si, mi);
+        litColor = EvalLighting(surf, worldPos, V);
+    }
+    else
+    {
+        SurfaceOutput surf = EvalSurface_Skin(si, mi);
+        litColor = EvalLightingSkin(surf, worldPos, V);  // Skin 专用光照（含 SSS）
+    }
+    // ...
+}
+```
+
+#### 融合 Combo 注册与管理
+
+```cpp
+// ===== 融合材质组合注册 =====
+struct FusedMaterialCombo
+{
+    uint8_t  materialKeys[4];   // 排序后的 MaterialKey（未使用的填 0xFF）
+    uint8_t  keyCount;          // 实际包含的材质数（2-4）
+    uint8_t  fusedShaderID;     // 编译后的 SPV 索引
+    uint16_t _pad;
+};
+
+class FusedComboRegistry
+{
+    std::vector<FusedMaterialCombo> combos;   // 通常 4-16 条
+
+public:
+    // 手动注册（按 MaterialCategory 语义 — §5.1.1）
+    void RegisterByCategory(MaterialCategory catA, MaterialCategory catB, uint8_t shaderID);
+    void Register(std::initializer_list<uint8_t> keys, uint8_t shaderID);
+
+    // 自动推荐：从上帧的 Tile Classification 统计中提取 top-N 高频 MaterialCategory 共现组合
+    void AutoRecommend(const TileClassificationStats& stats, uint32_t topN = 8);
+
+    // 上传 GPU 端 FusedComboLUT SSBO
+    void UploadToGPU(VkBuffer fusedComboBuffer);
+};
+```
+
+> **推荐流程**：
+> 1. 开发期：打开 Debug Overlay（§8.6），观察 Multi-Material tile 分布热力图
+> 2. 收集高频 MaterialCategory 共现组合（引擎可自动按 MaterialCategory 统计 top-N，§5.1.1）
+> 3. 手动 `RegisterByCategory()` 或使用 `AutoRecommend()` 自动注册 → 触发融合 shader 编译
+> 4. 下次加载场景时融合 shader 生效 → Multi tile 占比显著下降
+
+#### 融合方案对比总结
+
+| | 独占路径 (Single) | 融合路径 (Fused) | 通用路径 (Multi) |
+|--|---|---|---|
+| 材质数/tile | 1 | 2-4（已知组合） | 2+（未知/超限） |
+| 分支发散 | 零 | 极低（2-4 路径，编译器优化） | 中-高（N-way switch） |
+| Dispatch 次数 | 1 | 1 | 1 |
+| SIMD 利用率 | 100% | ~90-100% | ~50-75% |
+| Shader 编译 | 标准 resolve | 额外编译融合 SPV | 标准 resolve |
+| 典型占比 | 50-75% tile | 10-45% tile（高交错场景） | 5-15% tile |
+| 适用场景 | 大面积单一材质表面 | 森林冠层、城镇街道、角色边缘 | 极端复杂交界区 |
+
+### 8.6 Tile Classification Debug 可视化
+
+为辅助融合 Combo 注册和性能调优，提供 Debug Overlay 模式：
+
+```
+Debug Mode: Tile Classification Overlay
+  绿色: 独占路径 tile (Single)
+  蓝色: 融合路径 tile (Fused) — 附标注 fusedShaderID
+  红色: 通用路径 tile (Multi) — 附标注材质数量
+  灰色: 空 tile
+  热力图模式: 按 tile 内 MaterialKey 数量 1→绿 2→黄 3→橙 4+→红
+```
+
+| 统计项 | 来源 | 用途 |
+|--------|------|------|
+| 各路径 tile 数量/占比 | TileDispatchArgs.single/fused/multi_count | 总体性能评估 |
+| Multi tile 中 top-N 材质组合频率 | Classification 额外统计 SSBO | 自动推荐 Fused Combo |
+| 每个 FusedCombo 命中的 tile 数 | TileList_Fused 中按 fusedID 计数 | 评估已注册 Combo 的效果 |
 
 ---
 
@@ -4595,87 +5230,90 @@ struct VertexLayout_PosTexNormTan {
 
 ### Phase 6：VBuffer 路径（SSBO 平台专属）
 33. 实现 VBuffer ID Pass（`compositor/main_vbuffer_id.frag.glsl`，SSBO 路径）
-34. 实现 Tile SurfaceType Classification Compute Shader
-    - TileSurfaceMask (R32UI image)、TileList (SSBO)、TileDispatchArgs (SSBO)
-    - Indirect dispatch args 填充 shader
-35. 实现 VBuffer Resolve — 单一 SurfaceType tile 快速路径（内部 `#include` Surface Function）
-36. 实现 VBuffer Resolve — 多 SurfaceType tile 通用路径
-37. 实现 LitColor RT 管理和后期处理衔接
-38. 实现 Forward / VBuffer 路径自动切换（VBO 平台强制 Forward Only）
-39. (可选) Tile-based SSAO/ShadowMask 屏蔽优化
-40. (可选) Tile Complexity Debug 可视化热力图
+34. 实现 Tile Material Classification Compute Shader
+    - TileSurfaceMask (R32UI) + TileMaterialKeys (SSBO) + TileMaterialCount (R8UI)
+    - 四类分流: empty / single / fused / multi
+    - FusedComboLUT 匹配 + Indirect dispatch args 填充
+35. 实现 VBuffer Resolve — 单一材质 tile 独占路径（内部 `#include` Surface Function）
+36. 实现 VBuffer Resolve — 融合材质 tile 融合路径（§8.5，刍编译 2-4 材质内联 shader）
+37. 实现 VBuffer Resolve — 多材质 tile 通用路径
+38. 实现 LitColor RT 管理和后期处理衔接
+39. 实现 Forward / VBuffer 路径自动切换（VBO 平台强制 Forward Only）
+40. 实现 FusedComboRegistry（手动注册 + AutoRecommend + GPU 上传）
+41. (可选) Tile-based SSAO/ShadowMask 屏蔽优化
+42. 实现 Tile Classification Debug 可视化热力图（§8.6）
 
 ### Phase 7：Meshlet 几何管线（SSBO 平台 High+）
-41. 集成 meshoptimizer 库（meshlet 构建 + mesh simplification）
-42. 实现离线 Meshlet 预处理工具（Mesh → MeshletBuffer + LOD DAG + Flags）
-43. 定义 MeshletGPU 结构体 + 引擎二进制格式 (.ulm)
-44. 实现 Instance Cull Compute Shader（视锥 + 粗 HZB）
-45. 实现 Meshlet LOD Select + Cull Compute Shader（DAG 遍历 + Frustum + Cone + HZB）
-46. 集成 vkCmdDrawIndexedIndirectCount (meshlet 粒度 Indirect Draw，从全局 SSBO 读取)
-47. 实现 Two-Phase Meshlet Occlusion Culling
-48. 实现 Terrain-Contact Dither 混合（Compositor `TERRAIN_CONTACT_DITHER` PassType）
-49. 实现 MESHLET_FLAG_ALPHA_TEST / WIND_ANIM 变体支持
-50. (可选) 实现 Mesh Shader 加速路径（VK_EXT_mesh_shader: Task + Mesh Shader, PC only）
-51. 实现 Lowest/Low/Medium SSBO 回退路径（离散 LOD mesh 从 DAG 导出，仍走 SSBO 顶点获取）
-52. 实现 VBO 平台回退路径（离散 LOD mesh + CPU Frustum Cull + vkCmdDrawIndexed）
+43. 集成 meshoptimizer 库（meshlet 构建 + mesh simplification）
+44. 实现离线 Meshlet 预处理工具（Mesh → MeshletBuffer + LOD DAG + Flags）
+45. 定义 MeshletGPU 结构体 + 引擎二进制格式 (.ulm)
+46. 实现 Instance Cull Compute Shader（视锥 + 粗 HZB）
+47. 实现 Meshlet LOD Select + Cull Compute Shader（DAG 遍历 + Frustum + Cone + HZB）
+48. 集成 vkCmdDrawIndexedIndirectCount (meshlet 粒度 Indirect Draw，从全局 SSBO 读取)
+49. 实现 Two-Phase Meshlet Occlusion Culling
+50. 实现 Terrain-Contact Dither 混合（Compositor `TERRAIN_CONTACT_DITHER` PassType）
+51. 实现 MESHLET_FLAG_ALPHA_TEST / WIND_ANIM 变体支持
+52. (可选) 实现 Mesh Shader 加速路径（VK_EXT_mesh_shader: Task + Mesh Shader, PC only）
+53. 实现 Lowest/Low/Medium SSBO 回退路径（离散 LOD mesh 从 DAG 导出，仍走 SSBO 顶点获取）
+54. 实现 VBO 平台回退路径（离散 LOD mesh + CPU Frustum Cull + vkCmdDrawIndexed）
 
 ### Phase 7.5：Reversed-Z 管线集成 ★
-53. 实现 `MakeInfiniteReversedZProj()` 投影矩阵（§2.10.2）
-54. 切换全管线 DepthStencilState: depthCompareOp = GREATER, clearDepth = 0.0
-55. 适配 HZB Downsample（min = 最远）、SSR Hi-Z Trace（compare > ）、SSAO depth linearization
-56. 实现 `depth_utils.glsl`（`LinearizeDepth()` = near/d, `ReconstructWorldPos()`, §2.10.4）
-57. 运行时 D32_SFLOAT 格式检测 + D24 回退（§2.10.3）
-58. 全 Pass 深度约定验证：Z-Prepass / Shadow / VBuffer / Forward / Sky = 0.0 最远
+55. 实现 `MakeInfiniteReversedZProj()` 投影矩阵（§2.10.2）
+56. 切换全管线 DepthStencilState: depthCompareOp = GREATER, clearDepth = 0.0
+57. 适配 HZB Downsample（min = 最远）、SSR Hi-Z Trace（compare > ）、SSAO depth linearization
+58. 实现 `depth_utils.glsl`（`LinearizeDepth()` = near/d, `ReconstructWorldPos()`, §2.10.4）
+59. 运行时 D32_SFLOAT 格式检测 + D24 回退（§2.10.3）
+60. 全 Pass 深度约定验证：Z-Prepass / Shadow / VBuffer / Forward / Sky = 0.0 最远
 
 ### Phase 8：渲染管线扩展 — 阴影 & 后处理 & 光照
-59. 实现双层 ShadowMap 架构: Near Dynamic Cascade (每帧全量) + Far Cached Cascade (环形滚动, §3.6.3)
-60. 实现 Toroidal Scrolling 逻辑: tile dirty mask + 增量渲染 + fract() UV 采样
-61. 实现 ShadowMask Compose Pass: Near+Far 距离混合 + Capsule Shadow (G) + Contact Shadow (B) → RGBA8
-62. 实现 Capsule Shadow: CapsuleShadowData SSBO + per-pixel 解析遮挡计算 (§3.6.4)
-63. 实现 Blob Shadow 回退: 贴地 quad + 衰减纹理 (低端动态物体用)
-64. 实现 Contact Shadow: 屏幕空间 ray-march, High+ (§3.6.5)
-65. 实现 ShadowConfig 可调参数体系 (§3.6.7) + DeviceQualityProfile 默认值映射
-66. 实现 HZB 降采样 Compute Shader（Depth RT → HZB Pyramid，SSBO 平台 High+）
-67. 实现 Clustered Shading（Cluster 预计算 + Light Assignment Compute + **Compositor `EvalLighting()` 集成**，SSBO High+）
-68. 实现 Auto Exposure（Luminance Histogram Compute + Average + Temporal Smooth）
-69. 实现 SSR（Hi-Z Ray March Compute, PC/Apple High+ only）
-70. 实现 Fog 内联计算（FogParams UBO + `ApplyFog()` 集成到 **Compositor 模板** / VBuffer Resolve）
-71. 实现 Color Grading / 3D LUT（Compute Pass, 在 ToneMap 之后）
-72. 实现 CAS / Sharpening（Compute Pass）
-73. (可选) 实现 DOF Compute Shader（CoC 计算 + 散景模糊，PC/Apple High+）
-74. (可选) 实现 Per-Pixel Motion Blur Compute Shader（PC Ultra only）
-75. 实现 Decal Pass（Screen-Space Decal: OBB mesh + Depth 反算 + 投影采样，SSBO High+）
-76. 实现 Outline / Selection Highlight（Stencil + Dilate 或 JFA）
+61. 实现双层 ShadowMap 架构: Near Dynamic Cascade (每帧全量) + Far Cached Cascade (环形滚动, §3.6.3)
+62. 实现 Toroidal Scrolling 逻辑: tile dirty mask + 增量渲染 + fract() UV 采样
+63. 实现 ShadowMask Compose Pass: Near+Far 距离混合 + Capsule Shadow (G) + Contact Shadow (B) → RGBA8
+64. 实现 Capsule Shadow: CapsuleShadowData SSBO + per-pixel 解析遮挡计算 (§3.6.4)
+65. 实现 Blob Shadow 回退: 贴地 quad + 衰减纹理 (低端动态物体用)
+66. 实现 Contact Shadow: 屏幕空间 ray-march, High+ (§3.6.5)
+67. 实现 ShadowConfig 可调参数体系 (§3.6.7) + DeviceQualityProfile 默认值映射
+68. 实现 HZB 降采样 Compute Shader（Depth RT → HZB Pyramid，SSBO 平台 High+）
+69. 实现 Clustered Shading（Cluster 预计算 + Light Assignment Compute + **Compositor `EvalLighting()` 集成**，SSBO High+）
+70. 实现 Auto Exposure（Luminance Histogram Compute + Average + Temporal Smooth）
+71. 实现 SSR（Hi-Z Ray March Compute, PC/Apple High+ only）
+72. 实现 Fog 内联计算（FogParams UBO + `ApplyFog()` 集成到 **Compositor 模板** / VBuffer Resolve）
+73. 实现 Color Grading / 3D LUT（Compute Pass, 在 ToneMap 之后）
+74. 实现 CAS / Sharpening（Compute Pass）
+75. (可选) 实现 DOF Compute Shader（CoC 计算 + 散景模糊，PC/Apple High+）
+76. (可选) 实现 Per-Pixel Motion Blur Compute Shader（PC Ultra only）
+77. 实现 Decal Pass（Screen-Space Decal: OBB mesh + Depth 反算 + 投影采样，SSBO High+）
+78. 实现 Outline / Selection Highlight（Stencil + Dilate 或 JFA）
 
 ### Phase 9：Material LOD + Special Surface ★★★
-77. 实现 `CalcObjectLODTier()` 函数：屏幕空间面积估算 + 阈值表 + `importanceBias` 偏移（§3.5.3）
-78. 实现 `ResolveSPVFallback()` 函数：根据 `MaterialPresetDef.fallback_surface_type` + `unique_feature_min_tier` 路由 SPV（§3.5.6）
-79. 渲染排序支持 `EffectiveTier` 分组：`(SurfaceType, EffectiveTier, PassType)` 排序键，减少 Pipeline 切换
-80. 扩展 `SurfaceOutput` 支持 `SurfaceOutputExt`（SSS / Anisotropy / Caustic 等 Special Surface 专属字段）
-81. 实现 Skin Surface Function（`surface/skin_surface.glsl`，Ultra: 全 SSS + Detail Normal + 曲率 AO，High: 简化 SSS，Medium/Low: fallback Standard）
-82. 实现 Eye Surface Function（`surface/eye_surface.glsl`，Ultra: Parallax Refraction + 焦散 + 角膜 SSS，High: 单层 Parallax + CubeMap，Medium: 平面纹理 PBR，Low: Albedo + Phong）
-83. 实现 Hair Surface Function（Ultra: Marschner 双高光，High: Kajiya-Kay，Medium: 单高光 PBR，Low: BlinnPhong）
-84. 实现 Cloth Surface Function（Sheen + Charlie Model，Medium: 简化 wrap lighting，Low: Standard）
-85. 实现 ClearCoat Surface Function（High+: 双层 BRDF，Med: 单层近似，Low: 高 specular BlinnPhong）
-86. 实现 Foliage Surface Function（High+: Thin Translucency + Wind，Med: Wrap + 简化 Wind，Low: 静态 AlphaTest）
-87. 实现 `EvalLighting_Skin()` / `EvalLighting_Eye()` 等 Compositor lighting 模块（配合 SurfaceOutputExt 处理 SSS / Anisotropy）
-88. 验证 SPV fallback 等价性：Skin@Medium == Standard@Medium SPV 输出完全一致
-89. 实现 `ObjectImportance` 游戏接口：对话镜头 → MainNPC(+1), 过场特写 → Hero(+2), 群演 → BackgroundNPC(-1)
+79. 实现 `CalcObjectLODTier()` 函数：屏幕空间面积估算 + 阈值表 + `importanceBias` 偏移（§3.5.3）
+80. 实现 `ResolveSPVFallback()` 函数：根据 `MaterialPresetDef.fallback_surface_type` + `unique_feature_min_tier` 路由 SPV（§3.5.6）
+81. 渲染排序支持 `EffectiveTier` 分组：`(SurfaceType, EffectiveTier, PassType)` 排序键，减少 Pipeline 切换
+82. 扩展 `SurfaceOutput` 支持 `SurfaceOutputExt`（SSS / Anisotropy / Caustic 等 Special Surface 专属字段）
+83. 实现 Skin Surface Function（`surface/skin_surface.glsl`，Ultra: 全 SSS + Detail Normal + 曲率 AO，High: 简化 SSS，Medium/Low: fallback Standard）
+84. 实现 Eye Surface Function（`surface/eye_surface.glsl`，Ultra: Parallax Refraction + 焦散 + 角膜 SSS，High: 单层 Parallax + CubeMap，Medium: 平面纹理 PBR，Low: Albedo + Phong）
+85. 实现 Hair Surface Function（Ultra: Marschner 双高光，High: Kajiya-Kay，Medium: 单高光 PBR，Low: BlinnPhong）
+86. 实现 Cloth Surface Function（Sheen + Charlie Model，Medium: 简化 wrap lighting，Low: Standard）
+87. 实现 ClearCoat Surface Function（High+: 双层 BRDF，Med: 单层近似，Low: 高 specular BlinnPhong）
+88. 实现 Foliage Surface Function（High+: Thin Translucency + Wind，Med: Wrap + 简化 Wind，Low: 静态 AlphaTest）
+89. 实现 `EvalLighting_Skin()` / `EvalLighting_Eye()` 等 Compositor lighting 模块（配合 SurfaceOutputExt 处理 SSS / Anisotropy）
+90. 验证 SPV fallback 等价性：Skin@Medium == Standard@Medium SPV 输出完全一致
+91. 实现 `ObjectImportance` 游戏接口：对话镜头 → MainNPC(+1), 过场特写 → Hero(+2), 群演 → BackgroundNPC(-1)
 
 ### Phase 10：Android 适配与测试 ★
-90. Android VBO 路径端到端集成测试（Lowest/Low/Medium 材质 × 传统 DrawCall）
-91. Android High SSBO 路径验证（Adreno 7xx / Mali-G7xx 真机测试）
-92. Android 动态分辨率实现（0.5× ~ 1.0× 根据 GPU 负载调节）
-93. Android GPU 能力检测阈值调优（SSBO vs VBO 分界线校准）
-94. Android 特性裁剪验证（确认 §2.9.4 中被砍特性的 shader 变体不被加载）
-95. Android Cached SM + Capsule Shadow 联调测试
-96. Android Material LOD 阈值调优（§3.5.3 各平台阈值表验证）
+92. Android VBO 路径端到端集成测试（Lowest/Low/Medium 材质 × 传统 DrawCall）
+93. Android High SSBO 路径验证（Adreno 7xx / Mali-G7xx 真机测试）
+94. Android 动态分辨率实现（0.5× ~ 1.0× 根据 GPU 负载调节）
+95. Android GPU 能力检测阈值调优（SSBO vs VBO 分界线校准）
+96. Android 特性裁剪验证（确认 §2.9.4 中被砍特性的 shader 变体不被加载）
+97. Android Cached SM + Capsule Shadow 联调测试
+98. Android Material LOD 阈值调优（§3.5.3 各平台阈值表验证）
 
 ### Phase 11：清理
-97. 删除旧的 ShaderComposition / Logic / Bridge 代码
-98. 删除传统 GBuffer 相关代码和枚举
-99. 更新 Pipeline 创建逻辑使用固定 Layout（SSBO: 空 VertexInput / VBO: 标准 VertexInput）
-100. 更新编辑器 UI（Material Instance 编辑面板 — 含 BlendMode 选择 + ObjectImportance 预览）
+99. 删除旧的 ShaderComposition / Logic / Bridge 代码
+100. 删除传统 GBuffer 相关代码和枚举
+101. 更新 Pipeline 创建逻辑使用固定 Layout（SSBO: 空 VertexInput / VBO: 标准 VertexInput）
+102. 更新编辑器 UI（Material Instance 编辑面板 — 含 BlendMode 选择 + ObjectImportance 预览）
 
 ---
 
@@ -4795,7 +5433,7 @@ struct VertexLayout_PosTexNormTan {
 | 1.4 | 定义 `PassType` 枚举 | `Forward_Opaque, Forward_Masked, ..., VBuffer_ID, Shadow_Opaque, Shadow_Masked` 共 10 个 | 新建 `inc/hgl/mtl/PassType.h` | PassType 枚举 |
 | 1.5 | 定义 `PlatformBackend` 枚举 | `PC_SSBO, Apple_SSBO, Android_VBO` | 新建 `inc/hgl/mtl/PlatformBackend.h` | PlatformBackend 枚举 |
 | 1.6 | 重写 `ShaderPermutationKey` | 16-bit packed: surface(4)+quality(3)+shadow(2)+flags(3)+platform(2)+reserved(2)。实现 `AppendGLSLDefines()` 生成 `#define SURFACE_TYPE N`, `#define QUALITY_TIER N` 等 | 重写 `inc/hgl/mtl/ShaderPermutationKey.h`, `src/ShaderGen/ShaderPermutationKey.cpp` | 新 PermutationKey |
-| 1.7 | 定义 `MaterialPresetDef` | 结构体: `{preset_id, surface_type, name, mi_struct, mi_size, texture_slots[], fallback_surface_type, unique_feature_min_tier}` | 新建 `inc/hgl/mtl/MaterialPresetDef.h` | 预设定义结构体 |
+| 1.7 | 定义 `MaterialPresetDef` | 结构体: `{preset_id, surface_type, material_category, name, mi_struct, mi_size, texture_slots[], fallback_surface_type, unique_feature_min_tier}` | 新建 `inc/hgl/mtl/MaterialPresetDef.h` | 预设定义结构体（含 MaterialCategory §5.1.1） |
 | 1.8 | 实现 `DeviceQualityProfile` | GPU 检测逻辑: vendor/device → `{qualityTier, platformBackend, geometryFetchMode, featureMask}`。**复用**现有 `VKPhysicalDevice` 的 properties/features 查询 | 新建 `inc/hgl/mtl/DeviceQualityProfile.h`, 实现 `.cpp` | 自动档位检测 |
 | 1.9 | 迁移 `PipelineInputMode` | 保留 `LegacyVABVBO`, `SSBOVertexInput`，删除 Hybrid/Auto；改为 `PlatformBackend` 驱动选择 | 修改 `RenderFlowDef.h` | |
 
@@ -5211,4 +5849,4 @@ Vulkan 要求 Texture2DArray 所有层分辨率一致。解决方案：
 | 其中 Compositor 模板 | — | ~13 (compositor/*.glsl — 所有 SurfaceType 共用) |
 | 其中 Surface Function | — | ~11 (surface/*.glsl — 每个 SurfaceType 各一份；Special Surface 低档位可 fallback 到 Standard SPV §3.5.6) |
 | 编译期 Shader 变体 | 动态，不可预测 | ≤11 (SurfaceType) × ≤6 (QualityTier) × ≤4 (shadow+flags) × ≤3 (PassType per BlendMode) = ~792 最大（SPV fallback 复用后实际 ~550，Cinematic 仅 PC 编译） |
-| 概念数 | FixedMaterialDef, ComposedMaterialDef, MaterialLogicDef, ShaderCompositionBridge, BuiltinHelpers, ShaderCreateInfo (5种), MaterialCreateConfig (3种), LightingModel enum... | MaterialPresetDef, MaterialInstance, **CompositorAssembler**, PresetShaderCompiler, SPVCache, DeviceQualityProfile, TextureSlotDef, BlendMode, PassType |
+| 概念数 | FixedMaterialDef, ComposedMaterialDef, MaterialLogicDef, ShaderCompositionBridge, BuiltinHelpers, ShaderCreateInfo (5种), MaterialCreateConfig (3种), LightingModel enum... | MaterialPresetDef, MaterialInstance, MaterialCategory, **CompositorAssembler**, PresetShaderCompiler, SPVCache, DeviceQualityProfile, TextureSlotDef, BlendMode, PassType |
