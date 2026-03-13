@@ -838,6 +838,18 @@ Matrix4f MakeInfiniteReversedZProj(float fov_y, float aspect, float near_z);
 
 **不修改现有 Camera 代码**。
 
+> **⚠️ 实现备忘（Z 轴向上坐标系 + 引擎投影约定）**：
+> 本引擎使用 **Z 轴向上右手坐标系**，`PerspectiveMatrix()` 返回的投影矩阵中
+> `m[0][0]` 和 `m[1][1]` 均为 **负值**（`-f/aspect` 和 `-f`），用以翻转 X/Y
+> 到 Vulkan NDC。`MakeInfiniteReversedZProj()` **必须保持相同的负号约定**，
+> 否则画面上下左右镜像翻转。正确写法：
+> ```cpp
+> m[0][0] = -f / aspect;
+> m[1][1] = -f;
+> m[2][3] = -1.0f;
+> m[3][2] = near_z;
+> ```
+
 **[测试]**：编译通过。可选：写单元测试验证矩阵值（near 映射到 1.0，无穷远映射到 0.0）。
 
 ---
@@ -964,6 +976,16 @@ void UploadTransforms(const Camera& cam, span<mat4> l2wPool)
 }
 ```
 
+> **⚠️ 实现备忘**：
+> 1. `camera_offset_`（Vector3d）成员变量**必须显式初始化为 `{0,0,0}`**，
+>    否则未初始化的 double 强转 float 会产生 INF，导致 L2W 矩阵全为 INF。
+> 2. 此步骤新增的 `SetCameraOffset()` **必须在 CameraSystem 中被实际调用**
+>    才能生效。由于 ECS 执行顺序中 `TickTransform`（TransformSystem）
+>    **先于** `TickCamera`（CameraSystem），需要使用**上一帧**的相机位置，
+>    或者在帧首单独同步一次相机偏移。
+> 3. 4.7.2 和 4.7.3 必须**原子性地**同时启用：L2W 减偏移 + View 矩阵归零
+>    缺一不可，否则相机距离和物体位置会错乱。
+
 **[测试]**：对象在世界原点附近与距离 100km 处显示一致，无拖动。
 
 ---
@@ -986,6 +1008,15 @@ layout(set=0, binding=1) uniform CameraUBO {
     vec3 cameraPosWorld;   // 绝对世界坐标 (用于 fog/terrain 等)
 };
 ```
+
+> **⚠️ 实现备忘**：
+> 1. `SBS_CameraInfo`（GLSL UBO 定义）必须与 C++ `CameraInfo` 结构体严格同步。
+>    新增的 `use_reversed_z` / `_pad_ci0` / `camera_world_pos` 字段
+>    需要在 `UBOCommon.h` 的 GLSL 定义中同步追加，否则 GPU 端读取偏移错误。
+> 2. `StructuredBufferAccessor<T>::MarkDirty()` 只设置 accessor 内部 dirty，
+>    **不会**自动传播到底层 `StagedBuffer`。必须同时调用 `gpu_buf->MarkDirty()`
+>    才能让 `RenderBufferUploadSystem` 识别并执行 staging→device 拷贝。
+>    （此 bug 会导致 Camera UBO 在 GPU 端全为零。）
 
 **[测试]**：编译通过，现有 shader 不受影响（`cameraPos` 字段仍存在）。
 
