@@ -44,7 +44,7 @@ static_assert(sizeof(PackedTRS) == 40, "PackedTRS size mismatch");
 
 constexpr uint32_t kScenePackV2Magic = 0x324E4353u; // 'SCN2'
 
-enum class SceneV2TableType : uint32_t
+enum class SceneTableType : uint32_t
 {
     NameTable      = 1,
     NodeTable      = 2,
@@ -62,7 +62,7 @@ enum class SceneV2TableType : uint32_t
     GeometryBlob      = 14,
 };
 
-struct ScenePackV2Header
+struct ScenePackHeader
 {
     uint32_t magic;
     uint16_t version_major;
@@ -82,7 +82,7 @@ struct ScenePackV2Header
     uint32_t reserved;
 };
 
-struct SceneV2TableDesc
+struct SceneTableDesc
 {
     uint32_t type;
     uint32_t offset;
@@ -90,7 +90,7 @@ struct SceneV2TableDesc
     uint32_t stride;
 };
 
-struct PackedNodeV2
+struct PackedNode
 {
     int32_t original_index;
     int32_t name_index;
@@ -104,7 +104,7 @@ struct PackedNodeV2
     int32_t child_count;
 };
 
-struct PackedPrimitiveV2
+struct PackedPrimitive
 {
     int32_t  original_index;
     int32_t  geometry_index;
@@ -113,7 +113,7 @@ struct PackedPrimitiveV2
     uint32_t geometry_file_length;
 };
 
-struct PackedGeometryViewV2
+struct PackedGeometryView
 {
     int32_t  original_index;
     uint32_t blob_offset;
@@ -125,7 +125,7 @@ struct PackedGeometryViewV2
 
 std::vector<std::string> ParseNameTable(const void *raw, uint32_t bytes);
 
-static const SceneV2TableDesc *FindTableDesc(const SceneV2TableDesc *dir, uint32_t dir_count, SceneV2TableType type)
+static const SceneTableDesc *FindTableDesc(const SceneTableDesc *dir, uint32_t dir_count, SceneTableType type)
 {
     const uint32_t t = static_cast<uint32_t>(type);
     for (uint32_t i = 0; i < dir_count; ++i)
@@ -136,7 +136,7 @@ static const SceneV2TableDesc *FindTableDesc(const SceneV2TableDesc *dir, uint32
     return nullptr;
 }
 
-static bool TryGetTableRange(const uint8_t *payload, uint32_t payload_size, const SceneV2TableDesc *td, const uint8_t *&ptr, uint32_t &size)
+static bool TryGetTableRange(const uint8_t *payload, uint32_t payload_size, const SceneTableDesc *td, const uint8_t *&ptr, uint32_t &size)
 {
     if (!td)
         return false;
@@ -147,7 +147,7 @@ static bool TryGetTableRange(const uint8_t *payload, uint32_t payload_size, cons
     return true;
 }
 
-static bool TryLoadSceneV2(
+static bool TryLoadScene(
     hgl::io::minipack::MiniPackMemory *mpm,
     VulkanDevice             *device,
     GeometryManager          *geo_mgr,
@@ -161,8 +161,8 @@ static bool TryLoadSceneV2(
     std::vector<StaticMeshNode> &scene_nodes,
     std::vector<int32_t> &root_nodes)
 {
-    const int32 header_idx = mpm->FindFile(AnsiStringView("SceneHeaderV2"));
-    const int32 payload_idx = mpm->FindFile(AnsiStringView("ScenePayloadV2"));
+    const int32 header_idx = mpm->FindFile(AnsiStringView("ScenePackHeader"));
+    const int32 payload_idx = mpm->FindFile(AnsiStringView("ScenePayload"));
 
     if (header_idx < 0 || payload_idx < 0)
         return false;
@@ -172,11 +172,11 @@ static bool TryLoadSceneV2(
     const uint8_t *payload = reinterpret_cast<const uint8_t *>(mpm->Map(payload_idx));
     const uint32 payload_len = mpm->GetFileLength(payload_idx);
 
-    if (!header_raw || header_len < sizeof(ScenePackV2Header) || !payload)
+    if (!header_raw || header_len < sizeof(ScenePackHeader) || !payload)
         return false;
 
-    ScenePackV2Header h{};
-    std::memcpy(&h, header_raw, sizeof(ScenePackV2Header));
+    ScenePackHeader h{};
+    std::memcpy(&h, header_raw, sizeof(ScenePackHeader));
 
     if (h.magic != kScenePackV2Magic)
         return false;
@@ -184,23 +184,23 @@ static bool TryLoadSceneV2(
         return false;
     if (h.payload_size > payload_len)
         return false;
-    if (h.dir_offset > h.payload_size || h.dir_count * sizeof(SceneV2TableDesc) > h.payload_size || h.dir_offset + h.dir_count * sizeof(SceneV2TableDesc) > h.payload_size)
+    if (h.dir_offset > h.payload_size || h.dir_count * sizeof(SceneTableDesc) > h.payload_size || h.dir_offset + h.dir_count * sizeof(SceneTableDesc) > h.payload_size)
         return false;
 
-    const auto *dir = reinterpret_cast<const SceneV2TableDesc *>(payload + h.dir_offset);
+    const auto *dir = reinterpret_cast<const SceneTableDesc *>(payload + h.dir_offset);
 
-    const SceneV2TableDesc *name_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NameTable);
-    const SceneV2TableDesc *node_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NodeTable);
-    const SceneV2TableDesc *node_prim_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NodePrimIndex);
-    const SceneV2TableDesc *node_child_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::NodeChildIndex);
-    const SceneV2TableDesc *root_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::RootIndex);
-    const SceneV2TableDesc *trs_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::TRSTable);
-    const SceneV2TableDesc *matrix_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::MatrixTable);
-    const SceneV2TableDesc *bounds_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::BoundsTable);
-    const SceneV2TableDesc *primitive_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::PrimitiveTable);
-    const SceneV2TableDesc *string_pool_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::StringPool);
-    const SceneV2TableDesc *geo_view_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::GeometryViewTable);
-    const SceneV2TableDesc *geo_blob_td = FindTableDesc(dir, h.dir_count, SceneV2TableType::GeometryBlob);
+    const SceneTableDesc *name_td = FindTableDesc(dir, h.dir_count, SceneTableType::NameTable);
+    const SceneTableDesc *node_td = FindTableDesc(dir, h.dir_count, SceneTableType::NodeTable);
+    const SceneTableDesc *node_prim_td = FindTableDesc(dir, h.dir_count, SceneTableType::NodePrimIndex);
+    const SceneTableDesc *node_child_td = FindTableDesc(dir, h.dir_count, SceneTableType::NodeChildIndex);
+    const SceneTableDesc *root_td = FindTableDesc(dir, h.dir_count, SceneTableType::RootIndex);
+    const SceneTableDesc *trs_td = FindTableDesc(dir, h.dir_count, SceneTableType::TRSTable);
+    const SceneTableDesc *matrix_td = FindTableDesc(dir, h.dir_count, SceneTableType::MatrixTable);
+    const SceneTableDesc *bounds_td = FindTableDesc(dir, h.dir_count, SceneTableType::BoundsTable);
+    const SceneTableDesc *primitive_td = FindTableDesc(dir, h.dir_count, SceneTableType::PrimitiveTable);
+    const SceneTableDesc *string_pool_td = FindTableDesc(dir, h.dir_count, SceneTableType::StringPool);
+    const SceneTableDesc *geo_view_td = FindTableDesc(dir, h.dir_count, SceneTableType::GeometryViewTable);
+    const SceneTableDesc *geo_blob_td = FindTableDesc(dir, h.dir_count, SceneTableType::GeometryBlob);
 
     if (!node_td || !primitive_td || !string_pool_td)
         return false;
@@ -305,11 +305,11 @@ static bool TryLoadSceneV2(
             return false;
         if (!TryGetTableRange(payload, h.payload_size, geo_blob_td, gb_ptr, gb_size))
             return false;
-        if (gv_size % sizeof(PackedGeometryViewV2) != 0)
+        if (gv_size % sizeof(PackedGeometryView) != 0)
             return false;
 
-        const auto *gv = reinterpret_cast<const PackedGeometryViewV2 *>(gv_ptr);
-        const uint32_t gv_count = gv_size / static_cast<uint32_t>(sizeof(PackedGeometryViewV2));
+        const auto *gv = reinterpret_cast<const PackedGeometryView *>(gv_ptr);
+        const uint32_t gv_count = gv_size / static_cast<uint32_t>(sizeof(PackedGeometryView));
 
         geometry_by_index.resize(gv_count, nullptr);
         MLogInfo(LoadStaticMesh, OS_TEXT("[V2] GeometryViewTable: gv_count=") + OSString::numberOf(gv_count)
@@ -353,15 +353,15 @@ static bool TryLoadSceneV2(
         uint32_t size = 0;
         if (!TryGetTableRange(payload, h.payload_size, primitive_td, ptr, size))
             return false;
-        if (size % sizeof(PackedPrimitiveV2) != 0)
+        if (size % sizeof(PackedPrimitive) != 0)
             return false;
 
-        const auto *pp = reinterpret_cast<const PackedPrimitiveV2 *>(ptr);
-        const uint32_t pcount = size / static_cast<uint32_t>(sizeof(PackedPrimitiveV2));
+        const auto *pp = reinterpret_cast<const PackedPrimitive *>(ptr);
+        const uint32_t pcount = size / static_cast<uint32_t>(sizeof(PackedPrimitive));
         prim_list.reserve(pcount);
         MLogInfo(LoadStaticMesh, OS_TEXT("[V2] PrimitiveTable: count=") + OSString::numberOf(pcount)
             + OS_TEXT(" raw_size=") + OSString::numberOf(size)
-            + OS_TEXT(" entry_size=") + OSString::numberOf((uint32_t)sizeof(PackedPrimitiveV2)));
+            + OS_TEXT(" entry_size=") + OSString::numberOf((uint32_t)sizeof(PackedPrimitive)));
         for (uint32_t _pi = 0, _plim = pcount < 8u ? pcount : 8u; _pi < _plim; ++_pi)
             MLogInfo(LoadStaticMesh,
                 OS_TEXT("[V2]  pp[") + OSString::numberOf(_pi)
@@ -469,11 +469,11 @@ static bool TryLoadSceneV2(
         uint32_t size = 0;
         if (!TryGetTableRange(payload, h.payload_size, node_td, ptr, size))
             return false;
-        if (size % sizeof(PackedNodeV2) != 0)
+        if (size % sizeof(PackedNode) != 0)
             return false;
 
-        const auto *pn = reinterpret_cast<const PackedNodeV2 *>(ptr);
-        const uint32_t ncount = size / static_cast<uint32_t>(sizeof(PackedNodeV2));
+        const auto *pn = reinterpret_cast<const PackedNode *>(ptr);
+        const uint32_t ncount = size / static_cast<uint32_t>(sizeof(PackedNode));
         scene_nodes.reserve(ncount);
 
         for (uint32_t i = 0; i < ncount; ++i)
@@ -716,11 +716,11 @@ StaticMesh *LoadStaticMeshScene(
 
     // ---- Fast path: ScenePackV2 (header + payload) -------------------------
     {
-        std::vector<Primitive *>   v2_prim_list;
-        std::vector<StaticMeshNode> v2_scene_nodes;
-        std::vector<int32_t>       v2_root_nodes;
+        std::vector<Primitive *>   prim_list;
+        std::vector<StaticMeshNode> scene_nodes;
+        std::vector<int32_t>       root_nodes;
 
-        if (TryLoadSceneV2(
+        if (TryLoadScene(
                 mpm,
                 device,
                 geo_mgr,
@@ -730,25 +730,25 @@ StaticMesh *LoadStaticMeshScene(
                 default_pipeline,
                 pack_path,
                 base_dir,
-                v2_prim_list,
-                v2_scene_nodes,
-                v2_root_nodes))
+                prim_list,
+                scene_nodes,
+                root_nodes))
         {
             delete mpm;
 
             StaticMesh *sm = new StaticMesh();
 
-            for (Primitive *prim : v2_prim_list)
+            for (Primitive *prim : prim_list)
             {
                 if (prim)
                     sm->AddPrimitive(prim);
             }
 
-            for (StaticMeshNode &node : v2_scene_nodes)
+            for (StaticMeshNode &node : scene_nodes)
                 sm->AddNode(std::move(node));
 
-            if (!v2_root_nodes.empty())
-                sm->SetRootNodes(std::move(v2_root_nodes));
+            if (!root_nodes.empty())
+                sm->SetRootNodes(std::move(root_nodes));
 
             return sm;
         }
