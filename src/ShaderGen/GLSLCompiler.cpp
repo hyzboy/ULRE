@@ -6,6 +6,8 @@
 #include<hgl/log/Logger.h>
 #include<hgl/shadergen/contract/ShaderGenProfileTargetVersion.h>
 #include<hgl/shadergen/contract/ShaderGenPhysicalDeviceProfileJson.h>
+#include<vector>
+#include<string>
 
 namespace hgl
 {
@@ -231,10 +233,15 @@ namespace hgl
             return(false);
         }
 
+        static std::vector<std::string> g_include_path_storage;   // 持有字符串
+        static std::vector<const char*> g_include_path_ptrs;      // 持有指针
+
         void CloseShaderCompiler()
         {
-            delete[] compile_info.includes;
+            g_include_path_storage.clear();
+            g_include_path_ptrs.clear();
             compile_info.includes=nullptr;
+            compile_info.includes_count=0;
 
             if(gsi)
             {
@@ -249,7 +256,22 @@ namespace hgl
             }
         }
 
-        const char PreambleString[]="";//#extension GL_GOOGLE_include_directive : require\n";
+        const char PreambleString[]="";
+
+        void AddShaderIncludePath(const char *path)
+        {
+            if(!path || path[0]=='\0') return;
+
+            g_include_path_storage.emplace_back(path);
+
+            // 重建指针数组
+            g_include_path_ptrs.clear();
+            for(auto &s : g_include_path_storage)
+                g_include_path_ptrs.push_back(s.c_str());
+
+            compile_info.includes       = g_include_path_ptrs.data();
+            compile_info.includes_count  = static_cast<uint32_t>(g_include_path_ptrs.size());
+        }
 
         void RebuildGLSLIncludePath()
         {
@@ -296,6 +318,7 @@ namespace hgl
             {
                 std::string err="Compile shader failed, error info: ";
                 err+=spv->log?spv->log:"";
+                std::fprintf(stderr,"[GLSLCompiler] %s\n", err.c_str());
                 GLogError(err.c_str());
 
                 FreeSPVData(spv);

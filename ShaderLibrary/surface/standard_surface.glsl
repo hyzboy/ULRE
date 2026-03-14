@@ -3,6 +3,15 @@
 
 #include "common/surface_interface.glsl"
 
+// 材质纹理 — binding 由 Compositor / Material 系统最终确定
+#if QUALITY_TIER >= 1
+layout(set=2, binding=1) uniform sampler2D TexAlbedo;
+#endif
+#if QUALITY_TIER >= 2
+layout(set=2, binding=2) uniform sampler2D TexNormal;
+layout(set=2, binding=3) uniform sampler2D TexMR;      // metallic(G) + roughness(B)
+#endif
+
 // 材质实例数据 — 从 MI SSBO 读取
 struct MI_Standard
 {

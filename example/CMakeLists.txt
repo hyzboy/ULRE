@@ -20,3 +20,4 @@ macro(CreateProject name)
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example")
 endmacro()
 
+CreateProject(CompositorAssemblerTest CompositorAssemblerTest.cpp)

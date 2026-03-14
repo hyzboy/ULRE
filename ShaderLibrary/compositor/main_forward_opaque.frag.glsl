@@ -17,7 +17,7 @@ layout(location=0) out vec4 outColor;
 #include "common/lighting.glsl"
 
 // --- Scene Data ---
-layout(set=0, binding=0) uniform ViewportUBO { /* ... */ };
+layout(set=0, binding=0) uniform ViewportUBO { vec4 viewport; float time; float _pad0; float _pad1; float _pad2; };
 layout(set=0, binding=1) uniform CameraUBO { mat4 view; mat4 proj; mat4 viewProj; vec3 cameraPos; vec3 cameraPosWorld; };
 layout(set=0, binding=2) uniform SkyUBO { vec3 sunDirection; vec3 sunColor; vec3 ambientColor; };
 

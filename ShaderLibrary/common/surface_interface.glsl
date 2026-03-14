@@ -1,6 +1,9 @@
 // Surface Interface — SurfaceInput / SurfaceOutput / SurfaceOutputExt
 // 所有 Surface Function 和 Compositor 模板共享此接口定义
 
+#ifndef SURFACE_INTERFACE_GLSL
+#define SURFACE_INTERFACE_GLSL
+
 struct SurfaceInput
 {
     vec3 worldPos;       // camera-relative world position（非绝对世界坐标！）
@@ -37,3 +40,5 @@ struct SurfaceOutputExt
     float anisotropy;
     vec3  anisotropyDirection;
 };
+
+#endif // SURFACE_INTERFACE_GLSL
