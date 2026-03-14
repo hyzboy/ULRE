@@ -45,10 +45,12 @@
 
 ---
 
-## 第一阶段：准备工作与代码清理
+## 第一阶段：准备工作与代码清理 ✅
 
 > **目标**：在不破坏任何现有功能的前提下，清理与新设计冲突的旧枚举/结构；建立新目录结构。
 > 此阶段**只删除未被引用的定义**或**添加新文件/目录**，不修改任何活跃代码路径。
+>
+> **实施状态**：✅ 已完成
 
 ---
 
@@ -220,10 +222,12 @@ enum class RenderStage : uint8
 
 ---
 
-## 第二阶段：核心类型定义
+## 第二阶段：核心类型定义 ✅
 
 > **目标**：定义新设计要求的核心枚举和结构体。此阶段**只新增头文件**，不修改任何已有代码。
 > 新类型先放在 `inc/hgl/mtl/new/` 临时目录下，后续合并。
+>
+> **实施状态**：✅ 已完成
 
 ---
 
@@ -642,11 +646,13 @@ void NewShaderPermutationKey::AppendGLSLDefines(AnsiString& out) const
 
 ---
 
-## 第三阶段：Descriptor Set 布局迁移
+## 第三阶段：Descriptor Set 布局迁移 ✅
 
 > **目标**：将当前 7 个 Descriptor Set 收敛为 4 个。
 > **关键约束**：现有 `TransformAssignmentBuffer`、`MaterialInstanceAssignmentBuffer`、Texture2DArray 纹理池**完全保留不动**。
 > 此阶段采用**并行双轨**策略——先新增 4-Set 接口，保留旧 7-Set 接口，逐步迁移。
+>
+> **实施状态**：✅ 已完成
 
 ---
 
@@ -816,11 +822,13 @@ public:
 
 ---
 
-## 第四阶段：Reversed-Z 深度管线 + Camera-Relative Rendering
+## 第四阶段：Reversed-Z 深度管线 + Camera-Relative Rendering ✅
 
 > **目标**：全管线切换 Reversed-Z + D32_SFLOAT + Infinite Far Plane；
 > 同时实现 Camera-Relative Rendering 消除大世界 float32 精度拖动。
 > 此阶段可与第五、六阶段并行进行。
+>
+> **实施状态**：✅ 已完成（含多个 bug 修复：INF 矩阵、Camera UBO 全零、上下翻转、GLSL/C++ 结构体不匹配）
 
 ---
 
@@ -1050,6 +1058,15 @@ layout(set=0, binding=1) uniform CameraUBO {
 > **目标**：建立 Surface Function + Compositor Template 架构的基础框架。
 > 此阶段先实现最简单的 Standard Surface → Forward Opaque Compositor 全链路，
 > 验证 CT 架构可行后再扩展。
+
+> **实施状态**：✅ Step 5.1 ~ 5.9 已完成（代码创建、编译、CompositorAssemblerTest 通过）；🔜 Step 5.10 端到端渲染测试待做。
+>
+> **实施备忘**：
+> - GLSLCompiler DLL 已支持 `#include`（glsl2spv.cpp 中始终启用 `GL_GOOGLE_include_directive`，引擎侧新增 `AddShaderIncludePath()` API）
+> - `surface_interface.glsl` 添加了 `#ifndef SURFACE_INTERFACE_GLSL` include guard（解决多处 include 导致的重定义）
+> - `standard_surface.glsl` 添加了 `sampler2D TexAlbedo/TexNormal/TexMR` 声明（set=2, binding=1/2/3），受 `QUALITY_TIER` 宏守卫
+> - `main_forward_opaque.frag.glsl` 中 `ViewportUBO` 填充了实际成员（`vec4 viewport; float time; ...`）
+> - CompositorAssemblerTest（`example/CompositorAssemblerTest.cpp`）验证了：VS + FS 汇编生成、SPIR-V 编译均通过
 
 ---
 
@@ -2369,26 +2386,26 @@ DAG 遍历 + Frustum + Cone + HZB → 输出 IndirectDraw 命令。
 
 ## 附录 A：文件变更追踪表
 
-| 阶段 | 新增文件 | 修改文件 | 删除文件 |
-|------|---------|---------|---------|
-| 1.2 | `ShaderLibrary/surface/`, `compositor/`, `common/`, `pass/`, `postprocess/`, `debug/`, `inc/hgl/mtl/new/` (dirs) | — | — |
-| 1.3-1.7 | — | `RenderFlowDef.h` | GBuffer 相关枚举/结构体 |
-| 2.1-2.9 | `SurfaceType.h`, `QualityTier.h`, `BlendMode.h`, `PassType.h`, `PlatformBackend.h`, `MaterialCategory.h`, `NewShaderPermutationKey.h`, `MaterialPresetDef.h`, `DeviceQualityProfile.h` | — | — |
-| 2.10-2.11 | `DeviceQualityProfile.cpp`, `NewShaderPermutationKey.cpp` | `DeviceQualityProfile.h` | — |
-| 3.1-3.5 | `NewDescriptorSetType.h`, `DescriptorSetBindings.h`, `NewDescriptorSetLayoutFactory.h/.cpp`, `NewDescriptorBinding.h/.cpp` | `RenderContext.h`（新增成员） | — |
-| 4.1-4.6 | `ReversedZProj.h/.cpp`, `depth_utils.glsl` | Camera 头文件, `VKPipelineData.cpp`, `VKRenderPass` 相关 | — |
-| 5.1-5.10 | `surface_interface.glsl`, `standard_surface.glsl`, `lighting.glsl`, `main_forward_opaque.vert.glsl`, `main_forward_opaque.frag.glsl`, `CompositorAssembler.h/.cpp`, `PresetShaderCompiler.h/.cpp`, `SPVCache.h/.cpp`, `CompositorTest.cpp` | — | — |
-| 6.1-6.6 | `vertex_fetch_ssbo.glsl`, `vertex_fetch_vbo.glsl`, `VertexDataBufferManager.h/.cpp` | Mesh 加载逻辑, Pipeline 创建逻辑 | — |
-| 7.1-7.15 | `unlit_color3d_surface.glsl`, `unlit_vertexcolor3d_surface.glsl`, `main_forward_unlit.frag.glsl`, `main_forward_masked.frag.glsl`, `main_forward_transparent.frag.glsl`, `main_forward_dither.frag.glsl`, `main_forward_a2c.frag.glsl` | 各 example, `CompositorAssembler`, `MaterialManager` | (旧材质代码暂保留) |
-| 8.1-8.10 | `main_shadow_opaque.vert.glsl`, `main_shadow_masked.frag.glsl`, `shadow_sampling.glsl`, ShadowMap 管理代码 | `lighting.glsl` | — |
-| 9.1-9.4 | `hzb_downsample.comp.glsl`, `instance_cull.comp.glsl` | 渲染帧序列 | — |
-| 10.1-10.8 | `main_vbuffer_id.vert/frag.glsl`, `tile_classify.comp.glsl`, `vbuffer_resolve_single.comp.glsl`, `vbuffer_resolve_multi.comp.glsl` | 渲染路径调度逻辑 | — |
-| 11.1-11.8 | `MeshletGPU.h`, `meshlet_cull.comp.glsl`, MeshletBuilder 工具, .ulm 格式 | CMakeLists.txt, Indirect Draw 逻辑 | — |
-| 12.1-12.8 | PostProcessChain, `tonemapping.comp.glsl`, `bloom_*.comp.glsl`, `fxaa.comp.glsl`, `ssao.comp.glsl` | Camera (TAA jitter) | — |
-| 13.1-13.10 | `skin_surface.glsl`, `hair_surface.glsl`, `cloth_surface.glsl`, `clearcoat_surface.glsl`, `foliage_surface.glsl`, `eye_surface.glsl`, `water_surface.glsl`, Material LOD 逻辑 | `SPVCache`, `CompositorAssembler` | — |
-| 14.1-14.6 | `terrain_surface.glsl`, Terrain GPU 数据管理 | Descriptor Set 布局 (Terrain 专用) | — |
-| 15.1-15.5 | Cluster 相关 Compute, SSR Compute, Decal 逻辑 | `lighting.glsl` | — |
-| 16.1-16.7 | — | Include 路径, 重命名 | `ShaderComposition.h`, `ShaderLogic.h`, `ShaderCompositionBridge.cpp`, `S_*_Logic.h`, `M_*.cpp` (旧工厂), `templates/*.tmpl`, `recipes/`, `CompositorTest.cpp`, `inc/hgl/mtl/new/` (目录) |
+| 阶段 | 新增文件 | 修改文件 | 删除文件 | 状态 |
+|------|---------|---------|---------|------|
+| 1.2 | `ShaderLibrary/surface/`, `compositor/`, `common/`, `pass/`, `postprocess/`, `debug/`, `inc/hgl/mtl/new/` (dirs) | — | — | ✅ |
+| 1.3-1.7 | — | `RenderFlowDef.h` | GBuffer 相关枚举/结构体 | ✅ |
+| 2.1-2.9 | `SurfaceType.h`, `QualityTier.h`, `BlendMode.h`, `PassType.h`, `PlatformBackend.h`, `MaterialCategory.h`, `NewShaderPermutationKey.h`, `MaterialPresetDef.h`, `DeviceQualityProfile.h` | — | — | ✅ |
+| 2.10-2.11 | `DeviceQualityProfile.cpp`, `NewShaderPermutationKey.cpp` | `DeviceQualityProfile.h` | — | ✅ |
+| 3.1-3.5 | `NewDescriptorSetType.h`, `DescriptorSetBindings.h`, `NewDescriptorSetLayoutFactory.h/.cpp`, `NewDescriptorBinding.h/.cpp` | `RenderContext.h`（新增成员） | — | ✅ |
+| 4.1-4.6 | `ReversedZProj.h/.cpp`, `depth_utils.glsl` | Camera 头文件, `VKPipelineData.cpp`, `VKRenderPass` 相关 | — | ✅ |
+| 5.1-5.10 | `surface_interface.glsl`, `standard_surface.glsl`, `lighting.glsl`, `vertex_fetch_ssbo.glsl`, `main_forward_opaque.vert.glsl`, `main_forward_opaque.frag.glsl`, `CompositorAssembler.h/.cpp`, `PresetShaderCompiler.h/.cpp`, `SPVCache.h/.cpp`, `CompositorAssemblerTest.cpp` | `src/ShaderGen/CMakeLists.txt`, `example/CMakeLists.txt`, `src/Tools/GLSLCompiler/glsl2spv.cpp`, `ShaderCompilerProfileAPI.h`, `GLSLCompiler.cpp` | — | ✅ 5.1-5.9 已完成 |
+| 6.1-6.6 | `vertex_fetch_ssbo.glsl`, `vertex_fetch_vbo.glsl`, `VertexDataBufferManager.h/.cpp` | Mesh 加载逻辑, Pipeline 创建逻辑 | — | |
+| 7.1-7.15 | `unlit_color3d_surface.glsl`, `unlit_vertexcolor3d_surface.glsl`, `main_forward_unlit.frag.glsl`, `main_forward_masked.frag.glsl`, `main_forward_transparent.frag.glsl`, `main_forward_dither.frag.glsl`, `main_forward_a2c.frag.glsl` | 各 example, `CompositorAssembler`, `MaterialManager` | (旧材质代码暂保留) | |
+| 8.1-8.10 | `main_shadow_opaque.vert.glsl`, `main_shadow_masked.frag.glsl`, `shadow_sampling.glsl`, ShadowMap 管理代码 | `lighting.glsl` | — | |
+| 9.1-9.4 | `hzb_downsample.comp.glsl`, `instance_cull.comp.glsl` | 渲染帧序列 | — | |
+| 10.1-10.8 | `main_vbuffer_id.vert/frag.glsl`, `tile_classify.comp.glsl`, `vbuffer_resolve_single.comp.glsl`, `vbuffer_resolve_multi.comp.glsl` | 渲染路径调度逻辑 | — | |
+| 11.1-11.8 | `MeshletGPU.h`, `meshlet_cull.comp.glsl`, MeshletBuilder 工具, .ulm 格式 | CMakeLists.txt, Indirect Draw 逻辑 | — | |
+| 12.1-12.8 | PostProcessChain, `tonemapping.comp.glsl`, `bloom_*.comp.glsl`, `fxaa.comp.glsl`, `ssao.comp.glsl` | Camera (TAA jitter) | — | |
+| 13.1-13.10 | `skin_surface.glsl`, `hair_surface.glsl`, `cloth_surface.glsl`, `clearcoat_surface.glsl`, `foliage_surface.glsl`, `eye_surface.glsl`, `water_surface.glsl`, Material LOD 逻辑 | `SPVCache`, `CompositorAssembler` | — | |
+| 14.1-14.6 | `terrain_surface.glsl`, Terrain GPU 数据管理 | Descriptor Set 布局 (Terrain 专用) | — | |
+| 15.1-15.5 | Cluster 相关 Compute, SSR Compute, Decal 逻辑 | `lighting.glsl` | — | |
+| 16.1-16.7 | — | Include 路径, 重命名 | `ShaderComposition.h`, `ShaderLogic.h`, `ShaderCompositionBridge.cpp`, `S_*_Logic.h`, `M_*.cpp` (旧工厂), `templates/*.tmpl`, `recipes/`, `CompositorTest.cpp`, `inc/hgl/mtl/new/` (目录) | |
 
 ---
 
