@@ -39,10 +39,17 @@ namespace hgl::graph
 
 class CompositorRenderTest : public WorkObject
 {
+    // --- Standard (Lit) pipeline ---
     Pipeline *compositor_pipeline       = nullptr;
     NewPipelineLayoutData *layout_data  = nullptr;
     ShaderModule *vs_module             = nullptr;
     ShaderModule *fs_module             = nullptr;
+
+    // --- Unlit pipeline ---
+    Pipeline *unlit_pipeline            = nullptr;
+    NewPipelineLayoutData *unlit_layout = nullptr;
+    ShaderModule *unlit_vs_module       = nullptr;
+    ShaderModule *unlit_fs_module       = nullptr;
 
     VertexDataBufferManager *vdbm       = nullptr;
     BlockAllocator::UserNode *vtx_node  = nullptr;
@@ -316,23 +323,171 @@ class CompositorRenderTest : public WorkObject
         return true;
     }
 
+    bool InitUnlitCompositorPipeline()
+    {
+        auto *device = GetDevice();
+        if (!device)
+        {
+            std::cerr << "FAIL: No VulkanDevice available.\n";
+            return false;
+        }
+
+        // ======== Phase 7: Generate Unlit GLSL ========
+        std::cout << "\n=== Phase 7: Unlit CompositorAssembler::Assemble() ===\n";
+
+        CompositorAssembler assembler("ShaderLibrary");
+        auto assembled = assembler.Assemble(
+            SurfaceType::Unlit,
+            BlendMode::Opaque,
+            PassType::ForwardOpaque,
+            QualityTier::Medium,
+            PlatformBackend::PC
+        );
+
+        if (!assembled.success)
+        {
+            std::cerr << "FAIL: Unlit Assemble failed: " << assembled.error_message << "\n";
+            return false;
+        }
+        std::cout << "OK: Unlit GLSL generated (VS: " << assembled.vertex_glsl.size()
+                  << " bytes, FS: " << assembled.fragment_glsl.size() << " bytes)\n";
+
+        // ======== Phase 8: Compile Unlit to SPV ========
+        std::cout << "\n=== Phase 8: Unlit GLSL -> SPV ===\n";
+
+        SPVData *vs_spv = CompileShader(VK_SHADER_STAGE_VERTEX_BIT, assembled.vertex_glsl.c_str());
+        if (!vs_spv || !vs_spv->result)
+        {
+            std::cerr << "FAIL: Unlit VS compile failed.\n";
+            if (vs_spv && vs_spv->log) std::cerr << "  Log: " << vs_spv->log << "\n";
+            if (vs_spv) FreeSPVData(vs_spv);
+            return false;
+        }
+        std::cout << "OK: Unlit VS compiled to " << vs_spv->spv_length << " bytes ("
+                  << vs_spv->spv_length / sizeof(uint32_t) << " words).\n";
+
+        SPVData *fs_spv = CompileShader(VK_SHADER_STAGE_FRAGMENT_BIT, assembled.fragment_glsl.c_str());
+        if (!fs_spv || !fs_spv->result)
+        {
+            std::cerr << "FAIL: Unlit FS compile failed.\n";
+            if (fs_spv && fs_spv->log) std::cerr << "  Log: " << fs_spv->log << "\n";
+            if (fs_spv) FreeSPVData(fs_spv);
+            FreeSPVData(vs_spv);
+            return false;
+        }
+        std::cout << "OK: Unlit FS compiled to " << fs_spv->spv_length << " bytes ("
+                  << fs_spv->spv_length / sizeof(uint32_t) << " words).\n";
+
+        // ======== Phase 9: SPV → VkShaderModule ========
+        std::cout << "\n=== Phase 9: Unlit SPV -> VkShaderModule ===\n";
+
+        unlit_vs_module = device->CreateShaderModule(
+            (VkShaderStageFlagBits)VK_SHADER_STAGE_VERTEX_BIT,
+            vs_spv->spv_data,
+            vs_spv->spv_length
+        );
+        FreeSPVData(vs_spv);
+
+        if (!unlit_vs_module)
+        {
+            std::cerr << "FAIL: CreateShaderModule(Unlit VS) failed.\n";
+            FreeSPVData(fs_spv);
+            return false;
+        }
+        std::cout << "OK: Unlit VS VkShaderModule created.\n";
+
+        unlit_fs_module = device->CreateShaderModule(
+            (VkShaderStageFlagBits)VK_SHADER_STAGE_FRAGMENT_BIT,
+            fs_spv->spv_data,
+            fs_spv->spv_length
+        );
+        FreeSPVData(fs_spv);
+
+        if (!unlit_fs_module)
+        {
+            std::cerr << "FAIL: CreateShaderModule(Unlit FS) failed.\n";
+            return false;
+        }
+        std::cout << "OK: Unlit FS VkShaderModule created.\n";
+
+        // ======== Phase 10: Pipeline Layout ========
+        std::cout << "\n=== Phase 10: Unlit Pipeline Layout ===\n";
+
+        unlit_layout = NewDescriptorSetLayoutFactory::CreateNewPipelineLayout(
+            device->GetDevice(),
+            SurfaceType::Unlit,
+            true    // ssbo_platform = true (PC)
+        );
+
+        if (!unlit_layout || unlit_layout->pipeline_layout == VK_NULL_HANDLE)
+        {
+            std::cerr << "FAIL: CreateNewPipelineLayout(Unlit) failed.\n";
+            return false;
+        }
+        std::cout << "OK: Unlit VkPipelineLayout created (4-set layout).\n";
+
+        // ======== Phase 11: Create VkPipeline ========
+        std::cout << "\n=== Phase 11: Unlit VkPipeline Creation ===\n";
+
+        auto *render_context = GetRenderContext();
+        if (!render_context) { std::cerr << "FAIL: No RenderContext.\n"; return false; }
+
+        auto *render_target = render_context->GetCurrentRenderTarget();
+        if (!render_target) { std::cerr << "FAIL: No RenderTarget.\n"; return false; }
+
+        auto *render_pass = render_target->GetRenderPass();
+        if (!render_pass) { std::cerr << "FAIL: No RenderPass.\n"; return false; }
+
+        const PipelineData *solid3d = GetPipelineData(InlinePipeline::Solid3D);
+        if (!solid3d) { std::cerr << "FAIL: GetPipelineData(Solid3D) returned null.\n"; return false; }
+
+        ShaderStageCreateInfoList ssci;
+        ssci.Add(*unlit_vs_module->GetCreateInfo());
+        ssci.Add(*unlit_fs_module->GetCreateInfo());
+
+        unlit_pipeline = render_pass->CreatePipeline(
+            "CompositorTest_Unlit_ForwardOpaque_Medium_PC",
+            ssci,
+            unlit_layout->pipeline_layout,
+            nullptr,    // 空顶点输入（SSBO fetch）
+            solid3d
+        );
+
+        if (!unlit_pipeline)
+        {
+            std::cerr << "FAIL: RenderPass::CreatePipeline(Unlit) failed!\n";
+            return false;
+        }
+
+        std::cout << "OK: Unlit VkPipeline created successfully!\n";
+        std::cout << "  Pipeline name: " << unlit_pipeline->GetName().c_str() << "\n";
+
+        return true;
+    }
+
 public:
 
     bool Init() override
     {
         std::cout << "========================================\n";
-        std::cout << " CompositorRenderTest — Step 5.10\n";
+        std::cout << " CompositorRenderTest — Step 5.10 + 7.1\n";
         std::cout << " Compositor SPV → VkPipeline 端到端验证\n";
         std::cout << "========================================\n\n";
 
+        // Standard (Lit) pipeline test (Phase 1-5)
         test_passed = InitCompositorPipeline();
 
+        // SSBO upload test (Phase 6)
         if (test_passed)
             test_passed = InitSSBOUpload();
 
+        // Unlit pipeline test (Phase 7-11)
+        if (test_passed)
+            test_passed = InitUnlitCompositorPipeline();
+
         std::cout << "\n========================================\n";
         if (test_passed)
-            std::cout << " RESULT: ALL PHASES PASSED (1-6)\n";
+            std::cout << " RESULT: ALL PHASES PASSED (1-11)\n";
         else
             std::cout << " RESULT: SOME PHASES FAILED (see above)\n";
         std::cout << "========================================\n";
@@ -354,6 +509,8 @@ public:
 
     ~CompositorRenderTest()
     {
+        delete layout_data;
+        delete unlit_layout;
         delete vdbm;
     }
 };

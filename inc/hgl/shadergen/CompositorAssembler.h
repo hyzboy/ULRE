@@ -47,7 +47,7 @@ namespace hgl::graph
     private:
 
         std::string GetCompositorVSPath(PassType pass) const;
-        std::string GetCompositorFSPath(BlendMode blend, PassType pass) const;
+        std::string GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;
         std::string InjectDefines(const std::string &source, const NewShaderPermutationKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;

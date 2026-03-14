@@ -47,9 +47,32 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::GetCompositorFSPath(BlendMode blend, PassType pass) const
+    std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const
     {
-        // 第一版只支持 ForwardOpaque
+        // Unlit 表面类型使用专用 FS 模板（无光照）
+        if (surface == SurfaceType::Unlit)
+        {
+            switch (pass)
+            {
+            case PassType::ForwardOpaque:
+            case PassType::ForwardMasked:
+            case PassType::ForwardTransparent:
+                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
+
+            case PassType::ShadowOpaque:
+            case PassType::ShadowMasked:
+                return shader_lib_path_ + "/compositor/main_shadow.frag.glsl"; // 后续实现
+
+            case PassType::EarlyZSolid:
+            case PassType::EarlyZMasked:
+                return shader_lib_path_ + "/compositor/main_earlyz.frag.glsl"; // 后续实现
+
+            default:
+                return shader_lib_path_ + "/compositor/main_forward_unlit.frag.glsl";
+            }
+        }
+
+        // 非 Unlit 走 Lit 路径
         switch (pass)
         {
         case PassType::ForwardOpaque:
@@ -82,7 +105,7 @@ namespace hgl::graph
         switch (surface)
         {
         case SurfaceType::Standard:   return "surface/standard_surface.glsl";
-        case SurfaceType::Unlit:      return "surface/unlit_surface.glsl";       // 后续实现
+        case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
         case SurfaceType::Skin:       return "surface/skin_surface.glsl";        // 后续实现
         case SurfaceType::Hair:       return "surface/hair_surface.glsl";        // 后续实现
         case SurfaceType::Cloth:      return "surface/cloth_surface.glsl";       // 后续实现
@@ -155,7 +178,7 @@ namespace hgl::graph
 
         // 2. 获取模板文件路径
         std::string vs_path = GetCompositorVSPath(pass);
-        std::string fs_path = GetCompositorFSPath(blend, pass);
+        std::string fs_path = GetCompositorFSPath(surface, blend, pass);
         std::string surface_rel = GetSurfaceFunctionPath(surface);
 
         // 3. 读取 VS 模板
