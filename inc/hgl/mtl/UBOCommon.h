@@ -17,7 +17,7 @@ const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_
 
 constexpr const ShaderBufferSource SBS_ViewportInfo=
 {
-    DescriptorSetType::RenderTarget,
+    DescriptorSetType::Scene,
 
     "viewport",
     "ViewportInfo",
@@ -33,7 +33,7 @@ constexpr const ShaderBufferSource SBS_ViewportInfo=
 
 constexpr const ShaderBufferSource SBS_CameraInfo=
 {
-    DescriptorSetType::Camera,
+    DescriptorSetType::Scene,
 
     "camera",
     "CameraInfo",
@@ -71,7 +71,7 @@ constexpr const char LocalToWorldStruct[]="LocalToWorld";
 
 constexpr const ShaderBufferSource SBS_LocalToWorld=
 {
-    DescriptorSetType::PerFrame,
+    DescriptorSetType::Transform,
 
     "l2w",
     "LocalToWorldData",
@@ -89,7 +89,7 @@ constexpr const ShaderBufferSource SBS_LocalToWorld=
 
 constexpr const ShaderBufferSource SBS_ColorPattle =
 {
-    DescriptorSetType::PerMaterial,
+    DescriptorSetType::Material,
 
     "color_pattle",
     "ColorPattle",
@@ -104,7 +104,7 @@ constexpr const char MaterialInstanceStruct[]="MaterialInstance";
 
 constexpr const ShaderBufferSource SBS_MaterialInstance=
 {
-    DescriptorSetType::PerMaterial,
+    DescriptorSetType::Material,
 
     "mtl",
     "MaterialInstanceData",
@@ -121,7 +121,7 @@ constexpr const ShaderBufferSource SBS_MaterialInstance=
 
 constexpr const ShaderBufferSource SBS_JointInfo=
 {
-    DescriptorSetType::PerFrame,
+    DescriptorSetType::Transform,
 
     "joint",
     "JointInfo",
@@ -136,7 +136,7 @@ constexpr const ShaderBufferSource SBS_JointInfo=
 */
 constexpr const ShaderBufferSource SBS_SkyInfo=
 {
-    DescriptorSetType::Camera,
+    DescriptorSetType::Scene,
 
     "sky",
     "SkyInfo",

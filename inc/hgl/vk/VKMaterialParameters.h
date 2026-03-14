@@ -35,9 +35,10 @@ public:
 public:
 
     #define MP_TYPE_IS(name)    const   bool is##name()const{return set_type==DescriptorSetType::name;}
-        MP_TYPE_IS(PerMaterial)
-        MP_TYPE_IS(PerFrame)
-        MP_TYPE_IS(Global)
+        MP_TYPE_IS(Scene)
+        MP_TYPE_IS(Transform)
+        MP_TYPE_IS(Material)
+        MP_TYPE_IS(VertexData)
     #undef MP_TYPE_IS
 
 public:

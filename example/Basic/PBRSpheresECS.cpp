@@ -143,13 +143,13 @@ private:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+        if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           mtl::SamplerName::BaseColor,
                                           base_color_array,
                                           sampler))
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+        if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           "TextureNormal",
                                           normal_array,
                                           sampler))

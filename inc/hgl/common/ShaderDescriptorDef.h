@@ -26,7 +26,7 @@ namespace hgl::graph
         {
             mem_zero(name);
             desc_type=VK_DESCRIPTOR_TYPE_MAX_ENUM;
-            set_type=DescriptorSetType::Global;
+            set_type=DescriptorSetType::Unknow;
             set=-1;
             binding=-1;
             stage_flag=0;

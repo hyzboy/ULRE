@@ -1,4 +1,4 @@
-﻿// 画一个圆角矩形，它是UI的基本绘图元件
+// 画一个圆角矩形，它是UI的基本绘图元件
 // 通过控制尺寸、每个角的半径，可绘制出正圆、矩形、圆角矩形
 
 #include<hgl/WorkManager.h>
@@ -96,7 +96,7 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
+        if(!material->BindImageSampler( DescriptorSetType::Material,     ///<描述符合集
            mtl::SamplerName::BaseColor,        ///<采样器名称
            texture,                            ///<纹理
            sampler))                           ///<采样器

@@ -108,19 +108,19 @@ namespace hgl::graph::mtl
         switch (semantic)
         {
         case DescriptorSemantic::ViewportInfo:
-            return DescriptorSetType::RenderTarget;
+            return DescriptorSetType::Scene;
 
         case DescriptorSemantic::CameraInfo:
         case DescriptorSemantic::SkyInfo:
-            return DescriptorSetType::Camera;
+            return DescriptorSetType::Scene;
 
         case DescriptorSemantic::LocalToWorld:
-            return DescriptorSetType::PerFrame;
+            return DescriptorSetType::Transform;
 
         case DescriptorSemantic::MaterialInstance:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:
-            return DescriptorSetType::PerMaterial;
+            return DescriptorSetType::Material;
 
         default:
             return DescriptorSetType::Unknow;

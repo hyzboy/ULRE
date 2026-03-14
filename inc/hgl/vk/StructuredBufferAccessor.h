@@ -142,7 +142,7 @@ private:
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
-        SetUBOMeta(desc ? desc->set_type : DescriptorSetType::PerMaterial, desc ? desc->name : "");
+        SetUBOMeta(desc ? desc->set_type : DescriptorSetType::Material, desc ? desc->name : "");
         if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();

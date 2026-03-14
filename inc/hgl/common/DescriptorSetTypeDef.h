@@ -6,42 +6,32 @@
 
 namespace hgl::graph
 {
-    enum class DescriptorSetType
+    enum class DescriptorSetType:int
     {
-        Unknow=0,
+        Unknow=-1,
 
-        RenderTarget,
+        Scene=0,
+        Transform,
+        Material,
+        VertexData,
 
-        Camera,
-
-        World,
-
-        Global,
-        PerFrame,
-        PerMaterial,
-
-        ENUM_CLASS_RANGE(Unknow,PerMaterial)
+        ENUM_CLASS_RANGE(Scene,VertexData)
     };
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
 
     constexpr const char *DescriptSetTypeName[]=
     {
-        "Unknow",
-
-        "RenderTarget",
-
-        "Camera",
-
-        "World",
-
-        "Global",
-        "PerFrame",
-        "PerMaterial"
+        "Scene",
+        "Transform",
+        "Material",
+        "VertexData"
     };
 
     inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
     {
+        if(type==DescriptorSetType::Unknow)return "Unknow";
+
         RANGE_CHECK_RETURN_NULLPTR(type);
 
         return DescriptSetTypeName[(size_t)type];
@@ -57,23 +47,36 @@ namespace hgl::graph
                 return((DescriptorSetType)i);
         }
 
-        if(!hgl::strcmp(str,"Scene"))
-            return DescriptorSetType::Global;
+        // Legacy aliases
+        if(!hgl::strcmp(str,"RenderTarget"))
+            return DescriptorSetType::Scene;
+
+        if(!hgl::strcmp(str,"Camera"))
+            return DescriptorSetType::Scene;
 
         if(!hgl::strcmp(str,"View"))
-            return DescriptorSetType::Camera;
+            return DescriptorSetType::Scene;
 
-        if(!hgl::strcmp(str,"Draw"))
-            return DescriptorSetType::PerFrame;
+        if(!hgl::strcmp(str,"Global"))
+            return DescriptorSetType::Scene;
 
-        if(!hgl::strcmp(str,"Material"))
-            return DescriptorSetType::PerMaterial;
+        if(!hgl::strcmp(str,"World"))
+            return DescriptorSetType::Scene;
 
         if(!hgl::strcmp(str,"Static"))
-            return DescriptorSetType::World;
+            return DescriptorSetType::Scene;
+
+        if(!hgl::strcmp(str,"PerFrame"))
+            return DescriptorSetType::Transform;
+
+        if(!hgl::strcmp(str,"Draw"))
+            return DescriptorSetType::Transform;
 
         if(!hgl::strcmp(str,"Instance"))
-            return DescriptorSetType::PerFrame;
+            return DescriptorSetType::Transform;
+
+        if(!hgl::strcmp(str,"PerMaterial"))
+            return DescriptorSetType::Material;
 
         return(DescriptorSetType::Unknow);
     }

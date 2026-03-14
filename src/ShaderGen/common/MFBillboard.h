@@ -10,7 +10,7 @@ namespace func
 
     constexpr const ShaderBufferSource SBS_Billboard=
     {
-        DescriptorSetType::PerMaterial,
+        DescriptorSetType::Material,
 
         "billboard",
         "BillboardData",

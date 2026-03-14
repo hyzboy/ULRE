@@ -62,10 +62,10 @@ constexpr FixedVertexEntry EX_PURE_COLOR_3D_VERTEX[] = {
 
 // 描述符（视图矩阵、相机矩阵、L2W矩阵、材质数据）
 constexpr FixedDescriptorEntry EX_PURE_COLOR_3D_DESCRIPTORS[] = {
-    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,  ShaderGenStageAllGraphics, "viewport", "ViewportInfo", nullptr},
-    {DescriptorSetType::Camera,       DescriptorKind::UBO,  ShaderGenStageAllGraphics, "camera",   "CameraInfo",   nullptr},
-    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,  ShaderGenStageAllGraphics, "l2w",      "LocalToWorld", nullptr},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO, ShaderGenStageVertex,      "mtl",      "MaterialInstanceData", nullptr},
+    {DescriptorSetType::Scene,     DescriptorKind::UBO,  ShaderGenStageAllGraphics, "viewport", "ViewportInfo", nullptr},
+    {DescriptorSetType::Scene,     DescriptorKind::UBO,  ShaderGenStageAllGraphics, "camera",   "CameraInfo",   nullptr},
+    {DescriptorSetType::Transform, DescriptorKind::UBO,  ShaderGenStageAllGraphics, "l2w",      "LocalToWorld", nullptr},
+    {DescriptorSetType::Material,  DescriptorKind::SSBO, ShaderGenStageVertex,      "mtl",      "MaterialInstanceData", nullptr},
 };
 
 constexpr VertexShaderBusiness EX_PURE_COLOR_3D_VERTEX_BUSINESS { EX_PURE_COLOR_3D_VS_BUSINESS };
@@ -148,13 +148,13 @@ constexpr FixedVertexEntry EX_BASIC_LIT_VERTEX[] = {
 };
 
 constexpr FixedDescriptorEntry EX_BASIC_LIT_DESCRIPTORS[] = {
-    {DescriptorSetType::RenderTarget, DescriptorKind::UBO,            ShaderGenStageAllGraphics, "viewport", "ViewportInfo", nullptr},
-    {DescriptorSetType::Camera,       DescriptorKind::UBO,            ShaderGenStageAllGraphics, "camera",   "CameraInfo",   nullptr},
-    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            ShaderGenStageAllGraphics, "l2w",      "LocalToWorld", nullptr},
-    {DescriptorSetType::PerFrame,     DescriptorKind::UBO,            ShaderGenStageAllGraphics, "light",    "LightData",    nullptr},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::Texture,        ShaderGenStageFragment, "BaseColorMap", nullptr, "sampler2D"},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::TextureSampler, ShaderGenStageFragment, "LinearSampler", nullptr, "sampler2D"},
-    {DescriptorSetType::PerMaterial,  DescriptorKind::SSBO,           ShaderGenStageVertex,   "mtl",      "MaterialInstanceData", nullptr},
+    {DescriptorSetType::Scene,     DescriptorKind::UBO,            ShaderGenStageAllGraphics, "viewport", "ViewportInfo", nullptr},
+    {DescriptorSetType::Scene,     DescriptorKind::UBO,            ShaderGenStageAllGraphics, "camera",   "CameraInfo",   nullptr},
+    {DescriptorSetType::Transform, DescriptorKind::UBO,            ShaderGenStageAllGraphics, "l2w",      "LocalToWorld", nullptr},
+    {DescriptorSetType::Scene,     DescriptorKind::UBO,            ShaderGenStageAllGraphics, "light",    "LightData",    nullptr},
+    {DescriptorSetType::Material,  DescriptorKind::Texture,        ShaderGenStageFragment, "BaseColorMap", nullptr, "sampler2D"},
+    {DescriptorSetType::Material,  DescriptorKind::TextureSampler, ShaderGenStageFragment, "LinearSampler", nullptr, "sampler2D"},
+    {DescriptorSetType::Material,  DescriptorKind::SSBO,           ShaderGenStageVertex,   "mtl",      "MaterialInstanceData", nullptr},
 };
 
 constexpr VertexShaderBusiness EX_BASIC_LIT_VERTEX_BUSINESS { EX_BASIC_LIT_VS_BUSINESS };

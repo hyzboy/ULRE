@@ -113,7 +113,7 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
 {
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
     {
-        if (def.descriptor_entries[i].set_type == DescriptorSetType::PerMaterial)
+        if (def.descriptor_entries[i].set_type == DescriptorSetType::Material)
             return true;
     }
 

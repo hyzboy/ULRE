@@ -93,7 +93,7 @@ ViewportInfo *IRenderTarget::GetViewportInfo()
     return ubo_vp_info ? ubo_vp_info->Data() : nullptr;
 }
 
-IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext):desc_binding(DescriptorSetType::RenderTarget)
+IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext):desc_binding(DescriptorSetType::Scene)
 {
     ecs_context=ctx;
 

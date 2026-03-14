@@ -185,7 +185,7 @@ namespace hgl::graph
         pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        DescriptorBinding material_binding(DescriptorSetType::PerMaterial);
+        DescriptorBinding material_binding(DescriptorSetType::Material);
 
         if(!material_binding.AddTextureSampler( mtl::SamplerName::Text,
                                                 tile_font->GetTexture(),

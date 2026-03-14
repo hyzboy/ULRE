@@ -41,7 +41,7 @@ struct SkyLightResourceInjectionSpec
 };
 
 constexpr FixedDescriptorEntry SKYLIGHT_APPEND_DESCRIPTOR_CUBEMAP[] = {
-    { DescriptorSetType::Camera, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SKYLIGHT_RESOURCE_KEY_SKY_CUBEMAP, nullptr, "samplerCube" },
+    { DescriptorSetType::Scene, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SKYLIGHT_RESOURCE_KEY_SKY_CUBEMAP, nullptr, "samplerCube" },
 };
 
 constexpr const char *SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP[] = {

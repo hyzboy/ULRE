@@ -62,7 +62,7 @@ namespace hgl::ecs
     void RenderDescriptorBindingSystem::EnsureViewBinding()
     {
         if (!view_desc_binding)
-            view_desc_binding = new graph::DescriptorBinding(graph::DescriptorSetType::Camera);
+            view_desc_binding = new graph::DescriptorBinding(graph::DescriptorSetType::Scene);
     }
 
     void RenderDescriptorBindingSystem::RegisterBindingSource(BindingSource source)
@@ -141,15 +141,26 @@ namespace hgl::ecs
 
     void RenderDescriptorBindingSystem::RegisterDefaultSources()
     {
-        RegisterBindingSource([](ECSContext *ctx, graph::RenderCmdBuffer *cmd, graph::DescriptorBinding *)
+        RegisterBindingSource([](ECSContext *ctx, graph::RenderCmdBuffer *, graph::DescriptorBinding *view_db)
         {
-            if (!ctx || !cmd)
+            if (!ctx || !view_db)
                 return;
 
-            if (auto *rt = ctx->GetRenderTarget())
+            auto *rt = ctx->GetRenderTarget();
+            if (!rt)
+                return;
+
+            auto *db = rt->GetDescriptorBinding();
+            if (!db)
+                return;
+
+            // Merge viewport UBO from RenderTarget into the unified Scene binding.
+            // Previously RT had its own DescriptorSetType::RenderTarget slot, but now
+            // all scene-level UBOs share DescriptorSetType::Scene.
+            if (const auto *viewport_gpu = db->GetUBO("viewport"))
             {
-                if (auto *db = rt->GetDescriptorBinding())
-                    cmd->SetDescriptorBinding(db);
+                if (!view_db->GetUBO("viewport"))
+                    view_db->AddUBO("viewport", viewport_gpu);
             }
         });
 

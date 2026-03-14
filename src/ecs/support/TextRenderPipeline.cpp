@@ -328,7 +328,7 @@ namespace hgl::ecs
             guard.material_instance_buffer = nullptr;
         }
 
-        graph::DescriptorBinding material_binding(graph::DescriptorSetType::PerMaterial);
+        graph::DescriptorBinding material_binding(graph::DescriptorSetType::Material);
 
         if (!material_binding.AddTextureSampler(graph::mtl::SamplerName::Text,
                                                 guard.tile_font->GetTexture(),

@@ -104,19 +104,19 @@ private:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+        if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           mtl::SamplerName::BaseColor,
                                           base_texture,
                                           sampler))
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+        if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           "TextureNormal",
                                           normal_texture,
                                           sampler))
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::PerMaterial,
+        if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           "TextureRoughness",
                                           roughness_texture,
                                           sampler))

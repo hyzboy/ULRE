@@ -1,4 +1,4 @@
-﻿// 画一个带纹理的矩形，2D模式专用 (ECS)
+// 画一个带纹理的矩形，2D模式专用 (ECS)
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
@@ -144,7 +144,7 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
+        if(!material->BindTextureSampler( DescriptorSetType::Material,
                                         mtl::SamplerName::BaseColor,
                                         texture,
                                         sampler))

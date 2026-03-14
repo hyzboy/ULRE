@@ -396,7 +396,7 @@ private:
 
         cube_sampler = sampler_manager->CreateSampler();
 
-        cube_mtl->BindTextureSampler(DescriptorSetType::PerMaterial,
+        cube_mtl->BindTextureSampler(DescriptorSetType::Material,
                                      mtl::SamplerName::BaseColor,
                                      offscreen && offscreen->rt ? offscreen->rt->GetColorTexture(0) : nullptr,
                                      cube_sampler);

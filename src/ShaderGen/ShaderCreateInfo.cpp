@@ -113,7 +113,7 @@ bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSam
 
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const std::string &mi)
 {
-    AddUBO(DescriptorSetType::PerMaterial,ubo);
+    AddUBO(DescriptorSetType::Material,ubo);
     AddStruct(mtl::MaterialInstanceStruct);
 
     AddFunction(shader_stage==ShaderStage::Vertex?mtl::func::MF_GetMI_VS:mtl::func::MF_GetMI_Other);
@@ -123,7 +123,7 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const std::string 
 
 void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo,const std::string &mi)
 {
-    AddSSBO(DescriptorSetType::PerMaterial,ssbo);
+    AddSSBO(DescriptorSetType::Material,ssbo);
     AddStruct(mtl::MaterialInstanceStruct);
 
     AddFunction(shader_stage==ShaderStage::Vertex?mtl::func::MF_GetMI_VS:mtl::func::MF_GetMI_Other);

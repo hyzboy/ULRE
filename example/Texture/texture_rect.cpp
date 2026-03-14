@@ -96,7 +96,7 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        if(!material->BindTextureSampler( DescriptorSetType::PerMaterial,
+        if(!material->BindTextureSampler( DescriptorSetType::Material,
                                         mtl::SamplerName::BaseColor,
                                         texture,
                                         sampler))

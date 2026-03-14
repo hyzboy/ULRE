@@ -26,7 +26,7 @@ const DescriptorSetType MaterialDescriptorInfo::GetSetType(const std::string &na
         if(sds.descriptor_map.ContainsKey(name.c_str()))
             return(sds.set_type);
 
-    return DescriptorSetType::Global;
+    return DescriptorSetType::Unknow;
 }
 
 const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
