@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/type/ManagedArray.h>
+#include<hgl/mtl/new/PlatformBackend.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -73,5 +74,20 @@ public:
     Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
+
+    // GeometryFetchMode-aware: when SSBO, uses empty VertexInput (nullptr VIL)
+    Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, GeometryFetchMode fetch_mode, const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   GeometryFetchMode fetch_mode, const bool prim_restart=false);
+
+    /**
+     * 从原始着色器阶段 + Pipeline Layout + VIL 创建管线（供 Compositor 系统使用）
+     */
+    Pipeline *CreatePipeline(const AnsiString &name,
+                             const ShaderStageCreateInfoList &ssci,
+                             VkPipelineLayout layout,
+                             const VIL *vil,
+                             const PipelineData *pd,
+                             PrimitiveType prim = PrimitiveType::Triangles,
+                             bool prim_restart = false);
 };//class RenderPass
 }//namespace hgl::graph

@@ -278,14 +278,25 @@ void PipelineData::InitVertexInputState(const VIL *vil)
     vertex_input_state.pNext = nullptr;
     vertex_input_state.flags = 0;
 
-    vertex_input_state.vertexBindingDescriptionCount   =
-    vertex_input_state.vertexAttributeDescriptionCount = vil->GetVertexAttribCount();
+    if(vil)
+    {
+        vertex_input_state.vertexBindingDescriptionCount   =
+        vertex_input_state.vertexAttributeDescriptionCount = vil->GetVertexAttribCount();
 
-    vertex_input_binding_description    =vil->NewBindListCopy();
-    vertex_input_attribute_description  =vil->NewAttrListCopy();
+        vertex_input_binding_description    =vil->NewBindListCopy();
+        vertex_input_attribute_description  =vil->NewAttrListCopy();
 
-    vertex_input_state.pVertexBindingDescriptions      = vertex_input_binding_description;
-    vertex_input_state.pVertexAttributeDescriptions    = vertex_input_attribute_description;
+        vertex_input_state.pVertexBindingDescriptions      = vertex_input_binding_description;
+        vertex_input_state.pVertexAttributeDescriptions    = vertex_input_attribute_description;
+    }
+    else
+    {
+        // 空顶点输入 — 用于 SSBO 顶点获取路径
+        vertex_input_state.vertexBindingDescriptionCount   = 0;
+        vertex_input_state.vertexAttributeDescriptionCount = 0;
+        vertex_input_state.pVertexBindingDescriptions      = nullptr;
+        vertex_input_state.pVertexAttributeDescriptions    = nullptr;
+    }
 
     pipeline_info.pVertexInputState  = &vertex_input_state;
 }

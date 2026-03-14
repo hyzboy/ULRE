@@ -142,4 +142,42 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeli
 
     return CreatePipeline(mi,pd,prim_restart);
 }
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,GeometryFetchMode fetch_mode,const bool prim_restart)
+{
+    if(!mi)return(nullptr);
+
+    const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
+
+    return CreatePipeline(mi->GetMaterial(),vil,ip,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *pd,GeometryFetchMode fetch_mode,const bool prim_restart)
+{
+    if(!mi)return(nullptr);
+
+    const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
+
+    return CreatePipeline(mi->GetMaterial(),vil,pd,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
+                                     const ShaderStageCreateInfoList &ssci,
+                                     VkPipelineLayout layout,
+                                     const VIL *vil,
+                                     const PipelineData *cpd,
+                                     PrimitiveType prim,
+                                     bool prim_restart)
+{
+    PipelineData *pd = new PipelineData(cpd);
+
+    pd->SetPrim(prim, prim_restart);
+
+    Pipeline *p = CreatePipeline(name, pd, ssci, layout, vil);
+
+    if(p)
+        pipeline_list.Add(p);
+
+    return p;
+}
 }//namespace hgl::graph

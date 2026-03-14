@@ -4,6 +4,7 @@
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/vk/VK.h>
 #include<hgl/log/Log.h>
+#include<hgl/type/BlockAllocator.h>
 
 namespace hgl::graph{
 
@@ -27,6 +28,9 @@ protected:
 protected:
 
     BoundingVolumes bounding_volumes;    ///<包围体
+
+    BlockAllocator::UserNode *ssbo_vtx_node=nullptr;    ///<SSBO 顶点分配节点
+    BlockAllocator::UserNode *ssbo_idx_node=nullptr;    ///<SSBO 索引分配节点
 
 public:
 
@@ -62,5 +66,16 @@ public:
     const   uint32_t        GetFirstIndex   ()const;                        ///<取得第一个索引
 
     VertexDataManager *     GetVDM          ()const;                        ///<取得顶点数据管理器
+
+public: // SSBO allocation (for SSBO vertex fetch path)
+
+    void SetSSBOVertexNode(BlockAllocator::UserNode *n){ssbo_vtx_node=n;}
+    void SetSSBOIndexNode(BlockAllocator::UserNode *n){ssbo_idx_node=n;}
+
+    BlockAllocator::UserNode *GetSSBOVertexNode()const{return ssbo_vtx_node;}
+    BlockAllocator::UserNode *GetSSBOIndexNode()const{return ssbo_idx_node;}
+
+    int32_t GetSSBOVertexOffset()const{return ssbo_vtx_node?ssbo_vtx_node->GetStart():-1;}
+    int32_t GetSSBOIndexOffset()const{return ssbo_idx_node?ssbo_idx_node->GetStart():-1;}
 };//class Geometry
 }//namespace hgl::graph
