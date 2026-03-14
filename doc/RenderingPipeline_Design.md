@@ -930,7 +930,22 @@ for each preset:
         SPVCache.Store(preset_id, tier, shadow, pass_type, spv)
 ```
 
-### 14.5 运行时 Pipeline 查询
+### 14.5 SPV 部署阶段与分发策略
+
+**Shader/SPV 生成仅在渲染器开发阶段实时执行。** 游戏编辑器和游戏运行时均不包含 GLSL 源码或编译器，
+只使用离线预编译的 SPV 二进制包。三个部署阶段如下：
+
+| 阶段 | GLSL 生成 | SPV 编译 | SPV 来源 |
+|------|-----------|----------|----------|
+| 渲染器开发 | ✅ 实时 | ✅ 实时 | 内存 / 本地缓存 |
+| 游戏编辑器 | ❌ | ❌ | 离线 SPV 包（资产管线自动构建） |
+| 游戏运行时 | ❌ | ❌ | 分发或按需下载的 SPV 包 |
+
+**SPV 分发打包**：构建服务器按 `PlatformBackend × QualityTier` 独立生成 SPV 包。
+游戏客户端根据目标平台和设备检测结果，仅安装或下载匹配档位的 SPV 包。
+运行时通过 `SPVCache.LoadFromFile()` 加载后纯查表使用。
+
+### 14.6 运行时 Pipeline 查询
 
 ```cpp
 QualityTier effectiveTier = min(deviceTier, CalcObjectLODTier(obj, cam));

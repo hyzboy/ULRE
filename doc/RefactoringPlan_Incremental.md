@@ -6,6 +6,14 @@
 >
 > **原则**：每一步都是最小化变动，完成后**必须能编译通过并可由用户手动测试**。
 > 每步标注 `[测试]` 说明验证方法。若某步打破了已有功能，必须在同一步内修复。
+>
+> **Shader/SPV 部署说明**：
+> 终极目标是**完全离线生成 Shader 与 SPV**。实时生成 GLSL 和编译 SPV（即
+> `CompositorAssembler` + `GLSLCompiler` 的在线调用）**仅存在于渲染器开发阶段**，
+> 用于 Shader 调试、热重载和变体验证。游戏开发者使用的编辑器**不包含** GLSL 源码
+> 或编译器 DLL，只加载资产管线预编译的 SPV 包。最终游戏运行时更不包含任何编译能力，
+> 仅按设备画质档位分发或按需下载对应等级的 SPV 二进制包
+> （按 `PlatformBackend × QualityTier` 独立打包）。
 
 ---
 
@@ -1400,6 +1408,9 @@ private:
 
 **新增文件**：`inc/hgl/shadergen/PresetShaderCompiler.h` + `src/ShaderGen/PresetShaderCompiler.cpp`
 
+> **注意**：PresetShaderCompiler 是**构建期离线工具**，仅在渲染器开发阶段和 CI/CD
+> 构建服务器上运行。游戏编辑器和游戏运行时不链接此模块，不包含 GLSLCompiler DLL。
+
 **功能**（第一版）：
 1. 遍历指定的 `MaterialPresetDef` 列表
 2. 对每个 Preset × 有效的 `NewShaderPermutationKey` 组合
@@ -1414,6 +1425,14 @@ private:
 ### Step 5.9 — 实现 SPVCache（构建期缓存）
 
 **新增文件**：`inc/hgl/shadergen/SPVCache.h` + `src/ShaderGen/SPVCache.cpp`
+
+> **注意**：SPVCache 承担两个角色：
+> - **构建期**（渲染器开发 / CI 构建服务器）：接收 PresetShaderCompiler 编译产出，
+>   `Store()` 写入并 `SaveToFile()` 序列化为 SPV 包（按 Platform × QualityTier 打包）。
+> - **运行时**（游戏编辑器 / 游戏客户端）：`LoadFromFile()` 加载离线 SPV 包，
+>   `Lookup()` 纯查表获取 SPV 二进制，**不涉及任何编译**。
+>
+> 游戏分发时根据目标平台和设备档位，仅携带或下载匹配的 SPV 包。
 
 **功能**（第一版）：
 1. 内存中的 `Map<{preset_id, packed_key, pass_type}, SPVData>` 查表

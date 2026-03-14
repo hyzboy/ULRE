@@ -21,6 +21,42 @@
    美术通过引擎编辑器填写该结构体的值和绑定纹理
 5. **最高规格配置，自动降级**：美术永远面对最高档位的纹理槽和参数列表，引擎在低档位自动忽略不需要的纹理
 
+### Shader/SPV 部署生命周期
+
+**终极目标：完全离线生成 Shader 与 SPV。** 实时生成 GLSL / 编译 SPV 仅存在于渲染器开发阶段，
+不会暴露给游戏开发者，更不会出现在最终游戏运行时。整个 Shader 系统的部署分为三个阶段：
+
+| 阶段 | GLSL 生成 | SPV 编译 | SPV 来源 | 说明 |
+|------|-----------|----------|----------|------|
+| **① 渲染器开发** | ✅ 实时（CompositorAssembler） | ✅ 实时（GLSLCompiler DLL） | 内存 / 本地缓存 | 开发迭代用，支持热重载、Shader 调试、变体验证 |
+| **② 游戏编辑器** | ❌ 不可用 | ❌ 不可用 | 本地预编译 SPV 包 | 编辑器启动时加载离线 SPV 包，美术只调参数和纹理 |
+| **③ 游戏运行时** | ❌ 不可用 | ❌ 不可用 | 分发/下载的 SPV 包 | 按设备画质档位分发对应等级的 SPV 数据 |
+
+**SPV 分发模型：**
+
+```
+构建服务器 (CI/CD)
+  └─ PresetShaderCompiler.CompileAll()
+       ├─ SPV_PC_High.pack       ← PC 高画质全部变体
+       ├─ SPV_PC_Medium.pack     ← PC 中画质全部变体
+       ├─ SPV_PC_Low.pack        ← PC 低画质全部变体
+       ├─ SPV_Android_High.pack  ← Android 高端 (SSBO vertex fetch)
+       ├─ SPV_Android_Medium.pack← Android 中端 (SSBO vertex fetch)
+       ├─ SPV_Android_Low.pack   ← Android 低端 (VBO vertex fetch)
+       └─ SPV_Apple_*.pack       ← Apple 平台
+
+游戏分发
+  ├─ 客户端安装包：仅包含目标平台 SPV 全档位
+  │   └─ 或按需下载：设备检测后只下载匹配档位的 SPV 包
+  └─ 运行时：SPVCache.LoadFromFile() → 查表 → Pipeline 创建
+```
+
+> **关键约束**：
+> - 游戏运行时 **不链接** GLSLCompiler DLL，不包含 GLSL 源码
+> - SPV 包按 `PlatformBackend × QualityTier` 独立打包，客户端只需携带匹配设备的 SPV
+> - 支持增量更新：新增/修改材质时只重新编译受影响的 SPV 变体
+> - 编辑器阶段的 SPV 包由资产构建管线（Asset Pipeline）自动生成，美术无感知
+
 ---
 
 ## 2. 渲染路径定义
