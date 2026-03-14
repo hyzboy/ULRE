@@ -25,8 +25,6 @@ using namespace hgl::graph;
 // GLSLCompiler 接口
 namespace hgl::graph
 {
-    bool     InitShaderCompiler();
-    void     CloseShaderCompiler();
     struct SPVData { bool result; char *log; char *debug_log; uint32_t *spv_data; uint32_t spv_length; };
     SPVData *CompileShader(const uint32_t type, const char *source);
     void     FreeSPVData(SPVData *spv_data);
@@ -84,12 +82,6 @@ class CompositorRenderTest : public WorkObject
         // ======== Phase 2: Compile to SPV ========
         std::cout << "\n=== Phase 2: GLSL -> SPV ===\n";
 
-        if (!InitShaderCompiler())
-        {
-            std::cerr << "SKIP: GLSLCompiler DLL not available.\n";
-            return false;
-        }
-
         AddShaderIncludePath("ShaderLibrary");
 
         SPVData *vs_spv = CompileShader(VK_SHADER_STAGE_VERTEX_BIT, assembled.vertex_glsl.c_str());
@@ -98,10 +90,10 @@ class CompositorRenderTest : public WorkObject
             std::cerr << "FAIL: VS compile failed.\n";
             if (vs_spv && vs_spv->log) std::cerr << "  Log: " << vs_spv->log << "\n";
             if (vs_spv) FreeSPVData(vs_spv);
-            CloseShaderCompiler();
+
             return false;
         }
-        std::cout << "OK: VS compiled to " << vs_spv->spv_length << " SPIR-V words.\n";
+        std::cout << "OK: VS compiled to " << vs_spv->spv_length << " bytes (" << vs_spv->spv_length / sizeof(uint32_t) << " words).\n";
 
         SPVData *fs_spv = CompileShader(VK_SHADER_STAGE_FRAGMENT_BIT, assembled.fragment_glsl.c_str());
         if (!fs_spv || !fs_spv->result)
@@ -110,12 +102,10 @@ class CompositorRenderTest : public WorkObject
             if (fs_spv && fs_spv->log) std::cerr << "  Log: " << fs_spv->log << "\n";
             if (fs_spv) FreeSPVData(fs_spv);
             FreeSPVData(vs_spv);
-            CloseShaderCompiler();
+
             return false;
         }
-        std::cout << "OK: FS compiled to " << fs_spv->spv_length << " SPIR-V words.\n";
-
-        CloseShaderCompiler();
+        std::cout << "OK: FS compiled to " << fs_spv->spv_length << " bytes (" << fs_spv->spv_length / sizeof(uint32_t) << " words).\n";
 
         // ======== Phase 3: SPV → VkShaderModule ========
         std::cout << "\n=== Phase 3: SPV -> VkShaderModule ===\n";
@@ -123,7 +113,7 @@ class CompositorRenderTest : public WorkObject
         vs_module = device->CreateShaderModule(
             (VkShaderStageFlagBits)VK_SHADER_STAGE_VERTEX_BIT,
             vs_spv->spv_data,
-            vs_spv->spv_length * sizeof(uint32_t)
+            vs_spv->spv_length
         );
         FreeSPVData(vs_spv);
 
@@ -138,7 +128,7 @@ class CompositorRenderTest : public WorkObject
         fs_module = device->CreateShaderModule(
             (VkShaderStageFlagBits)VK_SHADER_STAGE_FRAGMENT_BIT,
             fs_spv->spv_data,
-            fs_spv->spv_length * sizeof(uint32_t)
+            fs_spv->spv_length
         );
         FreeSPVData(fs_spv);
 
