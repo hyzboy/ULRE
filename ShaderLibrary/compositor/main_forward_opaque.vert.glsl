@@ -3,8 +3,9 @@
 // === Compositor Template: Forward Opaque VS ===
 // 自动生成 — 不要手动编辑此文件
 
-// Descriptor bindings (uses #define injected by CompositorAssembler)
-layout(set=0, binding=1) uniform CameraUBO { mat4 view; mat4 proj; mat4 viewProj; vec3 cameraPos; vec3 cameraPosWorld; };
+// Scene UBO declarations (shared with all shaders)
+#include "common/scene_ubo.glsl"
+SCENE_CAMERA_UBO(0, 1);
 layout(set=1, binding=0) readonly buffer L2W_SSBO { mat4 transforms[]; };  // camera-relative L2W
 
 #if GEOMETRY_FETCH_SSBO
@@ -53,5 +54,5 @@ void main()
     fragUV0 = uv0;
     fragInstanceID = instanceID;
 
-    gl_Position = viewProj * worldPos;   // viewProj 已是 camera-relative
+    gl_Position = camera.vp * worldPos;   // vp 已是 camera-relative
 }

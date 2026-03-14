@@ -16,10 +16,11 @@ layout(location=0) out vec4 outColor;
 // --- Lighting ---
 #include "common/lighting.glsl"
 
-// --- Scene Data ---
-layout(set=0, binding=0) uniform ViewportUBO { vec4 viewport; float time; float _pad0; float _pad1; float _pad2; };
-layout(set=0, binding=1) uniform CameraUBO { mat4 view; mat4 proj; mat4 viewProj; vec3 cameraPos; vec3 cameraPosWorld; };
-layout(set=0, binding=2) uniform SkyUBO { vec3 sunDirection; vec3 sunColor; vec3 ambientColor; };
+// --- Scene Data (shared UBO definitions) ---
+#include "common/scene_ubo.glsl"
+SCENE_VIEWPORT_UBO(0, 0);
+SCENE_CAMERA_UBO(0, 1);
+SCENE_SKY_UBO(0, 2);
 
 // --- MI SSBO ---
 layout(set=2, binding=0) readonly buffer MI_Buffer { MI_Standard mi_data[]; };
@@ -32,12 +33,12 @@ void main()
     si.worldPos    = fragWorldPos;
     si.worldNormal = normalize(fragWorldNormal);
     si.uv0         = fragUV0;
-    si.viewDir     = normalize(-fragWorldPos);  // cameraPos 恒为 0，故 viewDir = -worldPos
+    si.viewDir     = normalize(camera.pos - fragWorldPos);
 
     SurfaceOutput so = EvalSurface(si, mi);
 
-    vec3 litColor = EvalLighting(so, si.viewDir, sunDirection, sunColor);
-    litColor += so.baseColor * ambientColor * so.ao;
+    vec3 litColor = EvalLighting(so, si.viewDir, sky.sun_direction.xyz, sky.sun_color.rgb);
+    litColor += so.baseColor * sky.base_sky_color.rgb * so.ao;
     litColor += so.emissive;
 
     outColor = vec4(litColor, so.alpha);
