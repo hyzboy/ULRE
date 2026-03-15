@@ -6,7 +6,6 @@
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
-#include<hgl/graph/module/ShaderGenDiffLogDetail.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
 #include <map>
 #include <string>
