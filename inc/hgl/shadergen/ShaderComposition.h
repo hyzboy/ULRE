@@ -20,7 +20,6 @@
 
 #include <hgl/mtl/FixedVertexEntry.h>
 #include <hgl/mtl/FixedDescriptorEntry.h>
-#include <hgl/mtl/ShaderPermutationKey.h>
 #include <hgl/common/RenderFlowDef.h>
 #include <hgl/common/PrimitiveTypeDef.h>
 #include <hgl/type/String.h>
@@ -29,45 +28,7 @@
 
 namespace hgl::graph::mtl {
 
-constexpr uint32_t ShaderGenStageVertex = 0x00000001u;
-constexpr uint32_t ShaderGenStageFragment = 0x00000010u;
-constexpr uint32_t ShaderGenStageAllGraphics = 0x0000001Fu;
-
 struct MaterialLogicDef;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 着色器段定义（开发者编写的业务逻辑）
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * 顶点着色器业务段
- * 输入：VertexInput 结构（由框架定义）
- * 输出：VS_Output 结构（VS output 接口）
- *
- * 典型实现：
- *   vec4 VertexShaderBusiness(const VertexInput vi) {
- *       return GetLocalToWorld() * vec4(vi.Position, 1.0);
- *   }
- */
-struct VertexShaderBusiness {
-    const char *code;  ///< 业务代码片段（含函数定义）
-    // 业务函数签名约定：vec4 VertexShaderBusiness(const VertexInput vi)
-};
-
-/**
- * 片元着色器业务段
- * 输入：VS_Output（来自 VS 插值）
- * 输出：vec3 diffuse_color, vec3 specular_color, float alpha（或其他）
- *
- * 典型实现：
- *   vec3 FragmentShaderBusiness(const VS_Output vso) {
- *       return texture(diffuse_map, vso.TexCoord).rgb;
- *   }
- */
-struct FragmentShaderBusiness {
-    const char *code;  ///< 业务代码片段（含函数定义）
-    // 业务函数签名约定：vec3/vec4 FragmentShaderBusiness(const VS_Output vso)
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 输出模式（框架根据此决定最终 RT 合成方式）
@@ -112,152 +73,10 @@ struct ShaderComposeResult {
     ShaderComposeDiagnostics diagnostics;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 光照计算委托（框架根据 ShaderPermutationKey 生成）
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 合成描述符（材质开发者定义）
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * ComposedMaterialDef — 合成驱动材质定义
- *
- * 用途：代替 FixedMaterialDef 的低级 GLSL 编写，提供更高级的抽象。
- *
- * 框架生成流程：
- *   1. 读取 vertex_business + fragment_business
- *   2. 根据 output_mode 生成输出合成代码（Alpha / Additive / G-Buffer output）
- *   3. 根据 lighting_enabled + ShaderPermutationKey 生成光照部分（Lambert / PBR / IBL）
- *   4. 拼接完整 GLSL：
- *      ```glsl
- *      #version 450
- *      #define LIGHT_MODEL 3  // 由 ShaderPermutationKey 注入
- *      ...
- *      [layout 声明 + uniform 声明]
- *      [结构体定义：VertexInput, VS_Output, LightingOutput]
- *      [坐标变换函数]
- *      [业务片段]
- *      [光照计算片段]
- *      [main()]
- *      ```
- *   5. 编译到 SPV
- */
-struct ComposedMaterialDef {
-    const char *name;
-
-    PrimitiveType primitive_type;
-
-    /// 顶点输入和描述符（同 FixedMaterialDef）
-    const FixedVertexEntry *vertex_entries;
-    uint32_t vertex_entry_count;
-    const FixedDescriptorEntry *descriptor_entries;
-    uint32_t descriptor_entry_count;
-
-    /// 业务着色器段
-    const VertexShaderBusiness *vertex_business;
-    const FragmentShaderBusiness *fragment_business;
-
-    /// 输出模式
-    ShaderOutputMode output_mode;
-
-    /// 是否启用光照计算（若 true，框架根据 ShaderPermutationKey 生成光照代码）
-    bool enable_lighting;
-
-    /// 材质实例数据
-    const char *mi_glsl_codes;
-    uint32_t mi_struct_bytes;
-
-    /// 可选：显式 helper 依赖（Stage 5+）
-    /// 当配置后，框架会按依赖名注入 helper；未配置时回退到业务代码字符串检测。
-    const char **vertex_required_helpers;
-    uint32_t vertex_required_helper_count;
-
-    const char **fragment_required_helpers;
-    uint32_t fragment_required_helper_count;
-
-    /// 逻辑驱动的 helper 依赖（来自 ShaderLogic.h 的 required_helpers）
-    std::vector<std::string> logic_required_helpers;
-};
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 辅助函数库生成策略：自动生成开发者使用的工具函数
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * HelperFunctionLibrary — 框架自动生成的开发者辅助函数库
- *
- * 框架根据 ComposedMaterialDef 的信息（顶点输入、描述符、坐标系）
- * 自动生成如下函数，开发者无需关心实现细节，直接调用即可：
- *
- * ┌──────────────────────────────────────────────────────────────┐
- * │ 坐标变换相关                                                  │
- * ├──────────────────────────────────────────────────────────────┤
- * │ mat4 GetLocalToWorld()                                        │
- * │   来自于 descriptor LocalToWorld (UBO/SSBO)                  │
- * │   自动选择：ByIndex / ByAssign / Fixed                       │
- * │                                                              │
- * │ mat3 GetNormalMatrix()                                        │
- * │   = transpose(inverse(mat3(ViewMatrix * LocalToWorld)))      │
- * │   框架自动从 LocalToWorld 推导                               │
- * │                                                              │
- * │ vec4 GetPosition3D()                                          │
- * │   VS: 返回 LocalToWorld * vec4(Position, 1.0)               │
- * │   GS/FS: 返回 插值的 WorldPosition                          │
- * │                                                              │
- * │ vec4 GetClipPosition()                                        │
- * │   = camera.vp * GetPosition3D()                              │
- * │   框架根据坐标系自动完成                                     │
- * └──────────────────────────────────────────────────────────────┘
- *
- * ┌──────────────────────────────────────────────────────────────┐
- * │ 法线相关                                                      │
- * ├──────────────────────────────────────────────────────────────┤
- * │ vec3 GetNormal(vec3 local_normal)                            │
- * │ vec3 GetNormal()  [VS 版本，直接用 Normal 输入]             │
- * │   = normalize(GetNormalMatrix() * local_normal)              │
- * │   框架自动选择 VS/GS/FS 版本                                │
- * │                                                              │
- * │ vec3 GetWorldNormal()  [GS/FS，从 VS 输入]                  │
- * │   = normalize(所插值的 WorldNormal)                         │
- * └──────────────────────────────────────────────────────────────┘
- *
- * ┌──────────────────────────────────────────────────────────────┐
- * │ 材质实例相关                                                  │
- * ├──────────────────────────────────────────────────────────────┤
- * │ MaterialInstance GetMaterialInstance()                        │
- * │ MaterialInstance GetMI()                                      │
- * │   VS: 从 MaterialInstanceID 读取（SSBO 或直接索引）         │
- * │   GS: 从 Input[0].MaterialInstanceID 读取                    │
- * │   FS: 从 Input.MaterialInstanceID 读取（来自 VS 插值）      │
- * │   框架自动选择正确的版本                                     │
- * │                                                              │
- * │ void HandoverMaterialInstanceID()  [仅用于有 GS 时]         │
- * │   = 在 GS 中转发 MaterialInstanceID                          │
- * │   框架根据 shader stage 决定是否生成                         │
- * └──────────────────────────────────────────────────────────────┘
- *
- * 开发者编写业务逻辑时，直接调用这些函数即可：
- *
- *   // VS 中
- *   vec4 VertexShaderBusiness(const VertexInput vi) {
- *       vec3 world_normal = GetNormal(vi.Normal);  // 框架自动处理矩阵
- *       vec4 world_pos = GetLocalToWorld() * vec4(vi.Position, 1.0);
- *       return GetClipPosition();  // 框架自动投影
- *   }
- *
- *   // FS 中
- *   vec4 FragmentShaderBusiness(const VS_Output vso) {
- *       MaterialInstance mi = GetMaterialInstance();  // 自动从 SSBO 读
- *       vec3 normal = GetWorldNormal();  // 从插值数据获取
- *       return mi.Color;
- *   }
- */
-struct HelperFunctionLibrary {
-    // 框架生成的完整函数库代码
-    std::string code;
-};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 预定义配置（编译期常量）

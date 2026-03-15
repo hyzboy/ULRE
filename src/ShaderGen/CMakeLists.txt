@@ -97,8 +97,7 @@ SET(SHADER_LIBRARY_FILES    MaterialLibrary.cpp
 
 SOURCE_GROUP("Shader Library" FILES ${SHADER_LIBRARY_FILES})
 
-SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/FixedMaterialDef.h
-                    ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
+SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContract.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileAdapter.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileJson.h
@@ -107,7 +106,6 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/FixedMaterialDef.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenMirrorDiff.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenRequestBuilder.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenResultBuilder.h
-                    ShaderPermutationKey.cpp
                     ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
                     ResourceLayoutGenerator.cpp
                     contract/ShaderGenContractValidator.cpp

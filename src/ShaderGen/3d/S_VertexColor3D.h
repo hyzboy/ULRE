@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <hgl/mtl/FixedMaterialDef.h>
 #include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/common/RenderAssignDef.h>
 
@@ -26,24 +25,6 @@ constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
     { DescriptorSetType::Transform, VERTEX_COLOR_3D_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
 };
 
-constexpr const char VERTEX_COLOR_3D_VS_BUSINESS[] = R"(
-vec4 VertexShaderBusiness(const VertexInput vi)
-{
-    Output.Color = vi.Color;
-    return vec4(vi.Position, 1.0);
-}
-)";
-
-constexpr const char VERTEX_COLOR_3D_FS_BUSINESS[] = R"(
-vec4 FragmentShaderBusiness()
-{
-    return Input.Color;
-}
-)";
-
-constexpr VertexShaderBusiness VERTEX_COLOR_3D_VERTEX_BUSINESS { VERTEX_COLOR_3D_VS_BUSINESS };
-constexpr FragmentShaderBusiness VERTEX_COLOR_3D_FRAGMENT_BUSINESS { VERTEX_COLOR_3D_FS_BUSINESS };
-
 constexpr FixedMaterialDef VERTEX_COLOR_3D_DEF {
     "VertexColor3D",
     PrimitiveType::Triangles,
@@ -51,21 +32,6 @@ constexpr FixedMaterialDef VERTEX_COLOR_3D_DEF {
     uint32_t(sizeof(VERTEX_COLOR_3D_VERTEX) / sizeof(VERTEX_COLOR_3D_VERTEX[0])),
     VERTEX_COLOR_3D_DESCRIPTORS,
     uint32_t(sizeof(VERTEX_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_COLOR_3D_DESCRIPTORS[0])),
-    nullptr,
-    0,
-};
-
-const ComposedMaterialDef VERTEX_COLOR_3D_COMPOSED_DEF {
-    "VertexColor3D",
-    PrimitiveType::Triangles,
-    VERTEX_COLOR_3D_VERTEX,
-    uint32_t(sizeof(VERTEX_COLOR_3D_VERTEX) / sizeof(VERTEX_COLOR_3D_VERTEX[0])),
-    VERTEX_COLOR_3D_DESCRIPTORS,
-    uint32_t(sizeof(VERTEX_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_COLOR_3D_DESCRIPTORS[0])),
-    &VERTEX_COLOR_3D_VERTEX_BUSINESS,
-    &VERTEX_COLOR_3D_FRAGMENT_BUSINESS,
-    ShaderOutputMode::SingleRTAlphaBlend,
-    false,
     nullptr,
     0,
 };

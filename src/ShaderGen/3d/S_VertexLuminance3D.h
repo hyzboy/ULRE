@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <hgl/mtl/FixedMaterialDef.h>
-#include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/common/RenderAssignDef.h>
 
 namespace hgl::graph::mtl {
@@ -45,25 +43,6 @@ constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
     { DescriptorSetType::Material, VERTEX_LUMINANCE_3D_MI_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
 };
 
-constexpr const char VERTEX_LUMINANCE_3D_VS_BUSINESS[] = R"(
-vec4 VertexShaderBusiness(const VertexInput vi)
-{
-    MaterialInstance mi = GetMI();
-    Output.Color = vi.Luminance * mi.Color;
-    return vec4(vi.Position, 1.0);
-}
-)";
-
-constexpr const char VERTEX_LUMINANCE_3D_FS_BUSINESS[] = R"(
-vec4 FragmentShaderBusiness()
-{
-    return Input.Color;
-}
-)";
-
-constexpr VertexShaderBusiness VERTEX_LUMINANCE_3D_VERTEX_BUSINESS { VERTEX_LUMINANCE_3D_VS_BUSINESS };
-constexpr FragmentShaderBusiness VERTEX_LUMINANCE_3D_FRAGMENT_BUSINESS { VERTEX_LUMINANCE_3D_FS_BUSINESS };
-
 constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC3 {
     "VertexLuminance3D",
     PrimitiveType::Triangles,
@@ -82,36 +61,6 @@ constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC2 {
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2) / sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2[0])),
     VERTEX_LUMINANCE_3D_DESCRIPTORS,
     uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-    VERTEX_LUMINANCE_3D_MI_CODES,
-    VERTEX_LUMINANCE_3D_MI_BYTES,
-};
-
-const ComposedMaterialDef VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC3 {
-    "VertexLuminance3D",
-    PrimitiveType::Triangles,
-    VERTEX_LUMINANCE_3D_VERTEX_VEC3,
-    uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC3) / sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC3[0])),
-    VERTEX_LUMINANCE_3D_DESCRIPTORS,
-    uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-    &VERTEX_LUMINANCE_3D_VERTEX_BUSINESS,
-    &VERTEX_LUMINANCE_3D_FRAGMENT_BUSINESS,
-    ShaderOutputMode::SingleRTAlphaBlend,
-    false,
-    VERTEX_LUMINANCE_3D_MI_CODES,
-    VERTEX_LUMINANCE_3D_MI_BYTES,
-};
-
-const ComposedMaterialDef VERTEX_LUMINANCE_3D_COMPOSED_DEF_VEC2 {
-    "VertexLuminance3D",
-    PrimitiveType::Triangles,
-    VERTEX_LUMINANCE_3D_VERTEX_VEC2,
-    uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2) / sizeof(VERTEX_LUMINANCE_3D_VERTEX_VEC2[0])),
-    VERTEX_LUMINANCE_3D_DESCRIPTORS,
-    uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-    &VERTEX_LUMINANCE_3D_VERTEX_BUSINESS,
-    &VERTEX_LUMINANCE_3D_FRAGMENT_BUSINESS,
-    ShaderOutputMode::SingleRTAlphaBlend,
-    false,
     VERTEX_LUMINANCE_3D_MI_CODES,
     VERTEX_LUMINANCE_3D_MI_BYTES,
 };

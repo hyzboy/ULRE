@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <hgl/mtl/FixedMaterialDef.h>
-#include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/common/RenderAssignDef.h>
 
 namespace hgl::graph::mtl {
@@ -37,24 +35,6 @@ constexpr FixedDescriptorEntry PURE_COLOR_3D_DESCRIPTORS[] = {
     { DescriptorSetType::Material,  PURE_COLOR_3D_MI_KIND,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
 };
 
-constexpr const char PURE_COLOR_3D_VS_BUSINESS[] = R"(
-vec4 VertexShaderBusiness(const VertexInput vi)
-{
-    return vec4(vi.Position, 1.0);
-}
-)";
-
-constexpr const char PURE_COLOR_3D_FS_BUSINESS[] = R"(
-vec4 FragmentShaderBusiness()
-{
-    MaterialInstance mi = GetMI();
-    return mi.Color;
-}
-)";
-
-constexpr VertexShaderBusiness PURE_COLOR_3D_VERTEX_BUSINESS { PURE_COLOR_3D_VS_BUSINESS };
-constexpr FragmentShaderBusiness PURE_COLOR_3D_FRAGMENT_BUSINESS { PURE_COLOR_3D_FS_BUSINESS };
-
 constexpr FixedMaterialDef PURE_COLOR_3D_DEF {
     "PureColor3D",
     PrimitiveType::Triangles,
@@ -62,21 +42,6 @@ constexpr FixedMaterialDef PURE_COLOR_3D_DEF {
     uint32_t(sizeof(PURE_COLOR_3D_VERTEX) / sizeof(PURE_COLOR_3D_VERTEX[0])),
     PURE_COLOR_3D_DESCRIPTORS,
     uint32_t(sizeof(PURE_COLOR_3D_DESCRIPTORS) / sizeof(PURE_COLOR_3D_DESCRIPTORS[0])),
-    pure_color_3d_mi_codes,
-    pure_color_3d_mi_bytes,
-};
-
-const ComposedMaterialDef PURE_COLOR_3D_COMPOSED_DEF {
-    "PureColor3D",
-    PrimitiveType::Triangles,
-    PURE_COLOR_3D_VERTEX,
-    uint32_t(sizeof(PURE_COLOR_3D_VERTEX) / sizeof(PURE_COLOR_3D_VERTEX[0])),
-    PURE_COLOR_3D_DESCRIPTORS,
-    uint32_t(sizeof(PURE_COLOR_3D_DESCRIPTORS) / sizeof(PURE_COLOR_3D_DESCRIPTORS[0])),
-    &PURE_COLOR_3D_VERTEX_BUSINESS,
-    &PURE_COLOR_3D_FRAGMENT_BUSINESS,
-    ShaderOutputMode::SingleRTAlphaBlend,
-    false,
     pure_color_3d_mi_codes,
     pure_color_3d_mi_bytes,
 };
