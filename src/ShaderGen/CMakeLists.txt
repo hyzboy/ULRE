@@ -108,11 +108,9 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
 
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 
-SET(SHADER_TEMPLATE_ENGINE_HEADER_FILES	 ${SHADERGEN_INCLUDE_PATH}/ShaderComposition.h)
-SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES	 MaterialCompiler.cpp)
+SET(MATERIAL_COMPILER_FILES	 MaterialCompiler.cpp)
 
-SOURCE_GROUP("Shader Template Engine" FILES ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
-                                            ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES})
+SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
 SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
                              ${SHADERGEN_INCLUDE_PATH}/PresetShaderCompiler.h
@@ -164,7 +162,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${STD_MTL_3D_SOURCE_FILES}
                                         ${FIXED_MTL_FILES}
                                         ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
-                                        ${SHADER_TEMPLATE_ENGINE_SOURCE_FILES}
+                                        ${MATERIAL_COMPILER_FILES}
                                         ${COMPOSITOR_HEADER_FILES}
                                         ${COMPOSITOR_SOURCE_FILES}
                                         ${NEW_MTL_TYPE_FILES}
