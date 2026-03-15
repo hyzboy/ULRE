@@ -22,9 +22,23 @@ namespace hgl::graph
         return true;
     }
 
-    std::string CompositorAssembler::GetCompositorVSPath(PassType pass) const
+    std::string CompositorAssembler::GetCompositorVSPath(SurfaceType surface, PassType pass) const
     {
-        // 第一版只支持 ForwardOpaque
+        // Unlit 表面使用精简 VS（仅 Position + 双 ID，无 Normal/UV）
+        if (surface == SurfaceType::Unlit)
+        {
+            switch (pass)
+            {
+            case PassType::ForwardOpaque:
+            case PassType::ForwardMasked:
+            case PassType::ForwardTransparent:
+                return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
+            default:
+                return shader_lib_path_ + "/compositor/main_forward_unlit.vert.glsl";
+            }
+        }
+
+        // Lit 表面走完整 VS（Position + Normal + UV + 双 ID）
         switch (pass)
         {
         case PassType::ForwardOpaque:
@@ -177,7 +191,7 @@ namespace hgl::graph
         key.SetPlatform(platform);
 
         // 2. 获取模板文件路径
-        std::string vs_path = GetCompositorVSPath(pass);
+        std::string vs_path = GetCompositorVSPath(surface, pass);
         std::string fs_path = GetCompositorFSPath(surface, blend, pass);
         std::string surface_rel = GetSurfaceFunctionPath(surface);
 

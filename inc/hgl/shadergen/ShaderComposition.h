@@ -327,7 +327,7 @@ namespace RenderFlows {
         RenderFlowPreset::Forward_WithEarlyZ,
         Forward_WithEarlyZ_Passes, 5,
         false, false,
-        QualityTier::LowPlus,
+        QualityTier::Low,
         QualityTier::Ultra,
         { 1, 1, false, false },
         // 迁移中期：默认优先 SSBO，保留回退

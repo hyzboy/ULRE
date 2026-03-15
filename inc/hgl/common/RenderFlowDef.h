@@ -1,6 +1,7 @@
 #pragma once
 
 #include <hgl/type/EnumUtil.h>
+#include <hgl/mtl/new/QualityTier.h>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -163,19 +164,8 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(EarlyZ_Solid, Debug_Visualization)
     };
 
-    // QualityTier placeholder — will be replaced in Stage 2
-    enum class QualityTier : uint8
-    {
-        Low = 0,
-        LowPlus,
-        Medium,
-        MediumPlus,
-        High,
-        HighPlus,
-        Ultra,
-
-        ENUM_CLASS_RANGE(Low, Ultra)
-    };
+    // 使用 hgl::graph::QualityTier（定义在 <hgl/mtl/new/QualityTier.h>）
+    using hgl::graph::QualityTier;
 
     struct RenderPassDefinition
     {
