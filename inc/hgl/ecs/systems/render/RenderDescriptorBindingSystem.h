@@ -7,6 +7,11 @@
 #include<functional>
 #include<unordered_map>
 
+namespace hgl::graph {
+    template<typename> class StructuredBufferAccessor;
+    struct ViewportInfo;
+}
+
 #ifndef ULRE_ECS_DEBUG_API
 #define ULRE_ECS_DEBUG_API 1
 #endif
@@ -70,6 +75,11 @@ namespace hgl::ecs
 
         graph::DescriptorBinding* view_desc_binding = nullptr;
         std::vector<BindingSource> binding_sources;
+
+        // Viewport UBO — owned here, stable across swapchain resize.
+        graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
+        uint32_t pending_viewport_width  = 0;
+        uint32_t pending_viewport_height = 0;
         std::unordered_map<const graph::Material *, bool> contract_last_ok;
         std::unordered_map<const graph::Material *, std::unordered_map<std::string, MaterialResourceBinding>> material_resource_bindings;
         bool contract_diagnostics_enabled = true;
@@ -79,6 +89,9 @@ namespace hgl::ecs
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
         ~RenderDescriptorBindingSystem() override;
+
+        graph::ViewportInfo *GetViewportInfo();
+        void SetViewportExtent(uint32_t w, uint32_t h);
 
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
@@ -108,9 +121,11 @@ namespace hgl::ecs
 
         void RegisterDefaultSources();
         void EnsureViewBinding();
+        void EnsureViewportUBO();
+        void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);
         void ApplyContractBindings();
-        const graph::IGPUBuffer *ResolveViewportUBO(graph::IRenderTarget *rt,const char *preferred_name) const;
+        const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, const char *name) const;

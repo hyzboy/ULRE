@@ -13,6 +13,10 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/log/Log.h>
+#include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/core/GraphicsContext.h>
+#include<hgl/graph/render/RenderContext.h>
+#include<hgl/mtl/UBOCommon.h>
 #include<unordered_set>
 #include<cstdlib>
 #include<string>
@@ -29,6 +33,23 @@ namespace hgl::ecs
         std::string ToBindingKey(const AnsiString &name)
         {
             return ToBindingKey(name.c_str());
+        }
+
+        graph::BufferManager *GetBufferManager(hgl::ecs::ECSContext *ctx)
+        {
+            if (!ctx)
+                return nullptr;
+
+            if (auto *rc = ctx->GetRenderContext())
+            {
+                if (auto *gc = rc->GetGraphicsContext())
+                    return gc->GetBufferManager();
+            }
+
+            if (auto *gc = ctx->GetGraphicsContext())
+                return gc->GetBufferManager();
+
+            return nullptr;
         }
     }
 
@@ -52,6 +73,8 @@ namespace hgl::ecs
 
     RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
     {
+        ReleaseViewportUBO();
+
         if (view_desc_binding)
         {
             delete view_desc_binding;
@@ -63,6 +86,70 @@ namespace hgl::ecs
     {
         if (!view_desc_binding)
             view_desc_binding = new graph::DescriptorBinding(graph::DescriptorSetType::Scene);
+    }
+
+    void RenderDescriptorBindingSystem::EnsureViewportUBO()
+    {
+        if (viewport_ubo || !context)
+            return;
+
+        auto *bm = GetBufferManager(context);
+        if (!bm)
+            return;
+
+        auto *buf = bm->CreateUBO("ViewportInfoUBO", graph::StructuredBufferAccessor<graph::ViewportInfo>::GetSize());
+        if (!buf)
+            return;
+
+        buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
+        viewport_ubo = graph::StructuredBufferAccessor<graph::ViewportInfo>::Create(buf, &graph::mtl::SBS_ViewportInfo, false);
+        if (!viewport_ubo)
+            return;
+
+        uint32_t w = pending_viewport_width;
+        uint32_t h = pending_viewport_height;
+        if (w == 0 && h == 0)
+        {
+            auto *rt = context->GetRenderTarget();
+            if (rt) { w = rt->GetExtent().width; h = rt->GetExtent().height; }
+        }
+        viewport_ubo->Data()->Set(w, h);
+        viewport_ubo->MarkDirty();
+    }
+
+    void RenderDescriptorBindingSystem::ReleaseViewportUBO()
+    {
+        if (!viewport_ubo)
+            return;
+
+        auto *buf = viewport_ubo->ubo();
+        delete viewport_ubo;
+        viewport_ubo = nullptr;
+
+        if (buf)
+        {
+            if (auto *bm = GetBufferManager(context))
+                bm->Release(buf);
+        }
+    }
+
+    graph::ViewportInfo *RenderDescriptorBindingSystem::GetViewportInfo()
+    {
+        if (!viewport_ubo)
+            EnsureViewportUBO();
+        return viewport_ubo ? viewport_ubo->Data() : nullptr;
+    }
+
+    void RenderDescriptorBindingSystem::SetViewportExtent(uint32_t w, uint32_t h)
+    {
+        pending_viewport_width  = w;
+        pending_viewport_height = h;
+
+        if (viewport_ubo)
+        {
+            viewport_ubo->Data()->Set(w, h);
+            viewport_ubo->MarkDirty();
+        }
     }
 
     void RenderDescriptorBindingSystem::RegisterBindingSource(BindingSource source)
@@ -141,28 +228,7 @@ namespace hgl::ecs
 
     void RenderDescriptorBindingSystem::RegisterDefaultSources()
     {
-        RegisterBindingSource([](ECSContext *ctx, graph::RenderCmdBuffer *, graph::DescriptorBinding *view_db)
-        {
-            if (!ctx || !view_db)
-                return;
-
-            auto *rt = ctx->GetRenderTarget();
-            if (!rt)
-                return;
-
-            auto *db = rt->GetDescriptorBinding();
-            if (!db)
-                return;
-
-            // Merge viewport UBO from RenderTarget into the unified Scene binding.
-            // Previously RT had its own DescriptorSetType::RenderTarget slot, but now
-            // all scene-level UBOs share DescriptorSetType::Scene.
-            if (const auto *viewport_gpu = db->GetUBO("viewport"))
-            {
-                if (!view_db->GetUBO("viewport"))
-                    view_db->AddUBO("viewport", viewport_gpu);
-            }
-        });
+        // Viewport UBO is now owned by this system and synced in SyncBindingsForCurrentCommand.
 
         RegisterBindingSource([](ECSContext *ctx, graph::RenderCmdBuffer *, graph::DescriptorBinding *view_db)
         {
@@ -237,6 +303,11 @@ namespace hgl::ecs
             return;
 
         EnsureViewBinding();
+        EnsureViewportUBO();
+
+        // Sync the stable viewport UBO into the scene binding once (buffer is never recreated).
+        if (viewport_ubo && view_desc_binding && !view_desc_binding->GetUBO(viewport_ubo->name()))
+            view_desc_binding->AddUBO(viewport_ubo);
 
         for (const auto &source : binding_sources)
         {
@@ -250,25 +321,9 @@ namespace hgl::ecs
         ApplyContractBindings();
     }
 
-    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO(graph::IRenderTarget *rt,const char *preferred_name) const
+    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
     {
-        if (!rt)
-            return nullptr;
-
-        auto *db = rt->GetDescriptorBinding();
-        if (!db)
-            return nullptr;
-
-        if (preferred_name && *preferred_name)
-        {
-            if (const auto *gpu = db->GetUBO(preferred_name))
-                return gpu;
-        }
-
-        if (const auto *gpu = db->GetUBO("viewport"))
-            return gpu;
-
-        return db->GetUBO("ViewportInfo");
+        return viewport_ubo ? viewport_ubo->GetGPUBuffer() : nullptr;
     }
 
     const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveCameraUBO() const
@@ -320,7 +375,6 @@ namespace hgl::ecs
         if (!context)
             return;
 
-        auto *rt = context->GetRenderTarget();
         const auto *camera_ubo = ResolveCameraUBO();
         const auto *sky_ubo = ResolveSkyUBO();
 
@@ -351,7 +405,7 @@ namespace hgl::ecs
                 {
                 case graph::mtl::DescriptorSemantic::ViewportInfo:
                 {
-                    const auto *ubo = ResolveViewportUBO(rt, req.name);
+                    const auto *ubo = ResolveViewportUBO();
                     if (ubo)
                         material->BindUBO(req.set_type, req.name, ubo, false);
                     break;
@@ -461,7 +515,7 @@ namespace hgl::ecs
         switch (semantic)
         {
         case graph::mtl::DescriptorSemantic::ViewportInfo:
-            return context->GetRenderTarget() != nullptr;
+            return viewport_ubo != nullptr;
 
         case graph::mtl::DescriptorSemantic::CameraInfo:
         {

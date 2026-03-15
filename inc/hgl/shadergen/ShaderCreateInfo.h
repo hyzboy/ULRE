@@ -28,7 +28,7 @@ protected:
     ShaderStage shader_stage;                      ///<着色器阶段
 
     ShaderDescriptorInfo *sdi;                      ///<着色器描述符信息(owned)
-    MaterialDescriptorInfo *mdi;
+    MaterialDescriptorInfo *descriptor_db;
 
     std::string final_shader;
 
@@ -40,7 +40,7 @@ protected:
 
 public:
 
-    ShaderDescriptorInfo *GetSDI(){return sdi;}
+    ShaderDescriptorInfo *GetShaderDescriptorInfo(){return sdi;}
     const ShaderStage GetShaderStage()const{return shader_stage;}
 
 public:
@@ -61,12 +61,17 @@ public:
     void SetMaterialInstance(UBODescriptor *);
     void SetMaterialInstance(SSBODescriptor *);
 
-    const std::string &GetShaderSource()const{return final_shader;}
+    const std::string &GetFinalGLSL()const{return final_shader;}
+    const std::string &GetShaderSource()const{return GetFinalGLSL();}   ///< compatibility alias
 
     void SetFinalGLSL(const std::string &glsl){final_shader=glsl;}
     void SetFinalGLSL(const char *glsl){final_shader=glsl?glsl:"";}
 
-    bool CreateShaderFromFinalGLSL();            ///< 直接编译 final_shader 到 SPV
+    bool CompileFinalGLSLToSPV();                ///< 直接编译 final_shader 到 SPV
+    bool CreateShaderFromFinalGLSL()             ///< compatibility alias
+    {
+        return CompileFinalGLSLToSPV();
+    }
 
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;

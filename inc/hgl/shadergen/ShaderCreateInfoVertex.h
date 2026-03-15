@@ -12,6 +12,7 @@ namespace hgl::graph
     public:
 
         VIAArray &GetInput(){return vsdi->GetInput();}
+        const VIAArray &GetInput()const{return vsdi->GetInput();}
 
     public:
 

@@ -31,27 +31,24 @@ namespace hgl::graph
             uint32_t ubo_range;
             uint32_t ssbo_range;
 
-            MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
+            MaterialDescriptorInfo descriptor_db;                    ///<材质描述符管理器
             BindingContract binding_contract;                       ///<descriptor semantic contract (phase 2)
 
-            std::string mi_codes;                                   ///<MaterialInstance代码
-            uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
-            uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
-            uint32_t mi_max_count;
-            SSBODescriptor *mi_ssbo;
-            UBODescriptor *mi_ubo;
+            std::string material_instance_glsl;                     ///<MaterialInstance代码
+            uint32_t material_instance_stride;                      ///<MaterialInstance数据长度
+            uint32_t material_instance_stage_bits;                  ///<MaterialInstance着色器阶段
+            uint32_t material_instance_max_count;
+            SSBODescriptor *material_instance_ssbo;
+            UBODescriptor *material_instance_ubo;
 
-            uint32_t l2w_max_count;
-            uint32_t l2w_shader_stage;
-            SSBODescriptor *l2w_ssbo;
-            UBODescriptor *l2w_ubo;
+            uint32_t local_to_world_max_count;
+            uint32_t local_to_world_stage_bits;
+            SSBODescriptor *local_to_world_ssbo;
+            UBODescriptor *local_to_world_ubo;
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
-            ShaderCreateInfoVertex *vert;
-            ShaderCreateInfo *frag;
-
-            bool has_l2w_matrix;
+            bool has_local_to_world;
 
         public:
 
@@ -67,22 +64,25 @@ namespace hgl::graph
                     bool        hasFragment     ()const{return hasShader(ShaderStage::Fragment);}
         //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}
 
-            ShaderCreateInfoVertex *   GetVS()const{return vert;}
-            ShaderCreateInfo *         GetFS()const{return frag;}
+            ShaderCreateInfo *         GetStageShader(const ShaderStage ss){return shader_map[ss];}
+            const ShaderCreateInfo *   GetStageShader(const ShaderStage ss)const{return shader_map[ss];}
+
+            ShaderCreateInfoVertex *           GetVertexShader(){return reinterpret_cast<ShaderCreateInfoVertex *>(GetStageShader(ShaderStage::Vertex));}
+            const ShaderCreateInfoVertex *     GetVertexShader()const{return reinterpret_cast<const ShaderCreateInfoVertex *>(GetStageShader(ShaderStage::Vertex));}
 
             const ShaderCreateInfoMap &GetShaderMap()const{return shader_map;}
 
         public:
 
-            const MaterialDescriptorInfo &GetMDI()const{return mdi;}
+            const MaterialDescriptorInfo &GetDescriptorInfo()const{return descriptor_db;}
             const BindingContract &GetBindingContract()const{return binding_contract;}
 
             void SetBindingContract(const BindingContract &contract){binding_contract=contract;}
 
-            const uint32_t GetMIDataBytes   ()const{return mi_data_bytes;}
-            const uint32_t GetMIMaxCount    ()const{return mi_max_count;}
+            const uint32_t GetMaterialInstanceStride   ()const{return material_instance_stride;}
+            const uint32_t GetMaterialInstanceMaxCount  ()const{return material_instance_max_count;}
 
-            const bool hasLocalToWorld      ()const{return has_l2w_matrix;}
+            const bool HasLocalToWorld                  ()const{return has_local_to_world;}
 
         public:
 

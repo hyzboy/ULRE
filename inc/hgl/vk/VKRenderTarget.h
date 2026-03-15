@@ -30,9 +30,6 @@ class IRenderTarget
 
     VkExtent2D extent;
 
-    UBOViewportInfo *ubo_vp_info;
-    bool ubo_vp_info_managed = false;
-
     DescriptorBinding desc_binding;
 
 public:

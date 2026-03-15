@@ -242,7 +242,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // Step 4: Add Vertex Inputs from FixedVertexEntry[]
     // ─────────────────────────────────────────────────────────────
 
-    ShaderCreateInfoVertex *vsc = mci->GetVS();
+    ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
     if (vsc)
     {
         for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
@@ -268,8 +268,8 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
     // ─────────────────────────────────────────────────────────────
 
-    ShaderCreateInfoVertex   *vert = mci->GetVS();
-    ShaderCreateInfo         *frag = mci->GetFS();
+    ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
+    ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);
 
     if (vert)
         vert->SetFinalGLSL(vs_glsl);

@@ -103,6 +103,7 @@ public:
 public:
 
     IArray &GetInput(){return input;}
+    const IArray &GetInput()const{return input;}
     OArray &GetOutput(){return output;}
 
     const bool IsEmptyInput()const{return input.IsEmpty();}

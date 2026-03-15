@@ -29,7 +29,7 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
 ShaderCreateInfo::ShaderCreateInfo(ShaderDescriptorInfo *s,MaterialDescriptorInfo *m)
 {
     sdi=s;
-    mdi=m;
+    descriptor_db=m;
     shader_stage=s->GetShaderStage();
     spv_data=nullptr;
 }
@@ -44,27 +44,27 @@ ShaderCreateInfo::~ShaderCreateInfo()
 
 void ShaderCreateInfo::AddStruct(const std::string &name)
 {
-    return GetSDI()->AddStruct(name.c_str());
+    return GetShaderDescriptorInfo()->AddStruct(name.c_str());
 }
 
 bool ShaderCreateInfo::AddUBO(DescriptorSetType type,const UBODescriptor *sd)
 {
-    return GetSDI()->AddUBO(type,sd);
+    return GetShaderDescriptorInfo()->AddUBO(type,sd);
 }
 
 bool ShaderCreateInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *sd)
 {
-    return GetSDI()->AddSSBO(type,sd);
+    return GetShaderDescriptorInfo()->AddSSBO(type,sd);
 }
 
 bool ShaderCreateInfo::AddTexture(DescriptorSetType type,const TextureDescriptor *sd)
 {
-    return GetSDI()->AddTexture(type,sd);
+    return GetShaderDescriptorInfo()->AddTexture(type,sd);
 }
 
 bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd)
 {
-    return GetSDI()->AddTextureSampler(type,sd);
+    return GetShaderDescriptorInfo()->AddTextureSampler(type,sd);
 }
 
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
@@ -79,7 +79,7 @@ void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo)
     AddStruct(mtl::MaterialInstanceStruct);
 }
 
-bool ShaderCreateInfo::CreateShaderFromFinalGLSL()
+bool ShaderCreateInfo::CompileFinalGLSLToSPV()
 {
     if(final_shader.empty())
         return(false);

@@ -28,7 +28,7 @@ Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
     mi_data_manager=nullptr;
     mi_max_count=0;
 
-    has_l2w_matrix=mci->hasLocalToWorld();
+    has_l2w_matrix=mci->HasLocalToWorld();
 }
 
 Material::~Material()

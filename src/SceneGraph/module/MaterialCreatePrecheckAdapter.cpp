@@ -25,7 +25,7 @@ namespace hgl::graph
         if (sci_map.GetCount() < 2)
             return MaterialCreatePrecheckDecision::Abort;
 
-        if (!mci->GetFS())
+        if (!mci->GetStageShader(ShaderStage::Fragment))
             return MaterialCreatePrecheckDecision::Abort;
 
         out_result.shader_map = &sci_map;

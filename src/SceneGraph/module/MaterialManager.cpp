@@ -77,7 +77,7 @@ namespace
         if (!mci)
             return legacy_descriptors;
 
-        const auto &mdi = mci->GetMDI();
+        const auto &mdi = mci->GetDescriptorInfo();
         if (mdi.GetCount() == 0)
             return legacy_descriptors;
 
@@ -278,7 +278,7 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
 
     CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
 
-    ShaderCreateInfoVertex *vert = mci->GetVS();
+    const ShaderCreateInfoVertex *vert = mci->GetVertexShader();
     mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
 
     std::vector<ShaderDescriptor> descriptors = CollectLegacyDescriptors(mci);
