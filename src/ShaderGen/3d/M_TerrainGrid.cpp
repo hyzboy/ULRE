@@ -1,110 +1,81 @@
-#include "Std3DMaterial.h"
-#include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/mtl/UBOCommon.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/common/RenderAssignDef.h>
+#include<hgl/mtl/UBOCommon.h>
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
 {
-    // Vertex: generate grid from gl_VertexID, sample height and normal via texelFetch
-    // Samplers (per-material): TextureHeight (R), TextureNormal (RGB)
-    // Outputs: Position (clip space pos for FS), Normal (world space)
+    // TerrainGrid — 无 Position 顶点输入，只有 TransformID
+    // VS 通过 gl_VertexID 生成网格坐标，texelFetch 采样高度/法线
 
-    constexpr const char vs_main[] = R"(
-void main()
-{
-    // Get texture size
-    ivec2 tex_sz = textureSize(TextureHeight, 0);
-    int W = tex_sz.x;
-
-    // Grid coordinate from vertex id
-    int idx = gl_VertexID;
-    ivec2 coord = ivec2(idx % W, idx / W);
-
-    // Sample height (R) and normal (RGB)
-    float h = texelFetch(TextureHeight, coord, 0).r;
-    vec3 nrm = normalize(texelFetch(TextureNormal, coord, 0).xyz * 2.0 - 1.0);
-
-    // Build local position: X = u, Y = v, Z = height
-    vec3 pos = vec3(float(coord.x), float(coord.y), h);
-
-    // Transform to world and clip space
-    mat4 l2w = GetLocalToWorld();
-    vec4 wp = l2w * vec4(pos, 1.0);
-
-    // Transform normal to world (approx; ignore non-uniform scale)
-    vec3 wn = normalize(mat3(l2w) * nrm);
-
-    Output.Normal = wn;
-    Output.Position = camera.vp * wp;
-
-    gl_Position = Output.Position;
-})";
-
-    constexpr const char fs_main[] = R"(
-const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));
-const vec3 SUN_COLOR = vec3(1.0, 1.0, 1.0);
-const vec3 BASE_COLOR = vec3(0.45, 0.6, 0.35); // hard-coded terrain color
-
-void main()
-{
-    vec3 n = normalize(Input.Normal);
-
-    // Diffuse (half-Lambert like)
-    float intensity = 0.5 * max(dot(n, SUN_DIRECTION), 0.0) + 0.5;
-    vec3 direct_color = intensity * SUN_COLOR * BASE_COLOR;
-
-    // Simple Blinn-Phong specular using interpolated position as in other materials
-    vec3 spec_color = vec3(0.0);
-    if (intensity > 0.0)
-    {
-        vec3 half_vector = normalize(SUN_DIRECTION + normalize(Input.Position.xyz + camera.pos));
-        float spec = max(dot(half_vector, n), 0.0);
-        spec_color = spec * pow(spec, 16.0) * SUN_COLOR;
-    }
-
-    FragColor = vec4(direct_color + spec_color, 1.0);
-})";
-
-    class MaterialTerrainGrid : public Std3DMaterial
-    {
-    public:
-        using Std3DMaterial::Std3DMaterial;
-        ~MaterialTerrainGrid() = default;
-
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            // Setup required UBOs and instanced assign without adding a Position input
-            mci->SetLocalToWorld((uint32_t)ShaderStage::AllGraphics);
-            mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics, SBS_CameraInfo);
-
-            // Instance assign provides GetLocalToWorld
-            vsc->AddAssignTransform();
-
-            // Per-material samplers used in VS
-            mci->AddTexture(ShaderStage::Vertex, DescriptorSetType::Material, TextureType::Texture2D, "TextureHeight");
-            mci->AddTexture(ShaderStage::Vertex, DescriptorSetType::Material, TextureType::Texture2D, "TextureNormal");
-
-            // Outputs to FS
-            vsc->AddOutput(SVT_VEC4, "Position");
-            vsc->AddOutput(SVT_VEC3, "Normal");
-
-            vsc->SetMain(vs_main);
-            return true;
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            // Camera UBO already added for AllGraphics
-            fsc->AddOutput(VAT_VEC4, "FragColor");
-            fsc->SetMain(fs_main);
-            return true;
-        }
+    constexpr FixedVertexEntry TERRAIN_GRID_VERTEX[] = {
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
     };
-}
+
+#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+    constexpr DescriptorKind TERRAIN_GRID_L2W_KIND = DescriptorKind::SSBO;
+#else
+    constexpr DescriptorKind TERRAIN_GRID_L2W_KIND = DescriptorKind::UBO;
+#endif
+
+    // Resort 字母序: camera=0, viewport=1 (Scene)
+    //                TextureHeight=0, TextureNormal=1 (Material)
+    constexpr FixedDescriptorEntry TERRAIN_GRID_DESCRIPTORS[] = {
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",     nullptr },
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",       nullptr },
+        { DescriptorSetType::Transform, TERRAIN_GRID_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureHeight", nullptr, "sampler2D" },
+        { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureNormal", nullptr, "sampler2D" },
+    };
+
+    constexpr FixedMaterialDef TERRAIN_GRID_DEF {
+        "TerrainGrid",
+        PrimitiveType::Triangles,
+        TERRAIN_GRID_VERTEX,
+        uint32_t(sizeof(TERRAIN_GRID_VERTEX) / sizeof(TERRAIN_GRID_VERTEX[0])),
+        TERRAIN_GRID_DESCRIPTORS,
+        uint32_t(sizeof(TERRAIN_GRID_DESCRIPTORS) / sizeof(TERRAIN_GRID_DESCRIPTORS[0])),
+        nullptr,
+        0,
+    };
+}//namespace
 
 MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg)
 {
-    MaterialTerrainGrid m(cfg);
-    return m.Create(profile);
+    CompositorAssembler assembler("ShaderLibrary");
+
+    auto result = assembler.Assemble(
+        SurfaceType::Terrain,
+        BlendMode::Opaque,
+        PassType::ForwardOpaque,
+        QualityTier::Medium,
+        PlatformBackend::PC,
+        "compositor/main_terrain_grid.vert.glsl",
+        "compositor/main_terrain_grid.frag.glsl",
+        "surface/terrain_grid_surface.glsl"
+    );
+
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[TerrainGrid] CompositorAssembler failed: %s\n",
+            result.error_message.c_str());
+        return nullptr;
+    }
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(
+        profile,
+        TERRAIN_GRID_DEF,
+        result.vertex_glsl,
+        result.fragment_glsl,
+        cfg);
+
+    if (!mci)
+        std::fprintf(stderr, "[TerrainGrid] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl

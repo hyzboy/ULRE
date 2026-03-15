@@ -1,70 +1,47 @@
-#include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/common/RenderAssignDef.h>
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char mi_codes[]="uvec2 BillboardSize;";         //材质实例代码
-    constexpr const uint32_t mi_bytes=sizeof(math::Vector2u);             //材质实例数据大小
+    constexpr const char mi_codes[]="uvec2 BillboardSize;";
+    constexpr const uint32_t mi_bytes=sizeof(uint32_t)*2;       // uvec2 = 2 x uint32
 
-    constexpr const char vs_main[]=R"(
-void main()
-{
-    MaterialInstance mi=GetMI();
+    constexpr FixedVertexEntry BILLBOARD_FIXED_VERTEX[] = {
+        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
+    };
 
-    vec2 psize=vec2(mi.BillboardSize)/vec2(viewport.canvas_resolution);
-    vec4 center_clip=camera.vp*GetLocalToWorld()*vec4(0.0,0.0,0.0,1.0);
-    vec2 center_ndc=center_clip.xy/center_clip.w;
-    vec2 ndc=center_ndc+Position.xy*psize;
+#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+    constexpr DescriptorKind BILLBOARD_FIXED_L2W_KIND = DescriptorKind::SSBO;
+#else
+    constexpr DescriptorKind BILLBOARD_FIXED_L2W_KIND = DescriptorKind::UBO;
+#endif
 
-    Output.TexCoord=vec2(Position.x+0.5,Position.y+0.5);
+    constexpr FixedDescriptorEntry BILLBOARD_FIXED_DESCRIPTORS[] = {
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",     nullptr },
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",       nullptr },
+        { DescriptorSetType::Transform, BILLBOARD_FIXED_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mtl",      "MaterialInstanceData", nullptr },
+        { DescriptorSetType::Material,  DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D" },
+    };
 
-    gl_Position=vec4(ndc*center_clip.w,center_clip.z,center_clip.w);
-})";
-
-    constexpr const char fs_main[]=R"(
-void main()
-{
-    FragColor=texture(TextureBaseColor,Input.TexCoord);
-})";
-
-    class MaterialBillboard2DFixedSize:public Std3DMaterial
-    {
-    public:
-
-        MaterialBillboard2DFixedSize(mtl::BillboardMaterialCreateConfig *bcfg):Std3DMaterial(bcfg){}
-        ~MaterialBillboard2DFixedSize()=default;
-
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            if(!Std3DMaterial::CustomVertexShader(vsc))
-                return(false);
-
-            vsc->AddOutput(SVT_VEC2,"TexCoord");
-
-            vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            mci->AddTextureSampler(ShaderStage::Fragment,DescriptorSetType::Material,SamplerType::Sampler2D,mtl::SamplerName::BaseColor);
-
-            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
-
-            fsc->SetMain(fs_main);
-            return(true);
-        }
-
-        bool EndCustomShader() override
-        {
-            mci->SetMaterialInstance(mi_codes,                       //材质实例glsl代码
-                                     mi_bytes,                       //材质实例数据大小
-                                     (uint32_t)ShaderStage::Vertex);    //只在Vertex Shader中使用材质实例最终数据
-
-            return(true);
-        }
-    };//class MaterialBillboard2DFixedSize:public Std3DMaterial
+    constexpr FixedMaterialDef BILLBOARD_FIXED_DEF {
+        "BillboardFixed",
+        PrimitiveType::Triangles,
+        BILLBOARD_FIXED_VERTEX,
+        uint32_t(sizeof(BILLBOARD_FIXED_VERTEX) / sizeof(BILLBOARD_FIXED_VERTEX[0])),
+        BILLBOARD_FIXED_DESCRIPTORS,
+        uint32_t(sizeof(BILLBOARD_FIXED_DESCRIPTORS) / sizeof(BILLBOARD_FIXED_DESCRIPTORS[0])),
+        mi_codes,
+        mi_bytes,
+    };
 }//namespace
 
 MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg)
@@ -73,11 +50,37 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDevicePro
         return(nullptr);
 
     cfg->local_to_world=true;
-
     cfg->material_instance=true;
 
-    MaterialBillboard2DFixedSize mtl_billbard_2d_fixed_size(cfg);
+    CompositorAssembler assembler("ShaderLibrary");
 
-    return mtl_billbard_2d_fixed_size.Create(profile);
+    auto result = assembler.Assemble(
+        SurfaceType::Unlit,
+        BlendMode::Transparent,
+        PassType::ForwardTransparent,
+        QualityTier::Medium,
+        PlatformBackend::PC,
+        "compositor/main_forward_billboard_fixed.vert.glsl",
+        "compositor/main_forward_billboard.frag.glsl",
+        "surface/billboard_texture_surface.glsl"
+    );
+
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[BillboardFixed] CompositorAssembler failed: %s\n",
+            result.error_message.c_str());
+        return nullptr;
+    }
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(
+        profile,
+        BILLBOARD_FIXED_DEF,
+        result.vertex_glsl,
+        result.fragment_glsl,
+        cfg);
+
+    if (!mci)
+        std::fprintf(stderr, "[BillboardFixed] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl
