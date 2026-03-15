@@ -213,6 +213,8 @@ namespace hgl
                         if(g_pd_profile_valid)
                             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
 
+                        AddShaderIncludePath("ShaderLibrary");
+
                         return(true);
                     }
 

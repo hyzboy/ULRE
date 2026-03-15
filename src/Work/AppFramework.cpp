@@ -25,7 +25,6 @@ namespace hgl
     {
         bool InitShaderCompiler();
         void CloseShaderCompiler();
-        void AddShaderIncludePath(const char *path);
     }
 
     namespace
@@ -157,8 +156,6 @@ namespace hgl
         {
             if (!graph::InitShaderCompiler())
                 return false;
-
-            graph::AddShaderIncludePath("ShaderLibrary");
 
             logger::InitLogger(app_name);
 
