@@ -1,12 +1,14 @@
 ﻿#pragma once
 
 // LocalToWorld options
-// Toggle this to switch LocalToWorld between SSBO and UBO paths.
-//
-// 1: Use SSBO (storage buffer)
-// 0: Use UBO (uniform buffer)
-#ifndef HGL_L2W_USE_SSBO
-#define HGL_L2W_USE_SSBO 1
+// Define HGL_L2W_USE_SSBO for storage buffer, or HGL_L2W_USE_UBO for uniform buffer.
+// Default: SSBO. If neither is defined, defaults to SSBO.
+#if !defined(HGL_L2W_USE_SSBO) && !defined(HGL_L2W_USE_UBO)
+#define HGL_L2W_USE_SSBO
+#endif
+
+#if defined(HGL_L2W_USE_SSBO) && defined(HGL_L2W_USE_UBO)
+#error "HGL_L2W_USE_SSBO and HGL_L2W_USE_UBO cannot both be defined"
 #endif
 
 #ifndef HGL_L2W_RING_FRAMES
@@ -21,8 +23,12 @@
 #endif
 
 // MaterialInstance buffer options
-// 1: Use SSBO (storage buffer)
-// 0: Use UBO (uniform buffer)
-#ifndef HGL_MI_USE_SSBO
-#define HGL_MI_USE_SSBO 1
+// Define HGL_MI_USE_SSBO for storage buffer, or HGL_MI_USE_UBO for uniform buffer.
+// Default: SSBO. If neither is defined, defaults to SSBO.
+#if !defined(HGL_MI_USE_SSBO) && !defined(HGL_MI_USE_UBO)
+#define HGL_MI_USE_SSBO
+#endif
+
+#if defined(HGL_MI_USE_SSBO) && defined(HGL_MI_USE_UBO)
+#error "HGL_MI_USE_SSBO and HGL_MI_USE_UBO cannot both be defined"
 #endif

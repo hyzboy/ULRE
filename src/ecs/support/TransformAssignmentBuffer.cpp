@@ -157,14 +157,15 @@ namespace hgl::ecs
         , transform_vab_buffer(nullptr)
         , ring_writer(nullptr, sizeof(math::Matrix4f), ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
     {
-#if defined(HGL_L2W_USE_SSBO)
+#ifdef HGL_L2W_USE_SSBO
         if (buffer_manager)
         {
             auto device = buffer_manager->GetDevice();
             if (device)
                 MaxTransformCount = device->GetSSBORange() / sizeof(math::Matrix4f);
         }
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
         if (buffer_manager)
         {
             auto device = buffer_manager->GetDevice();
@@ -191,14 +192,15 @@ namespace hgl::ecs
 
         LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
-    #if defined(HGL_L2W_USE_SSBO)
+    #ifdef HGL_L2W_USE_SSBO
         mtl->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.set_type,
                   hgl::graph::mtl::SBS_LocalToWorld.name,
                   transform_buffer->GetGPUBuffer());
         GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO set_type=%d name=%s",
                  static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
                  hgl::graph::mtl::SBS_LocalToWorld.name);
-    #else
+    #endif
+    #ifdef HGL_L2W_USE_UBO
         mtl->BindUBO(&hgl::graph::mtl::SBS_LocalToWorld, transform_buffer->GetGPUBuffer());
         GLogInfo("[TransformAssignmentBuffer::BindTransform] BindUBO name=%s",
                  hgl::graph::mtl::SBS_LocalToWorld.name);
@@ -637,12 +639,13 @@ namespace hgl::ecs
         // 创建或重用 Transform UBO
         if (!transform_buffer && buffer_manager)
         {
-#if defined(HGL_L2W_USE_SSBO)
+#ifdef HGL_L2W_USE_SSBO
             transform_buffer = buffer_manager->CreateSSBO("ECS:LocalToWorld",
                                                           sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                           nullptr,
                                                           graph::SharingMode::Exclusive);
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
             transform_buffer = buffer_manager->CreateUBO("ECS:LocalToWorld",
                                                          sizeof(math::Matrix4f) * transform_buffer_max_count,
                                                          nullptr,

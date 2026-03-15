@@ -42,11 +42,12 @@ namespace hgl::ecs
             return;
         }
 
-    #if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+    #ifdef HGL_MI_USE_SSBO
         mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstance.set_type,
                   hgl::graph::mtl::SBS_MaterialInstance.name,
                   material_instance_buffer->GetGPUBuffer());
-    #else
+    #endif
+    #ifdef HGL_MI_USE_UBO
         mtl->BindUBO(&hgl::graph::mtl::SBS_MaterialInstance, material_instance_buffer->GetGPUBuffer());
     #endif
     }
@@ -110,12 +111,13 @@ namespace hgl::ecs
         {
             const size_t buffer_size = material_instance_data_bytes * mi_set.GetAllocCount();
 
-#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+#ifdef HGL_MI_USE_SSBO
             material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceData",
                                                                   buffer_size,
                                                                   nullptr,
                                                                   graph::SharingMode::Exclusive);
-#else
+#endif
+#ifdef HGL_MI_USE_UBO
             material_instance_buffer = buffer_manager->CreateUBO("ECS:MaterialInstanceData",
                                                                  buffer_size,
                                                                  nullptr,

@@ -26,9 +26,10 @@ namespace
         { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
     };
 
-#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+#ifdef HGL_L2W_USE_SSBO
     constexpr DescriptorKind TEXTURE_BLINN_PHONG_L2W_KIND = DescriptorKind::SSBO;
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
     constexpr DescriptorKind TEXTURE_BLINN_PHONG_L2W_KIND = DescriptorKind::UBO;
 #endif
 

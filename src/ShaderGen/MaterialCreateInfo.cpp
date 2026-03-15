@@ -191,7 +191,7 @@ MaterialCreateInfo::~MaterialCreateInfo()
 
 bool MaterialCreateInfo::AddStruct(const std::string &struct_name,const std::string &codes)
 {
-    if(struct_name.empty()||codes.empty())
+    if(struct_name.empty())
         return(false);
 
     return mdi.AddStruct(struct_name,codes);
@@ -233,7 +233,7 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 
 bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
 {
-    if(!AddStruct(ss.struct_name,ss.codes))
+    if(!AddStruct(ss.struct_name,""))
         return(false);
 
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
@@ -275,7 +275,7 @@ bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetTyp
 
 bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
 {
-    if(!AddStruct(ss.struct_name,ss.codes))
+    if(!AddStruct(ss.struct_name,""))
         return(false);
 
     return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
@@ -347,13 +347,14 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
     mdi.AddStruct(SBS_MaterialInstance);            //MaterialInstance mi[...];
 
-#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+#ifdef HGL_MI_USE_SSBO
     mi_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
     mi_ssbo=CreateSSBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
 
     mdi.AddSSBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,mi_ssbo);
-#else
+#endif
+#ifdef HGL_MI_USE_UBO
     mi_max_count=std::min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
 
     mi_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
@@ -367,9 +368,10 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
         [&](ShaderCreateInfo &shader,ShaderStage)
         {
             shader.AddDefine("MI_MAX_COUNT",MI_MAX_COUNT_STRING);
-#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+#ifdef HGL_MI_USE_SSBO
             shader.SetMaterialInstance(mi_ssbo,mi_codes);
-#else
+#endif
+#ifdef HGL_MI_USE_UBO
             shader.SetMaterialInstance(mi_ubo,mi_codes);
 #endif
         });
@@ -383,14 +385,15 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
-#if defined(HGL_L2W_USE_SSBO)
+#ifdef HGL_L2W_USE_SSBO
     l2w_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
     if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
         return(false);
 
     l2w_ssbo=mdi.GetSSBO(SBS_LocalToWorld.name);
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
     l2w_max_count=std::min<uint32_t>(ubo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
     mdi.AddStruct(SBS_LocalToWorld);

@@ -135,9 +135,10 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 // Common FixedDescriptorEntry builders
 // ─────────────────────────────────────────────────────────────
 
-#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+#ifdef HGL_L2W_USE_SSBO
     constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::SSBO;
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
     constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::UBO;
 #endif
 

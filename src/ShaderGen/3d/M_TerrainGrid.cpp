@@ -17,9 +17,10 @@ namespace
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
     };
 
-#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+#ifdef HGL_L2W_USE_SSBO
     constexpr DescriptorKind TERRAIN_GRID_L2W_KIND = DescriptorKind::SSBO;
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
     constexpr DescriptorKind TERRAIN_GRID_L2W_KIND = DescriptorKind::UBO;
 #endif
 

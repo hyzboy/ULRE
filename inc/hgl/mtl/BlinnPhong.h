@@ -18,12 +18,7 @@ namespace blinnphong
 
         "sun",
 
-        "SunLight",
-
-        R"(
-        vec4 direction;
-        vec4 color;
-)"
+        "SunLight"
     };
 }//namespace blinnphong
 }//namespace hgl::graph::mtl

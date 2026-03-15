@@ -16,15 +16,17 @@ constexpr FixedVertexEntry PURE_COLOR_3D_VERTEX[] = {
     { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
 };
 
-#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+#ifdef HGL_L2W_USE_SSBO
 constexpr DescriptorKind PURE_COLOR_3D_L2W_KIND = DescriptorKind::SSBO;
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
 constexpr DescriptorKind PURE_COLOR_3D_L2W_KIND = DescriptorKind::UBO;
 #endif
 
-#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+#ifdef HGL_MI_USE_SSBO
 constexpr DescriptorKind PURE_COLOR_3D_MI_KIND = DescriptorKind::SSBO;
-#else
+#endif
+#ifdef HGL_MI_USE_UBO
 constexpr DescriptorKind PURE_COLOR_3D_MI_KIND = DescriptorKind::UBO;
 #endif
 

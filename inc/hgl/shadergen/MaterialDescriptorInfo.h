@@ -58,7 +58,7 @@ public:
 
     bool AddStruct(const ShaderBufferSource &ss)
     {
-        return(AddStruct(ss.struct_name,ss.codes));
+        return(AddStruct(ss.struct_name,""));
     }
 
     bool GetStruct(const std::string &name,std::string &code)

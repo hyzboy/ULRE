@@ -13,7 +13,7 @@ namespace hgl::graph
     TileFont::~TileFont()
     {
         delete tile_data;
-        delete source;
+        // source (FontSource) 不归 TileFont 所有，由外部创建者负责释放
     }
 
     /**

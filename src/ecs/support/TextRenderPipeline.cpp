@@ -26,6 +26,7 @@
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/type/AlignUtil.h>
@@ -305,7 +306,7 @@ namespace hgl::ecs
         const uint32_t mi_bytes = guard.material->GetMIDataBytes();
         if (mi_bytes > 0)
         {
-#if defined(HGL_MI_USE_SSBO) && HGL_MI_USE_SSBO
+#ifdef HGL_MI_USE_SSBO
             guard.material_instance_buffer = buffer_manager->CreateSSBO("Text2D_MI", mi_bytes, graph::SharingMode::Exclusive);
             if (!guard.material_instance_buffer)
                 return nullptr;
@@ -314,7 +315,8 @@ namespace hgl::ecs
                                           graph::mtl::SBS_MaterialInstance.name,
                                           guard.material_instance_buffer->GetGPUBuffer()))
                 return nullptr;
-#else
+#endif
+#ifdef HGL_MI_USE_UBO
             guard.material_instance_buffer = buffer_manager->CreateUBO("Text2D_MI", mi_bytes, graph::SharingMode::Exclusive);
             if (!guard.material_instance_buffer)
                 return nullptr;

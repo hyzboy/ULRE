@@ -13,9 +13,10 @@ constexpr FixedVertexEntry VERTEX_COLOR_3D_VERTEX[] = {
     { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
 };
 
-#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+#ifdef HGL_L2W_USE_SSBO
 constexpr DescriptorKind VERTEX_COLOR_3D_L2W_KIND = DescriptorKind::SSBO;
-#else
+#endif
+#ifdef HGL_L2W_USE_UBO
 constexpr DescriptorKind VERTEX_COLOR_3D_L2W_KIND = DescriptorKind::UBO;
 #endif
 
