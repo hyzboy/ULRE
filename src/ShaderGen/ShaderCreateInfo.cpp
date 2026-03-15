@@ -67,13 +67,13 @@ bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSam
     return GetSDI()->AddTextureSampler(type,sd);
 }
 
-void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const std::string &mi)
+void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
 {
     AddUBO(DescriptorSetType::Material,ubo);
     AddStruct(mtl::MaterialInstanceStruct);
 }
 
-void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo,const std::string &mi)
+void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo)
 {
     AddSSBO(DescriptorSetType::Material,ssbo);
     AddStruct(mtl::MaterialInstanceStruct);

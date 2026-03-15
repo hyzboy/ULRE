@@ -363,10 +363,10 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
         [&](ShaderCreateInfo &shader,ShaderStage)
         {
 #ifdef HGL_MI_USE_SSBO
-            shader.SetMaterialInstance(mi_ssbo,mi_codes);
+        shader.SetMaterialInstance(mi_ssbo);
 #endif
 #ifdef HGL_MI_USE_UBO
-            shader.SetMaterialInstance(mi_ubo,mi_codes);
+        shader.SetMaterialInstance(mi_ubo);
 #endif
         });
 

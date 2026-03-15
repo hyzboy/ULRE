@@ -58,16 +58,8 @@ public:
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
     bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
 
-    void SetMaterialInstance(UBODescriptor *,const std::string &);
-    void SetMaterialInstance(SSBODescriptor *,const std::string &);
-    void SetMaterialInstance(UBODescriptor *ubo,const char *mi)
-    {
-        SetMaterialInstance(ubo,std::string(mi?mi:""));
-    }
-    void SetMaterialInstance(SSBODescriptor *ssbo,const char *mi)
-    {
-        SetMaterialInstance(ssbo,std::string(mi?mi:""));
-    }
+    void SetMaterialInstance(UBODescriptor *);
+    void SetMaterialInstance(SSBODescriptor *);
 
     const std::string &GetShaderSource()const{return final_shader;}
 
