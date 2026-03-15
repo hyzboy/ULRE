@@ -8,25 +8,6 @@
 
 namespace hgl::graph::mtl
 {
-    enum class PipelineRenderPath : uint8
-    {
-        Forward = 0,
-        VBufferDeferred,
-        PostProcess,
-
-        ENUM_CLASS_RANGE(Forward, PostProcess)
-    };
-
-    enum class PipelineCoverageMode : uint8
-    {
-        Solid = 0,
-        Mask,
-        DepthOnlySolid,
-        DepthOnlyMask,
-
-        ENUM_CLASS_RANGE(Solid, DepthOnlyMask)
-    };
-
     enum class PipelineInputMode : uint8
     {
         LegacyVABVBO = 0,
@@ -59,15 +40,6 @@ namespace hgl::graph::mtl
         PipelineInputMode default_input_mode = PipelineInputMode::AutoPreferSSBO;
     };
 
-    enum class PipelineTopology : uint8
-    {
-        VSFS = 0,
-        MeshFS,
-        AutoByCapability,
-
-        ENUM_CLASS_RANGE(VSFS, AutoByCapability)
-    };
-
     // 渲染通道标记（通用 RT 通道掩码）
     enum class RenderChannel : uint32
     {
@@ -98,44 +70,6 @@ namespace hgl::graph::mtl
         a = a | b;
         return a;
     }
-
-    enum class PipelineForwardLightingMode : uint8
-    {
-        PerPixel = 0,
-        PerVertex,
-        AutoByCapability,
-
-        ENUM_CLASS_RANGE(PerPixel, AutoByCapability)
-    };
-
-    enum class NormalEncodingMode : uint8
-    {
-        None = 0,
-        Octahedral,
-        Spheremap,
-
-        ENUM_CLASS_RANGE(None, Spheremap)
-    };
-
-    struct NormalCompressionPolicy
-    {
-        bool compress_vertex_input_normal = false;
-        NormalEncodingMode vertex_input_encoding = NormalEncodingMode::Octahedral;
-
-        bool compress_normal_map = false;
-        NormalEncodingMode normal_map_encoding = NormalEncodingMode::Octahedral;
-    };
-
-    struct PipelineMode
-    {
-        PipelineRenderPath render_path = PipelineRenderPath::Forward;
-        PipelineCoverageMode coverage = PipelineCoverageMode::Solid;
-        PipelineInputMode input_mode = PipelineInputMode::AutoByCapability;
-        PipelineTopology topology = PipelineTopology::AutoByCapability;
-        RenderChannel postprocess_output_channels = RenderChannel::None;
-        PipelineForwardLightingMode forward_lighting = PipelineForwardLightingMode::PerPixel;
-        NormalCompressionPolicy normal_compression;
-    };
 
     enum class RenderStage : uint8
     {
