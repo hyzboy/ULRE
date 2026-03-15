@@ -2,6 +2,8 @@
 
 #include<hgl/mtl/StdMaterial.h>
 #include<hgl/type/String.h>
+#include<hgl/common/PrimitiveTypeDef.h>
+#include<hgl/common/ShaderStageDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/mtl/ShaderBufferSource.h>

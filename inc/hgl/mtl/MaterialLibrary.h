@@ -6,6 +6,9 @@
 
 namespace hgl::graph::mtl{
 
+struct MaterialCreateConfig;
+class MaterialCreateInfo;
+
 enum class MaterialPreset:uint8
 {
     VertexColor2D,

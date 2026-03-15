@@ -35,10 +35,6 @@ constexpr const char MF_GetMI_Other[] =
 constexpr const char MF_GetLocalToWorld_ByAssign[] = 
     "\nmat4 GetLocalToWorld(){return l2w.mats[TransformID];}\n";
 
-// DEPRECATED: 使用 MF_GetMI_VS / MF_GetMI_Other 替代（名称过长）
-constexpr const char MF_GetMaterialInstance_ByAssign[] = 
-    "\nMaterialInstance GetMaterialInstance(){return mi_set[MaterialInstanceID];}\n";
-
 constexpr const char MI_ID_OUTPUT[] = "MaterialInstanceID";
 
 constexpr const char MF_HandoverMI_VS[] = 

@@ -1,7 +1,7 @@
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialDescriptorInfo.h>
-#include <hgl/shadergen/ShaderCreateInfo.h>
+#include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <vector>
 

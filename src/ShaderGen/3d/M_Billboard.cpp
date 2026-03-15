@@ -1,4 +1,4 @@
-#include"Std3DMaterial.h"
+#include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
 

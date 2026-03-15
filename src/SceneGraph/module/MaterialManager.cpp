@@ -13,7 +13,7 @@
 #include<hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/ShaderCreateInfo.h>
+#include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>

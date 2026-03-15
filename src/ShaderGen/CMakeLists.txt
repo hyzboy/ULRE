@@ -49,10 +49,7 @@ SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ShaderVariableType.cpp
                             common/UBOCommon.cpp
                             common/MFCommon.h
-                            common/MFGetPosition.h
-                            common/MFGetNormal.h
                             common/MFCamera.h
-                            common/MFBillboard.h
 )
 
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
@@ -63,8 +60,6 @@ SET(BLINN_PHONG_HEADER_FILES ${STD_MTL_HEADER_PATH}/BlinnPhong.h)
 
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/Build2DCommon.h
-                            2d/Std2DMaterial.h
-                            2d/Std2DMaterial.cpp
                             2d/M_VertexColor2D.cpp
                             2d/M_PureColor2D.cpp
                             2d/M_PureTexture2D.cpp
@@ -74,8 +69,6 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
 )
 
 SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
-                            3d/Std3DMaterial.h
-                            3d/Std3DMaterial.cpp
                             3d/M_PureColor3D.cpp
                             3d/M_VertexColor3D.cpp
                             3d/M_VertexLum3D.cpp
@@ -93,11 +86,8 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
-                    ${STD_MTL_HEADER_PATH}/Std2DMaterial.h
-                    ${STD_MTL_HEADER_PATH}/Std3DMaterial.h
                     ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
                     MaterialCreateConfig.cpp
-                    StdMaterial.cpp
                     GLSLStructSize.cpp
 )
 

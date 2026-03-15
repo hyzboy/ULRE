@@ -1,10 +1,12 @@
 ﻿#pragma once
 
+/// StdMaterial.h — 材质创建辅助枚举
+///
+/// 原 StdMaterial 虚函数链已被 CompileCompositorMaterial + FixedMaterialDef 取代。
+/// 本文件仅保留 WithSky/WithCamera/WithLocalToWorld 枚举供
+/// Material2DCreateConfig / Material3DCreateConfig 使用。
+
 #include<hgl/type/String.h>
-#include<hgl/shadergen/contract/ShaderGenContract.h>
-#include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
-#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 
 namespace hgl::graph
 {
@@ -27,32 +29,5 @@ namespace hgl::graph
             Without=0,
             With
         };
-
-        class MaterialCreateInfo;
-        struct MaterialCreateConfig;
-
-        class StdMaterial
-        {
-        protected:
-
-            MaterialCreateInfo *mci;
-
-        protected:
-
-            virtual bool BeginCustomShader(){return true;/*some work before create shader*/};
-
-            virtual bool CustomVertexShader(ShaderCreateInfoVertex *)=0;
-            virtual bool CustomGeometryShader(ShaderCreateInfoGeometry *){return false;}
-            virtual bool CustomFragmentShader(ShaderCreateInfoFragment *)=0;
-
-            virtual bool EndCustomShader(){return true;/*some work after create shader*/};
-
-        public:
-
-            StdMaterial(const MaterialCreateConfig *);
-            virtual ~StdMaterial()=default;
-
-            virtual MaterialCreateInfo *Create(const contract::PhysicalDeviceProfileLite *profile);
-        };//class StdMaterial
     }//namespace mtl
 }//namespace hgl::graph

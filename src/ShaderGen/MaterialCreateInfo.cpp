@@ -9,7 +9,6 @@
 #include<string>
 #include<limits>
 #include"common/MFCommon.h"
-#include"common/MFGetPosition.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -417,38 +416,6 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     return(true);
 }
 //
-//bool MaterialCreateInfo::SetWorldPosition(const uint32_t shader_stage_flag_bits)
-//{
-//    if(shader_stage_flag_bits==0)return(false);
-//
-//    {
-//        vert->AddOutput(SVT_VEC4,"WorldPosition");
-//
-//        if(l2w_shader_stage)
-//        {
-//            vert->AddFunction(func::GetWorldPosition3DL2W_VS);
-//        }
-//        else
-//        {
-//            vert->AddFunction(func::GetWorldPosition3D_VS);
-//        }
-//    }
-//
-//    if(shader_stage_flag_bits&VK_SHADER_STAGE_GEOMETRY_BIT)
-//    {
-//        geom->AddOutput(SVT_VEC4,"WorldPosition");
-//
-//        geom->AddFunction(func::GetWorldPosition3D_Other);
-//    }
-//
-//    if(shader_stage_flag_bits&VK_SHADER_STAGE_FRAGMENT_BIT)
-//    {
-//        geom->AddFunction(func::GetWorldPosition3D_Other);
-//    }
-//
-//    return(true);
-//}
-
 void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *profile)
 {
     if(!profile)

@@ -24,8 +24,6 @@
 #include <vector>
 
 #include "common/MFCommon.h"
-#include "common/MFGetPosition.h"
-#include "common/MFGetNormal.h"
 #include "common/MFSkyLight.h"
 
 namespace hgl::graph::mtl {
@@ -869,11 +867,7 @@ MaterialCreateInfo *CompileFixedMaterial(
     // ─────────────────────────────────────────────────────────────────────────
 
     ShaderCreateInfoVertex *vsc = mci->GetVS();
-    const bool has_position = HasVertexEntry(def, VAN::Position);
-    const bool position_is_vec2 = IsPositionVec2(def);
     const bool has_color = HasVertexEntry(def, VAN::Color);
-    const bool has_normal = HasVertexEntry(def, VAN::Normal);
-    const bool has_transform_id = HasVertexEntry(def, Assign::TransformID::VIS_NAME);
 
     if (vsc)
     {
@@ -886,26 +880,8 @@ MaterialCreateInfo *CompileFixedMaterial(
                           entry.group);
         }
 
-        if (has_transform_id)
-            vsc->AddFunction(func::MF_GetLocalToWorld_ByAssign);
-
         if (has_color)
             vsc->AddOutput(SVT_VEC4, "Color");
-
-        if (has_position)
-        {
-            if (has_transform_id && has_camera_descriptor)
-                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DL2WCameraBy2D : func::GetPosition3DL2WCamera);
-            else if (has_transform_id)
-                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DL2WBy2D : func::GetPosition3DL2W);
-            else if (has_camera_descriptor)
-                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DCameraBy2D : func::GetPosition3DCamera);
-            else
-                vsc->AddFunction(position_is_vec2 ? func::GetPosition3DBy2D : func::GetPosition3D);
-        }
-
-        if (has_normal && has_transform_id && has_camera_descriptor)
-            vsc->AddFunction(func::GetNormalByLocal);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
