@@ -99,7 +99,7 @@ public:
     virtual RenderCmdBuffer *BeginRender()override
     {
         //std::cout<<"Begin Render frame="<<current_frame<<std::endl;
-        return rtd_list[current_frame].BeginRender(GetDescriptorBinding());
+        return rtd_list[current_frame].BeginRender();
     }
 
     virtual void EndRender() override

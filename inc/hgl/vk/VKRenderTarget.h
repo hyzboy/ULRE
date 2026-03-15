@@ -10,7 +10,6 @@
 #include<hgl/vk/StructuredBufferAccessor.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKCommandBuffer.h>
-#include<hgl/vk/VKDescriptorBindingManage.h>
 //#include<iostream>
 
 namespace hgl::ecs
@@ -30,13 +29,10 @@ class IRenderTarget
 
     VkExtent2D extent;
 
-    DescriptorBinding desc_binding;
-
 public:
 
     VulkanDevice *      GetDevice           ()const;
     VkDevice            GetVkDevice         ()const;
-    DescriptorBinding * GetDescriptorBinding(){return &desc_binding;}
 
     const   VkExtent2D &GetExtent       ()const{return extent;}
 

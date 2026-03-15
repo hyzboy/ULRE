@@ -28,7 +28,7 @@ ViewportInfo *IRenderTarget::GetViewportInfo()
     return sys ? sys->GetViewportInfo() : nullptr;
 }
 
-IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext):desc_binding(DescriptorSetType::Scene)
+IRenderTarget::IRenderTarget(hgl::ecs::ECSContext *ctx,const VkExtent2D &ext)
 {
     ecs_context=ctx;
     OnResize(ext);

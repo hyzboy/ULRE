@@ -31,7 +31,7 @@ public:
 
     bool Submit(Semaphore *wait_sem);
 
-    RenderCmdBuffer *BeginRender(DescriptorBinding *);
+    RenderCmdBuffer *BeginRender();
 
     void EndRender();
 

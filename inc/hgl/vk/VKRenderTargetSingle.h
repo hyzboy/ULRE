@@ -20,8 +20,6 @@ protected:
     RenderTarget(hgl::ecs::ECSContext *ctx,RenderTargetData *rtd):IRenderTarget(ctx,rtd->fbo->GetExtent())
     {
         data=rtd;
-
-        data->cmd_buf->SetDescriptorBinding(GetDescriptorBinding());
     }
 
 public:
@@ -70,7 +68,7 @@ public:
         if(!data)
             return(nullptr);
 
-        return data->BeginRender(GetDescriptorBinding());
+        return data->BeginRender();
     }
 
     virtual void EndRender() override

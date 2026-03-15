@@ -22,14 +22,13 @@ bool RenderTargetData::Submit(Semaphore *wait_sem)
     return ok;
 }
 
-RenderCmdBuffer *RenderTargetData::BeginRender(DescriptorBinding *db)
+RenderCmdBuffer *RenderTargetData::BeginRender()
 {
 //    std::cerr << "[RenderTargetData] BeginRender cmd_buf=" << cmd_buf << " fbo=" << fbo << std::endl;
     if(!cmd_buf)
         return(nullptr);
 
     cmd_buf->Begin();
-    cmd_buf->SetDescriptorBinding(db);
     cmd_buf->BindFramebuffer(fbo);
     return cmd_buf;
 }

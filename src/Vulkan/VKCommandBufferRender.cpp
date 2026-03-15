@@ -6,6 +6,7 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKDescriptorBindingManage.h>
 
 namespace hgl::graph{
 bool RenderCmdBuffer::BindVAB(const VABList *vab_list)
