@@ -1067,6 +1067,13 @@ MaterialCreateInfo *CompileCompositorMaterial(
                     { mci->SetLocalToWorld(stage_bits); break; }
                 if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
                     { mi_stage_bits = stage_bits; break; }
+
+                // Custom UBO via private/global ShaderBufferSource registry
+                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
+                {
+                    mci->AddUBOStruct(stage_bits, *sbs);
+                    break;
+                }
             }
             break;
 
@@ -1077,13 +1084,60 @@ MaterialCreateInfo *CompileCompositorMaterial(
                     { mci->SetLocalToWorld(stage_bits); break; }
                 if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
                     { mi_stage_bits = stage_bits; break; }
+
+                // Custom SSBO via private/global ShaderBufferSource registry
+                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
+                {
+                    mci->AddSSBOStruct(stage_bits, *sbs);
+                    break;
+                }
             }
             break;
 
         case DescriptorKind::Texture:
+            if (entry.glsl_type)
+            {
+                TextureType tt;
+                const char *glsl_type_str = entry.glsl_type;
+
+                if (CStrEq(glsl_type_str, "sampler2D"))
+                    tt = TextureType::Texture2D;
+                else if (CStrEq(glsl_type_str, "sampler3D"))
+                    tt = TextureType::Texture3D;
+                else if (CStrEq(glsl_type_str, "samplerCube"))
+                    tt = TextureType::TextureCube;
+                else if (CStrEq(glsl_type_str, "sampler2DArray"))
+                    tt = TextureType::Texture2DArray;
+                else
+                    tt = TextureType::Texture2D;
+
+                mci->AddTexture(ShaderStage(stage_bits), entry.set_type, tt, entry.name);
+            }
+            break;
+
         case DescriptorKind::TextureSampler:
-            // Compositor 模板目前不使用独立纹理描述符
-            // （纹理通过 MI struct 内的 sampler 绑定）
+            if (entry.glsl_type)
+            {
+                TextureType tt;
+                SamplerType st = SamplerType::Sampler2D;
+                const char *glsl_type_str = entry.glsl_type;
+
+                if (CStrEq(glsl_type_str, "sampler2D")) {
+                    tt = TextureType::Texture2D;
+                    st = SamplerType::Sampler2D;
+                } else if (CStrEq(glsl_type_str, "samplerCube")) {
+                    tt = TextureType::TextureCube;
+                    st = SamplerType::SamplerCube;
+                } else if (CStrEq(glsl_type_str, "sampler2DArray")) {
+                    tt = TextureType::Texture2DArray;
+                    st = SamplerType::Sampler2DArray;
+                } else {
+                    tt = TextureType::Texture2D;
+                    st = SamplerType::Sampler2D;
+                }
+
+                mci->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, st, entry.name);
+            }
             break;
         }
     }

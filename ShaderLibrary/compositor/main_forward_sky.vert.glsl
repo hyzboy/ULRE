@@ -1,0 +1,30 @@
+#version 450
+
+// === Compositor Template: Forward Sky VS ===
+// Sky dome 专用 — Position(0) + TransformID(1), 输出 Direction
+//
+// Descriptor binding 约定（Resort() 按字母序分配）：
+//   Scene     set=0 : camera=0, sky=1, viewport=2
+//   Transform set=1 : l2w=0
+
+// Scene UBO
+#include "common/scene_ubo.glsl"
+SCENE_CAMERA_UBO(0, 0);
+
+// L2W SSBO
+layout(set=1, binding=0) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+
+// Vertex attributes: Position + TransformID
+layout(location=0) in vec3 Position;
+layout(location=1) in uint TransformID;
+
+// Output to FS: sky direction
+layout(location=0) out vec3 fragDirection;
+
+void main()
+{
+    fragDirection = normalize(Position);
+
+    mat4 l2w_mat = l2w.mats[TransformID];
+    gl_Position = camera.vp * l2w_mat * vec4(Position, 1.0);
+}

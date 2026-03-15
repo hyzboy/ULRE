@@ -1,14 +1,14 @@
 ﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/FixedMaterialDef.h>
-#include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
 #include <vector>
 
-#include "S_BasicLit_Logic.h"
+#include "../common/MFSkyLight.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -48,9 +48,6 @@ namespace
         { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D" },
     };
 
-    constexpr VertexShaderBusiness BASIC_LIT_VERTEX_BUSINESS { BASIC_LIT_VS_BUSINESS };
-    constexpr FragmentShaderBusiness BASIC_LIT_FRAGMENT_BUSINESS { BASIC_LIT_FS_BUSINESS };
-
     constexpr FixedMaterialDef BASIC_LIT_DEF {
         "BasicLit_v2",
         PrimitiveType::Triangles,
@@ -62,21 +59,6 @@ namespace
         mi_bytes,
     };
 
-    const ComposedMaterialDef BASIC_LIT_COMPOSED_DEF {
-        "BasicLit_v2",
-        PrimitiveType::Triangles,
-        BASIC_LIT_VERTEX,
-        uint32_t(sizeof(BASIC_LIT_VERTEX) / sizeof(BASIC_LIT_VERTEX[0])),
-        BASIC_LIT_DESCRIPTORS,
-        uint32_t(sizeof(BASIC_LIT_DESCRIPTORS) / sizeof(BASIC_LIT_DESCRIPTORS[0])),
-        &BASIC_LIT_VERTEX_BUSINESS,
-        &BASIC_LIT_FRAGMENT_BUSINESS,
-        ShaderOutputMode::SingleRTAlphaBlend,
-        false,
-        mi_codes,
-        mi_bytes,
-    };
-
 }
 
 MaterialCreateInfo *CreateBasicLit(const contract::PhysicalDeviceProfileLite *profile, BasicLitMaterialCreateConfig *cfg)
@@ -84,45 +66,54 @@ MaterialCreateInfo *CreateBasicLit(const contract::PhysicalDeviceProfileLite *pr
     if(cfg)
         cfg->material_instance=true;
 
-    ShaderPermutationKey key;
-    key.ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
+    // Dynamic descriptor injection for non-Simple sky models
+    SkyLightAmbientModel ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors(
         BASIC_LIT_DESCRIPTORS,
         BASIC_LIT_DESCRIPTORS + uint32_t(sizeof(BASIC_LIT_DESCRIPTORS) / sizeof(BASIC_LIT_DESCRIPTORS[0])));
 
-    std::vector<const char *> dynamic_fragment_resources(
-        BASIC_LIT_FRAGMENT_RESOURCES,
-        BASIC_LIT_FRAGMENT_RESOURCES + uint32_t(sizeof(BASIC_LIT_FRAGMENT_RESOURCES) / sizeof(BASIC_LIT_FRAGMENT_RESOURCES[0])));
-
+    std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
-        GetSkyLightResourceInjectionSpec(key.ambient),
+        GetSkyLightResourceInjectionSpec(ambient),
         dynamic_descriptors,
-        dynamic_fragment_resources);
+        unused_resources);
 
-    MaterialLogicDef dynamic_logic = BASIC_LIT_LOGIC;
-    dynamic_logic.fragment.required_resources = dynamic_fragment_resources.data();
-    dynamic_logic.fragment.required_resource_count = uint32_t(dynamic_fragment_resources.size());
+    FixedMaterialDef dynamic_def = BASIC_LIT_DEF;
+    dynamic_def.descriptor_entries = dynamic_descriptors.data();
+    dynamic_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
 
-    FixedMaterialDef dynamic_fixed_def = BASIC_LIT_DEF;
-    dynamic_fixed_def.descriptor_entries = dynamic_descriptors.data();
-    dynamic_fixed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+    // Assemble GLSL from templates
+    CompositorAssembler assembler("ShaderLibrary");
 
-    ComposedMaterialDef dynamic_composed_def = BASIC_LIT_COMPOSED_DEF;
-    dynamic_composed_def.descriptor_entries = dynamic_descriptors.data();
-    dynamic_composed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+    auto result = assembler.Assemble(
+        SurfaceType::Standard,
+        BlendMode::Opaque,
+        PassType::ForwardOpaque,
+        QualityTier::Medium,
+        PlatformBackend::PC,
+        "compositor/main_forward_lit.vert.glsl",
+        "compositor/main_forward_lit.frag.glsl",
+        "surface/basiclit_surface.glsl"
+    );
 
-    MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[BasicLit] CompositorAssembler failed: %s\n",
+            result.error_message.c_str());
+        return nullptr;
+    }
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        dynamic_fixed_def,
-        dynamic_composed_def,
-        dynamic_logic,
-        key,
+        dynamic_def,
+        result.vertex_glsl,
+        result.fragment_glsl,
         cfg);
 
-    if (!mci_new)
-        std::fprintf(stderr, "[BasicLit] CompileComposedBusinessMaterial failed\n");
-    return mci_new;
+    if (!mci)
+        std::fprintf(stderr, "[BasicLit] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl
 

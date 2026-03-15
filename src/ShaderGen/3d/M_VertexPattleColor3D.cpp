@@ -12,12 +12,45 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include"S_VertexPattleColor3D.h"
-#include"S_VertexPattleColor3D_Logic.h"
+#include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
+namespace
+{
+    constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
+        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+        { VAT_UINT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Vertex, Assign::TransformID::VIS_NAME },
+    };
+
+#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+    constexpr DescriptorKind VERTEX_PATTLE_COLOR_3D_L2W_KIND = DescriptorKind::SSBO;
+#else
+    constexpr DescriptorKind VERTEX_PATTLE_COLOR_3D_L2W_KIND = DescriptorKind::UBO;
+#endif
+
+    constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
+        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
+        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
+        { DescriptorSetType::Transform, VERTEX_PATTLE_COLOR_3D_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_pattle", "ColorPattle", nullptr },
+    };
+
+    constexpr FixedMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
+        "VertexPattleColor3D",
+        PrimitiveType::Triangles,
+        VERTEX_PATTLE_COLOR_3D_VERTEX,
+        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX) / sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX[0])),
+        VERTEX_PATTLE_COLOR_3D_DESCRIPTORS,
+        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[0])),
+        nullptr,
+        0,
+    };
+}//namespace
 
 MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
@@ -29,17 +62,35 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
     };
     local_cfg.SetPrivateShaderBufferSources(private_sbs_list,1);
 
-    ShaderPermutationKey key;
-    MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
+    CompositorAssembler assembler("ShaderLibrary");
+
+    auto result = assembler.Assemble(
+        SurfaceType::Unlit,
+        BlendMode::Opaque,
+        PassType::ForwardOpaque,
+        QualityTier::Medium,
+        PlatformBackend::PC,
+        "compositor/main_forward_unlit_pattle.vert.glsl",
+        "compositor/main_forward_unlit_vertexcolor.frag.glsl",
+        "surface/unlit_vertexcolor_surface.glsl"
+    );
+
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[VertexPattleColor3D] CompositorAssembler failed: %s\n",
+            result.error_message.c_str());
+        return nullptr;
+    }
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
         VERTEX_PATTLE_COLOR_3D_DEF,
-        VERTEX_PATTLE_COLOR_3D_COMPOSED_DEF,
-        VERTEX_PATTLE_COLOR_3D_LOGIC,
-        key,
+        result.vertex_glsl,
+        result.fragment_glsl,
         &local_cfg);
 
-    if (!mci_new)
-        std::fprintf(stderr, "[VertexPattleColor3D] CompileComposedBusinessMaterial failed\n");
-    return mci_new;
+    if (!mci)
+        std::fprintf(stderr, "[VertexPattleColor3D] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl

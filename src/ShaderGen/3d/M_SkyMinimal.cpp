@@ -1,26 +1,75 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
-#include "S_SkyMinimal.h"
-#include "S_SkyMinimal_Logic.h"
+#include <hgl/mtl/FixedMaterialDef.h>
+#include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
 
 namespace hgl::graph::mtl{
+namespace
+{
+    constexpr FixedVertexEntry SKY_MINIMAL_VERTEX[] = {
+        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+    };
+
+#if defined(HGL_L2W_USE_SSBO) && HGL_L2W_USE_SSBO
+    constexpr DescriptorKind SKY_MINIMAL_L2W_KIND = DescriptorKind::SSBO;
+#else
+    constexpr DescriptorKind SKY_MINIMAL_L2W_KIND = DescriptorKind::UBO;
+#endif
+
+    constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {
+        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
+        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
+        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "sky", "SkyInfo", nullptr },
+        { DescriptorSetType::Transform, SKY_MINIMAL_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+    };
+
+    constexpr FixedMaterialDef SKY_MINIMAL_DEF {
+        "SkyMinimal",
+        PrimitiveType::Triangles,
+        SKY_MINIMAL_VERTEX,
+        uint32_t(sizeof(SKY_MINIMAL_VERTEX) / sizeof(SKY_MINIMAL_VERTEX[0])),
+        SKY_MINIMAL_DESCRIPTORS,
+        uint32_t(sizeof(SKY_MINIMAL_DESCRIPTORS) / sizeof(SKY_MINIMAL_DESCRIPTORS[0])),
+        nullptr,
+        0,
+    };
+}//namespace
 
 MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
 {
-    ShaderPermutationKey key;
+    CompositorAssembler assembler("ShaderLibrary");
 
-    MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
+    auto result = assembler.Assemble(
+        SurfaceType::Sky,
+        BlendMode::Opaque,
+        PassType::ForwardOpaque,
+        QualityTier::Medium,
+        PlatformBackend::PC,
+        "compositor/main_forward_sky.vert.glsl",
+        "compositor/main_forward_sky.frag.glsl",
+        "surface/sky_minimal_surface.glsl"
+    );
+
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[SkyMinimal] CompositorAssembler failed: %s\n",
+            result.error_message.c_str());
+        return nullptr;
+    }
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
         SKY_MINIMAL_DEF,
-        SKY_MINIMAL_COMPOSED_DEF,
-        SKY_MINIMAL_LOGIC,
-        key,
+        result.vertex_glsl,
+        result.fragment_glsl,
         cfg);
 
-    if (!mci_new)
-        std::fprintf(stderr, "[SkyMinimal] CompileComposedBusinessMaterial failed\n");
-    return mci_new;
+    if (!mci)
+        std::fprintf(stderr, "[SkyMinimal] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl

@@ -1,23 +1,18 @@
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/FixedMaterialDef.h>
-#include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
 #include <vector>
 
-#include "S_PBRColor3D_Logic.h"
+#include "../common/MFSkyLight.h"
 
 namespace hgl::graph::mtl{
 namespace
 {
-    // MI layout (matches PBRColor3DMaterialInstance in Material3DCreateConfig.h)
-    //   uint  base_color  — RGBA packed, recovered via unpackUnorm4x8
-    //   float metallic    — [0, 1]
-    //   float roughness   — [0.04, 1]
-    //   uint  texture_id  — Texture2DArray layer index
     constexpr const char mi_codes[] = R"(
         uint  base_color;
         float metallic;
@@ -50,9 +45,6 @@ namespace
         { DescriptorSetType::Material,   DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal",    nullptr, "sampler2DArray" },
     };
 
-    constexpr VertexShaderBusiness   PBR_COLOR_3D_VERTEX_BUSINESS   { PBR_COLOR_3D_VS_BUSINESS };
-    constexpr FragmentShaderBusiness  PBR_COLOR_3D_FRAGMENT_BUSINESS { PBR_COLOR_3D_FS_BUSINESS };
-
     constexpr FixedMaterialDef PBR_COLOR_3D_DEF {
         "PBRColor3D",
         PrimitiveType::Triangles,
@@ -64,21 +56,6 @@ namespace
         mi_bytes,
     };
 
-    const ComposedMaterialDef PBR_COLOR_3D_COMPOSED_DEF {
-        "PBRColor3D",
-        PrimitiveType::Triangles,
-        PBR_COLOR_3D_VERTEX,
-        uint32_t(sizeof(PBR_COLOR_3D_VERTEX)      / sizeof(PBR_COLOR_3D_VERTEX[0])),
-        PBR_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(PBR_COLOR_3D_DESCRIPTORS) / sizeof(PBR_COLOR_3D_DESCRIPTORS[0])),
-        &PBR_COLOR_3D_VERTEX_BUSINESS,
-        &PBR_COLOR_3D_FRAGMENT_BUSINESS,
-        ShaderOutputMode::SingleRTAlphaBlend,
-        false,
-        mi_codes,
-        mi_bytes,
-    };
-
 }//namespace
 
 MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *profile, PBRColor3DMaterialCreateConfig *cfg)
@@ -86,44 +63,53 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     if (cfg)
         cfg->material_instance = true;
 
-    ShaderPermutationKey key;
-    key.ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
+    // Dynamic descriptor injection for non-Simple sky models
+    SkyLightAmbientModel ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors(
         PBR_COLOR_3D_DESCRIPTORS,
         PBR_COLOR_3D_DESCRIPTORS + uint32_t(sizeof(PBR_COLOR_3D_DESCRIPTORS) / sizeof(PBR_COLOR_3D_DESCRIPTORS[0])));
 
-    std::vector<const char *> dynamic_fragment_resources(
-        PBR_COLOR_3D_FRAGMENT_RESOURCES,
-        PBR_COLOR_3D_FRAGMENT_RESOURCES + uint32_t(sizeof(PBR_COLOR_3D_FRAGMENT_RESOURCES) / sizeof(PBR_COLOR_3D_FRAGMENT_RESOURCES[0])));
-
+    std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
-        GetSkyLightResourceInjectionSpec(key.ambient),
+        GetSkyLightResourceInjectionSpec(ambient),
         dynamic_descriptors,
-        dynamic_fragment_resources);
+        unused_resources);
 
-    MaterialLogicDef dynamic_logic = PBR_COLOR_3D_LOGIC;
-    dynamic_logic.fragment.required_resources       = dynamic_fragment_resources.data();
-    dynamic_logic.fragment.required_resource_count  = uint32_t(dynamic_fragment_resources.size());
+    FixedMaterialDef dynamic_def = PBR_COLOR_3D_DEF;
+    dynamic_def.descriptor_entries      = dynamic_descriptors.data();
+    dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
 
-    FixedMaterialDef dynamic_fixed_def = PBR_COLOR_3D_DEF;
-    dynamic_fixed_def.descriptor_entries      = dynamic_descriptors.data();
-    dynamic_fixed_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
+    // Assemble GLSL from templates
+    CompositorAssembler assembler("ShaderLibrary");
 
-    ComposedMaterialDef dynamic_composed_def = PBR_COLOR_3D_COMPOSED_DEF;
-    dynamic_composed_def.descriptor_entries     = dynamic_descriptors.data();
-    dynamic_composed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+    auto result = assembler.Assemble(
+        SurfaceType::Standard,
+        BlendMode::Opaque,
+        PassType::ForwardOpaque,
+        QualityTier::Medium,
+        PlatformBackend::PC,
+        "compositor/main_forward_lit.vert.glsl",
+        "compositor/main_forward_lit.frag.glsl",
+        "surface/pbrcolor3d_surface.glsl"
+    );
 
-    MaterialCreateInfo *mci = CompileComposedBusinessMaterial(
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[PBRColor3D] CompositorAssembler failed: %s\n",
+            result.error_message.c_str());
+        return nullptr;
+    }
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        dynamic_fixed_def,
-        dynamic_composed_def,
-        dynamic_logic,
-        key,
+        dynamic_def,
+        result.vertex_glsl,
+        result.fragment_glsl,
         cfg);
 
     if (!mci)
-        std::fprintf(stderr, "[PBRColor3D] CompileComposedBusinessMaterial failed\n");
+        std::fprintf(stderr, "[PBRColor3D] CompileCompositorMaterial failed\n");
 
     return mci;
 }

@@ -1,14 +1,14 @@
 ﻿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
+#include <hgl/shadergen/CompositorAssembler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/FixedMaterialDef.h>
-#include <hgl/shadergen/ShaderComposition.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
 #include <vector>
 
-#include "S_TextureBlinnPhong_Logic.h"
+#include "../common/MFSkyLight.h"
 
 namespace hgl::graph::mtl{
 namespace
@@ -43,9 +43,6 @@ namespace
         { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D" },
     };
 
-    constexpr VertexShaderBusiness TEXTURE_BLINN_PHONG_VERTEX_BUSINESS { TEXTURE_BLINN_PHONG_VS_BUSINESS };
-    constexpr FragmentShaderBusiness TEXTURE_BLINN_PHONG_FRAGMENT_BUSINESS { TEXTURE_BLINN_PHONG_FS_BUSINESS };
-
     constexpr FixedMaterialDef TEXTURE_BLINN_PHONG_DEF {
         "TextureBlinnPhong_v2",
         PrimitiveType::Triangles,
@@ -57,68 +54,61 @@ namespace
         mi_bytes,
     };
 
-    const ComposedMaterialDef TEXTURE_BLINN_PHONG_COMPOSED_DEF {
-        "TextureBlinnPhong_v2",
-        PrimitiveType::Triangles,
-        TEXTURE_BLINN_PHONG_VERTEX,
-        uint32_t(sizeof(TEXTURE_BLINN_PHONG_VERTEX) / sizeof(TEXTURE_BLINN_PHONG_VERTEX[0])),
-        TEXTURE_BLINN_PHONG_DESCRIPTORS,
-        uint32_t(sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS) / sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS[0])),
-        &TEXTURE_BLINN_PHONG_VERTEX_BUSINESS,
-        &TEXTURE_BLINN_PHONG_FRAGMENT_BUSINESS,
-        ShaderOutputMode::SingleRTAlphaBlend,
-        false,
-        mi_codes,
-        mi_bytes,
-    };
-
 }
 
-// Factory
 MaterialCreateInfo *CreateTextureBlinnPhong(const contract::PhysicalDeviceProfileLite *profile, const Material3DCreateConfig *cfg)
 {
     Material3DCreateConfig cfg_with_mi = cfg ? *cfg : Material3DCreateConfig();
     cfg_with_mi.material_instance = true;
 
-    ShaderPermutationKey key;
-    key.ambient = cfg_with_mi.sky_ambient_model;
+    // Dynamic descriptor injection for non-Simple sky models
+    SkyLightAmbientModel ambient = cfg_with_mi.sky_ambient_model;
 
     std::vector<FixedDescriptorEntry> dynamic_descriptors(
         TEXTURE_BLINN_PHONG_DESCRIPTORS,
         TEXTURE_BLINN_PHONG_DESCRIPTORS + uint32_t(sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS) / sizeof(TEXTURE_BLINN_PHONG_DESCRIPTORS[0])));
 
-    std::vector<const char *> dynamic_fragment_resources(
-        TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES,
-        TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES + uint32_t(sizeof(TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES) / sizeof(TEXTURE_BLINN_PHONG_FRAGMENT_RESOURCES[0])));
-
+    std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
-        GetSkyLightResourceInjectionSpec(key.ambient),
+        GetSkyLightResourceInjectionSpec(ambient),
         dynamic_descriptors,
-        dynamic_fragment_resources);
+        unused_resources);
 
-    MaterialLogicDef dynamic_logic = TEXTURE_BLINN_PHONG_LOGIC;
-    dynamic_logic.fragment.required_resources = dynamic_fragment_resources.data();
-    dynamic_logic.fragment.required_resource_count = uint32_t(dynamic_fragment_resources.size());
+    FixedMaterialDef dynamic_def = TEXTURE_BLINN_PHONG_DEF;
+    dynamic_def.descriptor_entries = dynamic_descriptors.data();
+    dynamic_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
 
-    FixedMaterialDef dynamic_fixed_def = TEXTURE_BLINN_PHONG_DEF;
-    dynamic_fixed_def.descriptor_entries = dynamic_descriptors.data();
-    dynamic_fixed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+    // Assemble GLSL from templates
+    CompositorAssembler assembler("ShaderLibrary");
 
-    ComposedMaterialDef dynamic_composed_def = TEXTURE_BLINN_PHONG_COMPOSED_DEF;
-    dynamic_composed_def.descriptor_entries = dynamic_descriptors.data();
-    dynamic_composed_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+    auto result = assembler.Assemble(
+        SurfaceType::Standard,
+        BlendMode::Opaque,
+        PassType::ForwardOpaque,
+        QualityTier::Medium,
+        PlatformBackend::PC,
+        "compositor/main_forward_lit.vert.glsl",
+        "compositor/main_forward_lit.frag.glsl",
+        "surface/textureblinnphong_surface.glsl"
+    );
 
-    MaterialCreateInfo *mci_new = CompileComposedBusinessMaterial(
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[TextureBlinnPhong] CompositorAssembler failed: %s\n",
+            result.error_message.c_str());
+        return nullptr;
+    }
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        dynamic_fixed_def,
-        dynamic_composed_def,
-        dynamic_logic,
-        key,
+        dynamic_def,
+        result.vertex_glsl,
+        result.fragment_glsl,
         &cfg_with_mi);
 
-    if (!mci_new)
-        std::fprintf(stderr, "[TextureBlinnPhong] CompileComposedBusinessMaterial failed\n");
-    return mci_new;
+    if (!mci)
+        std::fprintf(stderr, "[TextureBlinnPhong] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl
 
