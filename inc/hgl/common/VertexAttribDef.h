@@ -83,7 +83,7 @@ namespace hgl::graph
             return vec_size <=> vat.vec_size;
         }
 
-        bool operator==(const VertexAttribType &vat)const = default;
+        bool operator==(const VertexAttribType &vat)const{return vat_code==vat.vat_code;}
 
         const uint8 ToCode()const{return vat_code;}
 
