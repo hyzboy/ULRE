@@ -1,73 +1,77 @@
-#include"Std2DMaterial.h"
+#include"Build2DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/math/Vector.h>
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char mi_codes[]="vec4 Color;";          //材质实例代码
-    constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);     //材质实例数据大小
+    constexpr const char mi_codes[]="vec4 Color;";
+    constexpr const uint32_t mi_bytes=sizeof(math::Vector4f);
 
-    constexpr const char vs_main[]=R"(
-void main()
-{
-    HandoverMI();
-
-    gl_Position=GetPosition2D();
-})";
-
-    constexpr const char fs_main[]=R"(
-void main()
-{
-    MaterialInstance mi=GetMI();
-
-    FragColor=mi.Color;
-})";// ^       ^
-    // |       |
-    // |       +--ps:这里的mi.Color是材质实例中的数据，MaterialInstance结构对应上面C++代码中的mi_codes
-    // +--ps:这里的FrageColor就是最终的RT
-
-    class MaterialPureColor2D:public Std2DMaterial
+    // ── VS GLSL (built at runtime via Build2DCommon) ──
+    std::string BuildVS(const Material2DCreateConfig *cfg, const std::string &defs)
     {
-    public:
+        auto p = build2d::BuildVSPrefix(cfg, defs);
 
-        using Std2DMaterial::Std2DMaterial;
-        ~MaterialPureColor2D()=default;
+        // outputs
+        int out_loc = 0;
+        p.glsl += "\nlayout(location=" + std::to_string(out_loc++) + ") flat out uint fragMIID;\n";
 
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            if(!Std2DMaterial::CustomVertexShader(vsc))
-                return(false);
+        // functions + main
+        p.glsl += "\n" + build2d::GetPosition2DFunc(cfg->coordinate_system, cfg->local_to_world);
+        p.glsl += "\nvoid main()\n{\n";
+        p.glsl += "    fragMIID = MaterialInstanceID;\n";
+        p.glsl += "    gl_Position = GetPosition2D();\n";
+        p.glsl += "}\n";
+        return p.glsl;
+    }
 
-            vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
-
-            fsc->SetMain(fs_main);
-            return(true);
-        }
-
-        bool EndCustomShader() override
-        {
-            mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
-                                        mi_bytes,                       //材质实例数据大小
-                                        (uint32_t)ShaderStage::Fragment);  //只在Fragment Shader中使用材质实例最终数据
-
-            return(true);
-        }
-    };//class MaterialPureColor2D:public Std2DMaterial
+    // ── FS GLSL ──
+    std::string BuildFS(const std::string &defs)
+    {
+        std::string fs = build2d::FSHeader(defs);
+        fs += "struct MaterialInstance {\n    vec4 Color;\n};\n\n";
+        fs += "layout(set=MI_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {\n"
+              "    MaterialInstance mi[];\n} mtl;\n\n";
+        fs += "layout(location=0) flat in uint fragMIID;\n\n";
+        fs += "layout(location=0) out vec4 FragColor;\n\n";
+        fs += "void main()\n{\n";
+        fs += "    FragColor = mtl.mi[fragMIID].Color;\n";
+        fs += "}\n";
+        return fs;
+    }
 }//namespace
 
 MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite *profile,Material2DCreateConfig *cfg)
 {
     cfg->material_instance=true;
 
-    MaterialPureColor2D mpc2d(cfg);
+    // Compute actual set indices (Resort compacts empty sets)
+    auto defs = build2d::BuildDescriptorDefines(cfg, false, true);
 
-    return mpc2d.Create(profile);
+    // Build DEF dynamically
+    std::vector<FixedVertexEntry> vertices;
+    build2d::PushBaseVertexEntries(vertices, cfg);
+
+    std::vector<FixedDescriptorEntry> descriptors;
+    build2d::PushBaseDescriptorEntries(descriptors, cfg);
+
+    FixedMaterialDef def {
+        "PureColor2D",
+        cfg->prim,
+        vertices.data(), uint32_t(vertices.size()),
+        descriptors.data(), uint32_t(descriptors.size()),
+        mi_codes, mi_bytes,
+    };
+
+    std::string vs = BuildVS(cfg, defs);
+    std::string fs = BuildFS(defs);
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    if(!mci)
+        std::fprintf(stderr, "[PureColor2D] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl

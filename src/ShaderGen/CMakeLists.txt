@@ -62,6 +62,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 SET(BLINN_PHONG_HEADER_FILES ${STD_MTL_HEADER_PATH}/BlinnPhong.h)
 
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
+                            2d/Build2DCommon.h
                             2d/Std2DMaterial.h
                             2d/Std2DMaterial.cpp
                             2d/M_VertexColor2D.cpp

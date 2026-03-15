@@ -1,64 +1,71 @@
-#include"Std2DMaterial.h"
+#include"Build2DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/mtl/SamplerName.h>
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char vs_main[]=R"(
-void main()
-{
-    Output.TexCoord=TexCoord;
-
-    gl_Position=GetPosition2D();
-})";
-
-    //一个shader中输出的所有数据，会被定义在一个名为Output的结构中。所以编写时要用Output.XXXX来使用。
-    //而同时，这个结构在下一个Shader中以Input名称出现，使用时以Input.XXX的形式使用。
-
-    constexpr const char fs_main[]=R"(
-void main()
-{
-    FragColor=texture(TextureBaseColor,Input.TexCoord);
-})";
-
-    class MaterialPureTexture2D:public Std2DMaterial
+    std::string BuildVS(const Material2DCreateConfig *cfg, const std::string &defs)
     {
-    public:
+        auto p = build2d::BuildVSPrefix(cfg, defs);
 
-        using Std2DMaterial::Std2DMaterial;
-        ~MaterialPureTexture2D()=default;
+        // TexCoord vertex input
+        p.glsl += "layout(location=" + std::to_string(p.next_location++) + ") in vec2 TexCoord;\n";
 
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            if(!Std2DMaterial::CustomVertexShader(vsc))
-                return(false);
+        // output
+        p.glsl += "\nlayout(location=0) out vec2 fragTexCoord;\n";
 
-            vsc->AddInput(VAT_VEC2,VAN::TexCoord);
+        // functions + main
+        p.glsl += "\n" + build2d::GetPosition2DFunc(cfg->coordinate_system, cfg->local_to_world);
+        p.glsl += "\nvoid main()\n{\n";
+        p.glsl += "    fragTexCoord = TexCoord;\n";
+        p.glsl += "    gl_Position = GetPosition2D();\n";
+        p.glsl += "}\n";
+        return p.glsl;
+    }
 
-            vsc->AddOutput(SVT_VEC2,"TexCoord");
-
-            vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            mci->AddTextureSampler(ShaderStage::Fragment,DescriptorSetType::Material,SamplerType::Sampler2D,mtl::SamplerName::BaseColor);
-
-            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
-
-            fsc->SetMain(fs_main);
-            return(true);
-        }
-    };//class MaterialPureTexture2D:public Std2DMaterial
+    std::string BuildFS(const std::string &defs)
+    {
+        std::string fs = build2d::FSHeader(defs);
+        fs += "layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2D TextureBaseColor;\n\n";
+        fs += "layout(location=0) in vec2 fragTexCoord;\n\n";
+        fs += "layout(location=0) out vec4 FragColor;\n\n";
+        fs += "void main()\n{\n";
+        fs += "    FragColor = texture(TextureBaseColor, fragTexCoord);\n";
+        fs += "}\n";
+        return fs;
+    }
 }//namespace
 
 MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
 {
-    MaterialPureTexture2D mvc2d(cfg);
+    // Build DEF
+    auto defs = build2d::BuildDescriptorDefines(cfg, true, false);
 
-    return mvc2d.Create(profile);
+    std::vector<FixedVertexEntry> vertices;
+    build2d::PushBaseVertexEntries(vertices, cfg);
+    vertices.push_back({VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::TexCoord});
+
+    std::vector<FixedDescriptorEntry> descriptors;
+    build2d::PushBaseDescriptorEntries(descriptors, cfg);
+    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2D"});
+
+    FixedMaterialDef def {
+        "PureTexture2D",
+        cfg->prim,
+        vertices.data(), uint32_t(vertices.size()),
+        descriptors.data(), uint32_t(descriptors.size()),
+        nullptr, 0,
+    };
+
+    std::string vs = BuildVS(cfg, defs);
+    std::string fs = BuildFS(defs);
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    if(!mci)
+        std::fprintf(stderr, "[PureTexture2D] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl

@@ -7,6 +7,7 @@
 
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
+#include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/DescriptorBindingContract.h>
 #include <hgl/shadergen/contract/ShaderGenResultBuilder.h>
@@ -1191,6 +1192,35 @@ MaterialCreateInfo *CompileCompositorMaterial(
     }
 
     return mci;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CompileCompositorMaterial — 2D 材质重载
+// ═══════════════════════════════════════════════════════════════════════════
+
+MaterialCreateInfo *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const FixedMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material2DCreateConfig *config)
+{
+    Material3DCreateConfig cfg3d(
+        config ? config->prim : def.primitive_type,
+        WithCamera::Without,
+        config && config->local_to_world ? WithLocalToWorld::With : WithLocalToWorld::Without,
+        WithSky::Without);
+
+    if (config)
+    {
+        cfg3d.rt_output                         = config->rt_output;
+        cfg3d.material_instance                 = config->material_instance;
+        cfg3d.shader_stage_flag_bit             = config->shader_stage_flag_bit;
+        cfg3d.private_shader_buffer_sources     = config->private_shader_buffer_sources;
+        cfg3d.private_shader_buffer_source_count= config->private_shader_buffer_source_count;
+    }
+
+    return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
 }
 
 MaterialCreateInfo *CompileComposedBusinessMaterial(

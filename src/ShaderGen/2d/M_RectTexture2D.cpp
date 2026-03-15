@@ -1,55 +1,38 @@
-#include"Std2DMaterial.h"
+#include"Build2DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/mtl/Material2DCreateConfig.h>
-#include<hgl/mtl/UBOCommon.h>
+#include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/mtl/SamplerName.h>
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char vs_main[]=R"(
-void main()
-{
-    Output.TexCoord=TexCoord;
-    gl_Position=GetPosition2D();
-})";
-
-    constexpr const char fs_main[]=R"(
-void main()
-{
-    FragColor=texture(TextureBaseColor,Input.TexCoord);
-})";
-
-    class MaterialRectTexture2D:public Std2DMaterial
+    std::string BuildVS(const Material2DCreateConfig *cfg, const std::string &defs)
     {
-    public:
+        auto p = build2d::BuildVSPrefix(cfg, defs);
 
-        using Std2DMaterial::Std2DMaterial;
-        ~MaterialRectTexture2D()=default;
+        p.glsl += "layout(location=" + std::to_string(p.next_location++) + ") in vec2 TexCoord;\n";
+        p.glsl += "\nlayout(location=0) out vec2 fragTexCoord;\n";
 
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            if(!Std2DMaterial::CustomVertexShader(vsc))
-                return(false);
+        p.glsl += "\n" + build2d::GetPosition2DFunc(cfg->coordinate_system, cfg->local_to_world);
+        p.glsl += "\nvoid main()\n{\n";
+        p.glsl += "    fragTexCoord = TexCoord;\n";
+        p.glsl += "    gl_Position = GetPosition2D();\n";
+        p.glsl += "}\n";
+        return p.glsl;
+    }
 
-            vsc->AddInput(VAT_VEC2,VAN::TexCoord);
-
-            vsc->AddOutput(SVT_VEC2,"TexCoord");
-
-            vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            mci->AddTextureSampler(ShaderStage::Fragment,DescriptorSetType::Material,SamplerType::Sampler2D,mtl::SamplerName::BaseColor);
-
-            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
-
-            fsc->SetMain(fs_main);
-            return(true);
-        }
-    };//class MaterialRectTexture2D:public Std2DMaterial
+    std::string BuildFS(const std::string &defs)
+    {
+        std::string fs = build2d::FSHeader(defs);
+        fs += "layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2D TextureBaseColor;\n\n";
+        fs += "layout(location=0) in vec2 fragTexCoord;\n\n";
+        fs += "layout(location=0) out vec4 FragColor;\n\n";
+        fs += "void main()\n{\n";
+        fs += "    FragColor = texture(TextureBaseColor, fragTexCoord);\n";
+        fs += "}\n";
+        return fs;
+    }
 }//namespace
 
 MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
@@ -62,8 +45,31 @@ MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLit
     inner.position_format=VAT_VEC2;
     inner.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
-    MaterialRectTexture2D mvc2d(&inner);
+    // Build DEF
+    auto defs = build2d::BuildDescriptorDefines(&inner, true, false);
 
-    return mvc2d.Create(profile);
+    std::vector<FixedVertexEntry> vertices;
+    build2d::PushBaseVertexEntries(vertices, &inner);
+    vertices.push_back({VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::TexCoord});
+
+    std::vector<FixedDescriptorEntry> descriptors;
+    build2d::PushBaseDescriptorEntries(descriptors, &inner);
+    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::BaseColor, nullptr, "sampler2D"});
+
+    FixedMaterialDef def {
+        "RectTexture2D",
+        inner.prim,
+        vertices.data(), uint32_t(vertices.size()),
+        descriptors.data(), uint32_t(descriptors.size()),
+        nullptr, 0,
+    };
+
+    std::string vs = BuildVS(&inner, defs);
+    std::string fs = BuildFS(defs);
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
+    if(!mci)
+        std::fprintf(stderr, "[RectTexture2D] CompileCompositorMaterial failed\n");
+    return mci;
 }
 }//namespace hgl::graph::mtl

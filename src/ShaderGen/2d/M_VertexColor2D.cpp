@@ -1,64 +1,69 @@
-#include"Std2DMaterial.h"
+#include"Build2DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCompiler.h>
+#include<cstdio>
 
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char vs_main[]=R"(
-void main()
-{
-    Output.Color=Color;
-
-    gl_Position=GetPosition2D();
-})";
-
-    //一个shader中输出的所有数据，会被定义在一个名为Output的结构中。所以编写时要用Output.XXXX来使用。
-    //而同时，这个结构在下一个Shader中以Input名称出现，使用时以Input.XXX的形式使用。
-
-    constexpr const char fs_main[]=R"(
-void main()
-{
-    FragColor=Input.Color;
-})";// ^       ^
-    // |       |
-    // |       +--ps:这里的Input.Color就是上一个Shader中的Output.Color
-    // +--ps:这里的Color就是最终的RT
-
-    class MaterialVertexColor2D:public Std2DMaterial
+    std::string BuildVS(const Material2DCreateConfig *cfg, const std::string &defs)
     {
-    public:
+        auto p = build2d::BuildVSPrefix(cfg, defs);
 
-        using Std2DMaterial::Std2DMaterial;
-        ~MaterialVertexColor2D()=default;
+        // Color vertex input
+        p.glsl += "layout(location=" + std::to_string(p.next_location++) + ") in vec4 Color;\n";
 
-        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {
-            if(!Std2DMaterial::CustomVertexShader(vsc))
-                return(false);
+        // output
+        p.glsl += "\nlayout(location=0) out vec4 fragColor;\n";
 
-            vsc->AddInput(VAT_VEC4,VAN::Color);
+        // functions + main
+        p.glsl += "\n" + build2d::GetPosition2DFunc(cfg->coordinate_system, cfg->local_to_world);
+        p.glsl += "\nvoid main()\n{\n";
+        p.glsl += "    fragColor = Color;\n";
+        p.glsl += "    gl_Position = GetPosition2D();\n";
+        p.glsl += "}\n";
+        return p.glsl;
+    }
 
-            vsc->AddOutput(SVT_VEC4,"Color");
-
-            vsc->SetMain(vs_main);
-            return(true);
-        }
-
-        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
-        {
-            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
-
-            fsc->SetMain(fs_main);
-            return(true);
-        }
-    };//class MaterialVertexColor2D:public Std2DMaterial
+    std::string BuildFS()
+    {
+        std::string fs = build2d::FSHeader();
+        fs += "layout(location=0) in vec4 fragColor;\n\n";
+        fs += "layout(location=0) out vec4 FragColor;\n\n";
+        fs += "void main()\n{\n";
+        fs += "    FragColor = fragColor;\n";
+        fs += "}\n";
+        return fs;
+    }
 }//namespace
 
 MaterialCreateInfo *CreateVertexColor2D(const contract::PhysicalDeviceProfileLite *profile,const Material2DCreateConfig *cfg)
 {
-    MaterialVertexColor2D mvc2d(cfg);
+    // Build DEF
+    auto defs = build2d::BuildDescriptorDefines(cfg, false, false);
 
-    return mvc2d.Create(profile);
+    std::vector<FixedVertexEntry> vertices;
+    build2d::PushBaseVertexEntries(vertices, cfg);
+    vertices.push_back({VAT_VEC4, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color});
+
+    std::vector<FixedDescriptorEntry> descriptors;
+    build2d::PushBaseDescriptorEntries(descriptors, cfg);
+
+    FixedMaterialDef def {
+        "VertexColor2D",
+        cfg->prim,
+        vertices.data(), uint32_t(vertices.size()),
+        descriptors.data(), uint32_t(descriptors.size()),
+        nullptr, 0,
+    };
+
+    std::string vs = BuildVS(cfg, defs);
+    std::string fs = BuildFS();
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    if(!mci)
+        std::fprintf(stderr, "[VertexColor2D] CompileCompositorMaterial failed\n");
+    return mci;
 }
 
 }//namespace hgl::graph::mtl
