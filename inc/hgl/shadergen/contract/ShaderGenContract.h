@@ -181,38 +181,4 @@ namespace hgl::graph::mtl::contract
         uint64_t hi = 0;
         uint64_t lo = 0;
     };
-
-    struct ShaderGenRequest
-    {
-        uint32_t contract_version = kShaderGenContractVersion;
-
-        uint32_t material_id = 0;
-        MaterialCreateConfigLite material_cfg;
-        ShaderPermutationKeyLite permutation;
-        PipelineModeLite pipeline_mode;
-
-        std::vector<ResourceRequirement> required_resources;
-        std::vector<VertexInputRequirement> vertex_requirements;
-
-        PlatformTier platform_tier = PlatformTier::Unknown;
-        QualityLevel quality_level = QualityLevel::High;
-
-        bool has_physical_device_profile = false;
-        PhysicalDeviceProfileLite physical_device_profile;
-
-        bool enable_debug_info = false;
-        bool enable_fallback = true;
-    };
-
-    struct ShaderGenResult
-    {
-        uint32_t contract_version = kShaderGenContractVersion;
-
-        std::vector<StageSpvBlob> spv_per_stage;
-        ShaderResourceLayout layout;
-        VertexInputLayout vertex_layout;
-        std::vector<BufferStructDesc> buffer_structs;
-        ShaderDiagnostics diagnostics;
-        ShaderCacheKey cache_key;
-    };
 }

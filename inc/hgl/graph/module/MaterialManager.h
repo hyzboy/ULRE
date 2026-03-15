@@ -23,12 +23,6 @@ namespace mtl
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
     class MaterialCreateInfo;
-
-    namespace contract
-    {
-        struct ShaderGenRequest;
-        struct ShaderGenResult;
-    }
 }//namespace mtl
 
 using MaterialID            = int;
