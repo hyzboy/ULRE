@@ -11,7 +11,7 @@ struct MI_Unlit
 };
 
 // MI SSBO
-layout(set=2, binding=0) readonly buffer MaterialInstanceData { MI_Unlit mi_data[]; } mtl;
+layout(set=MATERIAL_SET, binding=0) readonly buffer MaterialInstanceData { MI_Unlit mi_data[]; } mtl;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {

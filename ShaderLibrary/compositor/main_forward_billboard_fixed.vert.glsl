@@ -11,19 +11,21 @@
 #extension GL_EXT_scalar_block_layout : require
 
 // Scene UBOs
+#define VIEWPORT_BINDING 1
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
-SCENE_VIEWPORT_UBO(0, 1);
+SCENE_CAMERA_UBO;
+SCENE_VIEWPORT_UBO;
 
 // L2W SSBO
-layout(set=1, binding=0) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
 
 // MI SSBO (Material set, VS only)
 // Resort() 字母序: TextureBaseColor=0, mtl=1
 struct MaterialInstance {
     uvec2 BillboardSize;
 };
-layout(scalar, set=2, binding=1) readonly buffer MaterialInstanceData {
+layout(scalar, set=MATERIAL_SET, binding=1) readonly buffer MaterialInstanceData {
     MaterialInstance items[];
 } mtl;
 

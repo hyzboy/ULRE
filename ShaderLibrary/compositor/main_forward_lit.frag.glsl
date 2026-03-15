@@ -8,9 +8,10 @@
 // 光照计算由各 surface function 自行完成（支持自定义光照模型）。
 
 // Scene UBOs
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
-SCENE_SKY_UBO(0, 1);
+SCENE_CAMERA_UBO;
+SCENE_SKY_UBO;
 
 // Surface interface
 #include "common/surface_interface.glsl"

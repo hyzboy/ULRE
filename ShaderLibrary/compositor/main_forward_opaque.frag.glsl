@@ -22,13 +22,14 @@ layout(location=0) out vec4 outColor;
 #include "common/lighting.glsl"
 
 // --- Scene Data (shared UBO definitions) ---
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
-SCENE_SKY_UBO(0, 1);
-SCENE_VIEWPORT_UBO(0, 2);
+SCENE_CAMERA_UBO;
+SCENE_SKY_UBO;
+SCENE_VIEWPORT_UBO;
 
 // --- MI SSBO ---
-layout(set=2, binding=0) readonly buffer MaterialInstanceData { MI_Standard mi_data[]; } mtl;
+layout(set=MATERIAL_SET, binding=0) readonly buffer MaterialInstanceData { MI_Standard mi_data[]; } mtl;
 
 void main()
 {

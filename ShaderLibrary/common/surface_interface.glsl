@@ -4,6 +4,8 @@
 #ifndef SURFACE_INTERFACE_GLSL
 #define SURFACE_INTERFACE_GLSL
 
+#include "common/descriptor_macros.glsl"
+
 struct SurfaceInput
 {
     vec3 worldPos;       // camera-relative world position（非绝对世界坐标！）

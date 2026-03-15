@@ -9,11 +9,12 @@
 //   Material set=2 : mtl=0
 
 // Scene UBO declarations (shared with all shaders)
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
+SCENE_CAMERA_UBO;
 
 // L2W SSBO — camera-relative local-to-world matrices, indexed by TransformID
-layout(set=1, binding=0) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
 
 #if GEOMETRY_FETCH_SSBO
     // SSBO 顶点获取

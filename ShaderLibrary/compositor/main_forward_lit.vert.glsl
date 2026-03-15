@@ -9,11 +9,12 @@
 //   Material  set=2 : (varies per surface function)
 
 // Scene UBO
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
+SCENE_CAMERA_UBO;
 
 // L2W SSBO
-layout(set=1, binding=0) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
 
 // Vertex attributes: Position + TexCoord + Normal + TransformID + MaterialInstanceID
 layout(location=0) in vec3 Position;

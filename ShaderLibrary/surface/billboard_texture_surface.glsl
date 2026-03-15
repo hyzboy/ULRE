@@ -2,7 +2,7 @@
 // Billboard 共用 — 采样 TextureBaseColor，无光照
 // Dynamic/Fixed 共用此 surface function
 
-layout(set=2, binding=0) uniform sampler2D TextureBaseColor;
+layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureBaseColor;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {

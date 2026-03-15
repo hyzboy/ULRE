@@ -10,7 +10,7 @@ struct MI_Luminance
 };
 
 // MI SSBO
-layout(set=2, binding=0) readonly buffer MaterialInstanceData { MI_Luminance mi_data[]; } mtl;
+layout(set=MATERIAL_SET, binding=0) readonly buffer MaterialInstanceData { MI_Luminance mi_data[]; } mtl;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {

@@ -10,15 +10,16 @@
 //   Material  set=2 : TextureHeight=0, TextureNormal=1
 
 // Scene UBO
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
+SCENE_CAMERA_UBO;
 
 // L2W SSBO
-layout(set=1, binding=0) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
 
 // VS textures (Material set) — texelFetch 不需要 sampler
-layout(set=2, binding=0) uniform sampler2D TextureHeight;
-layout(set=2, binding=1) uniform sampler2D TextureNormal;
+layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureHeight;
+layout(set=MATERIAL_SET, binding=1) uniform sampler2D TextureNormal;
 
 // Vertex attributes: TransformID only (no Position!)
 layout(location=0) in uint TransformID;

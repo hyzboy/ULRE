@@ -8,8 +8,9 @@
 //   无 Material set (sky 无贴图/MI)
 
 // Scene UBO — sky for procedural sky parameters
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_SKY_UBO(0, 1);
+SCENE_SKY_UBO;
 
 // Surface interface
 #include "common/surface_interface.glsl"

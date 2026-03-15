@@ -9,11 +9,11 @@ struct MI_PBRColor3D
     float roughness;     // [0.04, 1]
     uint  texture_id;    // Texture2DArray layer index
 };
-layout(set=2, binding=2) readonly buffer MaterialInstanceData { MI_PBRColor3D data[]; } mtl;
+layout(set=MATERIAL_SET, binding=2) readonly buffer MaterialInstanceData { MI_PBRColor3D data[]; } mtl;
 
 // Textures (sampler2DArray)
-layout(set=2, binding=0) uniform sampler2DArray TextureBaseColor;
-layout(set=2, binding=1) uniform sampler2DArray TextureNormal;
+layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TextureBaseColor;
+layout(set=MATERIAL_SET, binding=1) uniform sampler2DArray TextureNormal;
 
 // Sky light
 #include "common/skylight_simple.glsl"

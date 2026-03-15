@@ -11,12 +11,12 @@ struct MI_BasicLit
     float ibl_intensity;
     float normal_strength;
 };
-layout(set=2, binding=3) readonly buffer MaterialInstanceData { MI_BasicLit data[]; } mtl;
+layout(set=MATERIAL_SET, binding=3) readonly buffer MaterialInstanceData { MI_BasicLit data[]; } mtl;
 
 // Textures
-layout(set=2, binding=0) uniform sampler2D TextureBaseColor;
-layout(set=2, binding=1) uniform sampler2D TextureNormal;
-layout(set=2, binding=2) uniform sampler2D TextureRoughness;
+layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureBaseColor;
+layout(set=MATERIAL_SET, binding=1) uniform sampler2D TextureNormal;
+layout(set=MATERIAL_SET, binding=2) uniform sampler2D TextureRoughness;
 
 // Sky light
 #include "common/skylight_simple.glsl"

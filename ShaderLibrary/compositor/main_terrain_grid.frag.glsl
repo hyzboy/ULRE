@@ -7,8 +7,9 @@
 //   Scene set=0 : camera=0, viewport=1
 
 // Scene UBO (for specular half-vector)
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
+SCENE_CAMERA_UBO;
 
 // Input from VS
 layout(location=0) in vec4 fragClipPos;

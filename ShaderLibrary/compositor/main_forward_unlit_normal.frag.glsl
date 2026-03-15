@@ -9,8 +9,9 @@
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0
 
+#include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO(0, 0);
+SCENE_CAMERA_UBO;
 
 layout(location=0) flat in uint fragMaterialInstanceID;
 layout(location=1) in vec3 fragWorldPos;

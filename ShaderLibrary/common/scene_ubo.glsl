@@ -7,19 +7,18 @@
 //   uniform SkyInfo      { ... } sky;
 //
 // 使用方式：
+//   #include "common/descriptor_macros.glsl"
 //   #include "common/scene_ubo.glsl"
-//   layout(set=0, binding=0) uniform ViewportInfo viewport_block;   // 如需单独声明
-//   — 或者直接使用预定义宏 —
-//   SCENE_VIEWPORT_UBO(0, 0);   // set=0, binding=0
-//   SCENE_CAMERA_UBO(0, 1);     // set=0, binding=1
-//   SCENE_SKY_UBO(0, 2);        // set=0, binding=2
+//   SCENE_CAMERA_UBO;
+//   SCENE_SKY_UBO;
+//   SCENE_VIEWPORT_UBO;
 
 #ifndef SCENE_UBO_GLSL
 #define SCENE_UBO_GLSL
 
 // ---- ViewportInfo (C++: SBS_ViewportInfo, instance "viewport") ----
-#define SCENE_VIEWPORT_UBO(SET, BINDING) \
-    layout(set=SET, binding=BINDING) uniform ViewportInfo \
+#define SCENE_VIEWPORT_UBO \
+    layout(set=SCENE_SET, binding=VIEWPORT_BINDING) uniform ViewportInfo \
     { \
         mat4 ortho_matrix; \
         uvec2 canvas_resolution; \
@@ -28,8 +27,8 @@
     } viewport
 
 // ---- CameraInfo (C++: SBS_CameraInfo, instance "camera") ----
-#define SCENE_CAMERA_UBO(SET, BINDING) \
-    layout(set=SET, binding=BINDING) uniform CameraInfo \
+#define SCENE_CAMERA_UBO \
+    layout(set=SCENE_SET, binding=CAMERA_BINDING) uniform CameraInfo \
     { \
         mat4 projection; \
         mat4 inverse_projection; \
@@ -51,8 +50,8 @@
     } camera
 
 // ---- SkyInfo (C++: SBS_SkyInfo, instance "sky") ----
-#define SCENE_SKY_UBO(SET, BINDING) \
-    layout(set=SET, binding=BINDING) uniform SkyInfo \
+#define SCENE_SKY_UBO \
+    layout(set=SCENE_SET, binding=SKY_BINDING) uniform SkyInfo \
     { \
         vec4 base_sky_color; \
         vec4 sun_direction; \
