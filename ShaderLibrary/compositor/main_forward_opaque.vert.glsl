@@ -14,7 +14,8 @@
 SCENE_CAMERA_UBO;
 
 // L2W SSBO — camera-relative local-to-world matrices, indexed by TransformID
-layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+#include "common/l2w_ssbo.glsl"
+L2W_SSBO;
 
 #if GEOMETRY_FETCH_SSBO
     // SSBO 顶点获取

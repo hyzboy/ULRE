@@ -15,7 +15,8 @@
 SCENE_CAMERA_UBO;
 
 // L2W SSBO
-layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+#include "common/l2w_ssbo.glsl"
+L2W_SSBO;
 
 // VS textures (Material set) — texelFetch 不需要 sampler
 layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureHeight;

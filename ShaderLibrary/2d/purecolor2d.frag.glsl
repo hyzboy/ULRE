@@ -1,12 +1,12 @@
 // PureColor2D fragment shader
 
+#include "common/material_instance_ssbo.glsl"
+
 struct MaterialInstance {
     vec4 Color;
 };
 
-layout(set=MI_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {
-    MaterialInstance mi[];
-} mtl;
+MI_SSBO;
 
 layout(location=0) flat in uint fragMIID;
 

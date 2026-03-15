@@ -29,11 +29,12 @@ SCENE_SKY_UBO;
 SCENE_VIEWPORT_UBO;
 
 // --- MI SSBO ---
-layout(set=MATERIAL_SET, binding=0) readonly buffer MaterialInstanceData { MI_Standard mi_data[]; } mtl;
+#include "common/material_instance_ssbo.glsl"
+MI_SSBO;
 
 void main()
 {
-    MI_Standard mi = mtl.mi_data[fragMaterialInstanceID];
+    MaterialInstance mi = mtl.mi[fragMaterialInstanceID];
 
     SurfaceInput si;
     si.worldPos    = fragWorldPos;

@@ -2,7 +2,9 @@
 // Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, TextureRoughness=2, mtl=3
 
 // MI SSBO
-struct MI_BasicLit
+#define MI_BINDING 3
+#include "common/material_instance_ssbo.glsl"
+struct MaterialInstance
 {
     uint  base_color;       // packed RGBA8_UNORM
     float metallic;
@@ -11,7 +13,7 @@ struct MI_BasicLit
     float ibl_intensity;
     float normal_strength;
 };
-layout(set=MATERIAL_SET, binding=3) readonly buffer MaterialInstanceData { MI_BasicLit data[]; } mtl;
+MI_SSBO;
 
 // Textures
 layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureBaseColor;
@@ -72,7 +74,7 @@ float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
-    MI_BasicLit mi = mtl.data[miID];
+    MaterialInstance mi = mtl.mi[miID];
 
     vec2 uv = ResolveSurfaceUV(si.uv0);
     float ns = mi.normal_strength > 0.0001 ? mi.normal_strength : 0.35;

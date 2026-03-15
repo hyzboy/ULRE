@@ -3,19 +3,19 @@
 // MI_Unlit: 仅包含 vec4 color (16 bytes)
 
 #include "common/surface_interface.glsl"
+#include "common/material_instance_ssbo.glsl"
 
 // 材质实例数据 — 仅一个颜色值
-struct MI_Unlit
+struct MaterialInstance
 {
     vec4 color;     // RGBA
 };
 
-// MI SSBO
-layout(set=MATERIAL_SET, binding=0) readonly buffer MaterialInstanceData { MI_Unlit mi_data[]; } mtl;
+MI_SSBO;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {
-    MI_Unlit mi = mtl.mi_data[materialInstanceID];
+    MaterialInstance mi = mtl.mi[materialInstanceID];
 
     SurfaceOutput so;
     so.baseColor = mi.color.rgb;
@@ -30,5 +30,5 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 
 float EvalAlpha(SurfaceInput si, uint materialInstanceID)
 {
-    return mtl.mi_data[materialInstanceID].color.a;
+    return mtl.mi[materialInstanceID].color.a;
 }

@@ -3,18 +3,18 @@
 // baseColor = MI.Color.rgb × luminance，alpha = MI.Color.a
 
 #include "common/surface_interface.glsl"
+#include "common/material_instance_ssbo.glsl"
 
-struct MI_Luminance
+struct MaterialInstance
 {
     vec4 color;
 };
 
-// MI SSBO
-layout(set=MATERIAL_SET, binding=0) readonly buffer MaterialInstanceData { MI_Luminance mi_data[]; } mtl;
+MI_SSBO;
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {
-    MI_Luminance mi = mtl.mi_data[materialInstanceID];
+    MaterialInstance mi = mtl.mi[materialInstanceID];
 
     SurfaceOutput so;
     so.baseColor = si.luminance * mi.color.rgb;
@@ -29,5 +29,5 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 
 float EvalAlpha(SurfaceInput si, uint materialInstanceID)
 {
-    return mtl.mi_data[materialInstanceID].color.a;
+    return mtl.mi[materialInstanceID].color.a;
 }

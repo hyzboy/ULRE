@@ -2,11 +2,13 @@
 // Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, TextureRoughness=2, mtl=3
 
 // MI SSBO
-struct MI_TextureBlinnPhong
+#define MI_BINDING 3
+#include "common/material_instance_ssbo.glsl"
+struct MaterialInstance
 {
     float normal_strength;
 };
-layout(set=MATERIAL_SET, binding=3) readonly buffer MaterialInstanceData { MI_TextureBlinnPhong data[]; } mtl;
+MI_SSBO;
 
 // Textures
 layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureBaseColor;
@@ -67,7 +69,7 @@ float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
-    MI_TextureBlinnPhong mi = mtl.data[miID];
+    MaterialInstance mi = mtl.mi[miID];
 
     const float spec_strength = 0.6;
     const float F0            = 0.04;

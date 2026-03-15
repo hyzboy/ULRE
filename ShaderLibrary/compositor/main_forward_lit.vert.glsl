@@ -14,7 +14,8 @@
 SCENE_CAMERA_UBO;
 
 // L2W SSBO
-layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+#include "common/l2w_ssbo.glsl"
+L2W_SSBO;
 
 // Vertex attributes: Position + TexCoord + Normal + TransformID + MaterialInstanceID
 layout(location=0) in vec3 Position;

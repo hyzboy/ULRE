@@ -13,7 +13,7 @@ layout(set=MATERIAL_SET, binding=3) uniform sampler2D TexMR;      // metallic(G)
 #endif
 
 // 材质实例数据 — 从 MI SSBO 读取
-struct MI_Standard
+struct MaterialInstance
 {
     vec4  base_color_factor;
     float metallic_factor;
@@ -23,7 +23,7 @@ struct MI_Standard
     // ...
 };
 
-SurfaceOutput EvalSurface(SurfaceInput si, MI_Standard mi)
+SurfaceOutput EvalSurface(SurfaceInput si, MaterialInstance mi)
 {
     SurfaceOutput so;
     so.baseColor = mi.base_color_factor.rgb;
@@ -51,7 +51,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, MI_Standard mi)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, MI_Standard mi)
+float EvalAlpha(SurfaceInput si, MaterialInstance mi)
 {
     return mi.base_color_factor.a;
 }

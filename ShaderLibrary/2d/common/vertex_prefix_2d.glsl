@@ -19,7 +19,8 @@ SCENE_VIEWPORT_UBO;
 
 // ---- L2W SSBO ----
 #ifdef HAS_L2W
-layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+#include "common/l2w_ssbo.glsl"
+L2W_SSBO;
 #endif
 
 // ---- Vertex inputs (location 连续排列) ----

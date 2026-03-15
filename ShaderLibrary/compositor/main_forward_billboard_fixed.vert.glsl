@@ -18,16 +18,17 @@ SCENE_CAMERA_UBO;
 SCENE_VIEWPORT_UBO;
 
 // L2W SSBO
-layout(set=L2W_SET, binding=L2W_BINDING) readonly buffer LocalToWorldData { mat4 mats[]; } l2w;
+#include "common/l2w_ssbo.glsl"
+L2W_SSBO;
 
 // MI SSBO (Material set, VS only)
 // Resort() 字母序: TextureBaseColor=0, mtl=1
+#define MI_BINDING 1
+#include "common/material_instance_ssbo.glsl"
 struct MaterialInstance {
     uvec2 BillboardSize;
 };
-layout(scalar, set=MATERIAL_SET, binding=1) readonly buffer MaterialInstanceData {
-    MaterialInstance items[];
-} mtl;
+MI_SSBO_SCALAR;
 
 // Vertex attributes: Position + TransformID + MaterialInstanceID
 layout(location=0) in vec3  Position;
@@ -37,7 +38,7 @@ layout(location=2) in uint  MaterialInstanceID;
 // Output to FS
 layout(location=0) out vec2 fragTexCoord;
 
-MaterialInstance GetMI() { return mtl.items[MaterialInstanceID]; }
+MaterialInstance GetMI() { return mtl.mi[MaterialInstanceID]; }
 
 void main()
 {

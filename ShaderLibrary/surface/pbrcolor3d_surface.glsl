@@ -2,14 +2,16 @@
 // Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, mtl=2
 
 // MI SSBO
-struct MI_PBRColor3D
+#define MI_BINDING 2
+#include "common/material_instance_ssbo.glsl"
+struct MaterialInstance
 {
     uint  base_color;    // packed RGBA8_UNORM
     float metallic;      // [0, 1]
     float roughness;     // [0.04, 1]
     uint  texture_id;    // Texture2DArray layer index
 };
-layout(set=MATERIAL_SET, binding=2) readonly buffer MaterialInstanceData { MI_PBRColor3D data[]; } mtl;
+MI_SSBO;
 
 // Textures (sampler2DArray)
 layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TextureBaseColor;
@@ -66,7 +68,7 @@ vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec3 normal_ts)
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
-    MI_PBRColor3D mi = mtl.data[miID];
+    MaterialInstance mi = mtl.mi[miID];
 
     vec2 uv = fract(abs(si.uv0));
     vec4 tex_albedo = texture(TextureBaseColor, vec3(uv, float(mi.texture_id)));
