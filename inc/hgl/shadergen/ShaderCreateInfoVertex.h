@@ -7,17 +7,15 @@ namespace hgl::graph
 {
     class ShaderCreateInfoVertex:public ShaderCreateInfo
     {
-        VertexShaderDescriptorInfo vsdi;
+        VertexShaderDescriptorInfo *vsdi;
 
     public:
 
-        VIAArray &GetInput(){return vsdi.GetInput();}
-
-        ShaderDescriptorInfo *GetSDI()override{return &vsdi;}
+        VIAArray &GetInput(){return vsdi->GetInput();}
 
     public:
 
-        ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(){ShaderCreateInfo::Init(&vsdi,m);}
+        ShaderCreateInfoVertex(MaterialDescriptorInfo *m);
         ~ShaderCreateInfoVertex()override=default;
 
         int AddInput(VIAList &);

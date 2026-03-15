@@ -6,17 +6,11 @@ include_directories(${ULRE_3RDPTY_ROOT_PATH}/inja/third_party/include)
 
 SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoGeometry.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoFragment.h
-                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoCompute.h)
+                                ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoVertex.h)
 
 SET(SHADER_CREATER_SOURCE_FILES ShaderCreateInfo.cpp
                                 ShaderCreateInfoMap.cpp
-                                ShaderCreateInfoVertex.cpp
-                                ShaderCreateInfoGeometry.cpp
-                                ShaderCreateInfoFragment.cpp
-                                ShaderCreateInfoCompute.cpp)
+                                ShaderCreateInfoVertex.cpp)
 
 SOURCE_GROUP("Material Create Info\\Shader" FILES   ${SHADER_CREATER_HEADER_FILES}
                                                     ${SHADER_CREATER_SOURCE_FILES})

@@ -26,22 +26,18 @@ static const char *GetShaderStageNameByStage(const ShaderStage stage)
     }
 }
 
-ShaderCreateInfo::ShaderCreateInfo()
+ShaderCreateInfo::ShaderCreateInfo(ShaderDescriptorInfo *s,MaterialDescriptorInfo *m)
 {
-    mem_zero(shader_stage);
-    mdi=nullptr;
-
-    spv_data=nullptr;
-}
-
-void ShaderCreateInfo::Init(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m)
-{
-    shader_stage=sdi->GetShaderStage();
+    sdi=s;
     mdi=m;
+    shader_stage=s->GetShaderStage();
+    spv_data=nullptr;
 }
 
 ShaderCreateInfo::~ShaderCreateInfo()
 {
+    delete sdi;
+
     if(spv_data)
         FreeSPVData(spv_data);
 }

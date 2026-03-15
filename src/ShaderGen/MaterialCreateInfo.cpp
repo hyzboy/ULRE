@@ -1,8 +1,6 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
-#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/math/Matrix.h>
@@ -157,8 +155,8 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
     if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdi));else vert=nullptr;
-    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
-    if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
+    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfo(new GeometryShaderDescriptorInfo(),&mdi));else geom=nullptr;
+    if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfo(new FragmentShaderDescriptorInfo(),&mdi));else frag=nullptr;
 
     ubo_range=0;
     ssbo_range=0;

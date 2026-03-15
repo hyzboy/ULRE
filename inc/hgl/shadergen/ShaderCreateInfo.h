@@ -27,6 +27,7 @@ protected:
 
     ShaderStage shader_stage;                      ///<着色器阶段
 
+    ShaderDescriptorInfo *sdi;                      ///<着色器描述符信息(owned)
     MaterialDescriptorInfo *mdi;
 
     std::string final_shader;
@@ -39,16 +40,12 @@ protected:
 
 public:
 
-    virtual ShaderDescriptorInfo *GetSDI()=0;
+    ShaderDescriptorInfo *GetSDI(){return sdi;}
     const ShaderStage GetShaderStage()const{return shader_stage;}
-
-protected:
-
-    void Init(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
 
 public:
 
-    ShaderCreateInfo();
+    ShaderCreateInfo(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
     virtual ~ShaderCreateInfo();
 
     void AddStruct(const std::string &);

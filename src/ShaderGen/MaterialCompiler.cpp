@@ -10,7 +10,6 @@
 #include <hgl/mtl/Material2DCreateConfig.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
-#include <hgl/shadergen/ShaderCreateInfoFragment.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <cstring>
 #include <cstdio>
@@ -270,7 +269,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     ShaderCreateInfoVertex   *vert = mci->GetVS();
-    ShaderCreateInfoFragment *frag = mci->GetFS();
+    ShaderCreateInfo         *frag = mci->GetFS();
 
     if (vert)
         vert->SetFinalGLSL(vs_glsl);

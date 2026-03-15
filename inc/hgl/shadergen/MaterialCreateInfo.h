@@ -14,8 +14,7 @@ namespace hgl::graph
     struct ShaderBufferSource;
 
     class ShaderCreateInfoVertex;
-    class ShaderCreateInfoGeometry;
-    class ShaderCreateInfoFragment;
+    class ShaderCreateInfo;
 
     namespace mtl
     {
@@ -50,8 +49,8 @@ namespace hgl::graph
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
             ShaderCreateInfoVertex *vert;
-            ShaderCreateInfoGeometry *geom;
-            ShaderCreateInfoFragment *frag;
+            ShaderCreateInfo *geom;
+            ShaderCreateInfo *frag;
 
             bool has_l2w_matrix;
 
@@ -71,8 +70,8 @@ namespace hgl::graph
         //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}
 
             ShaderCreateInfoVertex *   GetVS()const{return vert;}
-            ShaderCreateInfoGeometry * GetGS()const{return geom;}
-            ShaderCreateInfoFragment * GetFS()const{return frag;}
+            ShaderCreateInfo *         GetGS()const{return geom;}
+            ShaderCreateInfo *         GetFS()const{return frag;}
 
             const ShaderCreateInfoMap &GetShaderMap()const{return shader_map;}
 
