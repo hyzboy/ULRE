@@ -49,7 +49,6 @@ namespace hgl::graph
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
             ShaderCreateInfoVertex *vert;
-            ShaderCreateInfo *geom;
             ShaderCreateInfo *frag;
 
             bool has_l2w_matrix;
@@ -65,12 +64,10 @@ namespace hgl::graph
                     bool        hasVertex       ()const{return hasShader(ShaderStage::Vertex);}
         //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessControl);}
         //          bool        hasTessEval     ()const{return hasShader(ShaderStage::TessEval);}
-                    bool        hasGeometry     ()const{return hasShader(ShaderStage::Geometry);}
                     bool        hasFragment     ()const{return hasShader(ShaderStage::Fragment);}
         //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}
 
             ShaderCreateInfoVertex *   GetVS()const{return vert;}
-            ShaderCreateInfo *         GetGS()const{return geom;}
             ShaderCreateInfo *         GetFS()const{return frag;}
 
             const ShaderCreateInfoMap &GetShaderMap()const{return shader_map;}

@@ -155,7 +155,6 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     : config(*mc)
 {
     if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdi));else vert=nullptr;
-    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfo(new GeometryShaderDescriptorInfo(),&mdi));else geom=nullptr;
     if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfo(new FragmentShaderDescriptorInfo(),&mdi));else frag=nullptr;
 
     ubo_range=0;
