@@ -13,18 +13,11 @@ namespace
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
     };
 
-#ifdef HGL_L2W_USE_SSBO
-    constexpr DescriptorKind SKY_MINIMAL_L2W_KIND = DescriptorKind::SSBO;
-#endif
-#ifdef HGL_L2W_USE_UBO
-    constexpr DescriptorKind SKY_MINIMAL_L2W_KIND = DescriptorKind::UBO;
-#endif
-
     constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "sky", "SkyInfo", nullptr },
-        { DescriptorSetType::Transform, SKY_MINIMAL_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
     };
 
     constexpr FixedMaterialDef SKY_MINIMAL_DEF {

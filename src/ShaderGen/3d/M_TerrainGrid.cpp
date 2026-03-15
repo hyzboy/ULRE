@@ -16,19 +16,12 @@ namespace
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
     };
 
-#ifdef HGL_L2W_USE_SSBO
-    constexpr DescriptorKind TERRAIN_GRID_L2W_KIND = DescriptorKind::SSBO;
-#endif
-#ifdef HGL_L2W_USE_UBO
-    constexpr DescriptorKind TERRAIN_GRID_L2W_KIND = DescriptorKind::UBO;
-#endif
-
     // Resort 字母序: camera=0, viewport=1 (Scene)
     //                TextureHeight=0, TextureNormal=1 (Material)
     constexpr FixedDescriptorEntry TERRAIN_GRID_DESCRIPTORS[] = {
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",     nullptr },
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",       nullptr },
-        { DescriptorSetType::Transform, TERRAIN_GRID_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
         { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureHeight", nullptr, "sampler2D" },
         { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureNormal", nullptr, "sampler2D" },
     };

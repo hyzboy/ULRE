@@ -26,25 +26,11 @@ namespace
         { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
     };
 
-    #ifdef HGL_L2W_USE_SSBO
-    constexpr DescriptorKind VERTEX_LUMINANCE_3D_L2W_KIND = DescriptorKind::SSBO;
-    #endif
-    #ifdef HGL_L2W_USE_UBO
-    constexpr DescriptorKind VERTEX_LUMINANCE_3D_L2W_KIND = DescriptorKind::UBO;
-    #endif
-
-    #ifdef HGL_MI_USE_SSBO
-    constexpr DescriptorKind VERTEX_LUMINANCE_3D_MI_KIND = DescriptorKind::SSBO;
-    #endif
-    #ifdef HGL_MI_USE_UBO
-    constexpr DescriptorKind VERTEX_LUMINANCE_3D_MI_KIND = DescriptorKind::UBO;
-    #endif
-
-    constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
+      constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
-        { DescriptorSetType::Transform, VERTEX_LUMINANCE_3D_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
-        { DescriptorSetType::Material, VERTEX_LUMINANCE_3D_MI_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
+        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
     };
 
     constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF_VEC3 {

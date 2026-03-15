@@ -1,10 +1,15 @@
 ﻿#pragma once
 
+#include<hgl/mtl/DescriptorKind.h>
+
 // LocalToWorld options
 // Define HGL_L2W_USE_SSBO for storage buffer, or HGL_L2W_USE_UBO for uniform buffer.
 // Default: SSBO. If neither is defined, defaults to SSBO.
 #if !defined(HGL_L2W_USE_SSBO) && !defined(HGL_L2W_USE_UBO)
-#define HGL_L2W_USE_SSBO
+    #define HGL_L2W_USE_SSBO
+    #define TransformDescriptorKind DescriptorKind::SSBO
+#else
+    #define TransformDescriptorKind DescriptorKind::UBO
 #endif
 
 #if defined(HGL_L2W_USE_SSBO) && defined(HGL_L2W_USE_UBO)
@@ -26,7 +31,10 @@
 // Define HGL_MI_USE_SSBO for storage buffer, or HGL_MI_USE_UBO for uniform buffer.
 // Default: SSBO. If neither is defined, defaults to SSBO.
 #if !defined(HGL_MI_USE_SSBO) && !defined(HGL_MI_USE_UBO)
-#define HGL_MI_USE_SSBO
+    #define HGL_MI_USE_SSBO
+    #define MaterialInstanceDescriptorKind DescriptorKind::SSBO
+#else
+    #define MaterialInstanceDescriptorKind DescriptorKind::UBO
 #endif
 
 #if defined(HGL_MI_USE_SSBO) && defined(HGL_MI_USE_UBO)

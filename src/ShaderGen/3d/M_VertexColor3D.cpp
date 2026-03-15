@@ -15,17 +15,10 @@ namespace
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
     };
 
-    #ifdef HGL_L2W_USE_SSBO
-    constexpr DescriptorKind VERTEX_COLOR_3D_L2W_KIND = DescriptorKind::SSBO;
-    #endif
-    #ifdef HGL_L2W_USE_UBO
-    constexpr DescriptorKind VERTEX_COLOR_3D_L2W_KIND = DescriptorKind::UBO;
-    #endif
-
-    constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
+        constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
-        { DescriptorSetType::Transform, VERTEX_COLOR_3D_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
     };
 
     constexpr FixedMaterialDef VERTEX_COLOR_3D_DEF {
