@@ -489,4 +489,22 @@ bool MaterialCreateInfo::CreateShader()
 
     return(true);
 }
+
+bool MaterialCreateInfo::CreateShaderDirect()
+{
+    if(shader_map.IsEmpty())
+        return(false);
+
+    mdi.Resort();
+
+    for(auto& kv : shader_map)
+    {
+        ShaderCreateInfo *sc = kv.second;
+
+        if(!sc->CreateShaderFromFinalGLSL())
+            return(false);
+    }
+
+    return(true);
+}
 }//namespace hgl::graph::mtl

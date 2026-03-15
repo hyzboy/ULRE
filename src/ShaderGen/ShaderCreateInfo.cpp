@@ -481,6 +481,24 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
     return(true);
 }
 
+bool ShaderCreateInfo::CreateShaderFromFinalGLSL()
+{
+    if(final_shader.empty())
+        return(false);
+
+#ifdef _DEBUG
+    std::string log_text=GetShaderStageNameByStage(shader_stage);
+    log_text+=" shader (direct): \n";
+    log_text+=final_shader;
+    LogInfo(log_text.c_str());
+#endif
+
+    if(!CompileToSPV())
+        return(false);
+
+    return(true);
+}
+
 bool ShaderCreateInfo::CompileToSPV()
 {
     spv_data=CompileShader(uint32_t(shader_stage),final_shader.c_str());

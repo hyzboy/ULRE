@@ -135,7 +135,11 @@ public:
     const std::string &GetOutputStruct()const{return output_struct;}
     const std::string &GetShaderSource()const{return final_shader;}
 
+    void SetFinalGLSL(const std::string &glsl){final_shader=glsl;}
+    void SetFinalGLSL(const char *glsl){final_shader=glsl?glsl:"";}
+
     bool CreateShader(ShaderCreateInfo *);
+    bool CreateShaderFromFinalGLSL();            ///< 跳过 ProcXXX，直接编译 final_shader 到 SPV
 
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;

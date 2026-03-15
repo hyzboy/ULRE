@@ -71,6 +71,26 @@ bool ValidateFSMainBusinessHelperConsistency(
     const std::string &generated_fs);
 
 /**
+ * 编译 Compositor 模板产出的完整 GLSL → MaterialCreateInfo*。
+ *
+ * 与 CompileFixedMaterial 共享相同的 descriptor/vertex 元数据填充逻辑（Steps 1-5），
+ * 但跳过 ProcXXX 管线，使用 SetFinalGLSL() + CreateShaderDirect() 直接编译。
+ *
+ * @param profile   设备能力 profile
+ * @param def       材质定义（descriptor/vertex/MI 元数据，与 CompileFixedMaterial 共用 FixedMaterialDef）
+ * @param vs_glsl   完整的 vertex shader GLSL（含 #version, layout, main）
+ * @param fs_glsl   完整的 fragment shader GLSL（含 #version, layout, main）
+ * @param config    运行时配置（可选）
+ * @return          编译好的 MaterialCreateInfo*; 失败返回 nullptr
+ */
+MaterialCreateInfo *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const FixedMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material3DCreateConfig *config = nullptr);
+
+/**
  * 材质 fallback 工厂辅助宏。（待实现，参见任务 2.3）
  * 先尝试从 recipe 文件加载（file-driven），文件不存在时用 hardcode def。
  * 在 M_Xxx.cpp 工厂函数中使用：

@@ -979,6 +979,166 @@ MaterialCreateInfo *CompileFixedMaterial(
     return mci;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CompileCompositorMaterial — Compositor 模板完整 GLSL → MaterialCreateInfo
+//
+// 与 CompileFixedMaterial 共享 Steps 1-5（descriptor/vertex/MI 元数据），
+// 但跳过 ProcXXX 管线，使用 SetFinalGLSL + CreateShaderDirect 直接编译。
+// ═══════════════════════════════════════════════════════════════════════════
+
+MaterialCreateInfo *CompileCompositorMaterial(
+    const contract::PhysicalDeviceProfileLite *profile,
+    const FixedMaterialDef &    def,
+    const std::string &         vs_glsl,
+    const std::string &         fs_glsl,
+    const Material3DCreateConfig *config)
+{
+    if (vs_glsl.empty() || fs_glsl.empty())
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s: vs_glsl or fs_glsl is empty\n",
+            def.name ? def.name : "<unnamed>");
+        return nullptr;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 1: Config
+    // ─────────────────────────────────────────────────────────────
+
+    Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
+    cfg.prim = config ? config->prim : def.primitive_type;
+    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+    const bool infer_has_camera = HasDescriptorNamed(def, "camera") || HasDescriptorNamed(def, "CameraInfo");
+    const bool infer_has_sky    = HasDescriptorNamed(def, "sky")    || HasDescriptorNamed(def, "SkyInfo");
+    const bool infer_has_l2w    = HasDescriptorNamed(def, "l2w")    || HasDescriptorNamed(def, "LocalToWorldData");
+    const bool infer_has_mi     = HasDescriptorNamed(def, "mtl")
+                               || HasDescriptorNamed(def, "MaterialInstanceData")
+                               || HasPerMaterialDescriptor(def)
+                               || HasVertexEntry(def, Assign::MaterialInstanceID::VIS_NAME)
+                               || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
+
+    cfg.camera           = cfg.camera           || infer_has_camera;
+    cfg.sky              = cfg.sky              || infer_has_sky;
+    cfg.local_to_world   = cfg.local_to_world   || infer_has_l2w;
+    cfg.material_instance = cfg.material_instance || infer_has_mi;
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 2: Create MaterialCreateInfo
+    // ─────────────────────────────────────────────────────────────
+
+    MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
+    if (profile)
+        mci->SetDevice(profile);
+
+    auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s failed: %s\n",
+            def.name ? def.name : "<unnamed>",
+            reason ? reason : "<unknown>");
+        delete mci;
+        return nullptr;
+    };
+
+    uint32_t mi_stage_bits = uint32_t(ShaderStage::Fragment);
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 3: Add Descriptors from FixedDescriptorEntry[]
+    // ─────────────────────────────────────────────────────────────
+
+    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    {
+        const FixedDescriptorEntry &entry = def.descriptor_entries[i];
+        const uint32_t stage_bits = entry.stage_flags;
+
+        switch (entry.kind)
+        {
+        case DescriptorKind::UBO:
+            if (entry.struct_name)
+            {
+                if (CStrEq(entry.struct_name, SBS_ViewportInfo.struct_name))
+                    { mci->AddUBOStruct(stage_bits, SBS_ViewportInfo); break; }
+                if (CStrEq(entry.struct_name, SBS_CameraInfo.struct_name))
+                    { mci->AddUBOStruct(stage_bits, SBS_CameraInfo); break; }
+                if (CStrEq(entry.struct_name, SBS_SkyInfo.struct_name))
+                    { mci->AddUBOStruct(stage_bits, SBS_SkyInfo); break; }
+                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
+                    { mci->SetLocalToWorld(stage_bits); break; }
+                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
+                    { mi_stage_bits = stage_bits; break; }
+            }
+            break;
+
+        case DescriptorKind::SSBO:
+            if (entry.struct_name)
+            {
+                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
+                    { mci->SetLocalToWorld(stage_bits); break; }
+                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
+                    { mi_stage_bits = stage_bits; break; }
+            }
+            break;
+
+        case DescriptorKind::Texture:
+        case DescriptorKind::TextureSampler:
+            // Compositor 模板目前不使用独立纹理描述符
+            // （纹理通过 MI struct 内的 sampler 绑定）
+            break;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 4: Add Vertex Inputs from FixedVertexEntry[]
+    // ─────────────────────────────────────────────────────────────
+
+    ShaderCreateInfoVertex *vsc = mci->GetVS();
+    if (vsc)
+    {
+        for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+        {
+            const FixedVertexEntry &entry = def.vertex_entries[i];
+            vsc->AddInput(entry.type, entry.name, entry.input_rate, entry.group);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 5: MaterialInstance
+    // ─────────────────────────────────────────────────────────────
+
+    if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
+    {
+        mci->SetMaterialInstance(
+            def.mi_glsl_codes,
+            def.mi_struct_bytes,
+            mi_stage_bits);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
+    // ─────────────────────────────────────────────────────────────
+
+    ShaderCreateInfoVertex   *vert = mci->GetVS();
+    ShaderCreateInfoFragment *frag = mci->GetFS();
+
+    if (vert)
+        vert->SetFinalGLSL(vs_glsl);
+
+    if (frag)
+        frag->SetFinalGLSL(fs_glsl);
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 7: Compile directly → SPV
+    // ─────────────────────────────────────────────────────────────
+
+    if (!mci->CreateShaderDirect())
+    {
+        return FailAfterMci("CreateShaderDirect() failed (check GLSLCompiler log)");
+    }
+
+    return mci;
+}
+
 MaterialCreateInfo *CompileComposedBusinessMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    base_fixed_def,

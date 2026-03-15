@@ -1,11 +1,16 @@
 #version 450
 
 // === Compositor Template: Forward Opaque FS ===
+//
+// Descriptor binding 约定（Resort() 按字母序分配）：
+//   Scene    set=0 : camera=0, sky=1, viewport=2
+//   Transform set=1 : l2w=0
+//   Material set=2 : mtl=0
 
 layout(location=0) in vec3 fragWorldPos;
 layout(location=1) in vec3 fragWorldNormal;
 layout(location=2) in vec2 fragUV0;
-layout(location=3) flat in uint fragInstanceID;
+layout(location=3) flat in uint fragMaterialInstanceID;
 
 layout(location=0) out vec4 outColor;
 
@@ -18,16 +23,16 @@ layout(location=0) out vec4 outColor;
 
 // --- Scene Data (shared UBO definitions) ---
 #include "common/scene_ubo.glsl"
-SCENE_VIEWPORT_UBO(0, 0);
-SCENE_CAMERA_UBO(0, 1);
-SCENE_SKY_UBO(0, 2);
+SCENE_CAMERA_UBO(0, 0);
+SCENE_SKY_UBO(0, 1);
+SCENE_VIEWPORT_UBO(0, 2);
 
 // --- MI SSBO ---
-layout(set=2, binding=0) readonly buffer MI_Buffer { MI_Standard mi_data[]; };
+layout(set=2, binding=0) readonly buffer MaterialInstanceData { MI_Standard mi_data[]; } mtl;
 
 void main()
 {
-    MI_Standard mi = mi_data[fragInstanceID];    // 简化——实际需要 TransformID → MI_ID 映射
+    MI_Standard mi = mtl.mi_data[fragMaterialInstanceID];
 
     SurfaceInput si;
     si.worldPos    = fragWorldPos;
