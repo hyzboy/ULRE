@@ -2,11 +2,54 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include"S_PureColor3D.h"
+#include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
 #include<string>
 
 namespace hgl::graph::mtl{
+namespace
+{
+    constexpr const char pure_color_3d_mi_codes[] = "vec4 Color;";
+    constexpr const uint32_t pure_color_3d_mi_bytes = 16;
+
+    constexpr FixedVertexEntry PURE_COLOR_3D_VERTEX[] = {
+        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
+    };
+
+    #ifdef HGL_L2W_USE_SSBO
+    constexpr DescriptorKind PURE_COLOR_3D_L2W_KIND = DescriptorKind::SSBO;
+    #endif
+    #ifdef HGL_L2W_USE_UBO
+    constexpr DescriptorKind PURE_COLOR_3D_L2W_KIND = DescriptorKind::UBO;
+    #endif
+
+    #ifdef HGL_MI_USE_SSBO
+    constexpr DescriptorKind PURE_COLOR_3D_MI_KIND = DescriptorKind::SSBO;
+    #endif
+    #ifdef HGL_MI_USE_UBO
+    constexpr DescriptorKind PURE_COLOR_3D_MI_KIND = DescriptorKind::UBO;
+    #endif
+
+    constexpr FixedDescriptorEntry PURE_COLOR_3D_DESCRIPTORS[] = {
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",   nullptr },
+        { DescriptorSetType::Transform, PURE_COLOR_3D_L2W_KIND, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+        { DescriptorSetType::Material,  PURE_COLOR_3D_MI_KIND,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
+    };
+
+    constexpr FixedMaterialDef PURE_COLOR_3D_DEF {
+        "PureColor3D",
+        PrimitiveType::Triangles,
+        PURE_COLOR_3D_VERTEX,
+        uint32_t(sizeof(PURE_COLOR_3D_VERTEX) / sizeof(PURE_COLOR_3D_VERTEX[0])),
+        PURE_COLOR_3D_DESCRIPTORS,
+        uint32_t(sizeof(PURE_COLOR_3D_DESCRIPTORS) / sizeof(PURE_COLOR_3D_DESCRIPTORS[0])),
+        pure_color_3d_mi_codes,
+        pure_color_3d_mi_bytes,
+    };
+}
 
 MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
