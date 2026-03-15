@@ -5,9 +5,7 @@
 #include <hgl/common/InterpolationDef.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/log/Log.h>
-#include <ankerl/unordered_dense.h>
 #include<string>
-#include<vector>
 
 namespace hgl{namespace graph
 {
@@ -31,44 +29,11 @@ protected:
 
     MaterialDescriptorInfo *mdi;
 
-protected:
-
-    ankerl::unordered_dense::set<std::string> define_macro_set;
-    ankerl::unordered_dense::set<std::string> define_line_set;
-
-    std::string output_struct;
-
-    std::string mi_codes;
-
-    std::vector<const char *> user_data_list;
-    std::vector<const char *> function_list;
-    std::string main_function;
-
     std::string final_shader;
 
     SPVData *spv_data;
 
 protected:
-
-    virtual bool ProcHeader(){return(true);}
-
-    virtual bool ProcDefine();
-    virtual bool ProcLayout(){return(true);}
-
-    virtual bool ProcInput(ShaderCreateInfo *);
-
-    virtual bool IsEmptyOutput()const=0;
-    virtual void GetOutputStrcutString(std::string &){}
-    virtual bool ProcOutput();
-
-    virtual bool ProcStruct();
-
-    virtual bool ProcMI();
-
-    virtual bool ProcUBO();
-    virtual bool ProcSSBO();
-    virtual bool ProcConstantID();
-    virtual bool ProcSampler();
 
     bool CompileToSPV();
 
@@ -86,16 +51,6 @@ public:
     ShaderCreateInfo();
     virtual ~ShaderCreateInfo();
 
-    bool AddDefine(const std::string &m,const std::string &v);
-    bool AddDefine(const char *m,const char *v)
-    {
-        return AddDefine(std::string(m?m:""),std::string(v?v:""));
-    }
-    bool AddDefineFromStdString(const std::string &m,const std::string &v)
-    {
-        return AddDefine(m,v);
-    }
-
     void AddStruct(const std::string &);
     void AddStruct(const char *name)
     {
@@ -105,9 +60,6 @@ public:
     bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);
     bool AddTextureSampler(DescriptorSetType type,const TextureSamplerDescriptor *sd);
-
-    void AddUserData(const char *str){user_data_list.push_back(str);}
-    void AddFunction(const char *str){function_list.push_back(str);}
 
     void SetMaterialInstance(UBODescriptor *,const std::string &);
     void SetMaterialInstance(SSBODescriptor *,const std::string &);
@@ -119,27 +71,13 @@ public:
     {
         SetMaterialInstance(ssbo,std::string(mi?mi:""));
     }
-    virtual void AddMaterialInstanceOutput()=0;
 
-    void SetMain(const std::string &str){main_function=str;}
-    void SetMain(const char *str){main_function=str?str:"";}
-    void SetMainFromStdString(const std::string &str)
-    {
-        main_function=str;
-    }
-    void SetMain(const char *str,const int len)
-    {
-        main_function.assign(str?str:"",str?size_t(len):0);
-    }
-
-    const std::string &GetOutputStruct()const{return output_struct;}
     const std::string &GetShaderSource()const{return final_shader;}
 
     void SetFinalGLSL(const std::string &glsl){final_shader=glsl;}
     void SetFinalGLSL(const char *glsl){final_shader=glsl?glsl:"";}
 
-    bool CreateShader(ShaderCreateInfo *);
-    bool CreateShaderFromFinalGLSL();            ///< 跳过 ProcXXX，直接编译 final_shader 到 SPV
+    bool CreateShaderFromFinalGLSL();            ///< 直接编译 final_shader 到 SPV
 
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;

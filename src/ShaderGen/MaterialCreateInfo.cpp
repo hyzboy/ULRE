@@ -362,12 +362,9 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
     mdi.AddUBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,mi_ubo);
 #endif
 
-    const std::string MI_MAX_COUNT_STRING=std::to_string(mi_max_count);
-
     ForEachShaderByStage(shader_map,shader_stage_flag_bits,
         [&](ShaderCreateInfo &shader,ShaderStage)
         {
-            shader.AddDefine("MI_MAX_COUNT",MI_MAX_COUNT_STRING);
 #ifdef HGL_MI_USE_SSBO
             shader.SetMaterialInstance(mi_ssbo,mi_codes);
 #endif
@@ -403,17 +400,6 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     mdi.AddUBO(shader_stage_flag_bits,SBS_LocalToWorld.set_type,l2w_ubo);
 #endif
 
-    const std::string L2W_MAX_COUNT_STRING=std::to_string(l2w_max_count);
-
-    ForEachShaderByStage(shader_map,shader_stage_flag_bits,
-        [&](ShaderCreateInfo &shader,ShaderStage)
-        {
-            shader.AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
-// #if defined(HGL_L2W_USE_SSBO)
-//             shader.AddDefine("L2W_USE_SSBO","1");
-// #endif
-        });
-
     l2w_shader_stage=shader_stage_flag_bits;
 
     return(true);
@@ -434,30 +420,6 @@ void MaterialCreateInfo::SetDevice(const contract::PhysicalDeviceProfileLite *pr
 
     ubo_range=static_cast<uint32_t>((profile_ubo>max_u32)?max_u32:profile_ubo);
     ssbo_range=static_cast<uint32_t>((profile_ssbo>max_u32)?max_u32:profile_ssbo);
-}
-
-bool MaterialCreateInfo::CreateShader()
-{
-    if(shader_map.IsEmpty())
-        return(false);
-
-    mdi.Resort();
-
-    ShaderCreateInfo *last=nullptr;
-
-    for(auto& kv : shader_map)
-    {
-        ShaderCreateInfo *sc = kv.second;
-
-        if(static_cast<uint32_t>(sc->GetShaderStage())<mi_shader_stage)
-            sc->AddMaterialInstanceOutput();
-
-        sc->CreateShader(last);
-
-        last=sc;
-    }
-
-    return(true);
 }
 
 bool MaterialCreateInfo::CreateShaderDirect()

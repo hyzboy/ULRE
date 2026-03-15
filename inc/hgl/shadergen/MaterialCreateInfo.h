@@ -147,8 +147,7 @@ namespace hgl::graph
                 return AddTextureSampler(flag_bits,set_type,st,std::string(name?name:""));
             }
 
-            bool CreateShader();
-            bool CreateShaderDirect();               ///< 跳过 ProcXXX，直接编译各阶段的 FinalGLSL 到 SPV
+            bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph

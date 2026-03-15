@@ -9,13 +9,6 @@ class ShaderCreateInfoFragment:public ShaderCreateInfo
 {
     FragmentShaderDescriptorInfo fsdi;
 
-protected:
-
-    bool IsEmptyOutput()const override{return false;/*这个返回啥无所谓，因为Fragment Shader走自己的ProcOutput*/ }
-    bool ProcOutput() override;
-
-    void AddMaterialInstanceOutput() override{};
-
 public:
 
     ShaderDescriptorInfo *GetSDI()override{return &fsdi;}
@@ -24,13 +17,5 @@ public:
 
     ShaderCreateInfoFragment(MaterialDescriptorInfo *m):ShaderCreateInfo(){ShaderCreateInfo::Init(&fsdi,m);}
     ~ShaderCreateInfoFragment()=default;
-
-    int AddOutput(VIAList &);
-    int AddOutput(const VAType &type,const std::string &name,Interpolation inter=Interpolation::Smooth);
-    int AddOutput(const char *type,const std::string &name,Interpolation inter=Interpolation::Smooth);
-    int AddOutput(const VAType &type,const char *name,Interpolation inter=Interpolation::Smooth)
-    {
-        return AddOutput(type,std::string(name?name:""),inter);
-    }
 };
 }}//namespace hgl::graph

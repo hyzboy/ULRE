@@ -728,7 +728,7 @@ int main(int argc, char **argv)
             }
             else
             {
-                rep.compile_ok = mci->CreateShader();
+                rep.compile_ok = mci->CreateShaderDirect();
                 if (!rep.compile_ok)
                     ++compile_fail_count;
 

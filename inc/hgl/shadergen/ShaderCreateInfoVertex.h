@@ -9,12 +9,6 @@ namespace hgl::graph
     {
         VertexShaderDescriptorInfo vsdi;
 
-        bool ProcSubpassInput();
-        bool ProcInput(ShaderCreateInfo *) override;
-
-        bool IsEmptyOutput()const override{return vsdi.IsEmptyOutput();}
-        void GetOutputStrcutString(std::string &str) override;
-
     public:
 
         VIAArray &GetInput(){return vsdi.GetInput();}
@@ -28,25 +22,5 @@ namespace hgl::graph
 
         int AddInput(VIAList &);
         int AddInput(const VAType &type,const std::string &name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic);
-        int AddInput(const char *type,const std::string &name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic);
-        int AddInput(const VAType &type,const char *name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic)
-        {
-            return AddInput(type,std::string(name?name:""),input_rate,group);
-        }
-
-        int hasInput(const char *);
-
-        int AddOutput(SVList &);
-        int AddOutput(const SVType &type,const std::string &name,Interpolation inter=Interpolation::Smooth);
-        int AddOutput(const SVType &type,const char *name,Interpolation inter=Interpolation::Smooth)
-        {
-            return AddOutput(type,std::string(name?name:""),inter);
-        }
-        void AddMaterialInstanceOutput() override;
-
-        void AddAssignTransform();
-        void AddAssignMaterialInstance();
-
-        void AddJoint();
     };//class ShaderCreateInfoVertex:public ShaderCreateInfo
 }//namespace hgl::graph
