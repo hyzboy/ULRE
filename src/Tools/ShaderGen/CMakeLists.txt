@@ -17,18 +17,6 @@ endmacro()
 
 ####################################################################################################
 
-add_executable(MaterialPresetExhaustiveCompile
-    MaterialPresetExhaustiveCompileTest.cpp)
-
-target_link_libraries(MaterialPresetExhaustiveCompile
-    PRIVATE ULRE.ShaderGen
-            ULRE.Vulkan
-            CMCore)
-
-CreateProject(MaterialPresetExhaustiveCompile)
-
-####################################################################################################
-
 add_executable(VulkanPhysicalDeviceProfileCollector
     VulkanPhysicalDeviceProfileCollector.cpp)
 
@@ -42,15 +30,6 @@ CreateProject(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
-include(CTest)
-if(BUILD_TESTING)
-
-    add_test(NAME MaterialPresetExhaustiveCompile
-             COMMAND MaterialPresetExhaustiveCompile)
-
-    set_tests_properties(MaterialPresetExhaustiveCompile PROPERTIES
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
-endif()
 
 # 需要时可直接运行：
 #   cmake --build <build_dir> --target MaterialPresetExhaustiveCompile

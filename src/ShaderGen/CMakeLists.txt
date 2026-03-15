@@ -102,15 +102,9 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileAdapter.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileJson.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenProfileTargetVersion.h
-                    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenContractValidator.h
-                    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenMirrorDiff.h
-                    ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenRequestBuilder.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenResultBuilder.h
                     ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
                     ResourceLayoutGenerator.cpp
-                    contract/ShaderGenContractValidator.cpp
-                    contract/ShaderGenMirrorDiff.cpp
-                    contract/ShaderGenRequestBuilder.cpp
                     contract/ShaderGenResultBuilder.cpp
 )
 
