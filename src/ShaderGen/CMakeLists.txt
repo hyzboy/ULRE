@@ -121,7 +121,6 @@ SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 SET(SHADER_TEMPLATE_ENGINE_HEADER_FILES	 ${SHADERGEN_INCLUDE_PATH}/ShaderComposition.h
                                          ${SHADERGEN_INCLUDE_PATH}/BuiltinHelpers.h)
 SET(SHADER_TEMPLATE_ENGINE_SOURCE_FILES	 MaterialCompiler.cpp
-                                         ShaderCompositionBridge.cpp
                                          BuiltinHelpers.cpp)
 
 SOURCE_GROUP("Shader Template Engine" FILES ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}

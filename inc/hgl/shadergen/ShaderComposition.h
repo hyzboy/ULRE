@@ -180,24 +180,6 @@ struct ComposedMaterialDef {
     std::vector<std::string> logic_required_helpers;
 };
 
-struct LogicResourceBridgeDiagnostics {
-    std::vector<std::string> missing_resources;
-};
-
-struct ComposedMaterialBuildFromLogicResult {
-    ComposedMaterialDef def;
-    VertexShaderBusiness vertex_business;
-    FragmentShaderBusiness fragment_business;
-    std::vector<FixedDescriptorEntry> filtered_descriptors;
-    LogicResourceBridgeDiagnostics diagnostics;
-
-    bool HasMissingResources() const { return !diagnostics.missing_resources.empty(); }
-};
-
-bool BuildComposedMaterialDefFromLogic(
-    const ComposedMaterialDef &base_def,
-    const MaterialLogicDef &logic,
-    ComposedMaterialBuildFromLogicResult &out);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 辅助函数库生成策略：自动生成开发者使用的工具函数
