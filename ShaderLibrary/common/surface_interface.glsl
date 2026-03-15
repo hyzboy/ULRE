@@ -13,6 +13,7 @@ struct SurfaceInput
     vec4 vertexColor;
     vec3 viewDir;        // normalize(-worldPos)，因为 cameraPos 恒为 0
     vec2 screenPos;
+    float luminance;     // 顶点亮度（VertexLuminance 材质使用）
 };
 
 struct SurfaceOutput

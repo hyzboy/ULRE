@@ -179,7 +179,10 @@ namespace hgl::graph
         BlendMode       blend,
         PassType        pass,
         QualityTier     tier,
-        PlatformBackend platform
+        PlatformBackend platform,
+        const char     *vs_template_override,
+        const char     *fs_template_override,
+        const char     *surface_function_override
     ) const
     {
         AssembleResult result{};
@@ -190,10 +193,16 @@ namespace hgl::graph
         key.SetQualityTier(tier);
         key.SetPlatform(platform);
 
-        // 2. 获取模板文件路径
-        std::string vs_path = GetCompositorVSPath(surface, pass);
-        std::string fs_path = GetCompositorFSPath(surface, blend, pass);
-        std::string surface_rel = GetSurfaceFunctionPath(surface);
+        // 2. 获取模板文件路径（支持覆盖）
+        std::string vs_path = (vs_template_override && vs_template_override[0])
+            ? shader_lib_path_ + "/" + vs_template_override
+            : GetCompositorVSPath(surface, pass);
+        std::string fs_path = (fs_template_override && fs_template_override[0])
+            ? shader_lib_path_ + "/" + fs_template_override
+            : GetCompositorFSPath(surface, blend, pass);
+        std::string surface_rel = (surface_function_override && surface_function_override[0])
+            ? surface_function_override
+            : GetSurfaceFunctionPath(surface);
 
         // 3. 读取 VS 模板
         std::string vs_source;

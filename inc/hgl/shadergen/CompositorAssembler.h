@@ -36,12 +36,18 @@ namespace hgl::graph
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
         explicit CompositorAssembler(const std::string &shader_library_path);
 
+        /// vs_template_override: 非空时覆盖默认 VS 模板路径（相对于 ShaderLibrary 根目录）
+        /// fs_template_override: 非空时覆盖默认 FS 模板路径（相对于 ShaderLibrary 根目录）
+        /// surface_function_override: 非空时覆盖默认 Surface Function 路径
         AssembleResult Assemble(
             SurfaceType     surface,
             BlendMode       blend,
             PassType        pass,
             QualityTier     tier,
-            PlatformBackend platform
+            PlatformBackend platform,
+            const char     *vs_template_override      = nullptr,
+            const char     *fs_template_override      = nullptr,
+            const char     *surface_function_override  = nullptr
         ) const;
 
     private:

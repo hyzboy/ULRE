@@ -1,15 +1,15 @@
 #version 450
 
-// === Compositor Template: Forward Unlit FS ===
-// Unlit 渲染 — 不执行光照计算，直接输出 baseColor
-// 适用于 SurfaceType::Unlit (PureColor3D 等)
+// === Compositor Template: Forward Unlit FS (Luminance) ===
+// 顶点亮度 × MI 颜色 — 无光照，直接输出
 //
-// Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene    set=0 : camera=0, viewport=1
-//   Transform set=1 : l2w=0
-//   Material set=2 : mtl=0
+// Descriptor binding 约定：
+//   Scene    set=0 : (unused in FS)
+//   Transform set=1 : (unused in FS)
+//   Material set=2 : mtl=0 (MI SSBO, 由 surface function 声明)
 
 layout(location=0) flat in uint fragMaterialInstanceID;
+layout(location=1) in float fragLuminance;
 
 layout(location=0) out vec4 outColor;
 
@@ -26,10 +26,9 @@ void main()
     si.vertexColor = vec4(0.0);
     si.viewDir     = vec3(0.0, 0.0, 1.0);
     si.screenPos   = vec2(0.0);
-    si.luminance   = 0.0;
+    si.luminance   = fragLuminance;
 
     SurfaceOutput so = EvalSurface(si, fragMaterialInstanceID);
 
-    // Unlit: 直接输出 baseColor，不做任何光照计算
     outColor = vec4(so.baseColor, so.alpha);
 }
