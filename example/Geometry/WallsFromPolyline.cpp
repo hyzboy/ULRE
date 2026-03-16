@@ -3,6 +3,8 @@
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
@@ -34,6 +36,8 @@ private:
     Material *material = nullptr;
     MaterialInstance *material_instance = nullptr;
     Pipeline *pipeline = nullptr;
+    Sampler *sampler = nullptr;
+    Texture2D *base_color_texture = nullptr;
 
     VertexDataManager *mesh_vdm = nullptr;
 
@@ -42,6 +46,7 @@ private:
 public:
     ~TestApp()
     {
+        SAFE_CLEAR(sampler)
         SAFE_CLEAR(mesh_vdm)
     }
 
@@ -106,7 +111,11 @@ public:
             return false;
 
         auto* material_manager = graphics_context->GetMaterialManager();
+        auto* texture_manager = graphics_context->GetTextureManager();
+        auto* sampler_manager = graphics_context->GetSamplerManager();
         if (!material_manager)
+            return false;
+        if (!texture_manager || !sampler_manager)
             return false;
 
         auto* geometry_manager = graphics_context->GetGeometryManager();
@@ -125,6 +134,21 @@ public:
 
         material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if(!material) return false;
+
+        // Standard surface (QUALITY_TIER=Medium) samples TexAlbedo; bind a fallback texture.
+        base_color_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
+        if (!base_color_texture)
+            return false;
+
+        sampler = sampler_manager->CreateSampler();
+        if (!sampler)
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::Material,
+                                          mtl::SamplerName::BaseColor,
+                                          base_color_texture,
+                                          sampler))
+            return false;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
         if(!material_instance) return false;
