@@ -93,7 +93,7 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Tex2DArray;
-            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
+            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex;
             break;
         case MaterialPreset::PBRColor3D:
             key.surface_type = SurfaceType::Standard;
