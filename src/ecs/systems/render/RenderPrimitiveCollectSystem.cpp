@@ -28,7 +28,18 @@ namespace hgl::ecs
 
     void RenderPrimitiveCollectSystem::Update(float /*deltaTime*/)
     {
-        if (!world || !cameraInfo)
+        if (!world)
+            return;
+
+        // Lazily resolve cameraInfo from CameraSystem if not explicitly set
+        // (CameraSystem may be registered after RegisterDefaultEcsSystems runs)
+        if (!cameraInfo)
+        {
+            if (auto cam_sys = world->GetSystem<CameraSystem>())
+                cameraInfo = cam_sys->GetCameraInfo();
+        }
+
+        if (!cameraInfo)
             return;
 
         auto& cache = world->GetRenderFrameCache();
