@@ -28,6 +28,7 @@ enum class MaterialPreset:uint8
     TerrainGrid,
     SkyMinimal,
     Billboard2D,
+    Standard,
     BasicLit,
     PBRColor3D,
 

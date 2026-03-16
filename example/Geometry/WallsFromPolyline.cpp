@@ -29,7 +29,7 @@ private:
     hgl::ecs::ECSContext *ecs_context = nullptr;
     hgl::ecs::Entity *camera_entity = nullptr;
 
-    mtl::BasicLitMaterialInstance mi_data;
+    mtl::StandardMaterialInstance mi_data;
 
     Material *material = nullptr;
     MaterialInstance *material_instance = nullptr;
@@ -113,15 +113,17 @@ public:
         if (!geometry_manager)
             return false;
 
-        mtl::BasicLitMaterialCreateConfig cfg;
+        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                        mtl::WithCamera::With,
+                        mtl::WithLocalToWorld::With,
+                        mtl::WithSky::With);
 
         mi_data.base_color = GetRGBA(COLOR::FireBrick);
         mi_data.metallic=0;
         mi_data.roughness=0.95f;
-        mi_data.fresnel=0.04f;
-        mi_data.ibl_intensity=0.0f;
+        mi_data.normal_scale=0.35f;
 
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::BasicLit, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if(!material) return false;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);

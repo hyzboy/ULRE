@@ -79,8 +79,11 @@ private:
         if (!material_manager || !texture_manager || !sampler_manager)
             return false;
 
-        mtl::BasicLitMaterialCreateConfig cfg(false);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::BasicLit, &cfg);
+        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                        mtl::WithCamera::With,
+                        mtl::WithLocalToWorld::With,
+                        mtl::WithSky::With);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
             return false;
 
@@ -124,13 +127,11 @@ private:
         if (!pipeline)
             return false;
 
-        mtl::BasicLitMaterialInstance mi_data{};
+        mtl::StandardMaterialInstance mi_data{};
         mi_data.base_color = 0xFFFFFFFFu;
         mi_data.metallic = 0.08f;
         mi_data.roughness = 0.92f;
-        mi_data.fresnel = 0.03f;
-        mi_data.ibl_intensity = 0.0f;
-        mi_data.normal_strength = 0.35f;
+        mi_data.normal_scale = 0.35f;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
         if (!material_instance)

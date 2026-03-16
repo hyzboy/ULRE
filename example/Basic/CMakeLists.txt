@@ -26,7 +26,7 @@ CreateProject(06d_PBRSpheresECS                 PBRSpheresECS.cpp)
 CreateProject(06b_BasicLitMeshesECS             06b_BasicLitMeshesECS.cpp)
 CreateProject(06c_TextureBlinnPhongMeshesECS    06c_TextureBlinnPhongMeshesECS.cpp)
 CreateProject(07_RenderBoundBox                 RenderBoundBox.cpp)
-#CreateProject(08_RenderToTexture                RenderToTexture.cpp)
+CreateProject(08_RenderToTexture                RenderToTexture.cpp)
 CreateProject(09_RecursiveCube                  RecursiveCube.cpp)
 CreateProject(10_CompositorRenderTest           CompositorRenderTest.cpp)
 

@@ -1,6 +1,6 @@
 #include<hgl/framework/WorkManager.h>
-#include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/Material2DCreateConfig.h>
+#include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKRenderTargetSingle.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -391,7 +391,7 @@ private:
                                           mtl::WithLocalToWorld::With,
                                           mtl::WithSky::With);
 
-        cube_mtl = material_manager->CreateMaterial(mtl::MaterialPreset::TextureBlinnPhong, &cfg3d);
+        cube_mtl = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg3d);
         if (!cube_mtl) return false;
 
         cube_sampler = sampler_manager->CreateSampler();

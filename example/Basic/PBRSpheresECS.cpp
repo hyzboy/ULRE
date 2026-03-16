@@ -79,7 +79,7 @@ private:
     Primitive *         base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
     // One MI per cell: col controls metallic, row controls roughness
-    mtl::BasicLitMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
+    mtl::StandardMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
     MaterialInstance *               sphere_mi[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
@@ -133,8 +133,11 @@ private:
         if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture || !roughness_texture)
             return false;
 
-        mtl::BasicLitMaterialCreateConfig cfg(false);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::BasicLit, &cfg);
+        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
+                        mtl::WithCamera::With,
+                        mtl::WithLocalToWorld::With,
+                        mtl::WithSky::With);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
             return false;
 
@@ -236,9 +239,7 @@ private:
                 d.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
                 d.metallic   = metallic;
                 d.roughness  = roughness;
-                d.fresnel = 0.04f;
-                d.ibl_intensity = 0.0f;
-                d.normal_strength = 0.35f;
+                d.normal_scale = 0.35f;
 
                 sphere_mi[row][col] = material_manager->CreateMaterialInstance(
                     material, (VIL *)nullptr, &d);

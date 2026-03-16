@@ -69,6 +69,7 @@ DECLARE_MATERIAL_CREATOR(VertexColor3D,     const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexLuminance3D, Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexPattleColor3D,const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(Standard,          const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(TextureBlinnPhong, const Material3DCreateConfig)
 
 struct TerrainGridCreateConfig:public Material3DCreateConfig
@@ -110,6 +111,16 @@ public:
 };
 
 DECLARE_MATERIAL_CREATOR(Billboard2D, BillboardMaterialCreateConfig)
+
+struct StandardMaterialInstance
+{
+    uint32 base_color;      ///<基础颜色
+    float  metallic;        ///<金属度
+    float  roughness;       ///<粗糙度
+    float  normal_scale = DefaultNormalStrength; ///<法线强度(运行时可调)
+};
+
+constexpr const size_t StandardMaterialInstanceBytes=sizeof(StandardMaterialInstance);
 
 struct BasicLitMaterialInstance
 {

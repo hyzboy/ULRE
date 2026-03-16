@@ -84,7 +84,7 @@ private:
                                         mtl::WithLocalToWorld::With,
                                         mtl::WithSky::With);
 
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::TextureBlinnPhong, &cfg);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
             return false;
 
@@ -122,8 +122,11 @@ private:
                                           sampler))
             return false;
 
-        mtl::TextureBlinnPhongMaterialInstance mi_data{};
-        mi_data.normal_strength = 0.35f;
+        mtl::StandardMaterialInstance mi_data{};
+        mi_data.base_color = 0xFFFFFFFFu;
+        mi_data.metallic = 0.08f;
+        mi_data.roughness = 0.92f;
+        mi_data.normal_scale = 0.35f;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL*)nullptr, &mi_data);
         if (!material_instance)
