@@ -1,7 +1,7 @@
 # ULRE 渲染系统重构 — 工作进度跟踪
 
 > **用途**: 换机开发时快速恢复上下文。包含所有已完成/进行中的工作、文件清单、构建信息和后续计划。  
-> **最后更新**: 2025-07 (Stages 1–6 完成后 + 文档更新)
+> **最后更新**: 2025-07 (Stages 1–6 完成 + Stage 7.1 Unlit 管线验证通过)
 
 ---
 
@@ -15,7 +15,7 @@
 | Stage 4 | Reversed-Z + Camera 相对渲染 | ⚠️ 部分完成 (4.1–4.2, 4.6, 4.7.1, 4.7.3) |
 | Stage 5 | Compositor / Shader 组装 | ✅ 完成 (5.1–5.10) |
 | Stage 6 | SSBO Vertex Fetch 路径 | ✅ 完成 (6.1–6.6) |
-| Stage 7–16 | 后续阶段 | ⬜ 未开始 |
+| Stage 7–16 | 后续阶段 | ⚠️ Stage 7 部分完成（7.1 Unlit 管线端到端渲染通过） |
 
 ---
 
@@ -119,12 +119,53 @@
 | `src/ShaderGen/DeviceQualityProfile.cpp` | 设备质量档案实现 |
 | `ShaderLibrary/compositor/main_forward_opaque.vert.glsl` | Forward Opaque 顶点模板 |
 | `ShaderLibrary/compositor/main_forward_opaque.frag.glsl` | Forward Opaque 片段模板 |
+| `ShaderLibrary/compositor/main_forward_lit.vert.glsl` | Forward Lit 顶点模板 |
+| `ShaderLibrary/compositor/main_forward_lit.frag.glsl` | Forward Lit 片段模板 |
+| `ShaderLibrary/compositor/main_forward_unlit.vert.glsl` | Forward Unlit 顶点模板 |
+| `ShaderLibrary/compositor/main_forward_unlit.frag.glsl` | Forward Unlit 片段模板 |
+| `ShaderLibrary/compositor/main_forward_unlit_normal.vert.glsl` | Unlit + Normal VS |
+| `ShaderLibrary/compositor/main_forward_unlit_normal.frag.glsl` | Unlit + Normal FS |
+| `ShaderLibrary/compositor/main_forward_unlit_vertexcolor.vert.glsl` | Unlit VertexColor VS |
+| `ShaderLibrary/compositor/main_forward_unlit_vertexcolor.frag.glsl` | Unlit VertexColor FS |
+| `ShaderLibrary/compositor/main_forward_unlit_luminance.vert.glsl` | Unlit Luminance VS |
+| `ShaderLibrary/compositor/main_forward_unlit_luminance.frag.glsl` | Unlit Luminance FS |
+| `ShaderLibrary/compositor/main_forward_unlit_luminance_2d.vert.glsl` | Unlit Luminance 2D VS |
+| `ShaderLibrary/compositor/main_forward_unlit_pattle.vert.glsl` | Unlit Pattle VS |
+| `ShaderLibrary/compositor/main_forward_billboard_fixed.vert.glsl` | Billboard Fixed VS |
+| `ShaderLibrary/compositor/main_forward_billboard_dynamic.vert.glsl` | Billboard Dynamic VS |
+| `ShaderLibrary/compositor/main_forward_billboard.frag.glsl` | Billboard FS |
+| `ShaderLibrary/compositor/main_forward_sky.vert.glsl` | Sky VS |
+| `ShaderLibrary/compositor/main_forward_sky.frag.glsl` | Sky FS |
+| `ShaderLibrary/compositor/main_terrain_grid.vert.glsl` | Terrain Grid VS |
+| `ShaderLibrary/compositor/main_terrain_grid.frag.glsl` | Terrain Grid FS |
 | `ShaderLibrary/common/surface_interface.glsl` | Surface 接口定义 |
-| `ShaderLibrary/surface/standard_surface.glsl` | 标准表面函数 |
+| `ShaderLibrary/common/descriptor_macros.glsl` | Descriptor Set/Binding 宏 |
+| `ShaderLibrary/common/scene_ubo.glsl` | Scene UBO 声明 |
+| `ShaderLibrary/common/l2w_ssbo.glsl` | L2W 变换矩阵 SSBO |
+| `ShaderLibrary/common/material_instance_ssbo.glsl` | MI SSBO 绑定 |
 | `ShaderLibrary/common/lighting.glsl` | 光照函数 |
+| `ShaderLibrary/common/skylight_simple.glsl` | 简单天空光 |
+| `ShaderLibrary/common/depth_utils.glsl` | 深度工具函数 |
+| `ShaderLibrary/common/vertex_fetch_ssbo.glsl` | SSBO 顶点获取 |
+| `ShaderLibrary/common/vertex_fetch_vbo.glsl` | VBO 顶点获取 |
+| `ShaderLibrary/surface/standard_surface.glsl` | 标准 PBR 表面函数 |
+| `ShaderLibrary/surface/basiclit_surface.glsl` | BasicLit 表面函数 |
+| `ShaderLibrary/surface/unlit_color3d_surface.glsl` | Unlit 纯色 3D |
+| `ShaderLibrary/surface/unlit_vertexcolor_surface.glsl` | Unlit 顶点色 |
+| `ShaderLibrary/surface/unlit_luminance_surface.glsl` | Unlit 亮度 |
+| `ShaderLibrary/surface/gizmo3d_surface.glsl` | 3D Gizmo |
+| `ShaderLibrary/surface/billboard_texture_surface.glsl` | Billboard 纹理 |
+| `ShaderLibrary/surface/terrain_grid_surface.glsl` | 地形网格 |
+| `ShaderLibrary/surface/pbrcolor3d_surface.glsl` | PBR 纯色 3D |
+| `ShaderLibrary/surface/sky_minimal_surface.glsl` | 最简天空 |
+| `ShaderLibrary/surface/textureblinnphong_surface.glsl` | 纹理 BlinnPhong |
 
 **Step 5.10: CompositorRenderTest**
-- `example/Basic/CompositorRenderTest.cpp` — 6 阶段验证测试
+- `example/Basic/CompositorRenderTest.cpp` — **11 阶段验证测试 (Phase 1–11)**
+  - Phase 1–5: Standard (Lit) 管线验证（Assemble → SPV → ShaderModule → PipelineLayout → VkPipeline）
+  - Phase 6: SSBO Vertex Data Upload（VertexDataBufferManager + SSBOVertexData）
+  - Phase 7–11: Unlit 管线验证（同 Phase 1–5 流程的 Unlit 版本）
+  - `Init()` 输出: "Step 5.10 + 7.1 — ALL PHASES PASSED (1-14)"
 - `example/Basic/CMakeLists.txt` — 添加 `CreateProject(10_CompositorRenderTest ...)`
 - 修改 `inc/hgl/vk/VKRenderPass.h` — 添加 public `CreatePipeline` 重载（接受原始 shader stages）
 - 修改 `src/Vulkan/VKRenderPass.cpp` — 实现上述重载
@@ -152,7 +193,47 @@
 **CompositorRenderTest Phase 6 扩展:**
 - 创建 `VertexDataBufferManager`，上传三角形顶点+索引
 - 验证 allocation / dirty / descriptor 信息
-- 实际 `vkCmdDraw` 延后到 Stage 7（需要完整 UBO/descriptor chain）
+- 实际 `vkCmdDraw` 已在 Phase 12-14 + Render() 中实现并验证通过
+
+---
+
+### Stage 7: Forward 材质迁移 (7.1 完成)
+
+**Step 7.1: Unlit 管线端到端渲染验证 ✅**
+
+CompositorRenderTest Phase 1–14 验证了完整链路（GLSL→SPV→Pipeline→Descriptors→vkCmdDraw）：
+
+| Phase | 验证内容 | 状态 |
+|-------|---------|------|
+| 1–5 | Standard (Lit) GLSL→SPV→ShaderModule→Layout→Pipeline | ✅ |
+| 6 | SSBO Vertex/Index Data Upload（VertexDataBufferManager） | ✅ |
+| 7–11 | Unlit GLSL→SPV→ShaderModule→Layout→Pipeline | ✅ |
+| 12 | CameraInfo UBO + L2W SSBO + MI SSBO 创建 | ✅ |
+| 13 | Descriptor Pool + 4 Descriptor Sets 分配 | ✅ |
+| 14 | 5 Descriptor Writes（Camera/L2W/MI/VtxData/IdxData） | ✅ |
+| Render | vkCmdDraw（BindPipeline + BindDescriptorSets + Draw 3 vertices） | ✅ |
+
+**本步骤修改的文件：**
+- `DescriptorSetBindings.h` — 修复 PerScene 绑定顺序（Camera=0, Sky=1, Viewport=2）匹配 GLSL
+- `NewDescriptorSetLayoutFactory.cpp` — 修复绑定顺序 + 添加 PARTIALLY_BOUND_BIT
+- `VKDeviceCreater.cpp` — 启用 descriptorBindingPartiallyBound 特性
+- `main_forward_unlit.vert.glsl` — 添加 GEOMETRY_FETCH_SSBO 路径
+- `CompositorRenderTest.cpp` — 新增 Phase 12-14 + Render() 实现
+
+**新增 ShaderLibrary 文件（Unlit 相关）:**
+- `compositor/main_forward_unlit.vert.glsl` / `.frag.glsl`
+- `compositor/main_forward_unlit_normal.vert.glsl` / `.frag.glsl`
+- `compositor/main_forward_unlit_vertexcolor.vert.glsl` / `.frag.glsl`
+- `compositor/main_forward_unlit_luminance.vert.glsl` / `.frag.glsl`
+- `compositor/main_forward_unlit_luminance_2d.vert.glsl`
+- `compositor/main_forward_unlit_pattle.vert.glsl`
+- `compositor/main_forward_billboard_fixed.vert.glsl` / `main_forward_billboard_dynamic.vert.glsl` / `main_forward_billboard.frag.glsl`
+- `compositor/main_forward_sky.vert.glsl` / `.frag.glsl`
+- `compositor/main_terrain_grid.vert.glsl` / `.frag.glsl`
+- `surface/` 下所有 Unlit 类表面函数（见 §八 文件清单）
+
+**待完成步骤:**
+- Steps 7.2–7.15: Lit 材质迁移
 
 ---
 
@@ -218,9 +299,13 @@ CMake 重新配置: cmake build_new
 ## 七、下一步工作
 
 **Stage 7: Forward 材质迁移** (Steps 7.1–7.15)
-- 将现有材质逐个迁移到新的 Compositor 系统
-- 需要完整的 UBO / descriptor chain
-- CompositorRenderTest 中的实际 `vkCmdDraw` 渲染将在此阶段实现
+- ✅ **Step 7.1 完成**: Unlit 管线端到端渲染验证通过（Phase 1–14 + vkCmdDraw）
+  - CompositorAssembler 支持 Unlit 路径（简化 VS/FS 模板选择）
+  - 所有 Unlit Surface Function 已创建（unlit_color3d, unlit_vertexcolor, unlit_luminance, gizmo3d, billboard_texture）
+  - Unlit Compositor 模板已创建（forward_unlit, forward_unlit_normal, forward_unlit_vertexcolor, forward_unlit_luminance 等）
+- ⬜ 将现有 Lit 材质逐个迁移到新的 Compositor 系统
+- ⬜ 需要完整的 UBO / descriptor chain
+- ⬜ CompositorRenderTest 中的实际 `vkCmdDraw` 渲染将在此阶段实现
 
 **后续阶段** (8–16):
 - Stage 8: 多灯光系统

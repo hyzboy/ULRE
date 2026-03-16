@@ -18,8 +18,19 @@ static VkDescriptorSetLayoutBinding MakeBinding(uint32_t binding, VkDescriptorTy
 
 static VkDescriptorSetLayout CreateLayout(VkDevice device, const VkDescriptorSetLayoutBinding *bindings, uint32_t count)
 {
+    // 为每个绑定启用 PARTIALLY_BOUND，允许着色器未使用的绑定不必写入有效描述符
+    VkDescriptorBindingFlags bind_flags[32]{};
+    for(uint32_t i = 0; i < count && i < 32; ++i)
+        bind_flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo flags_ci{};
+    flags_ci.sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    flags_ci.bindingCount   = count;
+    flags_ci.pBindingFlags  = bind_flags;
+
     VkDescriptorSetLayoutCreateInfo ci{};
     ci.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    ci.pNext        = &flags_ci;
     ci.bindingCount = count;
     ci.pBindings    = bindings;
 
@@ -38,9 +49,9 @@ VkDescriptorSetLayout CreatePerSceneLayout(VkDevice device)
     const VkShaderStageFlags all_gfx = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
     const VkDescriptorSetLayoutBinding bindings[] = {
-        MakeBinding(DSBinding::PerScene::ViewportInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, all_gfx),
         MakeBinding(DSBinding::PerScene::CameraInfo,   VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, all_gfx),
         MakeBinding(DSBinding::PerScene::SkyInfo,      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT),
+        MakeBinding(DSBinding::PerScene::ViewportInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, all_gfx),
         MakeBinding(DSBinding::PerScene::LightBuffer,  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT),
     };
 

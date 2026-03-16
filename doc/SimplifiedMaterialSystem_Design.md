@@ -1434,12 +1434,16 @@ Reversed-Z + Infinite Far Plane 组合使得引擎可以渲染**任意远**的�
 ### 3.1 画质档位定义
 
 ```cpp
-enum class QualityTier : uint8_t
+enum class QualityTier : uint8
 {
-    Low     = 0,    // BlinnPhong FakePBR — Android Low / PC 极低配
-    Medium  = 1,    // 标准 PBR (Cook-Torrance) — Android Mid / 核显/中端独显
-    High    = 2,    // 完整 PBR + 高级特性 — Android High / PC 独显 / Apple
-    Ultra   = 3,    // 保留：PC 高端独显，未来可能加入 Ray-Tracing 等
+    Lowest    = 0,    // 顶点光照 + Albedo only — 极低端设备 / 极远距离 LOD
+    Low       = 1,    // BlinnPhong FakePBR — Android Low / PC 极低配
+    Medium    = 2,    // 标准 PBR (Cook-Torrance) — Android Mid / 核显/中端独显
+    High      = 3,    // 完整 PBR + 高级特性 — Android High / PC 独显 / Apple
+    Ultra     = 4,    // PC 高端独显，完整特性 + DetailNormal 等
+    Cinematic = 5,    // 电影级：全 SSS + 毛孔法线 + 眼球折射 + Light Probes 等
+
+    ENUM_CLASS_RANGE(Lowest, Cinematic)
 };
 ```
 
@@ -2054,9 +2058,11 @@ enum class PassType : uint8_t
     ForwardA2C          = 4,
     ShadowOpaque        = 5,    // 仅 VS depth-write，无 FS
     ShadowMasked        = 6,    // EvalAlpha() → discard
-    VBufferID           = 7,    // 写 ID，不调用 Surface Function
-    VBufferResolve      = 8,    // Compute: EvalSurface() → 光照
-    TerrainContactDither= 9,    // Terrain 接地 dither 变体
+    EarlyZSolid         = 7,    // Z-Prepass 不透明：仅 VS depth-write
+    EarlyZMasked        = 8,    // Z-Prepass 遮罩：EvalAlpha() → discard
+    VBufferID           = 9,    // 写 ID，不调用 Surface Function
+
+    ENUM_CLASS_RANGE(ForwardOpaque, VBufferID)
 };
 ```
 
@@ -2070,12 +2076,14 @@ enum class PassType : uint8_t
 
 | Quality | 直接光照 | 环境光 | 阴影 | 纹理数 |
 |---------|---------|--------|------|--------|
+| Lowest | 顶点 NdotL | Constant | 无 | 1 (Albedo) |
 | Low | BlinnPhong | Simple | None/PCF | 2 (Albedo+Normal) |
 | Medium | Cook-Torrance | FakeAtm | PCF | 3 (Albedo+Normal+MR) |
 | High | Cook-Torrance | IBL | PCSS | 5+ (Albedo+Normal+MR+AO+Emissive) |
-| Ultra | 同 High | IBL | PCSS | 6+ (加 DetailNormal 等) |
+| Ultra | Cook-Torrance | IBL | PCSS | 6+ (加 DetailNormal 等) |
+| Cinematic | 同 Ultra + SSS | IBL + Light Probes | PCSS + Soft | 全纹理集 |
 
-总变体数 = SurfaceType(实现数) × Quality(4) × Shadow(3) × Flags 子集 ≈ **可控范围**
+总变体数 = SurfaceType(实现数) × Quality(6) × Shadow(3) × Flags 子集 ≈ **可控范围**
 
 > Unlit 类不受 Quality 影响，只有 1 个变体（+ flags 组合）
 
@@ -3991,7 +3999,7 @@ vec3 GetAmbientIBL(vec3 N, vec3 V, vec3 baseColor, vec3 F0,
 
 **变体总数估算（Standard Surface, Opaque BlendMode, PC）：**
 ```
-PassType(3: Forward+Shadow+VBuffer) × QualityTier(6) × ShadowMode(3) × flags(~4) ≈ 216 变体
+PassType(4: Forward+Shadow+EarlyZ+VBuffer) × QualityTier(6) × ShadowMode(3) × flags(~4) ≈ 288 变体
 ```
 相比旧方案无增长（旧方案同样 tier × shadow × flags，只是 Pass 维度以前是手写冗余模板）。
 
@@ -4912,8 +4920,8 @@ for each preset in MaterialPresetRegistry:
 > ```
 
 > Unlit 材质只编译 1 个变体（无档位/Pass 概念）。\
-> Standard Surface (Opaque) 编译 3(PassType) × 4(tier) × 3(shadow) × flags ≈ **72** 个变体。\
-> Standard Surface (Masked) 编译 3(PassType) × 4(tier) × 3(shadow) × flags ≈ **72** 个变体。\
+> Standard Surface (Opaque) 编译 4(PassType) × 6(tier) × 3(shadow) × flags ≈ **144** 个变体。\
+> Standard Surface (Masked) 编译 4(PassType) × 6(tier) × 3(shadow) × flags ≈ **144** 个变体。\
 > 旧方案变体数相同（手写冗余模板），Compositor 方案代码维护量大幅减少。
 
 ### 9.2 运行时

@@ -4,13 +4,13 @@
 
 namespace hgl::graph::DSBinding
 {
-    // Set 0 — PerScene
+    // Set 0 — PerScene (Resort 字母序: camera < sky < viewport, LightBuffer 末尾)
     namespace PerScene
     {
-        constexpr uint32_t ViewportInfo   = 0;
-        constexpr uint32_t CameraInfo     = 1;
-        constexpr uint32_t SkyInfo        = 2;
-        constexpr uint32_t LightBuffer    = 3;
+        constexpr uint32_t CameraInfo     = 0;    // CAMERA_BINDING
+        constexpr uint32_t SkyInfo        = 1;    // SKY_BINDING
+        constexpr uint32_t ViewportInfo   = 2;    // VIEWPORT_BINDING
+        constexpr uint32_t LightBuffer    = 3;    // Lit 专用 SSBO
     }
 
     // Set 1 — PerView

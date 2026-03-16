@@ -39,27 +39,62 @@ ULRE 采用 **Surface Function + Compositor Template** 架构来组织 GLSL Shad
 
 ```
 ShaderLibrary/
-├── common/                          # 公共模块（所有 Shader 共享）
-│   ├── surface_interface.glsl       # SurfaceInput / SurfaceOutput / SurfaceOutputExt 结构体定义
-│   ├── lighting.glsl                # 分级光照计算函数 EvalLighting()
-│   ├── depth_utils.glsl             # Reversed-Z 深度工具（LinearizeDepth, ReconstructWorldPos）
-│   └── vertex_fetch_ssbo.glsl       # SSBO 顶点获取模块（FetchPosition/Normal/UV0）
+├── common/                                    # 公共模块（所有 Shader 共享）
+│   ├── surface_interface.glsl                 # SurfaceInput / SurfaceOutput / SurfaceOutputExt 结构体定义
+│   ├── descriptor_macros.glsl                 # Descriptor Set / Binding 宏定义
+│   ├── scene_ubo.glsl                         # Scene UBO（CameraUBO, ViewportUBO, SkyUBO）
+│   ├── l2w_ssbo.glsl                          # Local-to-World 变换矩阵 SSBO
+│   ├── material_instance_ssbo.glsl            # Material Instance SSBO 绑定
+│   ├── lighting.glsl                          # 分级光照计算函数 EvalLighting()
+│   ├── skylight_simple.glsl                   # 简单天空光 / 环境光
+│   ├── depth_utils.glsl                       # Reversed-Z 深度工具（LinearizeDepth, ReconstructWorldPos）
+│   ├── vertex_fetch_ssbo.glsl                 # SSBO 顶点获取模块（FetchPosition/Normal/UV0）
+│   └── vertex_fetch_vbo.glsl                  # VBO 顶点获取模块（传统顶点属性路径）
 │
-├── surface/                         # Surface Function 文件（每种材质一个文件）
-│   └── standard_surface.glsl        # Standard PBR Surface Function
+├── surface/                                   # Surface Function 文件（每种材质一个文件）
+│   ├── standard_surface.glsl                  # Standard PBR
+│   ├── basiclit_surface.glsl                  # BasicLit（简化 PBR）
+│   ├── unlit_color3d_surface.glsl             # Unlit 纯色 3D
+│   ├── unlit_vertexcolor_surface.glsl         # Unlit 顶点色
+│   ├── unlit_luminance_surface.glsl           # Unlit 亮度
+│   ├── gizmo3d_surface.glsl                   # 3D Gizmo
+│   ├── billboard_texture_surface.glsl         # Billboard 纹理
+│   ├── terrain_grid_surface.glsl              # 地形网格
+│   ├── pbrcolor3d_surface.glsl                # PBR 纯色 3D
+│   ├── sky_minimal_surface.glsl               # 最简天空
+│   └── textureblinnphong_surface.glsl         # 纹理 BlinnPhong
 │
-├── compositor/                      # Compositor Template（每种渲染通道一组 VS+FS）
-│   ├── main_forward_opaque.vert.glsl
-│   └── main_forward_opaque.frag.glsl
+├── compositor/                                # Compositor Template（每种渲染通道一组 VS+FS）
+│   ├── main_forward_opaque.vert.glsl          # Forward Opaque VS（Lit 用）
+│   ├── main_forward_opaque.frag.glsl          # Forward Opaque FS（Lit 用）
+│   ├── main_forward_lit.vert.glsl             # Forward Lit VS
+│   ├── main_forward_lit.frag.glsl             # Forward Lit FS
+│   ├── main_forward_unlit.vert.glsl           # Forward Unlit VS
+│   ├── main_forward_unlit.frag.glsl           # Forward Unlit FS
+│   ├── main_forward_unlit_normal.vert.glsl    # Unlit + Normal VS
+│   ├── main_forward_unlit_normal.frag.glsl    # Unlit + Normal FS
+│   ├── main_forward_unlit_vertexcolor.vert.glsl  # Unlit VertexColor VS
+│   ├── main_forward_unlit_vertexcolor.frag.glsl  # Unlit VertexColor FS
+│   ├── main_forward_unlit_luminance.vert.glsl    # Unlit Luminance VS
+│   ├── main_forward_unlit_luminance.frag.glsl    # Unlit Luminance FS
+│   ├── main_forward_unlit_luminance_2d.vert.glsl # Unlit Luminance 2D VS
+│   ├── main_forward_unlit_pattle.vert.glsl       # Unlit Pattle VS
+│   ├── main_forward_billboard_fixed.vert.glsl    # Billboard Fixed VS
+│   ├── main_forward_billboard_dynamic.vert.glsl  # Billboard Dynamic VS
+│   ├── main_forward_billboard.frag.glsl          # Billboard FS
+│   ├── main_forward_sky.vert.glsl                # Sky VS
+│   ├── main_forward_sky.frag.glsl                # Sky FS
+│   ├── main_terrain_grid.vert.glsl               # Terrain Grid VS
+│   └── main_terrain_grid.frag.glsl               # Terrain Grid FS
 │
-├── pass/                            # Pass 专用 Shader（Shadow pass 等，后续添加）
-├── postprocess/                     # 后处理 Shader（Bloom、Tonemap、FXAA 等，后续添加）
-├── debug/                           # 调试可视化 Shader
-├── modules/                         # 可复用的功能模块
-├── templates/                       # 旧模板（待废弃）
-├── recipes/                         # 旧 recipes（待废弃）
-├── Std2D/                           # 2D 渲染 Shader
-└── Std3D/                           # 3D 渲染 Shader（旧体系）
+├── pass/                                      # Pass 专用 Shader（Shadow pass 等，后续添加）
+├── postprocess/                               # 后处理 Shader（Bloom、Tonemap、FXAA 等，后续添加）
+├── debug/                                     # 调试可视化 Shader
+├── modules/                                   # 可复用的功能模块
+├── templates/                                 # 旧模板（待废弃）
+├── recipes/                                   # 旧 recipes（待废弃）
+├── Std2D/                                     # 2D 渲染 Shader
+└── Std3D/                                     # 3D 渲染 Shader（旧体系）
 ```
 
 **命名约定**：
@@ -547,38 +582,53 @@ Guard 宏命名约定：将文件名转为大写，`.` 替换为 `_`（如 `SURF
 
 ## 10. 已有 Shader 参考
 
-### `common/surface_interface.glsl`
-SurfaceInput / SurfaceOutput / SurfaceOutputExt 结构体定义。所有 Surface Function 必须 include。
+### Common 模块（10 个文件）
 
-### `surface/standard_surface.glsl`
-Standard PBR Surface Function。参考实现：
-- 定义 `MI_Standard` 结构体
-- 实现 `EvalSurface()` + `EvalAlpha()`
-- 使用 `QUALITY_TIER` 守卫纹理采样
-- 纹理绑定：set=2, binding=1 (Albedo), binding=2 (Normal), binding=3 (MR)
+| 文件 | 功能 |
+|------|------|
+| `surface_interface.glsl` | SurfaceInput / SurfaceOutput / SurfaceOutputExt 结构体定义。所有 Surface Function 必须 include |
+| `descriptor_macros.glsl` | Descriptor Set / Binding 编号宏定义 |
+| `scene_ubo.glsl` | Scene UBO 声明（CameraUBO, ViewportUBO, SkyUBO） |
+| `l2w_ssbo.glsl` | Local-to-World 变换矩阵 SSBO 声明 |
+| `material_instance_ssbo.glsl` | Material Instance SSBO 绑定声明 |
+| `lighting.glsl` | 分级光照：QUALITY_TIER 0~1 Lambert，2~3 BlinnPhong，4+ PBR Cook-Torrance（暂 fallback BlinnPhong） |
+| `skylight_simple.glsl` | 简单天空光 / 环境光计算 |
+| `depth_utils.glsl` | Reversed-Z 深度工具：`LinearizeDepth(d, near_z)`, `ReconstructWorldPos(ndc, depth, inv_view_proj)` |
+| `vertex_fetch_ssbo.glsl` | SSBO 顶点获取：VertexData 结构体 + VertexDataBuffer(set=3, binding=18) + IndexDataBuffer(set=3, binding=19) + FetchPosition/Normal/UV0 |
+| `vertex_fetch_vbo.glsl` | VBO 顶点获取：传统顶点属性 layout(location=N) 路径 |
 
-### `common/lighting.glsl`
-分级光照计算：
-- `QUALITY_TIER 0~1`：Lambert
-- `QUALITY_TIER 2~3`：BlinnPhong
-- `QUALITY_TIER 4+`：PBR Cook-Torrance（暂 fallback BlinnPhong）
+### Surface Function（11 个文件）
 
-### `common/depth_utils.glsl`
-Reversed-Z 深度工具：
-- `LinearizeDepth(d, near_z)`：线性化 Reversed-Z 深度值
-- `ReconstructWorldPos(ndc, depth, inv_view_proj)`：从 NDC+深度重建 Camera-Relative 世界坐标
+| 文件 | 对应 SurfaceType | 说明 |
+|------|-----------------|------|
+| `standard_surface.glsl` | Standard | Standard PBR，MI_Standard 结构体，QUALITY_TIER 守卫纹理采样 |
+| `basiclit_surface.glsl` | Standard (简化) | 简化 PBR 光照 |
+| `unlit_color3d_surface.glsl` | Unlit | Unlit 纯色 3D |
+| `unlit_vertexcolor_surface.glsl` | Unlit | Unlit 顶点色 |
+| `unlit_luminance_surface.glsl` | Unlit | Unlit 亮度/灰度 |
+| `gizmo3d_surface.glsl` | Unlit | 3D Gizmo 辅助线 |
+| `billboard_texture_surface.glsl` | Unlit | Billboard 纹理 |
+| `terrain_grid_surface.glsl` | Terrain | 地形网格线 |
+| `pbrcolor3d_surface.glsl` | Standard | PBR 纯色 3D |
+| `sky_minimal_surface.glsl` | Sky | 最简天空 |
+| `textureblinnphong_surface.glsl` | Standard | 纹理 BlinnPhong（Low tier 用） |
 
-### `common/vertex_fetch_ssbo.glsl`
-SSBO 顶点获取模块：
-- `VertexData` 结构体（position, normal, uv0）
-- `VertexDataBuffer` (set=3, binding=18) + `IndexDataBuffer` (set=3, binding=19)
-- `FetchPosition()` / `FetchNormal()` / `FetchUV0()` 函数
+### Compositor Template（21 个文件）
 
-### `compositor/main_forward_opaque.vert.glsl`
-Forward Opaque VS 模板：支持 VBO / SSBO 双路径顶点获取。
-
-### `compositor/main_forward_opaque.frag.glsl`
-Forward Opaque FS 模板：`#include SURFACE_FUNCTION_FILE` + `EvalLighting()`。
+| VS 模板 | FS 模板 | 用途 |
+|---------|---------|------|
+| `main_forward_opaque.vert.glsl` | `main_forward_opaque.frag.glsl` | Forward Opaque（Lit 主路径） |
+| `main_forward_lit.vert.glsl` | `main_forward_lit.frag.glsl` | Forward Lit 通用 |
+| `main_forward_unlit.vert.glsl` | `main_forward_unlit.frag.glsl` | Forward Unlit 通用 |
+| `main_forward_unlit_normal.vert.glsl` | `main_forward_unlit_normal.frag.glsl` | Unlit + Normal 显示 |
+| `main_forward_unlit_vertexcolor.vert.glsl` | `main_forward_unlit_vertexcolor.frag.glsl` | Unlit 顶点色 |
+| `main_forward_unlit_luminance.vert.glsl` | `main_forward_unlit_luminance.frag.glsl` | Unlit 亮度 |
+| `main_forward_unlit_luminance_2d.vert.glsl` | （共用 Luminance FS） | Unlit 亮度 2D |
+| `main_forward_unlit_pattle.vert.glsl` | （共用 Unlit FS） | Unlit Pattle |
+| `main_forward_billboard_fixed.vert.glsl` | `main_forward_billboard.frag.glsl` | Billboard Fixed |
+| `main_forward_billboard_dynamic.vert.glsl` | （共用 Billboard FS） | Billboard Dynamic |
+| `main_forward_sky.vert.glsl` | `main_forward_sky.frag.glsl` | Sky 渲染 |
+| `main_terrain_grid.vert.glsl` | `main_terrain_grid.frag.glsl` | Terrain Grid |
 
 ---
 

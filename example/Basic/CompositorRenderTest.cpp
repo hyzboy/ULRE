@@ -9,14 +9,18 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/shadergen/ShaderCompilerProfileAPI.h>
 #include<hgl/mtl/new/NewDescriptorSetLayoutFactory.h>
+#include<hgl/mtl/new/NewDescriptorBinding.h>
+#include<hgl/mtl/new/DescriptorSetBindings.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/VKRenderTarget.h>
+#include<hgl/vk/VKBuffer.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/VertexDataBufferManager.h>
+#include<hgl/graph/CameraInfo.h>
 #include<iostream>
 
 using namespace hgl;
@@ -54,6 +58,17 @@ class CompositorRenderTest : public WorkObject
     VertexDataBufferManager *vdbm       = nullptr;
     BlockAllocator::UserNode *vtx_node  = nullptr;
     BlockAllocator::UserNode *idx_node  = nullptr;
+
+    // --- Render resources (Phase 12+) ---
+    DeviceBuffer *camera_ubo            = nullptr;    // CameraInfo UBO (Set 0, binding 0)
+    DeviceBuffer *l2w_ssbo              = nullptr;    // L2W SSBO (Set 1, binding 0)
+    DeviceBuffer *mi_ssbo               = nullptr;    // MI SSBO (Set 2, binding 0)
+    VkDescriptorPool test_desc_pool     = VK_NULL_HANDLE;
+    VkDescriptorSet  ds_per_scene       = VK_NULL_HANDLE;
+    VkDescriptorSet  ds_per_view        = VK_NULL_HANDLE;
+    VkDescriptorSet  ds_per_material    = VK_NULL_HANDLE;
+    VkDescriptorSet  ds_per_draw        = VK_NULL_HANDLE;
+    bool render_ready                   = false;
 
     bool test_passed = false;
 
@@ -465,6 +480,172 @@ class CompositorRenderTest : public WorkObject
         return true;
     }
 
+    bool InitRenderResources()
+    {
+        auto *device = GetDevice();
+        if (!device || !unlit_pipeline || !unlit_layout || !vdbm)
+            return false;
+
+        VkDevice vk_dev = device->GetDevice();
+
+        // ======== Phase 12: Create UBO/SSBO Buffers ========
+        std::cout << "\n=== Phase 12: Create UBO/SSBO Buffers ===\n";
+
+        // CameraInfo UBO — 填入简单正交 VP 矩阵
+        {
+            CameraInfo ci{};
+            // 简单正交投影：[-1,1] → [-1,1]，无变换
+            ci.projection       = Matrix4f(1.0f);
+            ci.inverse_projection = Matrix4f(1.0f);
+            ci.view             = Matrix4f(1.0f);
+            ci.inverse_view     = Matrix4f(1.0f);
+            ci.vp               = Matrix4f(1.0f);   // identity → NDC passthrough
+            ci.inverse_vp       = Matrix4f(1.0f);
+            ci.znear            = 0.1f;
+            ci.zfar             = 100.0f;
+            ci.use_reversed_z   = 0;
+
+            camera_ubo = device->CreateBuffer(
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                sizeof(CameraInfo),
+                &ci
+            );
+            if (!camera_ubo) { std::cerr << "FAIL: CreateBuffer(CameraInfo) failed.\n"; return false; }
+            std::cout << "OK: CameraInfo UBO created (" << sizeof(CameraInfo) << " bytes).\n";
+        }
+
+        // L2W SSBO — 单个 identity 矩阵 (TransformID=0)
+        {
+            Matrix4f identity(1.0f);
+            l2w_ssbo = device->CreateBuffer(
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                sizeof(Matrix4f),
+                &identity
+            );
+            if (!l2w_ssbo) { std::cerr << "FAIL: CreateBuffer(L2W) failed.\n"; return false; }
+            std::cout << "OK: L2W SSBO created (" << sizeof(Matrix4f) << " bytes).\n";
+        }
+
+        // MI SSBO — Unlit MaterialInstance: vec4 color (红色)
+        {
+            float color[4] = { 1.0f, 0.2f, 0.1f, 1.0f };  // 红色
+            mi_ssbo = device->CreateBuffer(
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                sizeof(color),
+                color
+            );
+            if (!mi_ssbo) { std::cerr << "FAIL: CreateBuffer(MI) failed.\n"; return false; }
+            std::cout << "OK: MI SSBO created (16 bytes, color=red).\n";
+        }
+
+        // ======== Phase 13: Create Descriptor Pool & Allocate Sets ========
+        std::cout << "\n=== Phase 13: Descriptor Pool & Allocate Sets ===\n";
+
+        {
+            VkDescriptorPoolSize pool_sizes[] = {
+                { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         16 },
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         16 },
+                { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16 },
+            };
+
+            VkDescriptorPoolCreateInfo pool_ci{};
+            pool_ci.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            pool_ci.maxSets       = 4;
+            pool_ci.poolSizeCount = 3;
+            pool_ci.pPoolSizes    = pool_sizes;
+
+            if (vkCreateDescriptorPool(vk_dev, &pool_ci, nullptr, &test_desc_pool) != VK_SUCCESS)
+            {
+                std::cerr << "FAIL: vkCreateDescriptorPool failed.\n";
+                return false;
+            }
+            std::cout << "OK: Descriptor pool created.\n";
+        }
+
+        // 分配 4 个描述符集
+        {
+            VkDescriptorSetAllocateInfo alloc_info{};
+            alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            alloc_info.descriptorPool     = test_desc_pool;
+            alloc_info.descriptorSetCount = NEW_DS_COUNT;
+            alloc_info.pSetLayouts        = unlit_layout->layouts;
+
+            VkDescriptorSet sets[NEW_DS_COUNT];
+            if (vkAllocateDescriptorSets(vk_dev, &alloc_info, sets) != VK_SUCCESS)
+            {
+                std::cerr << "FAIL: vkAllocateDescriptorSets failed.\n";
+                return false;
+            }
+            ds_per_scene    = sets[0];
+            ds_per_view     = sets[1];
+            ds_per_material = sets[2];
+            ds_per_draw     = sets[3];
+            std::cout << "OK: 4 descriptor sets allocated.\n";
+        }
+
+        // ======== Phase 14: Write Descriptors ========
+        std::cout << "\n=== Phase 14: Write Descriptors ===\n";
+
+        {
+            // 仅写入着色器实际访问的绑定（其余通过 PARTIALLY_BOUND 跳过）
+            VkDescriptorBufferInfo camera_info = *camera_ubo->GetBufferInfo();
+            VkDescriptorBufferInfo l2w_info    = *l2w_ssbo->GetBufferInfo();
+            VkDescriptorBufferInfo mi_info     = *mi_ssbo->GetBufferInfo();
+
+            auto vtx_info = vdbm->GetVertexDescriptorInfo();
+            auto idx_info = vdbm->GetIndexDescriptorInfo();
+
+            VkWriteDescriptorSet writes[5]{};
+
+            // Set 0, binding 0: CameraInfo UBO
+            writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[0].dstSet          = ds_per_scene;
+            writes[0].dstBinding      = DSBinding::PerScene::CameraInfo;
+            writes[0].descriptorCount = 1;
+            writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            writes[0].pBufferInfo     = &camera_info;
+
+            // Set 1, binding 0: L2W SSBO
+            writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[1].dstSet          = ds_per_view;
+            writes[1].dstBinding      = DSBinding::PerView::LocalToWorld;
+            writes[1].descriptorCount = 1;
+            writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writes[1].pBufferInfo     = &l2w_info;
+
+            // Set 2, binding 0: MI SSBO
+            writes[2].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[2].dstSet          = ds_per_material;
+            writes[2].dstBinding      = DSBinding::PerMaterial::MI_SSBO;
+            writes[2].descriptorCount = 1;
+            writes[2].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writes[2].pBufferInfo     = &mi_info;
+
+            // Set 3, binding 18: VertexDataBuffer SSBO
+            writes[3].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[3].dstSet          = ds_per_draw;
+            writes[3].dstBinding      = DSBinding::PerDraw::VertexDataBuffer;
+            writes[3].descriptorCount = 1;
+            writes[3].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writes[3].pBufferInfo     = &vtx_info;
+
+            // Set 3, binding 19: IndexDataBuffer SSBO
+            writes[4].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[4].dstSet          = ds_per_draw;
+            writes[4].dstBinding      = DSBinding::PerDraw::IndexDataBuffer;
+            writes[4].descriptorCount = 1;
+            writes[4].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writes[4].pBufferInfo     = &idx_info;
+
+            vkUpdateDescriptorSets(vk_dev, 5, writes, 0, nullptr);
+            std::cout << "OK: 5 descriptor writes committed.\n";
+        }
+
+        render_ready = true;
+        std::cout << "OK: Render resources ready.\n";
+        return true;
+    }
+
 public:
 
     bool Init() override
@@ -485,9 +666,13 @@ public:
         if (test_passed)
             test_passed = InitUnlitCompositorPipeline();
 
+        // Render resource setup (Phase 12-14)
+        if (test_passed)
+            test_passed = InitRenderResources();
+
         std::cout << "\n========================================\n";
         if (test_passed)
-            std::cout << " RESULT: ALL PHASES PASSED (1-11)\n";
+            std::cout << " RESULT: ALL PHASES PASSED (1-14)\n";
         else
             std::cout << " RESULT: SOME PHASES FAILED (see above)\n";
         std::cout << "========================================\n";
@@ -503,12 +688,47 @@ public:
 
     void Render(double delta_time) override
     {
-        // 暂不执行实际渲染 — 仅显示空窗口
-        // 渲染集成将在 Stage 7 (Forward 材质迁移) 中实现
+        if (!render_ready)
+            return;
+
+        auto *world = GetECSContext();
+        if (!world)
+            return;
+
+        auto *cmd = world->GetCurrentRenderCmd();
+        if (!cmd)
+            return;
+
+        // Bind Unlit pipeline
+        cmd->BindPipeline(unlit_pipeline);
+
+        // Bind all 4 descriptor sets
+        VkDescriptorSet sets[NEW_DS_COUNT] = { ds_per_scene, ds_per_view, ds_per_material, ds_per_draw };
+        cmd->BindDescriptorSets(
+            unlit_layout->pipeline_layout,
+            0,              // firstSet
+            sets,
+            NEW_DS_COUNT,   // setCount
+            nullptr,        // dynamicOffsets
+            0               // dynamicOffsetCount
+        );
+
+        // Draw: 3 vertices, 1 instance, firstVertex = SSBO offset
+        uint32_t first_vertex = vtx_node ? vtx_node->GetStart() : 0;
+        vkCmdDraw(*cmd, 3, 1, first_vertex, 0);
     }
 
     ~CompositorRenderTest()
     {
+        auto *device = GetDevice();
+        VkDevice vk_dev = device ? device->GetDevice() : VK_NULL_HANDLE;
+
+        if (vk_dev != VK_NULL_HANDLE && test_desc_pool != VK_NULL_HANDLE)
+            vkDestroyDescriptorPool(vk_dev, test_desc_pool, nullptr);
+
+        delete camera_ubo;
+        delete l2w_ssbo;
+        delete mi_ssbo;
         delete layout_data;
         delete unlit_layout;
         delete vdbm;

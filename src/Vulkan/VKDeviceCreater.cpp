@@ -225,14 +225,28 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
 
+    // 启用 descriptorBindingPartiallyBound (Vulkan 1.2 core / VK_EXT_descriptor_indexing)
+    // 允许描述符集中未使用的绑定不必写入有效描述符
+    VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features{};
+    descriptor_indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    descriptor_indexing_features.pNext = nullptr;
+    descriptor_indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
+
+    // Chain descriptor indexing features
+    {
+        const void *prev_pNext = create_info.pNext;
+        descriptor_indexing_features.pNext = const_cast<void*>(prev_pNext);
+        create_info.pNext = &descriptor_indexing_features;
+    }
+
     if(physical_device->SupportU8Index()
      &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
-        create_info.pNext=&index_type_uint8_features;
-
         index_type_uint8_features.sType         =VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
-        index_type_uint8_features.pNext         =nullptr;
+        index_type_uint8_features.pNext         =const_cast<void*>(static_cast<const void*>(create_info.pNext));
         index_type_uint8_features.indexTypeUint8=VK_TRUE;
+
+        create_info.pNext=&index_type_uint8_features;
     }
 
     VkDevice device;

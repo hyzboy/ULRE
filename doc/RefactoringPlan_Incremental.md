@@ -1067,7 +1067,7 @@ layout(set=0, binding=1) uniform CameraUBO {
 > 此阶段先实现最简单的 Standard Surface → Forward Opaque Compositor 全链路，
 > 验证 CT 架构可行后再扩展。
 
-> **实施状态**：✅ Step 5.1 ~ 5.9 已完成（代码创建、编译、CompositorAssemblerTest 通过）；🔜 Step 5.10 端到端渲染测试待做。
+> **实施状态**：✅ Step 5.1 ~ 5.10 已完成（代码创建、编译、CompositorRenderTest 11 个 Phase 全部通过）。
 >
 > **实施备忘**：
 > - GLSLCompiler DLL 已支持 `#include`（glsl2spv.cpp 中始终启用 `GL_GOOGLE_include_directive`，引擎侧新增 `AddShaderIncludePath()` API）
@@ -1445,14 +1445,16 @@ private:
 
 ### Step 5.10 — 端到端验证：Compositor 生成的 SPV 渲染一个三角形
 
+> **实施状态**：✅ 已完成。`CompositorRenderTest.cpp` 包含 11 个 Phase 全部通过。
+
 **操作**：
-1. 新建 example `example/Basic/CompositorTest.cpp`
+1. 新建 example `example/Basic/CompositorRenderTest.cpp`
 2. 使用 `CompositorAssembler` 生成 Standard × ForwardOpaque × Medium × PC 的 GLSL
 3. 编译为 SPV
 4. 用该 SPV 创建 Pipeline
-5. 渲染一个简单三角形或立方体
+5. 验证完整流程（Phase 1–5: Lit 管线，Phase 6: SSBO 上传，Phase 7–11: Unlit 管线）
 
-**[测试]**：三角形/立方体正确渲染（与旧材质系统的渲染结果视觉一致）。
+**[测试]**：11 个 Phase 全部通过，输出 "ALL PHASES PASSED (1-11)"。
 
 ---
 
@@ -1568,6 +1570,10 @@ vec2 FetchUV0(uint vertexIndex) { return inUV0; }
 ---
 
 ### Step 7.1 — 迁移 PureColor3D（最简 Unlit Material）
+
+> **实施状态**：✅ Unlit 管线验证已通过（CompositorRenderTest Phase 7–11）。
+> 已创建所有 Unlit Surface Function + Compositor 模板，
+> CompositorAssembler 已支持 SurfaceType::Unlit 路径选择。
 
 **操作**：
 1. 在 `ShaderLibrary/surface/` 新增 `unlit_color3d_surface.glsl`（极简：`EvalSurface()` 直接输出纯色）
@@ -2413,9 +2419,9 @@ DAG 遍历 + Frustum + Cone + HZB → 输出 IndirectDraw 命令。
 | 2.10-2.11 | `DeviceQualityProfile.cpp`, `NewShaderPermutationKey.cpp` | `DeviceQualityProfile.h` | — | ✅ |
 | 3.1-3.5 | `NewDescriptorSetType.h`, `DescriptorSetBindings.h`, `NewDescriptorSetLayoutFactory.h/.cpp`, `NewDescriptorBinding.h/.cpp` | `RenderContext.h`（新增成员） | — | ✅ |
 | 4.1-4.6 | `ReversedZProj.h/.cpp`, `depth_utils.glsl` | Camera 头文件, `VKPipelineData.cpp`, `VKRenderPass` 相关 | — | ✅ |
-| 5.1-5.10 | `surface_interface.glsl`, `standard_surface.glsl`, `lighting.glsl`, `vertex_fetch_ssbo.glsl`, `main_forward_opaque.vert.glsl`, `main_forward_opaque.frag.glsl`, `CompositorAssembler.h/.cpp`, `PresetShaderCompiler.h/.cpp`, `SPVCache.h/.cpp`, `CompositorAssemblerTest.cpp` | `src/ShaderGen/CMakeLists.txt`, `example/CMakeLists.txt`, `src/Tools/GLSLCompiler/glsl2spv.cpp`, `ShaderCompilerProfileAPI.h`, `GLSLCompiler.cpp` | — | ✅ 5.1-5.9 已完成 |
+| 5.1-5.10 | `surface_interface.glsl`, `standard_surface.glsl`, `lighting.glsl`, `vertex_fetch_ssbo.glsl`, `main_forward_opaque.vert.glsl`, `main_forward_opaque.frag.glsl`, `CompositorAssembler.h/.cpp`, `PresetShaderCompiler.h/.cpp`, `SPVCache.h/.cpp`, `CompositorRenderTest.cpp` + 全部 Unlit compositor/surface 文件 | `src/ShaderGen/CMakeLists.txt`, `example/CMakeLists.txt`, `src/Tools/GLSLCompiler/glsl2spv.cpp`, `ShaderCompilerProfileAPI.h`, `GLSLCompiler.cpp` | — | ✅ 全部完成 (11 Phase 通过) |
 | 6.1-6.6 | `vertex_fetch_ssbo.glsl`, `vertex_fetch_vbo.glsl`, `VertexDataBufferManager.h/.cpp` | Mesh 加载逻辑, Pipeline 创建逻辑 | — | |
-| 7.1-7.15 | `unlit_color3d_surface.glsl`, `unlit_vertexcolor3d_surface.glsl`, `main_forward_unlit.frag.glsl`, `main_forward_masked.frag.glsl`, `main_forward_transparent.frag.glsl`, `main_forward_dither.frag.glsl`, `main_forward_a2c.frag.glsl` | 各 example, `CompositorAssembler`, `MaterialManager` | (旧材质代码暂保留) | |
+| 7.1-7.15 | `unlit_color3d_surface.glsl`, `unlit_vertexcolor_surface.glsl`, `unlit_luminance_surface.glsl`, `gizmo3d_surface.glsl`, `billboard_texture_surface.glsl`, `terrain_grid_surface.glsl`, `pbrcolor3d_surface.glsl`, `sky_minimal_surface.glsl`, `textureblinnphong_surface.glsl`, `basiclit_surface.glsl`, 全部 Unlit compositor 模板 (forward_unlit/normal/vertexcolor/luminance/billboard/sky/terrain_grid) | 各 example, `CompositorAssembler`, `MaterialManager` | (旧材质代码暂保留) | ⚠️ 7.1 Unlit 管线已完成 |
 | 8.1-8.10 | `main_shadow_opaque.vert.glsl`, `main_shadow_masked.frag.glsl`, `shadow_sampling.glsl`, ShadowMap 管理代码 | `lighting.glsl` | — | |
 | 9.1-9.4 | `hzb_downsample.comp.glsl`, `instance_cull.comp.glsl` | 渲染帧序列 | — | |
 | 10.1-10.8 | `main_vbuffer_id.vert/frag.glsl`, `tile_classify.comp.glsl`, `vbuffer_resolve_single.comp.glsl`, `vbuffer_resolve_multi.comp.glsl` | 渲染路径调度逻辑 | — | |

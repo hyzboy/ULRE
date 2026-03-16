@@ -4,7 +4,7 @@
 // Unlit 材质专用 — 仅需 Position，无 Normal/UV
 //
 // Descriptor binding 约定（Resort() 按字母序分配）：
-//   Scene    set=0 : camera=0, viewport=1   (viewport 可选，不一定使用)
+//   Scene    set=0 : camera=0, sky=1, viewport=2
 //   Transform set=1 : l2w=0
 //   Material set=2 : mtl=0
 
@@ -17,18 +17,39 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
-// Vertex attributes — minimal: Position + dual instance-rate IDs
-layout(location=0) in vec3 Position;
-layout(location=1) in uint TransformID;
-layout(location=2) in uint MaterialInstanceID;
+// Vertex input — SSBO fetch or VBO
+#if GEOMETRY_FETCH_SSBO
+    #include "common/vertex_fetch_ssbo.glsl"
+#else
+    layout(location=0) in vec3 Position;
+#endif
+
+// ECS instance-rate attributes (dual ID)
+#if GEOMETRY_FETCH_SSBO
+    #define GET_TRANSFORM_ID()          gl_InstanceIndex
+    #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
+#else
+    layout(location=1) in uint TransformID;
+    layout(location=2) in uint MaterialInstanceID;
+    #define GET_TRANSFORM_ID()          TransformID
+    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
+#endif
 
 // Outputs to FS
 layout(location=0) flat out uint fragMaterialInstanceID;
 
 void main()
 {
-    mat4 l2w_mat = l2w.mats[TransformID];
-    vec4 worldPos = l2w_mat * vec4(Position, 1.0);
-    fragMaterialInstanceID = MaterialInstanceID;
+    uint transformID = GET_TRANSFORM_ID();
+    mat4 l2w_mat = l2w.mats[transformID];
+
+#if GEOMETRY_FETCH_SSBO
+    vec3 pos = FetchPosition(gl_VertexIndex);
+#else
+    vec3 pos = Position;
+#endif
+
+    vec4 worldPos = l2w_mat * vec4(pos, 1.0);
+    fragMaterialInstanceID = GET_MATERIAL_INSTANCE_ID();
     gl_Position = camera.vp * worldPos;
 }
