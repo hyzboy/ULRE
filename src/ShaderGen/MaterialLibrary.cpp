@@ -89,6 +89,12 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.texture_source_mode = TextureSourceMode::Tex2D;
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
             break;
+        case MaterialPreset::StandardTextureArray:
+            key.surface_type = SurfaceType::Standard;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.texture_source_mode = TextureSourceMode::Tex2DArray;
+            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
+            break;
         case MaterialPreset::PBRColor3D:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
@@ -202,6 +208,7 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
         case MaterialPreset::SkyMinimal:            return "SkyMinimal";
         case MaterialPreset::Billboard2D:           return "Billboard2D";
         case MaterialPreset::Standard:              return "Standard";
+        case MaterialPreset::StandardTextureArray:  return "StandardTextureArray";
         case MaterialPreset::PBRColor3D:            return "PBRColor3D";
         default:                                    return nullptr;
     }
@@ -232,6 +239,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         case MaterialPreset::SkyMinimal:            return CreateSkyMinimal         (profile,(const SkyMinimalCreateConfig *)cfg);
         case MaterialPreset::Billboard2D:           return CreateBillboard2D        (profile,(BillboardMaterialCreateConfig *)cfg);
         case MaterialPreset::Standard:              return CreateStandard           (profile,(const Material3DCreateConfig *)cfg);
+        case MaterialPreset::StandardTextureArray:  return CreateStandardTextureArray(profile,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::PBRColor3D:            return CreatePBRColor3D         (profile,(PBRColor3DMaterialCreateConfig *)cfg);
 
         default:                                    return nullptr;

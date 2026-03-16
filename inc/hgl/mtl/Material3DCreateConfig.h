@@ -70,6 +70,7 @@ DECLARE_MATERIAL_CREATOR(VertexLuminance3D, Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexPattleColor3D,const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Standard,          const Material3DCreateConfig)
+DECLARE_MATERIAL_CREATOR(StandardTextureArray,const Material3DCreateConfig)
 
 struct TerrainGridCreateConfig:public Material3DCreateConfig
 {
@@ -121,17 +122,16 @@ struct StandardMaterialInstance
 
 constexpr const size_t StandardMaterialInstanceBytes=sizeof(StandardMaterialInstance);
 
-struct BasicLitMaterialInstance
+struct StandardTextureArrayMaterialInstance
 {
     uint32 base_color;      ///<基础颜色
     float  metallic;        ///<金属度
     float  roughness;       ///<粗糙度
-    float  fresnel;         ///<菲涅尔反射系数
-    float  ibl_intensity;   ///<IBL强度
-    float  normal_strength = DefaultNormalStrength; ///<法线强度(运行时可调)
+    float  normal_scale = DefaultNormalStrength; ///<法线强度(运行时可调)
+    uint32 texture_id = 0;  ///<2DArray层索引
 };
 
-constexpr const size_t BasicLitMaterialInstanceBytes=sizeof(BasicLitMaterialInstance);
+constexpr const size_t StandardTextureArrayMaterialInstanceBytes=sizeof(StandardTextureArrayMaterialInstance);
 
 struct PBRColor3DMaterialInstance
 {
@@ -154,12 +154,5 @@ public:
 };
 
 DECLARE_MATERIAL_CREATOR(PBRColor3D, PBRColor3DMaterialCreateConfig)
-
-struct TextureBlinnPhongMaterialInstance
-{
-    float  normal_strength = DefaultNormalStrength; ///<法线强度(运行时可调)
-};
-
-constexpr const size_t TextureBlinnPhongMaterialInstanceBytes=sizeof(TextureBlinnPhongMaterialInstance);
 
 }//namespace hgl::graph::mtl

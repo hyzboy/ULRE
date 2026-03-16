@@ -1,6 +1,6 @@
-// 该范例演示 10x10 的 BasicLit 网格：
+// 该范例演示 10x10 的 Standard 网格：
 // 使用 baseColor + normal + roughness 纹理，并保留 metallic/roughness 渐变。
-// This example renders a 10x10 BasicLit grid:
+// This example renders a 10x10 Standard grid:
 // Uses baseColor + normal + roughness textures with metallic/roughness gradients.
 
 #include<hgl/framework/WorkManager.h>
@@ -40,7 +40,7 @@ static constexpr float SPHERE_SPACING = 2.5f;  // center-to-center distance
 // 10 built-in geometries, one per column
 static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 
-// PBR material folders under res/image/pbr (currently uses first folder as BasicLit texture set)
+// PBR material folders under res/image/pbr (currently uses first folder as Standard texture set)
 constexpr const os_char *PBR_FOLDER_NAME[GRID_SIZE]=
 {
     OS_TEXT("Concrete_Plain"),
@@ -69,9 +69,8 @@ private:
 
     Material *          material  = nullptr;
     Pipeline *          pipeline  = nullptr;
-    Texture2D *         base_color_texture = nullptr;
-    Texture2D *         normal_texture = nullptr;
-    Texture2D *         roughness_texture = nullptr;
+    Texture2DArray *    base_color_texture = nullptr;
+    Texture2DArray *    normal_texture = nullptr;
     Sampler *           sampler = nullptr;
 
     VertexDataManager * mesh_vdm = nullptr;
@@ -121,110 +120,175 @@ private:
     bool InitMaterial()
     {
         auto* render_context = GetRenderContext();
-        if (!render_context)
+        if (!render_context) {
+            printf("[ERROR] InitMaterial: No render_context\n");
             return false;
+        }
 
         auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
+        if (!graphics_context) {
+            std::cerr << "[ERROR] InitMaterial: No graphics_context" << std::endl;
             return false;
+        }
 
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture || !roughness_texture)
+        if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture) {
+            printf("[ERROR] InitMaterial: Failed manager/texture checks - material_mgr=%p sampler_mgr=%p base=%p normal=%p\n",
+                   material_manager, sampler_manager, base_color_texture, normal_texture);
             return false;
+        }
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
                         mtl::WithCamera::With,
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
-        if (!material)
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::StandardTextureArray, &cfg);
+        if (!material) {
+            printf("[ERROR] InitMaterial: Failed to create StandardTextureArray material\n");
             return false;
+        }
 
         sampler = sampler_manager->CreateSampler();
-        if (!sampler)
+        if (!sampler) {
+            printf("[ERROR] InitMaterial: Failed to create sampler\n");
             return false;
+        }
 
         if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           mtl::SamplerName::BaseColor,
                                           base_color_texture,
-                                          sampler))
+                                          sampler)) {
+            printf("[ERROR] InitMaterial: Failed to bind BaseColor texture sampler\n");
             return false;
+        }
 
         if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           "TextureNormal",
                                           normal_texture,
-                                          sampler))
+                                          sampler)) {
+            printf("[ERROR] InitMaterial: Failed to bind TextureNormal sampler\n");
             return false;
-
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureRoughness",
-                                          roughness_texture,
-                                          sampler))
-            return false;
+        }
 
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass   = render_target ? render_target->GetRenderPass() : nullptr;
         pipeline = render_pass ? render_pass->CreatePipeline(material, InlinePipeline::Solid3D) : nullptr;
 
-        return pipeline != nullptr;
+        if (!pipeline) {
+            printf("[ERROR] InitMaterial: Failed to create pipeline\n");
+            return false;
+        }
+        return true;
     }
 
     bool InitTextures()
     {
         auto* render_context = GetRenderContext();
-        if (!render_context)
+        if (!render_context) {
+            std::cerr << "[ERROR] InitTextures: No render_context" << std::endl;
             return false;
+        }
 
         auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
+        if (!graphics_context) {
+            std::cerr << "[ERROR] InitTextures: No graphics_context" << std::endl;
             return false;
+        }
 
         auto* texture_manager = graphics_context->GetTextureManager();
-        if (!texture_manager)
+        if (!texture_manager) {
+            std::cerr << "[ERROR] InitTextures: No texture_manager" << std::endl;
             return false;
+        }
 
-        OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"),
-                                                           PBR_FOLDER_NAME[0]);
+        auto BuildFilePair = [](const OSString &folder, OSString &base, OSString &normal) -> bool
+        {
+            base = filesystem::JoinPathWithFilename(folder, OS_TEXT("baseColor.Tex2D"));
+            normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("normal.Tex2D"));
+            if (!filesystem::FileExist(normal))
+                normal = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
 
-        OSString base_color_filename = filesystem::JoinPathWithFilename(folder,
-                                                                         OS_TEXT("baseColor.Tex2D"));
+            return filesystem::FileExist(base)
+                && filesystem::FileExist(normal);
+        };
 
-        OSString normal_filename = filesystem::JoinPathWithFilename(folder,
-                                                                     OS_TEXT("normal.Tex2D"));
-        if (!filesystem::FileExist(normal_filename))
-            normal_filename = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
-
-        OSString roughness_filename = filesystem::JoinPathWithFilename(folder,
-                                                                        OS_TEXT("roughness.Tex2D"));
-        if (!filesystem::FileExist(base_color_filename)
-         || !filesystem::FileExist(normal_filename)
-         || !filesystem::FileExist(roughness_filename))
+        OSString first_folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"), PBR_FOLDER_NAME[0]);
+        OSString first_base, first_normal;
+        if (!BuildFilePair(first_folder, first_base, first_normal)) {
+            printf("[ERROR] InitTextures: Failed to find texture pair for folder[0]\n");
             return false;
+        }
 
-        base_color_texture = texture_manager->LoadTexture2D(base_color_filename, true);
-        if (!base_color_texture)
+        Texture2D *probe_base = texture_manager->LoadTexture2D(first_base, true);
+        Texture2D *probe_normal = texture_manager->LoadTexture2D(first_normal, true);
+        if (!probe_base || !probe_normal) {
+            printf("[ERROR] InitTextures: Failed to load probe textures - base=%p normal=%p\n", 
+                   probe_base, probe_normal);
             return false;
+        }
 
-        normal_texture = texture_manager->LoadTexture2D(normal_filename, true);
-        if (!normal_texture)
-            return false;
+        base_color_texture = texture_manager->CreateTexture2DArray("pbr_baseColor_array",
+                                                                   probe_base->GetWidth(),
+                                                                   probe_base->GetHeight(),
+                                                                   GRID_SIZE,
+                                                                   probe_base->GetFormat(),
+                                                                   true);
+        normal_texture = texture_manager->CreateTexture2DArray("pbr_normal_array",
+                                                                probe_normal->GetWidth(),
+                                                                probe_normal->GetHeight(),
+                                                                GRID_SIZE,
+                                                                probe_normal->GetFormat(),
+                                                                true);
 
-        roughness_texture = texture_manager->LoadTexture2D(roughness_filename, true);
-        if (!roughness_texture)
+        SAFE_CLEAR(probe_base)
+        SAFE_CLEAR(probe_normal)
+
+        if (!base_color_texture || !normal_texture) {
+            printf("[ERROR] InitTextures: Failed to create Texture2DArray - base_color=%p normal=%p\n", 
+                   base_color_texture, normal_texture);
             return false;
+        }
+
+        for (uint32_t layer = 0; layer < GRID_SIZE; ++layer)
+        {
+            OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"), PBR_FOLDER_NAME[layer]);
+            OSString base_file, normal_file;
+            if (!BuildFilePair(folder, base_file, normal_file)) {
+                printf("[ERROR] InitTextures: Layer %u - Failed to find texture pair for PBR_FOLDER_NAME[%u]\n", layer, layer);
+                return false;
+            }
+
+            if (!texture_manager->LoadTexture2DArray(base_color_texture, layer, base_file)) {
+                printf("[ERROR] InitTextures: Layer %u - Failed to load baseColor texture\n", layer);
+                return false;
+            }
+            if (!texture_manager->LoadTexture2DArray(normal_texture, layer, normal_file)) {
+                printf("[ERROR] InitTextures: Layer %u - Failed to load normal texture\n", layer);
+                return false;
+            }
+        }
 
         return true;
     }
 
-    bool CreateBasicLitMaterialInstances()
+    bool CreateStandardMaterialInstances()
     {
         auto* render_context = GetRenderContext();
-        if (!render_context) return false;
+        if (!render_context) {
+            printf("[ERROR] CreateStandardMaterialInstances: No render_context\n");
+            return false;
+        }
         auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context) return false;
+        if (!graphics_context) {
+            printf("[ERROR] CreateStandardMaterialInstances: No graphics_context\n");
+            return false;
+        }
         auto* material_manager = graphics_context->GetMaterialManager();
-        if (!material_manager) return false;
+        if (!material_manager) {
+            printf("[ERROR] CreateStandardMaterialInstances: No material_manager\n");
+            return false;
+        }
 
         for (uint row = 0; row < GRID_SIZE; ++row)
         {
@@ -235,17 +299,26 @@ private:
                 float metallic  = float(col) / float(GRID_SIZE - 1);
                 float roughness = 0.05f + float(row) / float(GRID_SIZE - 1) * 0.95f;
 
-                auto &d    = sphere_mi_data[row][col];
+                mtl::StandardTextureArrayMaterialInstance d{};
                 d.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
                 d.metallic   = metallic;
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
+                d.texture_id = col;
+
+                auto &store = sphere_mi_data[row][col];
+                store.base_color = d.base_color;
+                store.metallic = d.metallic;
+                store.roughness = d.roughness;
+                store.normal_scale = d.normal_scale;
 
                 sphere_mi[row][col] = material_manager->CreateMaterialInstance(
                     material, (VIL *)nullptr, &d);
 
-                if (!sphere_mi[row][col])
+                if (!sphere_mi[row][col]) {
+                    printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
                     return false;
+                }
             }
         }
 
@@ -255,22 +328,34 @@ private:
     bool InitVDM()
     {
         auto* render_context = GetRenderContext();
-        if (!render_context)
+        if (!render_context) {
+            printf("[ERROR] InitVDM: No render_context\n");
             return false;
+        }
 
         auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
+        if (!graphics_context) {
+            printf("[ERROR] InitVDM: No graphics_context\n");
             return false;
+        }
 
         auto* buffer_manager = graphics_context->GetBufferManager();
-        if (!buffer_manager)
+        if (!buffer_manager) {
+            printf("[ERROR] InitVDM: No buffer_manager\n");
             return false;
+        }
 
         mesh_vdm = new VertexDataManager(buffer_manager, material->GetDefaultVIL());
-        if (!mesh_vdm)
+        if (!mesh_vdm) {
+            printf("[ERROR] InitVDM: Failed to create VertexDataManager\n");
             return false;
+        }
 
-        return mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16);
+        if (!mesh_vdm->Init(HGL_SIZE_1MB, HGL_SIZE_1MB, IndexType::U16)) {
+            printf("[ERROR] InitVDM: Failed to init VertexDataManager\n");
+            return false;
+        }
+        return true;
     }
 
     bool CreateBuiltinGeometries()
@@ -366,8 +451,10 @@ private:
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
-            if (!builtin_geometries[i])
+            if (!builtin_geometries[i]) {
+                printf("[ERROR] CreateBuiltinGeometries: Failed to create geometry %u\n", i);
                 return false;
+            }
         }
 
         return true;
@@ -376,16 +463,22 @@ private:
     bool CreateBasePrimitives()
     {
         auto* render_context = GetRenderContext();
-        if (!render_context)
+        if (!render_context) {
+            printf("[ERROR] CreateBasePrimitives: No render_context\n");
             return false;
+        }
 
         auto* graphics_context = render_context->GetGraphicsContext();
-        if (!graphics_context)
+        if (!graphics_context) {
+            printf("[ERROR] CreateBasePrimitives: No graphics_context\n");
             return false;
+        }
 
         auto* primitive_manager = graphics_context->GetPrimitiveManager();
-        if (!primitive_manager)
+        if (!primitive_manager) {
+            printf("[ERROR] CreateBasePrimitives: No primitive_manager\n");
             return false;
+        }
 
         for (uint i = 0; i < GEOMETRY_VARIANT_COUNT; ++i)
         {
@@ -393,8 +486,10 @@ private:
             base_primitives[i] = primitive_manager->CreatePrimitive(
                 builtin_geometries[i], sphere_mi[0][i], pipeline);
 
-            if (!base_primitives[i])
+            if (!base_primitives[i]) {
+                printf("[ERROR] CreateBasePrimitives: Failed to create primitive %u\n", i);
                 return false;
+            }
         }
 
         return true;
@@ -403,8 +498,10 @@ private:
     bool InitECS()
     {
         ecs_world = GetECSContext();
-        if (!ecs_world)
+        if (!ecs_world) {
+            printf("[ERROR] InitECS: No ecs_world\n");
             return false;
+        }
 
         // 计算网格原点，使整体居中于世界原点
         const float offset = (GRID_SIZE - 1) * SPHERE_SPACING * 0.5f;
@@ -443,8 +540,10 @@ private:
 
     bool EnsureCameraSystem()
     {
-        if (!ecs_world)
+        if (!ecs_world) {
+            printf("[ERROR] EnsureCameraSystem: No ecs_world\n");
             return false;
+        }
 
         auto camera_system = ecs_world->GetSystem<CameraSystem>();
         if (!camera_system)
@@ -457,13 +556,19 @@ private:
             }
         }
 
-        return camera_system != nullptr;
+        if (!camera_system) {
+            printf("[ERROR] EnsureCameraSystem: Failed to get or create camera system\n");
+            return false;
+        }
+        return true;
     }
 
     bool InitCamera()
     {
-        if (!EnsureCameraSystem())
+        if (!EnsureCameraSystem()) {
+            printf("[ERROR] InitCamera: Failed to ensure camera system\n");
             return false;
+        }
 
         camera_entity = ecs_world->CreateEntity<Entity>("MainCamera");
         auto camera = camera_entity->AddComponent<CameraComponent>();
@@ -497,7 +602,6 @@ public:
         SAFE_CLEAR(mesh_vdm)
         SAFE_CLEAR(base_color_texture)
         SAFE_CLEAR(normal_texture)
-        SAFE_CLEAR(roughness_texture)
         SAFE_CLEAR(sampler)
     }
 
@@ -511,7 +615,7 @@ public:
         if (!InitMaterial())
             return false;
 
-        if (!CreateBasicLitMaterialInstances())
+        if (!CreateStandardMaterialInstances())
             return false;
 
         if (!InitVDM())
@@ -562,5 +666,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("BasicLit BuiltinGeometry x BaseColor+Normal+Roughness 10x10 (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<TestApp>(OS_TEXT("Standard BuiltinGeometry x BaseColor+Normal+Roughness 10x10 (ECS)"), argc, argv, 1280, 720);
 }

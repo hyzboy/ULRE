@@ -28,6 +28,7 @@ enum class MaterialPreset:uint8
     SkyMinimal,
     Billboard2D,
     Standard,
+    StandardTextureArray,
     PBRColor3D,
 
     ENUM_CLASS_RANGE(VertexColor2D,PBRColor3D)

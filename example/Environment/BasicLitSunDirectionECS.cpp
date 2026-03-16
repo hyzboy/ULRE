@@ -523,5 +523,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BasicLitSunDirectionECSApp>(OS_TEXT("BasicLit Sun Direction ECS"), argc, argv, 1280, 720);
+    return RunFramework<BasicLitSunDirectionECSApp>(OS_TEXT("Standard Sun Direction ECS"), argc, argv, 1280, 720);
 }

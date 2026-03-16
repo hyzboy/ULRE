@@ -516,5 +516,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BasicLitMeshesECSApp>(OS_TEXT("BasicLit Meshes ECS"), argc, argv, 1280, 720);
+    return RunFramework<BasicLitMeshesECSApp>(OS_TEXT("Standard Meshes ECS"), argc, argv, 1280, 720);
 }

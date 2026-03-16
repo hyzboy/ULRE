@@ -515,5 +515,5 @@ public:
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<TextureBlinnPhongMeshesECSApp>(OS_TEXT("TextureBlinnPhong Meshes ECS"), argc, argv, 1280, 720);
+    return RunFramework<TextureBlinnPhongMeshesECSApp>(OS_TEXT("Standard Meshes ECS (Texture Set)"), argc, argv, 1280, 720);
 }
