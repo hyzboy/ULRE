@@ -1,4 +1,5 @@
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/mtl/MaterialVariantDesc.h>
 #include <fstream>
 #include <sstream>
 
@@ -231,5 +232,27 @@ namespace hgl::graph
         result.fragment_glsl = std::move(fs_source);
         result.success       = true;
         return result;
+    }
+
+    CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
+        const mtl::MaterialVariantKey  &key,
+        PlatformBackend                 platform,
+        const mtl::MaterialVariantDesc &desc
+    ) const
+    {
+        auto pathOrNull = [](const std::string &s) -> const char *
+        {
+            return s.empty() ? nullptr : s.c_str();
+        };
+        return Assemble(
+            key.surface_type,
+            key.blend_mode,
+            key.pass_hint,
+            key.quality_tier,
+            platform,
+            pathOrNull(desc.vs_template_path),
+            pathOrNull(desc.fs_template_path),
+            pathOrNull(desc.surface_function_path)
+        );
     }
 }

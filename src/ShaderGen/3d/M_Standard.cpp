@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
+#include <hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -73,18 +74,20 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
     dynamic_def.descriptor_entries = dynamic_descriptors.data();
     dynamic_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
 
+    MaterialVariantKey var_key;
+    var_key.surface_type        = SurfaceType::Standard;
+    var_key.texture_source_mode = TextureSourceMode::Tex2D;
+    var_key.feature_bits        = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[Standard] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Standard,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_forward_lit.vert.glsl",
-        "compositor/main_forward_lit.frag.glsl",
-        "surface/standard_surface.glsl"
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

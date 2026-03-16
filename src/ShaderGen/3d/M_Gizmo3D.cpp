@@ -5,6 +5,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
 #include<string>
+#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl
 {
@@ -49,19 +50,18 @@ namespace
 
 MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
+    MaterialVariantKey var_key;
+    var_key.feature_bits = VF_DebugShading;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[Gizmo3D] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Unlit,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_forward_unlit_normal.vert.glsl",   // VS: Pos+Normal+TID+MIID
-        "compositor/main_forward_unlit_normal.frag.glsl",   // FS: worldPos+worldNormal+MIID + camera
-        "surface/gizmo3d_surface.glsl"                      // Surface: MI color + Blinn-Phong
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

@@ -5,6 +5,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
 #include<string>
+#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -39,16 +40,18 @@ namespace
 
 MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
+    // PureColor3D: Unlit Mesh3D, no texture — desc has empty paths (auto-routing)
+    MaterialVariantKey var_key;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[PureColor3D] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Unlit,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

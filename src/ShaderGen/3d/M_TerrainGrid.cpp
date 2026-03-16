@@ -5,6 +5,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<cstdio>
+#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -40,18 +41,18 @@ namespace
 
 MaterialCreateInfo *CreateTerrainGrid(const contract::PhysicalDeviceProfileLite *profile, const TerrainGridCreateConfig *cfg)
 {
+    MaterialVariantKey var_key;
+    var_key.surface_type = SurfaceType::Terrain;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[TerrainGrid] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Terrain,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_terrain_grid.vert.glsl",
-        "compositor/main_terrain_grid.frag.glsl",
-        "surface/terrain_grid_surface.glsl"
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

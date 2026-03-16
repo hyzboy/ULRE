@@ -4,6 +4,7 @@
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/common/RenderAssignDef.h>
 #include <cstdio>
+#include <hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -34,18 +35,18 @@ namespace
 
 MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *profile, const SkyMinimalCreateConfig *cfg)
 {
+    MaterialVariantKey var_key;
+    var_key.surface_type = SurfaceType::Sky;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[SkyMinimal] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Sky,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_forward_sky.vert.glsl",
-        "compositor/main_forward_sky.frag.glsl",
-        "surface/sky_minimal_surface.glsl"
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

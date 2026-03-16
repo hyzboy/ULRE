@@ -16,6 +16,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
+#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -55,18 +56,18 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
     };
     local_cfg.SetPrivateShaderBufferSources(private_sbs_list,1);
 
+    MaterialVariantKey var_key;
+    var_key.feature_bits = VF_UseVertexColor | VF_DebugShading;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[VertexPattleColor3D] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Unlit,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_forward_unlit_pattle.vert.glsl",
-        "compositor/main_forward_unlit_vertexcolor.frag.glsl",
-        "surface/unlit_vertexcolor_surface.glsl"
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

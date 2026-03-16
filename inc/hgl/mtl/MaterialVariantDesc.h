@@ -90,6 +90,9 @@ namespace hgl::graph::mtl
         // 使用 key 的哈希作为查询键
         std::unordered_map<uint64, MaterialVariantDesc> variant_map;
     };
+
+    /// 返回全局内置变体注册表单例（首次调用时初始化）
+    const VariantRegistry &GetBuiltinVariantRegistry();
 }
 
 #endif // HGL_MTL_MATERIAL_VARIANT_DESC_H

@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../common/MFSkyLight.h"
+#include <hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -70,19 +71,19 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     dynamic_def.descriptor_entries      = dynamic_descriptors.data();
     dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
 
-    // Assemble GLSL from templates
+    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture — color via MI)
+    MaterialVariantKey var_key;
+    var_key.surface_type = SurfaceType::Standard;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[PBRColor3D] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Standard,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_forward_lit.vert.glsl",
-        "compositor/main_forward_lit.frag.glsl",
-        "surface/pbrcolor3d_surface.glsl"
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

@@ -4,6 +4,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
+#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -45,18 +46,22 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDevicePro
     cfg->local_to_world=true;
     cfg->material_instance=true;
 
+    MaterialVariantKey var_key;
+    var_key.geometry_mode       = GeometryMode::BillboardAxisLocked;
+    var_key.texture_source_mode = TextureSourceMode::Tex2D;
+    var_key.feature_bits        = VF_HasBaseColorTex;
+    var_key.blend_mode          = BlendMode::Transparent;
+    var_key.pass_hint           = PassType::ForwardTransparent;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[BillboardFixed] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Unlit,
-        BlendMode::Transparent,
-        PassType::ForwardTransparent,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_forward_billboard_fixed.vert.glsl",
-        "compositor/main_forward_billboard.frag.glsl",
-        "surface/billboard_texture_surface.glsl"
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {

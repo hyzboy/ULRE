@@ -8,6 +8,13 @@
 #include <hgl/mtl/new/NewShaderPermutationKey.h>
 #include <string>
 
+// Forward declarations for VariantDesc-based overload
+namespace hgl::graph::mtl
+{
+    struct MaterialVariantKey;
+    struct MaterialVariantDesc;
+}
+
 namespace hgl::graph
 {
     /**
@@ -48,6 +55,14 @@ namespace hgl::graph
             const char     *vs_template_override      = nullptr,
             const char     *fs_template_override      = nullptr,
             const char     *surface_function_override  = nullptr
+        ) const;
+
+        /// VariantDesc overload — derives SurfaceType/BlendMode/PassType/QualityTier from key,
+        /// uses desc's shader template paths (empty path → auto-routing fallback).
+        AssembleResult Assemble(
+            const mtl::MaterialVariantKey  &key,
+            PlatformBackend                 platform,
+            const mtl::MaterialVariantDesc &desc
         ) const;
 
     private:

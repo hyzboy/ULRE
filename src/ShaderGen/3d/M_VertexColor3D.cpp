@@ -5,6 +5,7 @@
 #include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
 #include<string>
+#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -35,19 +36,18 @@ namespace
 
 MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
-    // 通过 CompositorAssembler 从 .glsl 模板文件组装 VS/FS
+    MaterialVariantKey var_key;
+    var_key.feature_bits = VF_UseVertexColor;
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[VertexColor3D] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(
-        SurfaceType::Unlit,
-        BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC,
-        "compositor/main_forward_unlit_vertexcolor.vert.glsl",  // VS: Pos+Color+TID
-        "compositor/main_forward_unlit_vertexcolor.frag.glsl",  // FS: vertexColor, 无 MI
-        "surface/unlit_vertexcolor_surface.glsl"                // Surface: 顶点色直通
-    );
+    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
 
     if (!result.success)
     {
