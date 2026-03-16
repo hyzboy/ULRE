@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/StdMaterial.h>
+#include<hgl/mtl/new/MaterialVariantKey.h>
 
 namespace hgl::graph::mtl{
 
@@ -48,6 +49,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              MaterialCreateConfig *cfg);
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
+
+// Phase-A migration helpers: preset <-> variant mapping.
+MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
+bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset);
 
 }//namespace hgl::graph::mtl
 

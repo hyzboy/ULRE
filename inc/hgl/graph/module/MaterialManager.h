@@ -19,6 +19,7 @@ class ShaderCreateInfoMap;
 namespace mtl
 {
     enum class MaterialPreset:uint8;
+    struct MaterialVariantKey;
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
     class MaterialCreateInfo;
@@ -143,6 +144,8 @@ public: //Material
 
     Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material2DCreateConfig *);  ///<基于内置材质ID创建2D材质
     Material *          CreateMaterial  (const mtl::MaterialPreset, mtl::Material3DCreateConfig *);  ///<基于内置材质ID创建3D材质
+    Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material2DCreateConfig *); ///<基于variant key创建2D材质（Phase-A兼容）
+    Material *          CreateMaterial  (const mtl::MaterialVariantKey &, mtl::Material3DCreateConfig *); ///<基于variant key创建3D材质（Phase-A兼容）
 
 public: //MaterialInstance
 

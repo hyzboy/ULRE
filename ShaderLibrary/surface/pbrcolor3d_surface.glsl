@@ -1,21 +1,17 @@
 // pbrcolor3d_surface.glsl — PBR Color3D surface function (world-space, Cook-Torrance)
-// Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, mtl=2
+// Pure-color variant: no texture sampling.
+// Material set bindings: mtl=0
 
 // MI SSBO
-#define MI_BINDING 2
+#define MI_BINDING 0
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
     uint  base_color;    // packed RGBA8_UNORM
     float metallic;      // [0, 1]
     float roughness;     // [0.04, 1]
-    uint  texture_id;    // Texture2DArray layer index
 };
 MI_SSBO;
-
-// Textures (sampler2DArray)
-layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TextureBaseColor;
-layout(set=MATERIAL_SET, binding=1) uniform sampler2DArray TextureNormal;
 
 // Sky light
 #include "common/skylight_simple.glsl"
@@ -70,15 +66,11 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
     MaterialInstance mi = mtl.mi[miID];
 
-    vec2 uv = fract(abs(si.uv0));
-    vec4 tex_albedo = texture(TextureBaseColor, vec3(uv, float(mi.texture_id)));
-    vec3 tex_normal = texture(TextureNormal, vec3(uv, float(mi.texture_id))).xyz * 2.0 - 1.0;
-    vec4 mi_albedo  = unpackUnorm4x8(mi.base_color);
-    vec4 albedo     = tex_albedo * mi_albedo;
+    vec4 albedo     = unpackUnorm4x8(mi.base_color);
     float metallic  = clamp(mi.metallic,  0.0,  1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-    vec3 N = PBR_ApplyNormalMap(si.worldPos, uv, si.worldNormal, normalize(tex_normal));
+    vec3 N = normalize(si.worldNormal);
     vec3 V = si.viewDir;
     vec3 L = normalize(ULRE_GetSkyLightDir());
     vec3 H = normalize(V + L);

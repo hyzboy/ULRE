@@ -1,7 +1,7 @@
 # ULRE 渲染系统重构 — 工作进度跟踪
 
 > **用途**: 换机开发时快速恢复上下文。包含所有已完成/进行中的工作、文件清单、构建信息和后续计划。  
-> **最后更新**: 2025-07 (Stages 1–6 完成 + Stage 7.1 Unlit 管线验证通过)
+> **最后更新**: 2026-03 (Stages 1–6 完成 + Stage 7.1-7.12 完成；standard_surface.glsl 2档实现)
 
 ---
 
@@ -15,7 +15,7 @@
 | Stage 4 | Reversed-Z + Camera 相对渲染 | ⚠️ 部分完成 (4.1–4.2, 4.6, 4.7.1, 4.7.3) |
 | Stage 5 | Compositor / Shader 组装 | ✅ 完成 (5.1–5.10) |
 | Stage 6 | SSBO Vertex Fetch 路径 | ✅ 完成 (6.1–6.6) |
-| Stage 7–16 | 后续阶段 | ⚠️ Stage 7 部分完成（7.1 Unlit 管线端到端渲染通过） |
+| Stage 7–16 | 后续阶段 | ⚠️ Stage 7 部分完成（7.1 Unlit 验证 ✅; 7.2-7.9 Unlit 材质 ✅; 7.10-7.12 Lit/PBR 材质 ✅; 7.13+ 待做） |
 
 ---
 
@@ -161,11 +161,13 @@
 | `ShaderLibrary/surface/textureblinnphong_surface.glsl` | 纹理 BlinnPhong |
 
 **Step 5.10: CompositorRenderTest**
-- `example/Basic/CompositorRenderTest.cpp` — **11 阶段验证测试 (Phase 1–11)**
+- `example/Basic/CompositorRenderTest.cpp` — **14 阶段验证测试 (Phase 1–14)**
   - Phase 1–5: Standard (Lit) 管线验证（Assemble → SPV → ShaderModule → PipelineLayout → VkPipeline）
   - Phase 6: SSBO Vertex Data Upload（VertexDataBufferManager + SSBOVertexData）
   - Phase 7–11: Unlit 管线验证（同 Phase 1–5 流程的 Unlit 版本）
-  - `Init()` 输出: "Step 5.10 + 7.1 — ALL PHASES PASSED (1-14)"
+  - Phase 12–14: UBO/SSBO 创建 + Descriptor Pool + Descriptor Writes
+  - `Render()`: vkCmdDraw（BindPipeline + BindDescriptorSets + Draw 3 vertices）
+  - 输出: "RESULT: ALL PHASES PASSED (1-14)"（已 Vulkan 运行时验证通过）
 - `example/Basic/CMakeLists.txt` — 添加 `CreateProject(10_CompositorRenderTest ...)`
 - 修改 `inc/hgl/vk/VKRenderPass.h` — 添加 public `CreatePipeline` 重载（接受原始 shader stages）
 - 修改 `src/Vulkan/VKRenderPass.cpp` — 实现上述重载
@@ -232,8 +234,32 @@ CompositorRenderTest Phase 1–14 验证了完整链路（GLSL→SPV→Pipeline�
 - `compositor/main_terrain_grid.vert.glsl` / `.frag.glsl`
 - `surface/` 下所有 Unlit 类表面函数（见 §八 文件清单）
 
+**Step 7.2–7.9: Unlit 材质迁移 ✅**
+
+所有 Unlit 材质均已使用 `CompositorAssembler::Assemble()` 路径实现 Surface Function + Compositor Template：
+- `unlit_color3d_surface.glsl`, `unlit_vertexcolor_surface.glsl`, `unlit_luminance_surface.glsl`
+- `gizmo3d_surface.glsl`, `billboard_texture_surface.glsl`, `sky_minimal_surface.glsl`
+- `terrain_grid_surface.glsl`, `purecolor2d_surface.glsl`（及对应 compositor 模板）
+
+**Step 7.10–7.12: Lit/PBR 材质 Compositor 接入 ✅**
+
+三种标准 Lit 材质均已通过 Compositor 路径，各自使用专用 surface function：
+- `M_BasicLit.cpp` → `basiclit_surface.glsl` (Half-Lambert + Blinn-Phong + 3 textures)
+- `M_TextureBlinnPhong.cpp` → `textureblinnphong_surface.glsl` (Blinn-Phong + Normal/Roughness)
+- `M_PBRColor3D.cpp` → `pbrcolor3d_surface.glsl` (Cook-Torrance + Texture2DArray)
+
+`standard_surface.glsl` 已实现 2档质量分级：
+- **QUALITY_TIER ≤ 3** (Low/Medium/High): Half-Lambert + Blinn-Phong，tier≥1 采样 Albedo 纹理
+- **QUALITY_TIER ≥ 4** (Ultra/Cinematic): 简化 Cook-Torrance PBR (GGX NDF + Smith G + Schlick F)，无 IBL/cubemap
+- metallic/roughness 参数在两档均可见影响渲染结果
+- 暂不支持 cubemap 与 HDR 纹理加载（接口预留，后续实现完整 IBL）
+
+`lighting.glsl` 同步更新为 2档实现（EvalLighting 供 forward_opaque 路径使用）。
+
+**注意**: 现有 M_BasicLit/TextureBlinnPhong/PBRColor3D 暂时硬编码 `QualityTier::Medium`（值=2）。quality dispatch 调用侧接入为后续工作。
+
 **待完成步骤:**
-- Steps 7.2–7.15: Lit 材质迁移
+- Steps 7.13–7.15: ForwardMasked/Transparent/Dither/A2C compositor 模板
 
 ---
 
@@ -299,13 +325,16 @@ CMake 重新配置: cmake build_new
 ## 七、下一步工作
 
 **Stage 7: Forward 材质迁移** (Steps 7.1–7.15)
-- ✅ **Step 7.1 完成**: Unlit 管线端到端渲染验证通过（Phase 1–14 + vkCmdDraw）
-  - CompositorAssembler 支持 Unlit 路径（简化 VS/FS 模板选择）
-  - 所有 Unlit Surface Function 已创建（unlit_color3d, unlit_vertexcolor, unlit_luminance, gizmo3d, billboard_texture）
-  - Unlit Compositor 模板已创建（forward_unlit, forward_unlit_normal, forward_unlit_vertexcolor, forward_unlit_luminance 等）
-- ⬜ 将现有 Lit 材质逐个迁移到新的 Compositor 系统
-- ⬜ 需要完整的 UBO / descriptor chain
-- ⬜ CompositorRenderTest 中的实际 `vkCmdDraw` 渲染将在此阶段实现
+- ✅ **Step 7.1**: Unlit 管线端到端验证（Phase 1–14 运行时全通过，vkCmdDraw 验证）
+- ✅ **Steps 7.2–7.9**: 所有 Unlit 材质变体完成（surface functions + compositor 模板 + descriptor 适配）
+- ✅ **Steps 7.10–7.12**: Lit/PBR 材质 Compositor 接入完成
+  - M_BasicLit / M_TextureBlinnPhong / M_PBRColor3D 三个材质均已接入 CompositorAssembler
+  - `standard_surface.glsl` 实现 2档（Tier≤3: BlinnPhong+HalfLambert; Tier≥4: 简化 PBR）
+  - `lighting.glsl` 同步实现 2档 EvalLighting（供 forward_opaque 路径）
+- ⬜ **Steps 7.13–7.15**: ForwardMasked / ForwardTransparent / Dither / A2C compositor 模板
+  - 需要 `main_forward_masked.frag.glsl`, `main_forward_transparent.frag.glsl` 等模板
+  - BlendMode → PassType[] 变体映射
+  - Texture2DArray 池集成测试
 
 **后续阶段** (8–16):
 - Stage 8: 多灯光系统

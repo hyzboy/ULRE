@@ -1,57 +1,148 @@
-// Standard Surface Function — 基础 PBR 材质
-// 第一版：最简 PBR 采样逻辑
+// standard_surface.glsl — Standard Lit Surface (2-tier quality dispatch)
+// QUALITY_TIER <= 3 : Half-Lambert + Blinn-Phong (Low)
+//   tier >= 1: Albedo texture sampled
+// QUALITY_TIER >= 4 : Simplified Cook-Torrance PBR, no IBL/cubemap (High)
+//   tier >= 4: Albedo + NormalMap + MR textures sampled
+// 参数 (metallic, roughness) 在两个档位都可见影响结果。
+// 目标：跑通 ShaderGen 全流程；不依赖 cubemap 或 HDR 纹理加载。
 
 #include "common/surface_interface.glsl"
 
-// 材质纹理 — binding 由 Compositor / Material 系统最终确定
-#if QUALITY_TIER >= 1
-layout(set=MATERIAL_SET, binding=1) uniform sampler2D TexAlbedo;
-#endif
-#if QUALITY_TIER >= 2
-layout(set=MATERIAL_SET, binding=2) uniform sampler2D TexNormal;
-layout(set=MATERIAL_SET, binding=3) uniform sampler2D TexMR;      // metallic(G) + roughness(B)
-#endif
-
-// 材质实例数据 — 从 MI SSBO 读取
+// ─── MI SSBO ─────────────────────────────────────────────────────────────────
+#define MI_BINDING 3
+#include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
-    vec4  base_color_factor;
-    float metallic_factor;
-    float roughness_factor;
-    float ao_strength;
-    float emissive_strength;
-    // ...
+    uint  base_color;    // packed RGBA8_UNORM, read with unpackUnorm4x8()
+    float metallic;
+    float roughness;
+    float normal_scale;  // normal map intensity (tier >= 4 only)
 };
+MI_SSBO;
 
-SurfaceOutput EvalSurface(SurfaceInput si, MaterialInstance mi)
+// ─── Textures (tier-gated) ───────────────────────────────────────────────────
+#if QUALITY_TIER >= 1
+layout(set=MATERIAL_SET, binding=0) uniform sampler2D TexAlbedo;
+#endif
+#if QUALITY_TIER >= 4
+layout(set=MATERIAL_SET, binding=1) uniform sampler2D TexNormal;
+layout(set=MATERIAL_SET, binding=2) uniform sampler2D TexMR;   // R=metallic, G=roughness
+#endif
+
+// ─── Sky Light ────────────────────────────────────────────────────────────────
+#include "common/skylight_simple.glsl"
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+float halfLambertDiffuse(vec3 N, vec3 L)
 {
+    float h = dot(N, L) * 0.5 + 0.5;
+    return h * h;
+}
+
+#if QUALITY_TIER >= 4
+
+float D_GGX(float NdotH, float alpha2)
+{
+    float d = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
+    return alpha2 / (3.14159265 * d * d + 1e-7);
+}
+
+float G_Smith(float NdotV, float NdotL, float roughness)
+{
+    float k  = (roughness + 1.0) * (roughness + 1.0) / 8.0;
+    float gv = NdotV / (NdotV * (1.0 - k) + k + 1e-7);
+    float gl = NdotL / (NdotL * (1.0 - k) + k + 1e-7);
+    return gv * gl;
+}
+
+vec3 F_Schlick(float VdotH, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
+}
+
+#endif // QUALITY_TIER >= 4
+
+// ─── Surface Entry ────────────────────────────────────────────────────────────
+
+SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+{
+    MaterialInstance mi = mtl.mi[miID];
+
+    vec3 N = normalize(si.worldNormal);
+    vec3 V = si.viewDir;
+    vec3 L = normalize(ULRE_GetSkyLightDir());
+
+    vec3 sunColor   = max(ULRE_GetSkyLightColor(), vec3(0.2));
+    vec3 skyAmbient = ULRE_GetSkyAmbientColor();
+
+    // ── Base color ────────────────────────────────────────────────────────────
+    vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
+#if QUALITY_TIER >= 1
+    albedo *= texture(TexAlbedo, si.uv0).rgb;
+#endif
+
+    float metallic  = clamp(mi.metallic,  0.0, 1.0);
+    float roughness = clamp(mi.roughness, 0.04, 1.0);
+
+#if QUALITY_TIER >= 4
+    // ── Normal Map ────────────────────────────────────────────────────────────
+    vec3 nm = texture(TexNormal, si.uv0).xyz * 2.0 - 1.0;
+    nm.y = -nm.y;
+    N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
+
+    // ── MR Map ────────────────────────────────────────────────────────────────
+    vec2 mr    = texture(TexMR, si.uv0).rg;
+    metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
+    roughness  = clamp(roughness * mr.g, 0.04, 1.0);
+
+    // ── Simplified Cook-Torrance PBR (no IBL, no cubemap) ────────────────────
+    float NdotL  = max(dot(N, L), 0.0);
+    float NdotV  = max(dot(N, V), 1e-4);
+    vec3  H      = normalize(V + L);
+    float NdotH  = max(dot(N, H), 0.0);
+    float VdotH  = max(dot(V, H), 0.0);
+
+    float alpha2 = roughness * roughness * roughness * roughness;
+    float D      = D_GGX(NdotH, alpha2);
+    float G      = G_Smith(NdotV, NdotL, roughness);
+    vec3  F0     = mix(vec3(0.04), albedo, metallic);
+    vec3  F      = F_Schlick(VdotH, F0);
+
+    vec3 kd       = (1.0 - F) * (1.0 - metallic);
+    vec3 diffuse  = kd * albedo / 3.14159265 * NdotL;
+    vec3 specular = D * G * F / max(4.0 * NdotV * NdotL, 1e-4) * NdotL;
+
+    vec3 color  = (diffuse + specular) * sunColor;
+    color      += skyAmbient * albedo * (1.0 - metallic) * 0.2;
+
+#else
+    // ── Half-Lambert + Blinn-Phong ────────────────────────────────────────────
+    float hl        = halfLambertDiffuse(N, L);
+    vec3  H         = normalize(V + L);
+    float shininess = mix(256.0, 8.0, roughness);
+    float spec      = pow(max(dot(N, H), 0.0), shininess);
+    // metallic → tint specular toward albedo; roughness → dim specular
+    float specScale = metallic * (1.0 - roughness * 0.9);
+    vec3  specColor = mix(vec3(spec), albedo * spec, metallic);
+
+    vec3 color  = albedo * hl * sunColor;
+    color      += specColor * specScale * sunColor;
+    color      += skyAmbient * albedo * 0.25;
+#endif
+
     SurfaceOutput so;
-    so.baseColor = mi.base_color_factor.rgb;
-    so.alpha     = mi.base_color_factor.a;
-    so.metallic  = mi.metallic_factor;
-    so.roughness = mi.roughness_factor;
+    so.baseColor = color;
+    so.normal    = N;
+    so.metallic  = metallic;
+    so.roughness = roughness;
     so.ao        = 1.0;
     so.emissive  = vec3(0.0);
-    so.normal    = si.worldNormal;
-
-#if QUALITY_TIER >= 1
-    // 采样 Albedo 纹理
-    so.baseColor *= texture(TexAlbedo, si.uv0).rgb;
-#endif
-
-#if QUALITY_TIER >= 2
-    // 采样法线贴图
-    // so.normal = ...
-    // 采样 MR 贴图
-    // vec2 mr = texture(TexMR, si.uv0).gb;
-    // so.metallic *= mr.r;
-    // so.roughness *= mr.g;
-#endif
-
+    so.alpha     = 1.0;
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, MaterialInstance mi)
+float EvalAlpha(SurfaceInput si, uint miID)
 {
-    return mi.base_color_factor.a;
+    return 1.0;
 }

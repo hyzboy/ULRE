@@ -5,6 +5,192 @@
 
 namespace hgl::graph::mtl{
 
+MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
+{
+    MaterialVariantKey key{};
+
+    switch(mtl_id)
+    {
+        case MaterialPreset::VertexColor2D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Quad2D;
+            key.feature_bits = VF_UseVertexColor;
+            break;
+        case MaterialPreset::PureColor2D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Quad2D;
+            break;
+        case MaterialPreset::PureTexture2D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Quad2D;
+            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.feature_bits = VF_HasBaseColorTex;
+            break;
+        case MaterialPreset::RectTexture2D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::ScreenRect;
+            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.feature_bits = VF_HasBaseColorTex;
+            break;
+        case MaterialPreset::RectTexture2DArray:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::ScreenRect;
+            key.texture_source_mode = TextureSourceMode::Tex2DArray;
+            key.feature_bits = VF_HasBaseColorTex;
+            break;
+        case MaterialPreset::Text2D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Quad2D;
+            key.texture_source_mode = TextureSourceMode::Atlas;
+            key.feature_bits = VF_HasBaseColorTex;
+            break;
+
+        case MaterialPreset::PureColor3D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            break;
+        case MaterialPreset::VertexColor3D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.feature_bits = VF_UseVertexColor;
+            break;
+        case MaterialPreset::VertexLuminance3D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.feature_bits = VF_UseVertexLum;
+            break;
+        case MaterialPreset::VertexPattleColor3D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.feature_bits = VF_UseVertexColor | VF_DebugShading;
+            break;
+        case MaterialPreset::Gizmo3D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.feature_bits = VF_DebugShading;
+            break;
+        case MaterialPreset::TextureBlinnPhong:
+            key.surface_type = SurfaceType::Standard;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
+            break;
+        case MaterialPreset::TerrainGrid:
+            key.surface_type = SurfaceType::Terrain;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            break;
+        case MaterialPreset::SkyMinimal:
+            key.surface_type = SurfaceType::Sky;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            break;
+        case MaterialPreset::Billboard2D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::BillboardCameraFacing;
+            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.feature_bits = VF_HasBaseColorTex;
+            break;
+        case MaterialPreset::BasicLit:
+            key.surface_type = SurfaceType::Standard;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
+            break;
+        case MaterialPreset::PBRColor3D:
+            key.surface_type = SurfaceType::Standard;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            break;
+        default:
+            break;
+    }
+
+    return key;
+}
+
+bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset)
+{
+    // Standard-Lit consolidated path (phase-A compatibility):
+    // both legacy TextureBlinnPhong and BasicLit map to BasicLit creator.
+    if (key.surface_type == SurfaceType::Standard && key.geometry_mode == GeometryMode::Mesh3D)
+    {
+        out_preset = MaterialPreset::BasicLit;
+        return true;
+    }
+
+    if (key.surface_type == SurfaceType::Unlit)
+    {
+        if (key.geometry_mode == GeometryMode::BillboardCameraFacing
+         || key.geometry_mode == GeometryMode::BillboardAxisLocked)
+        {
+            out_preset = MaterialPreset::Billboard2D;
+            return true;
+        }
+
+        if (key.geometry_mode == GeometryMode::ScreenRect)
+        {
+            out_preset = (key.texture_source_mode == TextureSourceMode::Tex2DArray)
+                ? MaterialPreset::RectTexture2DArray
+                : MaterialPreset::RectTexture2D;
+            return true;
+        }
+
+        if (key.geometry_mode == GeometryMode::Quad2D)
+        {
+            if ((key.feature_bits & VF_UseVertexColor) != 0)
+            {
+                out_preset = MaterialPreset::VertexColor2D;
+                return true;
+            }
+
+            if ((key.feature_bits & VF_HasBaseColorTex) != 0)
+            {
+                out_preset = MaterialPreset::PureTexture2D;
+                return true;
+            }
+
+            out_preset = MaterialPreset::PureColor2D;
+            return true;
+        }
+
+        if (key.geometry_mode == GeometryMode::Mesh3D)
+        {
+            if ((key.feature_bits & VF_UseVertexLum) != 0)
+            {
+                out_preset = MaterialPreset::VertexLuminance3D;
+                return true;
+            }
+
+            if ((key.feature_bits & VF_UseVertexColor) != 0)
+            {
+                out_preset = MaterialPreset::VertexColor3D;
+                return true;
+            }
+
+            if ((key.feature_bits & VF_DebugShading) != 0)
+            {
+                out_preset = MaterialPreset::Gizmo3D;
+                return true;
+            }
+
+            out_preset = MaterialPreset::PureColor3D;
+            return true;
+        }
+    }
+
+    if (key.surface_type == SurfaceType::Terrain)
+    {
+        out_preset = MaterialPreset::TerrainGrid;
+        return true;
+    }
+
+    if (key.surface_type == SurfaceType::Sky)
+    {
+        out_preset = MaterialPreset::SkyMinimal;
+        return true;
+    }
+
+    return false;
+}
+
 const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 {
     switch(mtl_id)

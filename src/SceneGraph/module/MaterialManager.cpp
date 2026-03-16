@@ -17,6 +17,7 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/object/ObjectTracker.h>
 #include<cstdint>
 #include<vector>
@@ -399,6 +400,24 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     hash_name+=cfg->ToHashStdString().c_str();
 
     return this->CreateMaterial(hash_name,mci);
+}
+
+Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
+{
+    mtl::MaterialPreset preset;
+    if(!mtl::TryMapVariantKeyToPreset(key,preset))
+        return(nullptr);
+
+    return CreateMaterial(preset,cfg);
+}
+
+Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
+{
+    mtl::MaterialPreset preset;
+    if(!mtl::TryMapVariantKeyToPreset(key,preset))
+        return(nullptr);
+
+    return CreateMaterial(preset,cfg);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)

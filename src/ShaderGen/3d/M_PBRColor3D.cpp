@@ -16,9 +16,8 @@ namespace
         uint  base_color;
         float metallic;
         float roughness;
-        uint  texture_id;
     )";
-    constexpr const uint32_t mi_bytes = sizeof(uint32_t) * 2 + sizeof(float) * 2;
+    constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
 
     constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::Position },
@@ -34,8 +33,6 @@ namespace
         { DescriptorSetType::Scene,      DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky",      "SkyInfo",             nullptr },
         { DescriptorSetType::Transform,  TransformDescriptorKind,uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorldData",    nullptr },
         { DescriptorSetType::Material,   MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData",nullptr },
-        { DescriptorSetType::Material,   DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2DArray" },
-        { DescriptorSetType::Material,   DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal",    nullptr, "sampler2DArray" },
     };
 
     constexpr FixedMaterialDef PBR_COLOR_3D_DEF {

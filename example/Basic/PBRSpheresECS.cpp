@@ -1,9 +1,7 @@
-// 该范例演示 10x10 的 PBR 网格：
-// X 轴为 10 种内置几何体，Y 轴为 10 组 PBR 材质层（baseColor + normal）。
-// 同时保留 metallic/roughness 渐变以观察材质响应。
-// This example renders a 10x10 PBR grid:
-// X-axis uses 10 built-in geometries, Y-axis uses 10 PBR material layers (baseColor + normal).
-// Metallic/roughness gradients are still applied for material response comparison.
+// 该范例演示 10x10 的 BasicLit 网格：
+// 使用 baseColor + normal + roughness 纹理，并保留 metallic/roughness 渐变。
+// This example renders a 10x10 BasicLit grid:
+// Uses baseColor + normal + roughness textures with metallic/roughness gradients.
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
@@ -42,7 +40,7 @@ static constexpr float SPHERE_SPACING = 2.5f;  // center-to-center distance
 // 10 built-in geometries, one per column
 static constexpr uint GEOMETRY_VARIANT_COUNT = GRID_SIZE;
 
-// 10 PBR material folders under res/image/pbr, one per row
+// PBR material folders under res/image/pbr (currently uses first folder as BasicLit texture set)
 constexpr const os_char *PBR_FOLDER_NAME[GRID_SIZE]=
 {
     OS_TEXT("Concrete_Plain"),
@@ -71,16 +69,17 @@ private:
 
     Material *          material  = nullptr;
     Pipeline *          pipeline  = nullptr;
-    Texture2DArray *    base_color_array = nullptr;
-    Texture2DArray *    normal_array = nullptr;
+    Texture2D *         base_color_texture = nullptr;
+    Texture2D *         normal_texture = nullptr;
+    Texture2D *         roughness_texture = nullptr;
     Sampler *           sampler = nullptr;
 
     VertexDataManager * mesh_vdm = nullptr;
     Geometry *          builtin_geometries[GEOMETRY_VARIANT_COUNT]{};
     Primitive *         base_primitives[GEOMETRY_VARIANT_COUNT]{};
 
-    // One MI per cell: row controls texture layer, col controls geometry/metallic
-    mtl::PBRColor3DMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
+    // One MI per cell: col controls metallic, row controls roughness
+    mtl::BasicLitMaterialInstance sphere_mi_data[GRID_SIZE][GRID_SIZE]{};
     MaterialInstance *               sphere_mi[GRID_SIZE][GRID_SIZE]{};
 
     // 100 entities, one per sphere
@@ -131,11 +130,11 @@ private:
 
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
-        if (!material_manager || !sampler_manager || !base_color_array || !normal_array)
+        if (!material_manager || !sampler_manager || !base_color_texture || !normal_texture || !roughness_texture)
             return false;
 
-        mtl::PBRColor3DMaterialCreateConfig cfg;
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::PBRColor3D, &cfg);
+        mtl::BasicLitMaterialCreateConfig cfg(false);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::BasicLit, &cfg);
         if (!material)
             return false;
 
@@ -145,13 +144,19 @@ private:
 
         if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           mtl::SamplerName::BaseColor,
-                                          base_color_array,
+                                          base_color_texture,
                                           sampler))
             return false;
 
         if (!material->BindTextureSampler(DescriptorSetType::Material,
                                           "TextureNormal",
-                                          normal_array,
+                                          normal_texture,
+                                          sampler))
+            return false;
+
+        if (!material->BindTextureSampler(DescriptorSetType::Material,
+                                          "TextureRoughness",
+                                          roughness_texture,
                                           sampler))
             return false;
 
@@ -162,7 +167,7 @@ private:
         return pipeline != nullptr;
     }
 
-    bool InitTextureArray()
+    bool InitTextures()
     {
         auto* render_context = GetRenderContext();
         if (!render_context)
@@ -176,49 +181,40 @@ private:
         if (!texture_manager)
             return false;
 
-        base_color_array = texture_manager->CreateTexture2DArray("pbr baseColor",
-                                                                  1024,
-                                                                  1024,
-                                                                  GRID_SIZE,
-                                                                  PF_BC7UN,
-                                                                  false);
-        if (!base_color_array)
+        OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"),
+                                                           PBR_FOLDER_NAME[0]);
+
+        OSString base_color_filename = filesystem::JoinPathWithFilename(folder,
+                                                                         OS_TEXT("baseColor.Tex2D"));
+
+        OSString normal_filename = filesystem::JoinPathWithFilename(folder,
+                                                                     OS_TEXT("normal.Tex2D"));
+        if (!filesystem::FileExist(normal_filename))
+            normal_filename = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
+
+        OSString roughness_filename = filesystem::JoinPathWithFilename(folder,
+                                                                        OS_TEXT("roughness.Tex2D"));
+        if (!filesystem::FileExist(base_color_filename)
+         || !filesystem::FileExist(normal_filename)
+         || !filesystem::FileExist(roughness_filename))
             return false;
 
-        normal_array = texture_manager->CreateTexture2DArray("pbr normal",
-                                                              1024,
-                                                              1024,
-                                                              GRID_SIZE,
-                                                              PF_BC7UN,
-                                                              false);
-        if (!normal_array)
+        base_color_texture = texture_manager->LoadTexture2D(base_color_filename, true);
+        if (!base_color_texture)
             return false;
 
-        for (uint i = 0; i < GRID_SIZE; ++i)
-        {
-            OSString folder = filesystem::JoinPathWithFilename(OS_TEXT("res/image/pbr"),
-                                                                PBR_FOLDER_NAME[i]);
+        normal_texture = texture_manager->LoadTexture2D(normal_filename, true);
+        if (!normal_texture)
+            return false;
 
-            OSString base_color_filename = filesystem::JoinPathWithFilename(folder,
-                                                                             OS_TEXT("baseColor.Tex2D"));
-
-            OSString normal_filename = filesystem::JoinPathWithFilename(folder,
-                                                                         OS_TEXT("normal.Tex2D"));
-
-            if (!filesystem::FileExist(normal_filename))
-                normal_filename = filesystem::JoinPathWithFilename(folder, OS_TEXT("Normal.Tex2D"));
-
-            if (!texture_manager->LoadTexture2DArray(base_color_array, i, base_color_filename))
-                return false;
-
-            if (!texture_manager->LoadTexture2DArray(normal_array, i, normal_filename))
-                return false;
-        }
+        roughness_texture = texture_manager->LoadTexture2D(roughness_filename, true);
+        if (!roughness_texture)
+            return false;
 
         return true;
     }
 
-    bool CreatePBRMaterialInstances()
+    bool CreateBasicLitMaterialInstances()
     {
         auto* render_context = GetRenderContext();
         if (!render_context) return false;
@@ -240,7 +236,9 @@ private:
                 d.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
                 d.metallic   = metallic;
                 d.roughness  = roughness;
-                d.texture_id = row;
+                d.fresnel = 0.04f;
+                d.ibl_intensity = 0.0f;
+                d.normal_strength = 0.35f;
 
                 sphere_mi[row][col] = material_manager->CreateMaterialInstance(
                     material, (VIL *)nullptr, &d);
@@ -496,8 +494,9 @@ public:
         }
 
         SAFE_CLEAR(mesh_vdm)
-        SAFE_CLEAR(base_color_array)
-        SAFE_CLEAR(normal_array)
+        SAFE_CLEAR(base_color_texture)
+        SAFE_CLEAR(normal_texture)
+        SAFE_CLEAR(roughness_texture)
         SAFE_CLEAR(sampler)
     }
 
@@ -505,13 +504,13 @@ public:
     {
         SetClearColor(Color4f(0.08f, 0.08f, 0.08f, 1.0f));
 
-        if (!InitTextureArray())
+        if (!InitTextures())
             return false;
 
         if (!InitMaterial())
             return false;
 
-        if (!CreatePBRMaterialInstances())
+        if (!CreateBasicLitMaterialInstances())
             return false;
 
         if (!InitVDM())
@@ -562,5 +561,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("PBR BuiltinGeometry x BaseColor+Normal Array 10x10 (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<TestApp>(OS_TEXT("BasicLit BuiltinGeometry x BaseColor+Normal+Roughness 10x10 (ECS)"), argc, argv, 1280, 720);
 }
