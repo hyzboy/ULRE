@@ -344,13 +344,21 @@ public:
         // 设置射线查询的屏幕坐标点
         ray.SetFromViewportPoint(mouse_position,ci,vi->GetViewport());
 
-        // 求射线上与点(0,0,0)最近的点的坐标
-        const math::Vector3f pos=ray.ClosestPoint(math::Vector3f(0,0,0));
-
-        // 更新VAB上这个点的位置（动态更新顶点数据）
+        // 更新VAB上射线的起点和方向（画出完整的射线线段）
+        // 注意: sizeof(Vector3f)==16 (GLM_FORCE_DEFAULT_ALIGNED_GENTYPES 对齐填充)，
+        //       但 VAB stride==12 (VK_FORMAT_R32G32B32_SFLOAT)，
+        //       所以不能直接用 Vector3f[] 数组传给 Write，必须用紧凑 float 数组。
         if(prim_line_vab)
         {
-            prim_line_vab->Write(&pos, 1);  // 1代表数据数量,不是字节数
+            const math::Vector3f endpoint = ray.origin + ray.direction * 100.0f;
+            float ray_pts[2][3];
+            ray_pts[0][0] = ray.origin.x;
+            ray_pts[0][1] = ray.origin.y;
+            ray_pts[0][2] = ray.origin.z;
+            ray_pts[1][0] = endpoint.x;
+            ray_pts[1][1] = endpoint.y;
+            ray_pts[1][2] = endpoint.z;
+            prim_line_vab->Write(ray_pts, 2);  // 更新两个顶点
         }
     }
 };//class TestApp:public WorkObject
