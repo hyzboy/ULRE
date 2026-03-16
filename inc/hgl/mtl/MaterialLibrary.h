@@ -24,12 +24,10 @@ enum class MaterialPreset:uint8
     VertexLuminance3D,
     VertexPattleColor3D,
     Gizmo3D,
-    TextureBlinnPhong,
     TerrainGrid,
     SkyMinimal,
     Billboard2D,
     Standard,
-    BasicLit,
     PBRColor3D,
 
     ENUM_CLASS_RANGE(VertexColor2D,PBRColor3D)

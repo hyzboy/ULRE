@@ -70,7 +70,6 @@ DECLARE_MATERIAL_CREATOR(VertexLuminance3D, Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexPattleColor3D,const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Standard,          const Material3DCreateConfig)
-DECLARE_MATERIAL_CREATOR(TextureBlinnPhong, const Material3DCreateConfig)
 
 struct TerrainGridCreateConfig:public Material3DCreateConfig
 {
@@ -162,25 +161,5 @@ struct TextureBlinnPhongMaterialInstance
 };
 
 constexpr const size_t TextureBlinnPhongMaterialInstanceBytes=sizeof(TextureBlinnPhongMaterialInstance);
-
-struct BasicLitMaterialCreateConfig:public Material3DCreateConfig
-{
-    bool        ibl;                    ///<包含IBL信息
-
-public:
-
-    BasicLitMaterialCreateConfig(const bool use_ibl=false)
-        :Material3DCreateConfig(PrimitiveType::Triangles,
-                                WithCamera::With,
-                                WithLocalToWorld::With,
-                                WithSky::With)
-    {
-        ibl=use_ibl;
-        if(use_ibl)
-            sky_ambient_model=SkyLightAmbientModel::IBL;
-    }
-};
-
-DECLARE_MATERIAL_CREATOR(BasicLit, BasicLitMaterialCreateConfig)
 
 }//namespace hgl::graph::mtl

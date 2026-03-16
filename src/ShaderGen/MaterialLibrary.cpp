@@ -69,12 +69,6 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.geometry_mode = GeometryMode::Mesh3D;
             key.feature_bits = VF_DebugShading;
             break;
-        case MaterialPreset::TextureBlinnPhong:
-            key.surface_type = SurfaceType::Standard;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.texture_source_mode = TextureSourceMode::Tex2D;
-            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
-            break;
         case MaterialPreset::TerrainGrid:
             key.surface_type = SurfaceType::Terrain;
             key.geometry_mode = GeometryMode::Mesh3D;
@@ -95,12 +89,6 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.texture_source_mode = TextureSourceMode::Tex2D;
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
             break;
-        case MaterialPreset::BasicLit:
-            key.surface_type = SurfaceType::Standard;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.texture_source_mode = TextureSourceMode::Tex2D;
-            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
-            break;
         case MaterialPreset::PBRColor3D:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
@@ -114,8 +102,6 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 
 bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset)
 {
-    // Standard-Lit consolidated path (phase-A compatibility):
-    // legacy TextureBlinnPhong/BasicLit now route to Standard creator.
     if (key.surface_type == SurfaceType::Standard && key.geometry_mode == GeometryMode::Mesh3D)
     {
         out_preset = MaterialPreset::Standard;
@@ -212,12 +198,10 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
         case MaterialPreset::VertexLuminance3D:     return "VertexLuminance3D";
         case MaterialPreset::VertexPattleColor3D:   return "VertexPattleColor3D";
         case MaterialPreset::Gizmo3D:               return "Gizmo3D";
-        case MaterialPreset::TextureBlinnPhong:     return "TextureBlinnPhong";
         case MaterialPreset::TerrainGrid:           return "TerrainGrid";
         case MaterialPreset::SkyMinimal:            return "SkyMinimal";
         case MaterialPreset::Billboard2D:           return "Billboard2D";
         case MaterialPreset::Standard:              return "Standard";
-        case MaterialPreset::BasicLit:              return "BasicLit";
         case MaterialPreset::PBRColor3D:            return "PBRColor3D";
         default:                                    return nullptr;
     }
@@ -244,12 +228,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         case MaterialPreset::VertexLuminance3D:     return CreateVertexLuminance3D  (profile,(Material3DCreateConfig *)cfg);
         case MaterialPreset::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::Gizmo3D:               return CreateGizmo3D            (profile,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::TextureBlinnPhong:     return CreateStandard           (profile,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::TerrainGrid:           return CreateTerrainGrid        (profile,(const TerrainGridCreateConfig *)cfg);
         case MaterialPreset::SkyMinimal:            return CreateSkyMinimal         (profile,(const SkyMinimalCreateConfig *)cfg);
         case MaterialPreset::Billboard2D:           return CreateBillboard2D        (profile,(BillboardMaterialCreateConfig *)cfg);
         case MaterialPreset::Standard:              return CreateStandard           (profile,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::BasicLit:              return CreateStandard           (profile,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::PBRColor3D:            return CreatePBRColor3D         (profile,(PBRColor3DMaterialCreateConfig *)cfg);
 
         default:                                    return nullptr;
