@@ -22,8 +22,9 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
         (GetPlatform() == PlatformBackend::PC)      ? 1 : 0,
         (GetPlatform() == PlatformBackend::Apple)    ? 1 : 0,
         (GetPlatform() == PlatformBackend::Android)  ? 1 : 0,
-        // geometry fetch mode: SSBO unless Android + low tier
-        (GetPlatform() != PlatformBackend::Android || GetQualityTier() >= QualityTier::High) ? 1 : 0);
+        // geometry fetch mode: SSBO geometry fetch not yet implemented in renderer,
+        // always 0 until VertexDataBuffer SSBO pipeline is wired up.
+        0);
 
     out += buf;
 }
