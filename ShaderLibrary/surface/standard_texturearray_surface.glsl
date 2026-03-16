@@ -15,8 +15,10 @@ struct MaterialInstance
 MI_SSBO;
 
 layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TexAlbedo;
-#if QUALITY_TIER >= 4
+#if QUALITY_TIER >= 2
 layout(set=MATERIAL_SET, binding=1) uniform sampler2DArray TexNormal;
+#endif
+#if QUALITY_TIER >= 4
 layout(set=MATERIAL_SET, binding=2) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
 #endif
 
@@ -69,11 +71,13 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-#if QUALITY_TIER >= 4
+#if QUALITY_TIER >= 2
     vec3 nm = texture(TexNormal, vec3(si.uv0, layer)).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
+#endif
 
+#if QUALITY_TIER >= 4
     vec2 mr    = texture(TexMR, vec3(si.uv0, layer)).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);

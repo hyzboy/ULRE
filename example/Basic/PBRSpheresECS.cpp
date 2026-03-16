@@ -1,7 +1,9 @@
 // 该范例演示 10x10 的 Standard 网格：
-// 使用 baseColor + normal + roughness 纹理，并保留 metallic/roughness 渐变。
+// 使用 baseColor + normal 纹理（Albedo+Normal）
+// 通过 metallic/roughness 参数渐变来控制材质
 // This example renders a 10x10 Standard grid:
-// Uses baseColor + normal + roughness textures with metallic/roughness gradients.
+// Uses baseColor + normal textures (Albedo+Normal only)
+// Metallic/roughness gradients control material properties.
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
@@ -127,7 +129,7 @@ private:
 
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) {
-            std::cerr << "[ERROR] InitMaterial: No graphics_context" << std::endl;
+            printf("[ERROR] InitMaterial: No graphics_context\n");
             return false;
         }
 
@@ -186,19 +188,19 @@ private:
     {
         auto* render_context = GetRenderContext();
         if (!render_context) {
-            std::cerr << "[ERROR] InitTextures: No render_context" << std::endl;
+            printf("[ERROR] InitTextures: No render_context\n");
             return false;
         }
 
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context) {
-            std::cerr << "[ERROR] InitTextures: No graphics_context" << std::endl;
+            printf("[ERROR] InitTextures: No graphics_context\n");
             return false;
         }
 
         auto* texture_manager = graphics_context->GetTextureManager();
         if (!texture_manager) {
-            std::cerr << "[ERROR] InitTextures: No texture_manager" << std::endl;
+            printf("[ERROR] InitTextures: No texture_manager\n");
             return false;
         }
 
@@ -666,5 +668,5 @@ public:
 
 int os_main(int argc, os_char **argv)
 {
-    return RunFramework<TestApp>(OS_TEXT("Standard BuiltinGeometry x BaseColor+Normal+Roughness 10x10 (ECS)"), argc, argv, 1280, 720);
+    return RunFramework<TestApp>(OS_TEXT("Standard BuiltinGeometry x Albedo+Normal 10x10 (ECS)"), argc, argv, 1280, 720);
 }
