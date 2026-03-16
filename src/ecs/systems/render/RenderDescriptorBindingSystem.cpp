@@ -7,7 +7,6 @@
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
-#include<hgl/vk/VKDescriptorBindingManage.h>
 #include<hgl/vk/VKRenderTarget.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKMaterial.h>
@@ -62,8 +61,6 @@ namespace hgl::ecs
         AddDependency<RenderTargetSystem>();
         AddDependency<CameraSystem>();
 
-        RegisterDefaultSources();
-
         if (const char *env = std::getenv("HGL_ECS_DISABLE_LEGACY_BINDING_FALLBACK"))
         {
             if (*env == '1' || *env == 'y' || *env == 'Y' || *env == 't' || *env == 'T')
@@ -74,18 +71,6 @@ namespace hgl::ecs
     RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
     {
         ReleaseViewportUBO();
-
-        if (view_desc_binding)
-        {
-            delete view_desc_binding;
-            view_desc_binding = nullptr;
-        }
-    }
-
-    void RenderDescriptorBindingSystem::EnsureViewBinding()
-    {
-        if (!view_desc_binding)
-            view_desc_binding = new graph::DescriptorBinding(graph::DescriptorSetType::Scene);
     }
 
     void RenderDescriptorBindingSystem::EnsureViewportUBO()
@@ -152,14 +137,6 @@ namespace hgl::ecs
         }
     }
 
-    void RenderDescriptorBindingSystem::RegisterBindingSource(BindingSource source)
-    {
-        if (!source)
-            return;
-
-        binding_sources.push_back(std::move(source));
-    }
-
     bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::Material *material,
                                                                 const AnsiString &name,
                                                                 graph::Texture *texture)
@@ -210,6 +187,18 @@ namespace hgl::ecs
         material_resource_bindings.erase(material);
     }
 
+    void RenderDescriptorBindingSystem::RegisterPipelineMaterial(graph::Material *material)
+    {
+        if (material)
+            pipeline_materials.insert(material);
+    }
+
+    void RenderDescriptorBindingSystem::UnregisterPipelineMaterial(graph::Material *material)
+    {
+        if (material)
+            pipeline_materials.erase(material);
+    }
+
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material, const char *name) const
     {
         if (!material || !name || !*name)
@@ -224,59 +213,6 @@ namespace hgl::ecs
             return nullptr;
 
         return &resource_it->second;
-    }
-
-    void RenderDescriptorBindingSystem::RegisterDefaultSources()
-    {
-        // Viewport UBO is now owned by this system and synced in SyncBindingsForCurrentCommand.
-
-        RegisterBindingSource([](ECSContext *ctx, graph::RenderCmdBuffer *, graph::DescriptorBinding *view_db)
-        {
-            if (!ctx || !view_db)
-                return;
-
-            auto camera_system = ctx->GetSystem<CameraSystem>();
-            if (!camera_system)
-                return;
-
-            auto *camera_ubo = camera_system->GetCameraUBO();
-            if (!camera_ubo)
-                return;
-
-            const AnsiString camera_name = camera_ubo->name();
-            if (!view_db->GetUBO(camera_name))
-                view_db->AddUBO(camera_ubo);
-        });
-
-        RegisterBindingSource([](ECSContext *ctx, graph::RenderCmdBuffer *, graph::DescriptorBinding *view_db)
-        {
-            if (!ctx || !view_db)
-                return;
-
-            auto environment_system = ctx->GetSystem<EnvironmentSystem>();
-            if (!environment_system)
-            {
-                environment_system = ctx->RegisterRenderSystem<EnvironmentSystem>();
-                if (environment_system && ctx->IsActive())
-                {
-                    environment_system->OnDependenciesReady();
-                    environment_system->Initialize();
-                }
-            }
-
-            if (!environment_system)
-                return;
-
-            environment_system->EditSkyInfo();
-
-            auto *sky_ubo = environment_system->GetSkyUBO();
-            if (!sky_ubo)
-                return;
-
-            const AnsiString sky_name = sky_ubo->name();
-            if (!view_db->GetUBO(sky_name))
-                view_db->AddUBO(sky_ubo);
-        });
     }
 
     void RenderDescriptorBindingSystem::Update(float /*deltaTime*/)
@@ -298,25 +234,7 @@ namespace hgl::ecs
         if (run_contract_diagnostics)
             ValidateContractsSideChannel();
 
-        auto *active_cmd = context->GetCurrentRenderCmd();
-        if (!active_cmd)
-            return;
-
-        EnsureViewBinding();
         EnsureViewportUBO();
-
-        // Sync the stable viewport UBO into the scene binding once (buffer is never recreated).
-        if (viewport_ubo && view_desc_binding && !view_desc_binding->GetUBO(viewport_ubo->name()))
-            view_desc_binding->AddUBO(viewport_ubo);
-
-        for (const auto &source : binding_sources)
-        {
-            if (source)
-                source(context, active_cmd, view_desc_binding);
-        }
-
-        if (view_desc_binding)
-            active_cmd->SetDescriptorBinding(view_desc_binding);
 
         ApplyContractBindings();
     }
@@ -486,6 +404,63 @@ namespace hgl::ecs
                 {
                     batch->mi_buffer->BindMaterialInstance(material);
                     mi_bound_materials.insert(material);
+                }
+            }
+        }
+
+        // Bind scene-level UBOs to pipeline-registered materials (Line, Terrain, etc.)
+        // These materials bypass the normal materialBatches path.
+        for (graph::Material *material : pipeline_materials)
+        {
+            if (!material)
+                continue;
+
+            active_materials.insert(material);
+
+            const auto &contract = material->GetBindingContract();
+
+            for (const auto &req : contract.requirements)
+            {
+                if (!req.name || !*req.name)
+                    continue;
+
+                switch (req.semantic)
+                {
+                case graph::mtl::DescriptorSemantic::ViewportInfo:
+                {
+                    const auto *ubo = ResolveViewportUBO();
+                    if (ubo)
+                        material->BindUBO(req.set_type, req.name, ubo, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::CameraInfo:
+                {
+                    if (camera_ubo)
+                        material->BindUBO(req.set_type, req.name, camera_ubo, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::SkyInfo:
+                {
+                    if (sky_ubo)
+                        material->BindUBO(req.set_type, req.name, sky_ubo, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialTexture:
+                {
+                    const auto *binding = FindMaterialResourceBinding(material, req.name);
+                    if (binding && binding->texture)
+                        material->BindTexture(req.set_type, req.name, binding->texture);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialSampler:
+                {
+                    const auto *binding = FindMaterialResourceBinding(material, req.name);
+                    if (binding && binding->texture && binding->sampler)
+                        material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                    break;
+                }
+                default:
+                    break;
                 }
             }
         }

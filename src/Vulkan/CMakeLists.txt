@@ -159,10 +159,8 @@ SOURCE_GROUP("Pipeline" FILES ${VK_PIPELINE_FILES})
 
 # --- 5. Descriptor Sets ---
 SET(VK_DESCRIPTOR_SETS_FILES    ${VK_INCLUDE_PATH}/VKDescriptorSet.h
-                                ${VK_INCLUDE_PATH}/VKDescriptorBindingManage.h
                                 ${VK_INCLUDE_PATH}/VKDynamicBufferAccess.h
-                                VKDescriptorSet.cpp
-                                VKDescriptorBindingManage.cpp)
+                                VKDescriptorSet.cpp)
 
 SOURCE_GROUP("DescriptorSets" FILES ${VK_DESCRIPTOR_SETS_FILES})
 

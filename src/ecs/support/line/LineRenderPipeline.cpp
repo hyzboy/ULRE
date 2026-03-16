@@ -7,6 +7,7 @@
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
+#include <hgl/ecs/systems/render/RenderDescriptorBindingSystem.h>
 #include <hgl/graph/core/GraphicsContext.h>
 #include <hgl/graph/render/RenderContext.h>
 #include <hgl/graph/module/MaterialManager.h>
@@ -294,6 +295,9 @@ namespace hgl::ecs
         material_ = mat_mgr->CreateMaterial(graph::mtl::MaterialPreset::VertexPattleColor3D, &cfg);
         if (!material_)
             return false;
+
+        if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
+            rdbs->RegisterPipelineMaterial(material_);
 
         // ------- Create material instance -------
         graph::VILConfig vil;
@@ -699,7 +703,12 @@ namespace hgl::ecs
             if (mat_mgr)
             {
                 if (mi_)       { mat_mgr->Destroy(mi_); mi_ = nullptr; }
-                if (material_) { mat_mgr->Destroy(material_); material_ = nullptr; }
+                if (material_)
+                {
+                    if (auto rdbs = context_->GetSystem<RenderDescriptorBindingSystem>())
+                        rdbs->UnregisterPipelineMaterial(material_);
+                    mat_mgr->Destroy(material_); material_ = nullptr;
+                }
             }
 
             if (ubo_color_)

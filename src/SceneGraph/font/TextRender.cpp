@@ -12,7 +12,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/SamplerManager.h>
-#include<hgl/vk/VKDescriptorBindingManage.h>
+#include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/type/AlignUtil.h>
 #include<hgl/vk/VKFormat.h>
@@ -185,14 +185,10 @@ namespace hgl::graph
         pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        DescriptorBinding material_binding(DescriptorSetType::Material);
-
-        if(!material_binding.AddTextureSampler( mtl::SamplerName::Text,
-                                                tile_font->GetTexture(),
-                                                sampler))
-            return(false);
-
-        if(!material_binding.Bind(mtl_fs))
+        if(!mtl_fs->BindTextureSampler(  DescriptorSetType::Material,
+                                            mtl::SamplerName::Text,
+                                            tile_font->GetTexture(),
+                                            sampler))
             return(false);
 
         return(true);

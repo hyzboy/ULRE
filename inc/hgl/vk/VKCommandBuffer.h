@@ -55,11 +55,6 @@ public:
 #endif//_DEBUG
 };//class VulkanCmdBuffer
 
-class DescriptorBinding;
-
-using DescriptorBindingPtr=DescriptorBinding *;
-using DescriptorBindingPtrArray=DescriptorBindingPtr[size_t(DescriptorSetType::RANGE_SIZE)];
-
 class RenderCmdBuffer:public VulkanCmdBuffer
 {
 private:
@@ -79,8 +74,6 @@ private:
     *    DescriptSetType::RenderTarget  即该由RenderTarget模块设置
     *    DescriptSetType::World         预留/旧体系标记
     */
-    DescriptorBindingPtrArray desc_binding{};
-
 private:
 
     void SetClear();
@@ -90,12 +83,8 @@ public:
     RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb);
     ~RenderCmdBuffer();
 
-    bool SetDescriptorBinding(DescriptorBinding *);
-
     bool End() override
     {
-        mem_zero(desc_binding);
-
         return VulkanCmdBuffer::End();
     }
 

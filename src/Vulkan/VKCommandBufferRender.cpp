@@ -6,7 +6,6 @@
 #include<hgl/vk/VKPhysicalDevice.h>
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<hgl/vk/VKDescriptorBindingManage.h>
 
 namespace hgl::graph{
 bool RenderCmdBuffer::BindVAB(const VABList *vab_list)
@@ -47,18 +46,6 @@ RenderCmdBuffer::~RenderCmdBuffer()
 {
     if(clear_values)
         hgl_free(clear_values);
-}
-
-bool RenderCmdBuffer::SetDescriptorBinding(DescriptorBinding *db)
-{
-    if(!db)
-        return(false);
-
-    const int index=int(db->GetType())-int(DescriptorSetType::BEGIN_RANGE);
-
-    desc_binding[index]=db;
-
-    return(true);
 }
 
 void RenderCmdBuffer::SetClear()
@@ -126,12 +113,6 @@ bool RenderCmdBuffer::BeginRenderPass()
 bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
 {
     if(!mtl)return(false);
-
-    ENUM_CLASS_FOR(DescriptorSetType,int,i)
-    {
-        if(desc_binding[i])
-            desc_binding[i]->Bind(mtl);
-    }
 
     {
         uint32_t count=0;

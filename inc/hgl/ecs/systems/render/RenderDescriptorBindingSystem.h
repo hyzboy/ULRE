@@ -4,8 +4,8 @@
 #include<hgl/mtl/DescriptorBindingContract.h>
 #include<hgl/type/String.h>
 #include<vector>
-#include<functional>
 #include<unordered_map>
+#include<unordered_set>
 
 namespace hgl::graph {
     template<typename> class StructuredBufferAccessor;
@@ -18,7 +18,6 @@ namespace hgl::graph {
 
 namespace hgl::graph
 {
-    class DescriptorBinding;
     class RenderCmdBuffer;
     class Material;
     class IRenderTarget;
@@ -38,10 +37,6 @@ namespace hgl::ecs
      */
     class RenderDescriptorBindingSystem : public System
     {
-    public:
-
-        using BindingSource = std::function<void(ECSContext *, graph::RenderCmdBuffer *, graph::DescriptorBinding *)>;
-
     private:
 
         struct MaterialResourceBinding
@@ -73,9 +68,6 @@ namespace hgl::ecs
             }
         };
 
-        graph::DescriptorBinding* view_desc_binding = nullptr;
-        std::vector<BindingSource> binding_sources;
-
         // Viewport UBO — owned here, stable across swapchain resize.
         graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
@@ -85,6 +77,7 @@ namespace hgl::ecs
         bool contract_diagnostics_enabled = true;
         bool enable_legacy_material_binding_fallback = true;
         ContractDiagStats last_contract_stats{};
+        std::unordered_set<graph::Material *> pipeline_materials;
 
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
@@ -95,7 +88,7 @@ namespace hgl::ecs
 
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
-        void RegisterBindingSource(BindingSource source);
+
         bool GetContractDiagnosticsStats(uint32_t &materials_checked,
                                         uint32_t &materials_unresolved,
                                         uint32_t &required_missing,
@@ -114,13 +107,13 @@ namespace hgl::ecs
                             graph::Sampler *sampler);
         void RemoveMaterialBinding(graph::Material *material, const AnsiString &name);
         void ClearMaterialBindings(graph::Material *material);
+        void RegisterPipelineMaterial(graph::Material *material);
+        void UnregisterPipelineMaterial(graph::Material *material);
         void SetLegacyMaterialBindingFallbackEnabled(bool enabled) { enable_legacy_material_binding_fallback = enabled; }
         bool IsLegacyMaterialBindingFallbackEnabled() const { return enable_legacy_material_binding_fallback; }
 
     private:
 
-        void RegisterDefaultSources();
-        void EnsureViewBinding();
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);

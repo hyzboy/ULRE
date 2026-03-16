@@ -24,7 +24,7 @@
 #include<hgl/graph/tile/TileData.h>
 #include<hgl/vk/VKFormat.h>
 #include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/VKDescriptorBindingManage.h>
+
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/common/RenderOptions.h>
 #include<hgl/type/String.h>
@@ -129,7 +129,10 @@ namespace hgl::ecs
             if (res.material && material_manager)
             {
                 if (descriptor_binding_system)
+                {
+                    descriptor_binding_system->UnregisterPipelineMaterial(res.material);
                     descriptor_binding_system->ClearMaterialBindings(res.material);
+                }
 
                 material_manager->Release(res.material);
                 res.material = nullptr;
@@ -330,20 +333,17 @@ namespace hgl::ecs
             guard.material_instance_buffer = nullptr;
         }
 
-        graph::DescriptorBinding material_binding(graph::DescriptorSetType::Material);
-
-        if (!material_binding.AddTextureSampler(graph::mtl::SamplerName::Text,
-                                                guard.tile_font->GetTexture(),
-                                                guard.sampler))
-            return nullptr;
-
-        if (!material_binding.Bind(guard.material))
+        if (!guard.material->BindTextureSampler(graph::DescriptorSetType::Material,
+                                                    graph::mtl::SamplerName::Text,
+                                                    guard.tile_font->GetTexture(),
+                                                    guard.sampler))
             return nullptr;
 
         if (world)
         {
             if (auto descriptor_binding_system = world->GetSystem<RenderDescriptorBindingSystem>())
             {
+                descriptor_binding_system->RegisterPipelineMaterial(guard.material);
                 descriptor_binding_system->RegisterMaterialTextureSampler(guard.material,
                                                                           graph::mtl::SamplerName::Text,
                                                                           guard.tile_font->GetTexture(),

@@ -8,6 +8,7 @@
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
+#include <hgl/mtl/DescriptorBindingContract.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/mtl/UBOCommon.h>
@@ -276,6 +277,12 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     if (frag)
         frag->SetFinalGLSL(fs_glsl);
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 6b: Build BindingContract from descriptor entries
+    // ─────────────────────────────────────────────────────────────
+
+    mci->SetBindingContract(BuildBindingContract(def.descriptor_entries, def.descriptor_entry_count));
 
     // ─────────────────────────────────────────────────────────────
     // Step 7: Compile directly → SPV
