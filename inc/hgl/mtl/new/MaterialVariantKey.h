@@ -49,6 +49,18 @@ namespace hgl::graph::mtl
         PassType          pass_hint           = PassType::ForwardOpaque;
         QualityTier       quality_tier        = QualityTier::Medium;
 
+        uint64 Hash() const noexcept
+        {
+            uint64 h = 0;
+            h ^= static_cast<uint64>(surface_type)        << 0;
+            h ^= static_cast<uint64>(geometry_mode)       << 8;
+            h ^= static_cast<uint64>(texture_source_mode) << 16;
+            h ^= static_cast<uint64>(feature_bits)        << 24;
+            h ^= static_cast<uint64>(blend_mode)          << 56;
+            h ^= static_cast<uint64>(pass_hint)           << 57;
+            return h;
+        }
+
         bool operator==(const MaterialVariantKey &rhs) const noexcept
         {
             return surface_type == rhs.surface_type
