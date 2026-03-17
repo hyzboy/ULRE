@@ -21,5 +21,9 @@ namespace hgl::graph
 
         int AddInput(VIAList &);
         int AddInput(const VAType &type,const std::string &name,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic);
+        int AddInput(const VAType &type,const VertexAttrib attrib,const VertexInputRate input_rate=VertexInputRate::Vertex,const VertexInputGroup &group=VertexInputGroup::Basic)
+        {
+            return AddInput(type,std::string(GetVertexAttribName(attrib)),input_rate,group);
+        }
     };//class ShaderCreateInfoVertex:public ShaderCreateInfo
 }//namespace hgl::graph

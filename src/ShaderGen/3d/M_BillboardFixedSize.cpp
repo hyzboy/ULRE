@@ -14,8 +14,8 @@ namespace
 
     constexpr FixedVertexEntry BILLBOARD_FIXED_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
-        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB },
+        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::ATTRIB },
     };
 
     constexpr FixedDescriptorEntry BILLBOARD_FIXED_DESCRIPTORS[] = {

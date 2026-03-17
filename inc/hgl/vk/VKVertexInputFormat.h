@@ -11,7 +11,8 @@ namespace hgl::graph
         uint        vec_size;
         uint        stride;
 
-        const char *        name;
+        VertexAttrib        attrib;
+        const char *        name;           ///<GLSL variable name (from shader reflection)
         int                 binding;
         VkVertexInputRate   input_rate;
         VertexInputGroup    group;

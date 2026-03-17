@@ -32,6 +32,8 @@ namespace hgl::graph
         VertexInputGroup    group;
 
         Interpolation       interpolation;
+
+        VertexAttrib GetVertexAttrib()const{return GetVertexAttribByName(name);}
     };
 #pragma pack(pop)
 

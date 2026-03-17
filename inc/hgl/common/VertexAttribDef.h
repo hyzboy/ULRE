@@ -2,6 +2,7 @@
 
 #include <hgl/type/EnumUtil.h>
 #include <compare>
+#include <cstring>
 
 namespace hgl::graph
 {
@@ -130,29 +131,76 @@ namespace hgl::graph
 
     constexpr const size_t VERTEX_ATTRIB_NAME_MAX_LENGTH=32;
 
-    namespace VertexAttribName
+    enum class VertexAttrib:uint8
     {
-#define VAN_DEFINE(name)    constexpr const char name[]=#name;
-        VAN_DEFINE(Position)
+        Position=0,
 
-        VAN_DEFINE(Normal)
-        VAN_DEFINE(Tangent)
-        VAN_DEFINE(Bitangent)
-        VAN_DEFINE(Color)
-        VAN_DEFINE(Luminance)
-        VAN_DEFINE(TexCoord)
+        Normal,
+        Tangent,
+        Bitangent,
+        Color,
+        Luminance,
+        TexCoord,
 
-        VAN_DEFINE(AO)
+        AO,
 
-        VAN_DEFINE(Size)
-        VAN_DEFINE(Rotation)
+        Size,
+        Rotation,
 
-        VAN_DEFINE(Assign)
+        TransformID,
+        MaterialInstanceID,
 
-        VAN_DEFINE(JointID)
-        VAN_DEFINE(JointWeight)
-#undef VAN_DEFINE
+        JointID,
+        JointWeight,
+
+        ENUM_CLASS_RANGE(Position,JointWeight)
+    };
+
+    constexpr const char *VertexAttribNames[]=
+    {
+        "Position",
+
+        "Normal",
+        "Tangent",
+        "Bitangent",
+        "Color",
+        "Luminance",
+        "TexCoord",
+
+        "AO",
+
+        "Size",
+        "Rotation",
+
+        "TransformID",
+        "MaterialInstanceID",
+
+        "JointID",
+        "JointWeight"
+    };
+
+    inline const char *GetVertexAttribName(const VertexAttrib va)
+    {
+        RANGE_CHECK_RETURN_NULLPTR(va);
+
+        return VertexAttribNames[(int)va];
     }
 
-#define VAN VertexAttribName
+    /**
+     * 根据名称查找VertexAttrib枚举值
+     * @return VertexAttrib枚举值，如果找不到返回RANGE_SIZE (无效值)
+     */
+    inline VertexAttrib GetVertexAttribByName(const char *name)
+    {
+        if(!name)return VertexAttrib::RANGE_SIZE;
+
+        for(int i=0;i<(int)VertexAttrib::RANGE_SIZE;i++)
+            if(strcmp(VertexAttribNames[i],name)==0)
+                return VertexAttrib(i);
+
+        return VertexAttrib::RANGE_SIZE;
+    }
+
+    // VAN is a convenience alias for VertexAttrib
+#define VAN VertexAttrib
 }

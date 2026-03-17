@@ -99,7 +99,7 @@ namespace hgl::ecs
         };
         static const uint16_t index_data[6] = { 0, 1, 2, 0, 2, 3 };
 
-        if (!pc->WriteVAB(graph::VertexAttribName::Position, VF_V3F, position_data))
+        if (!pc->WriteVAB(graph::VertexAttrib::Position, VF_V3F, position_data))
             return false;
 
         if (!pc->WriteIBO(index_data))

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include<hgl/vk/VKFormat.h>
+#include<hgl/common/VertexAttribDef.h>
 #include<hgl/type/String.h>
 #include<hgl/type/UnorderedMap.h>
 #include<vector>
@@ -41,6 +42,11 @@ public:
             return(false);
 
         return static_cast<Base *>(this)->Add(name,cfg);
+    }
+
+    bool Add(const VertexAttrib attrib,const VAConfig &cfg)
+    {
+        return Add(AnsiString(GetVertexAttribName(attrib)),cfg);
     }
 
     auto operator <=> (const VILConfig &vc)const

@@ -60,6 +60,11 @@ const int Geometry::GetVABIndex(const AnsiString &name)const
     return geometry_data->GetVABIndex(name);
 }
 
+const int Geometry::GetVABIndex(const VertexAttrib attrib)const
+{
+    return geometry_data->GetVABIndex(attrib);
+}
+
 VAB *Geometry::GetVAB(const int vab_index)const
 {
     return geometry_data->GetVAB(vab_index);

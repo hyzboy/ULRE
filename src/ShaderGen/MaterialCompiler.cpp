@@ -25,14 +25,11 @@ static bool CStrEq(const char *lhs, const char *rhs)
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
 }
 
-static bool HasVertexEntry(const FixedMaterialDef &def, const char *name)
+static bool HasVertexEntry(const FixedMaterialDef &def, const VertexAttrib attrib)
 {
-    if (!name || !*name)
-        return false;
-
     for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
     {
-        if (CStrEq(def.vertex_entries[i].name, name))
+        if (def.vertex_entries[i].attrib == attrib)
             return true;
     }
 
@@ -112,7 +109,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const bool infer_has_mi     = HasDescriptorNamed(def, "mtl")
                                || HasDescriptorNamed(def, "MaterialInstanceData")
                                || HasPerMaterialDescriptor(def)
-                               || HasVertexEntry(def, Assign::MaterialInstanceID::VIS_NAME)
+                               || HasVertexEntry(def, Assign::MaterialInstanceID::ATTRIB)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
     cfg.camera           = cfg.camera           || infer_has_camera;
@@ -249,7 +246,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
         for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
         {
             const FixedVertexEntry &entry = def.vertex_entries[i];
-            vsc->AddInput(entry.type, entry.name, entry.input_rate, entry.group);
+            vsc->AddInput(entry.type, entry.attrib, entry.input_rate, entry.group);
         }
     }
 

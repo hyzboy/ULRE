@@ -113,7 +113,7 @@ namespace hgl::ecs
 
         const int pos_idx   = geometry->GetVABIndex(graph::VAN::Position);
         const int color_idx = geometry->GetVABIndex(graph::VAN::Color);
-        const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::VIS_NAME);
+        const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::ATTRIB);
 
         if (pos_idx < 0 || color_idx < 0 || transform_idx < 0)
         {
@@ -200,7 +200,7 @@ namespace hgl::ecs
 
         if (data_buffer && geometry)
         {
-            const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::VIS_NAME);
+            const int transform_idx = geometry->GetVABIndex(graph::Assign::TransformID::ATTRIB);
             const VkBuffer transform_vk = transform_idx >= 0 ? geometry->GetVkBuffer(transform_idx) : VK_NULL_HANDLE;
 
             if (transform_vk != VK_NULL_HANDLE && data_buffer->vab_count > 0)
@@ -302,7 +302,7 @@ namespace hgl::ecs
         // ------- Create material instance -------
         graph::VILConfig vil;
         vil.Add(graph::VAN::Color, VF_V1U8);
-        vil.Add(graph::Assign::TransformID::VIS_NAME,
+        vil.Add(graph::Assign::TransformID::ATTRIB,
             graph::VAConfig(graph::Assign::TransformID::VAB_FMT,
                     VK_VERTEX_INPUT_RATE_VERTEX));
         mi_ = mat_mgr->CreateMaterialInstance(material_, &vil);

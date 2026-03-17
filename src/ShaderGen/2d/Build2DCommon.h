@@ -1,10 +1,10 @@
 #pragma once
 
-/// Build2DCommon.h — 2D 材质转换公共辅助
+/// Build2DCommon.h �?2D 材质转换公共辅助
 ///
 /// 提供 Build2DPreamble、DEF 构建等工具，
-/// 供各 M_Xxx2D.cpp 工厂函数使用。
-/// GLSL 代码已移至 ShaderLibrary/2d/ 目录下的文件。
+/// 供各 M_Xxx2D.cpp 工厂函数使用�?
+/// GLSL 代码已移�?ShaderLibrary/2d/ 目录下的文件�?
 
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/FixedMaterialDef.h>
@@ -30,14 +30,14 @@ inline const char *GLSLInputType(const VAType &vat)
 }
 
 // ─────────────────────────────────────────────────────────────
-// Descriptor layout macros — Resort() compacts away empty sets,
+// Descriptor layout macros �?Resort() compacts away empty sets,
 // so we generate #define lines for GLSL to reference.
 //
 // Produced macros (only when the feature is active):
-//   SCENE_SET    / VIEWPORT_BINDING  — Scene set (Ortho only)
-//   L2W_SET      / L2W_BINDING       — Transform set (L2W only)
-//   TEX_SET      / TEX_BINDING        — texture in Material set
-//   MI_SET       / MI_BINDING         — MI SSBO in Material set
+//   SCENE_SET    / VIEWPORT_BINDING  �?Scene set (Ortho only)
+//   L2W_SET      / L2W_BINDING       �?Transform set (L2W only)
+//   TEX_SET      / TEX_BINDING        �?texture in Material set
+//   MI_SET       / MI_BINDING         �?MI SSBO in Material set
 // ─────────────────────────────────────────────────────────────
 
 inline std::string BuildDescriptorDefines(
@@ -83,7 +83,7 @@ inline std::string BuildDescriptorDefines(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Shader preamble builder — #version + #define lines
+// Shader preamble builder �?#version + #define lines
 // C++ only produces the preamble; GLSL code lives in files.
 //
 //   std::string vs = preamble + "#include \"2d/xxx.vert.glsl\"\n";
@@ -124,11 +124,11 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 
     // TransformID (if L2W)
     if(cfg->local_to_world)
-        v.push_back({Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME});
+        v.push_back({Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB});
 
     // MaterialInstanceID (if MI)
     if(cfg->material_instance)
-        v.push_back({Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME});
+        v.push_back({Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::ATTRIB});
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -144,11 +144,11 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 
 inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
 {
-    // Viewport (Scene set) — only for Ortho
+    // Viewport (Scene set) �?only for Ortho
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
         v.push_back({DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr});
 
-    // L2W (Transform set) — only if L2W
+    // L2W (Transform set) �?only if L2W
     if(cfg->local_to_world)
         v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr});
 }

@@ -13,7 +13,7 @@ namespace
     constexpr FixedVertexEntry VERTEX_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
         { VAT_VEC4, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color },
-        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB },
     };
 
         constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {

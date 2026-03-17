@@ -37,6 +37,11 @@ const int GeometryData::GetVABIndex(const AnsiString &name) const
     return vil->GetIndex(name);
 }
 
+const int GeometryData::GetVABIndex(const VertexAttrib attrib) const
+{
+    return vil->GetIndex(attrib);
+}
+
 bool GeometryData::CreateAllVAB(const AnsiString &geometry_name)
 {
     const uint32_t count=vil->GetVertexAttribCount();

@@ -129,6 +129,7 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
             vif->vec_size   =via->vec_size;
             vif->stride     =bind_desc->stride;
 
+            vif->attrib     =via->GetVertexAttrib();
             vif->name       =via->name;
             vif->binding    =attr_desc->binding;
             vif->input_rate =bind_desc->inputRate;

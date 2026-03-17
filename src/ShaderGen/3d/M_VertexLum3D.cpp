@@ -15,8 +15,8 @@ namespace
     constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
         { VAT_FLOAT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Luminance },
-        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
-        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB },
+        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::ATTRIB },
     };
 
     constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {

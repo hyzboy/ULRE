@@ -72,8 +72,10 @@ public: //顶点缓冲区
             int32_t         GetVertexOffset()const;                                                                         ///<取得顶点偏移(单位:元素)
 
             VertexAttribBuffer * GetVAB (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);               ///<获取VAB用于BufferAccessor
+            VertexAttribBuffer * GetVAB (const VertexAttrib attrib,const VkFormat format=VK_FORMAT_UNDEFINED){return GetVAB(AnsiString(GetVertexAttribName(attrib)),format);}
 
             bool            WriteVAB    (const AnsiString &name,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
+            bool            WriteVAB    (const VertexAttrib attrib,const VkFormat format,const void *data){return WriteVAB(AnsiString(GetVertexAttribName(attrib)),format,data);}
 
             /**
              * 创建带偏移的 BufferAccessor（自动使用VDM子分配的正确范围）
@@ -86,6 +88,12 @@ public: //顶点缓冲区
             {
                 VAB *vab = GetVAB(name);
                 return BufferAccessorType(vab, GetVertexOffset(), GetVertexCount());
+            }
+
+            template<typename BufferAccessorType>
+            BufferAccessorType GetBufferAccessor(const VertexAttrib attrib)
+            {
+                return GetBufferAccessor<BufferAccessorType>(AnsiString(GetVertexAttribName(attrib)));
             }
 
 public: //索引缓冲区

@@ -3,6 +3,7 @@
 #include<hgl/vk/VKIndexBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMemory.h>
+#include<hgl/common/VertexAttribDef.h>
 
 namespace hgl::graph{
 
@@ -50,6 +51,7 @@ public:
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
+    const   int             GetVABIndex     (const VertexAttrib attrib)const;
 
             bool            CreateAllVAB(const AnsiString &geometry_name="Geometry");     //根据VIL创建所有VAB
 

@@ -176,7 +176,7 @@ namespace hgl::graph
         {
             VILConfig vil_config;
 
-            vil_config.Add("Position",VF_V2I16);
+            vil_config.Add(VertexAttrib::Position,VF_V2I16);
 
             mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style,sizeof(fixed_style));
             if(!mi_fs)return(false);

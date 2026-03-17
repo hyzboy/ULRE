@@ -10,7 +10,7 @@ struct FixedVertexEntry
     VAType              type;
     VertexInputGroup    group;
     VertexInputRate     input_rate;
-    const char *        name;
+    VertexAttrib        attrib;
 };
 
 }//namespace hgl::graph::mtl

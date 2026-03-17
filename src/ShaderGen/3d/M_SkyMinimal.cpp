@@ -11,7 +11,7 @@ namespace
 {
     constexpr FixedVertexEntry SKY_MINIMAL_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB },
     };
 
     constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {

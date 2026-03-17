@@ -24,8 +24,8 @@ namespace
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::Position },
         { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::TexCoord },
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::Normal   },
-        { Assign::TransformID::VAT_FMT,        VertexInputGroup::TransformID,        VertexInputRate::Instance, Assign::TransformID::VIS_NAME        },
-        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
+        { Assign::TransformID::VAT_FMT,        VertexInputGroup::TransformID,        VertexInputRate::Instance, Assign::TransformID::ATTRIB        },
+        { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::ATTRIB },
     };
 
     constexpr FixedDescriptorEntry PBR_COLOR_3D_DESCRIPTORS[] = {
@@ -71,7 +71,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     dynamic_def.descriptor_entries      = dynamic_descriptors.data();
     dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
 
-    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture â€” color via MI)
+    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture â€?color via MI)
     MaterialVariantKey var_key;
     var_key.surface_type = SurfaceType::Standard;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);

@@ -236,7 +236,7 @@ std::string ResourceLayoutGenerator::GenVertexInputLayout(const FixedVertexEntry
         char buf[256];
         snprintf(buf, sizeof(buf),
             "layout(location=%u) in %s %s;\n",
-            i, glsl_type, entry.name);
+            i, glsl_type, GetVertexAttribName(entry.attrib));
         result += buf;
     }
     

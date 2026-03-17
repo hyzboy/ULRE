@@ -32,4 +32,13 @@ const int VertexInputLayout::GetIndex(const AnsiString &name)const
 
     return -1;
 }
+
+const int VertexInputLayout::GetIndex(const VertexAttrib attrib)const
+{
+    for(uint32_t i=0;i<count;i++)
+        if(vif_list[i].attrib==attrib)
+            return(i);
+
+    return -1;
+}
 }//namespace hgl::graph

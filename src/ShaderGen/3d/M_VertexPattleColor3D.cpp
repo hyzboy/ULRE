@@ -6,7 +6,7 @@
 *       vec4 color[256];
 *   }color_pattle;
 *
-*   然后输入的一个R8UI顶点属性来指定使用那个颜色。
+*   然后输入的一个R8UI顶点属性来指定使用那个颜色�?
 */
 
 #include<hgl/shadergen/MaterialCreateInfo.h>
@@ -24,7 +24,7 @@ namespace
     constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
         { VAT_UINT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color },
-        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Vertex, Assign::TransformID::VIS_NAME },
+        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Vertex, Assign::TransformID::ATTRIB },
     };
 
     constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
