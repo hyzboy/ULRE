@@ -133,7 +133,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardCameraFacing;
-        key.texture_source_mode = TSM::Tex2D;
+        key.texture_source_mode = TSM::Simple;
         key.feature_bits        = VF_HasBaseColorTex;
         key.blend_mode          = BlendMode::Transparent;
         key.pass_hint           = PassType::ForwardTransparent;
@@ -150,7 +150,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     {
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardAxisLocked;
-        key.texture_source_mode = TSM::Tex2D;
+        key.texture_source_mode = TSM::Simple;
         key.feature_bits        = VF_HasBaseColorTex;
         key.blend_mode          = BlendMode::Transparent;
         key.pass_hint           = PassType::ForwardTransparent;
@@ -185,7 +185,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // Standard 3D (texture-based, lit)
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Standard, GM::Mesh3D, TSM::Tex2D,
+        K(ST::Standard, GM::Mesh3D, TSM::Simple,
           VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex),
         MakeDesc("Standard",
                  "compositor/main_forward_lit.vert.glsl",
@@ -196,7 +196,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // Standard Texture Array
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Standard, GM::Mesh3D, TSM::Tex2DArray,
+        K(ST::Standard, GM::Mesh3D, TSM::Array,
           VF_HasBaseColorTex | VF_HasNormalTex),
         MakeDesc("StandardTextureArray",
                  "compositor/main_forward_lit.vert.glsl",

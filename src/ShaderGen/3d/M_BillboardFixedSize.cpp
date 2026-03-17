@@ -48,7 +48,7 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDevicePro
 
     MaterialVariantKey var_key;
     var_key.geometry_mode       = GeometryMode::BillboardAxisLocked;
-    var_key.texture_source_mode = TextureSourceMode::Tex2D;
+    var_key.texture_source_mode = TextureSourceMode::Simple;
     var_key.feature_bits        = VF_HasBaseColorTex;
     var_key.blend_mode          = BlendMode::Transparent;
     var_key.pass_hint           = PassType::ForwardTransparent;

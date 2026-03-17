@@ -13,6 +13,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/vk/VKMaterialInstance.h>
+#include<hgl/type/StdString.h>
 
 namespace hgl::ecs
 {
@@ -104,6 +105,7 @@ namespace hgl::ecs
         cfg.fixed_size = quad->IsFixedPixelSize();
         cfg.front_face = quad->GetFrontFace();
         cfg.pixel_size = quad->GetPixelSize();
+        cfg.texture_id = ToStdString(texture_path);
 
         auto* mi = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!mi)

@@ -77,7 +77,7 @@ MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDevicePro
 
     MaterialVariantKey var_key;
     var_key.surface_type        = SurfaceType::Standard;
-    var_key.texture_source_mode = TextureSourceMode::Tex2DArray;
+    var_key.texture_source_mode = TextureSourceMode::Array;
     var_key.feature_bits        = VF_HasBaseColorTex | VF_HasNormalTex;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)

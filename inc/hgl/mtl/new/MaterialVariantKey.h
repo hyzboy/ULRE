@@ -21,8 +21,8 @@ namespace hgl::graph::mtl
     enum class TextureSourceMode : uint8
     {
         None = 0,
-        Tex2D,
-        Tex2DArray,
+        Simple,
+        Array,
         Atlas,
 
         ENUM_CLASS_RANGE(None, Atlas)

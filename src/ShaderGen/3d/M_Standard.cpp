@@ -76,7 +76,7 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
 
     MaterialVariantKey var_key;
     var_key.surface_type        = SurfaceType::Standard;
-    var_key.texture_source_mode = TextureSourceMode::Tex2D;
+    var_key.texture_source_mode = TextureSourceMode::Simple;
     var_key.feature_bits        = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)

@@ -106,9 +106,13 @@ struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 
     VkFrontFace front_face=VK_FRONT_FACE_CLOCKWISE; ///<正面朝向
 
+    std::string texture_id;             ///<纹理唯一标识，用于区分不同纹理的材质缓存
+
 public:
 
     using Material3DCreateConfig::Material3DCreateConfig;
+
+    std::string ToHashStdString() override;
 };
 
 DECLARE_MATERIAL_CREATOR(Billboard2D, BillboardMaterialCreateConfig)

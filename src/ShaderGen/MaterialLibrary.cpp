@@ -24,19 +24,19 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
         case MaterialPreset::PureTexture2D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Quad2D;
-            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.texture_source_mode = TextureSourceMode::Simple;
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::RectTexture2D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
-            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.texture_source_mode = TextureSourceMode::Simple;
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::RectTexture2DArray:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
-            key.texture_source_mode = TextureSourceMode::Tex2DArray;
+            key.texture_source_mode = TextureSourceMode::Array;
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::Text2D:
@@ -86,19 +86,19 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
         case MaterialPreset::Billboard2D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::BillboardCameraFacing;
-            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.texture_source_mode = TextureSourceMode::Simple;
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::Standard:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
-            key.texture_source_mode = TextureSourceMode::Tex2D;
+            key.texture_source_mode = TextureSourceMode::Simple;
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
             break;
         case MaterialPreset::StandardTextureArray:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
-            key.texture_source_mode = TextureSourceMode::Tex2DArray;
+            key.texture_source_mode = TextureSourceMode::Array;
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex;
             break;
         case MaterialPreset::PBRColor3D:
@@ -131,7 +131,7 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
 
         if (key.geometry_mode == GeometryMode::ScreenRect)
         {
-            out_preset = (key.texture_source_mode == TextureSourceMode::Tex2DArray)
+            out_preset = (key.texture_source_mode == TextureSourceMode::Array)
                 ? MaterialPreset::RectTexture2DArray
                 : MaterialPreset::RectTexture2D;
             return true;
