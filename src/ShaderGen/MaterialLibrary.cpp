@@ -2,6 +2,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<unordered_map>
 
 namespace hgl::graph::mtl{
 
@@ -222,36 +223,83 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
     }
 }
 
+namespace {
+
+using VariantFactory = MaterialCreateInfo*(*)(const contract::PhysicalDeviceProfileLite*, MaterialCreateConfig*);
+
+static MaterialCreateInfo* F_VertexColor2D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexColor2D      (p,(const Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_PureColor2D        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePureColor2D        (p,(Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_PureTexture2D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePureTexture2D      (p,(const Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_RectTexture2D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateRectTexture2D      (p,(Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_RectTexture2DArray (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateRectTexture2DArray (p,(Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_Text2D             (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateText2D             (p,(const Text2DMaterialCreateConfig*)c); }
+static MaterialCreateInfo* F_PureColor3D        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePureColor3D        (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexColor3D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexColor3D      (p,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexLuminance3D  (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexLuminance3D  (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexLuminance2D  (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexLuminance2D  (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexPattleColor3D(const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexPattleColor3D(p,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_Gizmo3D            (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateGizmo3D            (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_TerrainGrid        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateTerrainGrid        (p,(const TerrainGridCreateConfig*)c); }
+static MaterialCreateInfo* F_SkyMinimal         (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateSkyMinimal         (p,(const SkyMinimalCreateConfig*)c); }
+static MaterialCreateInfo* F_Billboard2D        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateBillboard2D        (p,(BillboardMaterialCreateConfig*)c); }
+static MaterialCreateInfo* F_Standard           (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateStandard           (p,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_StandardTextureArray(const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateStandardTextureArray(p,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_PBRColor3D         (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePBRColor3D         (p,(PBRColor3DMaterialCreateConfig*)c); }
+
+static std::unordered_map<uint64, VariantFactory> BuildFactoryMap()
+{
+    std::unordered_map<uint64, VariantFactory> m;
+    m.reserve(20);
+    auto reg = [&](MaterialPreset p, VariantFactory f) {
+        m[MapPresetToVariantKey(p).Hash()] = f;
+    };
+    reg(MaterialPreset::VertexColor2D,        F_VertexColor2D);
+    reg(MaterialPreset::PureColor2D,          F_PureColor2D);
+    reg(MaterialPreset::PureTexture2D,        F_PureTexture2D);
+    reg(MaterialPreset::RectTexture2D,        F_RectTexture2D);
+    reg(MaterialPreset::RectTexture2DArray,   F_RectTexture2DArray);
+    reg(MaterialPreset::Text2D,               F_Text2D);
+    reg(MaterialPreset::PureColor3D,          F_PureColor3D);
+    reg(MaterialPreset::VertexColor3D,        F_VertexColor3D);
+    reg(MaterialPreset::VertexLuminance3D,    F_VertexLuminance3D);
+    reg(MaterialPreset::VertexLuminance2D,    F_VertexLuminance2D);
+    reg(MaterialPreset::VertexPattleColor3D,  F_VertexPattleColor3D);
+    reg(MaterialPreset::Gizmo3D,              F_Gizmo3D);
+    reg(MaterialPreset::TerrainGrid,          F_TerrainGrid);
+    reg(MaterialPreset::SkyMinimal,           F_SkyMinimal);
+    reg(MaterialPreset::Billboard2D,          F_Billboard2D);
+    reg(MaterialPreset::Standard,             F_Standard);
+    reg(MaterialPreset::StandardTextureArray, F_StandardTextureArray);
+    reg(MaterialPreset::PBRColor3D,           F_PBRColor3D);
+    return m;
+}
+
+static const std::unordered_map<uint64, VariantFactory>& GetFactoryMap()
+{
+    static const auto s_map = BuildFactoryMap();
+    return s_map;
+}
+
+} // anonymous namespace
+
+MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
+                                             const MaterialVariantKey &key,
+                                             MaterialCreateConfig *cfg)
+{
+    if(!cfg)
+        return nullptr;
+    const auto &m = GetFactoryMap();
+    auto it = m.find(key.Hash());
+    if(it == m.end())
+        return nullptr;
+    return it->second(profile, cfg);
+}
+
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg)
 {
-    if(!cfg)
-        return(nullptr);
-
-    switch(mtl_id)
-    {
-        case MaterialPreset::VertexColor2D:         return CreateVertexColor2D      (profile,(const Material2DCreateConfig *)cfg);
-        case MaterialPreset::PureColor2D:           return CreatePureColor2D        (profile,(Material2DCreateConfig *)cfg);
-        case MaterialPreset::PureTexture2D:         return CreatePureTexture2D      (profile,(const Material2DCreateConfig *)cfg);
-        case MaterialPreset::RectTexture2D:         return CreateRectTexture2D      (profile,(Material2DCreateConfig *)cfg);
-        case MaterialPreset::RectTexture2DArray:    return CreateRectTexture2DArray (profile,(Material2DCreateConfig *)cfg);
-        case MaterialPreset::Text2D:                return CreateText2D             (profile,(const Text2DMaterialCreateConfig *)cfg);
-
-        case MaterialPreset::PureColor3D:           return CreatePureColor3D        (profile,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::VertexColor3D:         return CreateVertexColor3D      (profile,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::VertexLuminance3D:     return CreateVertexLuminance3D  (profile,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::VertexLuminance2D:     return CreateVertexLuminance2D  (profile,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::Gizmo3D:               return CreateGizmo3D            (profile,(Material3DCreateConfig *)cfg);
-        case MaterialPreset::TerrainGrid:           return CreateTerrainGrid        (profile,(const TerrainGridCreateConfig *)cfg);
-        case MaterialPreset::SkyMinimal:            return CreateSkyMinimal         (profile,(const SkyMinimalCreateConfig *)cfg);
-        case MaterialPreset::Billboard2D:           return CreateBillboard2D        (profile,(BillboardMaterialCreateConfig *)cfg);
-        case MaterialPreset::Standard:              return CreateStandard           (profile,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::StandardTextureArray:  return CreateStandardTextureArray(profile,(const Material3DCreateConfig *)cfg);
-        case MaterialPreset::PBRColor3D:            return CreatePBRColor3D         (profile,(PBRColor3DMaterialCreateConfig *)cfg);
-
-        default:                                    return nullptr;
-    }
+    return CreateMaterialCreateInfo(profile, MapPresetToVariantKey(mtl_id), cfg);
 }
+
 }//namespace hgl::graph::mtl

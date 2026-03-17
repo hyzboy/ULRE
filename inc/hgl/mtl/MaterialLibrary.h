@@ -49,6 +49,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg);
 
+MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
+                                             const MaterialVariantKey &key,
+                                             MaterialCreateConfig *cfg);
+
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
 
 // Phase-A migration helpers: preset <-> variant mapping.

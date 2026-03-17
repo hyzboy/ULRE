@@ -337,18 +337,7 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!cfg)
         return(nullptr);
 
-    const auto *profile=GetPhysicalDeviceProfile();
-
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
-
-    if(!mci)
-        return(nullptr);
-
-    AnsiString hash_name=mtl::GetMaterialPresetName(mtl_id);
-    hash_name+="?";
-    hash_name+=cfg->ToHashStdString().c_str();
-
-    return this->CreateMaterial(hash_name,mci);
+    return CreateMaterial(mtl::MapPresetToVariantKey(mtl_id), cfg);
 }
 
 void MaterialManager::ResetShaderGenProfiler()
@@ -388,36 +377,59 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!cfg)
         return(nullptr);
 
+    return CreateMaterial(mtl::MapPresetToVariantKey(mtl_id), cfg);
+}
+
+Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
+{
+    HGL_CAPTURE_SCOPE();
+
+    if(!cfg)
+        return(nullptr);
+
     const auto *profile=GetPhysicalDeviceProfile();
 
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,mtl_id,cfg);
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
 
     if(!mci)
         return(nullptr);
 
-    AnsiString hash_name=mtl::GetMaterialPresetName(mtl_id);
+    AnsiString hash_name;
+    mtl::MaterialPreset preset;
+    if(mtl::TryMapVariantKeyToPreset(key,preset))
+        hash_name=mtl::GetMaterialPresetName(preset);
+    else
+        hash_name="variant";
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
     return this->CreateMaterial(hash_name,mci);
 }
 
-Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)
-{
-    mtl::MaterialPreset preset;
-    if(!mtl::TryMapVariantKeyToPreset(key,preset))
-        return(nullptr);
-
-    return CreateMaterial(preset,cfg);
-}
-
 Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
 {
-    mtl::MaterialPreset preset;
-    if(!mtl::TryMapVariantKeyToPreset(key,preset))
+    HGL_CAPTURE_SCOPE();
+
+    if(!cfg)
         return(nullptr);
 
-    return CreateMaterial(preset,cfg);
+    const auto *profile=GetPhysicalDeviceProfile();
+
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
+
+    if(!mci)
+        return(nullptr);
+
+    AnsiString hash_name;
+    mtl::MaterialPreset preset;
+    if(mtl::TryMapVariantKeyToPreset(key,preset))
+        hash_name=mtl::GetMaterialPresetName(preset);
+    else
+        hash_name="variant";
+    hash_name+="?";
+    hash_name+=cfg->ToHashStdString().c_str();
+
+    return this->CreateMaterial(hash_name,mci);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
