@@ -17,18 +17,33 @@ struct MaterialInstance
     float metallic;
     float roughness;
     float normal_scale;  // normal map intensity (tier >= 4 only)
+#if TEXTURE_ARRAY_MODE
+    uint  texture_id;    // array layer when any texture slot uses sampler2DArray
+#endif
 };
 MI_SSBO;
 
 // ─── Textures (tier-gated) ───────────────────────────────────────────────────
 #if QUALITY_TIER >= 1
+#if BASE_TEX_ARRAY_MODE
+layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TexAlbedo;
+#else
 layout(set=MATERIAL_SET, binding=0) uniform sampler2D TexAlbedo;
 #endif
+#endif
 #if QUALITY_TIER >= 2
+#if NORMAL_TEX_ARRAY_MODE
+layout(set=MATERIAL_SET, binding=1) uniform sampler2DArray TexNormal;
+#else
 layout(set=MATERIAL_SET, binding=1) uniform sampler2D TexNormal;
 #endif
+#endif
 #if QUALITY_TIER >= 4
+#if ROUGH_TEX_ARRAY_MODE
+layout(set=MATERIAL_SET, binding=2) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
+#else
 layout(set=MATERIAL_SET, binding=2) uniform sampler2D TexMR;   // R=metallic, G=roughness
+#endif
 #endif
 
 // ─── Sky Light ────────────────────────────────────────────────────────────────
@@ -41,6 +56,46 @@ float halfLambertDiffuse(vec3 N, vec3 L)
     float h = dot(N, L) * 0.5 + 0.5;
     return h * h;
 }
+
+#if TEXTURE_ARRAY_MODE
+float ULRE_TextureLayer(MaterialInstance mi)
+{
+    return float(mi.texture_id);
+}
+#endif
+
+#if QUALITY_TIER >= 1
+vec3 ULRE_SampleAlbedo(MaterialInstance mi, vec2 uv)
+{
+#if BASE_TEX_ARRAY_MODE
+    return texture(TexAlbedo, vec3(uv, ULRE_TextureLayer(mi))).rgb;
+#else
+    return texture(TexAlbedo, uv).rgb;
+#endif
+}
+#endif
+
+#if QUALITY_TIER >= 2
+vec3 ULRE_SampleNormal(MaterialInstance mi, vec2 uv)
+{
+#if NORMAL_TEX_ARRAY_MODE
+    return texture(TexNormal, vec3(uv, ULRE_TextureLayer(mi))).xyz;
+#else
+    return texture(TexNormal, uv).xyz;
+#endif
+}
+#endif
+
+#if QUALITY_TIER >= 4
+vec2 ULRE_SampleMR(MaterialInstance mi, vec2 uv)
+{
+#if ROUGH_TEX_ARRAY_MODE
+    return texture(TexMR, vec3(uv, ULRE_TextureLayer(mi))).rg;
+#else
+    return texture(TexMR, uv).rg;
+#endif
+}
+#endif
 
 #if QUALITY_TIER >= 4
 
@@ -81,7 +136,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     // ── Base color ────────────────────────────────────────────────────────────
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
 #if QUALITY_TIER >= 1
-    albedo *= texture(TexAlbedo, si.uv0).rgb;
+    albedo *= ULRE_SampleAlbedo(mi, si.uv0);
 #endif
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
@@ -89,14 +144,14 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
 #if QUALITY_TIER >= 2
     // ── Normal Map ────────────────────────────────────────────────────────────
-    vec3 nm = texture(TexNormal, si.uv0).xyz * 2.0 - 1.0;
+    vec3 nm = ULRE_SampleNormal(mi, si.uv0) * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 #endif
 
 #if QUALITY_TIER >= 4
     // ── MR Map ────────────────────────────────────────────────────────────────
-    vec2 mr    = texture(TexMR, si.uv0).rg;
+    vec2 mr    = ULRE_SampleMR(mi, si.uv0);
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 

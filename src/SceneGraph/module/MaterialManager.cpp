@@ -19,6 +19,7 @@
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/object/ObjectTracker.h>
+#include<cstdio>
 #include<cstdint>
 #include<vector>
 
@@ -50,21 +51,45 @@ namespace
                                   ShaderModuleMap *shader_maps)
     {
         if (!manager || !shader_maps)
+        {
+            std::fprintf(stderr,
+                "[MaterialManager] BuildLegacyShaderModules failed for '%s': manager=%p shader_maps=%p\n",
+                mtl_name.c_str(),
+                manager,
+                shader_maps);
             return false;
+        }
 
         if (sci_map.GetCount() < 2)
+        {
+            std::fprintf(stderr,
+                "[MaterialManager] BuildLegacyShaderModules failed for '%s': shader count=%d (expected >= 2)\n",
+                mtl_name.c_str(),
+                sci_map.GetCount());
             return false;
+        }
 
         for (auto [stage, sci_ptr] : sci_map)
         {
             (void)stage;
 
             if (!sci_ptr)
+            {
+                std::fprintf(stderr,
+                    "[MaterialManager] BuildLegacyShaderModules failed for '%s': shader create info is null\n",
+                    mtl_name.c_str());
                 return false;
+            }
 
             const ShaderModule *module = manager->CreateShaderModule(mtl_name, sci_ptr);
             if (!module)
+            {
+                std::fprintf(stderr,
+                    "[MaterialManager] BuildLegacyShaderModules failed for '%s': CreateShaderModule returned null for stage=%u\n",
+                    mtl_name.c_str(),
+                    static_cast<unsigned>(sci_ptr->GetShaderStage()));
                 return false;
+            }
 
             shader_maps->Add(module);
         }
@@ -109,12 +134,33 @@ GRAPH_MODULE_CONSTRUCT(MaterialManager)
 const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
 {
     VulkanDevice *device = GetDevice();
-    if(!device)return(nullptr);
-    if(sm_name.IsEmpty())return(nullptr);
+    if(!device)
+    {
+        std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed: device is null for '%s'\n", sm_name.c_str());
+        return(nullptr);
+    }
+    if(sm_name.IsEmpty())
+    {
+        std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed: shader module name is empty\n");
+        return(nullptr);
+    }
+    if(!sci)
+    {
+        std::fprintf(stderr, "[MaterialManager] CreateShaderModule failed for '%s': ShaderCreateInfo is null\n", sm_name.c_str());
+        return(nullptr);
+    }
 
     const int bit_offset=GetBitOffset((uint32_t)sci->GetShaderStage());
 
-    if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)return(nullptr);
+    if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateShaderModule failed for '%s': invalid stage bit offset=%d stage=%u\n",
+            sm_name.c_str(),
+            bit_offset,
+            static_cast<unsigned>(sci->GetShaderStage()));
+        return(nullptr);
+    }
 
     ShaderModule *sm;
 
@@ -126,7 +172,14 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     sm=device->CreateShaderModule((VkShaderStageFlagBits)sci->GetShaderStage(),sci->GetSPVData(),sci->GetSPVSize());
 
     if(!sm)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateShaderModule failed for '%s': VulkanDevice::CreateShaderModule returned null (stage=%u spv_size=%zu)\n",
+            sm_name.c_str(),
+            static_cast<unsigned>(sci->GetShaderStage()),
+            sci->GetSPVSize());
         return(nullptr);
+    }
 
     sm_map.Add(sm_name,sm);
 
@@ -191,7 +244,13 @@ const ShaderModule *MaterialManager::CreateShaderModuleFromSPV(const AnsiString 
 PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager)
 {
     VulkanDevice *device = GetDevice();
-    if(!device) return nullptr;
+    if(!device)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterialPipelineLayoutData failed for '%s': device is null\n",
+            mtl_name.c_str());
+        return nullptr;
+    }
 
     PipelineLayoutData *pld = device->CreatePipelineLayoutData(desc_manager);
 
@@ -210,7 +269,14 @@ PipelineLayoutData *MaterialManager::CreateMaterialPipelineLayoutData(const Ansi
 MaterialParameters *MaterialManager::CreateMaterialMP(const AnsiString &mtl_name, const MaterialDescriptorManager *desc_manager, const PipelineLayoutData *pld, const DescriptorSetType &desc_set_type)
 {
     VulkanDevice *device = GetDevice();
-    if(!device) return nullptr;
+    if(!device)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterialMP failed for '%s': device is null (set=%d)\n",
+            mtl_name.c_str(),
+            static_cast<int>(desc_set_type));
+        return nullptr;
+    }
 
     MaterialParameters *mp = device->CreateMP(desc_manager, pld, desc_set_type);
 
@@ -267,13 +333,23 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
                                                    const ShaderCreateInfoMap &sci_map)
 {
     if(!mtl || !mci)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] ExecuteMaterialBuildPipeline failed for '%s': mtl=%p mci=%p\n",
+            mtl_name.c_str(),
+            mtl,
+            mci);
         return false;
+    }
 
     if(!BuildLegacyShaderModules(this,
                                  mtl_name,
                                  sci_map,
                                  mtl->shader_maps))
     {
+        std::fprintf(stderr,
+            "[MaterialManager] ExecuteMaterialBuildPipeline failed for '%s': BuildLegacyShaderModules returned false\n",
+            mtl_name.c_str());
         return false;
     }
 
@@ -298,7 +374,12 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
     HGL_CAPTURE_SCOPE();
 
     if(!mci)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterial(name,mci) failed for '%s': mci is null\n",
+            mtl_name.c_str());
         return(nullptr);
+    }
 
     MaterialCreatePrecheckResult precheck_result;
     const MaterialCreatePrecheckDecision precheck_decision = RunMaterialCreatePrecheck(
@@ -311,7 +392,13 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         return precheck_result.cached_material;
 
     if(precheck_decision != MaterialCreatePrecheckDecision::Proceed)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterial(name,mci) failed for '%s': precheck decision=%d\n",
+            mtl_name.c_str(),
+            static_cast<int>(precheck_decision));
         return nullptr;
+    }
 
     const ShaderCreateInfoMap &sci_map = *precheck_result.shader_map;
 
@@ -320,7 +407,12 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
                                      mtl_name,
                                      mci,
                                      sci_map))
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterial(name,mci) failed for '%s': ExecuteMaterialBuildPipeline returned false\n",
+            mtl_name.c_str());
         return nullptr;
+    }
 
     Add(mtl);
 
@@ -375,7 +467,12 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     HGL_CAPTURE_SCOPE();
 
     if(!cfg)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterial(preset=Standard/3D) failed: cfg is null (preset=%s)\n",
+            mtl::GetMaterialPresetName(mtl_id));
         return(nullptr);
+    }
 
     return CreateMaterial(mtl::MapPresetToVariantKey(mtl_id), cfg);
 }
@@ -411,14 +508,34 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     HGL_CAPTURE_SCOPE();
 
     if(!cfg)
+    {
+        std::fprintf(stderr, "[MaterialManager] CreateMaterial(key/3D) failed: cfg is null\n");
         return(nullptr);
+    }
 
     const auto *profile=GetPhysicalDeviceProfile();
+    if(!profile)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterial(key/3D) warning: physical device profile is null (key_hash=%llu)\n",
+            static_cast<unsigned long long>(key.Hash()));
+    }
 
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
 
     if(!mci)
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X feature_bits=0x%08X cfg_hash=%s)\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.texture_source_mode),
+            key.texture_source_bits,
+            key.feature_bits,
+            cfg->ToHashStdString().c_str());
         return(nullptr);
+    }
 
     AnsiString hash_name;
     mtl::MaterialPreset preset;

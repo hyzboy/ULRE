@@ -58,7 +58,6 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/M_PureColor2D.cpp
                             2d/M_PureTexture2D.cpp
                             2d/M_RectTexture2D.cpp
-                            2d/M_RectTexture2DArray.cpp
                             2d/M_Text.cpp
 )
 
@@ -73,7 +72,6 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_Gizmo3D.cpp
                             3d/M_SkyMinimal.cpp
                             3d/M_Standard.cpp
-                            3d/M_StandardTextureArray.cpp
                             3d/M_PBRColor3D.cpp
                             3d/M_VertexPattleColor3D.cpp
                             3d/M_TerrainGrid.cpp

@@ -16,6 +16,9 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
         "#define PLATFORM_APPLE %d\n"
         "#define PLATFORM_ANDROID %d\n"
         "#define GEOMETRY_FETCH_SSBO %d\n"
+        "#define BASE_TEX_ARRAY_MODE %d\n"
+        "#define NORMAL_TEX_ARRAY_MODE %d\n"
+        "#define ROUGH_TEX_ARRAY_MODE %d\n"
         "#define TEXTURE_ARRAY_MODE %d\n",
         static_cast<int>(GetSurfaceType()),
         static_cast<int>(GetQualityTier()),
@@ -26,6 +29,9 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
         // geometry fetch mode: SSBO geometry fetch not yet implemented in renderer,
         // always 0 until VertexDataBuffer SSBO pipeline is wired up.
         0,
+        GetBaseTextureArrayMode() ? 1 : 0,
+        GetNormalTextureArrayMode() ? 1 : 0,
+        GetRoughnessTextureArrayMode() ? 1 : 0,
         GetTextureArrayMode() ? 1 : 0);
 
     out += buf;

@@ -201,7 +201,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         MakeDesc("StandardTextureArray",
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",
-                 "surface/standard_texturearray_surface.glsl"));
+                                 "surface/standard_surface.glsl"));
 
     // ------------------------------------------------------------------
     // PBRColor3D (Standard surface, color-only via MaterialInstance)

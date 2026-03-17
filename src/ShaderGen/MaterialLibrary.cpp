@@ -2,6 +2,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
+#include<cstdio>
 #include<unordered_map>
 
 namespace hgl::graph::mtl{
@@ -31,12 +32,14 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Simple;
+            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Simple);
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::RectTexture2DArray:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Array;
+            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Array);
             key.feature_bits = VF_HasBaseColorTex;
             break;
         case MaterialPreset::Text2D:
@@ -93,12 +96,18 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Simple;
+            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Simple);
+            key.SetTextureSourceMode(TextureSlot::Normal,    TextureSourceMode::Simple);
+            key.SetTextureSourceMode(TextureSlot::Roughness, TextureSourceMode::Simple);
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
             break;
         case MaterialPreset::StandardTextureArray:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Array;
+            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Array);
+            key.SetTextureSourceMode(TextureSlot::Normal,    TextureSourceMode::Array);
+            key.SetTextureSourceMode(TextureSlot::Roughness, TextureSourceMode::Array);
             key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex;
             break;
         case MaterialPreset::PBRColor3D:
@@ -131,7 +140,7 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
 
         if (key.geometry_mode == GeometryMode::ScreenRect)
         {
-            out_preset = (key.texture_source_mode == TextureSourceMode::Array)
+            out_preset = (key.GetPrimaryTextureSourceMode() == TextureSourceMode::Array)
                 ? MaterialPreset::RectTexture2DArray
                 : MaterialPreset::RectTexture2D;
             return true;
@@ -223,28 +232,35 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
     }
 }
 
+MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
+                                          const MaterialVariantKey &key,
+                                          const Material3DCreateConfig *cfg);
+MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
+                                             const MaterialVariantKey &key,
+                                             const Material2DCreateConfig *cfg);
+
 namespace {
 
-using VariantFactory = MaterialCreateInfo*(*)(const contract::PhysicalDeviceProfileLite*, MaterialCreateConfig*);
+using VariantFactory = MaterialCreateInfo*(*)(const contract::PhysicalDeviceProfileLite*, const MaterialVariantKey &, MaterialCreateConfig*);
 
-static MaterialCreateInfo* F_VertexColor2D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexColor2D      (p,(const Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_PureColor2D        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePureColor2D        (p,(Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_PureTexture2D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePureTexture2D      (p,(const Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_RectTexture2D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateRectTexture2D      (p,(Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_RectTexture2DArray (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateRectTexture2DArray (p,(Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_Text2D             (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateText2D             (p,(const Text2DMaterialCreateConfig*)c); }
-static MaterialCreateInfo* F_PureColor3D        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePureColor3D        (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexColor3D      (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexColor3D      (p,(const Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexLuminance3D  (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexLuminance3D  (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexLuminance2D  (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexLuminance2D  (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexPattleColor3D(const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateVertexPattleColor3D(p,(const Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_Gizmo3D            (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateGizmo3D            (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_TerrainGrid        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateTerrainGrid        (p,(const TerrainGridCreateConfig*)c); }
-static MaterialCreateInfo* F_SkyMinimal         (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateSkyMinimal         (p,(const SkyMinimalCreateConfig*)c); }
-static MaterialCreateInfo* F_Billboard2D        (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateBillboard2D        (p,(BillboardMaterialCreateConfig*)c); }
-static MaterialCreateInfo* F_Standard           (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateStandard           (p,(const Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_StandardTextureArray(const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreateStandardTextureArray(p,(const Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_PBRColor3D         (const contract::PhysicalDeviceProfileLite* p, MaterialCreateConfig* c) { return CreatePBRColor3D         (p,(PBRColor3DMaterialCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexColor2D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexColor2D      (p,(const Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_PureColor2D        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePureColor2D        (p,(Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_PureTexture2D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePureTexture2D      (p,(const Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_RectTexture2D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &k, MaterialCreateConfig* c) { return ::hgl::graph::mtl::CreateRectTextureVariant (p,k,(Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_RectTexture2DArray (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &k, MaterialCreateConfig* c) { return ::hgl::graph::mtl::CreateRectTextureVariant (p,k,(Material2DCreateConfig*)c); }
+static MaterialCreateInfo* F_Text2D             (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateText2D             (p,(const Text2DMaterialCreateConfig*)c); }
+static MaterialCreateInfo* F_PureColor3D        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePureColor3D        (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexColor3D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexColor3D      (p,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexLuminance3D  (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexLuminance3D  (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexLuminance2D  (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexLuminance2D  (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_VertexPattleColor3D(const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexPattleColor3D(p,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_Gizmo3D            (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateGizmo3D            (p,(Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_TerrainGrid        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateTerrainGrid        (p,(const TerrainGridCreateConfig*)c); }
+static MaterialCreateInfo* F_SkyMinimal         (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateSkyMinimal         (p,(const SkyMinimalCreateConfig*)c); }
+static MaterialCreateInfo* F_Billboard2D        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateBillboard2D        (p,(BillboardMaterialCreateConfig*)c); }
+static MaterialCreateInfo* F_Standard           (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &k, MaterialCreateConfig* c) { return ::hgl::graph::mtl::CreateStandardVariant    (p,k,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_StandardTextureArray(const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &k, MaterialCreateConfig* c) { return ::hgl::graph::mtl::CreateStandardVariant    (p,k,(const Material3DCreateConfig*)c); }
+static MaterialCreateInfo* F_PBRColor3D         (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePBRColor3D         (p,(PBRColor3DMaterialCreateConfig*)c); }
 
 static std::unordered_map<uint64, VariantFactory> BuildFactoryMap()
 {
@@ -287,12 +303,56 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              MaterialCreateConfig *cfg)
 {
     if(!cfg)
+    {
+        std::fprintf(stderr, "[MaterialLibrary] CreateMaterialCreateInfo failed: cfg is null\n");
         return nullptr;
+    }
+
+    if(!profile)
+    {
+        std::fprintf(stderr,
+            "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X feature_bits=0x%08X)\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.texture_source_mode),
+            key.texture_source_bits,
+            key.feature_bits);
+    }
+
     const auto &m = GetFactoryMap();
+
     auto it = m.find(key.Hash());
-    if(it == m.end())
+    if(it != m.end())
+        return it->second(profile, key, cfg);
+
+    // Compatibility fallback: allow richer VariantKey (e.g., per-slot texture
+    // source bits) to route through legacy preset-based factories.
+    MaterialPreset preset;
+    if (!TryMapVariantKeyToPreset(key, preset))
+    {
+        std::fprintf(stderr,
+            "[MaterialLibrary] CreateMaterialCreateInfo failed: TryMapVariantKeyToPreset failed (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X feature_bits=0x%08X)\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.texture_source_mode),
+            key.texture_source_bits,
+            key.feature_bits);
         return nullptr;
-    return it->second(profile, cfg);
+    }
+
+    const auto legacy_it = m.find(MapPresetToVariantKey(preset).Hash());
+    if (legacy_it == m.end())
+    {
+        std::fprintf(stderr,
+            "[MaterialLibrary] CreateMaterialCreateInfo failed: legacy factory lookup failed for preset=%s (original_key_hash=%llu)\n",
+            GetMaterialPresetName(preset),
+            static_cast<unsigned long long>(key.Hash()));
+        return nullptr;
+    }
+
+    return legacy_it->second(profile, key, cfg);
 }
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,

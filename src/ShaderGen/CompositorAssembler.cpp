@@ -252,20 +252,61 @@ namespace hgl::graph
         const mtl::MaterialVariantDesc &desc
     ) const
     {
-        auto pathOrNull = [](const std::string &s) -> const char *
+        AssembleResult result{};
+
+        NewShaderPermutationKey perm;
+        perm.SetSurfaceType(key.surface_type);
+        perm.SetQualityTier(key.quality_tier);
+        perm.SetPlatform(platform);
+
+        const bool has_slot_modes = key.HasAnyTextureSourceBits();
+        const auto base_mode = has_slot_modes
+            ? key.GetTextureSourceMode(mtl::TextureSlot::BaseColor)
+            : key.texture_source_mode;
+        const auto normal_mode = has_slot_modes
+            ? key.GetTextureSourceMode(mtl::TextureSlot::Normal)
+            : key.texture_source_mode;
+        const auto rough_mode = has_slot_modes
+            ? key.GetTextureSourceMode(mtl::TextureSlot::Roughness)
+            : key.texture_source_mode;
+
+        perm.SetBaseTextureArrayMode(base_mode == mtl::TextureSourceMode::Array);
+        perm.SetNormalTextureArrayMode(normal_mode == mtl::TextureSourceMode::Array);
+        perm.SetRoughnessTextureArrayMode(rough_mode == mtl::TextureSourceMode::Array);
+
+        std::string vs_path = desc.vs_template_path.empty()
+            ? GetCompositorVSPath(key.surface_type, key.pass_hint)
+            : shader_lib_path_ + "/" + desc.vs_template_path;
+        std::string fs_path = desc.fs_template_path.empty()
+            ? GetCompositorFSPath(key.surface_type, key.blend_mode, key.pass_hint)
+            : shader_lib_path_ + "/" + desc.fs_template_path;
+        std::string surface_rel = desc.surface_function_path.empty()
+            ? GetSurfaceFunctionPath(key.surface_type, perm.GetTextureArrayMode())
+            : desc.surface_function_path;
+
+        std::string vs_source;
+        if (!ReadFile(vs_path, vs_source, result.error_message))
         {
-            return s.empty() ? nullptr : s.c_str();
-        };
-        return Assemble(
-            key.surface_type,
-            key.blend_mode,
-            key.pass_hint,
-            key.quality_tier,
-            platform,
-            pathOrNull(desc.vs_template_path),
-            pathOrNull(desc.fs_template_path),
-            pathOrNull(desc.surface_function_path)
-        );
+            result.success = false;
+            return result;
+        }
+
+        std::string fs_source;
+        if (!ReadFile(fs_path, fs_source, result.error_message))
+        {
+            result.success = false;
+            return result;
+        }
+
+        vs_source = InjectDefines(vs_source, perm);
+        fs_source = InjectDefines(fs_source, perm);
+
+        fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
+
+        result.vertex_glsl   = std::move(vs_source);
+        result.fragment_glsl = std::move(fs_source);
+        result.success       = true;
+        return result;
     }
 
     std::vector<PassType> CompositorAssembler::GetPassTypesForBlendMode(BlendMode blend)

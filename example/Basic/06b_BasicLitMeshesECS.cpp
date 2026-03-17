@@ -67,17 +67,30 @@ private:
     {
         auto* render_context = GetRenderContext();
         if (!render_context)
+        {
+            std::fprintf(stderr, "[BasicLitMeshesECS] InitMaterial failed: GetRenderContext returned null\n");
             return false;
+        }
 
         auto* graphics_context = render_context->GetGraphicsContext();
         if (!graphics_context)
+        {
+            std::fprintf(stderr, "[BasicLitMeshesECS] InitMaterial failed: GetGraphicsContext returned null\n");
             return false;
+        }
 
         auto* material_manager = graphics_context->GetMaterialManager();
         auto* texture_manager = graphics_context->GetTextureManager();
         auto* sampler_manager = graphics_context->GetSamplerManager();
         if (!material_manager || !texture_manager || !sampler_manager)
+        {
+            std::fprintf(stderr,
+                "[BasicLitMeshesECS] InitMaterial failed: manager lookup failed (material=%p texture=%p sampler=%p)\n",
+                material_manager,
+                texture_manager,
+                sampler_manager);
             return false;
+        }
 
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles,
                         mtl::WithCamera::With,
@@ -85,7 +98,11 @@ private:
                         mtl::WithSky::With);
         material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material)
+        {
+            std::fprintf(stderr,
+                "[BasicLitMeshesECS] InitMaterial failed: CreateMaterial(MaterialPreset::Standard) returned null\n");
             return false;
+        }
 
         base_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"), true);
         if (!base_texture)

@@ -1,5 +1,6 @@
 #include <hgl/graph/module/MaterialCreatePrecheckAdapter.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
+#include <cstdio>
 
 namespace hgl::graph
 {
@@ -12,7 +13,12 @@ namespace hgl::graph
         out_result.shader_map = nullptr;
 
         if (!mci)
+        {
+            std::fprintf(stderr,
+                "[MaterialCreatePrecheck] Abort: MaterialCreateInfo is null for material '%s'\n",
+                material_name.c_str());
             return MaterialCreatePrecheckDecision::Abort;
+        }
 
         if (find_cached_material)
         {
@@ -23,10 +29,21 @@ namespace hgl::graph
 
         const ShaderCreateInfoMap &sci_map = mci->GetShaderMap();
         if (sci_map.GetCount() < 2)
+        {
+            std::fprintf(stderr,
+                "[MaterialCreatePrecheck] Abort: shader map count=%d for material '%s' (expected >= 2)\n",
+                sci_map.GetCount(),
+                material_name.c_str());
             return MaterialCreatePrecheckDecision::Abort;
+        }
 
         if (!mci->GetStageShader(ShaderStage::Fragment))
+        {
+            std::fprintf(stderr,
+                "[MaterialCreatePrecheck] Abort: fragment shader missing for material '%s'\n",
+                material_name.c_str());
             return MaterialCreatePrecheckDecision::Abort;
+        }
 
         out_result.shader_map = &sci_map;
         return MaterialCreatePrecheckDecision::Proceed;
