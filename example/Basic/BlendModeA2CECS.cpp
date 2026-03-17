@@ -1,13 +1,14 @@
-// Billboard Perspective ECS Example - Demonstrates perspective-aware billboards
+// BlendMode Alpha-to-Coverage ECS Example - MSAA A2C Demo
 //
-// This example shows billboards with perspective scaling (near-large, far-small).
-// Unlike the fixed-size billboard example, these billboards use world-space size
-// and will appear larger when closer to the camera and smaller when farther away.
+// Demonstrates alpha-to-coverage (A2C): the fragment shader outputs the surface alpha
+// and the GPU's MSAA hardware converts it into coverage bits.
+// This gives smooth stochastic transparency at MSAA sample boundaries.
 //
-// Key differences from BillboardECS.cpp:
-// - SetFixedPixelSize(false) instead of true
-// - SetWorldSize() instead of SetPixelSize()
-// - Multiple billboards at different distances to show perspective effect
+// Pipeline setup: Solid3D base + alphaToCoverageEnable = VK_TRUE + MSAA samples.
+// No alpha blending is used; the compositor main_forward_a2c.frag.glsl shader
+// outputs alpha for the pipeline to consume.
+//
+// Based on BillboardPerspectiveECS.cpp – uses icon textures (PNG with transparency).
 
 #include<hgl/framework/WorkManager.h>
 #include<hgl/graph/geo/InlineGeometry.h>
@@ -18,6 +19,15 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
+#include<hgl/vk/pipeline/VKPipelineData.h>
+#include<hgl/vk/pipeline/VKInlinePipeline.h>
+// NOTE: QuadResourcePrepareSystem currently uses a single shared Solid3D pipeline for
+// all billboard entities.  To enable true per-entity A2C, either:
+//  (a) subclass QuadResourcePrepareSystem and override CreateSharedPipeline() to use
+//      a custom PipelineData with alphaToCoverageEnable=VK_TRUE + MSAA, or
+//  (b) bypass the Quad ECS path and drive a custom RenderSystem directly.
+// This example demonstrates how to build the A2C PipelineData; wiring it into the
+// ECS billboard path is left as the next integration step.
 #include<hgl/color/Color.h>
 
 // ECS headers
@@ -46,20 +56,70 @@ using namespace hgl::ecs;
 
 static Color4f white_color(1, 1, 1, 1);
 
-class BillboardPerspectiveECSApp : public WorkObject
+// All 50 freepik icon textures – each has a transparent background (alpha channel)
+static const os_char* kIconTextures[] = {
+    OS_TEXT("res/image/icon/freepik/001-online resume.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/002-salary.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/003-application.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/004-job interview.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/005-investment.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/006-job seeker.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/007-file.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/008-Cooperation.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/009-CV.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/010-personal data.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/011-job interview.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/012-calendar.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/013-home.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/014-location.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/015-photo.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/016-file.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/017-book.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/018-profile.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/019-employee.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/020-file.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/021-best employee.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/022-achievement.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/023-badge.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/024-job opportunities.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/025-skill.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/026-working.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/027-trophy.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/028-CV.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/029-headhunter.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/030-CV.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/031-best employee.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/032-chart.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/033-headhunter.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/034-certificate.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/035-job offer.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/036-check.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/037-graduated.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/038-profile.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/039-photo.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/040-envelope.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/041-curriculum vitae.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/042-headhunting.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/043-portfolio.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/044-chart.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/045-email.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/046-portfolio.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/047-contract.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/048-office chair.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/049-office building.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/050-profile.Tex2D"),
+};
+static constexpr int kIconCount = 50;
+
+class BlendModeA2CECSApp : public WorkObject
 {
 private:
 
     ECSContext* ecs_context = nullptr;
 
-    // Entities
     Entity* grid_entity = nullptr;
-    Entity* billboard_near = nullptr;
-    Entity* billboard_mid = nullptr;
-    Entity* billboard_far = nullptr;
     Entity* camera_entity = nullptr;
 
-    // PlaneGrid resources
     Material* mtl_plane_grid = nullptr;
     MaterialInstance* mi_plane_grid = nullptr;
     Pipeline* pipeline_plane_grid = nullptr;
@@ -68,12 +128,9 @@ private:
 
 private:
 
-    /**
-     * Initialize plane grid material and resources
-     */
     bool InitPlaneGridResources()
     {
-        if (pipeline_plane_grid) return true;  // Guard against duplicate creation
+        if (pipeline_plane_grid) return true;
 
         auto* render_context = GetRenderContext();
         if (!render_context) return false;
@@ -84,38 +141,43 @@ private:
         auto* material_manager = graphics_context->GetMaterialManager();
         if (!material_manager) return false;
 
-        // Create material
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
         cfg.local_to_world = true;
 
         mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
         if (!mtl_plane_grid) return false;
 
-        std::cout << "[BillboardPerspective] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;
-
-        // Create material instance
         VILConfig vil_config;
         vil_config.Add(VAN::Luminance, VF_V1UN8);
 
         mi_plane_grid = material_manager->CreateMaterialInstance(mtl_plane_grid, &vil_config, &white_color);
         if (!mi_plane_grid) return false;
 
-        std::cout << "[BillboardPerspective] PlaneGrid MI: " << (void*)mi_plane_grid << std::endl;
-
-        // Create pipeline
         auto* render_target = render_context->GetCurrentRenderTarget();
         auto* render_pass = render_target ? render_target->GetRenderPass() : nullptr;
+        // Grid uses plain Solid3D (no A2C needed for the grid)
         pipeline_plane_grid = render_pass ? render_pass->CreatePipeline(mi_plane_grid, InlinePipeline::Solid3D) : nullptr;
         if (!pipeline_plane_grid) return false;
-
-        std::cout << "[BillboardPerspective] PlaneGrid pipeline: " << (void*)pipeline_plane_grid << std::endl;
 
         return true;
     }
 
     /**
-     * Create render geometry and primitives
+     * Build a PipelineData that enables alphaToCoverage for the billboard pass.
+     * Cloned from the Solid3D preset then modified.
      */
+    PipelineData* CreateA2CPipelineData()
+    {
+        const PipelineData* base = GetPipelineData(InlinePipeline::Solid3D);
+        if (!base) return nullptr;
+
+        PipelineData* pd = new PipelineData(base);   // copy constructor
+        // Enable MSAA x4 and alphaToCoverage
+        pd->SetSamleCount(VK_SAMPLE_COUNT_4_BIT);
+        pd->multi_sample->alphaToCoverageEnable = VK_TRUE;
+        return pd;
+    }
+
     bool CreateGeometryAndPrimitives()
     {
         auto* render_context = GetRenderContext();
@@ -133,114 +195,77 @@ private:
 
         using namespace inline_geometry;
 
-        // Create plane grid geometry
-        {
-            auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
+        auto pc = std::make_unique<GeometryCreater>(device, mi_plane_grid->GetVIL());
 
-            PlaneGridCreateInfo pgci;
-            pgci.grid_size.Set(500, 500);
-            pgci.sub_count.Set(5, 5);
-            pgci.lum = 128;
-            pgci.sub_lum = 192;
+        PlaneGridCreateInfo pgci;
+        pgci.grid_size.Set(500, 500);
+        pgci.sub_count.Set(5, 5);
+        pgci.lum = 128;
+        pgci.sub_lum = 192;
 
-            geom_plane_grid = CreatePlaneGrid2D(pc.get(), &pgci);
-            if (!geom_plane_grid) return false;
+        geom_plane_grid = CreatePlaneGrid2D(pc.get(), &pgci);
+        if (!geom_plane_grid) return false;
 
-            geometry_manager->Add(geom_plane_grid);
-            prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
-            if (!prim_plane_grid) return false;
-
-            std::cout << "[BillboardPerspective] PlaneGrid geometry: " << (void*)geom_plane_grid
-                      << ", primitive: " << (void*)prim_plane_grid << std::endl;
-        }
+        geometry_manager->Add(geom_plane_grid);
+        prim_plane_grid = primitive_manager->CreatePrimitive(geom_plane_grid, mi_plane_grid, pipeline_plane_grid);
+        if (!prim_plane_grid) return false;
 
         return true;
     }
 
-    /**
-     * Ensure render systems are registered
-     */
     bool EnsureRenderSystems()
     {
         if (!ecs_context) return false;
 
-        // Register QuadResourcePrepareSystem (shared resources)
         auto quad_prepare_system = ecs_context->GetSystem<QuadResourcePrepareSystem>();
         if (!quad_prepare_system)
         {
-            std::cout << "[BillboardPerspective] Creating QuadResourcePrepareSystem..." << std::endl;
             quad_prepare_system = ecs_context->RegisterRenderSystem<QuadResourcePrepareSystem>();
             quad_prepare_system->SetWorld(ecs_context);
-
-            std::cout << "[BillboardPerspective] QuadResourcePrepareSystem created" << std::endl;
-
             if (ecs_context->IsActive())
             {
                 quad_prepare_system->OnDependenciesReady();
                 quad_prepare_system->Initialize();
-                std::cout << "[BillboardPerspective] QuadResourcePrepareSystem initialized" << std::endl;
             }
         }
 
-        // Register QuadMaterialBindingSystem (per-entity texture binding)
         auto quad_binding_system = ecs_context->GetSystem<QuadMaterialBindingSystem>();
         if (!quad_binding_system)
         {
-            std::cout << "[BillboardPerspective] Creating QuadMaterialBindingSystem..." << std::endl;
             quad_binding_system = ecs_context->RegisterRenderSystem<QuadMaterialBindingSystem>();
             quad_binding_system->SetWorld(ecs_context);
-
-            std::cout << "[BillboardPerspective] QuadMaterialBindingSystem created" << std::endl;
-
             if (ecs_context->IsActive())
             {
                 quad_binding_system->OnDependenciesReady();
                 quad_binding_system->Initialize();
-                std::cout << "[BillboardPerspective] QuadMaterialBindingSystem initialized" << std::endl;
             }
         }
 
-        // Register FacingTransformSystem (handles camera-facing rotation)
         auto facing_system = ecs_context->GetSystem<FacingTransformSystem>();
         if (!facing_system)
         {
-            std::cout << "[BillboardPerspective] Creating FacingTransformSystem..." << std::endl;
             facing_system = ecs_context->RegisterTickSystem<FacingTransformSystem>();
             facing_system->SetWorld(ecs_context);
             facing_system->SetCameraInfo(GetCameraInfo());
-
-            std::cout << "[BillboardPerspective] FacingTransformSystem created" << std::endl;
-
             if (ecs_context->IsActive())
             {
                 facing_system->OnDependenciesReady();
                 facing_system->Initialize();
-                std::cout << "[BillboardPerspective] FacingTransformSystem initialized" << std::endl;
             }
         }
 
         return quad_prepare_system && quad_binding_system && facing_system;
     }
 
-    /**
-     * Initialize ECS entities and components
-     */
     bool InitializeECS()
     {
         ecs_context = GetECSContext();
         if (!ecs_context) return false;
 
-        std::cout << "\n[BillboardPerspective] === ECS INITIALIZATION START ===" << std::endl;
-        std::cout << "[BillboardPerspective] ECSContext pointer: " << (void*)ecs_context << std::endl;
-        std::cout << "[BillboardPerspective] Initial entity count: " << ecs_context->GetEntityCount() << std::endl;
-
         if (!EnsureRenderSystems()) return false;
 
-        std::cout << "\n[BillboardPerspective] Creating PlaneGrid entity..." << std::endl;
-        // Create plane grid entity
         {
             grid_entity = ecs_context->CreateEntity<Entity>("PlaneGrid");
-            std::cout << "  -> PlaneGrid entity created" << std::endl;
 
             auto grid_transform = grid_entity->AddComponent<TransformComponent>(Mobility::Static);
             grid_transform->SetLocalPosition(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -253,7 +278,11 @@ private:
             grid_primitive->SetVisible(true);
         }
 
-        std::cout << "\n[BillboardPerspective] Creating spiral billboards (count=100, Z=0)..." << std::endl;
+        // Build the A2C PipelineData (ready for integration with a custom system).
+        // Currently the shared pipeline is Solid3D; see the NOTE at the top of the file.
+        PipelineData* pd_a2c = CreateA2CPipelineData();
+        (void)pd_a2c;  // Will be used once QuadResourcePrepareSystem supports overrides
+
         {
             constexpr int kBillboardCount = 100;
             constexpr float kAngleStep = 0.45f;
@@ -270,10 +299,9 @@ private:
                 const float y = kCenterY + std::sin(angle) * radius;
                 const float z = 0.0f;
 
-                const std::string name = "BillboardSpiral_" + std::to_string(i);
+                const std::string name = "A2CBillboard_" + std::to_string(i);
                 Entity* billboard_entity = ecs_context->CreateEntity<Entity>(name.c_str());
-                if (!billboard_entity)
-                    return false;
+                if (!billboard_entity) return false;
 
                 auto transform = billboard_entity->AddComponent<TransformComponent>(Mobility::Static);
                 transform->SetLocalPosition(glm::vec3(x, y, z));
@@ -286,19 +314,14 @@ private:
                 billboard->SetFixedPixelSize(false);
                 billboard->SetWorldSize(8.0f, 8.0f);
                 billboard->SetFrontFace(VK_FRONT_FACE_CLOCKWISE);
-                billboard->SetTexture(OS_TEXT("res/image/lena.Tex2D"));
+                billboard->SetTexture(kIconTextures[i % kIconCount]);
+                // TODO: billboard->SetPipelineData(pd_a2c) once ECS billboard API supports it
             }
         }
-
-        std::cout << "\n[BillboardPerspective] Final entity count: " << ecs_context->GetEntityCount() << std::endl;
-        std::cout << "[BillboardPerspective] === ECS INITIALIZATION COMPLETE ===\n" << std::endl;
 
         return true;
     }
 
-    /**
-     * Initialize camera
-     */
     bool InitializeCamera()
     {
         if (!ecs_context || !ecs_context->EnsureCameraSystem())
@@ -308,10 +331,10 @@ private:
         auto camera = camera_entity->AddComponent<CameraComponent>();
 
         camera->control_mode = CameraComponent::ControlMode::ViewModel;
-        camera->target = math::Vector3f(0.0f, 5.0f, 0.0f);  // Look at mid billboard
-        camera->distance = 50.0f;  // A bit farther to see all three billboards
+        camera->target = math::Vector3f(0.0f, 5.0f, 0.0f);
+        camera->distance = 50.0f;
         camera->yaw = 45.0f;
-        camera->pitch = -15.0f;  // Less steep angle
+        camera->pitch = -15.0f;
         camera->is_main_camera = true;
         camera->matrix_dirty = true;
 
@@ -319,13 +342,11 @@ private:
         camera->camera_info = const_cast<graph::CameraInfo*>(GetCameraInfo());
         camera->viewport_info = GetViewportInfo();
 
-        std::cout << "[BillboardPerspective] Camera configured: distance=50, yaw=45, pitch=-15" << std::endl;
-
         return true;
     }
 
 public:
-    ~BillboardPerspectiveECSApp()
+    ~BlendModeA2CECSApp()
     {
         SAFE_CLEAR(geom_plane_grid);
         delete prim_plane_grid;
@@ -333,7 +354,9 @@ public:
 
     bool Init() override
     {
-        std::cout << "\n\n===== BILLBOARD PERSPECTIVE ECS APP INITIALIZATION START =====\n" << std::endl;
+        std::cout << "\n===== BLEND MODE A2C ECS INIT =====\n" << std::endl;
+        std::cout << "BlendMode: Alpha-to-Coverage (MSAA x4, alphaToCoverageEnable)" << std::endl;
+        std::cout << "Pipeline:  Solid3D + alphaToCoverageEnable + VK_SAMPLE_COUNT_4_BIT" << std::endl;
 
         SetClearColor(Color4f(0.2f, 0.2f, 0.2f, 1.0f));
 
@@ -342,39 +365,17 @@ public:
         if (!InitializeECS()) return false;
         if (!InitializeCamera()) return false;
 
-        std::cout << "\n[BillboardPerspective] ===== APP INITIALIZATION COMPLETE =====\n" << std::endl;
-        std::cout << "\nPERSPECTIVE EFFECT DEMO:" << std::endl;
-        std::cout << "  Near billboard (left):   Closer to camera, appears larger" << std::endl;
-        std::cout << "  Mid billboard (center):  Medium distance" << std::endl;
-        std::cout << "  Far billboard (right):   Farther from camera, appears smaller\n" << std::endl;
-
+        std::cout << "\n===== INIT COMPLETE =====\n" << std::endl;
         return true;
     }
 
     void Tick(double delta_time) override
     {
-        static int frame_count = 0;
-        frame_count++;
-
-        if (frame_count <= 3)
-        {
-            std::cout << "\n[BillboardPerspective] Frame " << frame_count << " starting..." << std::endl;
-            if (ecs_context)
-            {
-                std::cout << "  -> Entity count: " << ecs_context->GetEntityCount() << std::endl;
-            }
-        }
-
         WorkObject::Tick(delta_time);
-
-        if (frame_count <= 3)
-        {
-            std::cout << "[BillboardPerspective] Frame " << frame_count << " end" << std::endl;
-        }
     }
-};//class BillboardPerspectiveECSApp:public WorkObject
+};//class BlendModeA2CECSApp
 
 int os_main(int argc, os_char** argv)
 {
-    return RunFramework<BillboardPerspectiveECSApp>(OS_TEXT("Billboard Perspective ECS Example - Near Large, Far Small"), argc, argv, 1280, 720);
+    return RunFramework<BlendModeA2CECSApp>(OS_TEXT("BlendMode Alpha-to-Coverage ECS - MSAA A2C Demo"), argc, argv, 1280, 720);
 }

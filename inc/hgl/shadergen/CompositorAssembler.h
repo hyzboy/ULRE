@@ -7,6 +7,7 @@
 #include <hgl/mtl/new/PlatformBackend.h>
 #include <hgl/mtl/new/NewShaderPermutationKey.h>
 #include <string>
+#include <vector>
 
 // Forward declarations for VariantDesc-based overload
 namespace hgl::graph::mtl
@@ -43,6 +44,14 @@ namespace hgl::graph
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
         explicit CompositorAssembler(const std::string &shader_library_path);
 
+        /// 根据 BlendMode 返回该模式需要生成 SPV 的所有 PassType 列表
+        /// Opaque→[ForwardOpaque,ShadowOpaque,EarlyZSolid]
+        /// Masked→[ForwardMasked,ShadowMasked,EarlyZMasked]
+        /// Transparent→[ForwardTransparent]
+        /// Dither→[ForwardDither,ShadowOpaque]
+        /// AlphaToCoverage→[ForwardA2C,ShadowMasked]
+        static std::vector<PassType> GetPassTypesForBlendMode(BlendMode blend);
+
         /// vs_template_override: 非空时覆盖默认 VS 模板路径（相对于 ShaderLibrary 根目录）
         /// fs_template_override: 非空时覆盖默认 FS 模板路径（相对于 ShaderLibrary 根目录）
         /// surface_function_override: 非空时覆盖默认 Surface Function 路径
@@ -69,7 +78,7 @@ namespace hgl::graph
 
         std::string GetCompositorVSPath(SurfaceType surface, PassType pass) const;
         std::string GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const;
-        std::string GetSurfaceFunctionPath(SurfaceType surface) const;
+        std::string GetSurfaceFunctionPath(SurfaceType surface, bool texture_array_mode = false) const;
         std::string InjectDefines(const std::string &source, const NewShaderPermutationKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;

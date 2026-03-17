@@ -26,6 +26,15 @@ namespace hgl::graph
         void SetFlags(uint8 flags)               { packed = (packed & 0xFF8F) | ((flags & 0x7) << 4); }
         void SetPlatform(PlatformBackend pb)     { packed = (packed & 0xFFF3) | (static_cast<uint16>(pb) << 2); }
 
+        // Flags bit 0: TEXTURE_ARRAY_MODE — Standard 表面使用 sampler2DArray + texture_id 索引
+        void SetTextureArrayMode(bool enable)
+        {
+            uint8 f = GetFlags();
+            if (enable) f |= 0x1; else f &= ~0x1;
+            SetFlags(f);
+        }
+        bool GetTextureArrayMode() const { return (GetFlags() & 0x1) != 0; }
+
         SurfaceType     GetSurfaceType() const   { return static_cast<SurfaceType>((packed >> 12) & 0xF); }
         QualityTier     GetQualityTier() const   { return static_cast<QualityTier>((packed >> 9) & 0x7); }
         uint8           GetShadowMode()  const   { return (packed >> 7) & 0x3; }

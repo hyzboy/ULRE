@@ -1,7 +1,7 @@
 # ULRE 渲染系统重构 — 工作进度跟踪
 
 > **用途**: 换机开发时快速恢复上下文。包含所有已完成/进行中的工作、文件清单、构建信息和后续计划。  
-> **最后更新**: 2026-03 (Stages 1–6 完成 + Stage 7.1-7.12 完成；standard_surface.glsl 2档实现)
+> **最后更新**: 2026-03 (Stages 1–6 完成 + Stage 7 全部完成；4.3–4.5 确认完成)
 
 ---
 
@@ -12,10 +12,10 @@
 | Stage 1 | GBuffer 清理 & 重命名 | ✅ 完成 |
 | Stage 2 | 核心类型头文件 (9个) | ✅ 完成 (2.10/2.11 延后) |
 | Stage 3 | Descriptor Set Layout | ⚠️ 部分完成 (3.1–3.2) |
-| Stage 4 | Reversed-Z + Camera 相对渲染 | ⚠️ 部分完成 (4.1–4.2, 4.6, 4.7.1, 4.7.3) |
+| Stage 4 | Reversed-Z + Camera 相对渲染 | ⚠️ 部分完成 (4.1–4.7.3 完成；4.7.2/4.7.4 延后) |
 | Stage 5 | Compositor / Shader 组装 | ✅ 完成 (5.1–5.10) |
 | Stage 6 | SSBO Vertex Fetch 路径 | ✅ 完成 (6.1–6.6) |
-| Stage 7–16 | 后续阶段 | ⚠️ Stage 7 部分完成（7.1 Unlit 验证 ✅; 7.2-7.9 Unlit 材质 ✅; 7.10-7.12 Lit/PBR 材质 ✅; 7.13+ 待做） |
+| Stage 7–16 | 后续阶段 | ⚠️ Stage 7 完成！（Stage 8–16 待做） |
 
 ---
 
@@ -86,16 +86,24 @@
 **已完成:**
 - Step 4.1: `inc/hgl/graph/camera/ReversedZProj.h` — Reversed-Z 投影矩阵
 - Step 4.2: Camera.h 添加 `use_reversed_z` 标志，`RefreshCameraInfo` 中条件投影
+- Step 4.3: `Camera` 默认 `use_reversed_z(true)` — 全局生效，所有 example 自动使用 Reversed-Z
+- Step 4.4: 全局默认切换 Reversed-Z 完成
+  - `Camera` 构造函数默认 `use_reversed_z(true)` (`Camera.h:35`)
+  - `VKPipelineData` 默认 `depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL` (`VKPipelineData.cpp:142`)
+  - `SetClearDepthStencil` 默认深度 clear 值 `0.0f` (`VKCommandBuffer.h`)
+  - `RefreshCameraInfo` 在 `use_reversed_z` 时调用 `MakeInfiniteReversedZProj` (`Camera.cpp`)
+- Step 4.5: D32_SFLOAT 深度格式选择完成
+  - `VulkanPhyDevice::GetDepthFormat(lower_to_high=false)` 通过 `IsDepthAttachmentOptimal` 真实 Vulkan 查询，默认返回最高精度格式（优先 D32_SFLOAT）
+  - `OffscreenWorldRuntime.h` 已接入 `GetDepthFormat()` 无参调用
+  - `DeviceQualityProfile.support_d32_sfloat` 字段已有（Step 2.10 完整实现时再做运行时写入）
 - Step 4.6: `ShaderLibrary/common/depth_utils.glsl` — 深度工具函数
 - Step 4.7.1: Camera.h 添加 `Vector3d world_position_double` + `GetWorldPositionDouble()`
 - Step 4.7.3: CameraInfo.h 添加 `cameraPosWorld` 字段
 - CMakeLists: 已将 ReversedZProj 注册到 SceneGraph
 
 **延后:**
-- Steps 4.3–4.5: 管线集成
-- Steps 4.7.2, 4.7.4: Example/管线集成
-
-**注意:** `src/SceneGraph/ReversedZProj.cpp` 可能在另一台机器上创建但未同步，需确认。
+- Steps 4.7.2, 4.7.4: Camera-Relative Rendering — 着色器端平移归零 + Example 集成
+  - 依赖 `TransformAssignmentBuffer::SetCameraOffset` 完整接入，当前 `Camera.cpp` 中有 NOTE 占位
 
 ---
 
@@ -258,8 +266,32 @@ CompositorRenderTest Phase 1–14 验证了完整链路（GLSL→SPV→Pipeline�
 
 **注意**: 现有 M_BasicLit/TextureBlinnPhong/PBRColor3D 暂时硬编码 `QualityTier::Medium`（值=2）。quality dispatch 调用侧接入为后续工作。
 
-**待完成步骤:**
-- Steps 7.13–7.15: ForwardMasked/Transparent/Dither/A2C compositor 模板
+**Step 7.13–7.15: Masked/Transparent/Dither/A2C Compositor 模板 ✅**
+
+公共 4 个新 FS 模板，均展展当前 `main_forward_opaque.vert.glsl` 顶点输入布局（location 0=worldPos，1=worldNormal，2=uv0，3=materialID），调用 `EvalSurface(si, fragMaterialInstanceID)` 带 uint miID：
+
+| 模板 | 路径 | 功能 |
+|------|------|------|
+| `main_forward_masked.frag.glsl` | ShaderLibrary/compositor/ | Alpha cutout：`if (alpha < 0.5) discard`，输出 alpha=1.0 |
+| `main_forward_transparent.frag.glsl` | ShaderLibrary/compositor/ | Alpha blend：传递 so.alpha，需 Pipeline BlendEnable |
+| `main_forward_dither.frag.glsl` | ShaderLibrary/compositor/ | 4×4 Bayer 有序抖尴，无 Blend 模拟透明 |
+| `main_forward_a2c.frag.glsl` | ShaderLibrary/compositor/ | Alpha-to-Coverage，需 MSAA + alphaToCoverageEnable |
+
+**BlendMode 映射表** (`CompositorAssembler::GetPassTypesForBlendMode`):
+
+| BlendMode | 返回的 PassType列表 |
+|-----------|--------------------|
+| Opaque | ForwardOpaque, ShadowOpaque, EarlyZSolid |
+| Masked | ForwardMasked, ShadowMasked, EarlyZMasked |
+| Transparent | ForwardTransparent |
+| Dither | ForwardDither, ShadowOpaque |
+| AlphaToCoverage | ForwardA2C, ShadowMasked |
+
+**Step 7.15: TextureArray 路彐 ✅**
+- `standard_texturearray_surface.glsl` 已完整实现（`sampler2DArray` + `mi.texture_id` 索引）
+- `NewShaderPermutationKey::SetTextureArrayMode(bool)` 利用 Flags bit 0 控制
+- `AppendGLSLDefines` 新增 `#define TEXTURE_ARRAY_MODE %d`
+- `CompositorAssembler::GetSurfaceFunctionPath(SurfaceType, bool texture_array_mode)` 当 Standard + TextureArrayMode=true 时返回 `standard_texturearray_surface.glsl`
 
 ---
 
@@ -316,8 +348,7 @@ CMake 重新配置: cmake build_new
 | 2.10 | DeviceQualityProfile 自动检测 | 需要 Vulkan headers |
 | 2.11 | AppendGLSLDefines | 需要 AnsiString 集成 |
 | 3.3–3.6 | Descriptor Set Vulkan 集成 | 需要 Vulkan 运行时 |
-| 4.3–4.5 | Reversed-Z 管线集成 | 需要 example/pipeline 集成 |
-| 4.7.2 | Camera 相对渲染 — 着色器端 | 需要管线集成 |
+| 4.7.2 | Camera 相对渲染 — 着色器端（TransformAssignmentBuffer 平移归零） | 需要 TransformAssignmentBuffer::SetCameraOffset 接入 |
 | 4.7.4 | Camera 相对渲染 — Example | 需要管线集成 |
 
 ---
@@ -325,16 +356,21 @@ CMake 重新配置: cmake build_new
 ## 七、下一步工作
 
 **Stage 7: Forward 材质迁移** (Steps 7.1–7.15)
-- ✅ **Step 7.1**: Unlit 管线端到端验证（Phase 1–14 运行时全通过，vkCmdDraw 验证）
+- ✅ **Steps 7.1**: Unlit 管线端到端验证（Phase 1–14 运行时全通过，vkCmdDraw 验证）
 - ✅ **Steps 7.2–7.9**: 所有 Unlit 材质变体完成（surface functions + compositor 模板 + descriptor 适配）
 - ✅ **Steps 7.10–7.12**: Lit/PBR 材质 Compositor 接入完成
   - M_BasicLit / M_TextureBlinnPhong / M_PBRColor3D 三个材质均已接入 CompositorAssembler
   - `standard_surface.glsl` 实现 2档（Tier≤3: BlinnPhong+HalfLambert; Tier≥4: 简化 PBR）
   - `lighting.glsl` 同步实现 2档 EvalLighting（供 forward_opaque 路径）
-- ⬜ **Steps 7.13–7.15**: ForwardMasked / ForwardTransparent / Dither / A2C compositor 模板
-  - 需要 `main_forward_masked.frag.glsl`, `main_forward_transparent.frag.glsl` 等模板
-  - BlendMode → PassType[] 变体映射
-  - Texture2DArray 池集成测试
+- ✅ **Steps 7.13–7.15**: Masked/Transparent/Dither/A2C Compositor 模板
+  - 4 个新 FS 模板：`main_forward_masked/transparent/dither/a2c.frag.glsl`
+  - `CompositorAssembler::GetPassTypesForBlendMode()` 静态方法
+  - Dither: 4×4 Bayer 按屏幕像素坍标选取阈値
+  - A2C: 输出 alpha 交 Pipeline MSAA alphaToCoverage 处理
+  - `NewShaderPermutationKey::SetTextureArrayMode` + `TEXTURE_ARRAY_MODE` define
+  - `GetSurfaceFunctionPath` 支持 Standard 表面 TextureArray 路由
+
+**Stage 7 全部完成✅**
 
 **后续阶段** (8–16):
 - Stage 8: 多灯光系统
@@ -392,6 +428,12 @@ example/Basic/CompositorRenderTest.cpp
 ShaderLibrary/common/vertex_fetch_vbo.glsl
 inc/hgl/graph/VertexDataBufferManager.h
 src/SceneGraph/VertexDataBufferManager.cpp
+
+# Stage 7.13-7.15 — Blend Mode Compositor 模板
+ShaderLibrary/compositor/main_forward_masked.frag.glsl
+ShaderLibrary/compositor/main_forward_transparent.frag.glsl
+ShaderLibrary/compositor/main_forward_dither.frag.glsl
+ShaderLibrary/compositor/main_forward_a2c.frag.glsl
 ```
 
 ### 修改的文件

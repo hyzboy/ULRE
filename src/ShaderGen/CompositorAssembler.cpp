@@ -44,6 +44,9 @@ namespace hgl::graph
         {
         case PassType::ForwardOpaque:
         case PassType::ForwardMasked:
+        case PassType::ForwardTransparent:
+        case PassType::ForwardDither:
+        case PassType::ForwardA2C:
             return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
 
         case PassType::ShadowOpaque:
@@ -94,10 +97,16 @@ namespace hgl::graph
             return shader_lib_path_ + "/compositor/main_forward_opaque.frag.glsl";
 
         case PassType::ForwardMasked:
-            return shader_lib_path_ + "/compositor/main_forward_masked.frag.glsl"; // 后续实现
+            return shader_lib_path_ + "/compositor/main_forward_masked.frag.glsl";
 
         case PassType::ForwardTransparent:
-            return shader_lib_path_ + "/compositor/main_forward_transparent.frag.glsl"; // 后续实现
+            return shader_lib_path_ + "/compositor/main_forward_transparent.frag.glsl";
+
+        case PassType::ForwardDither:
+            return shader_lib_path_ + "/compositor/main_forward_dither.frag.glsl";
+
+        case PassType::ForwardA2C:
+            return shader_lib_path_ + "/compositor/main_forward_a2c.frag.glsl";
 
         case PassType::ShadowOpaque:
         case PassType::ShadowMasked:
@@ -115,11 +124,14 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface) const
+    std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface, bool texture_array_mode) const
     {
         switch (surface)
         {
-        case SurfaceType::Standard:   return "surface/standard_surface.glsl";
+        case SurfaceType::Standard:
+            return texture_array_mode
+                ? "surface/standard_texturearray_surface.glsl"
+                : "surface/standard_surface.glsl";
         case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
         case SurfaceType::Skin:       return "surface/skin_surface.glsl";        // 后续实现
         case SurfaceType::Hair:       return "surface/hair_surface.glsl";        // 后续实现
@@ -203,7 +215,7 @@ namespace hgl::graph
             : GetCompositorFSPath(surface, blend, pass);
         std::string surface_rel = (surface_function_override && surface_function_override[0])
             ? surface_function_override
-            : GetSurfaceFunctionPath(surface);
+            : GetSurfaceFunctionPath(surface, (key.GetFlags() & 0x1) != 0);
 
         // 3. 读取 VS 模板
         std::string vs_source;
@@ -254,5 +266,32 @@ namespace hgl::graph
             pathOrNull(desc.fs_template_path),
             pathOrNull(desc.surface_function_path)
         );
+    }
+
+    std::vector<PassType> CompositorAssembler::GetPassTypesForBlendMode(BlendMode blend)
+    {
+        switch (blend)
+        {
+        case BlendMode::Opaque:
+            return { PassType::ForwardOpaque, PassType::ShadowOpaque, PassType::EarlyZSolid };
+
+        case BlendMode::Masked:
+            return { PassType::ForwardMasked, PassType::ShadowMasked, PassType::EarlyZMasked };
+
+        case BlendMode::Transparent:
+            // 透明物体无阴影、无 EarlyZ（从后往前排序第 8 Pass 渲染）
+            return { PassType::ForwardTransparent };
+
+        case BlendMode::Dither:
+            // Dither 小批目使用 ShadowOpaque（不需要 alpha 阴影）
+            return { PassType::ForwardDither, PassType::ShadowOpaque };
+
+        case BlendMode::AlphaToCoverage:
+            // A2C 阴影和 Masked 相同——需要 alpha discard 避免阴影漏光
+            return { PassType::ForwardA2C, PassType::ShadowMasked };
+
+        default:
+            return { PassType::ForwardOpaque };
+        }
     }
 }
