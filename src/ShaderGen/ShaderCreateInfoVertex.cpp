@@ -24,14 +24,14 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
     return count;
 }
 
-int ShaderCreateInfoVertex::AddInput(const VAType &type,const std::string &name,const VertexInputRate input_rate,const VertexInputGroup &group)
+int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexAttrib attrib,const VertexInputRate input_rate,const VertexInputGroup &group)
 {
     VIA via;
 
-    hgl::strcpy(via.name,sizeof(via.name),name.c_str());
+    via.attrib          =attrib;
 
-    via.basetype=(uint8) type.basetype;
-    via.vec_size=        type.vec_size;
+    via.basetype        =(uint8) type.basetype;
+    via.vec_size        =        type.vec_size;
 
     via.input_rate      =uint8_t(input_rate);
     via.group           =group;

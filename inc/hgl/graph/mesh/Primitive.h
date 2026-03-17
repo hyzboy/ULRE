@@ -52,7 +52,7 @@ public:
     const   GeometryDrawRange * GetRenderData       ()const{return &draw_range;}
 
             VAB *               GetVAB              (const int index)const{return geometry->GetVAB(index);}
-            VAB *               GetVAB              (const AnsiString &name)const{return geometry->GetVAB(name);}
+            VAB *               GetVAB              (const VertexAttrib attrib)const{return geometry->GetVAB(attrib);}
             IndexBuffer *       GetIBO              (){return geometry->GetIBO();}
 
     virtual bool                UpdateGeometry      ();     ///<更新Geometry,一般用于Geometry改变数据后需要通知Mesh的情况

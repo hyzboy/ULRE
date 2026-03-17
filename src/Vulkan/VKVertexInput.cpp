@@ -8,7 +8,7 @@ VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
 {
     via_array.Clone(&viaa);
 
-    name_list=new const char *[via_array.count];
+    attrib_list=new VertexAttrib[via_array.count];
     type_list=new VAType[via_array.count];
 
     const VertexInputAttribute *sa=via_array.items;
@@ -17,7 +17,7 @@ VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
 
     for(uint i=0;i<via_array.count;i++)
     {
-        name_list[i]            =sa->name;
+        attrib_list[i]          =sa->attrib;
         type_list[i].basetype   =VABaseType(sa->basetype);
         type_list[i].vec_size   =sa->vec_size;
 
@@ -29,7 +29,7 @@ VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
 
 VertexInputConfig::~VertexInputConfig()
 {
-    delete[] name_list;
+    delete[] attrib_list;
     delete[] type_list;
 }
 
@@ -109,7 +109,7 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
             }
             else
             {
-                if(!cfg||!cfg->Get(via->name,vac))
+                if(!cfg||!cfg->Get(via->attrib,vac))
                 {
                     attr_desc->format    =GetVulkanFormat(via);
 
@@ -129,8 +129,7 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
             vif->vec_size   =via->vec_size;
             vif->stride     =bind_desc->stride;
 
-            vif->attrib     =via->GetVertexAttrib();
-            vif->name       =via->name;
+            vif->attrib     =via->attrib;
             vif->binding    =attr_desc->binding;
             vif->input_rate =bind_desc->inputRate;
             vif->group      =via->group;
@@ -202,7 +201,7 @@ namespace
         {
             result+="[\"";
 
-            result+=via->name;
+            result+=GetVertexAttribName(via->attrib);
             result+="\",location:";
             result+=AnsiString::numberOf(via->location);
             result+=",type:";

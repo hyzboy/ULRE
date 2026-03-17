@@ -40,7 +40,7 @@ namespace
 
 MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    // PureColor3D: Unlit Mesh3D, no texture â€?desc has empty paths (auto-routing)
+    // PureColor3D: Unlit Mesh3D, no texture ï¿½?desc has empty paths (auto-routing)
     MaterialVariantKey var_key;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)

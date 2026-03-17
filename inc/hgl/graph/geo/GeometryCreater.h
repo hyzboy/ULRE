@@ -39,7 +39,7 @@ protected:
 
 protected:
 
-    const int InitVAB(const AnsiString &name,const VkFormat format,const void *data);                                       ///<取得顶点属性索引
+    const int InitVAB(const VertexAttrib &attrib,const VkFormat format,const void *data);                                       ///<取得顶点属性索引
 
     IndexBuffer * GetIBO();                                                                                                 ///<取得索引缓冲区
     int32_t GetFirstIndex()const;                                                                                           ///<取得第一个索引
@@ -68,32 +68,24 @@ public:
 
 public: //顶点缓冲区
 
-        const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
-            int32_t         GetVertexOffset()const;                                                                         ///<取得顶点偏移(单位:元素)
+            const   uint32_t        GetVertexCount  ()const{ return vertices_number; }                                                ///<取得顶点数量
+            int32_t                 GetVertexOffset ()const;                                                                         ///<取得顶点偏移(单位:元素)
 
-            VertexAttribBuffer * GetVAB (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);               ///<获取VAB用于BufferAccessor
-            VertexAttribBuffer * GetVAB (const VertexAttrib attrib,const VkFormat format=VK_FORMAT_UNDEFINED){return GetVAB(AnsiString(GetVertexAttribName(attrib)),format);}
+            VertexAttribBuffer *    GetVAB          (const VertexAttrib attrib,const VkFormat format=VK_FORMAT_UNDEFINED);               ///<获取VAB用于BufferAccessor
 
-            bool            WriteVAB    (const AnsiString &name,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
-            bool            WriteVAB    (const VertexAttrib attrib,const VkFormat format,const void *data){return WriteVAB(AnsiString(GetVertexAttribName(attrib)),format,data);}
+            bool                    WriteVAB        (const VertexAttrib attrib,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
 
             /**
              * 创建带偏移的 BufferAccessor（自动使用VDM子分配的正确范围）
              * @tparam BufferAccessorType BufferAccessor类型（如 BufferAccessor3f）
-             * @param name 顶点属性名称
+             * @param attrib 顶点属性
              * @return 已绑定到正确偏移/数量的 BufferAccessor
              */
             template<typename BufferAccessorType>
-            BufferAccessorType GetBufferAccessor(const AnsiString &name)
-            {
-                VAB *vab = GetVAB(name);
-                return BufferAccessorType(vab, GetVertexOffset(), GetVertexCount());
-            }
-
-            template<typename BufferAccessorType>
             BufferAccessorType GetBufferAccessor(const VertexAttrib attrib)
             {
-                return GetBufferAccessor<BufferAccessorType>(AnsiString(GetVertexAttribName(attrib)));
+                VAB *vab = GetVAB(attrib);
+                return BufferAccessorType(vab, GetVertexOffset(), GetVertexCount());
             }
 
 public: //索引缓冲区

@@ -30,13 +30,6 @@ const uint32_t GeometryData::GetVABCount()const
     return vil->GetVertexAttribCount();
 }
 
-const int GeometryData::GetVABIndex(const AnsiString &name) const
-{
-    if(name.IsEmpty())return(-1);
-
-    return vil->GetIndex(name);
-}
-
 const int GeometryData::GetVABIndex(const VertexAttrib attrib) const
 {
     return vil->GetIndex(attrib);
@@ -54,7 +47,8 @@ bool GeometryData::CreateAllVAB(const AnsiString &geometry_name)
 
         vif=vil->GetConfig(i);
 
-        AnsiString vab_name = geometry_name + ":" + vif->name;
+        AnsiString vab_name = geometry_name + AnsiString(":") + GetVertexAttribName(vif->attrib);
+
         vab_list[i]=CreateVAB(i,vif->format,nullptr,vab_name);
 
         if(!vab_list[i])
@@ -64,18 +58,19 @@ bool GeometryData::CreateAllVAB(const AnsiString &geometry_name)
     return(true);
 }
 
-VAB *GeometryData::GetVAB(const int index)const
+VAB *GeometryData::GetVABByIndex(const int index)const
 {
     if(index<0||index>=vil->GetVertexAttribCount())return(nullptr);
 
     return vab_list[index];
 }
 
-VAB *GeometryData::GetVAB(const AnsiString &name)const
+VAB *GeometryData::GetVABByAttrib(const VertexAttrib attrib)const
 {
-    if(name.IsEmpty())return(nullptr);
+    const int index=vil->GetIndex(attrib);
 
-    const int index=vil->GetIndex(name);
+    if(index<0||index>=vil->GetVertexAttribCount())
+        return(nullptr);
 
     if(index<0||index>=vil->GetVertexAttribCount())
         return(nullptr);

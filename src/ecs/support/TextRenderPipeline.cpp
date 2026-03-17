@@ -460,7 +460,7 @@ namespace hgl::ecs
             if (!mi)
             {
                 graph::VILConfig vil_config;
-                vil_config.Add(graph::VertexAttrib::Position, VF_V2I16);
+                vil_config.Add(graph::VAN::Position, VF_V2I16);
 
                 mi = material_manager->CreateMaterialInstance(resources->material, &vil_config);
                 if (!mi)

@@ -186,21 +186,21 @@ namespace hgl::graph
         return VertexAttribNames[(int)va];
     }
 
+    // VAN is a convenience alias for VertexAttrib
+#define VAN VertexAttrib
+
     /**
      * 根据名称查找VertexAttrib枚举值
      * @return VertexAttrib枚举值，如果找不到返回RANGE_SIZE (无效值)
      */
     inline VertexAttrib GetVertexAttribByName(const char *name)
     {
-        if(!name)return VertexAttrib::RANGE_SIZE;
+        if(!name)return VAN::RANGE_SIZE;
 
-        for(int i=0;i<(int)VertexAttrib::RANGE_SIZE;i++)
+        for(int i=0;i<(int)VAN::RANGE_SIZE;i++)
             if(strcmp(VertexAttribNames[i],name)==0)
                 return VertexAttrib(i);
 
-        return VertexAttrib::RANGE_SIZE;
+        return VAN::RANGE_SIZE;
     }
-
-    // VAN is a convenience alias for VertexAttrib
-#define VAN VertexAttrib
 }

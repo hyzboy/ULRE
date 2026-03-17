@@ -1,4 +1,4 @@
-/** 顶点调色板色要求有一个UBO结构如下
+﻿/** 顶点调色板色要求有一个UBO结构如下
 *
 *
 *   struct ColorPattle
@@ -6,7 +6,7 @@
 *       vec4 color[256];
 *   }color_pattle;
 *
-*   然后输入的一个R8UI顶点属性来指定使用那个颜色�?
+*   然后输入的一个R8UI顶点属性来指定使用那个颜色�?
 */
 
 #include<hgl/shadergen/MaterialCreateInfo.h>

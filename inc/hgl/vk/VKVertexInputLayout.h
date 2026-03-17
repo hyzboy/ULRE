@@ -46,7 +46,6 @@ public:
         return first_binding[size_t(vig)];
     }
 
-    const int                                   GetIndex            (const AnsiString &name)const;
     const int                                   GetIndex            (const VertexAttrib attrib)const;
 
     const VertexInputFormat *                   GetVIFList          ()const{return vif_list;}
@@ -57,13 +56,6 @@ public:
         return vif_list_by_group[size_t(vig)];
     }
 
-    const VkFormat      GetVulkanFormat(const AnsiString &name)const
-    {
-        const int index=GetIndex(name);
-
-        return index==-1?VK_FORMAT_UNDEFINED:vif_list[index].format;
-    }
-
     const VkFormat      GetVulkanFormat(const VertexAttrib attrib)const
     {
         const int index=GetIndex(attrib);
@@ -72,7 +64,6 @@ public:
     }
 
     const VertexInputFormat *GetConfig(const uint index)const{return (index>=count)?nullptr:vif_list+index;}
-    const VertexInputFormat *GetConfig(const AnsiString &name)const{return GetConfig(GetIndex(name));}
     const VertexInputFormat *GetConfig(const VertexAttrib attrib)const{return GetConfig(GetIndex(attrib));}
 
 public:

@@ -38,8 +38,8 @@ namespace hgl::graph
 
         geometry_data->CreateAllVAB();
 
-        vab_position    =geometry_data->GetVAB(VAN::Position);
-        vab_tex_coord   =geometry_data->GetVAB(VAN::TexCoord);
+        vab_position    =geometry_data->GetVABByAttrib(VAN::Position);
+        vab_tex_coord   =geometry_data->GetVABByAttrib(VAN::TexCoord);
     }
 
     bool TextGeometry::WriteVertex    (const int16 *fp){if(!fp)return(false);if(!vab_position )return(false);return vab_position  ->Write(fp,draw_char_count);}

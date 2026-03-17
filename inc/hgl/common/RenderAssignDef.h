@@ -16,7 +16,7 @@ namespace hgl::graph::Assign
         using ValueType = uint16_t;
         constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;
     #endif
-        constexpr VertexAttrib      ATTRIB          = VertexAttrib::TransformID;
+        constexpr VertexAttrib      ATTRIB          = VAN::TransformID;
         constexpr const char *      VIS_NAME        = "TransformID";
         constexpr VAType            VAT_FMT         = VAT_UINT;
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(ValueType);
@@ -25,7 +25,7 @@ namespace hgl::graph::Assign
     namespace MaterialInstanceID
     {
         constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;
-        constexpr VertexAttrib      ATTRIB          = VertexAttrib::MaterialInstanceID;
+        constexpr VertexAttrib      ATTRIB          = VAN::MaterialInstanceID;
         constexpr const char *      VIS_NAME        = "MaterialInstanceID";
         constexpr VAType            VAT_FMT         = VAT_UINT;
         constexpr const uint32_t    STRIDE_BYTES    = sizeof(uint16_t);

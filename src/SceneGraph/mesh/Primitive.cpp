@@ -109,17 +109,19 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
         //注: VIF来自于材质，但VAB来自于Geometry。
         //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
 
-        vab=geom->GetVAB(vif->name);
+        vab=geom->GetVAB(vif->attrib);
+
+        const char *vab_name=GetVertexAttribName(vif->attrib);
 
         if(!vab)
         {
-            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vab_name)+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 
         if(vab->GetFormat()!=vif->format)
         {
-            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
+            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
                         AnsiString("\" format can't match Primitive, Material(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
@@ -129,7 +131,7 @@ Primitive *DirectCreatePrimitive(Geometry *geom,MaterialInstance *mi,Pipeline *p
 
         if(vab->GetStride()!=vif->stride)
         {
-            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
+            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vab_name)+
                         AnsiString("\" stride can't match Primitive, Material(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
                         AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
@@ -167,7 +169,7 @@ bool GeometryDataBuffer::Update(const Geometry *geom,const VIL *vil)
     {
         if(vif->binding<vab_count)
         {
-            vab_list[vif->binding]=geom->GetVkBuffer(vif->name);
+            vab_list[vif->binding]=geom->GetVkBuffer(vif->attrib);
             vab_offset[vif->binding]=0;
         }
 

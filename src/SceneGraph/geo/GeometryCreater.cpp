@@ -113,11 +113,11 @@ bool GeometryCreater::Init(const AnsiString &pname,const uint32_t vertex_count,c
     return(true);
 }
 
-const int GeometryCreater::InitVAB(const AnsiString &name,const VkFormat format,const void *data)
+const int GeometryCreater::InitVAB(const VertexAttrib &attrib,const VkFormat format,const void *data)
 {
     if(!geometry_data)return(-1);
 
-    const int vab_index=geometry_data->GetVABIndex(name);
+    const int vab_index=geometry_data->GetVABIndex(attrib);
 
     if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
         return(-1);
@@ -130,11 +130,11 @@ const int GeometryCreater::InitVAB(const AnsiString &name,const VkFormat format,
             return(-2);
     }
 
-    VAB *vab=geometry_data->GetVAB(vab_index);
+    VAB *vab=geometry_data->GetVABByIndex(vab_index);
 
     if(!vab)
     {
-        AnsiString vab_name = geometry_name + ":" + name;
+        AnsiString vab_name = geometry_name + AnsiString(":") + GetVertexAttribName(attrib);
         vab=geometry_data->InitVAB(vab_index,data,vab_name);
 
         if(!vab)
@@ -144,21 +144,21 @@ const int GeometryCreater::InitVAB(const AnsiString &name,const VkFormat format,
     return(vab_index);
 }
 
-VertexAttribBuffer *GeometryCreater::GetVAB(const AnsiString &name,const VkFormat format)
+VertexAttribBuffer *GeometryCreater::GetVAB(const VertexAttrib attrib,const VkFormat format)
 {
-    const int vab_index=InitVAB(name,format,nullptr);
+    const int vab_index=InitVAB(attrib,format,nullptr);
 
     if(vab_index<0)return nullptr;
 
-    return geometry_data->GetVAB(vab_index);
+    return geometry_data->GetVABByIndex(vab_index);
 }
 
-bool GeometryCreater::WriteVAB(const AnsiString &name,const VkFormat format,const void *data)
+bool GeometryCreater::WriteVAB(const VertexAttrib attrib,const VkFormat format,const void *data)
 {
     if(!geometry_data)return(false);
     if(!data)return(false);
 
-    return InitVAB(name,format,data)>=0;
+    return InitVAB(attrib,format,data)>=0;
 }
 
 int32_t GeometryCreater::GetVertexOffset()const

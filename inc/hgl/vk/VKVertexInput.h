@@ -11,7 +11,7 @@ class VertexInputConfig
 {
     VIAArray via_array;
     VAType *type_list;
-    const char **name_list;
+    VertexAttrib *attrib_list;
 
     uint count_by_group[size_t(VertexInputGroup::RANGE_SIZE)];
 

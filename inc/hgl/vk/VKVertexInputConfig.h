@@ -28,25 +28,20 @@ public:
     auto operator <=> (const VAConfig &vc)const=default;
 };//struct VAConfig
 
-class VILConfig:public hgl::UnorderedMap<AnsiString,VAConfig>
+class VILConfig:public hgl::UnorderedMap<VertexAttrib,VAConfig>
 {
 public:
 
-    using Base=hgl::UnorderedMap<AnsiString,VAConfig>;
+    using Base=hgl::UnorderedMap<VertexAttrib,VAConfig>;
 
     using Base::Base;
 
-    bool Add(const AnsiString &name,const VAConfig &cfg)
+    bool Add(const VertexAttrib &attrib,const VAConfig &cfg)
     {
-        if(this->ContainsKey(name))
+        if(this->ContainsKey(attrib))
             return(false);
 
-        return static_cast<Base *>(this)->Add(name,cfg);
-    }
-
-    bool Add(const VertexAttrib attrib,const VAConfig &cfg)
-    {
-        return Add(AnsiString(GetVertexAttribName(attrib)),cfg);
+        return static_cast<Base *>(this)->Add(attrib,cfg);
     }
 
     auto operator <=> (const VILConfig &vc)const
@@ -54,8 +49,9 @@ public:
         int off=this->GetCount()-vc.GetCount();
         if(off)return(off);
 
-        std::vector<AnsiString> keys;
+        std::vector<VertexAttrib> keys;
         std::vector<VAConfig> values;
+
         this->GetKeyValueArrays(keys, values);
 
         for(size_t i=0;i<keys.size();++i)

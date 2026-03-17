@@ -204,7 +204,7 @@ namespace
         for(uint32_t vab_index = 0; vab_index < vil_attr_count; ++vab_index)
         {
             const VIF *vif = vil->GetConfig(vab_index);
-            if(!vif || !vif->name)
+            if(!vif)
             {
                 MLogError(LoadGeometry,OS_TEXT("Invalid VIF at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
                 return false;
@@ -214,7 +214,7 @@ namespace
              ||vif->group==VertexInputGroup::MaterialInstanceID)
                 continue;
 
-            const char *attr_name = vif->name;
+            const char *attr_name = GetVertexAttribName(vif->attrib);
 
             // find this attribute in meta by name
             uint8_t meta_name_len = 0;
@@ -243,7 +243,7 @@ namespace
                 return false;
             }
 
-            VAB *vab = geo_data->GetVAB(vab_index);
+            VAB *vab = geo_data->GetVABByIndex(vab_index);
             if(!vab)
             {
                 MLogError(LoadGeometry,OS_TEXT("Cannot get VAB for attribute '") + ToOSString(attr_name) + OS_TEXT("' in file ") + filename);

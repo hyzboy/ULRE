@@ -52,15 +52,13 @@ public:
     const   VkDeviceSize    GetVertexCount  ()const;
 
     const   uint32_t        GetVABCount     ()const;
-    const   int             GetVABIndex     (const AnsiString &name)const;
     const   int             GetVABIndex     (const VertexAttrib attrib)const;
 
             VAB *           GetVAB          (const int)const;
             VkBuffer        GetVkBuffer     (const int index)const;
 
-            VAB *           GetVAB          (const AnsiString &name)const{return GetVAB(GetVABIndex(name));}
             VAB *           GetVAB          (const VertexAttrib attrib)const{return GetVAB(GetVABIndex(attrib));}
-            VkBuffer        GetVkBuffer     (const AnsiString &name)const;
+            VkBuffer        GetVkBuffer     (const VertexAttrib )const;
 
     const   int32_t         GetVertexOffset ()const;                        ///<取得顶点偏移(注意是顶点不是字节)
 

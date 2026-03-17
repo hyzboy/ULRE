@@ -22,17 +22,6 @@ VertexInputLayout::~VertexInputLayout()
     delete[] attr_list;
 }
 
-const int VertexInputLayout::GetIndex(const AnsiString &name)const
-{
-    if(name.IsEmpty())return(-1);
-
-    for(uint32_t i=0;i<count;i++)
-        if(name.CaseComp(vif_list[i].name)==0)
-            return(i);
-
-    return -1;
-}
-
 const int VertexInputLayout::GetIndex(const VertexAttrib attrib)const
 {
     for(uint32_t i=0;i<count;i++)

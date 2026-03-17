@@ -1,4 +1,4 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
+ï»¿#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -71,7 +71,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     dynamic_def.descriptor_entries      = dynamic_descriptors.data();
     dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
 
-    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture â€?color via MI)
+    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture ï¿½?color via MI)
     MaterialVariantKey var_key;
     var_key.surface_type = SurfaceType::Standard;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);

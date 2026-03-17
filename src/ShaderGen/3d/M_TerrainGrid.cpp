@@ -1,4 +1,4 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -10,14 +10,14 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    // TerrainGrid �?�?Position 顶点输入，只�?TransformID
+    // TerrainGrid �?�?Position 顶点输入，只�?TransformID
     // VS 通过 gl_VertexID 生成网格坐标，texelFetch 采样高度/法线
 
     constexpr FixedVertexEntry TERRAIN_GRID_VERTEX[] = {
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB },
     };
 
-    // Resort 字母�? camera=0, viewport=1 (Scene)
+    // Resort 字母�? camera=0, viewport=1 (Scene)
     //                TextureHeight=0, TextureNormal=1 (Material)
     constexpr FixedDescriptorEntry TERRAIN_GRID_DESCRIPTORS[] = {
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",     nullptr },
