@@ -59,6 +59,11 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.geometry_mode = GeometryMode::Mesh3D;
             key.feature_bits = VF_UseVertexLum;
             break;
+        case MaterialPreset::VertexLuminance2D:
+            key.surface_type = SurfaceType::Unlit;
+            key.geometry_mode = GeometryMode::Mesh3D;
+            key.feature_bits = VF_UseVertexLum | VF_UsePos2D;
+            break;
         case MaterialPreset::VertexPattleColor3D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Mesh3D;
@@ -153,7 +158,9 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
         {
             if ((key.feature_bits & VF_UseVertexLum) != 0)
             {
-                out_preset = MaterialPreset::VertexLuminance3D;
+                out_preset = (key.feature_bits & VF_UsePos2D) != 0
+                    ? MaterialPreset::VertexLuminance2D
+                    : MaterialPreset::VertexLuminance3D;
                 return true;
             }
 
@@ -202,6 +209,7 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
         case MaterialPreset::PureColor3D:           return "PureColor3D";
         case MaterialPreset::VertexColor3D:         return "VertexColor3D";
         case MaterialPreset::VertexLuminance3D:     return "VertexLuminance3D";
+        case MaterialPreset::VertexLuminance2D:     return "VertexLuminance2D";
         case MaterialPreset::VertexPattleColor3D:   return "VertexPattleColor3D";
         case MaterialPreset::Gizmo3D:               return "Gizmo3D";
         case MaterialPreset::TerrainGrid:           return "TerrainGrid";
@@ -233,6 +241,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         case MaterialPreset::PureColor3D:           return CreatePureColor3D        (profile,(Material3DCreateConfig *)cfg);
         case MaterialPreset::VertexColor3D:         return CreateVertexColor3D      (profile,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::VertexLuminance3D:     return CreateVertexLuminance3D  (profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexLuminance2D:     return CreateVertexLuminance2D  (profile,(Material3DCreateConfig *)cfg);
         case MaterialPreset::VertexPattleColor3D:   return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::Gizmo3D:               return CreateGizmo3D            (profile,(Material3DCreateConfig *)cfg);
         case MaterialPreset::TerrainGrid:           return CreateTerrainGrid        (profile,(const TerrainGridCreateConfig *)cfg);

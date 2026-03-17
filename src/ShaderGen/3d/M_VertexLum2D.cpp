@@ -9,45 +9,45 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    constexpr const char VERTEX_LUMINANCE_3D_MI_CODES[] = "vec4 Color;";
-    constexpr const uint32_t VERTEX_LUMINANCE_3D_MI_BYTES = sizeof(hgl::math::Vector4f);
+    constexpr const char VERTEX_LUMINANCE_2D_MI_CODES[] = "vec4 Color;";
+    constexpr const uint32_t VERTEX_LUMINANCE_2D_MI_BYTES = sizeof(hgl::math::Vector4f);
 
-    constexpr FixedVertexEntry VERTEX_LUMINANCE_3D_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+    constexpr FixedVertexEntry VERTEX_LUMINANCE_2D_VERTEX[] = {
+        { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
         { VAT_FLOAT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Luminance },
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::VIS_NAME },
         { Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::VIS_NAME },
     };
 
-    constexpr FixedDescriptorEntry VERTEX_LUMINANCE_3D_DESCRIPTORS[] = {
+    constexpr FixedDescriptorEntry VERTEX_LUMINANCE_2D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
         { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
         { DescriptorSetType::Material, MaterialInstanceDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
     };
 
-    constexpr FixedMaterialDef VERTEX_LUMINANCE_3D_DEF {
-        "VertexLuminance3D",
+    constexpr FixedMaterialDef VERTEX_LUMINANCE_2D_DEF {
+        "VertexLuminance2D",
         PrimitiveType::Triangles,
-        VERTEX_LUMINANCE_3D_VERTEX,
-        uint32_t(sizeof(VERTEX_LUMINANCE_3D_VERTEX) / sizeof(VERTEX_LUMINANCE_3D_VERTEX[0])),
-        VERTEX_LUMINANCE_3D_DESCRIPTORS,
-        uint32_t(sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_3D_DESCRIPTORS[0])),
-        VERTEX_LUMINANCE_3D_MI_CODES,
-        VERTEX_LUMINANCE_3D_MI_BYTES,
+        VERTEX_LUMINANCE_2D_VERTEX,
+        uint32_t(sizeof(VERTEX_LUMINANCE_2D_VERTEX) / sizeof(VERTEX_LUMINANCE_2D_VERTEX[0])),
+        VERTEX_LUMINANCE_2D_DESCRIPTORS,
+        uint32_t(sizeof(VERTEX_LUMINANCE_2D_DESCRIPTORS) / sizeof(VERTEX_LUMINANCE_2D_DESCRIPTORS[0])),
+        VERTEX_LUMINANCE_2D_MI_CODES,
+        VERTEX_LUMINANCE_2D_MI_BYTES,
     };
 }
 
-MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     cfg->material_instance=true;
 
     MaterialVariantKey var_key;
-    var_key.feature_bits = VF_UseVertexLum;
+    var_key.feature_bits = VF_UseVertexLum | VF_UsePos2D;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {
-        std::fprintf(stderr, "[VertexLuminance3D] VariantRegistry lookup failed\n");
+        std::fprintf(stderr, "[VertexLuminance2D] VariantRegistry lookup failed\n");
         return nullptr;
     }
 
@@ -57,20 +57,20 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
 
     if (!result.success)
     {
-        std::fprintf(stderr, "[VertexLuminance3D] CompositorAssembler failed: %s\n",
+        std::fprintf(stderr, "[VertexLuminance2D] CompositorAssembler failed: %s\n",
             result.error_message.c_str());
         return nullptr;
     }
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(
         profile,
-        VERTEX_LUMINANCE_3D_DEF,
+        VERTEX_LUMINANCE_2D_DEF,
         result.vertex_glsl,
         result.fragment_glsl,
         cfg);
 
     if (!mci)
-        std::fprintf(stderr, "[VertexLuminance3D] CompileCompositorMaterial failed\n");
+        std::fprintf(stderr, "[VertexLuminance2D] CompileCompositorMaterial failed\n");
     return mci;
 }
 }//namespace hgl::graph::mtl

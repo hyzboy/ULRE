@@ -85,9 +85,8 @@ private:
         // Create material
         mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
         cfg.local_to_world = true;
-        cfg.position_format = VAT_VEC2;
 
-        mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance3D, &cfg);
+        mtl_plane_grid = material_manager->CreateMaterial(mtl::MaterialPreset::VertexLuminance2D, &cfg);
         if (!mtl_plane_grid) return false;
 
         std::cout << "[BillboardPerspective] PlaneGrid material: " << (void*)mtl_plane_grid << std::endl;

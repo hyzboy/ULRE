@@ -30,8 +30,9 @@ enum class MaterialPreset:uint8
     Standard,
     StandardTextureArray,
     PBRColor3D,
+    VertexLuminance2D,
 
-    ENUM_CLASS_RANGE(VertexColor2D,PBRColor3D)
+    ENUM_CLASS_RANGE(VertexColor2D,VertexLuminance2D)
 };
 
 /// 仅声明材质创建函数，不产生任何注册或全局常量副作用。

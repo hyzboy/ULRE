@@ -37,6 +37,7 @@ namespace hgl::graph::mtl
         VF_UseVertexColor   = 1u << 3,
         VF_UseVertexLum     = 1u << 4,
         VF_DebugShading     = 1u << 5,
+        VF_UsePos2D         = 1u << 6,
     };
 
     struct MaterialVariantKey
