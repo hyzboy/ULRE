@@ -210,7 +210,7 @@ namespace hgl::ecs
                  hgl::graph::mtl::SBS_LocalToWorld.name);
     #endif
 
-#if defined(HGL_TRANSFORM_ID_USE_SSBO) || defined(HGL_TRANSFORM_ID_USE_UBO)
+#if defined(HGL_TRANSFORM_ID_USE_SSBO)
         BindTransformID(mtl);
 #endif
     }
@@ -231,9 +231,6 @@ namespace hgl::ecs
         mtl->BindSSBO(hgl::graph::mtl::SBS_TransformID.set_type,
                       hgl::graph::mtl::SBS_TransformID.name,
                       gpu);
-#endif
-#ifdef HGL_TRANSFORM_ID_USE_UBO
-        mtl->BindUBO(&hgl::graph::mtl::SBS_TransformID, gpu);
 #endif
     }
 
@@ -667,12 +664,6 @@ namespace hgl::ecs
                                                              buffer_size,
                                                              nullptr,
                                                              graph::SharingMode::Exclusive);
-#endif
-#ifdef HGL_TRANSFORM_ID_USE_UBO
-            transform_id_buffer = buffer_manager->CreateUBO("ECS:TransformIDData",
-                                                            buffer_size,
-                                                            nullptr,
-                                                            graph::SharingMode::Exclusive);
 #endif
 
             recreated = true;

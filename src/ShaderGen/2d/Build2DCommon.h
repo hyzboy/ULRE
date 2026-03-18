@@ -119,14 +119,6 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
     p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 1\n";
 #endif
 
-#if defined(HGL_TRANSFORM_ID_USE_UBO)
-    p += "#define TRANSFORM_ID_DESCRIPTOR_UBO 1\n";
-#else
-    p += "#define TRANSFORM_ID_DESCRIPTOR_UBO 0\n";
-#endif
-
-    p += "#define TRANSFORM_ID_UBO_MAX 65536\n";
-
     p += "\n";
     return p;
 }
