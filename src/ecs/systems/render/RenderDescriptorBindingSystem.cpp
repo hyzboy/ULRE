@@ -352,6 +352,12 @@ namespace hgl::ecs
                     }
                     break;
                 }
+                case graph::mtl::DescriptorSemantic::TransformID:
+                {
+                    if (batch && batch->transform_buffer)
+                        batch->transform_buffer->BindTransformID(material);
+                    break;
+                }
                 case graph::mtl::DescriptorSemantic::MaterialInstance:
                 {
                     if (batch
@@ -505,6 +511,7 @@ namespace hgl::ecs
         }
 
         case graph::mtl::DescriptorSemantic::LocalToWorld:
+        case graph::mtl::DescriptorSemantic::TransformID:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:

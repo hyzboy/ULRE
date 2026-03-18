@@ -59,6 +59,10 @@ inline std::string BuildDescriptorDefines(
     {
         defs += "#define L2W_SET "    + std::to_string(set) + "\n";
         defs += "#define L2W_BINDING 0\n";
+#if !defined(HGL_TRANSFORM_ID_USE_VAB)
+        defs += "#define TID_SET "    + std::to_string(set) + "\n";
+        defs += "#define TID_BINDING 1\n";
+#endif
         set++;
     }
 
@@ -109,6 +113,20 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
     if(cfg->local_to_world)     p += "#define HAS_L2W\n";
     if(cfg->material_instance)  p += "#define HAS_MI\n";
 
+#if defined(HGL_TRANSFORM_ID_USE_VAB)
+    p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 0\n";
+#else
+    p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 1\n";
+#endif
+
+#if defined(HGL_TRANSFORM_ID_USE_UBO)
+    p += "#define TRANSFORM_ID_DESCRIPTOR_UBO 1\n";
+#else
+    p += "#define TRANSFORM_ID_DESCRIPTOR_UBO 0\n";
+#endif
+
+    p += "#define TRANSFORM_ID_UBO_MAX 65536\n";
+
     p += "\n";
     return p;
 }
@@ -124,7 +142,11 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 
     // TransformID (if L2W)
     if(cfg->local_to_world)
+    {
+#if defined(HGL_TRANSFORM_ID_USE_VAB)
         v.push_back({Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB});
+#endif
+    }
 
     // MaterialInstanceID (if MI)
     if(cfg->material_instance)
@@ -151,6 +173,11 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
     // L2W (Transform set) �?only if L2W
     if(cfg->local_to_world)
         v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr});
+
+#if !defined(HGL_TRANSFORM_ID_USE_VAB)
+    if(cfg->local_to_world)
+        v.push_back({DescriptorSetType::Transform, TransformIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
+#endif
 }
 
 }//namespace build2d

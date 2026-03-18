@@ -17,12 +17,24 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
+#if TRANSFORM_ID_FROM_DESCRIPTOR
+    #include "common/transform_id_buffer.glsl"
+    TRANSFORM_ID_BUFFER;
+    #define GET_TRANSFORM_ID() FetchTransformID()
+#else
+    layout(location=3) in uint TransformID;
+    #define GET_TRANSFORM_ID() TransformID
+#endif
+
 // Vertex attributes: Position + TexCoord + Normal + TransformID + MaterialInstanceID
 layout(location=0) in vec3 Position;
 layout(location=1) in vec2 TexCoord;
 layout(location=2) in vec3 Normal;
-layout(location=3) in uint TransformID;
+#if TRANSFORM_ID_FROM_DESCRIPTOR
+layout(location=3) in uint MaterialInstanceID;
+#else
 layout(location=4) in uint MaterialInstanceID;
+#endif
 
 // Outputs to FS
 layout(location=0) flat out uint fragMaterialInstanceID;
@@ -32,7 +44,7 @@ layout(location=3) out vec2 fragUV0;
 
 void main()
 {
-    mat4 l2w_mat = l2w.mats[TransformID];
+    mat4 l2w_mat = l2w.mats[GET_TRANSFORM_ID()];
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
     vec3 worldNormal = normalize(mat3(l2w_mat) * Normal);
 

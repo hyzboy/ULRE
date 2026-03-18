@@ -18,12 +18,20 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
+#if TRANSFORM_ID_FROM_DESCRIPTOR
+    #include "common/transform_id_buffer.glsl"
+    TRANSFORM_ID_BUFFER;
+    #define GET_TRANSFORM_ID() FetchTransformID()
+#else
+    layout(location=0) in uint TransformID;
+    #define GET_TRANSFORM_ID() TransformID
+#endif
+
 // VS textures (Material set) — texelFetch 不需要 sampler
 layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureHeight;
 layout(set=MATERIAL_SET, binding=1) uniform sampler2D TextureNormal;
 
 // Vertex attributes: TransformID only (no Position!)
-layout(location=0) in uint TransformID;
 
 // Output to FS
 layout(location=0) out vec4 fragClipPos;
@@ -47,7 +55,7 @@ void main()
     vec3 pos = vec3(float(coord.x), float(coord.y), h);
 
     // Transform to world and clip space
-    mat4 l2w_mat = l2w.mats[TransformID];
+    mat4 l2w_mat = l2w.mats[GET_TRANSFORM_ID()];
     vec4 wp = l2w_mat * vec4(pos, 1.0);
 
     // Transform normal to world (approx; ignore non-uniform scale)

@@ -37,6 +37,14 @@ constexpr const ShaderBufferSource SBS_LocalToWorld=
     "LocalToWorldData"
 };
 
+constexpr const ShaderBufferSource SBS_TransformID=
+{
+    DescriptorSetType::Transform,
+
+    "tid",
+    "TransformIDData"
+};
+
 constexpr const ShaderBufferSource SBS_ColorPattle =
 {
     DescriptorSetType::Material,

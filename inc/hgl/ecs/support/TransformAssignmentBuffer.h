@@ -91,12 +91,21 @@ namespace hgl::ecs
                       const uint32_t static_count,
                       const uint32_t dynamic_count,
                       const uint32_t total_count);
+        bool EnsureTransformIDBufferCapacity(const size_t item_count,graph::BufferAllocPolicy policy);
+        bool WriteTransformIDBuffer(const std::vector<RenderItem*>& items,
+                        const size_t item_count,
+                        const uint32_t max_transform_id);
         bool EnsureTransformVABCapacity(const size_t item_count);
         bool WriteTransformIDVAB(const std::vector<RenderItem*>& items,
                      const size_t item_count,
                      const uint32_t max_transform_id);
 
-    private:    // 分发数据
+    private:    // 分发数据（TransformID）
+        uint32_t transform_id_buffer_max_count; ///<TransformID descriptor buffer capacity
+        graph::DeviceBuffer* transform_id_buffer; ///<TransformID data(UBO/SSBO)
+        VkBuffer transform_id_vk_buffer;         ///<TransformID descriptor-backed VkBuffer
+
+    private:    // 分发数据（VAB legacy path）
         uint32_t node_count;                    ///<节点数量
         graph::VAB* transform_vab;              ///<LocalToWorld矩阵ID分发数据VAB(R16UI格式)
         VkBuffer transform_vab_buffer;          ///<LocalToWorld矩阵ID分发数据Buffer
@@ -119,11 +128,14 @@ namespace hgl::ecs
         const VkBuffer GetTransformVAB() const { return transform_vab_buffer; }
 
         graph::DeviceBuffer* GetTransformDataBuffer() const { return transform_buffer; }
+        graph::DeviceBuffer* GetTransformIDDataBuffer() const { return transform_id_buffer; }
+        const VkBuffer GetTransformIDVkBuffer() const { return transform_id_vk_buffer; }
 
         /**
          * 绑定Transform数据到材质
          */
         void BindTransform(graph::Material* mtl) const;
+        void BindTransformID(graph::Material* mtl) const;
 
         void EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy);
         uint32_t GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const;
@@ -149,6 +161,7 @@ namespace hgl::ecs
          * @param items RenderItem列表
          */
         void WriteItems(const std::vector<RenderItem*>& items);
+        void WriteTransformIDs(const std::vector<RenderItem*>& items);
 
         /**
          * 更新变换数据（用于动态对象）

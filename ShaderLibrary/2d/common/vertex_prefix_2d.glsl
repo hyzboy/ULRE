@@ -21,18 +21,32 @@ SCENE_VIEWPORT_UBO;
 #ifdef HAS_L2W
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
+
+  #if TRANSFORM_ID_FROM_DESCRIPTOR
+    #include "common/transform_id_buffer.glsl"
+    TRANSFORM_ID_BUFFER;
+  #endif
 #endif
 
 // ---- Vertex inputs (location 连续排列) ----
 layout(location=0) in POSITION_FORMAT Position;
 
 #ifdef HAS_L2W
-layout(location=1) in uint TransformID;
-  #ifdef HAS_MI
-layout(location=2) in uint MaterialInstanceID;
-    #define NEXT_LOC 3
+  #if TRANSFORM_ID_FROM_DESCRIPTOR
+    #ifdef HAS_MI
+layout(location=1) in uint MaterialInstanceID;
+      #define NEXT_LOC 2
+    #else
+      #define NEXT_LOC 1
+    #endif
   #else
-    #define NEXT_LOC 2
+layout(location=1) in uint TransformID;
+    #ifdef HAS_MI
+layout(location=2) in uint MaterialInstanceID;
+      #define NEXT_LOC 3
+    #else
+      #define NEXT_LOC 2
+    #endif
   #endif
 #elif defined(HAS_MI)
 layout(location=1) in uint MaterialInstanceID;
@@ -43,7 +57,14 @@ layout(location=1) in uint MaterialInstanceID;
 
 // ---- Helper functions ----
 #ifdef HAS_L2W
-mat4 GetLocalToWorld() { return l2w.mats[TransformID]; }
+mat4 GetLocalToWorld()
+{
+#if TRANSFORM_ID_FROM_DESCRIPTOR
+  return l2w.mats[FetchTransformID()];
+#else
+  return l2w.mats[TransformID];
+#endif
+}
 #endif
 
 vec4 GetPosition2D()

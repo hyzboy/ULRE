@@ -24,7 +24,32 @@
 // 1: Use R32_UINT (u32)
 // 0: Use R16_UINT (u16)
 #ifndef HGL_TRANSFORM_ID_U32
-#define HGL_TRANSFORM_ID_U32 0
+#define HGL_TRANSFORM_ID_U32 1
+#endif
+
+// TransformID storage options
+// Define one of:
+// - HGL_TRANSFORM_ID_USE_VAB  : per-instance vertex attribute buffer (legacy/default)
+// - HGL_TRANSFORM_ID_USE_SSBO : descriptor-backed storage buffer
+// - HGL_TRANSFORM_ID_USE_UBO  : descriptor-backed uniform buffer
+#if !defined(HGL_TRANSFORM_ID_USE_VAB) && !defined(HGL_TRANSFORM_ID_USE_SSBO) && !defined(HGL_TRANSFORM_ID_USE_UBO)
+    #define HGL_TRANSFORM_ID_USE_SSBO
+#endif
+
+#if (defined(HGL_TRANSFORM_ID_USE_VAB) && defined(HGL_TRANSFORM_ID_USE_SSBO)) \
+ || (defined(HGL_TRANSFORM_ID_USE_VAB) && defined(HGL_TRANSFORM_ID_USE_UBO)) \
+ || (defined(HGL_TRANSFORM_ID_USE_SSBO) && defined(HGL_TRANSFORM_ID_USE_UBO))
+    #error "Only one TransformID storage mode can be enabled"
+#endif
+
+#if defined(HGL_TRANSFORM_ID_USE_SSBO)
+    #define TransformIDDescriptorKind DescriptorKind::SSBO
+#elif defined(HGL_TRANSFORM_ID_USE_UBO)
+    #define TransformIDDescriptorKind DescriptorKind::UBO
+#endif
+
+#if (defined(HGL_TRANSFORM_ID_USE_SSBO) || defined(HGL_TRANSFORM_ID_USE_UBO)) && (!defined(HGL_TRANSFORM_ID_U32) || (HGL_TRANSFORM_ID_U32==0))
+    #error "Descriptor-backed TransformID currently requires HGL_TRANSFORM_ID_U32=1"
 #endif
 
 // MaterialInstance buffer options

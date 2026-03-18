@@ -24,13 +24,18 @@ namespace
     constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
         { VAT_UINT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color },
+#if defined(HGL_TRANSFORM_ID_USE_VAB)
         { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Vertex, Assign::TransformID::ATTRIB },
+#endif
     };
 
     constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
         { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
         { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
+    #if !defined(HGL_TRANSFORM_ID_USE_VAB)
+        { DescriptorSetType::Transform, TransformIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr },
+    #endif
         { DescriptorSetType::Material, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "color_pattle", "ColorPattle", nullptr },
     };
 

@@ -21,6 +21,15 @@ SCENE_VIEWPORT_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
+#if TRANSFORM_ID_FROM_DESCRIPTOR
+    #include "common/transform_id_buffer.glsl"
+    TRANSFORM_ID_BUFFER;
+    #define GET_TRANSFORM_ID() FetchTransformID()
+#else
+    layout(location=1) in uint  TransformID;
+    #define GET_TRANSFORM_ID() TransformID
+#endif
+
 // MI SSBO (Material set, VS only)
 // Resort() 字母序: TextureBaseColor=0, mtl=1
 #define MI_BINDING 1
@@ -32,8 +41,11 @@ MI_SSBO_SCALAR;
 
 // Vertex attributes: Position + TransformID + MaterialInstanceID
 layout(location=0) in vec3  Position;
-layout(location=1) in uint  TransformID;
+#if TRANSFORM_ID_FROM_DESCRIPTOR
+layout(location=1) in uint  MaterialInstanceID;
+#else
 layout(location=2) in uint  MaterialInstanceID;
+#endif
 
 // Output to FS
 layout(location=0) out vec2 fragTexCoord;
@@ -45,7 +57,7 @@ void main()
     MaterialInstance mi = GetMI();
 
     vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);
-    vec4 center_clip = camera.vp * l2w.mats[TransformID] * vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 center_clip = camera.vp * l2w.mats[GET_TRANSFORM_ID()] * vec4(0.0, 0.0, 0.0, 1.0);
     vec2 center_ndc = center_clip.xy / center_clip.w;
     vec2 ndc = center_ndc + Position.xy * psize;
 

@@ -37,6 +37,14 @@
 #define L2W_BINDING 0
 #endif
 
+#ifndef TID_SET
+#define TID_SET TRANSFORM_SET
+#endif
+
+#ifndef TID_BINDING
+#define TID_BINDING 1
+#endif
+
 // ── Scene set (Resort 字母序: camera < sky < viewport) ──
 // 当 sky 不存在时: camera=0, viewport=1 → 在 shader 中 #define VIEWPORT_BINDING 1
 

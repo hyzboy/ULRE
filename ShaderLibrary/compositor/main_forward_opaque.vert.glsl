@@ -28,7 +28,14 @@ L2W_SSBO;
 #endif
 
 // ECS instance-rate attributes (dual ID)
-#if GEOMETRY_FETCH_SSBO
+#if TRANSFORM_ID_FROM_DESCRIPTOR
+    #include "common/transform_id_buffer.glsl"
+    TRANSFORM_ID_BUFFER;
+    // Descriptor path: per-instance TransformID comes from tid.ids[gl_InstanceIndex].
+    #define GET_TRANSFORM_ID()          FetchTransformID()
+    layout(location=3) in uint MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
+#elif GEOMETRY_FETCH_SSBO
     // SSBO 平台: TransformID = gl_InstanceIndex, MaterialInstanceID 由 push constant 或 SSBO 提供
     #define GET_TRANSFORM_ID()          gl_InstanceIndex
     #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex

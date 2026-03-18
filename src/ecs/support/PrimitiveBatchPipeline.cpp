@@ -20,6 +20,7 @@
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/log/Log.h>
 #include<algorithm>
 #include<limits>
@@ -427,8 +428,15 @@ namespace hgl::ecs
         SortBatchItems(batch);
         BuildBatches(batch, 0);
         UpdateMaterialInstanceBuffer(batch);
+
+#if defined(HGL_TRANSFORM_ID_USE_VAB)
         EnsureTransformVAB(batch);
         WriteTransformIndices(batch);
+#else
+        batch.transform_vab_buffer = VK_NULL_HANDLE;
+        if (batch.transform_buffer && !batch.items.empty())
+            batch.transform_buffer->WriteTransformIDs(batch.items);
+#endif
     }
 
     void PrimitiveBatchPipeline::SortBatchItems(MaterialBatch& batch)
