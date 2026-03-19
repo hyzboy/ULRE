@@ -136,10 +136,8 @@ SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
 set(NEW_MTL_INCLUDE_PATH ${ROOT_INCLUDE_PATH}/hgl/mtl/new)
 
 SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
-                        ${NEW_MTL_INCLUDE_PATH}/QualityTier.h
                         ${NEW_MTL_INCLUDE_PATH}/BlendMode.h
                         ${NEW_MTL_INCLUDE_PATH}/PassType.h
-                        ${NEW_MTL_INCLUDE_PATH}/PlatformBackend.h
                         ${NEW_MTL_INCLUDE_PATH}/ShaderPermutationKey.h
                         ShaderPermutationKey.cpp
 )

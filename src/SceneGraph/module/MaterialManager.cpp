@@ -491,12 +491,11 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if(!mci)
         return(nullptr);
 
-    AnsiString hash_name;
-    mtl::MaterialPreset preset;
-    if(mtl::TryMapVariantKeyToPreset(key,preset))
-        hash_name=mtl::GetMaterialPresetName(preset);
-    else
-        hash_name="variant";
+    AnsiString hash_name="variant";
+    char key_hash[32] = {};
+    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
+    hash_name+="#";
+    hash_name+=key_hash;
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
@@ -539,12 +538,11 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
         return(nullptr);
     }
 
-    AnsiString hash_name;
-    mtl::MaterialPreset preset;
-    if(mtl::TryMapVariantKeyToPreset(key,preset))
-        hash_name=mtl::GetMaterialPresetName(preset);
-    else
-        hash_name="variant";
+    AnsiString hash_name="variant";
+    char key_hash[32] = {};
+    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
+    hash_name+="#";
+    hash_name+=key_hash;
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 

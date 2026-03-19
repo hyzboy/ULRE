@@ -57,7 +57,6 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id);
 
 // Phase-A migration helpers: preset <-> variant mapping.
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);
-bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset);
 
 }//namespace hgl::graph::mtl
 

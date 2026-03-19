@@ -120,91 +120,6 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
     return key;
 }
 
-bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out_preset)
-{
-    if (key.surface_type == SurfaceType::Standard && key.geometry_mode == GeometryMode::Mesh3D)
-    {
-        out_preset = MaterialPreset::Standard;
-        return true;
-    }
-
-    if (key.surface_type == SurfaceType::Unlit)
-    {
-        if (key.geometry_mode == GeometryMode::BillboardCameraFacing
-         || key.geometry_mode == GeometryMode::BillboardAxisLocked)
-        {
-            out_preset = MaterialPreset::Billboard2D;
-            return true;
-        }
-
-        if (key.geometry_mode == GeometryMode::ScreenRect)
-        {
-            out_preset = (key.GetPrimaryTextureSourceMode() == TextureSourceMode::Array)
-                ? MaterialPreset::RectTexture2DArray
-                : MaterialPreset::RectTexture2D;
-            return true;
-        }
-
-        if (key.geometry_mode == GeometryMode::Quad2D)
-        {
-            if (key.HasVertexAttrib(VertexAttrib::Color))
-            {
-                out_preset = MaterialPreset::VertexColor2D;
-                return true;
-            }
-
-            if (key.HasTexture(SamplerSlot::BaseColor))
-            {
-                out_preset = MaterialPreset::PureTexture2D;
-                return true;
-            }
-
-            out_preset = MaterialPreset::PureColor2D;
-            return true;
-        }
-
-        if (key.geometry_mode == GeometryMode::Mesh3D)
-        {
-            if (key.HasVertexAttrib(VertexAttrib::Luminance))
-            {
-                out_preset = key.HasVertexAttrib(VertexAttrib::Position)
-                    ? MaterialPreset::VertexLuminance2D
-                    : MaterialPreset::VertexLuminance3D;
-                return true;
-            }
-
-            if (key.HasVertexAttrib(VertexAttrib::Color))
-            {
-                out_preset = MaterialPreset::VertexColor3D;
-                return true;
-            }
-
-            if (key.IsDebugShading())
-            {
-                out_preset = MaterialPreset::Gizmo3D;
-                return true;
-            }
-
-            out_preset = MaterialPreset::PureColor3D;
-            return true;
-        }
-    }
-
-    if (key.surface_type == SurfaceType::Terrain)
-    {
-        out_preset = MaterialPreset::TerrainGrid;
-        return true;
-    }
-
-    if (key.surface_type == SurfaceType::Sky)
-    {
-        out_preset = MaterialPreset::SkyMinimal;
-        return true;
-    }
-
-    return false;
-}
-
 const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 {
     switch(mtl_id)
@@ -327,35 +242,17 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if(it != m.end())
         return it->second(profile, key, cfg);
 
-    // Compatibility fallback: allow richer VariantKey (e.g., per-slot texture
-    // source bits) to route through legacy preset-based factories.
-    MaterialPreset preset;
-    if (!TryMapVariantKeyToPreset(key, preset))
-    {
-        std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo failed: TryMapVariantKeyToPreset failed (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
-            static_cast<unsigned long long>(key.Hash()),
-            static_cast<unsigned>(key.surface_type),
-            static_cast<unsigned>(key.geometry_mode),
-            static_cast<unsigned>(key.texture_source_mode),
-            key.texture_source_bits,
-            key.sampler_feature_bits,
-            key.vertex_attribute_feature_bits,
-            key.extra_feature_bits);
-        return nullptr;
-    }
-
-    const auto legacy_it = m.find(MapPresetToVariantKey(preset).Hash());
-    if (legacy_it == m.end())
-    {
-        std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo failed: legacy factory lookup failed for preset=%s (original_key_hash=%llu)\n",
-            GetMaterialPresetName(preset),
-            static_cast<unsigned long long>(key.Hash()));
-        return nullptr;
-    }
-
-    return legacy_it->second(profile, key, cfg);
+    std::fprintf(stderr,
+        "[MaterialLibrary] CreateMaterialCreateInfo failed: no factory for variant key (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
+        static_cast<unsigned long long>(key.Hash()),
+        static_cast<unsigned>(key.surface_type),
+        static_cast<unsigned>(key.geometry_mode),
+        static_cast<unsigned>(key.texture_source_mode),
+        key.texture_source_bits,
+        key.sampler_feature_bits,
+        key.vertex_attribute_feature_bits,
+        key.extra_feature_bits);
+    return nullptr;
 }
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
