@@ -1,12 +1,12 @@
 #pragma once
 
-#include<hgl/mtl/new/NewDescriptorSetType.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/mtl/new/SurfaceType.h>
 #include<vulkan/vulkan.h>
 
 namespace hgl::graph{
 
-constexpr uint32_t NEW_DS_COUNT = static_cast<uint32_t>(NewDescriptorSetType::COUNT);
+constexpr uint32_t NEW_DS_COUNT = static_cast<uint32_t>(DESCRIPTOR_SET_TYPE_COUNT);
 
 struct NewPipelineLayoutData
 {

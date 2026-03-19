@@ -9,7 +9,7 @@
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/shadergen/ShaderCompilerProfileAPI.h>
 #include<hgl/mtl/new/NewDescriptorSetLayoutFactory.h>
-#include<hgl/mtl/new/NewDescriptorBinding.h>
+
 #include<hgl/mtl/new/DescriptorSetBindings.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKRenderPass.h>
