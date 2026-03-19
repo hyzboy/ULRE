@@ -188,7 +188,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(assemble_key, PlatformBackend::PC, *var_desc);
+    auto result = assembler.Assemble(assemble_key, *var_desc);
 
     if (!result.success)
     {

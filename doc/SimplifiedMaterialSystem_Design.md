@@ -4935,11 +4935,11 @@ DeviceQualityProfile device_profile = DeviceQualityProfile::Detect(physical_devi
 auto mi = MaterialSystem::CreateInstance(SurfaceType::Standard);
 
 // 美术填写完整的最高规格纹理集（与画质档位无关）
-mi->SetTexture(TextureSlot::Albedo,            LoadTexture("rock_albedo.png"));
-mi->SetTexture(TextureSlot::Normal,            LoadTexture("rock_normal.png"));
-mi->SetTexture(TextureSlot::MetallicRoughness, LoadTexture("rock_mr.png"));
-mi->SetTexture(TextureSlot::AO,               LoadTexture("rock_ao.png"));    // High+ 才用
-mi->SetTexture(TextureSlot::Emissive,          nullptr);                       // 不需要就留空
+mi->SetTexture(SamplerSlot::BaseColor,         LoadTexture("rock_albedo.png"));
+mi->SetTexture(SamplerSlot::Normal,            LoadTexture("rock_normal.png"));
+mi->SetTexture(SamplerSlot::Metallic,          LoadTexture("rock_metallic.png"));
+mi->SetTexture(SamplerSlot::Roughness,         LoadTexture("rock_roughness.png"));
+mi->SetTexture(SamplerSlot::Opacity,           nullptr);                        // 不需要就留空
 
 // 美术设置参数
 mi->SetColor  ("base_color",       Color(255,255,255,255));
@@ -5078,10 +5078,10 @@ vkCmdDrawIndexed(cmd, ...);
 auto mi = MaterialSystem::CreateInstance(SurfaceType::Standard);
 
 // ===== 设置纹理（美术总是配完整的最高规格纹理集）=====
-mi->SetTexture(TextureSlot::Albedo,            LoadTexture("rock_albedo.png"));
-mi->SetTexture(TextureSlot::Normal,            LoadTexture("rock_normal.png"));
-mi->SetTexture(TextureSlot::MetallicRoughness, LoadTexture("rock_mr.png"));
-mi->SetTexture(TextureSlot::AO,               LoadTexture("rock_ao.png"));
+mi->SetTexture(SamplerSlot::BaseColor,         LoadTexture("rock_albedo.png"));
+mi->SetTexture(SamplerSlot::Normal,            LoadTexture("rock_normal.png"));
+mi->SetTexture(SamplerSlot::Metallic,          LoadTexture("rock_metallic.png"));
+mi->SetTexture(SamplerSlot::Roughness,         LoadTexture("rock_roughness.png"));
 // 如果某纹理不需要，不 Set 即可——引擎自动使用默认值
 
 // ===== 设置参数 =====

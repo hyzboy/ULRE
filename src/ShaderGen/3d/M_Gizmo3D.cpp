@@ -61,7 +61,7 @@ MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *pro
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
+    auto result = assembler.Assemble(var_key, *var_desc);
 
     if (!result.success)
     {

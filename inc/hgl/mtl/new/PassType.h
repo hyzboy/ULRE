@@ -15,8 +15,7 @@ namespace hgl::graph
         ShadowMasked,
         EarlyZSolid,
         EarlyZMasked,
-        VBufferID,
 
-        ENUM_CLASS_RANGE(ForwardOpaque, VBufferID)
+        ENUM_CLASS_RANGE(ForwardOpaque, EarlyZMasked)
     };
 }

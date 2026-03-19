@@ -3,8 +3,6 @@
 #include <hgl/mtl/new/SurfaceType.h>
 #include <hgl/mtl/new/BlendMode.h>
 #include <hgl/mtl/new/PassType.h>
-#include <hgl/mtl/new/QualityTier.h>
-#include <hgl/mtl/new/PlatformBackend.h>
 #include <hgl/mtl/new/ShaderPermutationKey.h>
 #include <string>
 #include <vector>
@@ -59,8 +57,6 @@ namespace hgl::graph
             SurfaceType     surface,
             BlendMode       blend,
             PassType        pass,
-            QualityTier     tier,
-            PlatformBackend platform,
             const char     *vs_template_override      = nullptr,
             const char     *fs_template_override      = nullptr,
             const char     *surface_function_override  = nullptr
@@ -70,7 +66,6 @@ namespace hgl::graph
         /// uses desc's shader template paths (empty path → auto-routing fallback).
         AssembleResult Assemble(
             const mtl::MaterialVariantKey  &key,
-            PlatformBackend                 platform,
             const mtl::MaterialVariantDesc &desc
         ) const;
 

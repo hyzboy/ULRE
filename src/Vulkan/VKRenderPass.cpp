@@ -143,24 +143,6 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeli
     return CreatePipeline(mi,pd,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,GeometryFetchMode fetch_mode,const bool prim_restart)
-{
-    if(!mi)return(nullptr);
-
-    const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
-
-    return CreatePipeline(mi->GetMaterial(),vil,ip,prim_restart);
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *pd,GeometryFetchMode fetch_mode,const bool prim_restart)
-{
-    if(!mi)return(nullptr);
-
-    const VIL *vil=(fetch_mode==GeometryFetchMode::SSBO)?nullptr:mi->GetVIL();
-
-    return CreatePipeline(mi->GetMaterial(),vil,pd,prim_restart);
-}
-
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,
                                      const ShaderStageCreateInfoList &ssci,
                                      VkPipelineLayout layout,

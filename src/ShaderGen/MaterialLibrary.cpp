@@ -1,4 +1,5 @@
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/SamplerName.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>

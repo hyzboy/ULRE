@@ -3,7 +3,6 @@
 #include <hgl/mtl/new/SurfaceType.h>
 #include <hgl/mtl/new/BlendMode.h>
 #include <hgl/mtl/new/PassType.h>
-#include <hgl/mtl/new/QualityTier.h>
 #include <hgl/mtl/SamplerName.h>
 #include <hgl/common/VertexAttribDef.h>
 
@@ -53,7 +52,6 @@ namespace hgl::graph::mtl
         uint32            extra_feature_bits            = EF_None;
         BlendMode         blend_mode          = BlendMode::Opaque;
         PassType          pass_hint           = PassType::ForwardOpaque;
-        QualityTier       quality_tier        = QualityTier::Medium;
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;
         static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::Count);
@@ -149,7 +147,6 @@ namespace hgl::graph::mtl
             mix(static_cast<uint64>(extra_feature_bits));
             mix(static_cast<uint64>(blend_mode));
             mix(static_cast<uint64>(pass_hint));
-            mix(static_cast<uint64>(quality_tier));
 
             return h;
         }
@@ -164,8 +161,7 @@ namespace hgl::graph::mtl
                 && vertex_attribute_feature_bits == rhs.vertex_attribute_feature_bits
                 && extra_feature_bits == rhs.extra_feature_bits
                 && blend_mode == rhs.blend_mode
-                && pass_hint == rhs.pass_hint
-                && quality_tier == rhs.quality_tier;
+                && pass_hint == rhs.pass_hint;
         }
     };
 }

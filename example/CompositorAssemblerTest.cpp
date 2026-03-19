@@ -37,9 +37,7 @@ static bool TestAssembleGLSL(CompositorAssembler &assembler)
     auto result = assembler.Assemble(
         SurfaceType::Standard,
         BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC
+        PassType::ForwardOpaque
     );
 
     if (!result.success)
@@ -73,9 +71,7 @@ static bool TestCompileSPV(CompositorAssembler &assembler, const std::string &sh
     auto result = assembler.Assemble(
         SurfaceType::Standard,
         BlendMode::Opaque,
-        PassType::ForwardOpaque,
-        QualityTier::Medium,
-        PlatformBackend::PC
+        PassType::ForwardOpaque
     );
 
     if (!result.success)

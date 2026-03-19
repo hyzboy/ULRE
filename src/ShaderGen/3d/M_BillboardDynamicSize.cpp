@@ -77,7 +77,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
 
     CompositorAssembler assembler("ShaderLibrary");
 
-    auto result = assembler.Assemble(var_key, PlatformBackend::PC, *var_desc);
+    auto result = assembler.Assemble(var_key, *var_desc);
 
     if (!result.success)
     {

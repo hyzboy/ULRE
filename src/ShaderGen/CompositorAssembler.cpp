@@ -57,9 +57,6 @@ namespace hgl::graph
         case PassType::EarlyZMasked:
             return shader_lib_path_ + "/compositor/main_earlyz.vert.glsl"; // 后续实现
 
-        case PassType::VBufferID:
-            return shader_lib_path_ + "/compositor/main_vbuffer.vert.glsl"; // 后续实现
-
         default:
             return shader_lib_path_ + "/compositor/main_forward_opaque.vert.glsl";
         }
@@ -115,9 +112,6 @@ namespace hgl::graph
         case PassType::EarlyZSolid:
         case PassType::EarlyZMasked:
             return shader_lib_path_ + "/compositor/main_earlyz.frag.glsl"; // 后续实现
-
-        case PassType::VBufferID:
-            return shader_lib_path_ + "/compositor/main_vbuffer.frag.glsl"; // 后续实现
 
         default:
             return shader_lib_path_ + "/compositor/main_forward_opaque.frag.glsl";
@@ -191,8 +185,6 @@ namespace hgl::graph
         SurfaceType     surface,
         BlendMode       blend,
         PassType        pass,
-        QualityTier     tier,
-        PlatformBackend platform,
         const char     *vs_template_override,
         const char     *fs_template_override,
         const char     *surface_function_override
@@ -203,8 +195,6 @@ namespace hgl::graph
         // 1. 构建 permutation key
         ShaderPermutationKey key;
         key.SetSurfaceType(surface);
-        key.SetQualityTier(tier);
-        key.SetPlatform(platform);
 
         // 2. 获取模板文件路径（支持覆盖）
         std::string vs_path = (vs_template_override && vs_template_override[0])
@@ -248,7 +238,6 @@ namespace hgl::graph
 
     CompositorAssembler::AssembleResult CompositorAssembler::Assemble(
         const mtl::MaterialVariantKey  &key,
-        PlatformBackend                 platform,
         const mtl::MaterialVariantDesc &desc
     ) const
     {
@@ -256,8 +245,6 @@ namespace hgl::graph
 
         ShaderPermutationKey perm;
         perm.SetSurfaceType(key.surface_type);
-        perm.SetQualityTier(key.quality_tier);
-        perm.SetPlatform(platform);
 
         const bool has_slot_modes = key.HasAnyTextureSourceBits();
         const auto base_mode = has_slot_modes
