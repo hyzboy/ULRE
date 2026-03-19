@@ -236,6 +236,8 @@ SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterial.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialParameters.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialInstance.h
                                     ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterialDescriptorManager.h
+                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKResourceDomain.h
+                                    ${ROOT_INCLUDE_PATH}/hgl/vk/VKDomainMaterialBinding.h
                                     VKMaterial.cpp
                                     VKMaterialParameters.cpp
                                     VKMaterialInstance.cpp

@@ -4,6 +4,8 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKShaderModule.h>
+#include<hgl/vk/VKResourceDomain.h>
+#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/type/UnorderedMap.h>
 #include<hgl/type/ObjectManager.h>
 #include<hgl/graph/module/ShaderGenValidationTypes.h>
@@ -179,6 +181,36 @@ public: //MaterialInstance
     {
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
     }
+
+public: // ResourceDomain — Phase 0
+
+    /**
+     * 创建一个以 mtl 为模板的资源域。
+     * Phase 0: 仅分配对象，不承接任何 MI 数据或资源绑定。
+     */
+    ResourceDomain *        CreateResourceDomain        (Material *mtl)
+    {
+        if (!mtl) return nullptr;
+        return new ResourceDomain(mtl);
+    }
+
+    /**
+     * 创建一个 (domain, material) 绑定视图。
+     * Phase 0: 仅分配对象，不执行任何资源绑定逻辑。
+     */
+    DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, Material *mtl)
+    {
+        if (!domain || !mtl) return nullptr;
+        return new DomainMaterialBinding(domain, mtl);
+    }
+
+public: // Phase 0 Stats — 帧级资源量观测
+
+    /// 当前存活 Material 数量
+    uint32_t GetMaterialCount()         const { return (uint32_t)rm_material.GetCount(); }
+
+    /// 当前存活 MaterialInstance 数量
+    uint32_t GetMaterialInstanceCount() const { return (uint32_t)rm_material_instance.GetCount(); }
 
 };//class MaterialManager
 
