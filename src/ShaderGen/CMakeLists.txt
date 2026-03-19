@@ -127,12 +127,8 @@ SET(SHADER_LAYOUT_SOURCE_FILES  ShaderLayoutBuilder.cpp
 SOURCE_GROUP("Material Compiler\\Layout" FILES  ${SHADER_LAYOUT_HEADER_FILES}
                                                 ${SHADER_LAYOUT_SOURCE_FILES})
 
-SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
-                             ${SHADERGEN_INCLUDE_PATH}/PresetShaderCompiler.h
-                             ${SHADERGEN_INCLUDE_PATH}/SPVCache.h)
-SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp
-                             PresetShaderCompiler.cpp
-                             SPVCache.cpp)
+SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h)
+SET(COMPOSITOR_SOURCE_FILES  CompositorAssembler.cpp)
 
 SOURCE_GROUP("Compositor" FILES ${COMPOSITOR_HEADER_FILES}
                                 ${COMPOSITOR_SOURCE_FILES})
