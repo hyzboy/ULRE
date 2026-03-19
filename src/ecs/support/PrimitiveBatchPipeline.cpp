@@ -18,6 +18,7 @@
 #include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
+#include<hgl/vk/VKMaterialInstance.h>   // Phase 4: GetDomain()
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
@@ -516,7 +517,12 @@ namespace hgl::ecs
             if (!material || !pipeline)
                 continue;
 
-            MaterialPipelineKey key(material, pipeline);
+            // Phase 4: include ResourceDomain in batch key so items from different
+            // domains are never merged into the same batch (nullptr = default domain).
+            auto* mi     = item->GetMaterialInstance();
+            auto* domain = mi ? mi->GetDomain() : nullptr;
+
+            MaterialPipelineKey key(material, pipeline, domain);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

@@ -8,33 +8,43 @@ namespace hgl
     {
         class Material;
         class Pipeline;
+        class ResourceDomain;    // Phase 4
     }
 }
 
 namespace hgl::ecs
 {
     /**
-     * Material/Pipeline index for batching
-     * Similar to hgl::graph::PipelineMaterialIndex
+     * Material/Pipeline/Domain index for batching
+     * Phase 4: ResourceDomain* added so items from different domains
+     * do not get incorrectly merged into the same draw batch.
+     * domain == nullptr → default (backward-compatible with all existing code)
      */
     struct MaterialPipelineKey
     {
-        hgl::graph::Material* material;
-        hgl::graph::Pipeline* pipeline;
+        hgl::graph::Material*       material = nullptr;
+        hgl::graph::Pipeline*       pipeline = nullptr;
+        hgl::graph::ResourceDomain* domain   = nullptr;   ///< Phase 4: nullptr = default domain
 
-        MaterialPipelineKey(hgl::graph::Material* m = nullptr, hgl::graph::Pipeline* p = nullptr)
-            : material(m), pipeline(p) {}
+        MaterialPipelineKey(hgl::graph::Material*       m = nullptr,
+                            hgl::graph::Pipeline*       p = nullptr,
+                            hgl::graph::ResourceDomain* d = nullptr)
+            : material(m), pipeline(p), domain(d) {}
 
         bool operator<(const MaterialPipelineKey& other) const
         {
             if (material < other.material) return true;
             if (material > other.material) return false;
-            return pipeline < other.pipeline;
+            if (pipeline < other.pipeline) return true;
+            if (pipeline > other.pipeline) return false;
+            return domain < other.domain;
         }
 
         bool operator==(const MaterialPipelineKey& other) const
         {
-            return material == other.material && pipeline == other.pipeline;
+            return material == other.material
+                && pipeline == other.pipeline
+                && domain   == other.domain;
         }
     };
 }//namespace hgl::ecs
@@ -49,8 +59,9 @@ namespace std
         {
             size_t h1 = std::hash<hgl::graph::Material*>{}(key.material);
             size_t h2 = std::hash<hgl::graph::Pipeline*>{}(key.pipeline);
-            // Combine hashes using XOR and bit shift
-            return h1 ^ (h2 << 1);
+            size_t h3 = std::hash<hgl::graph::ResourceDomain*>{}(key.domain);
+            // Combine hashes
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
         }
     };
 }//namespace std
