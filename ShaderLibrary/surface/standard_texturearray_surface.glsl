@@ -1,4 +1,4 @@
-// standard_texturearray_surface.glsl — Standard Lit Surface with Texture2DArray sampling
+// standard_texturearray_surface.glsl — Standard Lit Surface (array sampling, no quality branches)
 
 #include "common/surface_interface.glsl"
 
@@ -14,12 +14,8 @@ struct MaterialInstance
 MI_SSBO;
 
 layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2DArray TexAlbedo;
-#if QUALITY_TIER >= 2
 layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2DArray TexNormal;
-#endif
-#if QUALITY_TIER >= 4
 layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
-#endif
 
 #include "common/skylight_simple.glsl"
 
@@ -28,8 +24,6 @@ float halfLambertDiffuse(vec3 N, vec3 L)
     float h = dot(N, L) * 0.5 + 0.5;
     return h * h;
 }
-
-#if QUALITY_TIER >= 4
 
 float D_GGX(float NdotH, float alpha2)
 {
@@ -50,8 +44,6 @@ vec3 F_Schlick(float VdotH, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-#endif
-
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 {
     MaterialInstance mi = mtl.mi[miID];
@@ -70,13 +62,10 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-#if QUALITY_TIER >= 2
     vec3 nm = texture(TexNormal, vec3(si.uv0, layer)).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
-#endif
 
-#if QUALITY_TIER >= 4
     vec2 mr    = texture(TexMR, vec3(si.uv0, layer)).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
@@ -99,19 +88,6 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     vec3 color  = (diffuse + specular) * sunColor;
     color      += skyAmbient * albedo * (1.0 - metallic) * 0.2;
-
-#else
-    float hl        = halfLambertDiffuse(N, L);
-    vec3  H         = normalize(V + L);
-    float shininess = mix(256.0, 8.0, roughness);
-    float spec      = pow(max(dot(N, H), 0.0), shininess);
-    float specScale = metallic * (1.0 - roughness * 0.9);
-    vec3  specColor = mix(vec3(spec), albedo * spec, metallic);
-
-    vec3 color  = albedo * hl * sunColor;
-    color      += specColor * specScale * sunColor;
-    color      += skyAmbient * albedo * 0.25;
-#endif
 
     SurfaceOutput so;
     so.baseColor = color;

@@ -15,7 +15,6 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
 
     snprintf(buf, sizeof(buf),
         "#define SURFACE_TYPE %d\n"
-        "#define QUALITY_TIER %d\n"
         "#define SHADOW_MODE %u\n"
         "#define PLATFORM_PC %d\n"
         "#define PLATFORM_APPLE %d\n"
@@ -28,7 +27,6 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
         "#define ROUGH_TEX_ARRAY_MODE %d\n"
         "#define TEXTURE_ARRAY_MODE %d\n",
         static_cast<int>(GetSurfaceType()),
-        static_cast<int>(GetQualityTier()),
         static_cast<unsigned>(GetShadowMode()),
         (GetPlatform() == PlatformBackend::PC)      ? 1 : 0,
         (GetPlatform() == PlatformBackend::Apple)    ? 1 : 0,

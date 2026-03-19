@@ -1,10 +1,6 @@
-// standard_surface.glsl — Standard Lit Surface (2-tier quality dispatch)
-// QUALITY_TIER <= 3 : Half-Lambert + Blinn-Phong (Low)
-//   tier >= 1: Albedo texture sampled
-// QUALITY_TIER >= 4 : Simplified Cook-Torrance PBR, no IBL/cubemap (High)
-//   tier >= 4: Albedo + NormalMap + MR textures sampled
-// 参数 (metallic, roughness) 在两个档位都可见影响结果。
-// 目标：跑通 ShaderGen 全流程；不依赖 cubemap 或 HDR 纹理加载。
+// standard_surface.glsl — Standard Lit Surface (flattened, no quality branches)
+// Always evaluates a single PBR-style lighting path.
+// Texture source mode variants are preserved via *_TEX_ARRAY_MODE macros.
 
 #include "common/surface_interface.glsl"
 
@@ -15,34 +11,30 @@ struct MaterialInstance
     uint  base_color;    // packed RGBA8_UNORM, read with unpackUnorm4x8()
     float metallic;
     float roughness;
-    float normal_scale;  // normal map intensity (tier >= 4 only)
+    float normal_scale;  // normal map intensity
 #if TEXTURE_ARRAY_MODE
     uint  texture_id;    // array layer when any texture slot uses sampler2DArray
 #endif
 };
 MI_SSBO;
 
-// ─── Textures (tier-gated) ───────────────────────────────────────────────────
-#if QUALITY_TIER >= 1
+// ─── Textures (flattened, always declared) ───────────────────────────────────
 #if BASE_TEX_ARRAY_MODE
 layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2DArray TexAlbedo;
 #else
 layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2D TexAlbedo;
 #endif
-#endif
-#if QUALITY_TIER >= 2
+
 #if NORMAL_TEX_ARRAY_MODE
 layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2DArray TexNormal;
 #else
 layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2D TexNormal;
 #endif
-#endif
-#if QUALITY_TIER >= 4
+
 #if ROUGH_TEX_ARRAY_MODE
 layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
 #else
 layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2D TexMR;   // R=metallic, G=roughness
-#endif
 #endif
 
 // ─── Sky Light ────────────────────────────────────────────────────────────────
@@ -63,7 +55,6 @@ float ULRE_TextureLayer(MaterialInstance mi)
 }
 #endif
 
-#if QUALITY_TIER >= 1
 vec3 ULRE_SampleAlbedo(MaterialInstance mi, vec2 uv)
 {
 #if BASE_TEX_ARRAY_MODE
@@ -72,9 +63,7 @@ vec3 ULRE_SampleAlbedo(MaterialInstance mi, vec2 uv)
     return texture(TexAlbedo, uv).rgb;
 #endif
 }
-#endif
 
-#if QUALITY_TIER >= 2
 vec3 ULRE_SampleNormal(MaterialInstance mi, vec2 uv)
 {
 #if NORMAL_TEX_ARRAY_MODE
@@ -83,9 +72,7 @@ vec3 ULRE_SampleNormal(MaterialInstance mi, vec2 uv)
     return texture(TexNormal, uv).xyz;
 #endif
 }
-#endif
 
-#if QUALITY_TIER >= 4
 vec2 ULRE_SampleMR(MaterialInstance mi, vec2 uv)
 {
 #if ROUGH_TEX_ARRAY_MODE
@@ -94,9 +81,6 @@ vec2 ULRE_SampleMR(MaterialInstance mi, vec2 uv)
     return texture(TexMR, uv).rg;
 #endif
 }
-#endif
-
-#if QUALITY_TIER >= 4
 
 float D_GGX(float NdotH, float alpha2)
 {
@@ -117,8 +101,6 @@ vec3 F_Schlick(float VdotH, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-#endif // QUALITY_TIER >= 4
-
 // ─── Surface Entry ────────────────────────────────────────────────────────────
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
@@ -134,21 +116,16 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     // ── Base color ────────────────────────────────────────────────────────────
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
-#if QUALITY_TIER >= 1
     albedo *= ULRE_SampleAlbedo(mi, si.uv0);
-#endif
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-#if QUALITY_TIER >= 2
     // ── Normal Map ────────────────────────────────────────────────────────────
     vec3 nm = ULRE_SampleNormal(mi, si.uv0) * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
-#endif
 
-#if QUALITY_TIER >= 4
     // ── MR Map ────────────────────────────────────────────────────────────────
     vec2 mr    = ULRE_SampleMR(mi, si.uv0);
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
@@ -173,21 +150,6 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     vec3 color  = (diffuse + specular) * sunColor;
     color      += skyAmbient * albedo * (1.0 - metallic) * 0.2;
-
-#else
-    // ── Half-Lambert + Blinn-Phong ────────────────────────────────────────────
-    float hl        = halfLambertDiffuse(N, L);
-    vec3  H         = normalize(V + L);
-    float shininess = mix(256.0, 8.0, roughness);
-    float spec      = pow(max(dot(N, H), 0.0), shininess);
-    // metallic → tint specular toward albedo; roughness → dim specular
-    float specScale = metallic * (1.0 - roughness * 0.9);
-    vec3  specColor = mix(vec3(spec), albedo * spec, metallic);
-
-    vec3 color  = albedo * hl * sunColor;
-    color      += specColor * specScale * sunColor;
-    color      += skyAmbient * albedo * 0.25;
-#endif
 
     SurfaceOutput so;
     so.baseColor = color;
