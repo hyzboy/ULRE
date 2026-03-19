@@ -17,11 +17,11 @@ namespace hgl::graph
     //             bit2: Roughness/MR uses sampler2DArray
     //   [3:2]   Platform     (2 bit: PC/Apple/Android)
     //   [1:0]   Reserved     (2 bit)
-    struct NewShaderPermutationKey
+    struct ShaderPermutationKey
     {
         uint16 packed;
 
-        NewShaderPermutationKey() : packed(0) {}
+        ShaderPermutationKey() : packed(0) {}
 
         void SetSurfaceType(SurfaceType st)     { packed = (packed & 0x0FFF) | (static_cast<uint16>(st) << 12); }
         void SetQualityTier(QualityTier qt)      { packed = (packed & 0xF1FF) | (static_cast<uint16>(qt) << 9); }
@@ -67,8 +67,8 @@ namespace hgl::graph
         uint8           GetFlags()       const   { return (packed >> 4) & 0x7; }
         PlatformBackend GetPlatform()    const   { return static_cast<PlatformBackend>((packed >> 2) & 0x3); }
 
-        bool operator==(const NewShaderPermutationKey& o) const { return packed == o.packed; }
-        bool operator<(const NewShaderPermutationKey& o) const { return packed < o.packed; }
+        bool operator==(const ShaderPermutationKey& o) const { return packed == o.packed; }
+        bool operator<(const ShaderPermutationKey& o) const { return packed < o.packed; }
 
         void AppendGLSLDefines(std::string &out) const;
     };

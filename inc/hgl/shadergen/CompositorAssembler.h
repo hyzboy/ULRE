@@ -5,7 +5,7 @@
 #include <hgl/mtl/new/PassType.h>
 #include <hgl/mtl/new/QualityTier.h>
 #include <hgl/mtl/new/PlatformBackend.h>
-#include <hgl/mtl/new/NewShaderPermutationKey.h>
+#include <hgl/mtl/new/ShaderPermutationKey.h>
 #include <string>
 #include <vector>
 
@@ -25,7 +25,7 @@ namespace hgl::graph
      *   1. 输入：SurfaceType, BlendMode, PassType, QualityTier, PlatformBackend
      *   2. 查表选择 VS/FS Compositor Template 文件路径
      *   3. 读取模板文件内容
-     *   4. 注入 #define 宏（NewShaderPermutationKey::AppendGLSLDefines()）
+     *   4. 注入 #define 宏（ShaderPermutationKey::AppendGLSLDefines()）
      *   5. 替换 #include SURFACE_FUNCTION_FILE 为实际路径
      *   6. 返回完整 GLSL 字符串
      */
@@ -79,7 +79,7 @@ namespace hgl::graph
         std::string GetCompositorVSPath(SurfaceType surface, PassType pass) const;
         std::string GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface, bool texture_array_mode = false) const;
-        std::string InjectDefines(const std::string &source, const NewShaderPermutationKey &key) const;
+        std::string InjectDefines(const std::string &source, const ShaderPermutationKey &key) const;
         std::string ReplaceSurfaceInclude(const std::string &source, const std::string &surface_path) const;
         bool        ReadFile(const std::string &path, std::string &out_content, std::string &out_error) const;
 

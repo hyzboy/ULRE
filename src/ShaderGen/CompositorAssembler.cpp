@@ -146,7 +146,7 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::InjectDefines(const std::string &source, const NewShaderPermutationKey &key) const
+    std::string CompositorAssembler::InjectDefines(const std::string &source, const ShaderPermutationKey &key) const
     {
         // 在 #version 行之后插入 #define 宏
         std::string defines;
@@ -201,7 +201,7 @@ namespace hgl::graph
         AssembleResult result{};
 
         // 1. 构建 permutation key
-        NewShaderPermutationKey key;
+        ShaderPermutationKey key;
         key.SetSurfaceType(surface);
         key.SetQualityTier(tier);
         key.SetPlatform(platform);
@@ -254,7 +254,7 @@ namespace hgl::graph
     {
         AssembleResult result{};
 
-        NewShaderPermutationKey perm;
+        ShaderPermutationKey perm;
         perm.SetSurfaceType(key.surface_type);
         perm.SetQualityTier(key.quality_tier);
         perm.SetPlatform(platform);
