@@ -76,6 +76,28 @@ static const ShaderBufferSource *ResolveShaderBufferSourceByStructName(const Mat
     return FindShaderBufferSourceByStructName(struct_name);
 }
 
+static std::string InjectLayoutDefinesPreserveVersion(const std::string &source,const std::string &layout_defs)
+{
+    if(layout_defs.empty())
+        return source;
+
+    if(source.rfind("#version",0)==0)
+    {
+        const size_t pos=source.find('\n');
+        if(pos==std::string::npos)
+            return source+"\n"+layout_defs;
+
+        std::string out;
+        out.reserve(source.size()+layout_defs.size()+1);
+        out.append(source,0,pos+1);
+        out.append(layout_defs);
+        out.append(source,pos+1,std::string::npos);
+        return out;
+    }
+
+    return layout_defs+source;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CompileCompositorMaterial — Compositor 模板完整 GLSL → MaterialCreateInfo
 //
@@ -286,8 +308,9 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
     // Step 6c: Inject auto-generated layout #defines into GLSL
     // Resort() finalises set/binding numbers; BuildShaderLayoutContract
-    // reads them and EmitShaderLayoutDefines produces a #define block
-    // that is prepended to every shader stage source.
+    // reads them and EmitShaderLayoutDefines produces a #define block.
+    // Keep #version as the first directive by inserting the block
+    // after #version when present.
     // ─────────────────────────────────────────────────────────────
     {
         mci->Resort();
@@ -295,8 +318,8 @@ MaterialCreateInfo *CompileCompositorMaterial(
         const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
         if (!layout_defs.empty())
         {
-            if (vert) vert->SetFinalGLSL(layout_defs + vert->GetFinalGLSL());
-            if (frag) frag->SetFinalGLSL(layout_defs + frag->GetFinalGLSL());
+            if (vert) vert->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(vert->GetFinalGLSL(),layout_defs));
+            if (frag) frag->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(frag->GetFinalGLSL(),layout_defs));
         }
     }
 

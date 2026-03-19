@@ -8,7 +8,7 @@ layout(location=1) out vec2 fragTexCoord;
 
 void main()
 {
-    fragMIID = MaterialInstanceID;
+    fragMIID = GET_MATERIAL_INSTANCE_ID();
     fragTexCoord = TexCoord;
     gl_Position = GetPosition2D();
 }

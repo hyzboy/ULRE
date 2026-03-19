@@ -17,23 +17,13 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
-#if TRANSFORM_ID_FROM_DESCRIPTOR
-    #include "common/transform_id_buffer.glsl"
-    TRANSFORM_ID_BUFFER;
-    #define GET_TRANSFORM_ID() FetchTransformID()
-#else
-    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
-    #define GET_TRANSFORM_ID() TransformID
-#endif
+#include "common/transform_id_buffer.glsl"
+TRANSFORM_ID_BUFFER;
+#define GET_TRANSFORM_ID() FetchTransformID()
 
-#if MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR
-    #include "common/material_instance_id_buffer.glsl"
-    MATERIAL_INSTANCE_ID_BUFFER;
-    #define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
-#else
-    layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
-    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
-#endif
+#include "common/material_instance_id_buffer.glsl"
+MATERIAL_INSTANCE_ID_BUFFER;
+#define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
 
 // Vertex attributes: Position + Normal + TransformID + MaterialInstanceID
 layout(location=POSITION_LOCATION) in vec3 Position;

@@ -17,14 +17,9 @@ SCENE_CAMERA_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
-#if TRANSFORM_ID_FROM_DESCRIPTOR
-    #include "common/transform_id_buffer.glsl"
-    TRANSFORM_ID_BUFFER;
-    #define GET_TRANSFORM_ID() FetchTransformID()
-#else
-    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
-    #define GET_TRANSFORM_ID() TransformID
-#endif
+#include "common/transform_id_buffer.glsl"
+TRANSFORM_ID_BUFFER;
+#define GET_TRANSFORM_ID() FetchTransformID()
 
 // Vertex attributes: Position + TransformID
 layout(location=POSITION_LOCATION) in vec3 Position;

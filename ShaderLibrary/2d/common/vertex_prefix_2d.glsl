@@ -22,39 +22,24 @@ SCENE_VIEWPORT_UBO;
 #include "common/l2w_ssbo.glsl"
 L2W_SSBO;
 
-  #if TRANSFORM_ID_FROM_DESCRIPTOR
-    #include "common/transform_id_buffer.glsl"
-    TRANSFORM_ID_BUFFER;
-  #endif
+#include "common/transform_id_buffer.glsl"
+TRANSFORM_ID_BUFFER;
+#endif
+
+#ifdef HAS_MI
+#include "common/material_instance_id_buffer.glsl"
+MATERIAL_INSTANCE_ID_BUFFER;
+#define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
 #endif
 
 // ---- Vertex inputs (locations provided by ShaderLayoutDefineEmitter) ----
 layout(location=POSITION_LOCATION) in POSITION_FORMAT Position;
 
-#ifdef HAS_L2W
-  #if TRANSFORM_ID_FROM_DESCRIPTOR
-    #ifdef HAS_MI
-layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
-    #endif
-  #else
-layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
-    #ifdef HAS_MI
-layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
-    #endif
-  #endif
-#elif defined(HAS_MI)
-layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
-#endif
-
 // ---- Helper functions ----
 #ifdef HAS_L2W
 mat4 GetLocalToWorld()
 {
-#if TRANSFORM_ID_FROM_DESCRIPTOR
   return l2w.mats[FetchTransformID()];
-#else
-  return l2w.mats[TransformID];
-#endif
 }
 #endif
 

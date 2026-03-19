@@ -5,6 +5,6 @@ layout(location=0) flat out uint fragMIID;
 
 void main()
 {
-    fragMIID = MaterialInstanceID;
+    fragMIID = GET_MATERIAL_INSTANCE_ID();
     gl_Position = GetPosition2D();
 }
