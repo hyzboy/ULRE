@@ -26,14 +26,21 @@ L2W_SSBO;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
+#if MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR
+    #include "common/material_instance_id_buffer.glsl"
+    MATERIAL_INSTANCE_ID_BUFFER;
+    #define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
+#elif TRANSFORM_ID_FROM_DESCRIPTOR
+    layout(location=2) in uint MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
+#else
+    layout(location=3) in uint MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
+#endif
+
 // Vertex attributes: Position + Luminance + TransformID + MaterialInstanceID
 layout(location=0) in vec3 Position;
 layout(location=1) in float Luminance;
-#if TRANSFORM_ID_FROM_DESCRIPTOR
-layout(location=2) in uint MaterialInstanceID;
-#else
-layout(location=3) in uint MaterialInstanceID;
-#endif
 
 // Output to FS
 layout(location=0) flat out uint fragMaterialInstanceID;
@@ -44,7 +51,7 @@ void main()
     mat4 l2w_mat = l2w.mats[GET_TRANSFORM_ID()];
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
 
-    fragMaterialInstanceID = MaterialInstanceID;
+    fragMaterialInstanceID = GET_MATERIAL_INSTANCE_ID();
     fragLuminance = Luminance;
 
     gl_Position = camera.vp * worldPos;

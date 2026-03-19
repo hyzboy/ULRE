@@ -60,3 +60,20 @@
 #if defined(HGL_MI_USE_SSBO) && defined(HGL_MI_USE_UBO)
 #error "HGL_MI_USE_SSBO and HGL_MI_USE_UBO cannot both be defined"
 #endif
+
+// MaterialInstanceID storage options
+// Controls how per-instance MaterialInstance index is dispatched:
+// - HGL_MI_ID_USE_VAB  : per-instance vertex attribute buffer (R16_UINT) [default]
+// - HGL_MI_ID_USE_SSBO : descriptor-backed storage buffer (uint[])
+#if !defined(HGL_MI_ID_USE_VAB) && !defined(HGL_MI_ID_USE_SSBO)
+    //#define HGL_MI_ID_USE_VAB
+    #define HGL_MI_ID_USE_SSBO
+#endif
+
+#if defined(HGL_MI_ID_USE_VAB) && defined(HGL_MI_ID_USE_SSBO)
+    #error "Only one MaterialInstanceID storage mode can be enabled"
+#endif
+
+#if defined(HGL_MI_ID_USE_SSBO)
+    #define MaterialInstanceIDDescriptorKind DescriptorKind::SSBO
+#endif

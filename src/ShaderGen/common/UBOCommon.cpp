@@ -45,6 +45,7 @@ const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_
     if(CStrEq(struct_name,SBS_LocalToWorld.struct_name))     return &SBS_LocalToWorld;
     if(CStrEq(struct_name,SBS_TransformID.struct_name))      return &SBS_TransformID;
     if(CStrEq(struct_name,SBS_MaterialInstance.struct_name)) return &SBS_MaterialInstance;
+        if(CStrEq(struct_name,SBS_MaterialInstanceID.struct_name)) return &SBS_MaterialInstanceID;
     if(CStrEq(struct_name,SBS_JointInfo.struct_name))        return &SBS_JointInfo;
     if(CStrEq(struct_name,SBS_SkyInfo.struct_name))          return &SBS_SkyInfo;
 

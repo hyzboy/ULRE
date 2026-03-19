@@ -16,6 +16,12 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
     constexpr int transform_id_from_descriptor = 1;
 #endif
 
+#if defined(HGL_MI_ID_USE_VAB)
+    constexpr int material_instance_id_from_descriptor = 0;
+#else
+    constexpr int material_instance_id_from_descriptor = 1;
+#endif
+
     snprintf(buf, sizeof(buf),
         "#define SURFACE_TYPE %d\n"
         "#define QUALITY_TIER %d\n"
@@ -25,6 +31,7 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
         "#define PLATFORM_ANDROID %d\n"
         "#define GEOMETRY_FETCH_SSBO %d\n"
         "#define TRANSFORM_ID_FROM_DESCRIPTOR %d\n"
+            "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR %d\n"
         "#define BASE_TEX_ARRAY_MODE %d\n"
         "#define NORMAL_TEX_ARRAY_MODE %d\n"
         "#define ROUGH_TEX_ARRAY_MODE %d\n"
@@ -39,6 +46,7 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
         // always 0 until VertexDataBuffer SSBO pipeline is wired up.
         0,
         transform_id_from_descriptor,
+            material_instance_id_from_descriptor,
         GetBaseTextureArrayMode() ? 1 : 0,
         GetNormalTextureArrayMode() ? 1 : 0,
         GetRoughnessTextureArrayMode() ? 1 : 0,

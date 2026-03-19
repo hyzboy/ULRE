@@ -45,6 +45,14 @@ constexpr const ShaderBufferSource SBS_TransformID=
     "TransformIDData"
 };
 
+constexpr const ShaderBufferSource SBS_MaterialInstanceID=
+{
+    DescriptorSetType::Transform,
+
+    "mid",
+    "MaterialInstanceIDData"
+};
+
 constexpr const ShaderBufferSource SBS_ColorPattle =
 {
     DescriptorSetType::Material,

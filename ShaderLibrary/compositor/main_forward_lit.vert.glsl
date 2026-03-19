@@ -26,15 +26,22 @@ L2W_SSBO;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
+#if MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR
+    #include "common/material_instance_id_buffer.glsl"
+    MATERIAL_INSTANCE_ID_BUFFER;
+    #define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
+#elif TRANSFORM_ID_FROM_DESCRIPTOR
+    layout(location=3) in uint MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
+#else
+    layout(location=4) in uint MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
+#endif
+
 // Vertex attributes: Position + TexCoord + Normal + TransformID + MaterialInstanceID
 layout(location=0) in vec3 Position;
 layout(location=1) in vec2 TexCoord;
 layout(location=2) in vec3 Normal;
-#if TRANSFORM_ID_FROM_DESCRIPTOR
-layout(location=3) in uint MaterialInstanceID;
-#else
-layout(location=4) in uint MaterialInstanceID;
-#endif
 
 // Outputs to FS
 layout(location=0) flat out uint fragMaterialInstanceID;
@@ -48,7 +55,7 @@ void main()
     vec4 worldPos = l2w_mat * vec4(Position, 1.0);
     vec3 worldNormal = normalize(mat3(l2w_mat) * Normal);
 
-    fragMaterialInstanceID = MaterialInstanceID;
+    fragMaterialInstanceID = GET_MATERIAL_INSTANCE_ID();
     fragWorldPos   = worldPos.xyz;
     fragWorldNormal = worldNormal;
     fragUV0        = TexCoord;

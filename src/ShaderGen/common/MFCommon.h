@@ -16,7 +16,10 @@ namespace hgl::graph::mtl::func
 /// 统一的 MaterialInstance 获取函数（唯一标准名称）
 /// Vertex Shader: 直接从顶点属性 MaterialInstanceID 索引
 constexpr const char MF_GetMI_VS[] = 
-    "\nMaterialInstance GetMI(){return mtl.mi[MaterialInstanceID];}\n";
+    "\n#ifndef GET_MATERIAL_INSTANCE_ID\n"
+    "#define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID\n"
+    "#endif\n"
+    "MaterialInstance GetMI(){return mtl.mi[GET_MATERIAL_INSTANCE_ID()];}\n";
 
 /// Fragment/Geometry Shader: 从插值输入 Input.MaterialInstanceID 索引
 constexpr const char MF_GetMI_Other[] = 

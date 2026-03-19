@@ -29,15 +29,24 @@ L2W_SSBO;
     #include "common/transform_id_buffer.glsl"
     TRANSFORM_ID_BUFFER;
     #define GET_TRANSFORM_ID()          FetchTransformID()
-    layout(location=1) in uint MaterialInstanceID;
-    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
 #elif GEOMETRY_FETCH_SSBO
     #define GET_TRANSFORM_ID()          gl_InstanceIndex
-    #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
 #else
     layout(location=1) in uint TransformID;
-    layout(location=2) in uint MaterialInstanceID;
     #define GET_TRANSFORM_ID()          TransformID
+#endif
+
+#if MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR
+    #include "common/material_instance_id_buffer.glsl"
+    MATERIAL_INSTANCE_ID_BUFFER;
+    #define GET_MATERIAL_INSTANCE_ID()  FetchMaterialInstanceID()
+#elif GEOMETRY_FETCH_SSBO
+    #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
+#elif TRANSFORM_ID_FROM_DESCRIPTOR
+    layout(location=1) in uint MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
+#else
+    layout(location=2) in uint MaterialInstanceID;
     #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
 #endif
 

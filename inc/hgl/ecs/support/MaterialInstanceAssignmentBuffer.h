@@ -12,6 +12,7 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<vector>
 #include <hgl/type/UnorderedMap.h>
+#include<hgl/common/RenderOptions.h>
 
 namespace hgl::graph
 {
@@ -102,6 +103,13 @@ namespace hgl::ecs
         graph::VAB* material_instance_vab;          ///<材质实例ID分发数据VAB(R16UI格式)
         VkBuffer material_instance_vab_buffer;      ///<材质实例ID分发数据Buffer
 
+    #if defined(HGL_MI_ID_USE_SSBO)
+        private:    // 分发数据（SSBO descriptor path）
+            uint32_t material_instance_id_buffer_max_count; ///<MaterialInstanceID SSBO capacity (elements)
+            graph::DeviceBuffer* material_instance_id_buffer;   ///<MaterialInstanceID data (SSBO, uint[])
+            VkBuffer material_instance_id_vk_buffer;            ///<MaterialInstanceID VkBuffer cache
+    #endif
+
     private:
         void Clear();
 
@@ -113,6 +121,18 @@ namespace hgl::ecs
          * 获取MaterialInstance VAB缓冲（用于绑定到管线）
          */
         const VkBuffer GetMaterialInstanceVAB() const { return material_instance_vab_buffer; }
+
+        #if defined(HGL_MI_ID_USE_SSBO)
+            /**
+             * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）
+             */
+            const VkBuffer GetMaterialInstanceIDVkBuffer() const { return material_instance_id_vk_buffer; }
+
+            /**
+             * 绑定MaterialInstanceID SSBO到材质
+             */
+            void BindMaterialInstanceID(graph::Material* mtl) const;
+        #endif
 
         /**
          * 绑定材质实例数据到材质

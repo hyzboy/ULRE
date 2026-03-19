@@ -42,7 +42,19 @@
 #endif
 
 #ifndef TID_BINDING
+#if defined(MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR) && (MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR)
+#define TID_BINDING 2
+#else
 #define TID_BINDING 1
+#endif
+#endif
+
+#ifndef MID_SET
+#define MID_SET TRANSFORM_SET
+#endif
+
+#ifndef MID_BINDING
+#define MID_BINDING 1
 #endif
 
 // ── Scene set (Resort 字母序: camera < sky < viewport) ──

@@ -30,6 +30,18 @@ L2W_SSBO;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
+#if MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR
+    #include "common/material_instance_id_buffer.glsl"
+    MATERIAL_INSTANCE_ID_BUFFER;
+    #define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
+#elif TRANSFORM_ID_FROM_DESCRIPTOR
+    layout(location=1) in uint  MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
+#else
+    layout(location=2) in uint  MaterialInstanceID;
+    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
+#endif
+
 // MI SSBO (Material set, VS only)
 // Resort() 字母序: TextureBaseColor=0, mtl=1
 #define MI_BINDING 1
@@ -41,16 +53,11 @@ MI_SSBO_SCALAR;
 
 // Vertex attributes: Position + TransformID + MaterialInstanceID
 layout(location=0) in vec3  Position;
-#if TRANSFORM_ID_FROM_DESCRIPTOR
-layout(location=1) in uint  MaterialInstanceID;
-#else
-layout(location=2) in uint  MaterialInstanceID;
-#endif
 
 // Output to FS
 layout(location=0) out vec2 fragTexCoord;
 
-MaterialInstance GetMI() { return mtl.mi[MaterialInstanceID]; }
+MaterialInstance GetMI() { return mtl.mi[GET_MATERIAL_INSTANCE_ID()]; }
 
 void main()
 {

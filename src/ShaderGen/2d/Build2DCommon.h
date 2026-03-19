@@ -61,7 +61,16 @@ inline std::string BuildDescriptorDefines(
         defs += "#define L2W_BINDING 0\n";
 #if !defined(HGL_TRANSFORM_ID_USE_VAB)
         defs += "#define TID_SET "    + std::to_string(set) + "\n";
+    #if !defined(HGL_MI_ID_USE_VAB)
+        defs += "#define TID_BINDING 2\n";
+        defs += "#define MID_SET "    + std::to_string(set) + "\n";
+        defs += "#define MID_BINDING 1\n";
+    #else
         defs += "#define TID_BINDING 1\n";
+    #endif
+#elif !defined(HGL_MI_ID_USE_VAB)
+        defs += "#define MID_SET "    + std::to_string(set) + "\n";
+        defs += "#define MID_BINDING 1\n";
 #endif
         set++;
     }
@@ -119,6 +128,12 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
     p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 1\n";
 #endif
 
+#if defined(HGL_MI_ID_USE_VAB)
+     p += "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR 0\n";
+#else
+     p += "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR 1\n";
+#endif
+
     p += "\n";
     return p;
 }
@@ -141,8 +156,12 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     }
 
     // MaterialInstanceID (if MI)
+#if defined(HGL_MI_ID_USE_VAB)
     if(cfg->material_instance)
+    {
         v.push_back({Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::ATTRIB});
+    }
+#endif
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -169,6 +188,11 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 #if !defined(HGL_TRANSFORM_ID_USE_VAB)
     if(cfg->local_to_world)
         v.push_back({DescriptorSetType::Transform, TransformIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
+#endif
+
+#if !defined(HGL_MI_ID_USE_VAB)
+    if(cfg->local_to_world && cfg->material_instance)
+        v.push_back({DescriptorSetType::Transform, MaterialInstanceIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr});
 #endif
 }
 
