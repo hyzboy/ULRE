@@ -6,6 +6,7 @@
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
 #include<hgl/vk/VKResourceDomain.h>
+#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
@@ -688,6 +689,39 @@ ResourceDomain *MaterialManager::CreateResourceDomain(Material *mtl)
         return nullptr;
 
     return new ResourceDomain(mtl);
+}
+
+DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, Material *mtl)
+{
+    if(!domain || !mtl)
+        return nullptr;
+
+    // 兴容性检查：域的源 material 的 MI stride 必须与目标 mtl 一致。
+    // (Phase 3 中当同一域绑多个 Material 时进一步检查)
+    if(domain->GetSourceMaterial() != mtl
+        && domain->GetMIDataBytes() != mtl->GetMIDataBytes())
+    {
+        std::fprintf(stderr,
+            "[MaterialManager] CreateDomainMaterialBinding: MI stride mismatch "
+            "domain=%u mtl=%u\n",
+            domain->GetMIDataBytes(), mtl->GetMIDataBytes());
+        return nullptr;
+    }
+
+    VulkanDevice *device = GetDevice();
+    if(!device)
+        return nullptr;
+
+    MaterialParameters *mp[DESCRIPTOR_SET_TYPE_COUNT] = {};
+
+    ENUM_CLASS_FOR(DescriptorSetType, int, i)
+    {
+        if(mtl->hasSet((DescriptorSetType)i))
+            mp[i] = CreateMaterialMP(mtl->GetName(), mtl->desc_manager,
+                                     mtl->pipeline_layout_data, (DescriptorSetType)i);
+    }
+
+    return new DomainMaterialBinding(domain, mtl, mp);
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil)

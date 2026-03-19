@@ -16,6 +16,7 @@
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/mtl/UBOCommon.h>
+#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<unordered_set>
 #include<cstdlib>
 #include<string>
@@ -199,6 +200,53 @@ namespace hgl::ecs
             pipeline_materials.erase(material);
     }
 
+    // Phase 2 — DomainMaterialBinding registration
+
+    void RenderDescriptorBindingSystem::RegisterDomainBinding(graph::DomainMaterialBinding *binding)
+    {
+        if (binding)
+            registered_domain_bindings.insert(binding);
+    }
+
+    void RenderDescriptorBindingSystem::UnregisterDomainBinding(graph::DomainMaterialBinding *binding)
+    {
+        if (!binding)
+            return;
+        registered_domain_bindings.erase(binding);
+        domain_resource_bindings.erase(binding);
+    }
+
+    bool RenderDescriptorBindingSystem::RegisterDomainTexture(graph::DomainMaterialBinding *binding,
+                                                              const AnsiString &name,
+                                                              graph::Texture *tex)
+    {
+        if (!binding || name.IsEmpty() || !tex)
+            return false;
+        auto &slot = domain_resource_bindings[binding][ToBindingKey(name)];
+        slot.texture = tex;
+        return true;
+    }
+
+    bool RenderDescriptorBindingSystem::RegisterDomainTextureSampler(graph::DomainMaterialBinding *binding,
+                                                                     const AnsiString &name,
+                                                                     graph::Texture *tex,
+                                                                     graph::Sampler *sampler)
+    {
+        if (!RegisterDomainTexture(binding, name, tex))
+            return false;
+        if (!sampler)
+            return false;
+        auto &slot = domain_resource_bindings[binding][ToBindingKey(name)];
+        slot.sampler = sampler;
+        return true;
+    }
+
+    void RenderDescriptorBindingSystem::ClearDomainBindings(graph::DomainMaterialBinding *binding)
+    {
+        if (binding)
+            domain_resource_bindings.erase(binding);
+    }
+
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material, const char *name) const
     {
         if (!material || !name || !*name)
@@ -213,6 +261,23 @@ namespace hgl::ecs
             return nullptr;
 
         return &resource_it->second;
+    }
+
+    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindDomainResourceBinding(
+        const graph::DomainMaterialBinding *binding, const char *name) const
+    {
+        if (!binding || !name || !*name)
+            return nullptr;
+
+        auto it = domain_resource_bindings.find(binding);
+        if (it == domain_resource_bindings.end())
+            return nullptr;
+
+        auto r = it->second.find(ToBindingKey(name));
+        if (r == it->second.end())
+            return nullptr;
+
+        return &r->second;
     }
 
     void RenderDescriptorBindingSystem::Update(float /*deltaTime*/)
@@ -237,6 +302,7 @@ namespace hgl::ecs
         EnsureViewportUBO();
 
         ApplyContractBindings();
+        ApplyDomainBindings();
     }
 
     const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
@@ -619,6 +685,74 @@ namespace hgl::ecs
                     frame_stats.fallback_hits);
 
             last_contract_stats = frame_stats;
+        }
+    }
+
+    void RenderDescriptorBindingSystem::ApplyDomainBindings()
+    {
+        if (registered_domain_bindings.empty())
+            return;
+
+        const auto *camera_ubo = ResolveCameraUBO();
+        const auto *sky_ubo    = ResolveSkyUBO();
+        const auto *viewport_buf = ResolveViewportUBO();
+
+        for (graph::DomainMaterialBinding *binding : registered_domain_bindings)
+        {
+            if (!binding)
+                continue;
+
+            graph::Material *material = binding->GetMaterial();
+            if (!material)
+                continue;
+
+            const auto &contract = material->GetBindingContract();
+
+            for (const auto &req : contract.requirements)
+            {
+                if (!req.name || !*req.name)
+                    continue;
+
+                switch (req.semantic)
+                {
+                case graph::mtl::DescriptorSemantic::ViewportInfo:
+                {
+                    if (viewport_buf)
+                        binding->BindUBO(req.set_type, req.name, viewport_buf, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::CameraInfo:
+                {
+                    if (camera_ubo)
+                        binding->BindUBO(req.set_type, req.name, camera_ubo, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::SkyInfo:
+                {
+                    if (sky_ubo)
+                        binding->BindUBO(req.set_type, req.name, sky_ubo, false);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialTexture:
+                {
+                    const auto *b = FindDomainResourceBinding(binding, req.name);
+                    if (b && b->texture)
+                        binding->BindTexture(req.set_type, req.name, b->texture);
+                    break;
+                }
+                case graph::mtl::DescriptorSemantic::MaterialSampler:
+                {
+                    const auto *b = FindDomainResourceBinding(binding, req.name);
+                    if (b && b->texture && b->sampler)
+                        binding->BindTextureSampler(req.set_type, req.name, b->texture, b->sampler);
+                    break;
+                }
+                default:
+                    // LocalToWorld, TransformID, MaterialInstance: per-batch GPU buffers
+                    // not yet assigned to domain bindings (Phase 4).
+                    break;
+                }
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ namespace hgl::graph
 {
     class RenderCmdBuffer;
     class Material;
+    class DomainMaterialBinding;
     class IRenderTarget;
     class IGPUBuffer;
     class Texture;
@@ -79,6 +80,12 @@ namespace hgl::ecs
         ContractDiagStats last_contract_stats{};
         std::unordered_set<graph::Material *> pipeline_materials;
 
+        // Phase 2 — DomainMaterialBinding texture/sampler bindings
+        std::unordered_map<const graph::DomainMaterialBinding *,
+                           std::unordered_map<std::string, MaterialResourceBinding>>
+            domain_resource_bindings;
+        std::unordered_set<graph::DomainMaterialBinding *> registered_domain_bindings;
+
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
         ~RenderDescriptorBindingSystem() override;
@@ -112,17 +119,38 @@ namespace hgl::ecs
         void SetLegacyMaterialBindingFallbackEnabled(bool enabled) { enable_legacy_material_binding_fallback = enabled; }
         bool IsLegacyMaterialBindingFallbackEnabled() const { return enable_legacy_material_binding_fallback; }
 
+        // Phase 2 — Domain binding interface
+        /**
+         * 注册域绑定，使其参与每帧的 contract UBO 同步。
+         * 相同 domain 可绑多个 Material（Opaque + Masked，Phase 3）。
+         */
+        void RegisterDomainBinding(graph::DomainMaterialBinding *binding);
+        void UnregisterDomainBinding(graph::DomainMaterialBinding *binding);
+
+        /**
+         * 为指定域绑定注册 Texture/Sampler，用于 MaterialTexture/MaterialSampler 语义。
+         */
+        bool RegisterDomainTexture(graph::DomainMaterialBinding *binding,
+                                   const AnsiString &name, graph::Texture *tex);
+        bool RegisterDomainTextureSampler(graph::DomainMaterialBinding *binding,
+                                          const AnsiString &name,
+                                          graph::Texture *tex, graph::Sampler *sampler);
+        void ClearDomainBindings(graph::DomainMaterialBinding *binding);
+
     private:
 
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);
         void ApplyContractBindings();
+        void ApplyDomainBindings();
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, const char *name) const;
+        const MaterialResourceBinding *FindDomainResourceBinding(const graph::DomainMaterialBinding *binding, const char *name) const;
         void ValidateContractsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };
 }
+

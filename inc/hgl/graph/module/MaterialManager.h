@@ -191,14 +191,11 @@ public: // ResourceDomain — Phase 1
     ResourceDomain *        CreateResourceDomain        (Material *mtl);
 
     /**
-     * 创建一个 (domain, material) 绑定视图。
-     * Phase 1: 仅分配对象，Texture/Sampler 绑定在后续阶段引入。
+     * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。
+     * Phase 2: 支持压缩绑定 Texture/Sampler/UBO/SSBO，与同一 Shader 的其它域完全隔离。
+     * 关系检查：domain源 Material 的 MI stride 与目标 mtl 必须兼容。
      */
-    DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, Material *mtl)
-    {
-        if (!domain || !mtl) return nullptr;
-        return new DomainMaterialBinding(domain, mtl);
-    }
+    DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, Material *mtl);
 
 public: // ResourceDomain MaterialInstance creation (Phase 1)
 

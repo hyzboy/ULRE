@@ -1,4 +1,5 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
+#include<hgl/vk/VKDomainMaterialBinding.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -142,6 +143,35 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     }
 
     return(true);
+}
+
+bool RenderCmdBuffer::BindDescriptorSets(DomainMaterialBinding *binding)
+{
+    if(!binding) return false;
+
+    uint32_t count = 0;
+    VkDescriptorSet ds[DESCRIPTOR_SET_TYPE_COUNT];
+
+    ENUM_CLASS_FOR(DescriptorSetType, int, i)
+    {
+        MaterialParameters *mp = binding->GetMP((DescriptorSetType)i);
+
+        if(mp)
+        {
+            mp->Update();
+            ds[count] = mp->GetVkDescriptorSet();
+            ++count;
+        }
+    }
+
+    if(count > 0)
+    {
+        pipeline_layout = binding->GetPipelineLayout();
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline_layout, 0, count, ds, 0, nullptr);
+    }
+
+    return true;
 }
 
 void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)

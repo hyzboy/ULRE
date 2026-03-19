@@ -9,6 +9,7 @@
 #include<hgl/type/MemoryUtil.h>
 #include<hgl/log/Log.h>
 namespace hgl::graph{
+class DomainMaterialBinding;
 class VulkanCmdBuffer
 {
 public:
@@ -178,6 +179,8 @@ public:
     }
 
     bool BindDescriptorSets(Material *);
+
+    bool BindDescriptorSets(DomainMaterialBinding *);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {
