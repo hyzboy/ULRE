@@ -140,9 +140,7 @@ SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
                         ${NEW_MTL_INCLUDE_PATH}/BlendMode.h
                         ${NEW_MTL_INCLUDE_PATH}/PassType.h
                         ${NEW_MTL_INCLUDE_PATH}/PlatformBackend.h
-                        ${NEW_MTL_INCLUDE_PATH}/MaterialCategory.h
                         ${NEW_MTL_INCLUDE_PATH}/ShaderPermutationKey.h
-                        ${NEW_MTL_INCLUDE_PATH}/MaterialPresetDef.h
                         ShaderPermutationKey.cpp
 )
 
