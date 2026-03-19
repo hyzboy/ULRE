@@ -145,10 +145,8 @@ SET(NEW_MTL_TYPE_FILES  ${NEW_MTL_INCLUDE_PATH}/SurfaceType.h
                         ${NEW_MTL_INCLUDE_PATH}/MaterialPresetDef.h
                         ${NEW_MTL_INCLUDE_PATH}/DeviceQualityProfile.h
                         ${NEW_MTL_INCLUDE_PATH}/DescriptorSetBindings.h
-                        ${NEW_MTL_INCLUDE_PATH}/NewDescriptorSetLayoutFactory.h
                         NewShaderPermutationKey.cpp
                         DeviceQualityProfile.cpp
-                        NewDescriptorSetLayoutFactory.cpp
 )
 
 SOURCE_GROUP("New Material Types" FILES ${NEW_MTL_TYPE_FILES})
