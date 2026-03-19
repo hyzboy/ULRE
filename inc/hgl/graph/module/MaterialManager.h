@@ -12,6 +12,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace hgl::graph{
 
@@ -42,6 +43,9 @@ private:
 
     AutoIdObjectManager<MaterialID,             Material>           rm_material;                ///<材质合集
     AutoIdObjectManager<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
+
+    // Phase 3 — 域生命周期追踪：domain → 该域所有 DomainMaterialBinding
+    std::unordered_map<ResourceDomain *, std::vector<DomainMaterialBinding *>> domain_bindings_map;
 
 private:
 
@@ -101,9 +105,18 @@ public: // Override Release from GraphModule - cleanup all resources
 
     void Release() override
     {
-        // 清理所有材质实例
+        // 清理所有材质实例（MI dtor 会调 domain->FreeMISlot，domain 须在此之后释放）
         if (rm_material_instance.GetCount() > 0)
             rm_material_instance.Clear();
+
+        // Phase 3: 清理所有 DomainMaterialBinding 及 ResourceDomain
+        for (auto &kv : domain_bindings_map)
+        {
+            for (auto *b : kv.second)
+                delete b;
+            delete kv.first;
+        }
+        domain_bindings_map.clear();
 
         // 清理所有材质
         if (rm_material.GetCount() > 0)
@@ -182,7 +195,7 @@ public: //MaterialInstance
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
     }
 
-public: // ResourceDomain — Phase 1
+public: // ResourceDomain — Phase 1 / Phase 3
 
     /**
      * 创建一个以 mtl 为模板的资源域，并初始化其 MI 数据池。
@@ -193,9 +206,22 @@ public: // ResourceDomain — Phase 1
     /**
      * 创建一个 (domain, material) 绑定视图，并分配该 pair 专属的 VkDescriptorSet 集合。
      * Phase 2: 支持压缩绑定 Texture/Sampler/UBO/SSBO，与同一 Shader 的其它域完全隔离。
-     * 关系检查：domain源 Material 的 MI stride 与目标 mtl 必须兼容。
+     * Phase 3: 同一 domain 可绑定多个 Material（Opaque + Masked 等），各 binding 独立管理。
+     * 关系检查：MI stride 必须兼容；描述符集类型差异以 Warning 形式打印。
      */
     DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, Material *mtl);
+
+    /**
+     * 释放一个 DomainMaterialBinding，并将其从所属域的追踪列表中移除。
+     * 注意：不释放关联的 ResourceDomain。
+     */
+    void ReleaseDomainMaterialBinding(DomainMaterialBinding *binding);
+
+    /**
+     * 释放一个 ResourceDomain 及其所有 DomainMaterialBinding。
+     * 调用前请确保该域不再有存活的 MaterialInstance（否则 FreeMISlot 会访问已释放对象）。
+     */
+    void ReleaseResourceDomain(ResourceDomain *domain);
 
 public: // ResourceDomain MaterialInstance creation (Phase 1)
 
@@ -224,6 +250,18 @@ public: // Phase 0 Stats — 帧级资源量观测
 
     /// 当前存活 MaterialInstance 数量
     uint32_t GetMaterialInstanceCount() const { return (uint32_t)rm_material_instance.GetCount(); }
+
+    /// 当前存活 ResourceDomain 数量（Phase 3）
+    uint32_t GetDomainCount()           const { return (uint32_t)domain_bindings_map.size(); }
+
+    /// 当前总 DomainMaterialBinding 数量（Phase 3）
+    uint32_t GetDomainBindingCount()    const
+    {
+        uint32_t n = 0;
+        for (const auto &kv : domain_bindings_map)
+            n += (uint32_t)kv.second.size();
+        return n;
+    }
 
 };//class MaterialManager
 

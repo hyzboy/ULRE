@@ -24,6 +24,7 @@
 #include<cstdio>
 #include<cstdint>
 #include<vector>
+#include<algorithm>
 
 namespace hgl::graph{
 
@@ -693,13 +694,13 @@ ResourceDomain *MaterialManager::CreateResourceDomain(Material *mtl)
 
 DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDomain *domain, Material *mtl)
 {
-    if(!domain || !mtl)
+    if (!domain || !mtl)
         return nullptr;
 
-    // 兴容性检查：域的源 material 的 MI stride 必须与目标 mtl 一致。
-    // (Phase 3 中当同一域绑多个 Material 时进一步检查)
-    if(domain->GetSourceMaterial() != mtl
-        && domain->GetMIDataBytes() != mtl->GetMIDataBytes())
+    Material *source_mtl = domain->GetSourceMaterial();
+
+    // Hard reject: MI stride mismatch means MI data cannot be shared
+    if (source_mtl != mtl && domain->GetMIDataBytes() != mtl->GetMIDataBytes())
     {
         std::fprintf(stderr,
             "[MaterialManager] CreateDomainMaterialBinding: MI stride mismatch "
@@ -708,25 +709,88 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDoma
         return nullptr;
     }
 
+    // Phase 3 diagnostic: warn if descriptor set types differ between source and target
+    if (source_mtl && source_mtl != mtl)
+    {
+        ENUM_CLASS_FOR(DescriptorSetType, int, i)
+        {
+            const bool src_has = source_mtl->hasSet((DescriptorSetType)i);
+            const bool tgt_has = mtl->hasSet((DescriptorSetType)i);
+            if (src_has != tgt_has)
+            {
+                std::fprintf(stderr,
+                    "[MaterialManager] CreateDomainMaterialBinding: descriptor set %d "
+                    "present in %s but absent from %s (source='%s' target='%s')\n",
+                    i,
+                    src_has ? "source" : "target",
+                    src_has ? "target" : "source",
+                    source_mtl->GetName().c_str(),
+                    mtl->GetName().c_str());
+            }
+        }
+    }
+
     VulkanDevice *device = GetDevice();
-    if(!device)
+    if (!device)
         return nullptr;
 
     MaterialParameters *mp[DESCRIPTOR_SET_TYPE_COUNT] = {};
 
     ENUM_CLASS_FOR(DescriptorSetType, int, i)
     {
-        if(mtl->hasSet((DescriptorSetType)i))
+        if (mtl->hasSet((DescriptorSetType)i))
             mp[i] = CreateMaterialMP(mtl->GetName(), mtl->desc_manager,
                                      mtl->pipeline_layout_data, (DescriptorSetType)i);
     }
 
-    return new DomainMaterialBinding(domain, mtl, mp);
+    DomainMaterialBinding *binding = new DomainMaterialBinding(domain, mtl, mp);
+
+    // Phase 3: register binding for lifecycle tracking
+    domain_bindings_map[domain].push_back(binding);
+
+    return binding;
+}
+
+// Phase 3 -- domain lifecycle management
+
+void MaterialManager::ReleaseDomainMaterialBinding(DomainMaterialBinding *binding)
+{
+    if (!binding)
+        return;
+
+    ResourceDomain *d = binding->GetDomain();
+    auto it = domain_bindings_map.find(d);
+    if (it != domain_bindings_map.end())
+    {
+        auto &vec = it->second;
+        vec.erase(std::remove(vec.begin(), vec.end(), binding), vec.end());
+        if (vec.empty())
+            domain_bindings_map.erase(it);
+    }
+
+    delete binding;
+}
+
+void MaterialManager::ReleaseResourceDomain(ResourceDomain *domain)
+{
+    if (!domain)
+        return;
+
+    auto it = domain_bindings_map.find(domain);
+    if (it != domain_bindings_map.end())
+    {
+        for (auto *b : it->second)
+            delete b;
+        domain_bindings_map.erase(it);
+    }
+
+    delete domain;
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil)
 {
-    if(!domain) return nullptr;
+    if (!domain)
+        return nullptr;
 
     Material *mtl = domain->GetSourceMaterial();
     if(!mtl) return nullptr;
