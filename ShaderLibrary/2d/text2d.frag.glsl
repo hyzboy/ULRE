@@ -17,6 +17,6 @@ void main()
 {
     MaterialInstance mi = mtl.mi[fragMIID];
     vec4 TextColor = unpackUnorm4x8(mi.TextColor);
-    float lum = texture(TextureText, fragTexCoord).r;
+    float lum = GetSamplerText(fragTexCoord).r;
     FragColor = vec4(TextColor.rgb * lum, TextColor.a);
 }

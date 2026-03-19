@@ -4,7 +4,7 @@
 
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {
-    vec4 texColor = texture(TextureBaseColor, si.uv0);
+    vec4 texColor = GetSamplerBaseColor(si.uv0);
 
     SurfaceOutput so;
     so.baseColor = texColor.rgb;
@@ -19,5 +19,5 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 
 float EvalAlpha(SurfaceInput si, uint materialInstanceID)
 {
-    return texture(TextureBaseColor, si.uv0).a;
+    return GetSamplerBaseColor(si.uv0).a;
 }

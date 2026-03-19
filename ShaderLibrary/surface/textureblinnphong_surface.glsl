@@ -34,11 +34,11 @@ vec2 ResolveSurfaceUV(vec2 uv)
 
 vec3 ResolveAlbedoColor(vec2 uv)
 {
-    vec4 c = texture(TextureBaseColor, uv);
+    vec4 c = GetSamplerBaseColor(uv);
     vec3 rgb = c.rgb;
     if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
     {
-        vec4 center = texture(TextureBaseColor, vec2(0.5, 0.5));
+        vec4 center = GetSamplerBaseColor(vec2(0.5, 0.5));
         rgb = center.rgb;
         if (max(max(rgb.r, rgb.g), rgb.b) < 0.0001)
             rgb = vec3(max(c.a, center.a));
@@ -48,14 +48,14 @@ vec3 ResolveAlbedoColor(vec2 uv)
 
 vec3 ResolveSurfaceNormal(vec3 input_normal, vec2 uv, float normal_strength)
 {
-    vec3 sampled_normal = texture(TextureNormal, uv).xyz * 2.0 - 1.0;
+    vec3 sampled_normal = GetSamplerNormal(uv).xyz * 2.0 - 1.0;
     sampled_normal.y = -sampled_normal.y;
     return normalize(input_normal + vec3(sampled_normal.xy, 0.0) * normal_strength);
 }
 
 float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
 {
-    float roughness_tex = texture(TextureRoughness, uv).r;
+    float roughness_tex = GetSamplerRoughness(uv).r;
     return clamp(base_roughness * roughness_tex, 0.04, 1.0);
 }
 
