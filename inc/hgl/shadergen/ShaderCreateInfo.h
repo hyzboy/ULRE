@@ -41,6 +41,7 @@ protected:
 public:
 
     ShaderDescriptorInfo *GetShaderDescriptorInfo(){return sdi;}
+    const ShaderDescriptorInfo *GetShaderDescriptorInfo()const{return sdi;}
     const ShaderStage GetShaderStage()const{return shader_stage;}
 
 public:

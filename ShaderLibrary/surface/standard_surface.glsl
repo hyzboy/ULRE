@@ -12,69 +12,13 @@ struct MaterialInstance
     float metallic;
     float roughness;
     float normal_scale;  // normal map intensity
-#if TEXTURE_ARRAY_MODE
-    uint  texture_id;    // array layer when any texture slot uses sampler2DArray
-#endif
 };
 MI_SSBO;
-
-// ─── Textures ─────────────────────────────────────────────────────────────────
-#if BASE_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2DArray Sampler_BaseColor;
-#else
-layout(set=MATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2D Sampler_BaseColor;
-#endif
-
-#if NORMAL_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2DArray Sampler_Normal;
-#else
-layout(set=MATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2D Sampler_Normal;
-#endif
-
-#if ROUGH_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2DArray Sampler_Roughness;   // R=metallic, G=roughness
-#else
-layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2D Sampler_Roughness;   // R=metallic, G=roughness
-#endif
 
 // ─── Sky Light ────────────────────────────────────────────────────────────────
 #include "common/skylight_simple.glsl"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-#if TEXTURE_ARRAY_MODE
-float ULRE_TextureLayer(MaterialInstance mi)
-{
-    return float(mi.texture_id);
-}
-#endif
-
-vec4 GetSamplerBaseColor(MaterialInstance mi, vec2 uv)
-{
-#if BASE_TEX_ARRAY_MODE
-    return texture(Sampler_BaseColor, vec3(uv, ULRE_TextureLayer(mi)));
-#else
-    return texture(Sampler_BaseColor, uv);
-#endif
-}
-
-vec4 GetSamplerNormal(MaterialInstance mi, vec2 uv)
-{
-#if NORMAL_TEX_ARRAY_MODE
-    return texture(Sampler_Normal, vec3(uv, ULRE_TextureLayer(mi)));
-#else
-    return texture(Sampler_Normal, uv);
-#endif
-}
-
-vec4 GetSamplerRoughness(MaterialInstance mi, vec2 uv)
-{
-#if ROUGH_TEX_ARRAY_MODE
-    return texture(Sampler_Roughness, vec3(uv, ULRE_TextureLayer(mi)));
-#else
-    return texture(Sampler_Roughness, uv);
-#endif
-}
 
 float D_GGX(float NdotH, float alpha2)
 {
@@ -110,18 +54,18 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     // ── Base color ────────────────────────────────────────────────────────────
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
-    albedo *= GetSamplerBaseColor(mi, si.uv0).rgb;
+    albedo *= GetSamplerBaseColor(si.uv0).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
     // ── Normal Map ────────────────────────────────────────────────────────────
-    vec3 nm = GetSamplerNormal(mi, si.uv0).xyz * 2.0 - 1.0;
+    vec3 nm = GetSamplerNormal(si.uv0).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 
     // ── MR Map ────────────────────────────────────────────────────────────────
-    vec2 mr    = GetSamplerRoughness(mi, si.uv0).rg;
+    vec2 mr    = GetSamplerRoughness(si.uv0).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 

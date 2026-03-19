@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <cstdint>
+#include <cstring>
 
 namespace hgl::graph::mtl::SamplerName
 {
@@ -104,5 +105,24 @@ namespace hgl::graph::mtl::SamplerName
         case TextureSampleVariant::AtlasReserved: return "sampler2D"; // placeholder
         default:                                  return "sampler2D";
         }
+    }
+
+    inline bool TryGetSlotFromDescriptorName(const char *descriptor_name, SamplerSlot &slot)
+    {
+        if (!descriptor_name || !*descriptor_name)
+            return false;
+
+        for (uint8_t i = 0; i < static_cast<uint8_t>(SamplerSlot::Count); ++i)
+        {
+            const SamplerSlot current = static_cast<SamplerSlot>(i);
+            const char *current_name = ToDescriptorName(current);
+            if (current_name && std::strcmp(current_name, descriptor_name) == 0)
+            {
+                slot = current;
+                return true;
+            }
+        }
+
+        return false;
     }
 }//namespace hgl::graph::mtl::SamplerName

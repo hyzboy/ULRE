@@ -2,8 +2,6 @@
 // Billboard 共用 — 采样 TextureBaseColor，无光照
 // Dynamic/Fixed 共用此 surface function
 
-layout(set=MATERIAL_SET, binding=TEXTUREBASECOLOR_BINDING) uniform sampler2D TextureBaseColor;
-
 SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 {
     vec4 texColor = texture(TextureBaseColor, si.uv0);

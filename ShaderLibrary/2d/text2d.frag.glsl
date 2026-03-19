@@ -6,8 +6,6 @@ struct MaterialInstance {
     uint TextColor;
 };
 
-layout(set=TEX_SET, binding=TEX_BINDING) uniform sampler2D TextureText;
-
 MI_SSBO;
 
 layout(location=0) flat in uint fragMIID;

@@ -112,7 +112,11 @@ SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})
 
 SET(MATERIAL_COMPILER_FILES	 MaterialCompiler.cpp)
 
+SET(SAMPLER_GLSL_EMITTER_FILES ${SHADERGEN_INCLUDE_PATH}/SimpleSamplerGLSLEmitter.h
+                               SimpleSamplerGLSLEmitter.cpp)
+
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
+SOURCE_GROUP("Material Compiler\\Sampler" FILES ${SAMPLER_GLSL_EMITTER_FILES})
 
 SET(SHADER_LAYOUT_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutContract.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutBuilder.h
@@ -174,6 +178,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${FIXED_MTL_FILES}
                                         ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
                                         ${MATERIAL_COMPILER_FILES}
+                                        ${SAMPLER_GLSL_EMITTER_FILES}
                                         ${SHADER_LAYOUT_HEADER_FILES}
                                         ${SHADER_LAYOUT_SOURCE_FILES}
                                         ${COMPOSITOR_HEADER_FILES}

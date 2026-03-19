@@ -63,6 +63,7 @@ public:
 
     const UBODescriptorList &           GetUBOList()const{return ubo_list;}
     const SSBODescriptorList &          GetSSBOList()const{return ssbo_list;}
+    const TextureDescriptorList &       GetTextureList()const{return texture_list;}
     const TextureSamplerDescriptorList &GetTextureSamplerList()const{return texture_sampler_list;}
 
     const ConstValueDescriptorList &    GetConstList()const{return const_value_list;}

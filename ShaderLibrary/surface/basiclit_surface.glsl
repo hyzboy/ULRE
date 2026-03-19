@@ -14,11 +14,6 @@ struct MaterialInstance
 };
 MI_SSBO;
 
-// Textures
-layout(set=MATERIAL_SET, binding=TEXTUREBASECOLOR_BINDING) uniform sampler2D TextureBaseColor;
-layout(set=MATERIAL_SET, binding=TEXTURENORMAL_BINDING) uniform sampler2D TextureNormal;
-layout(set=MATERIAL_SET, binding=TEXTUREROUGHNESS_BINDING) uniform sampler2D TextureRoughness;
-
 // Sky light
 #include "common/skylight_simple.glsl"
 
