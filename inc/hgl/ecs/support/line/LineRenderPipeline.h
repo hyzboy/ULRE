@@ -88,8 +88,6 @@ namespace hgl::ecs
         // ------- Per-width batch slots (replace LineWidthBatch) -------
         struct LineWidthSlot
         {
-            using TransformIDAccessor = hgl::graph::BufferAccessor<hgl::graph::RawDataAccess<hgl::graph::Assign::TransformID::ValueType>>;
-
             uint32_t line_count   = 0;
             uint32_t gpu_capacity = 0;   ///< current VAB capacity in line-count
 
@@ -98,7 +96,6 @@ namespace hgl::ecs
 
             graph::BufferAccessor3f  va_pos;   ///< maps to StagedBuffer for positions
             graph::BufferAccessor1u8 va_color; ///< maps to StagedBuffer for color indices
-            TransformIDAccessor      va_transform; ///< per-vertex TransformID stream
 
             void Reset();
             void Clear();
@@ -109,8 +106,7 @@ namespace hgl::ecs
                                 uint32_t                 width);
             bool AddSegment(const hgl::math::Vector3f& from,
                             const hgl::math::Vector3f& to,
-                            uint8_t                     color_index,
-                            hgl::graph::Assign::TransformID::ValueType transform_index);
+                            uint8_t                     color_index);
             void Draw(graph::RenderCmdBuffer* cmd);
         };
 

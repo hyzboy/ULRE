@@ -10,19 +10,11 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    // TerrainGrid �?�?Position 顶点输入，只�?TransformID
+    // TerrainGrid has no vertex attributes.
     // VS 通过 gl_VertexID 生成网格坐标，texelFetch 采样高度/法线
 
-#if defined(HGL_TRANSFORM_ID_USE_VAB)
-    constexpr FixedVertexEntry TERRAIN_GRID_VERTEX[] = {
-        { Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB },
-    };
-    constexpr const FixedVertexEntry *TERRAIN_GRID_VERTEX_PTR = TERRAIN_GRID_VERTEX;
-    constexpr uint32_t TERRAIN_GRID_VERTEX_COUNT = uint32_t(sizeof(TERRAIN_GRID_VERTEX) / sizeof(TERRAIN_GRID_VERTEX[0]));
-#else
     constexpr const FixedVertexEntry *TERRAIN_GRID_VERTEX_PTR = nullptr;
     constexpr uint32_t TERRAIN_GRID_VERTEX_COUNT = 0;
-#endif
 
     // Resort 字母�? camera=0, viewport=1 (Scene)
     //                TextureHeight=0, TextureNormal=1 (Material)
@@ -30,9 +22,7 @@ namespace
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",     nullptr },
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",       nullptr },
         { DescriptorSetType::Transform, TransformDescriptorKind, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
-    #if !defined(HGL_TRANSFORM_ID_USE_VAB)
         { DescriptorSetType::Transform, TransformIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr },
-    #endif
         { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureHeight", nullptr, "sampler2D" },
         { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureNormal", nullptr, "sampler2D" },
     };

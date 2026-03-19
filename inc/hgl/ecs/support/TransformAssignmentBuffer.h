@@ -95,20 +95,11 @@ namespace hgl::ecs
         bool WriteTransformIDBuffer(const std::vector<RenderItem*>& items,
                         const size_t item_count,
                         const uint32_t max_transform_id);
-        bool EnsureTransformVABCapacity(const size_t item_count);
-        bool WriteTransformIDVAB(const std::vector<RenderItem*>& items,
-                     const size_t item_count,
-                     const uint32_t max_transform_id);
 
     private:    // 分发数据（TransformID）
         uint32_t transform_id_buffer_max_count; ///<TransformID descriptor buffer capacity
         graph::DeviceBuffer* transform_id_buffer; ///<TransformID data(UBO/SSBO)
         VkBuffer transform_id_vk_buffer;         ///<TransformID descriptor-backed VkBuffer
-
-    private:    // 分发数据（VAB legacy path）
-        uint32_t node_count;                    ///<节点数量
-        graph::VAB* transform_vab;              ///<LocalToWorld矩阵ID分发数据VAB(R16UI格式)
-        VkBuffer transform_vab_buffer;          ///<LocalToWorld矩阵ID分发数据Buffer
 
     private:
         void Clear();
@@ -121,11 +112,6 @@ namespace hgl::ecs
          * 设置 Camera-Relative Rendering 偏移（每帧更新）
          */
         void SetCameraOffset(const math::Vector3d& offset) { camera_offset_ = offset; }
-
-        /**
-         * 获取Transform VAB缓冲（用于绑定到管线）
-         */
-        const VkBuffer GetTransformVAB() const { return transform_vab_buffer; }
 
         graph::DeviceBuffer* GetTransformDataBuffer() const { return transform_buffer; }
         graph::DeviceBuffer* GetTransformIDDataBuffer() const { return transform_id_buffer; }

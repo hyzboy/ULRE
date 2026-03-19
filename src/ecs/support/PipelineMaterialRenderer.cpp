@@ -36,7 +36,6 @@ namespace hgl::ecs
     }
 
     bool PipelineMaterialRenderer::BindVAB(const DrawBatch* batch,
-                                               VkBuffer transform_vab,
                                                MaterialInstanceAssignmentBuffer* mi_buffer)
     {
         // Log GeometryDataBuffer details
@@ -58,16 +57,6 @@ namespace hgl::ecs
         {
             std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add geometry data buffer to VABList!" << std::endl;
             return false;
-        }
-
-        // 如果有ECS Transform分配缓冲，绑定Transform索引VAB
-        if (transform_vab != VK_NULL_HANDLE && !vab_list->IsFull())
-        {
-            if (!vab_list->Add(transform_vab, 0))
-            {
-                std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS transform VAB!" << std::endl;
-                return false;
-            }
         }
 
         // 如果有ECS MaterialInstance分配缓冲，绑定MaterialInstance索引VAB
@@ -128,7 +117,6 @@ namespace hgl::ecs
     bool PipelineMaterialRenderer::Draw( DrawBatch* batch,
                                             TransformAssignmentBuffer* transform_buffer,
                                             MaterialInstanceAssignmentBuffer* mi_buffer,
-                                            VkBuffer transform_vab,
                                             graph::IndirectDrawBuffer* icb_draw,
                                             graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
@@ -155,7 +143,7 @@ namespace hgl::ecs
             last_draw_range = nullptr;
 
             // 绑定新的顶点数组缓冲
-            if (!BindVAB(batch, transform_vab, mi_buffer))
+            if (!BindVAB(batch, mi_buffer))
             {
                 std::cout << "[PipelineMaterialRenderer::Draw] ERROR: BindVAB failed!" << std::endl;
                 return false;
@@ -202,7 +190,6 @@ namespace hgl::ecs
                                               uint32_t batch_count,
                                               TransformAssignmentBuffer* transform_buffer,
                                               MaterialInstanceAssignmentBuffer* mi_buffer,
-                                              VkBuffer transform_vab,
                                               graph::IndirectDrawBuffer* icb_draw,
                                               graph::IndirectDrawIndexedBuffer* icb_draw_indexed)
     {
@@ -236,7 +223,6 @@ namespace hgl::ecs
         if (!material->hasLocalToWorld())
         {
             transform_buffer=nullptr;
-            transform_vab=nullptr;
         }
 
         // 绑定材质描述符集
@@ -247,7 +233,7 @@ namespace hgl::ecs
 
         for (uint32_t i = 0; i < batch_count; i++)
         {
-            Draw(batch, transform_buffer, mi_buffer, transform_vab, icb_draw, icb_draw_indexed);
+            Draw(batch, transform_buffer, mi_buffer, icb_draw, icb_draw_indexed);
             ++batch;
         }
 

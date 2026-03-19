@@ -50,10 +50,6 @@ namespace hgl::ecs
         graph::IndirectDrawBuffer *             icb_draw                = nullptr;          ///<间接绘制命令缓冲（无索引）
         graph::IndirectDrawIndexedBuffer *      icb_draw_indexed        = nullptr;          ///<间接绘制命令缓冲（有索引）
 
-        graph::VAB *                            transform_vab           = nullptr;          ///<Transform索引VAB
-        VkBuffer                                transform_vab_buffer    = VK_NULL_HANDLE;   ///<Transform索引VAB缓冲
-        uint32_t                                transform_vab_node_count= 0;                ///<Transform VAB容量
-
         TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<Transform分配缓冲(非拥有)
         MaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
 

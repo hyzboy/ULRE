@@ -59,7 +59,6 @@ inline std::string BuildDescriptorDefines(
     {
         defs += "#define L2W_SET "    + std::to_string(set) + "\n";
         defs += "#define L2W_BINDING 0\n";
-#if !defined(HGL_TRANSFORM_ID_USE_VAB)
         defs += "#define TID_SET "    + std::to_string(set) + "\n";
     #if !defined(HGL_MI_ID_USE_VAB)
         defs += "#define TID_BINDING 2\n";
@@ -68,10 +67,6 @@ inline std::string BuildDescriptorDefines(
     #else
         defs += "#define TID_BINDING 1\n";
     #endif
-#elif !defined(HGL_MI_ID_USE_VAB)
-        defs += "#define MID_SET "    + std::to_string(set) + "\n";
-        defs += "#define MID_BINDING 1\n";
-#endif
         set++;
     }
 
@@ -122,11 +117,7 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
     if(cfg->local_to_world)     p += "#define HAS_L2W\n";
     if(cfg->material_instance)  p += "#define HAS_MI\n";
 
-#if defined(HGL_TRANSFORM_ID_USE_VAB)
-    p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 0\n";
-#else
     p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 1\n";
-#endif
 
 #if defined(HGL_MI_ID_USE_VAB)
      p += "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR 0\n";
@@ -148,12 +139,7 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     v.push_back({cfg->position_format, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position});
 
     // TransformID (if L2W)
-    if(cfg->local_to_world)
-    {
-#if defined(HGL_TRANSFORM_ID_USE_VAB)
-        v.push_back({Assign::TransformID::VAT_FMT, VertexInputGroup::TransformID, VertexInputRate::Instance, Assign::TransformID::ATTRIB});
-#endif
-    }
+    (void)cfg;
 
     // MaterialInstanceID (if MI)
 #if defined(HGL_MI_ID_USE_VAB)
@@ -185,10 +171,8 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
     if(cfg->local_to_world)
         v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr});
 
-#if !defined(HGL_TRANSFORM_ID_USE_VAB)
     if(cfg->local_to_world)
         v.push_back({DescriptorSetType::Transform, TransformIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
-#endif
 
 #if !defined(HGL_MI_ID_USE_VAB)
     if(cfg->local_to_world && cfg->material_instance)

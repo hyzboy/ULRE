@@ -429,14 +429,8 @@ namespace hgl::ecs
         BuildBatches(batch, 0);
         UpdateMaterialInstanceBuffer(batch);
 
-#if defined(HGL_TRANSFORM_ID_USE_VAB)
-        EnsureTransformVAB(batch);
-        WriteTransformIndices(batch);
-#else
-        batch.transform_vab_buffer = VK_NULL_HANDLE;
         if (batch.transform_buffer && !batch.items.empty())
             batch.transform_buffer->WriteTransformIDs(batch.items);
-#endif
     }
 
     void PrimitiveBatchPipeline::SortBatchItems(MaterialBatch& batch)
@@ -493,98 +487,6 @@ namespace hgl::ecs
 
         if (batch.mi_buffer && !batch.items.empty())
             batch.mi_buffer->WriteItems(batch.items);
-    }
-
-    void PrimitiveBatchPipeline::EnsureTransformVAB(MaterialBatch& batch)
-    {
-        if (!batch.buffer_manager || batch.items.empty())
-            return;
-
-        const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
-        uint32_t new_node_count = 1;
-        while (new_node_count < item_count)
-            new_node_count <<= 1;
-
-        if (!batch.transform_vab || batch.transform_vab_node_count < item_count)
-        {
-            batch.transform_vab_node_count = new_node_count;
-
-            if (batch.transform_vab)
-            {
-                if (batch.buffer_manager)
-                    batch.buffer_manager->Release(batch.transform_vab);
-                else
-                    delete batch.transform_vab;
-            }
-
-            batch.transform_vab = batch.buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT,
-                                                                    batch.transform_vab_node_count,
-                                                                    nullptr,
-                                                                    graph::BufferAllocPolicy::Auto);
-            batch.transform_vab_buffer = batch.transform_vab ? batch.transform_vab->GetVkBuffer() : VK_NULL_HANDLE;
-        }
-    }
-
-    void PrimitiveBatchPipeline::WriteTransformIndices(MaterialBatch& batch)
-    {
-        if (!batch.transform_vab || batch.items.empty())
-            return;
-
-        const uint32_t item_count = static_cast<uint32_t>(batch.items.size());
-        auto *transform_gpu = batch.transform_vab->GetGPUBuffer();
-        if (!transform_gpu)
-        {
-            LogError("[ECS::PrimitiveBatchPipeline] TransformID VAB GPU buffer is null (items=%u)", item_count);
-            return;
-        }
-
-        graph::Assign::TransformID::ValueType* transform_ptr =
-            (graph::Assign::TransformID::ValueType*)(batch.transform_vab->Map(0, item_count));
-        if (!transform_ptr)
-        {
-            LogWarning("[ECS::PrimitiveBatchPipeline] TransformID VAB map failed (items=%u bytes=%llu)",
-                       item_count,
-                       static_cast<unsigned long long>(transform_gpu->GetSize()));
-            return;
-        }
-
-        const uint32_t max_transform_id =
-            std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
-        bool warned_overflow = false;
-
-        for (size_t i = 0; i < batch.items.size(); ++i)
-        {
-            RenderItem* item = batch.items[i];
-            const uint32_t idx = item ? item->transform_index : 0;
-
-            if (idx > max_transform_id)
-            {
-                if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
-                {
-                    LogWarning("[ECS::PrimitiveBatchPipeline] TransformID overflow (%u)", idx);
-                    warned_overflow = true;
-                }
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
-            }
-            else
-            {
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
-            }
-
-            ++transform_ptr;
-        }
-
-        batch.transform_vab->Unmap();
-
-        LogInfo("[ECS::PrimitiveBatchPipeline] TransformID VAB write complete: items=%u dirty=%d vkbuf=0x%llX",
-                 item_count,
-                 transform_gpu->IsDirty() ? 1 : 0,
-                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(batch.transform_vab_buffer)));
-        std::fprintf(stderr,
-                 "[ECS::PrimitiveBatchPipeline] TransformID VAB write complete: items=%u dirty=%d vkbuf=0x%llX\n",
-                 item_count,
-                 transform_gpu->IsDirty() ? 1 : 0,
-                 static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(batch.transform_vab_buffer)));
     }
 
     void PrimitiveBatchPipeline::BuildMaterialBatches()

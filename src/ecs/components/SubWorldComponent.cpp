@@ -530,7 +530,7 @@ namespace hgl::ecs
 
         // Run Collect → Batch → BufferCommit → BufferUpload → FrameSync.
         // This MUST happen before the parent's BeginRenderPass so that any
-        // StagedBuffers written during Batch (e.g. transform_vab) are
+        // Staged buffers written during Batch are
         // copied to GPU memory before the render pass opens.
         const uint32_t frame_index = child_context->GetFrameIndex();
         child_context->PrepareRenderPassSetup(frame_index, delta_time);

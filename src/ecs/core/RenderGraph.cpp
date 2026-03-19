@@ -147,7 +147,7 @@ namespace hgl
 
             // Prepare all sub-worlds BEFORE opening the render pass.
             // This runs each sub-world's Collect → Batch → BufferUpload so that
-            // StagedBuffers (e.g. transform_vab) are fully uploaded to GPU before
+            // Staged buffers are fully uploaded to GPU before
             // BeginRenderPass — vkCmdCopyBuffer is not allowed inside a render pass.
             if (sub_world_auto_update)
             {

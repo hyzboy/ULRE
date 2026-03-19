@@ -156,9 +156,6 @@ namespace hgl::ecs
         , transform_id_buffer_max_count(0)
         , transform_id_buffer(nullptr)
         , transform_id_vk_buffer(VK_NULL_HANDLE)
-        , node_count(0)
-        , transform_vab(nullptr)
-        , transform_vab_buffer(VK_NULL_HANDLE)
         , ring_writer(nullptr, sizeof(math::Matrix4f), ring_frames ? ring_frames : HGL_L2W_RING_FRAMES)
     {
 #ifdef HGL_L2W_USE_SSBO
@@ -604,24 +601,18 @@ namespace hgl::ecs
                 buffer_manager->Release(transform_buffer);
             if (transform_id_buffer)
                 buffer_manager->Release(transform_id_buffer);
-            if (transform_vab)
-                buffer_manager->Release(transform_vab);
             transform_buffer = nullptr;
             transform_id_buffer = nullptr;
-            transform_vab = nullptr;
         }
         else
         {
             SAFE_CLEAR(transform_buffer);
             SAFE_CLEAR(transform_id_buffer);
-            SAFE_CLEAR(transform_vab);
         }
 
         transform_buffer_max_count = 0;
         transform_id_buffer_max_count = 0;
-        node_count = 0;
         transform_id_vk_buffer = VK_NULL_HANDLE;
-        transform_vab_buffer = VK_NULL_HANDLE;
         pending_updates.clear();
     }
 
@@ -1034,169 +1025,6 @@ namespace hgl::ecs
         return true;
     }
 
-    bool TransformAssignmentBuffer::EnsureTransformVABCapacity(const size_t item_count)
-    {
-        bool recreated = false;
-
-        if (!transform_vab)
-        {
-            node_count = power_to_2(item_count);
-            recreated = true;
-        }
-        else if (node_count < item_count)
-        {
-            node_count = power_to_2(item_count);
-            if (buffer_manager)
-            {
-                buffer_manager->Release(transform_vab);
-                transform_vab = nullptr;
-            }
-            else
-            {
-                SAFE_CLEAR(transform_vab);
-            }
-
-            recreated = true;
-        }
-
-        if (!transform_vab)
-        {
-            graph::BufferAllocPolicy vab_policy = static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto;
-            if (buffer_manager)
-            {
-                transform_vab = buffer_manager->CreateVAB(graph::Assign::TransformID::VAB_FMT, node_count, nullptr, vab_policy);
-                transform_vab_buffer = transform_vab ? transform_vab->GetVkBuffer() : nullptr;
-
-            #ifdef _DEBUG
-                auto device = buffer_manager->GetDevice();
-                graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
-                if (du && transform_vab)
-                {
-                    du->SetBuffer(transform_vab->GetVkBuffer(), "ECS:VAB:Buffer:TransformID");
-                    du->SetDeviceMemory(transform_vab->GetVkMemory(), "ECS:VAB:Memory:TransformID");
-                }
-            #endif//_DEBUG
-            }
-        }
-
-        if (recreated && transform_vab)
-        {
-            auto *gpu = transform_vab->GetGPUBuffer();
-            GLogInfo("[TransformAssignmentBuffer] TransformID VAB ready: item_count=%u capacity=%u bytes=%llu gpu=0x%llX vk=0x%llX",
-                     static_cast<uint32_t>(item_count),
-                     node_count,
-                     static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(gpu)),
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)));
-        }
-        else if (ShouldEmitPeriodicLog(120) && transform_vab)
-        {
-            auto *gpu = transform_vab->GetGPUBuffer();
-            GLogInfo("[TransformAssignmentBuffer] TransformID VAB reuse: item_count=%u capacity=%u bytes=%llu dirty=%d",
-                     static_cast<uint32_t>(item_count),
-                     node_count,
-                     static_cast<unsigned long long>(gpu ? gpu->GetSize() : 0ULL),
-                     gpu ? (gpu->IsDirty() ? 1 : 0) : -1);
-        }
-
-        return transform_vab != nullptr;
-    }
-
-    bool TransformAssignmentBuffer::WriteTransformIDVAB(const std::vector<RenderItem*>& items,
-                                                        const size_t item_count,
-                                                        const uint32_t max_transform_id)
-    {
-        if (!transform_vab)
-            return false;
-
-        graph::IGPUBuffer *transform_gpu = transform_vab->GetGPUBuffer();
-        if (!transform_gpu)
-        {
-            GLogError("[TransformAssignmentBuffer::WriteItems] TransformID VAB GPU buffer is null");
-            return false;
-        }
-
-        graph::Assign::TransformID::ValueType* transform_ptr =
-            transform_gpu
-                ? (graph::Assign::TransformID::ValueType*)(transform_gpu->Map(0, transform_gpu->GetSize()))
-                : nullptr;
-
-        if (!transform_ptr)
-        {
-            GLogWarning("[TransformAssignmentBuffer::WriteItems] TransformID VAB map failed: items=%u bytes=%llu",
-                        static_cast<uint32_t>(item_count),
-                        static_cast<unsigned long long>(transform_gpu->GetSize()));
-            return false;
-        }
-
-        bool warned_overflow = false;
-        uint32_t nonzero_transform_ids = 0;
-        uint32_t min_transform_id = std::numeric_limits<uint32_t>::max();
-        uint32_t max_written_transform_id = 0;
-
-        for (size_t i = 0; i < item_count; i++)
-        {
-            RenderItem* item = items[i];
-
-            if (!item)
-            {
-                *transform_ptr = 0;
-                ++transform_ptr;
-                continue;
-            }
-
-            const uint32_t idx = item->transform_index;
-            if (idx > max_transform_id)
-            {
-                if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
-                {
-                    std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
-                              << idx << ")" << std::endl;
-                    warned_overflow = true;
-                }
-
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
-            }
-            else
-            {
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
-
-                if (idx != 0)
-                {
-                    ++nonzero_transform_ids;
-                    min_transform_id = hgl_min(min_transform_id, idx);
-                    max_written_transform_id = hgl_max(max_written_transform_id, idx);
-                }
-            }
-            ++transform_ptr;
-        }
-
-        transform_vab->Unmap();
-
-        GLogInfo("[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u nonzero=%u min=%u max=%u vab_capacity=%u dirty=%d vkbuf=0x%llX frame=%u",
-                  static_cast<uint32_t>(item_count),
-                  nonzero_transform_ids,
-                  min_transform_id == std::numeric_limits<uint32_t>::max() ? 0 : min_transform_id,
-                  max_written_transform_id,
-                  node_count,
-                  transform_gpu->IsDirty() ? 1 : 0,
-                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)),
-                  ring_writer.GetFrameIndex());
-
-        std::fprintf(stderr,
-                     "[TransformAssignmentBuffer::WriteItems] TransformID VAB write complete: items=%u nonzero=%u min=%u max=%u vab_capacity=%u dirty=%d vkbuf=0x%llX frame=%u\n",
-                     static_cast<uint32_t>(item_count),
-                     nonzero_transform_ids,
-                     min_transform_id == std::numeric_limits<uint32_t>::max() ? 0 : min_transform_id,
-                     max_written_transform_id,
-                     node_count,
-                     transform_gpu->IsDirty() ? 1 : 0,
-                     static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(transform_vab_buffer)),
-                     ring_writer.GetFrameIndex());
-
-        return true;
-    }
-
     bool TransformAssignmentBuffer::WriteTransformIDBuffer(const std::vector<RenderItem*>& items,
                                                            const size_t item_count,
                                                            const uint32_t max_transform_id)
@@ -1333,18 +1161,11 @@ namespace hgl::ecs
 
         WriteAllLocalToWorld(static_items, movable_items, static_count, dynamic_count, total_count);
 
-#if defined(HGL_TRANSFORM_ID_USE_VAB)
-        if (!EnsureTransformVABCapacity(item_count))
-            return;
-
-        WriteTransformIDVAB(items, item_count, max_transform_id);
-#else
         if (!EnsureTransformIDBufferCapacity(item_count,
                                              static_only ? graph::BufferAllocPolicy::GPUOnly : graph::BufferAllocPolicy::Auto))
             return;
 
         WriteTransformIDBuffer(items, item_count, max_transform_id);
-#endif
     }
 
     void TransformAssignmentBuffer::WriteTransformIDs(const std::vector<RenderItem*>& items)
@@ -1355,17 +1176,10 @@ namespace hgl::ecs
 
         const uint32_t max_transform_id = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
 
-#if defined(HGL_TRANSFORM_ID_USE_VAB)
-        if (!EnsureTransformVABCapacity(item_count))
-            return;
-
-        WriteTransformIDVAB(items, item_count, max_transform_id);
-#else
         if (!EnsureTransformIDBufferCapacity(item_count, graph::BufferAllocPolicy::Auto))
             return;
 
         WriteTransformIDBuffer(items, item_count, max_transform_id);
-#endif
     }
 
     void TransformAssignmentBuffer::FlushPendingUpdates()

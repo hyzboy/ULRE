@@ -90,7 +90,6 @@ namespace hgl::ecs
          * @return 绑定是否成功
          */
         bool BindVAB(const DrawBatch* batch,
-                     VkBuffer transform_vab,
                      MaterialInstanceAssignmentBuffer* mi_buffer);
 
         /**
@@ -113,7 +112,6 @@ namespace hgl::ecs
         bool Draw(DrawBatch* batch,
                   TransformAssignmentBuffer* transform_buffer,
                   MaterialInstanceAssignmentBuffer* mi_buffer,
-                  VkBuffer transform_vab,
                   graph::IndirectDrawBuffer* icb_draw,
                   graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
 
@@ -136,7 +134,6 @@ namespace hgl::ecs
                     uint32_t batch_count,
                     TransformAssignmentBuffer* transform_buffer,
                     MaterialInstanceAssignmentBuffer* mi_buffer,
-                    VkBuffer transform_vab,
                     graph::IndirectDrawBuffer* icb_draw,
                     graph::IndirectDrawIndexedBuffer* icb_draw_indexed);
     };

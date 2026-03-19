@@ -30,13 +30,6 @@ namespace hgl::ecs
             delete icb_draw_indexed;
         if (icb_draw)
             delete icb_draw;
-        if (transform_vab)
-        {
-            if (buffer_manager)
-                buffer_manager->Release(transform_vab);
-            else
-                delete transform_vab;
-        }
         if (mi_buffer)
             delete mi_buffer;
         if (renderer)
