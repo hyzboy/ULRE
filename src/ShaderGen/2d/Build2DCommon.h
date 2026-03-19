@@ -154,12 +154,7 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 // Common FixedDescriptorEntry builders
 // ─────────────────────────────────────────────────────────────
 
-#ifdef HGL_L2W_USE_SSBO
-    constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::SSBO;
-#endif
-#ifdef HGL_L2W_USE_UBO
-    constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::UBO;
-#endif
+constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::SSBO;
 
 inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
 {

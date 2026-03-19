@@ -169,7 +169,6 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     }
 
     local_to_world_ssbo=nullptr;
-    local_to_world_ubo=nullptr;
 
     has_local_to_world=config.local_to_world;
 }
@@ -379,23 +378,12 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
 
-#ifdef HGL_L2W_USE_SSBO
     local_to_world_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
     if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
         return(false);
 
     local_to_world_ssbo=descriptor_db.GetSSBO(SBS_LocalToWorld.name);
-#endif
-#ifdef HGL_L2W_USE_UBO
-    local_to_world_max_count=std::min<uint32_t>(ubo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
-
-    descriptor_db.AddStruct(SBS_LocalToWorld);
-
-    local_to_world_ubo=CreateUBODescriptor(SBS_LocalToWorld,shader_stage_flag_bits);
-
-    descriptor_db.AddUBO(shader_stage_flag_bits,SBS_LocalToWorld.set_type,local_to_world_ubo);
-#endif
 
     local_to_world_stage_bits=shader_stage_flag_bits;
 

@@ -2,19 +2,10 @@
 
 #include<hgl/mtl/DescriptorKind.h>
 
-// LocalToWorld options
-// Define HGL_L2W_USE_SSBO for storage buffer, or HGL_L2W_USE_UBO for uniform buffer.
-// Default: SSBO. If neither is defined, defaults to SSBO.
-#if !defined(HGL_L2W_USE_SSBO) && !defined(HGL_L2W_USE_UBO)
-    #define HGL_L2W_USE_SSBO
-    #define TransformDescriptorKind DescriptorKind::SSBO
-#else
-    #define TransformDescriptorKind DescriptorKind::UBO
-#endif
-
-#if defined(HGL_L2W_USE_SSBO) && defined(HGL_L2W_USE_UBO)
-#error "HGL_L2W_USE_SSBO and HGL_L2W_USE_UBO cannot both be defined"
-#endif
+// LocalToWorld storage options
+// LocalToWorld is descriptor-backed SSBO only.
+#define HGL_L2W_USE_SSBO
+#define TransformDescriptorKind DescriptorKind::SSBO
 
 #ifndef HGL_L2W_RING_FRAMES
 #define HGL_L2W_RING_FRAMES 3

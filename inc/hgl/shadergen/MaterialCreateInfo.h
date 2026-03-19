@@ -44,7 +44,6 @@ namespace hgl::graph
             uint32_t local_to_world_max_count;
             uint32_t local_to_world_stage_bits;
             SSBODescriptor *local_to_world_ssbo;
-            UBODescriptor *local_to_world_ubo;
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
