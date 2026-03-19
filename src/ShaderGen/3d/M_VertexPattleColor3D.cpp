@@ -57,7 +57,8 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
     local_cfg.SetPrivateShaderBufferSources(private_sbs_list,1);
 
     MaterialVariantKey var_key;
-    var_key.feature_bits = VF_UseVertexColor | VF_DebugShading;
+    var_key.SetVertexAttribEnabled(VertexAttrib::Color);
+    var_key.SetDebugShading(true);
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {

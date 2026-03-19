@@ -17,13 +17,16 @@ namespace hgl::graph::mtl::SamplerName
         Count
     };
 
-    enum class TextureSampleVariant : uint8_t
+    enum class TextureSourceMode : uint8
     {
-        Single2D = 0,
-        Array2D,
-        AtlasReserved
-    };
+        None = 0,
+        Simple,
+        Array,
+        Atlas,
 
+        ENUM_CLASS_RANGE(None, Atlas)
+    };
+    
     // Legacy names kept for compatibility with existing call sites.
     constexpr const char BaseColor[] = "TextureBaseColor";
     constexpr const char Normal[] = "TextureNormal";
@@ -96,14 +99,15 @@ namespace hgl::graph::mtl::SamplerName
         }
     }
 
-    constexpr const char *ToGLSLSamplerType(const TextureSampleVariant variant)
+    constexpr const char *ToGLSLSamplerType(const TextureSourceMode mode)
     {
-        switch (variant)
+        switch (mode)
         {
-        case TextureSampleVariant::Single2D:      return "sampler2D";
-        case TextureSampleVariant::Array2D:       return "sampler2DArray";
-        case TextureSampleVariant::AtlasReserved: return "sampler2D"; // placeholder
-        default:                                  return "sampler2D";
+        case TextureSourceMode::Array:   return "sampler2DArray";
+        case TextureSourceMode::Simple:  return "sampler2D";
+        case TextureSourceMode::Atlas:   return "sampler2D"; // placeholder
+        case TextureSourceMode::None:    return "sampler2D";
+        default:                         return "sampler2D";
         }
     }
 

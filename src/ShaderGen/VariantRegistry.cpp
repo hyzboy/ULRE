@@ -52,13 +52,17 @@ MaterialVariantDesc MakeDesc(
 inline MaterialVariantKey K(SurfaceType st,
                              GeometryMode gm,
                              TextureSourceMode tsm = TextureSourceMode::None,
-                             uint32 fb = VF_None)
+                             uint32 vertex_bits = 0,
+                             uint32 sampler_bits = 0,
+                             uint32 extra_bits = EF_None)
 {
     MaterialVariantKey k;
     k.surface_type        = st;
     k.geometry_mode       = gm;
     k.texture_source_mode = tsm;
-    k.feature_bits        = fb;
+    k.vertex_attribute_feature_bits = vertex_bits;
+    k.sampler_feature_bits = sampler_bits;
+    k.extra_feature_bits = extra_bits;
     return k;
 }
 
@@ -81,7 +85,8 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexColor
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, TSM::None, VF_UseVertexColor),
+                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                    VertexAttribFeatureBit(VertexAttrib::Color)),
         MakeDesc("VertexColor3D",
                  "compositor/main_forward_unlit_vertexcolor.vert.glsl",
                  "compositor/main_forward_unlit_vertexcolor.frag.glsl",
@@ -91,7 +96,8 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexLuminance3D (VEC3 position)
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, TSM::None, VF_UseVertexLum),
+                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                    VertexAttribFeatureBit(VertexAttrib::Luminance)),
         MakeDesc("VertexLuminance3D",
                  "compositor/main_forward_unlit_luminance.vert.glsl",
                  "compositor/main_forward_unlit_luminance.frag.glsl",
@@ -101,7 +107,8 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexLuminance2D (VEC2 position)
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, TSM::None, VF_UseVertexLum | VF_UsePos2D),
+                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                    VertexAttribFeatureBit(VertexAttrib::Luminance) | VertexAttribFeatureBit(VertexAttrib::Position)),
         MakeDesc("VertexLuminance2D",
                  "compositor/main_forward_unlit_luminance_2d.vert.glsl",
                  "compositor/main_forward_unlit_luminance.frag.glsl",
@@ -111,7 +118,10 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: VertexPattleColor
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, TSM::None, VF_UseVertexColor | VF_DebugShading),
+                K(ST::Unlit, GM::Mesh3D, TSM::None,
+                    VertexAttribFeatureBit(VertexAttrib::Color),
+                    0,
+                    EF_DebugShading),
         MakeDesc("VertexPattleColor3D",
                  "compositor/main_forward_unlit_pattle.vert.glsl",
                  "compositor/main_forward_unlit_vertexcolor.frag.glsl",
@@ -121,7 +131,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     // 3D Unlit: Gizmo
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Unlit, GM::Mesh3D, TSM::None, VF_DebugShading),
+        K(ST::Unlit, GM::Mesh3D, TSM::None, 0, 0, EF_DebugShading),
         MakeDesc("Gizmo3D",
                  "compositor/main_forward_unlit_normal.vert.glsl",
                  "compositor/main_forward_unlit_normal.frag.glsl",
@@ -134,7 +144,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardCameraFacing;
         key.texture_source_mode = TSM::Simple;
-        key.feature_bits        = VF_HasBaseColorTex;
+        key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Transparent;
         key.pass_hint           = PassType::ForwardTransparent;
         RegisterVariant(key,
@@ -151,7 +161,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         MaterialVariantKey key;
         key.geometry_mode       = GM::BillboardAxisLocked;
         key.texture_source_mode = TSM::Simple;
-        key.feature_bits        = VF_HasBaseColorTex;
+        key.SetHasTexture(SamplerSlot::BaseColor);
         key.blend_mode          = BlendMode::Transparent;
         key.pass_hint           = PassType::ForwardTransparent;
         RegisterVariant(key,
@@ -185,8 +195,9 @@ void VariantRegistry::InitializeBuiltinVariants()
     // Standard 3D (texture-based, lit)
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Standard, GM::Mesh3D, TSM::Simple,
-          VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex),
+                K(ST::Standard, GM::Mesh3D, TSM::Simple,
+                    0,
+                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal) | SamplerFeatureBit(SamplerSlot::Roughness)),
         MakeDesc("Standard",
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",
@@ -196,8 +207,9 @@ void VariantRegistry::InitializeBuiltinVariants()
     // Standard Texture Array
     // ------------------------------------------------------------------
     RegisterVariant(
-        K(ST::Standard, GM::Mesh3D, TSM::Array,
-          VF_HasBaseColorTex | VF_HasNormalTex),
+                K(ST::Standard, GM::Mesh3D, TSM::Array,
+                    0,
+                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("StandardTextureArray",
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",

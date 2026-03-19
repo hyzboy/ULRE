@@ -51,7 +51,7 @@ namespace
 MaterialCreateInfo *CreateGizmo3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
     MaterialVariantKey var_key;
-    var_key.feature_bits = VF_DebugShading;
+    var_key.SetDebugShading(true);
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {

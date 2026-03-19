@@ -16,7 +16,7 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
 
     const bool has_slot_mode = key.HasAnyTextureSourceBits();
     const TextureSourceMode mode = has_slot_mode
-        ? key.GetTextureSourceMode(TextureSlot::BaseColor)
+        ? key.GetTextureSourceMode(SamplerName::SamplerSlot::BaseColor)
         : key.texture_source_mode;
     const bool use_array = (mode == TextureSourceMode::Array);
 
@@ -73,8 +73,7 @@ MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLit
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::ScreenRect;
     key.texture_source_mode = TextureSourceMode::Simple;
-    key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Simple);
-    key.feature_bits = VF_HasBaseColorTex;
+    key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Simple);
     return CreateRectTextureVariant(profile, key, cfg);
 }
 
@@ -84,8 +83,7 @@ MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfi
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::ScreenRect;
     key.texture_source_mode = TextureSourceMode::Array;
-    key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Array);
-    key.feature_bits = VF_HasBaseColorTex;
+    key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Array);
     return CreateRectTextureVariant(profile, key, cfg);
 }
 }//namespace hgl::graph::mtl

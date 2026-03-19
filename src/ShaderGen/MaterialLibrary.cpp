@@ -16,7 +16,7 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
         case MaterialPreset::VertexColor2D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Quad2D;
-            key.feature_bits = VF_UseVertexColor;
+            key.SetVertexAttribEnabled(VertexAttrib::Color);
             break;
         case MaterialPreset::PureColor2D:
             key.surface_type = SurfaceType::Unlit;
@@ -26,27 +26,25 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Quad2D;
             key.texture_source_mode = TextureSourceMode::Simple;
-            key.feature_bits = VF_HasBaseColorTex;
+            key.SetHasTexture(SamplerSlot::BaseColor);
             break;
         case MaterialPreset::RectTexture2D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Simple);
-            key.feature_bits = VF_HasBaseColorTex;
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Simple);
             break;
         case MaterialPreset::RectTexture2DArray:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Array;
-            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Array);
-            key.feature_bits = VF_HasBaseColorTex;
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Array);
             break;
         case MaterialPreset::Text2D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Quad2D;
             key.texture_source_mode = TextureSourceMode::Atlas;
-            key.feature_bits = VF_HasBaseColorTex;
+            key.SetHasTexture(SamplerSlot::BaseColor);
             break;
 
         case MaterialPreset::PureColor3D:
@@ -56,27 +54,29 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
         case MaterialPreset::VertexColor3D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Mesh3D;
-            key.feature_bits = VF_UseVertexColor;
+            key.SetVertexAttribEnabled(VertexAttrib::Color);
             break;
         case MaterialPreset::VertexLuminance3D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Mesh3D;
-            key.feature_bits = VF_UseVertexLum;
+            key.SetVertexAttribEnabled(VertexAttrib::Luminance);
             break;
         case MaterialPreset::VertexLuminance2D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Mesh3D;
-            key.feature_bits = VF_UseVertexLum | VF_UsePos2D;
+            key.SetVertexAttribEnabled(VertexAttrib::Luminance);
+            key.SetVertexAttribEnabled(VertexAttrib::Position);
             break;
         case MaterialPreset::VertexPattleColor3D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Mesh3D;
-            key.feature_bits = VF_UseVertexColor | VF_DebugShading;
+            key.SetVertexAttribEnabled(VertexAttrib::Color);
+            key.SetDebugShading(true);
             break;
         case MaterialPreset::Gizmo3D:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::Mesh3D;
-            key.feature_bits = VF_DebugShading;
+            key.SetDebugShading(true);
             break;
         case MaterialPreset::TerrainGrid:
             key.surface_type = SurfaceType::Terrain;
@@ -90,25 +90,23 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::BillboardCameraFacing;
             key.texture_source_mode = TextureSourceMode::Simple;
-            key.feature_bits = VF_HasBaseColorTex;
+            key.SetHasTexture(SamplerSlot::BaseColor);
             break;
         case MaterialPreset::Standard:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Simple);
-            key.SetTextureSourceMode(TextureSlot::Normal,    TextureSourceMode::Simple);
-            key.SetTextureSourceMode(TextureSlot::Roughness, TextureSourceMode::Simple);
-            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex | VF_HasRoughnessTex;
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Simple);
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::Normal,    TextureSourceMode::Simple);
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::Roughness, TextureSourceMode::Simple);
             break;
         case MaterialPreset::StandardTextureArray:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Array;
-            key.SetTextureSourceMode(TextureSlot::BaseColor, TextureSourceMode::Array);
-            key.SetTextureSourceMode(TextureSlot::Normal,    TextureSourceMode::Array);
-            key.SetTextureSourceMode(TextureSlot::Roughness, TextureSourceMode::Array);
-            key.feature_bits = VF_HasBaseColorTex | VF_HasNormalTex;
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Array);
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::Normal,    TextureSourceMode::Array);
+            key.SetTextureSourceMode(SamplerName::SamplerSlot::Roughness, TextureSourceMode::Array);
             break;
         case MaterialPreset::PBRColor3D:
             key.surface_type = SurfaceType::Standard;
@@ -148,13 +146,13 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
 
         if (key.geometry_mode == GeometryMode::Quad2D)
         {
-            if ((key.feature_bits & VF_UseVertexColor) != 0)
+            if (key.HasVertexAttrib(VertexAttrib::Color))
             {
                 out_preset = MaterialPreset::VertexColor2D;
                 return true;
             }
 
-            if ((key.feature_bits & VF_HasBaseColorTex) != 0)
+            if (key.HasTexture(SamplerSlot::BaseColor))
             {
                 out_preset = MaterialPreset::PureTexture2D;
                 return true;
@@ -166,21 +164,21 @@ bool TryMapVariantKeyToPreset(const MaterialVariantKey &key, MaterialPreset &out
 
         if (key.geometry_mode == GeometryMode::Mesh3D)
         {
-            if ((key.feature_bits & VF_UseVertexLum) != 0)
+            if (key.HasVertexAttrib(VertexAttrib::Luminance))
             {
-                out_preset = (key.feature_bits & VF_UsePos2D) != 0
+                out_preset = key.HasVertexAttrib(VertexAttrib::Position)
                     ? MaterialPreset::VertexLuminance2D
                     : MaterialPreset::VertexLuminance3D;
                 return true;
             }
 
-            if ((key.feature_bits & VF_UseVertexColor) != 0)
+            if (key.HasVertexAttrib(VertexAttrib::Color))
             {
                 out_preset = MaterialPreset::VertexColor3D;
                 return true;
             }
 
-            if ((key.feature_bits & VF_DebugShading) != 0)
+            if (key.IsDebugShading())
             {
                 out_preset = MaterialPreset::Gizmo3D;
                 return true;
@@ -311,13 +309,15 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if(!profile)
     {
         std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X feature_bits=0x%08X)\n",
+            "[MaterialLibrary] CreateMaterialCreateInfo warning: profile is null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.texture_source_mode),
             key.texture_source_bits,
-            key.feature_bits);
+            key.sampler_feature_bits,
+            key.vertex_attribute_feature_bits,
+            key.extra_feature_bits);
     }
 
     const auto &m = GetFactoryMap();
@@ -332,13 +332,15 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     if (!TryMapVariantKeyToPreset(key, preset))
     {
         std::fprintf(stderr,
-            "[MaterialLibrary] CreateMaterialCreateInfo failed: TryMapVariantKeyToPreset failed (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X feature_bits=0x%08X)\n",
+            "[MaterialLibrary] CreateMaterialCreateInfo failed: TryMapVariantKeyToPreset failed (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.texture_source_mode),
             key.texture_source_bits,
-            key.feature_bits);
+            key.sampler_feature_bits,
+            key.vertex_attribute_feature_bits,
+            key.extra_feature_bits);
         return nullptr;
     }
 

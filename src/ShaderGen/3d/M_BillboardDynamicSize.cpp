@@ -65,7 +65,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     MaterialVariantKey var_key;
     var_key.geometry_mode       = GeometryMode::BillboardCameraFacing;
     var_key.texture_source_mode = TextureSourceMode::Simple;
-    var_key.feature_bits        = VF_HasBaseColorTex;
+    var_key.SetHasTexture(SamplerSlot::BaseColor);
     var_key.blend_mode          = BlendMode::Transparent;
     var_key.pass_hint           = PassType::ForwardTransparent;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);

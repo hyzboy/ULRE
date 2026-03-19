@@ -526,13 +526,15 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if(!mci)
     {
         std::fprintf(stderr,
-            "[MaterialManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X feature_bits=0x%08X cfg_hash=%s)\n",
+            "[MaterialManager] CreateMaterial(key/3D) failed: CreateMaterialCreateInfo returned null (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X cfg_hash=%s)\n",
             static_cast<unsigned long long>(key.Hash()),
             static_cast<unsigned>(key.surface_type),
             static_cast<unsigned>(key.geometry_mode),
             static_cast<unsigned>(key.texture_source_mode),
             key.texture_source_bits,
-            key.feature_bits,
+            key.sampler_feature_bits,
+            key.vertex_attribute_feature_bits,
+            key.extra_feature_bits,
             cfg->ToHashStdString().c_str());
         return(nullptr);
     }

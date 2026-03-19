@@ -43,7 +43,7 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
     cfg->material_instance=true;
 
     MaterialVariantKey var_key;
-    var_key.feature_bits = VF_UseVertexLum;
+    var_key.SetVertexAttribEnabled(VertexAttrib::Luminance);
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {

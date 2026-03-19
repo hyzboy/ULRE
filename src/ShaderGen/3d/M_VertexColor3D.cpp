@@ -37,7 +37,7 @@ namespace
 MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLite *profile,const Material3DCreateConfig *cfg)
 {
     MaterialVariantKey var_key;
-    var_key.feature_bits = VF_UseVertexColor;
+    var_key.SetVertexAttribEnabled(VertexAttrib::Color);
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {
