@@ -241,7 +241,8 @@ SET(VK_SCENEGRAPH_MATERIAL_FILES    ${ROOT_INCLUDE_PATH}/hgl/vk/VKMaterial.h
                                     VKMaterial.cpp
                                     VKMaterialParameters.cpp
                                     VKMaterialInstance.cpp
-                                    VKMaterialDescriptorManager.cpp)
+                                    VKMaterialDescriptorManager.cpp
+                                    VKResourceDomain.cpp)
 
 SOURCE_GROUP("9.Vulkan\\Material" FILES ${VK_SCENEGRAPH_MATERIAL_FILES})
 

@@ -182,26 +182,42 @@ public: //MaterialInstance
         return CreateMaterialInstance(mtl_id,mcc,vil_cfg,nullptr,0);
     }
 
-public: // ResourceDomain — Phase 0
+public: // ResourceDomain — Phase 1
 
     /**
-     * 创建一个以 mtl 为模板的资源域。
-     * Phase 0: 仅分配对象，不承接任何 MI 数据或资源绑定。
+     * 创建一个以 mtl 为模板的资源域，并初始化其 MI 数据池。
+     * Phase 1: 池 stride/max_count 从 mtl 复制，分配独立 ActiveMemoryBlockManager。
      */
-    ResourceDomain *        CreateResourceDomain        (Material *mtl)
-    {
-        if (!mtl) return nullptr;
-        return new ResourceDomain(mtl);
-    }
+    ResourceDomain *        CreateResourceDomain        (Material *mtl);
 
     /**
      * 创建一个 (domain, material) 绑定视图。
-     * Phase 0: 仅分配对象，不执行任何资源绑定逻辑。
+     * Phase 1: 仅分配对象，Texture/Sampler 绑定在后续阶段引入。
      */
     DomainMaterialBinding * CreateDomainMaterialBinding (ResourceDomain *domain, Material *mtl)
     {
         if (!domain || !mtl) return nullptr;
         return new DomainMaterialBinding(domain, mtl);
+    }
+
+public: // ResourceDomain MaterialInstance creation (Phase 1)
+
+    /// 从资源域分配 MI，走域独立的数据池（旧 Material 池不变）。
+    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil = nullptr);
+    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg);
+    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size);
+    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size);
+
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const T *data)
+    {
+        return CreateMaterialInstance(domain, vil, data, sizeof(T));
+    }
+
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const T *data)
+    {
+        return CreateMaterialInstance(domain, vil_cfg, data, sizeof(T));
     }
 
 public: // Phase 0 Stats — 帧级资源量观测

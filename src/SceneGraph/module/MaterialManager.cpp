@@ -5,6 +5,7 @@
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKMaterialParameters.h>
+#include<hgl/vk/VKResourceDomain.h>
 #include<hgl/vk/VKShaderModule.h>
 #include<hgl/vk/VKShaderModuleMap.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
@@ -675,6 +676,82 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const mtl::MaterialPre
         return(nullptr);
 
     return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+}
+
+// ============================================================================
+// ResourceDomain — Phase 1
+// ============================================================================
+
+ResourceDomain *MaterialManager::CreateResourceDomain(Material *mtl)
+{
+    if(!mtl)
+        return nullptr;
+
+    return new ResourceDomain(mtl);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil)
+{
+    if(!domain) return nullptr;
+
+    Material *mtl = domain->GetSourceMaterial();
+    if(!mtl) return nullptr;
+
+    const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
+    int mi_id = domain->AllocMISlot();
+    MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
+    Add(mi);
+    return mi;
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg)
+{
+    if(!domain) return nullptr;
+
+    Material *mtl = domain->GetSourceMaterial();
+    if(!mtl) return nullptr;
+
+    const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
+    int mi_id = domain->AllocMISlot();
+    MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
+    Add(mi);
+    return mi;
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VIL *vil, const void *data, const uint32 data_size)
+{
+    if(!domain) return nullptr;
+
+    Material *mtl = domain->GetSourceMaterial();
+    if(!mtl) return nullptr;
+
+    const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
+    int mi_id = domain->AllocMISlot();
+    MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
+    Add(mi);
+
+    if(data && data_size > 0)
+        mi->WriteMIData(data, data_size);
+
+    return mi;
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain, const VILConfig *vil_cfg, const void *data, const uint32 data_size)
+{
+    if(!domain) return nullptr;
+
+    Material *mtl = domain->GetSourceMaterial();
+    if(!mtl) return nullptr;
+
+    const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
+    int mi_id = domain->AllocMISlot();
+    MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
+    Add(mi);
+
+    if(data && data_size > 0)
+        mi->WriteMIData(data, data_size);
+
+    return mi;
 }
 
 }//namespace hgl::graph
