@@ -9,13 +9,8 @@ namespace hgl::graph::Assign
 {
     namespace TransformID
     {
-    #if defined(HGL_TRANSFORM_ID_U32) && HGL_TRANSFORM_ID_U32
         using ValueType = uint32_t;
         constexpr VkFormat          VAB_FMT         = VK_FORMAT_R32_UINT;
-    #else
-        using ValueType = uint16_t;
-        constexpr VkFormat          VAB_FMT         = VK_FORMAT_R16_UINT;
-    #endif
         constexpr VertexAttrib      ATTRIB          = VAN::TransformID;
         constexpr const char *      VIS_NAME        = "TransformID";
         constexpr VAType            VAT_FMT         = VAT_UINT;

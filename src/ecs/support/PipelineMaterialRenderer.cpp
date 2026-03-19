@@ -59,24 +59,7 @@ namespace hgl::ecs
             return false;
         }
 
-        // 如果有ECS MaterialInstance分配缓冲，绑定MaterialInstance索引VAB
-        if (mi_buffer)
-        {
-            VkBuffer mi_vab = mi_buffer->GetMaterialInstanceVAB();
-
-            if (mi_vab == VK_NULL_HANDLE)
-            {
-                std::cout << "[PipelineMaterialRenderer::BindVAB] WARNING: MI VAB is null!" << std::endl;
-            }
-            else
-            {
-                if (!vab_list->IsFull() && !vab_list->Add(mi_vab, 0))
-                {
-                    std::cout << "[PipelineMaterialRenderer::BindVAB] ERROR: Failed to add ECS MI VAB!" << std::endl;
-                    return false;
-                }
-            }
-        }
+        (void)mi_buffer;
 
         if (!vab_list->IsFull())
         {

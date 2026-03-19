@@ -165,7 +165,6 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         material_instance_stage_bits=0;
         material_instance_max_count=0;
         material_instance_ssbo=nullptr;
-        material_instance_ubo=nullptr;
     }
 
     local_to_world_ssbo=nullptr;
@@ -343,30 +342,16 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
     descriptor_db.AddStruct(SBS_MaterialInstance);            //MaterialInstance mi[...];
 
-#ifdef HGL_MI_USE_SSBO
     material_instance_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
     material_instance_ssbo=CreateSSBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
 
     descriptor_db.AddSSBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,material_instance_ssbo);
-#endif
-#ifdef HGL_MI_USE_UBO
-    material_instance_max_count=std::min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
-
-    material_instance_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
-
-    descriptor_db.AddUBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,material_instance_ubo);
-#endif
 
     ForEachShaderByStage(shader_map,shader_stage_flag_bits,
         [&](ShaderCreateInfo &shader,ShaderStage)
         {
-#ifdef HGL_MI_USE_SSBO
         shader.SetMaterialInstance(material_instance_ssbo);
-#endif
-#ifdef HGL_MI_USE_UBO
-        shader.SetMaterialInstance(material_instance_ubo);
-#endif
         });
 
     material_instance_stage_bits=shader_stage_flag_bits;

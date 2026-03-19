@@ -78,9 +78,9 @@ namespace hgl::ecs
      * ECS 材质实例分配缓冲
      *
      * 职责：
-     * - 管理所有 RenderItem 的材质实例数据（UBO/SSBO）
+     * - 管理所有 RenderItem 的材质实例数据（SSBO）
      * - 去重材质实例，合并相同的MI数据
-     * - 生成材质实例索引分发数据（VAB）
+     * - 生成材质实例索引分发数据（SSBO）
      * - 为每个实例分配MI索引
      */
     class MaterialInstanceAssignmentBuffer
@@ -98,17 +98,11 @@ namespace hgl::ecs
 
         void StatMaterialInstance(const std::vector<RenderItem*>& items);
 
-    private:    // 分发数据
+    private:    // 分发数据（SSBO descriptor path）
         uint32_t node_count;                        ///<节点数量
-        graph::VAB* material_instance_vab;          ///<材质实例ID分发数据VAB(R16UI格式)
-        VkBuffer material_instance_vab_buffer;      ///<材质实例ID分发数据Buffer
-
-    #if defined(HGL_MI_ID_USE_SSBO)
-        private:    // 分发数据（SSBO descriptor path）
-            uint32_t material_instance_id_buffer_max_count; ///<MaterialInstanceID SSBO capacity (elements)
-            graph::DeviceBuffer* material_instance_id_buffer;   ///<MaterialInstanceID data (SSBO, uint[])
-            VkBuffer material_instance_id_vk_buffer;            ///<MaterialInstanceID VkBuffer cache
-    #endif
+        uint32_t material_instance_id_buffer_max_count; ///<MaterialInstanceID SSBO capacity (elements)
+        graph::DeviceBuffer* material_instance_id_buffer;   ///<MaterialInstanceID data (SSBO, uint[])
+        VkBuffer material_instance_id_vk_buffer;            ///<MaterialInstanceID VkBuffer cache
 
     private:
         void Clear();
@@ -118,21 +112,14 @@ namespace hgl::ecs
         ~MaterialInstanceAssignmentBuffer() { Clear(); }
 
         /**
-         * 获取MaterialInstance VAB缓冲（用于绑定到管线）
+         * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）
          */
-        const VkBuffer GetMaterialInstanceVAB() const { return material_instance_vab_buffer; }
+        const VkBuffer GetMaterialInstanceIDVkBuffer() const { return material_instance_id_vk_buffer; }
 
-        #if defined(HGL_MI_ID_USE_SSBO)
-            /**
-             * 获取MaterialInstanceID SSBO VkBuffer（用于绑定到管线）
-             */
-            const VkBuffer GetMaterialInstanceIDVkBuffer() const { return material_instance_id_vk_buffer; }
-
-            /**
-             * 绑定MaterialInstanceID SSBO到材质
-             */
-            void BindMaterialInstanceID(graph::Material* mtl) const;
-        #endif
+        /**
+         * 绑定MaterialInstanceID SSBO到材质
+         */
+        void BindMaterialInstanceID(graph::Material* mtl) const;
 
         /**
          * 绑定材质实例数据到材质
@@ -146,7 +133,7 @@ namespace hgl::ecs
         void WriteItems(const std::vector<RenderItem*>& items);
 
         /**
-         * 更新单个RenderItem的材质实例数据
+         * 更新单个RenderItem的材质实例索引分发数据
          * @param item 需要更新的RenderItem
          */
         void UpdateMaterialInstanceData(RenderItem* item);

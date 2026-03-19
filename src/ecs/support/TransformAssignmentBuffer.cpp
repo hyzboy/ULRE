@@ -190,9 +190,7 @@ namespace hgl::ecs
                  static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
                  hgl::graph::mtl::SBS_LocalToWorld.name);
 
-#if defined(HGL_TRANSFORM_ID_USE_SSBO)
         BindTransformID(mtl);
-#endif
     }
 
     void TransformAssignmentBuffer::BindTransformID(graph::Material* mtl) const
@@ -207,11 +205,9 @@ namespace hgl::ecs
         if (!gpu)
             return;
 
-#ifdef HGL_TRANSFORM_ID_USE_SSBO
         mtl->BindSSBO(hgl::graph::mtl::SBS_TransformID.set_type,
                       hgl::graph::mtl::SBS_TransformID.name,
                       gpu);
-#endif
     }
 
     void TransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)
@@ -633,12 +629,10 @@ namespace hgl::ecs
         {
             const VkDeviceSize buffer_size = sizeof(graph::Assign::TransformID::ValueType) * transform_id_buffer_max_count;
 
-#ifdef HGL_TRANSFORM_ID_USE_SSBO
             transform_id_buffer = buffer_manager->CreateSSBO("ECS:TransformIDData",
                                                              buffer_size,
                                                              nullptr,
                                                              graph::SharingMode::Exclusive);
-#endif
 
             recreated = true;
         }

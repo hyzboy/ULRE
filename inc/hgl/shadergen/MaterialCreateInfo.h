@@ -39,7 +39,6 @@ namespace hgl::graph
             uint32_t material_instance_stage_bits;                  ///<MaterialInstance着色器阶段
             uint32_t material_instance_max_count;
             SSBODescriptor *material_instance_ssbo;
-            UBODescriptor *material_instance_ubo;
 
             uint32_t local_to_world_max_count;
             uint32_t local_to_world_stage_bits;

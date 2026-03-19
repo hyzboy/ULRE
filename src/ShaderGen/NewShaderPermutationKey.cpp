@@ -11,12 +11,7 @@ void NewShaderPermutationKey::AppendGLSLDefines(std::string &out) const
     char buf[512];
 
     constexpr int transform_id_from_descriptor = 1;
-
-#if defined(HGL_MI_ID_USE_VAB)
-    constexpr int material_instance_id_from_descriptor = 0;
-#else
     constexpr int material_instance_id_from_descriptor = 1;
-#endif
 
     snprintf(buf, sizeof(buf),
         "#define SURFACE_TYPE %d\n"

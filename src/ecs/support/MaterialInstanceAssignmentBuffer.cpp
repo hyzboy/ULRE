@@ -11,6 +11,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/common/RenderOptions.h>
+#include <algorithm>
 
 namespace hgl::ecs
 {
@@ -20,13 +21,9 @@ namespace hgl::ecs
         , material_instance_data_bytes(0)
         , material_instance_buffer(nullptr)
         , node_count(0)
-        , material_instance_vab(nullptr)
-        , material_instance_vab_buffer(nullptr)
-    #if defined(HGL_MI_ID_USE_SSBO)
-            , material_instance_id_buffer_max_count(0)
-            , material_instance_id_buffer(nullptr)
-            , material_instance_id_vk_buffer(VK_NULL_HANDLE)
-    #endif
+        , material_instance_id_buffer_max_count(0)
+        , material_instance_id_buffer(nullptr)
+        , material_instance_id_vk_buffer(VK_NULL_HANDLE)
     {
         if (mtl)
         {
@@ -34,21 +31,19 @@ namespace hgl::ecs
         }
     }
 
-    #if defined(HGL_MI_ID_USE_SSBO)
-        void MaterialInstanceAssignmentBuffer::BindMaterialInstanceID(graph::Material* mtl) const
-        {
-            if (!mtl || !material_instance_id_buffer)
-                return;
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceID(graph::Material* mtl) const
+    {
+        if (!mtl || !material_instance_id_buffer)
+            return;
 
-            auto *gpu = material_instance_id_buffer->GetGPUBuffer();
-            if (!gpu)
-                return;
+        auto *gpu = material_instance_id_buffer->GetGPUBuffer();
+        if (!gpu)
+            return;
 
-            mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstanceID.set_type,
-                          hgl::graph::mtl::SBS_MaterialInstanceID.name,
-                          gpu);
-        }
-    #endif
+        mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstanceID.set_type,
+                      hgl::graph::mtl::SBS_MaterialInstanceID.name,
+                      gpu);
+    }
 
     void MaterialInstanceAssignmentBuffer::BindMaterialInstance(graph::Material* mtl) const
     {
@@ -64,18 +59,11 @@ namespace hgl::ecs
             return;
         }
 
-    #ifdef HGL_MI_USE_SSBO
         mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstance.set_type,
                   hgl::graph::mtl::SBS_MaterialInstance.name,
                   material_instance_buffer->GetGPUBuffer());
-    #endif
-    #ifdef HGL_MI_USE_UBO
-        mtl->BindUBO(&hgl::graph::mtl::SBS_MaterialInstance, material_instance_buffer->GetGPUBuffer());
-    #endif
 
-    #if defined(HGL_MI_ID_USE_SSBO)
-            BindMaterialInstanceID(mtl);
-    #endif
+        BindMaterialInstanceID(mtl);
     }
 
     void MaterialInstanceAssignmentBuffer::Clear()
@@ -84,31 +72,20 @@ namespace hgl::ecs
         {
             if (material_instance_buffer)
                 buffer_manager->Release(material_instance_buffer);
-            if (material_instance_vab)
-                buffer_manager->Release(material_instance_vab);
             material_instance_buffer = nullptr;
-            material_instance_vab = nullptr;
-    #if defined(HGL_MI_ID_USE_SSBO)
-                if (material_instance_id_buffer)
-                    buffer_manager->Release(material_instance_id_buffer);
-                material_instance_id_buffer = nullptr;
-    #endif
+            if (material_instance_id_buffer)
+                buffer_manager->Release(material_instance_id_buffer);
+            material_instance_id_buffer = nullptr;
         }
         else
         {
             SAFE_CLEAR(material_instance_buffer);
-            SAFE_CLEAR(material_instance_vab);
-    #if defined(HGL_MI_ID_USE_SSBO)
-                SAFE_CLEAR(material_instance_id_buffer);
-    #endif
+            SAFE_CLEAR(material_instance_id_buffer);
         }
 
         mi_set.Clear();
         node_count = 0;
-        material_instance_vab_buffer = nullptr;
-    #if defined(HGL_MI_ID_USE_SSBO)
-            material_instance_id_vk_buffer = VK_NULL_HANDLE;
-    #endif
+        material_instance_id_vk_buffer = VK_NULL_HANDLE;
     }
 
     void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const std::vector<RenderItem*>& items)
@@ -143,23 +120,14 @@ namespace hgl::ecs
             }
         }
 
-        // 创建或重用 Material Instance UBO
+        // Create or reuse MaterialInstance SSBO
         if (!material_instance_buffer && buffer_manager)
         {
             const size_t buffer_size = material_instance_data_bytes * mi_set.GetAllocCount();
-
-#ifdef HGL_MI_USE_SSBO
             material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceData",
                                                                   buffer_size,
                                                                   nullptr,
                                                                   graph::SharingMode::Exclusive);
-#endif
-#ifdef HGL_MI_USE_UBO
-            material_instance_buffer = buffer_manager->CreateUBO("ECS:MaterialInstanceData",
-                                                                 buffer_size,
-                                                                 nullptr,
-                                                                 graph::SharingMode::Exclusive);
-#endif
         }
 
     if (!material_instance_buffer)
@@ -231,19 +199,25 @@ namespace hgl::ecs
             return;
         }
 
-        if (!material_instance_vab)
+        if (!material_instance_id_buffer)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: MI VAB not created" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::UpdateMaterialInstanceData] ERROR: MI ID SSBO not created" << std::endl;
             return;
         }
 
-        const size_t offset = sizeof(uint16) * item->index;
-        uint16* mip = (uint16*)(material_instance_vab->Map(offset, sizeof(uint16)));
+        auto *gpu = material_instance_id_buffer->GetGPUBuffer();
+        if (!gpu)
+            return;
+
+        const size_t offset = sizeof(uint32_t) * item->index;
+        uint32_t* mip = (uint32_t*)(gpu->Map(offset, sizeof(uint32_t)));
+        if (!mip)
+            return;
 
         graph::MaterialInstance* mi = item->GetMaterialInstance();
-        *mip = mi_set.Find(mi);
+        *mip = static_cast<uint32_t>(mi_set.Find(mi));
 
-        material_instance_vab->Unmap();
+        gpu->Unmap();
     }
 
     void MaterialInstanceAssignmentBuffer::WriteItems(const std::vector<RenderItem*>& items)
@@ -265,141 +239,78 @@ namespace hgl::ecs
             return;
         }
 
-        // 如果没有MI数据，就不需要创建VAB
+        // If there is no MI payload, do not dispatch MI IDs.
         if (material_instance_data_bytes <= 0)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] No MI data, skipping VAB creation" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] No MI data, skipping MI ID dispatch" << std::endl;
             return;
         }
 
-        // 2. 创建或重用 Material Instance VAB（索引缓冲）
+        // 2. Create or reuse MaterialInstanceID SSBO
         {
-            if (!material_instance_vab)
+            if (!material_instance_id_buffer)
             {
                 node_count = power_to_2(item_count);
             }
-            else if (node_count < item_count)
+            else if (material_instance_id_buffer_max_count < item_count)
             {
                 node_count = power_to_2(item_count);
                 if (buffer_manager)
                 {
-                    buffer_manager->Release(material_instance_vab);
-                    material_instance_vab = nullptr;
+                    buffer_manager->Release(material_instance_id_buffer);
+                    material_instance_id_buffer = nullptr;
                 }
                 else
                 {
-                    SAFE_CLEAR(material_instance_vab);
+                    SAFE_CLEAR(material_instance_id_buffer);
                 }
+
+                material_instance_id_buffer_max_count = 0;
+                material_instance_id_vk_buffer = VK_NULL_HANDLE;
             }
 
-            if (!material_instance_vab)
+            if (!material_instance_id_buffer)
             {
                 if (buffer_manager)
                 {
-                    material_instance_vab = buffer_manager->CreateVAB(VK_FORMAT_R16_UINT, node_count);
-                    material_instance_vab_buffer = material_instance_vab ? material_instance_vab->GetVkBuffer() : nullptr;
-
-                #ifdef _DEBUG
-                    auto device = buffer_manager->GetDevice();
-                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
-                    if (du && material_instance_vab)
-                    {
-                        du->SetBuffer(material_instance_vab->GetVkBuffer(), "ECS:VAB:Buffer:MaterialInstanceID");
-                        du->SetDeviceMemory(material_instance_vab->GetVkMemory(), "ECS:VAB:Memory:MaterialInstanceID");
-                    }
-                #endif//_DEBUG
-                }
-            }
-
-            if (!material_instance_vab)
-            {
-                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI VAB allocation failed" << std::endl;
-                return;
-            }
-        }
-
-    #if defined(HGL_MI_ID_USE_SSBO)
-            // 2b. 创建或重用 MaterialInstanceID SSBO
-            {
-                const size_t needed = power_to_2(item_count);
-                if (!material_instance_id_buffer || material_instance_id_buffer_max_count < needed)
-                {
-                    if (buffer_manager && material_instance_id_buffer)
-                        buffer_manager->Release(material_instance_id_buffer);
-                    else
-                        SAFE_CLEAR(material_instance_id_buffer);
-
-                    material_instance_id_buffer = nullptr;
-                    material_instance_id_buffer_max_count = 0;
-                }
-
-                if (!material_instance_id_buffer && buffer_manager)
-                {
-                    const size_t capacity = power_to_2(item_count);
                     material_instance_id_buffer = buffer_manager->CreateSSBO(
                         "ECS:MaterialInstanceIDData",
-                        sizeof(uint32_t) * capacity,
+                        sizeof(uint32_t) * node_count,
                         nullptr,
                         graph::SharingMode::Exclusive);
-                    material_instance_id_buffer_max_count = material_instance_id_buffer ? capacity : 0;
+
+                    material_instance_id_buffer_max_count = material_instance_id_buffer ? node_count : 0;
                     material_instance_id_vk_buffer = material_instance_id_buffer
                         ? material_instance_id_buffer->GetGPUBuffer()->GetVkDeviceBuffer() : VK_NULL_HANDLE;
 
                 #ifdef _DEBUG
-                    if (material_instance_id_buffer)
+                    auto device = buffer_manager->GetDevice();
+                    graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
+                    if (du && material_instance_id_buffer)
                     {
-                        auto device = buffer_manager->GetDevice();
-                        graph::DebugUtils* du = device ? device->GetDebugUtils() : nullptr;
-                        if (du)
-                        {
-                            du->SetBuffer(material_instance_id_vk_buffer, "ECS:SSBO:Buffer:MaterialInstanceID");
-                        }
+                        du->SetBuffer(material_instance_id_vk_buffer, "ECS:SSBO:Buffer:MaterialInstanceID");
                     }
                 #endif//_DEBUG
                 }
-
-                if (!material_instance_id_buffer)
-                {
-                    std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI ID SSBO allocation failed" << std::endl;
-                    return;
-                }
             }
-    #endif
+
+            if (!material_instance_id_buffer)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI ID SSBO allocation failed" << std::endl;
+                return;
+            }
+        }
 
         // 3. 生成材质实例索引列表
         {
-            uint16* mi_ptr = (uint16*)(material_instance_vab->Map(0, item_count));
-    #if defined(HGL_MI_ID_USE_SSBO)
-                uint32_t* mid_ptr = nullptr;
-                if (material_instance_id_buffer)
-                {
-                    auto *mid_gpu = material_instance_id_buffer->GetGPUBuffer();
-                    mid_ptr = mid_gpu ? (uint32_t*)mid_gpu->Map(0, sizeof(uint32_t) * item_count) : nullptr;
-                }
-    #endif
+            auto *mid_gpu = material_instance_id_buffer->GetGPUBuffer();
+            uint32_t* mid_ptr = mid_gpu ? (uint32_t*)mid_gpu->Map(0, sizeof(uint32_t) * item_count) : nullptr;
 
-            if (!mi_ptr)
+            if (!mid_ptr)
             {
-                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI VAB map failed" << std::endl;
-    #if defined(HGL_MI_ID_USE_SSBO)
-                    if (material_instance_id_buffer)
-                    {
-                        auto *mid_gpu = material_instance_id_buffer->GetGPUBuffer();
-                        if (mid_gpu)
-                            mid_gpu->Unmap();
-                    }
-    #endif
+                std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI ID SSBO map failed" << std::endl;
                 return;
             }
-
-    #if defined(HGL_MI_ID_USE_SSBO)
-                if (!mid_ptr)
-                {
-                    std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI ID SSBO map failed" << std::endl;
-                    material_instance_vab->Unmap();
-                    return;
-                }
-    #endif
 
             for (size_t i = 0; i < item_count; i++)
             {
@@ -407,23 +318,13 @@ namespace hgl::ecs
 
                 if (!item)
                 {
-                    *mi_ptr = 0;
-                    ++mi_ptr;
-    #if defined(HGL_MI_ID_USE_SSBO)
-                        *mid_ptr = 0;
-                        ++mid_ptr;
-    #endif
+                    *mid_ptr++ = 0;
                     continue;
                 }
 
                 graph::MaterialInstance* mi = item->GetMaterialInstance();
                 uint16 mi_index = mi_set.Find(mi);
-                *mi_ptr = mi_index;
-                ++mi_ptr;
-    #if defined(HGL_MI_ID_USE_SSBO)
-                    *mid_ptr = static_cast<uint32_t>(mi_index);
-                    ++mid_ptr;
-    #endif
+                *mid_ptr++ = static_cast<uint32_t>(mi_index);
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个
                 // {
@@ -433,15 +334,8 @@ namespace hgl::ecs
                 // }
             }
 
-            material_instance_vab->Unmap();
-    #if defined(HGL_MI_ID_USE_SSBO)
-                if (material_instance_id_buffer)
-                {
-                    auto *mid_gpu = material_instance_id_buffer->GetGPUBuffer();
-                    if (mid_gpu)
-                        mid_gpu->Unmap();
-                }
-    #endif
+            if (mid_gpu)
+                mid_gpu->Unmap();
         }
     }
 }//namespace hgl::ecs

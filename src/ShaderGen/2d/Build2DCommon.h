@@ -60,13 +60,9 @@ inline std::string BuildDescriptorDefines(
         defs += "#define L2W_SET "    + std::to_string(set) + "\n";
         defs += "#define L2W_BINDING 0\n";
         defs += "#define TID_SET "    + std::to_string(set) + "\n";
-    #if !defined(HGL_MI_ID_USE_VAB)
         defs += "#define TID_BINDING 2\n";
         defs += "#define MID_SET "    + std::to_string(set) + "\n";
         defs += "#define MID_BINDING 1\n";
-    #else
-        defs += "#define TID_BINDING 1\n";
-    #endif
         set++;
     }
 
@@ -119,11 +115,7 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
 
     p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 1\n";
 
-#if defined(HGL_MI_ID_USE_VAB)
-     p += "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR 0\n";
-#else
-     p += "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR 1\n";
-#endif
+    p += "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR 1\n";
 
     p += "\n";
     return p;
@@ -141,13 +133,7 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
     // TransformID (if L2W)
     (void)cfg;
 
-    // MaterialInstanceID (if MI)
-#if defined(HGL_MI_ID_USE_VAB)
-    if(cfg->material_instance)
-    {
-        v.push_back({Assign::MaterialInstanceID::VAT_FMT, VertexInputGroup::MaterialInstanceID, VertexInputRate::Instance, Assign::MaterialInstanceID::ATTRIB});
-    }
-#endif
+    // MaterialInstanceID is descriptor-backed in SSBO-only mode.
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -167,12 +153,10 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
         v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr});
 
     if(cfg->local_to_world)
-        v.push_back({DescriptorSetType::Transform, TransformIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
+        v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
 
-#if !defined(HGL_MI_ID_USE_VAB)
     if(cfg->local_to_world && cfg->material_instance)
-        v.push_back({DescriptorSetType::Transform, MaterialInstanceIDDescriptorKind, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr});
-#endif
+        v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr});
 }
 
 }//namespace build2d
