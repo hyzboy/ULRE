@@ -97,36 +97,44 @@
 #define LUMINANCE_LOCATION 1
 #endif
 
-// ── Material set (Textures, indexed after TID/MID) ──
-// Resort() assigns texture samplers: binding sequence depends on material definition.
-// Standard Material texture bindings (assumed):
+// ── Material set (Textures) ──
+// Canonical names aligned with SamplerSlot enum (SamplerName.h → ToBindingMacroName).
+// Resort() assigns binding numbers at runtime; these are fallback defaults.
 
-#ifndef TEXTUREBASECOLOR_BINDING
-#define TEXTUREBASECOLOR_BINDING 0
+#ifndef TEX_BASECOLOR_BINDING
+#define TEX_BASECOLOR_BINDING 0
 #endif
 
-#ifndef TEXALBEDO_BINDING
-#define TEXALBEDO_BINDING TEXTUREBASECOLOR_BINDING
+#ifndef TEX_NORMAL_BINDING
+#define TEX_NORMAL_BINDING 1
 #endif
 
-#ifndef TEXTURENORMAL_BINDING
-#define TEXTURENORMAL_BINDING 1
-#endif
-
-#ifndef TEXNORMAL_BINDING
-#define TEXNORMAL_BINDING TEXTURENORMAL_BINDING
-#endif
-
-#ifndef TEXTUREROUGHNESS_BINDING
-#define TEXTUREROUGHNESS_BINDING 2
-#endif
-
-#ifndef TEXMR_BINDING
-#define TEXMR_BINDING TEXTUREROUGHNESS_BINDING
+#ifndef TEX_ROUGHNESS_BINDING
+#define TEX_ROUGHNESS_BINDING 2
 #endif
 
 #ifndef TEXTUREHEIGHT_BINDING
 #define TEXTUREHEIGHT_BINDING 3
+#endif
+
+// Legacy aliases — kept for backward compatibility:
+#ifndef TEXTUREBASECOLOR_BINDING
+#define TEXTUREBASECOLOR_BINDING TEX_BASECOLOR_BINDING
+#endif
+#ifndef TEXALBEDO_BINDING
+#define TEXALBEDO_BINDING TEX_BASECOLOR_BINDING
+#endif
+#ifndef TEXTURENORMAL_BINDING
+#define TEXTURENORMAL_BINDING TEX_NORMAL_BINDING
+#endif
+#ifndef TEXNORMAL_BINDING
+#define TEXNORMAL_BINDING TEX_NORMAL_BINDING
+#endif
+#ifndef TEXTUREROUGHNESS_BINDING
+#define TEXTUREROUGHNESS_BINDING TEX_ROUGHNESS_BINDING
+#endif
+#ifndef TEXMR_BINDING
+#define TEXMR_BINDING TEX_ROUGHNESS_BINDING
 #endif
 
 #ifndef COLOR_PATTLE_BINDING

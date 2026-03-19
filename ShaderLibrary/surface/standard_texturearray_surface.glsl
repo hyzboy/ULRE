@@ -13,17 +13,11 @@ struct MaterialInstance
 };
 MI_SSBO;
 
-layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2DArray TexAlbedo;
-layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2DArray TexNormal;
-layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
+layout(set=MATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2DArray Sampler_BaseColor;
+layout(set=MATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2DArray Sampler_Normal;
+layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2DArray Sampler_Roughness;   // R=metallic, G=roughness
 
 #include "common/skylight_simple.glsl"
-
-float halfLambertDiffuse(vec3 N, vec3 L)
-{
-    float h = dot(N, L) * 0.5 + 0.5;
-    return h * h;
-}
 
 float D_GGX(float NdotH, float alpha2)
 {
@@ -57,16 +51,16 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
     float layer = float(mi.texture_id);
-    albedo *= texture(TexAlbedo, vec3(si.uv0, layer)).rgb;
+    albedo *= texture(Sampler_BaseColor, vec3(si.uv0, layer)).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-    vec3 nm = texture(TexNormal, vec3(si.uv0, layer)).xyz * 2.0 - 1.0;
+    vec3 nm = texture(Sampler_Normal, vec3(si.uv0, layer)).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 
-    vec2 mr    = texture(TexMR, vec3(si.uv0, layer)).rg;
+    vec2 mr    = texture(Sampler_Roughness, vec3(si.uv0, layer)).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 

@@ -18,35 +18,29 @@ struct MaterialInstance
 };
 MI_SSBO;
 
-// ─── Textures (flattened, always declared) ───────────────────────────────────
+// ─── Textures ─────────────────────────────────────────────────────────────────
 #if BASE_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2DArray TexAlbedo;
+layout(set=MATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2DArray Sampler_BaseColor;
 #else
-layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2D TexAlbedo;
+layout(set=MATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2D Sampler_BaseColor;
 #endif
 
 #if NORMAL_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2DArray TexNormal;
+layout(set=MATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2DArray Sampler_Normal;
 #else
-layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2D TexNormal;
+layout(set=MATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2D Sampler_Normal;
 #endif
 
 #if ROUGH_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
+layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2DArray Sampler_Roughness;   // R=metallic, G=roughness
 #else
-layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2D TexMR;   // R=metallic, G=roughness
+layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2D Sampler_Roughness;   // R=metallic, G=roughness
 #endif
 
 // ─── Sky Light ────────────────────────────────────────────────────────────────
 #include "common/skylight_simple.glsl"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-float halfLambertDiffuse(vec3 N, vec3 L)
-{
-    float h = dot(N, L) * 0.5 + 0.5;
-    return h * h;
-}
 
 #if TEXTURE_ARRAY_MODE
 float ULRE_TextureLayer(MaterialInstance mi)
@@ -55,30 +49,30 @@ float ULRE_TextureLayer(MaterialInstance mi)
 }
 #endif
 
-vec3 ULRE_SampleAlbedo(MaterialInstance mi, vec2 uv)
+vec4 GetSamplerBaseColor(MaterialInstance mi, vec2 uv)
 {
 #if BASE_TEX_ARRAY_MODE
-    return texture(TexAlbedo, vec3(uv, ULRE_TextureLayer(mi))).rgb;
+    return texture(Sampler_BaseColor, vec3(uv, ULRE_TextureLayer(mi)));
 #else
-    return texture(TexAlbedo, uv).rgb;
+    return texture(Sampler_BaseColor, uv);
 #endif
 }
 
-vec3 ULRE_SampleNormal(MaterialInstance mi, vec2 uv)
+vec4 GetSamplerNormal(MaterialInstance mi, vec2 uv)
 {
 #if NORMAL_TEX_ARRAY_MODE
-    return texture(TexNormal, vec3(uv, ULRE_TextureLayer(mi))).xyz;
+    return texture(Sampler_Normal, vec3(uv, ULRE_TextureLayer(mi)));
 #else
-    return texture(TexNormal, uv).xyz;
+    return texture(Sampler_Normal, uv);
 #endif
 }
 
-vec2 ULRE_SampleMR(MaterialInstance mi, vec2 uv)
+vec4 GetSamplerRoughness(MaterialInstance mi, vec2 uv)
 {
 #if ROUGH_TEX_ARRAY_MODE
-    return texture(TexMR, vec3(uv, ULRE_TextureLayer(mi))).rg;
+    return texture(Sampler_Roughness, vec3(uv, ULRE_TextureLayer(mi)));
 #else
-    return texture(TexMR, uv).rg;
+    return texture(Sampler_Roughness, uv);
 #endif
 }
 
@@ -116,18 +110,18 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
 
     // ── Base color ────────────────────────────────────────────────────────────
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
-    albedo *= ULRE_SampleAlbedo(mi, si.uv0);
+    albedo *= GetSamplerBaseColor(mi, si.uv0).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
     // ── Normal Map ────────────────────────────────────────────────────────────
-    vec3 nm = ULRE_SampleNormal(mi, si.uv0) * 2.0 - 1.0;
+    vec3 nm = GetSamplerNormal(mi, si.uv0).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 
     // ── MR Map ────────────────────────────────────────────────────────────────
-    vec2 mr    = ULRE_SampleMR(mi, si.uv0);
+    vec2 mr    = GetSamplerRoughness(mi, si.uv0).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 

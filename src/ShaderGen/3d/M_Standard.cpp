@@ -9,6 +9,7 @@
 
 #include "../common/MFSkyLight.h"
 #include <hgl/mtl/MaterialVariantDesc.h>
+#include <hgl/mtl/SamplerName.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -38,32 +39,33 @@ namespace
         { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Normal },
     };
 
-    // Descriptor template — texture slots use sampler2D as placeholder;
-    // CreateStandard() patches glsl_type at runtime based on TextureSourceMode.
-    constexpr FixedDescriptorEntry STANDARD_DESCRIPTORS[] = {
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr },
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera", "CameraInfo", nullptr },
-        { DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky", "SkyInfo", nullptr },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr },
-        { DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr },
-        { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureBaseColor", nullptr, "sampler2D" },
-        { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureNormal", nullptr, "sampler2D" },
-        { DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), "TextureRoughness", nullptr, "sampler2D" },
+    // Non-texture descriptors only — texture entries are built dynamically in CreateStandardVariant().
+    constexpr FixedDescriptorEntry STANDARD_BASE_DESCRIPTORS[] = {
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",        nullptr },
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",          nullptr },
+        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky",      "SkyInfo",             nullptr },
+        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorldData",    nullptr },
+        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "tid",      "TransformIDData",     nullptr },
+        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mid",      "MaterialInstanceIDData", nullptr },
+        { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData", nullptr },
     };
 
-    // Index of the first TextureSampler entry in STANDARD_DESCRIPTORS
-    constexpr uint32_t STANDARD_TEX_SLOT_FIRST = 5;
-    constexpr uint32_t STANDARD_TEX_SLOT_COUNT  = 3;
+    // Ordered list of texture slots used by the Standard material.
+    // Texture FixedDescriptorEntry items are built from this list at variant-creation time.
+    constexpr SamplerName::SamplerSlot STANDARD_TEX_SLOTS[] = {
+        SamplerName::SamplerSlot::BaseColor,
+        SamplerName::SamplerSlot::Normal,
+        SamplerName::SamplerSlot::Roughness,
+    };
+    constexpr uint32_t STANDARD_TEX_SLOT_COUNT = uint32_t(sizeof(STANDARD_TEX_SLOTS) / sizeof(STANDARD_TEX_SLOTS[0]));
 
     constexpr FixedMaterialDef STANDARD_DEF_TEMPLATE {
         "Standard_v1",
         PrimitiveType::Triangles,
         STANDARD_VERTEX,
         uint32_t(sizeof(STANDARD_VERTEX) / sizeof(STANDARD_VERTEX[0])),
-        STANDARD_DESCRIPTORS,
-        uint32_t(sizeof(STANDARD_DESCRIPTORS) / sizeof(STANDARD_DESCRIPTORS[0])),
+        STANDARD_BASE_DESCRIPTORS,
+        uint32_t(sizeof(STANDARD_BASE_DESCRIPTORS) / sizeof(STANDARD_BASE_DESCRIPTORS[0])),
         mi_codes_simple,
         mi_bytes_simple,
     };
@@ -111,15 +113,26 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     SkyLightAmbientModel ambient = cfg_with_mi.sky_ambient_model;
 
-    // Build a mutable copy of the descriptor list so we can patch sampler types
+    // Start with stable non-texture descriptors, then append texture entries.
     std::vector<FixedDescriptorEntry> dynamic_descriptors(
-        STANDARD_DESCRIPTORS,
-        STANDARD_DESCRIPTORS + uint32_t(sizeof(STANDARD_DESCRIPTORS) / sizeof(STANDARD_DESCRIPTORS[0])));
+        STANDARD_BASE_DESCRIPTORS,
+        STANDARD_BASE_DESCRIPTORS + uint32_t(sizeof(STANDARD_BASE_DESCRIPTORS) / sizeof(STANDARD_BASE_DESCRIPTORS[0])));
 
-    // Patch texture slots independently.
-    dynamic_descriptors[STANDARD_TEX_SLOT_FIRST + 0].glsl_type = ToSamplerType(resolved_base);
-    dynamic_descriptors[STANDARD_TEX_SLOT_FIRST + 1].glsl_type = ToSamplerType(resolved_normal);
-    dynamic_descriptors[STANDARD_TEX_SLOT_FIRST + 2].glsl_type = ToSamplerType(resolved_rough);
+    // Per-slot resolved modes, in the same order as STANDARD_TEX_SLOTS.
+    const TextureSourceMode tex_slot_modes[STANDARD_TEX_SLOT_COUNT] = {
+        resolved_base, resolved_normal, resolved_rough
+    };
+    for (uint32_t i = 0; i < STANDARD_TEX_SLOT_COUNT; ++i)
+    {
+        dynamic_descriptors.push_back({
+            DescriptorSetType::Material,
+            DescriptorKind::TextureSampler,
+            uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+            SamplerName::ToDescriptorName(STANDARD_TEX_SLOTS[i]),
+            nullptr,
+            ToSamplerType(tex_slot_modes[i])
+        });
+    }
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
