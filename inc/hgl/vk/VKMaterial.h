@@ -8,14 +8,11 @@
 #include<hgl/log/Log.h>
 #include<unordered_set>
 
-namespace hgl
-{
-    class ActiveMemoryBlockManager;
-}
 
 namespace hgl::graph{
 
 class IGPUBuffer;
+class ResourceDomain;   ///< Phase 5: forward decl
 
 namespace mtl
 {
@@ -55,7 +52,7 @@ class Material
     uint32_t mi_data_bytes;             ///<实例数据大小
     uint32_t mi_max_count;              ///<实例一次渲染最大数量限制
 
-    ActiveMemoryBlockManager *mi_data_manager;
+    ResourceDomain *default_domain = nullptr;   ///< Phase 5: 懒初始化默认域（旧 CreateMI 路径自动创建）
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 

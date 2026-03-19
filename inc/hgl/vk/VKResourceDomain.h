@@ -33,6 +33,7 @@ class ResourceDomain
 private:
 
     friend class MaterialManager;
+    friend class Material;          ///< Phase 5: Material::CreateMI 需创建默认域
 
     explicit ResourceDomain(Material *mtl);
 

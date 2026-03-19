@@ -16,7 +16,6 @@
 #include<hgl/graph/module/MaterialFinalizeFlowAdapter.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialLibrary.h>
@@ -316,9 +315,7 @@ void MaterialManager::ApplyMaterialFinalizePlan(Material *mtl, const AnsiString 
 
     mtl->mi_data_bytes = finalize_plan.mi_data_bytes;
     mtl->mi_max_count  = finalize_plan.mi_max_count;
-
-    if(mtl->mi_data_bytes > 0)
-        mtl->mi_data_manager = new ActiveMemoryBlockManager(mtl->mi_data_bytes);
+    // Phase 5: MI 数据池随第一次 CreateMI 时通过 default_domain 懒初始化，此处不再直接分配
 }
 
 Material *MaterialManager::TryGetCachedMaterial(const AnsiString &name)

@@ -1,7 +1,6 @@
 ﻿#include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKMaterialInstance.h>
 #include<hgl/vk/VKResourceDomain.h>
-#include<hgl/type/ActiveMemoryBlockManager.h>
 
 namespace hgl::graph{
 
@@ -11,14 +10,13 @@ namespace hgl::graph{
 
 MaterialInstance *Material::CreateMI(const VIL *vil)
 {
-    int mi_id=-1;
+    // Phase 5: 旧路径统一通过懒初始化的 default_domain 分配 MI 槽位
+    if(!default_domain && hasMI())
+        default_domain = new ResourceDomain(this);
 
-    if(mi_data_manager)
-        mi_data_manager->GetOrCreate(&mi_id,1);
-    else
-        mi_id=-1;
+    int mi_id = default_domain ? default_domain->AllocMISlot() : -1;
 
-    return(new MaterialInstance(this,vil?vil:GetDefaultVIL(),mi_id));
+    return new MaterialInstance(this, default_domain, vil ? vil : GetDefaultVIL(), mi_id);
 }
 
 MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
@@ -28,17 +26,19 @@ MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
 
 void Material::ReleaseMI(int mi_id)
 {
-    if(mi_id<0||!mi_data_manager)return;
+    // Phase 5: 保留接口兼容性；通过 default_domain 代理释放
+    if(mi_id < 0 || !default_domain) return;
 
-    mi_data_manager->Release(&mi_id,1);
+    default_domain->FreeMISlot(mi_id);
 }
 
 void *Material::GetMIData(int id)
 {
-    if(!mi_data_manager)
-        return(nullptr);
+    // Phase 5: 通过 default_domain 代理访问
+    if(!default_domain)
+        return nullptr;
 
-    return mi_data_manager->GetData(id);
+    return default_domain->GetMIData(id);
 }
 
 // ---------------------------------------------------------------------------
