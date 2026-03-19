@@ -114,6 +114,15 @@ SET(MATERIAL_COMPILER_FILES	 MaterialCompiler.cpp)
 
 SOURCE_GROUP("Material Compiler" FILES ${MATERIAL_COMPILER_FILES})
 
+SET(SHADER_LAYOUT_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutContract.h
+                                ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutBuilder.h
+                                ${SHADERGEN_INCLUDE_PATH}/ShaderLayoutDefineEmitter.h)
+SET(SHADER_LAYOUT_SOURCE_FILES  ShaderLayoutBuilder.cpp
+                                ShaderLayoutDefineEmitter.cpp)
+
+SOURCE_GROUP("Material Compiler\\Layout" FILES  ${SHADER_LAYOUT_HEADER_FILES}
+                                                ${SHADER_LAYOUT_SOURCE_FILES})
+
 SET(COMPOSITOR_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/CompositorAssembler.h
                              ${SHADERGEN_INCLUDE_PATH}/PresetShaderCompiler.h
                              ${SHADERGEN_INCLUDE_PATH}/SPVCache.h)
@@ -165,6 +174,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_INCLUDE_PATH}
                                         ${FIXED_MTL_FILES}
                                         ${SHADER_TEMPLATE_ENGINE_HEADER_FILES}
                                         ${MATERIAL_COMPILER_FILES}
+                                        ${SHADER_LAYOUT_HEADER_FILES}
+                                        ${SHADER_LAYOUT_SOURCE_FILES}
                                         ${COMPOSITOR_HEADER_FILES}
                                         ${COMPOSITOR_SOURCE_FILES}
                                         ${NEW_MTL_TYPE_FILES}

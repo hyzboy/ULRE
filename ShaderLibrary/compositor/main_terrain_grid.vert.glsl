@@ -23,13 +23,13 @@ L2W_SSBO;
     TRANSFORM_ID_BUFFER;
     #define GET_TRANSFORM_ID() FetchTransformID()
 #else
-    layout(location=0) in uint TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
 // VS textures (Material set) — texelFetch 不需要 sampler
-layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureHeight;
-layout(set=MATERIAL_SET, binding=1) uniform sampler2D TextureNormal;
+layout(set=MATERIAL_SET, binding=TEXTUREHEIGHT_BINDING) uniform sampler2D TextureHeight;
+layout(set=MATERIAL_SET, binding=TEXTURENORMAL_BINDING) uniform sampler2D TextureNormal;
 
 // Vertex attributes: TransformID only (no Position!)
 

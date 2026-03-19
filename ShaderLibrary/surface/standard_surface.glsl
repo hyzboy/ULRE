@@ -9,7 +9,6 @@
 #include "common/surface_interface.glsl"
 
 // ─── MI SSBO ─────────────────────────────────────────────────────────────────
-#define MI_BINDING 3
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
@@ -26,23 +25,23 @@ MI_SSBO;
 // ─── Textures (tier-gated) ───────────────────────────────────────────────────
 #if QUALITY_TIER >= 1
 #if BASE_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TexAlbedo;
+layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2DArray TexAlbedo;
 #else
-layout(set=MATERIAL_SET, binding=0) uniform sampler2D TexAlbedo;
+layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2D TexAlbedo;
 #endif
 #endif
 #if QUALITY_TIER >= 2
 #if NORMAL_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=1) uniform sampler2DArray TexNormal;
+layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2DArray TexNormal;
 #else
-layout(set=MATERIAL_SET, binding=1) uniform sampler2D TexNormal;
+layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2D TexNormal;
 #endif
 #endif
 #if QUALITY_TIER >= 4
 #if ROUGH_TEX_ARRAY_MODE
-layout(set=MATERIAL_SET, binding=2) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
+layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
 #else
-layout(set=MATERIAL_SET, binding=2) uniform sampler2D TexMR;   // R=metallic, G=roughness
+layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2D TexMR;   // R=metallic, G=roughness
 #endif
 #endif
 

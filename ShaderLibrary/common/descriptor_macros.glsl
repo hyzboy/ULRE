@@ -78,6 +78,37 @@
 #define VTX_DATA_BINDING 18
 #endif
 
+// ── Vertex attribute input locations ──
+// Defaults for standalone shader tooling; overridden by ShaderLayoutDefineEmitter at runtime.
+
+#ifndef POSITION_LOCATION
+#define POSITION_LOCATION 0
+#endif
+
+#ifndef NORMAL_LOCATION
+#define NORMAL_LOCATION 1
+#endif
+
+#ifndef TEXCOORD_LOCATION
+#define TEXCOORD_LOCATION 2
+#endif
+
+#ifndef COLOR_LOCATION
+#define COLOR_LOCATION 1
+#endif
+
+#ifndef LUMINANCE_LOCATION
+#define LUMINANCE_LOCATION 1
+#endif
+
+#ifndef TRANSFORM_ID_LOCATION
+#define TRANSFORM_ID_LOCATION 3
+#endif
+
+#ifndef MATERIAL_INSTANCE_ID_LOCATION
+#define MATERIAL_INSTANCE_ID_LOCATION 4
+#endif
+
 #ifndef IDX_DATA_BINDING
 #define IDX_DATA_BINDING 19
 #endif

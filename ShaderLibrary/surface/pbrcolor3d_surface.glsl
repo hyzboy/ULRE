@@ -3,7 +3,6 @@
 // Material set bindings: mtl=0
 
 // MI SSBO
-#define MI_BINDING 0
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {

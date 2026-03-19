@@ -79,6 +79,11 @@ namespace hgl::graph
 
             void SetBindingContract(const BindingContract &contract){binding_contract=contract;}
 
+            /// Delegates to descriptor_db.Resort() — finalises set and binding numbers.
+            /// Call this before BuildShaderLayoutContract() if you need layout numbers
+            /// outside of CreateShaderDirect() (which calls Resort internally).
+            void Resort(){descriptor_db.Resort();}
+
             const uint32_t GetMaterialInstanceStride   ()const{return material_instance_stride;}
             const uint32_t GetMaterialInstanceMaxCount  ()const{return material_instance_max_count;}
 

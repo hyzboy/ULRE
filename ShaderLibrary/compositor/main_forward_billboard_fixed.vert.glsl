@@ -11,7 +11,6 @@
 #extension GL_EXT_scalar_block_layout : require
 
 // Scene UBOs
-#define VIEWPORT_BINDING 1
 #include "common/descriptor_macros.glsl"
 #include "common/scene_ubo.glsl"
 SCENE_CAMERA_UBO;
@@ -26,7 +25,7 @@ L2W_SSBO;
     TRANSFORM_ID_BUFFER;
     #define GET_TRANSFORM_ID() FetchTransformID()
 #else
-    layout(location=1) in uint  TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint  TransformID;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
@@ -34,17 +33,13 @@ L2W_SSBO;
     #include "common/material_instance_id_buffer.glsl"
     MATERIAL_INSTANCE_ID_BUFFER;
     #define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
-#elif TRANSFORM_ID_FROM_DESCRIPTOR
-    layout(location=1) in uint  MaterialInstanceID;
-    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
 #else
-    layout(location=2) in uint  MaterialInstanceID;
+    layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint  MaterialInstanceID;
     #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
 #endif
 
 // MI SSBO (Material set, VS only)
 // Resort() 字母序: TextureBaseColor=0, mtl=1
-#define MI_BINDING 1
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance {
     uvec2 BillboardSize;
@@ -52,7 +47,7 @@ struct MaterialInstance {
 MI_SSBO_SCALAR;
 
 // Vertex attributes: Position + TransformID + MaterialInstanceID
-layout(location=0) in vec3  Position;
+layout(location=POSITION_LOCATION) in vec3  Position;
 
 // Output to FS
 layout(location=0) out vec2 fragTexCoord;

@@ -28,31 +28,22 @@ L2W_SSBO;
   #endif
 #endif
 
-// ---- Vertex inputs (location 连续排列) ----
-layout(location=0) in POSITION_FORMAT Position;
+// ---- Vertex inputs (locations provided by ShaderLayoutDefineEmitter) ----
+layout(location=POSITION_LOCATION) in POSITION_FORMAT Position;
 
 #ifdef HAS_L2W
   #if TRANSFORM_ID_FROM_DESCRIPTOR
     #ifdef HAS_MI
-layout(location=1) in uint MaterialInstanceID;
-      #define NEXT_LOC 2
-    #else
-      #define NEXT_LOC 1
+layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
     #endif
   #else
-layout(location=1) in uint TransformID;
+layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
     #ifdef HAS_MI
-layout(location=2) in uint MaterialInstanceID;
-      #define NEXT_LOC 3
-    #else
-      #define NEXT_LOC 2
+layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
     #endif
   #endif
 #elif defined(HAS_MI)
-layout(location=1) in uint MaterialInstanceID;
-  #define NEXT_LOC 2
-#else
-  #define NEXT_LOC 1
+layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
 #endif
 
 // ---- Helper functions ----

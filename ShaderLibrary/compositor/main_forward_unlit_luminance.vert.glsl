@@ -22,7 +22,7 @@ L2W_SSBO;
     TRANSFORM_ID_BUFFER;
     #define GET_TRANSFORM_ID() FetchTransformID()
 #else
-    layout(location=2) in uint TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
@@ -30,17 +30,14 @@ L2W_SSBO;
     #include "common/material_instance_id_buffer.glsl"
     MATERIAL_INSTANCE_ID_BUFFER;
     #define GET_MATERIAL_INSTANCE_ID() FetchMaterialInstanceID()
-#elif TRANSFORM_ID_FROM_DESCRIPTOR
-    layout(location=2) in uint MaterialInstanceID;
-    #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
 #else
-    layout(location=3) in uint MaterialInstanceID;
+    layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
     #define GET_MATERIAL_INSTANCE_ID() MaterialInstanceID
 #endif
 
 // Vertex attributes: Position + Luminance + TransformID + MaterialInstanceID
-layout(location=0) in vec3 Position;
-layout(location=1) in float Luminance;
+layout(location=POSITION_LOCATION) in vec3 Position;
+layout(location=LUMINANCE_LOCATION) in float Luminance;
 
 // Output to FS
 layout(location=0) flat out uint fragMaterialInstanceID;

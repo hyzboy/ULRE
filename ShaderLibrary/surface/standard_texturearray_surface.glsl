@@ -2,7 +2,6 @@
 
 #include "common/surface_interface.glsl"
 
-#define MI_BINDING 3
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
@@ -14,12 +13,12 @@ struct MaterialInstance
 };
 MI_SSBO;
 
-layout(set=MATERIAL_SET, binding=0) uniform sampler2DArray TexAlbedo;
+layout(set=MATERIAL_SET, binding=TEXALBEDO_BINDING) uniform sampler2DArray TexAlbedo;
 #if QUALITY_TIER >= 2
-layout(set=MATERIAL_SET, binding=1) uniform sampler2DArray TexNormal;
+layout(set=MATERIAL_SET, binding=TEXNORMAL_BINDING) uniform sampler2DArray TexNormal;
 #endif
 #if QUALITY_TIER >= 4
-layout(set=MATERIAL_SET, binding=2) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
+layout(set=MATERIAL_SET, binding=TEXMR_BINDING) uniform sampler2DArray TexMR;   // R=metallic, G=roughness
 #endif
 
 #include "common/skylight_simple.glsl"

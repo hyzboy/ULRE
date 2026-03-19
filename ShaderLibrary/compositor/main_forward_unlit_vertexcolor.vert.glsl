@@ -22,13 +22,13 @@ L2W_SSBO;
     TRANSFORM_ID_BUFFER;
     #define GET_TRANSFORM_ID() FetchTransformID()
 #else
-    layout(location=2) in uint TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
 // Vertex attributes: Position + Color + TransformID（无 MaterialInstanceID）
-layout(location=0) in vec3 Position;
-layout(location=1) in vec4 Color;
+layout(location=POSITION_LOCATION) in vec3 Position;
+layout(location=COLOR_LOCATION) in vec4 Color;
 
 // Output to FS
 layout(location=0) out vec4 fragVertexColor;

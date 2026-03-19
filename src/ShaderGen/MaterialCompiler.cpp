@@ -11,6 +11,8 @@
 #include <hgl/mtl/DescriptorBindingContract.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
+#include <hgl/shadergen/ShaderLayoutBuilder.h>
+#include <hgl/shadergen/ShaderLayoutDefineEmitter.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <cstring>
 #include <cstdio>
@@ -280,6 +282,23 @@ MaterialCreateInfo *CompileCompositorMaterial(
     // ─────────────────────────────────────────────────────────────
 
     mci->SetBindingContract(BuildBindingContract(def.descriptor_entries, def.descriptor_entry_count));
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 6c: Inject auto-generated layout #defines into GLSL
+    // Resort() finalises set/binding numbers; BuildShaderLayoutContract
+    // reads them and EmitShaderLayoutDefines produces a #define block
+    // that is prepended to every shader stage source.
+    // ─────────────────────────────────────────────────────────────
+    {
+        mci->Resort();
+        const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(*mci);
+        const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
+        if (!layout_defs.empty())
+        {
+            if (vert) vert->SetFinalGLSL(layout_defs + vert->GetFinalGLSL());
+            if (frag) frag->SetFinalGLSL(layout_defs + frag->GetFinalGLSL());
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────
     // Step 7: Compile directly → SPV

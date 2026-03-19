@@ -2,7 +2,6 @@
 // Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, TextureRoughness=2, mtl=3
 
 // MI SSBO
-#define MI_BINDING 3
 #include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
@@ -11,9 +10,9 @@ struct MaterialInstance
 MI_SSBO;
 
 // Textures
-layout(set=MATERIAL_SET, binding=0) uniform sampler2D TextureBaseColor;
-layout(set=MATERIAL_SET, binding=1) uniform sampler2D TextureNormal;
-layout(set=MATERIAL_SET, binding=2) uniform sampler2D TextureRoughness;
+layout(set=MATERIAL_SET, binding=TEXTUREBASECOLOR_BINDING) uniform sampler2D TextureBaseColor;
+layout(set=MATERIAL_SET, binding=TEXTURENORMAL_BINDING) uniform sampler2D TextureNormal;
+layout(set=MATERIAL_SET, binding=TEXTUREROUGHNESS_BINDING) uniform sampler2D TextureRoughness;
 
 // Sky light
 #include "common/skylight_simple.glsl"

@@ -25,16 +25,16 @@ L2W_SSBO;
     TRANSFORM_ID_BUFFER;
     #define GET_TRANSFORM_ID() FetchTransformID()
 #else
-    layout(location=2) in uint  TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint  TransformID;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
 // Color palette UBO (Material set, VS only)
-layout(scalar, set=MATERIAL_SET, binding=0) uniform ColorPattle { vec4 color[256]; } color_pattle;
+layout(scalar, set=MATERIAL_SET, binding=COLOR_PATTLE_BINDING) uniform ColorPattle { vec4 color[256]; } color_pattle;
 
 // Vertex attributes: Position + ColorIndex(uint) + TransformID
-layout(location=0) in vec3  Position;
-layout(location=1) in uint  ColorIndex;
+layout(location=POSITION_LOCATION) in vec3  Position;
+layout(location=COLOR_LOCATION) in uint  ColorIndex;
 
 // Output to FS
 layout(location=0) out vec4 fragVertexColor;

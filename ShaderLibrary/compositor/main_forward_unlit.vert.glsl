@@ -21,7 +21,7 @@ L2W_SSBO;
 #if GEOMETRY_FETCH_SSBO
     #include "common/vertex_fetch_ssbo.glsl"
 #else
-    layout(location=0) in vec3 Position;
+    layout(location=POSITION_LOCATION) in vec3 Position;
 #endif
 
 // ECS instance-rate attributes (dual ID)
@@ -32,7 +32,7 @@ L2W_SSBO;
 #elif GEOMETRY_FETCH_SSBO
     #define GET_TRANSFORM_ID()          gl_InstanceIndex
 #else
-    layout(location=1) in uint TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
     #define GET_TRANSFORM_ID()          TransformID
 #endif
 
@@ -42,11 +42,8 @@ L2W_SSBO;
     #define GET_MATERIAL_INSTANCE_ID()  FetchMaterialInstanceID()
 #elif GEOMETRY_FETCH_SSBO
     #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
-#elif TRANSFORM_ID_FROM_DESCRIPTOR
-    layout(location=1) in uint MaterialInstanceID;
-    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
 #else
-    layout(location=2) in uint MaterialInstanceID;
+    layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
     #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
 #endif
 

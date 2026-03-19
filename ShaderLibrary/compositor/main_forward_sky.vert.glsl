@@ -21,12 +21,12 @@ L2W_SSBO;
     TRANSFORM_ID_BUFFER;
     #define GET_TRANSFORM_ID() FetchTransformID()
 #else
-    layout(location=1) in uint TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
     #define GET_TRANSFORM_ID() TransformID
 #endif
 
 // Vertex attributes: Position + TransformID
-layout(location=0) in vec3 Position;
+layout(location=POSITION_LOCATION) in vec3 Position;
 
 // Output to FS: sky direction
 layout(location=0) out vec3 fragDirection;

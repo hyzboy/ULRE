@@ -22,9 +22,9 @@ L2W_SSBO;
     #include "common/vertex_fetch_ssbo.glsl"
 #else
     // VBO 顶点获取
-    layout(location=0) in vec3 inPosition;
-    layout(location=1) in vec3 inNormal;
-    layout(location=2) in vec2 inUV0;
+    layout(location=POSITION_LOCATION) in vec3 inPosition;
+    layout(location=NORMAL_LOCATION) in vec3 inNormal;
+    layout(location=TEXCOORD_LOCATION) in vec2 inUV0;
 #endif
 
 // ECS instance-rate attributes (dual ID)
@@ -37,7 +37,7 @@ L2W_SSBO;
     // SSBO 平台: TransformID = gl_InstanceIndex, MaterialInstanceID 由 push constant 或 SSBO 提供
     #define GET_TRANSFORM_ID()          gl_InstanceIndex
 #else
-    layout(location=3) in uint TransformID;
+    layout(location=TRANSFORM_ID_LOCATION) in uint TransformID;
     #define GET_TRANSFORM_ID()          TransformID
 #endif
 
@@ -47,11 +47,8 @@ L2W_SSBO;
     #define GET_MATERIAL_INSTANCE_ID()  FetchMaterialInstanceID()
 #elif GEOMETRY_FETCH_SSBO
     #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
-#elif TRANSFORM_ID_FROM_DESCRIPTOR
-    layout(location=3) in uint MaterialInstanceID;
-    #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
 #else
-    layout(location=4) in uint MaterialInstanceID;
+    layout(location=MATERIAL_INSTANCE_ID_LOCATION) in uint MaterialInstanceID;
     #define GET_MATERIAL_INSTANCE_ID()  MaterialInstanceID
 #endif
 
