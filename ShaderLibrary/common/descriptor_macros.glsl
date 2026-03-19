@@ -97,6 +97,56 @@
 #define LUMINANCE_LOCATION 1
 #endif
 
+// ── Material set (Textures, indexed after TID/MID) ──
+// Resort() assigns texture samplers: binding sequence depends on material definition.
+// Standard Material texture bindings (assumed):
+
+#ifndef TEXTUREBASECOLOR_BINDING
+#define TEXTUREBASECOLOR_BINDING 0
+#endif
+
+#ifndef TEXALBEDO_BINDING
+#define TEXALBEDO_BINDING TEXTUREBASECOLOR_BINDING
+#endif
+
+#ifndef TEXTURENORMAL_BINDING
+#define TEXTURENORMAL_BINDING 1
+#endif
+
+#ifndef TEXNORMAL_BINDING
+#define TEXNORMAL_BINDING TEXTURENORMAL_BINDING
+#endif
+
+#ifndef TEXTUREROUGHNESS_BINDING
+#define TEXTUREROUGHNESS_BINDING 2
+#endif
+
+#ifndef TEXMR_BINDING
+#define TEXMR_BINDING TEXTUREROUGHNESS_BINDING
+#endif
+
+#ifndef TEXTUREHEIGHT_BINDING
+#define TEXTUREHEIGHT_BINDING 3
+#endif
+
+#ifndef COLOR_PATTLE_BINDING
+#define COLOR_PATTLE_BINDING 4
+#endif
+
+// ── 2D special sets ──
+#ifndef TEX_SET
+#define TEX_SET MATERIAL_SET
+#endif
+
+#ifndef TEX_BINDING
+#define TEX_BINDING TEXALBEDO_BINDING
+#endif
+
+// ── MI set (defaults to Material set if not overridden) ──
+#ifndef MI_SET
+#define MI_SET MATERIAL_SET
+#endif
+
 #ifndef TRANSFORM_ID_LOCATION
 #define TRANSFORM_ID_LOCATION 3
 #endif
