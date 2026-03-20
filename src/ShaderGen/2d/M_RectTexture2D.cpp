@@ -34,7 +34,7 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &inner);
-    vertices.push_back({VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::TexCoord});
+    vertices.push_back({VAT_VEC2, VertexInputRate::Vertex, VAN::TexCoord});
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &inner);

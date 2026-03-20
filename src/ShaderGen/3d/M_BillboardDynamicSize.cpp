@@ -11,10 +11,10 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry BILLBOARD_DYNAMIC_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
     };
 
-    // Non-texture descriptors — texture entries built dynamically.
+    // Non-texture descriptors �?texture entries built dynamically.
     constexpr FixedDescriptorEntry BILLBOARD_DYNAMIC_BASE_DESCRIPTORS[] = {
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",     nullptr },
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",       nullptr },

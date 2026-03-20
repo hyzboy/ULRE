@@ -1,4 +1,4 @@
-﻿#include <hgl/shadergen/MaterialCreateInfo.h>
+#include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/mtl/UBOCommon.h>
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/shadergen/CompositorAssembler.h>
@@ -20,9 +20,9 @@ namespace
     constexpr const uint32_t mi_bytes = sizeof(uint32_t) + sizeof(float) * 2;
 
     constexpr FixedVertexEntry PBR_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::Position },
-        { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::TexCoord },
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex,   VAN::Normal   },
+        { VAT_VEC3, VertexInputRate::Vertex,   VAN::Position },
+        { VAT_VEC2, VertexInputRate::Vertex,   VAN::TexCoord },
+        { VAT_VEC3, VertexInputRate::Vertex,   VAN::Normal   },
     };
 
     constexpr FixedDescriptorEntry PBR_COLOR_3D_DESCRIPTORS[] = {
@@ -31,7 +31,7 @@ namespace
         { DescriptorSetType::Scene,      DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky",      "SkyInfo",             nullptr },
         { DescriptorSetType::Transform,  DescriptorKind::SSBO,uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorldData",    nullptr },
         { DescriptorSetType::Transform,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid",      "TransformIDData",      nullptr },
-        { DescriptorSetType::Transform,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr },
+        { DescriptorSetType::Material,   DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr },
         { DescriptorSetType::Material,   DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData",nullptr },
     };
 
@@ -70,7 +70,7 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     dynamic_def.descriptor_entries      = dynamic_descriptors.data();
     dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
 
-    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture �?color via MI)
+    // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture ??color via MI)
     MaterialVariantKey var_key;
     var_key.surface_type = SurfaceType::Standard;
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);

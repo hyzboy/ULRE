@@ -255,7 +255,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
         for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
         {
             const FixedVertexEntry &entry = def.vertex_entries[i];
-            vsc->AddInput(entry.type, entry.attrib, entry.input_rate, entry.group);
+            vsc->AddInput(entry.type, entry.attrib, entry.input_rate);
         }
     }
 

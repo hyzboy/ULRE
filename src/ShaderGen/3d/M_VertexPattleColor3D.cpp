@@ -1,14 +1,3 @@
-﻿/** 顶点调色板色要求有一个UBO结构如下
-*
-*
-*   struct ColorPattle
-*   {
-*       vec4 color[256];
-*   }color_pattle;
-*
-*   然后输入的一个R8UI顶点属性来指定使用那个颜色�?
-*/
-
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/shadergen/MaterialCompiler.h>
@@ -21,8 +10,8 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry VERTEX_PATTLE_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { VAT_UINT, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color },
+        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
+        { VAT_UINT, VertexInputRate::Vertex, VAN::Color },
     };
 
     constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {

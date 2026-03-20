@@ -11,16 +11,13 @@ VertexInputConfig::VertexInputConfig(const VIAArray &viaa)
     type_list=new VAType[via_array.count];
 
     const VertexInputAttribute *sa=via_array.items;
-
-    mem_zero(count_by_group);
+    total_count=via_array.count;
 
     for(uint i=0;i<via_array.count;i++)
     {
         attrib_list[i]          =sa->attrib;
         type_list[i].basetype   =VABaseType(sa->basetype);
         type_list[i].vec_size   =sa->vec_size;
-
-        count_by_group[size_t(sa->group)]++;
 
         ++sa;
     }
@@ -43,87 +40,53 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
     const VertexInputAttribute *via;
     VAConfig vac;
     uint binding=0;
+    via=via_array.items;
 
-    mem_copy(vil->count_by_group,count_by_group);
-
-    for(uint group=0;group<uint(VertexInputGroup::RANGE_SIZE);group++)
+    for(uint i=0;i<via_array.count;i++)
     {
-        vil->vif_list_by_group[group]=vif;
-        vil->first_binding[group]=binding;
+        //binding对应的是第几个数据输入流
+        //实际使用一个binding可以绑定多个attrib
+        //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
+        //但在我们的设计中，仅支持一个流传递一个attrib
 
-        via=via_array.items;
+        attr_desc->binding   =binding;
+        attr_desc->location  =via->location;                 //此值对应shader中的layout(location=
 
-        for(uint i=0;i<via_array.count;i++)
+        attr_desc->offset    =0;
+
+        bind_desc->binding   =binding;                      //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
+                                                            //在Mesh类中，buffer_list必需严格按照本此binding为序列号排列
+
+        ++binding;
+
+        if(!cfg||!cfg->Get(via->attrib,vac))
         {
-            if(uint(via->group)!=group)
-            {
-                ++via;
-                continue;
-            }
+            attr_desc->format    =GetVulkanFormat(via);
 
-            //binding对应的是第几个数据输入流
-            //实际使用一个binding可以绑定多个attrib
-            //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
-            //但在我们的设计中，仅支持一个流传递一个attrib
-
-            attr_desc->binding   =binding;
-            attr_desc->location  =via->location;                 //此值对应shader中的layout(location=
-
-            attr_desc->offset    =0;
-
-            bind_desc->binding   =binding;                      //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
-                                                                //在Mesh类中，buffer_list必需严格按照本此binding为序列号排列
-
-            ++binding;
-
-            if(group==uint(VertexInputGroup::JointID))
-            {
-                attr_desc->format   =VK_FORMAT_R8G8B8A8_UINT;
-
-                bind_desc->inputRate=VK_VERTEX_INPUT_RATE_VERTEX;
-                bind_desc->stride   =4;
-            }
-            else
-            if(group==uint(VertexInputGroup::JointWeight))
-            {
-                attr_desc->format   =VK_FORMAT_R8G8B8A8_UNORM;
-
-                bind_desc->inputRate=VK_VERTEX_INPUT_RATE_VERTEX;
-                bind_desc->stride   =4;
-            }
-            else
-            {
-                if(!cfg||!cfg->Get(via->attrib,vac))
-                {
-                    attr_desc->format    =GetVulkanFormat(via);
-
-                    bind_desc->inputRate =VkVertexInputRate(via->input_rate);
-                }
-                else
-                {
-                    attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
-
-                    bind_desc->inputRate =vac.input_rate;
-                }
-
-                bind_desc->stride    =GetStrideByFormat(attr_desc->format);
-            }
-
-            vif->format     =attr_desc->format;
-            vif->vec_size   =via->vec_size;
-            vif->stride     =bind_desc->stride;
-
-            vif->attrib     =via->attrib;
-            vif->binding    =attr_desc->binding;
-            vif->input_rate =bind_desc->inputRate;
-            vif->group      =via->group;
-
-            ++vif;
-            ++attr_desc;
-            ++bind_desc;
-
-            ++via;
+            bind_desc->inputRate =VkVertexInputRate(via->input_rate);
         }
+        else
+        {
+            attr_desc->format    =(vac.format==PF_UNDEFINED?GetVulkanFormat(via):vac.format);
+
+            bind_desc->inputRate =vac.input_rate;
+        }
+
+        bind_desc->stride    =GetStrideByFormat(attr_desc->format);
+
+        vif->format     =attr_desc->format;
+        vif->vec_size   =via->vec_size;
+        vif->stride     =bind_desc->stride;
+
+        vif->attrib     =via->attrib;
+        vif->binding    =attr_desc->binding;
+        vif->input_rate =bind_desc->inputRate;
+
+        ++vif;
+        ++attr_desc;
+        ++bind_desc;
+
+        ++via;
     }
 
     return(vil);
@@ -197,8 +160,6 @@ namespace
             else
                 result+="instance";
 
-            result+=",group:";
-            result+=GetVertexInputGroupName(via->group);
             result+=",interpolation:";
 
             result+=GetInterpolationName(via->interpolation);

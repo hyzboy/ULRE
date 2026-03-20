@@ -13,7 +13,7 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    // MI layout for Simple (sampler2D) — no texture_id needed
+    // MI layout for Simple (sampler2D) �?no texture_id needed
     constexpr const char mi_codes_simple[] = R"(
         uint  base_color;
         float metallic;
@@ -22,7 +22,7 @@ namespace
     )";
     constexpr const uint32_t mi_bytes_simple = sizeof(uint32_t) + sizeof(float) * 3;
 
-    // MI layout for Array (sampler2DArray) — texture_id selects the array layer
+    // MI layout for Array (sampler2DArray) �?texture_id selects the array layer
     constexpr const char mi_codes_array[] = R"(
         uint  base_color;
         float metallic;
@@ -33,19 +33,19 @@ namespace
     constexpr const uint32_t mi_bytes_array = sizeof(uint32_t) * 2 + sizeof(float) * 3;
 
     constexpr FixedVertexEntry STANDARD_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { VAT_VEC2, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::TexCoord },
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Normal },
+        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC2, VertexInputRate::Vertex, VAN::TexCoord },
+        { VAT_VEC3, VertexInputRate::Vertex, VAN::Normal },
     };
 
-    // Non-texture descriptors only — texture entries are built dynamically in CreateStandardVariant().
+    // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().
     constexpr FixedDescriptorEntry STANDARD_BASE_DESCRIPTORS[] = {
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",        nullptr },
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",          nullptr },
         { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "sky",      "SkyInfo",             nullptr },
         { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w",      "LocalToWorldData",    nullptr },
         { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "tid",      "TransformIDData",     nullptr },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mid",      "MaterialInstanceIDData", nullptr },
+        { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT),   "mid",      "MaterialInstanceIDData", nullptr },
         { DescriptorSetType::Material,  DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl",      "MaterialInstanceData", nullptr },
     };
 
@@ -208,7 +208,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     return mci;
 }
 
-// Unified factory — TextureSourceMode::Simple  -> sampler2D  (classic single-texture Standard)
+// Unified factory �?TextureSourceMode::Simple  -> sampler2D  (classic single-texture Standard)
 //                  TextureSourceMode::Array   -> sampler2DArray (texture-atlas / array Standard)
 MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
                                    const Material3DCreateConfig *cfg,
@@ -220,7 +220,7 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
     return CreateStandardVariant(profile, key, cfg);
 }
 
-// Compat wrappers — keep the two named entry-points so MaterialLibrary.cpp
+// Compat wrappers �?keep the two named entry-points so MaterialLibrary.cpp
 // does not need to change its dispatch table.
 MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *profile,
                                    const Material3DCreateConfig *cfg)

@@ -30,7 +30,6 @@ namespace hgl::graph
         uint8   vec_size;
 
         uint8               input_rate;
-        VertexInputGroup    group;
 
         Interpolation       interpolation;
     };

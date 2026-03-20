@@ -10,8 +10,8 @@ namespace hgl::graph::mtl{
 namespace
 {
     constexpr FixedVertexEntry VERTEX_COLOR_3D_VERTEX[] = {
-        { VAT_VEC3, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position },
-        { VAT_VEC4, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Color },
+        { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
+        { VAT_VEC4, VertexInputRate::Vertex, VAN::Color },
     };
 
         constexpr FixedDescriptorEntry VERTEX_COLOR_3D_DESCRIPTORS[] = {

@@ -7,31 +7,6 @@
 namespace hgl::graph
 {
 #pragma pack(push,1)
-    enum class VertexInputGroup:uint8
-    {
-        Basic,
-
-        JointID,
-        JointWeight,
-
-        ENUM_CLASS_RANGE(Basic,JointWeight)
-    };
-
-    constexpr const char *VertexInputGroupName[]=
-    {
-        "Basic",
-
-        "JointID",
-        "JointWeight"
-    };
-
-    inline const char *GetVertexInputGroupName(const VertexInputGroup vig)
-    {
-        RANGE_CHECK_RETURN_NULLPTR(vig);
-
-        return VertexInputGroupName[(int)vig];
-    }
-
     enum class VertexAttribBaseType:uint8
     {
         Bool=0,

@@ -36,11 +36,11 @@
 #endif
 
 #ifndef MID_SET
-#define MID_SET TRANSFORM_SET
+#define MID_SET MATERIAL_SET
 #endif
 
 #ifndef MID_BINDING
-#define MID_BINDING 1
+#define MID_BINDING 0
 #endif
 
 
@@ -132,6 +132,10 @@
 
 #ifndef MI_SET
 #define MI_SET MATERIAL_SET
+#endif
+
+#ifndef MI_BINDING
+#define MI_BINDING 1
 #endif
 
 #ifndef IDX_DATA_BINDING

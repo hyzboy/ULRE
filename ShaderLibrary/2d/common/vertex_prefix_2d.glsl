@@ -11,12 +11,6 @@ SCENE_VIEWPORT_UBO;
 #include "common/l2w_ssbo.glsl"
 #endif
 
-#ifdef HAS_MI
-#define MATERIAL_INSTANCE_ID_ONLY
-#include "common/material_instance_ssbo.glsl"
-#undef MATERIAL_INSTANCE_ID_ONLY
-#endif
-
 layout(location=POSITION_LOCATION) in POSITION_FORMAT Position;
 
 vec4 GetPosition2D()

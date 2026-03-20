@@ -46,6 +46,8 @@ inline std::string BuildDescriptorDefines(
 {
     std::string defs;
     int set = 0;
+    const bool has_transform_pair = cfg->local_to_world;
+    const bool has_material_instance_pair = has_mi;
 
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
     {
@@ -54,23 +56,17 @@ inline std::string BuildDescriptorDefines(
         set++;
     }
 
-    if(cfg->local_to_world || has_mi)
+    if(has_transform_pair)
     {
         int transform_binding = 0;
 
-        if(cfg->local_to_world)
+        if(has_transform_pair)
         {
             defs += "#define L2W_SET "    + std::to_string(set) + "\n";
             defs += "#define L2W_BINDING " + std::to_string(transform_binding++) + "\n";
         }
 
-        if(has_mi)
-        {
-            defs += "#define MID_SET "    + std::to_string(set) + "\n";
-            defs += "#define MID_BINDING " + std::to_string(transform_binding++) + "\n";
-        }
-
-        if(cfg->local_to_world)
+        if(has_transform_pair)
         {
             defs += "#define TID_SET "    + std::to_string(set) + "\n";
             defs += "#define TID_BINDING " + std::to_string(transform_binding++) + "\n";
@@ -79,17 +75,19 @@ inline std::string BuildDescriptorDefines(
         set++;
     }
 
-    if(has_texture || has_mi)
+    if(has_texture || has_material_instance_pair)
     {
-        // Resort sorts by name: "Texture..." (T=84) < "mtl" (m=109)
+        // Resort sorts by name: "Texture..." (T=84) < "mid" (m=109, i) < "mtl" (m=109, t)
         int binding = 0;
         if(has_texture)
         {
             defs += "#define TEX_SET "     + std::to_string(set) + "\n";
             defs += "#define TEX_BINDING " + std::to_string(binding++) + "\n";
         }
-        if(has_mi)
+        if(has_material_instance_pair)
         {
+            defs += "#define MID_SET "     + std::to_string(set) + "\n";
+            defs += "#define MID_BINDING " + std::to_string(binding++) + "\n";
             defs += "#define MI_SET "      + std::to_string(set) + "\n";
             defs += "#define MI_BINDING "  + std::to_string(binding++) + "\n";
         }
@@ -137,7 +135,7 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
 inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Material2DCreateConfig *cfg)
 {
     // Position
-    v.push_back({cfg->position_format, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position});
+    v.push_back({cfg->position_format, VertexInputRate::Vertex, VAN::Position});
 
     // MaterialInstanceID is descriptor-backed in SSBO-only mode.
 }
@@ -150,19 +148,25 @@ constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::SSBO;
 
 inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
 {
+    const bool has_transform_pair = cfg->local_to_world;
+    const bool has_material_instance_pair = cfg->material_instance;
+
     // Viewport (Scene set) �?only for Ortho
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
         v.push_back({DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr});
 
     // L2W (Transform set) �?only if L2W
-    if(cfg->local_to_world)
+    if(has_transform_pair)
         v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr});
 
-    if(cfg->local_to_world)
+    if(has_transform_pair)
         v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
 
-    if(cfg->material_instance)
-        v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr});
+    if(has_material_instance_pair)
+        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr});
+
+    if(has_material_instance_pair)
+        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr});
 }
 
 }//namespace build2d

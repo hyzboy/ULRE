@@ -124,9 +124,9 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::TransformID:
-        case DescriptorSemantic::MaterialInstanceID:
             return DescriptorSetType::Transform;
 
+        case DescriptorSemantic::MaterialInstanceID:
         case DescriptorSemantic::MaterialInstance:
         case DescriptorSemantic::MaterialTexture:
         case DescriptorSemantic::MaterialSampler:

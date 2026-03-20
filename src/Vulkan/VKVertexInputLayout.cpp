@@ -9,10 +9,6 @@ VertexInputLayout::VertexInputLayout(const uint32_t c)
     attr_list=zero_new<VkVertexInputAttributeDescription>(count);
 
     vif_list=zero_new<VertexInputFormat>(count);
-    mem_zero(vif_list_by_group);
-
-    mem_zero(count_by_group);
-    mem_zero(first_binding);
 }
 
 VertexInputLayout::~VertexInputLayout()

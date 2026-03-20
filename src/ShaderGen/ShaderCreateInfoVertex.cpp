@@ -15,7 +15,6 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
     for(VIA &via:via_list)
     {
         via.input_rate=uint8_t(VertexInputRate::Vertex);
-        via.group=VertexInputGroup::Basic;
 
         if(vsdi->AddInput(via))
             ++count;
@@ -24,7 +23,7 @@ int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
     return count;
 }
 
-int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexAttrib attrib,const VertexInputRate input_rate,const VertexInputGroup &group)
+int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexAttrib attrib,const VertexInputRate input_rate)
 {
     VIA via;
 
@@ -34,7 +33,6 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const VertexAttrib attri
     via.vec_size        =        type.vec_size;
 
     via.input_rate      =uint8_t(input_rate);
-    via.group           =group;
 
     via.interpolation   =Interpolation::Smooth;
 

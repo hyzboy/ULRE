@@ -16,10 +16,6 @@ private:
     VkVertexInputBindingDescription *bind_list;
     VkVertexInputAttributeDescription *attr_list;
     VertexInputFormat *vif_list;
-    VertexInputFormat *vif_list_by_group[size_t(VertexInputGroup::RANGE_SIZE)];
-
-    uint count_by_group[size_t(VertexInputGroup::RANGE_SIZE)];
-    uint first_binding[size_t(VertexInputGroup::RANGE_SIZE)];
 
 private:
 
@@ -32,29 +28,11 @@ public:
     ~VertexInputLayout();
 
     const uint32_t                              GetVertexAttribCount()const{return count;}
-    const uint32_t                              GetVertexAttribCount(const VertexInputGroup &vig)const
-    {
-        RANGE_CHECK_RETURN(vig,0)
-
-        return count_by_group[size_t(vig)];
-    }
-
-    const uint32_t                              GetFirstBinding     (const VertexInputGroup &vig)const
-    {
-        RANGE_CHECK_RETURN(vig,0)
-
-        return first_binding[size_t(vig)];
-    }
+    const uint32_t                              GetFirstBinding()const{return 0;}
 
     const int                                   GetIndex            (const VertexAttrib attrib)const;
 
     const VertexInputFormat *                   GetVIFList          ()const{return vif_list;}
-    const VertexInputFormat *                   GetVIFList          (const VertexInputGroup &vig)const
-    {
-        RANGE_CHECK_RETURN_NULLPTR(vig)
-
-        return vif_list_by_group[size_t(vig)];
-    }
 
     const VkFormat      GetVulkanFormat(const VertexAttrib attrib)const
     {

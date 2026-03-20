@@ -14,7 +14,6 @@ namespace hgl::graph
         VertexAttrib        attrib;
         int                 binding;
         VkVertexInputRate   input_rate;
-        VertexInputGroup    group;
     };//struct VertexInputFormat
 
     using VIF=VertexInputFormat;
