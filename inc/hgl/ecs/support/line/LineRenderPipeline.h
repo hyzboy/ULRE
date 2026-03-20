@@ -2,7 +2,6 @@
 
 #include <hgl/ecs/support/RenderPipelineBase.h>
 #include <hgl/vk/VKBufferAccessor.h>
-#include <hgl/vk/VKRenderAssign.h>
 #include <hgl/color/Color4f.h>
 #include <memory>
 #include <vector>

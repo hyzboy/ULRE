@@ -5,7 +5,6 @@
 #include<hgl/graph/geo/VKGeometry.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<hgl/vk/VKVertexInputLayout.h>
-#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/math/geometry/BoundingVolumes.h>
 #include<hgl/graph/geo/VKGeometryData.h>
 #include<hgl/io/MiniPack.h>
@@ -209,10 +208,6 @@ namespace
                 MLogError(LoadGeometry,OS_TEXT("Invalid VIF at index ") + OSString::numberOf(vab_index) + OS_TEXT(" in file ") + filename);
                 return false;
             }
-
-            if(vif->group==VertexInputGroup::TransformID
-             ||vif->group==VertexInputGroup::MaterialInstanceID)
-                continue;
 
             const char *attr_name = GetVertexAttribName(vif->attrib);
 

@@ -42,7 +42,6 @@ SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
                             ShaderVariableType.cpp
                             common/UBOCommon.cpp
-                            common/MFCommon.h
                             common/MFCamera.h
 )
 

@@ -11,9 +11,6 @@ namespace hgl::graph
     {
         Basic,
 
-        TransformID,
-        MaterialInstanceID,
-
         JointID,
         JointWeight,
 
@@ -23,9 +20,6 @@ namespace hgl::graph
     constexpr const char *VertexInputGroupName[]=
     {
         "Basic",
-
-        "TransformID",
-        "MaterialInstanceID",
 
         "JointID",
         "JointWeight"

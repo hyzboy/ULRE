@@ -10,7 +10,6 @@
 #include<hgl/graph/mesh/Primitive.h>
 #include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKVertexInput.h>
-#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<iostream>

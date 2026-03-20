@@ -20,7 +20,6 @@
 #include <hgl/vk/VKBuffer.h>
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
-#include <hgl/vk/VKRenderAssign.h>
 #include <hgl/vk/VKVertexInputConfig.h>
 #include <hgl/vk/StructuredBufferAccessor.h>
 #include <hgl/math/geometry/Frustum.h>

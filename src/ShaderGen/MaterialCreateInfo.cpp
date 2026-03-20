@@ -6,7 +6,6 @@
 #include<hgl/math/Matrix.h>
 #include<string>
 #include<limits>
-#include"common/MFCommon.h"
 
 using namespace hgl;
 using namespace hgl::graph;

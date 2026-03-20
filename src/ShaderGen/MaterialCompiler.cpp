@@ -19,24 +19,11 @@
 #include <cstdio>
 #include <string>
 
-#include "common/MFCommon.h"
-
 namespace hgl::graph::mtl {
 
 static bool CStrEq(const char *lhs, const char *rhs)
 {
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-}
-
-static bool HasVertexEntry(const FixedMaterialDef &def, const VertexAttrib attrib)
-{
-    for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
-    {
-        if (def.vertex_entries[i].attrib == attrib)
-            return true;
-    }
-
-    return false;
 }
 
 static bool HasDescriptorNamed(const FixedMaterialDef &def, const char *name)
@@ -134,7 +121,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const bool infer_has_mi     = HasDescriptorNamed(def, "mtl")
                                || HasDescriptorNamed(def, "MaterialInstanceData")
                                || HasPerMaterialDescriptor(def)
-                               || HasVertexEntry(def, Assign::MaterialInstanceID::ATTRIB)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
     cfg.camera           = cfg.camera           || infer_has_camera;
@@ -184,8 +170,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
                     { mci->AddUBOStruct(stage_bits, SBS_SkyInfo); break; }
                 if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
                     { mci->SetLocalToWorld(stage_bits); break; }
-                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
-                    { mi_stage_bits = stage_bits; break; }
 
                 // Custom UBO via private/global ShaderBufferSource registry
                 if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))

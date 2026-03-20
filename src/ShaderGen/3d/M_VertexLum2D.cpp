@@ -2,7 +2,6 @@
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<hgl/common/RenderAssignDef.h>
 #include<cstdio>
 #include<hgl/mtl/MaterialVariantDesc.h>
 

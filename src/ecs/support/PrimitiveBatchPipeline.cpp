@@ -15,7 +15,6 @@
 #include<hgl/object/ObjectTracker.h>
 #include<hgl/vk/VKDevice.h>
 #include<hgl/vk/VKObjectNameBuilder.h>
-#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKMaterialInstance.h>   // Phase 4: GetDomain()

@@ -8,7 +8,6 @@
 
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/FixedMaterialDef.h>
-#include<hgl/common/RenderAssignDef.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<string>
 #include<vector>
@@ -129,9 +128,6 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 {
     // Position
     v.push_back({cfg->position_format, VertexInputGroup::Basic, VertexInputRate::Vertex, VAN::Position});
-
-    // TransformID (if L2W)
-    (void)cfg;
 
     // MaterialInstanceID is descriptor-backed in SSBO-only mode.
 }

@@ -6,7 +6,6 @@
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/vk/VKVertexAttribBuffer.h>
 #include<hgl/vk/VKDevice.h>
-#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
@@ -627,7 +626,7 @@ namespace hgl::ecs
 
         if (!transform_id_buffer && buffer_manager)
         {
-            const VkDeviceSize buffer_size = sizeof(graph::Assign::TransformID::ValueType) * transform_id_buffer_max_count;
+            const VkDeviceSize buffer_size = sizeof(uint32_t) * transform_id_buffer_max_count;
 
             transform_id_buffer = buffer_manager->CreateSSBO("ECS:TransformIDData",
                                                              buffer_size,
@@ -1008,8 +1007,8 @@ namespace hgl::ecs
             return false;
         }
 
-        graph::Assign::TransformID::ValueType* transform_ptr =
-            (graph::Assign::TransformID::ValueType*)(transform_gpu->Map(0, transform_gpu->GetSize()));
+        uint32_t* transform_ptr =
+            (uint32_t*)(transform_gpu->Map(0, transform_gpu->GetSize()));
 
         if (!transform_ptr)
         {
@@ -1035,18 +1034,11 @@ namespace hgl::ecs
             const uint32_t idx = item->transform_index;
             if (idx > max_transform_id)
             {
-                if (!warned_overflow && sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t))
-                {
-                    std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: TransformID overflow ("
-                              << idx << ")" << std::endl;
-                    warned_overflow = true;
-                }
-
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(0);
+                *transform_ptr = static_cast<uint32_t>(0);
             }
             else
             {
-                *transform_ptr = static_cast<graph::Assign::TransformID::ValueType>(idx);
+                *transform_ptr = static_cast<uint32_t>(idx);
             }
 
             ++transform_ptr;
@@ -1088,7 +1080,7 @@ namespace hgl::ecs
         const uint32_t ring_frames = ring_writer.GetRingFrames();
         const uint32_t ring_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
         const uint32_t total_count = ring_writer.GetTotalCount(static_count + kFirstObjectL2WSlot, dynamic_count);
-        const uint32_t max_transform_id = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+        const uint32_t max_transform_id = std::numeric_limits<uint32_t>::max();
 
         if (ShouldEmitPeriodicLog(60) || (dynamic_count > 0 && static_count == 0))
         {
@@ -1102,7 +1094,7 @@ namespace hgl::ecs
                      static_cast<int>(mode));
         }
 
-        if (sizeof(graph::Assign::TransformID::ValueType) == sizeof(uint16_t)
+        if (sizeof(uint32_t) == sizeof(uint16_t)
          && total_count > max_transform_id + 1)
         {
             std::cout << "[TransformAssignmentBuffer::WriteItems] WARNING: Transform count exceeds R16 limit ("
@@ -1143,7 +1135,7 @@ namespace hgl::ecs
         if (item_count == 0)
             return;
 
-        const uint32_t max_transform_id = std::numeric_limits<graph::Assign::TransformID::ValueType>::max();
+        const uint32_t max_transform_id = std::numeric_limits<uint32_t>::max();
 
         if (!EnsureTransformIDBufferCapacity(item_count, graph::BufferAllocPolicy::Auto))
             return;

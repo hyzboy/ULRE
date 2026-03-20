@@ -5,7 +5,6 @@
 #include<string>
 
 #include"GLSLCompiler.h"
-#include"common/MFCommon.h"
 
 namespace hgl{namespace graph{
 

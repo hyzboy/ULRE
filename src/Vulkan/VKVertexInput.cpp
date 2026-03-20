@@ -1,6 +1,5 @@
 ﻿#include<hgl/vk/VKVertexInput.h>
 #include<hgl/vk/VKVertexInputConfig.h>
-#include<hgl/vk/VKRenderAssign.h>
 #include<hgl/type/ObjectManager.h>
 
 namespace hgl::graph{
@@ -91,21 +90,6 @@ VIL *VertexInputConfig::CreateVIL(const VILConfig *cfg)
 
                 bind_desc->inputRate=VK_VERTEX_INPUT_RATE_VERTEX;
                 bind_desc->stride   =4;
-            }
-            else
-            if(group==uint(VertexInputGroup::TransformID))
-            {
-                attr_desc->format   =Assign::TransformID::VAB_FMT;
-
-                bind_desc->inputRate=VK_VERTEX_INPUT_RATE_INSTANCE;
-                bind_desc->stride   =Assign::TransformID::STRIDE_BYTES;
-            }
-            else
-                if(group==uint(VertexInputGroup::MaterialInstanceID))
-            {
-                attr_desc->format   =Assign::MaterialInstanceID::VAB_FMT;
-                bind_desc->inputRate=VK_VERTEX_INPUT_RATE_INSTANCE;
-                bind_desc->stride   =Assign::MaterialInstanceID::STRIDE_BYTES;
             }
             else
             {
