@@ -36,8 +36,6 @@ const char *GetVertexAttribLocationMacroName(VertexAttrib attrib)
     case VertexAttrib::AO:                  return "AO_LOCATION";
     case VertexAttrib::Size:                return "SIZE_LOCATION";
     case VertexAttrib::Rotation:            return "ROTATION_LOCATION";
-    case VertexAttrib::TransformID:         return "TRANSFORM_ID_LOCATION";
-    case VertexAttrib::MaterialInstanceID:  return "MATERIAL_INSTANCE_ID_LOCATION";
     case VertexAttrib::JointID:             return "JOINT_ID_LOCATION";
     case VertexAttrib::JointWeight:         return "JOINT_WEIGHT_LOCATION";
     default:                                return nullptr;

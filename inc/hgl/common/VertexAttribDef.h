@@ -141,9 +141,6 @@ namespace hgl::graph
         Size,
         Rotation,
 
-        TransformID,
-        MaterialInstanceID,
-
         JointID,
         JointWeight,
 
@@ -165,9 +162,6 @@ namespace hgl::graph
 
         "Size",
         "Rotation",
-
-        "TransformID",
-        "MaterialInstanceID",
 
         "JointID",
         "JointWeight"

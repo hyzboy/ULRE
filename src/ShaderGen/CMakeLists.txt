@@ -102,8 +102,6 @@ SET(FIXED_MTL_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCompilerProfileAPI.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileAdapter.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenPhysicalDeviceProfileJson.h
                     ${SHADERGEN_INCLUDE_PATH}/contract/ShaderGenProfileTargetVersion.h
-                    ${SHADERGEN_INCLUDE_PATH}/ResourceLayoutGenerator.h
-                    ResourceLayoutGenerator.cpp
 )
 
 SOURCE_GROUP("Fixed Material" FILES ${FIXED_MTL_FILES})

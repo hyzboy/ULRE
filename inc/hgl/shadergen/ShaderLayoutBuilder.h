@@ -15,8 +15,7 @@ namespace hgl::graph
 
     /// Returns the layout-macro name for a vertex attribute location.
     /// e.g. VertexAttrib::Position  → "POSITION_LOCATION"
-    ///      VertexAttrib::TransformID → "TRANSFORM_ID_LOCATION"
-    /// Returns nullptr for unknown attribs.
+    /// Returns nullptr for unknown attribs and descriptor-backed attributes.
     const char *GetVertexAttribLocationMacroName(VertexAttrib attrib);
 
     /// Returns the layout-macro name for a descriptor set type.

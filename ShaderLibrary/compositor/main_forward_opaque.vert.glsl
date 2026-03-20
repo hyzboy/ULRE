@@ -27,21 +27,14 @@ L2W_SSBO;
     layout(location=TEXCOORD_LOCATION) in vec2 inUV0;
 #endif
 
-// ECS instance-rate attributes (dual ID)
-#if GEOMETRY_FETCH_SSBO
-    // SSBO 平台: TransformID = gl_InstanceIndex, MaterialInstanceID = gl_InstanceIndex
-    #define GET_TRANSFORM_ID()          gl_InstanceIndex
-    #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
-#else
-    #include "common/transform_id_buffer.glsl"
-    TRANSFORM_ID_BUFFER;
-    // Descriptor path: per-instance TransformID comes from tid.ids[gl_InstanceIndex].
-    #define GET_TRANSFORM_ID()          FetchTransformID()
+// ECS instance-rate attributes (dual ID) — SSBO-only path
+#include "common/transform_id_buffer.glsl"
+TRANSFORM_ID_BUFFER;
+#define GET_TRANSFORM_ID()          FetchTransformID()
 
-    #include "common/material_instance_id_buffer.glsl"
-    MATERIAL_INSTANCE_ID_BUFFER;
-    #define GET_MATERIAL_INSTANCE_ID()  FetchMaterialInstanceID()
-#endif
+#include "common/material_instance_id_buffer.glsl"
+MATERIAL_INSTANCE_ID_BUFFER;
+#define GET_MATERIAL_INSTANCE_ID()  FetchMaterialInstanceID()
 
 layout(location=0) out vec3 fragWorldPos;
 layout(location=1) out vec3 fragWorldNormal;

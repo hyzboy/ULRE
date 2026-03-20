@@ -155,10 +155,6 @@
 #define MI_SET MATERIAL_SET
 #endif
 
-#ifndef TRANSFORM_ID_LOCATION
-#define TRANSFORM_ID_LOCATION 3
-#endif
-
 #ifndef IDX_DATA_BINDING
 #define IDX_DATA_BINDING 19
 #endif

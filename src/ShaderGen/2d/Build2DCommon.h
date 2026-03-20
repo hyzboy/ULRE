@@ -54,14 +54,28 @@ inline std::string BuildDescriptorDefines(
         set++;
     }
 
-    if(cfg->local_to_world)
+    if(cfg->local_to_world || has_mi)
     {
-        defs += "#define L2W_SET "    + std::to_string(set) + "\n";
-        defs += "#define L2W_BINDING 0\n";
-        defs += "#define TID_SET "    + std::to_string(set) + "\n";
-        defs += "#define TID_BINDING 2\n";
-        defs += "#define MID_SET "    + std::to_string(set) + "\n";
-        defs += "#define MID_BINDING 1\n";
+        int transform_binding = 0;
+
+        if(cfg->local_to_world)
+        {
+            defs += "#define L2W_SET "    + std::to_string(set) + "\n";
+            defs += "#define L2W_BINDING " + std::to_string(transform_binding++) + "\n";
+        }
+
+        if(has_mi)
+        {
+            defs += "#define MID_SET "    + std::to_string(set) + "\n";
+            defs += "#define MID_BINDING " + std::to_string(transform_binding++) + "\n";
+        }
+
+        if(cfg->local_to_world)
+        {
+            defs += "#define TID_SET "    + std::to_string(set) + "\n";
+            defs += "#define TID_BINDING " + std::to_string(transform_binding++) + "\n";
+        }
+
         set++;
     }
 
@@ -112,10 +126,6 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_t
     if(cfg->local_to_world)     p += "#define HAS_L2W\n";
     if(cfg->material_instance)  p += "#define HAS_MI\n";
 
-    p += "#define TRANSFORM_ID_FROM_DESCRIPTOR 1\n";
-
-    p += "#define MATERIAL_INSTANCE_ID_FROM_DESCRIPTOR 1\n";
-
     p += "\n";
     return p;
 }
@@ -151,7 +161,7 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
     if(cfg->local_to_world)
         v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
 
-    if(cfg->local_to_world && cfg->material_instance)
+    if(cfg->material_instance)
         v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr});
 }
 

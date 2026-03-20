@@ -10,9 +10,6 @@ void ShaderPermutationKey::AppendGLSLDefines(std::string &out) const
 {
     char buf[512];
 
-    constexpr int transform_id_from_descriptor = 1;
-    constexpr int material_instance_id_from_descriptor = 1;
-
     snprintf(buf, sizeof(buf),
         "#define SURFACE_TYPE %d\n"
         "#define SHADOW_MODE %u\n"

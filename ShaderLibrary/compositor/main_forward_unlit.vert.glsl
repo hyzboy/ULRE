@@ -24,19 +24,14 @@ L2W_SSBO;
     layout(location=POSITION_LOCATION) in vec3 Position;
 #endif
 
-// ECS instance-rate attributes (dual ID)
-#if GEOMETRY_FETCH_SSBO
-    #define GET_TRANSFORM_ID()          gl_InstanceIndex
-    #define GET_MATERIAL_INSTANCE_ID()  gl_InstanceIndex
-#else
-    #include "common/transform_id_buffer.glsl"
-    TRANSFORM_ID_BUFFER;
-    #define GET_TRANSFORM_ID()          FetchTransformID()
+// ECS instance-rate attributes (dual ID) — SSBO-only path
+#include "common/transform_id_buffer.glsl"
+TRANSFORM_ID_BUFFER;
+#define GET_TRANSFORM_ID()          FetchTransformID()
 
-    #include "common/material_instance_id_buffer.glsl"
-    MATERIAL_INSTANCE_ID_BUFFER;
-    #define GET_MATERIAL_INSTANCE_ID()  FetchMaterialInstanceID()
-#endif
+#include "common/material_instance_id_buffer.glsl"
+MATERIAL_INSTANCE_ID_BUFFER;
+#define GET_MATERIAL_INSTANCE_ID()  FetchMaterialInstanceID()
 
 // Outputs to FS
 layout(location=0) flat out uint fragMaterialInstanceID;
