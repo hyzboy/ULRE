@@ -1,24 +1,15 @@
-// standard_surface.glsl — Standard Lit Surface (flattened, no quality branches)
-// Always evaluates a single PBR-style lighting path.
-// Texture source mode variants are preserved via *_TEX_ARRAY_MODE macros.
 
 #include "common/surface_interface.glsl"
 
-// ─── MI SSBO ─────────────────────────────────────────────────────────────────
-#include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
-    uint  base_color;    // packed RGBA8_UNORM, read with unpackUnorm4x8()
-    float metallic;
+    uint  base_color;        float metallic;
     float roughness;
-    float normal_scale;  // normal map intensity
-};
-MI_SSBO;
+    float normal_scale;  };
 
-// ─── Sky Light ────────────────────────────────────────────────────────────────
+#include "common/material_instance_ssbo.glsl"
 #include "common/skylight_simple.glsl"
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 float D_GGX(float NdotH, float alpha2)
 {
@@ -39,11 +30,10 @@ vec3 F_Schlick(float VdotH, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-// ─── Surface Entry ────────────────────────────────────────────────────────────
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[miID];
+    MaterialInstance mi = GetMaterialInstance();
 
     vec3 N = normalize(si.worldNormal);
     vec3 V = si.viewDir;
@@ -52,24 +42,20 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     vec3 sunColor   = max(ULRE_GetSkyLightColor(), vec3(0.2));
     vec3 skyAmbient = ULRE_GetSkyAmbientColor();
 
-    // ── Base color ────────────────────────────────────────────────────────────
     vec3 albedo = unpackUnorm4x8(mi.base_color).rgb;
     albedo *= GetSamplerBaseColor(si.uv0).rgb;
 
     float metallic  = clamp(mi.metallic,  0.0, 1.0);
     float roughness = clamp(mi.roughness, 0.04, 1.0);
 
-    // ── Normal Map ────────────────────────────────────────────────────────────
     vec3 nm = GetSamplerNormal(si.uv0).xyz * 2.0 - 1.0;
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 
-    // ── MR Map ────────────────────────────────────────────────────────────────
     vec2 mr    = GetSamplerRoughness(si.uv0).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 
-    // ── Simplified Cook-Torrance PBR (no IBL, no cubemap) ────────────────────
     float NdotL  = max(dot(N, L), 0.0);
     float NdotV  = max(dot(N, V), 1e-4);
     vec3  H      = normalize(V + L);
@@ -100,7 +86,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint miID)
+float EvalAlpha(SurfaceInput si)
 {
     return 1.0;
 }

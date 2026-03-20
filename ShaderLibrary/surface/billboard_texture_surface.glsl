@@ -1,8 +1,5 @@
-// === Surface Function: Billboard Texture ===
-// Billboard 共用 — 采样 TextureBaseColor，无光照
-// Dynamic/Fixed 共用此 surface function
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
     vec4 texColor = GetSamplerBaseColor(si.uv0);
 
@@ -17,7 +14,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si)
 {
     return GetSamplerBaseColor(si.uv0).a;
 }

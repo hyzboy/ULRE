@@ -1,4 +1,3 @@
-// PureTexture2D / RectTexture2D fragment shader
 
 layout(location=0) in vec2 fragTexCoord;
 

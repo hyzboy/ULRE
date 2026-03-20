@@ -1,4 +1,3 @@
-// PureTexture2D / RectTexture2D vertex shader
 #include "2d/common/vertex_prefix_2d.glsl"
 
 layout(location=TEXCOORD_LOCATION) in vec2 TexCoord;

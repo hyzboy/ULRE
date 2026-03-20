@@ -1,4 +1,3 @@
-// VertexColor2D fragment shader
 
 layout(location=0) in vec4 fragColor;
 

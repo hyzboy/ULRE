@@ -1,10 +1,15 @@
-// PureColor2D vertex shader
 #include "2d/common/vertex_prefix_2d.glsl"
 
-layout(location=0) flat out uint fragMIID;
+struct MaterialInstance {
+    vec4 Color;
+};
+
+#include "common/material_instance_ssbo.glsl"
+
+layout(location=0) out vec4 fragColor;
 
 void main()
 {
-    fragMIID = GET_MATERIAL_INSTANCE_ID();
+    fragColor = GetMaterialInstance().Color;
     gl_Position = GetPosition2D();
 }

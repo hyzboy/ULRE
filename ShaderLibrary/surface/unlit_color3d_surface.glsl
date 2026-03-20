@@ -1,21 +1,15 @@
-// Unlit Color3D Surface Function — 最简纯色材质
-// 不使用任何纹理，不参与光照计算
-// MI_Unlit: 仅包含 vec4 color (16 bytes)
 
 #include "common/surface_interface.glsl"
-#include "common/material_instance_ssbo.glsl"
 
-// 材质实例数据 — 仅一个颜色值
 struct MaterialInstance
 {
-    vec4 color;     // RGBA
-};
+    vec4 color;     };
 
-MI_SSBO;
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+#include "common/material_instance_ssbo.glsl"
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[materialInstanceID];
+    MaterialInstance mi = GetMaterialInstance();
 
     SurfaceOutput so;
     so.baseColor = mi.color.rgb;
@@ -28,7 +22,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si)
 {
-    return mtl.mi[materialInstanceID].color.a;
+    return GetMaterialInstance().color.a;
 }

@@ -1,13 +1,8 @@
-// === Surface Function: SkyMinimal ===
-// Procedural sky — gradient + atmosphere scatter + sun core/glow
-// 无 Material Instance，无贴图。sky UBO 由 FS 模板声明。
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    vec3 dir      = normalize(si.worldPos);   // VS 传来的方向向量
-    vec3 to_light = normalize(sky.sun_direction.xyz);
+    vec3 dir      = normalize(si.worldPos);       vec3 to_light = normalize(sky.sun_direction.xyz);
 
-    // ---- sky gradient + atmosphere scatter ----
     float h = clamp(dir.z, 0.0, 1.0);
 
     vec3 base = sky.base_sky_color.rgb;
@@ -24,7 +19,6 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     float atmosphere = sqrt(max(0.0, 1.0 - h));
     vec3  sky_color  = mix(grad, scatterMix, atmosphere * 0.7);
 
-    // ---- sun disc (hard core + glow) ----
     float sun_cos = cos(sun_rad);
     float coreN   = clamp((cos_t - sun_cos) / max(1e-5, 1.0 - sun_cos), 0.0, 1.0);
 
@@ -34,7 +28,6 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     float sunMask  = clamp(hard + glow, 0.0, 1.0);
     vec3  sun_color = sky.sun_color.rgb * sunMask * sky.sun_intensity;
 
-    // ---- output ----
     SurfaceOutput so;
     so.baseColor = sky_color + sun_color;
     so.alpha     = 1.0;

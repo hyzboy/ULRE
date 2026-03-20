@@ -1,29 +1,23 @@
-// Gizmo3D Surface Function — 调试 Gizmo 材质
-// MI_Gizmo: vec4 Color (16 bytes)
-// 自带简易 Blinn-Phong 光照（硬编码太阳方向）
 
 #include "common/surface_interface.glsl"
-#include "common/material_instance_ssbo.glsl"
 
 struct MaterialInstance
 {
     vec4 color;
 };
 
-MI_SSBO;
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+#include "common/material_instance_ssbo.glsl"
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[materialInstanceID];
+    MaterialInstance mi = GetMaterialInstance();
 
     const vec3 SUN_DIRECTION = vec3(0.655386, 0.491539, 0.573462);
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);
 
-    // Half-Lambert diffuse
     float intensity = 0.5 * max(dot(si.worldNormal, SUN_DIRECTION), 0.0) + 0.5;
     vec3 direct_color = intensity * SUN_COLOR * mi.color.rgb;
 
-    // Blinn-Phong specular
     vec3 spec_color = vec3(0.0);
     if (intensity > 0.0)
     {
@@ -43,7 +37,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si)
 {
     return 1.0;
 }

@@ -1,22 +1,7 @@
-// scene_ubo.glsl — Scene 描述符集 UBO 共享定义
-// 对应 C++: UBOCommon.h 中的 SBS_ViewportInfo / SBS_CameraInfo / SBS_SkyInfo
-//
-// 结构体名与实例名与 ShaderGen 一致：
-//   uniform ViewportInfo { ... } viewport;
-//   uniform CameraInfo   { ... } camera;
-//   uniform SkyInfo      { ... } sky;
-//
-// 使用方式：
-//   #include "common/descriptor_macros.glsl"
-//   #include "common/scene_ubo.glsl"
-//   SCENE_CAMERA_UBO;
-//   SCENE_SKY_UBO;
-//   SCENE_VIEWPORT_UBO;
 
 #ifndef SCENE_UBO_GLSL
 #define SCENE_UBO_GLSL
 
-// ---- ViewportInfo (C++: SBS_ViewportInfo, instance "viewport") ----
 #define SCENE_VIEWPORT_UBO \
     layout(set=SCENE_SET, binding=VIEWPORT_BINDING) uniform ViewportInfo \
     { \
@@ -26,7 +11,6 @@
         vec2 inv_viewport_resolution; \
     } viewport
 
-// ---- CameraInfo (C++: SBS_CameraInfo, instance "camera") ----
 #define SCENE_CAMERA_UBO \
     layout(set=SCENE_SET, binding=CAMERA_BINDING) uniform CameraInfo \
     { \
@@ -49,7 +33,6 @@
         vec3 camera_world_pos; \
     } camera
 
-// ---- SkyInfo (C++: SBS_SkyInfo, instance "sky") ----
 #define SCENE_SKY_UBO \
     layout(set=SCENE_SET, binding=SKY_BINDING) uniform SkyInfo \
     { \
@@ -64,4 +47,4 @@
         float halo_intensity; \
     } sky
 
-#endif // SCENE_UBO_GLSL
+#endif 

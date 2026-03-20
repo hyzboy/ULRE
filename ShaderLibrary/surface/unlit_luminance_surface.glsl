@@ -1,20 +1,16 @@
-// Unlit Luminance Surface Function — 顶点亮度 × MI 颜色
-// MI_Luminance: vec4 Color (16 bytes)
-// baseColor = MI.Color.rgb × luminance，alpha = MI.Color.a
 
 #include "common/surface_interface.glsl"
-#include "common/material_instance_ssbo.glsl"
 
 struct MaterialInstance
 {
     vec4 color;
 };
 
-MI_SSBO;
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+#include "common/material_instance_ssbo.glsl"
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[materialInstanceID];
+    MaterialInstance mi = GetMaterialInstance();
 
     SurfaceOutput so;
     so.baseColor = si.luminance * mi.color.rgb;
@@ -27,7 +23,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si)
 {
-    return mtl.mi[materialInstanceID].color.a;
+    return GetMaterialInstance().color.a;
 }

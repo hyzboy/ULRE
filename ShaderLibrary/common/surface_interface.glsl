@@ -1,5 +1,3 @@
-// Surface Interface — SurfaceInput / SurfaceOutput / SurfaceOutputExt
-// 所有 Surface Function 和 Compositor 模板共享此接口定义
 
 #ifndef SURFACE_INTERFACE_GLSL
 #define SURFACE_INTERFACE_GLSL
@@ -8,15 +6,12 @@
 
 struct SurfaceInput
 {
-    vec3 worldPos;       // camera-relative world position（非绝对世界坐标！）
-    vec3 worldNormal;
+    vec3 worldPos;           vec3 worldNormal;
     vec2 uv0;
     vec2 uv1;
     vec4 vertexColor;
-    vec3 viewDir;        // normalize(-worldPos)，因为 cameraPos 恒为 0
-    vec2 screenPos;
-    float luminance;     // 顶点亮度（VertexLuminance 材质使用）
-};
+    vec3 viewDir;            vec2 screenPos;
+    float luminance;     };
 
 struct SurfaceOutput
 {
@@ -29,7 +24,6 @@ struct SurfaceOutput
     float alpha;
 };
 
-// Special Surface 扩展（Skin, Hair, ClearCoat, Cloth 等）
 struct SurfaceOutputExt
 {
     vec3  subsurfaceColor;
@@ -44,4 +38,4 @@ struct SurfaceOutputExt
     vec3  anisotropyDirection;
 };
 
-#endif // SURFACE_INTERFACE_GLSL
+#endif 

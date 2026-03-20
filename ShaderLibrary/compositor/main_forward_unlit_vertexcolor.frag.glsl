@@ -1,16 +1,10 @@
 #version 450
 
-// === Compositor Template: Forward Unlit FS (Vertex Color) ===
-// 直接输出顶点色，无 MI、无光照
-//
-// Descriptor binding 约定：
-//   （FS 无额外 Descriptor）
 
 layout(location=0) in vec4 fragVertexColor;
 
 layout(location=0) out vec4 outColor;
 
-// --- Surface Function include (由 CompositorAssembler 注入) ---
 #include SURFACE_FUNCTION_FILE
 
 void main()
@@ -25,7 +19,6 @@ void main()
     si.screenPos   = vec2(0.0);
     si.luminance   = 1.0;
 
-    SurfaceOutput so = EvalSurface(si, 0u);  // miID=0, 无 MI
-
+    SurfaceOutput so = EvalSurface(si);  
     outColor = vec4(so.baseColor, so.alpha);
 }

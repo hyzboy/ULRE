@@ -1,8 +1,5 @@
-// === Surface Function: Terrain Grid ===
-// 硬编码太阳方向 + Blinn-Phong 光照，保持与旧版行为一致
-// 注意：si.worldPos 实际是 clip-space position（原始设计如此）
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
     const vec3 SUN_DIRECTION = normalize(vec3(0.655386, 0.491539, 0.573462));
     const vec3 SUN_COLOR     = vec3(1.0, 1.0, 1.0);
@@ -10,11 +7,9 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
 
     vec3 n = normalize(si.worldNormal);
 
-    // Diffuse (half-Lambert)
     float intensity = 0.5 * max(dot(n, SUN_DIRECTION), 0.0) + 0.5;
     vec3 direct_color = intensity * SUN_COLOR * BASE_COLOR;
 
-    // Blinn-Phong specular (preserving original clip-space + camera.pos trick)
     vec3 spec_color = vec3(0.0);
     if (intensity > 0.0)
     {
@@ -34,7 +29,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si)
 {
     return 1.0;
 }

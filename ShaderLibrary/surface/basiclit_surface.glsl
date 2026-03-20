@@ -1,23 +1,16 @@
-// basiclit_surface.glsl — BasicLit surface function (world-space)
-// Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, TextureRoughness=2, mtl=3
 
-// MI SSBO
-#include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
-    uint  base_color;       // packed RGBA8_UNORM
-    float metallic;
+    uint  base_color;           float metallic;
     float roughness;
     float fresnel;
     float ibl_intensity;
     float normal_strength;
 };
-MI_SSBO;
 
-// Sky light
+#include "common/material_instance_ssbo.glsl"
 #include "common/skylight_simple.glsl"
 
-// ─── helpers ───
 
 vec3 halfLambert(vec3 normal, vec3 lightDir)
 {
@@ -64,11 +57,10 @@ float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
     return clamp(base_roughness * roughness_tex, 0.04, 1.0);
 }
 
-// ─── surface entry ───
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[miID];
+    MaterialInstance mi = GetMaterialInstance();
 
     vec2 uv = ResolveSurfaceUV(si.uv0);
     float ns = mi.normal_strength > 0.0001 ? mi.normal_strength : 0.35;

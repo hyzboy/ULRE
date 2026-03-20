@@ -1,21 +1,11 @@
-// pbrcolor3d_surface.glsl — PBR Color3D surface function (world-space, Cook-Torrance)
-// Pure-color variant: no texture sampling.
-// Material set bindings: mtl=0
 
-// MI SSBO
-#include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
-    uint  base_color;    // packed RGBA8_UNORM
-    float metallic;      // [0, 1]
-    float roughness;     // [0.04, 1]
-};
-MI_SSBO;
+    uint  base_color;        float metallic;          float roughness;     };
 
-// Sky light
+#include "common/material_instance_ssbo.glsl"
 #include "common/skylight_simple.glsl"
 
-// ─── PBR helpers ───
 
 const float PBR_PI = 3.14159265359;
 
@@ -59,11 +49,10 @@ vec3 PBR_ApplyNormalMap(vec3 worldPos, vec2 uv, vec3 n_geom, vec3 normal_ts)
     return normalize(tbn * normal_ts);
 }
 
-// ─── surface entry ───
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[miID];
+    MaterialInstance mi = GetMaterialInstance();
 
     vec4 albedo     = unpackUnorm4x8(mi.base_color);
     float metallic  = clamp(mi.metallic,  0.0,  1.0);

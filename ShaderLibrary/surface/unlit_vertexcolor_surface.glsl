@@ -1,9 +1,7 @@
-// Unlit VertexColor Surface Function — 顶点色直通
-// 无 MI，baseColor 直接取自 SurfaceInput.vertexColor
 
 #include "common/surface_interface.glsl"
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
     SurfaceOutput so;
     so.baseColor = si.vertexColor.rgb;
@@ -16,7 +14,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint materialInstanceID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint materialInstanceID)
+float EvalAlpha(SurfaceInput si)
 {
     return si.vertexColor.a;
 }

@@ -1,8 +1,6 @@
-// standard_texturearray_surface.glsl — Standard Lit Surface (array sampling, no quality branches)
 
 #include "common/surface_interface.glsl"
 
-#include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
     uint  base_color;
@@ -11,12 +9,11 @@ struct MaterialInstance
     float normal_scale;
     uint  texture_id;
 };
-MI_SSBO;
 
+#include "common/material_instance_ssbo.glsl"
 layout(set=MATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2DArray Sampler_BaseColor;
 layout(set=MATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2DArray Sampler_Normal;
-layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2DArray Sampler_Roughness;   // R=metallic, G=roughness
-
+layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2DArray Sampler_Roughness;   
 #include "common/skylight_simple.glsl"
 
 float D_GGX(float NdotH, float alpha2)
@@ -38,9 +35,9 @@ vec3 F_Schlick(float VdotH, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[miID];
+    MaterialInstance mi = GetMaterialInstance();
 
     vec3 N = normalize(si.worldNormal);
     vec3 V = si.viewDir;
@@ -94,7 +91,7 @@ SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
     return so;
 }
 
-float EvalAlpha(SurfaceInput si, uint miID)
+float EvalAlpha(SurfaceInput si)
 {
     return 1.0;
 }

@@ -1,18 +1,12 @@
-// textureblinnphong_surface.glsl — Texture Blinn-Phong surface function (world-space)
-// Material set bindings (alphabetical): TextureBaseColor=0, TextureNormal=1, TextureRoughness=2, mtl=3
 
-// MI SSBO
-#include "common/material_instance_ssbo.glsl"
 struct MaterialInstance
 {
     float normal_strength;
 };
-MI_SSBO;
 
-// Sky light
+#include "common/material_instance_ssbo.glsl"
 #include "common/skylight_simple.glsl"
 
-// ─── helpers ───
 
 vec3 halfLambert(vec3 n, vec3 l)
 {
@@ -59,11 +53,10 @@ float ResolveSurfaceRoughness(float base_roughness, vec2 uv)
     return clamp(base_roughness * roughness_tex, 0.04, 1.0);
 }
 
-// ─── surface entry ───
 
-SurfaceOutput EvalSurface(SurfaceInput si, uint miID)
+SurfaceOutput EvalSurface(SurfaceInput si)
 {
-    MaterialInstance mi = mtl.mi[miID];
+    MaterialInstance mi = GetMaterialInstance();
 
     const float spec_strength = 0.6;
     const float F0            = 0.04;

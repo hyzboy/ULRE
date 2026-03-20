@@ -55,30 +55,14 @@ namespace hgl::ecs
         bool any_uploads = false;
         uint32_t scanned_count = 0;
         uint32_t dirty_count = 0;
-        uint32_t transform_tagged_count = 0;
-        uint32_t transform_tagged_dirty_count = 0;
 
         for (auto *buf : registry)
         {
             ++scanned_count;
 
-            std::string buf_name;
-            if (buf)
-                buf_name = buf->GetBufferName();
-
-            const bool is_transform_related =
-                   (buf_name.find("LocalToWorld") != std::string::npos)
-                || (buf_name.find("TransformID") != std::string::npos)
-                || (buf_name.find("L2W") != std::string::npos);
-
-            if (is_transform_related)
-                ++transform_tagged_count;
-
             if (buf && buf->IsDirty())
             {
                 ++dirty_count;
-                if (is_transform_related)
-                    ++transform_tagged_dirty_count;
 
                 GLogInfo("[RenderBufferUpload] CopyToDevice: %s (size=%llu)",
                           buf->GetBufferName().empty() ? "(unnamed)" : buf->GetBufferName().c_str(),
@@ -93,17 +77,13 @@ namespace hgl::ecs
             }
         }
 
-        GLogInfo("[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u",
-                  scanned_count,
-                  dirty_count,
-                  transform_tagged_count,
-                  transform_tagged_dirty_count);
+        GLogInfo("[RenderBufferUpload] scan summary: scanned=%u dirty=%u",
+              scanned_count,
+              dirty_count);
         std::fprintf(stderr,
-                 "[RenderBufferUpload] scan summary: scanned=%u dirty=%u transform_tagged=%u transform_tagged_dirty=%u\n",
+             "[RenderBufferUpload] scan summary: scanned=%u dirty=%u\n",
                  scanned_count,
-                 dirty_count,
-                 transform_tagged_count,
-                 transform_tagged_dirty_count);
+             dirty_count);
 
         // Only emit the transfer→vertex barrier when transfers actually happened.
         // Skipping when any_uploads==false prevents an invalid

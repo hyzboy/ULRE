@@ -17,6 +17,7 @@ namespace hgl::graph::mtl
 
         LocalToWorld,
         TransformID,
+        MaterialInstanceID,
         MaterialInstance,
 
         MaterialTexture,
@@ -65,6 +66,9 @@ namespace hgl::graph::mtl
 
         if (_DBC_CStrEq(entry.struct_name, "TransformIDData") || _DBC_CStrEq(entry.struct_name, "TransformID") || _DBC_CStrEq(entry.name, "tid"))
             return DescriptorSemantic::TransformID;
+
+        if (_DBC_CStrEq(entry.struct_name, "MaterialInstanceIDData") || _DBC_CStrEq(entry.struct_name, "MaterialInstanceID") || _DBC_CStrEq(entry.name, "mid"))
+            return DescriptorSemantic::MaterialInstanceID;
 
         if (_DBC_CStrEq(entry.struct_name, "MaterialInstanceData") || _DBC_CStrEq(entry.struct_name, "MaterialInstance") || _DBC_CStrEq(entry.name, "mtl"))
             return DescriptorSemantic::MaterialInstance;
@@ -120,6 +124,7 @@ namespace hgl::graph::mtl
 
         case DescriptorSemantic::LocalToWorld:
         case DescriptorSemantic::TransformID:
+        case DescriptorSemantic::MaterialInstanceID:
             return DescriptorSetType::Transform;
 
         case DescriptorSemantic::MaterialInstance:
@@ -171,6 +176,7 @@ namespace hgl::graph::mtl
         case DescriptorSemantic::SkyInfo:          return "SkyInfo";
         case DescriptorSemantic::LocalToWorld:     return "LocalToWorld";
         case DescriptorSemantic::TransformID:      return "TransformID";
+        case DescriptorSemantic::MaterialInstanceID:return "MaterialInstanceID";
         case DescriptorSemantic::MaterialInstance: return "MaterialInstance";
         case DescriptorSemantic::MaterialTexture:  return "MaterialTexture";
         case DescriptorSemantic::MaterialSampler:  return "MaterialSampler";

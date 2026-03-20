@@ -1,19 +1,10 @@
 #version 450
 
-// === Compositor Template: Forward Unlit FS (Luminance) ===
-// 顶点亮度 × MI 颜色 — 无光照，直接输出
-//
-// Descriptor binding 约定：
-//   Scene    set=0 : (unused in FS)
-//   Transform set=1 : (unused in FS)
-//   Material set=2 : mtl=0 (MI SSBO, 由 surface function 声明)
 
-layout(location=0) flat in uint fragMaterialInstanceID;
 layout(location=1) in float fragLuminance;
 
 layout(location=0) out vec4 outColor;
 
-// --- Surface Function include (由 CompositorAssembler 注入) ---
 #include SURFACE_FUNCTION_FILE
 
 void main()
@@ -28,7 +19,7 @@ void main()
     si.screenPos   = vec2(0.0);
     si.luminance   = fragLuminance;
 
-    SurfaceOutput so = EvalSurface(si, fragMaterialInstanceID);
+    SurfaceOutput so = EvalSurface(si);
 
     outColor = vec4(so.baseColor, so.alpha);
 }

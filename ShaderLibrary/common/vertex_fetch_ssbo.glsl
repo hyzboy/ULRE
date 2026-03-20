@@ -1,4 +1,3 @@
-// SSBO 顶点获取模块
 #include "common/descriptor_macros.glsl"
 
 struct VertexData
@@ -6,7 +5,6 @@ struct VertexData
     vec3 position;
     vec3 normal;
     vec2 uv0;
-    // 按需扩展 (tangent, color, etc.)
 };
 
 layout(set=VERTEX_DATA_SET, binding=VTX_DATA_BINDING) readonly buffer VertexDataBuffer { VertexData vertices[]; };

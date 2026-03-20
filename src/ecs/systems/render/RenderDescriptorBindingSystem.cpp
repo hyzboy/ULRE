@@ -424,6 +424,12 @@ namespace hgl::ecs
                         batch->transform_buffer->BindTransformID(material);
                     break;
                 }
+                case graph::mtl::DescriptorSemantic::MaterialInstanceID:
+                {
+                    if (batch && batch->mi_buffer)
+                        batch->mi_buffer->BindMaterialInstanceID(material);
+                    break;
+                }
                 case graph::mtl::DescriptorSemantic::MaterialInstance:
                 {
                     if (batch
@@ -578,6 +584,7 @@ namespace hgl::ecs
 
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::TransformID:
+        case graph::mtl::DescriptorSemantic::MaterialInstanceID:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
         case graph::mtl::DescriptorSemantic::MaterialSampler:
@@ -748,7 +755,8 @@ namespace hgl::ecs
                     break;
                 }
                 default:
-                    // LocalToWorld, TransformID, MaterialInstance: per-batch GPU buffers
+                    // LocalToWorld, TransformID, MaterialInstanceID, MaterialInstance:
+                    // per-batch GPU buffers
                     // not yet assigned to domain bindings (Phase 4).
                     break;
                 }
