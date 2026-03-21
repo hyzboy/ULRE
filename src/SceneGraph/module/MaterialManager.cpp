@@ -731,16 +731,12 @@ DomainMaterialBinding *MaterialManager::CreateDomainMaterialBinding(ResourceDoma
     if (!device)
         return nullptr;
 
-    MaterialParameters *mp[DESCRIPTOR_SET_TYPE_COUNT] = {};
+    MaterialParameters *mp_per_material = nullptr;
+    if (mtl->hasSet(DescriptorSetType::PerMaterial))
+        mp_per_material = CreateMaterialMP(mtl->GetName(), mtl->desc_manager,
+                                           mtl->pipeline_layout_data, DescriptorSetType::PerMaterial);
 
-    ENUM_CLASS_FOR(DescriptorSetType, int, i)
-    {
-        if (mtl->hasSet((DescriptorSetType)i))
-            mp[i] = CreateMaterialMP(mtl->GetName(), mtl->desc_manager,
-                                     mtl->pipeline_layout_data, (DescriptorSetType)i);
-    }
-
-    DomainMaterialBinding *binding = new DomainMaterialBinding(domain, mtl, mp);
+    DomainMaterialBinding *binding = new DomainMaterialBinding(domain, mtl, mp_per_material);
 
     // Phase 3: register binding for lifecycle tracking
     domain_bindings_map[domain].push_back(binding);

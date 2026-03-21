@@ -321,7 +321,7 @@ namespace hgl::ecs
         std::unordered_set<const graph::Material *> active_materials;
         ApplyBatchMaterialBindings(ubos, active_materials);
         ApplyPipelineMaterialBindings(ubos, active_materials);
-        ApplyDomainBindings(ubos);
+        ApplyDomainBindings();
         PurgeStaleBindings(active_materials);
     }
 
@@ -689,7 +689,7 @@ namespace hgl::ecs
         }
     }
 
-    void RenderDescriptorBindingSystem::ApplyDomainBindings(const SceneUBOs &ubos)
+    void RenderDescriptorBindingSystem::ApplyDomainBindings()
     {
         if (registered_domain_bindings.empty())
             return;
@@ -710,28 +710,19 @@ namespace hgl::ecs
                 if (!resolved.name || !*resolved.name)
                     continue;
 
-                switch (resolved.semantic)
-                {
-                case graph::mtl::DescriptorSemantic::ViewportInfo:
-                case graph::mtl::DescriptorSemantic::CameraInfo:
-                case graph::mtl::DescriptorSemantic::SkyInfo:
-                    BindSceneUBO(binding, resolved, ubos);
-                    break;
-                case graph::mtl::DescriptorSemantic::MaterialTexture:
-                {
-                    graph::mtl::SamplerName::SamplerSlot slot;
-                    if (!TryResolveTextureSlot(resolved.name, slot))
-                        break;
+                if (resolved.semantic != graph::mtl::DescriptorSemantic::MaterialTexture)
+                    continue;
 
-                    const auto *b = FindDomainResourceBinding(binding, slot);
-                    if (b && b->texture)
-                        binding->BindTextureSampler(slot, b->texture, b->sampler);
-                    break;
-                }
-                default:
-                    break;
-                }
+                graph::mtl::SamplerName::SamplerSlot slot;
+                if (!TryResolveTextureSlot(resolved.name, slot))
+                    continue;
+
+                const auto *b = FindDomainResourceBinding(binding, slot);
+                if (b && b->texture)
+                    binding->BindTextureSampler(slot, b->texture, b->sampler);
             }
+
+            binding->Update();
         }
     }
 }

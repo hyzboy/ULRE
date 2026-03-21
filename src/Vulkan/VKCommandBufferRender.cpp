@@ -1,5 +1,6 @@
 ﻿#include<hgl/vk/VKCommandBuffer.h>
 #include<hgl/vk/VKDomainMaterialBinding.h>
+#include<hgl/vk/pipeline/VKPipelineLayoutData.h>
 #include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKFramebuffer.h>
 #include<hgl/graph/mesh/Primitive.h>
@@ -149,27 +150,18 @@ bool RenderCmdBuffer::BindDescriptorSets(DomainMaterialBinding *binding)
 {
     if(!binding) return false;
 
-    uint32_t count = 0;
-    VkDescriptorSet ds[DESCRIPTOR_SET_TYPE_COUNT];
+    MaterialParameters *mp = binding->GetPerMaterialMP();
+    if(!mp) return false;
 
-    ENUM_CLASS_FOR(DescriptorSetType, int, i)
-    {
-        MaterialParameters *mp = binding->GetMP((DescriptorSetType)i);
+    mp->Update();
+    const VkDescriptorSet ds = mp->GetVkDescriptorSet();
 
-        if(mp)
-        {
-            mp->Update();
-            ds[count] = mp->GetVkDescriptorSet();
-            ++count;
-        }
-    }
+    const auto *pld = binding->GetMaterial()->GetPipelineLayoutData();
+    const uint32_t first_set = pld ? (uint32_t)pld->GetVulkanSetIndex(DescriptorSetType::PerMaterial) : 0;
 
-    if(count > 0)
-    {
-        pipeline_layout = binding->GetPipelineLayout();
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                pipeline_layout, 0, count, ds, 0, nullptr);
-    }
+    pipeline_layout = binding->GetPipelineLayout();
+    vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline_layout, first_set, 1, &ds, 0, nullptr);
 
     return true;
 }

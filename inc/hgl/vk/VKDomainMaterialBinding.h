@@ -16,10 +16,8 @@ class Sampler;
  * 域-材质绑定视图 (DomainMaterialBinding)
  *
  * 将一个 ResourceDomain 与一个 Material (Shader/Pipeline 模板) 绑定。
- * 持有该 pair 专属的 VkDescriptorSet 集合（各 DescriptorSetType 独立分配），
- * 使同一套 Shader 可以在不同资源域（不同纹理组）下独立渲染。
- *
- * Phase 2: 支持完整的 Texture/Sampler/UBO/SSBO 描述符绑定。
+ * 仅持有 PerMaterial 描述符集——这是唯一域私有的集合；
+ * Static/PerFrame/PerObject 集由 Material 统一持有、整体绑定一次。
  *
  * 典型用法:
  *   - 同一 billboard shader 绑定两个不同 Texture2DArray (UI 图标 vs 玩家头像)
@@ -27,18 +25,16 @@ class Sampler;
  */
 class DomainMaterialBinding
 {
-    ResourceDomain    *domain   = nullptr;
-    Material          *material = nullptr;
-
-    MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT] = {};
+    ResourceDomain     *domain          = nullptr;
+    Material           *material        = nullptr;
+    MaterialParameters *mp_per_material = nullptr;
 
 private:
 
     friend class MaterialManager;
 
-    /// MaterialManager 独占构造。mp[] 由 MaterialManager 分配后传入。
-    DomainMaterialBinding(ResourceDomain *d, Material *m,
-                          MaterialParameters *mp[DESCRIPTOR_SET_TYPE_COUNT]);
+    /// MaterialManager 独占构造。mp_per_material 由 MaterialManager 分配后传入。
+    DomainMaterialBinding(ResourceDomain *d, Material *m, MaterialParameters *mp);
 
 public:
 
@@ -48,41 +44,21 @@ public:
     // 基础属性
     // ----------------------------------------------------------------
 
-    ResourceDomain    *GetDomain   () const { return domain; }
-    Material          *GetMaterial () const { return material; }
+    ResourceDomain     *GetDomain        () const { return domain; }
+    Material           *GetMaterial      () const { return material; }
+    MaterialParameters *GetPerMaterialMP () const { return mp_per_material; }
 
     const VkPipelineLayout GetPipelineLayout() const { return material->GetPipelineLayout(); }
 
-    MaterialParameters *GetMP(const DescriptorSetType &type)
-    {
-        RANGE_CHECK_RETURN_NULLPTR(type)
-        return mp_array[size_t(type)];
-    }
-
     // ----------------------------------------------------------------
-    // 描述符绑定接口
+    // 描述符绑定接口 (PerMaterial 集)
     // ----------------------------------------------------------------
 
-    bool BindTexture(const mtl::SamplerName::SamplerSlot slot, Texture *tex)
-    {
-        return BindTexture(SET_TYPE_TEXTURE, slot, tex);
-    }
+    bool BindTexture       (const mtl::SamplerName::SamplerSlot slot, Texture *tex);
+    bool BindTextureSampler(const mtl::SamplerName::SamplerSlot slot, Texture *tex, Sampler *sampler);
 
-    bool BindTextureSampler(const mtl::SamplerName::SamplerSlot slot, Texture *tex, Sampler *sampler)
-    {
-        return BindTextureSampler(SET_TYPE_TEXTURE, slot, tex, sampler);
-    }
-
-    bool BindUBO           (const DescriptorSetType &type, const AnsiString &name, const IGPUBuffer *gpu, bool dynamic = false);
-    bool BindSSBO          (const DescriptorSetType &type, const AnsiString &name, const IGPUBuffer *gpu, bool dynamic = false);
-
-    /// 将所有已绑定描述符写入 Vulkan 驱动（Update 各 MaterialParameters）
+    /// 将已绑定描述符写入 Vulkan 驱动
     void Update();
-
-protected:
-
-    bool BindTexture       (const DescriptorSetType &type, mtl::SamplerName::SamplerSlot slot, Texture *tex);
-    bool BindTextureSampler(const DescriptorSetType &type, mtl::SamplerName::SamplerSlot slot, Texture *tex, Sampler *sampler);
 
 }; // class DomainMaterialBinding
 

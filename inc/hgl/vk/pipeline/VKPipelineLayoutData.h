@@ -19,6 +19,14 @@ struct PipelineLayoutData
 
 public:
 
+    int GetVulkanSetIndex(DescriptorSetType t) const
+    {
+        int idx = 0;
+        for (int i = 0; i < (int)t; ++i)
+            if (layouts[i]) ++idx;
+        return idx;
+    }
+
     ~PipelineLayoutData();
 };//class PipelineLayoutData
 }//namespace hgl::graph

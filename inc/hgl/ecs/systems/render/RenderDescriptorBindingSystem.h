@@ -161,7 +161,7 @@ namespace hgl::ecs
                                         std::unordered_set<const graph::Material *> &out_active);
         void ApplyPipelineMaterialBindings(const SceneUBOs &ubos,
                                            std::unordered_set<const graph::Material *> &out_active);
-        void ApplyDomainBindings(const SceneUBOs &ubos);
+        void ApplyDomainBindings();
         void PurgeStaleBindings(const std::unordered_set<const graph::Material *> &active);
 
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, graph::mtl::SamplerName::SamplerSlot slot) const;
