@@ -28,12 +28,15 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
     inner.prim=PrimitiveType::Triangles;
     inner.material_instance=use_array;  // Array 模式需要 MI
     inner.position_format=VAT_VEC2;
-    inner.coordinate_system=CoordinateSystem2D::Ortho;  // 使用正交投影
-    inner.local_to_world=false;  // 2D材质不使用L2W
+    // 坐标系和 L2W 由 cfg 传入，不在这里硬编码
     inner.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
     // Build DEF
-    auto preamble = build2d::Build2DPreamble(&inner, true, use_array);
+    auto preamble = build2d::Build2DPreamble(&inner,
+                                             true,
+                                             use_array,
+                                             SamplerSlot::BaseColor,
+                                             use_array);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &inner);
@@ -64,8 +67,8 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
     };
 
     // 使用统一的着色器文件
-    std::string vs = preamble + "#include \"2d/recttexture.vert.glsl\"\n";
-    std::string fs = preamble + "#include \"2d/recttexture.frag.glsl\"\n";
+    std::string vs = preamble + "#include \"2d/puretexture2d.vert.glsl\"\n";
+    std::string fs = preamble + "#include \"2d/puretexture2d.frag.glsl\"\n";
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
     if(!mci)

@@ -25,6 +25,29 @@ namespace hgl::graph
 
     std::string CompositorAssembler::GetCompositorVSPath(SurfaceType surface, PassType pass) const
     {
+        // 2D Materials — reuse vert_forward_main.glsl via VERT_INPUT_2D
+        if (Is2DSurfaceType(surface))
+        {
+            switch (surface)
+            {
+            case SurfaceType::PureColor2D:
+                // No texture, no vertex color — minimal VS
+                return shader_lib_path_ + "/compositor/main_forward_2d_common.vert.glsl";
+
+            case SurfaceType::PureTexture2D:
+            case SurfaceType::Text2D:
+                // Needs UV0 for texture sampling
+                return shader_lib_path_ + "/compositor/main_forward_2d_texcoord.vert.glsl";
+
+            case SurfaceType::VertexColor2D:
+                // Needs vertex color varying
+                return shader_lib_path_ + "/compositor/main_forward_2d_vertexcolor.vert.glsl";
+
+            default:
+                break;
+            }
+        }
+
         // Unlit 表面使用精简 VS（仅 Position + 双 ID，无 Normal/UV）
         if (surface == SurfaceType::Unlit)
         {
@@ -64,6 +87,26 @@ namespace hgl::graph
 
     std::string CompositorAssembler::GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const
     {
+        // 2D Materials — reuse frag_forward_main.glsl, routed by pass type
+        if (Is2DSurfaceType(surface))
+        {
+            switch (pass)
+            {
+            case PassType::ForwardOpaque:
+                return shader_lib_path_ + "/compositor/main_forward_2d_opaque.frag.glsl";
+
+            case PassType::ForwardMasked:
+                return shader_lib_path_ + "/compositor/main_forward_2d_masked.frag.glsl";
+
+            case PassType::ForwardDither:
+                return shader_lib_path_ + "/compositor/main_forward_2d_dither.frag.glsl";
+
+            case PassType::ForwardTransparent:
+            default:
+                return shader_lib_path_ + "/compositor/main_forward_2d_transparent.frag.glsl";
+            }
+        }
+
         // Unlit 表面类型使用专用 FS 模板（无光照）
         if (surface == SurfaceType::Unlit)
         {
@@ -120,6 +163,26 @@ namespace hgl::graph
 
     std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface) const
     {
+        // 2D Materials
+        if (Is2DSurfaceType(surface))
+        {
+            switch (surface)
+            {
+            // Reuse existing 3D surfaces — MaterialInstance layout is compatible
+            case SurfaceType::PureColor2D:
+                return "surface/unlit_color3d_surface.glsl";
+            case SurfaceType::VertexColor2D:
+                return "surface/unlit_vertexcolor_surface.glsl";
+            // New 2D-specific surfaces
+            case SurfaceType::PureTexture2D:
+                return "surface/2d/puretexture2d_surface.glsl";
+            case SurfaceType::Text2D:
+                return "surface/2d/text2d_surface.glsl";
+            default:
+                break;
+            }
+        }
+
         switch (surface)
         {
         case SurfaceType::Standard:   return "surface/standard_surface.glsl";

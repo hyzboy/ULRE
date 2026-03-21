@@ -28,8 +28,8 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
         nullptr, 0,
     };
 
-    std::string vs = preamble + "#include \"2d/puretexture.vert.glsl\"\n";
-    std::string fs = preamble + "#include \"2d/puretexture.frag.glsl\"\n";
+    std::string vs = preamble + "#include \"2d/puretexture2d.vert.glsl\"\n";
+    std::string fs = preamble + "#include \"2d/puretexture2d.frag.glsl\"\n";
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
     if(!mci)

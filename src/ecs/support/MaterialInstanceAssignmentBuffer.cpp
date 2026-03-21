@@ -116,50 +116,8 @@ namespace hgl::ecs
 
         mi_set.Clear();
 
-        // 如果材质没有MI数据，直接返回
-        if (material_instance_data_bytes <= 0)
-        {
-            std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] Material has no MI data, skipping" << std::endl;
-            return;
-        }
-
-        // 检查是否需要重新分配缓冲
-        if (!material_instance_buffer)
-        {
-            mi_set.Reserve(power_to_2(item_count));
-        }
-        else if (item_count > mi_set.GetAllocCount())
-        {
-            mi_set.Reserve(power_to_2(item_count));
-            if (buffer_manager)
-            {
-                buffer_manager->Release(material_instance_buffer);
-                material_instance_buffer = nullptr;
-            }
-            else
-            {
-                SAFE_CLEAR(material_instance_buffer);
-            }
-        }
-
-        // Create or reuse MaterialInstance SSBO
-        if (!material_instance_buffer && buffer_manager)
-        {
-            const size_t buffer_size = material_instance_data_bytes * mi_set.GetAllocCount();
-            material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceData",
-                                                                  buffer_size,
-                                                                  nullptr,
-                                                                  graph::SharingMode::Exclusive);
-        }
-
-    if (!material_instance_buffer)
-    {
-        std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI buffer allocation failed" << std::endl;
-        return;
-    }
-
         // 收集所有唯一的材质实例
-        mi_set.Reserve(item_count);
+        mi_set.Reserve(power_to_2(item_count));
 
         for (RenderItem *item : items)
         {
@@ -184,32 +142,55 @@ namespace hgl::ecs
                       << material->GetMIMaxCount() << ")" << std::endl;
         }
 
-        // 合并材质实例数据到缓冲
+        // MI 数据上传与 MI ID 分发解耦：仅当存在 MI payload 时才分配/写入 MI SSBO
+        if (material_instance_data_bytes > 0)
         {
-            auto *mibuf = material_instance_buffer->GetGPUBuffer();
-            uint8* mip = mibuf ? (uint8*)mibuf->Map(0, mibuf->GetSize()) : nullptr;
+            const size_t needed = mi_set.GetCount();
 
-            for (graph::MaterialInstance* mi : mi_set)
+            if (!material_instance_buffer || material_instance_buffer->GetGPUBuffer()->GetSize() < material_instance_data_bytes * needed)
             {
-                if (!mi)
-                    continue;
-
-                const void *mi_data = mi->GetMIData();
-
-                if (mi_data)
+                if (buffer_manager)
                 {
-                    memcpy(mip, mi_data, material_instance_data_bytes);
+                    if (material_instance_buffer)
+                        buffer_manager->Release(material_instance_buffer);
+
+                    material_instance_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceData",
+                                                                          material_instance_data_bytes * power_to_2(needed),
+                                                                          nullptr,
+                                                                          graph::SharingMode::Exclusive);
                 }
                 else
                 {
-                    // 如果MI数据为空，清零
-                    memset(mip, 0, material_instance_data_bytes);
+                    SAFE_CLEAR(material_instance_buffer);
                 }
-
-                mip += material_instance_data_bytes;
             }
 
-            if(mibuf) mibuf->Unmap();
+            if (!material_instance_buffer)
+            {
+                std::cout << "[MaterialInstanceAssignmentBuffer::StatMaterialInstance] WARNING: MI buffer allocation failed" << std::endl;
+            }
+            else
+            {
+                auto *mibuf = material_instance_buffer->GetGPUBuffer();
+                uint8* mip = mibuf ? (uint8*)mibuf->Map(0, material_instance_data_bytes * mi_set.GetCount()) : nullptr;
+
+                if (mip)
+                {
+                    for (graph::MaterialInstance* mi : mi_set)
+                    {
+                        const void *mi_data = mi ? mi->GetMIData() : nullptr;
+
+                        if (mi_data)
+                            memcpy(mip, mi_data, material_instance_data_bytes);
+                        else
+                            memset(mip, 0, material_instance_data_bytes);
+
+                        mip += material_instance_data_bytes;
+                    }
+
+                    mibuf->Unmap();
+                }
+            }
         }
 
         // 合并 MIT 数据（TextureArray per-instance 层索引）到 MIT SSBO
@@ -316,16 +297,9 @@ namespace hgl::ecs
         // 1. 收集并写入材质实例数据
         StatMaterialInstance(items);
 
-        if (!material_instance_buffer)
+        if (mi_set.GetCount() == 0)
         {
-            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: MI buffer unavailable, skip write" << std::endl;
-            return;
-        }
-
-        // If there is no MI payload, do not dispatch MI IDs.
-        if (material_instance_data_bytes <= 0)
-        {
-            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] No MI data, skipping MI ID dispatch" << std::endl;
+            std::cout << "[MaterialInstanceAssignmentBuffer::WriteItems] WARNING: No MaterialInstance collected" << std::endl;
             return;
         }
 
@@ -406,7 +380,7 @@ namespace hgl::ecs
                 }
 
                 graph::MaterialInstance* mi = item->GetMaterialInstance();
-                uint16 mi_index = mi_set.Find(mi);
+                uint16 mi_index = mi ? mi_set.Find(mi) : 0;
                 *mid_ptr++ = static_cast<uint32_t>(mi_index);
 
                 // if (i < 5 || i >= item_count - 2)  // 只打印前几个和后几个

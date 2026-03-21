@@ -40,11 +40,11 @@ inline const char *GLSLInputType(const VAType &vat)
 inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
                                    bool has_texture,
                                    bool has_mi,
-                                   const SamplerSlot texture_slot = SamplerSlot::BaseColor)
+                                   const SamplerSlot texture_slot = SamplerSlot::BaseColor,
+                                   const bool texture_array_mode = false)
 {
     (void)has_texture;
     (void)has_mi;
-    (void)texture_slot;
 
     std::string p = "#version 450\n\n";
 
@@ -61,6 +61,26 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
 
     if(cfg->local_to_world)     p += "#define HAS_L2W\n";
     if(cfg->material_instance)  p += "#define HAS_MI\n";
+
+    if (texture_array_mode)
+    {
+        p += "#define TEXTURE_ARRAY_MODE 1\n";
+
+        p += "#define TEX_";
+        switch (texture_slot)
+        {
+            case SamplerSlot::BaseColor: p += "BASECOLOR"; break;
+            case SamplerSlot::Normal:    p += "NORMAL";    break;
+            case SamplerSlot::Tangent:   p += "TANGENT";   break;
+            case SamplerSlot::Metallic:  p += "METALLIC";  break;
+            case SamplerSlot::Roughness: p += "ROUGHNESS"; break;
+            case SamplerSlot::Height:    p += "HEIGHT";    break;
+            case SamplerSlot::Opacity:   p += "OPACITY";   break;
+            case SamplerSlot::Text:      p += "TEXT";      break;
+            default:                     p += "BASECOLOR"; break;
+        }
+        p += "_ARRAY 1\n";
+    }
 
     p += "\n";
     return p;
