@@ -15,12 +15,14 @@ struct MaterialInstance {
 #undef MATERIAL_INSTANCE_SSBO_SCALAR
 layout(location=POSITION_LOCATION) in vec3  Position;
 
-layout(location=0) out vec2 fragTexCoord;
+layout(location=0) flat out uint fragMaterialInstanceID;
+layout(location=1) out vec2 fragTexCoord;
 
 MaterialInstance GetMI() { return GetMaterialInstance(); }
 
 void main()
 {
+    fragMaterialInstanceID = GetMaterialInstanceID();
     MaterialInstance mi = GetMI();
 
     vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);

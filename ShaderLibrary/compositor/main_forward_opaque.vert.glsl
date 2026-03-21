@@ -3,6 +3,8 @@
 
 #include "common/ubo_camera.glsl"
 #include "common/ssbo_transform.glsl"
+#define MATERIAL_INSTANCE_ID_ONLY
+#include "common/ssbo_material_instance.glsl"
 #if GEOMETRY_FETCH_SSBO
     #include "common/vertex_fetch_ssbo.glsl"
 #else
@@ -11,12 +13,14 @@
     layout(location=TEXCOORD_LOCATION) in vec2 inUV0;
 #endif
 
-layout(location=0) out vec3 fragWorldPos;
-layout(location=1) out vec3 fragWorldNormal;
-layout(location=2) out vec2 fragUV0;
+layout(location=0) flat out uint fragMaterialInstanceID;
+layout(location=1) out vec3 fragWorldPos;
+layout(location=2) out vec3 fragWorldNormal;
+layout(location=3) out vec2 fragUV0;
 
 void main()
 {
+    fragMaterialInstanceID = GetMaterialInstanceID();
     mat4 l2w_mat = GetTransform();
 
 #if GEOMETRY_FETCH_SSBO

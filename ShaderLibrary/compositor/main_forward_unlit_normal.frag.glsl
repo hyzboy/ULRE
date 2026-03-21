@@ -2,11 +2,13 @@
 
 
 #include "common/ubo_camera.glsl"
+layout(location=0) flat in uint fragMaterialInstanceID;
 layout(location=1) in vec3 fragWorldPos;
 layout(location=2) in vec3 fragWorldNormal;
 
 layout(location=0) out vec4 outColor;
 
+#define MATERIAL_INSTANCE_ID_OVERRIDE fragMaterialInstanceID
 #include SURFACE_FUNCTION_FILE
 
 void main()

@@ -7,7 +7,11 @@ layout(set=PERMATERIAL_SET, binding=MID_BINDING) readonly buffer MaterialInstanc
 
 uint GetMaterialInstanceID()
 {
+#ifdef MATERIAL_INSTANCE_ID_OVERRIDE
+    return MATERIAL_INSTANCE_ID_OVERRIDE;
+#else
     return mid.ids[gl_InstanceIndex];
+#endif
 }
 
 #ifndef MATERIAL_INSTANCE_ID_ONLY

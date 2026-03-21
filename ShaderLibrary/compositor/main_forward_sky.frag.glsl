@@ -3,11 +3,14 @@
 
 #include "common/ubo_sky.glsl"
 #include "common/surface_interface.glsl"
-#include SURFACE_FUNCTION_FILE
 
-layout(location=0) in vec3 fragDirection;
+layout(location=0) flat in uint fragMaterialInstanceID;
+layout(location=1) in vec3 fragDirection;
 
 layout(location=0) out vec4 outColor;
+
+#define MATERIAL_INSTANCE_ID_OVERRIDE fragMaterialInstanceID
+#include SURFACE_FUNCTION_FILE
 
 void main()
 {

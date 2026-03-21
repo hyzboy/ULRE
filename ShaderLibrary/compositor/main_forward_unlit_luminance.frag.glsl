@@ -1,10 +1,12 @@
 #version 450
 
 
+layout(location=0) flat in uint fragMaterialInstanceID;
 layout(location=1) in float fragLuminance;
 
 layout(location=0) out vec4 outColor;
 
+#define MATERIAL_INSTANCE_ID_OVERRIDE fragMaterialInstanceID
 #include SURFACE_FUNCTION_FILE
 
 void main()

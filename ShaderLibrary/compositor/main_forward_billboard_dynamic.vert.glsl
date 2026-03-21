@@ -3,12 +3,16 @@
 
 #include "common/ubo_camera.glsl"
 #include "common/ssbo_transform.glsl"
+#define MATERIAL_INSTANCE_ID_ONLY
+#include "common/ssbo_material_instance.glsl"
 layout(location=POSITION_LOCATION) in vec3 Position;
 
-layout(location=0) out vec2 fragTexCoord;
+layout(location=0) flat out uint fragMaterialInstanceID;
+layout(location=1) out vec2 fragTexCoord;
 
 void main()
 {
+    fragMaterialInstanceID = GetMaterialInstanceID();
     mat4 l2w_mat = GetTransform();
     vec3 center = (l2w_mat * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
     vec3 world_pos = center

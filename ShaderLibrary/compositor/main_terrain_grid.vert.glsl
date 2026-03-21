@@ -3,12 +3,16 @@
 
 #include "common/ubo_camera.glsl"
 #include "common/ssbo_transform.glsl"
+#define MATERIAL_INSTANCE_ID_ONLY
+#include "common/ssbo_material_instance.glsl"
 
-layout(location=0) out vec4 fragClipPos;
-layout(location=1) out vec3 fragWorldNormal;
+layout(location=0) flat out uint fragMaterialInstanceID;
+layout(location=1) out vec4 fragClipPos;
+layout(location=2) out vec3 fragWorldNormal;
 
 void main()
 {
+    fragMaterialInstanceID = GetMaterialInstanceID();
     ivec2 tex_sz = textureSize(TextureHeight, 0);
     int W = tex_sz.x;
 
