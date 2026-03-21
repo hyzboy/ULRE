@@ -26,6 +26,8 @@ namespace hgl::ecs
 
     MaterialBatch::~MaterialBatch()
     {
+        if (transform_id_buffer)
+            delete transform_id_buffer;
         if (icb_draw_indexed)
             delete icb_draw_indexed;
         if (icb_draw)

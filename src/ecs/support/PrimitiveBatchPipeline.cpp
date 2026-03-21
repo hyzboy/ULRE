@@ -429,8 +429,11 @@ namespace hgl::ecs
         BuildBatches(batch, 0);
         UpdateMaterialInstanceBuffer(batch);
 
-        if (batch.transform_buffer && !batch.items.empty())
-            batch.transform_buffer->WriteTransformIDs(batch.items);
+        if (!batch.transform_id_buffer && batch.buffer_manager)
+            batch.transform_id_buffer = new TransformAssignmentBuffer(batch.buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly);
+
+        if (batch.transform_id_buffer && !batch.items.empty())
+            batch.transform_id_buffer->WriteTransformIDs(batch.items);
     }
 
     void PrimitiveBatchPipeline::SortBatchItems(MaterialBatch& batch)

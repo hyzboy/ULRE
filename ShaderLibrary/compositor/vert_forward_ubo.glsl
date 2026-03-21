@@ -7,5 +7,13 @@
 
 #include "common/ubo_camera.glsl"
 #include "common/ssbo_transform.glsl"
+
+#if defined(PERMATERIAL_SET) && defined(MID_BINDING)
 #define MATERIAL_INSTANCE_ID_ONLY
 #include "common/ssbo_material_instance.glsl"
+#else
+uint GetMaterialInstanceID()
+{
+	return gl_InstanceIndex;
+}
+#endif

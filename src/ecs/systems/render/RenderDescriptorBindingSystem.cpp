@@ -404,7 +404,9 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::TransformID:
                 {
-                    if (batch && batch->transform_buffer)
+                    if (batch && batch->transform_id_buffer)
+                        batch->transform_id_buffer->BindTransformID(material);
+                    else if (batch && batch->transform_buffer)
                         batch->transform_buffer->BindTransformID(material);
                     break;
                 }
