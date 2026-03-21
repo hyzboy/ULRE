@@ -51,7 +51,22 @@ namespace hgl::ecs
 
             return nullptr;
         }
-    }
+
+        template<typename T>
+        void BindSceneUBO(T *target,
+                          const graph::mtl::ResolvedDescriptorRequirement &r,
+                          const hgl::ecs::RenderDescriptorBindingSystem::SceneUBOs &ubos)
+        {
+            using S = graph::mtl::DescriptorSemantic;
+            switch (r.semantic)
+            {
+            case S::ViewportInfo: if (ubos.viewport) target->BindUBO(r.set_type, r.name, ubos.viewport, false); break;
+            case S::CameraInfo:   if (ubos.camera)   target->BindUBO(r.set_type, r.name, ubos.camera,   false); break;
+            case S::SkyInfo:      if (ubos.sky)       target->BindUBO(r.set_type, r.name, ubos.sky,       false); break;
+            default: break;
+            }
+        }
+    } // anonymous namespace
 
     RenderDescriptorBindingSystem::RenderDescriptorBindingSystem(const std::string& name)
         : System(name)
@@ -302,8 +317,12 @@ namespace hgl::ecs
 
         EnsureViewportUBO();
 
-        ApplyContractBindings();
-        ApplyDomainBindings();
+        const SceneUBOs ubos = ResolveSceneUBOs();
+        std::unordered_set<const graph::Material *> active_materials;
+        ApplyBatchMaterialBindings(ubos, active_materials);
+        ApplyPipelineMaterialBindings(ubos, active_materials);
+        ApplyDomainBindings(ubos);
+        PurgeStaleBindings(active_materials);
     }
 
     const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
@@ -355,19 +374,21 @@ namespace hgl::ecs
         return sky_ubo->GetGPUBuffer();
     }
 
-    void RenderDescriptorBindingSystem::ApplyContractBindings()
+    RenderDescriptorBindingSystem::SceneUBOs RenderDescriptorBindingSystem::ResolveSceneUBOs()
+    {
+        return { ResolveViewportUBO(), ResolveCameraUBO(), ResolveSkyUBO() };
+    }
+
+    void RenderDescriptorBindingSystem::ApplyBatchMaterialBindings(
+        const SceneUBOs &ubos,
+        std::unordered_set<const graph::Material *> &out_active)
     {
         if (!context)
             return;
 
-        const auto *camera_ubo = ResolveCameraUBO();
-        const auto *sky_ubo = ResolveSkyUBO();
-
         const auto &cache = context->GetRenderFrameCache();
-
         std::unordered_set<graph::Material *> l2w_bound_materials;
         std::unordered_set<graph::Material *> mi_bound_materials;
-        std::unordered_set<const graph::Material *> active_materials;
 
         for (const auto &pair : cache.materialBatches)
         {
@@ -375,40 +396,24 @@ namespace hgl::ecs
             if (!material)
                 continue;
 
-            active_materials.insert(material);
+            out_active.insert(material);
 
             const MaterialBatch *batch = pair.second.get();
 
             const auto &contract = material->GetBindingContract();
-
             for (const auto &req : contract.requirements)
             {
                 const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
-
                 if (!resolved.name || !*resolved.name)
                     continue;
 
-                switch (req.semantic)
+                switch (resolved.semantic)
                 {
                 case graph::mtl::DescriptorSemantic::ViewportInfo:
-                {
-                    const auto *ubo = ResolveViewportUBO();
-                    if (ubo)
-                        material->BindUBO(resolved.set_type, resolved.name, ubo, false);
-                    break;
-                }
                 case graph::mtl::DescriptorSemantic::CameraInfo:
-                {
-                    if (camera_ubo)
-                        material->BindUBO(resolved.set_type, resolved.name, camera_ubo, false);
-                    break;
-                }
                 case graph::mtl::DescriptorSemantic::SkyInfo:
-                {
-                    if (sky_ubo)
-                        material->BindUBO(resolved.set_type, resolved.name, sky_ubo, false);
+                    BindSceneUBO(material, resolved, ubos);
                     break;
-                }
                 case graph::mtl::DescriptorSemantic::LocalToWorld:
                 {
                     if (batch
@@ -485,46 +490,33 @@ namespace hgl::ecs
                 }
             }
         }
+    }
 
-        // Bind scene-level UBOs to pipeline-registered materials (Line, Terrain, etc.)
-        // These materials bypass the normal materialBatches path.
+    void RenderDescriptorBindingSystem::ApplyPipelineMaterialBindings(
+        const SceneUBOs &ubos,
+        std::unordered_set<const graph::Material *> &out_active)
+    {
         for (graph::Material *material : pipeline_materials)
         {
             if (!material)
                 continue;
 
-            active_materials.insert(material);
+            out_active.insert(material);
 
             const auto &contract = material->GetBindingContract();
-
             for (const auto &req : contract.requirements)
             {
                 const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
-
                 if (!resolved.name || !*resolved.name)
                     continue;
 
-                switch (req.semantic)
+                switch (resolved.semantic)
                 {
                 case graph::mtl::DescriptorSemantic::ViewportInfo:
-                {
-                    const auto *ubo = ResolveViewportUBO();
-                    if (ubo)
-                        material->BindUBO(resolved.set_type, resolved.name, ubo, false);
-                    break;
-                }
                 case graph::mtl::DescriptorSemantic::CameraInfo:
-                {
-                    if (camera_ubo)
-                        material->BindUBO(resolved.set_type, resolved.name, camera_ubo, false);
-                    break;
-                }
                 case graph::mtl::DescriptorSemantic::SkyInfo:
-                {
-                    if (sky_ubo)
-                        material->BindUBO(resolved.set_type, resolved.name, sky_ubo, false);
+                    BindSceneUBO(material, resolved, ubos);
                     break;
-                }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
                     graph::mtl::SamplerName::SamplerSlot slot;
@@ -541,10 +533,14 @@ namespace hgl::ecs
                 }
             }
         }
+    }
 
+    void RenderDescriptorBindingSystem::PurgeStaleBindings(
+        const std::unordered_set<const graph::Material *> &active)
+    {
         for (auto it = material_resource_bindings.begin(); it != material_resource_bindings.end();)
         {
-            if (active_materials.find(it->first) == active_materials.end())
+            if (active.find(it->first) == active.end())
                 it = material_resource_bindings.erase(it);
             else
                 ++it;
@@ -552,7 +548,7 @@ namespace hgl::ecs
 
         for (auto it = contract_last_ok.begin(); it != contract_last_ok.end();)
         {
-            if (active_materials.find(it->first) == active_materials.end())
+            if (active.find(it->first) == active.end())
                 it = contract_last_ok.erase(it);
             else
                 ++it;
@@ -613,14 +609,13 @@ namespace hgl::ecs
             ++frame_stats.materials_checked;
 
             const auto &contract = material->GetBindingContract();
-
             bool all_required_ok = true;
             std::string first_error;
 
             for (const auto &req : contract.requirements)
             {
                 const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
-                const bool resolvable = IsSemanticResolvable(req.semantic);
+                const bool resolvable = IsSemanticResolvable(resolved.semantic);
                 if (resolvable)
                     continue;
 
@@ -632,7 +627,7 @@ namespace hgl::ecs
                     if (first_error.empty())
                     {
                         first_error = "missing semantic=";
-                        first_error += graph::mtl::GetDescriptorSemanticName(req.semantic);
+                        first_error += graph::mtl::GetDescriptorSemanticName(resolved.semantic);
                     }
                 }
                 else
@@ -694,14 +689,10 @@ namespace hgl::ecs
         }
     }
 
-    void RenderDescriptorBindingSystem::ApplyDomainBindings()
+    void RenderDescriptorBindingSystem::ApplyDomainBindings(const SceneUBOs &ubos)
     {
         if (registered_domain_bindings.empty())
             return;
-
-        const auto *camera_ubo = ResolveCameraUBO();
-        const auto *sky_ubo    = ResolveSkyUBO();
-        const auto *viewport_buf = ResolveViewportUBO();
 
         for (graph::DomainMaterialBinding *binding : registered_domain_bindings)
         {
@@ -713,34 +704,19 @@ namespace hgl::ecs
                 continue;
 
             const auto &contract = material->GetBindingContract();
-
             for (const auto &req : contract.requirements)
             {
                 const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
-
                 if (!resolved.name || !*resolved.name)
                     continue;
 
-                switch (req.semantic)
+                switch (resolved.semantic)
                 {
                 case graph::mtl::DescriptorSemantic::ViewportInfo:
-                {
-                    if (viewport_buf)
-                        binding->BindUBO(resolved.set_type, resolved.name, viewport_buf, false);
-                    break;
-                }
                 case graph::mtl::DescriptorSemantic::CameraInfo:
-                {
-                    if (camera_ubo)
-                        binding->BindUBO(resolved.set_type, resolved.name, camera_ubo, false);
-                    break;
-                }
                 case graph::mtl::DescriptorSemantic::SkyInfo:
-                {
-                    if (sky_ubo)
-                        binding->BindUBO(resolved.set_type, resolved.name, sky_ubo, false);
+                    BindSceneUBO(binding, resolved, ubos);
                     break;
-                }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
                     graph::mtl::SamplerName::SamplerSlot slot;
@@ -753,9 +729,6 @@ namespace hgl::ecs
                     break;
                 }
                 default:
-                    // LocalToWorld, TransformID, MaterialInstanceID, MaterialInstance:
-                    // per-batch GPU buffers
-                    // not yet assigned to domain bindings (Phase 4).
                     break;
                 }
             }

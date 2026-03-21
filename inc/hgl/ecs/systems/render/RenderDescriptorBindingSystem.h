@@ -48,6 +48,13 @@ namespace hgl::ecs
             graph::Sampler *sampler = nullptr;
         };
 
+        struct SceneUBOs
+        {
+            const graph::IGPUBuffer *viewport = nullptr;
+            const graph::IGPUBuffer *camera   = nullptr;
+            const graph::IGPUBuffer *sky      = nullptr;
+        };
+
         struct ContractDiagStats
         {
             uint32_t materials_checked = 0;
@@ -144,11 +151,19 @@ namespace hgl::ecs
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);
-        void ApplyContractBindings();
-        void ApplyDomainBindings();
+
+        SceneUBOs ResolveSceneUBOs();
         const graph::IGPUBuffer *ResolveViewportUBO() const;
         const graph::IGPUBuffer *ResolveCameraUBO() const;
         const graph::IGPUBuffer *ResolveSkyUBO();
+
+        void ApplyBatchMaterialBindings(const SceneUBOs &ubos,
+                                        std::unordered_set<const graph::Material *> &out_active);
+        void ApplyPipelineMaterialBindings(const SceneUBOs &ubos,
+                                           std::unordered_set<const graph::Material *> &out_active);
+        void ApplyDomainBindings(const SceneUBOs &ubos);
+        void PurgeStaleBindings(const std::unordered_set<const graph::Material *> &active);
+
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, graph::mtl::SamplerName::SamplerSlot slot) const;
         const MaterialResourceBinding *FindDomainResourceBinding(const graph::DomainMaterialBinding *binding, graph::mtl::SamplerName::SamplerSlot slot) const;
         void ValidateContractsSideChannel();
