@@ -1,10 +1,6 @@
 #version 450
 
-
-#include "common/ubo_camera.glsl"
-#include "common/ssbo_transform.glsl"
-#define MATERIAL_INSTANCE_ID_ONLY
-#include "common/ssbo_material_instance.glsl"
+#include "compositor/vert_forward_ubo.glsl"
 
 #define VARYING_STAGE_VERT
 #define HAS_CLIP_POS
