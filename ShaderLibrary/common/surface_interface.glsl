@@ -5,12 +5,15 @@
 
 struct SurfaceInput
 {
-    vec3 worldPos;           vec3 worldNormal;
+    vec3 worldPos;
+    vec3 worldNormal;
     vec2 uv0;
     vec2 uv1;
     vec4 vertexColor;
-    vec3 viewDir;            vec2 screenPos;
-    float luminance;     };
+    vec3 viewDir;
+    vec2 screenPos;
+    float luminance;
+};
 
 struct SurfaceOutput
 {
@@ -37,4 +40,4 @@ struct SurfaceOutputExt
     vec3  anisotropyDirection;
 };
 
-#endif 
+#endif
