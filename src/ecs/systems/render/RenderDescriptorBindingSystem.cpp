@@ -52,20 +52,6 @@ namespace hgl::ecs
             return nullptr;
         }
 
-        template<typename T>
-        void BindSceneUBO(T *target,
-                          const graph::mtl::ResolvedDescriptorRequirement &r,
-                          const hgl::ecs::RenderDescriptorBindingSystem::SceneUBOs &ubos)
-        {
-            using S = graph::mtl::DescriptorSemantic;
-            switch (r.semantic)
-            {
-            case S::ViewportInfo: if (ubos.viewport) target->BindUBO(r.set_type, r.name, ubos.viewport, false); break;
-            case S::CameraInfo:   if (ubos.camera)   target->BindUBO(r.set_type, r.name, ubos.camera,   false); break;
-            case S::SkyInfo:      if (ubos.sky)       target->BindUBO(r.set_type, r.name, ubos.sky,       false); break;
-            default: break;
-            }
-        }
     } // anonymous namespace
 
     RenderDescriptorBindingSystem::RenderDescriptorBindingSystem(const std::string& name)
@@ -77,16 +63,56 @@ namespace hgl::ecs
         AddDependency<RenderTargetSystem>();
         AddDependency<CameraSystem>();
 
-        if (const char *env = std::getenv("HGL_ECS_DISABLE_LEGACY_BINDING_FALLBACK"))
-        {
-            if (*env == '1' || *env == 'y' || *env == 'Y' || *env == 't' || *env == 'T')
-                enable_legacy_material_binding_fallback = false;
-        }
+        InitializeResolvers();
     }
 
     RenderDescriptorBindingSystem::~RenderDescriptorBindingSystem()
     {
         ReleaseViewportUBO();
+    }
+
+    void RenderDescriptorBindingSystem::InitializeResolvers()
+    {
+        using S = graph::mtl::DescriptorSemantic;
+
+        scene_ubo_resolvers[S::ViewportInfo] = [this]() -> const graph::IGPUBuffer* {
+            return viewport_ubo ? viewport_ubo->GetGPUBuffer() : nullptr;
+        };
+
+        scene_ubo_resolvers[S::CameraInfo] = [this]() -> const graph::IGPUBuffer* {
+            if (!context) return nullptr;
+            auto cs = context->GetSystem<CameraSystem>();
+            if (!cs) return nullptr;
+            auto *ubo = cs->GetCameraUBO();
+            return ubo ? ubo->GetGPUBuffer() : nullptr;
+        };
+
+        scene_ubo_resolvers[S::SkyInfo] = [this]() -> const graph::IGPUBuffer* {
+            if (!context) return nullptr;
+            auto es = context->GetSystem<EnvironmentSystem>();
+            if (!es) {
+                es = context->RegisterRenderSystem<EnvironmentSystem>();
+                if (es && context->IsActive()) {
+                    es->OnDependenciesReady();
+                    es->Initialize();
+                }
+            }
+            if (!es) return nullptr;
+            es->EditSkyInfo();
+            auto *ubo = es->GetSkyUBO();
+            return ubo ? ubo->GetGPUBuffer() : nullptr;
+        };
+    }
+
+    void RenderDescriptorBindingSystem::RegisterSceneUBOResolver(graph::mtl::DescriptorSemantic semantic, SceneUBOResolver resolver)
+    {
+        if (resolver)
+            scene_ubo_resolvers[semantic] = std::move(resolver);
+    }
+
+    void RenderDescriptorBindingSystem::UnregisterSceneUBOResolver(graph::mtl::DescriptorSemantic semantic)
+    {
+        scene_ubo_resolvers.erase(semantic);
     }
 
     void RenderDescriptorBindingSystem::EnsureViewportUBO()
@@ -317,70 +343,16 @@ namespace hgl::ecs
 
         EnsureViewportUBO();
 
-        const SceneUBOs ubos = ResolveSceneUBOs();
         std::unordered_set<const graph::Material *> active_materials;
-        ApplyBatchMaterialBindings(ubos, active_materials);
-        ApplyPipelineMaterialBindings(ubos, active_materials);
+        ApplyBatchMaterialBindings(active_materials);
+        ApplyPipelineMaterialBindings(active_materials);
         ApplyDomainBindings();
         PurgeStaleBindings(active_materials);
     }
 
-    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveViewportUBO() const
-    {
-        return viewport_ubo ? viewport_ubo->GetGPUBuffer() : nullptr;
-    }
 
-    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveCameraUBO() const
-    {
-        if (!context)
-            return nullptr;
-
-        auto camera_system = context->GetSystem<CameraSystem>();
-        if (!camera_system)
-            return nullptr;
-
-        auto *camera_ubo = camera_system->GetCameraUBO();
-        if (!camera_ubo)
-            return nullptr;
-
-        return camera_ubo->GetGPUBuffer();
-    }
-
-    const graph::IGPUBuffer *RenderDescriptorBindingSystem::ResolveSkyUBO()
-    {
-        if (!context)
-            return nullptr;
-
-        auto environment_system = context->GetSystem<EnvironmentSystem>();
-        if (!environment_system)
-        {
-            environment_system = context->RegisterRenderSystem<EnvironmentSystem>();
-            if (environment_system && context->IsActive())
-            {
-                environment_system->OnDependenciesReady();
-                environment_system->Initialize();
-            }
-        }
-
-        if (!environment_system)
-            return nullptr;
-
-        environment_system->EditSkyInfo();
-
-        auto *sky_ubo = environment_system->GetSkyUBO();
-        if (!sky_ubo)
-            return nullptr;
-
-        return sky_ubo->GetGPUBuffer();
-    }
-
-    RenderDescriptorBindingSystem::SceneUBOs RenderDescriptorBindingSystem::ResolveSceneUBOs()
-    {
-        return { ResolveViewportUBO(), ResolveCameraUBO(), ResolveSkyUBO() };
-    }
 
     void RenderDescriptorBindingSystem::ApplyBatchMaterialBindings(
-        const SceneUBOs &ubos,
         std::unordered_set<const graph::Material *> &out_active)
     {
         if (!context)
@@ -407,13 +379,17 @@ namespace hgl::ecs
                 if (!resolved.name || !*resolved.name)
                     continue;
 
+                // Scene UBO resolver lookup
+                auto resolver_it = scene_ubo_resolvers.find(resolved.semantic);
+                if (resolver_it != scene_ubo_resolvers.end())
+                {
+                    const auto *buf = resolver_it->second();
+                    if (buf) material->BindUBO(resolved.set_type, resolved.name, buf, false);
+                    continue;
+                }
+
                 switch (resolved.semantic)
                 {
-                case graph::mtl::DescriptorSemantic::ViewportInfo:
-                case graph::mtl::DescriptorSemantic::CameraInfo:
-                case graph::mtl::DescriptorSemantic::SkyInfo:
-                    BindSceneUBO(material, resolved, ubos);
-                    break;
                 case graph::mtl::DescriptorSemantic::LocalToWorld:
                 {
                     if (batch
@@ -466,34 +442,10 @@ namespace hgl::ecs
                 }
             }
 
-            // Legacy compatibility fallback:
-            // Some existing materials may still rely on hasLocalToWorld/hasMI flags
-            // without fully populated contract semantics.
-            if (enable_legacy_material_binding_fallback)
-            {
-                if (batch
-                 && batch->transform_buffer
-                 && material->hasLocalToWorld()
-                 && !l2w_bound_materials.contains(material))
-                {
-                    batch->transform_buffer->BindTransform(material);
-                    l2w_bound_materials.insert(material);
-                }
-
-                if (batch
-                 && batch->mi_buffer
-                 && material->hasMI()
-                 && !mi_bound_materials.contains(material))
-                {
-                    batch->mi_buffer->BindMaterialInstance(material);
-                    mi_bound_materials.insert(material);
-                }
-            }
         }
     }
 
     void RenderDescriptorBindingSystem::ApplyPipelineMaterialBindings(
-        const SceneUBOs &ubos,
         std::unordered_set<const graph::Material *> &out_active)
     {
         for (graph::Material *material : pipeline_materials)
@@ -510,13 +462,17 @@ namespace hgl::ecs
                 if (!resolved.name || !*resolved.name)
                     continue;
 
+                // Scene UBO resolver lookup
+                auto resolver_it = scene_ubo_resolvers.find(resolved.semantic);
+                if (resolver_it != scene_ubo_resolvers.end())
+                {
+                    const auto *buf = resolver_it->second();
+                    if (buf) material->BindUBO(resolved.set_type, resolved.name, buf, false);
+                    continue;
+                }
+
                 switch (resolved.semantic)
                 {
-                case graph::mtl::DescriptorSemantic::ViewportInfo:
-                case graph::mtl::DescriptorSemantic::CameraInfo:
-                case graph::mtl::DescriptorSemantic::SkyInfo:
-                    BindSceneUBO(material, resolved, ubos);
-                    break;
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
                     graph::mtl::SamplerName::SamplerSlot slot;
@@ -560,23 +516,13 @@ namespace hgl::ecs
         if (!context)
             return false;
 
+        // Check registered scene UBO resolvers first
+        auto it = scene_ubo_resolvers.find(semantic);
+        if (it != scene_ubo_resolvers.end())
+            return it->second && it->second() != nullptr;
+
         switch (semantic)
         {
-        case graph::mtl::DescriptorSemantic::ViewportInfo:
-            return viewport_ubo != nullptr;
-
-        case graph::mtl::DescriptorSemantic::CameraInfo:
-        {
-            auto camera_system = context->GetSystem<CameraSystem>();
-            return camera_system && camera_system->GetCameraUBO();
-        }
-
-        case graph::mtl::DescriptorSemantic::SkyInfo:
-        {
-            auto environment_system = context->GetSystem<EnvironmentSystem>();
-            return environment_system && environment_system->GetSkyUBO();
-        }
-
         case graph::mtl::DescriptorSemantic::LocalToWorld:
         case graph::mtl::DescriptorSemantic::TransformID:
         case graph::mtl::DescriptorSemantic::MaterialInstanceID:

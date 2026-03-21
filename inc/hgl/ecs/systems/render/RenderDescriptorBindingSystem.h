@@ -6,6 +6,7 @@
 #include<vector>
 #include<unordered_map>
 #include<unordered_set>
+#include<functional>
 
 namespace hgl::graph {
     template<typename> class StructuredBufferAccessor;
@@ -30,6 +31,7 @@ namespace hgl::graph
 namespace hgl::ecs
 {
     using TextureBindingSlot = uint8_t;
+    using SceneUBOResolver = std::function<const graph::IGPUBuffer*()>;
 
     /**
      * RenderDescriptorBindingSystem
@@ -46,13 +48,6 @@ namespace hgl::ecs
         {
             graph::Texture *texture = nullptr;
             graph::Sampler *sampler = nullptr;
-        };
-
-        struct SceneUBOs
-        {
-            const graph::IGPUBuffer *viewport = nullptr;
-            const graph::IGPUBuffer *camera   = nullptr;
-            const graph::IGPUBuffer *sky      = nullptr;
         };
 
         struct ContractDiagStats
@@ -85,7 +80,6 @@ namespace hgl::ecs
         std::unordered_map<const graph::Material *, bool> contract_last_ok;
         std::unordered_map<const graph::Material *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> material_resource_bindings;
         bool contract_diagnostics_enabled = true;
-        bool enable_legacy_material_binding_fallback = true;
         ContractDiagStats last_contract_stats{};
         std::unordered_set<graph::Material *> pipeline_materials;
 
@@ -95,12 +89,17 @@ namespace hgl::ecs
             domain_resource_bindings;
         std::unordered_set<graph::DomainMaterialBinding *> registered_domain_bindings;
 
+        std::unordered_map<graph::mtl::DescriptorSemantic, SceneUBOResolver> scene_ubo_resolvers;
+
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
         ~RenderDescriptorBindingSystem() override;
 
         graph::ViewportInfo *GetViewportInfo();
         void SetViewportExtent(uint32_t w, uint32_t h);
+
+        void RegisterSceneUBOResolver(graph::mtl::DescriptorSemantic semantic, SceneUBOResolver resolver);
+        void UnregisterSceneUBOResolver(graph::mtl::DescriptorSemantic semantic);
 
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
@@ -125,9 +124,6 @@ namespace hgl::ecs
         void ClearMaterialBindings(graph::Material *material);
         void RegisterPipelineMaterial(graph::Material *material);
         void UnregisterPipelineMaterial(graph::Material *material);
-        void SetLegacyMaterialBindingFallbackEnabled(bool enabled) { enable_legacy_material_binding_fallback = enabled; }
-        bool IsLegacyMaterialBindingFallbackEnabled() const { return enable_legacy_material_binding_fallback; }
-
         // Phase 2 — Domain binding interface
         /**
          * 注册域绑定，使其参与每帧的 contract UBO 同步。
@@ -150,17 +146,11 @@ namespace hgl::ecs
 
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
+        void InitializeResolvers();
         void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);
 
-        SceneUBOs ResolveSceneUBOs();
-        const graph::IGPUBuffer *ResolveViewportUBO() const;
-        const graph::IGPUBuffer *ResolveCameraUBO() const;
-        const graph::IGPUBuffer *ResolveSkyUBO();
-
-        void ApplyBatchMaterialBindings(const SceneUBOs &ubos,
-                                        std::unordered_set<const graph::Material *> &out_active);
-        void ApplyPipelineMaterialBindings(const SceneUBOs &ubos,
-                                           std::unordered_set<const graph::Material *> &out_active);
+        void ApplyBatchMaterialBindings(std::unordered_set<const graph::Material *> &out_active);
+        void ApplyPipelineMaterialBindings(std::unordered_set<const graph::Material *> &out_active);
         void ApplyDomainBindings();
         void PurgeStaleBindings(const std::unordered_set<const graph::Material *> &active);
 
