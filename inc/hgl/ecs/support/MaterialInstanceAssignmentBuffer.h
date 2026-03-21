@@ -104,6 +104,11 @@ namespace hgl::ecs
         graph::DeviceBuffer* material_instance_id_buffer;   ///<MaterialInstanceID data (SSBO, uint[])
         VkBuffer material_instance_id_vk_buffer;            ///<MaterialInstanceID VkBuffer cache
 
+    private:    // MIT SSBO（TextureArray用：per-instance纹理层索引）
+        uint32_t mit_data_bytes;                ///< per-entry MIT struct size; 0 = no TextureArray slots
+        uint32_t mit_buffer_max_count;          ///< MIT SSBO capacity (elements)
+        graph::DeviceBuffer* mit_buffer;        ///< MaterialInstanceTextureID SSBO
+
     private:
         void Clear();
 
@@ -125,6 +130,12 @@ namespace hgl::ecs
          * 绑定材质实例数据到材质
          */
         void BindMaterialInstance(graph::Material* mtl) const;
+
+        /**
+         * 绑定MaterialInstanceTextureID SSBO到材质（TextureArray用）
+         * 当材质实例包含 MIT 数据时自动填充并绑定；无 MIT 数据时为空操作。
+         */
+        void BindMaterialInstanceTextureID(graph::Material* mtl) const;
 
         /**
          * 写入所有RenderItem的材质实例数据

@@ -23,6 +23,9 @@ namespace hgl::ecs
         , material_instance_id_buffer_max_count(0)
         , material_instance_id_buffer(nullptr)
         , material_instance_id_vk_buffer(VK_NULL_HANDLE)
+        , mit_data_bytes(0)
+        , mit_buffer_max_count(0)
+        , mit_buffer(nullptr)
     {
         if (mtl)
         {
@@ -41,6 +44,20 @@ namespace hgl::ecs
 
         mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstanceID.set_type,
                       hgl::graph::mtl::SBS_MaterialInstanceID.name,
+                      gpu);
+    }
+
+    void MaterialInstanceAssignmentBuffer::BindMaterialInstanceTextureID(graph::Material* mtl) const
+    {
+        if (!mtl || !mit_buffer)
+            return;
+
+        auto *gpu = mit_buffer->GetGPUBuffer();
+        if (!gpu)
+            return;
+
+        mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstanceTextureID.set_type,
+                      hgl::graph::mtl::SBS_MaterialInstanceTextureID.name,
                       gpu);
     }
 
@@ -75,16 +92,22 @@ namespace hgl::ecs
             if (material_instance_id_buffer)
                 buffer_manager->Release(material_instance_id_buffer);
             material_instance_id_buffer = nullptr;
+            if (mit_buffer)
+                buffer_manager->Release(mit_buffer);
+            mit_buffer = nullptr;
         }
         else
         {
             SAFE_CLEAR(material_instance_buffer);
             SAFE_CLEAR(material_instance_id_buffer);
+            SAFE_CLEAR(mit_buffer);
         }
 
         mi_set.Clear();
         node_count = 0;
         material_instance_id_vk_buffer = VK_NULL_HANDLE;
+        mit_data_bytes = 0;
+        mit_buffer_max_count = 0;
     }
 
     void MaterialInstanceAssignmentBuffer::StatMaterialInstance(const std::vector<RenderItem*>& items)
@@ -187,6 +210,67 @@ namespace hgl::ecs
             }
 
             if(mibuf) mibuf->Unmap();
+        }
+
+        // 合并 MIT 数据（TextureArray per-instance 层索引）到 MIT SSBO
+        {
+            // Detect MIT entry size from the first MI that has MIT data
+            if (mit_data_bytes == 0)
+            {
+                for (graph::MaterialInstance* mi : mi_set)
+                {
+                    if (mi && mi->GetMITDataBytes() > 0)
+                    {
+                        mit_data_bytes = mi->GetMITDataBytes();
+                        break;
+                    }
+                }
+            }
+
+            if (mit_data_bytes > 0)
+            {
+                const size_t needed = mi_set.GetCount();
+
+                // Allocate or reallocate MIT SSBO as needed
+                if (!mit_buffer || mit_buffer_max_count < needed)
+                {
+                    if (mit_buffer && buffer_manager)
+                        buffer_manager->Release(mit_buffer);
+                    else
+                        SAFE_CLEAR(mit_buffer);
+
+                    const uint32_t new_cap = power_to_2(needed);
+                    if (buffer_manager)
+                    {
+                        mit_buffer = buffer_manager->CreateSSBO("ECS:MaterialInstanceTextureIDData",
+                                                                 mit_data_bytes * new_cap,
+                                                                 nullptr,
+                                                                 graph::SharingMode::Exclusive);
+                    }
+                    mit_buffer_max_count = mit_buffer ? new_cap : 0;
+                }
+
+                if (mit_buffer)
+                {
+                    auto *mitgpu = mit_buffer->GetGPUBuffer();
+                    uint8_t* mitp = mitgpu ? (uint8_t*)mitgpu->Map(0, mit_data_bytes * mi_set.GetCount()) : nullptr;
+
+                    if (mitp)
+                    {
+                        for (graph::MaterialInstance* mi : mi_set)
+                        {
+                            const void* mit_data = mi ? mi->GetMITData() : nullptr;
+                            if (mit_data)
+                                memcpy(mitp, mit_data, mit_data_bytes);
+                            else
+                                memset(mitp, 0, mit_data_bytes);
+                            mitp += mit_data_bytes;
+                        }
+
+                        mitgpu->Unmap();
+                    }
+                }
+            }
         }
     }
 

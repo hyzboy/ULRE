@@ -499,7 +499,16 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
-    return this->CreateMaterial(hash_name,mci);
+    Material *mat = this->CreateMaterial(hash_name,mci);
+    if (mat)
+    {
+        uint8_t flags = 0;
+        for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::Count); ++s)
+            if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
+                flags |= (1u << s);
+        mat->SetTextureArraySlotFlags(flags);
+    }
+    return mat;
 }
 
 Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material3DCreateConfig *cfg)
@@ -546,7 +555,16 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
 
-    return this->CreateMaterial(hash_name,mci);
+    Material *mat = this->CreateMaterial(hash_name,mci);
+    if (mat)
+    {
+        uint8_t flags = 0;
+        for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::Count); ++s)
+            if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
+                flags |= (1u << s);
+        mat->SetTextureArraySlotFlags(flags);
+    }
+    return mat;
 }
 
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
@@ -791,6 +809,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
     MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
+    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
     return mi;
 }
@@ -805,6 +824,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
     const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
     MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
+    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
     return mi;
 }
@@ -819,6 +839,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
     const VIL *use_vil = vil ? vil : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
     MaterialInstance *mi = new MaterialInstance(mtl, domain, use_vil, mi_id);
+    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
 
     if(data && data_size > 0)
@@ -837,6 +858,7 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(ResourceDomain *domain
     const VIL *vil = vil_cfg ? mtl->CreateVIL(vil_cfg) : mtl->GetDefaultVIL();
     int mi_id = domain->AllocMISlot();
     MaterialInstance *mi = new MaterialInstance(mtl, domain, vil, mi_id);
+    mi->InitMITLayout(mtl->GetTextureArraySlotFlags());
     Add(mi);
 
     if(data && data_size > 0)

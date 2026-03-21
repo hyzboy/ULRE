@@ -56,6 +56,8 @@ class Material
 
     bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
 
+    uint8_t texture_array_slot_flags = 0; ///< bit N = SamplerSlot(N) uses TextureArray mode
+
 private:
 
     friend class MaterialManager;
@@ -130,6 +132,9 @@ protected:
 public:
 
     const bool      hasLocalToWorld ()const{return has_l2w_matrix; }
+
+            void    SetTextureArraySlotFlags(uint8_t f){texture_array_slot_flags=f;}
+    const uint8_t   GetTextureArraySlotFlags()const{return texture_array_slot_flags;}
 
     const bool      hasMI           ()const{return mi_data_bytes>0;}
     const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}

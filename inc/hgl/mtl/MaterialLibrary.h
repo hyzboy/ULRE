@@ -16,7 +16,6 @@ enum class MaterialPreset:uint8
     PureColor2D,
     PureTexture2D,
     RectTexture2D,
-    RectTexture2DArray,
     Text2D,
 
     PureColor3D,
@@ -28,7 +27,6 @@ enum class MaterialPreset:uint8
     SkyMinimal,
     Billboard2D,
     Standard,
-    StandardTextureArray,
     PBRColor3D,
     VertexLuminance2D,
 

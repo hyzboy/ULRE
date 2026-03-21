@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VKMaterial.h>
 #include<hgl/vk/VKResourceDomain.h>
+#include<hgl/mtl/SamplerName.h>
 
 namespace hgl::graph{
 
@@ -24,6 +25,10 @@ protected:
     const VIL *vil;
 
     int mi_id;
+
+    int8_t   mit_slot_offset[mtl::SamplerSlotCount]; ///< per-slot offset into mit_packed (-1 = not active)
+    uint32_t mit_packed_count = 0;              ///< number of active Array slots
+    uint32_t *mit_packed      = nullptr;        ///< packed layer indices (one uint32 per active slot)
 
 public:
 
@@ -55,6 +60,13 @@ public:
 
         template<typename T>
             void    WriteMIData (const T &data){WriteMIData(&data,sizeof(T));}
+
+    const   uint32_t    GetMITDataBytes() const { return mit_packed_count * sizeof(uint32_t); }
+            void*       GetMITData()            { return mit_packed; }
+
+            void        InitMITLayout(uint8_t slot_flags);                  ///<根据slot_flags初始化per-slot偏移表并分配packed数组
+            void        SetTextureArrayLayer(mtl::SamplerSlot slot, uint32_t layer);
+            uint32_t    GetTextureArrayLayer(mtl::SamplerSlot slot) const;
 };//class MaterialInstance
 }//namespace hgl::graph
 

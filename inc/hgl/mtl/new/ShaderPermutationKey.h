@@ -1,67 +1,74 @@
 #pragma once
 
 #include "SurfaceType.h"
+#include <hgl/mtl/SamplerName.h>
 #include <string>
 
 namespace hgl::graph
 {
-    // 16-bit packed key:
-    //   [15:12] SurfaceType  (4 bit, max 16)
-    //   [8:7]   ShadowMode   (2 bit: None/PCF/PCSS)
-    //   [6:4]   Flags        (3 bit: texture array mode per slot for Standard)
-    //             bit0: BaseColor uses sampler2DArray
-    //             bit1: Normal uses sampler2DArray
-    //             bit2: Roughness/MR uses sampler2DArray
-    //   [1:0]   Reserved     (2 bit)
+    // Permutation key = 16-bit packed + 8-bit per-slot texture array flags.
+    //
+    // packed [15:12] SurfaceType  (4 bit, max 16)
+    // packed [8:7]   ShadowMode   (2 bit: None/PCF/PCSS)
+    // packed [6:0]   Reserved
+    //
+    // texture_array_slot_flags: bit N = SamplerSlot(N) is sampler2DArray
     struct ShaderPermutationKey
     {
         uint16 packed;
+        uint8  texture_array_slot_flags;
 
-        ShaderPermutationKey() : packed(0) {}
+        ShaderPermutationKey() : packed(0), texture_array_slot_flags(0) {}
 
-        void SetSurfaceType(SurfaceType st)     { packed = (packed & 0x0FFF) | (static_cast<uint16>(st) << 12); }
-        void SetShadowMode(uint8 sm)             { packed = (packed & 0xFE7F) | ((sm & 0x3) << 7); }
-        void SetFlags(uint8 flags)               { packed = (packed & 0xFF8F) | ((flags & 0x7) << 4); }
+        void SetSurfaceType(SurfaceType st) { packed = (packed & 0x0FFF) | (static_cast<uint16>(st) << 12); }
+        void SetShadowMode(uint8 sm)        { packed = (packed & 0xFE7F) | ((sm & 0x3) << 7); }
 
-        // Compatibility: set all Standard texture slots to same array mode.
+        void SetSlotArrayMode(mtl::SamplerSlot slot, bool enable)
+        {
+            const uint8 bit = uint8(1) << uint8(slot);
+            if (enable) texture_array_slot_flags |= bit;
+            else        texture_array_slot_flags &= uint8(~bit);
+        }
+
+        bool GetSlotArrayMode(mtl::SamplerSlot slot) const
+        {
+            return ((texture_array_slot_flags >> uint8(slot)) & uint8(1)) != 0;
+        }
+
+        bool GetTextureArrayMode() const { return texture_array_slot_flags != 0; }
+
+        // Compatibility delegates — keep existing callers compiling.
         void SetTextureArrayMode(bool enable)
         {
-            uint8 f = GetFlags();
-            if (enable) f |= 0x7; else f &= ~0x7;
-            SetFlags(f);
+            if (enable)
+            {
+                SetSlotArrayMode(mtl::SamplerSlot::BaseColor, true);
+                SetSlotArrayMode(mtl::SamplerSlot::Normal,    true);
+                SetSlotArrayMode(mtl::SamplerSlot::Roughness, true);
+            }
+            else
+                texture_array_slot_flags = 0;
         }
-        bool GetTextureArrayMode() const { return (GetFlags() & 0x7) != 0; }
+        void SetBaseTextureArrayMode(bool enable)      { SetSlotArrayMode(mtl::SamplerSlot::BaseColor, enable); }
+        void SetNormalTextureArrayMode(bool enable)    { SetSlotArrayMode(mtl::SamplerSlot::Normal,    enable); }
+        void SetRoughnessTextureArrayMode(bool enable) { SetSlotArrayMode(mtl::SamplerSlot::Roughness, enable); }
 
-        void SetBaseTextureArrayMode(bool enable)
+        bool GetBaseTextureArrayMode() const      { return GetSlotArrayMode(mtl::SamplerSlot::BaseColor); }
+        bool GetNormalTextureArrayMode() const    { return GetSlotArrayMode(mtl::SamplerSlot::Normal); }
+        bool GetRoughnessTextureArrayMode() const { return GetSlotArrayMode(mtl::SamplerSlot::Roughness); }
+
+        SurfaceType GetSurfaceType() const { return static_cast<SurfaceType>((packed >> 12) & 0xF); }
+        uint8       GetShadowMode()  const { return (packed >> 7) & 0x3; }
+
+        bool operator==(const ShaderPermutationKey& o) const
         {
-            uint8 f = GetFlags();
-            if (enable) f |= 0x1; else f &= ~0x1;
-            SetFlags(f);
+            return packed == o.packed && texture_array_slot_flags == o.texture_array_slot_flags;
         }
-        void SetNormalTextureArrayMode(bool enable)
+        bool operator<(const ShaderPermutationKey& o) const
         {
-            uint8 f = GetFlags();
-            if (enable) f |= 0x2; else f &= ~0x2;
-            SetFlags(f);
+            if (packed != o.packed) return packed < o.packed;
+            return texture_array_slot_flags < o.texture_array_slot_flags;
         }
-        void SetRoughnessTextureArrayMode(bool enable)
-        {
-            uint8 f = GetFlags();
-            if (enable) f |= 0x4; else f &= ~0x4;
-            SetFlags(f);
-        }
-
-        bool GetBaseTextureArrayMode() const { return (GetFlags() & 0x1) != 0; }
-        bool GetNormalTextureArrayMode() const { return (GetFlags() & 0x2) != 0; }
-        bool GetRoughnessTextureArrayMode() const { return (GetFlags() & 0x4) != 0; }
-
-        SurfaceType     GetSurfaceType() const   { return static_cast<SurfaceType>((packed >> 12) & 0xF); }
-        
-        uint8           GetShadowMode()  const   { return (packed >> 7) & 0x3; }
-        uint8           GetFlags()       const   { return (packed >> 4) & 0x7; }
-
-        bool operator==(const ShaderPermutationKey& o) const { return packed == o.packed; }
-        bool operator<(const ShaderPermutationKey& o) const { return packed < o.packed; }
 
         void AppendGLSLDefines(std::string &out) const;
     };

@@ -71,7 +71,6 @@ DECLARE_MATERIAL_CREATOR(VertexLuminance2D, Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(VertexPattleColor3D,const Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Gizmo3D,           Material3DCreateConfig)
 DECLARE_MATERIAL_CREATOR(Standard,          const Material3DCreateConfig)
-DECLARE_MATERIAL_CREATOR(StandardTextureArray,const Material3DCreateConfig)
 
 struct TerrainGridCreateConfig:public Material3DCreateConfig
 {
@@ -126,17 +125,6 @@ struct StandardMaterialInstance
 };
 
 constexpr const size_t StandardMaterialInstanceBytes=sizeof(StandardMaterialInstance);
-
-struct StandardTextureArrayMaterialInstance
-{
-    uint32 base_color;      ///<基础颜色
-    float  metallic;        ///<金属度
-    float  roughness;       ///<粗糙度
-    float  normal_scale = DefaultNormalStrength; ///<法线强度(运行时可调)
-    uint32 texture_id = 0;  ///<2DArray层索引
-};
-
-constexpr const size_t StandardTextureArrayMaterialInstanceBytes=sizeof(StandardTextureArrayMaterialInstance);
 
 struct PBRColor3DMaterialInstance
 {

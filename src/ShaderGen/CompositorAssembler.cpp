@@ -118,14 +118,11 @@ namespace hgl::graph
         }
     }
 
-    std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface, bool texture_array_mode) const
+    std::string CompositorAssembler::GetSurfaceFunctionPath(SurfaceType surface) const
     {
         switch (surface)
         {
-        case SurfaceType::Standard:
-            return texture_array_mode
-                ? "surface/standard_texturearray_surface.glsl"
-                : "surface/standard_surface.glsl";
+        case SurfaceType::Standard:   return "surface/standard_surface.glsl";
         case SurfaceType::Unlit:      return "surface/unlit_color3d_surface.glsl";
         case SurfaceType::Skin:       return "surface/skin_surface.glsl";        // 后续实现
         case SurfaceType::Hair:       return "surface/hair_surface.glsl";        // 后续实现
@@ -205,7 +202,7 @@ namespace hgl::graph
             : GetCompositorFSPath(surface, blend, pass);
         std::string surface_rel = (surface_function_override && surface_function_override[0])
             ? surface_function_override
-            : GetSurfaceFunctionPath(surface, (key.GetFlags() & 0x1) != 0);
+            : GetSurfaceFunctionPath(surface);
 
         // 3. 读取 VS 模板
         std::string vs_source;
@@ -247,19 +244,14 @@ namespace hgl::graph
         perm.SetSurfaceType(key.surface_type);
 
         const bool has_slot_modes = key.HasAnyTextureSourceBits();
-        const auto base_mode = has_slot_modes
-            ? key.GetTextureSourceMode(mtl::SamplerSlot::BaseColor)
-            : key.texture_source_mode;
-        const auto normal_mode = has_slot_modes
-            ? key.GetTextureSourceMode(mtl::SamplerSlot::Normal)
-            : key.texture_source_mode;
-        const auto rough_mode = has_slot_modes
-            ? key.GetTextureSourceMode(mtl::SamplerSlot::Roughness)
-            : key.texture_source_mode;
-
-        perm.SetBaseTextureArrayMode(base_mode == mtl::TextureSourceMode::Array);
-        perm.SetNormalTextureArrayMode(normal_mode == mtl::TextureSourceMode::Array);
-        perm.SetRoughnessTextureArrayMode(rough_mode == mtl::TextureSourceMode::Array);
+        for (uint8 i = 0; i < uint8(mtl::SamplerSlotCount); ++i)
+        {
+            const mtl::SamplerSlot slot = static_cast<mtl::SamplerSlot>(i);
+            const mtl::TextureSourceMode mode = has_slot_modes
+                ? key.GetTextureSourceMode(slot)
+                : key.texture_source_mode;
+            perm.SetSlotArrayMode(slot, mode == mtl::TextureSourceMode::Array);
+        }
 
         std::string vs_path = desc.vs_template_path.empty()
             ? GetCompositorVSPath(key.surface_type, key.pass_hint)
@@ -268,7 +260,7 @@ namespace hgl::graph
             ? GetCompositorFSPath(key.surface_type, key.blend_mode, key.pass_hint)
             : shader_lib_path_ + "/" + desc.fs_template_path;
         std::string surface_rel = desc.surface_function_path.empty()
-            ? GetSurfaceFunctionPath(key.surface_type, perm.GetTextureArrayMode())
+            ? GetSurfaceFunctionPath(key.surface_type)
             : desc.surface_function_path;
 
         std::string vs_source;

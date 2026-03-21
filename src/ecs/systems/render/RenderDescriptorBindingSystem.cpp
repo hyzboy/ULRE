@@ -428,7 +428,8 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
                 {
-                    // TODO: bind MaterialInstanceTextureID SSBO for TextureArray per-instance layer indices
+                    if (batch && batch->mi_buffer)
+                        batch->mi_buffer->BindMaterialInstanceTextureID(material);
                     break;
                 }
                 default:
@@ -469,7 +470,8 @@ namespace hgl::ecs
                 {
                 case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
                 {
-                    // TODO: bind MaterialInstanceTextureID SSBO for TextureArray per-instance layer indices
+                    // Pipeline materials manage their own MIT SSBO via RegisterSceneUBOResolver
+                    // or a dedicated registration path — no mi_buffer available here.
                     break;
                 }
                 default:
@@ -516,7 +518,7 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialInstanceID:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
-            // TODO: not yet implemented — TextureArray per-instance layer index SSBO
+            // Resolved per-batch inside ApplyBatchMaterialBindings; not checkable here.
             return false;
         case graph::mtl::DescriptorSemantic::Custom:
             return true;
@@ -635,7 +637,8 @@ namespace hgl::ecs
             if (!binding)
                 continue;
 
-            // TODO: bind MaterialInstanceTextureID SSBO for TextureArray per-instance layer indices via domain binding
+            // MaterialInstanceTextureID for domain bindings requires a domain-level
+            // MIT buffer — not yet implemented for the domain path.
 
             binding->Update();
         }

@@ -25,3 +25,7 @@
 
 // Varying declarations + auto-defines MATERIAL_INSTANCE_ID_OVERRIDE
 #include "common/varying_interface.glsl"
+
+#if TEXTURE_ARRAY_MODE
+#  include "common/ssbo_material_instance_texture.glsl"
+#endif

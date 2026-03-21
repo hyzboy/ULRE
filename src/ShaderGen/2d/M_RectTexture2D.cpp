@@ -74,13 +74,4 @@ MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLit
     return CreateRectTextureVariant(profile, key, cfg);
 }
 
-MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
-{
-    MaterialVariantKey key;
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::ScreenRect;
-    key.texture_source_mode = TextureSourceMode::Array;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
-    return CreateRectTextureVariant(profile, key, cfg);
-}
 }//namespace hgl::graph::mtl

@@ -1,7 +1,7 @@
 #ifndef MATERIAL_INSTANCE_SSBO_GLSL
 #define MATERIAL_INSTANCE_SSBO_GLSL
 
-layout(set=PERMATERIAL_SET, binding=MID_BINDING) readonly buffer MaterialInstanceIDData {
+layout(std430, set=PERMATERIAL_SET, binding=MID_BINDING) readonly buffer MaterialInstanceIDData {
     uint ids[];
 } mid;
 
@@ -21,7 +21,7 @@ layout(scalar, set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer Material
     MaterialInstance mi[];
 } mtl;
 #else
-layout(set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {
+layout(std430, set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {
     MaterialInstance mi[];
 } mtl;
 #endif

@@ -49,6 +49,7 @@ const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_
         &SBS_TransformID,
         &SBS_MaterialInstanceID,
         &SBS_MaterialInstance,
+        &SBS_MaterialInstanceTextureID,
         &SBS_ColorPattle,
         &SBS_JointInfo,
     };

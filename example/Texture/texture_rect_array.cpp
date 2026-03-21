@@ -9,6 +9,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/mtl/new/SurfaceType.h>
 
 // ECS headers
 #include<hgl/ecs/core/Context.h>
@@ -130,7 +131,13 @@ private:
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::With);
 
-        material=material_manager->CreateMaterial(mtl::MaterialPreset::RectTexture2DArray,&cfg);
+        mtl::MaterialVariantKey vk;
+        vk.surface_type = SurfaceType::Unlit;
+        vk.geometry_mode = mtl::GeometryMode::ScreenRect;
+        vk.texture_source_mode = mtl::TextureSourceMode::Array;
+        vk.SetTextureSourceMode(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
+
+        material=material_manager->CreateMaterial(vk,&cfg);
 
         if(!material)
             return(false);

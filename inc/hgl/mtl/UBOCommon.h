@@ -36,6 +36,7 @@ constexpr const char MaterialInstanceStruct[]="MaterialInstance";
 
 inline constexpr ShaderBufferSource SBS_MaterialInstance = MakeShaderBufferSourceBySemantic(DescriptorSemantic::MaterialInstance);
 inline constexpr ShaderBufferSource SBS_JointInfo = MakeShaderBufferSourceBySemantic(DescriptorSemantic::BoneJoint);
+inline constexpr ShaderBufferSource SBS_MaterialInstanceTextureID = MakeShaderBufferSourceBySemantic(DescriptorSemantic::MaterialInstanceTextureID);
 
 /**
 * SkyInfo（全局环境/天空信息）

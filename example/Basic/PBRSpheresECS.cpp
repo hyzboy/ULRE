@@ -17,6 +17,7 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/mtl/new/SurfaceType.h>
 #include<hgl/color/ColorPacking.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -145,9 +146,18 @@ private:
                         mtl::WithCamera::With,
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
-        material = material_manager->CreateMaterial(mtl::MaterialPreset::StandardTextureArray, &cfg);
+        mtl::MaterialVariantKey vk;
+        vk.surface_type = SurfaceType::Standard;
+        vk.geometry_mode = mtl::GeometryMode::Mesh3D;
+        vk.texture_source_mode = mtl::TextureSourceMode::Array;
+        vk.SetTextureSourceMode(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
+        vk.SetTextureSourceMode(mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array);
+        vk.sampler_feature_bits = mtl::SamplerFeatureBit(mtl::SamplerSlot::BaseColor)
+                                | mtl::SamplerFeatureBit(mtl::SamplerSlot::Normal)
+                                | mtl::SamplerFeatureBit(mtl::SamplerSlot::Roughness);
+        material = material_manager->CreateMaterial(vk, &cfg);
         if (!material) {
-            printf("[ERROR] InitMaterial: Failed to create StandardTextureArray material\n");
+            printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");
             return false;
         }
 
@@ -299,12 +309,11 @@ private:
                 float metallic  = float(col) / float(GRID_SIZE - 1);
                 float roughness = 0.05f + float(row) / float(GRID_SIZE - 1) * 0.95f;
 
-                mtl::StandardTextureArrayMaterialInstance d{};
+                mtl::StandardMaterialInstance d{};
                 d.base_color = PackRGBA8Float(BASE_COLOR_R, BASE_COLOR_G, BASE_COLOR_B, 1.0f);
                 d.metallic   = metallic;
                 d.roughness  = roughness;
                 d.normal_scale = 0.35f;
-                d.texture_id = col;
 
                 auto &store = sphere_mi_data[row][col];
                 store.base_color = d.base_color;
@@ -319,6 +328,10 @@ private:
                     printf("[ERROR] CreateStandardMaterialInstances: Failed to create MI for [%u][%u]\n", row, col);
                     return false;
                 }
+
+                // Write MIT data: select texture array layer by column index.
+                sphere_mi[row][col]->SetTextureArrayLayer(mtl::SamplerSlot::BaseColor, col);
+                sphere_mi[row][col]->SetTextureArrayLayer(mtl::SamplerSlot::Normal,    col);
             }
         }
 

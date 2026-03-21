@@ -13,7 +13,8 @@
 namespace hgl::graph::mtl{
 namespace
 {
-    // MI layout for Simple (sampler2D) �?no texture_id needed
+    // MI layout — same whether slots are sampler2D or sampler2DArray.
+    // Layer indices for Array slots are stored separately in the MIT SSBO (MaterialInstanceTextureID).
     constexpr const char mi_codes_simple[] = R"(
         uint  base_color;
         float metallic;
@@ -21,16 +22,6 @@ namespace
         float normal_scale;
     )";
     constexpr const uint32_t mi_bytes_simple = sizeof(uint32_t) + sizeof(float) * 3;
-
-    // MI layout for Array (sampler2DArray) �?texture_id selects the array layer
-    constexpr const char mi_codes_array[] = R"(
-        uint  base_color;
-        float metallic;
-        float roughness;
-        float normal_scale;
-        uint  texture_id;
-    )";
-    constexpr const uint32_t mi_bytes_array = sizeof(uint32_t) * 2 + sizeof(float) * 3;
 
     constexpr FixedVertexEntry STANDARD_VERTEX[] = {
         { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
@@ -123,6 +114,11 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
                                                                  tex_slot_modes[i]));
     }
 
+    // When any slot is Array the MIT SSBO provides per-instance layer indices.
+    if (any_array)
+        dynamic_descriptors.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceTextureID,
+                                                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)));
+
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
         GetSkyLightResourceInjectionSpec(ambient),
@@ -132,17 +128,17 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     FixedMaterialDef dynamic_def = STANDARD_DEF_TEMPLATE;
     dynamic_def.descriptor_entries      = dynamic_descriptors.data();
     dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
-    dynamic_def.mi_glsl_codes           = any_array ? mi_codes_array : mi_codes_simple;
-    dynamic_def.mi_struct_bytes         = any_array ? mi_bytes_array : mi_bytes_simple;
+    dynamic_def.mi_glsl_codes           = mi_codes_simple;
+    dynamic_def.mi_struct_bytes         = mi_bytes_simple;
     dynamic_def.name                    = any_array ? "StandardTextureArray_v1" : "Standard_v1";
 
     MaterialVariantKey route_key = input_key;
     route_key.surface_type        = SurfaceType::Standard;
     route_key.texture_source_mode = any_array ? TextureSourceMode::Array : TextureSourceMode::Simple;
     route_key.texture_source_bits = 0;
-    route_key.sampler_feature_bits = any_array
-        ? (SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal))
-        : (SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal) | SamplerFeatureBit(SamplerSlot::Roughness));
+    route_key.sampler_feature_bits = SamplerFeatureBit(SamplerSlot::BaseColor)
+                                   | SamplerFeatureBit(SamplerSlot::Normal)
+                                   | SamplerFeatureBit(SamplerSlot::Roughness);
 
     MaterialVariantKey assemble_key = route_key;
     if (has_per_slot_mode)
@@ -216,12 +212,6 @@ MaterialCreateInfo *CreateStandard(const contract::PhysicalDeviceProfileLite *pr
                                    const Material3DCreateConfig *cfg)
 {
     return CreateStandard(profile, cfg, TextureSourceMode::Simple);
-}
-
-MaterialCreateInfo *CreateStandardTextureArray(const contract::PhysicalDeviceProfileLite *profile,
-                                               const Material3DCreateConfig *cfg)
-{
-    return CreateStandard(profile, cfg, TextureSourceMode::Array);
 }
 
 }//namespace hgl::graph::mtl
