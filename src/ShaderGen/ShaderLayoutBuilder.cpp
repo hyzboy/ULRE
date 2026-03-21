@@ -11,6 +11,8 @@
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/common/ShaderDescriptorDef.h>
 #include <hgl/common/VertexInputDef.h>
+#include <hgl/mtl/DescriptorBindingContract.h>
+#include <hgl/mtl/SamplerName.h>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -18,40 +20,77 @@
 namespace hgl::graph
 {
 
+namespace
+{
+constexpr int RESERVED_VERTEX_DATA_SET = int(DESCRIPTOR_SET_TYPE_COUNT);
+constexpr int RESERVED_VTX_DATA_BINDING = 18;
+constexpr int RESERVED_IDX_DATA_BINDING = 19;
+
+void AddLayoutEntryIfMissing(std::vector<ShaderLayoutEntry> &entries, const char *macro_name, const int value)
+{
+    if (!macro_name || !*macro_name || value < 0)
+        return;
+
+    const auto found = std::find_if(entries.begin(), entries.end(),
+        [macro_name](const ShaderLayoutEntry &entry)
+        {
+            return entry.macro_name == macro_name;
+        });
+
+    if (found == entries.end())
+        entries.push_back({ macro_name, value });
+}
+
+std::string BuildMacroName(const char *name, const char *suffix)
+{
+    if (!name || !*name || !suffix || !*suffix)
+        return {};
+
+    std::string result;
+    result.reserve(std::strlen(name) + std::strlen(suffix));
+
+    for (const char *p = name; *p; ++p)
+        result += static_cast<char>(std::toupper(static_cast<unsigned char>(*p)));
+
+    result += suffix;
+    return result;
+}
+
+const std::array<std::string, DESCRIPTOR_SET_TYPE_COUNT> &GetDescriptorSetMacroNameCache()
+{
+    static const std::array<std::string, DESCRIPTOR_SET_TYPE_COUNT> cache = []
+    {
+        std::array<std::string, DESCRIPTOR_SET_TYPE_COUNT> names{};
+
+        for (size_t i = 0; i < DESCRIPTOR_SET_TYPE_COUNT; ++i)
+            names[i] = BuildMacroName(DescriptSetTypeName[i], "_SET");
+
+        return names;
+    }();
+
+    return cache;
+}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Naming helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const char *GetVertexAttribLocationMacroName(VertexAttrib attrib)
+std::string GetVertexAttribLocationMacroName(VertexAttrib attrib)
 {
-    switch (attrib)
-    {
-    case VertexAttrib::Position:            return "POSITION_LOCATION";
-    case VertexAttrib::Normal:              return "NORMAL_LOCATION";
-    case VertexAttrib::Tangent:             return "TANGENT_LOCATION";
-    case VertexAttrib::Bitangent:           return "BITANGENT_LOCATION";
-    case VertexAttrib::Color:               return "COLOR_LOCATION";
-    case VertexAttrib::Luminance:           return "LUMINANCE_LOCATION";
-    case VertexAttrib::TexCoord:            return "TEXCOORD_LOCATION";
-    case VertexAttrib::AO:                  return "AO_LOCATION";
-    case VertexAttrib::Size:                return "SIZE_LOCATION";
-    case VertexAttrib::Rotation:            return "ROTATION_LOCATION";
-    case VertexAttrib::JointID:             return "JOINT_ID_LOCATION";
-    case VertexAttrib::JointWeight:         return "JOINT_WEIGHT_LOCATION";
-    default:                                return nullptr;
-    }
+    return BuildMacroName(GetVertexAttribName(attrib), "_LOCATION");
 }
 
 const char *GetDescriptorSetMacroName(DescriptorSetType set_type)
 {
-    switch (set_type)
-    {
-    case DescriptorSetType::Scene:       return "SCENE_SET";
-    case DescriptorSetType::Transform:   return "TRANSFORM_SET";
-    case DescriptorSetType::Material:    return "MATERIAL_SET";
-    case DescriptorSetType::VertexData:  return "VERTEX_DATA_SET";
-    default:                             return nullptr;
-    }
+    if (set_type == DescriptorSetType::Unknow)
+        return nullptr;
+
+    const size_t index = size_t(set_type);
+    if (index >= DESCRIPTOR_SET_TYPE_COUNT)
+        return nullptr;
+
+    return GetDescriptorSetMacroNameCache()[index].c_str();
 }
 
 std::string GetDescriptorBindingMacroName(const char *descriptor_name)
@@ -59,22 +98,40 @@ std::string GetDescriptorBindingMacroName(const char *descriptor_name)
     if (!descriptor_name || !*descriptor_name)
         return {};
 
-    // Well-known descriptor names → fixed macro names
-    if (std::strcmp(descriptor_name, "viewport") == 0) return "VIEWPORT_BINDING";
-    if (std::strcmp(descriptor_name, "camera")   == 0) return "CAMERA_BINDING";
-    if (std::strcmp(descriptor_name, "sky")      == 0) return "SKY_BINDING";
-    if (std::strcmp(descriptor_name, "l2w")      == 0) return "L2W_BINDING";
-    if (std::strcmp(descriptor_name, "tid")      == 0) return "TID_BINDING";
-    if (std::strcmp(descriptor_name, "mid")      == 0) return "MID_BINDING";
-    if (std::strcmp(descriptor_name, "mtl")      == 0) return "MI_BINDING";
+    if (const char *macro_name = mtl::FindDescriptorBindingMacroNameByDescriptorName(descriptor_name))
+        return macro_name;
 
-    // Generic: UPPER(name) + "_BINDING"
-    std::string result;
-    result.reserve(std::strlen(descriptor_name) + 8);
-    for (const char *p = descriptor_name; *p; ++p)
-        result += static_cast<char>(std::toupper(static_cast<unsigned char>(*p)));
-    result += "_BINDING";
-    return result;
+    mtl::SamplerName::SamplerSlot slot;
+    if (mtl::SamplerName::TryGetSlotFromDescriptorName(descriptor_name, slot))
+        return mtl::SamplerName::ToBindingMacroName(slot);
+
+    return BuildMacroName(descriptor_name, "_BINDING");
+}
+
+static void AppendDescriptorBindingMacros(ShaderLayoutContract &contract,
+                                         const char           *descriptor_name,
+                                         const int             binding)
+{
+    if (!descriptor_name || !*descriptor_name || binding < 0)
+        return;
+
+    const std::string canonical_macro = GetDescriptorBindingMacroName(descriptor_name);
+    if (!canonical_macro.empty())
+        AddLayoutEntryIfMissing(contract.descriptor_bindings, canonical_macro.c_str(), binding);
+
+    // Keep legacy short aliases for older shaders that still reference TEX_* names.
+    mtl::SamplerName::SamplerSlot slot;
+    if (!mtl::SamplerName::TryGetSlotFromDescriptorName(descriptor_name, slot))
+        return;
+
+    const size_t slot_index = size_t(slot);
+    if (slot_index >= mtl::SamplerName::SamplerSlotCount)
+        return;
+
+    const auto &binding_macro_cache = mtl::SamplerName::GetBindingMacroNameCache();
+    AddLayoutEntryIfMissing(contract.descriptor_bindings,
+                            binding_macro_cache[slot_index].c_str(),
+                            binding);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,8 +150,8 @@ ShaderLayoutContract BuildShaderLayoutContract(const mtl::MaterialCreateInfo &mc
         for (uint i = 0; i < via_array.count; ++i)
         {
             const VIA &via = via_array.items[i];
-            const char *macro = GetVertexAttribLocationMacroName(via.attrib);
-            if (macro)
+            const std::string macro = GetVertexAttribLocationMacroName(via.attrib);
+            if (!macro.empty())
                 contract.vertex_locations.push_back({ macro, static_cast<int>(via.location) });
         }
     }
@@ -120,11 +177,15 @@ ShaderLayoutContract BuildShaderLayoutContract(const mtl::MaterialCreateInfo &mc
             if (!sd || sd->binding < 0)
                 continue;
 
-            std::string bind_macro = GetDescriptorBindingMacroName(sd->name);
-            if (!bind_macro.empty())
-                contract.descriptor_bindings.push_back({ std::move(bind_macro), sd->binding });
+            AppendDescriptorBindingMacros(contract, sd->name, sd->binding);
         }
     }
+
+    // Vertex fetch SSBO uses a reserved descriptor set/binding range outside the
+    // material descriptor list; emit these here so GLSL no longer carries numbers.
+    AddLayoutEntryIfMissing(contract.descriptor_sets, "VERTEX_DATA_SET", RESERVED_VERTEX_DATA_SET);
+    AddLayoutEntryIfMissing(contract.descriptor_bindings, "VTX_DATA_BINDING", RESERVED_VTX_DATA_BINDING);
+    AddLayoutEntryIfMissing(contract.descriptor_bindings, "IDX_DATA_BINDING", RESERVED_IDX_DATA_BINDING);
 
     // ── Sort each bucket in ascending value order ─────────────────────────────
     auto by_value = [](const ShaderLayoutEntry &a, const ShaderLayoutEntry &b)

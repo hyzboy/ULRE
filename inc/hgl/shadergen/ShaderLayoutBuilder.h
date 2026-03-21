@@ -15,25 +15,20 @@ namespace hgl::graph
 
     /// Returns the layout-macro name for a vertex attribute location.
     /// e.g. VertexAttrib::Position  → "POSITION_LOCATION"
-    /// Returns nullptr for unknown attribs and descriptor-backed attributes.
-    const char *GetVertexAttribLocationMacroName(VertexAttrib attrib);
+    /// Macro names are derived from GetVertexAttribName(VertexAttrib).
+    /// Returns an empty string for unknown attribs.
+    std::string GetVertexAttribLocationMacroName(VertexAttrib attrib);
 
     /// Returns the layout-macro name for a descriptor set type.
-    /// e.g. DescriptorSetType::Scene     → "SCENE_SET"
-    ///      DescriptorSetType::Transform → "TRANSFORM_SET"
+    /// e.g. DescriptorSetType::Static      → "STATIC_SET"
+    ///      DescriptorSetType::PerObject   → "PEROBJECT_SET"
+    ///      DescriptorSetType::PerMaterial → "PERMATERIAL_SET"
     /// Returns nullptr for Unknow / out-of-range.
     const char *GetDescriptorSetMacroName(DescriptorSetType set_type);
 
     /// Returns the layout-macro name for a descriptor binding by its GLSL name.
-    /// Well-known names are mapped directly:
-    ///   viewport → VIEWPORT_BINDING
-    ///   camera   → CAMERA_BINDING
-    ///   sky      → SKY_BINDING
-    ///   l2w      → L2W_BINDING
-    ///   tid      → TID_BINDING
-    ///   mid      → MID_BINDING
-    ///   mtl      → MI_BINDING
-    /// All other names follow the rule: UPPER(name) + "_BINDING".
+    /// Semantic descriptors use DescriptorBindingContract metadata, texture slots use
+    /// SamplerName helpers, and all others follow UPPER(name) + "_BINDING".
     std::string GetDescriptorBindingMacroName(const char *descriptor_name);
 
     // ────────────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ protected:
     VkBufferOwner *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 保留不变
     IGPUBuffer   *gpu_buf = nullptr;  // 写路径专用，SetBuffer() 时同步赋值，直接持有，无需跨层查找
 
-    DescriptorSetType desc_set_type = DescriptorSetType::Material;
+    DescriptorSetType desc_set_type = DescriptorSetType::Unknow;
     AnsiString ubo_name;
 
 protected:

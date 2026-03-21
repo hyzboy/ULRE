@@ -7,7 +7,7 @@ struct MaterialInstance
     float roughness;
     float normal_scale;  };
 
-#include "common/material_instance_ssbo.glsl"
+#include "common/ssbo_material_instance.glsl"
 #include "common/skylight_simple.glsl"
 
 

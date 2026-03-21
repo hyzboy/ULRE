@@ -1,4 +1,3 @@
-#include "common/descriptor_macros.glsl"
 
 struct VertexData
 {

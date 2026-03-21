@@ -149,8 +149,8 @@
 | `ShaderLibrary/common/surface_interface.glsl` | Surface 接口定义 |
 | `ShaderLibrary/common/descriptor_macros.glsl` | Descriptor Set/Binding 宏 |
 | `ShaderLibrary/common/scene_ubo.glsl` | Scene UBO 声明 |
-| `ShaderLibrary/common/l2w_ssbo.glsl` | L2W 变换矩阵 SSBO |
-| `ShaderLibrary/common/material_instance_ssbo.glsl` | MI SSBO 绑定 |
+| `ShaderLibrary/common/ssbo_transform.glsl` | L2W 变换矩阵 SSBO |
+| `ShaderLibrary/common/ssbo_material_instance.glsl` | MI SSBO 绑定 |
 | `ShaderLibrary/common/lighting.glsl` | 光照函数 |
 | `ShaderLibrary/common/skylight_simple.glsl` | 简单天空光 |
 | `ShaderLibrary/common/depth_utils.glsl` | 深度工具函数 |

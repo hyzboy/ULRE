@@ -8,6 +8,7 @@
 
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/FixedMaterialDef.h>
+#include<hgl/mtl/DescriptorBindingContract.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<string>
 #include<vector>
@@ -29,75 +30,6 @@ inline const char *GLSLInputType(const VAType &vat)
 }
 
 // ─────────────────────────────────────────────────────────────
-// Descriptor layout macros �?Resort() compacts away empty sets,
-// so we generate #define lines for GLSL to reference.
-//
-// Produced macros (only when the feature is active):
-//   SCENE_SET    / VIEWPORT_BINDING  �?Scene set (Ortho only)
-//   L2W_SET      / L2W_BINDING       �?Transform set (L2W only)
-//   TEX_SET      / TEX_BINDING        �?texture in Material set
-//   MI_SET       / MI_BINDING         �?MI SSBO in Material set
-// ─────────────────────────────────────────────────────────────
-
-inline std::string BuildDescriptorDefines(
-    const Material2DCreateConfig *cfg,
-    bool has_texture,
-    bool has_mi)
-{
-    std::string defs;
-    int set = 0;
-    const bool has_transform_pair = cfg->local_to_world;
-    const bool has_material_instance_pair = has_mi;
-
-    if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
-    {
-        defs += "#define SCENE_SET "       + std::to_string(set) + "\n";
-        defs += "#define VIEWPORT_BINDING 0\n";
-        set++;
-    }
-
-    if(has_transform_pair)
-    {
-        int transform_binding = 0;
-
-        if(has_transform_pair)
-        {
-            defs += "#define L2W_SET "    + std::to_string(set) + "\n";
-            defs += "#define L2W_BINDING " + std::to_string(transform_binding++) + "\n";
-        }
-
-        if(has_transform_pair)
-        {
-            defs += "#define TID_SET "    + std::to_string(set) + "\n";
-            defs += "#define TID_BINDING " + std::to_string(transform_binding++) + "\n";
-        }
-
-        set++;
-    }
-
-    if(has_texture || has_material_instance_pair)
-    {
-        // Resort sorts by name: "Texture..." (T=84) < "mid" (m=109, i) < "mtl" (m=109, t)
-        int binding = 0;
-        if(has_texture)
-        {
-            defs += "#define TEX_SET "     + std::to_string(set) + "\n";
-            defs += "#define TEX_BINDING " + std::to_string(binding++) + "\n";
-        }
-        if(has_material_instance_pair)
-        {
-            defs += "#define MID_SET "     + std::to_string(set) + "\n";
-            defs += "#define MID_BINDING " + std::to_string(binding++) + "\n";
-            defs += "#define MI_SET "      + std::to_string(set) + "\n";
-            defs += "#define MI_BINDING "  + std::to_string(binding++) + "\n";
-        }
-        set++;
-    }
-
-    return defs;
-}
-
-// ─────────────────────────────────────────────────────────────
 // Shader preamble builder �?#version + #define lines
 // C++ only produces the preamble; GLSL code lives in files.
 //
@@ -105,10 +37,16 @@ inline std::string BuildDescriptorDefines(
 //   std::string fs = preamble + "#include \"2d/xxx.frag.glsl\"\n";
 // ─────────────────────────────────────────────────────────────
 
-inline std::string Build2DPreamble(const Material2DCreateConfig *cfg, bool has_texture, bool has_mi)
+inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
+                                   bool has_texture,
+                                   bool has_mi,
+                                   const SamplerName::SamplerSlot texture_slot = SamplerName::SamplerSlot::BaseColor)
 {
+    (void)has_texture;
+    (void)has_mi;
+    (void)texture_slot;
+
     std::string p = "#version 450\n\n";
-    p += BuildDescriptorDefines(cfg, has_texture, has_mi);
 
     p += "#define POSITION_FORMAT ";
     p += GLSLInputType(cfg->position_format);
@@ -144,8 +82,6 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 // Common FixedDescriptorEntry builders
 // ─────────────────────────────────────────────────────────────
 
-constexpr DescriptorKind L2W_KIND_2D = DescriptorKind::SSBO;
-
 inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
 {
     const bool has_transform_pair = cfg->local_to_world;
@@ -153,20 +89,20 @@ inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, cons
 
     // Viewport (Scene set) �?only for Ortho
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
-        v.push_back({DescriptorSetType::Scene, DescriptorKind::UBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo", nullptr});
+        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
 
     // L2W (Transform set) �?only if L2W
     if(has_transform_pair)
-        v.push_back({DescriptorSetType::Transform, L2W_KIND_2D, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr});
+        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
 
     if(has_transform_pair)
-        v.push_back({DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr});
+        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)));
 
     if(has_material_instance_pair)
-        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "mid", "MaterialInstanceIDData", nullptr});
+        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)));
 
     if(has_material_instance_pair)
-        v.push_back({DescriptorSetType::Material, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "mtl", "MaterialInstanceData", nullptr});
+        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
 }
 
 }//namespace build2d

@@ -97,8 +97,15 @@ public:
 
 public:
 
-    bool BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex);
-    bool BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
+    bool BindTexture(const mtl::SamplerName::SamplerSlot slot,Texture *tex)
+    {
+        return BindTexture(SET_TYPE_TEXTURE,slot,tex);
+    }
+
+    bool BindTextureSampler(const mtl::SamplerName::SamplerSlot slot,Texture *tex,Sampler *sampler)
+    {
+        return BindTextureSampler(SET_TYPE_TEXTURE,slot,tex,sampler);
+    }
 
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
@@ -114,6 +121,11 @@ public:
     }
 
     void Update();
+
+protected:
+
+    bool BindTexture(const DescriptorSetType &type,mtl::SamplerName::SamplerSlot slot,Texture *tex);
+    bool BindTextureSampler(const DescriptorSetType &type,mtl::SamplerName::SamplerSlot slot,Texture *tex,Sampler *sampler);
 
 public:
 

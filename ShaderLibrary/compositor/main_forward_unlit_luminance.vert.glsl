@@ -1,11 +1,8 @@
 #version 450
 
 
-#include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO;
-
-#include "common/l2w_ssbo.glsl"
+#include "common/ubo_camera.glsl"
+#include "common/ssbo_transform.glsl"
 layout(location=POSITION_LOCATION) in vec3 Position;
 layout(location=LUMINANCE_LOCATION) in float Luminance;
 

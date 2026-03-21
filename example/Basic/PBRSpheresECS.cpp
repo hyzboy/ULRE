@@ -157,16 +157,14 @@ private:
             return false;
         }
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
+        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerName::SamplerSlot::BaseColor,
                                           base_color_texture,
                                           sampler)) {
             printf("[ERROR] InitMaterial: Failed to bind BaseColor texture sampler\n");
             return false;
         }
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureNormal",
+        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerName::SamplerSlot::Normal,
                                           normal_texture,
                                           sampler)) {
             printf("[ERROR] InitMaterial: Failed to bind TextureNormal sampler\n");

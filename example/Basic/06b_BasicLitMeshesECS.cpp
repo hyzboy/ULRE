@@ -120,20 +120,17 @@ private:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
+        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerName::SamplerSlot::BaseColor,
                                           base_texture,
                                           sampler))
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureNormal",
+        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerName::SamplerSlot::Normal,
                                           normal_texture,
                                           sampler))
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureRoughness",
+        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerName::SamplerSlot::Roughness,
                                           roughness_texture,
                                           sampler))
             return false;

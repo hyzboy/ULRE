@@ -43,8 +43,8 @@ ShaderLibrary/
 │   ├── surface_interface.glsl                 # SurfaceInput / SurfaceOutput / SurfaceOutputExt 结构体定义
 │   ├── descriptor_macros.glsl                 # Descriptor Set / Binding 宏定义
 │   ├── scene_ubo.glsl                         # Scene UBO（CameraUBO, ViewportUBO, SkyUBO）
-│   ├── l2w_ssbo.glsl                          # Local-to-World 变换矩阵 SSBO
-│   ├── material_instance_ssbo.glsl            # Material Instance SSBO 绑定
+│   ├── ssbo_transform.glsl                          # Local-to-World 变换矩阵 SSBO
+│   ├── ssbo_material_instance.glsl            # Material Instance SSBO 绑定
 │   ├── lighting.glsl                          # 分级光照计算函数 EvalLighting()
 │   ├── skylight_simple.glsl                   # 简单天空光 / 环境光
 │   ├── depth_utils.glsl                       # Reversed-Z 深度工具（LinearizeDepth, ReconstructWorldPos）
@@ -589,8 +589,8 @@ Guard 宏命名约定：将文件名转为大写，`.` 替换为 `_`（如 `SURF
 | `surface_interface.glsl` | SurfaceInput / SurfaceOutput / SurfaceOutputExt 结构体定义。所有 Surface Function 必须 include |
 | `descriptor_macros.glsl` | Descriptor Set / Binding 编号宏定义 |
 | `scene_ubo.glsl` | Scene UBO 声明（CameraUBO, ViewportUBO, SkyUBO） |
-| `l2w_ssbo.glsl` | Local-to-World 变换矩阵 SSBO 声明 |
-| `material_instance_ssbo.glsl` | Material Instance SSBO 绑定声明 |
+| `ssbo_transform.glsl` | Local-to-World 变换矩阵 SSBO 声明 |
+| `ssbo_material_instance.glsl` | Material Instance SSBO 绑定声明 |
 | `lighting.glsl` | 分级光照：QUALITY_TIER 0~1 Lambert，2~3 BlinnPhong，4+ PBR Cook-Torrance（暂 fallback BlinnPhong） |
 | `skylight_simple.glsl` | 简单天空光 / 环境光计算 |
 | `depth_utils.glsl` | Reversed-Z 深度工具：`LinearizeDepth(d, near_z)`, `ReconstructWorldPos(ndc, depth, inv_view_proj)` |

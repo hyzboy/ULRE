@@ -8,7 +8,7 @@ namespace hgl::graph
     /// One resolved layout macro binding: macro_name → integer value.
     struct ShaderLayoutEntry
     {
-        std::string macro_name;     ///< e.g. "POSITION_LOCATION", "SCENE_SET", "CAMERA_BINDING"
+        std::string macro_name;     ///< e.g. "POSITION_LOCATION", "STATIC_SET", "CAMERA_BINDING"
         int         value = -1;
     };
 

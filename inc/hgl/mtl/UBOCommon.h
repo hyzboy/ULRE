@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/mtl/ShaderBufferSource.h>
+#include<hgl/mtl/DescriptorBindingContract.h>
 
 namespace hgl::graph{
 struct UBODescriptor;
@@ -13,81 +14,32 @@ UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t 
 SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
 const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_name);
 
-constexpr const ShaderBufferSource SBS_ViewportInfo=
+constexpr ShaderBufferSource MakeShaderBufferSourceBySemantic(const DescriptorSemantic semantic)
 {
-    DescriptorSetType::Scene,
+    const auto &meta = GetDescriptorSemanticMeta(semantic);
 
-    "viewport",
-    "ViewportInfo"
-};
+    return ShaderBufferSource{
+        meta.set_type,
+        meta.name,
+        meta.struct_name,
+    };
+}
 
-constexpr const ShaderBufferSource SBS_CameraInfo=
-{
-    DescriptorSetType::Scene,
-
-    "camera",
-    "CameraInfo"
-};
-
-constexpr const ShaderBufferSource SBS_LocalToWorld=
-{
-    DescriptorSetType::Transform,
-
-    "l2w",
-    "LocalToWorldData"
-};
-
-constexpr const ShaderBufferSource SBS_TransformID=
-{
-    DescriptorSetType::Transform,
-
-    "tid",
-    "TransformIDData"
-};
-
-constexpr const ShaderBufferSource SBS_MaterialInstanceID=
-{
-    DescriptorSetType::Material,
-
-    "mid",
-    "MaterialInstanceIDData"
-};
-
-constexpr const ShaderBufferSource SBS_ColorPattle =
-{
-    DescriptorSetType::Material,
-
-    "color_pattle",
-    "ColorPattle"
-};
+inline constexpr ShaderBufferSource SBS_ViewportInfo = MakeShaderBufferSourceBySemantic(DescriptorSemantic::ViewportInfo);
+inline constexpr ShaderBufferSource SBS_CameraInfo = MakeShaderBufferSourceBySemantic(DescriptorSemantic::CameraInfo);
+inline constexpr ShaderBufferSource SBS_LocalToWorld = MakeShaderBufferSourceBySemantic(DescriptorSemantic::LocalToWorld);
+inline constexpr ShaderBufferSource SBS_TransformID = MakeShaderBufferSourceBySemantic(DescriptorSemantic::TransformID);
+inline constexpr ShaderBufferSource SBS_MaterialInstanceID = MakeShaderBufferSourceBySemantic(DescriptorSemantic::MaterialInstanceID);
+inline constexpr ShaderBufferSource SBS_ColorPattle = MakeShaderBufferSourceBySemantic(DescriptorSemantic::ColorPattle);
 
 constexpr const char MaterialInstanceStruct[]="MaterialInstance";
 
-constexpr const ShaderBufferSource SBS_MaterialInstance=
-{
-    DescriptorSetType::Material,
-
-    "mtl",
-    "MaterialInstanceData"
-};
-
-constexpr const ShaderBufferSource SBS_JointInfo=
-{
-    DescriptorSetType::Transform,
-
-    "joint",
-    "JointInfo"
-};
+inline constexpr ShaderBufferSource SBS_MaterialInstance = MakeShaderBufferSourceBySemantic(DescriptorSemantic::MaterialInstance);
+inline constexpr ShaderBufferSource SBS_JointInfo = MakeShaderBufferSourceBySemantic(DescriptorSemantic::BoneJoint);
 
 /**
 * SkyInfo（全局环境/天空信息）
 */
-constexpr const ShaderBufferSource SBS_SkyInfo=
-{
-    DescriptorSetType::Scene,
-
-    "sky",
-    "SkyInfo"
-};
+inline constexpr ShaderBufferSource SBS_SkyInfo = MakeShaderBufferSourceBySemantic(DescriptorSemantic::SkyInfo);
 
 }//namespace hgl::graph::mtl

@@ -326,20 +326,17 @@ private:
         if (!base_tex || !normal_tex || !roughness_tex)
             return false;
 
-        if (!cube_mtl->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
+        if (!cube_mtl->BindTextureSampler(mtl::SamplerName::SamplerSlot::BaseColor,
                                           base_tex,
                                           cube_sampler))
             return false;
 
-        if (!cube_mtl->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureNormal",
+        if (!cube_mtl->BindTextureSampler(mtl::SamplerName::SamplerSlot::Normal,
                                           normal_tex,
                                           cube_sampler))
             return false;
 
-        if (!cube_mtl->BindTextureSampler(DescriptorSetType::Material,
-                                          "TextureRoughness",
+        if (!cube_mtl->BindTextureSampler(mtl::SamplerName::SamplerSlot::Roughness,
                                           roughness_tex,
                                           cube_sampler))
             return false;

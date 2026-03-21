@@ -7,7 +7,7 @@ struct MaterialInstance
 };
 
 
-#include "common/material_instance_ssbo.glsl"
+#include "common/ssbo_material_instance.glsl"
 SurfaceOutput EvalSurface(SurfaceInput si)
 {
     MaterialInstance mi = GetMaterialInstance();

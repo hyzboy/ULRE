@@ -11,13 +11,9 @@ layout(location=0) out vec4 outColor;
 
 #include "common/lighting.glsl"
 
-#include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO;
-SCENE_SKY_UBO;
-SCENE_VIEWPORT_UBO;
-
-
+#include "common/ubo_camera.glsl"
+#include "common/ubo_sky.glsl"
+#include "common/ubo_viewport.glsl"
 void main()
 {
     MaterialInstance mi = GetMaterialInstance();

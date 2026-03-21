@@ -38,12 +38,9 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &inner);
-    descriptors.push_back({DescriptorSetType::Material,
-                           DescriptorKind::TextureSampler,
-                           uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                           SamplerName::BaseColor,
-                           nullptr,
-                           use_array ? "sampler2DArray" : "sampler2D"});
+    descriptors.push_back(MakeTextureDescriptorEntry(SamplerName::SamplerSlot::BaseColor,
+                                                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                     mode));
 
     FixedMaterialDef def {
         use_array ? "RectTexture2DArray" : "RectTexture2D",

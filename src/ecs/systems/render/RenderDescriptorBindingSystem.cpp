@@ -25,14 +25,14 @@ namespace hgl::ecs
 {
     namespace
     {
-        std::string ToBindingKey(const char *name)
+        TextureBindingSlot ToBindingKey(const graph::mtl::SamplerName::SamplerSlot slot)
         {
-            return name ? std::string(name) : std::string();
+            return static_cast<TextureBindingSlot>(slot);
         }
 
-        std::string ToBindingKey(const AnsiString &name)
+        bool TryResolveTextureSlot(const char *descriptor_name, graph::mtl::SamplerName::SamplerSlot &slot)
         {
-            return ToBindingKey(name.c_str());
+            return graph::mtl::SamplerName::TryGetSlotFromDescriptorName(descriptor_name, slot);
         }
 
         graph::BufferManager *GetBufferManager(hgl::ecs::ECSContext *ctx)
@@ -139,43 +139,43 @@ namespace hgl::ecs
     }
 
     bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::Material *material,
-                                                                const AnsiString &name,
+                                                                graph::mtl::SamplerName::SamplerSlot slot,
                                                                 graph::Texture *texture)
     {
-        if (!material || name.IsEmpty() || !texture)
+        if (!material || !texture)
             return false;
 
-        auto &slot = material_resource_bindings[material][ToBindingKey(name)];
-        slot.texture = texture;
+        auto &binding = material_resource_bindings[material][ToBindingKey(slot)];
+        binding.texture = texture;
         return true;
     }
 
     bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::Material *material,
-                                                                       const AnsiString &name,
+                                                                       graph::mtl::SamplerName::SamplerSlot slot,
                                                                        graph::Texture *texture,
                                                                        graph::Sampler *sampler)
     {
-        if (!RegisterMaterialTexture(material, name, texture))
+        if (!RegisterMaterialTexture(material, slot, texture))
             return false;
 
         if (!sampler)
             return false;
 
-        auto &slot = material_resource_bindings[material][ToBindingKey(name)];
-        slot.sampler = sampler;
+        auto &binding = material_resource_bindings[material][ToBindingKey(slot)];
+        binding.sampler = sampler;
         return true;
     }
 
-    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::Material *material, const AnsiString &name)
+    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::Material *material, graph::mtl::SamplerName::SamplerSlot slot)
     {
-        if (!material || name.IsEmpty())
+        if (!material)
             return;
 
         auto material_it = material_resource_bindings.find(material);
         if (material_it == material_resource_bindings.end())
             return;
 
-        material_it->second.erase(ToBindingKey(name));
+        material_it->second.erase(ToBindingKey(slot));
         if (material_it->second.empty())
             material_resource_bindings.erase(material_it);
     }
@@ -217,27 +217,27 @@ namespace hgl::ecs
     }
 
     bool RenderDescriptorBindingSystem::RegisterDomainTexture(graph::DomainMaterialBinding *binding,
-                                                              const AnsiString &name,
+                                                              graph::mtl::SamplerName::SamplerSlot slot,
                                                               graph::Texture *tex)
     {
-        if (!binding || name.IsEmpty() || !tex)
+        if (!binding || !tex)
             return false;
-        auto &slot = domain_resource_bindings[binding][ToBindingKey(name)];
-        slot.texture = tex;
+        auto &binding_slot = domain_resource_bindings[binding][ToBindingKey(slot)];
+        binding_slot.texture = tex;
         return true;
     }
 
     bool RenderDescriptorBindingSystem::RegisterDomainTextureSampler(graph::DomainMaterialBinding *binding,
-                                                                     const AnsiString &name,
+                                                                     graph::mtl::SamplerName::SamplerSlot slot,
                                                                      graph::Texture *tex,
                                                                      graph::Sampler *sampler)
     {
-        if (!RegisterDomainTexture(binding, name, tex))
+        if (!RegisterDomainTexture(binding, slot, tex))
             return false;
         if (!sampler)
             return false;
-        auto &slot = domain_resource_bindings[binding][ToBindingKey(name)];
-        slot.sampler = sampler;
+        auto &binding_slot = domain_resource_bindings[binding][ToBindingKey(slot)];
+        binding_slot.sampler = sampler;
         return true;
     }
 
@@ -247,16 +247,17 @@ namespace hgl::ecs
             domain_resource_bindings.erase(binding);
     }
 
-    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material, const char *name) const
+    const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material,
+                                                                                                                             graph::mtl::SamplerName::SamplerSlot slot) const
     {
-        if (!material || !name || !*name)
+        if (!material)
             return nullptr;
 
         auto material_it = material_resource_bindings.find(material);
         if (material_it == material_resource_bindings.end())
             return nullptr;
 
-        auto resource_it = material_it->second.find(ToBindingKey(name));
+        auto resource_it = material_it->second.find(ToBindingKey(slot));
         if (resource_it == material_it->second.end())
             return nullptr;
 
@@ -264,16 +265,16 @@ namespace hgl::ecs
     }
 
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindDomainResourceBinding(
-        const graph::DomainMaterialBinding *binding, const char *name) const
+        const graph::DomainMaterialBinding *binding, graph::mtl::SamplerName::SamplerSlot slot) const
     {
-        if (!binding || !name || !*name)
+        if (!binding)
             return nullptr;
 
         auto it = domain_resource_bindings.find(binding);
         if (it == domain_resource_bindings.end())
             return nullptr;
 
-        auto r = it->second.find(ToBindingKey(name));
+        auto r = it->second.find(ToBindingKey(slot));
         if (r == it->second.end())
             return nullptr;
 
@@ -382,7 +383,9 @@ namespace hgl::ecs
 
             for (const auto &req : contract.requirements)
             {
-                if (!req.name || !*req.name)
+                const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
+
+                if (!resolved.name || !*resolved.name)
                     continue;
 
                 switch (req.semantic)
@@ -391,19 +394,19 @@ namespace hgl::ecs
                 {
                     const auto *ubo = ResolveViewportUBO();
                     if (ubo)
-                        material->BindUBO(req.set_type, req.name, ubo, false);
+                        material->BindUBO(resolved.set_type, resolved.name, ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::CameraInfo:
                 {
                     if (camera_ubo)
-                        material->BindUBO(req.set_type, req.name, camera_ubo, false);
+                        material->BindUBO(resolved.set_type, resolved.name, camera_ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::SkyInfo:
                 {
                     if (sky_ubo)
-                        material->BindUBO(req.set_type, req.name, sky_ubo, false);
+                        material->BindUBO(resolved.set_type, resolved.name, sky_ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::LocalToWorld:
@@ -444,16 +447,13 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
+                    graph::mtl::SamplerName::SamplerSlot slot;
+                    if (!TryResolveTextureSlot(resolved.name, slot))
+                        break;
+
+                    const auto *binding = FindMaterialResourceBinding(material, slot);
                     if (binding && binding->texture)
-                        material->BindTexture(req.set_type, req.name, binding->texture);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialSampler:
-                {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
-                    if (binding && binding->texture && binding->sampler)
-                        material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                        material->BindTextureSampler(slot, binding->texture, binding->sampler);
                     break;
                 }
                 default:
@@ -499,7 +499,9 @@ namespace hgl::ecs
 
             for (const auto &req : contract.requirements)
             {
-                if (!req.name || !*req.name)
+                const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
+
+                if (!resolved.name || !*resolved.name)
                     continue;
 
                 switch (req.semantic)
@@ -508,33 +510,30 @@ namespace hgl::ecs
                 {
                     const auto *ubo = ResolveViewportUBO();
                     if (ubo)
-                        material->BindUBO(req.set_type, req.name, ubo, false);
+                        material->BindUBO(resolved.set_type, resolved.name, ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::CameraInfo:
                 {
                     if (camera_ubo)
-                        material->BindUBO(req.set_type, req.name, camera_ubo, false);
+                        material->BindUBO(resolved.set_type, resolved.name, camera_ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::SkyInfo:
                 {
                     if (sky_ubo)
-                        material->BindUBO(req.set_type, req.name, sky_ubo, false);
+                        material->BindUBO(resolved.set_type, resolved.name, sky_ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
+                    graph::mtl::SamplerName::SamplerSlot slot;
+                    if (!TryResolveTextureSlot(resolved.name, slot))
+                        break;
+
+                    const auto *binding = FindMaterialResourceBinding(material, slot);
                     if (binding && binding->texture)
-                        material->BindTexture(req.set_type, req.name, binding->texture);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialSampler:
-                {
-                    const auto *binding = FindMaterialResourceBinding(material, req.name);
-                    if (binding && binding->texture && binding->sampler)
-                        material->BindTextureSampler(req.set_type, req.name, binding->texture, binding->sampler);
+                        material->BindTextureSampler(slot, binding->texture, binding->sampler);
                     break;
                 }
                 default:
@@ -587,7 +586,6 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialInstanceID:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialTexture:
-        case graph::mtl::DescriptorSemantic::MaterialSampler:
         case graph::mtl::DescriptorSemantic::Custom:
             return true;
 
@@ -621,11 +619,12 @@ namespace hgl::ecs
 
             for (const auto &req : contract.requirements)
             {
+                const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
                 const bool resolvable = IsSemanticResolvable(req.semantic);
                 if (resolvable)
                     continue;
 
-                if (req.required && !req.allow_fallback)
+                if (resolved.required && !resolved.allow_fallback)
                 {
                     ++frame_stats.required_missing;
                     all_required_ok = false;
@@ -640,7 +639,7 @@ namespace hgl::ecs
                 {
                     ++frame_stats.optional_missing;
 
-                    if (req.allow_fallback)
+                    if (resolved.allow_fallback)
                         ++frame_stats.fallback_hits;
                 }
             }
@@ -717,7 +716,9 @@ namespace hgl::ecs
 
             for (const auto &req : contract.requirements)
             {
-                if (!req.name || !*req.name)
+                const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
+
+                if (!resolved.name || !*resolved.name)
                     continue;
 
                 switch (req.semantic)
@@ -725,33 +726,30 @@ namespace hgl::ecs
                 case graph::mtl::DescriptorSemantic::ViewportInfo:
                 {
                     if (viewport_buf)
-                        binding->BindUBO(req.set_type, req.name, viewport_buf, false);
+                        binding->BindUBO(resolved.set_type, resolved.name, viewport_buf, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::CameraInfo:
                 {
                     if (camera_ubo)
-                        binding->BindUBO(req.set_type, req.name, camera_ubo, false);
+                        binding->BindUBO(resolved.set_type, resolved.name, camera_ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::SkyInfo:
                 {
                     if (sky_ubo)
-                        binding->BindUBO(req.set_type, req.name, sky_ubo, false);
+                        binding->BindUBO(resolved.set_type, resolved.name, sky_ubo, false);
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
-                    const auto *b = FindDomainResourceBinding(binding, req.name);
+                    graph::mtl::SamplerName::SamplerSlot slot;
+                    if (!TryResolveTextureSlot(resolved.name, slot))
+                        break;
+
+                    const auto *b = FindDomainResourceBinding(binding, slot);
                     if (b && b->texture)
-                        binding->BindTexture(req.set_type, req.name, b->texture);
-                    break;
-                }
-                case graph::mtl::DescriptorSemantic::MaterialSampler:
-                {
-                    const auto *b = FindDomainResourceBinding(binding, req.name);
-                    if (b && b->texture && b->sampler)
-                        binding->BindTextureSampler(req.set_type, req.name, b->texture, b->sampler);
+                        binding->BindTextureSampler(slot, b->texture, b->sampler);
                     break;
                 }
                 default:

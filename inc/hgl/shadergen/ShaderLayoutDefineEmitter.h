@@ -14,7 +14,7 @@ namespace hgl::graph
      *   #define POSITION_LOCATION 0
      *   ...
      *   // Descriptor sets
-     *   #define SCENE_SET 0
+    *   #define STATIC_SET 0
      *   ...
      *   // Descriptor bindings
      *   #define VIEWPORT_BINDING 0
@@ -25,8 +25,8 @@ namespace hgl::graph
      * Sections that have no entries are omitted.
      * Returns an empty string if the contract is empty.
      *
-     * The output is intended to be prepended to shader source so that the
-     * #define names shadow any fallback values in descriptor_macros.glsl.
+    * The output is intended to be prepended to shader source and acts as the
+    * authoritative source of GLSL layout macros.
      */
     std::string EmitShaderLayoutDefines(const ShaderLayoutContract &contract);
 

@@ -9,7 +9,8 @@
 // 选择 GetSkyLightModelImplGLSL(key.ambient) 返回的实现字符串并注入 FS 前部。
 
 #include<hgl/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
-#include<hgl/mtl/FixedDescriptorEntry.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
+#include<hgl/mtl/DescriptorBindingContract.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
+
 #include <vulkan/vulkan.h>
 #include<vector>
 #include<cstring>
@@ -41,7 +42,7 @@ struct SkyLightResourceInjectionSpec
 };
 
 constexpr FixedDescriptorEntry SKYLIGHT_APPEND_DESCRIPTOR_CUBEMAP[] = {
-    { DescriptorSetType::Scene, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SKYLIGHT_RESOURCE_KEY_SKY_CUBEMAP, nullptr, "samplerCube" },
+    { SET_TYPE_SKY, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SKYLIGHT_RESOURCE_KEY_SKY_CUBEMAP, nullptr, "samplerCube" },
 };
 
 constexpr const char *SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP[] = {

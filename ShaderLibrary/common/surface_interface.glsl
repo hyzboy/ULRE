@@ -2,7 +2,6 @@
 #ifndef SURFACE_INTERFACE_GLSL
 #define SURFACE_INTERFACE_GLSL
 
-#include "common/descriptor_macros.glsl"
 
 struct SurfaceInput
 {

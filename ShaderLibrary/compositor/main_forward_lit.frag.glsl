@@ -1,11 +1,8 @@
 #version 450
 
 
-#include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO;
-SCENE_SKY_UBO;
-
+#include "common/ubo_camera.glsl"
+#include "common/ubo_sky.glsl"
 #include "common/surface_interface.glsl"
 
 layout(location=1) in vec3 fragWorldPos;

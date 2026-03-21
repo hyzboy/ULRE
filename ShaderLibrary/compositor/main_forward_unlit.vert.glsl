@@ -1,11 +1,8 @@
 #version 450
 
 
-#include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO;
-
-#include "common/l2w_ssbo.glsl"
+#include "common/ubo_camera.glsl"
+#include "common/ssbo_transform.glsl"
 #if GEOMETRY_FETCH_SSBO
     #include "common/vertex_fetch_ssbo.glsl"
 #else

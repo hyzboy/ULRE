@@ -6,7 +6,7 @@ struct MaterialInstance {
     uvec4 id;
 };
 
-#include "common/material_instance_ssbo.glsl"
+#include "common/ssbo_material_instance.glsl"
 
 layout(location=0) flat out uint fragLayer;
 layout(location=1) out vec2 fragTexCoord;

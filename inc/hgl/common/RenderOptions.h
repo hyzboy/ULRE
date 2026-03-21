@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include<hgl/mtl/DescriptorKind.h>
-
 // All render data (LocalToWorld, TransformID, MaterialInstance, MaterialInstanceID)
 // are descriptor-backed SSBO only. No conditional compilation branches.
 

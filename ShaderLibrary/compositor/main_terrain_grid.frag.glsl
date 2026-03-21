@@ -1,10 +1,7 @@
 #version 450
 
 
-#include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO;
-
+#include "common/ubo_camera.glsl"
 layout(location=0) in vec4 fragClipPos;
 layout(location=1) in vec3 fragWorldNormal;
 

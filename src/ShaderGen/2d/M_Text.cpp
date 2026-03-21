@@ -19,7 +19,7 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     new_cfg.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
     // Build DEF
-    auto preamble = build2d::Build2DPreamble(&new_cfg, true, true);
+    auto preamble = build2d::Build2DPreamble(&new_cfg, true, true, SamplerName::SamplerSlot::Text);
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &new_cfg);
@@ -27,7 +27,9 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &new_cfg);
-    descriptors.push_back({DescriptorSetType::Material, DescriptorKind::TextureSampler, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerName::Text, nullptr, "sampler2D"});
+    descriptors.push_back(MakeTextureDescriptorEntry(SamplerName::SamplerSlot::Text,
+                                                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                                     TextureSourceMode::Simple));
 
     FixedMaterialDef def {
         "Text2D",

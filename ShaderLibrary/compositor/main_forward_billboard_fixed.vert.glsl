@@ -3,18 +3,15 @@
 
 #extension GL_EXT_scalar_block_layout : require
 
-#include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
-SCENE_CAMERA_UBO;
-SCENE_VIEWPORT_UBO;
-
-#include "common/l2w_ssbo.glsl"
+#include "common/ubo_camera.glsl"
+#include "common/ubo_viewport.glsl"
+#include "common/ssbo_transform.glsl"
 struct MaterialInstance {
     uvec2 BillboardSize;
 };
 
 #define MATERIAL_INSTANCE_SSBO_SCALAR
-#include "common/material_instance_ssbo.glsl"
+#include "common/ssbo_material_instance.glsl"
 #undef MATERIAL_INSTANCE_SSBO_SCALAR
 layout(location=POSITION_LOCATION) in vec3  Position;
 

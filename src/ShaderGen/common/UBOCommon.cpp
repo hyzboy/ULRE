@@ -40,14 +40,24 @@ const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_
     if(!struct_name||!*struct_name)
         return nullptr;
 
-    if(CStrEq(struct_name,SBS_ViewportInfo.struct_name))     return &SBS_ViewportInfo;
-    if(CStrEq(struct_name,SBS_CameraInfo.struct_name))       return &SBS_CameraInfo;
-    if(CStrEq(struct_name,SBS_LocalToWorld.struct_name))     return &SBS_LocalToWorld;
-    if(CStrEq(struct_name,SBS_TransformID.struct_name))      return &SBS_TransformID;
-    if(CStrEq(struct_name,SBS_MaterialInstance.struct_name)) return &SBS_MaterialInstance;
-    if(CStrEq(struct_name,SBS_MaterialInstanceID.struct_name)) return &SBS_MaterialInstanceID;
-    if(CStrEq(struct_name,SBS_JointInfo.struct_name))        return &SBS_JointInfo;
-    if(CStrEq(struct_name,SBS_SkyInfo.struct_name))          return &SBS_SkyInfo;
+    static const ShaderBufferSource *const sbs_list[] =
+    {
+        &SBS_ViewportInfo,
+        &SBS_CameraInfo,
+        &SBS_SkyInfo,
+        &SBS_LocalToWorld,
+        &SBS_TransformID,
+        &SBS_MaterialInstanceID,
+        &SBS_MaterialInstance,
+        &SBS_ColorPattle,
+        &SBS_JointInfo,
+    };
+
+    for (const ShaderBufferSource *sbs : sbs_list)
+    {
+        if (sbs && CStrEq(struct_name, sbs->struct_name))
+            return sbs;
+    }
 
     return nullptr;
 }

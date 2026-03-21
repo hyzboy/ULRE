@@ -10,22 +10,22 @@ namespace hgl::graph
     {
         Unknow=-1,
 
-        Scene=0,
-        Transform,
-        Material,
-        VertexData,
+        Static=0,
+        PerFrame,
+        PerObject,
+        PerMaterial,
 
-        ENUM_CLASS_RANGE(Scene,VertexData)
+        ENUM_CLASS_RANGE(Static,PerMaterial)
     };
 
     constexpr const size_t DESCRIPTOR_SET_TYPE_COUNT=size_t(DescriptorSetType::RANGE_SIZE);
 
     constexpr const char *DescriptSetTypeName[]=
     {
-        "Scene",
-        "Transform",
-        "Material",
-        "VertexData"
+        "Static",
+        "PerFrame",
+        "PerObject",
+        "PerMaterial"
     };
 
     inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
@@ -36,4 +36,12 @@ namespace hgl::graph
 
         return DescriptSetTypeName[(size_t)type];
     }
+
+    // Resource-level aliases for readability in use-sites.
+    constexpr DescriptorSetType SET_TYPE_VIEWPORT  = DescriptorSetType::Static;
+    constexpr DescriptorSetType SET_TYPE_SKY       = DescriptorSetType::Static;
+    constexpr DescriptorSetType SET_TYPE_CAMERA    = DescriptorSetType::PerFrame;
+    constexpr DescriptorSetType SET_TYPE_TRANSFORM = DescriptorSetType::PerObject;
+    constexpr DescriptorSetType SET_TYPE_MATERIAL  = DescriptorSetType::PerMaterial;
+    constexpr DescriptorSetType SET_TYPE_TEXTURE   = DescriptorSetType::PerMaterial;
 }

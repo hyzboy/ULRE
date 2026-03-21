@@ -3,12 +3,11 @@
 #define VERTEX_PREFIX_2D_GLSL
 
 #ifdef COORD_ORTHO
-#include "common/scene_ubo.glsl"
-SCENE_VIEWPORT_UBO;
+#include "common/ubo_viewport.glsl"
 #endif
 
 #ifdef HAS_L2W
-#include "common/l2w_ssbo.glsl"
+#include "common/ssbo_transform.glsl"
 #endif
 
 layout(location=POSITION_LOCATION) in POSITION_FORMAT Position;

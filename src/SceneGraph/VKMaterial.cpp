@@ -94,23 +94,25 @@ bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,con
     return mp->BindSSBO(name,gpu,dynamic);
 }
 
-bool Material::BindTexture(const DescriptorSetType &type,const AnsiString &name,Texture *tex)
+bool Material::BindTexture(const DescriptorSetType &type,mtl::SamplerName::SamplerSlot slot,Texture *tex)
 {
     MaterialParameters *mp = GetMP(type);
 
     if(!mp)
         return(false);
 
+    const AnsiString name = mtl::SamplerName::ToDescriptorName(slot);
     return mp->BindTexture(name,tex);
 }
 
-bool Material::BindTextureSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
+bool Material::BindTextureSampler(const DescriptorSetType &type,mtl::SamplerName::SamplerSlot slot,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
 
     if(!mp)
         return(false);
 
+    const AnsiString name = mtl::SamplerName::ToDescriptorName(slot);
     return mp->BindTextureSampler(name,tex,sampler);
 }
 

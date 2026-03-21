@@ -60,30 +60,29 @@ public:
     }
 
     // ----------------------------------------------------------------
-    // 描述符绑定接口（签名与 Material 对称）
+    // 描述符绑定接口
     // ----------------------------------------------------------------
 
-    bool BindTexture       (const DescriptorSetType &type, const AnsiString &name, Texture *tex);
-    bool BindTextureSampler(const DescriptorSetType &type, const AnsiString &name, Texture *tex, Sampler *sampler);
+    bool BindTexture(const mtl::SamplerName::SamplerSlot slot, Texture *tex)
+    {
+        return BindTexture(SET_TYPE_TEXTURE, slot, tex);
+    }
+
+    bool BindTextureSampler(const mtl::SamplerName::SamplerSlot slot, Texture *tex, Sampler *sampler)
+    {
+        return BindTextureSampler(SET_TYPE_TEXTURE, slot, tex, sampler);
+    }
+
     bool BindUBO           (const DescriptorSetType &type, const AnsiString &name, const IGPUBuffer *gpu, bool dynamic = false);
     bool BindSSBO          (const DescriptorSetType &type, const AnsiString &name, const IGPUBuffer *gpu, bool dynamic = false);
 
-    /**
-     * 便捷重载：DescriptorSetType 默认取 Material 集。
-     * 绝大多数纹理/采样器都注册在 Material set，可省去显式指定。
-     */
-    bool BindTextureSampler(const AnsiString &name, Texture *tex, Sampler *sampler)
-    {
-        return BindTextureSampler(DescriptorSetType::Material, name, tex, sampler);
-    }
-
-    bool BindTexture(const AnsiString &name, Texture *tex)
-    {
-        return BindTexture(DescriptorSetType::Material, name, tex);
-    }
-
     /// 将所有已绑定描述符写入 Vulkan 驱动（Update 各 MaterialParameters）
     void Update();
+
+protected:
+
+    bool BindTexture       (const DescriptorSetType &type, mtl::SamplerName::SamplerSlot slot, Texture *tex);
+    bool BindTextureSampler(const DescriptorSetType &type, mtl::SamplerName::SamplerSlot slot, Texture *tex, Sampler *sampler);
 
 }; // class DomainMaterialBinding
 

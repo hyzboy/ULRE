@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/font/TextRender.h>
+#include<hgl/graph/font/TextRender.h>
 #include<hgl/graph/font/TextGeometry.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
@@ -185,10 +185,9 @@ namespace hgl::graph
         pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        if(!mtl_fs->BindTextureSampler(  DescriptorSetType::Material,
-                                            mtl::SamplerName::Text,
-                                            tile_font->GetTexture(),
-                                            sampler))
+        if(!mtl_fs->BindTextureSampler(  mtl::SamplerName::SamplerSlot::Text,
+                         tile_font->GetTexture(),
+                         sampler))
             return(false);
 
         return(true);

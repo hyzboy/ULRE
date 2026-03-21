@@ -10,10 +10,10 @@ struct MaterialInstance
     uint  texture_id;
 };
 
-#include "common/material_instance_ssbo.glsl"
-layout(set=MATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2DArray Sampler_BaseColor;
-layout(set=MATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2DArray Sampler_Normal;
-layout(set=MATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2DArray Sampler_Roughness;   
+#include "common/ssbo_material_instance.glsl"
+layout(set=PERMATERIAL_SET, binding=TEX_BASECOLOR_BINDING) uniform sampler2DArray Sampler_BaseColor;
+layout(set=PERMATERIAL_SET, binding=TEX_NORMAL_BINDING) uniform sampler2DArray Sampler_Normal;
+layout(set=PERMATERIAL_SET, binding=TEX_ROUGHNESS_BINDING) uniform sampler2DArray Sampler_Roughness;
 #include "common/skylight_simple.glsl"
 
 float D_GGX(float NdotH, float alpha2)

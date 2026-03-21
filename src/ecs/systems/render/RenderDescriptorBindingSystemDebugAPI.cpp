@@ -62,7 +62,10 @@ namespace hgl::ecs
 
         out_keys.reserve(material_it->second.size());
         for (const auto &entry : material_it->second)
-            out_keys.push_back(entry.first);
+        {
+            const auto slot = static_cast<graph::mtl::SamplerName::SamplerSlot>(entry.first);
+            out_keys.push_back(graph::mtl::SamplerName::ToDescriptorName(slot));
+        }
 
         std::sort(out_keys.begin(), out_keys.end());
         return true;

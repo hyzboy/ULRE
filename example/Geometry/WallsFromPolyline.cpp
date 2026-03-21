@@ -1,4 +1,4 @@
-﻿#include<hgl/framework/WorkManager.h>
+#include<hgl/framework/WorkManager.h>
 #include<hgl/vk/VertexDataManager.h>
 #include<hgl/graph/geo/Wall.h>
 #include<hgl/graph/geo/GeometryCreater.h>
@@ -144,10 +144,9 @@ public:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(DescriptorSetType::Material,
-                                          mtl::SamplerName::BaseColor,
-                                          base_color_texture,
-                                          sampler))
+        if (!material->BindTextureSampler(mtl::SamplerName::SamplerSlot::BaseColor,
+                          base_color_texture,
+                          sampler))
             return false;
 
         material_instance = material_manager->CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);

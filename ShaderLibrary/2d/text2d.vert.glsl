@@ -6,7 +6,7 @@ struct MaterialInstance {
     uint TextColor;
 };
 
-#include "common/material_instance_ssbo.glsl"
+#include "common/ssbo_material_instance.glsl"
 
 layout(location=0) out vec4 fragTextColor;
 layout(location=1) out vec2 fragTexCoord;

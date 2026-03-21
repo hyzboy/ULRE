@@ -4,7 +4,7 @@ struct MaterialInstance
     float normal_strength;
 };
 
-#include "common/material_instance_ssbo.glsl"
+#include "common/ssbo_material_instance.glsl"
 #include "common/skylight_simple.glsl"
 
 

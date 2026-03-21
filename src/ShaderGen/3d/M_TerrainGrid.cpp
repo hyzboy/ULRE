@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -17,13 +17,18 @@ namespace
 
     // Resort 字母�? camera=0, viewport=1 (Scene)
     //                TextureHeight=0, TextureNormal=1 (Material)
-    constexpr FixedDescriptorEntry TERRAIN_GRID_DESCRIPTORS[] = {
-        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "viewport", "ViewportInfo",     nullptr },
-        { DescriptorSetType::Scene,     DescriptorKind::UBO,  uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "camera",   "CameraInfo",       nullptr },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS), "l2w", "LocalToWorldData", nullptr },
-        { DescriptorSetType::Transform, DescriptorKind::SSBO, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "tid", "TransformIDData", nullptr },
-        { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureHeight", nullptr, "sampler2D" },
-        { DescriptorSetType::Material,  DescriptorKind::Texture, uint32_t(VK_SHADER_STAGE_VERTEX_BIT), "TextureNormal", nullptr, "sampler2D" },
+    constexpr SamplerName::SamplerSlot TERRAIN_GRID_TEX_SLOTS[] = {
+        SamplerName::SamplerSlot::Height,
+        SamplerName::SamplerSlot::Normal,
+    };
+
+    FixedDescriptorEntry TERRAIN_GRID_DESCRIPTORS[] = {
+        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
+        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
+        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
+        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
+        MakeTextureDescriptorEntry(TERRAIN_GRID_TEX_SLOTS[0], uint32_t(VK_SHADER_STAGE_VERTEX_BIT), TextureSourceMode::Simple),
+        MakeTextureDescriptorEntry(TERRAIN_GRID_TEX_SLOTS[1], uint32_t(VK_SHADER_STAGE_VERTEX_BIT), TextureSourceMode::Simple),
     };
 
     constexpr FixedMaterialDef TERRAIN_GRID_DEF {

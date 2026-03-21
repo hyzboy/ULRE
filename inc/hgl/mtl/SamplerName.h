@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <array>
+#include <string>
 
 namespace hgl::graph::mtl::SamplerName
 {
@@ -12,6 +14,7 @@ namespace hgl::graph::mtl::SamplerName
         Tangent,
         Metallic,
         Roughness,
+        Height,
         Opacity,
         Text,
         Count
@@ -26,77 +29,159 @@ namespace hgl::graph::mtl::SamplerName
 
         ENUM_CLASS_RANGE(None, Atlas)
     };
-    
-    // Legacy names kept for compatibility with existing call sites.
-    constexpr const char BaseColor[] = "TextureBaseColor";
-    constexpr const char Normal[] = "TextureNormal";
-    constexpr const char Tangent[] = "TextureTangent";
-    constexpr const char Metallic[] = "TextureMetallic";
-    constexpr const char Roughness[] = "TextureRoughness";
-    constexpr const char Opacity[] = "TextureOpacity";
-    constexpr const char Text[] = "TextureText";
 
-    constexpr const char *ToDescriptorName(const SamplerSlot slot)
+    constexpr size_t SamplerSlotCount = size_t(SamplerSlot::Count);
+
+    // The single authoritative slot-name list (must match SamplerSlot order).
+    constexpr const char *SamplerSlotNameList[] =
     {
-        switch (slot)
-        {
-        case SamplerSlot::BaseColor:  return BaseColor;
-        case SamplerSlot::Normal:     return Normal;
-        case SamplerSlot::Tangent:    return Tangent;
-        case SamplerSlot::Metallic:   return Metallic;
-        case SamplerSlot::Roughness:  return Roughness;
-        case SamplerSlot::Opacity:    return Opacity;
-        case SamplerSlot::Text:       return Text;
-        default:                      return "";
-        }
+        "BaseColor",
+        "Normal",
+        "Tangent",
+        "Metallic",
+        "Roughness",
+        "Height",
+        "Opacity",
+        "Text",
+    };
+
+    static_assert(sizeof(SamplerSlotNameList) / sizeof(SamplerSlotNameList[0]) == SamplerSlotCount,
+                  "SamplerSlotNameList must match SamplerSlot enum order");
+
+    constexpr const char *GetSlotBaseName(const SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        if (index < SamplerSlotCount)
+            return SamplerSlotNameList[index];
+
+        return "";
     }
 
-    // GLSL macro names for binding indirection.
-    constexpr const char *ToBindingMacroName(const SamplerSlot slot)
+    inline std::string ToUpperASCII(const char *text)
     {
-        switch (slot)
+        std::string result;
+        if (!text || !*text)
+            return result;
+
+        while (*text)
         {
-        case SamplerSlot::BaseColor:  return "TEX_BASECOLOR_BINDING";
-        case SamplerSlot::Normal:     return "TEX_NORMAL_BINDING";
-        case SamplerSlot::Tangent:    return "TEX_TANGENT_BINDING";
-        case SamplerSlot::Metallic:   return "TEX_METALLIC_BINDING";
-        case SamplerSlot::Roughness:  return "TEX_ROUGHNESS_BINDING";
-        case SamplerSlot::Opacity:    return "TEX_OPACITY_BINDING";
-        case SamplerSlot::Text:       return "TEX_TEXT_BINDING";
-        default:                      return "";
+            const unsigned char c = static_cast<unsigned char>(*text);
+            result.push_back((c >= 'a' && c <= 'z') ? char(c - ('a' - 'A')) : char(c));
+            ++text;
         }
+
+        return result;
     }
 
-    // GLSL sampler symbol names.
-    constexpr const char *ToGLSLSamplerSymbol(const SamplerSlot slot)
+    inline const std::array<std::string, SamplerSlotCount> &GetDescriptorNameCache()
     {
-        switch (slot)
+        static const std::array<std::string, SamplerSlotCount> cache = []
         {
-        case SamplerSlot::BaseColor:  return "Sampler_BaseColor";
-        case SamplerSlot::Normal:     return "Sampler_Normal";
-        case SamplerSlot::Tangent:    return "Sampler_Tangent";
-        case SamplerSlot::Metallic:   return "Sampler_Metallic";
-        case SamplerSlot::Roughness:  return "Sampler_Roughness";
-        case SamplerSlot::Opacity:    return "Sampler_Opacity";
-        case SamplerSlot::Text:       return "Sampler_Text";
-        default:                      return "";
-        }
+            std::array<std::string, SamplerSlotCount> names{};
+
+            for (size_t i = 0; i < SamplerSlotCount; ++i)
+            {
+                names[i] = "Texture";
+                names[i] += SamplerSlotNameList[i];
+            }
+
+            return names;
+        }();
+
+        return cache;
     }
 
-    // GLSL getter function names.
-    constexpr const char *ToGLSLGetterName(const SamplerSlot slot)
+    inline const std::array<std::string, SamplerSlotCount> &GetBindingMacroNameCache()
     {
-        switch (slot)
+        static const std::array<std::string, SamplerSlotCount> cache = []
         {
-        case SamplerSlot::BaseColor:  return "GetSamplerBaseColor";
-        case SamplerSlot::Normal:     return "GetSamplerNormal";
-        case SamplerSlot::Tangent:    return "GetSamplerTangent";
-        case SamplerSlot::Metallic:   return "GetSamplerMetallic";
-        case SamplerSlot::Roughness:  return "GetSamplerRoughness";
-        case SamplerSlot::Opacity:    return "GetSamplerOpacity";
-        case SamplerSlot::Text:       return "GetSamplerText";
-        default:                      return "";
-        }
+            std::array<std::string, SamplerSlotCount> names{};
+
+            for (size_t i = 0; i < SamplerSlotCount; ++i)
+            {
+                const char *base = SamplerSlotNameList[i];
+
+                names[i] = "TEX_";
+                names[i] += ToUpperASCII(base);
+                names[i] += "_BINDING";
+            }
+
+            return names;
+        }();
+
+        return cache;
+    }
+
+    inline const std::array<std::string, SamplerSlotCount> &GetGLSLSamplerSymbolCache()
+    {
+        static const std::array<std::string, SamplerSlotCount> cache = []
+        {
+            std::array<std::string, SamplerSlotCount> names{};
+
+            for (size_t i = 0; i < SamplerSlotCount; ++i)
+            {
+                names[i] = "Sampler_";
+                names[i] += SamplerSlotNameList[i];
+            }
+
+            return names;
+        }();
+
+        return cache;
+    }
+
+    inline const std::array<std::string, SamplerSlotCount> &GetGLSLGetterNameCache()
+    {
+        static const std::array<std::string, SamplerSlotCount> cache = []
+        {
+            std::array<std::string, SamplerSlotCount> names{};
+
+            for (size_t i = 0; i < SamplerSlotCount; ++i)
+            {
+                names[i] = "GetSampler";
+                names[i] += SamplerSlotNameList[i];
+            }
+
+            return names;
+        }();
+
+        return cache;
+    }
+
+    inline const char *ToDescriptorName(const SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        if (index >= SamplerSlotCount)
+            return "";
+
+        return GetDescriptorNameCache()[index].c_str();
+    }
+
+    inline const char *ToBindingMacroName(const SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        if (index >= SamplerSlotCount)
+            return "";
+
+        return GetBindingMacroNameCache()[index].c_str();
+    }
+
+    inline const char *ToGLSLSamplerSymbol(const SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        if (index >= SamplerSlotCount)
+            return "";
+
+        return GetGLSLSamplerSymbolCache()[index].c_str();
+    }
+
+    inline const char *ToGLSLGetterName(const SamplerSlot slot)
+    {
+        const size_t index = size_t(slot);
+        if (index >= SamplerSlotCount)
+            return "";
+
+        return GetGLSLGetterNameCache()[index].c_str();
     }
 
     constexpr const char *ToGLSLSamplerType(const TextureSourceMode mode)

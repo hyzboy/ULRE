@@ -1,10 +1,7 @@
 #version 450
 
 
-#include "common/descriptor_macros.glsl"
-#include "common/scene_ubo.glsl"
-SCENE_SKY_UBO;
-
+#include "common/ubo_sky.glsl"
 #include "common/surface_interface.glsl"
 #include SURFACE_FUNCTION_FILE
 
