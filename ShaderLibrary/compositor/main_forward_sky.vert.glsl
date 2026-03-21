@@ -7,8 +7,9 @@
 #include "common/ssbo_material_instance.glsl"
 layout(location=POSITION_LOCATION) in vec3 Position;
 
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1) out vec3 fragDirection;
+#define VARYING_STAGE_VERT
+#define HAS_DIRECTION
+#include "common/varying_interface.glsl"
 
 void main()
 {

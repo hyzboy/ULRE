@@ -8,9 +8,10 @@
 layout(location=POSITION_LOCATION) in vec3 Position;
 layout(location=NORMAL_LOCATION) in vec3 Normal;
 
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1) out vec3 fragWorldPos;
-layout(location=2) out vec3 fragWorldNormal;
+#define VARYING_STAGE_VERT
+#define HAS_WORLD_POS
+#define HAS_WORLD_NORMAL
+#include "common/varying_interface.glsl"
 
 void main()
 {

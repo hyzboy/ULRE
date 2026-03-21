@@ -5,14 +5,13 @@
 #include "common/ubo_sky.glsl"
 #include "common/surface_interface.glsl"
 
-layout(location=0) flat in uint fragMaterialInstanceID;
-layout(location=1) in vec3 fragWorldPos;
-layout(location=2) in vec3 fragWorldNormal;
-layout(location=3) in vec2 fragUV0;
+#define HAS_WORLD_POS
+#define HAS_WORLD_NORMAL
+#define HAS_UV0
+#include "common/varying_interface.glsl"
 
 layout(location=0) out vec4 outColor;
 
-#define MATERIAL_INSTANCE_ID_OVERRIDE fragMaterialInstanceID
 #include SURFACE_FUNCTION_FILE
 
 void main()

@@ -11,7 +11,8 @@
     layout(location=POSITION_LOCATION) in vec3 Position;
 #endif
 
-layout(location=0) flat out uint fragMaterialInstanceID;
+#define VARYING_STAGE_VERT
+#include "common/varying_interface.glsl"
 
 void main()
 {

@@ -6,9 +6,10 @@
 #define MATERIAL_INSTANCE_ID_ONLY
 #include "common/ssbo_material_instance.glsl"
 
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1) out vec4 fragClipPos;
-layout(location=2) out vec3 fragWorldNormal;
+#define VARYING_STAGE_VERT
+#define HAS_CLIP_POS
+#define HAS_WORLD_NORMAL
+#include "common/varying_interface.glsl"
 
 void main()
 {

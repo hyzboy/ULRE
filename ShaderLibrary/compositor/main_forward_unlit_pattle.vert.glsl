@@ -12,8 +12,9 @@
 layout(location=POSITION_LOCATION) in vec3  Position;
 layout(location=COLOR_LOCATION) in uint  ColorIndex;
 
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1) out vec4 fragVertexColor;
+#define VARYING_STAGE_VERT
+#define HAS_VERTEX_COLOR
+#include "common/varying_interface.glsl"
 
 void main()
 {

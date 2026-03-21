@@ -1,13 +1,12 @@
 #version 450
 
 
-layout(location=0) flat in uint fragMaterialInstanceID;
-layout(location=1) in vec2 fragTexCoord;
+#define HAS_TEXCOORD
+#include "common/varying_interface.glsl"
 
 layout(location=0) out vec4 outColor;
 
 #include "common/surface_interface.glsl"
-#define MATERIAL_INSTANCE_ID_OVERRIDE fragMaterialInstanceID
 #include SURFACE_FUNCTION_FILE
 
 void main()

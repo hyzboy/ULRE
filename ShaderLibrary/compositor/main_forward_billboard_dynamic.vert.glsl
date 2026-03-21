@@ -7,8 +7,9 @@
 #include "common/ssbo_material_instance.glsl"
 layout(location=POSITION_LOCATION) in vec3 Position;
 
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1) out vec2 fragTexCoord;
+#define VARYING_STAGE_VERT
+#define HAS_TEXCOORD
+#include "common/varying_interface.glsl"
 
 void main()
 {

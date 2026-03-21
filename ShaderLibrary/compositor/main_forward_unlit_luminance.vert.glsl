@@ -8,8 +8,9 @@
 layout(location=POSITION_LOCATION) in vec3 Position;
 layout(location=LUMINANCE_LOCATION) in float Luminance;
 
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1)      out float fragLuminance;
+#define VARYING_STAGE_VERT
+#define HAS_LUMINANCE
+#include "common/varying_interface.glsl"
 
 void main()
 {

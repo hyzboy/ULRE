@@ -13,10 +13,11 @@
     layout(location=TEXCOORD_LOCATION) in vec2 inUV0;
 #endif
 
-layout(location=0) flat out uint fragMaterialInstanceID;
-layout(location=1) out vec3 fragWorldPos;
-layout(location=2) out vec3 fragWorldNormal;
-layout(location=3) out vec2 fragUV0;
+#define VARYING_STAGE_VERT
+#define HAS_WORLD_POS
+#define HAS_WORLD_NORMAL
+#define HAS_UV0
+#include "common/varying_interface.glsl"
 
 void main()
 {
