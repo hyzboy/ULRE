@@ -223,47 +223,6 @@ namespace hgl::graph::mtl
         };
     }
 
-    inline DescriptorSemantic InferDescriptorSemantic(const FixedDescriptorEntry &entry)
-    {
-        if (_DBC_CStrEq(entry.struct_name, "ViewportInfo") || _DBC_CStrEq(entry.name, "viewport"))
-            return DescriptorSemantic::ViewportInfo;
-
-        if (_DBC_CStrEq(entry.struct_name, "CameraInfo") || _DBC_CStrEq(entry.name, "camera"))
-            return DescriptorSemantic::CameraInfo;
-
-        if (_DBC_CStrEq(entry.struct_name, "SkyInfo") || _DBC_CStrEq(entry.name, "sky"))
-            return DescriptorSemantic::SkyInfo;
-
-        if (_DBC_CStrEq(entry.struct_name, "LocalToWorldData") || _DBC_CStrEq(entry.struct_name, "LocalToWorld") || _DBC_CStrEq(entry.name, "l2w"))
-            return DescriptorSemantic::LocalToWorld;
-
-        if (_DBC_CStrEq(entry.struct_name, "TransformIDData") || _DBC_CStrEq(entry.struct_name, "TransformID") || _DBC_CStrEq(entry.name, "tid"))
-            return DescriptorSemantic::TransformID;
-
-        if (_DBC_CStrEq(entry.struct_name, "MaterialInstanceIDData") || _DBC_CStrEq(entry.struct_name, "MaterialInstanceID") || _DBC_CStrEq(entry.name, "mid"))
-            return DescriptorSemantic::MaterialInstanceID;
-
-        if (_DBC_CStrEq(entry.struct_name, "MaterialInstanceData") || _DBC_CStrEq(entry.struct_name, "MaterialInstance") || _DBC_CStrEq(entry.name, "mtl"))
-            return DescriptorSemantic::MaterialInstance;
-
-        if (_DBC_CStrEq(entry.struct_name, "ColorPattle") || _DBC_CStrEq(entry.name, "color_pattle"))
-            return DescriptorSemantic::ColorPattle;
-
-        if (_DBC_CStrEq(entry.struct_name, "JointInfo") || _DBC_CStrEq(entry.name, "joint"))
-            return DescriptorSemantic::BoneJoint;
-
-        if (_DBC_CStrEq(entry.struct_name, "JointWeightInfo") || _DBC_CStrEq(entry.name, "joint_weight"))
-            return DescriptorSemantic::BoneJointWeight;
-
-        if (entry.kind == DescriptorKind::Texture || entry.kind == DescriptorKind::TextureSampler)
-            return DescriptorSemantic::MaterialTexture;
-
-        if (entry.struct_name || entry.name)
-            return DescriptorSemantic::Custom;
-
-        return DescriptorSemantic::Unknown;
-    }
-
     inline bool IsSemanticRequired(DescriptorSemantic semantic)
     {
         return GetDescriptorSemanticMeta(semantic).required;
@@ -311,9 +270,8 @@ namespace hgl::graph::mtl
             const FixedDescriptorEntry &entry = descriptor_entries[i];
 
             DescriptorRequirement req;
-            req.semantic = (entry.semantic != DescriptorSemantic::Unknown)
-                         ? entry.semantic
-                         : InferDescriptorSemantic(entry);
+            req.semantic = entry.semantic;
+
             req.kind = entry.kind;
             req.stage_flags = entry.stage_flags;
 
@@ -342,11 +300,19 @@ namespace hgl::graph::mtl
     {
         diagnostics.clear();
 
-        for (const DescriptorRequirement &req : contract.requirements)
+        for (size_t i = 0; i < contract.requirements.size(); ++i)
         {
+            const DescriptorRequirement &req = contract.requirements[i];
+
             if (req.semantic == DescriptorSemantic::Unknown)
             {
-                diagnostics.emplace_back("Descriptor semantic is Unknown; add explicit semantic mapping or mark as Custom.");
+                std::string message = "Descriptor requirement #" + std::to_string(i)
+                                      + " has semantic Unknown; string inference is removed, set explicit semantic or use Custom.";
+
+                if (req.name_override && *req.name_override)
+                    message += " Name=" + std::string(req.name_override) + ".";
+
+                diagnostics.emplace_back(std::move(message));
                 continue;
             }
 
