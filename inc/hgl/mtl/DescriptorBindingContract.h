@@ -124,19 +124,19 @@ namespace hgl::graph::mtl
 
     constexpr DescriptorSemanticMeta DescriptorSemanticMetaList[] =
     {
-        { DescriptorSetType::Unknow, DescriptorKind::UBO, nullptr,          nullptr,               nullptr                  }, // Unknown
-        { SET_TYPE_VIEWPORT,         DescriptorKind::UBO, "viewport",       "VIEWPORT_BINDING",    "ViewportInfo"           }, // ViewportInfo
-        { SET_TYPE_CAMERA,           DescriptorKind::UBO, "camera",         "CAMERA_BINDING",      "CameraInfo"             }, // CameraInfo
-        { SET_TYPE_SKY,              DescriptorKind::UBO, "sky",            "SKY_BINDING",         "SkyInfo"                }, // SkyInfo
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"tid",            "TID_BINDING",         "TransformIDData"        }, // TransformID
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"l2w",            "L2W_BINDING",         "LocalToWorldData"       }, // LocalToWorld
-        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mid",            "MID_BINDING",         "MaterialInstanceIDData" }, // MaterialInstanceID
-        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mtl",            "MI_BINDING",          "MaterialInstanceData"   }, // MaterialInstance
-        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mit",            "MIT_BINDING",         "MaterialInstanceTextureID"}, // MaterialInstanceTextureID
-        { SET_TYPE_MATERIAL,         DescriptorKind::UBO, "color_pattle",   "COLOR_PATTLE_BINDING","ColorPattle"            }, // ColorPattle
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint",          "JOINT_BINDING",       "JointInfo"              }, // BoneJoint
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint_weight",   "JOINT_WEIGHT_BINDING","JointWeightInfo"        }, // BoneJointWeight
-        { DescriptorSetType::Unknow, DescriptorKind::UBO, nullptr,          nullptr,               nullptr                  }, // Custom
+        {DescriptorSetType::Unknow, DescriptorKind::UBO,    nullptr,        nullptr,                nullptr                     }, // Unknown
+        {SET_TYPE_VIEWPORT,         DescriptorKind::UBO,    "viewport",     "VIEWPORT_BINDING",     "ViewportInfo"              }, // ViewportInfo
+        {SET_TYPE_CAMERA,           DescriptorKind::UBO,    "camera",       "CAMERA_BINDING",       "CameraInfo"                }, // CameraInfo
+        {SET_TYPE_SKY,              DescriptorKind::UBO,    "sky",          "SKY_BINDING",          "SkyInfo"                   }, // SkyInfo
+        {SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,   "tid",          "TID_BINDING",          "TransformIDData"           }, // TransformID
+        {SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,   "l2w",          "L2W_BINDING",          "LocalToWorldData"          }, // LocalToWorld
+        {SET_TYPE_MATERIAL,         DescriptorKind::SSBO,   "mid",          "MID_BINDING",          "MaterialInstanceIDData"    }, // MaterialInstanceID
+        {SET_TYPE_MATERIAL,         DescriptorKind::SSBO,   "mtl",          "MI_BINDING",           "MaterialInstanceData"      }, // MaterialInstance
+        {SET_TYPE_MATERIAL,         DescriptorKind::SSBO,   "mit",          "MIT_BINDING",          "MaterialInstanceTextureID" }, // MaterialInstanceTextureID, 这里存的是每个实例对应的纹理ID（layer index），配合TextureArray使用。所以它是SSBO不是TextureSampler
+        {SET_TYPE_MATERIAL,         DescriptorKind::UBO,    "color_pattle", "COLOR_PATTLE_BINDING", "ColorPattle"               }, // ColorPattle
+        {SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,   "joint",        "JOINT_BINDING",        "JointInfo"                 }, // BoneJoint
+        {SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,   "joint_weight", "JOINT_WEIGHT_BINDING", "JointWeightInfo"           }, // BoneJointWeight
+        {DescriptorSetType::Unknow, DescriptorKind::UBO,    nullptr,        nullptr,                nullptr                     }, // Custom
     };
 
     static_assert(sizeof(DescriptorSemanticNameList) / sizeof(DescriptorSemanticNameList[0]) == DescriptorSemanticCount,
