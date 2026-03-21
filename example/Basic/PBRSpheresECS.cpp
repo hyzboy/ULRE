@@ -153,8 +153,7 @@ private:
         vk.SetTextureSourceMode(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
         vk.SetTextureSourceMode(mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array);
         vk.sampler_feature_bits = mtl::SamplerFeatureBit(mtl::SamplerSlot::BaseColor)
-                                | mtl::SamplerFeatureBit(mtl::SamplerSlot::Normal)
-                                | mtl::SamplerFeatureBit(mtl::SamplerSlot::Roughness);
+                                | mtl::SamplerFeatureBit(mtl::SamplerSlot::Normal);
         material = material_manager->CreateMaterial(vk, &cfg);
         if (!material) {
             printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");

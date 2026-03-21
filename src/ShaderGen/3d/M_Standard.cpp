@@ -45,7 +45,6 @@ namespace
     constexpr SamplerSlot STANDARD_TEX_SLOTS[] = {
         SamplerSlot::BaseColor,
         SamplerSlot::Normal,
-        SamplerSlot::Roughness,
     };
     constexpr uint32_t STANDARD_TEX_SLOT_COUNT = uint32_t(sizeof(STANDARD_TEX_SLOTS) / sizeof(STANDARD_TEX_SLOTS[0]));
 
@@ -79,19 +78,15 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     const TextureSourceMode base_mode = input_key.GetTextureSourceMode(SamplerSlot::BaseColor);
     const TextureSourceMode normal_mode = input_key.GetTextureSourceMode(SamplerSlot::Normal);
-    const TextureSourceMode rough_mode = input_key.GetTextureSourceMode(SamplerSlot::Roughness);
-
     const bool has_per_slot_mode = input_key.HasAnyTextureSourceBits();
     const TextureSourceMode legacy_mode = input_key.GetPrimaryTextureSourceMode();
 
     const TextureSourceMode resolved_base = has_per_slot_mode ? base_mode : legacy_mode;
     const TextureSourceMode resolved_normal = has_per_slot_mode ? normal_mode : legacy_mode;
-    const TextureSourceMode resolved_rough = has_per_slot_mode ? rough_mode : legacy_mode;
 
     const bool base_is_array = resolved_base == TextureSourceMode::Array;
     const bool normal_is_array = resolved_normal == TextureSourceMode::Array;
-    const bool rough_is_array = resolved_rough == TextureSourceMode::Array;
-    const bool any_array = base_is_array || normal_is_array || rough_is_array;
+    const bool any_array = base_is_array || normal_is_array;
 
     Material3DCreateConfig cfg_with_mi = cfg ? *cfg : Material3DCreateConfig();
     cfg_with_mi.material_instance = true;
@@ -105,7 +100,7 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
 
     // Per-slot resolved modes, in the same order as STANDARD_TEX_SLOTS.
     const TextureSourceMode tex_slot_modes[STANDARD_TEX_SLOT_COUNT] = {
-        resolved_base, resolved_normal, resolved_rough
+        resolved_base, resolved_normal
     };
     for (uint32_t i = 0; i < STANDARD_TEX_SLOT_COUNT; ++i)
     {
@@ -137,21 +132,18 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     route_key.texture_source_mode = any_array ? TextureSourceMode::Array : TextureSourceMode::Simple;
     route_key.texture_source_bits = 0;
     route_key.sampler_feature_bits = SamplerFeatureBit(SamplerSlot::BaseColor)
-                                   | SamplerFeatureBit(SamplerSlot::Normal)
-                                   | SamplerFeatureBit(SamplerSlot::Roughness);
+                                   | SamplerFeatureBit(SamplerSlot::Normal);
 
     MaterialVariantKey assemble_key = route_key;
     if (has_per_slot_mode)
     {
         assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, resolved_base);
         assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    resolved_normal);
-        assemble_key.SetTextureSourceMode(SamplerSlot::Roughness, resolved_rough);
     }
     else
     {
         assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, route_key.texture_source_mode);
         assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    route_key.texture_source_mode);
-        assemble_key.SetTextureSourceMode(SamplerSlot::Roughness, route_key.texture_source_mode);
     }
 
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(route_key);

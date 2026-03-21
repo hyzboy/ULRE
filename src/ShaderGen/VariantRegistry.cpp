@@ -197,7 +197,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
                 K(ST::Standard, GM::Mesh3D, TSM::Simple,
                     0,
-                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal) | SamplerFeatureBit(SamplerSlot::Roughness)),
+                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("Standard",
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",
@@ -209,7 +209,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
                 K(ST::Standard, GM::Mesh3D, TSM::Array,
                     0,
-                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal) | SamplerFeatureBit(SamplerSlot::Roughness)),
+                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("StandardTextureArray",
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",

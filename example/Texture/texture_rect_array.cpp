@@ -163,7 +163,8 @@ private:
             if(!render_obj[i].mi)
                 return(false);
 
-            render_obj[i].mi->WriteMIData(i);
+            // Array 模式：使用 SetTextureArrayLayer 设置纹理层索引
+            render_obj[i].mi->SetTextureArrayLayer(mtl::SamplerSlot::BaseColor, i);
         }
 
         return(true);

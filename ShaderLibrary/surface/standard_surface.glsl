@@ -52,7 +52,7 @@ SurfaceOutput EvalSurface(SurfaceInput si)
     nm.y = -nm.y;
     N = normalize(N + vec3(nm.xy, 0.0) * mi.normal_scale);
 
-    vec2 mr    = GetSamplerRoughness(si.uv0).rg;
+    vec2 mr    = vec2(1.0,1.0);//GetSamplerRoughness(si.uv0).rg;
     metallic   = clamp(metallic  * mr.r, 0.0, 1.0);
     roughness  = clamp(roughness * mr.g, 0.04, 1.0);
 
