@@ -426,7 +426,7 @@ namespace hgl::ecs
                     }
                     break;
                 }
-                case graph::mtl::DescriptorSemantic::MaterialTexture:
+                case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
                 {
                     graph::mtl::SamplerSlot slot;
                     if (!TryResolveTextureSlot(resolved.name, slot))
@@ -473,7 +473,7 @@ namespace hgl::ecs
 
                 switch (resolved.semantic)
                 {
-                case graph::mtl::DescriptorSemantic::MaterialTexture:
+                case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
                 {
                     graph::mtl::SamplerSlot slot;
                     if (!TryResolveTextureSlot(resolved.name, slot))
@@ -527,7 +527,7 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::TransformID:
         case graph::mtl::DescriptorSemantic::MaterialInstanceID:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
-        case graph::mtl::DescriptorSemantic::MaterialTexture:
+        case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
         case graph::mtl::DescriptorSemantic::Custom:
             return true;
 
@@ -656,7 +656,7 @@ namespace hgl::ecs
                 if (!resolved.name || !*resolved.name)
                     continue;
 
-                if (resolved.semantic != graph::mtl::DescriptorSemantic::MaterialTexture)
+                if (resolved.semantic != graph::mtl::DescriptorSemantic::MaterialInstanceTextureID)
                     continue;
 
                 graph::mtl::SamplerSlot slot;

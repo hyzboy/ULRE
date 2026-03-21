@@ -29,10 +29,10 @@ namespace hgl::graph::mtl
         MaterialInstanceID,
         MaterialInstance,
 
-        MaterialTexture,        ///<当使用TextureArray时的材质ID信息
+        MaterialInstanceTextureID,        ///<当使用TextureArray时的材质ID信息
         //比如一个材质有BaseColor,Normal两个纹理，但是开发者配置了使用TextureArray
         //那么原本的纹理的Sampler2D TexBaseColor;就会变成Sampler2DArray TexBaseColor;
-        //然后在名为MaterialTexture的SSBO里，会出现
+        //然后在名为MaterialInstanceTexture的SSBO里，会出现
         // uint BaseColor[];
         // uint Normal[];
         //这样的数组，用于指定当前材质实例使用哪个纹理Layer，配合TextureArray使用。如有其它类型则自动扩展
@@ -110,7 +110,7 @@ namespace hgl::graph::mtl
         "MaterialInstanceID",
         "MaterialInstance",
 
-        "MaterialTexture",
+        "MaterialInstanceTextureID",
 
         "ColorPattle",
 
@@ -132,7 +132,7 @@ namespace hgl::graph::mtl
         { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"l2w",            "L2W_BINDING",         "LocalToWorldData"       }, // LocalToWorld
         { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mid",            "MID_BINDING",         "MaterialInstanceIDData" }, // MaterialInstanceID
         { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mtl",            "MI_BINDING",          "MaterialInstanceData"   }, // MaterialInstance
-        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mit",            "MIT_BINDING",         "MaterialInstanceTexture"}, // MaterialTexture
+        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mit",            "MIT_BINDING",         "MaterialInstanceTextureID"}, // MaterialInstanceTextureID
         { SET_TYPE_MATERIAL,         DescriptorKind::UBO, "color_pattle",   "COLOR_PATTLE_BINDING","ColorPattle"            }, // ColorPattle
         { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint",          "JOINT_BINDING",       "JointInfo"              }, // BoneJoint
         { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint_weight",   "JOINT_WEIGHT_BINDING","JointWeightInfo"        }, // BoneJointWeight
@@ -209,7 +209,7 @@ namespace hgl::graph::mtl
                                                               const uint32_t stage_flags,
                                                               const TextureSourceMode texture_mode = TextureSourceMode::Simple)
     {
-        const auto &meta = GetDescriptorSemanticMeta(DescriptorSemantic::MaterialTexture);
+        const auto &meta = GetDescriptorSemanticMeta(DescriptorSemantic::MaterialInstanceTextureID);
         return FixedDescriptorEntry{
             meta.set_type,
             meta.default_kind,
@@ -217,7 +217,7 @@ namespace hgl::graph::mtl
             ToDescriptorName(slot),
             meta.struct_name,
             ToGLSLSamplerType(texture_mode),
-            DescriptorSemantic::MaterialTexture
+            DescriptorSemantic::MaterialInstanceTextureID
         };
     }
 
