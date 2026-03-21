@@ -215,7 +215,7 @@ private:
 
         std::cout << "[BillboardECS] Sampler created: " << (void*)sampler << std::endl;
 
-        const bool bind_ok = mi_billboard->GetMaterial()->BindTextureSampler(mtl::SamplerName::SamplerSlot::BaseColor,
+        const bool bind_ok = mi_billboard->GetMaterial()->BindTextureSampler(mtl::SamplerSlot::BaseColor,
                                               texture,
                                               sampler);
         std::cout << "[BillboardECS] BindTextureSampler(BaseColor): " << (bind_ok ? "OK" : "FAILED")

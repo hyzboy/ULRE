@@ -164,7 +164,7 @@ namespace hgl::ecs
             return false;
         }
 
-        if (!material->BindTextureSampler(graph::mtl::SamplerName::SamplerSlot::BaseColor,
+        if (!material->BindTextureSampler(graph::mtl::SamplerSlot::BaseColor,
                                           texture,
                                           shared_sampler))
         {
@@ -177,7 +177,7 @@ namespace hgl::ecs
                 descriptor_binding_system->ClearMaterialBindings(previous_material);
 
             descriptor_binding_system->RegisterMaterialTextureSampler(material,
-                                                                      graph::mtl::SamplerName::SamplerSlot::BaseColor,
+                                                                      graph::mtl::SamplerSlot::BaseColor,
                                                                       texture,
                                                                       shared_sampler);
         }

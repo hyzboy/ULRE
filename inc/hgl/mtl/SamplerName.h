@@ -5,7 +5,7 @@
 #include <array>
 #include <string>
 
-namespace hgl::graph::mtl::SamplerName
+namespace hgl::graph::mtl
 {
     enum class SamplerSlot : uint8_t
     {
@@ -48,15 +48,6 @@ namespace hgl::graph::mtl::SamplerName
     static_assert(sizeof(SamplerSlotNameList) / sizeof(SamplerSlotNameList[0]) == SamplerSlotCount,
                   "SamplerSlotNameList must match SamplerSlot enum order");
 
-    constexpr const char *GetSlotBaseName(const SamplerSlot slot)
-    {
-        const size_t index = size_t(slot);
-        if (index < SamplerSlotCount)
-            return SamplerSlotNameList[index];
-
-        return "";
-    }
-
     inline std::string ToUpperASCII(const char *text)
     {
         std::string result;
@@ -73,7 +64,7 @@ namespace hgl::graph::mtl::SamplerName
         return result;
     }
 
-    inline const std::array<std::string, SamplerSlotCount> &GetDescriptorNameCache()
+    inline const std::array<std::string, SamplerSlotCount> &GetSamplerDescriptorNameCache()
     {
         static const std::array<std::string, SamplerSlotCount> cache = []
         {
@@ -91,7 +82,7 @@ namespace hgl::graph::mtl::SamplerName
         return cache;
     }
 
-    inline const std::array<std::string, SamplerSlotCount> &GetBindingMacroNameCache()
+    inline const std::array<std::string, SamplerSlotCount> &GetSamplerBindingMacroNameCache()
     {
         static const std::array<std::string, SamplerSlotCount> cache = []
         {
@@ -130,7 +121,7 @@ namespace hgl::graph::mtl::SamplerName
         return cache;
     }
 
-    inline const std::array<std::string, SamplerSlotCount> &GetGLSLGetterNameCache()
+    inline const std::array<std::string, SamplerSlotCount> &GetGLSLGetSamplerCache()
     {
         static const std::array<std::string, SamplerSlotCount> cache = []
         {
@@ -154,7 +145,7 @@ namespace hgl::graph::mtl::SamplerName
         if (index >= SamplerSlotCount)
             return "";
 
-        return GetDescriptorNameCache()[index].c_str();
+        return GetSamplerDescriptorNameCache()[index].c_str();
     }
 
     inline const char *ToBindingMacroName(const SamplerSlot slot)
@@ -163,7 +154,7 @@ namespace hgl::graph::mtl::SamplerName
         if (index >= SamplerSlotCount)
             return "";
 
-        return GetBindingMacroNameCache()[index].c_str();
+        return GetSamplerBindingMacroNameCache()[index].c_str();
     }
 
     inline const char *ToGLSLSamplerSymbol(const SamplerSlot slot)
@@ -181,7 +172,7 @@ namespace hgl::graph::mtl::SamplerName
         if (index >= SamplerSlotCount)
             return "";
 
-        return GetGLSLGetterNameCache()[index].c_str();
+        return GetGLSLGetSamplerCache()[index].c_str();
     }
 
     constexpr const char *ToGLSLSamplerType(const TextureSourceMode mode)
@@ -214,4 +205,4 @@ namespace hgl::graph::mtl::SamplerName
 
         return false;
     }
-}//namespace hgl::graph::mtl::SamplerName
+}//namespace hgl::graph::mtl

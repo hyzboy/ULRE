@@ -25,14 +25,14 @@ namespace hgl::ecs
 {
     namespace
     {
-        TextureBindingSlot ToBindingKey(const graph::mtl::SamplerName::SamplerSlot slot)
+        TextureBindingSlot ToBindingKey(const graph::mtl::SamplerSlot slot)
         {
             return static_cast<TextureBindingSlot>(slot);
         }
 
-        bool TryResolveTextureSlot(const char *descriptor_name, graph::mtl::SamplerName::SamplerSlot &slot)
+        bool TryResolveTextureSlot(const char *descriptor_name, graph::mtl::SamplerSlot &slot)
         {
-            return graph::mtl::SamplerName::TryGetSlotFromDescriptorName(descriptor_name, slot);
+            return graph::mtl::TryGetSlotFromDescriptorName(descriptor_name, slot);
         }
 
         graph::BufferManager *GetBufferManager(hgl::ecs::ECSContext *ctx)
@@ -180,7 +180,7 @@ namespace hgl::ecs
     }
 
     bool RenderDescriptorBindingSystem::RegisterMaterialTexture(graph::Material *material,
-                                                                graph::mtl::SamplerName::SamplerSlot slot,
+                                                                graph::mtl::SamplerSlot slot,
                                                                 graph::Texture *texture)
     {
         if (!material || !texture)
@@ -192,7 +192,7 @@ namespace hgl::ecs
     }
 
     bool RenderDescriptorBindingSystem::RegisterMaterialTextureSampler(graph::Material *material,
-                                                                       graph::mtl::SamplerName::SamplerSlot slot,
+                                                                       graph::mtl::SamplerSlot slot,
                                                                        graph::Texture *texture,
                                                                        graph::Sampler *sampler)
     {
@@ -207,7 +207,7 @@ namespace hgl::ecs
         return true;
     }
 
-    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::Material *material, graph::mtl::SamplerName::SamplerSlot slot)
+    void RenderDescriptorBindingSystem::RemoveMaterialBinding(graph::Material *material, graph::mtl::SamplerSlot slot)
     {
         if (!material)
             return;
@@ -258,7 +258,7 @@ namespace hgl::ecs
     }
 
     bool RenderDescriptorBindingSystem::RegisterDomainTexture(graph::DomainMaterialBinding *binding,
-                                                              graph::mtl::SamplerName::SamplerSlot slot,
+                                                              graph::mtl::SamplerSlot slot,
                                                               graph::Texture *tex)
     {
         if (!binding || !tex)
@@ -269,7 +269,7 @@ namespace hgl::ecs
     }
 
     bool RenderDescriptorBindingSystem::RegisterDomainTextureSampler(graph::DomainMaterialBinding *binding,
-                                                                     graph::mtl::SamplerName::SamplerSlot slot,
+                                                                     graph::mtl::SamplerSlot slot,
                                                                      graph::Texture *tex,
                                                                      graph::Sampler *sampler)
     {
@@ -289,7 +289,7 @@ namespace hgl::ecs
     }
 
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindMaterialResourceBinding(const graph::Material *material,
-                                                                                                                             graph::mtl::SamplerName::SamplerSlot slot) const
+                                                                                                                             graph::mtl::SamplerSlot slot) const
     {
         if (!material)
             return nullptr;
@@ -306,7 +306,7 @@ namespace hgl::ecs
     }
 
     const RenderDescriptorBindingSystem::MaterialResourceBinding *RenderDescriptorBindingSystem::FindDomainResourceBinding(
-        const graph::DomainMaterialBinding *binding, graph::mtl::SamplerName::SamplerSlot slot) const
+        const graph::DomainMaterialBinding *binding, graph::mtl::SamplerSlot slot) const
     {
         if (!binding)
             return nullptr;
@@ -428,7 +428,7 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
-                    graph::mtl::SamplerName::SamplerSlot slot;
+                    graph::mtl::SamplerSlot slot;
                     if (!TryResolveTextureSlot(resolved.name, slot))
                         break;
 
@@ -475,7 +475,7 @@ namespace hgl::ecs
                 {
                 case graph::mtl::DescriptorSemantic::MaterialTexture:
                 {
-                    graph::mtl::SamplerName::SamplerSlot slot;
+                    graph::mtl::SamplerSlot slot;
                     if (!TryResolveTextureSlot(resolved.name, slot))
                         break;
 
@@ -659,7 +659,7 @@ namespace hgl::ecs
                 if (resolved.semantic != graph::mtl::DescriptorSemantic::MaterialTexture)
                     continue;
 
-                graph::mtl::SamplerName::SamplerSlot slot;
+                graph::mtl::SamplerSlot slot;
                 if (!TryResolveTextureSlot(resolved.name, slot))
                     continue;
 

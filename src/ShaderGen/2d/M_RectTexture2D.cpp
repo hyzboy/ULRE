@@ -16,7 +16,7 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
 
     const bool has_slot_mode = key.HasAnyTextureSourceBits();
     const TextureSourceMode mode = has_slot_mode
-        ? key.GetTextureSourceMode(SamplerName::SamplerSlot::BaseColor)
+        ? key.GetTextureSourceMode(SamplerSlot::BaseColor)
         : key.texture_source_mode;
     const bool use_array = (mode == TextureSourceMode::Array);
 
@@ -38,7 +38,7 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, &inner);
-    descriptors.push_back(MakeTextureDescriptorEntry(SamplerName::SamplerSlot::BaseColor,
+    descriptors.push_back(MakeTextureDescriptorEntry(SamplerSlot::BaseColor,
                                                      uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                      mode));
 
@@ -70,7 +70,7 @@ MaterialCreateInfo *CreateRectTexture2D(const contract::PhysicalDeviceProfileLit
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::ScreenRect;
     key.texture_source_mode = TextureSourceMode::Simple;
-    key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Simple);
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     return CreateRectTextureVariant(profile, key, cfg);
 }
 
@@ -80,7 +80,7 @@ MaterialCreateInfo *CreateRectTexture2DArray(const contract::PhysicalDeviceProfi
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::ScreenRect;
     key.texture_source_mode = TextureSourceMode::Array;
-    key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Array);
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
     return CreateRectTextureVariant(profile, key, cfg);
 }
 }//namespace hgl::graph::mtl

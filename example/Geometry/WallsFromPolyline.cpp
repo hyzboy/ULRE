@@ -144,7 +144,7 @@ public:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(mtl::SamplerName::SamplerSlot::BaseColor,
+        if (!material->BindTextureSampler(mtl::SamplerSlot::BaseColor,
                           base_color_texture,
                           sampler))
             return false;

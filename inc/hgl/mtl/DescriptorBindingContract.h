@@ -95,8 +95,6 @@ namespace hgl::graph::mtl
         const char *binding_macro_name = nullptr;
         const char *struct_name = nullptr;
         const char *glsl_type = nullptr;
-        bool required = true;
-        bool allow_fallback = false;
     };
 
     constexpr const char *DescriptorSemanticNameList[] =
@@ -126,19 +124,19 @@ namespace hgl::graph::mtl
 
     constexpr DescriptorSemanticMeta DescriptorSemanticMetaList[] =
     {
-        { DescriptorSetType::Unknow, DescriptorKind::UBO, nullptr,         nullptr,                 nullptr,                nullptr,      true,  false }, // Unknown
-        { SET_TYPE_VIEWPORT,         DescriptorKind::UBO, "viewport",    "VIEWPORT_BINDING",    "ViewportInfo",        nullptr,      true,  false }, // ViewportInfo
-        { SET_TYPE_CAMERA,           DescriptorKind::UBO, "camera",      "CAMERA_BINDING",      "CameraInfo",          nullptr,      true,  false }, // CameraInfo
-        { SET_TYPE_SKY,              DescriptorKind::UBO, "sky",         "SKY_BINDING",         "SkyInfo",             nullptr,      false, true  }, // SkyInfo
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"tid",         "TID_BINDING",         "TransformIDData",     nullptr,      true,  false }, // TransformID
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"l2w",         "L2W_BINDING",         "LocalToWorldData",    nullptr,      true,  false }, // LocalToWorld
-        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mid",         "MID_BINDING",         "MaterialInstanceIDData", nullptr,    true,  false }, // MaterialInstanceID
-        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mtl",         "MI_BINDING",          "MaterialInstanceData", nullptr,      true,  false }, // MaterialInstance
-        { SET_TYPE_TEXTURE,          DescriptorKind::TextureSampler, nullptr, nullptr,              nullptr,                "sampler2D", false, true  }, // MaterialTexture
-        { SET_TYPE_MATERIAL,         DescriptorKind::UBO, "color_pattle","COLOR_PATTLE_BINDING","ColorPattle",        nullptr,      true,  false }, // ColorPattle
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint",       "JOINT_BINDING",       "JointInfo",           nullptr,      false, true  }, // BoneJoint
-        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint_weight","JOINT_WEIGHT_BINDING","JointWeightInfo",     nullptr,      false, true  }, // BoneJointWeight
-        { DescriptorSetType::Unknow, DescriptorKind::UBO, nullptr,         nullptr,                 nullptr,                nullptr,      true,  false }, // Custom
+        { DescriptorSetType::Unknow, DescriptorKind::UBO, nullptr,          nullptr,               nullptr                  }, // Unknown
+        { SET_TYPE_VIEWPORT,         DescriptorKind::UBO, "viewport",       "VIEWPORT_BINDING",    "ViewportInfo"           }, // ViewportInfo
+        { SET_TYPE_CAMERA,           DescriptorKind::UBO, "camera",         "CAMERA_BINDING",      "CameraInfo"             }, // CameraInfo
+        { SET_TYPE_SKY,              DescriptorKind::UBO, "sky",            "SKY_BINDING",         "SkyInfo"                }, // SkyInfo
+        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"tid",            "TID_BINDING",         "TransformIDData"        }, // TransformID
+        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"l2w",            "L2W_BINDING",         "LocalToWorldData"       }, // LocalToWorld
+        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mid",            "MID_BINDING",         "MaterialInstanceIDData" }, // MaterialInstanceID
+        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mtl",            "MI_BINDING",          "MaterialInstanceData"   }, // MaterialInstance
+        { SET_TYPE_MATERIAL,         DescriptorKind::SSBO,"mit",            "MIT_BINDING",         "MaterialInstanceTexture"}, // MaterialTexture
+        { SET_TYPE_MATERIAL,         DescriptorKind::UBO, "color_pattle",   "COLOR_PATTLE_BINDING","ColorPattle"            }, // ColorPattle
+        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint",          "JOINT_BINDING",       "JointInfo"              }, // BoneJoint
+        { SET_TYPE_TRANSFORM,        DescriptorKind::SSBO,"joint_weight",   "JOINT_WEIGHT_BINDING","JointWeightInfo"        }, // BoneJointWeight
+        { DescriptorSetType::Unknow, DescriptorKind::UBO, nullptr,          nullptr,               nullptr                  }, // Custom
     };
 
     static_assert(sizeof(DescriptorSemanticNameList) / sizeof(DescriptorSemanticNameList[0]) == DescriptorSemanticCount,
@@ -207,30 +205,20 @@ namespace hgl::graph::mtl
         };
     }
 
-    inline FixedDescriptorEntry MakeTextureDescriptorEntry(const SamplerName::SamplerSlot slot,
+    inline FixedDescriptorEntry MakeTextureDescriptorEntry(const SamplerSlot slot,
                                                               const uint32_t stage_flags,
-                                                              const SamplerName::TextureSourceMode texture_mode = SamplerName::TextureSourceMode::Simple)
+                                                              const TextureSourceMode texture_mode = TextureSourceMode::Simple)
     {
         const auto &meta = GetDescriptorSemanticMeta(DescriptorSemantic::MaterialTexture);
         return FixedDescriptorEntry{
             meta.set_type,
             meta.default_kind,
             stage_flags,
-            SamplerName::ToDescriptorName(slot),
+            ToDescriptorName(slot),
             meta.struct_name,
-            SamplerName::ToGLSLSamplerType(texture_mode),
+            ToGLSLSamplerType(texture_mode),
             DescriptorSemantic::MaterialTexture
         };
-    }
-
-    inline bool IsSemanticRequired(DescriptorSemantic semantic)
-    {
-        return GetDescriptorSemanticMeta(semantic).required;
-    }
-
-    inline bool IsSemanticFallbackAllowed(DescriptorSemantic semantic)
-    {
-        return GetDescriptorSemanticMeta(semantic).allow_fallback;
     }
 
     inline ResolvedDescriptorRequirement ResolveDescriptorRequirement(const DescriptorRequirement &req)
@@ -245,8 +233,6 @@ namespace hgl::graph::mtl
         resolved.name = req.name_override ? req.name_override : meta.name;
         resolved.struct_name = meta.struct_name;
         resolved.glsl_type = meta.glsl_type;
-        resolved.required = meta.required;
-        resolved.allow_fallback = meta.allow_fallback;
 
         return resolved;
     }

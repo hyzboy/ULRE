@@ -27,8 +27,8 @@ namespace
         MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
     };
 
-    constexpr SamplerName::SamplerSlot BILLBOARD_FIXED_TEX_SLOTS[] = {
-        SamplerName::SamplerSlot::BaseColor,
+    constexpr SamplerSlot BILLBOARD_FIXED_TEX_SLOTS[] = {
+        SamplerSlot::BaseColor,
     };
     constexpr uint32_t BILLBOARD_FIXED_TEX_SLOT_COUNT = uint32_t(sizeof(BILLBOARD_FIXED_TEX_SLOTS) / sizeof(BILLBOARD_FIXED_TEX_SLOTS[0]));
 

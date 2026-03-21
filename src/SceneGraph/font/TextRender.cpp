@@ -185,7 +185,7 @@ namespace hgl::graph
         pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        if(!mtl_fs->BindTextureSampler(  mtl::SamplerName::SamplerSlot::Text,
+        if(!mtl_fs->BindTextureSampler(  mtl::SamplerSlot::Text,
                          tile_font->GetTexture(),
                          sampler))
             return(false);

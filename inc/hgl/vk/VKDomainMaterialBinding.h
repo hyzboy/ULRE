@@ -54,8 +54,8 @@ public:
     // 描述符绑定接口 (PerMaterial 集)
     // ----------------------------------------------------------------
 
-    bool BindTexture       (const mtl::SamplerName::SamplerSlot slot, Texture *tex);
-    bool BindTextureSampler(const mtl::SamplerName::SamplerSlot slot, Texture *tex, Sampler *sampler);
+    bool BindTexture       (const mtl::SamplerSlot slot, Texture *tex);
+    bool BindTextureSampler(const mtl::SamplerSlot slot, Texture *tex, Sampler *sampler);
 
     /// 将已绑定描述符写入 Vulkan 驱动
     void Update();

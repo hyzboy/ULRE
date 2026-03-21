@@ -40,7 +40,7 @@ inline const char *GLSLInputType(const VAType &vat)
 inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
                                    bool has_texture,
                                    bool has_mi,
-                                   const SamplerName::SamplerSlot texture_slot = SamplerName::SamplerSlot::BaseColor)
+                                   const SamplerSlot texture_slot = SamplerSlot::BaseColor)
 {
     (void)has_texture;
     (void)has_mi;

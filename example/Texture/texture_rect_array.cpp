@@ -144,7 +144,7 @@ private:
 
         sampler=sampler_manager->CreateSampler();
 
-        if(!material->BindTextureSampler( mtl::SamplerName::SamplerSlot::BaseColor,
+        if(!material->BindTextureSampler( mtl::SamplerSlot::BaseColor,
                           texture,
                           sampler))
             return(false);

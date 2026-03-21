@@ -104,17 +104,17 @@ private:
         if (!sampler)
             return false;
 
-        if (!material->BindTextureSampler(mtl::SamplerName::SamplerSlot::BaseColor,
+        if (!material->BindTextureSampler(mtl::SamplerSlot::BaseColor,
                                           base_texture,
                                           sampler))
             return false;
 
-        if (!material->BindTextureSampler(mtl::SamplerName::SamplerSlot::Normal,
+        if (!material->BindTextureSampler(mtl::SamplerSlot::Normal,
                                           normal_texture,
                                           sampler))
             return false;
 
-        if (!material->BindTextureSampler(mtl::SamplerName::SamplerSlot::Roughness,
+        if (!material->BindTextureSampler(mtl::SamplerSlot::Roughness,
                                           roughness_texture,
                                           sampler))
             return false;

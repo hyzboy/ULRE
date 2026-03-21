@@ -16,7 +16,7 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
 
     std::vector<FixedDescriptorEntry> descriptors;
     build2d::PushBaseDescriptorEntries(descriptors, cfg);
-    descriptors.push_back(MakeTextureDescriptorEntry(SamplerName::SamplerSlot::BaseColor,
+    descriptors.push_back(MakeTextureDescriptorEntry(SamplerSlot::BaseColor,
                                                      uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
                                                      TextureSourceMode::Simple));
 

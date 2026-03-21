@@ -322,7 +322,7 @@ namespace hgl::ecs
             guard.material_instance_buffer = nullptr;
         }
 
-        if (!guard.material->BindTextureSampler(graph::mtl::SamplerName::SamplerSlot::Text,
+        if (!guard.material->BindTextureSampler(graph::mtl::SamplerSlot::Text,
                             guard.tile_font->GetTexture(),
                             guard.sampler))
             return nullptr;
@@ -333,7 +333,7 @@ namespace hgl::ecs
             {
                 descriptor_binding_system->RegisterPipelineMaterial(guard.material);
                 descriptor_binding_system->RegisterMaterialTextureSampler(guard.material,
-                                                                          graph::mtl::SamplerName::SamplerSlot::Text,
+                                                                          graph::mtl::SamplerSlot::Text,
                                                                           guard.tile_font->GetTexture(),
                                                                           guard.sampler);
             }

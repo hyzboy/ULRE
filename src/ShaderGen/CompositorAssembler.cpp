@@ -248,13 +248,13 @@ namespace hgl::graph
 
         const bool has_slot_modes = key.HasAnyTextureSourceBits();
         const auto base_mode = has_slot_modes
-            ? key.GetTextureSourceMode(mtl::SamplerName::SamplerSlot::BaseColor)
+            ? key.GetTextureSourceMode(mtl::SamplerSlot::BaseColor)
             : key.texture_source_mode;
         const auto normal_mode = has_slot_modes
-            ? key.GetTextureSourceMode(mtl::SamplerName::SamplerSlot::Normal)
+            ? key.GetTextureSourceMode(mtl::SamplerSlot::Normal)
             : key.texture_source_mode;
         const auto rough_mode = has_slot_modes
-            ? key.GetTextureSourceMode(mtl::SamplerName::SamplerSlot::Roughness)
+            ? key.GetTextureSourceMode(mtl::SamplerSlot::Roughness)
             : key.texture_source_mode;
 
         perm.SetBaseTextureArrayMode(base_mode == mtl::TextureSourceMode::Array);

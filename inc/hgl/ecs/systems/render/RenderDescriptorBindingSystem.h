@@ -114,13 +114,13 @@ namespace hgl::ecs
         bool GetMaterialBindingKeys(const graph::Material *material,
                         std::vector<std::string> &out_keys) const;
         bool RegisterMaterialTexture(graph::Material *material,
-                                 graph::mtl::SamplerName::SamplerSlot slot,
+                                 graph::mtl::SamplerSlot slot,
                          graph::Texture *texture);
         bool RegisterMaterialTextureSampler(graph::Material *material,
-                                     graph::mtl::SamplerName::SamplerSlot slot,
+                                     graph::mtl::SamplerSlot slot,
                             graph::Texture *texture,
                             graph::Sampler *sampler);
-          void RemoveMaterialBinding(graph::Material *material, graph::mtl::SamplerName::SamplerSlot slot);
+        void RemoveMaterialBinding(graph::Material *material, graph::mtl::SamplerSlot slot);
         void ClearMaterialBindings(graph::Material *material);
         void RegisterPipelineMaterial(graph::Material *material);
         void UnregisterPipelineMaterial(graph::Material *material);
@@ -136,9 +136,9 @@ namespace hgl::ecs
          * 为指定域绑定注册 Texture/Sampler，用于 MaterialTexture 语义。
          */
         bool RegisterDomainTexture(graph::DomainMaterialBinding *binding,
-                        graph::mtl::SamplerName::SamplerSlot slot, graph::Texture *tex);
+                        graph::mtl::SamplerSlot slot, graph::Texture *tex);
         bool RegisterDomainTextureSampler(graph::DomainMaterialBinding *binding,
-                            graph::mtl::SamplerName::SamplerSlot slot,
+                            graph::mtl::SamplerSlot slot,
                                           graph::Texture *tex, graph::Sampler *sampler);
         void ClearDomainBindings(graph::DomainMaterialBinding *binding);
 
@@ -154,8 +154,8 @@ namespace hgl::ecs
         void ApplyDomainBindings();
         void PurgeStaleBindings(const std::unordered_set<const graph::Material *> &active);
 
-        const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, graph::mtl::SamplerName::SamplerSlot slot) const;
-        const MaterialResourceBinding *FindDomainResourceBinding(const graph::DomainMaterialBinding *binding, graph::mtl::SamplerName::SamplerSlot slot) const;
+        const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, graph::mtl::SamplerSlot slot) const;
+        const MaterialResourceBinding *FindDomainResourceBinding(const graph::DomainMaterialBinding *binding, graph::mtl::SamplerSlot slot) const;
         void ValidateContractsSideChannel();
         bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
     };

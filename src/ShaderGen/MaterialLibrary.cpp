@@ -33,13 +33,13 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Simple);
+            key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
             break;
         case MaterialPreset::RectTexture2DArray:
             key.surface_type = SurfaceType::Unlit;
             key.geometry_mode = GeometryMode::ScreenRect;
             key.texture_source_mode = TextureSourceMode::Array;
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Array);
+            key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
             break;
         case MaterialPreset::Text2D:
             key.surface_type = SurfaceType::Unlit;
@@ -97,17 +97,17 @@ MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Simple);
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::Normal,    TextureSourceMode::Simple);
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::Roughness, TextureSourceMode::Simple);
+            key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+            key.SetTextureSourceMode(SamplerSlot::Normal,    TextureSourceMode::Simple);
+            key.SetTextureSourceMode(SamplerSlot::Roughness, TextureSourceMode::Simple);
             break;
         case MaterialPreset::StandardTextureArray:
             key.surface_type = SurfaceType::Standard;
             key.geometry_mode = GeometryMode::Mesh3D;
             key.texture_source_mode = TextureSourceMode::Array;
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, TextureSourceMode::Array);
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::Normal,    TextureSourceMode::Array);
-            key.SetTextureSourceMode(SamplerName::SamplerSlot::Roughness, TextureSourceMode::Array);
+            key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Array);
+            key.SetTextureSourceMode(SamplerSlot::Normal,    TextureSourceMode::Array);
+            key.SetTextureSourceMode(SamplerSlot::Roughness, TextureSourceMode::Array);
             break;
         case MaterialPreset::PBRColor3D:
             key.surface_type = SurfaceType::Standard;

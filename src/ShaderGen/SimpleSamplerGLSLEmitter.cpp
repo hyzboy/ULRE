@@ -22,11 +22,11 @@ namespace
         return CStrEq(type_name, "sampler2D");
     }
 
-    static void AppendKnownSlotSampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerName::SamplerSlot slot)
+    static void AppendKnownSlotSampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerSlot slot)
     {
-        const char *sampler_symbol = mtl::SamplerName::ToGLSLSamplerSymbol(slot);
-        const char *legacy_name = mtl::SamplerName::ToDescriptorName(slot);
-        const char *getter_name = mtl::SamplerName::ToGLSLGetterName(slot);
+        const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
+        const char *legacy_name = mtl::ToDescriptorName(slot);
+        const char *getter_name = mtl::ToGLSLGetterName(slot);
 
         out += "layout(set=";
         out += std::to_string(descriptor->set);
@@ -101,8 +101,8 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
 
     for (const ShaderDescriptor *descriptor : samplers)
     {
-        mtl::SamplerName::SamplerSlot slot = mtl::SamplerName::SamplerSlot::BaseColor;
-        if (mtl::SamplerName::TryGetSlotFromDescriptorName(descriptor->name, slot))
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        if (mtl::TryGetSlotFromDescriptorName(descriptor->name, slot))
             AppendKnownSlotSampler(out, descriptor, slot);
         else
             AppendGenericSampler(out, descriptor);

@@ -14,8 +14,8 @@ namespace
         { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
     };
 
-    constexpr SamplerName::SamplerSlot BILLBOARD_DYNAMIC_TEX_SLOTS[] = {
-        SamplerName::SamplerSlot::BaseColor,
+    constexpr SamplerSlot BILLBOARD_DYNAMIC_TEX_SLOTS[] = {
+        SamplerSlot::BaseColor,
     };
     constexpr uint32_t BILLBOARD_DYNAMIC_TEX_SLOT_COUNT = uint32_t(sizeof(BILLBOARD_DYNAMIC_TEX_SLOTS) / sizeof(BILLBOARD_DYNAMIC_TEX_SLOTS[0]));
 }//namespace

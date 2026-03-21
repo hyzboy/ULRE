@@ -51,10 +51,10 @@ namespace
 
     // Ordered list of texture slots used by the Standard material.
     // Texture FixedDescriptorEntry items are built from this list at variant-creation time.
-    constexpr SamplerName::SamplerSlot STANDARD_TEX_SLOTS[] = {
-        SamplerName::SamplerSlot::BaseColor,
-        SamplerName::SamplerSlot::Normal,
-        SamplerName::SamplerSlot::Roughness,
+    constexpr SamplerSlot STANDARD_TEX_SLOTS[] = {
+        SamplerSlot::BaseColor,
+        SamplerSlot::Normal,
+        SamplerSlot::Roughness,
     };
     constexpr uint32_t STANDARD_TEX_SLOT_COUNT = uint32_t(sizeof(STANDARD_TEX_SLOTS) / sizeof(STANDARD_TEX_SLOTS[0]));
 
@@ -86,9 +86,9 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
         std::fprintf(stderr, "[Standard] CreateStandardVariant warning: profile is null\n");
     }
 
-    const TextureSourceMode base_mode = input_key.GetTextureSourceMode(SamplerName::SamplerSlot::BaseColor);
-    const TextureSourceMode normal_mode = input_key.GetTextureSourceMode(SamplerName::SamplerSlot::Normal);
-    const TextureSourceMode rough_mode = input_key.GetTextureSourceMode(SamplerName::SamplerSlot::Roughness);
+    const TextureSourceMode base_mode = input_key.GetTextureSourceMode(SamplerSlot::BaseColor);
+    const TextureSourceMode normal_mode = input_key.GetTextureSourceMode(SamplerSlot::Normal);
+    const TextureSourceMode rough_mode = input_key.GetTextureSourceMode(SamplerSlot::Roughness);
 
     const bool has_per_slot_mode = input_key.HasAnyTextureSourceBits();
     const TextureSourceMode legacy_mode = input_key.GetPrimaryTextureSourceMode();
@@ -147,15 +147,15 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     MaterialVariantKey assemble_key = route_key;
     if (has_per_slot_mode)
     {
-        assemble_key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, resolved_base);
-        assemble_key.SetTextureSourceMode(SamplerName::SamplerSlot::Normal,    resolved_normal);
-        assemble_key.SetTextureSourceMode(SamplerName::SamplerSlot::Roughness, resolved_rough);
+        assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, resolved_base);
+        assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    resolved_normal);
+        assemble_key.SetTextureSourceMode(SamplerSlot::Roughness, resolved_rough);
     }
     else
     {
-        assemble_key.SetTextureSourceMode(SamplerName::SamplerSlot::BaseColor, route_key.texture_source_mode);
-        assemble_key.SetTextureSourceMode(SamplerName::SamplerSlot::Normal,    route_key.texture_source_mode);
-        assemble_key.SetTextureSourceMode(SamplerName::SamplerSlot::Roughness, route_key.texture_source_mode);
+        assemble_key.SetTextureSourceMode(SamplerSlot::BaseColor, route_key.texture_source_mode);
+        assemble_key.SetTextureSourceMode(SamplerSlot::Normal,    route_key.texture_source_mode);
+        assemble_key.SetTextureSourceMode(SamplerSlot::Roughness, route_key.texture_source_mode);
     }
 
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(route_key);

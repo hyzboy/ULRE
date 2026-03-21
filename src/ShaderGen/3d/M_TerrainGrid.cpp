@@ -17,9 +17,9 @@ namespace
 
     // Resort 字母�? camera=0, viewport=1 (Scene)
     //                TextureHeight=0, TextureNormal=1 (Material)
-    constexpr SamplerName::SamplerSlot TERRAIN_GRID_TEX_SLOTS[] = {
-        SamplerName::SamplerSlot::Height,
-        SamplerName::SamplerSlot::Normal,
+    constexpr SamplerSlot TERRAIN_GRID_TEX_SLOTS[] = {
+        SamplerSlot::Height,
+        SamplerSlot::Normal,
     };
 
     FixedDescriptorEntry TERRAIN_GRID_DESCRIPTORS[] = {

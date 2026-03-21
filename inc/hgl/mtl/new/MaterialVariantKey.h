@@ -8,8 +8,8 @@
 
 namespace hgl::graph::mtl
 {
-    using SamplerSlot = SamplerName::SamplerSlot;
-    using TextureSourceMode = SamplerName::TextureSourceMode;
+    using SamplerSlot = SamplerSlot;
+    using TextureSourceMode = TextureSourceMode;
 
     constexpr uint32 SamplerFeatureBit(const SamplerSlot slot) noexcept
     {

@@ -14,18 +14,18 @@ DomainMaterialBinding::~DomainMaterialBinding()
     mp_per_material = nullptr;
 }
 
-bool DomainMaterialBinding::BindTexture(const mtl::SamplerName::SamplerSlot slot, Texture *tex)
+bool DomainMaterialBinding::BindTexture(const mtl::SamplerSlot slot, Texture *tex)
 {
     if (!mp_per_material) return false;
-    const AnsiString name = mtl::SamplerName::ToDescriptorName(slot);
+    const AnsiString name = mtl::ToDescriptorName(slot);
     return mp_per_material->BindTexture(name, tex);
 }
 
-bool DomainMaterialBinding::BindTextureSampler(const mtl::SamplerName::SamplerSlot slot,
+bool DomainMaterialBinding::BindTextureSampler(const mtl::SamplerSlot slot,
                                                Texture *tex, Sampler *sampler)
 {
     if (!mp_per_material) return false;
-    const AnsiString name = mtl::SamplerName::ToDescriptorName(slot);
+    const AnsiString name = mtl::ToDescriptorName(slot);
     return mp_per_material->BindTextureSampler(name, tex, sampler);
 }
 

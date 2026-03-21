@@ -101,9 +101,9 @@ std::string GetDescriptorBindingMacroName(const char *descriptor_name)
     if (const char *macro_name = mtl::FindDescriptorBindingMacroNameByDescriptorName(descriptor_name))
         return macro_name;
 
-    mtl::SamplerName::SamplerSlot slot;
-    if (mtl::SamplerName::TryGetSlotFromDescriptorName(descriptor_name, slot))
-        return mtl::SamplerName::ToBindingMacroName(slot);
+    mtl::SamplerSlot slot;
+    if (mtl::TryGetSlotFromDescriptorName(descriptor_name, slot))
+        return mtl::ToBindingMacroName(slot);
 
     return BuildMacroName(descriptor_name, "_BINDING");
 }
@@ -120,15 +120,15 @@ static void AppendDescriptorBindingMacros(ShaderLayoutContract &contract,
         AddLayoutEntryIfMissing(contract.descriptor_bindings, canonical_macro.c_str(), binding);
 
     // Keep legacy short aliases for older shaders that still reference TEX_* names.
-    mtl::SamplerName::SamplerSlot slot;
-    if (!mtl::SamplerName::TryGetSlotFromDescriptorName(descriptor_name, slot))
+    mtl::SamplerSlot slot;
+    if (!mtl::TryGetSlotFromDescriptorName(descriptor_name, slot))
         return;
 
     const size_t slot_index = size_t(slot);
-    if (slot_index >= mtl::SamplerName::SamplerSlotCount)
+    if (slot_index >= mtl::SamplerSlotCount)
         return;
 
-    const auto &binding_macro_cache = mtl::SamplerName::GetBindingMacroNameCache();
+    const auto &binding_macro_cache = mtl::GetSamplerBindingMacroNameCache();
     AddLayoutEntryIfMissing(contract.descriptor_bindings,
                             binding_macro_cache[slot_index].c_str(),
                             binding);

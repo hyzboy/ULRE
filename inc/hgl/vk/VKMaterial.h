@@ -97,12 +97,12 @@ public:
 
 public:
 
-    bool BindTexture(const mtl::SamplerName::SamplerSlot slot,Texture *tex)
+    bool BindTexture(const mtl::SamplerSlot slot,Texture *tex)
     {
         return BindTexture(SET_TYPE_TEXTURE,slot,tex);
     }
 
-    bool BindTextureSampler(const mtl::SamplerName::SamplerSlot slot,Texture *tex,Sampler *sampler)
+    bool BindTextureSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
     {
         return BindTextureSampler(SET_TYPE_TEXTURE,slot,tex,sampler);
     }
@@ -124,8 +124,8 @@ public:
 
 protected:
 
-    bool BindTexture(const DescriptorSetType &type,mtl::SamplerName::SamplerSlot slot,Texture *tex);
-    bool BindTextureSampler(const DescriptorSetType &type,mtl::SamplerName::SamplerSlot slot,Texture *tex,Sampler *sampler);
+    bool BindTexture(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex);
+    bool BindTextureSampler(const DescriptorSetType &type,mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
 
 public:
 
