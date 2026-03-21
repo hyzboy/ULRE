@@ -212,7 +212,7 @@ namespace hgl::graph::mtl
         const auto &meta = GetDescriptorSemanticMeta(DescriptorSemantic::MaterialInstanceTextureID);
         return FixedDescriptorEntry{
             meta.set_type,
-            meta.default_kind,
+            DescriptorKind::TextureSampler,  // texture slots are combined image+samplers, not SSBOs
             stage_flags,
             ToDescriptorName(slot),
             meta.struct_name,
