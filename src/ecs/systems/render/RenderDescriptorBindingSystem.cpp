@@ -428,13 +428,7 @@ namespace hgl::ecs
                 }
                 case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
                 {
-                    graph::mtl::SamplerSlot slot;
-                    if (!TryResolveTextureSlot(resolved.name, slot))
-                        break;
-
-                    const auto *binding = FindMaterialResourceBinding(material, slot);
-                    if (binding && binding->texture)
-                        material->BindTextureSampler(slot, binding->texture, binding->sampler);
+                    // TODO: bind MaterialInstanceTextureID SSBO for TextureArray per-instance layer indices
                     break;
                 }
                 default:
@@ -475,13 +469,7 @@ namespace hgl::ecs
                 {
                 case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
                 {
-                    graph::mtl::SamplerSlot slot;
-                    if (!TryResolveTextureSlot(resolved.name, slot))
-                        break;
-
-                    const auto *binding = FindMaterialResourceBinding(material, slot);
-                    if (binding && binding->texture)
-                        material->BindTextureSampler(slot, binding->texture, binding->sampler);
+                    // TODO: bind MaterialInstanceTextureID SSBO for TextureArray per-instance layer indices
                     break;
                 }
                 default:
@@ -528,6 +516,8 @@ namespace hgl::ecs
         case graph::mtl::DescriptorSemantic::MaterialInstanceID:
         case graph::mtl::DescriptorSemantic::MaterialInstance:
         case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
+            // TODO: not yet implemented — TextureArray per-instance layer index SSBO
+            return false;
         case graph::mtl::DescriptorSemantic::Custom:
             return true;
 
@@ -645,28 +635,7 @@ namespace hgl::ecs
             if (!binding)
                 continue;
 
-            graph::Material *material = binding->GetMaterial();
-            if (!material)
-                continue;
-
-            const auto &contract = material->GetBindingContract();
-            for (const auto &req : contract.requirements)
-            {
-                const auto resolved = graph::mtl::ResolveDescriptorRequirement(req);
-                if (!resolved.name || !*resolved.name)
-                    continue;
-
-                if (resolved.semantic != graph::mtl::DescriptorSemantic::MaterialInstanceTextureID)
-                    continue;
-
-                graph::mtl::SamplerSlot slot;
-                if (!TryResolveTextureSlot(resolved.name, slot))
-                    continue;
-
-                const auto *b = FindDomainResourceBinding(binding, slot);
-                if (b && b->texture)
-                    binding->BindTextureSampler(slot, b->texture, b->sampler);
-            }
+            // TODO: bind MaterialInstanceTextureID SSBO for TextureArray per-instance layer indices via domain binding
 
             binding->Update();
         }
