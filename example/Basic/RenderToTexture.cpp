@@ -233,7 +233,6 @@ private:
 
     Texture2D *fallback_albedo = nullptr;
     Texture2D *normal_tex = nullptr;
-    Texture2D *roughness_tex = nullptr;
 
     std::shared_ptr<TransformComponent> cube_transform;
     float cube_theta = 0.0f;
@@ -321,9 +320,8 @@ private:
         }
 
         normal_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"), true);
-        roughness_tex = tm->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
 
-        if (!base_tex || !normal_tex || !roughness_tex)
+        if (!base_tex || !normal_tex)
             return false;
 
         if (!cube_mtl->BindTextureSampler(mtl::SamplerSlot::BaseColor,
@@ -333,11 +331,6 @@ private:
 
         if (!cube_mtl->BindTextureSampler(mtl::SamplerSlot::Normal,
                                           normal_tex,
-                                          cube_sampler))
-            return false;
-
-        if (!cube_mtl->BindTextureSampler(mtl::SamplerSlot::Roughness,
-                                          roughness_tex,
                                           cube_sampler))
             return false;
 
@@ -428,7 +421,6 @@ public:
         cube_pipeline = nullptr;
         fallback_albedo = nullptr;
         normal_tex = nullptr;
-        roughness_tex = nullptr;
     }
 
     bool Init() override
