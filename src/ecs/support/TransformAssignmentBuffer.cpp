@@ -166,7 +166,7 @@ namespace hgl::ecs
         all_instances.push_back(this);
     }
 
-    void TransformAssignmentBuffer::BindTransform(graph::Material* mtl) const
+    void TransformAssignmentBuffer::BindTransform(graph::Material* mtl)
     {
         if (!mtl)
         {
@@ -182,31 +182,61 @@ namespace hgl::ecs
 
         LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
-        mtl->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.set_type,
-                  hgl::graph::mtl::SBS_LocalToWorld.name,
-                  transform_buffer->GetGPUBuffer());
+        const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SBS_LocalToWorld.set_type,
+                                               hgl::graph::mtl::SBS_LocalToWorld.name,
+                                               transform_buffer->GetGPUBuffer());
         GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO set_type=%d name=%s",
                  static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
                  hgl::graph::mtl::SBS_LocalToWorld.name);
 
+        if (!l2w_bind_ok)
+        {
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] LocalToWorld bind failed: set_type=%d name=%s",
+                        static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
+                        hgl::graph::mtl::SBS_LocalToWorld.name);
+        }
+
         BindTransformID(mtl);
     }
 
-    void TransformAssignmentBuffer::BindTransformID(graph::Material* mtl) const
+    void TransformAssignmentBuffer::BindTransformID(graph::Material* mtl)
     {
         if (!mtl)
             return;
 
         if (!transform_id_buffer)
-            return;
+        {
+            // Line and other pipeline-driven paths may not go through WriteItems(),
+            // so lazily provision a minimal TransformID SSBO for gl_InstanceIndex==0.
+            if (!EnsureTransformIDBufferCapacity(1, graph::BufferAllocPolicy::Auto))
+                return;
+
+            auto *fallback_gpu = transform_id_buffer ? transform_id_buffer->GetGPUBuffer() : nullptr;
+            if (fallback_gpu)
+            {
+                uint32_t *ptr = static_cast<uint32_t *>(fallback_gpu->Map(0, sizeof(uint32_t)));
+                if (ptr)
+                {
+                    *ptr = 0u;
+                    fallback_gpu->Unmap();
+                }
+            }
+        }
 
         auto *gpu = transform_id_buffer->GetGPUBuffer();
         if (!gpu)
             return;
 
-        mtl->BindSSBO(hgl::graph::mtl::SBS_TransformID.set_type,
-                      hgl::graph::mtl::SBS_TransformID.name,
-                      gpu);
+        const bool tid_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SBS_TransformID.set_type,
+                                               hgl::graph::mtl::SBS_TransformID.name,
+                                               gpu);
+
+        if (!tid_bind_ok)
+        {
+            GLogWarning("[TransformAssignmentBuffer::BindTransformID] TransformID bind failed: set_type=%d name=%s",
+                        static_cast<int>(hgl::graph::mtl::SBS_TransformID.set_type),
+                        hgl::graph::mtl::SBS_TransformID.name);
+        }
     }
 
     void TransformAssignmentBuffer::EnsureCapacity(const uint32_t static_count,const uint32_t dynamic_count,graph::BufferAllocPolicy policy)

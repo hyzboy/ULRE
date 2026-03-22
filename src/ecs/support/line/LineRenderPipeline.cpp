@@ -3,6 +3,7 @@
 #include <hgl/ecs/components/LinesComponent.h>
 #include <hgl/ecs/components/BoundingBoxComponent.h>
 #include <hgl/ecs/components/VisibilityComponent.h>
+#include <hgl/ecs/components/TransformComponent.h>
 #include <hgl/ecs/support/TransformAssignmentBuffer.h>
 #include <hgl/ecs/systems/tick/CameraSystem.h>
 #include <hgl/ecs/systems/tick/TransformSystem.h>
@@ -489,9 +490,32 @@ namespace hgl::ecs
             const uint32_t idx = GetSlotIndex(comp->width);
             bool comp_write_ok = true;
 
+            Entity* owner = comp->GetOwner();
+            glm::mat4 world_matrix(1.0f);
+            bool has_world_transform = false;
+            if (owner)
+            {
+                if (auto transform = owner->GetComponent<TransformComponent>())
+                {
+                    world_matrix = transform->GetWorldMatrix();
+                    has_world_transform = true;
+                }
+            }
+
             for (const auto& seg : comp->lines)
             {
-                if (!slots_[idx].AddSegment(seg.from, seg.to, seg.color_index))
+                hgl::math::Vector3f from = seg.from;
+                hgl::math::Vector3f to = seg.to;
+
+                if (has_world_transform)
+                {
+                    const glm::vec4 world_from = world_matrix * glm::vec4(seg.from.x, seg.from.y, seg.from.z, 1.0f);
+                    const glm::vec4 world_to = world_matrix * glm::vec4(seg.to.x, seg.to.y, seg.to.z, 1.0f);
+                    from = hgl::math::Vector3f(world_from.x, world_from.y, world_from.z);
+                    to = hgl::math::Vector3f(world_to.x, world_to.y, world_to.z);
+                }
+
+                if (!slots_[idx].AddSegment(from, to, seg.color_index))
                 {
                     ++write_fail_count;
                     comp_write_ok = false;
@@ -675,16 +699,16 @@ namespace hgl::ecs
         if (!transform_buffer)
             return;
 
-        auto* transform_data_buffer = transform_buffer->GetTransformDataBuffer();
-        if (!transform_data_buffer)
-        {
-            GLogWarning("[LineRenderPipeline] SyncTransformBinding: transform_data_buffer is null");
-            return;
-        }
-
         const uint32_t static_count = transform_system->GetStaticCount();
         const uint32_t dynamic_count = transform_system->GetDynamicCount();
         transform_buffer->EnsureCapacity(static_count, dynamic_count, graph::BufferAllocPolicy::Auto);
+
+        auto* transform_data_buffer = transform_buffer->GetTransformDataBuffer();
+        if (!transform_data_buffer)
+        {
+            GLogWarning("[LineRenderPipeline] SyncTransformBinding: transform_data_buffer is null after EnsureCapacity");
+            return;
+        }
 
         auto *gpu = transform_data_buffer->GetGPUBuffer();
         GLogInfo("[LineRenderPipeline] SyncTransformBinding snapshot: tab=0x%llX dbuf=0x%llX vk=0x%llX gpu=0x%llX size=%llu dirty=%d static=%u dynamic=%u",
