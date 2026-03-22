@@ -11,7 +11,6 @@
 #include<hgl/vk/VKRingBufferWrapper.h>
 #include<hgl/ecs/core/RenderItem.h>
 #include<hgl/ecs/support/TransformDataStorage.h>
-#include<hgl/math/Vector.h>
 #include<vector>
 
 namespace hgl::graph
@@ -67,15 +66,6 @@ namespace hgl::ecs
         static std::vector<TransformAssignmentBuffer*> all_instances;
         graph::RingBufferWrapper ring_writer;
 
-        math::Vector3d camera_offset_{0.0, 0.0, 0.0};  ///<Camera-Relative Rendering 用相机世界坐标偏移
-
-        void ApplyCameraRelativeOffset(math::Matrix4f& m) const
-        {
-            m[3][0] -= static_cast<float>(camera_offset_.x);
-            m[3][1] -= static_cast<float>(camera_offset_.y);
-            m[3][2] -= static_cast<float>(camera_offset_.z);
-        }
-
         void StatTransform(const size_t required_count,graph::BufferAllocPolicy policy);
         void QueueUpdateRange(const int first,const int last);
         void WriteRange(const std::vector<RenderItem*>& items,const int first,const int last);
@@ -107,11 +97,6 @@ namespace hgl::ecs
     public:
         TransformAssignmentBuffer(graph::BufferManager* bm, const Mode m = Mode::MovableOnly, uint32_t ring_frames = HGL_L2W_RING_FRAMES);
         ~TransformAssignmentBuffer() { Clear(); }
-
-        /**
-         * 设置 Camera-Relative Rendering 偏移（每帧更新）
-         */
-        void SetCameraOffset(const math::Vector3d& offset) { camera_offset_ = offset; }
 
         graph::DeviceBuffer* GetTransformDataBuffer() const { return transform_buffer; }
         graph::DeviceBuffer* GetTransformIDDataBuffer() const { return transform_id_buffer; }

@@ -258,7 +258,6 @@ namespace hgl::ecs
         for (uint32_t i = 0; i < write_count; ++i)
         {
             l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&mats[i]);
-            ApplyCameraRelativeOffset(l2wp[i]);
         }
 
         if(tbuf) tbuf->Unmap();
@@ -281,7 +280,6 @@ namespace hgl::ecs
         for (uint32_t i = 0; i < write_count; ++i)
         {
             l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&mats[i]);
-            ApplyCameraRelativeOffset(l2wp[i]);
         }
 
         ring_writer.Unmap();
@@ -306,7 +304,6 @@ namespace hgl::ecs
             const auto handle = handles[i];
             const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
             l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            ApplyCameraRelativeOffset(l2wp[i]);
         }
 
         if(tbuf) tbuf->Unmap();
@@ -329,7 +326,6 @@ namespace hgl::ecs
             const auto handle = handles[i];
             const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
             l2wp[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            ApplyCameraRelativeOffset(l2wp[i]);
         }
 
         ring_writer.Unmap();
@@ -395,7 +391,6 @@ namespace hgl::ecs
 
             const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
             *dst = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            ApplyCameraRelativeOffset(*dst);
             tbuf->Unmap();
 
             flush_ranges.push_back({byte_offset, byte_size});
@@ -475,7 +470,6 @@ namespace hgl::ecs
 
             const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
             *dst = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-            ApplyCameraRelativeOffset(*dst);
             tbuf->Unmap();
 
             flush_ranges.push_back({byte_offset, byte_size});
@@ -775,7 +769,6 @@ namespace hgl::ecs
             math::Matrix4f l2w;
             GetStorageWorldMatrix(item, l2w);
             l2wp[transform_idx - first] = l2w;
-            ApplyCameraRelativeOffset(l2wp[transform_idx - first]);
         }
 
         if(tbuf) tbuf->Unmap();
@@ -873,7 +866,6 @@ namespace hgl::ecs
             math::Matrix4f l2w;
             GetStorageWorldMatrix(item, l2w);
             l2wp[idx] = l2w;
-            ApplyCameraRelativeOffset(l2wp[idx]);
         }
 
         for (auto *item : movable_items)
@@ -885,7 +877,6 @@ namespace hgl::ecs
             math::Matrix4f l2w;
             GetStorageWorldMatrix(item, l2w);
             l2wp[idx] = l2w;
-            ApplyCameraRelativeOffset(l2wp[idx]);
         }
 
         if (wbuf)

@@ -61,7 +61,7 @@ namespace hgl::graph
                                                    static_cast<float>(wp.z));
         }
 
-        // NOTE: Camera-Relative view 矩阵平移归零和 pos=0 暂不启用，
-        // 需等 TransformAssignmentBuffer::SetCameraOffset 完整接入后再启用。
+        // NOTE: 目前仅将相机绝对世界坐标提供给 fog/terrain 等 shader 使用，
+        // 几何顶点的 camera-relative 变换尚未启用；view 矩阵平移归零和 pos=0 仍未启用。
     }
 }//namespace hgl::graph
