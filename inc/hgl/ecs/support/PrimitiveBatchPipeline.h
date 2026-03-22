@@ -53,7 +53,6 @@ namespace hgl::ecs
         bool TestFrustumWithBoundingSphere(RenderItem* item);
 
         void SortByDistance();
-        void AssignTransformIndices(TransformSystem* transform_system);
         void BuildMaterialBatches();
         void FinalizeBatches();
 

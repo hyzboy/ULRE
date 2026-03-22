@@ -20,10 +20,13 @@ namespace hgl::ecs
     TransformSystem::~TransformSystem()
     {
         std::cout << "[TransformSystem] Destructor called, clearing transform_buffer..." << std::endl;
-        // Clean up transform_buffer when system is destroyed
-        // This is created by this system in EnsureTransformBuffer(), so this system owns it
         SAFE_CLEAR(transform_buffer);
         std::cout << "[TransformSystem] Destructor complete" << std::endl;
+    }
+
+    TransformAssignmentBuffer* TransformSystem::GetTransformBuffer() const
+    {
+        return transform_buffer;
     }
 
 
@@ -188,6 +191,7 @@ namespace hgl::ecs
         }
 
         EnsureTransformBuffer();
+        TransformAssignmentBuffer* transform_buffer = GetTransformBuffer();
         if (!transform_buffer)
             return;
 
@@ -366,7 +370,7 @@ namespace hgl::ecs
 
     void TransformSystem::EnsureTransformBuffer()
     {
-        if (transform_buffer)
+        if (GetTransformBuffer())
             return;
 
         if (!world)
@@ -391,12 +395,16 @@ namespace hgl::ecs
         if (render_target)
             ring_frames = render_target->GetFrameCount();
 
-        transform_buffer = new TransformAssignmentBuffer(buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly, ring_frames);
+        transform_buffer = new TransformAssignmentBuffer(buffer_manager,
+                                                         TransformAssignmentBuffer::Mode::MovableOnly,
+                                                         ring_frames);
+
         static_dirty = true;
     }
 
     uint32_t TransformSystem::GetDynamicBaseIndex(const uint32_t static_count,const uint32_t dynamic_count) const
     {
+        TransformAssignmentBuffer* transform_buffer = GetTransformBuffer();
         if (!transform_buffer)
             return static_count;
 

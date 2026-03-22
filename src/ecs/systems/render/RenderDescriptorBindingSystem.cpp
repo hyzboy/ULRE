@@ -4,6 +4,7 @@
 #include<hgl/ecs/systems/render/RenderTargetSystem.h>
 #include<hgl/ecs/systems/render/EnvironmentSystem.h>
 #include<hgl/ecs/systems/tick/CameraSystem.h>
+#include<hgl/ecs/components/TransformComponent.h>
 #include<hgl/ecs/core/MaterialBatch.h>
 #include<hgl/ecs/support/TransformAssignmentBuffer.h>
 #include<hgl/ecs/support/MaterialInstanceAssignmentBuffer.h>
@@ -359,7 +360,6 @@ namespace hgl::ecs
             return;
 
         const auto &cache = context->GetRenderFrameCache();
-        std::unordered_set<graph::Material *> l2w_bound_materials;
         std::unordered_set<graph::Material *> mi_bound_materials;
 
         for (const auto &pair : cache.materialBatches)
@@ -394,19 +394,15 @@ namespace hgl::ecs
                 {
                     if (batch
                      && batch->transform_buffer
-                     && material->hasLocalToWorld()
-                     && !l2w_bound_materials.contains(material))
+                     && material->hasLocalToWorld())
                     {
                         batch->transform_buffer->BindTransform(material);
-                        l2w_bound_materials.insert(material);
                     }
                     break;
                 }
                 case graph::mtl::DescriptorSemantic::TransformID:
                 {
-                    if (batch && batch->transform_id_buffer)
-                        batch->transform_id_buffer->BindTransformID(material);
-                    else if (batch && batch->transform_buffer)
+                    if (batch && batch->transform_buffer)
                         batch->transform_buffer->BindTransformID(material);
                     break;
                 }

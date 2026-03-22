@@ -91,19 +91,15 @@ namespace hgl::ecs
 
     void PrimitiveBatchPipeline::RunTransformIndexing()
     {
-        TransformSystem* transform_system = nullptr;
         if (world)
         {
             if (auto system = world->GetSystem<TransformSystem>())
             {
-                transform_system = system.get();
-                transform_system->SetDevice(device);
-                transform_system->EnsureTransformBuffer();
-                transform_system->RefreshHandleOrder();
+                system->SetDevice(device);
+                system->EnsureTransformBuffer();
+                system->RefreshHandleOrder();
             }
         }
-
-        AssignTransformIndices(transform_system);
     }
 
     void PrimitiveBatchPipeline::RunBatching()
@@ -201,53 +197,6 @@ namespace hgl::ecs
             [](const std::unique_ptr<RenderItem>& a, const std::unique_ptr<RenderItem>& b) {
                 return a->distanceToCamera < b->distanceToCamera;
             });
-    }
-
-    void PrimitiveBatchPipeline::AssignTransformIndices(TransformSystem* transform_system)
-    {
-        if (!world)
-            return;
-
-        auto& cache = world->GetRenderFrameCache();
-        uint32_t static_count = 0;
-        uint32_t dynamic_count = 0;
-        uint32_t dynamic_base = 0;
-
-        if (transform_system)
-        {
-            static_count = transform_system->GetStaticCount();
-            dynamic_count = transform_system->GetDynamicCount();
-            dynamic_base = transform_system->GetDynamicBaseIndex(static_count, dynamic_count);
-        }
-
-        for (auto& itemPtr : cache.renderItems)
-        {
-            RenderItem* item = itemPtr.get();
-            if (!item)
-                continue;
-
-            auto transform = item->GetTransform();
-            if (!transform)
-                continue;
-
-            const auto handle = transform->GetStorageHandle();
-            if (handle == TransformDataStorage::INVALID_HANDLE)
-            {
-                item->transform_index = 0;
-                continue;
-            }
-
-            uint32_t group_index = 0;
-            if (transform_system &&
-                transform_system->TryGetTransformGroupIndex(handle, transform->IsMovable(), group_index))
-            {
-                item->transform_index = transform->IsMovable() ? (dynamic_base + group_index) : (group_index + 1);
-            }
-            else
-            {
-                item->transform_index = 0;
-            }
-        }
     }
 
     graph::BufferManager* PrimitiveBatchPipeline::GetBufferManager() const
@@ -427,13 +376,13 @@ namespace hgl::ecs
     {
         SortBatchItems(batch);
         BuildBatches(batch, 0);
+        if (!batch.transform_buffer && !batch.items.empty())
+            batch.transform_buffer = new TransformAssignmentBuffer(batch.buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly);
+
+        if (batch.transform_buffer && !batch.items.empty())
+            batch.transform_buffer->WriteItems(batch.items);
+
         UpdateMaterialInstanceBuffer(batch);
-
-        if (!batch.transform_id_buffer && batch.buffer_manager)
-            batch.transform_id_buffer = new TransformAssignmentBuffer(batch.buffer_manager, TransformAssignmentBuffer::Mode::MovableOnly);
-
-        if (batch.transform_id_buffer && !batch.items.empty())
-            batch.transform_id_buffer->WriteTransformIDs(batch.items);
     }
 
     void PrimitiveBatchPipeline::SortBatchItems(MaterialBatch& batch)
@@ -499,12 +448,6 @@ namespace hgl::ecs
 
         auto& cache = world->GetRenderFrameCache();
 
-        TransformAssignmentBuffer* shared_transform_buffer = nullptr;
-        if (auto transform_system = world->GetSystem<TransformSystem>())
-        {
-            shared_transform_buffer = transform_system->GetTransformBuffer();
-        }
-
         auto buffer_manager = GetBufferManager();
 
         for (auto& itemPtr : cache.renderItems)
@@ -531,14 +474,12 @@ namespace hgl::ecs
             {
                 auto batch = std::make_unique<MaterialBatch>(key, device, buffer_manager);
                 batch->cameraInfo = camera_info;
-                batch->transform_buffer = shared_transform_buffer;
                 batch->AddItem(item);
                 cache.materialBatches[key] = std::move(batch);
             }
             else
             {
                 (*batch_ptr)->buffer_manager = buffer_manager;
-                (*batch_ptr)->transform_buffer = shared_transform_buffer;
                 (*batch_ptr)->AddItem(item);
             }
         }

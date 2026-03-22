@@ -346,92 +346,71 @@ namespace hgl::ecs
         if (!tbuf)
             return;
 
-        const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, static_cast<uint32_t>(handles.size()));
-        if (merged_ranges.empty())
-            return;
-
-        uint32_t min_first = std::numeric_limits<uint32_t>::max();
-        uint32_t max_last = 0;
-        for (const auto &range : merged_ranges)
+        uint32_t max_handle = 0;
+        bool has_valid_handle = false;
+        for (const uint32_t dirty_index : dirty_indices)
         {
-            const uint32_t first = static_cast<uint32_t>(range.first);
-            const uint32_t last = static_cast<uint32_t>(range.last);
-            min_first = hgl_min(min_first, first);
-            max_last = hgl_max(max_last, last);
+            if (dirty_index >= handles.size())
+                continue;
+
+            const auto handle = handles[dirty_index];
+            if (handle == TransformDataStorage::INVALID_HANDLE)
+                continue;
+
+            has_valid_handle = true;
+            max_handle = hgl_max(max_handle, static_cast<uint32_t>(handle));
         }
 
-        if (min_first == std::numeric_limits<uint32_t>::max() || max_last < min_first)
+        if (!has_valid_handle)
             return;
 
-        const VkDeviceSize span_logical_first = static_cast<VkDeviceSize>(kFirstObjectL2WSlot + min_first);
-        const VkDeviceSize span_matrix_count = static_cast<VkDeviceSize>(max_last - min_first + 1);
-        const VkDeviceSize span_offset_bytes = sizeof(math::Matrix4f) * span_logical_first;
-        const VkDeviceSize span_size_bytes = sizeof(math::Matrix4f) * span_matrix_count;
+        const uint32_t required_count = max_handle + kFirstObjectL2WSlot + 1u;
+        if (required_count > transform_buffer_max_count)
+            StatTransform(required_count, graph::BufferAllocPolicy::Auto);
 
-        math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
-        if (!mapped)
-        {
-            GLogWarning("[TransformAssignmentBuffer] Static L2W map failed: map_offset=%llu map_size=%llu handles=%u dirty_indices=%u",
-                        static_cast<unsigned long long>(span_offset_bytes),
-                        static_cast<unsigned long long>(span_size_bytes),
-                        static_cast<uint32_t>(handles.size()),
-                        static_cast<uint32_t>(dirty_indices.size()));
+        tbuf = transform_buffer ? transform_buffer->GetGPUBuffer() : nullptr;
+        if (!tbuf)
             return;
-        }
 
         std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
-        flush_ranges.reserve(merged_ranges.size());
+        flush_ranges.reserve(dirty_indices.size());
         VkDeviceSize total_written_bytes = 0;
 
-        for (const auto &range : merged_ranges)
+        for (const uint32_t dirty_index : dirty_indices)
         {
-            const uint32_t first = static_cast<uint32_t>(range.first);
-            const uint32_t last = static_cast<uint32_t>(range.last);
-            const uint32_t count = last - first + 1;
-            const VkDeviceSize logical_index = static_cast<VkDeviceSize>(kFirstObjectL2WSlot + first);
-            const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * logical_index;
-            const VkDeviceSize byte_size = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(count);
+            if (dirty_index >= handles.size())
+                continue;
 
-            math::Matrix4f *dst = mapped + (logical_index - span_logical_first);
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const auto handle = handles[first + i];
-                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
-                dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-                ApplyCameraRelativeOffset(dst[i]);
-            }
+            const auto handle = handles[dirty_index];
+            if (handle == TransformDataStorage::INVALID_HANDLE)
+                continue;
+
+            const uint32_t logical_index = kFirstObjectL2WSlot + static_cast<uint32_t>(handle);
+            const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(logical_index);
+            const VkDeviceSize byte_size = sizeof(math::Matrix4f);
+
+            math::Matrix4f *dst = static_cast<math::Matrix4f *>(tbuf->Map(byte_offset, byte_size));
+            if (!dst)
+                continue;
+
+            const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+            *dst = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            ApplyCameraRelativeOffset(*dst);
+            tbuf->Unmap();
 
             flush_ranges.push_back({byte_offset, byte_size});
             total_written_bytes += byte_size;
         }
 
-        tbuf->Unmap();
-
         if (!flush_ranges.empty())
         {
             RebuildTrackedDirtyRanges(tbuf, flush_ranges);
 
-            GLogInfo("[TransformAssignmentBuffer] Static L2W flush: ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
+            GLogInfo("[TransformAssignmentBuffer] Static L2W flush(handle-indexed): ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
                       static_cast<uint32_t>(flush_ranges.size()),
                       static_cast<uint32_t>(dirty_indices.size()),
                       static_cast<unsigned long long>(total_written_bytes),
                       tbuf->IsDirty() ? 1 : 0);
-
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] Static L2W flush: ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d\n",
-                         static_cast<uint32_t>(flush_ranges.size()),
-                         static_cast<uint32_t>(dirty_indices.size()),
-                         static_cast<unsigned long long>(total_written_bytes),
-                         tbuf->IsDirty() ? 1 : 0);
-
-            if (ShouldEmitPeriodicLog(60))
-            {
-                GLogInfo("[TransformAssignmentBuffer] Static L2W detail: min=%u max=%u span_offset=%llu span_size=%llu",
-                         min_first,
-                         max_last,
-                         static_cast<unsigned long long>(span_offset_bytes),
-                         static_cast<unsigned long long>(span_size_bytes));
-            }
         }
     }
 
@@ -447,127 +426,72 @@ namespace hgl::ecs
         if (!tbuf)
             return;
 
-        const uint32_t dynamic_count = static_cast<uint32_t>(handles.size());
-        const uint32_t base_index = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
-
-        const auto merged_ranges = BuildMergedRangesFromIndices(dirty_indices, dynamic_count);
-        if (merged_ranges.empty())
-            return;
-
-        uint32_t min_first = std::numeric_limits<uint32_t>::max();
-        uint32_t max_last = 0;
-        for (const auto &range : merged_ranges)
+        uint32_t max_handle = 0;
+        bool has_valid_handle = false;
+        for (const uint32_t dirty_index : dirty_indices)
         {
-            const uint32_t first = static_cast<uint32_t>(range.first);
-            const uint32_t last = static_cast<uint32_t>(range.last);
-            min_first = hgl_min(min_first, first);
-            max_last = hgl_max(max_last, last);
+            if (dirty_index >= handles.size())
+                continue;
+
+            const auto handle = handles[dirty_index];
+            if (handle == TransformDataStorage::INVALID_HANDLE)
+                continue;
+
+            has_valid_handle = true;
+            max_handle = hgl_max(max_handle, static_cast<uint32_t>(handle));
         }
 
-        if (min_first == std::numeric_limits<uint32_t>::max() || max_last < min_first)
+        if (!has_valid_handle)
             return;
 
-        const VkDeviceSize span_logical_first = static_cast<VkDeviceSize>(base_index + min_first);
-        const VkDeviceSize span_matrix_count = static_cast<VkDeviceSize>(max_last - min_first + 1);
-        const VkDeviceSize span_offset_bytes = sizeof(math::Matrix4f) * span_logical_first;
-        const VkDeviceSize span_size_bytes = sizeof(math::Matrix4f) * span_matrix_count;
+        const uint32_t required_count = max_handle + kFirstObjectL2WSlot + 1u;
+        if (required_count > transform_buffer_max_count)
+            StatTransform(required_count, graph::BufferAllocPolicy::Auto);
 
-        math::Matrix4f *mapped = static_cast<math::Matrix4f *>(tbuf->Map(span_offset_bytes, span_size_bytes));
-        if (!mapped)
-        {
-            GLogWarning("[TransformAssignmentBuffer] Dynamic L2W map failed: map_offset=%llu map_size=%llu static_count=%u dynamic_count=%u dirty_indices=%u frame=%u",
-                        static_cast<unsigned long long>(span_offset_bytes),
-                        static_cast<unsigned long long>(span_size_bytes),
-                        static_count,
-                        dynamic_count,
-                        static_cast<uint32_t>(dirty_indices.size()),
-                        ring_writer.GetFrameIndex());
+        tbuf = transform_buffer ? transform_buffer->GetGPUBuffer() : nullptr;
+        if (!tbuf)
             return;
-        }
 
         std::vector<graph::IGPUBuffer::DirtyRange> flush_ranges;
-        flush_ranges.reserve(merged_ranges.size());
+        flush_ranges.reserve(dirty_indices.size());
         VkDeviceSize total_written_bytes = 0;
 
-        for (const auto &range : merged_ranges)
+        for (const uint32_t dirty_index : dirty_indices)
         {
-            const uint32_t first = static_cast<uint32_t>(range.first);
-            const uint32_t last = static_cast<uint32_t>(range.last);
-            const uint32_t count = last - first + 1;
-            const VkDeviceSize logical_index = static_cast<VkDeviceSize>(base_index + first);
-            const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * logical_index;
-            const VkDeviceSize byte_size = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(count);
+            if (dirty_index >= handles.size())
+                continue;
 
-            math::Matrix4f *dst = mapped + (logical_index - span_logical_first);
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                const auto handle = handles[first + i];
-                const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
-                dst[i] = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
-                ApplyCameraRelativeOffset(dst[i]);
-            }
+            const auto handle = handles[dirty_index];
+            if (handle == TransformDataStorage::INVALID_HANDLE)
+                continue;
+
+            const uint32_t logical_index = kFirstObjectL2WSlot + static_cast<uint32_t>(handle);
+            const VkDeviceSize byte_offset = sizeof(math::Matrix4f) * static_cast<VkDeviceSize>(logical_index);
+            const VkDeviceSize byte_size = sizeof(math::Matrix4f);
+
+            math::Matrix4f *dst = static_cast<math::Matrix4f *>(tbuf->Map(byte_offset, byte_size));
+            if (!dst)
+                continue;
+
+            const glm::mat4 world_matrix = storage.GetWorldMatrix(handle);
+            *dst = *reinterpret_cast<const math::Matrix4f*>(&world_matrix);
+            ApplyCameraRelativeOffset(*dst);
+            tbuf->Unmap();
 
             flush_ranges.push_back({byte_offset, byte_size});
             total_written_bytes += byte_size;
         }
 
-        tbuf->Unmap();
-
         if (!flush_ranges.empty())
         {
             RebuildTrackedDirtyRanges(tbuf, flush_ranges);
 
-            uint32_t sample_handle_u32 = 0;
-            glm::vec3 sample_world_pos(0.0f);
-            bool has_sample = false;
-            for (const auto &range : merged_ranges)
-            {
-                const uint32_t first = static_cast<uint32_t>(range.first);
-                if (first < handles.size())
-                {
-                    const auto sample_handle = handles[first];
-                    const glm::mat4 sample_world = storage.GetWorldMatrix(sample_handle);
-                    sample_world_pos = glm::vec3(sample_world[3]);
-                    sample_handle_u32 = static_cast<uint32_t>(sample_handle);
-                    has_sample = true;
-                    break;
-                }
-            }
-
-            GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)",
+            GLogInfo("[TransformAssignmentBuffer] Dynamic L2W flush(handle-indexed): static_count=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d",
                       static_count,
-                      base_index,
                       static_cast<uint32_t>(flush_ranges.size()),
                       static_cast<uint32_t>(dirty_indices.size()),
                       static_cast<unsigned long long>(total_written_bytes),
-                      tbuf->IsDirty() ? 1 : 0,
-                      has_sample ? sample_handle_u32 : 0u,
-                      has_sample ? sample_world_pos.x : 0.0f,
-                      has_sample ? sample_world_pos.y : 0.0f,
-                      has_sample ? sample_world_pos.z : 0.0f);
-
-            std::fprintf(stderr,
-                         "[TransformAssignmentBuffer] Dynamic L2W flush: static_count=%u base=%u ranges=%u dirty_indices=%u bytes=%llu buffer_dirty=%d sample_handle=%u sample_pos=(%.3f, %.3f, %.3f)\n",
-                         static_count,
-                         base_index,
-                         static_cast<uint32_t>(flush_ranges.size()),
-                         static_cast<uint32_t>(dirty_indices.size()),
-                         static_cast<unsigned long long>(total_written_bytes),
-                         tbuf->IsDirty() ? 1 : 0,
-                         has_sample ? sample_handle_u32 : 0u,
-                         has_sample ? sample_world_pos.x : 0.0f,
-                         has_sample ? sample_world_pos.y : 0.0f,
-                         has_sample ? sample_world_pos.z : 0.0f);
-
-            if (ShouldEmitPeriodicLog(60))
-            {
-                GLogInfo("[TransformAssignmentBuffer] Dynamic L2W detail: min=%u max=%u span_offset=%llu span_size=%llu frame=%u",
-                         min_first,
-                         max_last,
-                         static_cast<unsigned long long>(span_offset_bytes),
-                         static_cast<unsigned long long>(span_size_bytes),
-                         ring_writer.GetFrameIndex());
-            }
+                      tbuf->IsDirty() ? 1 : 0);
         }
     }
 

@@ -5,6 +5,7 @@
 #include<hgl/vk/VKIndirectCommandBuffer.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/ecs/support/PipelineMaterialRenderer.h>
+#include<hgl/ecs/support/TransformAssignmentBuffer.h>
 
 namespace hgl::ecs
 {
@@ -26,12 +27,12 @@ namespace hgl::ecs
 
     MaterialBatch::~MaterialBatch()
     {
-        if (transform_id_buffer)
-            delete transform_id_buffer;
         if (icb_draw_indexed)
             delete icb_draw_indexed;
         if (icb_draw)
             delete icb_draw;
+        if (transform_buffer)
+            delete transform_buffer;
         if (mi_buffer)
             delete mi_buffer;
         if (renderer)

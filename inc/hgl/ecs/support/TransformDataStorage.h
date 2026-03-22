@@ -6,6 +6,11 @@
 #include<functional>
 #include<cstdint>
 
+namespace hgl::graph
+{
+    class BufferManager;
+}
+
 namespace hgl
 {
     namespace ecs
@@ -33,6 +38,11 @@ namespace hgl
             std::vector<HandleID> parentHandles;     // 4 bytes each, consecutive
             std::vector<bool> matrixDirty;           // 1 byte each, consecutive
             std::vector<uint8_t> mobility;           // 1 byte each, consecutive (0=static, 1=movable)
+
+        public:
+
+            TransformDataStorage() = default;
+            ~TransformDataStorage() = default;
 
         public:
 

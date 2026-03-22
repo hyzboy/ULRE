@@ -18,8 +18,8 @@ namespace hgl
 
     namespace ecs
     {
-        class TransformAssignmentBuffer;
         class MaterialInstanceAssignmentBuffer;
+        class TransformAssignmentBuffer;
         class PipelineMaterialRenderer;
     }
 }
@@ -50,8 +50,7 @@ namespace hgl::ecs
         graph::IndirectDrawBuffer *             icb_draw                = nullptr;          ///<间接绘制命令缓冲（无索引）
         graph::IndirectDrawIndexedBuffer *      icb_draw_indexed        = nullptr;          ///<间接绘制命令缓冲（有索引）
 
-        TransformAssignmentBuffer *          transform_buffer        = nullptr;          ///<共享 LocalToWorld 缓冲(非拥有)
-        TransformAssignmentBuffer *          transform_id_buffer     = nullptr;          ///<每个 batch 独立的 TransformID 缓冲
+        TransformAssignmentBuffer *          transform_buffer         = nullptr;          ///<变换分配缓冲
         MaterialInstanceAssignmentBuffer *   mi_buffer               = nullptr;          ///<材质实例分配缓冲
 
         DrawBatchArray                          draw_batches;                               ///<绘制批次数组
