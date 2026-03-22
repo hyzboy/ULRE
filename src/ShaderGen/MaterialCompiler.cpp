@@ -192,49 +192,21 @@ MaterialCreateInfo *CompileCompositorMaterial(
             break;
 
         case DescriptorKind::Texture:
-            if (entry.glsl_type)
+            if(!RangeCheck(entry.texture_type))
             {
-                TextureType tt;
-                const char *glsl_type_str = entry.glsl_type;
-
-                if (CStrEq(glsl_type_str, "sampler2D"))
-                    tt = TextureType::Texture2D;
-                else if (CStrEq(glsl_type_str, "sampler3D"))
-                    tt = TextureType::Texture3D;
-                else if (CStrEq(glsl_type_str, "samplerCube"))
-                    tt = TextureType::TextureCube;
-                else if (CStrEq(glsl_type_str, "sampler2DArray"))
-                    tt = TextureType::Texture2DArray;
-                else
-                    tt = TextureType::Texture2D;
-
-                mci->AddTexture(ShaderStage(stage_bits), entry.set_type, tt, entry.name);
+                return nullptr;
             }
+
+            mci->AddTexture(ShaderStage(stage_bits), entry.set_type, entry.texture_type, entry.name);
             break;
 
         case DescriptorKind::TextureSampler:
-            if (entry.glsl_type)
+            if(!RangeCheck(entry.sampler_type))
             {
-                TextureType tt;
-                SamplerType st = SamplerType::Sampler2D;
-                const char *glsl_type_str = entry.glsl_type;
-
-                if (CStrEq(glsl_type_str, "sampler2D")) {
-                    tt = TextureType::Texture2D;
-                    st = SamplerType::Sampler2D;
-                } else if (CStrEq(glsl_type_str, "samplerCube")) {
-                    tt = TextureType::TextureCube;
-                    st = SamplerType::SamplerCube;
-                } else if (CStrEq(glsl_type_str, "sampler2DArray")) {
-                    tt = TextureType::Texture2DArray;
-                    st = SamplerType::Sampler2DArray;
-                } else {
-                    tt = TextureType::Texture2D;
-                    st = SamplerType::Sampler2D;
-                }
-
-                mci->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, st, entry.name);
+                return nullptr;
             }
+
+            mci->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, entry.sampler_type, entry.name);
             break;
         }
     }

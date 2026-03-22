@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/common/DescriptorSetTypeDef.h>
+#include<hgl/common/TextureSamplerTypeDef.h>
 #include<hgl/mtl/SamplerName.h>
 #include<vector>
 #include<string>
@@ -53,7 +54,8 @@ namespace hgl::graph::mtl
         uint32_t            stage_flags;
         const char *        name;
         const char *        struct_name;
-        const char *        glsl_type;
+        TextureType         texture_type=TextureType::Error;
+        SamplerType         sampler_type=SamplerType::Error;
         DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
     };
 
@@ -181,24 +183,8 @@ namespace hgl::graph::mtl
             stage_flags,
             meta.name,
             meta.struct_name,
-            meta.glsl_type,
-            semantic
-        };
-    }
-
-    constexpr FixedDescriptorEntry MakeFixedDescriptorEntry(DescriptorSemantic semantic,
-                                                            const uint32_t stage_flags,
-                                                            const DescriptorKind kind,
-                                                            const char *glsl_type = nullptr)
-    {
-        const auto &meta = GetDescriptorSemanticMeta(semantic);
-        return FixedDescriptorEntry{
-            meta.set_type,
-            kind,
-            stage_flags,
-            meta.name,
-            meta.struct_name,
-            glsl_type ? glsl_type : meta.glsl_type,
+            TextureType::Error,
+            SamplerType::Error,
             semantic
         };
     }
@@ -214,7 +200,8 @@ namespace hgl::graph::mtl
             stage_flags,
             ToDescriptorName(slot),
             meta.struct_name,
-            ToGLSLSamplerType(texture_mode),
+            TextureType::Error,
+            (texture_mode==TextureSourceMode::Array?SamplerType::Sampler2DArray:SamplerType::Sampler2D),
             DescriptorSemantic::MaterialInstanceTextureID
         };
     }
