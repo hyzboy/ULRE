@@ -26,16 +26,11 @@ static bool CStrEq(const char *lhs, const char *rhs)
     return lhs && rhs && std::strcmp(lhs, rhs) == 0;
 }
 
-static bool HasDescriptorNamed(const FixedMaterialDef &def, const char *name)
+static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorSemantic semantic)
 {
-    if (!name || !*name)
-        return false;
-
     for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
     {
-        const auto &entry = def.descriptor_entries[i];
-        if (CStrEq(entry.name, name)
-         || CStrEq(entry.struct_name, name))
+        if (def.descriptor_entries[i].semantic == semantic)
             return true;
     }
 
@@ -115,11 +110,10 @@ MaterialCreateInfo *CompileCompositorMaterial(
     cfg.prim = config ? config->prim : def.primitive_type;
     cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-    const bool infer_has_camera = HasDescriptorNamed(def, "camera") || HasDescriptorNamed(def, "CameraInfo");
-    const bool infer_has_sky    = HasDescriptorNamed(def, "sky")    || HasDescriptorNamed(def, "SkyInfo");
-    const bool infer_has_l2w    = HasDescriptorNamed(def, "l2w")    || HasDescriptorNamed(def, "LocalToWorldData");
-    const bool infer_has_mi     = HasDescriptorNamed(def, "mtl")
-                               || HasDescriptorNamed(def, "MaterialInstanceData")
+    const bool infer_has_camera = HasDescriptorSemantic(def, DescriptorSemantic::CameraInfo);
+    const bool infer_has_sky    = HasDescriptorSemantic(def, DescriptorSemantic::SkyInfo);
+    const bool infer_has_l2w    = HasDescriptorSemantic(def, DescriptorSemantic::LocalToWorld);
+    const bool infer_has_mi     = HasDescriptorSemantic(def, DescriptorSemantic::MaterialInstance)
                                || HasPerMaterialDescriptor(def)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
