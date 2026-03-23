@@ -9,6 +9,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/FixedMaterialDef.h>
 #include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/mtl/SamplerName.h>
 #include<hgl/mtl/UBOCommon.h>
 #include<string>
 #include<vector>
@@ -67,18 +68,14 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
         p += "#define TEXTURE_ARRAY_MODE 1\n";
 
         p += "#define TEX_";
-        switch (texture_slot)
-        {
-            case SamplerSlot::BaseColor: p += "BASECOLOR"; break;
-            case SamplerSlot::Normal:    p += "NORMAL";    break;
-            case SamplerSlot::Tangent:   p += "TANGENT";   break;
-            case SamplerSlot::Metallic:  p += "METALLIC";  break;
-            case SamplerSlot::Roughness: p += "ROUGHNESS"; break;
-            case SamplerSlot::Height:    p += "HEIGHT";    break;
-            case SamplerSlot::Opacity:   p += "OPACITY";   break;
-            case SamplerSlot::Text:      p += "TEXT";      break;
-            default:                     p += "BASECOLOR"; break;
-        }
+
+        const size_t slot_index = size_t(texture_slot);
+        const char *slot_name = "BaseColor";
+
+        if (slot_index < SamplerSlotCount)
+            slot_name = SamplerSlotNameList[slot_index];
+
+        p += ToUpperASCII(slot_name);
         p += "_ARRAY 1\n";
     }
 
