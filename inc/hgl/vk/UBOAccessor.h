@@ -7,6 +7,26 @@
 
 namespace hgl::graph{
 
+class UBOAccessorBase:public BufferAccessBase
+{
+protected:
+    mtl::UBODescriptorSemantic semantic = mtl::UBODescriptorSemantic::Unknown;
+
+public:
+    explicit UBOAccessorBase(mtl::UBODescriptorSemantic sem)
+        : BufferAccessBase()
+        , semantic(sem)
+    {
+        if (mtl::IsBuiltinDescriptorSemantic(sem))
+        {
+            const auto &meta = mtl::GetDescriptorSemanticMeta(sem);
+            SetUBOMeta(meta.set_type, meta.name ? meta.name : "");
+        }
+    }
+
+    mtl::UBODescriptorSemantic GetSemantic() const { return semantic; }
+};
+
 /**
  * 结构化缓冲区访问器
  *
@@ -38,7 +58,7 @@ namespace hgl::graph{
  * ```
  */
 template<typename T,mtl::UBODescriptorSemantic Semantic=mtl::UBODescriptorSemantic::Unknown>
-class UBOAccessor:public BufferAccessBase
+class UBOAccessor:public UBOAccessorBase
 {
 public:
     T *mapped_data;                 ///< 映射后的数据指针 / Mapped data pointer
@@ -111,7 +131,7 @@ private:
     }
 
     UBOAccessor(VkBufferOwner *buf, VkDeviceSize aligned_size_param, bool take_ownership)
-        : BufferAccessBase()
+        : UBOAccessorBase(Semantic)
         , mapped_data(nullptr)
         , aligned_size(aligned_size_param)
     {
@@ -136,7 +156,7 @@ private:
     }
 
     UBOAccessor(VkBufferOwner *buf, bool take_ownership = false)
-        : BufferAccessBase()
+        : UBOAccessorBase(Semantic)
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
@@ -148,7 +168,7 @@ private:
     }
 
     UBOAccessor(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
-        : BufferAccessBase()
+        : UBOAccessorBase(Semantic)
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
@@ -160,7 +180,7 @@ private:
     }
 
     UBOAccessor(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
-        : BufferAccessBase()
+        : UBOAccessorBase(Semantic)
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
@@ -231,7 +251,7 @@ public:
 
     // 允许移动 / Allow move
     UBOAccessor(UBOAccessor&& other) noexcept
-        : BufferAccessBase()
+        : UBOAccessorBase(other.semantic)
         , mapped_data(other.mapped_data)
         , aligned_size(other.aligned_size)
     {

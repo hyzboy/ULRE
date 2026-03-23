@@ -6,6 +6,7 @@
 #include<hgl/vk/VKResourceDomain.h>        // Phase 5: default_domain
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/vk/VKBuffer.h>
+#include<hgl/vk/UBOAccessor.h>
 
 namespace hgl::graph{
 
@@ -82,6 +83,14 @@ bool Material::BindUBO(const DescriptorSetType &type,const mtl::UBODescriptorSem
         return(false);
 
     return mp->BindUBO(semantic,gpu,dynamic);
+}
+
+bool Material::BindUBO(const UBOAccessorBase *ubo,bool dynamic)
+{
+    if(!ubo)
+        return false;
+
+    return BindUBO(ubo->set_type(),ubo->GetSemantic(),ubo->GetGPUBuffer(),dynamic);
 }
 
 bool Material::BindSSBO(const DescriptorSetType &type,const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)

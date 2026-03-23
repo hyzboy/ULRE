@@ -13,6 +13,7 @@ namespace hgl::graph{
 
 class IGPUBuffer;
 class ResourceDomain;   ///< Phase 5: forward decl
+class UBOAccessorBase;
 template<typename T,mtl::UBODescriptorSemantic Semantic> class UBOAccessor;
 
 namespace mtl
@@ -111,6 +112,7 @@ public:
     }
 
     bool BindUBO(const DescriptorSetType &type,const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindUBO(const UBOAccessorBase *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
 
     template<typename T,mtl::UBODescriptorSemantic Semantic>

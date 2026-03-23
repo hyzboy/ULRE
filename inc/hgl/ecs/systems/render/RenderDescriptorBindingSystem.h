@@ -5,6 +5,7 @@
 #include<hgl/vk/UBOTypes.h>
 #include<hgl/type/String.h>
 #include<vector>
+#include<array>
 #include<unordered_map>
 #include<unordered_set>
 #include<functional>
@@ -15,6 +16,7 @@
 
 namespace hgl::graph
 {
+    class UBOAccessorBase;
     class RenderCmdBuffer;
     class Material;
     class DomainMaterialBinding;
@@ -26,8 +28,10 @@ namespace hgl::graph
 
 namespace hgl::ecs
 {
+    class CameraSystem;
+    class EnvironmentSystem;
+
     using TextureBindingSlot = uint8_t;
-    using SceneUBOResolver = std::function<const graph::IGPUBuffer*()>;
 
     /**
      * RenderDescriptorBindingSystem
@@ -83,7 +87,9 @@ namespace hgl::ecs
         std::unordered_map<const graph::DomainMaterialBinding *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> domain_resource_bindings;
         std::unordered_set<graph::DomainMaterialBinding *> registered_domain_bindings;
 
-        std::unordered_map<graph::mtl::DescriptorSemantic, SceneUBOResolver> scene_ubo_resolvers;
+        std::array<graph::UBOAccessorBase *, graph::mtl::UBODescriptorSemanticCount> scene_ubo_resolvers{};
+        CameraSystem *camera_system = nullptr;
+        EnvironmentSystem *environment_system = nullptr;
 
     public:
         RenderDescriptorBindingSystem(const std::string& name = "RenderDescriptorBindingSystem");
@@ -92,8 +98,8 @@ namespace hgl::ecs
         graph::ViewportInfo *GetViewportInfo();
         void SetViewportExtent(uint32_t w, uint32_t h);
 
-        void RegisterSceneUBOResolver(graph::mtl::DescriptorSemantic semantic, SceneUBOResolver resolver);
-        void UnregisterSceneUBOResolver(graph::mtl::DescriptorSemantic semantic);
+        void RegisterSceneUBOResolver(graph::UBOAccessorBase *ubo_accessor);
+        void UnregisterSceneUBOResolver(graph::mtl::UBODescriptorSemantic semantic);
 
         void Update(float deltaTime) override;
         void Render(graph::RenderCmdBuffer *cmd, float deltaTime) override;
@@ -141,6 +147,7 @@ namespace hgl::ecs
         void EnsureViewportUBO();
         void ReleaseViewportUBO();
         void InitializeResolvers();
+        void RefreshSceneUBOResolvers();
         void SyncBindingsForCurrentCommand(bool run_contract_diagnostics);
 
         void ApplyBatchMaterialBindings(std::unordered_set<const graph::Material *> &out_active);

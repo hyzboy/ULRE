@@ -48,7 +48,8 @@ namespace hgl::graph::mtl
 
     struct BindingContract
     {
-        std::vector<DescriptorRequirement> requirements;
+           std::vector<DescriptorRequirement> ubos;
+           std::vector<DescriptorRequirement> ssbos;
     };
 
     struct DescriptorSemanticMeta
@@ -324,11 +325,15 @@ namespace hgl::graph::mtl
         if (!descriptor_entries || descriptor_entry_count == 0)
             return contract;
 
-        contract.requirements.reserve(descriptor_entry_count);
+        contract.ubos.reserve(descriptor_entry_count);
+        contract.ssbos.reserve(descriptor_entry_count);
 
         for (uint32_t i = 0; i < descriptor_entry_count; ++i)
         {
             const FixedDescriptorEntry &entry = descriptor_entries[i];
+
+            if (entry.kind != DescriptorKind::UBO && entry.kind != DescriptorKind::SSBO)
+                continue;
 
             DescriptorRequirement req;
             req.semantic = entry.semantic;
@@ -340,7 +345,10 @@ namespace hgl::graph::mtl
             if (entry.name && (!_DBC_CStrEq(entry.name, meta.name) || req.semantic == DescriptorSemantic::Custom))
                 req.name_override = entry.name;
 
-            contract.requirements.push_back(req);
+            if (entry.kind == DescriptorKind::UBO)
+                contract.ubos.push_back(req);
+            else
+                contract.ssbos.push_back(req);
         }
 
         return contract;
@@ -361,25 +369,32 @@ namespace hgl::graph::mtl
     {
         diagnostics.clear();
 
-        for (size_t i = 0; i < contract.requirements.size(); ++i)
+        auto validate_requirements = [&diagnostics](const std::vector<DescriptorRequirement> &requirements,
+                                                    const char *group_name)
         {
-            const DescriptorRequirement &req = contract.requirements[i];
-
-            if (req.semantic == DescriptorSemantic::Unknown)
+            for (size_t i = 0; i < requirements.size(); ++i)
             {
-                std::string message = "Descriptor requirement #" + std::to_string(i)
-                                      + " has semantic Unknown; string inference is removed, set explicit semantic or use Custom.";
+                const DescriptorRequirement &req = requirements[i];
 
-                if (req.name_override && *req.name_override)
-                    message += " Name=" + std::string(req.name_override) + ".";
+                if (req.semantic == DescriptorSemantic::Unknown)
+                {
+                    std::string message = std::string(group_name) + " requirement #" + std::to_string(i)
+                                          + " has semantic Unknown; string inference is removed, set explicit semantic or use Custom.";
 
-                diagnostics.emplace_back(std::move(message));
-                continue;
+                    if (req.name_override && *req.name_override)
+                        message += " Name=" + std::string(req.name_override) + ".";
+
+                    diagnostics.emplace_back(std::move(message));
+                    continue;
+                }
+
+                if (req.semantic == DescriptorSemantic::Custom)
+                    continue;
             }
+        };
 
-            if (req.semantic == DescriptorSemantic::Custom)
-                continue;
-        }
+        validate_requirements(contract.ubos, "UBO");
+        validate_requirements(contract.ssbos, "SSBO");
 
         return diagnostics.empty();
     }
