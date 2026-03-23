@@ -2,16 +2,12 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/mtl/DescriptorBindingContract.h>
+#include<hgl/vk/UBOTypes.h>
 #include<hgl/type/String.h>
 #include<vector>
 #include<unordered_map>
 #include<unordered_set>
 #include<functional>
-
-namespace hgl::graph {
-    template<typename,mtl::UBODescriptorSemantic> class UBOAccessor;
-    struct ViewportInfo;
-}
 
 #ifndef ULRE_ECS_DEBUG_API
 #define ULRE_ECS_DEBUG_API 1
@@ -74,7 +70,7 @@ namespace hgl::ecs
         };
 
         // Viewport UBO — owned here, stable across swapchain resize.
-        graph::UBOAccessor<graph::ViewportInfo,graph::mtl::UBODescriptorSemantic::ViewportInfo> *viewport_ubo = nullptr;
+        graph::UBOViewportInfo *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
         std::unordered_map<const graph::Material *, bool> contract_last_ok;
@@ -84,9 +80,7 @@ namespace hgl::ecs
         std::unordered_set<graph::Material *> pipeline_materials;
 
         // Phase 2 — DomainMaterialBinding texture/sampler bindings
-        std::unordered_map<const graph::DomainMaterialBinding *,
-                           std::unordered_map<TextureBindingSlot, MaterialResourceBinding>>
-            domain_resource_bindings;
+        std::unordered_map<const graph::DomainMaterialBinding *, std::unordered_map<TextureBindingSlot, MaterialResourceBinding>> domain_resource_bindings;
         std::unordered_set<graph::DomainMaterialBinding *> registered_domain_bindings;
 
         std::unordered_map<graph::mtl::DescriptorSemantic, SceneUBOResolver> scene_ubo_resolvers;

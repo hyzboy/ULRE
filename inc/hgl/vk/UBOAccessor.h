@@ -2,6 +2,7 @@
 
 #include<hgl/vk/VKBufferAccessBase.h>
 #include<hgl/common/DescriptorSemantic.h>
+#include<hgl/mtl/DescriptorBindingContract.h>
 #include<type_traits>
 
 namespace hgl::graph{
@@ -46,6 +47,26 @@ public:
     friend class VulkanDevice;
 
 private:
+    static constexpr bool HasBuiltinSemanticMeta()
+    {
+        return Semantic != mtl::UBODescriptorSemantic::Unknown
+            && Semantic != mtl::UBODescriptorSemantic::Custom;
+    }
+
+    static constexpr const mtl::DescriptorSemanticMeta &GetSemanticMeta()
+    {
+        return mtl::GetDescriptorSemanticMeta(Semantic);
+    }
+
+    void ApplySemanticMetaIfNeeded()
+    {
+        if constexpr (HasBuiltinSemanticMeta())
+        {
+            const auto &meta = GetSemanticMeta();
+            SetUBOMeta(meta.set_type, meta.name ? meta.name : "");
+        }
+    }
+
     // 跟踪结构体数据是否被 Update() 修改过，用于 CommitInternal() 决策
     // 与 GPU 上传无关，GPU dirty 由底层 Write()/Unmap() 路径自动维护
     bool dirty = false;
@@ -95,6 +116,7 @@ private:
         , aligned_size(aligned_size_param)
     {
         SetBuffer(buf);
+        ApplySemanticMetaIfNeeded();
         if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
@@ -119,6 +141,7 @@ private:
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
+        ApplySemanticMetaIfNeeded();
         if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
@@ -149,6 +172,35 @@ private:
     }
 
 public:
+    static constexpr mtl::UBODescriptorSemantic GetSemantic()
+    {
+        return Semantic;
+    }
+
+    static constexpr DescriptorSetType GetDefaultSetType()
+    {
+        if constexpr (HasBuiltinSemanticMeta())
+            return GetSemanticMeta().set_type;
+
+        return DescriptorSetType::PerMaterial;
+    }
+
+    static constexpr const char *GetDefaultDescriptorName()
+    {
+        if constexpr (HasBuiltinSemanticMeta())
+            return GetSemanticMeta().name;
+
+        return nullptr;
+    }
+
+    static constexpr BufferUpdateClass GetDefaultUpdateClass()
+    {
+        if constexpr (HasBuiltinSemanticMeta())
+            return GetSemanticMeta().buffer_update_class;
+
+        return BufferUpdateClass::Default;
+    }
+
     static UBOAccessor *Create(VkBufferOwner *buf, bool take_ownership = false)
     {
         return buf ? new UBOAccessor(buf, take_ownership) : nullptr;

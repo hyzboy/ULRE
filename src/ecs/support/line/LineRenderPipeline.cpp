@@ -275,19 +275,12 @@ namespace hgl::ecs
         if (!buf_mgr)
             return false;
 
-        auto* raw_buf = buf_mgr->CreateUBO("LineColorPaletteUBO_ECS",
-                            graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPattle>::GetSize());
-        if (!raw_buf)
-            return false;
-        raw_buf->SetUpdateClass(graph::BufferUpdateClass::Default);
-
-        auto* ubo = graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPattle>::Create(
-                        raw_buf, &graph::mtl::SBS_ColorPattle, false);
+        auto* ubo = buf_mgr->CreateUBO<UBOLineColorPalette>();
         if (!ubo)
             return false;
 
         ubo_color_   = ubo;
-        ubo_raw_buf_ = raw_buf;
+        ubo_raw_buf_ = ubo->GetBuffer();
 
         // Bind UBO to material
         material_->BindUBO(&graph::mtl::SBS_ColorPattle, ubo->GetGPUBuffer());

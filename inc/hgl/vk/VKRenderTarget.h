@@ -7,7 +7,6 @@
 #include<hgl/vk/VKQueue.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/graph/camera/ViewportInfo.h>
-#include<hgl/vk/UBOAccessor.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/vk/VKCommandBuffer.h>
 //#include<iostream>
@@ -20,8 +19,6 @@ namespace hgl::ecs
 namespace hgl::graph{
 
 class VulkanDevice; // Forward declaration
-
-using UBOViewportInfo=UBOAccessor<ViewportInfo,mtl::UBODescriptorSemantic::ViewportInfo>;  ///< 统一使用 UBOAccessor
 
 class IRenderTarget
 {

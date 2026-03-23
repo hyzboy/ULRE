@@ -71,6 +71,8 @@ namespace hgl
             virtual void UpdateTransform(CameraComponent* camera) = 0;
         };
 
+        using UBOCamera = graph::UBOAccessor<graph::CameraInfo,graph::mtl::UBODescriptorSemantic::CameraInfo>;
+
         /**
          * CameraSystem - 纯逻辑系统
          * Pure logic system for camera control in ECS architecture
@@ -95,7 +97,7 @@ namespace hgl
             const graph::ViewportInfo* viewport_info = nullptr;
             graph::Camera camera_data{};
             graph::CameraInfo* camera_info = nullptr;
-            graph::UBOAccessor<graph::CameraInfo,graph::mtl::UBODescriptorSemantic::CameraInfo>* camera_ubo = nullptr;
+            UBOCamera* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
             bool first_update_pending = true;
 
@@ -118,7 +120,7 @@ namespace hgl
             const graph::CameraInfo* GetCameraInfo() const;
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
-            graph::UBOAccessor<graph::CameraInfo,graph::mtl::UBODescriptorSemantic::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
+            UBOCamera* GetCameraUBO() const { return camera_ubo; }
             void SyncCameraUBO();
 
         private:

@@ -85,6 +85,29 @@ public: // Buffer creation methods
 
     #undef BUFFER_MANAGER_CREATE_FUNC
 
+    template<typename UBOAccessorType>
+    UBOAccessorType *CreateUBO(SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current())
+    {
+        const char *name = UBOAccessorType::GetDefaultDescriptorName();
+        if (!name || !*name)
+            return nullptr;
+
+        DeviceBuffer *buf = CreateUBO(name, static_cast<VkDeviceSize>(UBOAccessorType::GetSize()), sm, loc);
+        if (!buf)
+            return nullptr;
+
+        buf->SetUpdateClass(UBOAccessorType::GetDefaultUpdateClass());
+
+        UBOAccessorType *accessor = UBOAccessorType::Create(buf, false);
+        if (!accessor)
+        {
+            Release(buf);
+            return nullptr;
+        }
+
+        return accessor;
+    }
+
 public: // Index Buffer creation
 
     IndexBuffer *CreateIBO(const ObjectNameBuilder &name, IndexType index_type, uint32_t count, const void *data, BufferAllocPolicy policy, SharingMode sm = SharingMode::Exclusive, const std::source_location &loc = std::source_location::current());
