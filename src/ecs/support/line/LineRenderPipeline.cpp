@@ -34,7 +34,7 @@ namespace hgl::ecs
     // -------------------------------------------------------------------------
     // Type aliases (local to this TU)
     // -------------------------------------------------------------------------
-    using LineColorPalette    = graph::Color4f[LineRenderPipeline::PALETTE_SIZE];
+    using LineColorPalette    = uint32_t[LineRenderPipeline::PALETTE_SIZE];
     using UBOLineColorPalette = graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPattle>;
 
     // -------------------------------------------------------------------------
@@ -191,7 +191,7 @@ namespace hgl::ecs
         : context_(context)
     {
         // Initialize palette to white by default
-        std::fill(std::begin(palette_), std::end(palette_), hgl::Color4f(1.0f, 1.0f, 1.0f, 1.0f));
+        std::fill(std::begin(palette_), std::end(palette_), 0xFFFFFFFF);
         GLogInfo(OS_TEXT("[LineRenderPipeline] Constructor: initialized palette_ to all white"));
     }
 
@@ -209,9 +209,6 @@ namespace hgl::ecs
             return true;
 
         GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: START"));
-        GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: palette_[0]=(%.2f,%.2f,%.2f,%.2f) palette_[1]=(%.2f,%.2f,%.2f,%.2f)"),
-                 palette_[0].r, palette_[0].g, palette_[0].b, palette_[0].a,
-                 palette_[1].r, palette_[1].g, palette_[1].b, palette_[1].a);
 
         auto* gc = context_ ? context_->GetGraphicsContext() : nullptr;
         if (!gc)
@@ -292,9 +289,6 @@ namespace hgl::ecs
         SyncTransformBinding();
 
         initialized_ = true;
-
-        GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: COMPLETE, palette_[0]=(%.2f,%.2f,%.2f,%.2f)"),
-                 palette_[0].r, palette_[0].g, palette_[0].b, palette_[0].a);
 
         return true;
     }
@@ -659,11 +653,8 @@ namespace hgl::ecs
             return;
         }
 
-        palette_[index]  = color;
+        palette_[index]  = color.toABGR8();
         palette_dirty_   = true;
-
-        GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: palette_[%d] now = (%.2f,%.2f,%.2f,%.2f)"),
-                 index, palette_[index].r, palette_[index].g, palette_[index].b, palette_[index].a);
 
         // Flush immediately if pipeline is initialized
         if (initialized_)

@@ -81,7 +81,7 @@ namespace hgl::ecs
         void*    ubo_raw_buf_ = nullptr;  ///< typed as VkBufferOwner* for release
 
         // CPU palette (dirty-tracked)
-        hgl::Color4f    palette_[PALETTE_SIZE] = {};
+        uint32_t        palette_[PALETTE_SIZE] = {};
         bool            palette_dirty_         = true;
 
         // ------- Per-width batch slots (replace LineWidthBatch) -------

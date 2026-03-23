@@ -3,7 +3,7 @@
 
 layout(scalar, set=PERMATERIAL_SET, binding=COLOR_PATTLE_BINDING) uniform ColorPattle
 {
-    vec4 color[256];
+    uint color[256];
 } color_pattle;
 
 #endif
