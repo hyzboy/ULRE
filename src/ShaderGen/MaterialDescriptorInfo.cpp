@@ -149,7 +149,6 @@ void MaterialDescriptorInfo::Resort()
 {
     descriptor_count=0;
 
-    //重新生成set/binding
     int set=0;
 
     for(auto &p:desc_set_array)
@@ -158,24 +157,34 @@ void MaterialDescriptorInfo::Resort()
             continue;
 
         descriptor_count+=p.count;
-
         p.set=set;
 
-        int i = 0;
-        std::vector<std::string> keys;
-        keys.reserve(static_cast<size_t>(p.count));
+        // Collect descriptor pointers
+        std::vector<ShaderDescriptor *> ordered;
+        ordered.reserve(static_cast<size_t>(p.count));
 
         for(const auto &kv:p.descriptor_map)
-            keys.emplace_back(kv.first.c_str()?kv.first.c_str():"");
+            if(kv.second)
+                ordered.emplace_back(kv.second);
 
-        std::sort(keys.begin(),keys.end());
+        // Sort: builtin semantics first in enum order, then unknowns/custom by name
+        std::sort(ordered.begin(),ordered.end(),
+            [](const ShaderDescriptor *a,const ShaderDescriptor *b)->bool
+            {
+                const bool a_builtin=mtl::IsBuiltinDescriptorSemantic(a->semantic);
+                const bool b_builtin=mtl::IsBuiltinDescriptorSemantic(b->semantic);
+                if(a_builtin!=b_builtin)
+                    return a_builtin;
+                if(a_builtin)
+                    return uint8_t(a->semantic)<uint8_t(b->semantic);
+                return std::strcmp(a->name,b->name)<0;
+            });
 
-        for(const auto &key:keys)
+        int i=0;
+        for(auto *sd:ordered)
         {
-            if(!p.descriptor_map.ContainsKey(key.c_str()))continue;
-            auto* sd=p.descriptor_map.GetValueRef(key.c_str());
-            sd->set = set;
-            sd->binding = i;
+            sd->set=set;
+            sd->binding=i;
             ++i;
         }
 
