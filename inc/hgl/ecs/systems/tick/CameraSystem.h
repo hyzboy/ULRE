@@ -5,6 +5,7 @@
 #include<hgl/ecs/systems/tick/CameraInputMapping.h>
 #include<hgl/math/Vector.h>
 #include<hgl/graph/camera/Camera.h>
+#include<hgl/common/DescriptorSemantic.h>
 #include<vector>
 #include<memory>
 
@@ -14,7 +15,7 @@ namespace hgl::graph
     struct CameraInfo;
     class ViewportInfo;
     class RenderContext;
-    template<typename T> class UBOAccessor;
+    template<typename T,mtl::UBODescriptorSemantic Semantic> class UBOAccessor;
 }
 
 namespace hgl
@@ -94,7 +95,7 @@ namespace hgl
             const graph::ViewportInfo* viewport_info = nullptr;
             graph::Camera camera_data{};
             graph::CameraInfo* camera_info = nullptr;
-            graph::UBOAccessor<graph::CameraInfo>* camera_ubo = nullptr;
+            graph::UBOAccessor<graph::CameraInfo,graph::mtl::UBODescriptorSemantic::CameraInfo>* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
             bool first_update_pending = true;
 
@@ -117,7 +118,7 @@ namespace hgl
             const graph::CameraInfo* GetCameraInfo() const;
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
-            graph::UBOAccessor<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
+            graph::UBOAccessor<graph::CameraInfo,graph::mtl::UBODescriptorSemantic::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
             void SyncCameraUBO();
 
         private:

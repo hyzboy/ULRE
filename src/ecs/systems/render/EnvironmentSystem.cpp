@@ -112,11 +112,11 @@ namespace hgl::ecs
             auto *buffer_manager = graphics_context->GetBufferManager();
             if (buffer_manager)
             {
-                auto *buf = buffer_manager->CreateUBO("SkyUBO", graph::UBOAccessor<graph::SkyInfo>::GetSize());
+                auto *buf = buffer_manager->CreateUBO("SkyUBO", graph::UBOAccessor<graph::SkyInfo,graph::mtl::UBODescriptorSemantic::SkyInfo>::GetSize());
                 if (buf)
                 {
                     buf->SetUpdateClass(graph::BufferUpdateClass::Deferred);
-                    sky_ubo = graph::UBOAccessor<graph::SkyInfo>::Create(buf, &graph::mtl::SBS_SkyInfo, false);
+                    sky_ubo = graph::UBOAccessor<graph::SkyInfo,graph::mtl::UBODescriptorSemantic::SkyInfo>::Create(buf, &graph::mtl::SBS_SkyInfo, false);
                 }
             }
         }

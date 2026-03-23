@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferAccessBase.h>
-
+#include<hgl/common/DescriptorSemantic.h>
 #include<type_traits>
 
 namespace hgl::graph{
@@ -26,7 +26,7 @@ namespace hgl::graph{
  * struct CameraData { glm::mat4 vp; glm::vec3 pos; };
  * auto camera_buf = device->CreateUBO(sizeof(CameraData));
  *
- * UBOAccessor<CameraData> cam_accessor(camera_buf);
+ * UBOAccessor<CameraData,mtl::UBODescriptorSemantic::CameraInfo> cam_accessor(camera_buf);
  *
  * // 直接修改 CPU 端数据 / Modify CPU-side data directly
  * cam_accessor.Data()->vp = glm::mat4(1.0f);
@@ -36,7 +36,7 @@ namespace hgl::graph{
  * cam_accessor.Commit();  // 内部自动调用 Flush 如有需要
  * ```
  */
-template<typename T>
+template<typename T,mtl::UBODescriptorSemantic Semantic=mtl::UBODescriptorSemantic::Unknown>
 class UBOAccessor:public BufferAccessBase
 {
 public:
@@ -364,7 +364,7 @@ public:
      */
     void Update() const override
     {
-        const_cast<UBOAccessor<T>*>(this)->CommitInternal();
+        const_cast<UBOAccessor<T,Semantic>*>(this)->CommitInternal();
     }
 
     /**

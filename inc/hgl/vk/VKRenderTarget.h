@@ -21,7 +21,7 @@ namespace hgl::graph{
 
 class VulkanDevice; // Forward declaration
 
-using UBOViewportInfo=UBOAccessor<ViewportInfo>;  ///< 统一使用 UBOAccessor
+using UBOViewportInfo=UBOAccessor<ViewportInfo,mtl::UBODescriptorSemantic::ViewportInfo>;  ///< 统一使用 UBOAccessor
 
 class IRenderTarget
 {

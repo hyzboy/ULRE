@@ -614,11 +614,11 @@ namespace hgl::ecs
                 auto *buffer_manager = graphics_context->GetBufferManager();
                 if (buffer_manager)
                 {
-                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::UBOAccessor<graph::CameraInfo>::GetSize());
+                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::UBOAccessor<graph::CameraInfo,graph::mtl::UBODescriptorSemantic::CameraInfo>::GetSize());
                     if (buf)
                     {
                         buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-                        camera_ubo = graph::UBOAccessor<graph::CameraInfo>::Create(buf, &graph::mtl::SBS_CameraInfo, false);
+                        camera_ubo = graph::UBOAccessor<graph::CameraInfo,graph::mtl::UBODescriptorSemantic::CameraInfo>::Create(buf, &graph::mtl::SBS_CameraInfo, false);
                     }
                 }
             }

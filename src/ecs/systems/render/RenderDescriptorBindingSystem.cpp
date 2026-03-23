@@ -125,12 +125,12 @@ namespace hgl::ecs
         if (!bm)
             return;
 
-        auto *buf = bm->CreateUBO("ViewportInfoUBO", graph::UBOAccessor<graph::ViewportInfo>::GetSize());
+        auto *buf = bm->CreateUBO("ViewportInfoUBO", graph::UBOAccessor<graph::ViewportInfo,graph::mtl::UBODescriptorSemantic::ViewportInfo>::GetSize());
         if (!buf)
             return;
 
         buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-        viewport_ubo = graph::UBOAccessor<graph::ViewportInfo>::Create(buf, &graph::mtl::SBS_ViewportInfo, false);
+        viewport_ubo = graph::UBOAccessor<graph::ViewportInfo,graph::mtl::UBODescriptorSemantic::ViewportInfo>::Create(buf, &graph::mtl::SBS_ViewportInfo, false);
         if (!viewport_ubo)
             return;
 

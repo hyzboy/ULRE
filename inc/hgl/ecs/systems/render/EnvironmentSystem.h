@@ -15,7 +15,7 @@ namespace hgl
 
     namespace ecs
     {
-        using UBOSkyInfo = graph::UBOAccessor<graph::SkyInfo>;
+        using UBOSkyInfo = graph::UBOAccessor<graph::SkyInfo,graph::mtl::UBODescriptorSemantic::SkyInfo>;
 
         /// SkyLight 运行时资源需求（由 EnvironmentSystem 统一声明，渲染/材质侧只消费结果）
         struct SkyLightResourceRequirement

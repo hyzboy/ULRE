@@ -35,7 +35,7 @@ namespace hgl::ecs
     // Type aliases (local to this TU)
     // -------------------------------------------------------------------------
     using LineColorPalette    = graph::Color4f[LineRenderPipeline::PALETTE_SIZE];
-    using UBOLineColorPalette = graph::UBOAccessor<LineColorPalette>;
+    using UBOLineColorPalette = graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPattle>;
 
     // -------------------------------------------------------------------------
     const std::string LineRenderPipeline::kName{ "Line" };
@@ -276,12 +276,12 @@ namespace hgl::ecs
             return false;
 
         auto* raw_buf = buf_mgr->CreateUBO("LineColorPaletteUBO_ECS",
-                                            graph::UBOAccessor<LineColorPalette>::GetSize());
+                            graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPattle>::GetSize());
         if (!raw_buf)
             return false;
         raw_buf->SetUpdateClass(graph::BufferUpdateClass::Default);
 
-        auto* ubo = graph::UBOAccessor<LineColorPalette>::Create(
+        auto* ubo = graph::UBOAccessor<LineColorPalette,graph::mtl::UBODescriptorSemantic::ColorPattle>::Create(
                         raw_buf, &graph::mtl::SBS_ColorPattle, false);
         if (!ubo)
             return false;
