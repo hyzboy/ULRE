@@ -99,34 +99,6 @@ namespace
         return true;
     }
 
-    std::vector<ShaderDescriptor> CollectLegacyDescriptors(const mtl::MaterialCreateInfo *mci)
-    {
-        std::vector<ShaderDescriptor> legacy_descriptors;
-        if (!mci)
-            return legacy_descriptors;
-
-        const auto &mdi = mci->GetDescriptorInfo();
-        if (mdi.GetCount() == 0)
-            return legacy_descriptors;
-
-        const auto &sds_array = mdi.Get();
-        legacy_descriptors.reserve(mdi.GetCount());
-
-        for (size_t i = 0; i < DESCRIPTOR_SET_TYPE_COUNT; i++)
-        {
-            std::vector<ShaderDescriptor *> values;
-            sds_array[i].descriptor_map.GetValueArray(values);
-
-            for (auto *sd : values)
-            {
-                if (sd)
-                    legacy_descriptors.emplace_back(*sd);
-            }
-        }
-
-        return legacy_descriptors;
-    }
-
 }//namespace
 
 GRAPH_MODULE_CONSTRUCT(MaterialManager)
@@ -358,9 +330,9 @@ bool MaterialManager::ExecuteMaterialBuildPipeline(Material *mtl,
     const ShaderCreateInfoVertex *vert = mci->GetVertexShader();
     mtl->vertex_input = vert ? GetVertexInput(vert->GetInput()) : nullptr;
 
-    std::vector<ShaderDescriptor> descriptors = CollectLegacyDescriptors(mci);
-    if(!descriptors.empty())
-        mtl->desc_manager = new MaterialDescriptorManager(mtl_name, descriptors.data(), static_cast<uint>(descriptors.size()));
+    const auto &mdi = mci->GetDescriptorInfo();
+    if(mdi.GetCount() > 0)
+        mtl->desc_manager = new MaterialDescriptorManager(mtl_name, mdi.Get());
     else
         mtl->desc_manager = nullptr;
 

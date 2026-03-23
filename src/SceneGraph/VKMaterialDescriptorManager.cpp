@@ -2,6 +2,7 @@
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/type/EnumUtil.h>
 #include<vector>
+#include<algorithm>
 
 namespace hgl::graph{
 void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDescriptor *sd)
@@ -73,12 +74,20 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,cons
 
     uint sd_count=0;
 
+    std::vector<ShaderDescriptor*> set_values[DESCRIPTOR_SET_TYPE_COUNT];
+
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
     {
-        dsl_ci[i].bindingCount=sds_array[i].count;
+        sds_array[i].descriptor_map.GetValueArray(set_values[i]);
+
+        set_values[i].erase(
+            std::remove(set_values[i].begin(),set_values[i].end(),nullptr),
+            set_values[i].end());
+
+        dsl_ci[i].bindingCount=static_cast<uint32_t>(set_values[i].size());
         dsl_ci[i].pBindings=nullptr;
 
-        sd_count+=sds_array[i].count;
+        sd_count+=dsl_ci[i].bindingCount;
     }
 
     if(sd_count<=0)
@@ -103,8 +112,16 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,cons
 
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
-            std::vector<ShaderDescriptor*> values;
-            sds_array[i].descriptor_map.GetValueArray(values);
+            auto &values=set_values[i];
+
+            std::sort(values.begin(),values.end(),
+                [](const ShaderDescriptor *lhs,const ShaderDescriptor *rhs)
+                {
+                    if(!lhs||!rhs)
+                        return lhs<rhs;
+
+                    return lhs->binding<rhs->binding;
+                });
 
             for(auto sd:values)
             {

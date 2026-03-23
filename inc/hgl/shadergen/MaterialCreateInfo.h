@@ -50,6 +50,9 @@ namespace hgl::graph
 
         private:
 
+            bool AddResolvedUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const DescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
+            bool AddResolvedUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const DescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
+
             bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
             bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
             bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
@@ -62,6 +65,9 @@ namespace hgl::graph
             }
 
             bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+
+            bool AddResolvedSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const DescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
+            bool AddResolvedSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const DescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
 
             bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
             bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);

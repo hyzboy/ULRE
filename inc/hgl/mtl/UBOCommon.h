@@ -20,6 +20,7 @@ constexpr ShaderBufferSource MakeShaderBufferSourceBySemantic(const DescriptorSe
 
     return ShaderBufferSource{
         meta.set_type,
+        semantic,
         meta.name,
         meta.struct_name,
     };
