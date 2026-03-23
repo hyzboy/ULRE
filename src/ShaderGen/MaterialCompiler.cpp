@@ -15,16 +15,10 @@
 #include <hgl/shadergen/ShaderLayoutDefineEmitter.h>
 #include <hgl/shadergen/SimpleSamplerGLSLEmitter.h>
 #include <hgl/mtl/UBOCommon.h>
-#include <cstring>
 #include <cstdio>
 #include <string>
 
 namespace hgl::graph::mtl {
-
-static bool CStrEq(const char *lhs, const char *rhs)
-{
-    return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-}
 
 static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorSemantic semantic)
 {
@@ -154,17 +148,29 @@ MaterialCreateInfo *CompileCompositorMaterial(
         switch (entry.kind)
         {
         case DescriptorKind::UBO:
+            switch (entry.semantic)
+            {
+            case DescriptorSemantic::ViewportInfo:
+                mci->AddUBOStruct(stage_bits, SBS_ViewportInfo);
+                break;
+            case DescriptorSemantic::CameraInfo:
+                mci->AddUBOStruct(stage_bits, SBS_CameraInfo);
+                break;
+            case DescriptorSemantic::SkyInfo:
+                mci->AddUBOStruct(stage_bits, SBS_SkyInfo);
+                break;
+            case DescriptorSemantic::LocalToWorld:
+                mci->SetLocalToWorld(stage_bits);
+                break;
+            default:
+                break;
+            }
+
+            if (entry.semantic != DescriptorSemantic::Unknown && entry.semantic != DescriptorSemantic::Custom)
+                break;
+
             if (entry.struct_name)
             {
-                if (CStrEq(entry.struct_name, SBS_ViewportInfo.struct_name))
-                    { mci->AddUBOStruct(stage_bits, SBS_ViewportInfo); break; }
-                if (CStrEq(entry.struct_name, SBS_CameraInfo.struct_name))
-                    { mci->AddUBOStruct(stage_bits, SBS_CameraInfo); break; }
-                if (CStrEq(entry.struct_name, SBS_SkyInfo.struct_name))
-                    { mci->AddUBOStruct(stage_bits, SBS_SkyInfo); break; }
-                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
-                    { mci->SetLocalToWorld(stage_bits); break; }
-
                 // Custom UBO via private/global ShaderBufferSource registry
                 if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
                 {
@@ -175,13 +181,23 @@ MaterialCreateInfo *CompileCompositorMaterial(
             break;
 
         case DescriptorKind::SSBO:
+            switch (entry.semantic)
+            {
+            case DescriptorSemantic::LocalToWorld:
+                mci->SetLocalToWorld(stage_bits);
+                break;
+            case DescriptorSemantic::MaterialInstance:
+                mi_stage_bits = stage_bits;
+                break;
+            default:
+                break;
+            }
+
+            if (entry.semantic != DescriptorSemantic::Unknown && entry.semantic != DescriptorSemantic::Custom)
+                break;
+
             if (entry.struct_name)
             {
-                if (CStrEq(entry.struct_name, SBS_LocalToWorld.struct_name))
-                    { mci->SetLocalToWorld(stage_bits); break; }
-                if (CStrEq(entry.struct_name, SBS_MaterialInstance.struct_name))
-                    { mi_stage_bits = stage_bits; break; }
-
                 // Custom SSBO via private/global ShaderBufferSource registry
                 if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
                 {
