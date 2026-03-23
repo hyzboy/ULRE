@@ -103,6 +103,7 @@ namespace hgl::graph
     struct TextureDescriptor:public ShaderDescriptor
     {
         AnsiString type;
+        mtl::SamplerSlot slot = mtl::SamplerSlot::Count;  ///< For standard texture descriptors mapped to SamplerSlot
 
     public:
 
@@ -115,6 +116,7 @@ namespace hgl::graph
     struct TextureSamplerDescriptor:public ShaderDescriptor
     {
         AnsiString type;
+        mtl::SamplerSlot slot = mtl::SamplerSlot::Count;  ///< For standard texture descriptors mapped to SamplerSlot
 
     public:
 

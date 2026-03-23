@@ -153,6 +153,9 @@ static const TextureDescriptor *ResolveTextureDescriptor(
     texture->type=type_name.c_str();
     hgl::strcpy(texture->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
 
+    // Phase F: Parse SamplerSlot from descriptor name (one-time at descriptor creation)
+    mtl::TryGetSlotFromDescriptorName(name.c_str(), texture->slot);
+
     return mdi.AddTexture((uint32_t)flag_bit,set_type,texture);
 }
 
@@ -177,6 +180,9 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     image_sampler=new TextureSamplerDescriptor();
     image_sampler->type=type_name.c_str();
     hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+
+    // Phase F: Parse SamplerSlot from descriptor name (one-time at descriptor creation)
+    mtl::TryGetSlotFromDescriptorName(name.c_str(), image_sampler->slot);
 
     return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
 }

@@ -93,45 +93,59 @@ const char *GetDescriptorSetMacroName(DescriptorSetType set_type)
     return GetDescriptorSetMacroNameCache()[index].c_str();
 }
 
-std::string GetDescriptorBindingMacroName(const char *descriptor_name)
+std::string GetDescriptorBindingMacroName(const ShaderDescriptor *sd)
 {
-    if (!descriptor_name || !*descriptor_name)
+    if (!sd || !sd->name || !*sd->name)
         return {};
 
-    if (const char *macro_name = mtl::FindDescriptorBindingMacroNameByDescriptorName(descriptor_name))
-        return macro_name;
+    // Phase F: Enum-only lookup — no reverse parsing from descriptor name
+    
+    // For SSBO/UBO: lookup by semantic
+    if (sd->semantic != mtl::DescriptorSemantic::Unknown)
+    {
+        const auto &meta = mtl::GetDescriptorSemanticMeta(sd->semantic);
+        if (meta.binding_macro_name && *meta.binding_macro_name)
+            return meta.binding_macro_name;
+    }
 
-    mtl::SamplerSlot slot;
-    if (mtl::TryGetSlotFromDescriptorName(descriptor_name, slot))
-        return mtl::ToBindingMacroName(slot);
+    // For Texture/TextureSampler: lookup by slot (if available)
+    const auto *tex_sd = dynamic_cast<const TextureDescriptor *>(sd);
+    if (tex_sd && tex_sd->slot != mtl::SamplerSlot::Count)
+        return mtl::ToBindingMacroName(tex_sd->slot);
 
-    return BuildMacroName(descriptor_name, "_BINDING");
+    const auto *tex_sampler_sd = dynamic_cast<const TextureSamplerDescriptor *>(sd);
+    if (tex_sampler_sd && tex_sampler_sd->slot != mtl::SamplerSlot::Count)
+        return mtl::ToBindingMacroName(tex_sampler_sd->slot);
+
+    // Fallback: use descriptor name directly (for custom descriptors)
+    return BuildMacroName(sd->name, "_BINDING");
 }
 
 static void AppendDescriptorBindingMacros(ShaderLayoutContract &contract,
-                                         const char           *descriptor_name,
-                                         const int             binding)
+                                         const ShaderDescriptor *sd)
 {
-    if (!descriptor_name || !*descriptor_name || binding < 0)
+    if (!sd || sd->binding < 0)
         return;
 
-    const std::string canonical_macro = GetDescriptorBindingMacroName(descriptor_name);
+    // Phase F: Emit macro based on semantic/slot, not reverse name lookup
+    const std::string canonical_macro = GetDescriptorBindingMacroName(sd);
     if (!canonical_macro.empty())
-        AddLayoutEntryIfMissing(contract.descriptor_bindings, canonical_macro.c_str(), binding);
+        AddLayoutEntryIfMissing(contract.descriptor_bindings, canonical_macro.c_str(), sd->binding);
 
     // Keep legacy short aliases for older shaders that still reference TEX_* names.
-    mtl::SamplerSlot slot;
-    if (!mtl::TryGetSlotFromDescriptorName(descriptor_name, slot))
+    // (Only for texture descriptors with known slots)
+    const auto *tex_sd = dynamic_cast<const TextureSamplerDescriptor *>(sd);
+    if (!tex_sd || tex_sd->slot == mtl::SamplerSlot::Count)
         return;
 
-    const size_t slot_index = size_t(slot);
+    const size_t slot_index = size_t(tex_sd->slot);
     if (slot_index >= mtl::SamplerSlotCount)
         return;
 
     const auto &binding_macro_cache = mtl::GetSamplerBindingMacroNameCache();
     AddLayoutEntryIfMissing(contract.descriptor_bindings,
                             binding_macro_cache[slot_index].c_str(),
-                            binding);
+                            sd->binding);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,7 +191,7 @@ ShaderLayoutContract BuildShaderLayoutContract(const mtl::MaterialCreateInfo &mc
             if (!sd || sd->binding < 0)
                 continue;
 
-            AppendDescriptorBindingMacros(contract, sd->name, sd->binding);
+            AppendDescriptorBindingMacros(contract, sd);
         }
     }
 

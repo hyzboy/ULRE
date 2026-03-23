@@ -3,6 +3,7 @@
 #include <hgl/shadergen/ShaderLayoutContract.h>
 #include <hgl/common/VertexAttribDef.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
+#include <hgl/common/ShaderDescriptorDef.h>
 #include <string>
 
 namespace hgl::graph
@@ -26,10 +27,11 @@ namespace hgl::graph
     /// Returns nullptr for Unknow / out-of-range.
     const char *GetDescriptorSetMacroName(DescriptorSetType set_type);
 
-    /// Returns the layout-macro name for a descriptor binding by its GLSL name.
+    /// Returns the layout-macro name for a descriptor binding.
+    /// Phase F: Uses semantic and slot enums only for lookup, no reverse name parsing.
     /// Semantic descriptors use DescriptorBindingContract metadata, texture slots use
     /// SamplerName helpers, and all others follow UPPER(name) + "_BINDING".
-    std::string GetDescriptorBindingMacroName(const char *descriptor_name);
+    std::string GetDescriptorBindingMacroName(const ShaderDescriptor *sd);
 
     // ────────────────────────────────────────────────────────────
     // Builder
