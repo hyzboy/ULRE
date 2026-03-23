@@ -76,7 +76,7 @@ namespace hgl::ecs
         }
 
         mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstance.set_type,
-                  hgl::graph::mtl::SBS_MaterialInstance.name,
+                  hgl::graph::mtl::ToSSBODescriptorSemantic(hgl::graph::mtl::SBS_MaterialInstance.semantic),
                   material_instance_buffer->GetGPUBuffer());
 
         BindMaterialInstanceID(mtl);

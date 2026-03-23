@@ -109,10 +109,7 @@ public:
         return BindTextureSampler(SET_TYPE_TEXTURE,slot,tex,sampler);
     }
 
-    [[deprecated("Use semantic-based overload instead")]]
-    bool BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
-    [[deprecated("Use semantic-based overload instead")]]
-    bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
+
 
     bool BindUBO(const DescriptorSetType &type,const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);

@@ -58,17 +58,7 @@ public:
     bool BindTexture(const mtl::SamplerSlot slot,Texture *tex);
     bool BindTextureSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
 
-    [[deprecated("Use slot-based overload instead")]]
-    bool BindTexture(const AnsiString &name,Texture *tex);
-    [[deprecated("Use slot-based overload instead")]]
-    bool BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
-    [[deprecated("Use name lookup overload not recommended")]]
-    bool BindInputAttachment(const AnsiString &name,ImageView *);
 
-    [[deprecated("Use semantic-based overload instead")]]
-    bool BindUBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
-    [[deprecated("Use semantic-based overload instead")]]
-    bool BindSSBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
 
     void Update();
 };//class MaterialParameters

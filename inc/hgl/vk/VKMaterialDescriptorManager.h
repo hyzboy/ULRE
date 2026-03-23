@@ -49,19 +49,7 @@ public:
     const int GetTexture(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
     const int GetTextureSampler(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
 
-    [[deprecated("Use semantic or slot-based GetUBO/GetSSBO/GetTexture instead")]]
-    const int GetBinding(const DescriptorSetType &set_type,const VkDescriptorType &desc_type,const AnsiString &name)const;
 
-    [[deprecated("Use GetUBO(set_type, UBODescriptorSemantic, dynamic) instead")]]
-    const int GetUBO            (const DescriptorSetType &set_type,const AnsiString &name,bool dynamic)const{return GetBinding(set_type,dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,name);}
-    [[deprecated("Use GetSSBO(set_type, SSBODescriptorSemantic, dynamic) instead")]]
-    const int GetSSBO           (const DescriptorSetType &set_type,const AnsiString &name,bool dynamic)const{return GetBinding(set_type,dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,name);}
-    [[deprecated("Use GetTexture(set_type, SamplerSlot) instead")]]
-    const int GetTexture        (const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,name);}
-    [[deprecated("Use GetTextureSampler(set_type, SamplerSlot) instead")]]
-    const int GetTextureSampler (const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
-    [[deprecated("String-based GetInputAttachment not recommended")]]
-    const int GetInputAttachment(const DescriptorSetType &set_type,const AnsiString &name             )const{return GetBinding(set_type,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,name);}
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 

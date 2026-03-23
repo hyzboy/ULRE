@@ -44,21 +44,6 @@ bool MaterialParameters::BindUBO(const mtl::UBODescriptorSemantic semantic,const
     return(true);
 }
 
-bool MaterialParameters::BindUBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
-{
-    if(name.IsEmpty()||!gpu)
-        return(false);
-
-    const int index=desc_manager->GetUBO(set_type,name,dynamic);
-
-    if(index<0)
-        return(false);
-
-    if(!descriptor_set->BindUBO(index,gpu,dynamic))
-        return(false);
-
-    return(true);
-}
 
 bool MaterialParameters::BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic)
 {
@@ -87,21 +72,6 @@ bool MaterialParameters::BindSSBO(const mtl::SSBODescriptorSemantic semantic,con
     return(true);
 }
 
-bool MaterialParameters::BindSSBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
-{
-    if(name.IsEmpty()||!gpu)
-        return(false);
-
-    const int index=desc_manager->GetSSBO(set_type,name,dynamic);
-
-    if(index<0)
-        return(false);
-
-    if(!descriptor_set->BindSSBO(index,gpu,dynamic))
-        return(false);
-
-    return(true);
-}
 
 bool MaterialParameters::BindTexture(const int &index,Texture *tex)
 {
@@ -130,21 +100,6 @@ bool MaterialParameters::BindTexture(const mtl::SamplerSlot slot,Texture *tex)
     return(true);
 }
 
-bool MaterialParameters::BindTexture(const AnsiString &name,Texture *tex)
-{
-    if(name.IsEmpty() || !tex)
-        return(false);
-
-    const int index = desc_manager->GetTexture(set_type,name);
-
-    if(index < 0)
-        return(false);
-
-    if(!descriptor_set->BindTexture(index,tex))
-        return(false);
-
-    return(true);
-}
 
 bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sampler *sampler)
 {
@@ -188,29 +143,6 @@ bool MaterialParameters::BindTextureSampler(const mtl::SamplerSlot slot,Texture 
     return(true);
 }
 
-bool MaterialParameters::BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
-{
-    if(name.IsEmpty()||!tex||!sampler)
-        return(false);
-
-    const int index=desc_manager->GetTextureSampler(set_type,name);
-
-        LogInfo(u8"[VKMaterialParameters] BindTextureSampler name=%s index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
-            name.c_str() ? name.c_str() : "(null)",
-            index,
-            (uint)set_type,
-            (void*)tex,
-            (void*)sampler,
-            (void*)descriptor_set);
-
-    if(index<0)
-        return(false);
-
-    if(!descriptor_set->BindTextureSampler(index,tex,sampler))
-        return(false);
-
-    return(true);
-}
 
 bool MaterialParameters::BindInputAttachment(const int &index,ImageView *iv)
 {
@@ -223,21 +155,6 @@ bool MaterialParameters::BindInputAttachment(const int &index,ImageView *iv)
     return(true);
 }
 
-bool MaterialParameters::BindInputAttachment(const AnsiString &name,ImageView *iv)
-{
-    if(name.IsEmpty()||!iv)
-        return(false);
-
-    const int index=desc_manager->GetInputAttachment(set_type,name);
-
-    if(index<0)
-        return(false);
-
-    if(!descriptor_set->BindInputAttachment(index,iv))
-        return(false);
-
-    return(true);
-}
 
 void MaterialParameters::Update()
 {

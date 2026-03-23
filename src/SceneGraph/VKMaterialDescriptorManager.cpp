@@ -238,21 +238,6 @@ MaterialDescriptorManager::~MaterialDescriptorManager()
     delete[] all_dslb;
 }
 
-const int MaterialDescriptorManager::GetBinding(const DescriptorSetType &set_type,const VkDescriptorType &desc_type,const AnsiString &name)const
-{
-    RANGE_CHECK_RETURN(set_type,-1)
-
-    if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-     ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)
-        return -1;
-
-    if(name.IsEmpty())return -1;
-
-    int result;
-
-    return(binding_map[size_t(set_type)][size_t(desc_type)].Get(name,result)?result:-1);
-}
-
 const int MaterialDescriptorManager::GetUBO(const DescriptorSetType &set_type,const mtl::UBODescriptorSemantic semantic,bool dynamic)const
 {
     RANGE_CHECK_RETURN(set_type,-1)
