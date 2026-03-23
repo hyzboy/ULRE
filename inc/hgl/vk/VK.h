@@ -91,9 +91,6 @@ struct VertexAttribDataPtr
     const void *    data;
 };
 
-using BindingMap        =UnorderedMap<AnsiString,int>;
-using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
-
 class VulkanInstance;
 class VulkanPhyDevice;
 class VulkanSurface;

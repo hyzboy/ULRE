@@ -8,8 +8,6 @@ class MaterialDescriptorManager
 {
     AnsiString mtl_name;
 
-    BindingMapArray binding_map[DESCRIPTOR_SET_TYPE_COUNT];
-
     int ubo_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::UBODescriptorSemanticCount][2];
     int ssbo_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::SSBODescriptorSemanticCount][2];
     int texture_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::SamplerSlotCount];
@@ -39,17 +37,10 @@ public:
         return dsl_ci[size_t(set_type)].bindingCount;
     }
 
-    const BindingMapArray &GetBindingMap(const DescriptorSetType &set_type)const
-    {
-        return binding_map[size_t(set_type)];
-    }
-
     const int GetUBO(const DescriptorSetType &set_type,const mtl::UBODescriptorSemantic semantic,bool dynamic)const;
     const int GetSSBO(const DescriptorSetType &set_type,const mtl::SSBODescriptorSemantic semantic,bool dynamic)const;
     const int GetTexture(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
     const int GetTextureSampler(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
-
-
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 

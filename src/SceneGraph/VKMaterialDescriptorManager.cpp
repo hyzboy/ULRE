@@ -125,7 +125,6 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,Shad
 
         for(uint i=0;i<sd_count;i++)
         {
-            binding_map[size_t(sp->set_type)][size_t(sp->desc_type)].Add(sp->name,sp->binding);
             RegisterEnumBinding(sp);
 
             ++dsl_ci[size_t(sp->set_type)].bindingCount;
@@ -222,7 +221,6 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,cons
 
             for(auto sd:values)
             {
-                binding_map[size_t(sd->set_type)][size_t(sd->desc_type)].Add(sd->name,sd->binding);
                 RegisterEnumBinding(sd);
 
                 WriteDescriptorSetLayoutBinding(dsl_bind[i],sd);
