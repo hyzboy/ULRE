@@ -17,16 +17,14 @@ DomainMaterialBinding::~DomainMaterialBinding()
 bool DomainMaterialBinding::BindTexture(const mtl::SamplerSlot slot, Texture *tex)
 {
     if (!mp_per_material) return false;
-    const AnsiString name = mtl::ToDescriptorName(slot);
-    return mp_per_material->BindTexture(name, tex);
+    return mp_per_material->BindTexture(slot, tex);
 }
 
 bool DomainMaterialBinding::BindTextureSampler(const mtl::SamplerSlot slot,
                                                Texture *tex, Sampler *sampler)
 {
     if (!mp_per_material) return false;
-    const AnsiString name = mtl::ToDescriptorName(slot);
-    return mp_per_material->BindTextureSampler(name, tex, sampler);
+    return mp_per_material->BindTextureSampler(slot, tex, sampler);
 }
 
 void DomainMaterialBinding::Update()

@@ -28,6 +28,22 @@ bool MaterialParameters::BindUBO(const int &index,const IGPUBuffer *gpu,bool dyn
     return(true);
 }
 
+bool MaterialParameters::BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(!gpu)
+        return(false);
+
+    const int index=desc_manager->GetUBO(set_type,semantic,dynamic);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_set->BindUBO(index,gpu,dynamic))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialParameters::BindUBO(const AnsiString &name,const IGPUBuffer *gpu,bool dynamic)
 {
     if(name.IsEmpty()||!gpu)
@@ -47,6 +63,22 @@ bool MaterialParameters::BindUBO(const AnsiString &name,const IGPUBuffer *gpu,bo
 bool MaterialParameters::BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic)
 {
     if(index<0||!gpu)
+        return(false);
+
+    if(!descriptor_set->BindSSBO(index,gpu,dynamic))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic)
+{
+    if(!gpu)
+        return(false);
+
+    const int index=desc_manager->GetSSBO(set_type,semantic,dynamic);
+
+    if(index<0)
         return(false);
 
     if(!descriptor_set->BindSSBO(index,gpu,dynamic))
@@ -82,6 +114,22 @@ bool MaterialParameters::BindTexture(const int &index,Texture *tex)
     return(true);
 }
 
+bool MaterialParameters::BindTexture(const mtl::SamplerSlot slot,Texture *tex)
+{
+    if(!tex)
+        return(false);
+
+    const int index=desc_manager->GetTexture(set_type,slot);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_set->BindTexture(index,tex))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialParameters::BindTexture(const AnsiString &name,Texture *tex)
 {
     if(name.IsEmpty() || !tex)
@@ -108,6 +156,30 @@ bool MaterialParameters::BindTextureSampler(const int &index,Texture *tex,Sample
             (void*)descriptor_set);
 
     if(index<0||!tex||!sampler)
+        return(false);
+
+    if(!descriptor_set->BindTextureSampler(index,tex,sampler))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindTextureSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler)
+{
+    if(!tex||!sampler)
+        return(false);
+
+    const int index=desc_manager->GetTextureSampler(set_type,slot);
+
+    LogInfo(u8"[VKMaterialParameters] BindTextureSampler slot=%u index=%d set_type=%u tex=%p sampler=%p descriptor_set=%p",
+            (uint)slot,
+            index,
+            (uint)set_type,
+            (void*)tex,
+            (void*)sampler,
+            (void*)descriptor_set);
+
+    if(index<0)
         return(false);
 
     if(!descriptor_set->BindTextureSampler(index,tex,sampler))

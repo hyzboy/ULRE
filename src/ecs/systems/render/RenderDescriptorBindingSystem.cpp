@@ -384,7 +384,7 @@ namespace hgl::ecs
                 if (resolver_it != scene_ubo_resolvers.end())
                 {
                     const auto *buf = resolver_it->second();
-                    if (buf) material->BindUBO(resolved.set_type, resolved.name, buf, false);
+                    if (buf) material->BindUBO(resolved.set_type, graph::mtl::ToUBODescriptorSemantic(resolved.semantic), buf, false);
                     continue;
                 }
 
@@ -460,7 +460,7 @@ namespace hgl::ecs
                 if (resolver_it != scene_ubo_resolvers.end())
                 {
                     const auto *buf = resolver_it->second();
-                    if (buf) material->BindUBO(resolved.set_type, resolved.name, buf, false);
+                    if (buf) material->BindUBO(resolved.set_type, graph::mtl::ToUBODescriptorSemantic(resolved.semantic), buf, false);
                     continue;
                 }
 

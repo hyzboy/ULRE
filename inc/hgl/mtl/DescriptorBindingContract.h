@@ -224,6 +224,37 @@ namespace hgl::graph::mtl
         }
     }
 
+    constexpr UBODescriptorSemantic ToUBODescriptorSemantic(const DescriptorSemantic semantic)
+    {
+        switch (semantic)
+        {
+        case DescriptorSemantic::ViewportInfo: return UBODescriptorSemantic::ViewportInfo;
+        case DescriptorSemantic::CameraInfo:   return UBODescriptorSemantic::CameraInfo;
+        case DescriptorSemantic::SkyInfo:      return UBODescriptorSemantic::SkyInfo;
+        case DescriptorSemantic::ColorPattle:  return UBODescriptorSemantic::ColorPattle;
+        case DescriptorSemantic::Custom:       return UBODescriptorSemantic::Custom;
+        case DescriptorSemantic::Unknown:
+        default:                               return UBODescriptorSemantic::Unknown;
+        }
+    }
+
+    constexpr SSBODescriptorSemantic ToSSBODescriptorSemantic(const DescriptorSemantic semantic)
+    {
+        switch (semantic)
+        {
+        case DescriptorSemantic::TransformID:               return SSBODescriptorSemantic::TransformID;
+        case DescriptorSemantic::LocalToWorld:              return SSBODescriptorSemantic::LocalToWorld;
+        case DescriptorSemantic::MaterialInstanceID:        return SSBODescriptorSemantic::MaterialInstanceID;
+        case DescriptorSemantic::MaterialInstance:          return SSBODescriptorSemantic::MaterialInstance;
+        case DescriptorSemantic::MaterialInstanceTextureID: return SSBODescriptorSemantic::MaterialInstanceTextureID;
+        case DescriptorSemantic::BoneJoint:                 return SSBODescriptorSemantic::BoneJoint;
+        case DescriptorSemantic::BoneJointWeight:           return SSBODescriptorSemantic::BoneJointWeight;
+        case DescriptorSemantic::Custom:                    return SSBODescriptorSemantic::Custom;
+        case DescriptorSemantic::Unknown:
+        default:                                            return SSBODescriptorSemantic::Unknown;
+        }
+    }
+
     constexpr const DescriptorSemanticMeta &GetDescriptorSemanticMeta(const UBODescriptorSemantic semantic)
     {
         return GetDescriptorSemanticMeta(ToDescriptorSemantic(semantic));

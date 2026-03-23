@@ -112,14 +112,17 @@ public:
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,const IGPUBuffer *gpu,bool dynamic=false);
 
+    bool BindUBO(const DescriptorSetType &type,const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const DescriptorSetType &type,const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+
     bool BindUBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
     {
-        return BindUBO(sbd->set_type,sbd->name,gpu,dynamic);
+        return BindUBO(sbd->set_type,mtl::ToUBODescriptorSemantic(sbd->semantic),gpu,dynamic);
     }
 
     bool BindSSBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
     {
-        return BindSSBO(sbd->set_type,sbd->name,gpu,dynamic);
+        return BindSSBO(sbd->set_type,mtl::ToSSBODescriptorSemantic(sbd->semantic),gpu,dynamic);
     }
 
     void Update();

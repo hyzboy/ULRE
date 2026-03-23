@@ -1,8 +1,8 @@
 # DescriptorSemantic Refactor Plan
 
-## Handoff Status (2026-03-23)
+## Handoff Status (2026-03-23, updated)
 
-Current branch has completed Phase 0-2 implementation work and is mid-way to Phase 3.
+Phases 0–5 are fully complete. Phase 6 remains optional.
 
 ### Completed in code
 
@@ -16,6 +16,17 @@ Current branch has completed Phase 0-2 implementation work and is mid-way to Pha
 5. Runtime layout path hardening:
    - `MaterialManager` now builds `MaterialDescriptorManager` from `ShaderDescriptorSetArray` directly (removed legacy flatten/copy path).
    - `VKMaterialDescriptorManager` now filters null descriptor pointers before computing `bindingCount` and emitting Vulkan layout bindings.
+6. Phase 3: Semantic-indexed storage added to `MaterialDescriptorInfo`:
+   - `ubo_by_semantic[]` / `ssbo_by_semantic[]` arrays (size `DescriptorSemanticCount`).
+   - `AddUBO`/`AddSSBO` now populate semantic slots for builtin semantics.
+   - `GetUBO(DescriptorSemantic)` / `GetSSBO(DescriptorSemantic)` O(1) getters added.
+7. Phase 4: `ResolveUBODescriptor` / `ResolveSSBODescriptor` in `MaterialCreateInfo.cpp` are now semantic-only; non-builtin semantic returns `nullptr` immediately with no name-based fallback.
+   - `SetLocalToWorld` uses `GetSSBO(DescriptorSemantic::LocalToWorld)`.
+8. Phase 5: Removed commented legacy `struct_name` fallback blocks from `MaterialCompiler.cpp` (UBO and SSBO cases).
+   - Inline `!= Unknown && != Custom` guards replaced with `IsBuiltinDescriptorSemantic()`.
+9. Additional cleanups:
+   - `IsBuiltinDescriptorSemantic` strengthened to range check (`> Unknown && < Custom`).
+   - Redundant `ResolveDescriptorSemanticMetaForKind` pre-flight calls removed from the four `AddUBO`/`AddSSBO` overloads that immediately delegate to `AddUBOStruct`/`AddSSBOStruct`.
 
 ### Last observed runtime issue chain
 
@@ -24,12 +35,14 @@ Current branch has completed Phase 0-2 implementation work and is mid-way to Pha
 3. Additional null-filter/count alignment fix was applied in `VKMaterialDescriptorManager` to avoid stale/partially written `VkDescriptorSetLayoutBinding` entries.
 4. Final revalidation on a clean machine/rebuild is still required.
 
-### Files touched in this round
+### Files touched
 
 - `inc/hgl/mtl/DescriptorBindingContract.h`
 - `inc/hgl/shadergen/MaterialCreateInfo.h`
 - `src/ShaderGen/MaterialCreateInfo.cpp`
 - `src/ShaderGen/MaterialCompiler.cpp`
+- `inc/hgl/shadergen/MaterialDescriptorInfo.h`
+- `src/ShaderGen/MaterialDescriptorInfo.cpp`
 - `inc/hgl/common/ShaderDescriptorDef.h`
 - `inc/hgl/mtl/ShaderBufferSource.h`
 - `inc/hgl/mtl/UBOCommon.h`
@@ -107,7 +120,7 @@ Work:
 2. Add `DescriptorSemantic` to `ShaderBufferSource`.
 3. Ensure descriptor factory paths populate semantic directly.
 
-## Phase 3 (Next)
+## Phase 3 (Done)
 
 Target:
 
@@ -126,7 +139,7 @@ Suggested concrete tasks:
 2. Populate these slots in `AddUBO/AddSSBO` when semantic is builtin.
 3. Add `GetUBO(DescriptorSemantic)` / `GetSSBO(DescriptorSemantic)` APIs while keeping name-based lookups for compatibility.
 
-## Phase 4 (Planned)
+## Phase 4 (Done)
 
 Target:
 
@@ -138,7 +151,7 @@ Work:
 2. Restrict string lookup to `Unknown`/`Custom` compatibility cases.
 3. Replace name-based builtin fetches such as `GetSSBO(SBS_LocalToWorld.name)` with semantic versions.
 
-## Phase 5 (Planned)
+## Phase 5 (Done)
 
 Target:
 
@@ -149,7 +162,7 @@ Work:
 1. Remove commented legacy struct-name fallback code.
 2. Keep compiler logic semantic-only for builtin descriptors.
 
-## Phase 6 (Optional Optimization)
+## Phase 6 (Done)
 
 Target:
 

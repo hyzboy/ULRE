@@ -53,6 +53,11 @@ public:
     bool BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
 
+    bool BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindTexture(const mtl::SamplerSlot slot,Texture *tex);
+    bool BindTextureSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
+
     bool BindTexture(const AnsiString &name,Texture *tex);
     bool BindTextureSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const AnsiString &name,ImageView *);

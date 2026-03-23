@@ -10,7 +10,15 @@ class MaterialDescriptorManager
 
     BindingMapArray binding_map[DESCRIPTOR_SET_TYPE_COUNT];
 
+    int ubo_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::UBODescriptorSemanticCount][2];
+    int ssbo_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::SSBODescriptorSemanticCount][2];
+    int texture_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::SamplerSlotCount];
+    int texture_sampler_binding_map[DESCRIPTOR_SET_TYPE_COUNT][mtl::SamplerSlotCount];
+
 private:
+
+    void InitEnumBindingMaps();
+    void RegisterEnumBinding(const ShaderDescriptor *sd);
 
     VkDescriptorSetLayoutBinding *all_dslb;
 
@@ -35,6 +43,11 @@ public:
     {
         return binding_map[size_t(set_type)];
     }
+
+    const int GetUBO(const DescriptorSetType &set_type,const mtl::UBODescriptorSemantic semantic,bool dynamic)const;
+    const int GetSSBO(const DescriptorSetType &set_type,const mtl::SSBODescriptorSemantic semantic,bool dynamic)const;
+    const int GetTexture(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
+    const int GetTextureSampler(const DescriptorSetType &set_type,const mtl::SamplerSlot slot)const;
 
     const int GetBinding(const DescriptorSetType &set_type,const VkDescriptorType &desc_type,const AnsiString &name)const;
 
