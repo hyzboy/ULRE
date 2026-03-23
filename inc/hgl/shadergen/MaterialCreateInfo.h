@@ -48,6 +48,34 @@ namespace hgl::graph
 
             bool has_local_to_world;
 
+        private:
+
+            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
+            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
+            {
+                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
+            {
+                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
+
+            bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
+            {
+                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
+            {
+                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
+            }
+
+            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+
         public:
 
             const PrimitiveType GetPrimitiveType()const{return config.prim;}
@@ -109,31 +137,13 @@ namespace hgl::graph
                 return AddStruct(std::string(ubo_typename?ubo_typename:""),std::string(codes?codes:""));
             }
 
-            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
-            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
-            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
-            {
-                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
-            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
-            {
-                return AddUBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
+            bool AddUBO(const ShaderStage flag_bits,const DescriptorSemantic semantic);
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSemantic semantic);
+            bool AddUBOStruct(const uint32_t flag_bits,const DescriptorSemantic semantic);
 
-            bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
-
-            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name);
-            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name);
-            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const char *struct_name,const char *name)
-            {
-                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
-            bool AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const char *struct_name,const char *name)
-            {
-                return AddSSBO(flag_bits,set_type,std::string(struct_name?struct_name:""),std::string(name?name:""));
-            }
-
-            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
+            bool AddSSBO(const ShaderStage flag_bits,const DescriptorSemantic semantic);
+            bool AddSSBO(const uint32_t flag_bits,const DescriptorSemantic semantic);
+            bool AddSSBOStruct(const uint32_t flag_bits,const DescriptorSemantic semantic);
 
             bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const std::string &name);
             bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const std::string &name);

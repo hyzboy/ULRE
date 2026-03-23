@@ -50,6 +50,29 @@ static bool ExecuteOnShadersByStage(
     return expected>0&&result==expected;
 }
 
+static bool ResolveDescriptorSemanticMetaForKind(
+    const DescriptorSemantic semantic,
+    const DescriptorKind expected_kind,
+    const DescriptorSemanticMeta *&meta)
+{
+    if(!IsBuiltinDescriptorSemantic(semantic))
+        return false;
+
+    const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(semantic);
+
+    if(candidate.default_kind != expected_kind)
+        return false;
+
+    if(!candidate.struct_name || !*candidate.struct_name)
+        return false;
+
+    if(!candidate.name || !*candidate.name)
+        return false;
+
+    meta = &candidate;
+    return true;
+}
+
 static const UBODescriptor *ResolveUBODescriptor(
     MaterialDescriptorInfo &mdi,
     const ShaderStage flag_bit,
@@ -211,6 +234,26 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
     return sc->AddUBO(set_type,ubo);
 }
 
+bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSemantic semantic)
+{
+    const DescriptorSemanticMeta *meta = nullptr;
+
+    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::UBO,meta))
+        return false;
+
+    return AddUBOStruct(uint32_t(flag_bit),semantic);
+}
+
+bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSemantic semantic)
+{
+    const DescriptorSemanticMeta *meta = nullptr;
+
+    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::UBO,meta))
+        return false;
+
+    return AddUBOStruct(flag_bits,semantic);
+}
+
 bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
@@ -233,6 +276,19 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
+bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const DescriptorSemantic semantic)
+{
+    const DescriptorSemanticMeta *meta = nullptr;
+
+    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::UBO,meta))
+        return false;
+
+    if(!AddStruct(meta->struct_name,""))
+        return false;
+
+    return AddUBO(flag_bits,meta->set_type,meta->struct_name,meta->name);
+}
+
 bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
@@ -251,6 +307,26 @@ bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetT
         return false;
 
     return sc->AddSSBO(set_type,ssbo);
+}
+
+bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSemantic semantic)
+{
+    const DescriptorSemanticMeta *meta = nullptr;
+
+    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::SSBO,meta))
+        return false;
+
+    return AddSSBOStruct(uint32_t(flag_bit),semantic);
+}
+
+bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSemantic semantic)
+{
+    const DescriptorSemanticMeta *meta = nullptr;
+
+    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::SSBO,meta))
+        return false;
+
+    return AddSSBOStruct(flag_bits,semantic);
 }
 
 bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
@@ -273,6 +349,19 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBuff
         return(false);
 
     return AddSSBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
+}
+
+bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const DescriptorSemantic semantic)
+{
+    const DescriptorSemanticMeta *meta = nullptr;
+
+    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::SSBO,meta))
+        return false;
+
+    if(!AddStruct(meta->struct_name,""))
+        return false;
+
+    return AddSSBO(flag_bits,meta->set_type,meta->struct_name,meta->name);
 }
 
 bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const std::string &name)

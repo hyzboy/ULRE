@@ -56,7 +56,6 @@ private:
 
     Texture2D* base_texture = nullptr;
     Texture2D* normal_texture = nullptr;
-    Texture2D* roughness_texture = nullptr;
     Sampler* sampler = nullptr;
 
     std::vector<std::unique_ptr<RenderMesh>> meshes;
@@ -112,10 +111,6 @@ private:
         if (!normal_texture)
             return false;
 
-        roughness_texture = texture_manager->LoadTexture2D(OS_TEXT("res/image/Brickwall/Roughness.Tex2D"), true);
-        if (!roughness_texture)
-            return false;
-
         sampler = sampler_manager->CreateSampler();
         if (!sampler)
             return false;
@@ -127,11 +122,6 @@ private:
 
         if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::Normal,
                                           normal_texture,
-                                          sampler))
-            return false;
-
-        if (!material->BindTextureSampler(hgl::graph::mtl::SamplerSlot::Roughness,
-                                          roughness_texture,
                                           sampler))
             return false;
 

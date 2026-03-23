@@ -14,7 +14,6 @@
 #include <hgl/shadergen/ShaderLayoutBuilder.h>
 #include <hgl/shadergen/ShaderLayoutDefineEmitter.h>
 #include <hgl/shadergen/SimpleSamplerGLSLEmitter.h>
-#include <hgl/mtl/UBOCommon.h>
 #include <cstdio>
 #include <string>
 
@@ -40,17 +39,6 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
     }
 
     return false;
-}
-
-static const ShaderBufferSource *ResolveShaderBufferSourceByStructName(const Material3DCreateConfig *cfg,const char *struct_name)
-{
-    if(cfg)
-    {
-        if(const ShaderBufferSource *sbs=cfg->FindPrivateShaderBufferSourceByStructName(struct_name))
-            return sbs;
-    }
-
-    return FindShaderBufferSourceByStructName(struct_name);
 }
 
 static std::string InjectLayoutDefinesPreserveVersion(const std::string &source,const std::string &layout_defs)
@@ -148,64 +136,64 @@ MaterialCreateInfo *CompileCompositorMaterial(
         switch (entry.kind)
         {
         case DescriptorKind::UBO:
-            switch (entry.semantic)
+        {
+            if (entry.semantic == DescriptorSemantic::LocalToWorld)
             {
-            case DescriptorSemantic::ViewportInfo:
-                mci->AddUBOStruct(stage_bits, SBS_ViewportInfo);
-                break;
-            case DescriptorSemantic::CameraInfo:
-                mci->AddUBOStruct(stage_bits, SBS_CameraInfo);
-                break;
-            case DescriptorSemantic::SkyInfo:
-                mci->AddUBOStruct(stage_bits, SBS_SkyInfo);
-                break;
-            case DescriptorSemantic::LocalToWorld:
                 mci->SetLocalToWorld(stage_bits);
-                break;
-            default:
                 break;
             }
 
             if (entry.semantic != DescriptorSemantic::Unknown && entry.semantic != DescriptorSemantic::Custom)
-                break;
-
-            if (entry.struct_name)
             {
-                // Custom UBO via private/global ShaderBufferSource registry
-                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
-                {
-                    mci->AddUBOStruct(stage_bits, *sbs);
+                if (mci->AddUBO(stage_bits, entry.semantic))
                     break;
-                }
             }
+
+            // 暂时禁用按 struct_name 的回退查找，仅使用 semantic 驱动绑定。
+            //if (entry.struct_name)
+            //{
+            //    // Custom UBO via private/global ShaderBufferSource registry
+            //    if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
+            //    {
+            //        mci->AddUBOStruct(stage_bits, *sbs);
+            //        break;
+            //    }
+            //}
             break;
+        }
 
         case DescriptorKind::SSBO:
-            switch (entry.semantic)
+        {
+            if (entry.semantic == DescriptorSemantic::LocalToWorld)
             {
-            case DescriptorSemantic::LocalToWorld:
                 mci->SetLocalToWorld(stage_bits);
                 break;
-            case DescriptorSemantic::MaterialInstance:
+            }
+
+            if (entry.semantic == DescriptorSemantic::MaterialInstance)
+            {
                 mi_stage_bits = stage_bits;
-                break;
-            default:
                 break;
             }
 
             if (entry.semantic != DescriptorSemantic::Unknown && entry.semantic != DescriptorSemantic::Custom)
-                break;
-
-            if (entry.struct_name)
             {
-                // Custom SSBO via private/global ShaderBufferSource registry
-                if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
-                {
-                    mci->AddSSBOStruct(stage_bits, *sbs);
+                if (mci->AddSSBO(stage_bits, entry.semantic))
                     break;
-                }
             }
+
+            // 暂时禁用按 struct_name 的回退查找，仅使用 semantic 驱动绑定。
+            //if (entry.struct_name)
+            //{
+            //    // Custom SSBO via private/global ShaderBufferSource registry
+            //    if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
+            //    {
+            //        mci->AddSSBOStruct(stage_bits, *sbs);
+            //        break;
+            //    }
+            //}
             break;
+        }
 
         case DescriptorKind::Texture:
             if(!RangeCheck(entry.texture_type))

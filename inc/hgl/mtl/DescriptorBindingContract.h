@@ -122,6 +122,11 @@ namespace hgl::graph::mtl
 
     constexpr size_t DescriptorSemanticCount = size_t(DescriptorSemantic::Custom) + 1;
 
+    constexpr bool IsBuiltinDescriptorSemantic(const DescriptorSemantic semantic)
+    {
+        return semantic != DescriptorSemantic::Unknown && semantic != DescriptorSemantic::Custom;
+    }
+
     constexpr DescriptorSemanticMeta DescriptorSemanticMetaList[] =
     {
         {DescriptorSetType::Unknow, DescriptorKind::UBO,    nullptr,        nullptr,                nullptr                     }, // Unknown
