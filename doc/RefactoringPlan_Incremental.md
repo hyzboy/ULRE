@@ -1029,7 +1029,7 @@ layout(set=0, binding=1) uniform CameraUBO {
 > 1. `SBS_CameraInfo`（GLSL UBO 定义）必须与 C++ `CameraInfo` 结构体严格同步。
 >    新增的 `use_reversed_z` / `_pad_ci0` / `camera_world_pos` 字段
 >    需要在 `UBOCommon.h` 的 GLSL 定义中同步追加，否则 GPU 端读取偏移错误。
-> 2. `StructuredBufferAccessor<T>::MarkDirty()` 只设置 accessor 内部 dirty，
+> 2. `UBOAccessor<T>::MarkDirty()` 只设置 accessor 内部 dirty，
 >    **不会**自动传播到底层 `StagedBuffer`。必须同时调用 `gpu_buf->MarkDirty()`
 >    才能让 `RenderBufferUploadSystem` 识别并执行 staging→device 拷贝。
 >    （此 bug 会导致 Camera UBO 在 GPU 端全为零。）

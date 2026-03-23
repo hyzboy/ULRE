@@ -5,7 +5,7 @@
 #include<hgl/graph/render/RenderContext.h>
 #include<hgl/graph/core/GraphicsContext.h>
 #include<hgl/graph/module/BufferManager.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/UBOAccessor.h>
 #include<hgl/vk/VKBuffer.h>
 #include<hgl/vk/VKMemory.h>
 #include<hgl/graph/camera/ViewportInfo.h>
@@ -614,11 +614,11 @@ namespace hgl::ecs
                 auto *buffer_manager = graphics_context->GetBufferManager();
                 if (buffer_manager)
                 {
-                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::StructuredBufferAccessor<graph::CameraInfo>::GetSize());
+                    auto *buf = buffer_manager->CreateUBO("CameraUBO", graph::UBOAccessor<graph::CameraInfo>::GetSize());
                     if (buf)
                     {
                         buf->SetUpdateClass(graph::BufferUpdateClass::CriticalPerFrame);
-                        camera_ubo = graph::StructuredBufferAccessor<graph::CameraInfo>::Create(buf, &graph::mtl::SBS_CameraInfo, false);
+                        camera_ubo = graph::UBOAccessor<graph::CameraInfo>::Create(buf, &graph::mtl::SBS_CameraInfo, false);
                     }
                 }
             }

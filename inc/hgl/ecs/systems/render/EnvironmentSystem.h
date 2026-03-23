@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/ecs/core/System.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/UBOAccessor.h>
 #include<hgl/graph/env/SkyInfo.h>
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
@@ -15,7 +15,7 @@ namespace hgl
 
     namespace ecs
     {
-        using UBOSkyInfo = graph::StructuredBufferAccessor<graph::SkyInfo>;
+        using UBOSkyInfo = graph::UBOAccessor<graph::SkyInfo>;
 
         /// SkyLight 运行时资源需求（由 EnvironmentSystem 统一声明，渲染/材质侧只消费结果）
         struct SkyLightResourceRequirement

@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_MATERIAL_PARAMETERS_INCLUDE
-#define HGL_GRAPH_VULKAN_MATERIAL_PARAMETERS_INCLUDE
+﻿#pragma once
 
 #include<hgl/vk/VK.h>
 #include<hgl/type/String.h>
@@ -7,6 +6,7 @@
 #include<hgl/common/DescriptorSetTypeDef.h>
 #include<hgl/vk/VKMaterialDescriptorManager.h>
 #include<hgl/log/Log.h>
+
 namespace hgl::graph{
 class MaterialParameters
 {
@@ -19,6 +19,15 @@ protected:
     DescriptorSetType set_type;
 
     DescriptorSet *descriptor_set;
+
+protected:
+
+    bool BindTexture(const int &index,Texture *tex);
+    bool BindTextureSampler(const int &index,Texture *tex,Sampler *sampler);
+    bool BindInputAttachment(const int &index,ImageView *);
+
+    bool BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
 
 public:
 
@@ -46,21 +55,11 @@ public:
     MaterialParameters(const MaterialDescriptorManager *,const DescriptorSetType &type,DescriptorSet *);
     virtual ~MaterialParameters();
 
-    bool BindTexture(const int &index,Texture *tex);
-    bool BindTextureSampler(const int &index,Texture *tex,Sampler *sampler);
-    bool BindInputAttachment(const int &index,ImageView *);
-
-    bool BindUBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
-    bool BindSSBO(const int &index,const IGPUBuffer *gpu,bool dynamic=false);
-
     bool BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindTexture(const mtl::SamplerSlot slot,Texture *tex);
     bool BindTextureSampler(const mtl::SamplerSlot slot,Texture *tex,Sampler *sampler);
 
-
-
     void Update();
 };//class MaterialParameters
 }//namespace hgl::graph
-#endif//HGL_GRAPH_VULKAN_MATERIAL_PARAMETERS_INCLUDE

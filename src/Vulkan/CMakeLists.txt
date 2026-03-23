@@ -106,7 +106,7 @@ SET(VK_MEMORY_FILES             ${VK_INCLUDE_PATH}/VKMemory.h
                                 ${VK_INCLUDE_PATH}/BufferPolicy.h
                                 ${VK_INCLUDE_PATH}/DeviceBufferRingWriter.h
                                 ${VK_INCLUDE_PATH}/VKRingBufferWrapper.h
-                                ${VK_INCLUDE_PATH}/StructuredBufferAccessor.h
+                                ${VK_INCLUDE_PATH}/UBOAccessor.h
                                 ${VK_INCLUDE_PATH}/AlignedStructureBuffer.h
                                 VKMemory.cpp
                                 VKBufferOwner.cpp

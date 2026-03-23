@@ -14,7 +14,7 @@
 #include<hgl/ecs/support/primitive/PrimitiveRenderPipelineGroup.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/vk/VKRenderTarget.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/UBOAccessor.h>
 #include<hgl/log/Log.h>
 #include<atomic>
 

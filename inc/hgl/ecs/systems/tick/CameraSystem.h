@@ -14,7 +14,7 @@ namespace hgl::graph
     struct CameraInfo;
     class ViewportInfo;
     class RenderContext;
-    template<typename T> class StructuredBufferAccessor;
+    template<typename T> class UBOAccessor;
 }
 
 namespace hgl
@@ -94,7 +94,7 @@ namespace hgl
             const graph::ViewportInfo* viewport_info = nullptr;
             graph::Camera camera_data{};
             graph::CameraInfo* camera_info = nullptr;
-            graph::StructuredBufferAccessor<graph::CameraInfo>* camera_ubo = nullptr;
+            graph::UBOAccessor<graph::CameraInfo>* camera_ubo = nullptr;
             bool camera_ubo_managed = false;
             bool first_update_pending = true;
 
@@ -117,7 +117,7 @@ namespace hgl
             const graph::CameraInfo* GetCameraInfo() const;
             const graph::ViewportInfo* GetViewportInfo() const { return viewport_info; }
 
-            graph::StructuredBufferAccessor<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
+            graph::UBOAccessor<graph::CameraInfo>* GetCameraUBO() const { return camera_ubo; }
             void SyncCameraUBO();
 
         private:

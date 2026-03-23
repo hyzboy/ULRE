@@ -5,7 +5,7 @@
 #include<hgl/mtl/UBOCommon.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/vk/VKBuffer.h>
-#include<hgl/vk/StructuredBufferAccessor.h>
+#include<hgl/vk/UBOAccessor.h>
 
 namespace hgl::ecs
 {
@@ -112,11 +112,11 @@ namespace hgl::ecs
             auto *buffer_manager = graphics_context->GetBufferManager();
             if (buffer_manager)
             {
-                auto *buf = buffer_manager->CreateUBO("SkyUBO", graph::StructuredBufferAccessor<graph::SkyInfo>::GetSize());
+                auto *buf = buffer_manager->CreateUBO("SkyUBO", graph::UBOAccessor<graph::SkyInfo>::GetSize());
                 if (buf)
                 {
                     buf->SetUpdateClass(graph::BufferUpdateClass::Deferred);
-                    sky_ubo = graph::StructuredBufferAccessor<graph::SkyInfo>::Create(buf, &graph::mtl::SBS_SkyInfo, false);
+                    sky_ubo = graph::UBOAccessor<graph::SkyInfo>::Create(buf, &graph::mtl::SBS_SkyInfo, false);
                 }
             }
         }

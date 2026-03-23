@@ -9,7 +9,7 @@
 #include<functional>
 
 namespace hgl::graph {
-    template<typename> class StructuredBufferAccessor;
+    template<typename> class UBOAccessor;
     struct ViewportInfo;
 }
 
@@ -74,7 +74,7 @@ namespace hgl::ecs
         };
 
         // Viewport UBO — owned here, stable across swapchain resize.
-        graph::StructuredBufferAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
+        graph::UBOAccessor<graph::ViewportInfo> *viewport_ubo = nullptr;
         uint32_t pending_viewport_width  = 0;
         uint32_t pending_viewport_height = 0;
         std::unordered_map<const graph::Material *, bool> contract_last_ok;

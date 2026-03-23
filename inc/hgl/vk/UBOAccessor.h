@@ -26,7 +26,7 @@ namespace hgl::graph{
  * struct CameraData { glm::mat4 vp; glm::vec3 pos; };
  * auto camera_buf = device->CreateUBO(sizeof(CameraData));
  *
- * StructuredBufferAccessor<CameraData> cam_accessor(camera_buf);
+ * UBOAccessor<CameraData> cam_accessor(camera_buf);
  *
  * // 直接修改 CPU 端数据 / Modify CPU-side data directly
  * cam_accessor.Data()->vp = glm::mat4(1.0f);
@@ -37,7 +37,7 @@ namespace hgl::graph{
  * ```
  */
 template<typename T>
-class StructuredBufferAccessor:public BufferAccessBase
+class UBOAccessor:public BufferAccessBase
 {
 public:
     T *mapped_data;                 ///< 映射后的数据指针 / Mapped data pointer
@@ -89,7 +89,7 @@ private:
         initialized = true;
     }
 
-    StructuredBufferAccessor(VkBufferOwner *buf, VkDeviceSize aligned_size_param, bool take_ownership)
+    UBOAccessor(VkBufferOwner *buf, VkDeviceSize aligned_size_param, bool take_ownership)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(aligned_size_param)
@@ -113,7 +113,7 @@ private:
         mapped_data = nullptr;
     }
 
-    StructuredBufferAccessor(VkBufferOwner *buf, bool take_ownership = false)
+    UBOAccessor(VkBufferOwner *buf, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
@@ -124,7 +124,7 @@ private:
         InitDefaultsIfNeeded();
     }
 
-    StructuredBufferAccessor(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
+    UBOAccessor(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
@@ -136,7 +136,7 @@ private:
         InitDefaultsIfNeeded();
     }
 
-    StructuredBufferAccessor(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
+    UBOAccessor(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
         : BufferAccessBase()
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
@@ -149,36 +149,36 @@ private:
     }
 
 public:
-    static StructuredBufferAccessor *Create(VkBufferOwner *buf, bool take_ownership = false)
+    static UBOAccessor *Create(VkBufferOwner *buf, bool take_ownership = false)
     {
-        return buf ? new StructuredBufferAccessor(buf, take_ownership) : nullptr;
+        return buf ? new UBOAccessor(buf, take_ownership) : nullptr;
     }
 
-    static StructuredBufferAccessor *Create(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
+    static UBOAccessor *Create(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
     {
-        return buf ? new StructuredBufferAccessor(buf, dst, name, take_ownership) : nullptr;
+        return buf ? new UBOAccessor(buf, dst, name, take_ownership) : nullptr;
     }
 
-    static StructuredBufferAccessor *Create(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
+    static UBOAccessor *Create(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
     {
-        return buf ? new StructuredBufferAccessor(buf, desc, take_ownership) : nullptr;
+        return buf ? new UBOAccessor(buf, desc, take_ownership) : nullptr;
     }
 
     /**
      * CN: 析构函数 - 自动 Unmap 和可选的 buffer 删除
      * EN: Destructor - auto unmap and optional buffer cleanup
      */
-    ~StructuredBufferAccessor()
+    ~UBOAccessor()
     {
         UnmapInternal();
     }
 
     // 禁止拷贝 / Disable copy
-    StructuredBufferAccessor(const StructuredBufferAccessor&) = delete;
-    StructuredBufferAccessor& operator=(const StructuredBufferAccessor&) = delete;
+    UBOAccessor(const UBOAccessor&) = delete;
+    UBOAccessor& operator=(const UBOAccessor&) = delete;
 
     // 允许移动 / Allow move
-    StructuredBufferAccessor(StructuredBufferAccessor&& other) noexcept
+    UBOAccessor(UBOAccessor&& other) noexcept
         : BufferAccessBase()
         , mapped_data(other.mapped_data)
         , aligned_size(other.aligned_size)
@@ -188,7 +188,7 @@ public:
         other.aligned_size = 0;
     }
 
-    StructuredBufferAccessor& operator=(StructuredBufferAccessor&& other) noexcept
+    UBOAccessor& operator=(UBOAccessor&& other) noexcept
     {
         if(this != &other)
         {
@@ -364,7 +364,7 @@ public:
      */
     void Update() const override
     {
-        const_cast<StructuredBufferAccessor<T>*>(this)->CommitInternal();
+        const_cast<UBOAccessor<T>*>(this)->CommitInternal();
     }
 
     /**

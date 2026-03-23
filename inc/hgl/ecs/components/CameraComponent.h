@@ -12,7 +12,7 @@ namespace hgl::graph
     struct Camera;
     struct CameraInfo;
     class ViewportInfo;
-    template<typename T> class StructuredBufferAccessor;
+    template<typename T> class UBOAccessor;
 }
 
 namespace hgl
@@ -77,7 +77,7 @@ namespace hgl
             graph::Camera* camera_data;             ///< 摄像机数据指针 / Camera data pointer
             graph::CameraInfo* camera_info;         ///< 摄像机信息指针 / Camera info pointer
             const graph::ViewportInfo* viewport_info; ///< 视口信息指针 / Viewport info pointer
-            graph::StructuredBufferAccessor<graph::CameraInfo>* camera_ubo; ///< 摄像机UBO / Camera uniform buffer object
+            graph::UBOAccessor<graph::CameraInfo>* camera_ubo; ///< 摄像机UBO / Camera uniform buffer object
 
             // === 标记 / Flags ===
             bool is_main_camera;            ///< 是否为主摄像机 / Is main camera

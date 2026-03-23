@@ -99,7 +99,7 @@ std::string GetDescriptorBindingMacroName(const ShaderDescriptor *sd)
         return {};
 
     // Phase F: Enum-only lookup — no reverse parsing from descriptor name
-    
+
     // For SSBO/UBO: lookup by semantic
     if (sd->semantic != mtl::DescriptorSemantic::Unknown)
     {

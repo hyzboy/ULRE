@@ -22,7 +22,7 @@
 #include <hgl/vk/VKCommandBuffer.h>
 #include <hgl/vk/VKRenderTarget.h>
 #include <hgl/vk/VKVertexInputConfig.h>
-#include <hgl/vk/StructuredBufferAccessor.h>
+#include <hgl/vk/UBOAccessor.h>
 #include <hgl/math/geometry/Frustum.h>
 #include <hgl/log/Log.h>
 #include <glm/glm.hpp>
@@ -35,7 +35,7 @@ namespace hgl::ecs
     // Type aliases (local to this TU)
     // -------------------------------------------------------------------------
     using LineColorPalette    = graph::Color4f[LineRenderPipeline::PALETTE_SIZE];
-    using UBOLineColorPalette = graph::StructuredBufferAccessor<LineColorPalette>;
+    using UBOLineColorPalette = graph::UBOAccessor<LineColorPalette>;
 
     // -------------------------------------------------------------------------
     const std::string LineRenderPipeline::kName{ "Line" };
@@ -276,12 +276,12 @@ namespace hgl::ecs
             return false;
 
         auto* raw_buf = buf_mgr->CreateUBO("LineColorPaletteUBO_ECS",
-                                            graph::StructuredBufferAccessor<LineColorPalette>::GetSize());
+                                            graph::UBOAccessor<LineColorPalette>::GetSize());
         if (!raw_buf)
             return false;
         raw_buf->SetUpdateClass(graph::BufferUpdateClass::Default);
 
-        auto* ubo = graph::StructuredBufferAccessor<LineColorPalette>::Create(
+        auto* ubo = graph::UBOAccessor<LineColorPalette>::Create(
                         raw_buf, &graph::mtl::SBS_ColorPattle, false);
         if (!ubo)
             return false;
