@@ -13,6 +13,7 @@ namespace hgl::graph{
 
 class IGPUBuffer;
 class ResourceDomain;   ///< Phase 5: forward decl
+template<typename T,mtl::UBODescriptorSemantic Semantic> class UBOAccessor;
 
 namespace mtl
 {
@@ -109,14 +110,19 @@ public:
         return BindTextureSampler(SET_TYPE_TEXTURE,slot,tex,sampler);
     }
 
-
-
     bool BindUBO(const DescriptorSetType &type,const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
 
-    bool BindUBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
+    template<typename T,mtl::UBODescriptorSemantic Semantic>
+    bool BindUBO(const UBOAccessor<T,Semantic> *ubo,bool dynamic=false)
     {
-        return BindUBO(sbd->set_type,mtl::ToUBODescriptorSemantic(sbd->semantic),gpu,dynamic);
+        if(!ubo)
+            return false;
+
+        return BindUBO(UBOAccessor<T,Semantic>::GetDefaultSetType(),
+                       UBOAccessor<T,Semantic>::GetSemantic(),
+                       ubo->GetGPUBuffer(),
+                       dynamic);
     }
 
     bool BindSSBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)

@@ -49,11 +49,11 @@ namespace hgl::ecs
         line_count = 0;
         bool pos_valid = va_pos.IsValid();
         bool color_valid = va_color.IsValid();
-        
+
         GLogInfo("[LineRenderPipeline] Reset: pos_valid=%d color_valid=%d",
                  pos_valid ? 1 : 0,
              color_valid ? 1 : 0);
-        
+
         if (pos_valid)   va_pos.Seek(0);
         if (color_valid) va_color.Seek(0);
         if (primitive)   primitive->SetDrawCounts(0);
@@ -148,7 +148,7 @@ namespace hgl::ecs
     {
         bool pos_valid = va_pos.IsValid();
         bool color_valid = va_color.IsValid();
-        
+
         if (!pos_valid || !color_valid)
         {
             GLogWarning("[LineRenderPipeline] AddSegment accessor invalid: pos=%d color=%d",
@@ -283,7 +283,7 @@ namespace hgl::ecs
         ubo_raw_buf_ = ubo->GetBuffer();
 
         // Bind UBO to material
-        material_->BindUBO(&graph::mtl::SBS_ColorPattle, ubo->GetGPUBuffer());
+        material_->BindUBO(ubo);
         material_->Update();
 
         // Flush current palette to UBO (palette initialized in constructor)
@@ -292,10 +292,10 @@ namespace hgl::ecs
         SyncTransformBinding();
 
         initialized_ = true;
-        
+
         GLogInfo(OS_TEXT("[LineRenderPipeline] Initialize: COMPLETE, palette_[0]=(%.2f,%.2f,%.2f,%.2f)"),
                  palette_[0].r, palette_[0].g, palette_[0].b, palette_[0].a);
-        
+
         return true;
     }
 
@@ -553,22 +553,22 @@ namespace hgl::ecs
     {
         if (!palette_dirty_ || !ubo_color_)
         {
-            GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: skipped - dirty=%d ubo=%p"), 
+            GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: skipped - dirty=%d ubo=%p"),
                      palette_dirty_ ? 1 : 0, ubo_color_);
             return;
         }
 
         auto* ubo = static_cast<UBOLineColorPalette*>(ubo_color_);
-        
+
         GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: writing %d colors directly from palette_"), PALETTE_SIZE);
-        
+
         // Write directly from palette_ array to GPU buffer (not via mapped_data)
         // This ensures actual data transfer instead of no-op when source == destination
         bool write_ok = ubo->Write(palette_, 0, sizeof(LineColorPalette));
-        
-        GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: Write result=%d size=%zu bytes"), 
+
+        GLogInfo(OS_TEXT("[LineRenderPipeline] FlushPaletteToGPU: Write result=%d size=%zu bytes"),
                  write_ok ? 1 : 0, sizeof(LineColorPalette));
-        
+
         palette_dirty_ = false;
     }
 
@@ -652,19 +652,19 @@ namespace hgl::ecs
     {
         GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: index=%d color=(%.2f,%.2f,%.2f,%.2f) initialized=%d"),
                  index, color.r, color.g, color.b, color.a, initialized_ ? 1 : 0);
-        
+
         if (index < 0 || index >= static_cast<int>(PALETTE_SIZE))
         {
             GLogWarning(OS_TEXT("[LineRenderPipeline] SetPaletteColor: index %d out of range"), index);
             return;
         }
-        
+
         palette_[index]  = color;
         palette_dirty_   = true;
-        
+
         GLogInfo(OS_TEXT("[LineRenderPipeline] SetPaletteColor: palette_[%d] now = (%.2f,%.2f,%.2f,%.2f)"),
                  index, palette_[index].r, palette_[index].g, palette_[index].b, palette_[index].a);
-        
+
         // Flush immediately if pipeline is initialized
         if (initialized_)
         {

@@ -346,8 +346,6 @@ namespace hgl::ecs
         PurgeStaleBindings(active_materials);
     }
 
-
-
     void RenderDescriptorBindingSystem::ApplyBatchMaterialBindings(
         std::unordered_set<const graph::Material *> &out_active)
     {
