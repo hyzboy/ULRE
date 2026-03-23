@@ -6,6 +6,7 @@
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/vk/BufferPolicy.h>
 #include<vector>
+#include<map>
 #include<string>
 #include<cstring>
 
@@ -23,33 +24,10 @@ namespace hgl::graph::mtl
         DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
     };
 
-    struct DescriptorRequirement
-    {
-        DescriptorSemantic semantic = DescriptorSemantic::Unknown;
-        DescriptorKind kind = DescriptorKind::UBO;
-        uint32_t stage_flags = 0;
-        const char *name_override = nullptr;
-    };
-
-    struct ResolvedDescriptorRequirement
-    {
-        DescriptorSemantic semantic = DescriptorSemantic::Unknown;
-        DescriptorSetType set_type = DescriptorSetType::Unknow;
-        DescriptorKind kind = DescriptorKind::UBO;
-        uint32_t stage_flags = 0;
-
-        const char *name = nullptr;
-        const char *struct_name = nullptr;
-        const char *glsl_type = nullptr;
-
-        bool required = true;
-        bool allow_fallback = false;
-    };
-
     struct BindingContract
     {
-           std::vector<DescriptorRequirement> ubos;
-           std::vector<DescriptorRequirement> ssbos;
+        std::map<UBODescriptorSemantic, uint32_t> ubos;
+        std::map<SSBODescriptorSemantic, uint32_t> ssbos;
     };
 
     struct DescriptorSemanticMeta
@@ -297,22 +275,6 @@ namespace hgl::graph::mtl
         };
     }
 
-    inline ResolvedDescriptorRequirement ResolveDescriptorRequirement(const DescriptorRequirement &req)
-    {
-        const auto &meta = GetDescriptorSemanticMeta(req.semantic);
-
-        ResolvedDescriptorRequirement resolved;
-        resolved.semantic = req.semantic;
-        resolved.set_type = meta.set_type;
-        resolved.kind = req.kind;
-        resolved.stage_flags = req.stage_flags;
-        resolved.name = req.name_override ? req.name_override : meta.name;
-        resolved.struct_name = meta.struct_name;
-        resolved.glsl_type = meta.glsl_type;
-
-        return resolved;
-    }
-
     inline DescriptorSetType GetExpectedSetType(DescriptorSemantic semantic)
     {
         return GetDescriptorSemanticMeta(semantic).set_type;
@@ -325,30 +287,29 @@ namespace hgl::graph::mtl
         if (!descriptor_entries || descriptor_entry_count == 0)
             return contract;
 
-        contract.ubos.reserve(descriptor_entry_count);
-        contract.ssbos.reserve(descriptor_entry_count);
-
         for (uint32_t i = 0; i < descriptor_entry_count; ++i)
         {
             const FixedDescriptorEntry &entry = descriptor_entries[i];
 
-            if (entry.kind != DescriptorKind::UBO && entry.kind != DescriptorKind::SSBO)
-                continue;
-
-            DescriptorRequirement req;
-            req.semantic = entry.semantic;
-
-            req.kind = entry.kind;
-            req.stage_flags = entry.stage_flags;
-
-            const auto &meta = GetDescriptorSemanticMeta(req.semantic);
-            if (entry.name && (!_DBC_CStrEq(entry.name, meta.name) || req.semantic == DescriptorSemantic::Custom))
-                req.name_override = entry.name;
-
-            if (entry.kind == DescriptorKind::UBO)
-                contract.ubos.push_back(req);
-            else
-                contract.ssbos.push_back(req);
+            switch (entry.kind)
+            {
+            case DescriptorKind::UBO:
+            {
+                const auto semantic = ToUBODescriptorSemantic(entry.semantic);
+                if (semantic != UBODescriptorSemantic::Unknown)
+                    contract.ubos[semantic] |= entry.stage_flags;
+                break;
+            }
+            case DescriptorKind::SSBO:
+            {
+                const auto semantic = ToSSBODescriptorSemantic(entry.semantic);
+                if (semantic != SSBODescriptorSemantic::Unknown)
+                    contract.ssbos[semantic] |= entry.stage_flags;
+                break;
+            }
+            default:
+                break;
+            }
         }
 
         return contract;
@@ -369,32 +330,42 @@ namespace hgl::graph::mtl
     {
         diagnostics.clear();
 
-        auto validate_requirements = [&diagnostics](const std::vector<DescriptorRequirement> &requirements,
-                                                    const char *group_name)
+        auto validate_ubo_map = [&diagnostics](const std::map<UBODescriptorSemantic, uint32_t> &requirements)
         {
-            for (size_t i = 0; i < requirements.size(); ++i)
+            size_t i = 0;
+            for (const auto &[semantic, stage_flags] : requirements)
             {
-                const DescriptorRequirement &req = requirements[i];
-
-                if (req.semantic == DescriptorSemantic::Unknown)
+                if (semantic == UBODescriptorSemantic::Unknown)
                 {
-                    std::string message = std::string(group_name) + " requirement #" + std::to_string(i)
-                                          + " has semantic Unknown; string inference is removed, set explicit semantic or use Custom.";
-
-                    if (req.name_override && *req.name_override)
-                        message += " Name=" + std::string(req.name_override) + ".";
-
+                    std::string message = "UBO requirement #" + std::to_string(i)
+                                          + " has semantic Unknown; set explicit UBODescriptorSemantic.";
                     diagnostics.emplace_back(std::move(message));
-                    continue;
                 }
 
-                if (req.semantic == DescriptorSemantic::Custom)
-                    continue;
+                (void)stage_flags;
+                ++i;
             }
         };
 
-        validate_requirements(contract.ubos, "UBO");
-        validate_requirements(contract.ssbos, "SSBO");
+        auto validate_ssbo_map = [&diagnostics](const std::map<SSBODescriptorSemantic, uint32_t> &requirements)
+        {
+            size_t i = 0;
+            for (const auto &[semantic, stage_flags] : requirements)
+            {
+                if (semantic == SSBODescriptorSemantic::Unknown)
+                {
+                    std::string message = "SSBO requirement #" + std::to_string(i)
+                                          + " has semantic Unknown; set explicit SSBODescriptorSemantic.";
+                    diagnostics.emplace_back(std::move(message));
+                }
+
+                (void)stage_flags;
+                ++i;
+            }
+        };
+
+        validate_ubo_map(contract.ubos);
+        validate_ssbo_map(contract.ssbos);
 
         return diagnostics.empty();
     }
