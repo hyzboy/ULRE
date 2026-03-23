@@ -181,7 +181,13 @@ MaterialCreateInfo *CompileCompositorMaterial(
                 return nullptr;
             }
 
-            mci->AddTexture(ShaderStage(stage_bits), entry.set_type, entry.texture_type, entry.name);
+            {
+                SamplerSlot slot = SamplerSlot::BaseColor;
+                if(!TryGetSlotFromDescriptorName(entry.name,slot))
+                    return nullptr;
+
+                mci->AddTexture(ShaderStage(stage_bits), entry.set_type, entry.texture_type, slot);
+            }
             break;
 
         case DescriptorKind::TextureSampler:
@@ -190,7 +196,13 @@ MaterialCreateInfo *CompileCompositorMaterial(
                 return nullptr;
             }
 
-            mci->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, entry.sampler_type, entry.name);
+            {
+                SamplerSlot slot = SamplerSlot::BaseColor;
+                if(!TryGetSlotFromDescriptorName(entry.name,slot))
+                    return nullptr;
+
+                mci->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, entry.sampler_type, slot);
+            }
             break;
         }
     }

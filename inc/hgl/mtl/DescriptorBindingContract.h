@@ -47,6 +47,29 @@ namespace hgl::graph::mtl
         Custom,
     };
 
+    enum class UBODescriptorSemantic : uint8
+    {
+        Unknown = 0,
+        ViewportInfo,
+        CameraInfo,
+        SkyInfo,
+        ColorPattle,
+        Custom,
+    };
+
+    enum class SSBODescriptorSemantic : uint8
+    {
+        Unknown = 0,
+        TransformID,
+        LocalToWorld,
+        MaterialInstanceID,
+        MaterialInstance,
+        MaterialInstanceTextureID,
+        BoneJoint,
+        BoneJointWeight,
+        Custom,
+    };
+
     struct FixedDescriptorEntry
     {
         DescriptorSetType   set_type;
@@ -121,10 +144,22 @@ namespace hgl::graph::mtl
     };
 
     constexpr size_t DescriptorSemanticCount = size_t(DescriptorSemantic::Custom) + 1;
+    constexpr size_t UBODescriptorSemanticCount = size_t(UBODescriptorSemantic::Custom) + 1;
+    constexpr size_t SSBODescriptorSemanticCount = size_t(SSBODescriptorSemantic::Custom) + 1;
 
     constexpr bool IsBuiltinDescriptorSemantic(const DescriptorSemantic semantic)
     {
         return semantic > DescriptorSemantic::Unknown && semantic < DescriptorSemantic::Custom;
+    }
+
+    constexpr bool IsBuiltinDescriptorSemantic(const UBODescriptorSemantic semantic)
+    {
+        return semantic > UBODescriptorSemantic::Unknown && semantic < UBODescriptorSemantic::Custom;
+    }
+
+    constexpr bool IsBuiltinDescriptorSemantic(const SSBODescriptorSemantic semantic)
+    {
+        return semantic > SSBODescriptorSemantic::Unknown && semantic < SSBODescriptorSemantic::Custom;
     }
 
     constexpr DescriptorSemanticMeta DescriptorSemanticMetaList[] =
@@ -157,6 +192,71 @@ namespace hgl::graph::mtl
 
         return DescriptorSemanticMetaList[0];
     }
+
+    constexpr DescriptorSemantic ToDescriptorSemantic(const UBODescriptorSemantic semantic)
+    {
+        switch (semantic)
+        {
+        case UBODescriptorSemantic::ViewportInfo: return DescriptorSemantic::ViewportInfo;
+        case UBODescriptorSemantic::CameraInfo:   return DescriptorSemantic::CameraInfo;
+        case UBODescriptorSemantic::SkyInfo:      return DescriptorSemantic::SkyInfo;
+        case UBODescriptorSemantic::ColorPattle:  return DescriptorSemantic::ColorPattle;
+        case UBODescriptorSemantic::Custom:       return DescriptorSemantic::Custom;
+        case UBODescriptorSemantic::Unknown:
+        default:                                  return DescriptorSemantic::Unknown;
+        }
+    }
+
+    constexpr DescriptorSemantic ToDescriptorSemantic(const SSBODescriptorSemantic semantic)
+    {
+        switch (semantic)
+        {
+        case SSBODescriptorSemantic::TransformID:               return DescriptorSemantic::TransformID;
+        case SSBODescriptorSemantic::LocalToWorld:              return DescriptorSemantic::LocalToWorld;
+        case SSBODescriptorSemantic::MaterialInstanceID:        return DescriptorSemantic::MaterialInstanceID;
+        case SSBODescriptorSemantic::MaterialInstance:          return DescriptorSemantic::MaterialInstance;
+        case SSBODescriptorSemantic::MaterialInstanceTextureID: return DescriptorSemantic::MaterialInstanceTextureID;
+        case SSBODescriptorSemantic::BoneJoint:                 return DescriptorSemantic::BoneJoint;
+        case SSBODescriptorSemantic::BoneJointWeight:           return DescriptorSemantic::BoneJointWeight;
+        case SSBODescriptorSemantic::Custom:                    return DescriptorSemantic::Custom;
+        case SSBODescriptorSemantic::Unknown:
+        default:                                                return DescriptorSemantic::Unknown;
+        }
+    }
+
+    constexpr const DescriptorSemanticMeta &GetDescriptorSemanticMeta(const UBODescriptorSemantic semantic)
+    {
+        return GetDescriptorSemanticMeta(ToDescriptorSemantic(semantic));
+    }
+
+    constexpr const DescriptorSemanticMeta &GetDescriptorSemanticMeta(const SSBODescriptorSemantic semantic)
+    {
+        return GetDescriptorSemanticMeta(ToDescriptorSemantic(semantic));
+    }
+
+    static_assert(GetDescriptorSemanticMeta(UBODescriptorSemantic::ViewportInfo).default_kind == DescriptorKind::UBO,
+                  "UBODescriptorSemantic::ViewportInfo must map to UBO kind");
+    static_assert(GetDescriptorSemanticMeta(UBODescriptorSemantic::CameraInfo).default_kind == DescriptorKind::UBO,
+                  "UBODescriptorSemantic::CameraInfo must map to UBO kind");
+    static_assert(GetDescriptorSemanticMeta(UBODescriptorSemantic::SkyInfo).default_kind == DescriptorKind::UBO,
+                  "UBODescriptorSemantic::SkyInfo must map to UBO kind");
+    static_assert(GetDescriptorSemanticMeta(UBODescriptorSemantic::ColorPattle).default_kind == DescriptorKind::UBO,
+                  "UBODescriptorSemantic::ColorPattle must map to UBO kind");
+
+    static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::TransformID).default_kind == DescriptorKind::SSBO,
+                  "SSBODescriptorSemantic::TransformID must map to SSBO kind");
+    static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::LocalToWorld).default_kind == DescriptorKind::SSBO,
+                  "SSBODescriptorSemantic::LocalToWorld must map to SSBO kind");
+    static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstanceID).default_kind == DescriptorKind::SSBO,
+                  "SSBODescriptorSemantic::MaterialInstanceID must map to SSBO kind");
+    static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstance).default_kind == DescriptorKind::SSBO,
+                  "SSBODescriptorSemantic::MaterialInstance must map to SSBO kind");
+    static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstanceTextureID).default_kind == DescriptorKind::SSBO,
+                  "SSBODescriptorSemantic::MaterialInstanceTextureID must map to SSBO kind");
+    static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::BoneJoint).default_kind == DescriptorKind::SSBO,
+                  "SSBODescriptorSemantic::BoneJoint must map to SSBO kind");
+    static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::BoneJointWeight).default_kind == DescriptorKind::SSBO,
+                  "SSBODescriptorSemantic::BoneJointWeight must map to SSBO kind");
 
     inline bool _DBC_CStrEq(const char *lhs, const char *rhs)
     {
@@ -192,6 +292,18 @@ namespace hgl::graph::mtl
             SamplerType::Error,
             semantic
         };
+    }
+
+    constexpr FixedDescriptorEntry MakeFixedDescriptorEntry(const UBODescriptorSemantic semantic,
+                                                            const uint32_t stage_flags)
+    {
+        return MakeFixedDescriptorEntry(ToDescriptorSemantic(semantic),stage_flags);
+    }
+
+    constexpr FixedDescriptorEntry MakeFixedDescriptorEntry(const SSBODescriptorSemantic semantic,
+                                                            const uint32_t stage_flags)
+    {
+        return MakeFixedDescriptorEntry(ToDescriptorSemantic(semantic),stage_flags);
     }
 
     inline FixedDescriptorEntry MakeTextureDescriptorEntry(const SamplerSlot slot,

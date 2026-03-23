@@ -26,6 +26,16 @@ constexpr ShaderBufferSource MakeShaderBufferSourceBySemantic(const DescriptorSe
     };
 }
 
+constexpr ShaderBufferSource MakeShaderBufferSourceBySemantic(const UBODescriptorSemantic semantic)
+{
+    return MakeShaderBufferSourceBySemantic(ToDescriptorSemantic(semantic));
+}
+
+constexpr ShaderBufferSource MakeShaderBufferSourceBySemantic(const SSBODescriptorSemantic semantic)
+{
+    return MakeShaderBufferSourceBySemantic(ToDescriptorSemantic(semantic));
+}
+
 inline constexpr ShaderBufferSource SBS_ViewportInfo = MakeShaderBufferSourceBySemantic(DescriptorSemantic::ViewportInfo);
 inline constexpr ShaderBufferSource SBS_CameraInfo = MakeShaderBufferSourceBySemantic(DescriptorSemantic::CameraInfo);
 inline constexpr ShaderBufferSource SBS_LocalToWorld = MakeShaderBufferSourceBySemantic(DescriptorSemantic::LocalToWorld);

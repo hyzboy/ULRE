@@ -22,6 +22,9 @@ class MaterialDescriptorInfo
     UBODescriptor  *ubo_by_semantic [mtl::DescriptorSemanticCount] = {};
     SSBODescriptor *ssbo_by_semantic[mtl::DescriptorSemanticCount] = {};
 
+    TextureDescriptor        *texture_by_slot        [mtl::SamplerSlotCount] = {};
+    TextureSamplerDescriptor *texture_sampler_by_slot[mtl::SamplerSlotCount] = {};
+
     ankerl::unordered_dense::map<std::string,TextureDescriptor *> texture_map;
     ankerl::unordered_dense::map<std::string,TextureSamplerDescriptor *> texture_sampler_map;
 
@@ -93,6 +96,8 @@ public:
     SSBODescriptor *GetSSBO(const std::string &name);
     TextureDescriptor *GetTexture(const std::string &name);
     TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
+    TextureDescriptor *GetTexture(mtl::SamplerSlot slot);
+    TextureSamplerDescriptor *GetTextureSampler(mtl::SamplerSlot slot);
     UBODescriptor *GetUBO(const char *name){return GetUBO(std::string(name?name:""));}
     SSBODescriptor *GetSSBO(const char *name){return GetSSBO(std::string(name?name:""));}
     TextureDescriptor *GetTexture(const char *name){return GetTexture(std::string(name?name:""));}
@@ -100,6 +105,8 @@ public:
 
     UBODescriptor  *GetUBO (mtl::DescriptorSemantic semantic);
     SSBODescriptor *GetSSBO(mtl::DescriptorSemantic semantic);
+    UBODescriptor  *GetUBO (mtl::UBODescriptorSemantic semantic);
+    SSBODescriptor *GetSSBO(mtl::SSBODescriptorSemantic semantic);
 
     const DescriptorSetType GetSetType(const std::string &name)const;
     const DescriptorSetType GetSetType(const char *name)const

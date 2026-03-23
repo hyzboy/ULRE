@@ -79,6 +79,13 @@ const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stag
     ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
 
     texture_map[obj->name] = (TextureDescriptor *)obj;
+
+    {
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        if(mtl::TryGetSlotFromDescriptorName(obj->name,slot))
+            texture_by_slot[size_t(slot)] = static_cast<TextureDescriptor *>(obj);
+    }
+
     return((TextureDescriptor *)obj);
 }
 
@@ -92,6 +99,13 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
     texture_sampler_map[obj->name] = (TextureSamplerDescriptor *)obj;
+
+    {
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        if(mtl::TryGetSlotFromDescriptorName(obj->name,slot))
+            texture_sampler_by_slot[size_t(slot)] = static_cast<TextureSamplerDescriptor *>(obj);
+    }
+
     return((TextureSamplerDescriptor *)obj);
 }
 
@@ -111,6 +125,11 @@ UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::DescriptorSemantic semantic)
     return nullptr;
 }
 
+UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
+{
+    return GetUBO(mtl::ToDescriptorSemantic(semantic));
+}
+
 SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const std::string &name)
 {
     const auto iter=ssbo_map.find(name);
@@ -127,6 +146,11 @@ SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::DescriptorSemantic semantic
     return nullptr;
 }
 
+SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic semantic)
+{
+    return GetSSBO(mtl::ToDescriptorSemantic(semantic));
+}
+
 TextureDescriptor *MaterialDescriptorInfo::GetTexture(const std::string &name)
 {
     const auto iter=texture_map.find(name);
@@ -136,6 +160,15 @@ TextureDescriptor *MaterialDescriptorInfo::GetTexture(const std::string &name)
     return(nullptr);
 }
 
+TextureDescriptor *MaterialDescriptorInfo::GetTexture(mtl::SamplerSlot slot)
+{
+    const size_t index=size_t(slot);
+    if(index>=mtl::SamplerSlotCount)
+        return nullptr;
+
+    return texture_by_slot[index];
+}
+
 TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::string &name)
 {
     const auto iter=texture_sampler_map.find(name);
@@ -143,6 +176,15 @@ TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(const std::s
         return iter->second;
 
     return(nullptr);
+}
+
+TextureSamplerDescriptor *MaterialDescriptorInfo::GetTextureSampler(mtl::SamplerSlot slot)
+{
+    const size_t index=size_t(slot);
+    if(index>=mtl::SamplerSlotCount)
+        return nullptr;
+
+    return texture_sampler_by_slot[index];
 }
 
 void MaterialDescriptorInfo::Resort()

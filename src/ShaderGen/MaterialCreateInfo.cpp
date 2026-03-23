@@ -252,9 +252,19 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSeman
     return AddUBOStruct(uint32_t(flag_bit),semantic);
 }
 
+bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const UBODescriptorSemantic semantic)
+{
+    return AddUBO(flag_bit,ToDescriptorSemantic(semantic));
+}
+
 bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSemantic semantic)
 {
     return AddUBOStruct(flag_bits,semantic);
+}
+
+bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const UBODescriptorSemantic semantic)
+{
+    return AddUBO(flag_bits,ToDescriptorSemantic(semantic));
 }
 
 bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
@@ -297,6 +307,11 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const DescriptorS
     return AddResolvedUBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
 }
 
+bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const UBODescriptorSemantic semantic)
+{
+    return AddUBOStruct(flag_bits,ToDescriptorSemantic(semantic));
+}
+
 bool MaterialCreateInfo::AddResolvedSSBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const DescriptorSemantic semantic,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
@@ -327,9 +342,19 @@ bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSema
     return AddSSBOStruct(uint32_t(flag_bit),semantic);
 }
 
+bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const SSBODescriptorSemantic semantic)
+{
+    return AddSSBO(flag_bit,ToDescriptorSemantic(semantic));
+}
+
 bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSemantic semantic)
 {
     return AddSSBOStruct(flag_bits,semantic);
+}
+
+bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const SSBODescriptorSemantic semantic)
+{
+    return AddSSBO(flag_bits,ToDescriptorSemantic(semantic));
 }
 
 bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const std::string &struct_name,const std::string &name)
@@ -372,6 +397,11 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const Descriptor
     return AddResolvedSSBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
 }
 
+bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const SSBODescriptorSemantic semantic)
+{
+    return AddSSBOStruct(flag_bits,ToDescriptorSemantic(semantic));
+}
+
 bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
@@ -393,6 +423,11 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorS
     return sc->AddTexture(set_type,texture);
 }
 
+bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const DescriptorSetType set_type,const TextureType &tt,const SamplerSlot slot)
+{
+    return AddTexture(flag_bit,set_type,tt,ToDescriptorName(slot));
+}
+
 bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
@@ -412,6 +447,11 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Desc
         return false;
 
     return sc->AddTextureSampler(set_type,image_sampler);
+}
+
+bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const SamplerSlot slot)
+{
+    return AddTextureSampler(flag_bit,set_type,st,ToDescriptorName(slot));
 }
 
 /**

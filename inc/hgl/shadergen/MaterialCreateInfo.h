@@ -82,6 +82,17 @@ namespace hgl::graph
 
             bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
+            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const std::string &name);
+            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const std::string &name);
+            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const char *name)
+            {
+                return AddTexture(flag_bits,set_type,tt,std::string(name?name:""));
+            }
+            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const char *name)
+            {
+                return AddTextureSampler(flag_bits,set_type,st,std::string(name?name:""));
+            }
+
         public:
 
             const PrimitiveType GetPrimitiveType()const{return config.prim;}
@@ -147,20 +158,20 @@ namespace hgl::graph
             bool AddUBO(const uint32_t flag_bits,const DescriptorSemantic semantic);
             bool AddUBOStruct(const uint32_t flag_bits,const DescriptorSemantic semantic);
 
+            bool AddUBO(const ShaderStage flag_bits,const UBODescriptorSemantic semantic);
+            bool AddUBO(const uint32_t flag_bits,const UBODescriptorSemantic semantic);
+            bool AddUBOStruct(const uint32_t flag_bits,const UBODescriptorSemantic semantic);
+
             bool AddSSBO(const ShaderStage flag_bits,const DescriptorSemantic semantic);
             bool AddSSBO(const uint32_t flag_bits,const DescriptorSemantic semantic);
             bool AddSSBOStruct(const uint32_t flag_bits,const DescriptorSemantic semantic);
 
-            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const std::string &name);
-            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const std::string &name);
-            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const char *name)
-            {
-                return AddTexture(flag_bits,set_type,tt,std::string(name?name:""));
-            }
-            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const char *name)
-            {
-                return AddTextureSampler(flag_bits,set_type,st,std::string(name?name:""));
-            }
+            bool AddSSBO(const ShaderStage flag_bits,const SSBODescriptorSemantic semantic);
+            bool AddSSBO(const uint32_t flag_bits,const SSBODescriptorSemantic semantic);
+            bool AddSSBOStruct(const uint32_t flag_bits,const SSBODescriptorSemantic semantic);
+
+            bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const SamplerSlot slot);
+            bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const SamplerSlot slot);
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class MaterialCreateInfo
