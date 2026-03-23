@@ -124,7 +124,7 @@ namespace hgl::graph::mtl
 
     constexpr bool IsBuiltinDescriptorSemantic(const DescriptorSemantic semantic)
     {
-        return semantic != DescriptorSemantic::Unknown && semantic != DescriptorSemantic::Custom;
+        return semantic > DescriptorSemantic::Unknown && semantic < DescriptorSemantic::Custom;
     }
 
     constexpr DescriptorSemanticMeta DescriptorSemanticMetaList[] =

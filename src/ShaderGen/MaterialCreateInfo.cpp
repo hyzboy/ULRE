@@ -81,30 +81,25 @@ static const UBODescriptor *ResolveUBODescriptor(
     const std::string &name,
     const DescriptorSemantic semantic = DescriptorSemantic::Unknown)
 {
-    UBODescriptor *ubo=mdi.GetUBO(name);
-
-    if(ubo)
+    if(IsBuiltinDescriptorSemantic(semantic))
     {
-        if(std::strcmp(ubo->type.c_str()?ubo->type.c_str():"",struct_name.c_str())!=0)
-            return nullptr;
+        UBODescriptor *ubo = mdi.GetUBO(semantic);
+        if(ubo)
+        {
+            if(std::strcmp(ubo->type.c_str()?ubo->type.c_str():"",struct_name.c_str())!=0)
+                return nullptr;
+            ubo->stage_flag|=(uint32_t)flag_bit;
+            return ubo;
+        }
 
-        if(semantic!=DescriptorSemantic::Unknown
-        &&ubo->semantic!=DescriptorSemantic::Unknown
-        &&ubo->semantic!=semantic)
-            return nullptr;
-
-        ubo->stage_flag|=(uint32_t)flag_bit;
-        if(semantic!=DescriptorSemantic::Unknown)
-            ubo->semantic=semantic;
-        return ubo;
+        ubo=new UBODescriptor();
+        ubo->type=struct_name.c_str();
+        hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+        ubo->semantic=semantic;
+        return mdi.AddUBO((uint32_t)flag_bit,set_type,ubo);
     }
 
-    ubo=new UBODescriptor();
-    ubo->type=struct_name.c_str();
-    hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-    ubo->semantic=semantic;
-
-    return mdi.AddUBO((uint32_t)flag_bit,set_type,ubo);
+    return nullptr;
 }
 
 static const SSBODescriptor *ResolveSSBODescriptor(
@@ -115,30 +110,25 @@ static const SSBODescriptor *ResolveSSBODescriptor(
     const std::string &name,
     const DescriptorSemantic semantic = DescriptorSemantic::Unknown)
 {
-    SSBODescriptor *ssbo=mdi.GetSSBO(name);
-
-    if(ssbo)
+    if(IsBuiltinDescriptorSemantic(semantic))
     {
-        if(std::strcmp(ssbo->type.c_str()?ssbo->type.c_str():"",struct_name.c_str())!=0)
-            return nullptr;
+        SSBODescriptor *ssbo = mdi.GetSSBO(semantic);
+        if(ssbo)
+        {
+            if(std::strcmp(ssbo->type.c_str()?ssbo->type.c_str():"",struct_name.c_str())!=0)
+                return nullptr;
+            ssbo->stage_flag|=(uint32_t)flag_bit;
+            return ssbo;
+        }
 
-        if(semantic!=DescriptorSemantic::Unknown
-        &&ssbo->semantic!=DescriptorSemantic::Unknown
-        &&ssbo->semantic!=semantic)
-            return nullptr;
-
-        ssbo->stage_flag|=(uint32_t)flag_bit;
-        if(semantic!=DescriptorSemantic::Unknown)
-            ssbo->semantic=semantic;
-        return ssbo;
+        ssbo=new SSBODescriptor();
+        ssbo->type=struct_name.c_str();
+        hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
+        ssbo->semantic=semantic;
+        return mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
     }
 
-    ssbo=new SSBODescriptor();
-    ssbo->type=struct_name.c_str();
-    hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-    ssbo->semantic=semantic;
-
-    return mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
+    return nullptr;
 }
 
 static const TextureDescriptor *ResolveTextureDescriptor(
@@ -494,7 +484,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
         return(false);
 
-    local_to_world_ssbo=descriptor_db.GetSSBO(SBS_LocalToWorld.name);
+    local_to_world_ssbo=descriptor_db.GetSSBO(DescriptorSemantic::LocalToWorld);
 
     local_to_world_stage_bits=shader_stage_flag_bits;
 
