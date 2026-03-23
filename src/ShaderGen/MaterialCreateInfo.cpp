@@ -249,21 +249,11 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
 
 bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSemantic semantic)
 {
-    const DescriptorSemanticMeta *meta = nullptr;
-
-    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::UBO,meta))
-        return false;
-
     return AddUBOStruct(uint32_t(flag_bit),semantic);
 }
 
 bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSemantic semantic)
 {
-    const DescriptorSemanticMeta *meta = nullptr;
-
-    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::UBO,meta))
-        return false;
-
     return AddUBOStruct(flag_bits,semantic);
 }
 
@@ -334,21 +324,11 @@ bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSetT
 
 bool MaterialCreateInfo::AddSSBO(const ShaderStage flag_bit,const DescriptorSemantic semantic)
 {
-    const DescriptorSemanticMeta *meta = nullptr;
-
-    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::SSBO,meta))
-        return false;
-
     return AddSSBOStruct(uint32_t(flag_bit),semantic);
 }
 
 bool MaterialCreateInfo::AddSSBO(const uint32_t flag_bits,const DescriptorSemantic semantic)
 {
-    const DescriptorSemanticMeta *meta = nullptr;
-
-    if(!ResolveDescriptorSemanticMetaForKind(semantic,DescriptorKind::SSBO,meta))
-        return false;
-
     return AddSSBOStruct(flag_bits,semantic);
 }
 

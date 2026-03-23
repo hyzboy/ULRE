@@ -143,22 +143,12 @@ MaterialCreateInfo *CompileCompositorMaterial(
                 break;
             }
 
-            if (entry.semantic != DescriptorSemantic::Unknown && entry.semantic != DescriptorSemantic::Custom)
+            if (IsBuiltinDescriptorSemantic(entry.semantic))
             {
                 if (mci->AddUBO(stage_bits, entry.semantic))
                     break;
             }
 
-            // 暂时禁用按 struct_name 的回退查找，仅使用 semantic 驱动绑定。
-            //if (entry.struct_name)
-            //{
-            //    // Custom UBO via private/global ShaderBufferSource registry
-            //    if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
-            //    {
-            //        mci->AddUBOStruct(stage_bits, *sbs);
-            //        break;
-            //    }
-            //}
             break;
         }
 
@@ -176,22 +166,12 @@ MaterialCreateInfo *CompileCompositorMaterial(
                 break;
             }
 
-            if (entry.semantic != DescriptorSemantic::Unknown && entry.semantic != DescriptorSemantic::Custom)
+            if (IsBuiltinDescriptorSemantic(entry.semantic))
             {
                 if (mci->AddSSBO(stage_bits, entry.semantic))
                     break;
             }
 
-            // 暂时禁用按 struct_name 的回退查找，仅使用 semantic 驱动绑定。
-            //if (entry.struct_name)
-            //{
-            //    // Custom SSBO via private/global ShaderBufferSource registry
-            //    if (const ShaderBufferSource *sbs = ResolveShaderBufferSourceByStructName(&cfg, entry.struct_name))
-            //    {
-            //        mci->AddSSBOStruct(stage_bits, *sbs);
-            //        break;
-            //    }
-            //}
             break;
         }
 
