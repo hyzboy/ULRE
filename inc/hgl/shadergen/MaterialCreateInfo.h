@@ -69,8 +69,20 @@ namespace hgl::graph
                     bool        hasFragment     ()const{return hasShader(ShaderStage::Fragment);}
         //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}
 
-            ShaderCreateInfo *         GetStageShader(const ShaderStage ss){return shader_map[ss];}
-            const ShaderCreateInfo *   GetStageShader(const ShaderStage ss)const{return shader_map[ss];}
+            ShaderCreateInfo *GetStageShader(const ShaderStage ss)
+            {
+                if(!shader_map.ContainsKey(ss))
+                    return nullptr;
+
+                return shader_map[ss];
+            }
+            const ShaderCreateInfo *GetStageShader(const ShaderStage ss)const
+            {
+                if(!shader_map.ContainsKey(ss))
+                    return nullptr;
+
+                return shader_map[ss];
+            }
 
             ShaderCreateInfoVertex *           GetVertexShader(){return reinterpret_cast<ShaderCreateInfoVertex *>(GetStageShader(ShaderStage::Vertex));}
             const ShaderCreateInfoVertex *     GetVertexShader()const{return reinterpret_cast<const ShaderCreateInfoVertex *>(GetStageShader(ShaderStage::Vertex));}
