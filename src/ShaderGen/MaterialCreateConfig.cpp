@@ -43,24 +43,6 @@ std::string MaterialCreateConfig::ToHashStdString()
     else
         hash+="UnknownPrim";
 
-    if(private_shader_buffer_source_count>0)
-    {
-        hash+="_PS";
-        const std::string pss_count_str=std::to_string(private_shader_buffer_source_count);
-        hash+=pss_count_str;
-
-        for(uint32 i=0;i<private_shader_buffer_source_count;++i)
-        {
-            hash+="_";
-
-            const ShaderBufferSource *sbs=private_shader_buffer_sources?private_shader_buffer_sources[i]:nullptr;
-            if(sbs&&sbs->struct_name)
-                hash+=sbs->struct_name;
-            else
-                hash+="null";
-        }
-    }
-
     return hash;
 }
 

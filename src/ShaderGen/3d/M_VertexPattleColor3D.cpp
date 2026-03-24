@@ -42,12 +42,6 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
 {
     Material3DCreateConfig local_cfg = cfg ? *cfg : Material3DCreateConfig();
 
-    static const ShaderBufferSource * const private_sbs_list[] =
-    {
-        &SBS_ColorPattle
-    };
-    local_cfg.SetPrivateShaderBufferSources(private_sbs_list,1);
-
     MaterialVariantKey var_key;
     var_key.SetVertexAttribEnabled(VertexAttrib::Color);
     var_key.SetDebugShading(true);

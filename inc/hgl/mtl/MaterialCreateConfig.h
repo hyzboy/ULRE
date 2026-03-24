@@ -27,16 +27,7 @@ struct MaterialCreateConfig
 
     bool                        local_to_world;             ///<包含LocalToWorld矩阵
 
-    const ShaderBufferSource *const * private_shader_buffer_sources;       ///<私有ShaderBufferSource列表（材质独占）
-    uint32                              private_shader_buffer_source_count; ///<私有ShaderBufferSource数量
-
 public:
-
-    void SetPrivateShaderBufferSources(const ShaderBufferSource *const *list,const uint32 count)
-    {
-        private_shader_buffer_sources=list;
-        private_shader_buffer_source_count=count;
-    }
 
     const uint32 enableVertexShader     () { return shader_stage_flag_bit|=(uint32)ShaderStage::Vertex; }
     const uint32 enableGeometryShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Geometry; }
@@ -60,9 +51,6 @@ public:
         prim=p;
 
         local_to_world=l2w;
-
-        private_shader_buffer_sources=nullptr;
-        private_shader_buffer_source_count=0;
     }
 
     std::strong_ordering operator<=>(const MaterialCreateConfig &cfg)const
@@ -78,24 +66,6 @@ public:
 
         if(auto cmp=local_to_world<=>cfg.local_to_world;cmp!=0)
             return cmp;
-
-        if(auto cmp=private_shader_buffer_source_count<=>cfg.private_shader_buffer_source_count;cmp!=0)
-            return cmp;
-
-        for(uint32 i=0;i<private_shader_buffer_source_count;++i)
-        {
-            const ShaderBufferSource *lhs=private_shader_buffer_sources?private_shader_buffer_sources[i]:nullptr;
-            const ShaderBufferSource *rhs=cfg.private_shader_buffer_sources?cfg.private_shader_buffer_sources[i]:nullptr;
-
-            const char *lhs_name=(lhs&&lhs->struct_name)?lhs->struct_name:"";
-            const char *rhs_name=(rhs&&rhs->struct_name)?rhs->struct_name:"";
-
-            const int cmp=std::strcmp(lhs_name,rhs_name);
-            if(cmp<0)
-                return std::strong_ordering::less;
-            if(cmp>0)
-                return std::strong_ordering::greater;
-        }
 
         return shader_stage_flag_bit<=>cfg.shader_stage_flag_bit;
     }

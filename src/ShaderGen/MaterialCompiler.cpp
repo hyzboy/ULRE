@@ -259,8 +259,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
         cfg3d.rt_output                         = config->rt_output;
         cfg3d.material_instance                 = config->material_instance;
         cfg3d.shader_stage_flag_bit             = config->shader_stage_flag_bit;
-        cfg3d.private_shader_buffer_sources     = config->private_shader_buffer_sources;
-        cfg3d.private_shader_buffer_source_count= config->private_shader_buffer_source_count;
     }
 
     return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);

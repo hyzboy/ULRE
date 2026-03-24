@@ -17,7 +17,7 @@ namespace hgl::graph::mtl
         Height,
         Opacity,
         Text,
-        
+
         ENUM_CLASS_RANGE(BaseColor, Text)
     };
 
