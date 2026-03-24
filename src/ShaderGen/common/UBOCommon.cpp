@@ -40,32 +40,4 @@ SSBODescriptor *CreateSSBODescriptor(const SSBODescriptorSemantic semantic,const
 
     return ssbo;
 }
-
-const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_name)
-{
-    if(!struct_name||!*struct_name)
-        return nullptr;
-
-    static const ShaderBufferSource *const sbs_list[] =
-    {
-        &SBS_ViewportInfo,
-        &SBS_CameraInfo,
-        &SBS_SkyInfo,
-        &SBS_LocalToWorld,
-        &SBS_TransformID,
-        &SBS_MaterialInstanceID,
-        &SBS_MaterialInstance,
-        &SBS_MaterialInstanceTextureID,
-        &SBS_ColorPattle,
-        &SBS_JointInfo,
-    };
-
-    for (const ShaderBufferSource *sbs : sbs_list)
-    {
-        if (sbs && CStrEq(struct_name, sbs->struct_name))
-            return sbs;
-    }
-
-    return nullptr;
-}
 }//namespace hgl::graph::mtl

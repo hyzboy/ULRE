@@ -13,9 +13,4 @@ namespace hgl::graph
 
         const char *name;
     };
-
-    struct ShaderBufferSource:public ShaderBufferDesc
-    {
-        const char *struct_name;
-    };
 }//namespace hgl::graph

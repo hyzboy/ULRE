@@ -182,17 +182,12 @@ namespace hgl::ecs
 
         LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
-        const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::LocalToWorld,
-                                               transform_buffer->GetGPUBuffer());
-        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO set_type=%d name=%s",
-                 static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
-                 hgl::graph::mtl::SBS_LocalToWorld.name);
+        const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::LocalToWorld,transform_buffer->GetGPUBuffer());
+        GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO ");
 
         if (!l2w_bind_ok)
         {
-            GLogWarning("[TransformAssignmentBuffer::BindTransform] LocalToWorld bind failed: set_type=%d name=%s",
-                        static_cast<int>(hgl::graph::mtl::SBS_LocalToWorld.set_type),
-                        hgl::graph::mtl::SBS_LocalToWorld.name);
+            GLogWarning("[TransformAssignmentBuffer::BindTransform] LocalToWorld bind failed");
         }
 
         BindTransformID(mtl);
@@ -226,14 +221,11 @@ namespace hgl::ecs
         if (!gpu)
             return;
 
-        const bool tid_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformID,
-                                               gpu);
+        const bool tid_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::TransformID,gpu);
 
         if (!tid_bind_ok)
         {
-            GLogWarning("[TransformAssignmentBuffer::BindTransformID] TransformID bind failed: set_type=%d name=%s",
-                        static_cast<int>(hgl::graph::mtl::SBS_TransformID.set_type),
-                        hgl::graph::mtl::SBS_TransformID.name);
+            GLogWarning("[TransformAssignmentBuffer::BindTransformID] TransformID bind failed");
         }
     }
 

@@ -8,6 +8,11 @@
 
 namespace hgl{namespace graph{
 
+namespace mtl
+{
+    constexpr const char MaterialInstanceStruct[]="MaterialInstance";
+}
+
 static const char *GetShaderStageNameByStage(const ShaderStage stage)
 {
     switch (stage)

@@ -1,8 +1,5 @@
 #pragma once
 
-#include <hgl/type/String.h>
-#include <hgl/type/ValueArray.h>
-#include <hgl/type/UnorderedMap.h>
 #include <map>
 #include <vulkan/vulkan.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
