@@ -111,9 +111,9 @@ public:
         return BindTextureSampler(SET_TYPE_TEXTURE,slot,tex,sampler);
     }
 
-    bool BindUBO(const DescriptorSetType &type,const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindUBO(const mtl::UBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
     bool BindUBO(const UBOAccessorBase *ubo,bool dynamic=false);
-    bool BindSSBO(const DescriptorSetType &type,const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
+    bool BindSSBO(const mtl::SSBODescriptorSemantic semantic,const IGPUBuffer *gpu,bool dynamic=false);
 
     template<typename T,mtl::UBODescriptorSemantic Semantic>
     bool BindUBO(const UBOAccessor<T,Semantic> *ubo,bool dynamic=false)
@@ -121,15 +121,9 @@ public:
         if(!ubo)
             return false;
 
-        return BindUBO(UBOAccessor<T,Semantic>::GetDefaultSetType(),
-                       UBOAccessor<T,Semantic>::GetSemantic(),
+        return BindUBO(Semantic,
                        ubo->GetGPUBuffer(),
                        dynamic);
-    }
-
-    bool BindSSBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
-    {
-        return BindSSBO(sbd->set_type,sbd->ssbo_semantic,gpu,dynamic);
     }
 
     void Update();

@@ -313,8 +313,7 @@ namespace hgl::ecs
             if (!guard.material_instance_buffer)
                 return nullptr;
 
-            if (!guard.material->BindSSBO(graph::mtl::SBS_MaterialInstance.set_type,
-                                          graph::mtl::SBS_MaterialInstance.ssbo_semantic,
+            if (!guard.material->BindSSBO(graph::mtl::SBS_MaterialInstance.ssbo_semantic,
                                           guard.material_instance_buffer->GetGPUBuffer()))
                 return nullptr;
 
