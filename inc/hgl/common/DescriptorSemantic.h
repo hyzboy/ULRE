@@ -12,6 +12,7 @@ namespace hgl::graph::mtl
         TextureSampler,
     };
 
+    //[[deprecated("Use UBODescriptorSemantic or SSBODescriptorSemantic for new APIs")]]
     enum class DescriptorSemantic : uint8
     {
         Unknown = 0,

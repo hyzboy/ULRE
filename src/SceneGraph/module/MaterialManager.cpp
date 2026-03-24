@@ -475,7 +475,7 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if (mat)
     {
         uint8_t flags = 0;
-        for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::Count); ++s)
+        for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
             if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
                 flags |= (1u << s);
         mat->SetTextureArraySlotFlags(flags);
@@ -531,7 +531,7 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if (mat)
     {
         uint8_t flags = 0;
-        for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::Count); ++s)
+        for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
             if (key.GetTextureSourceMode(mtl::SamplerSlot(s)) == mtl::TextureSourceMode::Array)
                 flags |= (1u << s);
         mat->SetTextureArraySlotFlags(flags);

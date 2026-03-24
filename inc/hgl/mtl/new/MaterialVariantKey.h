@@ -54,7 +54,7 @@ namespace hgl::graph::mtl
         PassType          pass_hint           = PassType::ForwardOpaque;
 
         static constexpr uint32 TextureSourceBitsPerSlot = 2;
-        static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::Count);
+        static constexpr uint32 TextureSourceSlotCount   = uint32(SamplerSlot::RANGE_SIZE);
         static constexpr uint32 TextureSourceMask        = (1u << TextureSourceBitsPerSlot) - 1u;
 
         void SetTextureSourceMode(const SamplerSlot slot, const TextureSourceMode mode) noexcept

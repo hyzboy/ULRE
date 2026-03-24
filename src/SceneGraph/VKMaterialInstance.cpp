@@ -104,7 +104,7 @@ void MaterialInstance::InitMITLayout(uint8_t slot_flags)
     if (!slot_flags) return;
 
     uint32_t offset = 0;
-    for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::Count); ++s)
+    for (uint8_t s = 0; s < uint8_t(mtl::SamplerSlot::RANGE_SIZE); ++s)
     {
         if (slot_flags & (1u << s))
         {

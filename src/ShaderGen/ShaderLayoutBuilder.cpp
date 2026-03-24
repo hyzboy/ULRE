@@ -110,11 +110,11 @@ std::string GetDescriptorBindingMacroName(const ShaderDescriptor *sd)
 
     // For Texture/TextureSampler: lookup by slot (if available)
     const auto *tex_sd = dynamic_cast<const TextureDescriptor *>(sd);
-    if (tex_sd && tex_sd->slot != mtl::SamplerSlot::Count)
+    if (tex_sd && RangeCheck(tex_sd->slot))
         return mtl::ToBindingMacroName(tex_sd->slot);
 
     const auto *tex_sampler_sd = dynamic_cast<const TextureSamplerDescriptor *>(sd);
-    if (tex_sampler_sd && tex_sampler_sd->slot != mtl::SamplerSlot::Count)
+    if (tex_sampler_sd && RangeCheck(tex_sampler_sd->slot))
         return mtl::ToBindingMacroName(tex_sampler_sd->slot);
 
     // Fallback: use descriptor name directly (for custom descriptors)
@@ -135,7 +135,7 @@ static void AppendDescriptorBindingMacros(ShaderLayoutContract &contract,
     // Keep legacy short aliases for older shaders that still reference TEX_* names.
     // (Only for texture descriptors with known slots)
     const auto *tex_sd = dynamic_cast<const TextureSamplerDescriptor *>(sd);
-    if (!tex_sd || tex_sd->slot == mtl::SamplerSlot::Count)
+    if (!tex_sd || !RangeCheck(tex_sd->slot))
         return;
 
     const size_t slot_index = size_t(tex_sd->slot);

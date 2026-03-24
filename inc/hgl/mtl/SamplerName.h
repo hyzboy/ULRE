@@ -17,7 +17,8 @@ namespace hgl::graph::mtl
         Height,
         Opacity,
         Text,
-        Count
+        
+        ENUM_CLASS_RANGE(BaseColor, Text)
     };
 
     enum class TextureSourceMode : uint8
@@ -30,7 +31,7 @@ namespace hgl::graph::mtl
         ENUM_CLASS_RANGE(None, Atlas)
     };
 
-    constexpr size_t SamplerSlotCount = size_t(SamplerSlot::Count);
+    constexpr size_t SamplerSlotCount = size_t(SamplerSlot::RANGE_SIZE);
 
     // The single authoritative slot-name list (must match SamplerSlot order).
     constexpr const char *SamplerSlotNameList[] =
@@ -192,7 +193,7 @@ namespace hgl::graph::mtl
         if (!descriptor_name || !*descriptor_name)
             return false;
 
-        for (uint8_t i = 0; i < static_cast<uint8_t>(SamplerSlot::Count); ++i)
+        for (uint8_t i = 0; i < static_cast<uint8_t>(SamplerSlot::RANGE_SIZE); ++i)
         {
             const SamplerSlot current = static_cast<SamplerSlot>(i);
             const char *current_name = ToDescriptorName(current);
