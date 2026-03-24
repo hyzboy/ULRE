@@ -443,7 +443,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
     material_instance_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
-    material_instance_ssbo=CreateSSBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
+    material_instance_ssbo=CreateSSBODescriptor(SSBODescriptorSemantic::MaterialInstance,shader_stage_flag_bits);
 
     descriptor_db.AddSSBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,material_instance_ssbo);
 

@@ -42,7 +42,7 @@ namespace hgl::ecs
         if (!gpu)
             return;
 
-        mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstanceID.ssbo_semantic,
+        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceID,
                       gpu);
     }
 
@@ -55,7 +55,7 @@ namespace hgl::ecs
         if (!gpu)
             return;
 
-        mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstanceTextureID.ssbo_semantic,
+        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID,
                       gpu);
     }
 
@@ -73,7 +73,7 @@ namespace hgl::ecs
             return;
         }
 
-        mtl->BindSSBO(hgl::graph::mtl::SBS_MaterialInstance.ssbo_semantic,
+        mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::MaterialInstance,
                   material_instance_buffer->GetGPUBuffer());
 
         BindMaterialInstanceID(mtl);

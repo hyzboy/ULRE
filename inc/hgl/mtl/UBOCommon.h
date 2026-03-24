@@ -10,8 +10,8 @@ struct SSBODescriptor;
 
 namespace hgl::graph::mtl{
 
-UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
-SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
+UBODescriptor *CreateUBODescriptor(const UBODescriptorSemantic semantic,const uint32_t flag_bits);
+SSBODescriptor *CreateSSBODescriptor(const SSBODescriptorSemantic semantic,const uint32_t flag_bits);
 const ShaderBufferSource *FindShaderBufferSourceByStructName(const char *struct_name);
 
 constexpr ShaderBufferSource MakeShaderBufferSourceBySemantic(const UBODescriptorSemantic semantic)
