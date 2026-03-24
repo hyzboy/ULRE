@@ -100,21 +100,30 @@ std::string GetDescriptorBindingMacroName(const ShaderDescriptor *sd)
 
     // Phase F: Enum-only lookup — no reverse parsing from descriptor name
 
-    // For SSBO/UBO: lookup by semantic
-    if (sd->semantic != mtl::DescriptorSemantic::Unknown)
+    // For SSBO/UBO: lookup by typed semantic
+    const auto *ubo_sd = dynamic_cast<const UBODescriptor *>(sd);
+    if (ubo_sd && ubo_sd->semantic != mtl::UBODescriptorSemantic::Unknown)
     {
-        const auto &meta = mtl::GetDescriptorSemanticMeta(sd->semantic);
+        const auto &meta = mtl::GetDescriptorSemanticMeta(ubo_sd->semantic);
+        if (meta.binding_macro_name && *meta.binding_macro_name)
+            return meta.binding_macro_name;
+    }
+
+    const auto *ssbo_sd = dynamic_cast<const SSBODescriptor *>(sd);
+    if (ssbo_sd && ssbo_sd->semantic != mtl::SSBODescriptorSemantic::Unknown)
+    {
+        const auto &meta = mtl::GetDescriptorSemanticMeta(ssbo_sd->semantic);
         if (meta.binding_macro_name && *meta.binding_macro_name)
             return meta.binding_macro_name;
     }
 
     // For Texture/TextureSampler: lookup by slot (if available)
     const auto *tex_sd = dynamic_cast<const TextureDescriptor *>(sd);
-    if (tex_sd && RangeCheck(tex_sd->slot))
+    if (tex_sd && tex_sd->slot != mtl::SamplerSlot::RANGE_SIZE)
         return mtl::ToBindingMacroName(tex_sd->slot);
 
     const auto *tex_sampler_sd = dynamic_cast<const TextureSamplerDescriptor *>(sd);
-    if (tex_sampler_sd && RangeCheck(tex_sampler_sd->slot))
+    if (tex_sampler_sd && tex_sampler_sd->slot != mtl::SamplerSlot::RANGE_SIZE)
         return mtl::ToBindingMacroName(tex_sampler_sd->slot);
 
     // Fallback: use descriptor name directly (for custom descriptors)
@@ -139,8 +148,6 @@ static void AppendDescriptorBindingMacros(ShaderLayoutContract &contract,
         return;
 
     const size_t slot_index = size_t(tex_sd->slot);
-    if (slot_index >= mtl::SamplerSlotCount)
-        return;
 
     const auto &binding_macro_cache = mtl::GetSamplerBindingMacroNameCache();
     AddLayoutEntryIfMissing(contract.descriptor_bindings,

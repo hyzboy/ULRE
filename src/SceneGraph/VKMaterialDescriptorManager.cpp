@@ -46,10 +46,11 @@ void MaterialDescriptorManager::RegisterEnumBinding(const ShaderDescriptor *sd)
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
         {
-            if(!mtl::IsBuiltinDescriptorSemantic(sd->semantic))
+            const auto *ubo_sd = dynamic_cast<const UBODescriptor *>(sd);
+            if(!ubo_sd)
                 break;
 
-            const mtl::UBODescriptorSemantic semantic=mtl::ToUBODescriptorSemantic(sd->semantic);
+            const mtl::UBODescriptorSemantic semantic=ubo_sd->semantic;
             const size_t semantic_index=size_t(semantic);
             if(semantic==mtl::UBODescriptorSemantic::Unknown
             || semantic_index>=mtl::UBODescriptorSemanticCount)
@@ -63,10 +64,11 @@ void MaterialDescriptorManager::RegisterEnumBinding(const ShaderDescriptor *sd)
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
         {
-            if(!mtl::IsBuiltinDescriptorSemantic(sd->semantic))
+            const auto *ssbo_sd = dynamic_cast<const SSBODescriptor *>(sd);
+            if(!ssbo_sd)
                 break;
 
-            const mtl::SSBODescriptorSemantic semantic=mtl::ToSSBODescriptorSemantic(sd->semantic);
+            const mtl::SSBODescriptorSemantic semantic=ssbo_sd->semantic;
             const size_t semantic_index=size_t(semantic);
             if(semantic==mtl::SSBODescriptorSemantic::Unknown
             || semantic_index>=mtl::SSBODescriptorSemanticCount)

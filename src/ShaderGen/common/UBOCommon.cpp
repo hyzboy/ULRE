@@ -17,7 +17,7 @@ UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t 
 
     hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,sbs.name);
 
-    ubo->semantic=sbs.semantic;
+    ubo->semantic=sbs.ubo_semantic;
     ubo->stage_flag=flag_bits;
 
     return ubo;
@@ -31,7 +31,7 @@ SSBODescriptor *CreateSSBODescriptor(const ShaderBufferSource &sbs,const uint32_
 
     hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,sbs.name);
 
-    ssbo->semantic=sbs.semantic;
+    ssbo->semantic=sbs.ssbo_semantic;
     ssbo->stage_flag=flag_bits;
 
     return ssbo;

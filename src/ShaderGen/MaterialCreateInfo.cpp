@@ -57,10 +57,7 @@ static bool ResolveUBOSemanticMeta(
     if(!IsBuiltinDescriptorSemantic(semantic))
         return false;
 
-    const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(ToDescriptorSemantic(semantic));
-
-    if(candidate.default_kind != DescriptorKind::UBO)
-        return false;
+    const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(semantic);
 
     if(!candidate.struct_name || !*candidate.struct_name)
         return false;
@@ -79,10 +76,7 @@ static bool ResolveSSBOSemanticMeta(
     if(!IsBuiltinDescriptorSemantic(semantic))
         return false;
 
-    const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(ToDescriptorSemantic(semantic));
-
-    if(candidate.default_kind != DescriptorKind::SSBO)
-        return false;
+    const DescriptorSemanticMeta &candidate = GetDescriptorSemanticMeta(semantic);
 
     if(!candidate.struct_name || !*candidate.struct_name)
         return false;
@@ -116,7 +110,7 @@ static const UBODescriptor *ResolveUBODescriptor(
         ubo=new UBODescriptor();
         ubo->type=struct_name.c_str();
         hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-        ubo->semantic=ToDescriptorSemantic(semantic);
+        ubo->semantic=semantic;
         return mdi.AddUBO((uint32_t)flag_bit,set_type,ubo);
     }
 
@@ -145,7 +139,7 @@ static const SSBODescriptor *ResolveSSBODescriptor(
         ssbo=new SSBODescriptor();
         ssbo->type=struct_name.c_str();
         hgl::strcpy(ssbo->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
-        ssbo->semantic=ToDescriptorSemantic(semantic);
+        ssbo->semantic=semantic;
         return mdi.AddSSBO((uint32_t)flag_bit,set_type,ssbo);
     }
 
@@ -296,7 +290,7 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
     if(!AddStruct(ss.struct_name,""))
         return(false);
 
-    return AddResolvedUBO(flag_bits,ss.set_type,ToUBODescriptorSemantic(ss.semantic),ss.struct_name,ss.name);
+    return AddResolvedUBO(flag_bits,ss.set_type,ss.ubo_semantic,ss.struct_name,ss.name);
 }
 
 bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const UBODescriptorSemantic semantic)
@@ -361,7 +355,7 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBuff
     if(!AddStruct(ss.struct_name,""))
         return(false);
 
-    return AddResolvedSSBO(flag_bits,ss.set_type,ToSSBODescriptorSemantic(ss.semantic),ss.struct_name,ss.name);
+    return AddResolvedSSBO(flag_bits,ss.set_type,ss.ssbo_semantic,ss.struct_name,ss.name);
 }
 
 bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const SSBODescriptorSemantic semantic)

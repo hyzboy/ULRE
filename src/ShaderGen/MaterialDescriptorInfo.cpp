@@ -118,16 +118,12 @@ UBODescriptor *MaterialDescriptorInfo::GetUBO(const std::string &name)
     return(nullptr);
 }
 
-UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::DescriptorSemantic semantic)
+UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
 {
     if(mtl::IsBuiltinDescriptorSemantic(semantic))
         return ubo_by_semantic[size_t(semantic)];
-    return nullptr;
-}
 
-UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
-{
-    return GetUBO(mtl::ToDescriptorSemantic(semantic));
+    return nullptr;
 }
 
 SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const std::string &name)
@@ -139,16 +135,12 @@ SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const std::string &name)
     return(nullptr);
 }
 
-SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::DescriptorSemantic semantic)
+SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic semantic)
 {
     if(mtl::IsBuiltinDescriptorSemantic(semantic))
         return ssbo_by_semantic[size_t(semantic)];
-    return nullptr;
-}
 
-SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic semantic)
-{
-    return GetSSBO(mtl::ToDescriptorSemantic(semantic));
+    return nullptr;
 }
 
 TextureDescriptor *MaterialDescriptorInfo::GetTexture(const std::string &name)
@@ -213,12 +205,38 @@ void MaterialDescriptorInfo::Resort()
         std::sort(ordered.begin(),ordered.end(),
             [](const ShaderDescriptor *a,const ShaderDescriptor *b)->bool
             {
-                const bool a_builtin=mtl::IsBuiltinDescriptorSemantic(a->semantic);
-                const bool b_builtin=mtl::IsBuiltinDescriptorSemantic(b->semantic);
+                const auto *a_ubo=dynamic_cast<const UBODescriptor *>(a);
+                const auto *b_ubo=dynamic_cast<const UBODescriptor *>(b);
+
+                if(a_ubo&&b_ubo)
+                {
+                    const bool a_builtin=mtl::IsBuiltinDescriptorSemantic(a_ubo->semantic);
+                    const bool b_builtin=mtl::IsBuiltinDescriptorSemantic(b_ubo->semantic);
+                    if(a_builtin!=b_builtin)
+                        return a_builtin;
+                    if(a_builtin)
+                        return uint8_t(a_ubo->semantic)<uint8_t(b_ubo->semantic);
+                    return std::strcmp(a->name,b->name)<0;
+                }
+
+                const auto *a_ssbo=dynamic_cast<const SSBODescriptor *>(a);
+                const auto *b_ssbo=dynamic_cast<const SSBODescriptor *>(b);
+
+                if(a_ssbo&&b_ssbo)
+                {
+                    const bool a_builtin=mtl::IsBuiltinDescriptorSemantic(a_ssbo->semantic);
+                    const bool b_builtin=mtl::IsBuiltinDescriptorSemantic(b_ssbo->semantic);
+                    if(a_builtin!=b_builtin)
+                        return a_builtin;
+                    if(a_builtin)
+                        return uint8_t(a_ssbo->semantic)<uint8_t(b_ssbo->semantic);
+                    return std::strcmp(a->name,b->name)<0;
+                }
+
+                const bool a_builtin=false;
+                const bool b_builtin=false;
                 if(a_builtin!=b_builtin)
                     return a_builtin;
-                if(a_builtin)
-                    return uint8_t(a->semantic)<uint8_t(b->semantic);
                 return std::strcmp(a->name,b->name)<0;
             });
 

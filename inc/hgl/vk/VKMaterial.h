@@ -129,7 +129,7 @@ public:
 
     bool BindSSBO(const ShaderBufferDesc *sbd,const IGPUBuffer *gpu,bool dynamic=false)
     {
-        return BindSSBO(sbd->set_type,mtl::ToSSBODescriptorSemantic(sbd->semantic),gpu,dynamic);
+        return BindSSBO(sbd->set_type,sbd->ssbo_semantic,gpu,dynamic);
     }
 
     void Update();

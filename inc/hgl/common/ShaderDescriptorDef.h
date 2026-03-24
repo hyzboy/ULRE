@@ -16,7 +16,6 @@ namespace hgl::graph
         char name[DESCRIPTOR_NAME_MAX_LENGTH];
         VkDescriptorType desc_type;
         DescriptorSetType set_type;
-        mtl::DescriptorSemantic semantic;
 
         int set;
         int binding;
@@ -29,7 +28,6 @@ namespace hgl::graph
             mem_zero(name);
             desc_type=VK_DESCRIPTOR_TYPE_MAX_ENUM;
             set_type=DescriptorSetType::Unknow;
-            semantic=mtl::DescriptorSemantic::Unknown;
             set=-1;
             binding=-1;
             stage_flag=0;
@@ -53,7 +51,6 @@ namespace hgl::graph
                 mem_copy(name,sr->name);
                 desc_type   =sr->desc_type;
                 set_type    =sr->set_type;
-                semantic    =sr->semantic;
                 set         =sr->set;
                 binding     =sr->binding;
                 stage_flag  =sr->stage_flag;
@@ -79,6 +76,7 @@ namespace hgl::graph
     struct UBODescriptor:public ShaderDescriptor
     {
         AnsiString type;
+        mtl::UBODescriptorSemantic semantic = mtl::UBODescriptorSemantic::Unknown;
 
     public:
 
@@ -91,6 +89,7 @@ namespace hgl::graph
     struct SSBODescriptor:public ShaderDescriptor
     {
         AnsiString type;
+        mtl::SSBODescriptorSemantic semantic = mtl::SSBODescriptorSemantic::Unknown;
 
     public:
 
