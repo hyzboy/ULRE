@@ -14,21 +14,25 @@ namespace
         { VAT_UINT, VertexInputRate::Vertex, VAN::Color },
     };
 
-    constexpr FixedDescriptorEntry VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::ColorPattle, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
+    const FixedUBODescriptors VERTEX_PATTLE_COLOR_3D_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::ColorPattle,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
     };
 
-    constexpr FixedMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
+    const FixedSSBODescriptors VERTEX_PATTLE_COLOR_3D_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+    };
+
+    const FixedMaterialDef VERTEX_PATTLE_COLOR_3D_DEF {
         "VertexPattleColor3D",
         PrimitiveType::Triangles,
         VERTEX_PATTLE_COLOR_3D_VERTEX,
         uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX) / sizeof(VERTEX_PATTLE_COLOR_3D_VERTEX[0])),
-        VERTEX_PATTLE_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS) / sizeof(VERTEX_PATTLE_COLOR_3D_DESCRIPTORS[0])),
+        &VERTEX_PATTLE_COLOR_3D_UBOS,
+        &VERTEX_PATTLE_COLOR_3D_SSBOS,
+        nullptr,
         nullptr,
         0,
     };

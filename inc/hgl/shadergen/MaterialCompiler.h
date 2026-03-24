@@ -4,7 +4,7 @@
 ///
 /// 使用 CompileCompositorMaterial 编译 Compositor 模板产出的完整 GLSL。
 /// 内部流程：
-///   1. 按 def.descriptor_entries[] 构建 MaterialDescriptorInfo（顺序固定，无动态排序）
+///   1. 按 def 的 ubo/ssbo/texture_samplers 三组定义构建 MaterialDescriptorInfo
 ///   2. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 ///   3. 填充并返回 MaterialCreateInfo*
 

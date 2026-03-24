@@ -16,22 +16,26 @@ namespace
         { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
     };
 
-    constexpr FixedDescriptorEntry PURE_COLOR_3D_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
+    const FixedUBODescriptors PURE_COLOR_3D_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
     };
 
-    constexpr FixedMaterialDef PURE_COLOR_3D_DEF {
+    const FixedSSBODescriptors PURE_COLOR_3D_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+    };
+
+    const FixedMaterialDef PURE_COLOR_3D_DEF {
         "PureColor3D",
         PrimitiveType::Triangles,
         PURE_COLOR_3D_VERTEX,
         uint32_t(sizeof(PURE_COLOR_3D_VERTEX) / sizeof(PURE_COLOR_3D_VERTEX[0])),
-        PURE_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(PURE_COLOR_3D_DESCRIPTORS) / sizeof(PURE_COLOR_3D_DESCRIPTORS[0])),
+        &PURE_COLOR_3D_UBOS,
+        &PURE_COLOR_3D_SSBOS,
+        nullptr,
         pure_color_3d_mi_codes,
         pure_color_3d_mi_bytes,
     };

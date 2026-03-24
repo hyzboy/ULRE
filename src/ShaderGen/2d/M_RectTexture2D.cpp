@@ -42,26 +42,26 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
     build2d::PushBaseVertexEntries(vertices, &inner);
     vertices.push_back({VAT_VEC2, VertexInputRate::Vertex, VAN::TexCoord});
 
-    std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, &inner);
+    FixedUBODescriptors ubos;
+    FixedSSBODescriptors ssbos;
+    FixedTextureSamplerDescriptors samplers;
+    build2d::PushBaseUBODescriptors(ubos, &inner);
+    build2d::PushBaseSSBODescriptors(ssbos, &inner);
+    AddFixedTextureSampler(samplers,
+                           SamplerSlot::BaseColor,
+                           uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                           use_array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
-    // 根据 mode 动态生成 sampler2D 或 sampler2DArray 描述符
-    descriptors.push_back(MakeTextureDescriptorEntry(SamplerSlot::BaseColor,
-                                                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                     mode));
-
-    // Array 模式下添加 MIT SSBO 描述符
     if(use_array)
-    {
-        descriptors.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceTextureID,
-                                                       uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)));
-    }
+        AddFixedSSBODescriptor(ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
     FixedMaterialDef def {
         "RectTexture2D",  // 统一名称
         inner.prim,
         vertices.data(), uint32_t(vertices.size()),
-        descriptors.data(), uint32_t(descriptors.size()),
+        &ubos,
+        &ssbos,
+        &samplers,
         use_array ? mi_codes : nullptr,
         use_array ? mi_bytes : 0,
     };

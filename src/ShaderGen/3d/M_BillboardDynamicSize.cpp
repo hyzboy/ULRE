@@ -27,25 +27,31 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
 
     cfg->local_to_world=true;
 
-    std::vector<FixedDescriptorEntry> dynamic_descriptors;
-    dynamic_descriptors.reserve(4 + BILLBOARD_DYNAMIC_TEX_SLOT_COUNT);
-    dynamic_descriptors.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
-    dynamic_descriptors.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
-    dynamic_descriptors.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
-    dynamic_descriptors.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)));
+    FixedUBODescriptors ubos = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+    };
 
+    FixedSSBODescriptors ssbos = {
+        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+    };
+
+    FixedTextureSamplerDescriptors samplers;
     for (uint32_t i = 0; i < BILLBOARD_DYNAMIC_TEX_SLOT_COUNT; ++i)
-        dynamic_descriptors.push_back(MakeTextureDescriptorEntry(BILLBOARD_DYNAMIC_TEX_SLOTS[i],
-                                                                 uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                                 TextureSourceMode::Simple));
+        AddFixedTextureSampler(samplers,
+                               BILLBOARD_DYNAMIC_TEX_SLOTS[i],
+                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                               SamplerType::Sampler2D);
 
     FixedMaterialDef dynamic_def {
         "BillboardDynamic",
         PrimitiveType::Triangles,
         BILLBOARD_DYNAMIC_VERTEX,
         uint32_t(sizeof(BILLBOARD_DYNAMIC_VERTEX) / sizeof(BILLBOARD_DYNAMIC_VERTEX[0])),
-        dynamic_descriptors.data(),
-        uint32_t(dynamic_descriptors.size()),
+        &ubos,
+        &ssbos,
+        &samplers,
         nullptr,
         0,
     };

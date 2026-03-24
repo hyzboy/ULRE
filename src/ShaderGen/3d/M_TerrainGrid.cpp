@@ -22,22 +22,32 @@ namespace
         SamplerSlot::Normal,
     };
 
-    FixedDescriptorEntry TERRAIN_GRID_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeTextureDescriptorEntry(TERRAIN_GRID_TEX_SLOTS[0], uint32_t(VK_SHADER_STAGE_VERTEX_BIT), TextureSourceMode::Simple),
-        MakeTextureDescriptorEntry(TERRAIN_GRID_TEX_SLOTS[1], uint32_t(VK_SHADER_STAGE_VERTEX_BIT), TextureSourceMode::Simple),
+    const FixedUBODescriptors TERRAIN_GRID_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
     };
 
-    constexpr FixedMaterialDef TERRAIN_GRID_DEF {
+    const FixedSSBODescriptors TERRAIN_GRID_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+    };
+
+    const FixedTextureSamplerDescriptors TERRAIN_GRID_SAMPLERS = []
+    {
+        FixedTextureSamplerDescriptors descriptors;
+        AddFixedTextureSampler(descriptors, TERRAIN_GRID_TEX_SLOTS[0], uint32_t(VK_SHADER_STAGE_VERTEX_BIT), SamplerType::Sampler2D);
+        AddFixedTextureSampler(descriptors, TERRAIN_GRID_TEX_SLOTS[1], uint32_t(VK_SHADER_STAGE_VERTEX_BIT), SamplerType::Sampler2D);
+        return descriptors;
+    }();
+
+    const FixedMaterialDef TERRAIN_GRID_DEF {
         "TerrainGrid",
         PrimitiveType::Triangles,
         TERRAIN_GRID_VERTEX_PTR,
         TERRAIN_GRID_VERTEX_COUNT,
-        TERRAIN_GRID_DESCRIPTORS,
-        uint32_t(sizeof(TERRAIN_GRID_DESCRIPTORS) / sizeof(TERRAIN_GRID_DESCRIPTORS[0])),
+        &TERRAIN_GRID_UBOS,
+        &TERRAIN_GRID_SSBOS,
+        &TERRAIN_GRID_SAMPLERS,
         nullptr,
         0,
     };

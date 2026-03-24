@@ -158,7 +158,8 @@ namespace hgl::ecs
         const MaterialResourceBinding *FindMaterialResourceBinding(const graph::Material *material, graph::mtl::SamplerSlot slot) const;
         const MaterialResourceBinding *FindDomainResourceBinding(const graph::DomainMaterialBinding *binding, graph::mtl::SamplerSlot slot) const;
         void ValidateContractsSideChannel();
-        bool IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const;
+        bool IsUBOSemanticResolvable(graph::mtl::UBODescriptorSemantic semantic) const;
+        bool IsSSBOSemanticResolvable(graph::mtl::SSBODescriptorSemantic semantic) const;
     };
 }
 

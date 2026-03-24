@@ -9,7 +9,7 @@
 // 选择 GetSkyLightModelImplGLSL(key.ambient) 返回的实现字符串并注入 FS 前部。
 
 #include<hgl/mtl/SkyLight.h>        // SkyLightAmbientModel, SKYLIGHT_GLSL_* 常量
-#include<hgl/mtl/DescriptorBindingContract.h>// FixedDescriptorEntry, DescriptorSetType, DescriptorKind
+#include<hgl/mtl/FixedMaterialDef.h>
 
 #include <vulkan/vulkan.h>
 #include<vector>
@@ -34,24 +34,11 @@ inline bool SkyCStrEq(const char *lhs,const char *rhs)
 
 struct SkyLightResourceInjectionSpec
 {
-    const FixedDescriptorEntry *append_descriptors = nullptr;
-    uint32_t append_descriptor_count = 0;
+    const char *append_named_texture_sampler_name = nullptr;
+    FixedTextureSamplerDescriptor append_named_texture_sampler{};
 
     const char *const *append_fragment_required_resources = nullptr;
     uint32_t append_fragment_required_resource_count = 0;
-};
-
-constexpr FixedDescriptorEntry SKYLIGHT_APPEND_DESCRIPTOR_CUBEMAP[] =
-{
-    {
-        SET_TYPE_SKY,
-        DescriptorKind::TextureSampler,
-        uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-        SKYLIGHT_RESOURCE_KEY_SKY_CUBEMAP,
-        nullptr,
-        TextureType::Error,
-        SamplerType::Error
-    },
 };
 
 constexpr const char *SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP[] = {
@@ -65,8 +52,8 @@ inline SkyLightResourceInjectionSpec GetSkyLightResourceInjectionSpec(const SkyL
     if (req.need_sky_cubemap)
     {
         return SkyLightResourceInjectionSpec{
-            SKYLIGHT_APPEND_DESCRIPTOR_CUBEMAP,
-            uint32_t(sizeof(SKYLIGHT_APPEND_DESCRIPTOR_CUBEMAP) / sizeof(SKYLIGHT_APPEND_DESCRIPTOR_CUBEMAP[0])),
+            SKYLIGHT_RESOURCE_KEY_SKY_CUBEMAP,
+            MakeFixedTextureSamplerDescriptor(uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerType::SamplerCube, SET_TYPE_SKY),
             SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP,
             uint32_t(sizeof(SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP) / sizeof(SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP[0]))
         };
@@ -77,25 +64,13 @@ inline SkyLightResourceInjectionSpec GetSkyLightResourceInjectionSpec(const SkyL
 
 inline void ApplySkyLightResourceInjection(
     const SkyLightResourceInjectionSpec &spec,
-    std::vector<FixedDescriptorEntry> &descriptors_io,
+    FixedTextureSamplerDescriptors &texture_samplers_io,
     std::vector<const char *> &fragment_resources_io)
 {
-    for (uint32_t i = 0; i < spec.append_descriptor_count; ++i)
+    if (spec.append_named_texture_sampler_name && *spec.append_named_texture_sampler_name)
     {
-        const auto &entry = spec.append_descriptors[i];
-
-        bool exists = false;
-        for (const auto &cur : descriptors_io)
-        {
-            if (SkyCStrEq(cur.name, entry.name))
-            {
-                exists = true;
-                break;
-            }
-        }
-
-        if (!exists)
-            descriptors_io.emplace_back(entry);
+        texture_samplers_io.by_name.try_emplace(spec.append_named_texture_sampler_name,
+                                                spec.append_named_texture_sampler);
     }
 
     for (uint32_t i = 0; i < spec.append_fragment_required_resource_count; ++i)

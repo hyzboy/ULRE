@@ -526,31 +526,33 @@ namespace hgl::ecs
         }
     }
 
-    bool RenderDescriptorBindingSystem::IsSemanticResolvable(graph::mtl::DescriptorSemantic semantic) const
+    bool RenderDescriptorBindingSystem::IsUBOSemanticResolvable(graph::mtl::UBODescriptorSemantic semantic) const
     {
         if (!context)
             return false;
 
-        const auto ubo_semantic = graph::mtl::ToUBODescriptorSemantic(semantic);
-        if (ubo_semantic != graph::mtl::UBODescriptorSemantic::Unknown)
-        {
-            auto *accessor = scene_ubo_resolvers[size_t(ubo_semantic)];
-            return accessor && accessor->GetGPUBuffer() != nullptr;
-        }
+        if (semantic == graph::mtl::UBODescriptorSemantic::Unknown)
+            return false;
 
+        auto *accessor = scene_ubo_resolvers[size_t(semantic)];
+        return accessor && accessor->GetGPUBuffer() != nullptr;
+    }
+
+    bool RenderDescriptorBindingSystem::IsSSBOSemanticResolvable(graph::mtl::SSBODescriptorSemantic semantic) const
+    {
         switch (semantic)
         {
-        case graph::mtl::DescriptorSemantic::LocalToWorld:
-        case graph::mtl::DescriptorSemantic::TransformID:
-        case graph::mtl::DescriptorSemantic::MaterialInstanceID:
-        case graph::mtl::DescriptorSemantic::MaterialInstance:
-        case graph::mtl::DescriptorSemantic::MaterialInstanceTextureID:
+        case graph::mtl::SSBODescriptorSemantic::LocalToWorld:
+        case graph::mtl::SSBODescriptorSemantic::TransformID:
+        case graph::mtl::SSBODescriptorSemantic::MaterialInstanceID:
+        case graph::mtl::SSBODescriptorSemantic::MaterialInstance:
+        case graph::mtl::SSBODescriptorSemantic::MaterialInstanceTextureID:
             // Resolved per-batch inside ApplyBatchMaterialBindings; not checkable here.
             return false;
-        case graph::mtl::DescriptorSemantic::Custom:
+        case graph::mtl::SSBODescriptorSemantic::Custom:
             return true;
 
-        case graph::mtl::DescriptorSemantic::Unknown:
+        case graph::mtl::SSBODescriptorSemantic::Unknown:
         default:
             return false;
         }
@@ -581,7 +583,7 @@ namespace hgl::ecs
             {
                 for (const auto &[ubo_semantic, stage_flags] : requirements)
                 {
-                    const bool resolvable = IsSemanticResolvable(graph::mtl::ToDescriptorSemantic(ubo_semantic));
+                    const bool resolvable = IsUBOSemanticResolvable(ubo_semantic);
                     if (resolvable)
                         continue;
 
@@ -591,7 +593,7 @@ namespace hgl::ecs
                     if (first_error.empty())
                     {
                         first_error = "missing semantic=";
-                        first_error += graph::mtl::GetDescriptorSemanticName(graph::mtl::ToDescriptorSemantic(ubo_semantic));
+                        first_error += graph::mtl::GetUBODescriptorSemanticName(ubo_semantic);
                     }
 
                     (void)stage_flags;
@@ -602,7 +604,7 @@ namespace hgl::ecs
             {
                 for (const auto &[ssbo_semantic, stage_flags] : requirements)
                 {
-                    const bool resolvable = IsSemanticResolvable(graph::mtl::ToDescriptorSemantic(ssbo_semantic));
+                    const bool resolvable = IsSSBOSemanticResolvable(ssbo_semantic);
                     if (resolvable)
                         continue;
 
@@ -612,7 +614,7 @@ namespace hgl::ecs
                     if (first_error.empty())
                     {
                         first_error = "missing semantic=";
-                        first_error += graph::mtl::GetDescriptorSemanticName(graph::mtl::ToDescriptorSemantic(ssbo_semantic));
+                        first_error += graph::mtl::GetSSBODescriptorSemanticName(ssbo_semantic);
                     }
 
                     (void)stage_flags;

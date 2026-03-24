@@ -30,31 +30,35 @@ namespace
     };
 
     // Non-texture descriptors only �?texture entries are built dynamically in CreateStandardVariant().
-    constexpr FixedDescriptorEntry STANDARD_BASE_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::SkyInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
+    const FixedUBODescriptors STANDARD_BASE_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+    };
+
+    const FixedSSBODescriptors STANDARD_BASE_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
     };
 
     // Ordered list of texture slots used by the Standard material.
-    // Texture FixedDescriptorEntry items are built from this list at variant-creation time.
+    // Texture sampler descriptors are built from this list at variant-creation time.
     constexpr SamplerSlot STANDARD_TEX_SLOTS[] = {
         SamplerSlot::BaseColor,
         SamplerSlot::Normal,
     };
     constexpr uint32_t STANDARD_TEX_SLOT_COUNT = uint32_t(sizeof(STANDARD_TEX_SLOTS) / sizeof(STANDARD_TEX_SLOTS[0]));
 
-    constexpr FixedMaterialDef STANDARD_DEF_TEMPLATE {
+    const FixedMaterialDef STANDARD_DEF_TEMPLATE {
         "Standard_v1",
         PrimitiveType::Triangles,
         STANDARD_VERTEX,
         uint32_t(sizeof(STANDARD_VERTEX) / sizeof(STANDARD_VERTEX[0])),
-        STANDARD_BASE_DESCRIPTORS,
-        uint32_t(sizeof(STANDARD_BASE_DESCRIPTORS) / sizeof(STANDARD_BASE_DESCRIPTORS[0])),
+        &STANDARD_BASE_UBOS,
+        &STANDARD_BASE_SSBOS,
+        nullptr,
         mi_codes_simple,
         mi_bytes_simple,
     };
@@ -94,35 +98,32 @@ MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileL
     SkyLightAmbientModel ambient = cfg_with_mi.sky_ambient_model;
 
     // Start with stable non-texture descriptors, then append texture entries.
-    std::vector<FixedDescriptorEntry> dynamic_descriptors(
-        STANDARD_BASE_DESCRIPTORS,
-        STANDARD_BASE_DESCRIPTORS + uint32_t(sizeof(STANDARD_BASE_DESCRIPTORS) / sizeof(STANDARD_BASE_DESCRIPTORS[0])));
+    FixedSSBODescriptors dynamic_ssbos = STANDARD_BASE_SSBOS;
+    FixedTextureSamplerDescriptors dynamic_samplers;
 
     // Per-slot resolved modes, in the same order as STANDARD_TEX_SLOTS.
     const TextureSourceMode tex_slot_modes[STANDARD_TEX_SLOT_COUNT] = {
         resolved_base, resolved_normal
     };
     for (uint32_t i = 0; i < STANDARD_TEX_SLOT_COUNT; ++i)
-    {
-        dynamic_descriptors.push_back(MakeTextureDescriptorEntry(STANDARD_TEX_SLOTS[i],
-                                                                 uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                                 tex_slot_modes[i]));
-    }
+        AddFixedTextureSampler(dynamic_samplers,
+                               STANDARD_TEX_SLOTS[i],
+                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                               tex_slot_modes[i] == TextureSourceMode::Array ? SamplerType::Sampler2DArray : SamplerType::Sampler2D);
 
     // When any slot is Array the MIT SSBO provides per-instance layer indices.
     if (any_array)
-        dynamic_descriptors.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceTextureID,
-                                                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)));
+        AddFixedSSBODescriptor(dynamic_ssbos, SSBODescriptorSemantic::MaterialInstanceTextureID, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT));
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
         GetSkyLightResourceInjectionSpec(ambient),
-        dynamic_descriptors,
+        dynamic_samplers,
         unused_resources);
 
     FixedMaterialDef dynamic_def = STANDARD_DEF_TEMPLATE;
-    dynamic_def.descriptor_entries      = dynamic_descriptors.data();
-    dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
+    dynamic_def.ssbo_descriptors        = &dynamic_ssbos;
+    dynamic_def.texture_samplers        = &dynamic_samplers;
     dynamic_def.mi_glsl_codes           = mi_codes_simple;
     dynamic_def.mi_struct_bytes         = mi_bytes_simple;
     dynamic_def.name                    = any_array ? "StandardTextureArray_v1" : "Standard_v1";

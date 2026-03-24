@@ -19,13 +19,16 @@ namespace
         { VAT_VEC3, VertexInputRate::Vertex, VAN::Normal },
     };
 
-    constexpr FixedDescriptorEntry GIZMO_3D_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
+    const FixedUBODescriptors GIZMO_3D_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+    };
+
+    const FixedSSBODescriptors GIZMO_3D_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
     };
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -35,13 +38,14 @@ namespace
     constexpr const char GIZMO_3D_MI_GLSL[] = "vec4 Color;";
     constexpr uint32_t GIZMO_3D_MI_BYTES = sizeof(math::Vector4f);
 
-    constexpr FixedMaterialDef GIZMO_3D_DEF {
+    const FixedMaterialDef GIZMO_3D_DEF {
         "Gizmo3D",
         PrimitiveType::Triangles,
         GIZMO_3D_VERTEX,
         uint32_t(sizeof(GIZMO_3D_VERTEX) / sizeof(GIZMO_3D_VERTEX[0])),
-        GIZMO_3D_DESCRIPTORS,
-        uint32_t(sizeof(GIZMO_3D_DESCRIPTORS) / sizeof(GIZMO_3D_DESCRIPTORS[0])),
+        &GIZMO_3D_UBOS,
+        &GIZMO_3D_SSBOS,
+        nullptr,
         GIZMO_3D_MI_GLSL,
         GIZMO_3D_MI_BYTES,
     };

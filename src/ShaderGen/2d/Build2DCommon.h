@@ -96,30 +96,28 @@ inline void PushBaseVertexEntries(std::vector<FixedVertexEntry> &v, const Materi
 }
 
 // ─────────────────────────────────────────────────────────────
-// Common FixedDescriptorEntry builders
+// Common fixed descriptor builders
 // ─────────────────────────────────────────────────────────────
 
-inline void PushBaseDescriptorEntries(std::vector<FixedDescriptorEntry> &v, const Material2DCreateConfig *cfg)
+inline void PushBaseUBODescriptors(FixedUBODescriptors &descriptors, const Material2DCreateConfig *cfg)
 {
-    const bool has_transform_pair = cfg->local_to_world;
-    const bool has_material_instance_pair = cfg->material_instance;
-
-    // Viewport (Scene set) �?only for Ortho
     if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
-        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
+        AddFixedUBODescriptor(descriptors, UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+}
 
-    // L2W (Transform set) �?only if L2W
-    if(has_transform_pair)
-        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
+inline void PushBaseSSBODescriptors(FixedSSBODescriptors &descriptors, const Material2DCreateConfig *cfg)
+{
+    if(cfg->local_to_world)
+    {
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT));
+    }
 
-    if(has_transform_pair)
-        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)));
-
-    if(has_material_instance_pair)
-        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)));
-
-    if(has_material_instance_pair)
-        v.push_back(MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)));
+    if(cfg->material_instance)
+    {
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT));
+        AddFixedSSBODescriptor(descriptors, SSBODescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS));
+    }
 }
 
 }//namespace build2d

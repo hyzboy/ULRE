@@ -8,22 +8,9 @@
 #include<vector>
 #include<map>
 #include<string>
-#include<cstring>
 
 namespace hgl::graph::mtl
 {
-    struct FixedDescriptorEntry
-    {
-        DescriptorSetType   set_type;
-        DescriptorKind      kind;
-        uint32_t            stage_flags;
-        const char *        name;
-        const char *        struct_name;
-        TextureType         texture_type=TextureType::Error;
-        SamplerType         sampler_type=SamplerType::Error;
-        DescriptorSemantic  semantic = DescriptorSemantic::Unknown;
-    };
-
     struct BindingContract
     {
         std::map<UBODescriptorSemantic, uint32_t> ubos;
@@ -210,109 +197,9 @@ namespace hgl::graph::mtl
     static_assert(GetDescriptorSemanticMeta(SSBODescriptorSemantic::BoneJointWeight).default_kind == DescriptorKind::SSBO,
                   "SSBODescriptorSemantic::BoneJointWeight must map to SSBO kind");
 
-    inline bool _DBC_CStrEq(const char *lhs, const char *rhs)
-    {
-        return lhs && rhs && std::strcmp(lhs, rhs) == 0;
-    }
-
-    inline const char *FindDescriptorBindingMacroNameByDescriptorName(const char *descriptor_name)
-    {
-        if (!descriptor_name || !*descriptor_name)
-            return nullptr;
-
-        for (size_t i = 0; i < DescriptorSemanticCount; ++i)
-        {
-            const auto &meta = DescriptorSemanticMetaList[i];
-            if (_DBC_CStrEq(meta.name, descriptor_name) && meta.binding_macro_name && *meta.binding_macro_name)
-                return meta.binding_macro_name;
-        }
-
-        return nullptr;
-    }
-
-    constexpr FixedDescriptorEntry MakeFixedDescriptorEntry(DescriptorSemantic semantic,
-                                                            const uint32_t stage_flags)
-    {
-        const auto &meta = GetDescriptorSemanticMeta(semantic);
-        return FixedDescriptorEntry{
-            meta.set_type,
-            meta.default_kind,
-            stage_flags,
-            meta.name,
-            meta.struct_name,
-            TextureType::Error,
-            SamplerType::Error,
-            semantic
-        };
-    }
-
-    constexpr FixedDescriptorEntry MakeFixedDescriptorEntry(const UBODescriptorSemantic semantic,
-                                                            const uint32_t stage_flags)
-    {
-        return MakeFixedDescriptorEntry(ToDescriptorSemantic(semantic),stage_flags);
-    }
-
-    constexpr FixedDescriptorEntry MakeFixedDescriptorEntry(const SSBODescriptorSemantic semantic,
-                                                            const uint32_t stage_flags)
-    {
-        return MakeFixedDescriptorEntry(ToDescriptorSemantic(semantic),stage_flags);
-    }
-
-    inline FixedDescriptorEntry MakeTextureDescriptorEntry(const SamplerSlot slot,
-                                                              const uint32_t stage_flags,
-                                                              const TextureSourceMode texture_mode = TextureSourceMode::Simple)
-    {
-        const auto &meta = GetDescriptorSemanticMeta(DescriptorSemantic::MaterialInstanceTextureID);
-        return FixedDescriptorEntry{
-            meta.set_type,
-            DescriptorKind::TextureSampler,  // texture slots are combined image+samplers, not SSBOs
-            stage_flags,
-            ToDescriptorName(slot),
-            meta.struct_name,
-            TextureType::Error,
-            (texture_mode==TextureSourceMode::Array?SamplerType::Sampler2DArray:SamplerType::Sampler2D),
-            DescriptorSemantic::MaterialInstanceTextureID
-        };
-    }
-
     inline DescriptorSetType GetExpectedSetType(DescriptorSemantic semantic)
     {
         return GetDescriptorSemanticMeta(semantic).set_type;
-    }
-
-    inline BindingContract BuildBindingContract(const FixedDescriptorEntry *descriptor_entries,
-                                                const uint32_t descriptor_entry_count)
-    {
-        BindingContract contract;
-        if (!descriptor_entries || descriptor_entry_count == 0)
-            return contract;
-
-        for (uint32_t i = 0; i < descriptor_entry_count; ++i)
-        {
-            const FixedDescriptorEntry &entry = descriptor_entries[i];
-
-            switch (entry.kind)
-            {
-            case DescriptorKind::UBO:
-            {
-                const auto semantic = ToUBODescriptorSemantic(entry.semantic);
-                if (semantic != UBODescriptorSemantic::Unknown)
-                    contract.ubos[semantic] |= entry.stage_flags;
-                break;
-            }
-            case DescriptorKind::SSBO:
-            {
-                const auto semantic = ToSSBODescriptorSemantic(entry.semantic);
-                if (semantic != SSBODescriptorSemantic::Unknown)
-                    contract.ssbos[semantic] |= entry.stage_flags;
-                break;
-            }
-            default:
-                break;
-            }
-        }
-
-        return contract;
     }
 
     inline const char *GetDescriptorSemanticName(DescriptorSemantic semantic)
@@ -324,6 +211,47 @@ namespace hgl::graph::mtl
             return DescriptorSemanticNameList[index];
 
         return DescriptorSemanticNameList[0];
+    }
+
+    inline const char *GetDescriptorSemanticName(UBODescriptorSemantic semantic)
+    {
+        switch (semantic)
+        {
+        case UBODescriptorSemantic::ViewportInfo: return "ViewportInfo";
+        case UBODescriptorSemantic::CameraInfo:   return "CameraInfo";
+        case UBODescriptorSemantic::SkyInfo:      return "SkyInfo";
+        case UBODescriptorSemantic::ColorPattle:  return "ColorPattle";
+        case UBODescriptorSemantic::Custom:       return "Custom";
+        case UBODescriptorSemantic::Unknown:
+        default:                                  return "Unknown";
+        }
+    }
+
+    inline const char *GetUBODescriptorSemanticName(UBODescriptorSemantic semantic)
+    {
+        return GetDescriptorSemanticName(semantic);
+    }
+
+    inline const char *GetDescriptorSemanticName(SSBODescriptorSemantic semantic)
+    {
+        switch (semantic)
+        {
+        case SSBODescriptorSemantic::TransformID:               return "TransformID";
+        case SSBODescriptorSemantic::LocalToWorld:              return "LocalToWorld";
+        case SSBODescriptorSemantic::MaterialInstanceID:        return "MaterialInstanceID";
+        case SSBODescriptorSemantic::MaterialInstance:          return "MaterialInstance";
+        case SSBODescriptorSemantic::MaterialInstanceTextureID: return "MaterialInstanceTextureID";
+        case SSBODescriptorSemantic::BoneJoint:                 return "BoneJoint";
+        case SSBODescriptorSemantic::BoneJointWeight:           return "BoneJointWeight";
+        case SSBODescriptorSemantic::Custom:                    return "Custom";
+        case SSBODescriptorSemantic::Unknown:
+        default:                                                return "Unknown";
+        }
+    }
+
+    inline const char *GetSSBODescriptorSemanticName(SSBODescriptorSemantic semantic)
+    {
+        return GetDescriptorSemanticName(semantic);
     }
 
     inline bool ValidateBindingContract(const BindingContract &contract, std::vector<std::string> &diagnostics)

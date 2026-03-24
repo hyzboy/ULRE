@@ -14,17 +14,23 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
     build2d::PushBaseVertexEntries(vertices, cfg);
     vertices.push_back({VAT_VEC2, VertexInputRate::Vertex, VAN::TexCoord});
 
-    std::vector<FixedDescriptorEntry> descriptors;
-    build2d::PushBaseDescriptorEntries(descriptors, cfg);
-    descriptors.push_back(MakeTextureDescriptorEntry(SamplerSlot::BaseColor,
-                                                     uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                     TextureSourceMode::Simple));
+    FixedUBODescriptors ubos;
+    FixedSSBODescriptors ssbos;
+    FixedTextureSamplerDescriptors samplers;
+    build2d::PushBaseUBODescriptors(ubos, cfg);
+    build2d::PushBaseSSBODescriptors(ssbos, cfg);
+    AddFixedTextureSampler(samplers,
+                           SamplerSlot::BaseColor,
+                           uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                           SamplerType::Sampler2D);
 
     FixedMaterialDef def {
         "PureTexture2D",
         cfg->prim,
         vertices.data(), uint32_t(vertices.size()),
-        descriptors.data(), uint32_t(descriptors.size()),
+        &ubos,
+        &ssbos,
+        &samplers,
         nullptr, 0,
     };
 

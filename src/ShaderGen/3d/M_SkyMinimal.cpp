@@ -12,21 +12,25 @@ namespace
         { VAT_VEC3, VertexInputRate::Vertex, VAN::Position },
     };
 
-    constexpr FixedDescriptorEntry SKY_MINIMAL_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::SkyInfo, uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
+    const FixedUBODescriptors SKY_MINIMAL_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)},
     };
 
-    constexpr FixedMaterialDef SKY_MINIMAL_DEF {
+    const FixedSSBODescriptors SKY_MINIMAL_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,  uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+    };
+
+    const FixedMaterialDef SKY_MINIMAL_DEF {
         "SkyMinimal",
         PrimitiveType::Triangles,
         SKY_MINIMAL_VERTEX,
         uint32_t(sizeof(SKY_MINIMAL_VERTEX) / sizeof(SKY_MINIMAL_VERTEX[0])),
-        SKY_MINIMAL_DESCRIPTORS,
-        uint32_t(sizeof(SKY_MINIMAL_DESCRIPTORS) / sizeof(SKY_MINIMAL_DESCRIPTORS[0])),
+        &SKY_MINIMAL_UBOS,
+        &SKY_MINIMAL_SSBOS,
+        nullptr,
         nullptr,
         0,
     };

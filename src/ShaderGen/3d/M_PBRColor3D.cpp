@@ -25,23 +25,27 @@ namespace
         { VAT_VEC3, VertexInputRate::Vertex,   VAN::Normal   },
     };
 
-    constexpr FixedDescriptorEntry PBR_COLOR_3D_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::SkyInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
+    const FixedUBODescriptors PBR_COLOR_3D_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
     };
 
-    constexpr FixedMaterialDef PBR_COLOR_3D_DEF {
+    const FixedSSBODescriptors PBR_COLOR_3D_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+    };
+
+    const FixedMaterialDef PBR_COLOR_3D_DEF {
         "PBRColor3D",
         PrimitiveType::Triangles,
         PBR_COLOR_3D_VERTEX,
         uint32_t(sizeof(PBR_COLOR_3D_VERTEX)      / sizeof(PBR_COLOR_3D_VERTEX[0])),
-        PBR_COLOR_3D_DESCRIPTORS,
-        uint32_t(sizeof(PBR_COLOR_3D_DESCRIPTORS) / sizeof(PBR_COLOR_3D_DESCRIPTORS[0])),
+        &PBR_COLOR_3D_UBOS,
+        &PBR_COLOR_3D_SSBOS,
+        nullptr,
         mi_codes,
         mi_bytes,
     };
@@ -55,19 +59,16 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
     // Dynamic descriptor injection for non-Simple sky models
     SkyLightAmbientModel ambient = cfg ? cfg->sky_ambient_model : SkyLightAmbientModel::Simple;
 
-    std::vector<FixedDescriptorEntry> dynamic_descriptors(
-        PBR_COLOR_3D_DESCRIPTORS,
-        PBR_COLOR_3D_DESCRIPTORS + uint32_t(sizeof(PBR_COLOR_3D_DESCRIPTORS) / sizeof(PBR_COLOR_3D_DESCRIPTORS[0])));
+    FixedTextureSamplerDescriptors dynamic_samplers;
 
     std::vector<const char *> unused_resources;
     ApplySkyLightResourceInjection(
         GetSkyLightResourceInjectionSpec(ambient),
-        dynamic_descriptors,
+        dynamic_samplers,
         unused_resources);
 
     FixedMaterialDef dynamic_def = PBR_COLOR_3D_DEF;
-    dynamic_def.descriptor_entries      = dynamic_descriptors.data();
-    dynamic_def.descriptor_entry_count  = uint32_t(dynamic_descriptors.size());
+    dynamic_def.texture_samplers        = &dynamic_samplers;
 
     // Assemble GLSL via VariantRegistry (Standard, Mesh3D, no texture ??color via MI)
     MaterialVariantKey var_key;

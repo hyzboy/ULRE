@@ -18,13 +18,16 @@ namespace
     };
 
     // Non-texture descriptors �?texture entries built dynamically.
-    constexpr FixedDescriptorEntry BILLBOARD_FIXED_BASE_DESCRIPTORS[] = {
-        MakeFixedDescriptorEntry(DescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::CameraInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::LocalToWorld, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::TransformID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
-        MakeFixedDescriptorEntry(DescriptorSemantic::MaterialInstance, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)),
+    const FixedUBODescriptors BILLBOARD_FIXED_BASE_UBOS = {
+        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+    };
+
+    const FixedSSBODescriptors BILLBOARD_FIXED_BASE_SSBOS = {
+        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
+        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
     };
 
     constexpr SamplerSlot BILLBOARD_FIXED_TEX_SLOTS[] = {
@@ -32,13 +35,14 @@ namespace
     };
     constexpr uint32_t BILLBOARD_FIXED_TEX_SLOT_COUNT = uint32_t(sizeof(BILLBOARD_FIXED_TEX_SLOTS) / sizeof(BILLBOARD_FIXED_TEX_SLOTS[0]));
 
-    constexpr FixedMaterialDef BILLBOARD_FIXED_DEF_TEMPLATE {
+    const FixedMaterialDef BILLBOARD_FIXED_DEF_TEMPLATE {
         "BillboardFixed",
         PrimitiveType::Triangles,
         BILLBOARD_FIXED_VERTEX,
         uint32_t(sizeof(BILLBOARD_FIXED_VERTEX) / sizeof(BILLBOARD_FIXED_VERTEX[0])),
-        BILLBOARD_FIXED_BASE_DESCRIPTORS,
-        uint32_t(sizeof(BILLBOARD_FIXED_BASE_DESCRIPTORS) / sizeof(BILLBOARD_FIXED_BASE_DESCRIPTORS[0])),
+        &BILLBOARD_FIXED_BASE_UBOS,
+        &BILLBOARD_FIXED_BASE_SSBOS,
+        nullptr,
         mi_codes,
         mi_bytes,
     };
@@ -52,17 +56,15 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDevicePro
     cfg->local_to_world=true;
     cfg->material_instance=true;
 
-    std::vector<FixedDescriptorEntry> dynamic_descriptors(
-        BILLBOARD_FIXED_BASE_DESCRIPTORS,
-        BILLBOARD_FIXED_BASE_DESCRIPTORS + uint32_t(sizeof(BILLBOARD_FIXED_BASE_DESCRIPTORS) / sizeof(BILLBOARD_FIXED_BASE_DESCRIPTORS[0])));
+    FixedTextureSamplerDescriptors dynamic_samplers;
     for (uint32_t i = 0; i < BILLBOARD_FIXED_TEX_SLOT_COUNT; ++i)
-        dynamic_descriptors.push_back(MakeTextureDescriptorEntry(BILLBOARD_FIXED_TEX_SLOTS[i],
-                                                                 uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                                                 TextureSourceMode::Simple));
+        AddFixedTextureSampler(dynamic_samplers,
+                               BILLBOARD_FIXED_TEX_SLOTS[i],
+                               uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
+                               SamplerType::Sampler2D);
 
     FixedMaterialDef dynamic_def = BILLBOARD_FIXED_DEF_TEMPLATE;
-    dynamic_def.descriptor_entries     = dynamic_descriptors.data();
-    dynamic_def.descriptor_entry_count = uint32_t(dynamic_descriptors.size());
+    dynamic_def.texture_samplers = &dynamic_samplers;
 
     MaterialVariantKey var_key;
     var_key.geometry_mode       = GeometryMode::BillboardAxisLocked;

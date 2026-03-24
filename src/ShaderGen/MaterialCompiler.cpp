@@ -1,14 +1,13 @@
 ﻿/// MaterialCompiler.cpp — FixedMaterialDef → MaterialCreateInfo 编译器实现
 ///
 /// 流程：
-///   1. 从 FixedDescriptorEntry[] 构建 MaterialDescriptorInfo（描述符布局）
+///   1. 从 FixedMaterialDef 的 UBO/SSBO/TextureSampler 组构建 MaterialDescriptorInfo
 ///   2. 从 FixedVertexEntry[] 设置顶点输入
 ///   3. 使用 SetFinalGLSL + CreateShaderDirect 直接编译
 
 #include <hgl/shadergen/MaterialCompiler.h>
 #include <hgl/mtl/Material3DCreateConfig.h>
 #include <hgl/mtl/Material2DCreateConfig.h>
-#include <hgl/mtl/DescriptorBindingContract.h>
 #include <hgl/shadergen/MaterialCreateInfo.h>
 #include <hgl/shadergen/ShaderCreateInfoVertex.h>
 #include <hgl/shadergen/ShaderLayoutBuilder.h>
@@ -19,23 +18,63 @@
 
 namespace hgl::graph::mtl {
 
-static bool HasDescriptorSemantic(const FixedMaterialDef &def, const DescriptorSemantic semantic)
+static bool HasUBOSemantic(const FixedMaterialDef &def, const UBODescriptorSemantic semantic)
 {
-    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
-    {
-        if (def.descriptor_entries[i].semantic == semantic)
-            return true;
-    }
+    if (!def.ubo_descriptors || semantic == UBODescriptorSemantic::Unknown)
+        return false;
 
-    return false;
+    return def.ubo_descriptors->contains(semantic);
+}
+
+static bool HasSSBOSemantic(const FixedMaterialDef &def, const SSBODescriptorSemantic semantic)
+{
+    if (!def.ssbo_descriptors || semantic == SSBODescriptorSemantic::Unknown)
+        return false;
+
+    return def.ssbo_descriptors->contains(semantic);
 }
 
 static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
 {
-    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    if (def.ubo_descriptors)
     {
-        if (def.descriptor_entries[i].set_type == SET_TYPE_MATERIAL)
-            return true;
+        for (const auto &[semantic, stage_flags] : *def.ubo_descriptors)
+        {
+            if (GetDescriptorSemanticMeta(semantic).set_type == SET_TYPE_MATERIAL)
+                return true;
+
+            (void)stage_flags;
+        }
+    }
+
+    if (def.ssbo_descriptors)
+    {
+        for (const auto &[semantic, stage_flags] : *def.ssbo_descriptors)
+        {
+            if (GetDescriptorSemanticMeta(semantic).set_type == SET_TYPE_MATERIAL)
+                return true;
+
+            (void)stage_flags;
+        }
+    }
+
+    if (def.texture_samplers)
+    {
+        for (const auto &[slot, descriptor] : def.texture_samplers->by_slot)
+        {
+            if (descriptor.set_type == SET_TYPE_MATERIAL)
+                return true;
+
+            (void)slot;
+        }
+
+        for (const auto &[name, descriptor] : def.texture_samplers->by_name)
+        {
+            if (descriptor.set_type == SET_TYPE_MATERIAL)
+                return true;
+
+            (void)name;
+        }
     }
 
     return false;
@@ -63,12 +102,6 @@ static std::string InjectLayoutDefinesPreserveVersion(const std::string &source,
     return layout_defs+source;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CompileCompositorMaterial — Compositor 模板完整 GLSL → MaterialCreateInfo
-//
-// 使用 SetFinalGLSL + CreateShaderDirect 直接编译。
-// ═══════════════════════════════════════════════════════════════════════════
-
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,
     const FixedMaterialDef &    def,
@@ -84,29 +117,21 @@ MaterialCreateInfo *CompileCompositorMaterial(
         return nullptr;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 1: Config
-    // ─────────────────────────────────────────────────────────────
-
     Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
     cfg.prim = config ? config->prim : def.primitive_type;
     cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
 
-    const bool infer_has_camera = HasDescriptorSemantic(def, DescriptorSemantic::CameraInfo);
-    const bool infer_has_sky    = HasDescriptorSemantic(def, DescriptorSemantic::SkyInfo);
-    const bool infer_has_l2w    = HasDescriptorSemantic(def, DescriptorSemantic::LocalToWorld);
-    const bool infer_has_mi     = HasDescriptorSemantic(def, DescriptorSemantic::MaterialInstance)
+    const bool infer_has_camera = HasUBOSemantic(def, UBODescriptorSemantic::CameraInfo);
+    const bool infer_has_sky    = HasUBOSemantic(def, UBODescriptorSemantic::SkyInfo);
+    const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::LocalToWorld);
+    const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstance)
                                || HasPerMaterialDescriptor(def)
                                || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
 
-    cfg.camera           = cfg.camera           || infer_has_camera;
-    cfg.sky              = cfg.sky              || infer_has_sky;
-    cfg.local_to_world   = cfg.local_to_world   || infer_has_l2w;
+    cfg.camera            = cfg.camera            || infer_has_camera;
+    cfg.sky               = cfg.sky               || infer_has_sky;
+    cfg.local_to_world    = cfg.local_to_world    || infer_has_l2w;
     cfg.material_instance = cfg.material_instance || infer_has_mi;
-
-    // ─────────────────────────────────────────────────────────────
-    // Step 2: Create MaterialCreateInfo
-    // ─────────────────────────────────────────────────────────────
 
     MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
     if (profile)
@@ -124,92 +149,56 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     uint32_t mi_stage_bits = uint32_t(ShaderStage::Fragment);
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 3: Add Descriptors from FixedDescriptorEntry[]
-    // ─────────────────────────────────────────────────────────────
-
-    for (uint32_t i = 0; i < def.descriptor_entry_count; ++i)
+    if (def.ubo_descriptors)
     {
-        const FixedDescriptorEntry &entry = def.descriptor_entries[i];
-        const uint32_t stage_bits = entry.stage_flags;
-
-        switch (entry.kind)
+        for (const auto &[semantic, stage_bits] : *def.ubo_descriptors)
         {
-        case DescriptorKind::UBO:
-        {
-            if (entry.semantic == DescriptorSemantic::LocalToWorld)
-            {
-                mci->SetLocalToWorld(stage_bits);
-                break;
-            }
-
-            if (IsBuiltinDescriptorSemantic(entry.semantic))
-            {
-                if (mci->AddUBO(stage_bits, entry.semantic))
-                    break;
-            }
-
-            break;
-        }
-
-        case DescriptorKind::SSBO:
-        {
-            if (entry.semantic == DescriptorSemantic::LocalToWorld)
-            {
-                mci->SetLocalToWorld(stage_bits);
-                break;
-            }
-
-            if (entry.semantic == DescriptorSemantic::MaterialInstance)
-            {
-                mi_stage_bits = stage_bits;
-                break;
-            }
-
-            if (IsBuiltinDescriptorSemantic(entry.semantic))
-            {
-                if (mci->AddSSBO(stage_bits, entry.semantic))
-                    break;
-            }
-
-            break;
-        }
-
-        case DescriptorKind::Texture:
-            if(!RangeCheck(entry.texture_type))
-            {
-                return nullptr;
-            }
-
-            {
-                SamplerSlot slot = SamplerSlot::BaseColor;
-                if(!TryGetSlotFromDescriptorName(entry.name,slot))
-                    return nullptr;
-
-                mci->AddTexture(ShaderStage(stage_bits), entry.set_type, entry.texture_type, slot);
-            }
-            break;
-
-        case DescriptorKind::TextureSampler:
-            if(!RangeCheck(entry.sampler_type))
-            {
-                return nullptr;
-            }
-
-            {
-                SamplerSlot slot = SamplerSlot::BaseColor;
-                if(!TryGetSlotFromDescriptorName(entry.name,slot))
-                    return nullptr;
-
-                mci->AddTextureSampler(ShaderStage(stage_bits), entry.set_type, entry.sampler_type, slot);
-            }
-            break;
+            if (!mci->AddUBO(stage_bits, semantic))
+                return FailAfterMci("AddUBO() failed");
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 4: Add Vertex Inputs from FixedVertexEntry[]
-    // ─────────────────────────────────────────────────────────────
+    if (def.ssbo_descriptors)
+    {
+        for (const auto &[semantic, stage_bits] : *def.ssbo_descriptors)
+        {
+            if (semantic == SSBODescriptorSemantic::LocalToWorld)
+            {
+                mci->SetLocalToWorld(stage_bits);
+                continue;
+            }
+
+            if (semantic == SSBODescriptorSemantic::MaterialInstance)
+            {
+                mi_stage_bits = stage_bits;
+                continue;
+            }
+
+            if (!mci->AddSSBO(stage_bits, semantic))
+                return FailAfterMci("AddSSBO() failed");
+        }
+    }
+
+    if (def.texture_samplers)
+    {
+        for (const auto &[slot, descriptor] : def.texture_samplers->by_slot)
+        {
+            if (!RangeCheck(descriptor.sampler_type))
+                return FailAfterMci("texture sampler slot has invalid SamplerType");
+
+            if (!mci->AddTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.set_type, descriptor.sampler_type, slot))
+                return FailAfterMci("AddTextureSampler(slot) failed");
+        }
+
+        for (const auto &[name, descriptor] : def.texture_samplers->by_name)
+        {
+            if (!RangeCheck(descriptor.sampler_type))
+                return FailAfterMci("named texture sampler has invalid SamplerType");
+
+            if (!mci->AddNamedTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.set_type, descriptor.sampler_type, name))
+                return FailAfterMci("AddTextureSampler(name) failed");
+        }
+    }
 
     ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
     if (vsc)
@@ -221,10 +210,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 5: MaterialInstance
-    // ─────────────────────────────────────────────────────────────
-
     if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
     {
         mci->SetMaterialInstance(
@@ -232,10 +217,6 @@ MaterialCreateInfo *CompileCompositorMaterial(
             def.mi_struct_bytes,
             mi_stage_bits);
     }
-
-    // ─────────────────────────────────────────────────────────────
-    // Step 6: Set complete GLSL (bypass ProcXXX pipeline)
-    // ─────────────────────────────────────────────────────────────
 
     ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
     ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);
@@ -246,19 +227,15 @@ MaterialCreateInfo *CompileCompositorMaterial(
     if (frag)
         frag->SetFinalGLSL(fs_glsl);
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 6b: Build BindingContract from descriptor entries
-    // ─────────────────────────────────────────────────────────────
+    {
+        BindingContract contract;
+        if (def.ubo_descriptors)
+            contract.ubos = *def.ubo_descriptors;
+        if (def.ssbo_descriptors)
+            contract.ssbos = *def.ssbo_descriptors;
+        mci->SetBindingContract(contract);
+    }
 
-    mci->SetBindingContract(BuildBindingContract(def.descriptor_entries, def.descriptor_entry_count));
-
-    // ─────────────────────────────────────────────────────────────
-    // Step 6c: Inject auto-generated layout #defines into GLSL
-    // Resort() finalises set/binding numbers; BuildShaderLayoutContract
-    // reads them and EmitShaderLayoutDefines produces a #define block.
-    // Keep #version as the first directive by inserting the block
-    // after #version when present.
-    // ─────────────────────────────────────────────────────────────
     {
         mci->Resort();
         const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(*mci);
@@ -272,21 +249,11 @@ MaterialCreateInfo *CompileCompositorMaterial(
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 7: Compile directly → SPV
-    // ─────────────────────────────────────────────────────────────
-
     if (!mci->CreateShaderDirect())
-    {
         return FailAfterMci("CreateShaderDirect() failed (check GLSLCompiler log)");
-    }
 
     return mci;
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CompileCompositorMaterial — 2D 材质重载
-// ═══════════════════════════════════════════════════════════════════════════
 
 MaterialCreateInfo *CompileCompositorMaterial(
     const contract::PhysicalDeviceProfileLite *profile,

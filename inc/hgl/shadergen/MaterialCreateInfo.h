@@ -170,6 +170,15 @@ namespace hgl::graph
             bool AddSSBO(const uint32_t flag_bits,const SSBODescriptorSemantic semantic);
             bool AddSSBOStruct(const uint32_t flag_bits,const SSBODescriptorSemantic semantic);
 
+            bool AddNamedTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const std::string &name)
+            {
+                return AddTextureSampler(flag_bits,set_type,st,name);
+            }
+            bool AddNamedTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const char *name)
+            {
+                return AddTextureSampler(flag_bits,set_type,st,std::string(name?name:""));
+            }
+
             bool AddTexture(const ShaderStage flag_bits,const DescriptorSetType set_type,const TextureType &tt,const SamplerSlot slot);
             bool AddTextureSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const SamplerSlot slot);
 
