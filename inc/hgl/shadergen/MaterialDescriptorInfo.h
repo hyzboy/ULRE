@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <hgl/common/ShaderDescriptorDef.h>
-#include<hgl/mtl/ShaderBufferSource.h>
 #include<ankerl/unordered_dense.h>
 #include<string>
 
@@ -15,7 +14,8 @@ class MaterialDescriptorInfo
     uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
-    ankerl::unordered_dense::map<std::string,std::string> struct_map;
+    bool ubo_struct_by_semantic [mtl::UBODescriptorSemanticCount] = {};
+    bool ssbo_struct_by_semantic[mtl::SSBODescriptorSemanticCount] = {};
     ankerl::unordered_dense::map<std::string,UBODescriptor *> ubo_map;
     ankerl::unordered_dense::map<std::string,SSBODescriptor *> ssbo_map;
 
@@ -45,46 +45,38 @@ public:
     MaterialDescriptorInfo();
     ~MaterialDescriptorInfo()=default;
 
-    bool AddStruct(const std::string &name,const std::string &code)
+    bool AddUBOStruct(const mtl::UBODescriptorSemantic semantic)
     {
-        struct_map[KeyFrom(name)] = KeyFrom(code);
-        return(true);
-    }
-    bool AddStruct(const char *name,const char *code)
-    {
-        return AddStruct(KeyFrom(name),KeyFrom(code));
-    }
-    bool AddStruct(const char *name,const std::string &code)
-    {
-        return AddStruct(KeyFrom(name),code);
-    }
-    bool AddStruct(const std::string &name,const char *code)
-    {
-        return AddStruct(name,KeyFrom(code));
-    }
-
-    bool AddStruct(const ShaderBufferSource &ss)
-    {
-        return(AddStruct(ss.struct_name,""));
-    }
-
-    bool GetStruct(const std::string &name,std::string &code)
-    {
-        const auto iter=struct_map.find(name);
-        if(iter==struct_map.end())
+        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
             return false;
 
-        code=iter->second;
+        ubo_struct_by_semantic[size_t(semantic)] = true;
         return true;
     }
 
-    bool hasStruct(const std::string &name) const
+    bool AddSSBOStruct(const mtl::SSBODescriptorSemantic semantic)
     {
-        return struct_map.contains(name);
+        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+            return false;
+
+        ssbo_struct_by_semantic[size_t(semantic)] = true;
+        return true;
     }
-    bool hasStruct(const char *name) const
+
+    bool hasUBOStruct(const mtl::UBODescriptorSemantic semantic) const
     {
-        return struct_map.contains(KeyFrom(name));
+        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+            return false;
+
+        return ubo_struct_by_semantic[size_t(semantic)];
+    }
+
+    bool hasSSBOStruct(const mtl::SSBODescriptorSemantic semantic) const
+    {
+        if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+            return false;
+
+        return ssbo_struct_by_semantic[size_t(semantic)];
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);

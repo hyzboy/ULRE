@@ -11,7 +11,6 @@ namespace hgl::graph
 {
     struct UBODescriptor;
     struct SSBODescriptor;
-    struct ShaderBufferSource;
 
     class ShaderCreateInfoVertex;
     class ShaderCreateInfo;
@@ -53,12 +52,8 @@ namespace hgl::graph
             bool AddResolvedUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const UBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
             bool AddResolvedUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const UBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
 
-            bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
-
             bool AddResolvedSSBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const SSBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
             bool AddResolvedSSBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const SSBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name);
-
-            bool AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
         public:
 
@@ -114,12 +109,6 @@ namespace hgl::graph
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
             //bool SetWorldPosition(const uint32_t shader_stage_flag_bits);
-
-            bool AddStruct(const std::string &ubo_typename,const std::string &codes);
-            bool AddStruct(const char *ubo_typename,const char *codes)
-            {
-                return AddStruct(std::string(ubo_typename?ubo_typename:""),std::string(codes?codes:""));
-            }
 
             bool AddUBO(const ShaderStage flag_bits,const UBODescriptorSemantic semantic);
             bool AddUBO(const uint32_t flag_bits,const UBODescriptorSemantic semantic);

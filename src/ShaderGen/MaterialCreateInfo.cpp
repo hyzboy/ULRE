@@ -233,20 +233,12 @@ MaterialCreateInfo::~MaterialCreateInfo()
     shader_map.Clear();
 }
 
-bool MaterialCreateInfo::AddStruct(const std::string &struct_name,const std::string &codes)
-{
-    if(struct_name.empty())
-        return(false);
-
-    return descriptor_db.AddStruct(struct_name,codes);
-}
-
 bool MaterialCreateInfo::AddResolvedUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const UBODescriptorSemantic semantic,const std::string &struct_name,const std::string &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_db.hasUBOStruct(semantic))
         return(false);
 
     ShaderCreateInfo *sc=shader_map[flag_bit];
@@ -275,7 +267,7 @@ bool MaterialCreateInfo::AddResolvedUBO(const uint32_t flag_bits,const Descripto
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_db.hasUBOStruct(semantic))
         return(false);
 
     return ExecuteOnShadersByStage(shader_map,flag_bits,
@@ -285,14 +277,6 @@ bool MaterialCreateInfo::AddResolvedUBO(const uint32_t flag_bits,const Descripto
         });
 }
 
-bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
-{
-    if(!AddStruct(ss.struct_name,""))
-        return(false);
-
-    return AddResolvedUBO(flag_bits,ss.set_type,ss.ubo_semantic,ss.struct_name,ss.name);
-}
-
 bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const UBODescriptorSemantic semantic)
 {
     const DescriptorSemanticMeta *meta = nullptr;
@@ -300,7 +284,7 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const UBODescript
     if(!ResolveUBOSemanticMeta(semantic,meta))
         return false;
 
-    if(!AddStruct(meta->struct_name,""))
+    if(!descriptor_db.AddUBOStruct(semantic))
         return false;
 
     return AddResolvedUBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
@@ -311,7 +295,7 @@ bool MaterialCreateInfo::AddResolvedSSBO(const ShaderStage flag_bit,const Descri
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_db.hasSSBOStruct(semantic))
         return(false);
 
     ShaderCreateInfo *sc=shader_map[flag_bit];
@@ -340,7 +324,7 @@ bool MaterialCreateInfo::AddResolvedSSBO(const uint32_t flag_bits,const Descript
 {
     if(flag_bits==0)return(false);          //没有任何SHADER用?
 
-    if(!descriptor_db.hasStruct(struct_name))
+    if(!descriptor_db.hasSSBOStruct(semantic))
         return(false);
 
     return ExecuteOnShadersByStage(shader_map,flag_bits,
@@ -350,14 +334,6 @@ bool MaterialCreateInfo::AddResolvedSSBO(const uint32_t flag_bits,const Descript
         });
 }
 
-bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
-{
-    if(!AddStruct(ss.struct_name,""))
-        return(false);
-
-    return AddResolvedSSBO(flag_bits,ss.set_type,ss.ssbo_semantic,ss.struct_name,ss.name);
-}
-
 bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const SSBODescriptorSemantic semantic)
 {
     const DescriptorSemanticMeta *meta = nullptr;
@@ -365,7 +341,7 @@ bool MaterialCreateInfo::AddSSBOStruct(const uint32_t flag_bits,const SSBODescri
     if(!ResolveSSBOSemanticMeta(semantic,meta))
         return false;
 
-    if(!AddStruct(meta->struct_name,""))
+    if(!descriptor_db.AddSSBOStruct(semantic))
         return false;
 
     return AddResolvedSSBO(flag_bits,meta->set_type,semantic,meta->struct_name,meta->name);
@@ -437,15 +413,16 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
     if(data_bytes>0)
         material_instance_glsl=glsl_codes;
 
-    descriptor_db.AddStruct(MaterialInstanceStruct,material_instance_glsl); //外部指定的 struct MaterialInstance代码
-
-    descriptor_db.AddStruct(SBS_MaterialInstance);            //MaterialInstance mi[...];
+    if(!descriptor_db.AddSSBOStruct(SSBODescriptorSemantic::MaterialInstance))
+        return false;
 
     material_instance_max_count=std::min<uint32_t>(ssbo_range/data_bytes,HGL_U16_MAX);
 
     material_instance_ssbo=CreateSSBODescriptor(SSBODescriptorSemantic::MaterialInstance,shader_stage_flag_bits);
 
-    descriptor_db.AddSSBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,material_instance_ssbo);
+    descriptor_db.AddSSBO(shader_stage_flag_bits,
+                          GetDescriptorSemanticMeta(SSBODescriptorSemantic::MaterialInstance).set_type,
+                          material_instance_ssbo);
 
     ForEachShaderByStage(shader_map,shader_stage_flag_bits,
         [&](ShaderCreateInfo &shader,ShaderStage)
@@ -464,7 +441,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     local_to_world_max_count=std::min<uint32_t>(ssbo_range/sizeof(math::Matrix4f),HGL_U16_MAX);
 
-    if(!AddSSBOStruct(shader_stage_flag_bits,SBS_LocalToWorld))
+    if(!AddSSBOStruct(shader_stage_flag_bits,SSBODescriptorSemantic::LocalToWorld))
         return(false);
 
     local_to_world_ssbo=descriptor_db.GetSSBO(SSBODescriptorSemantic::LocalToWorld);
