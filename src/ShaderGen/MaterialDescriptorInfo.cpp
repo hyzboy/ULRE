@@ -20,15 +20,6 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
     descriptor_count=0;
 }
 
-const DescriptorSetType MaterialDescriptorInfo::GetSetType(const std::string &name)const
-{
-    for(auto &sds:desc_set_array)
-        if(sds.descriptor_map.ContainsKey(name.c_str()))
-            return(sds.set_type);
-
-    return DescriptorSetType::Unknow;
-}
-
 const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);

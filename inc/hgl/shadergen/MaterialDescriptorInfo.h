@@ -79,12 +79,6 @@ public:
     UBODescriptor  *GetUBO (mtl::UBODescriptorSemantic semantic);
     SSBODescriptor *GetSSBO(mtl::SSBODescriptorSemantic semantic);
 
-    const DescriptorSetType GetSetType(const std::string &name)const;
-    const DescriptorSetType GetSetType(const char *name)const
-    {
-        return GetSetType(std::string(name?name:""));
-    }
-
     void Resort();      //排序产生set号与binding号
 
     const uint GetCount()const
