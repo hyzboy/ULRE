@@ -76,7 +76,7 @@ namespace hgl::graph
 
     struct UBODescriptor:public ShaderDescriptor
     {
-        AnsiString type;
+        std::string type;
         mtl::UBODescriptorSemantic semantic = mtl::UBODescriptorSemantic::Unknown;
 
     public:
@@ -89,7 +89,7 @@ namespace hgl::graph
 
     struct SSBODescriptor:public ShaderDescriptor
     {
-        AnsiString type;
+        std::string type;
         mtl::SSBODescriptorSemantic semantic = mtl::SSBODescriptorSemantic::Unknown;
 
     public:
@@ -102,7 +102,7 @@ namespace hgl::graph
 
     struct TextureDescriptor:public ShaderDescriptor
     {
-        AnsiString type;
+        std::string type;
         mtl::SamplerSlot slot = mtl::SamplerSlot::RANGE_SIZE;  ///< For standard texture descriptors mapped to SamplerSlot
 
     public:
@@ -115,7 +115,7 @@ namespace hgl::graph
 
     struct TextureSamplerDescriptor:public ShaderDescriptor
     {
-        AnsiString type;
+        std::string type;
         mtl::SamplerSlot slot = mtl::SamplerSlot::RANGE_SIZE;  ///< For standard texture descriptors mapped to SamplerSlot
 
     public:
@@ -128,28 +128,28 @@ namespace hgl::graph
 
     struct ShaderObjectData:public ShaderDescriptor
     {
-        AnsiString type;
+        std::string type;
     };
 
     struct ConstValueDescriptor
     {
         int constant_id;
 
-        AnsiString type;
-        AnsiString name;
-        AnsiString value;
+        std::string type;
+        std::string name;
+        std::string value;
     };
 
     struct SubpassInputDescriptor
     {
-        AnsiString name;
+        std::string name;
         uint8_t input_attachment_index;
         uint8_t binding;
     };
 
     struct ShaderPushConstant
     {
-        AnsiString name;
+        std::string name;
         uint8_t offset;
         uint8_t size;
     };

@@ -36,7 +36,7 @@ bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ub
     if(!ubo)
         return(false);
 
-    struct_list.emplace(ubo->type.c_str()?ubo->type.c_str():"");
+    struct_list.emplace(ubo->type);
 
     ubo_list.push_back(ubo);
     return true;
@@ -47,7 +47,7 @@ bool ShaderDescriptorInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *
     if(!ssbo)
         return(false);
 
-    struct_list.emplace(ssbo->type.c_str()?ssbo->type.c_str():"");
+    struct_list.emplace(ssbo->type);
 
     ssbo_list.push_back(ssbo);
     return true;
@@ -76,7 +76,7 @@ bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
     if(!sd)return(false);
 
     for(auto *p:const_value_list)
-        if(p->name.Comp(sd->name)==0)
+        if(p->name==sd->name)
             return(false);
 
     sd->constant_id=static_cast<int>(const_value_list.size());
@@ -95,12 +95,12 @@ bool VertexShaderDescriptorInfo::AddSubpassInput(const std::string &name,uint8_t
     for(auto *si:subpass_input)
     {
         if(si->input_attachment_index==index)return(false);
-        if(si->name.Comp(name.c_str())==0)return(false);
+        if(si->name==name)return(false);
     }
 
     SubpassInputDescriptor *ssi=new SubpassInputDescriptor;
 
-    ssi->name=name.c_str();
+    ssi->name=name;
     ssi->input_attachment_index=index;
 
     subpass_input.push_back(ssi);
@@ -109,7 +109,7 @@ bool VertexShaderDescriptorInfo::AddSubpassInput(const std::string &name,uint8_t
 
 void ShaderDescriptorInfo::SetPushConstant(const std::string &name,uint8_t offset,uint8_t size)
 {
-    push_constant.name  =name.c_str();
+    push_constant.name  =name;
     push_constant.offset=offset;
     push_constant.size  =size;
 }
