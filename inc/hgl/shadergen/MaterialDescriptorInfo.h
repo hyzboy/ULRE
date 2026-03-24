@@ -16,29 +16,14 @@ class MaterialDescriptorInfo
 
     bool ubo_struct_by_semantic [mtl::UBODescriptorSemanticCount] = {};
     bool ssbo_struct_by_semantic[mtl::SSBODescriptorSemanticCount] = {};
-    ankerl::unordered_dense::map<std::string,UBODescriptor *> ubo_map;
-    ankerl::unordered_dense::map<std::string,SSBODescriptor *> ssbo_map;
-
-    UBODescriptor  *ubo_by_semantic [mtl::UBODescriptorSemanticCount] = {};
-    SSBODescriptor *ssbo_by_semantic[mtl::SSBODescriptorSemanticCount] = {};
+    ankerl::unordered_dense::map<mtl::UBODescriptorSemantic,UBODescriptor *> ubo_map;
+    ankerl::unordered_dense::map<mtl::SSBODescriptorSemantic,SSBODescriptor *> ssbo_map;
 
     TextureDescriptor        *texture_by_slot        [mtl::SamplerSlotCount] = {};
     TextureSamplerDescriptor *texture_sampler_by_slot[mtl::SamplerSlotCount] = {};
 
     ankerl::unordered_dense::map<std::string,TextureDescriptor *> texture_map;
     ankerl::unordered_dense::map<std::string,TextureSamplerDescriptor *> texture_sampler_map;
-
-private:
-
-    static std::string KeyFrom(const std::string &text)
-    {
-        return text;
-    }
-
-    static std::string KeyFrom(const char *text)
-    {
-        return std::string(text?text:"");
-    }
 
 public:
 

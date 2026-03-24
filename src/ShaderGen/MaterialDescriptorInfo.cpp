@@ -38,12 +38,10 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    ubo_map[obj->name] = (UBODescriptor *)obj;
-
     {
         const auto sem = static_cast<UBODescriptor *>(obj)->semantic;
         if(mtl::IsBuiltinDescriptorSemantic(sem))
-            ubo_by_semantic[size_t(sem)] = static_cast<UBODescriptor *>(obj);
+            ubo_map[sem] = static_cast<UBODescriptor *>(obj);
     }
 
     return((UBODescriptor *)obj);
@@ -58,12 +56,10 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
 
     ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
-    ssbo_map[obj->name] = (SSBODescriptor *)obj;
-
     {
         const auto sem = static_cast<SSBODescriptor *>(obj)->semantic;
         if(mtl::IsBuiltinDescriptorSemantic(sem))
-            ssbo_by_semantic[size_t(sem)] = static_cast<SSBODescriptor *>(obj);
+            ssbo_map[sem] = static_cast<SSBODescriptor *>(obj);
     }
 
     return((SSBODescriptor *)obj);
@@ -111,16 +107,24 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
 
 UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
 {
-    if(mtl::IsBuiltinDescriptorSemantic(semantic))
-        return ubo_by_semantic[size_t(semantic)];
+    if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+        return nullptr;
+
+    const auto iter=ubo_map.find(semantic);
+    if(iter!=ubo_map.end())
+        return iter->second;
 
     return nullptr;
 }
 
 SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic semantic)
 {
-    if(mtl::IsBuiltinDescriptorSemantic(semantic))
-        return ssbo_by_semantic[size_t(semantic)];
+    if(!mtl::IsBuiltinDescriptorSemantic(semantic))
+        return nullptr;
+
+    const auto iter=ssbo_map.find(semantic);
+    if(iter!=ssbo_map.end())
+        return iter->second;
 
     return nullptr;
 }
