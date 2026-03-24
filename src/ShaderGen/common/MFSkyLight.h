@@ -34,9 +34,6 @@ inline bool SkyCStrEq(const char *lhs,const char *rhs)
 
 struct SkyLightResourceInjectionSpec
 {
-    const char *append_named_texture_sampler_name = nullptr;
-    FixedTextureSamplerDescriptor append_named_texture_sampler{};
-
     const char *const *append_fragment_required_resources = nullptr;
     uint32_t append_fragment_required_resource_count = 0;
 };
@@ -52,8 +49,6 @@ inline SkyLightResourceInjectionSpec GetSkyLightResourceInjectionSpec(const SkyL
     if (req.need_sky_cubemap)
     {
         return SkyLightResourceInjectionSpec{
-            SKYLIGHT_RESOURCE_KEY_SKY_CUBEMAP,
-            MakeFixedTextureSamplerDescriptor(uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT), SamplerType::SamplerCube, SET_TYPE_SKY),
             SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP,
             uint32_t(sizeof(SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP) / sizeof(SKYLIGHT_APPEND_FRAGMENT_RESOURCES_CUBEMAP[0]))
         };
@@ -67,12 +62,7 @@ inline void ApplySkyLightResourceInjection(
     FixedTextureSamplerDescriptors &texture_samplers_io,
     std::vector<const char *> &fragment_resources_io)
 {
-    if (spec.append_named_texture_sampler_name && *spec.append_named_texture_sampler_name)
-    {
-        texture_samplers_io.by_name.try_emplace(spec.append_named_texture_sampler_name,
-                                                spec.append_named_texture_sampler);
-    }
-
+    (void)texture_samplers_io;
     for (uint32_t i = 0; i < spec.append_fragment_required_resource_count; ++i)
     {
         const char *name = spec.append_fragment_required_resources[i];

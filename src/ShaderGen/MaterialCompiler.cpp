@@ -60,20 +60,12 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
 
     if (def.texture_samplers)
     {
-        for (const auto &[slot, descriptor] : def.texture_samplers->by_slot)
+        for (const auto &[slot, descriptor] : *def.texture_samplers)
         {
             if (descriptor.set_type == SET_TYPE_MATERIAL)
                 return true;
 
             (void)slot;
-        }
-
-        for (const auto &[name, descriptor] : def.texture_samplers->by_name)
-        {
-            if (descriptor.set_type == SET_TYPE_MATERIAL)
-                return true;
-
-            (void)name;
         }
     }
 
@@ -181,22 +173,13 @@ MaterialCreateInfo *CompileCompositorMaterial(
 
     if (def.texture_samplers)
     {
-        for (const auto &[slot, descriptor] : def.texture_samplers->by_slot)
+        for (const auto &[slot, descriptor] : *def.texture_samplers)
         {
             if (!RangeCheck(descriptor.sampler_type))
                 return FailAfterMci("texture sampler slot has invalid SamplerType");
 
             if (!mci->AddTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.set_type, descriptor.sampler_type, slot))
                 return FailAfterMci("AddTextureSampler(slot) failed");
-        }
-
-        for (const auto &[name, descriptor] : def.texture_samplers->by_name)
-        {
-            if (!RangeCheck(descriptor.sampler_type))
-                return FailAfterMci("named texture sampler has invalid SamplerType");
-
-            if (!mci->AddNamedTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.set_type, descriptor.sampler_type, name))
-                return FailAfterMci("AddTextureSampler(name) failed");
         }
     }
 

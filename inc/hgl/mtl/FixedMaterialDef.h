@@ -4,7 +4,6 @@
 #include<hgl/mtl/DescriptorBindingContract.h>
 #include<hgl/vk/VKPrimitiveType.h>
 #include<map>
-#include<string>
 
 namespace hgl::graph::mtl{
 
@@ -20,11 +19,7 @@ struct FixedTextureSamplerDescriptor
     uint32_t atlas_rows = 0;
 };
 
-struct FixedTextureSamplerDescriptors
-{
-    std::map<SamplerSlot, FixedTextureSamplerDescriptor> by_slot;
-    std::map<std::string, FixedTextureSamplerDescriptor> by_name;
-};
+using FixedTextureSamplerDescriptors = std::map<SamplerSlot, FixedTextureSamplerDescriptor>;
 
 inline constexpr FixedTextureSamplerDescriptor MakeFixedTextureSamplerDescriptor(
     const uint32_t stage_flags,
@@ -58,21 +53,7 @@ inline void AddFixedTextureSampler(FixedTextureSamplerDescriptors &descriptors,
                                    const uint32_t atlas_cols = 0,
                                    const uint32_t atlas_rows = 0)
 {
-    descriptors.by_slot[slot] = MakeFixedTextureSamplerDescriptor(stage_flags, sampler_type, set_type, atlas_cols, atlas_rows);
-}
-
-inline void AddFixedNamedTextureSampler(FixedTextureSamplerDescriptors &descriptors,
-                                        const char *name,
-                                        const uint32_t stage_flags,
-                                        const SamplerType sampler_type,
-                                        const DescriptorSetType set_type,
-                                        const uint32_t atlas_cols = 0,
-                                        const uint32_t atlas_rows = 0)
-{
-    if (!name || !*name)
-        return;
-
-    descriptors.by_name[name] = MakeFixedTextureSamplerDescriptor(stage_flags, sampler_type, set_type, atlas_cols, atlas_rows);
+    descriptors[slot] = MakeFixedTextureSamplerDescriptor(stage_flags, sampler_type, set_type, atlas_cols, atlas_rows);
 }
 
 struct FixedMaterialDef
