@@ -176,7 +176,20 @@ MaterialDescriptorManager::MaterialDescriptorManager(const AnsiString &name,cons
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
     {
-        sds_array[i].descriptor_map.GetValueArray(set_values[i]);
+        std::vector<UBODescriptor *> ubos;
+        std::vector<SSBODescriptor *> ssbos;
+        std::vector<TextureDescriptor *> textures;
+        std::vector<TextureSamplerDescriptor *> samplers;
+
+        sds_array[i].ubo_descriptor_map.GetValueArray(ubos);
+        sds_array[i].ssbo_descriptor_map.GetValueArray(ssbos);
+        sds_array[i].texture_descriptor_map.GetValueArray(textures);
+        sds_array[i].texture_sampler_descriptor_map.GetValueArray(samplers);
+
+        for(auto *p:ubos) set_values[i].push_back(p);
+        for(auto *p:ssbos) set_values[i].push_back(p);
+        for(auto *p:textures) set_values[i].push_back(p);
+        for(auto *p:samplers) set_values[i].push_back(p);
 
         set_values[i].erase(
             std::remove(set_values[i].begin(),set_values[i].end(),nullptr),

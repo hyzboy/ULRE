@@ -160,11 +160,17 @@ namespace hgl::graph
         int set;
         int count;
 
-        UnorderedMap<AnsiString,ShaderDescriptor*>  descriptor_map;
+        UnorderedMap<mtl::UBODescriptorSemantic,UBODescriptor*>    ubo_descriptor_map;
+        UnorderedMap<mtl::SSBODescriptorSemantic,SSBODescriptor*>  ssbo_descriptor_map;
+        UnorderedMap<mtl::SamplerSlot,TextureDescriptor*>          texture_descriptor_map;
+        UnorderedMap<mtl::SamplerSlot,TextureSamplerDescriptor*>   texture_sampler_descriptor_map;
 
     public:
 
-        ShaderDescriptor *AddDescriptor(uint32_t shader_stage_flag_bits,ShaderDescriptor *new_sd);
+        UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,UBODescriptor *new_sd);
+        SSBODescriptor *AddSSBO(uint32_t shader_stage_flag_bits,SSBODescriptor *new_sd);
+        TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,TextureDescriptor *new_sd);
+        TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,TextureSamplerDescriptor *new_sd);
     };
 
     using ShaderDescriptorSetArray=ShaderDescriptorSet[DESCRIPTOR_SET_TYPE_COUNT];

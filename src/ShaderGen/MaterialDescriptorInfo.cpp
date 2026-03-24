@@ -27,15 +27,15 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetTy
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
+    UBODescriptor *obj=sds->AddUBO(ssb,sd);
 
     {
-        const auto sem = static_cast<UBODescriptor *>(obj)->semantic;
+        const auto sem = obj->semantic;
         if(mtl::IsBuiltinDescriptorSemantic(sem))
-            ubo_map[sem] = static_cast<UBODescriptor *>(obj);
+            ubo_map[sem] = obj;
     }
 
-    return((UBODescriptor *)obj);
+    return obj;
 }
 
 const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSetType set_type,SSBODescriptor *sd)
@@ -45,15 +45,15 @@ const SSBODescriptor *MaterialDescriptorInfo::AddSSBO(uint32_t ssb,DescriptorSet
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
+    SSBODescriptor *obj=sds->AddSSBO(ssb,sd);
 
     {
-        const auto sem = static_cast<SSBODescriptor *>(obj)->semantic;
+        const auto sem = obj->semantic;
         if(mtl::IsBuiltinDescriptorSemantic(sem))
-            ssbo_map[sem] = static_cast<SSBODescriptor *>(obj);
+            ssbo_map[sem] = obj;
     }
 
-    return((SSBODescriptor *)obj);
+    return obj;
 }
 
 const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd)
@@ -63,17 +63,17 @@ const TextureDescriptor *MaterialDescriptorInfo::AddTexture(uint32_t shader_stag
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    ShaderDescriptor *obj=sds->AddDescriptor(shader_stage_flag_bits,sd);
+    TextureDescriptor *obj=sds->AddTexture(shader_stage_flag_bits,sd);
 
-    texture_map[obj->name] = (TextureDescriptor *)obj;
+    texture_map[obj->name] = obj;
 
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if(mtl::TryGetSlotFromDescriptorName(obj->name,slot))
-            texture_by_slot[size_t(slot)] = static_cast<TextureDescriptor *>(obj);
+                texture_by_slot[size_t(slot)] = obj;
     }
 
-    return((TextureDescriptor *)obj);
+            return obj;
 }
 
 const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32_t ssb,DescriptorSetType set_type,TextureSamplerDescriptor *sd)
@@ -83,17 +83,17 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
 
     ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
-    ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
+    TextureSamplerDescriptor *obj=sds->AddTextureSampler(ssb,sd);
 
-    texture_sampler_map[obj->name] = (TextureSamplerDescriptor *)obj;
+    texture_sampler_map[obj->name] = obj;
 
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if(mtl::TryGetSlotFromDescriptorName(obj->name,slot))
-            texture_sampler_by_slot[size_t(slot)] = static_cast<TextureSamplerDescriptor *>(obj);
+                texture_sampler_by_slot[size_t(slot)] = obj;
     }
 
-    return((TextureSamplerDescriptor *)obj);
+            return obj;
 }
 
 UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
@@ -174,7 +174,19 @@ void MaterialDescriptorInfo::Resort()
         std::vector<ShaderDescriptor *> ordered;
         ordered.reserve(static_cast<size_t>(p.count));
 
-        for(const auto &kv:p.descriptor_map)
+        for(const auto &kv:p.ubo_descriptor_map)
+            if(kv.second)
+                ordered.emplace_back(kv.second);
+
+        for(const auto &kv:p.ssbo_descriptor_map)
+            if(kv.second)
+                ordered.emplace_back(kv.second);
+
+        for(const auto &kv:p.texture_descriptor_map)
+            if(kv.second)
+                ordered.emplace_back(kv.second);
+
+        for(const auto &kv:p.texture_sampler_descriptor_map)
             if(kv.second)
                 ordered.emplace_back(kv.second);
 

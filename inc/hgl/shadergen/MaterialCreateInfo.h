@@ -101,7 +101,7 @@ namespace hgl::graph
             /// outside of CreateShaderDirect() (which calls Resort internally).
             void Resort(){descriptor_db.Resort();}
 
-            const uint32_t GetMaterialInstanceStride   ()const{return material_instance_stride;}
+            const uint32_t GetMaterialInstanceStride    ()const{return material_instance_stride;}
             const uint32_t GetMaterialInstanceMaxCount  ()const{return material_instance_max_count;}
 
             const bool HasLocalToWorld                  ()const{return has_local_to_world;}
