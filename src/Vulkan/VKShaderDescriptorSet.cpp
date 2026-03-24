@@ -23,17 +23,15 @@ UBODescriptor *ShaderDescriptorSet::AddUBO(uint32_t ssb,UBODescriptor *new_sd)
     if(!new_sd)
         return nullptr;
 
-    UBODescriptor *exist_ubo=nullptr;
-
-    if(ubo_descriptor_map.Get(new_sd->semantic,exist_ubo)
-    && exist_ubo)
+    const auto exist_ubo_iter=ubo_descriptor_map.find(new_sd->semantic);
+    if(exist_ubo_iter!=ubo_descriptor_map.end()&&exist_ubo_iter->second)
     {
         delete new_sd;
-        exist_ubo->stage_flag|=ssb;
-        return exist_ubo;
+        exist_ubo_iter->second->stage_flag|=ssb;
+        return exist_ubo_iter->second;
     }
 
-    ubo_descriptor_map.Add(new_sd->semantic,new_sd);
+    ubo_descriptor_map.emplace(new_sd->semantic,new_sd);
 
     return FinalizeInsert(this,ssb,new_sd);
 }
@@ -46,17 +44,15 @@ SSBODescriptor *ShaderDescriptorSet::AddSSBO(uint32_t ssb,SSBODescriptor *new_sd
     if(!new_sd)
         return nullptr;
 
-    SSBODescriptor *exist_ssbo=nullptr;
-
-    if(ssbo_descriptor_map.Get(new_sd->semantic,exist_ssbo)
-    && exist_ssbo)
+    const auto exist_ssbo_iter=ssbo_descriptor_map.find(new_sd->semantic);
+    if(exist_ssbo_iter!=ssbo_descriptor_map.end()&&exist_ssbo_iter->second)
     {
         delete new_sd;
-        exist_ssbo->stage_flag|=ssb;
-        return exist_ssbo;
+        exist_ssbo_iter->second->stage_flag|=ssb;
+        return exist_ssbo_iter->second;
     }
 
-    ssbo_descriptor_map.Add(new_sd->semantic,new_sd);
+    ssbo_descriptor_map.emplace(new_sd->semantic,new_sd);
 
     return FinalizeInsert(this,ssb,new_sd);
 }
@@ -69,16 +65,15 @@ TextureDescriptor *ShaderDescriptorSet::AddTexture(uint32_t ssb,TextureDescripto
     if(!new_sd)
         return nullptr;
 
-    TextureDescriptor *exist_sd=nullptr;
-
-    if(texture_descriptor_map.Get(new_sd->slot,exist_sd)&&exist_sd)
+    const auto exist_tex_iter=texture_descriptor_map.find(new_sd->slot);
+    if(exist_tex_iter!=texture_descriptor_map.end()&&exist_tex_iter->second)
     {
         delete new_sd;
-        exist_sd->stage_flag|=ssb;
-        return exist_sd;
+        exist_tex_iter->second->stage_flag|=ssb;
+        return exist_tex_iter->second;
     }
 
-    texture_descriptor_map.Add(new_sd->slot,new_sd);
+    texture_descriptor_map.emplace(new_sd->slot,new_sd);
 
     return FinalizeInsert(this,ssb,new_sd);
 }
@@ -91,16 +86,15 @@ TextureSamplerDescriptor *ShaderDescriptorSet::AddTextureSampler(uint32_t ssb,Te
     if(!new_sd)
         return nullptr;
 
-    TextureSamplerDescriptor *exist_sd=nullptr;
-
-    if(texture_sampler_descriptor_map.Get(new_sd->slot,exist_sd)&&exist_sd)
+    const auto exist_sampler_iter=texture_sampler_descriptor_map.find(new_sd->slot);
+    if(exist_sampler_iter!=texture_sampler_descriptor_map.end()&&exist_sampler_iter->second)
     {
         delete new_sd;
-        exist_sd->stage_flag|=ssb;
-        return exist_sd;
+        exist_sampler_iter->second->stage_flag|=ssb;
+        return exist_sampler_iter->second;
     }
 
-    texture_sampler_descriptor_map.Add(new_sd->slot,new_sd);
+    texture_sampler_descriptor_map.emplace(new_sd->slot,new_sd);
 
     return FinalizeInsert(this,ssb,new_sd);
 }

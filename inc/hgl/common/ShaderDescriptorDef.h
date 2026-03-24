@@ -3,6 +3,7 @@
 #include <hgl/type/String.h>
 #include <hgl/type/ValueArray.h>
 #include <hgl/type/UnorderedMap.h>
+#include <map>
 #include <vulkan/vulkan.h>
 #include <hgl/common/DescriptorSetTypeDef.h>
 #include <hgl/mtl/DescriptorBindingContract.h>
@@ -160,10 +161,10 @@ namespace hgl::graph
         int set;
         int count;
 
-        UnorderedMap<mtl::UBODescriptorSemantic,UBODescriptor*>    ubo_descriptor_map;
-        UnorderedMap<mtl::SSBODescriptorSemantic,SSBODescriptor*>  ssbo_descriptor_map;
-        UnorderedMap<mtl::SamplerSlot,TextureDescriptor*>          texture_descriptor_map;
-        UnorderedMap<mtl::SamplerSlot,TextureSamplerDescriptor*>   texture_sampler_descriptor_map;
+        std::map<mtl::UBODescriptorSemantic,UBODescriptor*>    ubo_descriptor_map;
+        std::map<mtl::SSBODescriptorSemantic,SSBODescriptor*>  ssbo_descriptor_map;
+        std::map<mtl::SamplerSlot,TextureDescriptor*>          texture_descriptor_map;
+        std::map<mtl::SamplerSlot,TextureSamplerDescriptor*>   texture_sampler_descriptor_map;
 
     public:
 
