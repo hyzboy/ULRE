@@ -84,14 +84,10 @@ public:
     const TextureDescriptor *AddTexture(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureDescriptor *sd);
     const TextureSamplerDescriptor *AddTextureSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,TextureSamplerDescriptor *sd);
 
-    UBODescriptor *GetUBO(const std::string &name);
-    SSBODescriptor *GetSSBO(const std::string &name);
     TextureDescriptor *GetTexture(const std::string &name);
     TextureSamplerDescriptor *GetTextureSampler(const std::string &name);
     TextureDescriptor *GetTexture(mtl::SamplerSlot slot);
     TextureSamplerDescriptor *GetTextureSampler(mtl::SamplerSlot slot);
-    UBODescriptor *GetUBO(const char *name){return GetUBO(std::string(name?name:""));}
-    SSBODescriptor *GetSSBO(const char *name){return GetSSBO(std::string(name?name:""));}
     TextureDescriptor *GetTexture(const char *name){return GetTexture(std::string(name?name:""));}
     TextureSamplerDescriptor *GetTextureSampler(const char *name){return GetTextureSampler(std::string(name?name:""));}
 

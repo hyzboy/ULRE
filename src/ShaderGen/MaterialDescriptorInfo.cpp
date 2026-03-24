@@ -109,30 +109,12 @@ const TextureSamplerDescriptor *MaterialDescriptorInfo::AddTextureSampler(uint32
     return((TextureSamplerDescriptor *)obj);
 }
 
-UBODescriptor *MaterialDescriptorInfo::GetUBO(const std::string &name)
-{
-    const auto iter=ubo_map.find(name);
-    if(iter!=ubo_map.end())
-        return iter->second;
-
-    return(nullptr);
-}
-
 UBODescriptor *MaterialDescriptorInfo::GetUBO(mtl::UBODescriptorSemantic semantic)
 {
     if(mtl::IsBuiltinDescriptorSemantic(semantic))
         return ubo_by_semantic[size_t(semantic)];
 
     return nullptr;
-}
-
-SSBODescriptor *MaterialDescriptorInfo::GetSSBO(const std::string &name)
-{
-    const auto iter=ssbo_map.find(name);
-    if(iter!=ssbo_map.end())
-        return iter->second;
-
-    return(nullptr);
 }
 
 SSBODescriptor *MaterialDescriptorInfo::GetSSBO(mtl::SSBODescriptorSemantic semantic)
