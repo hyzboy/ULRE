@@ -38,28 +38,6 @@ public:
         private_shader_buffer_source_count=count;
     }
 
-    const ShaderBufferSource *FindPrivateShaderBufferSourceByStructName(const char *struct_name)const
-    {
-        if(!struct_name||!*struct_name)
-            return nullptr;
-
-        if(!private_shader_buffer_sources||private_shader_buffer_source_count==0)
-            return nullptr;
-
-        for(uint32 i=0;i<private_shader_buffer_source_count;++i)
-        {
-            const ShaderBufferSource *sbs=private_shader_buffer_sources[i];
-
-            if(!sbs||!sbs->struct_name)
-                continue;
-
-            if(std::strcmp(sbs->struct_name,struct_name)==0)
-                return sbs;
-        }
-
-        return nullptr;
-    }
-
     const uint32 enableVertexShader     () { return shader_stage_flag_bit|=(uint32)ShaderStage::Vertex; }
     const uint32 enableGeometryShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Geometry; }
     const uint32 enableTesslationShader () { return shader_stage_flag_bit|=(uint32)ShaderStage::Tessellation; }
