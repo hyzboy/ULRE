@@ -4,6 +4,182 @@
 #include <fstream>
 #include <sstream>
 
+namespace
+{
+    void AppendDefine(std::string &out, const char *name)
+    {
+        out += "#define ";
+        out += name;
+        out += '\n';
+    }
+
+    void AppendInclude(std::string &out, const std::string &path)
+    {
+        out += "#include \"";
+        out += path;
+        out += "\"\n";
+    }
+
+    std::string BuildForwardVertexEntry(const bool vert_input_2d,
+                                        const bool has_uv0,
+                                        const bool has_vertex_color,
+                                        const bool has_world_pos,
+                                        const bool has_world_normal,
+                                        const bool has_luminance,
+                                        const bool has_direction)
+    {
+        std::string out = "#version 450\n\n";
+
+        if (vert_input_2d)
+            AppendDefine(out, "VERT_INPUT_2D");
+        if (has_uv0)
+            AppendDefine(out, "HAS_UV0");
+        if (has_vertex_color)
+            AppendDefine(out, "HAS_VERTEX_COLOR");
+        if (has_world_pos)
+            AppendDefine(out, "HAS_WORLD_POS");
+        if (has_world_normal)
+            AppendDefine(out, "HAS_WORLD_NORMAL");
+        if (has_luminance)
+            AppendDefine(out, "HAS_LUMINANCE");
+        if (has_direction)
+            AppendDefine(out, "HAS_DIRECTION");
+
+        AppendInclude(out, "compositor/vert_forward_ubo.glsl");
+        AppendInclude(out, "compositor/vert_forward_main.glsl");
+        return out;
+    }
+
+    std::string BuildForwardFragmentEntry(const bool enable_lighting,
+                                          const bool needs_camera,
+                                          const bool needs_sky,
+                                          const bool alpha_masked,
+                                          const bool alpha_dither,
+                                          const bool has_world_pos,
+                                          const bool has_world_normal,
+                                          const bool has_uv0,
+                                          const bool has_vertex_color,
+                                          const bool has_texcoord,
+                                          const bool has_direction,
+                                          const bool has_luminance,
+                                          const bool has_clip_pos,
+                                          const std::string &surface_path)
+    {
+        std::string out = "#version 450\n\n";
+
+        if (enable_lighting)
+            AppendDefine(out, "ENABLE_LIGHTING");
+        if (needs_camera)
+            AppendDefine(out, "NEEDS_CAMERA");
+        if (needs_sky)
+            AppendDefine(out, "NEEDS_SKY");
+        if (alpha_masked)
+            AppendDefine(out, "ALPHA_MODE_MASKED");
+        if (alpha_dither)
+            AppendDefine(out, "ALPHA_MODE_DITHER");
+        if (has_world_pos)
+            AppendDefine(out, "HAS_WORLD_POS");
+        if (has_world_normal)
+            AppendDefine(out, "HAS_WORLD_NORMAL");
+        if (has_uv0)
+            AppendDefine(out, "HAS_UV0");
+        if (has_vertex_color)
+            AppendDefine(out, "HAS_VERTEX_COLOR");
+        if (has_texcoord)
+            AppendDefine(out, "HAS_TEXCOORD");
+        if (has_direction)
+            AppendDefine(out, "HAS_DIRECTION");
+        if (has_luminance)
+            AppendDefine(out, "HAS_LUMINANCE");
+        if (has_clip_pos)
+            AppendDefine(out, "HAS_CLIP_POS");
+
+        AppendInclude(out, "compositor/frag_forward_ubo.glsl");
+        AppendInclude(out, surface_path);
+        AppendInclude(out, "compositor/frag_forward_main.glsl");
+        return out;
+    }
+
+    std::string BuildBillboardDynamicVertexEntry()
+    {
+        std::string out = "#version 450\n\n";
+        AppendInclude(out, "compositor/vert_forward_ubo.glsl");
+        out += "layout(location=POSITION_LOCATION) in vec3 Position;\n\n";
+        AppendDefine(out, "VARYING_STAGE_VERT");
+        AppendDefine(out, "HAS_TEXCOORD");
+        AppendInclude(out, "common/varying_interface.glsl");
+        out += "\nvoid main()\n{\n";
+        out += "    fragMaterialInstanceID = GetMaterialInstanceID();\n";
+        out += "    mat4 l2w_mat = GetTransform();\n";
+        out += "    vec3 center = (l2w_mat * vec4(0.0, 0.0, 0.0, 1.0)).xyz;\n";
+        out += "    vec3 world_pos = center\n";
+        out += "                   + Position.x * camera.billboard_right\n";
+        out += "                   + Position.y * camera.billboard_up;\n\n";
+        out += "    fragTexCoord = vec2(Position.x + 0.5, Position.y * -1.0 + 0.5);\n\n";
+        out += "    gl_Position = camera.vp * vec4(world_pos, 1.0);\n";
+        out += "}\n";
+        return out;
+    }
+
+    std::string BuildBillboardFixedVertexEntry()
+    {
+        std::string out = "#version 450\n\n";
+        out += "#extension GL_EXT_scalar_block_layout : require\n\n";
+        AppendInclude(out, "common/ubo_camera.glsl");
+        AppendInclude(out, "common/ubo_viewport.glsl");
+        AppendInclude(out, "common/ssbo_transform.glsl");
+        out += "struct MaterialInstance {\n";
+        out += "    uvec2 BillboardSize;\n";
+        out += "};\n\n";
+        AppendDefine(out, "MATERIAL_INSTANCE_SSBO_SCALAR");
+        AppendInclude(out, "common/ssbo_material_instance.glsl");
+        out += "#undef MATERIAL_INSTANCE_SSBO_SCALAR\n";
+        out += "layout(location=POSITION_LOCATION) in vec3 Position;\n\n";
+        AppendDefine(out, "VARYING_STAGE_VERT");
+        AppendDefine(out, "HAS_TEXCOORD");
+        AppendInclude(out, "common/varying_interface.glsl");
+        out += "\nMaterialInstance GetMI() { return GetMaterialInstance(); }\n\n";
+        out += "void main()\n{\n";
+        out += "    fragMaterialInstanceID = GetMaterialInstanceID();\n";
+        out += "    MaterialInstance mi = GetMI();\n\n";
+        out += "    vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);\n";
+        out += "    vec4 center_clip = camera.vp * GetTransform() * vec4(0.0, 0.0, 0.0, 1.0);\n";
+        out += "    vec2 center_ndc = center_clip.xy / center_clip.w;\n";
+        out += "    vec2 ndc = center_ndc + Position.xy * psize;\n\n";
+        out += "    fragTexCoord = vec2(Position.x + 0.5, Position.y + 0.5);\n\n";
+        out += "    gl_Position = vec4(ndc * center_clip.w, center_clip.z, center_clip.w);\n";
+        out += "}\n";
+        return out;
+    }
+
+    std::string BuildTerrainGridVertexEntry()
+    {
+        std::string out = "#version 450\n\n";
+        AppendInclude(out, "compositor/vert_forward_ubo.glsl");
+        AppendDefine(out, "VARYING_STAGE_VERT");
+        AppendDefine(out, "HAS_CLIP_POS");
+        AppendDefine(out, "HAS_WORLD_NORMAL");
+        AppendInclude(out, "common/varying_interface.glsl");
+        out += "\nvoid main()\n{\n";
+        out += "    fragMaterialInstanceID = GetMaterialInstanceID();\n";
+        out += "    ivec2 tex_sz = textureSize(TextureHeight, 0);\n";
+        out += "    int W = tex_sz.x;\n\n";
+        out += "    int idx = gl_VertexID;\n";
+        out += "    ivec2 coord = ivec2(idx % W, idx / W);\n\n";
+        out += "    float h = texelFetch(TextureHeight, coord, 0).r;\n";
+        out += "    vec3 nrm = normalize(texelFetch(TextureNormal, coord, 0).xyz * 2.0 - 1.0);\n\n";
+        out += "    vec3 pos = vec3(float(coord.x), float(coord.y), h);\n\n";
+        out += "    mat4 l2w_mat = GetTransform();\n";
+        out += "    vec4 wp = l2w_mat * vec4(pos, 1.0);\n\n";
+        out += "    vec3 wn = normalize(mat3(l2w_mat) * nrm);\n\n";
+        out += "    fragWorldNormal = wn;\n";
+        out += "    fragClipPos = camera.vp * wp;\n\n";
+        out += "    gl_Position = fragClipPos;\n";
+        out += "}\n";
+        return out;
+    }
+}
+
 namespace hgl::graph
 {
     CompositorAssembler::CompositorAssembler()
@@ -26,6 +202,225 @@ namespace hgl::graph
         ss << ifs.rdbuf();
         out_content = ss.str();
         return true;
+    }
+
+    bool CompositorAssembler::TryBuildGeneratedCompositorVS(SurfaceType surface, PassType pass, std::string &out_source) const
+    {
+        if (Is2DSurfaceType(surface))
+        {
+            switch (surface)
+            {
+            case SurfaceType::PureColor2D:
+                out_source = BuildForwardVertexEntry(true, false, false, false, false, false, false);
+                return true;
+
+            case SurfaceType::PureTexture2D:
+            case SurfaceType::Text2D:
+                out_source = BuildForwardVertexEntry(true, true, false, false, false, false, false);
+                return true;
+
+            case SurfaceType::VertexColor2D:
+                out_source = BuildForwardVertexEntry(true, false, true, false, false, false, false);
+                return true;
+
+            default:
+                break;
+            }
+        }
+
+        if (surface == SurfaceType::Unlit)
+        {
+            switch (pass)
+            {
+            case PassType::ForwardOpaque:
+            case PassType::ForwardMasked:
+            case PassType::ForwardTransparent:
+                out_source = BuildForwardVertexEntry(false, false, false, false, false, false, false);
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        switch (pass)
+        {
+        case PassType::ForwardOpaque:
+        case PassType::ForwardMasked:
+        case PassType::ForwardTransparent:
+        case PassType::ForwardDither:
+        case PassType::ForwardA2C:
+            out_source = BuildForwardVertexEntry(false, true, false, true, true, false, false);
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool CompositorAssembler::TryBuildGeneratedCompositorFS(SurfaceType surface, BlendMode blend, PassType pass, const std::string &surface_path, std::string &out_source) const
+    {
+        (void)blend;
+
+        if (Is2DSurfaceType(surface))
+        {
+            switch (pass)
+            {
+            case PassType::ForwardOpaque:
+                out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, false, false, surface_path);
+                return true;
+            case PassType::ForwardMasked:
+                out_source = BuildForwardFragmentEntry(false, false, false, true, false, false, false, false, false, false, false, false, false, surface_path);
+                return true;
+            case PassType::ForwardDither:
+                out_source = BuildForwardFragmentEntry(false, false, false, false, true, false, false, false, false, false, false, false, false, surface_path);
+                return true;
+            case PassType::ForwardTransparent:
+                out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, false, false, surface_path);
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        if (surface == SurfaceType::Unlit)
+        {
+            switch (pass)
+            {
+            case PassType::ForwardOpaque:
+            case PassType::ForwardMasked:
+            case PassType::ForwardTransparent:
+                out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, false, false, surface_path);
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        switch (pass)
+        {
+        case PassType::ForwardOpaque:
+            out_source = BuildForwardFragmentEntry(true, false, false, false, false, true, true, true, false, false, false, false, false, surface_path);
+            return true;
+        case PassType::ForwardMasked:
+            out_source = BuildForwardFragmentEntry(false, false, false, true, false, true, true, true, false, false, false, false, false, surface_path);
+            return true;
+        case PassType::ForwardTransparent:
+        case PassType::ForwardA2C:
+            out_source = BuildForwardFragmentEntry(false, false, false, false, false, true, true, true, false, false, false, false, false, surface_path);
+            return true;
+        case PassType::ForwardDither:
+            out_source = BuildForwardFragmentEntry(false, false, false, false, true, true, true, true, false, false, false, false, false, surface_path);
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const
+    {
+        if (template_path == "compositor/main_forward_unlit_vertexcolor.vert.glsl")
+        {
+            out_source = BuildForwardVertexEntry(false, false, true, false, false, false, false);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_unlit_luminance.vert.glsl")
+        {
+            out_source = BuildForwardVertexEntry(false, false, false, false, false, true, false);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_unlit_luminance_2d.vert.glsl")
+        {
+            out_source = BuildForwardVertexEntry(true, false, false, false, false, true, false);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_unlit_normal.vert.glsl")
+        {
+            out_source = BuildForwardVertexEntry(false, false, false, true, true, false, false);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_sky.vert.glsl")
+        {
+            out_source = BuildForwardVertexEntry(false, false, false, false, false, false, true);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_billboard_dynamic.vert.glsl")
+        {
+            out_source = BuildBillboardDynamicVertexEntry();
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_billboard_fixed.vert.glsl")
+        {
+            out_source = BuildBillboardFixedVertexEntry();
+            return true;
+        }
+
+        if (template_path == "compositor/main_terrain_grid.vert.glsl")
+        {
+            out_source = BuildTerrainGridVertexEntry();
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_lit.vert.glsl")
+        {
+            // HAS_WORLD_POS + HAS_WORLD_NORMAL + HAS_UV0
+            out_source = BuildForwardVertexEntry(false, true, false, true, true, false, false);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, const std::string &surface_path, std::string &out_source) const
+    {
+        if (template_path == "compositor/main_forward_unlit_vertexcolor.frag.glsl")
+        {
+            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, true, false, false, false, false, surface_path);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_unlit_luminance.frag.glsl")
+        {
+            // has_luminance=true (param 12); has_direction stays false
+            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, true, false, surface_path);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_unlit_normal.frag.glsl")
+        {
+            out_source = BuildForwardFragmentEntry(false, true, false, false, false, true, true, false, false, false, false, false, false, surface_path);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_billboard.frag.glsl")
+        {
+            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, true, false, false, false, surface_path);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_sky.frag.glsl")
+        {
+            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, true, false, false, surface_path);
+            return true;
+        }
+
+        if (template_path == "compositor/main_terrain_grid.frag.glsl")
+        {
+            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, true, false, false, false, false, false, true, surface_path);
+            return true;
+        }
+
+        if (template_path == "compositor/main_forward_lit.frag.glsl")
+        {
+            out_source = BuildForwardFragmentEntry(false, true, true, false, false, true, true, true, false, false, false, false, false, surface_path);
+            return true;
+        }
+
+        return false;
     }
 
     std::string CompositorAssembler::GetCompositorVSPath(SurfaceType surface, PassType pass) const
@@ -272,17 +667,33 @@ namespace hgl::graph
             ? surface_function_override
             : GetSurfaceFunctionPath(surface);
 
-        // 3. 读取 VS 模板
+        // 3. 构建或读取 VS 模板
         std::string vs_source;
-        if (!ReadFile(vs_path, vs_source, result.error_message))
+          if ((vs_template_override && vs_template_override[0])
+           && TryBuildGeneratedVSTemplatePath(vs_template_override, vs_source))
+          {
+          }
+          else if (!(vs_template_override && vs_template_override[0])
+              && TryBuildGeneratedCompositorVS(surface, pass, vs_source))
+        {
+        }
+        else if (!ReadFile(vs_path, vs_source, result.error_message))
         {
             result.success = false;
             return result;
         }
 
-        // 4. 读取 FS 模板
+        // 4. 构建或读取 FS 模板
         std::string fs_source;
-        if (!ReadFile(fs_path, fs_source, result.error_message))
+          if ((fs_template_override && fs_template_override[0])
+           && TryBuildGeneratedFSTemplatePath(fs_template_override, surface_rel, fs_source))
+          {
+          }
+          else if (!(fs_template_override && fs_template_override[0])
+              && TryBuildGeneratedCompositorFS(surface, blend, pass, surface_rel, fs_source))
+        {
+        }
+        else if (!ReadFile(fs_path, fs_source, result.error_message))
         {
             result.success = false;
             return result;
@@ -292,7 +703,7 @@ namespace hgl::graph
         vs_source = InjectDefines(vs_source, key);
         fs_source = InjectDefines(fs_source, key);
 
-        // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE
+        // 6. 替换 FS 中的 SURFACE_FUNCTION_FILE（自定义/遗留文件模板仍支持）
         fs_source = ReplaceSurfaceInclude(fs_source, surface_rel);
 
         result.vertex_glsl   = std::move(vs_source);
@@ -332,14 +743,30 @@ namespace hgl::graph
             : desc.surface_function_path;
 
         std::string vs_source;
-        if (!ReadFile(vs_path, vs_source, result.error_message))
+          if (!desc.vs_template_path.empty()
+           && TryBuildGeneratedVSTemplatePath(desc.vs_template_path, vs_source))
+          {
+          }
+          else if (desc.vs_template_path.empty()
+              && TryBuildGeneratedCompositorVS(key.surface_type, key.pass_hint, vs_source))
+        {
+        }
+        else if (!ReadFile(vs_path, vs_source, result.error_message))
         {
             result.success = false;
             return result;
         }
 
         std::string fs_source;
-        if (!ReadFile(fs_path, fs_source, result.error_message))
+          if (!desc.fs_template_path.empty()
+           && TryBuildGeneratedFSTemplatePath(desc.fs_template_path, surface_rel, fs_source))
+          {
+          }
+          else if (desc.fs_template_path.empty()
+              && TryBuildGeneratedCompositorFS(key.surface_type, key.blend_mode, key.pass_hint, surface_rel, fs_source))
+        {
+        }
+        else if (!ReadFile(fs_path, fs_source, result.error_message))
         {
             result.success = false;
             return result;
