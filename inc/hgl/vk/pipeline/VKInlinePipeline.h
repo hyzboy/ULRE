@@ -7,6 +7,9 @@ enum class InlinePipeline
 {
     Solid3D=0,
     Alpha3D,
+    Masked3D,
+    Dither3D,
+    AlphaToCoverage3D,
 
     GizmoOverlay3D,
 

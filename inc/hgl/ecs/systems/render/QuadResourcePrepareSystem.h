@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/ecs/core/System.h>
+#include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<glm/glm.hpp>
 
 namespace hgl
@@ -57,6 +58,11 @@ namespace hgl::ecs
         static graph::MaterialInstance* GetSharedMaterialInstance() { return shared_material_instance; }
         static graph::Pipeline* GetSharedPipeline() { return shared_pipeline; }
         static graph::Sampler* GetSharedSampler() { return shared_sampler; }
+
+        static void SetPipeline(graph::InlinePipeline pipeline);
+        static graph::InlinePipeline GetPipeline();
+        static graph::Pipeline* CreateConfiguredPipeline(graph::RenderPass* render_pass,
+                                 graph::MaterialInstance* material_instance);
 
     public:
 

@@ -4,34 +4,17 @@
 // and the GPU's MSAA hardware converts it into coverage bits at sample boundaries.
 // This gives smooth stochastic transparency without requiring sorted rendering.
 //
-// Pipeline: Solid3D base + alphaToCoverageEnable = VK_TRUE + MSAA x4.
-//
-// NOTE: The A2C PipelineData is constructed below via CreateA2CPipelineData().
-// TODO: wire it into QuadResourcePrepareSystem once the ECS billboard path supports
-//       per-system custom PipelineData overrides.
+// Pipeline: built-in InlinePipeline::AlphaToCoverage3D (MSAA x4 + A2C).
 
-#include<hgl/vk/pipeline/VKPipelineData.h>
 #include "BillboardIconECSBase.h"
 
 class BlendModeA2CECSApp : public BillboardIconECSBase
 {
 protected:
     const char* GetEntityPrefix() const override { return "A2CBillboard_"; }
-
-private:
-    /**
-     * Build a PipelineData that enables alphaToCoverage for the billboard pass.
-     * Cloned from the Solid3D preset then modified.
-     */
-    PipelineData* CreateA2CPipelineData()
+    void ConfigureQuadPipelineMode() override
     {
-        const PipelineData* base = GetPipelineData(InlinePipeline::Solid3D);
-        if (!base) return nullptr;
-
-        PipelineData* pd = new PipelineData(base);
-        pd->SetSamleCount(VK_SAMPLE_COUNT_4_BIT);
-        pd->multi_sample->alphaToCoverageEnable = VK_TRUE;
-        return pd;
+        QuadResourcePrepareSystem::SetPipeline(InlinePipeline::AlphaToCoverage3D);
     }
 };
 

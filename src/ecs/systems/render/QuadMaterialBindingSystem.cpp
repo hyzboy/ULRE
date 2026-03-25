@@ -121,7 +121,7 @@ namespace hgl::ecs
         if (!render_pass)
             return false;
 
-        auto *pipeline = render_pass->CreatePipeline(mi, graph::InlinePipeline::Solid3D);
+        auto *pipeline = QuadResourcePrepareSystem::CreateConfiguredPipeline(render_pass, mi);
         if (!pipeline)
             return false;
 

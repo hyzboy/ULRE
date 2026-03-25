@@ -35,6 +35,26 @@ namespace
         }
 
         {
+            pd = new PipelineData(1);
+            pd->SetAlphaTest(0.5f);
+            inline_pipeline_data.Add(InlinePipeline::Masked3D, pd);
+        }
+
+        {
+            pd = new PipelineData(1);
+            pd->SetAlphaTest(0.5f);
+            inline_pipeline_data.Add(InlinePipeline::Dither3D, pd);
+        }
+
+        {
+            pd = new PipelineData(1);
+            pd->SetAlphaTest(0.5f);
+            pd->SetSamleCount(VK_SAMPLE_COUNT_4_BIT);
+            pd->multi_sample->alphaToCoverageEnable = VK_TRUE;
+            inline_pipeline_data.Add(InlinePipeline::AlphaToCoverage3D, pd);
+        }
+
+        {
             pd=new PipelineData(1);
             pd->CloseCullFace();
             pd->SetDepthTest(true);

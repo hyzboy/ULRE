@@ -12,6 +12,10 @@ class BlendModeMaskedECSApp : public BillboardIconECSBase
 {
 protected:
     const char* GetEntityPrefix() const override { return "MaskedBillboard_"; }
+    void ConfigureQuadPipelineMode() override
+    {
+        QuadResourcePrepareSystem::SetPipeline(InlinePipeline::Masked3D);
+    }
 };
 
 int os_main(int argc, os_char** argv)

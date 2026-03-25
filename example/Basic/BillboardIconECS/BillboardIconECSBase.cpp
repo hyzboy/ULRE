@@ -74,6 +74,11 @@ BillboardIconECSBase::~BillboardIconECSBase()
     delete prim_plane_grid;
 }
 
+void BillboardIconECSBase::ConfigureQuadPipelineMode()
+{
+    QuadResourcePrepareSystem::SetPipeline(InlinePipeline::Solid3D);
+}
+
 bool BillboardIconECSBase::InitPlaneGridResources()
 {
     if (pipeline_plane_grid) return true;
@@ -190,6 +195,8 @@ bool BillboardIconECSBase::InitializeECS()
 {
     ecs_context = GetECSContext();
     if (!ecs_context) return false;
+
+    ConfigureQuadPipelineMode();
 
     if (!EnsureRenderSystems()) return false;
 

@@ -24,6 +24,27 @@ namespace hgl::ecs
     graph::RenderPass* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 
+    static graph::InlinePipeline g_quad_inline_pipeline = graph::InlinePipeline::Solid3D;
+
+    void QuadResourcePrepareSystem::SetPipeline(graph::InlinePipeline pipeline)
+    {
+        g_quad_inline_pipeline = pipeline;
+    }
+
+    graph::InlinePipeline QuadResourcePrepareSystem::GetPipeline()
+    {
+        return g_quad_inline_pipeline;
+    }
+
+    graph::Pipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderPass* render_pass,
+                                                                         graph::MaterialInstance* material_instance)
+    {
+        if (!render_pass || !material_instance)
+            return nullptr;
+
+        return render_pass->CreatePipeline(material_instance, g_quad_inline_pipeline);
+    }
+
     QuadResourcePrepareSystem::QuadResourcePrepareSystem(const std::string& name)
         : System(name)
     {
@@ -81,8 +102,8 @@ namespace hgl::ecs
         if (!shared_material_instance)
             return false;
 
-        // Create pipeline
-        shared_pipeline = render_pass->CreatePipeline(shared_material_instance, graph::InlinePipeline::Solid3D);
+        // Create pipeline according to the configured quad pipeline mode
+        shared_pipeline = CreateConfiguredPipeline(render_pass, shared_material_instance);
         if (!shared_pipeline)
             return false;
 

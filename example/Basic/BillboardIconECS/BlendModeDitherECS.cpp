@@ -12,6 +12,10 @@ class BlendModeDitherECSApp : public BillboardIconECSBase
 {
 protected:
     const char* GetEntityPrefix() const override { return "DitherBillboard_"; }
+    void ConfigureQuadPipelineMode() override
+    {
+        QuadResourcePrepareSystem::SetPipeline(InlinePipeline::Dither3D);
+    }
 };
 
 int os_main(int argc, os_char** argv)

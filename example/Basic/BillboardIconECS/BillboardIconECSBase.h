@@ -68,6 +68,7 @@ protected:
     // Derived class supplies the prefix used in billboard entity names,
     // e.g. "MaskedBillboard_", "DitherBillboard_".
     virtual const char* GetEntityPrefix() const = 0;
+    virtual void ConfigureQuadPipelineMode();
 
     bool InitPlaneGridResources();
     bool CreateGeometryAndPrimitives();
