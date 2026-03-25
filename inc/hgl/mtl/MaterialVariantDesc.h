@@ -1,20 +1,22 @@
 #ifndef HGL_MTL_MATERIAL_VARIANT_DESC_H
 #define HGL_MTL_MATERIAL_VARIANT_DESC_H
 
+#include<hgl/mtl/MaterialPreset.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
 #include<string>
+#include<vector>
 #include<unordered_map>
 
 namespace hgl::graph::mtl
 {
-    enum class MaterialPreset : uint8;
-
     /// MaterialVariantDesc - 材质变体的完整描述
     /// 包含着色器模板、MI 布局、描述符类型等实现细节
     struct MaterialVariantDesc
     {
         // 标识
         std::string variant_name;           // 变体名称，用于日志和调试
+        MaterialPreset factory_type = MaterialPreset::VertexColor2D;
+        bool has_factory_type = false;
 
         // 材质实例布局
         std::string mi_struct_name;         // MI 结构体名（如 StandardMaterialInstance）
@@ -46,12 +48,15 @@ namespace hgl::graph::mtl
 
         MaterialVariantDesc(
             const std::string& name,
+                        MaterialPreset type,
             uint32 mi_size,
             const std::string& vs_path,
             const std::string& fs_path,
             const std::string& surface_path,
             uint32 desc_count = 3)
             : variant_name(name),
+                            factory_type(type),
+              has_factory_type(true),
               mi_struct_size(mi_size),
               vs_template_path(vs_path),
               fs_template_path(fs_path),
@@ -79,9 +84,18 @@ namespace hgl::graph::mtl
         // 查询变体描述
         const MaterialVariantDesc* QueryVariant(const MaterialVariantKey& key) const;
 
+        // 查询变体描述（带 canonical fallback）。
+        // fallback 规则：清除 per-slot/source feature 位后重试。
+        const MaterialVariantDesc* QueryVariantWithCanonicalFallback(
+            const MaterialVariantKey &key,
+            MaterialVariantKey *resolved_key = nullptr) const;
+
         // 校验内置变体模板是否可组装（文件存在性 + 路由有效性）
         bool ValidateBuiltinVariantTemplates(const std::string &shader_library_path,
                              std::vector<std::string> &diagnostics) const;
+
+        // 导出稳定顺序的快照文本，便于回归比对。
+        std::string DumpSnapshot() const;
 
         // 根据 preset（兼容层）查询对应的 key
         MaterialVariantKey MapPresetToVariantKey(MaterialPreset preset) const;

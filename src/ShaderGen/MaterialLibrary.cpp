@@ -2,9 +2,9 @@
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
+#include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<cstdio>
-#include<unordered_map>
 
 namespace hgl::graph::mtl{
 
@@ -14,126 +14,214 @@ bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
     return GetBuiltinVariantRegistry().ValidateBuiltinVariantTemplates(shader_library_path,diagnostics);
 }
 
-MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
+std::string GetBuiltinMaterialVariantSnapshot()
+{
+    return GetBuiltinVariantRegistry().DumpSnapshot();
+}
+
+namespace {
+
+using MakeVariantKeyProc = MaterialVariantKey (*)();
+
+struct MaterialPresetMeta
+{
+    MaterialPreset preset;
+    const char *name;
+    MakeVariantKeyProc make_key;
+};
+
+static MaterialVariantKey MakeVertexColor2DKey()
 {
     MaterialVariantKey key{};
-
-    switch(mtl_id)
-    {
-        case MaterialPreset::VertexColor2D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
-            key.SetVertexAttribEnabled(VertexAttrib::Color);
-            break;
-        case MaterialPreset::PureColor2D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
-            break;
-        case MaterialPreset::PureTexture2D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
-            key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetHasTexture(SamplerSlot::BaseColor);
-            break;
-        case MaterialPreset::RectTexture2D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::ScreenRect;
-            key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-            break;
-        case MaterialPreset::Text2D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Quad2D;
-            key.texture_source_mode = TextureSourceMode::Atlas;
-            key.SetHasTexture(SamplerSlot::BaseColor);
-            break;
-
-        case MaterialPreset::PureColor3D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            break;
-        case MaterialPreset::VertexColor3D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.SetVertexAttribEnabled(VertexAttrib::Color);
-            break;
-        case MaterialPreset::VertexLuminance3D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.SetVertexAttribEnabled(VertexAttrib::Luminance);
-            break;
-        case MaterialPreset::VertexLuminance2D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.SetVertexAttribEnabled(VertexAttrib::Luminance);
-            key.SetVertexAttribEnabled(VertexAttrib::Position);
-            break;
-        case MaterialPreset::VertexPattleColor3D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.SetVertexAttribEnabled(VertexAttrib::Color);
-            key.SetDebugShading(true);
-            break;
-        case MaterialPreset::Gizmo3D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.SetDebugShading(true);
-            break;
-        case MaterialPreset::TerrainGrid:
-            key.surface_type = SurfaceType::Terrain;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            break;
-        case MaterialPreset::SkyMinimal:
-            key.surface_type = SurfaceType::Sky;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            break;
-        case MaterialPreset::Billboard2D:
-            key.surface_type = SurfaceType::Unlit;
-            key.geometry_mode = GeometryMode::BillboardCameraFacing;
-            key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetHasTexture(SamplerSlot::BaseColor);
-            break;
-        case MaterialPreset::Standard:
-            key.surface_type = SurfaceType::Standard;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            key.texture_source_mode = TextureSourceMode::Simple;
-            key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-            key.SetTextureSourceMode(SamplerSlot::Normal,    TextureSourceMode::Simple);
-            key.SetTextureSourceMode(SamplerSlot::Roughness, TextureSourceMode::Simple);
-            break;
-        case MaterialPreset::PBRColor3D:
-            key.surface_type = SurfaceType::Standard;
-            key.geometry_mode = GeometryMode::Mesh3D;
-            break;
-        default:
-            break;
-    }
-
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Quad2D;
+    key.SetVertexAttribEnabled(VertexAttrib::Color);
     return key;
+}
+
+static MaterialVariantKey MakePureColor2DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Quad2D;
+    return key;
+}
+
+static MaterialVariantKey MakePureTexture2DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Quad2D;
+    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetHasTexture(SamplerSlot::BaseColor);
+    return key;
+}
+
+static MaterialVariantKey MakeRectTexture2DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::ScreenRect;
+    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+    return key;
+}
+
+static MaterialVariantKey MakeText2DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Quad2D;
+    key.texture_source_mode = TextureSourceMode::Atlas;
+    key.SetHasTexture(SamplerSlot::BaseColor);
+    return key;
+}
+
+static MaterialVariantKey MakePureColor3DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    return key;
+}
+
+static MaterialVariantKey MakeVertexColor3DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.SetVertexAttribEnabled(VertexAttrib::Color);
+    return key;
+}
+
+static MaterialVariantKey MakeVertexLuminance3DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.SetVertexAttribEnabled(VertexAttrib::Luminance);
+    return key;
+}
+
+static MaterialVariantKey MakeVertexLuminance2DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.SetVertexAttribEnabled(VertexAttrib::Luminance);
+    key.SetVertexAttribEnabled(VertexAttrib::Position);
+    return key;
+}
+
+static MaterialVariantKey MakeVertexPattleColor3DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.SetVertexAttribEnabled(VertexAttrib::Color);
+    key.SetDebugShading(true);
+    return key;
+}
+
+static MaterialVariantKey MakeGizmo3DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.SetDebugShading(true);
+    return key;
+}
+
+static MaterialVariantKey MakeTerrainGridKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Terrain;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    return key;
+}
+
+static MaterialVariantKey MakeSkyMinimalKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Sky;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    return key;
+}
+
+static MaterialVariantKey MakeBillboard2DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::BillboardCameraFacing;
+    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetHasTexture(SamplerSlot::BaseColor);
+    return key;
+}
+
+static MaterialVariantKey MakeStandardKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Standard;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
+    key.SetTextureSourceMode(SamplerSlot::Normal,    TextureSourceMode::Simple);
+    key.SetTextureSourceMode(SamplerSlot::Roughness, TextureSourceMode::Simple);
+    return key;
+}
+
+static MaterialVariantKey MakePBRColor3DKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Standard;
+    key.geometry_mode = GeometryMode::Mesh3D;
+    return key;
+}
+
+static const MaterialPresetMeta kPresetMetaList[] =
+{
+    {MaterialPreset::VertexColor2D,       "VertexColor2D",       MakeVertexColor2DKey},
+    {MaterialPreset::PureColor2D,         "PureColor2D",         MakePureColor2DKey},
+    {MaterialPreset::PureTexture2D,       "PureTexture2D",       MakePureTexture2DKey},
+    {MaterialPreset::RectTexture2D,       "RectTexture2D",       MakeRectTexture2DKey},
+    {MaterialPreset::Text2D,              "Text2D",              MakeText2DKey},
+    {MaterialPreset::PureColor3D,         "PureColor3D",         MakePureColor3DKey},
+    {MaterialPreset::VertexColor3D,       "VertexColor3D",       MakeVertexColor3DKey},
+    {MaterialPreset::VertexLuminance3D,   "VertexLuminance3D",   MakeVertexLuminance3DKey},
+    {MaterialPreset::VertexLuminance2D,   "VertexLuminance2D",   MakeVertexLuminance2DKey},
+    {MaterialPreset::VertexPattleColor3D, "VertexPattleColor3D", MakeVertexPattleColor3DKey},
+    {MaterialPreset::Gizmo3D,             "Gizmo3D",             MakeGizmo3DKey},
+    {MaterialPreset::TerrainGrid,         "TerrainGrid",         MakeTerrainGridKey},
+    {MaterialPreset::SkyMinimal,          "SkyMinimal",          MakeSkyMinimalKey},
+    {MaterialPreset::Billboard2D,         "Billboard2D",         MakeBillboard2DKey},
+    {MaterialPreset::Standard,            "Standard",            MakeStandardKey},
+    {MaterialPreset::PBRColor3D,          "PBRColor3D",          MakePBRColor3DKey},
+};
+
+static const MaterialPresetMeta *FindMaterialPresetMeta(const MaterialPreset preset)
+{
+    for(const auto &meta:kPresetMetaList)
+        if(meta.preset==preset)
+            return &meta;
+
+    return nullptr;
+}
+
+}
+
+MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
+{
+    const MaterialPresetMeta *meta=FindMaterialPresetMeta(mtl_id);
+    if(!meta||!meta->make_key)
+        return MaterialVariantKey{};
+
+    return meta->make_key();
 }
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 {
-    switch(mtl_id)
-    {
-        case MaterialPreset::VertexColor2D:         return "VertexColor2D";
-        case MaterialPreset::PureColor2D:           return "PureColor2D";
-        case MaterialPreset::PureTexture2D:         return "PureTexture2D";
-        case MaterialPreset::RectTexture2D:         return "RectTexture2D";
-        case MaterialPreset::Text2D:                return "Text2D";
-        case MaterialPreset::PureColor3D:           return "PureColor3D";
-        case MaterialPreset::VertexColor3D:         return "VertexColor3D";
-        case MaterialPreset::VertexLuminance3D:     return "VertexLuminance3D";
-        case MaterialPreset::VertexLuminance2D:     return "VertexLuminance2D";
-        case MaterialPreset::VertexPattleColor3D:   return "VertexPattleColor3D";
-        case MaterialPreset::Gizmo3D:               return "Gizmo3D";
-        case MaterialPreset::TerrainGrid:           return "TerrainGrid";
-        case MaterialPreset::SkyMinimal:            return "SkyMinimal";
-        case MaterialPreset::Billboard2D:           return "Billboard2D";
-        case MaterialPreset::Standard:              return "Standard";
-        case MaterialPreset::PBRColor3D:            return "PBRColor3D";
-        default:                                    return nullptr;
-    }
+    const MaterialPresetMeta *meta=FindMaterialPresetMeta(mtl_id);
+    return meta?meta->name:nullptr;
 }
 
 MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
@@ -144,72 +232,35 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
                                              const Material2DCreateConfig *cfg);
 
 namespace {
-
-using VariantFactory = MaterialCreateInfo*(*)(const contract::PhysicalDeviceProfileLite*, const MaterialVariantKey &, MaterialCreateConfig*);
-
-static MaterialCreateInfo* F_VertexColor2D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexColor2D      (p,(const Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_PureColor2D        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePureColor2D        (p,(Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_PureTexture2D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePureTexture2D      (p,(const Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_RectTexture2D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &k, MaterialCreateConfig* c) { return ::hgl::graph::mtl::CreateRectTextureVariant (p,k,(Material2DCreateConfig*)c); }
-static MaterialCreateInfo* F_Text2D             (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateText2D             (p,(const Text2DMaterialCreateConfig*)c); }
-static MaterialCreateInfo* F_PureColor3D        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePureColor3D        (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexColor3D      (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexColor3D      (p,(const Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexLuminance3D  (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexLuminance3D  (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexLuminance2D  (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexLuminance2D  (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_VertexPattleColor3D(const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateVertexPattleColor3D(p,(const Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_Gizmo3D            (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateGizmo3D            (p,(Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_TerrainGrid        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateTerrainGrid        (p,(const TerrainGridCreateConfig*)c); }
-static MaterialCreateInfo* F_SkyMinimal         (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateSkyMinimal         (p,(const SkyMinimalCreateConfig*)c); }
-static MaterialCreateInfo* F_Billboard2D        (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreateBillboard2D        (p,(BillboardMaterialCreateConfig*)c); }
-static MaterialCreateInfo* F_Standard           (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &k, MaterialCreateConfig* c) { return ::hgl::graph::mtl::CreateStandardVariant    (p,k,(const Material3DCreateConfig*)c); }
-static MaterialCreateInfo* F_PBRColor3D         (const contract::PhysicalDeviceProfileLite* p, const MaterialVariantKey &, MaterialCreateConfig* c) { return CreatePBRColor3D         (p,(PBRColor3DMaterialCreateConfig*)c); }
-
-static std::unordered_map<uint64, VariantFactory> BuildFactoryMap()
+static MaterialCreateInfo *DispatchVariantFactory(
+    const MaterialPreset factory_type,
+    const contract::PhysicalDeviceProfileLite *profile,
+    const MaterialVariantKey &key,
+    MaterialCreateConfig *cfg)
 {
-    std::unordered_map<uint64, VariantFactory> m;
-    m.reserve(20);
-    auto reg = [&](MaterialPreset p, VariantFactory f) {
-        m[MapPresetToVariantKey(p).Hash()] = f;
-    };
-    reg(MaterialPreset::VertexColor2D,        F_VertexColor2D);
-    reg(MaterialPreset::PureColor2D,          F_PureColor2D);
-    reg(MaterialPreset::PureTexture2D,        F_PureTexture2D);
-    reg(MaterialPreset::RectTexture2D,        F_RectTexture2D);
-    reg(MaterialPreset::Text2D,               F_Text2D);
-    reg(MaterialPreset::PureColor3D,          F_PureColor3D);
-    reg(MaterialPreset::VertexColor3D,        F_VertexColor3D);
-    reg(MaterialPreset::VertexLuminance3D,    F_VertexLuminance3D);
-    reg(MaterialPreset::VertexLuminance2D,    F_VertexLuminance2D);
-    reg(MaterialPreset::VertexPattleColor3D,  F_VertexPattleColor3D);
-    reg(MaterialPreset::Gizmo3D,              F_Gizmo3D);
-    reg(MaterialPreset::TerrainGrid,          F_TerrainGrid);
-    reg(MaterialPreset::SkyMinimal,           F_SkyMinimal);
-    reg(MaterialPreset::Billboard2D,          F_Billboard2D);
-    reg(MaterialPreset::Standard,             F_Standard);
-    reg(MaterialPreset::PBRColor3D,           F_PBRColor3D);
-
-    // Register canonical Array variant keys (texture_source_bits = 0, sampler_feature_bits = 0)
+    switch(factory_type)
     {
-        MaterialVariantKey k;
-        k.surface_type = SurfaceType::Standard;
-        k.geometry_mode = GeometryMode::Mesh3D;
-        k.texture_source_mode = TextureSourceMode::Array;
-        m[k.Hash()] = F_Standard;
-    }
-    {
-        MaterialVariantKey k;
-        k.surface_type = SurfaceType::Unlit;
-        k.geometry_mode = GeometryMode::ScreenRect;
-        k.texture_source_mode = TextureSourceMode::Array;
-        m[k.Hash()] = F_RectTexture2D;
-    }
-    return m;
-}
+        case MaterialPreset::VertexColor2D:        return CreateVertexColor2D(profile,(const Material2DCreateConfig *)cfg);
+        case MaterialPreset::PureColor2D:          return CreatePureColor2D(profile,(Material2DCreateConfig *)cfg);
+        case MaterialPreset::PureTexture2D:        return CreatePureTexture2D(profile,(const Material2DCreateConfig *)cfg);
+        case MaterialPreset::RectTexture2D:        return CreateRectTextureVariant(profile,key,(Material2DCreateConfig *)cfg);
+        case MaterialPreset::Text2D:               return CreateText2D(profile,(const Text2DMaterialCreateConfig *)cfg);
 
-static const std::unordered_map<uint64, VariantFactory>& GetFactoryMap()
-{
-    static const auto s_map = BuildFactoryMap();
-    return s_map;
+        case MaterialPreset::PureColor3D:          return CreatePureColor3D(profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexColor3D:        return CreateVertexColor3D(profile,(const Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexLuminance3D:    return CreateVertexLuminance3D(profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexLuminance2D:    return CreateVertexLuminance2D(profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::VertexPattleColor3D:  return CreateVertexPattleColor3D(profile,(const Material3DCreateConfig *)cfg);
+        case MaterialPreset::Gizmo3D:              return CreateGizmo3D(profile,(Material3DCreateConfig *)cfg);
+        case MaterialPreset::TerrainGrid:          return CreateTerrainGrid(profile,(const TerrainGridCreateConfig *)cfg);
+        case MaterialPreset::SkyMinimal:           return CreateSkyMinimal(profile,(const SkyMinimalCreateConfig *)cfg);
+        case MaterialPreset::Billboard2D:          return CreateBillboard2D(profile,(BillboardMaterialCreateConfig *)cfg);
+        case MaterialPreset::Standard:             return CreateStandardVariant(profile,key,(const Material3DCreateConfig *)cfg);
+        case MaterialPreset::PBRColor3D:           return CreatePBRColor3D(profile,(PBRColor3DMaterialCreateConfig *)cfg);
+
+        default:
+            return nullptr;
+    }
 }
 
 } // anonymous namespace
@@ -261,30 +312,41 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
             key.extra_feature_bits);
     }
 
-    const auto &m = GetFactoryMap();
-
-    auto it = m.find(key.Hash());
-    if(it == m.end())
+    MaterialVariantKey resolved_key{};
+    const MaterialVariantDesc *variant_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key,&resolved_key);
+    if(!variant_desc)
     {
-        // Canonicalize: strip per-slot texture_source_bits and sampler_feature_bits, retry
-        MaterialVariantKey canon = key;
-        canon.texture_source_bits = 0;
-        canon.sampler_feature_bits = 0;
-        it = m.find(canon.Hash());
+        std::fprintf(stderr,
+            "[MaterialLibrary] CreateMaterialCreateInfo failed: no registered variant (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
+            static_cast<unsigned long long>(key.Hash()),
+            static_cast<unsigned>(key.surface_type),
+            static_cast<unsigned>(key.geometry_mode),
+            static_cast<unsigned>(key.texture_source_mode),
+            key.texture_source_bits,
+            key.sampler_feature_bits,
+            key.vertex_attribute_feature_bits,
+            key.extra_feature_bits);
+        return nullptr;
     }
-    if(it != m.end())
-        return it->second(profile, key, cfg);
+
+    if(!variant_desc->has_factory_type)
+    {
+        std::fprintf(stderr,
+            "[MaterialLibrary] CreateMaterialCreateInfo failed: variant has no factory_type assigned (variant=%s key_hash=%llu)\n",
+            variant_desc->variant_name.c_str(),
+            static_cast<unsigned long long>(key.Hash()));
+        return nullptr;
+    }
+
+    if(MaterialCreateInfo *mci=DispatchVariantFactory(variant_desc->factory_type,profile,key,cfg))
+        return mci;
 
     std::fprintf(stderr,
-        "[MaterialLibrary] CreateMaterialCreateInfo failed: no factory for variant key (key_hash=%llu surface=%u geom=%u tex_mode=%u tex_bits=0x%08X sampler_bits=0x%08X va_bits=0x%08X extra_bits=0x%08X)\n",
+        "[MaterialLibrary] CreateMaterialCreateInfo failed: factory dispatch failed (variant=%s factory_type=%u key_hash=%llu resolved_key_hash=%llu)\n",
+        variant_desc->variant_name.c_str(),
+        static_cast<unsigned>(variant_desc->factory_type),
         static_cast<unsigned long long>(key.Hash()),
-        static_cast<unsigned>(key.surface_type),
-        static_cast<unsigned>(key.geometry_mode),
-        static_cast<unsigned>(key.texture_source_mode),
-        key.texture_source_bits,
-        key.sampler_feature_bits,
-        key.vertex_attribute_feature_bits,
-        key.extra_feature_bits);
+        static_cast<unsigned long long>(resolved_key.Hash()));
     return nullptr;
 }
 

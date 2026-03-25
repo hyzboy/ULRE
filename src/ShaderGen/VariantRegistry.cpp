@@ -1,6 +1,7 @@
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include <algorithm>
 
 namespace hgl::graph::mtl{
 
@@ -19,6 +20,31 @@ const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKe
     if (it == variant_map.end())
         return nullptr;
     return &it->second.desc;
+}
+
+const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
+    const MaterialVariantKey &key,
+    MaterialVariantKey *resolved_key) const
+{
+    if(const MaterialVariantDesc *exact=QueryVariant(key))
+    {
+        if(resolved_key)
+            *resolved_key=key;
+        return exact;
+    }
+
+    MaterialVariantKey canon=key;
+    canon.texture_source_bits=0;
+    canon.sampler_feature_bits=0;
+
+    if(const MaterialVariantDesc *fallback=QueryVariant(canon))
+    {
+        if(resolved_key)
+            *resolved_key=canon;
+        return fallback;
+    }
+
+    return nullptr;
 }
 
 bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_library_path,
@@ -52,6 +78,63 @@ bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_
     return diagnostics.empty();
 }
 
+std::string VariantRegistry::DumpSnapshot() const
+{
+    std::vector<std::pair<uint64, const VariantEntry *>> rows;
+    rows.reserve(variant_map.size());
+
+    for(const auto &[hash,entry]:variant_map)
+        rows.emplace_back(hash,&entry);
+
+    std::sort(rows.begin(),rows.end(),
+        [](const auto &a,const auto &b)
+        {
+            return a.first<b.first;
+        });
+
+    std::string out;
+    out.reserve(rows.size()*120);
+
+    out += "# VariantRegistry Snapshot\n";
+    out += "hash|name|factory|surface|geometry|tex_mode|tex_bits|sampler_bits|va_bits|extra_bits|blend|pass\n";
+
+    for(const auto &[hash,entry_ptr]:rows)
+    {
+        const auto &entry=*entry_ptr;
+        const auto &k=entry.key;
+        const auto &d=entry.desc;
+
+        out += std::to_string(hash);
+        out += "|";
+        out += d.variant_name;
+        out += "|";
+        out += d.has_factory_type
+            ? std::to_string(static_cast<uint32>(d.factory_type))
+            : std::string("-1");
+        out += "|";
+        out += std::to_string(static_cast<uint32>(k.surface_type));
+        out += "|";
+        out += std::to_string(static_cast<uint32>(k.geometry_mode));
+        out += "|";
+        out += std::to_string(static_cast<uint32>(k.texture_source_mode));
+        out += "|";
+        out += std::to_string(k.texture_source_bits);
+        out += "|";
+        out += std::to_string(k.sampler_feature_bits);
+        out += "|";
+        out += std::to_string(k.vertex_attribute_feature_bits);
+        out += "|";
+        out += std::to_string(k.extra_feature_bits);
+        out += "|";
+        out += std::to_string(static_cast<uint32>(k.blend_mode));
+        out += "|";
+        out += std::to_string(static_cast<uint32>(k.pass_hint));
+        out += "\n";
+    }
+
+    return out;
+}
+
 MaterialVariantKey VariantRegistry::MapPresetToVariantKey(MaterialPreset preset) const
 {
     // Delegate to the free function in MaterialLibrary.cpp
@@ -68,12 +151,15 @@ namespace {
 // Helper: build a desc with explicit shader paths
 MaterialVariantDesc MakeDesc(
     const char *name,
+    const MaterialPreset factory_type,
     const char *vs_path,
     const char *fs_path,
     const char *surface_path = nullptr)
 {
     MaterialVariantDesc d;
     d.variant_name          = name;
+    d.factory_type          = factory_type;
+    d.has_factory_type      = true;
     d.vs_template_path      = vs_path;
     d.fs_template_path      = fs_path;
     d.surface_function_path = surface_path ? surface_path : "";
@@ -106,12 +192,65 @@ void VariantRegistry::InitializeBuiltinVariants()
     using GM  = GeometryMode;
     using TSM = TextureSourceMode;
 
+    RegisterVariant(
+        K(ST::Unlit, GM::Quad2D, TSM::None,
+            VertexAttribFeatureBit(VertexAttrib::Color)),
+        MakeDesc("VertexColor2D",
+                 MaterialPreset::VertexColor2D,
+                 "",
+                 "",
+                 ""));
+
+    RegisterVariant(
+        K(ST::Unlit, GM::Quad2D),
+        MakeDesc("PureColor2D",
+                 MaterialPreset::PureColor2D,
+                 "",
+                 "",
+                 ""));
+
+    RegisterVariant(
+        K(ST::Unlit, GM::Quad2D, TSM::Simple,
+            0,
+            SamplerFeatureBit(SamplerSlot::BaseColor)),
+        MakeDesc("PureTexture2D",
+                 MaterialPreset::PureTexture2D,
+                 "",
+                 "",
+                 ""));
+
+    RegisterVariant(
+        K(ST::Unlit, GM::ScreenRect, TSM::Simple),
+        MakeDesc("RectTexture2D",
+                 MaterialPreset::RectTexture2D,
+                 "",
+                 "",
+                 ""));
+
+    RegisterVariant(
+        K(ST::Unlit, GM::ScreenRect, TSM::Array),
+        MakeDesc("RectTexture2DArray",
+                 MaterialPreset::RectTexture2D,
+                 "",
+                 "",
+                 ""));
+
+    RegisterVariant(
+        K(ST::Unlit, GM::Quad2D, TSM::Atlas,
+            0,
+            SamplerFeatureBit(SamplerSlot::BaseColor)),
+        MakeDesc("Text2D",
+                 MaterialPreset::Text2D,
+                 "",
+                 "",
+                 ""));
+
     // ------------------------------------------------------------------
     // 3D Unlit: PureColor — uses CompositorAssembler auto-routing, no explicit paths
     // ------------------------------------------------------------------
     RegisterVariant(
         K(ST::Unlit, GM::Mesh3D),
-        MakeDesc("PureColor3D", "", "", ""));
+        MakeDesc("PureColor3D", MaterialPreset::PureColor3D, "", "", ""));
 
     // ------------------------------------------------------------------
     // 3D Unlit: VertexColor
@@ -120,6 +259,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                 K(ST::Unlit, GM::Mesh3D, TSM::None,
                     VertexAttribFeatureBit(VertexAttrib::Color)),
         MakeDesc("VertexColor3D",
+                         MaterialPreset::VertexColor3D,
                  "compositor/main_forward_unlit_vertexcolor.vert.glsl",
                  "compositor/main_forward_unlit_vertexcolor.frag.glsl",
                  "surface/unlit_vertexcolor_surface.glsl"));
@@ -131,6 +271,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                 K(ST::Unlit, GM::Mesh3D, TSM::None,
                     VertexAttribFeatureBit(VertexAttrib::Luminance)),
         MakeDesc("VertexLuminance3D",
+                         MaterialPreset::VertexLuminance3D,
                  "compositor/main_forward_unlit_luminance.vert.glsl",
                  "compositor/main_forward_unlit_luminance.frag.glsl",
                  "surface/unlit_luminance_surface.glsl"));
@@ -142,6 +283,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                 K(ST::Unlit, GM::Mesh3D, TSM::None,
                     VertexAttribFeatureBit(VertexAttrib::Luminance) | VertexAttribFeatureBit(VertexAttrib::Position)),
         MakeDesc("VertexLuminance2D",
+                         MaterialPreset::VertexLuminance2D,
                  "compositor/main_forward_unlit_luminance_2d.vert.glsl",
                  "compositor/main_forward_unlit_luminance.frag.glsl",
                  "surface/unlit_luminance_surface.glsl"));
@@ -155,6 +297,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                     0,
                     EF_DebugShading),
         MakeDesc("VertexPattleColor3D",
+                         MaterialPreset::VertexPattleColor3D,
                  "compositor/main_forward_unlit_pattle.vert.glsl",
                  "compositor/main_forward_unlit_vertexcolor.frag.glsl",
                  "surface/unlit_vertexcolor_surface.glsl"));
@@ -165,6 +308,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
         K(ST::Unlit, GM::Mesh3D, TSM::None, 0, 0, EF_DebugShading),
         MakeDesc("Gizmo3D",
+                 MaterialPreset::Gizmo3D,
                  "compositor/main_forward_unlit_normal.vert.glsl",
                  "compositor/main_forward_unlit_normal.frag.glsl",
                  "surface/gizmo3d_surface.glsl"));
@@ -181,6 +325,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardTransparent;
         RegisterVariant(key,
             MakeDesc("Billboard2DDynamic",
+                     MaterialPreset::Billboard2D,
                      "compositor/main_forward_billboard_dynamic.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
@@ -198,6 +343,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardTransparent;
         RegisterVariant(key,
             MakeDesc("Billboard2DFixed",
+                     MaterialPreset::Billboard2D,
                      "compositor/main_forward_billboard_fixed.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
@@ -209,6 +355,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
         K(ST::Terrain, GM::Mesh3D),
         MakeDesc("TerrainGrid",
+                 MaterialPreset::TerrainGrid,
                  "compositor/main_terrain_grid.vert.glsl",
                  "compositor/main_terrain_grid.frag.glsl",
                  "surface/terrain_grid_surface.glsl"));
@@ -219,6 +366,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
         K(ST::Sky, GM::Mesh3D),
         MakeDesc("SkyMinimal",
+                 MaterialPreset::SkyMinimal,
                  "compositor/main_forward_sky.vert.glsl",
                  "compositor/main_forward_sky.frag.glsl",
                  "surface/sky_minimal_surface.glsl"));
@@ -231,6 +379,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                     0,
                     SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("Standard",
+                         MaterialPreset::Standard,
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",
                  "surface/standard_surface.glsl"));
@@ -243,6 +392,7 @@ void VariantRegistry::InitializeBuiltinVariants()
                     0,
                     SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("StandardTextureArray",
+                         MaterialPreset::Standard,
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",
                                  "surface/standard_surface.glsl"));
@@ -253,6 +403,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
         K(ST::Standard, GM::Mesh3D),
         MakeDesc("PBRColor3D",
+                 MaterialPreset::PBRColor3D,
                  "compositor/main_forward_lit.vert.glsl",
                  "compositor/main_forward_lit.frag.glsl",
                  "surface/pbrcolor3d_surface.glsl"));
