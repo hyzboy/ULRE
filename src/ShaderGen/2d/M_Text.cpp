@@ -30,7 +30,8 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
     new_cfg.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
     // Build DEF
-    auto preamble = build2d::Build2DPreamble(&new_cfg, true, true, SamplerSlot::Text);
+    auto vs_preamble = build2d::Build2DVertexPreamble(&new_cfg, true, true, SamplerSlot::Text);
+    auto fs_preamble = build2d::Build2DFragmentPreamble(&new_cfg, true, true, SamplerSlot::Text);
 
     CompositorAssembler assembler;
     const auto result = assembler.Assemble(var_key, *var_desc);
@@ -64,8 +65,8 @@ MaterialCreateInfo *CreateText2D(const contract::PhysicalDeviceProfileLite *prof
         mi_codes, mi_bytes,
     };
 
-    std::string vs = preamble + result.vertex_glsl;
-    std::string fs = preamble + result.fragment_glsl;
+    std::string vs = vs_preamble + result.vertex_glsl;
+    std::string fs = fs_preamble + result.fragment_glsl;
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &new_cfg);
     if(!mci)

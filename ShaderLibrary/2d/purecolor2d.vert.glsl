@@ -1,5 +1,3 @@
-#include "2d/common/vertex_prefix_2d.glsl"
-
 struct MaterialInstance {
     vec4 Color;
 };

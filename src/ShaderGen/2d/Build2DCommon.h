@@ -38,11 +38,52 @@ inline const char *GLSLInputType(const VAType &vat)
 //   std::string fs = preamble + "#include \"2d/xxx.frag.glsl\"\n";
 // ─────────────────────────────────────────────────────────────
 
-inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
-                                   bool has_texture,
-                                   bool has_mi,
-                                   const SamplerSlot texture_slot = SamplerSlot::BaseColor,
-                                   const bool texture_array_mode = false)
+// ─────────────────────────────────────────────────────────────
+// Emit GetPosition2D() — direct variant, no macro branching
+// ─────────────────────────────────────────────────────────────
+
+inline std::string EmitGetPosition2DGLSL(const Material2DCreateConfig *cfg)
+{
+    std::string s;
+
+    if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
+        s += "#include \"common/ubo_viewport.glsl\"\n";
+
+    if(cfg->local_to_world)
+        s += "#include \"common/ssbo_transform.glsl\"\n";
+
+    s += "layout(location=POSITION_LOCATION) in ";
+    s += GLSLInputType(cfg->position_format);
+    s += " Position;\n\n";
+
+    s += "vec4 GetPosition2D()\n{\n";
+
+    if(cfg->coordinate_system == CoordinateSystem2D::Ortho && cfg->local_to_world)
+        s += "    return GetTransform() * viewport.ortho_matrix * vec4(vec2(Position), 0, 1);\n";
+    else if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
+        s += "    return viewport.ortho_matrix * vec4(vec2(Position), 0, 1);\n";
+    else if(cfg->coordinate_system == CoordinateSystem2D::ZeroToOne && cfg->local_to_world)
+        s += "    return GetTransform() * vec4(vec2(Position) * 2.0 - 1.0, 0, 1);\n";
+    else if(cfg->coordinate_system == CoordinateSystem2D::ZeroToOne)
+        s += "    return vec4(vec2(Position) * 2.0 - 1.0, 0, 1);\n";
+    else if(cfg->local_to_world)
+        s += "    return GetTransform() * vec4(vec2(Position), 0, 1);\n";
+    else
+        s += "    return vec4(vec2(Position), 0, 1);\n";
+
+    s += "}\n\n";
+    return s;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Shader preamble builder
+// ─────────────────────────────────────────────────────────────
+
+inline std::string Build2DFragmentPreamble(const Material2DCreateConfig *cfg,
+                                           bool has_texture,
+                                           bool has_mi,
+                                           const SamplerSlot texture_slot = SamplerSlot::BaseColor,
+                                           const bool texture_array_mode = false)
 {
     (void)has_texture;
     (void)has_mi;
@@ -51,21 +92,27 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
 
     std::string p = "#version 450\n\n";
 
-    p += "#define POSITION_FORMAT ";
-    p += GLSLInputType(cfg->position_format);
-    p += "\n";
-
-    switch(cfg->coordinate_system)
-    {
-        case CoordinateSystem2D::NDC:       p += "#define COORD_NDC\n"; break;
-        case CoordinateSystem2D::ZeroToOne: p += "#define COORD_ZEROTOONE\n"; break;
-        case CoordinateSystem2D::Ortho:     p += "#define COORD_ORTHO\n"; break;
-    }
-
-    if(cfg->local_to_world)     p += "#define HAS_L2W\n";
     if(cfg->material_instance)  p += "#define HAS_MI\n";
 
     p += "\n";
+
+    return p;
+}
+
+inline std::string Build2DVertexPreamble(const Material2DCreateConfig *cfg,
+                                         bool has_texture,
+                                         bool has_mi,
+                                         const SamplerSlot texture_slot = SamplerSlot::BaseColor,
+                                         const bool texture_array_mode = false)
+{
+    std::string p = Build2DFragmentPreamble(cfg,
+                                            has_texture,
+                                            has_mi,
+                                            texture_slot,
+                                            texture_array_mode);
+
+    p += EmitGetPosition2DGLSL(cfg);
+
     return p;
 }
 

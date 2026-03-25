@@ -19,7 +19,8 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
 
     cfg->material_instance=true;
 
-    auto preamble = build2d::Build2DPreamble(cfg, false, true);
+    auto vs_preamble = build2d::Build2DVertexPreamble(cfg, false, true);
+    auto fs_preamble = build2d::Build2DFragmentPreamble(cfg, false, true);
 
     const MaterialVariantKey var_key = MapPresetToVariantKey(MaterialPreset::PureColor2D);
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
@@ -56,8 +57,8 @@ MaterialCreateInfo *CreatePureColor2D(const contract::PhysicalDeviceProfileLite 
         mi_codes, mi_bytes,
     };
 
-    std::string vs = preamble + result.vertex_glsl;
-    std::string fs = preamble + result.fragment_glsl;
+    std::string vs = vs_preamble + result.vertex_glsl;
+    std::string fs = fs_preamble + result.fragment_glsl;
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
     if(!mci)

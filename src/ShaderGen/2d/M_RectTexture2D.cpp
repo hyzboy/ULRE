@@ -41,11 +41,16 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
     inner.shader_stage_flag_bit&=~(uint32_t)ShaderStage::Geometry;
 
     // Build DEF
-    auto preamble = build2d::Build2DPreamble(&inner,
-                                             true,
-                                             use_array,
-                                             SamplerSlot::BaseColor,
-                                             use_array);
+    auto vs_preamble = build2d::Build2DVertexPreamble(&inner,
+                                                      true,
+                                                      use_array,
+                                                      SamplerSlot::BaseColor,
+                                                      use_array);
+    auto fs_preamble = build2d::Build2DFragmentPreamble(&inner,
+                                                        true,
+                                                        use_array,
+                                                        SamplerSlot::BaseColor,
+                                                        use_array);
 
     CompositorAssembler assembler;
     const auto result = assembler.Assemble(key, *var_desc);
@@ -83,8 +88,8 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
         use_array ? mi_bytes : 0,
     };
 
-    std::string vs = preamble + result.vertex_glsl;
-    std::string fs = preamble + result.fragment_glsl;
+    std::string vs = vs_preamble + result.vertex_glsl;
+    std::string fs = fs_preamble + result.fragment_glsl;
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
     if(!mci)
