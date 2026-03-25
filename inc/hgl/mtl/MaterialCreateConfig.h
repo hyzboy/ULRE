@@ -31,9 +31,6 @@ struct MaterialCreateConfig
     bool                        override_geometry_mode      = false;
     GeometryMode                geometry_mode_override      = GeometryMode::Mesh3D;
 
-    bool                        override_texture_source_mode = false;   ///< coarse/default texture source mode override
-    TextureSourceMode           texture_source_mode_override = TextureSourceMode::None;
-
     uint32                      texture_source_bits_override  = 0;       ///< 2 bits per slot, same packing as MaterialVariantKey
     uint32                      sampler_feature_bits_override = 0;       ///< slot enable mask paired with texture_source_bits_override
 
@@ -57,17 +54,6 @@ public:
     void ClearGeometryModeOverride()
     {
         override_geometry_mode = false;
-    }
-
-    void SetTextureSourceModeOverride(const TextureSourceMode mode)
-    {
-        override_texture_source_mode = true;
-        texture_source_mode_override = mode;
-    }
-
-    void ClearTextureSourceModeOverride()
-    {
-        override_texture_source_mode = false;
     }
 
     void SetTextureSourceModeOverride(const SamplerSlot slot, const TextureSourceMode mode)
@@ -133,12 +119,6 @@ public:
             return cmp;
 
         if(auto cmp=geometry_mode_override<=>cfg.geometry_mode_override;cmp!=0)
-            return cmp;
-
-        if(auto cmp=override_texture_source_mode<=>cfg.override_texture_source_mode;cmp!=0)
-            return cmp;
-
-        if(auto cmp=texture_source_mode_override<=>cfg.texture_source_mode_override;cmp!=0)
             return cmp;
 
         if(auto cmp=texture_source_bits_override<=>cfg.texture_source_bits_override;cmp!=0)

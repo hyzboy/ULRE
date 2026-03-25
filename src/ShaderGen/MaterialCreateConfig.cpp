@@ -49,12 +49,6 @@ std::string MaterialCreateConfig::ToHashStdString()
         hash += std::to_string(static_cast<uint32_t>(geometry_mode_override));
     }
 
-    if(override_texture_source_mode)
-    {
-        hash += "_TSM";
-        hash += std::to_string(static_cast<uint32_t>(texture_source_mode_override));
-    }
-
     if(texture_source_bits_override != 0)
     {
         hash += "_TSB";

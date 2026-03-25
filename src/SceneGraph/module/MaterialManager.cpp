@@ -401,7 +401,9 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
     if(!cfg)
         return(nullptr);
 
-    return CreateMaterial(mtl::MapPresetToVariantKey(mtl_id), cfg);
+    mtl::MaterialVariantKey key = mtl::MapPresetToVariantKey(mtl_id);
+    mtl::ApplyCreateConfigToVariantKey(key, cfg);
+    return CreateMaterial(key, cfg);
 }
 
 void MaterialManager::ResetShaderGenProfiler()
@@ -446,7 +448,9 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialPreset mtl_id,mtl::
         return(nullptr);
     }
 
-    return CreateMaterial(mtl::MapPresetToVariantKey(mtl_id), cfg);
+    mtl::MaterialVariantKey key = mtl::MapPresetToVariantKey(mtl_id);
+    mtl::ApplyCreateConfigToVariantKey(key, cfg);
+    return CreateMaterial(key, cfg);
 }
 
 Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl::Material2DCreateConfig *cfg)

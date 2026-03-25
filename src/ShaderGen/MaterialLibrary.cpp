@@ -352,45 +352,56 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     return nullptr;
 }
 
+void ApplyCreateConfigToVariantKey(MaterialVariantKey &key, const MaterialCreateConfig *cfg)
+{
+    if (!cfg)
+        return;
+
+    if (cfg->override_geometry_mode)
+        key.geometry_mode = cfg->geometry_mode_override;
+
+    if (cfg->texture_source_bits_override != 0)
+    {
+        key.texture_source_bits = cfg->texture_source_bits_override;
+
+        // Derive key.texture_source_mode from per-slot bits (first non-None mode wins).
+        key.texture_source_mode = TextureSourceMode::None;
+        for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
+        {
+            const TextureSourceMode m = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
+                                      & MaterialVariantKey::TextureSourceMask);
+            if (m != TextureSourceMode::None) { key.texture_source_mode = m; break; }
+        }
+
+        // If caller did not provide an explicit sampler feature override,
+        // derive mask from per-slot texture source bits to keep key coherent.
+        if (cfg->sampler_feature_bits_override != 0)
+            key.sampler_feature_bits = cfg->sampler_feature_bits_override;
+        else
+        {
+            key.sampler_feature_bits = 0;
+            for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
+            {
+                const TextureSourceMode mode = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
+                                          & MaterialVariantKey::TextureSourceMask);
+                if (mode != TextureSourceMode::None)
+                    key.sampler_feature_bits |= SamplerFeatureBit(SamplerSlot(s));
+            }
+        }
+    }
+    else if (cfg->sampler_feature_bits_override != 0)
+    {
+        key.sampler_feature_bits = cfg->sampler_feature_bits_override;
+    }
+}
+
 MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg)
 {
     MaterialVariantKey key = MapPresetToVariantKey(mtl_id);
 
-    if (cfg)
-    {
-        if (cfg->override_geometry_mode)
-            key.geometry_mode = cfg->geometry_mode_override;
-
-        if (cfg->override_texture_source_mode)
-            key.texture_source_mode = cfg->texture_source_mode_override;
-
-        if (cfg->texture_source_bits_override != 0)
-        {
-            key.texture_source_bits = cfg->texture_source_bits_override;
-
-            // If caller did not provide an explicit sampler feature override,
-            // derive mask from per-slot texture source bits to keep key coherent.
-            if (cfg->sampler_feature_bits_override != 0)
-                key.sampler_feature_bits = cfg->sampler_feature_bits_override;
-            else
-            {
-                key.sampler_feature_bits = 0;
-                for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
-                {
-                    const TextureSourceMode mode = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
-                                              & MaterialVariantKey::TextureSourceMask);
-                    if (mode != TextureSourceMode::None)
-                        key.sampler_feature_bits |= SamplerFeatureBit(SamplerSlot(s));
-                }
-            }
-        }
-        else if (cfg->sampler_feature_bits_override != 0)
-        {
-            key.sampler_feature_bits = cfg->sampler_feature_bits_override;
-        }
-    }
+    ApplyCreateConfigToVariantKey(key, cfg);
 
     return CreateMaterialCreateInfo(profile, key, cfg);
 }

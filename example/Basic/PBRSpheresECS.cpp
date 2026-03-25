@@ -17,7 +17,6 @@
 #include<hgl/graph/module/GeometryManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MaterialManager.h>
-#include<hgl/mtl/new/SurfaceType.h>
 #include<hgl/color/ColorPacking.h>
 
 #include<hgl/ecs/core/Context.h>
@@ -146,15 +145,9 @@ private:
                         mtl::WithCamera::With,
                         mtl::WithLocalToWorld::With,
                         mtl::WithSky::With);
-        mtl::MaterialVariantKey vk;
-        vk.surface_type = SurfaceType::Standard;
-        vk.geometry_mode = mtl::GeometryMode::Mesh3D;
-        vk.texture_source_mode = mtl::TextureSourceMode::Array;
-        vk.SetTextureSourceMode(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
-        vk.SetTextureSourceMode(mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array);
-        vk.sampler_feature_bits = mtl::SamplerFeatureBit(mtl::SamplerSlot::BaseColor)
-                                | mtl::SamplerFeatureBit(mtl::SamplerSlot::Normal);
-        material = material_manager->CreateMaterial(vk, &cfg);
+        cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
+        cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::Normal,    mtl::TextureSourceMode::Array);
+        material = material_manager->CreateMaterial(mtl::MaterialPreset::Standard, &cfg);
         if (!material) {
             printf("[ERROR] InitMaterial: Failed to create Standard+Array material\n");
             return false;
