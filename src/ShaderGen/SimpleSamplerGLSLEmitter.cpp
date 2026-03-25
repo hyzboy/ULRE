@@ -161,4 +161,74 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
     out += "// ----------------------------------------------------\n\n";
     return out;
 }
+
+std::string EmitMaterialInstanceTextureGLSL(const ShaderCreateInfo &shader)
+{
+    const ShaderDescriptorInfo *info = shader.GetShaderDescriptorInfo();
+    if (!info)
+        return {};
+
+    // Collect array sampler slots (same detection as EmitSimpleSamplerGLSL).
+    std::vector<mtl::SamplerSlot> array_slots;
+
+    auto try_collect = [&](const auto *sd)
+    {
+        if (!sd || sd->set < 0 || sd->binding < 0) return;
+        if (!IsArraySampler2D(sd->type.c_str())) return;
+
+        mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
+        if (mtl::TryGetSlotFromDescriptorName(sd->name, slot))
+            array_slots.push_back(slot);
+    };
+
+    for (const TextureDescriptor *texture : info->GetTextureList())
+        try_collect(texture);
+    for (const TextureSamplerDescriptor *sampler : info->GetTextureSamplerList())
+        try_collect(sampler);
+
+    if (array_slots.empty())
+        return {};
+
+    // Sort by slot ordinal to keep struct field order deterministic.
+    std::sort(array_slots.begin(), array_slots.end());
+
+    std::string out;
+    out.reserve(512);
+    out += "// ---- Auto-generated MaterialInstanceTexture SSBO ----\n";
+
+    // 1. struct MaterialInstanceTexture { uint SlotName; ... };
+    out += "struct MaterialInstanceTexture\n{\n";
+    for (const mtl::SamplerSlot slot : array_slots)
+    {
+        out += "    uint ";
+        out += mtl::SamplerSlotNameList[uint8(slot)];
+        out += ";\n";
+    }
+    out += "};\n\n";
+
+    // 2. SSBO layout (uses PERMATERIAL_SET / MIT_BINDING from layout defines).
+    out += "layout(std430, set=PERMATERIAL_SET, binding=MIT_BINDING) readonly buffer MaterialInstanceTextureID\n";
+    out += "{\n    MaterialInstanceTexture tex_id[];\n} mit;\n\n";
+
+    // 3. GetMaterialInstanceTexture(uint instance_id)
+    out += "MaterialInstanceTexture GetMaterialInstanceTexture(uint instance_id)\n";
+    out += "{\n    return mit.tex_id[instance_id];\n}\n\n";
+
+    // 4. _ULRE_InitTextureLayerIndices(uint instance_id)
+    out += "void _ULRE_InitTextureLayerIndices(uint instance_id)\n{\n";
+    out += "    MaterialInstanceTexture _m = GetMaterialInstanceTexture(instance_id);\n";
+    for (const mtl::SamplerSlot slot : array_slots)
+    {
+        const char *name = mtl::SamplerSlotNameList[uint8(slot)];
+        out += "    _tex_layer_";
+        out += name;
+        out += " = _m.";
+        out += name;
+        out += ";\n";
+    }
+    out += "}\n";
+
+    out += "// ------------------------------------------------------\n\n";
+    return out;
+}
 }

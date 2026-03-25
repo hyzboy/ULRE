@@ -228,10 +228,11 @@ MaterialCreateInfo *CompileCompositorMaterial(
         const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
         const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(*vert) : std::string();
         const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(*frag) : std::string();
-        if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty())
+        const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(*frag) : std::string();
+        if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
         {
             if (vert) vert->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(vert->GetFinalGLSL(),layout_defs + vert_sampler_defs));
-            if (frag) frag->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(frag->GetFinalGLSL(),layout_defs + frag_sampler_defs));
+            if (frag) frag->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(frag->GetFinalGLSL(),layout_defs + frag_sampler_defs + frag_mit_defs));
         }
     }
 

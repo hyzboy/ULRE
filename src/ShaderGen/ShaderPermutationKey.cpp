@@ -18,16 +18,6 @@ void ShaderPermutationKey::AppendGLSLDefines(std::string &out) const
 
     if (GetTextureArrayMode())
         out += "#define TEXTURE_ARRAY_MODE\n";
-
-    for (uint8 i = 0; i < uint8(mtl::SamplerSlotCount); ++i)
-    {
-        if (GetSlotArrayMode(static_cast<mtl::SamplerSlot>(i)))
-        {
-            out += "#define TEX_";
-            out += mtl::ToUpperASCII(mtl::SamplerSlotNameList[i]);
-            out += "_ARRAY 1\n";
-        }
-    }
 }
 
 }//namespace hgl::graph

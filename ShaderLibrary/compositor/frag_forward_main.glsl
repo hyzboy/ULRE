@@ -61,7 +61,7 @@ float BayerDither4x4(ivec2 p)
 void main()
 {
 #ifdef TEXTURE_ARRAY_MODE
-    _ULRE_InitTextureLayerIndices();
+    _ULRE_InitTextureLayerIndices(MATERIAL_INSTANCE_ID_OVERRIDE);
 #endif
 
     SurfaceInput si;

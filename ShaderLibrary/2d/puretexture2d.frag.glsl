@@ -8,16 +8,12 @@ layout(location=1) flat in uint fragMaterialInstanceID;
 #include "common/ssbo_material_instance.glsl"
 #endif
 
-#if defined(TEXTURE_ARRAY_MODE) || defined(TEX_BASECOLOR_ARRAY)
-#include "common/ssbo_material_instance_texture.glsl"
-#endif
-
 layout(location=0) out vec4 FragColor;
 
 void main()
 {
-#if defined(TEXTURE_ARRAY_MODE) || defined(TEX_BASECOLOR_ARRAY)
-    _ULRE_InitTextureLayerIndices();
+#ifdef TEXTURE_ARRAY_MODE
+    _ULRE_InitTextureLayerIndices(MATERIAL_INSTANCE_ID_OVERRIDE);
 #endif
     FragColor = GetSamplerBaseColor(fragTexCoord);
 }
