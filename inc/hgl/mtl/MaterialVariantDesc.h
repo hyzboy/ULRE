@@ -27,7 +27,6 @@ namespace hgl::graph::mtl
 
         // 描述符配置
         uint32 descriptor_binding_count;    // 总描述符 binding 数量
-        std::string descriptor_layout_name; // 描述符布局名称
 
         // 特性标记
         bool requires_normal_map;           // 是否需要法线贴图
