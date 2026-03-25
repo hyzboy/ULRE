@@ -103,79 +103,21 @@ namespace
     std::string BuildBillboardDynamicVertexEntry()
     {
         std::string out = "#version 450\n\n";
-        AppendInclude(out, "compositor/vert_forward_ubo.glsl");
-        out += "layout(location=POSITION_LOCATION) in vec3 Position;\n\n";
-        AppendDefine(out, "VARYING_STAGE_VERT");
-        AppendDefine(out, "HAS_TEXCOORD");
-        AppendInclude(out, "common/varying_interface.glsl");
-        out += "\nvoid main()\n{\n";
-        out += "    fragMaterialInstanceID = GetMaterialInstanceID();\n";
-        out += "    mat4 l2w_mat = GetTransform();\n";
-        out += "    vec3 center = (l2w_mat * vec4(0.0, 0.0, 0.0, 1.0)).xyz;\n";
-        out += "    vec3 world_pos = center\n";
-        out += "                   + Position.x * camera.billboard_right\n";
-        out += "                   + Position.y * camera.billboard_up;\n\n";
-        out += "    fragTexCoord = vec2(Position.x + 0.5, Position.y * -1.0 + 0.5);\n\n";
-        out += "    gl_Position = camera.vp * vec4(world_pos, 1.0);\n";
-        out += "}\n";
+        AppendInclude(out, "compositor/main_forward_billboard_dynamic.vert.glsl");
         return out;
     }
 
     std::string BuildBillboardFixedVertexEntry()
     {
         std::string out = "#version 450\n\n";
-        out += "#extension GL_EXT_scalar_block_layout : require\n\n";
-        AppendInclude(out, "common/ubo_camera.glsl");
-        AppendInclude(out, "common/ubo_viewport.glsl");
-        AppendInclude(out, "common/ssbo_transform.glsl");
-        out += "struct MaterialInstance {\n";
-        out += "    uvec2 BillboardSize;\n";
-        out += "};\n\n";
-        AppendDefine(out, "MATERIAL_INSTANCE_SSBO_SCALAR");
-        AppendInclude(out, "common/ssbo_material_instance.glsl");
-        out += "#undef MATERIAL_INSTANCE_SSBO_SCALAR\n";
-        out += "layout(location=POSITION_LOCATION) in vec3 Position;\n\n";
-        AppendDefine(out, "VARYING_STAGE_VERT");
-        AppendDefine(out, "HAS_TEXCOORD");
-        AppendInclude(out, "common/varying_interface.glsl");
-        out += "\nMaterialInstance GetMI() { return GetMaterialInstance(); }\n\n";
-        out += "void main()\n{\n";
-        out += "    fragMaterialInstanceID = GetMaterialInstanceID();\n";
-        out += "    MaterialInstance mi = GetMI();\n\n";
-        out += "    vec2 psize = vec2(mi.BillboardSize) / vec2(viewport.canvas_resolution);\n";
-        out += "    vec4 center_clip = camera.vp * GetTransform() * vec4(0.0, 0.0, 0.0, 1.0);\n";
-        out += "    vec2 center_ndc = center_clip.xy / center_clip.w;\n";
-        out += "    vec2 ndc = center_ndc + Position.xy * psize;\n\n";
-        out += "    fragTexCoord = vec2(Position.x + 0.5, Position.y + 0.5);\n\n";
-        out += "    gl_Position = vec4(ndc * center_clip.w, center_clip.z, center_clip.w);\n";
-        out += "}\n";
+        AppendInclude(out, "compositor/main_forward_billboard_fixed.vert.glsl");
         return out;
     }
 
     std::string BuildTerrainGridVertexEntry()
     {
         std::string out = "#version 450\n\n";
-        AppendInclude(out, "compositor/vert_forward_ubo.glsl");
-        AppendDefine(out, "VARYING_STAGE_VERT");
-        AppendDefine(out, "HAS_CLIP_POS");
-        AppendDefine(out, "HAS_WORLD_NORMAL");
-        AppendInclude(out, "common/varying_interface.glsl");
-        out += "\nvoid main()\n{\n";
-        out += "    fragMaterialInstanceID = GetMaterialInstanceID();\n";
-        out += "    ivec2 tex_sz = textureSize(TextureHeight, 0);\n";
-        out += "    int W = tex_sz.x;\n\n";
-        out += "    int idx = gl_VertexID;\n";
-        out += "    ivec2 coord = ivec2(idx % W, idx / W);\n\n";
-        out += "    float h = texelFetch(TextureHeight, coord, 0).r;\n";
-        out += "    vec3 nrm = normalize(texelFetch(TextureNormal, coord, 0).xyz * 2.0 - 1.0);\n\n";
-        out += "    vec3 pos = vec3(float(coord.x), float(coord.y), h);\n\n";
-        out += "    mat4 l2w_mat = GetTransform();\n";
-        out += "    vec4 wp = l2w_mat * vec4(pos, 1.0);\n\n";
-        out += "    vec3 wn = normalize(mat3(l2w_mat) * nrm);\n\n";
-        out += "    fragWorldNormal = wn;\n";
-        out += "    fragClipPos = camera.vp * wp;\n\n";
-        out += "    gl_Position = fragClipPos;\n";
-        out += "}\n";
+        AppendInclude(out, "compositor/main_terrain_grid.vert.glsl");
         return out;
     }
 }
