@@ -356,7 +356,43 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialPreset mtl_id,
                                              MaterialCreateConfig *cfg)
 {
-    return CreateMaterialCreateInfo(profile, MapPresetToVariantKey(mtl_id), cfg);
+    MaterialVariantKey key = MapPresetToVariantKey(mtl_id);
+
+    if (cfg)
+    {
+        if (cfg->override_geometry_mode)
+            key.geometry_mode = cfg->geometry_mode_override;
+
+        if (cfg->override_texture_source_mode)
+            key.texture_source_mode = cfg->texture_source_mode_override;
+
+        if (cfg->texture_source_bits_override != 0)
+        {
+            key.texture_source_bits = cfg->texture_source_bits_override;
+
+            // If caller did not provide an explicit sampler feature override,
+            // derive mask from per-slot texture source bits to keep key coherent.
+            if (cfg->sampler_feature_bits_override != 0)
+                key.sampler_feature_bits = cfg->sampler_feature_bits_override;
+            else
+            {
+                key.sampler_feature_bits = 0;
+                for (uint8_t s = 0; s < uint8_t(SamplerSlot::RANGE_SIZE); ++s)
+                {
+                    const TextureSourceMode mode = TextureSourceMode((key.texture_source_bits >> (uint32_t(s) * MaterialVariantKey::TextureSourceBitsPerSlot))
+                                              & MaterialVariantKey::TextureSourceMask);
+                    if (mode != TextureSourceMode::None)
+                        key.sampler_feature_bits |= SamplerFeatureBit(SamplerSlot(s));
+                }
+            }
+        }
+        else if (cfg->sampler_feature_bits_override != 0)
+        {
+            key.sampler_feature_bits = cfg->sampler_feature_bits_override;
+        }
+    }
+
+    return CreateMaterialCreateInfo(profile, key, cfg);
 }
 
 }//namespace hgl::graph::mtl

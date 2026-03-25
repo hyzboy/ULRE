@@ -43,6 +43,30 @@ std::string MaterialCreateConfig::ToHashStdString()
     else
         hash+="UnknownPrim";
 
+    if(override_geometry_mode)
+    {
+        hash += "_GM";
+        hash += std::to_string(static_cast<uint32_t>(geometry_mode_override));
+    }
+
+    if(override_texture_source_mode)
+    {
+        hash += "_TSM";
+        hash += std::to_string(static_cast<uint32_t>(texture_source_mode_override));
+    }
+
+    if(texture_source_bits_override != 0)
+    {
+        hash += "_TSB";
+        hash += std::to_string(texture_source_bits_override);
+    }
+
+    if(sampler_feature_bits_override != 0)
+    {
+        hash += "_SFB";
+        hash += std::to_string(sampler_feature_bits_override);
+    }
+
     return hash;
 }
 
