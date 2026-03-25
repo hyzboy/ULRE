@@ -24,16 +24,14 @@ protected:
     IGPUBuffer   *gpu_buf = nullptr;  // 写路径专用，SetBuffer() 时同步赋值，直接持有，无需跨层查找
 
     DescriptorSetType desc_set_type = DescriptorSetType::Unknow;
-    AnsiString ubo_name;
 
 protected:
 
     void SetBuffer(VkBufferOwner *buf);
 
-    void SetUBOMeta(const DescriptorSetType &dst, const AnsiString &name)
+    void SetUBOMeta(const DescriptorSetType &dst)
     {
         desc_set_type = dst;
-        ubo_name = name;
     }
 
     void MoveFrom(BufferAccessBase &&other)
@@ -41,13 +39,13 @@ protected:
         buffer        = other.buffer;
         gpu_buf       = other.gpu_buf;
         desc_set_type = other.desc_set_type;
-        ubo_name      = other.ubo_name;
 
         other.buffer  = nullptr;
         other.gpu_buf = nullptr;
     }
 
 public:
+
     virtual ~BufferAccessBase() = default;
 
     BufferAccessBase() = default;
@@ -81,7 +79,7 @@ public:
 
     // ===== UBO metadata access =====
     const DescriptorSetType &set_type() const { return desc_set_type; }
-    const AnsiString &name()            const { return ubo_name; }
+
     IGPUBuffer *ubo()                   const { return gpu_buf; }
 };//class BufferAccessBase
 

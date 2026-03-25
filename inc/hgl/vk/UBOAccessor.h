@@ -10,6 +10,7 @@ namespace hgl::graph{
 class UBOAccessorBase:public BufferAccessBase
 {
 protected:
+
     mtl::UBODescriptorSemantic semantic = mtl::UBODescriptorSemantic::Unknown;
 
 public:
@@ -20,7 +21,7 @@ public:
         if (mtl::IsBuiltinDescriptorSemantic(sem))
         {
             const auto &meta = mtl::GetDescriptorSemanticMeta(sem);
-            SetUBOMeta(meta.set_type, meta.name ? meta.name : "");
+            SetUBOMeta(meta.set_type);
         }
     }
 
@@ -83,7 +84,7 @@ private:
         if constexpr (HasBuiltinSemanticMeta())
         {
             const auto &meta = GetSemanticMeta();
-            SetUBOMeta(meta.set_type, meta.name ? meta.name : "");
+            SetUBOMeta(meta.set_type);
         }
     }
 
@@ -167,19 +168,20 @@ private:
         InitDefaultsIfNeeded();
     }
 
-    UBOAccessor(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
+    UBOAccessor(VkBufferOwner *buf, DescriptorSetType dst, bool take_ownership = false)
         : UBOAccessorBase(Semantic)
         , mapped_data(nullptr)
         , aligned_size(buf ? buf->GetSize() : 0)
     {
         SetBuffer(buf);
-        SetUBOMeta(dst, name);
+        SetUBOMeta(dst);
         if(gpu_buf)
             MapInternal();
         InitDefaultsIfNeeded();
     }
 
 public:
+
     static constexpr mtl::UBODescriptorSemantic GetSemantic()
     {
         return Semantic;
@@ -214,9 +216,9 @@ public:
         return buf ? new UBOAccessor(buf, take_ownership) : nullptr;
     }
 
-    static UBOAccessor *Create(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
+    static UBOAccessor *Create(VkBufferOwner *buf, DescriptorSetType dst, bool take_ownership = false)
     {
-        return buf ? new UBOAccessor(buf, dst, name, take_ownership) : nullptr;
+        return buf ? new UBOAccessor(buf, dst, take_ownership) : nullptr;
     }
 
     /**
@@ -400,12 +402,6 @@ public:
      * EN: Get descriptor set type (UBOInstance compatible)
      */
     const DescriptorSetType& set_type() const { return desc_set_type; }
-
-    /**
-     * CN: 获取 UBO 名称（UBOInstance 兼容）
-     * EN: Get UBO name (UBOInstance compatible)
-     */
-    const AnsiString& name() const { return ubo_name; }
 
     /**
      * CN: 获取底层 VkBufferOwner（UBOInstance 兼容）
