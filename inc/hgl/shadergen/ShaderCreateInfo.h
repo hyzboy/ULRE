@@ -58,16 +58,11 @@ public:
     void SetMaterialInstance(SSBODescriptor *);
 
     const std::string &GetFinalGLSL()const{return final_shader;}
-    const std::string &GetShaderSource()const{return GetFinalGLSL();}   ///< compatibility alias
 
     void SetFinalGLSL(const std::string &glsl){final_shader=glsl;}
     void SetFinalGLSL(const char *glsl){final_shader=glsl?glsl:"";}
 
     bool CompileFinalGLSLToSPV();                ///< 直接编译 final_shader 到 SPV
-    bool CreateShaderFromFinalGLSL()             ///< compatibility alias
-    {
-        return CompileFinalGLSLToSPV();
-    }
 
     const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;
