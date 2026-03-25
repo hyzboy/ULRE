@@ -8,6 +8,12 @@
 
 namespace hgl::graph::mtl{
 
+bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
+                                     std::vector<std::string> &diagnostics)
+{
+    return GetBuiltinVariantRegistry().ValidateBuiltinVariantTemplates(shader_library_path,diagnostics);
+}
+
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id)
 {
     MaterialVariantKey key{};
@@ -212,6 +218,29 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              const MaterialVariantKey &key,
                                              MaterialCreateConfig *cfg)
 {
+    static const bool s_startup_variant_validation_done = []()
+    {
+        std::vector<std::string> diagnostics;
+
+        const bool ok = ValidateBuiltinMaterialVariants("ShaderLibrary",diagnostics);
+        if(ok)
+        {
+            std::fprintf(stderr,"[MaterialLibrary] Startup variant validation passed.\n");
+            return true;
+        }
+
+        std::fprintf(stderr,
+                     "[MaterialLibrary] Startup variant validation failed: %zu issue(s).\n",
+                     diagnostics.size());
+
+        for(const auto &msg:diagnostics)
+            std::fprintf(stderr,"[MaterialLibrary] %s\n",msg.c_str());
+
+        return false;
+    }();
+
+    (void)s_startup_variant_validation_done;
+
     if(!cfg)
     {
         std::fprintf(stderr, "[MaterialLibrary] CreateMaterialCreateInfo failed: cfg is null\n");

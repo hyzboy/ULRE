@@ -1,5 +1,6 @@
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/shadergen/CompositorAssembler.h>
 
 namespace hgl::graph::mtl{
 
@@ -9,7 +10,7 @@ namespace hgl::graph::mtl{
 
 void VariantRegistry::RegisterVariant(const MaterialVariantKey &key, const MaterialVariantDesc &desc)
 {
-    variant_map[key.Hash()] = desc;
+    variant_map[key.Hash()] = VariantEntry{key,desc};
 }
 
 const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKey &key) const
@@ -17,7 +18,38 @@ const MaterialVariantDesc *VariantRegistry::QueryVariant(const MaterialVariantKe
     auto it = variant_map.find(key.Hash());
     if (it == variant_map.end())
         return nullptr;
-    return &it->second;
+    return &it->second.desc;
+}
+
+bool VariantRegistry::ValidateBuiltinVariantTemplates(const std::string &shader_library_path,
+                                                      std::vector<std::string> &diagnostics) const
+{
+    diagnostics.clear();
+
+    CompositorAssembler assembler(shader_library_path);
+
+    for(const auto &[hash,entry]:variant_map)
+    {
+        const auto result=assembler.Assemble(entry.key,entry.desc);
+        if(result.success)
+            continue;
+
+        std::string msg="Variant validation failed: ";
+        msg += entry.desc.variant_name.empty()?"<unnamed>":entry.desc.variant_name;
+        msg += " (hash=";
+        msg += std::to_string(hash);
+        msg += ")";
+
+        if(!result.error_message.empty())
+        {
+            msg += " - ";
+            msg += result.error_message;
+        }
+
+        diagnostics.emplace_back(std::move(msg));
+    }
+
+    return diagnostics.empty();
 }
 
 MaterialVariantKey VariantRegistry::MapPresetToVariantKey(MaterialPreset preset) const

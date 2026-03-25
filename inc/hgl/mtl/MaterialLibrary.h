@@ -4,6 +4,8 @@
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<hgl/mtl/StdMaterial.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
+#include<vector>
+#include<string>
 
 namespace hgl::graph::mtl{
 
@@ -52,6 +54,10 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
                                              MaterialCreateConfig *cfg);
 
 const char *GetMaterialPresetName(const MaterialPreset mtl_id);
+
+// 启动期自检：校验内置变体模板是否可组装，失败诊断写入 diagnostics。
+bool ValidateBuiltinMaterialVariants(const std::string &shader_library_path,
+                                     std::vector<std::string> &diagnostics);
 
 // Phase-A migration helpers: preset <-> variant mapping.
 MaterialVariantKey MapPresetToVariantKey(const MaterialPreset mtl_id);

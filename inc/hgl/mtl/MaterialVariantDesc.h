@@ -79,6 +79,10 @@ namespace hgl::graph::mtl
         // 查询变体描述
         const MaterialVariantDesc* QueryVariant(const MaterialVariantKey& key) const;
 
+        // 校验内置变体模板是否可组装（文件存在性 + 路由有效性）
+        bool ValidateBuiltinVariantTemplates(const std::string &shader_library_path,
+                             std::vector<std::string> &diagnostics) const;
+
         // 根据 preset（兼容层）查询对应的 key
         MaterialVariantKey MapPresetToVariantKey(MaterialPreset preset) const;
 
@@ -86,8 +90,14 @@ namespace hgl::graph::mtl
         void InitializeBuiltinVariants();
 
     private:
+        struct VariantEntry
+        {
+            MaterialVariantKey key;
+            MaterialVariantDesc desc;
+        };
+
         // 使用 key 的哈希作为查询键
-        std::unordered_map<uint64, MaterialVariantDesc> variant_map;
+        std::unordered_map<uint64, VariantEntry> variant_map;
     };
 
     /// 返回全局内置变体注册表单例（首次调用时初始化）

@@ -1,6 +1,7 @@
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<vector>
 #include<algorithm>
+#include<unordered_set>
 
 namespace hgl{namespace graph{
 MaterialDescriptorInfo::MaterialDescriptorInfo()
@@ -18,6 +19,53 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
     }
 
     descriptor_count=0;
+}
+
+MaterialDescriptorInfo::~MaterialDescriptorInfo()
+{
+    std::unordered_set<ShaderDescriptor *> released;
+
+    for(auto &set:desc_set_array)
+    {
+        auto release_descriptor = [&](ShaderDescriptor *sd)
+        {
+            if(!sd)
+                return;
+
+            if(released.insert(sd).second)
+                delete sd;
+        };
+
+        for(auto &kv:set.ubo_descriptor_map)
+            release_descriptor(kv.second);
+
+        for(auto &kv:set.ssbo_descriptor_map)
+            release_descriptor(kv.second);
+
+        for(auto &kv:set.texture_descriptor_map)
+            release_descriptor(kv.second);
+
+        for(auto &kv:set.texture_sampler_descriptor_map)
+            release_descriptor(kv.second);
+
+        set.ubo_descriptor_map.clear();
+        set.ssbo_descriptor_map.clear();
+        set.texture_descriptor_map.clear();
+        set.texture_sampler_descriptor_map.clear();
+        set.count=0;
+        set.set=-1;
+    }
+
+    ubo_map.clear();
+    ssbo_map.clear();
+    texture_map.clear();
+    texture_sampler_map.clear();
+
+    for(auto &p:texture_by_slot)
+        p=nullptr;
+
+    for(auto &p:texture_sampler_by_slot)
+        p=nullptr;
 }
 
 const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)

@@ -406,6 +406,8 @@ bool MaterialCreateInfo::SetMaterialInstance(const std::string &glsl_codes,const
 
     if(shader_stage_flag_bits==0)return(false);
 
+    if(data_bytes==0)return(false);
+
     if(data_bytes>0&&glsl_codes.size()<4)return(false);
 
     material_instance_stride=data_bytes;

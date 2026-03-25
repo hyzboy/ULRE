@@ -28,7 +28,7 @@ class MaterialDescriptorInfo
 public:
 
     MaterialDescriptorInfo();
-    ~MaterialDescriptorInfo()=default;
+    ~MaterialDescriptorInfo();
 
     bool AddUBOStruct(const mtl::UBODescriptorSemantic semantic)
     {
