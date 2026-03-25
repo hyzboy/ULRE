@@ -3,6 +3,7 @@
 #include<hgl/vk/VK.h>
 #include<hgl/vk/pipeline/VKPipeline.h>
 #include<hgl/type/ManagedArray.h>
+#include<hgl/type/UnorderedMap.h>
 #include<hgl/log/Log.h>
 
 namespace hgl::graph{
@@ -31,6 +32,7 @@ class RenderPass
 protected:
 
     ManagedArray<Pipeline> pipeline_list;
+    UnorderedMap<AnsiString, Pipeline *> pipeline_by_name;  ///< dedup cache: key=(mtl|vil|cpd|restart)
 
     Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 

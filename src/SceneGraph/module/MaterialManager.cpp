@@ -460,13 +460,6 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     if(!cfg)
         return(nullptr);
 
-    const auto *profile=GetPhysicalDeviceProfile();
-
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
-
-    if(!mci)
-        return(nullptr);
-
     AnsiString hash_name="variant";
     char key_hash[32] = {};
     std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
@@ -474,6 +467,19 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     hash_name+=key_hash;
     hash_name+="?";
     hash_name+=cfg->ToHashStdString().c_str();
+
+    {
+        Material *cached = TryGetCachedMaterial(hash_name);
+        if (cached)
+            return cached;
+    }
+
+    const auto *profile=GetPhysicalDeviceProfile();
+
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo(profile,key,cfg);
+
+    if(!mci)
+        return(nullptr);
 
     Material *mat = this->CreateMaterial(hash_name,mci);
     if (mat)
@@ -495,6 +501,20 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
     {
         std::fprintf(stderr, "[MaterialManager] CreateMaterial(key/3D) failed: cfg is null\n");
         return(nullptr);
+    }
+
+    AnsiString hash_name="variant";
+    char key_hash[32] = {};
+    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
+    hash_name+="#";
+    hash_name+=key_hash;
+    hash_name+="?";
+    hash_name+=cfg->ToHashStdString().c_str();
+
+    {
+        Material *cached = TryGetCachedMaterial(hash_name);
+        if (cached)
+            return cached;
     }
 
     const auto *profile=GetPhysicalDeviceProfile();
@@ -522,14 +542,6 @@ Material *MaterialManager::CreateMaterial(const mtl::MaterialVariantKey &key,mtl
             cfg->ToHashStdString().c_str());
         return(nullptr);
     }
-
-    AnsiString hash_name="variant";
-    char key_hash[32] = {};
-    std::snprintf(key_hash, sizeof(key_hash), "%llu", static_cast<unsigned long long>(key.Hash()));
-    hash_name+="#";
-    hash_name+=key_hash;
-    hash_name+="?";
-    hash_name+=cfg->ToHashStdString().c_str();
 
     Material *mat = this->CreateMaterial(hash_name,mci);
     if (mat)

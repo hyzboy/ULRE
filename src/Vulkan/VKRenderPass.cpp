@@ -1,6 +1,7 @@
 ﻿#include<hgl/vk/VKRenderPass.h>
 #include<hgl/vk/VKDevice.h>
 #include<cstdint>
+#include<cstdio>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/vk/pipeline/VKPipelineData.h>
 #include<hgl/vk/VKMaterial.h>
@@ -93,6 +94,19 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
 
 Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
 {
+    // Build dedup key from stable pointer identities
+    char key_buf[96];
+    std::snprintf(key_buf, sizeof(key_buf), "%llu|%llu|%llu|%u",
+        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(mtl)),
+        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(vil)),
+        static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(cpd)),
+        static_cast<unsigned>(prim_restart));
+    const AnsiString cache_key = key_buf;
+
+    Pipeline *cached = nullptr;
+    if (pipeline_by_name.Get(cache_key, cached))
+        return cached;
+
     PipelineData *pd=new PipelineData(cpd);
 
     pd->SetPrim(mtl->GetPrimitiveType(),prim_restart);
@@ -100,7 +114,10 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
     Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
 
     if(p)
+    {
         pipeline_list.Add(p);
+        pipeline_by_name.Add(cache_key, p);
+    }
 
     return(p);
 }
