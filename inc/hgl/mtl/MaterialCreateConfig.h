@@ -6,7 +6,6 @@
 #include<hgl/common/ShaderStageDef.h>
 #include<hgl/common/RenderTargetOutputConfig.h>
 #include<hgl/mtl/SamplerName.h>
-#include<hgl/mtl/ShaderBufferSource.h>
 #include<cstring>
 
 namespace hgl::graph::mtl{

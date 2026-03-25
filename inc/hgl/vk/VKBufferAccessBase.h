@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferOwner.h>
-#include<hgl/mtl/ShaderBufferSource.h>
+#include<hgl/common/DescriptorSetTypeDef.h>
 
 namespace hgl::graph{
 
@@ -19,6 +19,7 @@ class VulkanDevice;
 class BufferAccessBase
 {
 protected:
+
     VkBufferOwner *buffer  = nullptr;  // descriptor / GetBuffer() / static_cast — 保留不变
     IGPUBuffer   *gpu_buf = nullptr;  // 写路径专用，SetBuffer() 时同步赋值，直接持有，无需跨层查找
 

@@ -179,18 +179,6 @@ private:
         InitDefaultsIfNeeded();
     }
 
-    UBOAccessor(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
-        : UBOAccessorBase(Semantic)
-        , mapped_data(nullptr)
-        , aligned_size(buf ? buf->GetSize() : 0)
-    {
-        SetBuffer(buf);
-        SetUBOMeta(desc ? desc->set_type : DescriptorSetType::PerMaterial, desc ? desc->name : "");
-        if(gpu_buf)
-            MapInternal();
-        InitDefaultsIfNeeded();
-    }
-
 public:
     static constexpr mtl::UBODescriptorSemantic GetSemantic()
     {
@@ -229,11 +217,6 @@ public:
     static UBOAccessor *Create(VkBufferOwner *buf, DescriptorSetType dst, const AnsiString &name, bool take_ownership = false)
     {
         return buf ? new UBOAccessor(buf, dst, name, take_ownership) : nullptr;
-    }
-
-    static UBOAccessor *Create(VkBufferOwner *buf, const ShaderBufferDesc *desc, bool take_ownership = false)
-    {
-        return buf ? new UBOAccessor(buf, desc, take_ownership) : nullptr;
     }
 
     /**

@@ -75,7 +75,6 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
-                    ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
                     MaterialCreateConfig.cpp
                     GLSLStructSize.cpp
 )

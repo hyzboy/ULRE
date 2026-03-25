@@ -1,8 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/vk/VKBufferOwner.h>          // defines VkBufferOwner + DeviceBufferData
-#include<hgl/mtl/ShaderBufferSource.h>
-
 #include<string>
 
 namespace hgl::graph{

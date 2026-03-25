@@ -227,19 +227,6 @@ public: //Buffer相关
     }
 
     template<typename T>
-    static void LogCreateBufferBegin(const char *name,const ShaderBufferDesc *desc,BufferUpdateClass update_class)
-    {
-#ifdef _DEBUG
-        GLogWarning("[Create%s] type=%s size=%llu desc=%p update_class=%u",
-                    name,
-                    typeid(T).name(),
-                    static_cast<unsigned long long>(T::GetSize()),
-                    (void *)desc,
-                    static_cast<unsigned>(update_class));
-#endif//_DEBUG
-    }
-
-    template<typename T>
     static void LogCreateBufferEnd(const char *name,DeviceBuffer *buf)
     {
 #ifdef _DEBUG
@@ -291,22 +278,6 @@ public: //Buffer相关
         const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
         DeviceBuffer *buf=CreateBuffer(name, VK_BUFFER_USAGE_##type##_BUFFER_BIT, range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, BufferUpdateClass::Default, loc);    \
         return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, true):nullptr);  \
-    }   \
-\
-    template<typename T> T *Create##LargeName(const ObjectNameBuilder &name, const ShaderBufferDesc *desc, const std::source_location &loc = std::source_location::current())  \
-    {   \
-        const VkDeviceSize range_size = T::GetSize();    \
-        const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
-        DeviceBuffer *buf=CreateBuffer(name, VK_BUFFER_USAGE_##type##_BUFFER_BIT, range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, BufferUpdateClass::Default, loc);    \
-        return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, desc, true):nullptr);  \
-    }   \
-\
-    template<typename T> T *Create##LargeName(const ObjectNameBuilder &name, const ShaderBufferDesc *desc, BufferUpdateClass update_class, const std::source_location &loc = std::source_location::current())  \
-    {   \
-        const VkDeviceSize range_size = T::GetSize();    \
-        const VkDeviceSize alloc_size = AlignStructuredBufferSize(range_size, VK_BUFFER_USAGE_##type##_BUFFER_BIT);    \
-        DeviceBuffer *buf=CreateBuffer(name, VK_BUFFER_USAGE_##type##_BUFFER_BIT, range_size, alloc_size, nullptr, BufferAllocPolicy::Auto, SharingMode::Exclusive, update_class, loc);    \
-        return(buf?CreateBufferObjectWithAligned<T>(alloc_size, buf, desc, true):nullptr);  \
     }
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)
