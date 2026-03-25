@@ -15,10 +15,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../src/SceneGraph/Vulkan)    
 
 CreateProject(01_ExtrudedPolygonTest            ExtrudedPolygonTest.cpp)
 
-CreateProject(03_WallsFromPolyline              WallsFromPolyline.cpp)
-#CreateProject(03_WallsFromPolyline_Texture      WallsFromPolyline_Texture.cpp)
+CreateProject(02_WallsFromPolyline              WallsFromPolyline.cpp)
+#CreateProject(02_WallsFromPolyline_Texture      WallsFromPolyline_Texture.cpp)
 
-CreateProject(04_LineRenderTest                 LineRenderTest.cpp)
+CreateProject(03_LineRenderTest                 LineRenderTest.cpp)
 
 
 add_subdirectory(05_LoadGeometry)

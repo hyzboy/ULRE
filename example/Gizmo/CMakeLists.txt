@@ -14,5 +14,5 @@ CreateProject(01_SimplestAxis SimplestAxis.cpp)
 CreateProject(02_PlaneGrid3D PlaneGrid3D.cpp)
 CreateProject(03_RayPicking RayPicking.cpp)
 
-CreateProject(05_GizmoUsageExample GizmoUsageExample.cpp)
+CreateProject(04_GizmoUsageExample GizmoUsageExample.cpp)
 

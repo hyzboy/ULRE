@@ -11,6 +11,6 @@ endmacro()
 
 #CreateProject(00.control_point_2d   control_point_2d.cpp)
 #CreateProject(01.align_test         align_test.cpp)
-CreateProject(04.TextDrawTest_ECS       DrawText_ECS.cpp)
-CreateProject(05.DrawMultiLineText_ECS  DrawMultiLineText_ECS.cpp)
+CreateProject(01.TextDrawTest_ECS       DrawText_ECS.cpp)
+CreateProject(02.DrawMultiLineText_ECS  DrawMultiLineText_ECS.cpp)
 #CreateProject(06.DrawRoundrectangle DrawRoundrectangle.cpp)
