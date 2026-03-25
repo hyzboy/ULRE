@@ -39,6 +39,9 @@ namespace hgl::graph
             std::string error_message;
         };
 
+        /// Uses global ShaderLibrary path from ShaderGenPathConfig.
+        CompositorAssembler();
+
         /// shader_library_path: ShaderLibrary 根目录的绝对路径（不带尾部斜杠）
         explicit CompositorAssembler(const std::string &shader_library_path);
 

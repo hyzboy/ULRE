@@ -52,7 +52,7 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
         return nullptr;
     }
 
-    CompositorAssembler assembler("ShaderLibrary");
+    CompositorAssembler assembler;
 
     auto result = assembler.Assemble(var_key, *var_desc);
 

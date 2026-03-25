@@ -46,6 +46,8 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
 {
     (void)has_texture;
     (void)has_mi;
+    (void)texture_slot;
+    (void)texture_array_mode;
 
     std::string p = "#version 450\n\n";
 
@@ -62,22 +64,6 @@ inline std::string Build2DPreamble(const Material2DCreateConfig *cfg,
 
     if(cfg->local_to_world)     p += "#define HAS_L2W\n";
     if(cfg->material_instance)  p += "#define HAS_MI\n";
-
-    if (texture_array_mode)
-    {
-        p += "#define TEXTURE_ARRAY_MODE 1\n";
-
-        p += "#define TEX_";
-
-        const size_t slot_index = size_t(texture_slot);
-        const char *slot_name = "BaseColor";
-
-        if (slot_index < SamplerSlotCount)
-            slot_name = SamplerSlotNameList[slot_index];
-
-        p += ToUpperASCII(slot_name);
-        p += "_ARRAY 1\n";
-    }
 
     p += "\n";
     return p;

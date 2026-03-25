@@ -40,7 +40,9 @@ set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/mtl)
 SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
+                            ${SHADERGEN_INCLUDE_PATH}/ShaderGenPathConfig.h
                             ShaderVariableType.cpp
+                            ShaderGenPathConfig.cpp
                             common/UBOCommon.cpp
 )
 

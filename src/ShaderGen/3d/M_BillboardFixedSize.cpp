@@ -79,7 +79,7 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDevicePro
         return nullptr;
     }
 
-    CompositorAssembler assembler("ShaderLibrary");
+    CompositorAssembler assembler;
 
     auto result = assembler.Assemble(var_key, *var_desc);
 

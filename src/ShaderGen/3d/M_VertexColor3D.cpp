@@ -48,7 +48,7 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
         return nullptr;
     }
 
-    CompositorAssembler assembler("ShaderLibrary");
+    CompositorAssembler assembler;
 
     auto result = assembler.Assemble(var_key, *var_desc);
 

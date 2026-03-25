@@ -1,8 +1,10 @@
 #include"Build2DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/mtl/new/MaterialVariantKey.h>
+#include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
@@ -19,6 +21,13 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
         ? key.GetTextureSourceMode(SamplerSlot::BaseColor)
         : key.texture_source_mode;
     const bool use_array = (mode == TextureSourceMode::Array);
+
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key,nullptr);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[RectTexture2D] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
 
     // MI 结构：Array 模式需要 MI 数据（用于 MIT SSBO）
     constexpr const char mi_codes[] = "uvec4 id;";
@@ -37,6 +46,14 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
                                              use_array,
                                              SamplerSlot::BaseColor,
                                              use_array);
+
+    CompositorAssembler assembler;
+    const auto result = assembler.Assemble(key, *var_desc);
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[RectTexture2D] CompositorAssembler failed: %s\n", result.error_message.c_str());
+        return nullptr;
+    }
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &inner);
@@ -66,9 +83,8 @@ MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfi
         use_array ? mi_bytes : 0,
     };
 
-    // 使用统一的着色器文件
-    std::string vs = preamble + "#include \"2d/puretexture2d.vert.glsl\"\n";
-    std::string fs = preamble + "#include \"2d/puretexture2d.frag.glsl\"\n";
+    std::string vs = preamble + result.vertex_glsl;
+    std::string fs = preamble + result.fragment_glsl;
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
     if(!mci)

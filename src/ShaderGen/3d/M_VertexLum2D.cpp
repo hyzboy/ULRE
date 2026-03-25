@@ -55,7 +55,7 @@ MaterialCreateInfo *CreateVertexLuminance2D(const contract::PhysicalDeviceProfil
         return nullptr;
     }
 
-    CompositorAssembler assembler("ShaderLibrary");
+    CompositorAssembler assembler;
 
     auto result = assembler.Assemble(var_key, *var_desc);
 

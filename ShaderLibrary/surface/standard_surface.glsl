@@ -3,9 +3,11 @@
 
 struct MaterialInstance
 {
-    uint  base_color;        float metallic;
+    uint  base_color;
+    float metallic;
     float roughness;
-    float normal_scale;  };
+    float normal_scale;
+};
 
 #include "common/ssbo_material_instance.glsl"
 #include "common/skylight_simple.glsl"

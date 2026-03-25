@@ -1,10 +1,15 @@
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/ShaderGenPathConfig.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <fstream>
 #include <sstream>
 
 namespace hgl::graph
 {
+    CompositorAssembler::CompositorAssembler()
+        : CompositorAssembler(GetShaderLibraryPath())
+    {}
+
     CompositorAssembler::CompositorAssembler(const std::string &shader_library_path)
         : shader_lib_path_(shader_library_path)
     {}

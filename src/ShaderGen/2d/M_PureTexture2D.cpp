@@ -1,14 +1,36 @@
 #include"Build2DCommon.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
+#include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/SamplerName.h>
+#include<hgl/mtl/MaterialLibrary.h>
+#include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
 
 namespace hgl::graph::mtl{
 
 MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
 {
+    if(!profile||!cfg)
+        return(nullptr);
+
     auto preamble = build2d::Build2DPreamble(cfg, true, false);
+
+    const MaterialVariantKey var_key = MapPresetToVariantKey(MaterialPreset::PureTexture2D);
+    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
+    if (!var_desc)
+    {
+        std::fprintf(stderr, "[PureTexture2D] VariantRegistry lookup failed\n");
+        return nullptr;
+    }
+
+    CompositorAssembler assembler;
+    const auto result = assembler.Assemble(var_key, *var_desc);
+    if (!result.success)
+    {
+        std::fprintf(stderr, "[PureTexture2D] CompositorAssembler failed: %s\n", result.error_message.c_str());
+        return nullptr;
+    }
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, cfg);
@@ -34,8 +56,8 @@ MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLit
         nullptr, 0,
     };
 
-    std::string vs = preamble + "#include \"2d/puretexture2d.vert.glsl\"\n";
-    std::string fs = preamble + "#include \"2d/puretexture2d.frag.glsl\"\n";
+    std::string vs = preamble + result.vertex_glsl;
+    std::string fs = preamble + result.fragment_glsl;
 
     MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
     if(!mci)

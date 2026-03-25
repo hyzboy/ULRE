@@ -3,6 +3,7 @@
 #include<hgl/mtl/Material2DCreateConfig.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
+#include<hgl/shadergen/ShaderGenPathConfig.h>
 #include<hgl/shadergen/contract/ShaderGenContract.h>
 #include<cstdio>
 
@@ -155,6 +156,8 @@ static MaterialVariantKey MakeBillboard2DKey()
     key.geometry_mode = GeometryMode::BillboardCameraFacing;
     key.texture_source_mode = TextureSourceMode::Simple;
     key.SetHasTexture(SamplerSlot::BaseColor);
+    key.blend_mode = BlendMode::Transparent;
+    key.pass_hint = PassType::ForwardTransparent;
     return key;
 }
 
@@ -166,7 +169,6 @@ static MaterialVariantKey MakeStandardKey()
     key.texture_source_mode = TextureSourceMode::Simple;
     key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
     key.SetTextureSourceMode(SamplerSlot::Normal,    TextureSourceMode::Simple);
-    key.SetTextureSourceMode(SamplerSlot::Roughness, TextureSourceMode::Simple);
     return key;
 }
 
@@ -273,7 +275,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
     {
         std::vector<std::string> diagnostics;
 
-        const bool ok = ValidateBuiltinMaterialVariants("ShaderLibrary",diagnostics);
+        const bool ok = ValidateBuiltinMaterialVariants(GetShaderLibraryPath(),diagnostics);
         if(ok)
         {
             std::fprintf(stderr,"[MaterialLibrary] Startup variant validation passed.\n");

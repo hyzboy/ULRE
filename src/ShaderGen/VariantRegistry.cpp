@@ -33,8 +33,19 @@ const MaterialVariantDesc *VariantRegistry::QueryVariantWithCanonicalFallback(
         return exact;
     }
 
+    // Fallback step 1: ignore per-slot source bits but preserve sampler feature bits.
+    // This matches legacy registry keys that encode coarse mode + sampler mask only.
     MaterialVariantKey canon=key;
     canon.texture_source_bits=0;
+
+    if(const MaterialVariantDesc *fallback=QueryVariant(canon))
+    {
+        if(resolved_key)
+            *resolved_key=canon;
+        return fallback;
+    }
+
+    // Fallback step 2: fully canonicalized (legacy coarse key).
     canon.sampler_feature_bits=0;
 
     if(const MaterialVariantDesc *fallback=QueryVariant(canon))
@@ -197,16 +208,16 @@ void VariantRegistry::InitializeBuiltinVariants()
             VertexAttribFeatureBit(VertexAttrib::Color)),
         MakeDesc("VertexColor2D",
                  MaterialPreset::VertexColor2D,
-                 "",
-                 "",
+                 "2d/vertexcolor2d.vert.glsl",
+                 "2d/vertexcolor2d.frag.glsl",
                  ""));
 
     RegisterVariant(
         K(ST::Unlit, GM::Quad2D),
         MakeDesc("PureColor2D",
                  MaterialPreset::PureColor2D,
-                 "",
-                 "",
+                 "2d/purecolor2d.vert.glsl",
+                 "2d/purecolor2d.frag.glsl",
                  ""));
 
     RegisterVariant(
@@ -215,24 +226,24 @@ void VariantRegistry::InitializeBuiltinVariants()
             SamplerFeatureBit(SamplerSlot::BaseColor)),
         MakeDesc("PureTexture2D",
                  MaterialPreset::PureTexture2D,
-                 "",
-                 "",
+                 "2d/puretexture2d.vert.glsl",
+                 "2d/puretexture2d.frag.glsl",
                  ""));
 
     RegisterVariant(
         K(ST::Unlit, GM::ScreenRect, TSM::Simple),
         MakeDesc("RectTexture2D",
                  MaterialPreset::RectTexture2D,
-                 "",
-                 "",
+                 "2d/puretexture2d.vert.glsl",
+                 "2d/puretexture2d.frag.glsl",
                  ""));
 
     RegisterVariant(
         K(ST::Unlit, GM::ScreenRect, TSM::Array),
         MakeDesc("RectTexture2DArray",
                  MaterialPreset::RectTexture2D,
-                 "",
-                 "",
+                 "2d/puretexture2d.vert.glsl",
+                 "2d/puretexture2d.frag.glsl",
                  ""));
 
     RegisterVariant(
@@ -241,8 +252,8 @@ void VariantRegistry::InitializeBuiltinVariants()
             SamplerFeatureBit(SamplerSlot::BaseColor)),
         MakeDesc("Text2D",
                  MaterialPreset::Text2D,
-                 "",
-                 "",
+                 "2d/text2d.vert.glsl",
+                 "2d/text2d.frag.glsl",
                  ""));
 
     // ------------------------------------------------------------------
@@ -377,7 +388,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
                 K(ST::Standard, GM::Mesh3D, TSM::Simple,
                     0,
-                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
+                                        SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("Standard",
                          MaterialPreset::Standard,
                  "compositor/main_forward_lit.vert.glsl",
@@ -390,7 +401,7 @@ void VariantRegistry::InitializeBuiltinVariants()
     RegisterVariant(
                 K(ST::Standard, GM::Mesh3D, TSM::Array,
                     0,
-                    SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
+                                        SamplerFeatureBit(SamplerSlot::BaseColor) | SamplerFeatureBit(SamplerSlot::Normal)),
         MakeDesc("StandardTextureArray",
                          MaterialPreset::Standard,
                  "compositor/main_forward_lit.vert.glsl",

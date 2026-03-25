@@ -1,5 +1,6 @@
 #include"GLSLCompiler.h"
 #include"TBuiltInResourceCompat.h"
+#include <hgl/shadergen/ShaderGenPathConfig.h>
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -213,7 +214,7 @@ namespace hgl
                         if(g_pd_profile_valid)
                             ApplyPhysicalDeviceProfileToCompilerLimits(g_pd_profile);
 
-                        AddShaderIncludePath("ShaderLibrary");
+                        AddShaderIncludePath(GetShaderLibraryPath().c_str());
 
                         return(true);
                     }

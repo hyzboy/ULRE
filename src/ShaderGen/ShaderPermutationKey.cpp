@@ -11,12 +11,13 @@ void ShaderPermutationKey::AppendGLSLDefines(std::string &out) const
     char buf[128];
     snprintf(buf, sizeof(buf),
         "#define SURFACE_TYPE %d\n"
-        "#define SHADOW_MODE %u\n"
-        "#define TEXTURE_ARRAY_MODE %d\n",
+        "#define SHADOW_MODE %u\n",
         static_cast<int>(GetSurfaceType()),
-        static_cast<unsigned>(GetShadowMode()),
-        GetTextureArrayMode() ? 1 : 0);
+        static_cast<unsigned>(GetShadowMode()));
     out += buf;
+
+    if (GetTextureArrayMode())
+        out += "#define TEXTURE_ARRAY_MODE\n";
 
     for (uint8 i = 0; i < uint8(mtl::SamplerSlotCount); ++i)
     {

@@ -60,7 +60,7 @@ float BayerDither4x4(ivec2 p)
 
 void main()
 {
-#if TEXTURE_ARRAY_MODE
+#ifdef TEXTURE_ARRAY_MODE
     _ULRE_InitTextureLayerIndices();
 #endif
 
