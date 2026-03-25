@@ -36,8 +36,6 @@ bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ub
     if(!ubo)
         return(false);
 
-    struct_list.emplace(ubo->type);
-
     ubo_list.push_back(ubo);
     return true;
 }
@@ -46,8 +44,6 @@ bool ShaderDescriptorInfo::AddSSBO(DescriptorSetType type,const SSBODescriptor *
 {
     if(!ssbo)
         return(false);
-
-    struct_list.emplace(ssbo->type);
 
     ssbo_list.push_back(ssbo);
     return true;

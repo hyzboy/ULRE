@@ -27,8 +27,6 @@ protected:
 
     ShaderStage                         stage_flag;
 
-    ankerl::unordered_dense::set<std::string> struct_list;  //用到的结构列表(去重)
-
     //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdi中的用于产生set/binding号，这里的用于产生shader
     UBODescriptorList                   ubo_list;
     SSBODescriptorList                  ssbo_list;
@@ -49,18 +47,6 @@ public:
 
 public:
 
-    const ankerl::unordered_dense::set<std::string> &GetStructList()const{return struct_list;}
-    std::vector<std::string>            GetStructNameList()const
-    {
-        std::vector<std::string> names;
-        names.reserve(struct_list.size());
-
-        for(const auto &name:struct_list)
-            names.emplace_back(name);
-
-        return names;
-    }
-
     const UBODescriptorList &           GetUBOList()const{return ubo_list;}
     const SSBODescriptorList &          GetSSBOList()const{return ssbo_list;}
     const TextureDescriptorList &       GetTextureList()const{return texture_list;}
@@ -70,8 +56,6 @@ public:
 
 public:
 
-    void AddStruct(const std::string &name){struct_list.emplace(name);}
-    void AddStruct(const char *name){struct_list.emplace(name?name:"");}
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);

@@ -49,11 +49,6 @@ public:
     ShaderCreateInfo(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
     virtual ~ShaderCreateInfo();
 
-    void AddStruct(const std::string &);
-    void AddStruct(const char *name)
-    {
-        AddStruct(std::string(name?name:""));
-    }
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSSBO(DescriptorSetType type,const SSBODescriptor *sd);
     bool AddTexture(DescriptorSetType type,const TextureDescriptor *sd);

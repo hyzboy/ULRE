@@ -8,11 +8,6 @@
 
 namespace hgl{namespace graph{
 
-namespace mtl
-{
-    constexpr const char MaterialInstanceStruct[]="MaterialInstance";
-}
-
 static const char *GetShaderStageNameByStage(const ShaderStage stage)
 {
     switch (stage)
@@ -46,11 +41,6 @@ ShaderCreateInfo::~ShaderCreateInfo()
         FreeSPVData(spv_data);
 }
 
-void ShaderCreateInfo::AddStruct(const std::string &name)
-{
-    return GetShaderDescriptorInfo()->AddStruct(name.c_str());
-}
-
 bool ShaderCreateInfo::AddUBO(DescriptorSetType type,const UBODescriptor *sd)
 {
     return GetShaderDescriptorInfo()->AddUBO(type,sd);
@@ -74,13 +64,11 @@ bool ShaderCreateInfo::AddTextureSampler(DescriptorSetType type,const TextureSam
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
 {
     AddUBO(SET_TYPE_MATERIAL,ubo);
-    AddStruct(mtl::MaterialInstanceStruct);
 }
 
 void ShaderCreateInfo::SetMaterialInstance(SSBODescriptor *ssbo)
 {
     AddSSBO(SET_TYPE_MATERIAL,ssbo);
-    AddStruct(mtl::MaterialInstanceStruct);
 }
 
 bool ShaderCreateInfo::CompileFinalGLSLToSPV()
