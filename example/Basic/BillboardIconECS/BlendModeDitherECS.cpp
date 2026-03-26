@@ -6,15 +6,20 @@
 //
 // Pipeline: Solid3D base (dithering is entirely shader-side).
 
+#include "IconGradient.h"
 #include "BillboardIconECSBase.h"
 
 class BlendModeDitherECSApp : public BillboardIconECSBase
 {
 protected:
     const char* GetEntityPrefix() const override { return "DitherBillboard_"; }
+
+    const os_char *GetIconTextures(int i) const override { return kIconTextures[i%kIconCount]; }
+
     void ConfigureQuadPipelineMode() override
     {
         QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::Dither3D);
+        QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
     }
 };
 

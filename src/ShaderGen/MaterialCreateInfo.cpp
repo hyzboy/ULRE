@@ -179,7 +179,8 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     const DescriptorSetType set_type,
     const std::string &type_name,
     const std::string &name,
-    const mtl::SamplerSlot slot)
+    const mtl::SamplerSlot slot,
+    const TextureChannelHint channel_hint=TextureChannelHint::RGBA)
 {
     TextureSamplerDescriptor *image_sampler=mdi.GetTextureSampler(name);
 
@@ -196,6 +197,7 @@ static const TextureSamplerDescriptor *ResolveTextureSamplerDescriptor(
     image_sampler->type=type_name.c_str();
     hgl::strcpy(image_sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name.c_str());
     image_sampler->slot=slot;
+    image_sampler->channel_hint=channel_hint;
 
     return mdi.AddTextureSampler((uint32_t)flag_bit,set_type,image_sampler);
 }
@@ -370,7 +372,7 @@ bool MaterialCreateInfo::AddTexture(const ShaderStage flag_bit,const TextureType
     return sc->AddTexture(SET_TYPE_MATERIAL,texture);
 }
 
-bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const SamplerType &st,const SamplerSlot slot)
+bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -386,7 +388,7 @@ bool MaterialCreateInfo::AddTextureSampler(const ShaderStage flag_bit,const Samp
     const std::string st_name(GetSamplerTypeName(st));      //这里可能需要根据纹理类型，在前面增加i/u的前缀
     const std::string name=ToDescriptorName(slot);
 
-    const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(descriptor_db,flag_bit,SET_TYPE_MATERIAL,st_name,name,slot);
+    const TextureSamplerDescriptor *image_sampler=ResolveTextureSamplerDescriptor(descriptor_db,flag_bit,SET_TYPE_MATERIAL,st_name,name,slot,channel_hint);
     if(!image_sampler)
         return false;
 

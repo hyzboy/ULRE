@@ -150,4 +150,18 @@ namespace hgl::graph
 
         return (SamplerType)result;
     }
+
+    /**
+     * 纹理通道提示 —— 告知着色器生成器如何解读采样结果。
+     *
+     * RGBA:      标准四通道纹理，采样后直接使用 (默认)。
+     * Grayscale: 单通道纹理，采样后将 R 复制到 RGBA 全部通道: vec4(r,r,r,r)。
+     */
+    enum class TextureChannelHint : uint8
+    {
+        RGBA = 0,
+        Grayscale,
+
+        ENUM_CLASS_RANGE(RGBA, Grayscale)
+    };
 }

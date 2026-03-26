@@ -34,10 +34,6 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
-// 50 freepik icon textures (all have transparent backgrounds)
-extern const os_char* kIconTextures[];
-extern const int kIconCount;
-
 /**
  * Shared base for all billboard-icon ECS examples.
  *
@@ -69,6 +65,8 @@ protected:
     // e.g. "MaskedBillboard_", "DitherBillboard_".
     virtual const char* GetEntityPrefix() const = 0;
     virtual void ConfigureQuadPipelineMode();
+
+    virtual const os_char* GetIconTextures(int) const = 0;
 
     bool InitPlaneGridResources();
     bool CreateGeometryAndPrimitives();

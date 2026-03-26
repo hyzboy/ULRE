@@ -1,0 +1,61 @@
+#pragma once
+
+#include<hgl/type/DataType.h>
+
+using namespace hgl;
+
+const os_char* kIconTextures[] =
+{
+    OS_TEXT("res/image/icon/freepik/001-online resume.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/002-salary.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/003-application.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/004-job interview.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/005-investment.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/006-job seeker.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/007-file.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/008-Cooperation.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/009-CV.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/010-personal data.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/011-job interview.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/012-calendar.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/013-home.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/014-location.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/015-photo.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/016-file.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/017-book.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/018-profile.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/019-employee.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/020-file.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/021-best employee.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/022-achievement.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/023-badge.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/024-job opportunities.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/025-skill.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/026-working.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/027-trophy.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/028-CV.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/029-headhunter.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/030-CV.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/031-best employee.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/032-chart.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/033-headhunter.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/034-certificate.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/035-job offer.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/036-check.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/037-graduated.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/038-profile.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/039-photo.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/040-envelope.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/041-curriculum vitae.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/042-headhunting.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/043-portfolio.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/044-chart.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/045-email.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/046-portfolio.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/047-contract.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/048-office chair.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/049-office building.Tex2D"),
+    OS_TEXT("res/image/icon/freepik/050-profile.Tex2D"),
+};
+
+const int kIconCount = 50;

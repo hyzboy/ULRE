@@ -6,12 +6,16 @@
 //
 // Pipeline: Solid3D base (alpha cutout is entirely shader-side via discard).
 
+#include "IconFreepik.h"
 #include "BillboardIconECSBase.h"
 
 class BlendModeMaskedECSApp : public BillboardIconECSBase
 {
 protected:
     const char* GetEntityPrefix() const override { return "MaskedBillboard_"; }
+
+    const os_char *GetIconTextures(int i) const override { return kIconTextures[i%kIconCount]; }
+
     void ConfigureQuadPipelineMode() override
     {
         QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::Masked3D);

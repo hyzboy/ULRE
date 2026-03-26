@@ -3,6 +3,7 @@
 #include<hgl/mtl/SkyLight.h>
 #include<hgl/mtl/MaterialLibrary.h>
 #include<hgl/mtl/MaterialCreateConfig.h>
+#include<hgl/common/TextureSamplerTypeDef.h>
 #include<hgl/vk/VertexAttrib.h>
 
 namespace hgl::graph::mtl{
@@ -108,6 +109,8 @@ struct BillboardMaterialCreateConfig:public Material3DCreateConfig
     std::string texture_id;             ///<纹理唯一标识，用于区分不同纹理的材质缓存
 
     BlendMode   blend_mode = BlendMode::Transparent; ///<透明/混合模式，决定shader variant
+
+    TextureChannelHint base_color_channel = TextureChannelHint::RGBA; ///<BaseColor纹理通道提示
 
 public:
 

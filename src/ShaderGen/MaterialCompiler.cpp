@@ -181,7 +181,7 @@ MaterialCreateInfo *CompileCompositorMaterial(
             if (descriptor.set_type != SET_TYPE_MATERIAL)
                 return FailAfterMci("texture sampler slot set_type must be SET_TYPE_MATERIAL");
 
-            if (!mci->AddTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.sampler_type, slot))
+            if (!mci->AddTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.sampler_type, slot, descriptor.channel_hint))
                 return FailAfterMci("AddTextureSampler(slot) failed");
         }
     }

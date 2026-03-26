@@ -101,6 +101,7 @@ namespace hgl::graph
     {
         std::string type;
         mtl::SamplerSlot slot = mtl::SamplerSlot::RANGE_SIZE;  ///< For standard texture descriptors mapped to SamplerSlot
+        TextureChannelHint channel_hint = TextureChannelHint::RGBA;
 
     public:
 
@@ -114,6 +115,7 @@ namespace hgl::graph
     {
         std::string type;
         mtl::SamplerSlot slot = mtl::SamplerSlot::RANGE_SIZE;  ///< For standard texture descriptors mapped to SamplerSlot
+        TextureChannelHint channel_hint = TextureChannelHint::RGBA;
 
     public:
 

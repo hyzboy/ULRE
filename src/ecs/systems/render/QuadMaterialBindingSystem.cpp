@@ -107,6 +107,7 @@ namespace hgl::ecs
         cfg.pixel_size  = quad->GetPixelSize();
         cfg.texture_id  = ToStdString(texture_path);
         cfg.blend_mode  = QuadResourcePrepareSystem::GetBlendModeForWorld(world);
+        cfg.base_color_channel = QuadResourcePrepareSystem::GetChannelHintForWorld(world);
 
         auto* mi = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!mi)

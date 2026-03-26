@@ -61,7 +61,10 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDevicePro
         AddFixedTextureSampler(dynamic_samplers,
                                BILLBOARD_FIXED_TEX_SLOTS[i],
                                uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT),
-                               SamplerType::Sampler2D);
+                               SamplerType::Sampler2D,
+                               SET_TYPE_MATERIAL,
+                               0, 0,
+                               cfg->base_color_channel);
 
     FixedMaterialDef dynamic_def = BILLBOARD_FIXED_DEF_TEMPLATE;
     dynamic_def.texture_samplers = &dynamic_samplers;

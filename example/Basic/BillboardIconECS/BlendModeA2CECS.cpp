@@ -6,15 +6,20 @@
 //
 // Pipeline: built-in InlinePipeline::AlphaToCoverage3D (MSAA x4 + A2C).
 
+#include "IconGradient.h"
 #include "BillboardIconECSBase.h"
 
 class BlendModeA2CECSApp : public BillboardIconECSBase
 {
 protected:
     const char* GetEntityPrefix() const override { return "A2CBillboard_"; }
+
+    const os_char *GetIconTextures(int i) const override { return kIconTextures[i%kIconCount]; }
+
     void ConfigureQuadPipelineMode() override
     {
         QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::AlphaToCoverage3D);
+        QuadResourcePrepareSystem::SetChannelHintForWorld(ecs_context, TextureChannelHint::Grayscale);
     }
 };
 

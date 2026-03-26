@@ -17,6 +17,7 @@ struct FixedTextureSamplerDescriptor
     SamplerType sampler_type = SamplerType::Sampler2D;
     uint32_t atlas_cols = 0;
     uint32_t atlas_rows = 0;
+    TextureChannelHint channel_hint = TextureChannelHint::RGBA;
 };
 
 using FixedTextureSamplerDescriptors = std::map<SamplerSlot, FixedTextureSamplerDescriptor>;
@@ -26,9 +27,10 @@ inline constexpr FixedTextureSamplerDescriptor MakeFixedTextureSamplerDescriptor
     const SamplerType sampler_type,
     const DescriptorSetType set_type = SET_TYPE_MATERIAL,
     const uint32_t atlas_cols = 0,
-    const uint32_t atlas_rows = 0)
+    const uint32_t atlas_rows = 0,
+    const TextureChannelHint channel_hint = TextureChannelHint::RGBA)
 {
-    return FixedTextureSamplerDescriptor{set_type, stage_flags, sampler_type, atlas_cols, atlas_rows};
+    return FixedTextureSamplerDescriptor{set_type, stage_flags, sampler_type, atlas_cols, atlas_rows, channel_hint};
 }
 
 inline void AddFixedUBODescriptor(FixedUBODescriptors &descriptors,
@@ -51,9 +53,10 @@ inline void AddFixedTextureSampler(FixedTextureSamplerDescriptors &descriptors,
                                    const SamplerType sampler_type,
                                    const DescriptorSetType set_type = SET_TYPE_MATERIAL,
                                    const uint32_t atlas_cols = 0,
-                                   const uint32_t atlas_rows = 0)
+                                   const uint32_t atlas_rows = 0,
+                                   const TextureChannelHint channel_hint = TextureChannelHint::RGBA)
 {
-    descriptors[slot] = MakeFixedTextureSamplerDescriptor(stage_flags, sampler_type, set_type, atlas_cols, atlas_rows);
+    descriptors[slot] = MakeFixedTextureSamplerDescriptor(stage_flags, sampler_type, set_type, atlas_cols, atlas_rows, channel_hint);
 }
 
 struct FixedMaterialDef

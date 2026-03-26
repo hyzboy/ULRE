@@ -143,6 +143,9 @@ std::string BillboardMaterialCreateConfig::ToHashStdString()
     default: break; // Transparent is the default, no suffix needed
     }
 
+    if (base_color_channel == TextureChannelHint::Grayscale)
+        hash += "_Gray";
+
     return hash;
 }
 

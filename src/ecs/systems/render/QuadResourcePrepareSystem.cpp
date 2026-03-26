@@ -27,6 +27,7 @@ namespace hgl::ecs
 
     static graph::InlinePipeline g_default_quad_inline_pipeline = graph::InlinePipeline::Solid3D;
     static std::unordered_map<const ECSContext*, graph::InlinePipeline> g_world_quad_inline_pipeline;
+    static std::unordered_map<const ECSContext*, graph::TextureChannelHint> g_world_quad_channel_hint;
 
     static graph::BlendMode InlinePipelineToBlendMode(graph::InlinePipeline pipeline)
     {
@@ -62,6 +63,27 @@ namespace hgl::ecs
     graph::BlendMode QuadResourcePrepareSystem::GetBlendModeForWorld(const ECSContext* world)
     {
         return InlinePipelineToBlendMode(GetPipelineForWorld(world));
+    }
+
+    void QuadResourcePrepareSystem::SetChannelHintForWorld(const ECSContext* world,
+                                                           graph::TextureChannelHint hint)
+    {
+        if (!world)
+            return;
+
+        g_world_quad_channel_hint[world] = hint;
+    }
+
+    graph::TextureChannelHint QuadResourcePrepareSystem::GetChannelHintForWorld(const ECSContext* world)
+    {
+        if (world)
+        {
+            auto it = g_world_quad_channel_hint.find(world);
+            if (it != g_world_quad_channel_hint.end())
+                return it->second;
+        }
+
+        return graph::TextureChannelHint::RGBA;
     }
 
     void QuadResourcePrepareSystem::SetPipeline(graph::InlinePipeline pipeline)
@@ -110,7 +132,10 @@ namespace hgl::ecs
     void QuadResourcePrepareSystem::Shutdown()
     {
         if (world)
+        {
             g_world_quad_inline_pipeline.erase(world);
+            g_world_quad_channel_hint.erase(world);
+        }
 
         ReleaseSharedResources();
         System::Shutdown();
@@ -145,6 +170,7 @@ namespace hgl::ecs
         graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
         cfg.fixed_size  = true;
         cfg.blend_mode  = GetBlendModeForWorld(world);
+        cfg.base_color_channel = GetChannelHintForWorld(world);
 
         shared_material_instance = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!shared_material_instance)

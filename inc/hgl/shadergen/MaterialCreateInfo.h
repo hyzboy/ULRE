@@ -131,7 +131,7 @@ namespace hgl::graph
             bool AddSSBOStruct(const uint32_t flag_bits,const SSBODescriptorSemantic semantic);
 
             bool AddTexture(const ShaderStage flag_bits,const TextureType &tt,const SamplerSlot slot);
-            bool AddTextureSampler(const ShaderStage flag_bits,const SamplerType &st,const SamplerSlot slot);
+            bool AddTextureSampler(const ShaderStage flag_bits,const SamplerType &st,const SamplerSlot slot,const TextureChannelHint channel_hint=TextureChannelHint::RGBA);
 
             bool CreateShaderDirect();               ///< 直接编译各阶段的 FinalGLSL 到 SPV
         };//class MaterialCreateInfo

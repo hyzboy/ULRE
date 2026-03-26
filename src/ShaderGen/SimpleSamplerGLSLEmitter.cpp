@@ -27,7 +27,7 @@ namespace
         return CStrEq(type_name, "sampler2DArray");
     }
 
-    static void AppendKnownSlotSampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerSlot slot)
+    static void AppendKnownSlotSampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerSlot slot, const TextureChannelHint channel_hint)
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *legacy_name = mtl::ToDescriptorName(slot);
@@ -51,14 +51,23 @@ namespace
 
         out += "vec4 ";
         out += getter_name;
-        out += "(vec2 uv)\n{\n    return texture(";
-        out += sampler_symbol;
-        out += ", uv);\n}\n\n";
+        if (channel_hint == TextureChannelHint::Grayscale)
+        {
+            out += "(vec2 uv)\n{\n    float _r = texture(";
+            out += sampler_symbol;
+            out += ", uv).r;\n    return vec4(_r, _r, _r, _r);\n}\n\n";
+        }
+        else
+        {
+            out += "(vec2 uv)\n{\n    return texture(";
+            out += sampler_symbol;
+            out += ", uv);\n}\n\n";
+        }
     }
 
     // Generates sampler2DArray binding + layer index global + getter — no #ifdef guards.
     // The emitter preamble is injected before AppendGLSLDefines, so ifdefs cannot be used here.
-    static void AppendKnownSlotArraySampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerSlot slot)
+    static void AppendKnownSlotArraySampler(std::string &out, const ShaderDescriptor *descriptor, const mtl::SamplerSlot slot, const TextureChannelHint channel_hint)
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
@@ -79,11 +88,22 @@ namespace
 
         out += "vec4 ";
         out += getter_name;
-        out += "(vec2 uv)\n{\n    return texture(";
-        out += sampler_symbol;
-        out += ", vec3(uv, float(_tex_layer_";
-        out += slot_name;
-        out += ")));\n}\n\n";
+        if (channel_hint == TextureChannelHint::Grayscale)
+        {
+            out += "(vec2 uv)\n{\n    float _r = texture(";
+            out += sampler_symbol;
+            out += ", vec3(uv, float(_tex_layer_";
+            out += slot_name;
+            out += "))).r;\n    return vec4(_r, _r, _r, _r);\n}\n\n";
+        }
+        else
+        {
+            out += "(vec2 uv)\n{\n    return texture(";
+            out += sampler_symbol;
+            out += ", vec3(uv, float(_tex_layer_";
+            out += slot_name;
+            out += ")));\n}\n\n";
+        }
     }
 
     static void AppendGenericSampler(std::string &out, const ShaderDescriptor *descriptor)
@@ -104,34 +124,49 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
     if (!info)
         return {};
 
-    std::vector<const ShaderDescriptor *> samplers;
-    std::vector<const ShaderDescriptor *> array_samplers;
+    struct SamplerEntry
+    {
+        const ShaderDescriptor *descriptor;
+        TextureChannelHint channel_hint;
+    };
 
-    auto collect = [&](const auto *sd)
+    std::vector<SamplerEntry> samplers;
+    std::vector<SamplerEntry> array_samplers;
+
+    auto collect_texture = [&](const TextureDescriptor *sd)
     {
         if (!sd || sd->set < 0 || sd->binding < 0) return;
         if (IsSimpleSampler2D(sd->type.c_str()))
-            samplers.push_back(sd);
+            samplers.push_back({sd, sd->channel_hint});
         else if (IsArraySampler2D(sd->type.c_str()))
-            array_samplers.push_back(sd);
+            array_samplers.push_back({sd, sd->channel_hint});
+    };
+
+    auto collect_sampler = [&](const TextureSamplerDescriptor *sd)
+    {
+        if (!sd || sd->set < 0 || sd->binding < 0) return;
+        if (IsSimpleSampler2D(sd->type.c_str()))
+            samplers.push_back({sd, sd->channel_hint});
+        else if (IsArraySampler2D(sd->type.c_str()))
+            array_samplers.push_back({sd, sd->channel_hint});
     };
 
     for (const TextureDescriptor *texture : info->GetTextureList())
-        collect(texture);
+        collect_texture(texture);
 
     for (const TextureSamplerDescriptor *sampler : info->GetTextureSamplerList())
-        collect(sampler);
+        collect_sampler(sampler);
 
     if (samplers.empty() && array_samplers.empty())
         return {};
 
-    auto sort_by_binding = [](const ShaderDescriptor *lhs, const ShaderDescriptor *rhs)
+    auto sort_by_binding = [](const SamplerEntry &lhs, const SamplerEntry &rhs)
     {
-        if (lhs->set != rhs->set)
-            return lhs->set < rhs->set;
-        if (lhs->binding != rhs->binding)
-            return lhs->binding < rhs->binding;
-        return std::strcmp(lhs->name, rhs->name) < 0;
+        if (lhs.descriptor->set != rhs.descriptor->set)
+            return lhs.descriptor->set < rhs.descriptor->set;
+        if (lhs.descriptor->binding != rhs.descriptor->binding)
+            return lhs.descriptor->binding < rhs.descriptor->binding;
+        return std::strcmp(lhs.descriptor->name, rhs.descriptor->name) < 0;
     };
     std::sort(samplers.begin(),       samplers.end(),       sort_by_binding);
     std::sort(array_samplers.begin(), array_samplers.end(), sort_by_binding);
@@ -140,22 +175,22 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
     out.reserve(512);
     out += "// ---- Auto-generated simple sampler declarations ----\n";
 
-    for (const ShaderDescriptor *descriptor : samplers)
+    for (const SamplerEntry &entry : samplers)
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
-        if (mtl::TryGetSlotFromDescriptorName(descriptor->name, slot))
-            AppendKnownSlotSampler(out, descriptor, slot);
+        if (mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot))
+            AppendKnownSlotSampler(out, entry.descriptor, slot, entry.channel_hint);
         else
-            AppendGenericSampler(out, descriptor);
+            AppendGenericSampler(out, entry.descriptor);
     }
 
-    for (const ShaderDescriptor *descriptor : array_samplers)
+    for (const SamplerEntry &entry : array_samplers)
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
-        if (mtl::TryGetSlotFromDescriptorName(descriptor->name, slot))
-            AppendKnownSlotArraySampler(out, descriptor, slot);
+        if (mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot))
+            AppendKnownSlotArraySampler(out, entry.descriptor, slot, entry.channel_hint);
         else
-            AppendGenericSampler(out, descriptor);
+            AppendGenericSampler(out, entry.descriptor);
     }
 
     out += "// ----------------------------------------------------\n\n";

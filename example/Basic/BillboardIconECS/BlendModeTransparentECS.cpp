@@ -6,12 +6,16 @@
 //
 // Uses built-in InlinePipeline::Alpha3D.
 
+#include "IconFreepik.h"
 #include "BillboardIconECSBase.h"
 
 class BlendModeTransparentECSApp : public BillboardIconECSBase
 {
 protected:
     const char* GetEntityPrefix() const override { return "TransparentBillboard_"; }
+
+    const os_char *GetIconTextures(int i) const override { return kIconTextures[i%kIconCount]; }
+
     void ConfigureQuadPipelineMode() override
     {
         QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::Alpha3D);

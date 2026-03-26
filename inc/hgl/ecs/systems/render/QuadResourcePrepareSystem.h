@@ -3,6 +3,7 @@
 #include<hgl/ecs/core/System.h>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
 #include<hgl/mtl/new/BlendMode.h>
+#include<hgl/common/TextureSamplerTypeDef.h>
 #include<glm/glm.hpp>
 
 namespace hgl
@@ -63,6 +64,9 @@ namespace hgl::ecs
         static void SetPipelineForWorld(const ECSContext* world, graph::InlinePipeline pipeline);
         static graph::InlinePipeline GetPipelineForWorld(const ECSContext* world);
         static graph::BlendMode GetBlendModeForWorld(const ECSContext* world);
+
+        static void SetChannelHintForWorld(const ECSContext* world, graph::TextureChannelHint hint);
+        static graph::TextureChannelHint GetChannelHintForWorld(const ECSContext* world);
 
         static void SetPipeline(graph::InlinePipeline pipeline);
         static graph::InlinePipeline GetPipeline();

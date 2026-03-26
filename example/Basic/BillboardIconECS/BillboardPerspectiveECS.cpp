@@ -5,12 +5,16 @@
 //
 // Pipeline: standard Solid3D (no blending).
 
+#include "IconFreepik.h"
 #include "BillboardIconECSBase.h"
 
 class BillboardPerspectiveECSApp : public BillboardIconECSBase
 {
 protected:
+
     const char* GetEntityPrefix() const override { return "BillboardSpiral_"; }
+
+    const os_char *GetIconTextures(int i) const override { return kIconTextures[i%kIconCount]; }
 };
 
 int os_main(int argc, os_char** argv)
