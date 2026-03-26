@@ -30,8 +30,14 @@ CreateProject(VulkanPhysicalDeviceProfileCollector)
 
 ####################################################################################################
 
+add_executable(MaterialPresetExhaustiveCompile
+    MaterialPresetExhaustiveCompile.cpp)
 
-# 需要时可直接运行：
-#   cmake --build <build_dir> --target MaterialPresetExhaustiveCompile
-# 在生成目录执行：
-#   .\\test\\Debug\\MaterialPresetExhaustiveCompile.exe
+target_link_libraries(MaterialPresetExhaustiveCompile
+    PRIVATE ULRE.Vulkan
+            ULRE.ShaderGen
+            CMCore
+            CMMath
+            CMCoreType)
+
+CreateProject(MaterialPresetExhaustiveCompile)

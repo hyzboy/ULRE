@@ -11,7 +11,7 @@ void main()
     ivec2 tex_sz = textureSize(TextureHeight, 0);
     int W = tex_sz.x;
 
-    int idx = gl_VertexID;
+    int idx = gl_VertexIndex;
     ivec2 coord = ivec2(idx % W, idx / W);
 
     float h = texelFetch(TextureHeight, coord, 0).r;
