@@ -7,22 +7,6 @@
 
 namespace hgl::ecs
 {
-    namespace
-    {
-        bool IsOverlayLikeBatch(const MaterialBatch* batch)
-        {
-            if (!batch || !batch->key.pipeline)
-                return false;
-
-            const auto *pd = batch->key.pipeline->GetData();
-            if (!pd || !pd->depth_stencil)
-                return false;
-
-            return pd->depth_stencil->depthCompareOp == VK_COMPARE_OP_ALWAYS
-                && pd->depth_stencil->depthWriteEnable == VK_FALSE;
-        }
-    }
-
     PrimitiveOverlayRenderSystem::PrimitiveOverlayRenderSystem(const std::string& name)
         : RenderPipelineDrawSystem(name)
     {
@@ -51,7 +35,7 @@ namespace hgl::ecs
             if (!batch || batch->items.empty())
                 continue;
 
-            if (!IsOverlayLikeBatch(batch))
+            if (batch->key.queue != RenderQueue::Overlay)
                 continue;
 
             const auto& key = batch->key;

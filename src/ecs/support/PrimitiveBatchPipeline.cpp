@@ -53,6 +53,31 @@ namespace hgl::ecs
             indexed_draw_cmd->vertexOffset = batch->geom_draw_range->vertex_offset;
             indexed_draw_cmd->firstInstance = batch->first_instance;
         }
+
+        RenderQueue DetermineRenderQueue(const graph::Pipeline* pipeline)
+        {
+            if (!pipeline)
+                return RenderQueue::Opaque;
+
+            const auto* pd = pipeline->GetData();
+            if (!pd)
+                return RenderQueue::Opaque;
+
+            if (pd->depth_stencil
+             && pd->depth_stencil->depthCompareOp == VK_COMPARE_OP_ALWAYS
+             && pd->depth_stencil->depthWriteEnable == VK_FALSE)
+            {
+                return RenderQueue::Overlay;
+            }
+
+            if (pipeline->IsAlphaBlend())
+                return RenderQueue::Transparent;
+
+            if (pipeline->IsAlphaTest())
+                return RenderQueue::Masked;
+
+            return RenderQueue::Opaque;
+        }
     }
 
     bool PrimitiveBatchPipeline::PrepareFrame(ECSContext* ctx)
@@ -466,8 +491,9 @@ namespace hgl::ecs
             // domains are never merged into the same batch (nullptr = default domain).
             auto* mi     = item->GetMaterialInstance();
             auto* domain = mi ? mi->GetDomain() : nullptr;
+            const RenderQueue queue = DetermineRenderQueue(pipeline);
 
-            MaterialPipelineKey key(material, pipeline, domain);
+            MaterialPipelineKey key(material, pipeline, domain, queue);
             auto* batch_ptr = cache.materialBatches.GetValuePointer(key);
 
             if (!batch_ptr)

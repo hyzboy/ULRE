@@ -76,7 +76,7 @@ BillboardIconECSBase::~BillboardIconECSBase()
 
 void BillboardIconECSBase::ConfigureQuadPipelineMode()
 {
-    QuadResourcePrepareSystem::SetPipeline(InlinePipeline::Solid3D);
+    QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::Solid3D);
 }
 
 bool BillboardIconECSBase::InitPlaneGridResources()

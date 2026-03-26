@@ -106,7 +106,7 @@ namespace hgl::ecs
         cfg.front_face  = quad->GetFrontFace();
         cfg.pixel_size  = quad->GetPixelSize();
         cfg.texture_id  = ToStdString(texture_path);
-        cfg.blend_mode  = QuadResourcePrepareSystem::GetBlendMode();
+        cfg.blend_mode  = QuadResourcePrepareSystem::GetBlendModeForWorld(world);
 
         auto* mi = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!mi)
@@ -122,7 +122,7 @@ namespace hgl::ecs
         if (!render_pass)
             return false;
 
-        auto *pipeline = QuadResourcePrepareSystem::CreateConfiguredPipeline(render_pass, mi);
+        auto *pipeline = QuadResourcePrepareSystem::CreateConfiguredPipeline(render_pass, mi, world);
         if (!pipeline)
             return false;
 

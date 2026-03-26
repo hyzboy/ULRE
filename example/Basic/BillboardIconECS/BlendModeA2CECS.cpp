@@ -14,7 +14,7 @@ protected:
     const char* GetEntityPrefix() const override { return "A2CBillboard_"; }
     void ConfigureQuadPipelineMode() override
     {
-        QuadResourcePrepareSystem::SetPipeline(InlinePipeline::AlphaToCoverage3D);
+        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::AlphaToCoverage3D);
     }
 };
 

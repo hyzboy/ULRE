@@ -60,11 +60,16 @@ namespace hgl::ecs
         static graph::Pipeline* GetSharedPipeline() { return shared_pipeline; }
         static graph::Sampler* GetSharedSampler() { return shared_sampler; }
 
+        static void SetPipelineForWorld(const ECSContext* world, graph::InlinePipeline pipeline);
+        static graph::InlinePipeline GetPipelineForWorld(const ECSContext* world);
+        static graph::BlendMode GetBlendModeForWorld(const ECSContext* world);
+
         static void SetPipeline(graph::InlinePipeline pipeline);
         static graph::InlinePipeline GetPipeline();
         static graph::BlendMode GetBlendMode();
         static graph::Pipeline* CreateConfiguredPipeline(graph::RenderPass* render_pass,
-                                 graph::MaterialInstance* material_instance);
+                     graph::MaterialInstance* material_instance,
+                     const ECSContext* world = nullptr);
 
     public:
 

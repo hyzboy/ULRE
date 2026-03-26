@@ -14,7 +14,7 @@ protected:
     const char* GetEntityPrefix() const override { return "TransparentBillboard_"; }
     void ConfigureQuadPipelineMode() override
     {
-        QuadResourcePrepareSystem::SetPipeline(InlinePipeline::Alpha3D);
+        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::Alpha3D);
     }
 };
 

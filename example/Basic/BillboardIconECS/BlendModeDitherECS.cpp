@@ -14,7 +14,7 @@ protected:
     const char* GetEntityPrefix() const override { return "DitherBillboard_"; }
     void ConfigureQuadPipelineMode() override
     {
-        QuadResourcePrepareSystem::SetPipeline(InlinePipeline::Dither3D);
+        QuadResourcePrepareSystem::SetPipelineForWorld(ecs_context, InlinePipeline::Dither3D);
     }
 };
 

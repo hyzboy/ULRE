@@ -15,18 +15,16 @@ namespace hgl::ecs
 {
     namespace
     {
-        bool IsOverlayLikeBatch(const MaterialBatch* batch)
+        int QueueSortRank(const RenderQueue queue)
         {
-            if (!batch || !batch->key.pipeline)
-                return false;
-
-            const auto *pd = batch->key.pipeline->GetData();
-            if (!pd || !pd->depth_stencil)
-                return false;
-
-            // Overlay-style depth state: pass regardless of depth and do not write depth.
-            return pd->depth_stencil->depthCompareOp == VK_COMPARE_OP_ALWAYS
-                && pd->depth_stencil->depthWriteEnable == VK_FALSE;
+            switch (queue)
+            {
+            case RenderQueue::Opaque:      return 0;
+            case RenderQueue::Masked:      return 1;
+            case RenderQueue::Transparent: return 2;
+            case RenderQueue::Overlay:     return 3;
+            default:                       return 99;
+            }
         }
     }
 
@@ -64,12 +62,32 @@ namespace hgl::ecs
             ordered_batches.push_back(batch);
         }
 
+        std::sort(ordered_batches.begin(), ordered_batches.end(),
+                  [](const MaterialBatch* lhs, const MaterialBatch* rhs)
+                  {
+                      if (!lhs || !rhs)
+                          return lhs != nullptr;
+
+                      const int lhs_rank = QueueSortRank(lhs->key.queue);
+                      const int rhs_rank = QueueSortRank(rhs->key.queue);
+                      if (lhs_rank != rhs_rank)
+                          return lhs_rank < rhs_rank;
+
+                      if (lhs->key.material != rhs->key.material)
+                          return lhs->key.material < rhs->key.material;
+
+                      if (lhs->key.pipeline != rhs->key.pipeline)
+                          return lhs->key.pipeline < rhs->key.pipeline;
+
+                      return lhs->key.domain < rhs->key.domain;
+                  });
+
         for (MaterialBatch* batch : ordered_batches)
         {
             if (!batch || batch->items.empty())
                 continue;
 
-            if (IsOverlayLikeBatch(batch))
+            if (batch->key.queue == RenderQueue::Overlay)
                 continue;
 
             const auto& key = batch->key;

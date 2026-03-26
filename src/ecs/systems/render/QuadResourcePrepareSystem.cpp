@@ -14,6 +14,7 @@
 #include<hgl/vk/VertexAttrib.h>
 #include<hgl/vk/VKFormat.h>
 #include<cstdint>
+#include<unordered_map>
 
 namespace hgl::ecs
 {
@@ -24,7 +25,8 @@ namespace hgl::ecs
     graph::RenderPass* QuadResourcePrepareSystem::shared_render_pass = nullptr;
     graph::Sampler* QuadResourcePrepareSystem::shared_sampler = nullptr;
 
-    static graph::InlinePipeline g_quad_inline_pipeline = graph::InlinePipeline::Solid3D;
+    static graph::InlinePipeline g_default_quad_inline_pipeline = graph::InlinePipeline::Solid3D;
+    static std::unordered_map<const ECSContext*, graph::InlinePipeline> g_world_quad_inline_pipeline;
 
     static graph::BlendMode InlinePipelineToBlendMode(graph::InlinePipeline pipeline)
     {
@@ -36,28 +38,55 @@ namespace hgl::ecs
         }
     }
 
+    void QuadResourcePrepareSystem::SetPipelineForWorld(const ECSContext* world,
+                                                        graph::InlinePipeline pipeline)
+    {
+        if (!world)
+            return;
+
+        g_world_quad_inline_pipeline[world] = pipeline;
+    }
+
+    graph::InlinePipeline QuadResourcePrepareSystem::GetPipelineForWorld(const ECSContext* world)
+    {
+        if (world)
+        {
+            auto it = g_world_quad_inline_pipeline.find(world);
+            if (it != g_world_quad_inline_pipeline.end())
+                return it->second;
+        }
+
+        return g_default_quad_inline_pipeline;
+    }
+
+    graph::BlendMode QuadResourcePrepareSystem::GetBlendModeForWorld(const ECSContext* world)
+    {
+        return InlinePipelineToBlendMode(GetPipelineForWorld(world));
+    }
+
     void QuadResourcePrepareSystem::SetPipeline(graph::InlinePipeline pipeline)
     {
-        g_quad_inline_pipeline = pipeline;
+        g_default_quad_inline_pipeline = pipeline;
     }
 
     graph::InlinePipeline QuadResourcePrepareSystem::GetPipeline()
     {
-        return g_quad_inline_pipeline;
+        return g_default_quad_inline_pipeline;
     }
 
     graph::BlendMode QuadResourcePrepareSystem::GetBlendMode()
     {
-        return InlinePipelineToBlendMode(g_quad_inline_pipeline);
+        return InlinePipelineToBlendMode(g_default_quad_inline_pipeline);
     }
 
     graph::Pipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderPass* render_pass,
-                                                                         graph::MaterialInstance* material_instance)
+                                                                         graph::MaterialInstance* material_instance,
+                                                                         const ECSContext* world)
     {
         if (!render_pass || !material_instance)
             return nullptr;
 
-        return render_pass->CreatePipeline(material_instance, g_quad_inline_pipeline);
+        return render_pass->CreatePipeline(material_instance, GetPipelineForWorld(world));
     }
 
     QuadResourcePrepareSystem::QuadResourcePrepareSystem(const std::string& name)
@@ -80,6 +109,9 @@ namespace hgl::ecs
 
     void QuadResourcePrepareSystem::Shutdown()
     {
+        if (world)
+            g_world_quad_inline_pipeline.erase(world);
+
         ReleaseSharedResources();
         System::Shutdown();
     }
@@ -112,14 +144,14 @@ namespace hgl::ecs
         // Create shared material instance for billboard rendering
         graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
         cfg.fixed_size  = true;
-        cfg.blend_mode  = InlinePipelineToBlendMode(g_quad_inline_pipeline);
+        cfg.blend_mode  = GetBlendModeForWorld(world);
 
         shared_material_instance = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!shared_material_instance)
             return false;
 
         // Create pipeline according to the configured quad pipeline mode
-        shared_pipeline = CreateConfiguredPipeline(render_pass, shared_material_instance);
+        shared_pipeline = CreateConfiguredPipeline(render_pass, shared_material_instance, world);
         if (!shared_pipeline)
             return false;
 
