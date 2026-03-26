@@ -180,7 +180,7 @@ namespace hgl::ecs
             return;
         }
 
-        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
+//        LogDeviceBufferSnapshot("[TransformAssignmentBuffer::BindTransform] before bind", transform_buffer);
 
         const bool l2w_bind_ok = mtl->BindSSBO(hgl::graph::mtl::SSBODescriptorSemantic::LocalToWorld,transform_buffer->GetGPUBuffer());
         GLogInfo("[TransformAssignmentBuffer::BindTransform] BindSSBO ");
@@ -237,13 +237,13 @@ namespace hgl::ecs
         if (ShouldEmitPeriodicLog())
         {
             const uint32_t ring_base = ring_writer.GetBaseIndex(static_count + kFirstObjectL2WSlot, dynamic_count);
-            GLogInfo("[TransformAssignmentBuffer] EnsureCapacity: static=%u dynamic=%u total=%u ring_base=%u frame=%u policy=%d",
-                     static_count,
-                     dynamic_count,
-                     total_count,
-                     ring_base,
-                     ring_writer.GetFrameIndex(),
-                     static_cast<int>(policy));
+            //GLogInfo("[TransformAssignmentBuffer] EnsureCapacity: static=%u dynamic=%u total=%u ring_base=%u frame=%u policy=%d",
+            //         static_count,
+            //         dynamic_count,
+            //         total_count,
+            //         ring_base,
+            //         ring_writer.GetFrameIndex(),
+            //         static_cast<int>(policy));
             LogDeviceBufferSnapshot("[TransformAssignmentBuffer] EnsureCapacity snapshot", transform_buffer);
         }
     }

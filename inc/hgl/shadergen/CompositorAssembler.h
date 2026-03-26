@@ -77,7 +77,7 @@ namespace hgl::graph
         bool        TryBuildGeneratedCompositorVS(SurfaceType surface, PassType pass, std::string &out_source) const;
         bool        TryBuildGeneratedCompositorFS(SurfaceType surface, BlendMode blend, PassType pass, const std::string &surface_path, std::string &out_source) const;
         bool        TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const;
-        bool        TryBuildGeneratedFSTemplatePath(const std::string &template_path, const std::string &surface_path, std::string &out_source) const;
+        bool        TryBuildGeneratedFSTemplatePath(const std::string &template_path, BlendMode blend, const std::string &surface_path, std::string &out_source) const;
         std::string GetCompositorVSPath(SurfaceType surface, PassType pass) const;
         std::string GetCompositorFSPath(SurfaceType surface, BlendMode blend, PassType pass) const;
         std::string GetSurfaceFunctionPath(SurfaceType surface) const;

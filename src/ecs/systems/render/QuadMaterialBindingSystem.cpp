@@ -102,10 +102,11 @@ namespace hgl::ecs
 
         // Create material instance with quad-specific config
         graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
-        cfg.fixed_size = quad->IsFixedPixelSize();
-        cfg.front_face = quad->GetFrontFace();
-        cfg.pixel_size = quad->GetPixelSize();
-        cfg.texture_id = ToStdString(texture_path);
+        cfg.fixed_size  = quad->IsFixedPixelSize();
+        cfg.front_face  = quad->GetFrontFace();
+        cfg.pixel_size  = quad->GetPixelSize();
+        cfg.texture_id  = ToStdString(texture_path);
+        cfg.blend_mode  = QuadResourcePrepareSystem::GetBlendMode();
 
         auto* mi = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!mi)

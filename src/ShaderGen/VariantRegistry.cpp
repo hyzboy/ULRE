@@ -361,6 +361,78 @@ void VariantRegistry::InitializeBuiltinVariants()
     }
 
     // ------------------------------------------------------------------
+    // Billboard Dynamic (camera-facing, masked)
+    // ------------------------------------------------------------------
+    {
+        MaterialVariantKey key;
+        key.geometry_mode       = GM::BillboardCameraFacing;
+        key.texture_source_mode = TSM::Simple;
+        key.SetHasTexture(SamplerSlot::BaseColor);
+        key.blend_mode          = BlendMode::Masked;
+        key.pass_hint           = PassType::ForwardMasked;
+        RegisterVariant(key,
+            MakeDesc("Billboard2DDynamicMasked",
+                     MaterialPreset::Billboard2D,
+                     "compositor/main_forward_billboard_dynamic.vert.glsl",
+                     "compositor/main_forward_billboard.frag.glsl",
+                     "surface/billboard_texture_surface.glsl"));
+    }
+
+    // ------------------------------------------------------------------
+    // Billboard Dynamic (camera-facing, dither)
+    // ------------------------------------------------------------------
+    {
+        MaterialVariantKey key;
+        key.geometry_mode       = GM::BillboardCameraFacing;
+        key.texture_source_mode = TSM::Simple;
+        key.SetHasTexture(SamplerSlot::BaseColor);
+        key.blend_mode          = BlendMode::Dither;
+        key.pass_hint           = PassType::ForwardDither;
+        RegisterVariant(key,
+            MakeDesc("Billboard2DDynamicDither",
+                     MaterialPreset::Billboard2D,
+                     "compositor/main_forward_billboard_dynamic.vert.glsl",
+                     "compositor/main_forward_billboard.frag.glsl",
+                     "surface/billboard_texture_surface.glsl"));
+    }
+
+    // ------------------------------------------------------------------
+    // Billboard Fixed Size (axis-locked, masked)
+    // ------------------------------------------------------------------
+    {
+        MaterialVariantKey key;
+        key.geometry_mode       = GM::BillboardAxisLocked;
+        key.texture_source_mode = TSM::Simple;
+        key.SetHasTexture(SamplerSlot::BaseColor);
+        key.blend_mode          = BlendMode::Masked;
+        key.pass_hint           = PassType::ForwardMasked;
+        RegisterVariant(key,
+            MakeDesc("Billboard2DFixedMasked",
+                     MaterialPreset::Billboard2D,
+                     "compositor/main_forward_billboard_fixed.vert.glsl",
+                     "compositor/main_forward_billboard.frag.glsl",
+                     "surface/billboard_texture_surface.glsl"));
+    }
+
+    // ------------------------------------------------------------------
+    // Billboard Fixed Size (axis-locked, dither)
+    // ------------------------------------------------------------------
+    {
+        MaterialVariantKey key;
+        key.geometry_mode       = GM::BillboardAxisLocked;
+        key.texture_source_mode = TSM::Simple;
+        key.SetHasTexture(SamplerSlot::BaseColor);
+        key.blend_mode          = BlendMode::Dither;
+        key.pass_hint           = PassType::ForwardDither;
+        RegisterVariant(key,
+            MakeDesc("Billboard2DFixedDither",
+                     MaterialPreset::Billboard2D,
+                     "compositor/main_forward_billboard_fixed.vert.glsl",
+                     "compositor/main_forward_billboard.frag.glsl",
+                     "surface/billboard_texture_surface.glsl"));
+    }
+
+    // ------------------------------------------------------------------
     // Terrain
     // ------------------------------------------------------------------
     RegisterVariant(

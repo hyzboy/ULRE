@@ -317,7 +317,7 @@ namespace hgl::graph
         return false;
     }
 
-    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, const std::string &surface_path, std::string &out_source) const
+    bool CompositorAssembler::TryBuildGeneratedFSTemplatePath(const std::string &template_path, BlendMode blend, const std::string &surface_path, std::string &out_source) const
     {
         if (template_path == "compositor/main_forward_unlit_vertexcolor.frag.glsl")
         {
@@ -340,7 +340,9 @@ namespace hgl::graph
 
         if (template_path == "compositor/main_forward_billboard.frag.glsl")
         {
-            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, true, false, false, false, surface_path);
+            const bool alpha_masked = (blend == BlendMode::Masked);
+            const bool alpha_dither = (blend == BlendMode::Dither);
+            out_source = BuildForwardFragmentEntry(false, false, false, alpha_masked, alpha_dither, false, false, false, false, true, false, false, false, surface_path);
             return true;
         }
 
@@ -628,7 +630,7 @@ namespace hgl::graph
         // 4. 构建或读取 FS 模板
         std::string fs_source;
           if ((fs_template_override && fs_template_override[0])
-           && TryBuildGeneratedFSTemplatePath(fs_template_override, surface_rel, fs_source))
+           && TryBuildGeneratedFSTemplatePath(fs_template_override, blend, surface_rel, fs_source))
           {
           }
           else if (!(fs_template_override && fs_template_override[0])
@@ -701,7 +703,7 @@ namespace hgl::graph
 
         std::string fs_source;
           if (!desc.fs_template_path.empty()
-           && TryBuildGeneratedFSTemplatePath(desc.fs_template_path, surface_rel, fs_source))
+           && TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key.blend_mode, surface_rel, fs_source))
           {
           }
           else if (desc.fs_template_path.empty()

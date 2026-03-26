@@ -26,6 +26,16 @@ namespace hgl::ecs
 
     static graph::InlinePipeline g_quad_inline_pipeline = graph::InlinePipeline::Solid3D;
 
+    static graph::BlendMode InlinePipelineToBlendMode(graph::InlinePipeline pipeline)
+    {
+        switch (pipeline)
+        {
+        case graph::InlinePipeline::Masked3D:          return graph::BlendMode::Masked;
+        case graph::InlinePipeline::Dither3D:          return graph::BlendMode::Dither;
+        default:                                        return graph::BlendMode::Transparent;
+        }
+    }
+
     void QuadResourcePrepareSystem::SetPipeline(graph::InlinePipeline pipeline)
     {
         g_quad_inline_pipeline = pipeline;
@@ -34,6 +44,11 @@ namespace hgl::ecs
     graph::InlinePipeline QuadResourcePrepareSystem::GetPipeline()
     {
         return g_quad_inline_pipeline;
+    }
+
+    graph::BlendMode QuadResourcePrepareSystem::GetBlendMode()
+    {
+        return InlinePipelineToBlendMode(g_quad_inline_pipeline);
     }
 
     graph::Pipeline* QuadResourcePrepareSystem::CreateConfiguredPipeline(graph::RenderPass* render_pass,
@@ -96,7 +111,8 @@ namespace hgl::ecs
 
         // Create shared material instance for billboard rendering
         graph::mtl::BillboardMaterialCreateConfig cfg(graph::PrimitiveType::Billboard);
-        cfg.fixed_size = true;
+        cfg.fixed_size  = true;
+        cfg.blend_mode  = InlinePipelineToBlendMode(g_quad_inline_pipeline);
 
         shared_material_instance = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
         if (!shared_material_instance)

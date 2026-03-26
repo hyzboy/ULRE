@@ -2,6 +2,7 @@
 
 #include<hgl/ecs/core/System.h>
 #include<hgl/vk/pipeline/VKInlinePipeline.h>
+#include<hgl/mtl/new/BlendMode.h>
 #include<glm/glm.hpp>
 
 namespace hgl
@@ -61,6 +62,7 @@ namespace hgl::ecs
 
         static void SetPipeline(graph::InlinePipeline pipeline);
         static graph::InlinePipeline GetPipeline();
+        static graph::BlendMode GetBlendMode();
         static graph::Pipeline* CreateConfiguredPipeline(graph::RenderPass* render_pass,
                                  graph::MaterialInstance* material_instance);
 

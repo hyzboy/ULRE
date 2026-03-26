@@ -134,6 +134,15 @@ std::string BillboardMaterialCreateConfig::ToHashStdString()
         hash += texture_id;
     }
 
+    switch (blend_mode)
+    {
+    case BlendMode::Masked:         hash += "_Masked";  break;
+    case BlendMode::Dither:         hash += "_Dither";  break;
+    case BlendMode::AlphaToCoverage: hash += "_A2C";    break;
+    case BlendMode::Opaque:         hash += "_Opaque";  break;
+    default: break; // Transparent is the default, no suffix needed
+    }
+
     return hash;
 }
 

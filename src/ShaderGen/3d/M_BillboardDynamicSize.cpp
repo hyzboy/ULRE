@@ -56,12 +56,21 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
         0,
     };
 
+    auto BlendModeToPassHint = [](BlendMode bm) -> PassType {
+        switch (bm) {
+        case BlendMode::Masked:  return PassType::ForwardMasked;
+        case BlendMode::Dither:  return PassType::ForwardDither;
+        case BlendMode::Opaque:  return PassType::ForwardOpaque;
+        default:                 return PassType::ForwardTransparent;
+        }
+    };
+
     MaterialVariantKey var_key;
     var_key.geometry_mode       = GeometryMode::BillboardCameraFacing;
     var_key.texture_source_mode = TextureSourceMode::Simple;
     var_key.SetHasTexture(SamplerSlot::BaseColor);
-    var_key.blend_mode          = BlendMode::Transparent;
-    var_key.pass_hint           = PassType::ForwardTransparent;
+    var_key.blend_mode          = cfg->blend_mode;
+    var_key.pass_hint           = BlendModeToPassHint(cfg->blend_mode);
     const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
     if (!var_desc)
     {
