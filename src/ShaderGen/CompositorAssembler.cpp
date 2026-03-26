@@ -1,4 +1,5 @@
 #include <hgl/shadergen/CompositorAssembler.h>
+#include <hgl/shadergen/CompositorFeatureFlags.h>
 #include <hgl/shadergen/ShaderGenPathConfig.h>
 #include <hgl/mtl/MaterialVariantDesc.h>
 #include <fstream>
@@ -20,29 +21,23 @@ namespace
         out += "\"\n";
     }
 
-    std::string BuildForwardVertexEntry(const bool vert_input_2d,
-                                        const bool has_uv0,
-                                        const bool has_vertex_color,
-                                        const bool has_world_pos,
-                                        const bool has_world_normal,
-                                        const bool has_luminance,
-                                        const bool has_direction)
+    std::string BuildForwardVertexEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
         std::string out = "#version 450\n\n";
 
-        if (vert_input_2d)
+        if (f.vert_input_2d)
             AppendDefine(out, "VERT_INPUT_2D");
-        if (has_uv0)
+        if (f.has_uv0)
             AppendDefine(out, "HAS_UV0");
-        if (has_vertex_color)
+        if (f.has_vertex_color)
             AppendDefine(out, "HAS_VERTEX_COLOR");
-        if (has_world_pos)
+        if (f.has_world_pos)
             AppendDefine(out, "HAS_WORLD_POS");
-        if (has_world_normal)
+        if (f.has_world_normal)
             AppendDefine(out, "HAS_WORLD_NORMAL");
-        if (has_luminance)
+        if (f.has_luminance)
             AppendDefine(out, "HAS_LUMINANCE");
-        if (has_direction)
+        if (f.has_direction)
             AppendDefine(out, "HAS_DIRECTION");
 
         AppendInclude(out, "compositor/vert_forward_ubo.glsl");
@@ -50,52 +45,39 @@ namespace
         return out;
     }
 
-    std::string BuildForwardFragmentEntry(const bool enable_lighting,
-                                          const bool needs_camera,
-                                          const bool needs_sky,
-                                          const bool alpha_masked,
-                                          const bool alpha_dither,
-                                          const bool has_world_pos,
-                                          const bool has_world_normal,
-                                          const bool has_uv0,
-                                          const bool has_vertex_color,
-                                          const bool has_texcoord,
-                                          const bool has_direction,
-                                          const bool has_luminance,
-                                          const bool has_clip_pos,
-                                          const std::string &surface_path)
+    std::string BuildForwardFragmentEntry(const hgl::graph::CompositorFeatureFlags &f)
     {
         std::string out = "#version 450\n\n";
 
-        if (enable_lighting)
+        if (f.enable_lighting)
             AppendDefine(out, "ENABLE_LIGHTING");
-        if (needs_camera)
+        if (f.needs_camera)
             AppendDefine(out, "NEEDS_CAMERA");
-        if (needs_sky)
+        if (f.needs_sky)
             AppendDefine(out, "NEEDS_SKY");
-        if (alpha_masked)
+        if (f.alpha_masked)
             AppendDefine(out, "ALPHA_MODE_MASKED");
-        if (alpha_dither)
+        if (f.alpha_dither)
             AppendDefine(out, "ALPHA_MODE_DITHER");
-        if (has_world_pos)
+        if (f.has_world_pos)
             AppendDefine(out, "HAS_WORLD_POS");
-        if (has_world_normal)
+        if (f.has_world_normal)
             AppendDefine(out, "HAS_WORLD_NORMAL");
-        if (has_uv0)
+        if (f.has_uv0)
             AppendDefine(out, "HAS_UV0");
-        if (has_vertex_color)
+        if (f.has_vertex_color)
             AppendDefine(out, "HAS_VERTEX_COLOR");
-        if (has_texcoord)
+        if (f.has_texcoord)
             AppendDefine(out, "HAS_TEXCOORD");
-        if (has_direction)
+        if (f.has_direction)
             AppendDefine(out, "HAS_DIRECTION");
-        if (has_luminance)
+        if (f.has_luminance)
             AppendDefine(out, "HAS_LUMINANCE");
-        if (has_clip_pos)
+        if (f.has_clip_pos)
             AppendDefine(out, "HAS_CLIP_POS");
 
         AppendInclude(out, "compositor/frag_forward_ubo.glsl");
-        AppendInclude(out, surface_path);
+        AppendInclude(out, f.surface_path);
         AppendInclude(out, "compositor/frag_forward_main.glsl");
         return out;
     }
@@ -153,16 +135,16 @@ namespace hgl::graph
             switch (surface)
             {
             case SurfaceType::PureColor2D:
-                out_source = BuildForwardVertexEntry(true, false, false, false, false, false, false);
+                out_source = BuildForwardVertexEntry({.vert_input_2d = true});
                 return true;
 
             case SurfaceType::PureTexture2D:
             case SurfaceType::Text2D:
-                out_source = BuildForwardVertexEntry(true, true, false, false, false, false, false);
+                out_source = BuildForwardVertexEntry({.vert_input_2d = true, .has_uv0 = true});
                 return true;
 
             case SurfaceType::VertexColor2D:
-                out_source = BuildForwardVertexEntry(true, false, true, false, false, false, false);
+                out_source = BuildForwardVertexEntry({.vert_input_2d = true, .has_vertex_color = true});
                 return true;
 
             default:
@@ -177,7 +159,7 @@ namespace hgl::graph
             case PassType::ForwardOpaque:
             case PassType::ForwardMasked:
             case PassType::ForwardTransparent:
-                out_source = BuildForwardVertexEntry(false, false, false, false, false, false, false);
+                out_source = BuildForwardVertexEntry({});
                 return true;
             default:
                 return false;
@@ -191,7 +173,7 @@ namespace hgl::graph
         case PassType::ForwardTransparent:
         case PassType::ForwardDither:
         case PassType::ForwardA2C:
-            out_source = BuildForwardVertexEntry(false, true, false, true, true, false, false);
+            out_source = BuildForwardVertexEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true});
             return true;
         default:
             return false;
@@ -207,16 +189,16 @@ namespace hgl::graph
             switch (pass)
             {
             case PassType::ForwardOpaque:
-                out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, false, false, surface_path);
+                out_source = BuildForwardFragmentEntry({.surface_path = surface_path});
                 return true;
             case PassType::ForwardMasked:
-                out_source = BuildForwardFragmentEntry(false, false, false, true, false, false, false, false, false, false, false, false, false, surface_path);
+                out_source = BuildForwardFragmentEntry({.alpha_masked = true, .surface_path = surface_path});
                 return true;
             case PassType::ForwardDither:
-                out_source = BuildForwardFragmentEntry(false, false, false, false, true, false, false, false, false, false, false, false, false, surface_path);
+                out_source = BuildForwardFragmentEntry({.alpha_dither = true, .surface_path = surface_path});
                 return true;
             case PassType::ForwardTransparent:
-                out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, false, false, surface_path);
+                out_source = BuildForwardFragmentEntry({.surface_path = surface_path});
                 return true;
             default:
                 return false;
@@ -230,7 +212,7 @@ namespace hgl::graph
             case PassType::ForwardOpaque:
             case PassType::ForwardMasked:
             case PassType::ForwardTransparent:
-                out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, false, false, surface_path);
+                out_source = BuildForwardFragmentEntry({.surface_path = surface_path});
                 return true;
             default:
                 return false;
@@ -240,17 +222,17 @@ namespace hgl::graph
         switch (pass)
         {
         case PassType::ForwardOpaque:
-            out_source = BuildForwardFragmentEntry(true, false, false, false, false, true, true, true, false, false, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .enable_lighting = true, .surface_path = surface_path});
             return true;
         case PassType::ForwardMasked:
-            out_source = BuildForwardFragmentEntry(false, false, false, true, false, true, true, true, false, false, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .alpha_masked = true, .surface_path = surface_path});
             return true;
         case PassType::ForwardTransparent:
         case PassType::ForwardA2C:
-            out_source = BuildForwardFragmentEntry(false, false, false, false, false, true, true, true, false, false, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .surface_path = surface_path});
             return true;
         case PassType::ForwardDither:
-            out_source = BuildForwardFragmentEntry(false, false, false, false, true, true, true, true, false, false, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .alpha_dither = true, .surface_path = surface_path});
             return true;
         default:
             return false;
@@ -261,31 +243,31 @@ namespace hgl::graph
     {
         if (template_path == "compositor/main_forward_unlit_vertexcolor.vert.glsl")
         {
-            out_source = BuildForwardVertexEntry(false, false, true, false, false, false, false);
+            out_source = BuildForwardVertexEntry({.has_vertex_color = true});
             return true;
         }
 
         if (template_path == "compositor/main_forward_unlit_luminance.vert.glsl")
         {
-            out_source = BuildForwardVertexEntry(false, false, false, false, false, true, false);
+            out_source = BuildForwardVertexEntry({.has_luminance = true});
             return true;
         }
 
         if (template_path == "compositor/main_forward_unlit_luminance_2d.vert.glsl")
         {
-            out_source = BuildForwardVertexEntry(true, false, false, false, false, true, false);
+            out_source = BuildForwardVertexEntry({.vert_input_2d = true, .has_luminance = true});
             return true;
         }
 
         if (template_path == "compositor/main_forward_unlit_normal.vert.glsl")
         {
-            out_source = BuildForwardVertexEntry(false, false, false, true, true, false, false);
+            out_source = BuildForwardVertexEntry({.has_world_pos = true, .has_world_normal = true});
             return true;
         }
 
         if (template_path == "compositor/main_forward_sky.vert.glsl")
         {
-            out_source = BuildForwardVertexEntry(false, false, false, false, false, false, true);
+            out_source = BuildForwardVertexEntry({.has_direction = true});
             return true;
         }
 
@@ -310,7 +292,7 @@ namespace hgl::graph
         if (template_path == "compositor/main_forward_lit.vert.glsl")
         {
             // HAS_WORLD_POS + HAS_WORLD_NORMAL + HAS_UV0
-            out_source = BuildForwardVertexEntry(false, true, false, true, true, false, false);
+            out_source = BuildForwardVertexEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true});
             return true;
         }
 
@@ -321,20 +303,20 @@ namespace hgl::graph
     {
         if (template_path == "compositor/main_forward_unlit_vertexcolor.frag.glsl")
         {
-            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, true, false, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_vertex_color = true, .surface_path = surface_path});
             return true;
         }
 
         if (template_path == "compositor/main_forward_unlit_luminance.frag.glsl")
         {
             // has_luminance=true (param 12); has_direction stays false
-            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, false, true, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_luminance = true, .surface_path = surface_path});
             return true;
         }
 
         if (template_path == "compositor/main_forward_unlit_normal.frag.glsl")
         {
-            out_source = BuildForwardFragmentEntry(false, true, false, false, false, true, true, false, false, false, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_world_pos = true, .has_world_normal = true, .needs_camera = true, .surface_path = surface_path});
             return true;
         }
 
@@ -342,25 +324,25 @@ namespace hgl::graph
         {
             const bool alpha_masked = (blend == BlendMode::Masked);
             const bool alpha_dither = (blend == BlendMode::Dither);
-            out_source = BuildForwardFragmentEntry(false, false, false, alpha_masked, alpha_dither, false, false, false, false, true, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.alpha_masked = alpha_masked, .alpha_dither = alpha_dither, .has_texcoord = true, .surface_path = surface_path});
             return true;
         }
 
         if (template_path == "compositor/main_forward_sky.frag.glsl")
         {
-            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, false, false, false, false, true, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_direction = true, .surface_path = surface_path});
             return true;
         }
 
         if (template_path == "compositor/main_terrain_grid.frag.glsl")
         {
-            out_source = BuildForwardFragmentEntry(false, false, false, false, false, false, true, false, false, false, false, false, true, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_world_normal = true, .has_clip_pos = true, .surface_path = surface_path});
             return true;
         }
 
         if (template_path == "compositor/main_forward_lit.frag.glsl")
         {
-            out_source = BuildForwardFragmentEntry(false, true, true, false, false, true, true, true, false, false, false, false, false, surface_path);
+            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .needs_camera = true, .needs_sky = true, .surface_path = surface_path});
             return true;
         }
 
