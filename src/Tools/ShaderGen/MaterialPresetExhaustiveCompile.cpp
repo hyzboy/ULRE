@@ -70,8 +70,19 @@ MaterialCreateConfig *MakeConfigForPreset(MaterialPreset preset)
         case MaterialPreset::SkyMinimal:
             return new SkyMinimalCreateConfig();
 
-        case MaterialPreset::Billboard2D:
-            return new BillboardMaterialCreateConfig();
+        case MaterialPreset::Billboard2DDynamic:
+        {
+            auto *cfg = new BillboardMaterialCreateConfig();
+            cfg->fixed_size = false;
+            return cfg;
+        }
+
+        case MaterialPreset::Billboard2DFixed:
+        {
+            auto *cfg = new BillboardMaterialCreateConfig();
+            cfg->fixed_size = true;
+            return cfg;
+        }
 
         case MaterialPreset::PBRColor3D:
             return new PBRColor3DMaterialCreateConfig();

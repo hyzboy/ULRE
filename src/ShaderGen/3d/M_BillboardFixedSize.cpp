@@ -48,7 +48,7 @@ namespace
     };
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DFixedSize(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBillboard2DFixed(const contract::PhysicalDeviceProfileLite *profile,mtl::BillboardMaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);

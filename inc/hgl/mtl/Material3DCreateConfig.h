@@ -119,7 +119,8 @@ public:
     std::string ToHashStdString() override;
 };
 
-DECLARE_MATERIAL_CREATOR(Billboard2D, BillboardMaterialCreateConfig)
+DECLARE_MATERIAL_CREATOR(Billboard2DDynamic, BillboardMaterialCreateConfig)
+DECLARE_MATERIAL_CREATOR(Billboard2DFixed, BillboardMaterialCreateConfig)
 
 struct StandardMaterialInstance
 {

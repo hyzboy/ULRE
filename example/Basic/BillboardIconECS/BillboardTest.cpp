@@ -168,7 +168,7 @@ private:
         mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
         cfg.fixed_size = true;
 
-        mi_billboard = material_manager->CreateMaterialInstance(mtl::MaterialPreset::Billboard2D, &cfg);
+        mi_billboard = material_manager->CreateMaterialInstance(mtl::MaterialPreset::Billboard2DFixed, &cfg);
         if(!mi_billboard)
             return false;
 

@@ -330,7 +330,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardTransparent;
         RegisterVariant(key,
             MakeDesc("Billboard2DDynamic",
-                     MaterialPreset::Billboard2D,
+                     MaterialPreset::Billboard2DDynamic,
                      "compositor/main_forward_billboard_dynamic.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
@@ -348,7 +348,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardTransparent;
         RegisterVariant(key,
             MakeDesc("Billboard2DFixed",
-                     MaterialPreset::Billboard2D,
+                     MaterialPreset::Billboard2DFixed,
                      "compositor/main_forward_billboard_fixed.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
@@ -366,7 +366,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardMasked;
         RegisterVariant(key,
             MakeDesc("Billboard2DDynamicMasked",
-                     MaterialPreset::Billboard2D,
+                     MaterialPreset::Billboard2DDynamic,
                      "compositor/main_forward_billboard_dynamic.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
@@ -384,7 +384,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardDither;
         RegisterVariant(key,
             MakeDesc("Billboard2DDynamicDither",
-                     MaterialPreset::Billboard2D,
+                     MaterialPreset::Billboard2DDynamic,
                      "compositor/main_forward_billboard_dynamic.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
@@ -402,7 +402,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardMasked;
         RegisterVariant(key,
             MakeDesc("Billboard2DFixedMasked",
-                     MaterialPreset::Billboard2D,
+                     MaterialPreset::Billboard2DFixed,
                      "compositor/main_forward_billboard_fixed.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));
@@ -420,7 +420,7 @@ void VariantRegistry::InitializeBuiltinVariants()
         key.pass_hint           = PassType::ForwardDither;
         RegisterVariant(key,
             MakeDesc("Billboard2DFixedDither",
-                     MaterialPreset::Billboard2D,
+                     MaterialPreset::Billboard2DFixed,
                      "compositor/main_forward_billboard_fixed.vert.glsl",
                      "compositor/main_forward_billboard.frag.glsl",
                      "surface/billboard_texture_surface.glsl"));

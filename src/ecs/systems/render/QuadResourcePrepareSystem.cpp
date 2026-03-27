@@ -172,7 +172,7 @@ namespace hgl::ecs
         cfg.blend_mode  = GetBlendModeForWorld(world);
         cfg.base_color_channel = GetChannelHintForWorld(world);
 
-        shared_material_instance = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
+        shared_material_instance = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2DFixed, &cfg);
         if (!shared_material_instance)
             return false;
 

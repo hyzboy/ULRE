@@ -139,11 +139,23 @@ static MaterialVariantKey MakeSkyMinimalKey()
     return key;
 }
 
-static MaterialVariantKey MakeBillboard2DKey()
+static MaterialVariantKey MakeBillboard2DDynamicKey()
 {
     MaterialVariantKey key{};
     key.surface_type = SurfaceType::Unlit;
     key.geometry_mode = GeometryMode::BillboardCameraFacing;
+    key.texture_source_mode = TextureSourceMode::Simple;
+    key.SetHasTexture(SamplerSlot::BaseColor);
+    key.blend_mode = BlendMode::Transparent;
+    key.pass_hint = PassType::ForwardTransparent;
+    return key;
+}
+
+static MaterialVariantKey MakeBillboard2DFixedKey()
+{
+    MaterialVariantKey key{};
+    key.surface_type = SurfaceType::Unlit;
+    key.geometry_mode = GeometryMode::BillboardAxisLocked;
     key.texture_source_mode = TextureSourceMode::Simple;
     key.SetHasTexture(SamplerSlot::BaseColor);
     key.blend_mode = BlendMode::Transparent;
@@ -184,7 +196,8 @@ static const MaterialPresetMeta kPresetMetaList[] =
     {MaterialPreset::Gizmo3D,             "Gizmo3D",             MakeGizmo3DKey},
     {MaterialPreset::TerrainGrid,         "TerrainGrid",         MakeTerrainGridKey},
     {MaterialPreset::SkyMinimal,          "SkyMinimal",          MakeSkyMinimalKey},
-    {MaterialPreset::Billboard2D,         "Billboard2D",         MakeBillboard2DKey},
+    {MaterialPreset::Billboard2DDynamic,  "Billboard2DDynamic",  MakeBillboard2DDynamicKey},
+    {MaterialPreset::Billboard2DFixed,    "Billboard2DFixed",    MakeBillboard2DFixedKey},
     {MaterialPreset::Standard,            "Standard",            MakeStandardKey},
     {MaterialPreset::PBRColor3D,          "PBRColor3D",          MakePBRColor3DKey},
 };
@@ -244,7 +257,8 @@ static MaterialCreateInfo *DispatchVariantFactory(
         case MaterialPreset::Gizmo3D:              return CreateGizmo3D(profile,(Material3DCreateConfig *)cfg);
         case MaterialPreset::TerrainGrid:          return CreateTerrainGrid(profile,(const TerrainGridCreateConfig *)cfg);
         case MaterialPreset::SkyMinimal:           return CreateSkyMinimal(profile,(const SkyMinimalCreateConfig *)cfg);
-        case MaterialPreset::Billboard2D:          return CreateBillboard2D(profile,(BillboardMaterialCreateConfig *)cfg);
+        case MaterialPreset::Billboard2DDynamic:   return CreateBillboard2DDynamic(profile,(BillboardMaterialCreateConfig *)cfg);
+        case MaterialPreset::Billboard2DFixed:     return CreateBillboard2DFixed(profile,(BillboardMaterialCreateConfig *)cfg);
         case MaterialPreset::Standard:             return CreateStandardVariant(profile,key,(const Material3DCreateConfig *)cfg);
         case MaterialPreset::PBRColor3D:           return CreatePBRColor3D(profile,(PBRColor3DMaterialCreateConfig *)cfg);
 

@@ -109,7 +109,11 @@ namespace hgl::ecs
         cfg.blend_mode  = QuadResourcePrepareSystem::GetBlendModeForWorld(world);
         cfg.base_color_channel = QuadResourcePrepareSystem::GetChannelHintForWorld(world);
 
-        auto* mi = material_manager->CreateMaterialInstance(graph::mtl::MaterialPreset::Billboard2D, &cfg);
+        const auto preset = cfg.fixed_size
+            ? graph::mtl::MaterialPreset::Billboard2DFixed
+            : graph::mtl::MaterialPreset::Billboard2DDynamic;
+
+        auto* mi = material_manager->CreateMaterialInstance(preset, &cfg);
         if (!mi)
             return false;
 
