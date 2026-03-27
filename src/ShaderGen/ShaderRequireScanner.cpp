@@ -309,29 +309,6 @@ namespace
     }
 }
 
-bool CollectShaderAutoRequirements(const std::string &shader_library_path,
-                                   const std::string &vertex_glsl,
-                                   const std::string &fragment_glsl,
-                                   ShaderAutoRequirements &out_requirements,
-                                   std::string *diagnostics)
-{
-    out_requirements.ubos.clear();
-    out_requirements.ssbos.clear();
-    out_requirements.samplers.clear();
-
-    if (diagnostics)
-        diagnostics->clear();
-
-    std::fprintf(stderr,
-                 "[ShaderRequireScanner] annotation collection disabled: shader_lib='%s', vs_bytes=%zu, fs_bytes=%zu\n",
-                 shader_library_path.c_str(),
-                 vertex_glsl.size(),
-                 fragment_glsl.size());
-    DumpCollectedRequirements(out_requirements);
-
-    return true;
-}
-
 bool CollectShaderAutoRequirements(const FixedMaterialDef &base_def,
                                    const std::string &shader_library_path,
                                    const std::string &vertex_glsl,

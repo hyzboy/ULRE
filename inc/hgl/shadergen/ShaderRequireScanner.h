@@ -12,12 +12,6 @@ namespace hgl::graph::mtl
         FixedTextureSamplerDescriptors samplers;
     };
 
-    bool CollectShaderAutoRequirements(const std::string &shader_library_path,
-                                       const std::string &vertex_glsl,
-                                       const std::string &fragment_glsl,
-                                       ShaderAutoRequirements &out_requirements,
-                                       std::string *diagnostics = nullptr);
-
     bool CollectShaderAutoRequirements(const FixedMaterialDef &base_def,
                                        const std::string &shader_library_path,
                                        const std::string &vertex_glsl,
