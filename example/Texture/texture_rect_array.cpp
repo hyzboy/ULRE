@@ -132,7 +132,7 @@ private:
 
         cfg.SetTextureSourceModeOverride(mtl::SamplerSlot::BaseColor, mtl::TextureSourceMode::Array);
 
-        material=material_manager->CreateMaterial(mtl::MaterialPreset::RectTexture2D,&cfg);
+        material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
 
         if(!material)
             return(false);

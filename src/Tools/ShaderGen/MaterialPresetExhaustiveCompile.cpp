@@ -58,7 +58,6 @@ MaterialCreateConfig *MakeConfigForPreset(MaterialPreset preset)
         case MaterialPreset::VertexColor2D:
         case MaterialPreset::PureColor2D:
         case MaterialPreset::PureTexture2D:
-        case MaterialPreset::RectTexture2D:
             return new Material2DCreateConfig(PrimitiveType::Triangles);
 
         case MaterialPreset::Text2D:

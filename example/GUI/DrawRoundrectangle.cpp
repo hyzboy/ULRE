@@ -77,7 +77,7 @@ private:
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::Without);
 
-        material=material_manager->CreateMaterial(mtl::MaterialPreset::RectTexture2D,&cfg);
+        material=material_manager->CreateMaterial(mtl::MaterialPreset::PureTexture2D,&cfg);
 
         if(!material)
             return(false);

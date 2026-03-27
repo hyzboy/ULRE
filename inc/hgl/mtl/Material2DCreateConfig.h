@@ -46,7 +46,6 @@ DECLARE_MATERIAL_CREATOR(VertexColor2D,         const Material2DCreateConfig)
 DECLARE_MATERIAL_CREATOR(PureColor2D,           Material2DCreateConfig)
 
 DECLARE_MATERIAL_CREATOR(PureTexture2D,         const Material2DCreateConfig)
-DECLARE_MATERIAL_CREATOR(RectTexture2D,         const Material2DCreateConfig)
 
 struct Text2DMaterialCreateConfig:public Material2DCreateConfig
 {

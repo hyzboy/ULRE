@@ -21,22 +21,28 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::ecs;
 
-constexpr uint32_t VERTEX_COUNT=4;
+constexpr uint32_t VERTEX_COUNT=6;
 
 constexpr float position_data[VERTEX_COUNT][2]=
 {
     {-1, -1},
-    { 1, -1},
-    { 1,  1},
     {-1,  1},
+    { 1, -1},
+
+    { 1, -1},
+    {-1,  1},
+    { 1,  1},
 };
 
 constexpr float tex_coord_data[VERTEX_COUNT][2]=
 {
     {0,0},
+    {0,1},
     {1,0},
-    {1,1},
-    {0,1}
+
+    {1,0},
+    {0,1},
+    {1,1}
 };
 
 class TestApp:public WorkObject
@@ -72,7 +78,7 @@ private:
         Sampler *   sampler = nullptr;
         Material *  material= nullptr;
 
-        mtl::Material2DCreateConfig cfg(PrimitiveType::Fan,
+        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::NDC,
                                         mtl::WithLocalToWorld::Without);
 

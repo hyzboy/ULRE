@@ -231,17 +231,11 @@ void VariantRegistry::InitializeBuiltinVariants()
                  ""));
 
     RegisterVariant(
-        K(ST::Unlit, GM::ScreenRect, TSM::Simple),
-        MakeDesc("RectTexture2D",
-                 MaterialPreset::RectTexture2D,
-                 "2d/puretexture2d.vert.glsl",
-                 "2d/puretexture2d.frag.glsl",
-                 ""));
-
-    RegisterVariant(
-        K(ST::Unlit, GM::ScreenRect, TSM::Array),
-        MakeDesc("RectTexture2DArray",
-                 MaterialPreset::RectTexture2D,
+        K(ST::Unlit, GM::Quad2D, TSM::Array,
+            0,
+            SamplerFeatureBit(SamplerSlot::BaseColor)),
+        MakeDesc("PureTexture2DArray",
+                 MaterialPreset::PureTexture2D,
                  "2d/puretexture2d.vert.glsl",
                  "2d/puretexture2d.frag.glsl",
                  ""));

@@ -12,5 +12,4 @@ endmacro()
 
 CreateProject(01_texture_format     texture_format_list.cpp)
 CreateProject(02_texture_quad       texture_quad.cpp)
-CreateProject(03_texture_rect       texture_rect.cpp)
-CreateProject(04_texture_rect_array texture_rect_array.cpp)
+CreateProject(03_texture_rect_array texture_rect_array.cpp)

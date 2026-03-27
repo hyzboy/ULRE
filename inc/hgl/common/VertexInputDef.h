@@ -29,7 +29,7 @@ namespace hgl::graph
         uint8   basetype;
         uint8   vec_size;
 
-        uint8               input_rate;
+        uint8               input_rate;     //此功能废弃，但为了兼容旧数据结构，仍保留在此
 
         Interpolation       interpolation;
     };

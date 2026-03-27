@@ -10,7 +10,6 @@ namespace hgl::graph::mtl
         VertexColor2D,
         PureColor2D,
         PureTexture2D,
-        RectTexture2D,
         Text2D,
 
         PureColor3D,

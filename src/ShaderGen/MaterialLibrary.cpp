@@ -58,16 +58,6 @@ static MaterialVariantKey MakePureTexture2DKey()
     return key;
 }
 
-static MaterialVariantKey MakeRectTexture2DKey()
-{
-    MaterialVariantKey key{};
-    key.surface_type = SurfaceType::Unlit;
-    key.geometry_mode = GeometryMode::ScreenRect;
-    key.texture_source_mode = TextureSourceMode::Simple;
-    key.SetTextureSourceMode(SamplerSlot::BaseColor, TextureSourceMode::Simple);
-    return key;
-}
-
 static MaterialVariantKey MakeText2DKey()
 {
     MaterialVariantKey key{};
@@ -185,7 +175,6 @@ static const MaterialPresetMeta kPresetMetaList[] =
     {MaterialPreset::VertexColor2D,       "VertexColor2D",       MakeVertexColor2DKey},
     {MaterialPreset::PureColor2D,         "PureColor2D",         MakePureColor2DKey},
     {MaterialPreset::PureTexture2D,       "PureTexture2D",       MakePureTexture2DKey},
-    {MaterialPreset::RectTexture2D,       "RectTexture2D",       MakeRectTexture2DKey},
     {MaterialPreset::Text2D,              "Text2D",              MakeText2DKey},
     {MaterialPreset::PureColor3D,         "PureColor3D",         MakePureColor3DKey},
     {MaterialPreset::VertexColor3D,       "VertexColor3D",       MakeVertexColor3DKey},
@@ -229,7 +218,7 @@ const char *GetMaterialPresetName(const MaterialPreset mtl_id)
 MaterialCreateInfo *CreateStandardVariant(const contract::PhysicalDeviceProfileLite *profile,
                                           const MaterialVariantKey &key,
                                           const Material3DCreateConfig *cfg);
-MaterialCreateInfo *CreateRectTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
+MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfileLite *profile,
                                              const MaterialVariantKey &key,
                                              const Material2DCreateConfig *cfg);
 
@@ -244,8 +233,7 @@ static MaterialCreateInfo *DispatchVariantFactory(
     {
         case MaterialPreset::VertexColor2D:        return CreateVertexColor2D(profile,(const Material2DCreateConfig *)cfg);
         case MaterialPreset::PureColor2D:          return CreatePureColor2D(profile,(Material2DCreateConfig *)cfg);
-        case MaterialPreset::PureTexture2D:        return CreatePureTexture2D(profile,(const Material2DCreateConfig *)cfg);
-        case MaterialPreset::RectTexture2D:        return CreateRectTextureVariant(profile,key,(Material2DCreateConfig *)cfg);
+        case MaterialPreset::PureTexture2D:        return CreatePureTextureVariant(profile,key,(const Material2DCreateConfig *)cfg);
         case MaterialPreset::Text2D:               return CreateText2D(profile,(const Text2DMaterialCreateConfig *)cfg);
 
         case MaterialPreset::PureColor3D:          return CreatePureColor3D(profile,(Material3DCreateConfig *)cfg);
