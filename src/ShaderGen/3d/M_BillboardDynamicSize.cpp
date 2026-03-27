@@ -40,7 +40,6 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const contract::PhysicalDeviceProfi
     FixedTextureSamplerDescriptors samplers;
     for (uint32_t i = 0; i < BILLBOARD_DYNAMIC_TEX_SLOT_COUNT; ++i)
         AddFixedTextureSampler(samplers, BILLBOARD_DYNAMIC_TEX_SLOTS[i], SamplerType::Sampler2D,
-                               SET_TYPE_MATERIAL,
                                0, 0,
                                cfg->base_color_channel);
 

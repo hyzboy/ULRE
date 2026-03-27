@@ -111,20 +111,40 @@ namespace
                 if (!RangeCheck(descriptor.sampler_type))
                     return FailAfterMci("texture sampler slot has invalid SamplerType");
 
-                if (descriptor.set_type != SET_TYPE_MATERIAL)
-                    return FailAfterMci("texture sampler slot set_type must be SET_TYPE_MATERIAL");
 
-                if (!mci->AddTextureSampler(ShaderStage::Vertex,
-                                            descriptor.sampler_type,
-                                            slot,
-                                            descriptor.channel_hint))
-                    return FailAfterMci("AddTextureSampler(slot) failed");
+                // Add to existing shader stages
+                if (mci->hasVertex())
+                {
+                    if (!mci->AddTextureSampler(ShaderStage::Vertex,
+                                                descriptor.sampler_type,
+                                                slot,
+                                                descriptor.channel_hint))
+                    {
+                        return FailAfterMci("AddTextureSampler(slot) to Vertex failed");
+                    }
+                }
 
-                if (!mci->AddTextureSampler(ShaderStage::Fragment,
-                                            descriptor.sampler_type,
-                                            slot,
-                                            descriptor.channel_hint))
-                    return FailAfterMci("AddTextureSampler(slot) failed");
+                if (mci->hasFragment())
+                {
+                    if (!mci->AddTextureSampler(ShaderStage::Fragment,
+                                                descriptor.sampler_type,
+                                                slot,
+                                                descriptor.channel_hint))
+                    {
+                        return FailAfterMci("AddTextureSampler(slot) to Fragment failed");
+                    }
+                }
+
+                if (mci->hasShader(ShaderStage::Geometry))
+                {
+                    if (!mci->AddTextureSampler(ShaderStage::Geometry,
+                                                descriptor.sampler_type,
+                                                slot,
+                                                descriptor.channel_hint))
+                    {
+                        return FailAfterMci("AddTextureSampler(slot) to Geometry failed");
+                    }
+                }
             }
         }
 
@@ -215,13 +235,8 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
 
     if (def.texture_samplers)
     {
-        for (const auto &[slot, descriptor] : *def.texture_samplers)
-        {
-            if (descriptor.set_type == SET_TYPE_MATERIAL)
-                return true;
-
-            (void)slot;
-        }
+        if (!def.texture_samplers->empty())
+            return true;
     }
 
     return false;

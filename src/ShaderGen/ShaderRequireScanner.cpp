@@ -273,7 +273,7 @@ namespace
                     return false;
                 }
 
-                AddFixedUBODescriptor(out_requirements.ubos, semantic, resource.stage_flags);
+                AddFixedUBODescriptor(out_requirements.ubos, semantic);
                 continue;
             }
 
@@ -288,7 +288,7 @@ namespace
                     return false;
                 }
 
-                AddFixedSSBODescriptor(out_requirements.ssbos, semantic, resource.stage_flags);
+                AddFixedSSBODescriptor(out_requirements.ssbos, semantic);
                 continue;
             }
 
@@ -315,7 +315,6 @@ namespace
                 AddFixedTextureSampler(out_requirements.samplers,
                                        slot,
                                        base_sampler->sampler_type,
-                                       base_sampler->set_type,
                                        base_sampler->atlas_cols,
                                        base_sampler->atlas_rows,
                                        base_sampler->channel_hint);
