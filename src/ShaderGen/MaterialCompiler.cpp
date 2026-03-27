@@ -18,6 +18,148 @@
 
 namespace hgl::graph::mtl {
 
+static bool HasUBOSemantic(const FixedMaterialDef &def, const UBODescriptorSemantic semantic);
+static bool HasSSBOSemantic(const FixedMaterialDef &def, const SSBODescriptorSemantic semantic);
+static bool HasPerMaterialDescriptor(const FixedMaterialDef &def);
+
+namespace
+{
+    static MaterialCreateInfo *CreatePreparedCompositorMaterial(
+        const contract::PhysicalDeviceProfileLite *profile,
+        const FixedMaterialDef &def,
+        const std::string &vs_glsl,
+        const std::string &fs_glsl,
+        const Material3DCreateConfig *config,
+        std::string *diagnostics)
+    {
+        if (diagnostics)
+            diagnostics->clear();
+
+        if (vs_glsl.empty() || fs_glsl.empty())
+        {
+            if (diagnostics)
+                *diagnostics = "vs_glsl or fs_glsl is empty";
+            return nullptr;
+        }
+
+        Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
+        cfg.prim = config ? config->prim : def.primitive_type;
+        cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
+
+        const bool infer_has_camera = HasUBOSemantic(def, UBODescriptorSemantic::CameraInfo);
+        const bool infer_has_sky    = HasUBOSemantic(def, UBODescriptorSemantic::SkyInfo);
+        const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::LocalToWorld);
+        const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstance)
+                                   || HasPerMaterialDescriptor(def)
+                                   || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
+
+        cfg.camera            = cfg.camera            || infer_has_camera;
+        cfg.sky               = cfg.sky               || infer_has_sky;
+        cfg.local_to_world    = cfg.local_to_world    || infer_has_l2w;
+        cfg.material_instance = cfg.material_instance || infer_has_mi;
+
+        MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
+        if (profile)
+            mci->SetDevice(profile);
+
+        auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
+        {
+            if (diagnostics)
+                *diagnostics = reason ? reason : "<unknown>";
+            delete mci;
+            return nullptr;
+        };
+
+        uint32_t mi_stage_bits = uint32_t(ShaderStage::Fragment);
+
+        if (def.ubo_descriptors)
+        {
+            for (const auto &[semantic, stage_bits] : *def.ubo_descriptors)
+            {
+                if (!mci->AddUBO(stage_bits, semantic))
+                    return FailAfterMci("AddUBO() failed");
+            }
+        }
+
+        if (def.ssbo_descriptors)
+        {
+            for (const auto &[semantic, stage_bits] : *def.ssbo_descriptors)
+            {
+                if (semantic == SSBODescriptorSemantic::LocalToWorld)
+                {
+                    mci->SetLocalToWorld(stage_bits);
+                    continue;
+                }
+
+                if (semantic == SSBODescriptorSemantic::MaterialInstance)
+                {
+                    mi_stage_bits = stage_bits;
+                    continue;
+                }
+
+                if (!mci->AddSSBO(stage_bits, semantic))
+                    return FailAfterMci("AddSSBO() failed");
+            }
+        }
+
+        if (def.texture_samplers)
+        {
+            for (const auto &[slot, descriptor] : *def.texture_samplers)
+            {
+                if (!RangeCheck(descriptor.sampler_type))
+                    return FailAfterMci("texture sampler slot has invalid SamplerType");
+
+                if (descriptor.set_type != SET_TYPE_MATERIAL)
+                    return FailAfterMci("texture sampler slot set_type must be SET_TYPE_MATERIAL");
+
+                if (!mci->AddTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.sampler_type, slot, descriptor.channel_hint))
+                    return FailAfterMci("AddTextureSampler(slot) failed");
+            }
+        }
+
+        ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
+        if (vsc)
+        {
+            for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
+            {
+                const FixedVertexEntry &entry = def.vertex_entries[i];
+                vsc->AddInput(entry.type, entry.attrib, entry.input_rate);
+            }
+        }
+
+        if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
+        {
+            mci->SetMaterialInstance(
+                def.mi_glsl_codes,
+                def.mi_struct_bytes,
+                mi_stage_bits);
+        }
+
+        ShaderCreateInfoVertex *vert = mci->GetVertexShader();
+        ShaderCreateInfo *frag = mci->GetStageShader(ShaderStage::Fragment);
+
+        if (vert)
+            vert->SetFinalGLSL(vs_glsl);
+
+        if (frag)
+            frag->SetFinalGLSL(fs_glsl);
+
+        {
+            BindingContract contract;
+            if (def.ubo_descriptors)
+                contract.ubos = *def.ubo_descriptors;
+            if (def.ssbo_descriptors)
+                contract.ssbos = *def.ssbo_descriptors;
+            mci->SetBindingContract(contract);
+        }
+
+        if (!InjectLayoutDefines(*mci))
+            return FailAfterMci("InjectLayoutDefines() failed");
+
+        return mci;
+    }
+}
+
 static bool HasUBOSemantic(const FixedMaterialDef &def, const UBODescriptorSemantic semantic)
 {
     if (!def.ubo_descriptors || semantic == UBODescriptorSemantic::Unknown)
@@ -101,134 +243,59 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const Material3DCreateConfig *config)
 {
-    if (vs_glsl.empty() || fs_glsl.empty())
-    {
-        std::fprintf(stderr,
-            "[CompileCompositorMaterial] material=%s: vs_glsl or fs_glsl is empty\n",
-            def.name ? def.name : "<unnamed>");
-        return nullptr;
-    }
-
-    Material3DCreateConfig cfg = config ? *config : Material3DCreateConfig();
-    cfg.prim = config ? config->prim : def.primitive_type;
-    cfg.shader_stage_flag_bit = uint32_t(ShaderStage::VertexFragment);
-
-    const bool infer_has_camera = HasUBOSemantic(def, UBODescriptorSemantic::CameraInfo);
-    const bool infer_has_sky    = HasUBOSemantic(def, UBODescriptorSemantic::SkyInfo);
-    const bool infer_has_l2w    = HasSSBOSemantic(def, SSBODescriptorSemantic::LocalToWorld);
-    const bool infer_has_mi     = HasSSBOSemantic(def, SSBODescriptorSemantic::MaterialInstance)
-                               || HasPerMaterialDescriptor(def)
-                               || (def.mi_glsl_codes && def.mi_struct_bytes > 0);
-
-    cfg.camera            = cfg.camera            || infer_has_camera;
-    cfg.sky               = cfg.sky               || infer_has_sky;
-    cfg.local_to_world    = cfg.local_to_world    || infer_has_l2w;
-    cfg.material_instance = cfg.material_instance || infer_has_mi;
-
-    MaterialCreateInfo *mci = new MaterialCreateInfo(&cfg);
-    if (profile)
-        mci->SetDevice(profile);
-
-    auto FailAfterMci = [&](const char *reason) -> MaterialCreateInfo *
+    std::string diagnostics;
+    MaterialCreateInfo *mci = CreatePreparedCompositorMaterial(profile,
+                                                               def,
+                                                               vs_glsl,
+                                                               fs_glsl,
+                                                               config,
+                                                               &diagnostics);
+    if (!mci)
     {
         std::fprintf(stderr,
             "[CompileCompositorMaterial] material=%s failed: %s\n",
             def.name ? def.name : "<unnamed>",
-            reason ? reason : "<unknown>");
-        delete mci;
+            diagnostics.empty() ? "<unknown>" : diagnostics.c_str());
         return nullptr;
-    };
-
-    uint32_t mi_stage_bits = uint32_t(ShaderStage::Fragment);
-
-    if (def.ubo_descriptors)
-    {
-        for (const auto &[semantic, stage_bits] : *def.ubo_descriptors)
-        {
-            if (!mci->AddUBO(stage_bits, semantic))
-                return FailAfterMci("AddUBO() failed");
-        }
     }
-
-    if (def.ssbo_descriptors)
-    {
-        for (const auto &[semantic, stage_bits] : *def.ssbo_descriptors)
-        {
-            if (semantic == SSBODescriptorSemantic::LocalToWorld)
-            {
-                mci->SetLocalToWorld(stage_bits);
-                continue;
-            }
-
-            if (semantic == SSBODescriptorSemantic::MaterialInstance)
-            {
-                mi_stage_bits = stage_bits;
-                continue;
-            }
-
-            if (!mci->AddSSBO(stage_bits, semantic))
-                return FailAfterMci("AddSSBO() failed");
-        }
-    }
-
-    if (def.texture_samplers)
-    {
-        for (const auto &[slot, descriptor] : *def.texture_samplers)
-        {
-            if (!RangeCheck(descriptor.sampler_type))
-                return FailAfterMci("texture sampler slot has invalid SamplerType");
-
-            if (descriptor.set_type != SET_TYPE_MATERIAL)
-                return FailAfterMci("texture sampler slot set_type must be SET_TYPE_MATERIAL");
-
-            if (!mci->AddTextureSampler(ShaderStage(descriptor.stage_flags), descriptor.sampler_type, slot, descriptor.channel_hint))
-                return FailAfterMci("AddTextureSampler(slot) failed");
-        }
-    }
-
-    ShaderCreateInfoVertex *vsc = mci->GetVertexShader();
-    if (vsc)
-    {
-        for (uint32_t i = 0; i < def.vertex_entry_count; ++i)
-        {
-            const FixedVertexEntry &entry = def.vertex_entries[i];
-            vsc->AddInput(entry.type, entry.attrib, entry.input_rate);
-        }
-    }
-
-    if (def.mi_glsl_codes && def.mi_struct_bytes > 0)
-    {
-        mci->SetMaterialInstance(
-            def.mi_glsl_codes,
-            def.mi_struct_bytes,
-            mi_stage_bits);
-    }
-
-    ShaderCreateInfoVertex   *vert = mci->GetVertexShader();
-    ShaderCreateInfo         *frag = mci->GetStageShader(ShaderStage::Fragment);
-
-    if (vert)
-        vert->SetFinalGLSL(vs_glsl);
-
-    if (frag)
-        frag->SetFinalGLSL(fs_glsl);
-
-    {
-        BindingContract contract;
-        if (def.ubo_descriptors)
-            contract.ubos = *def.ubo_descriptors;
-        if (def.ssbo_descriptors)
-            contract.ssbos = *def.ssbo_descriptors;
-        mci->SetBindingContract(contract);
-    }
-
-    if (!InjectLayoutDefines(*mci))
-        return FailAfterMci("InjectLayoutDefines() failed");
 
     if (!mci->CreateShaderDirect())
-        return FailAfterMci("CreateShaderDirect() failed (check GLSLCompiler log)");
+    {
+        std::fprintf(stderr,
+            "[CompileCompositorMaterial] material=%s failed: CreateShaderDirect() failed (check GLSLCompiler log)\n",
+            def.name ? def.name : "<unnamed>");
+        delete mci;
+        return nullptr;
+    }
 
     return mci;
+}
+
+bool PrepareCompositorGLSLForReflection(
+    const FixedMaterialDef &def,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl,
+    std::string &out_vs_glsl,
+    std::string &out_fs_glsl,
+    std::string *diagnostics)
+{
+    MaterialCreateInfo *mci = CreatePreparedCompositorMaterial(nullptr,
+                                                               def,
+                                                               vs_glsl,
+                                                               fs_glsl,
+                                                               nullptr,
+                                                               diagnostics);
+    if (!mci)
+        return false;
+
+    ShaderCreateInfoVertex *vert = mci->GetVertexShader();
+    ShaderCreateInfo *frag = mci->GetStageShader(ShaderStage::Fragment);
+
+    out_vs_glsl = vert ? vert->GetFinalGLSL() : std::string();
+    out_fs_glsl = frag ? frag->GetFinalGLSL() : std::string();
+
+    delete mci;
+    return true;
 }
 
 MaterialCreateInfo *CompileCompositorMaterial(

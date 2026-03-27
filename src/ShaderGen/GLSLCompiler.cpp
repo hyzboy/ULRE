@@ -1,5 +1,6 @@
 #include"GLSLCompiler.h"
 #include"TBuiltInResourceCompat.h"
+#include"SPVParseData.h"
 #include <hgl/shadergen/ShaderGenPathConfig.h>
 #include<hgl/platform/ExternalModule.h>
 #include<hgl/type/StringList.h>
@@ -41,8 +42,6 @@ namespace hgl
 
         static CompileInfo compile_info;
 
-        struct SPVParseData;
-
         struct GLSLCompilerInterface
         {
             bool        (*Init)();
@@ -62,6 +61,61 @@ namespace hgl
         };
 
         static GLSLCompilerInterface *gsi=nullptr;
+
+        static const char *GetDescriptorTypeName(const uint32 index)
+        {
+            switch(index)
+            {
+                case VK_DESCRIPTOR_TYPE_SAMPLER: return "Sampler";
+                case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: return "CombinedImageSampler";
+                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: return "SampledImage";
+                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: return "StorageImage";
+                case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: return "UniformTexelBuffer";
+                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: return "StorageTexelBuffer";
+                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return "UniformBuffer";
+                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: return "StorageBuffer";
+                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return "UniformBufferDynamic";
+                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return "StorageBufferDynamic";
+                case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: return "InputAttachment";
+                default: return "Unknown";
+            }
+        }
+
+        static void DumpParseSPVData(const uint32 type,const SPVParseData *parse_data)
+        {
+            if(!parse_data)
+                return;
+
+            std::fprintf(stderr,
+                         "[GLSLCompiler] ParseSPV(stage=0x%08X): in=%u out=%u push=%u subpass=%u\n",
+                         type,
+                         parse_data->stage_io.input.count,
+                         parse_data->stage_io.output.count,
+                         parse_data->push_constant.count,
+                         parse_data->subpass_input.count);
+
+            for(uint32 i=0;i<VK_DESCRIPTOR_TYPE_COUNT;i++)
+            {
+                const auto &bucket=parse_data->resource[i];
+                if(bucket.count==0)
+                    continue;
+
+                std::fprintf(stderr,
+                             "[GLSLCompiler]   %s count=%u\n",
+                             GetDescriptorTypeName(i),
+                             bucket.count);
+
+                for(uint32 j=0;j<bucket.count;j++)
+                {
+                    const Descriptor &d=bucket.items[j];
+                    std::fprintf(stderr,
+                                 "[GLSLCompiler]     name=%s set=%u binding=%u\n",
+                                 d.name,
+                                 d.set,
+                                 d.binding);
+                }
+            }
+        }
 
         static int ClampU64ToInt(const uint64_t value)
         {
@@ -287,6 +341,20 @@ namespace hgl
                 gsi->Free(spv_data);
         }
 
+        SPVParseData *ParseShaderSPV(SPVData *spv_data)
+        {
+            if(!gsi||!gsi->ParseSPV||!spv_data)
+                return(nullptr);
+
+            return gsi->ParseSPV(spv_data);
+        }
+
+        void FreeShaderSPVParseData(SPVParseData *parse_data)
+        {
+            if(gsi&&gsi->FreeParseSPVData)
+                gsi->FreeParseSPVData(parse_data);
+        }
+
         SPVData *CompileShader(const uint32_t type,const char *source)
         {
             if(!gsi)
@@ -326,6 +394,20 @@ namespace hgl
 
                 FreeSPVData(spv);
                 return(nullptr);
+            }
+
+            if(gsi->ParseSPV && gsi->FreeParseSPVData)
+            {
+                SPVParseData *parse_data=ParseShaderSPV(spv);
+                if(parse_data)
+                {
+                    DumpParseSPVData(type,parse_data);
+                    FreeShaderSPVParseData(parse_data);
+                }
+                else
+                {
+                    std::fprintf(stderr,"[GLSLCompiler] ParseSPV returned null\n");
+                }
             }
 
             return spv;

@@ -50,16 +50,18 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
 
     ShaderAutoRequirements auto_requirements;
     std::string require_diagnostics;
-    const bool require_ok = CollectShaderAutoRequirements(GetShaderLibraryPath(),
+    const bool require_ok = CollectShaderAutoRequirements(def,
+                                                          GetShaderLibraryPath(),
                                                           vs,
                                                           fs,
                                                           auto_requirements,
                                                           &require_diagnostics);
-    if (!require_ok && !require_diagnostics.empty())
+    if (!require_ok)
     {
-        std::fprintf(stderr, "[%s] @require scan warnings:\n%s",
+        std::fprintf(stderr, "[%s] reflection collection failed:\n%s",
                      debug_tag ? debug_tag : "2DFactory",
                      require_diagnostics.c_str());
+        return nullptr;
     }
 
     FixedUBODescriptors merged_ubos;

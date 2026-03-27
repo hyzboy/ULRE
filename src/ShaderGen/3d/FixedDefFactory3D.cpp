@@ -38,16 +38,18 @@ MaterialCreateInfo *CreateFromFixedDef3D(
 
     ShaderAutoRequirements auto_requirements;
     std::string require_diagnostics;
-    const bool require_ok = CollectShaderAutoRequirements(GetShaderLibraryPath(),
+    const bool require_ok = CollectShaderAutoRequirements(def,
+                                                          GetShaderLibraryPath(),
                                                           result.vertex_glsl,
                                                           result.fragment_glsl,
                                                           auto_requirements,
                                                           &require_diagnostics);
-    if (!require_ok && !require_diagnostics.empty())
+    if (!require_ok)
     {
-        std::fprintf(stderr, "[%s] @require scan warnings:\n%s",
+        std::fprintf(stderr, "[%s] reflection collection failed:\n%s",
                      debug_tag,
                      require_diagnostics.c_str());
+        return nullptr;
     }
 
     FixedUBODescriptors merged_ubos;

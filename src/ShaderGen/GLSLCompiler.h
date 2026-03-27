@@ -7,6 +7,8 @@ namespace hgl
 {
     namespace graph
     {
+        struct SPVParseData;
+
         struct SPVData
         {
             bool result;
@@ -21,7 +23,9 @@ namespace hgl
         void        CloseShaderCompiler();
 
         SPVData *   CompileShader   (const uint32 type,const char *source);
+        SPVParseData *ParseShaderSPV(SPVData *spv_data);
         void        FreeSPVData     (SPVData *spv_data);
+        void        FreeShaderSPVParseData(SPVParseData *parse_data);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GLSL_COMPILER_INCLUDE

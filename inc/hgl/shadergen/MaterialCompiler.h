@@ -67,4 +67,12 @@ std::string InjectLayoutDefinesPreserveVersion(
     const std::string &source,
     const std::string &layout_defs);
 
+bool PrepareCompositorGLSLForReflection(
+    const FixedMaterialDef &def,
+    const std::string &vs_glsl,
+    const std::string &fs_glsl,
+    std::string &out_vs_glsl,
+    std::string &out_fs_glsl,
+    std::string *diagnostics = nullptr);
+
 }//namespace hgl::graph::mtl

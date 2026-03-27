@@ -28,16 +28,15 @@ namespace
     };
 
     const FixedUBODescriptors PBR_COLOR_3D_UBOS = {
-        {UBODescriptorSemantic::ViewportInfo, uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
         {UBODescriptorSemantic::CameraInfo,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
-        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {UBODescriptorSemantic::SkyInfo,      uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)},
     };
 
     const FixedSSBODescriptors PBR_COLOR_3D_SSBOS = {
-        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::LocalToWorld,       uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
         {SSBODescriptorSemantic::TransformID,        uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT)},
-        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_ALL_GRAPHICS)},
+        {SSBODescriptorSemantic::MaterialInstanceID, uint32_t(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)},
+        {SSBODescriptorSemantic::MaterialInstance,   uint32_t(VK_SHADER_STAGE_FRAGMENT_BIT)},
     };
 
     const FixedMaterialDef PBR_COLOR_3D_DEF {
@@ -95,13 +94,17 @@ MaterialCreateInfo *CreatePBRColor3D(const contract::PhysicalDeviceProfileLite *
 
     ShaderAutoRequirements auto_requirements;
     std::string require_diagnostics;
-    const bool require_ok = CollectShaderAutoRequirements(GetShaderLibraryPath(),
+    const bool require_ok = CollectShaderAutoRequirements(dynamic_def,
+                                                          GetShaderLibraryPath(),
                                                           result.vertex_glsl,
                                                           result.fragment_glsl,
                                                           auto_requirements,
                                                           &require_diagnostics);
-    if (!require_ok && !require_diagnostics.empty())
-        std::fprintf(stderr, "[PBRColor3D] @require scan warnings:\n%s", require_diagnostics.c_str());
+    if (!require_ok)
+    {
+        std::fprintf(stderr, "[PBRColor3D] reflection collection failed:\n%s", require_diagnostics.c_str());
+        return nullptr;
+    }
 
     FixedUBODescriptors merged_ubos;
     FixedSSBODescriptors merged_ssbos;
