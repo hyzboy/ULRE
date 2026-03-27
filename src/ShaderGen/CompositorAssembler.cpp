@@ -128,117 +128,6 @@ namespace hgl::graph
         return true;
     }
 
-    bool CompositorAssembler::TryBuildGeneratedCompositorVS(SurfaceType surface, PassType pass, std::string &out_source) const
-    {
-        if (Is2DSurfaceType(surface))
-        {
-            switch (surface)
-            {
-            case SurfaceType::PureColor2D:
-                out_source = BuildForwardVertexEntry({.vert_input_2d = true});
-                return true;
-
-            case SurfaceType::PureTexture2D:
-            case SurfaceType::Text2D:
-                out_source = BuildForwardVertexEntry({.vert_input_2d = true, .has_uv0 = true});
-                return true;
-
-            case SurfaceType::VertexColor2D:
-                out_source = BuildForwardVertexEntry({.vert_input_2d = true, .has_vertex_color = true});
-                return true;
-
-            default:
-                break;
-            }
-        }
-
-        if (surface == SurfaceType::Unlit)
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-                out_source = BuildForwardVertexEntry({});
-                return true;
-            default:
-                return false;
-            }
-        }
-
-        switch (pass)
-        {
-        case PassType::ForwardOpaque:
-        case PassType::ForwardMasked:
-        case PassType::ForwardTransparent:
-        case PassType::ForwardDither:
-        case PassType::ForwardA2C:
-            out_source = BuildForwardVertexEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true});
-            return true;
-        default:
-            return false;
-        }
-    }
-
-    bool CompositorAssembler::TryBuildGeneratedCompositorFS(SurfaceType surface, BlendMode blend, PassType pass, const std::string &surface_path, std::string &out_source) const
-    {
-        (void)blend;
-
-        if (Is2DSurfaceType(surface))
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-                out_source = BuildForwardFragmentEntry({.surface_path = surface_path});
-                return true;
-            case PassType::ForwardMasked:
-                out_source = BuildForwardFragmentEntry({.alpha_masked = true, .surface_path = surface_path});
-                return true;
-            case PassType::ForwardDither:
-                out_source = BuildForwardFragmentEntry({.alpha_dither = true, .surface_path = surface_path});
-                return true;
-            case PassType::ForwardTransparent:
-                out_source = BuildForwardFragmentEntry({.surface_path = surface_path});
-                return true;
-            default:
-                return false;
-            }
-        }
-
-        if (surface == SurfaceType::Unlit)
-        {
-            switch (pass)
-            {
-            case PassType::ForwardOpaque:
-            case PassType::ForwardMasked:
-            case PassType::ForwardTransparent:
-                out_source = BuildForwardFragmentEntry({.surface_path = surface_path});
-                return true;
-            default:
-                return false;
-            }
-        }
-
-        switch (pass)
-        {
-        case PassType::ForwardOpaque:
-            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .enable_lighting = true, .surface_path = surface_path});
-            return true;
-        case PassType::ForwardMasked:
-            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .alpha_masked = true, .surface_path = surface_path});
-            return true;
-        case PassType::ForwardTransparent:
-        case PassType::ForwardA2C:
-            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .surface_path = surface_path});
-            return true;
-        case PassType::ForwardDither:
-            out_source = BuildForwardFragmentEntry({.has_uv0 = true, .has_world_pos = true, .has_world_normal = true, .alpha_dither = true, .surface_path = surface_path});
-            return true;
-        default:
-            return false;
-        }
-    }
-
     bool CompositorAssembler::TryBuildGeneratedVSTemplatePath(const std::string &template_path, std::string &out_source) const
     {
         if (template_path == "compositor/main_forward_unlit_vertexcolor.vert.glsl")
@@ -528,7 +417,6 @@ namespace hgl::graph
 
     std::string CompositorAssembler::InjectDefines(const std::string &source, const ShaderPermutationKey &key) const
     {
-        // 在 #version 行之后插入 #define 宏
         std::string defines;
         key.AppendGLSLDefines(defines);
 
@@ -593,15 +481,17 @@ namespace hgl::graph
             ? surface_function_override
             : GetSurfaceFunctionPath(surface);
 
-        // 3. 构建或读取 VS 模板
+        // 3. VS 模板
         std::string vs_source;
-          if ((vs_template_override && vs_template_override[0])
-           && TryBuildGeneratedVSTemplatePath(vs_template_override, vs_source))
-          {
-          }
-          else if (!(vs_template_override && vs_template_override[0])
-              && TryBuildGeneratedCompositorVS(surface, pass, vs_source))
+        if (vs_template_override && vs_template_override[0])
         {
+            // Template override: Generated-first, disk fallback
+            if (!TryBuildGeneratedVSTemplatePath(vs_template_override, vs_source)
+             && !ReadFile(vs_path, vs_source, result.error_message))
+            {
+                result.success = false;
+                return result;
+            }
         }
         else if (!ReadFile(vs_path, vs_source, result.error_message))
         {
@@ -609,18 +499,21 @@ namespace hgl::graph
             return result;
         }
 
-        // 4. 构建或读取 FS 模板
+        // 4. FS 模板
         std::string fs_source;
-          if ((fs_template_override && fs_template_override[0])
-           && TryBuildGeneratedFSTemplatePath(fs_template_override, blend, surface_rel, fs_source))
-          {
-          }
-          else if (!(fs_template_override && fs_template_override[0])
-              && TryBuildGeneratedCompositorFS(surface, blend, pass, surface_rel, fs_source))
+        if (fs_template_override && fs_template_override[0])
         {
+            // Template override: Generated-first, disk fallback
+            if (!TryBuildGeneratedFSTemplatePath(fs_template_override, blend, surface_rel, fs_source)
+             && !ReadFile(fs_path, fs_source, result.error_message))
+            {
+                result.success = false;
+                return result;
+            }
         }
         else if (!ReadFile(fs_path, fs_source, result.error_message))
         {
+            // Compositor path: disk-first, Generated fallback
             result.success = false;
             return result;
         }
@@ -669,13 +562,14 @@ namespace hgl::graph
             : desc.surface_function_path;
 
         std::string vs_source;
-          if (!desc.vs_template_path.empty()
-           && TryBuildGeneratedVSTemplatePath(desc.vs_template_path, vs_source))
-          {
-          }
-          else if (desc.vs_template_path.empty()
-              && TryBuildGeneratedCompositorVS(key.surface_type, key.pass_hint, vs_source))
+        if (!desc.vs_template_path.empty())
         {
+            if (!TryBuildGeneratedVSTemplatePath(desc.vs_template_path, vs_source)
+             && !ReadFile(vs_path, vs_source, result.error_message))
+            {
+                result.success = false;
+                return result;
+            }
         }
         else if (!ReadFile(vs_path, vs_source, result.error_message))
         {
@@ -684,13 +578,14 @@ namespace hgl::graph
         }
 
         std::string fs_source;
-          if (!desc.fs_template_path.empty()
-           && TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key.blend_mode, surface_rel, fs_source))
-          {
-          }
-          else if (desc.fs_template_path.empty()
-              && TryBuildGeneratedCompositorFS(key.surface_type, key.blend_mode, key.pass_hint, surface_rel, fs_source))
+        if (!desc.fs_template_path.empty())
         {
+            if (!TryBuildGeneratedFSTemplatePath(desc.fs_template_path, key.blend_mode, surface_rel, fs_source)
+             && !ReadFile(fs_path, fs_source, result.error_message))
+            {
+                result.success = false;
+                return result;
+            }
         }
         else if (!ReadFile(fs_path, fs_source, result.error_message))
         {

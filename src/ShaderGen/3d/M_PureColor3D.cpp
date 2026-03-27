@@ -1,10 +1,5 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
-#include<hgl/shadergen/CompositorAssembler.h>
+#include"FixedDefFactory3D.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<cstdio>
-#include<string>
-#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -43,35 +38,7 @@ namespace
 
 MaterialCreateInfo *CreatePureColor3D(const contract::PhysicalDeviceProfileLite *profile,Material3DCreateConfig *cfg)
 {
-    // PureColor3D: Unlit Mesh3D, no texture �?desc has empty paths (auto-routing)
     MaterialVariantKey var_key;
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[PureColor3D] VariantRegistry lookup failed\n");
-        return nullptr;
-    }
-
-    CompositorAssembler assembler;
-
-    auto result = assembler.Assemble(var_key, *var_desc);
-
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[PureColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
-    }
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        PURE_COLOR_3D_DEF,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        cfg);
-
-    if (!mci)
-        std::fprintf(stderr, "[PureColor3D] CompileCompositorMaterial failed\n");
-    return mci;
+    return CreateFromFixedDef3D("PureColor3D", profile, PURE_COLOR_3D_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

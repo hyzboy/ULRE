@@ -1,9 +1,5 @@
-#include <hgl/shadergen/MaterialCreateInfo.h>
-#include <hgl/shadergen/MaterialCompiler.h>
-#include <hgl/shadergen/CompositorAssembler.h>
-#include <hgl/mtl/Material3DCreateConfig.h>
-#include <cstdio>
-#include <hgl/mtl/MaterialVariantDesc.h>
+#include"FixedDefFactory3D.h"
+#include<hgl/mtl/Material3DCreateConfig.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -40,33 +36,6 @@ MaterialCreateInfo *CreateSkyMinimal(const contract::PhysicalDeviceProfileLite *
 {
     MaterialVariantKey var_key;
     var_key.surface_type = SurfaceType::Sky;
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[SkyMinimal] VariantRegistry lookup failed\n");
-        return nullptr;
-    }
-
-    CompositorAssembler assembler;
-
-    auto result = assembler.Assemble(var_key, *var_desc);
-
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[SkyMinimal] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
-    }
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        SKY_MINIMAL_DEF,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        cfg);
-
-    if (!mci)
-        std::fprintf(stderr, "[SkyMinimal] CompileCompositorMaterial failed\n");
-    return mci;
+    return CreateFromFixedDef3D("SkyMinimal", profile, SKY_MINIMAL_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

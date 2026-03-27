@@ -1,10 +1,5 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
-#include<hgl/shadergen/CompositorAssembler.h>
+#include"FixedDefFactory3D.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<cstdio>
-#include<string>
-#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -41,33 +36,6 @@ MaterialCreateInfo *CreateVertexColor3D(const contract::PhysicalDeviceProfileLit
 {
     MaterialVariantKey var_key;
     var_key.SetVertexAttribEnabled(VertexAttrib::Color);
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[VertexColor3D] VariantRegistry lookup failed\n");
-        return nullptr;
-    }
-
-    CompositorAssembler assembler;
-
-    auto result = assembler.Assemble(var_key, *var_desc);
-
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[VertexColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
-    }
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        VERTEX_COLOR_3D_DEF,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        cfg);
-
-    if (!mci)
-        std::fprintf(stderr, "[VertexColor3D] CompileCompositorMaterial failed\n");
-    return mci;
+    return CreateFromFixedDef3D("VertexColor3D", profile, VERTEX_COLOR_3D_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

@@ -1,9 +1,6 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
-#include<hgl/shadergen/CompositorAssembler.h>
+#include"FixedDefFactory3D.h"
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<cstdio>
-#include<hgl/mtl/MaterialVariantDesc.h>
+#include<hgl/math/Vector.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -47,33 +44,6 @@ MaterialCreateInfo *CreateVertexLuminance3D(const contract::PhysicalDeviceProfil
 
     MaterialVariantKey var_key;
     var_key.SetVertexAttribEnabled(VertexAttrib::Luminance);
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[VertexLuminance3D] VariantRegistry lookup failed\n");
-        return nullptr;
-    }
-
-    CompositorAssembler assembler;
-
-    auto result = assembler.Assemble(var_key, *var_desc);
-
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[VertexLuminance3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
-    }
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        VERTEX_LUMINANCE_3D_DEF,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        cfg);
-
-    if (!mci)
-        std::fprintf(stderr, "[VertexLuminance3D] CompileCompositorMaterial failed\n");
-    return mci;
+    return CreateFromFixedDef3D("VertexLuminance3D", profile, VERTEX_LUMINANCE_3D_DEF, var_key, cfg);
 }
 }//namespace hgl::graph::mtl

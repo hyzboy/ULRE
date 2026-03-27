@@ -1,10 +1,6 @@
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include"FixedDefFactory3D.h"
 #include<hgl/mtl/UBOCommon.h>
-#include<hgl/shadergen/MaterialCompiler.h>
-#include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/Material3DCreateConfig.h>
-#include<cstdio>
-#include<hgl/mtl/MaterialVariantDesc.h>
 
 namespace hgl::graph::mtl{
 namespace
@@ -45,33 +41,6 @@ MaterialCreateInfo *CreateVertexPattleColor3D(const contract::PhysicalDeviceProf
     MaterialVariantKey var_key;
     var_key.SetVertexAttribEnabled(VertexAttrib::Color);
     var_key.SetDebugShading(true);
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariant(var_key);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[VertexPattleColor3D] VariantRegistry lookup failed\n");
-        return nullptr;
-    }
-
-    CompositorAssembler assembler;
-
-    auto result = assembler.Assemble(var_key, *var_desc);
-
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[VertexPattleColor3D] CompositorAssembler failed: %s\n",
-            result.error_message.c_str());
-        return nullptr;
-    }
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(
-        profile,
-        VERTEX_PATTLE_COLOR_3D_DEF,
-        result.vertex_glsl,
-        result.fragment_glsl,
-        &local_cfg);
-
-    if (!mci)
-        std::fprintf(stderr, "[VertexPattleColor3D] CompileCompositorMaterial failed\n");
-    return mci;
+    return CreateFromFixedDef3D("VertexPattleColor3D", profile, VERTEX_PATTLE_COLOR_3D_DEF, var_key, &local_cfg);
 }
 }//namespace hgl::graph::mtl

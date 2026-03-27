@@ -60,6 +60,8 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
 )
 
 SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
+                            3d/FixedDefFactory3D.h
+                            3d/FixedDefFactory3D.cpp
                             3d/M_PureColor3D.cpp
                             3d/M_VertexColor3D.cpp
                             3d/M_VertexLum3D.cpp
