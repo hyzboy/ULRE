@@ -266,7 +266,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const contract::PhysicalDeviceProfi
         const bool ok = ValidateBuiltinMaterialVariants(GetShaderLibraryPath(),diagnostics);
         if(ok)
         {
-            std::fprintf(stderr,"[MaterialLibrary] Startup variant validation passed.\n");
+            std::printf("[MaterialLibrary] Startup variant validation passed.\n");
             return true;
         }
 

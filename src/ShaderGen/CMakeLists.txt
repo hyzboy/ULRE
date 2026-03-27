@@ -52,6 +52,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/Build2DCommon.h
+                            2d/FixedDefFactory2D.h
+                            2d/FixedDefFactory2D.cpp
                             2d/M_VertexColor2D.cpp
                             2d/M_PureColor2D.cpp
                             2d/M_PureTexture2D.cpp

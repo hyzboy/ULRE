@@ -1,12 +1,9 @@
 #include"Build2DCommon.h"
+#include"FixedDefFactory2D.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/MaterialCompiler.h>
-#include<hgl/shadergen/CompositorAssembler.h>
 #include<hgl/mtl/SamplerName.h>
 #include<hgl/math/Vector.h>
 #include<hgl/mtl/MaterialLibrary.h>
-#include<hgl/mtl/MaterialVariantDesc.h>
-#include<cstdio>
 
 namespace hgl::graph::mtl{
 
@@ -22,13 +19,6 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
         ? key.GetTextureSourceMode(SamplerSlot::BaseColor)
         : key.texture_source_mode;
     const bool use_array = (mode == TextureSourceMode::Array);
-
-    const MaterialVariantDesc *var_desc = GetBuiltinVariantRegistry().QueryVariantWithCanonicalFallback(key,nullptr);
-    if (!var_desc)
-    {
-        std::fprintf(stderr, "[PureTexture2D] VariantRegistry lookup failed\n");
-        return nullptr;
-    }
 
     // Array mode needs MI data for MaterialInstanceTextureID SSBO.
     constexpr const char mi_codes[] = "uvec4 id;";
@@ -50,14 +40,6 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
                                                         use_array,
                                                         SamplerSlot::BaseColor,
                                                         use_array);
-
-    CompositorAssembler assembler;
-    const auto result = assembler.Assemble(key, *var_desc);
-    if (!result.success)
-    {
-        std::fprintf(stderr, "[PureTexture2D] CompositorAssembler failed: %s\n", result.error_message.c_str());
-        return nullptr;
-    }
 
     std::vector<FixedVertexEntry> vertices;
     build2d::PushBaseVertexEntries(vertices, &inner);
@@ -87,13 +69,7 @@ MaterialCreateInfo *CreatePureTextureVariant(const contract::PhysicalDeviceProfi
         use_array ? mi_bytes : 0,
     };
 
-    std::string vs = vs_preamble + result.vertex_glsl;
-    std::string fs = fs_preamble + result.fragment_glsl;
-
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, &inner);
-    if(!mci)
-        std::fprintf(stderr, "[PureTexture2D] CompileCompositorMaterial failed\n");
-    return mci;
+    return CreateFromFixedDef2D("PureTexture2D", profile, def, key, vs_preamble, fs_preamble, &inner, true);
 }
 
 MaterialCreateInfo *CreatePureTexture2D(const contract::PhysicalDeviceProfileLite *profile,const mtl::Material2DCreateConfig *cfg)
