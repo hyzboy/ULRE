@@ -31,7 +31,7 @@ namespace
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *legacy_name = mtl::ToDescriptorName(slot);
-        const char *getter_name = mtl::ToGLSLGetterName(slot);
+        const std::string upper_name = mtl::ToUpperASCII(mtl::SamplerSlotNameList[uint8(slot)]);
 
         out += "layout(set=";
         out += std::to_string(descriptor->set);
@@ -49,20 +49,18 @@ namespace
         out += sampler_symbol;
         out += "\n#endif\n";
 
-        out += "vec4 ";
-        out += getter_name;
+        out += "#define HAS_SAMPLER_";
+        out += upper_name;
+        out += "\n";
+
         if (channel_hint == TextureChannelHint::Grayscale)
         {
-            out += "(vec2 uv)\n{\n    float _r = texture(";
-            out += sampler_symbol;
-            out += ", uv).r;\n    return vec4(_r, _r, _r, _r);\n}\n\n";
+            out += "#define SAMPLER_";
+            out += upper_name;
+            out += "_GRAYSCALE\n";
         }
-        else
-        {
-            out += "(vec2 uv)\n{\n    return texture(";
-            out += sampler_symbol;
-            out += ", uv);\n}\n\n";
-        }
+
+        out += "\n";
     }
 
     // Generates sampler2DArray binding + layer index global + getter — no #ifdef guards.
@@ -71,7 +69,7 @@ namespace
     {
         const char *sampler_symbol = mtl::ToGLSLSamplerSymbol(slot);
         const char *slot_name      = mtl::SamplerSlotNameList[uint8(slot)];
-        const char *getter_name    = mtl::ToGLSLGetterName(slot);
+        const std::string upper_name = mtl::ToUpperASCII(slot_name);
 
         out += "layout(set=";
         out += std::to_string(descriptor->set);
@@ -86,24 +84,22 @@ namespace
         out += slot_name;
         out += ";\n";
 
-        out += "vec4 ";
-        out += getter_name;
+        out += "#define HAS_SAMPLER_";
+        out += upper_name;
+        out += "\n";
+
+        out += "#define SAMPLER_";
+        out += upper_name;
+        out += "_ARRAY\n";
+
         if (channel_hint == TextureChannelHint::Grayscale)
         {
-            out += "(vec2 uv)\n{\n    float _r = texture(";
-            out += sampler_symbol;
-            out += ", vec3(uv, float(_tex_layer_";
-            out += slot_name;
-            out += "))).r;\n    return vec4(_r, _r, _r, _r);\n}\n\n";
+            out += "#define SAMPLER_";
+            out += upper_name;
+            out += "_GRAYSCALE\n";
         }
-        else
-        {
-            out += "(vec2 uv)\n{\n    return texture(";
-            out += sampler_symbol;
-            out += ", vec3(uv, float(_tex_layer_";
-            out += slot_name;
-            out += ")));\n}\n\n";
-        }
+
+        out += "\n";
     }
 
     static void AppendGenericSampler(std::string &out, const ShaderDescriptor *descriptor)
@@ -175,11 +171,16 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
     out.reserve(512);
     out += "// ---- Auto-generated simple sampler declarations ----\n";
 
+    bool has_known_slot = false;
+
     for (const SamplerEntry &entry : samplers)
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if (mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot))
+        {
             AppendKnownSlotSampler(out, entry.descriptor, slot, entry.channel_hint);
+            has_known_slot = true;
+        }
         else
             AppendGenericSampler(out, entry.descriptor);
     }
@@ -188,10 +189,16 @@ std::string EmitSimpleSamplerGLSL(const ShaderCreateInfo &shader)
     {
         mtl::SamplerSlot slot = mtl::SamplerSlot::BaseColor;
         if (mtl::TryGetSlotFromDescriptorName(entry.descriptor->name, slot))
+        {
             AppendKnownSlotArraySampler(out, entry.descriptor, slot, entry.channel_hint);
+            has_known_slot = true;
+        }
         else
             AppendGenericSampler(out, entry.descriptor);
     }
+
+    if (has_known_slot)
+        out += "#include \"common/sampler_getters.glsl\"\n";
 
     out += "// ----------------------------------------------------\n\n";
     return out;

@@ -72,7 +72,7 @@ static bool HasPerMaterialDescriptor(const FixedMaterialDef &def)
     return false;
 }
 
-static std::string InjectLayoutDefinesPreserveVersion(const std::string &source,const std::string &layout_defs)
+std::string InjectLayoutDefinesPreserveVersion(const std::string &source,const std::string &layout_defs)
 {
     if(layout_defs.empty())
         return source;
@@ -222,19 +222,8 @@ MaterialCreateInfo *CompileCompositorMaterial(
         mci->SetBindingContract(contract);
     }
 
-    {
-        mci->Resort();
-        const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(*mci);
-        const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
-        const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(*vert) : std::string();
-        const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(*frag) : std::string();
-        const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(*frag) : std::string();
-        if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
-        {
-            if (vert) vert->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(vert->GetFinalGLSL(),layout_defs + vert_sampler_defs));
-            if (frag) frag->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(frag->GetFinalGLSL(),layout_defs + frag_sampler_defs + frag_mit_defs));
-        }
-    }
+    if (!InjectLayoutDefines(*mci))
+        return FailAfterMci("InjectLayoutDefines() failed");
 
     if (!mci->CreateShaderDirect())
         return FailAfterMci("CreateShaderDirect() failed (check GLSLCompiler log)");
@@ -263,6 +252,27 @@ MaterialCreateInfo *CompileCompositorMaterial(
     }
 
     return CompileCompositorMaterial(profile, def, vs_glsl, fs_glsl, &cfg3d);
+}
+
+bool InjectLayoutDefines(MaterialCreateInfo &mci)
+{
+    ShaderCreateInfoVertex *vert = mci.GetVertexShader();
+    ShaderCreateInfo       *frag = mci.GetStageShader(ShaderStage::Fragment);
+
+    mci.Resort();
+    const ShaderLayoutContract layout = hgl::graph::BuildShaderLayoutContract(mci);
+    const std::string layout_defs = hgl::graph::EmitShaderLayoutDefines(layout);
+    const std::string vert_sampler_defs = vert ? hgl::graph::EmitSimpleSamplerGLSL(*vert) : std::string();
+    const std::string frag_sampler_defs = frag ? hgl::graph::EmitSimpleSamplerGLSL(*frag) : std::string();
+    const std::string frag_mit_defs     = frag ? hgl::graph::EmitMaterialInstanceTextureGLSL(*frag) : std::string();
+
+    if (!layout_defs.empty() || !vert_sampler_defs.empty() || !frag_sampler_defs.empty() || !frag_mit_defs.empty())
+    {
+        if (vert) vert->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(vert->GetFinalGLSL(), layout_defs + vert_sampler_defs));
+        if (frag) frag->SetFinalGLSL(InjectLayoutDefinesPreserveVersion(frag->GetFinalGLSL(), layout_defs + frag_sampler_defs + frag_mit_defs));
+    }
+
+    return true;
 }
 
 }  // namespace hgl::graph::mtl

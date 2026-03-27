@@ -50,4 +50,21 @@ MaterialCreateInfo *CompileCompositorMaterial(
     const std::string &         fs_glsl,
     const Material2DCreateConfig *config);
 
+/**
+ * Resort descriptors, build layout contract, emit layout/sampler defines,
+ * and inject them into the VS/FS GLSL stored in @p mci.
+ *
+ * Call this after all descriptors, vertex inputs, and MI have been set up
+ * but before CreateShaderDirect().
+ */
+bool InjectLayoutDefines(MaterialCreateInfo &mci);
+
+/**
+ * Insert @p layout_defs after the #version line (if present) in @p source.
+ * If no #version line, prepends the defines.
+ */
+std::string InjectLayoutDefinesPreserveVersion(
+    const std::string &source,
+    const std::string &layout_defs);
+
 }//namespace hgl::graph::mtl
