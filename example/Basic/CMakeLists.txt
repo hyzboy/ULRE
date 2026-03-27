@@ -25,6 +25,7 @@ CreateProject(10_TextureBlinnPhongMeshesECS     TextureBlinnPhongMeshesECS.cpp)
 CreateProject(11_RenderBoundBox                 RenderBoundBox.cpp)
 CreateProject(12_RenderToTexture                RenderToTexture.cpp)
 CreateProject(13_RecursiveCube                  RecursiveCube.cpp)
+CreateProject(14_PBRColor3DSpheresECS           PBRColor3DSpheresECS.cpp)
 
 add_subdirectory(BillboardIconECS)
 

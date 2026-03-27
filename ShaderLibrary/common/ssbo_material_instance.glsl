@@ -1,6 +1,8 @@
 #ifndef MATERIAL_INSTANCE_SSBO_GLSL
 #define MATERIAL_INSTANCE_SSBO_GLSL
 
+// @require SSBO(MaterialInstanceID)
+
 layout(std430, set=PERMATERIAL_SET, binding=MID_BINDING) readonly buffer MaterialInstanceIDData {
     uint ids[];
 } mid;
@@ -15,6 +17,8 @@ uint GetMaterialInstanceID()
 }
 
 #ifndef MATERIAL_INSTANCE_ID_ONLY
+
+// @require SSBO(MaterialInstance)
 
 #ifdef MATERIAL_INSTANCE_SSBO_SCALAR
 layout(scalar, set=PERMATERIAL_SET, binding=MI_BINDING) readonly buffer MaterialInstanceData {

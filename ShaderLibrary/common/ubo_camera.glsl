@@ -1,6 +1,8 @@
 #ifndef UBO_CAMERA_GLSL
 #define UBO_CAMERA_GLSL
 
+// @require UBO(CameraInfo)
+
 layout(set=PERFRAME_SET, binding=CAMERA_BINDING) uniform CameraInfo
 {
     mat4 projection;

@@ -1,6 +1,8 @@
 #ifndef UBO_VIEWPORT_GLSL
 #define UBO_VIEWPORT_GLSL
 
+// @require UBO(ViewportInfo)
+
 layout(set=STATIC_SET, binding=VIEWPORT_BINDING) uniform ViewportInfo
 {
     mat4 ortho_matrix;

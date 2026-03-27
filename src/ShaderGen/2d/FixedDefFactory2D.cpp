@@ -2,6 +2,8 @@
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/MaterialCompiler.h>
 #include<hgl/shadergen/CompositorAssembler.h>
+#include<hgl/shadergen/ShaderRequireScanner.h>
+#include<hgl/shadergen/ShaderGenPathConfig.h>
 #include<hgl/mtl/MaterialVariantDesc.h>
 #include<cstdio>
 
@@ -46,7 +48,32 @@ MaterialCreateInfo *CreateFromFixedDef2D(const char *debug_tag,
     const std::string vs = vs_preamble + result.vertex_glsl;
     const std::string fs = fs_preamble + result.fragment_glsl;
 
-    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, def, vs, fs, cfg);
+    ShaderAutoRequirements auto_requirements;
+    std::string require_diagnostics;
+    const bool require_ok = CollectShaderAutoRequirements(GetShaderLibraryPath(),
+                                                          vs,
+                                                          fs,
+                                                          auto_requirements,
+                                                          &require_diagnostics);
+    if (!require_ok && !require_diagnostics.empty())
+    {
+        std::fprintf(stderr, "[%s] @require scan warnings:\n%s",
+                     debug_tag ? debug_tag : "2DFactory",
+                     require_diagnostics.c_str());
+    }
+
+    FixedUBODescriptors merged_ubos;
+    FixedSSBODescriptors merged_ssbos;
+    FixedTextureSamplerDescriptors merged_samplers;
+    FixedMaterialDef merged_def = def;
+    MergeShaderAutoRequirements(def,
+                                auto_requirements,
+                                merged_def,
+                                merged_ubos,
+                                merged_ssbos,
+                                merged_samplers);
+
+    MaterialCreateInfo *mci = CompileCompositorMaterial(profile, merged_def, vs, fs, cfg);
     if(!mci)
         std::fprintf(stderr, "[%s] CompileCompositorMaterial failed\n", debug_tag ? debug_tag : "2DFactory");
 
