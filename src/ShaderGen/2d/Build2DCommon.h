@@ -32,51 +32,13 @@ inline const char *GLSLInputType(const VAType &vat)
 
 // ─────────────────────────────────────────────────────────────
 // Shader preamble builder �?#version + #define lines
-// C++ only produces the preamble; GLSL code lives in files.
 //
-//   std::string vs = preamble + "#include \"2d/xxx.vert.glsl\"\n";
-//   std::string fs = preamble + "#include \"2d/xxx.frag.glsl\"\n";
+// Vertex preamble also emits #define + #include for GetPosition2D()
+// (actual GLSL code lives in ShaderLibrary/2d/get_position_2d.glsl)
 // ─────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────
-// Emit GetPosition2D() — direct variant, no macro branching
-// ─────────────────────────────────────────────────────────────
-
-inline std::string EmitGetPosition2DGLSL(const Material2DCreateConfig *cfg)
-{
-    std::string s;
-
-    if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
-        s += "#include \"common/ubo_viewport.glsl\"\n";
-
-    if(cfg->local_to_world)
-        s += "#include \"common/ssbo_transform.glsl\"\n";
-
-    s += "layout(location=POSITION_LOCATION) in ";
-    s += GLSLInputType(cfg->position_format);
-    s += " Position;\n\n";
-
-    s += "vec4 GetPosition2D()\n{\n";
-
-    if(cfg->coordinate_system == CoordinateSystem2D::Ortho && cfg->local_to_world)
-        s += "    return GetTransform() * viewport.ortho_matrix * vec4(vec2(Position), 0, 1);\n";
-    else if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
-        s += "    return viewport.ortho_matrix * vec4(vec2(Position), 0, 1);\n";
-    else if(cfg->coordinate_system == CoordinateSystem2D::ZeroToOne && cfg->local_to_world)
-        s += "    return GetTransform() * vec4(vec2(Position) * 2.0 - 1.0, 0, 1);\n";
-    else if(cfg->coordinate_system == CoordinateSystem2D::ZeroToOne)
-        s += "    return vec4(vec2(Position) * 2.0 - 1.0, 0, 1);\n";
-    else if(cfg->local_to_world)
-        s += "    return GetTransform() * vec4(vec2(Position), 0, 1);\n";
-    else
-        s += "    return vec4(vec2(Position), 0, 1);\n";
-
-    s += "}\n\n";
-    return s;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Shader preamble builder
+// Shader preamble builder — #version + #define lines
 // ─────────────────────────────────────────────────────────────
 
 inline std::string Build2DFragmentPreamble(const Material2DCreateConfig *cfg,
@@ -111,7 +73,19 @@ inline std::string Build2DVertexPreamble(const Material2DCreateConfig *cfg,
                                             texture_slot,
                                             texture_array_mode);
 
-    p += EmitGetPosition2DGLSL(cfg);
+    if(cfg->coordinate_system == CoordinateSystem2D::Ortho)
+        p += "#define COORD_ORTHO\n";
+    else if(cfg->coordinate_system == CoordinateSystem2D::ZeroToOne)
+        p += "#define COORD_ZERO_TO_ONE\n";
+
+    if(cfg->local_to_world)
+        p += "#define HAS_LOCAL_TO_WORLD\n";
+
+    p += "#define POSITION_TYPE ";
+    p += GLSLInputType(cfg->position_format);
+    p += "\n";
+
+    p += "#include \"2d/get_position_2d.glsl\"\n\n";
 
     return p;
 }
